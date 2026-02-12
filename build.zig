@@ -2,6 +2,7 @@ const std = @import("std");
 
 const common = @import("zig/build/common.zig");
 const ifcparse_build = @import("zig/build/ifcparse.zig");
+const ifcparse_capi_build = @import("zig/build/ifcparse_capi.zig");
 const ifcgeom_build = @import("zig/build/ifcgeom.zig");
 const serializers_build = @import("zig/build/serializers.zig");
 
@@ -39,6 +40,28 @@ pub fn build(b: *std.Build) void {
 
     const ifcparse_step = b.step("ifcparse", "Build the minimal IfcParse static library");
     ifcparse_step.dependOn(&ifcparse_install.step);
+
+    const ifcparse_capi_lib = ifcparse_capi_build.addIfcParseCApiLibrary(
+        b,
+        target,
+        optimize,
+        ifcparse_lib,
+    );
+    const ifcparse_capi_install = b.addInstallArtifact(ifcparse_capi_lib, .{});
+    b.getInstallStep().dependOn(&ifcparse_capi_install.step);
+
+    const ifcparse_capi_step = b.step("ifcparse-capi", "Build C ABI shim for IfcParse used by Zig bindings");
+    ifcparse_capi_step.dependOn(&ifcparse_capi_install.step);
+
+    const zig_lib_tests = ifcparse_capi_build.addZigLibTests(
+        b,
+        target,
+        optimize,
+        ifcparse_capi_lib,
+    );
+    const zig_lib_test_run = b.addRunArtifact(zig_lib_tests);
+    const test_step = b.step("test", "Run all Zig wrapper tests");
+    test_step.dependOn(&zig_lib_test_run.step);
 
     const ifcgeom_lib = ifcgeom_build.addIfcGeomLibrary(
         b,
