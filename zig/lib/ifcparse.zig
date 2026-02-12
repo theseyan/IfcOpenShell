@@ -38,6 +38,13 @@ pub const ArgumentType = enum(c.ifcopenshell_ifcparse_argument_type_t) {
     _,
 };
 
+pub const AttributeCategory = enum(c_int) {
+    invalid = 0,
+    forward = 1,
+    inverse = 2,
+    _,
+};
+
 pub const OpenStatus = enum(c.ifcopenshell_ifcparse_status_t) {
     success = c.IFCOPENSHELL_IFCPARSE_STATUS_SUCCESS,
     read_error = c.IFCOPENSHELL_IFCPARSE_STATUS_READ_ERROR,
@@ -84,6 +91,13 @@ pub const EntityRef = struct {
         return std.mem.span(raw_name);
     }
 
+    pub fn typeNameWithSchema(self: EntityRef) ?[]const u8 {
+        if (self.handle == null) return null;
+        const raw_name = c.ifcopenshell_ifcparse_entity_type_name_with_schema(self.handle.?);
+        if (raw_name == null) return null;
+        return std.mem.span(raw_name);
+    }
+
     pub fn isA(
         self: EntityRef,
         allocator: std.mem.Allocator,
@@ -98,6 +112,36 @@ pub const EntityRef = struct {
         const result = c.ifcopenshell_ifcparse_entity_is_a(self.handle.?, type_name_z.ptr);
         if (result == 0 and lastError().len > 0) return error.QueryFailed;
         return result != 0;
+    }
+
+    pub fn attributeCategory(
+        self: EntityRef,
+        allocator: std.mem.Allocator,
+        attribute_name: []const u8,
+    ) QueryError!AttributeCategory {
+        if (self.handle == null) return error.InvalidArgument;
+        if (attribute_name.len == 0) return error.InvalidArgument;
+
+        const attribute_name_z = allocator.dupeZ(u8, attribute_name) catch return error.OutOfMemory;
+        defer allocator.free(attribute_name_z);
+
+        const raw_category = c.ifcopenshell_ifcparse_entity_attribute_category(self.handle.?, attribute_name_z.ptr);
+        if (raw_category == 0 and lastError().len > 0) return error.QueryFailed;
+        return @enumFromInt(raw_category);
+    }
+
+    pub fn attributeNames(self: EntityRef) QueryError!StringList {
+        if (self.handle == null) return error.InvalidArgument;
+        const raw_list = c.ifcopenshell_ifcparse_entity_attribute_names(self.handle.?);
+        if (raw_list == null) return error.QueryFailed;
+        return StringList{ .handle = raw_list };
+    }
+
+    pub fn inverseAttributeNames(self: EntityRef) QueryError!StringList {
+        if (self.handle == null) return error.InvalidArgument;
+        const raw_list = c.ifcopenshell_ifcparse_entity_inverse_attribute_names(self.handle.?);
+        if (raw_list == null) return error.QueryFailed;
+        return StringList{ .handle = raw_list };
     }
 
     pub fn argumentCount(self: EntityRef) usize {
@@ -233,6 +277,43 @@ pub const EntityRef = struct {
         return EntityList{ .handle = raw_list };
     }
 
+    pub fn getInverse(
+        self: EntityRef,
+        allocator: std.mem.Allocator,
+        inverse_name: []const u8,
+    ) QueryError!EntityList {
+        if (self.handle == null) return error.InvalidArgument;
+        if (inverse_name.len == 0) return error.InvalidArgument;
+
+        const inverse_name_z = allocator.dupeZ(u8, inverse_name) catch return error.OutOfMemory;
+        defer allocator.free(inverse_name_z);
+
+        const raw_list = c.ifcopenshell_ifcparse_entity_get_inverse(self.handle.?, inverse_name_z.ptr);
+        if (raw_list == null) return error.QueryFailed;
+        return EntityList{ .handle = raw_list };
+    }
+
+    pub fn getIntMatrix(self: EntityRef, index: usize) QueryError!IntMatrix {
+        if (self.handle == null) return error.InvalidArgument;
+        const raw_matrix = c.ifcopenshell_ifcparse_entity_get_argument_as_int_matrix(self.handle.?, index);
+        if (raw_matrix == null) return error.QueryFailed;
+        return IntMatrix{ .handle = raw_matrix };
+    }
+
+    pub fn getDoubleMatrix(self: EntityRef, index: usize) QueryError!DoubleMatrix {
+        if (self.handle == null) return error.InvalidArgument;
+        const raw_matrix = c.ifcopenshell_ifcparse_entity_get_argument_as_double_matrix(self.handle.?, index);
+        if (raw_matrix == null) return error.QueryFailed;
+        return DoubleMatrix{ .handle = raw_matrix };
+    }
+
+    pub fn getEntityMatrix(self: EntityRef, index: usize) QueryError!EntityMatrix {
+        if (self.handle == null) return error.InvalidArgument;
+        const raw_matrix = c.ifcopenshell_ifcparse_entity_get_argument_as_entity_matrix(self.handle.?, index);
+        if (raw_matrix == null) return error.QueryFailed;
+        return EntityMatrix{ .handle = raw_matrix };
+    }
+
     pub fn setNull(self: EntityRef, index: usize) QueryError!void {
         if (self.handle == null) return error.InvalidArgument;
         if (c.ifcopenshell_ifcparse_entity_set_argument_null(self.handle.?, index) == 0) {
@@ -359,6 +440,168 @@ pub const EntityRef = struct {
             return error.QueryFailed;
         }
     }
+
+    pub fn setIntMatrix(
+        self: EntityRef,
+        allocator: std.mem.Allocator,
+        index: usize,
+        values: []const []const i32,
+    ) QueryError!void {
+        if (self.handle == null) return error.InvalidArgument;
+
+        var total_count: usize = 0;
+        for (values) |row| {
+            total_count += row.len;
+        }
+
+        const flat_values = allocator.alloc(i32, total_count) catch return error.OutOfMemory;
+        defer allocator.free(flat_values);
+
+        const row_offsets = allocator.alloc(usize, values.len + 1) catch return error.OutOfMemory;
+        defer allocator.free(row_offsets);
+
+        row_offsets[0] = 0;
+        var cursor: usize = 0;
+        for (values, 0..) |row, row_index| {
+            for (row) |value| {
+                flat_values[cursor] = value;
+                cursor += 1;
+            }
+            row_offsets[row_index + 1] = cursor;
+        }
+
+        const values_ptr: ?[*]const c_int = if (flat_values.len == 0) null else @ptrCast(flat_values.ptr);
+        if (c.ifcopenshell_ifcparse_entity_set_argument_int_matrix(
+            self.handle.?,
+            index,
+            values_ptr,
+            flat_values.len,
+            row_offsets.ptr,
+            values.len,
+        ) == 0) {
+            return error.QueryFailed;
+        }
+    }
+
+    pub fn setDoubleMatrix(
+        self: EntityRef,
+        allocator: std.mem.Allocator,
+        index: usize,
+        values: []const []const f64,
+    ) QueryError!void {
+        if (self.handle == null) return error.InvalidArgument;
+
+        var total_count: usize = 0;
+        for (values) |row| {
+            total_count += row.len;
+        }
+
+        const flat_values = allocator.alloc(f64, total_count) catch return error.OutOfMemory;
+        defer allocator.free(flat_values);
+
+        const row_offsets = allocator.alloc(usize, values.len + 1) catch return error.OutOfMemory;
+        defer allocator.free(row_offsets);
+
+        row_offsets[0] = 0;
+        var cursor: usize = 0;
+        for (values, 0..) |row, row_index| {
+            for (row) |value| {
+                flat_values[cursor] = value;
+                cursor += 1;
+            }
+            row_offsets[row_index + 1] = cursor;
+        }
+
+        const values_ptr: ?[*]const f64 = if (flat_values.len == 0) null else flat_values.ptr;
+        if (c.ifcopenshell_ifcparse_entity_set_argument_double_matrix(
+            self.handle.?,
+            index,
+            values_ptr,
+            flat_values.len,
+            row_offsets.ptr,
+            values.len,
+        ) == 0) {
+            return error.QueryFailed;
+        }
+    }
+
+    pub fn setEntityMatrix(
+        self: EntityRef,
+        allocator: std.mem.Allocator,
+        index: usize,
+        values: []const []const EntityRef,
+    ) QueryError!void {
+        if (self.handle == null) return error.InvalidArgument;
+
+        var total_count: usize = 0;
+        for (values) |row| {
+            total_count += row.len;
+        }
+
+        const flat_values = allocator.alloc(*const c.ifcopenshell_ifcparse_entity_ref_t, total_count) catch return error.OutOfMemory;
+        defer allocator.free(flat_values);
+
+        const row_offsets = allocator.alloc(usize, values.len + 1) catch return error.OutOfMemory;
+        defer allocator.free(row_offsets);
+
+        row_offsets[0] = 0;
+        var cursor: usize = 0;
+        for (values, 0..) |row, row_index| {
+            for (row) |value| {
+                flat_values[cursor] = value.handle orelse return error.InvalidArgument;
+                cursor += 1;
+            }
+            row_offsets[row_index + 1] = cursor;
+        }
+
+        const values_ptr: ?[*]const *const c.ifcopenshell_ifcparse_entity_ref_t = if (flat_values.len == 0) null else flat_values.ptr;
+        if (c.ifcopenshell_ifcparse_entity_set_argument_entity_matrix(
+            self.handle.?,
+            index,
+            @ptrCast(values_ptr),
+            flat_values.len,
+            row_offsets.ptr,
+            values.len,
+        ) == 0) {
+            return error.QueryFailed;
+        }
+    }
+
+    pub fn getArgument(self: EntityRef, index: usize) QueryError!ArgumentValue {
+        if (self.handle == null) return error.InvalidArgument;
+
+        return switch (self.argumentValueType(index)) {
+            .null => .{ .null = {} },
+            .derived => .{ .derived = {} },
+            .int => .{ .int = try self.getInt(index) },
+            .bool => .{ .bool = try self.getBool(index) },
+            .logical => .{ .logical = try self.getLogical(index) },
+            .double => .{ .double = try self.getDouble(index) },
+            .string => .{ .string = try self.getString(index) },
+            .binary => .{ .binary = try self.getString(index) },
+            .enumeration => .{ .enumeration = try self.getString(index) },
+            .entity_instance => .{ .entity_instance = try self.getEntity(index) },
+            .empty_aggregate => .{ .empty_aggregate = {} },
+            .aggregate_of_int => .{ .aggregate_of_int = try self.getIntList(index) },
+            .aggregate_of_double => .{ .aggregate_of_double = try self.getDoubleList(index) },
+            .aggregate_of_string => .{ .aggregate_of_string = try self.getStringList(index) },
+            .aggregate_of_binary => .{ .aggregate_of_binary = try self.getStringList(index) },
+            .aggregate_of_entity_instance => .{ .aggregate_of_entity_instance = try self.getEntityList(index) },
+            .aggregate_of_empty_aggregate => .{ .aggregate_of_empty_aggregate = {} },
+            .aggregate_of_aggregate_of_int => .{ .aggregate_of_aggregate_of_int = try self.getIntMatrix(index) },
+            .aggregate_of_aggregate_of_double => .{ .aggregate_of_aggregate_of_double = try self.getDoubleMatrix(index) },
+            .aggregate_of_aggregate_of_entity_instance => .{ .aggregate_of_aggregate_of_entity_instance = try self.getEntityMatrix(index) },
+            .unknown, _ => .{ .unknown = {} },
+        };
+    }
+
+    pub fn getArgumentByName(
+        self: EntityRef,
+        allocator: std.mem.Allocator,
+        argument_name: []const u8,
+    ) QueryError!ArgumentValue {
+        return self.getArgument(try self.argumentIndex(allocator, argument_name));
+    }
 };
 
 pub const EntityList = struct {
@@ -447,6 +690,13 @@ pub const IntList = struct {
         return c.ifcopenshell_ifcparse_int_list_get(self.handle.?, index);
     }
 
+    pub fn next(self: *IntList) ?i32 {
+        if (self.handle == null) return null;
+        const value = c.ifcopenshell_ifcparse_int_list_next(self.handle.?);
+        if (value == 0 and lastError().len > 0) return null;
+        return value;
+    }
+
     pub fn iterator(self: *IntList) Iterator {
         return Iterator{
             .list = self,
@@ -507,6 +757,13 @@ pub const DoubleList = struct {
         return c.ifcopenshell_ifcparse_double_list_get(self.handle.?, index);
     }
 
+    pub fn next(self: *DoubleList) ?f64 {
+        if (self.handle == null) return null;
+        const value = c.ifcopenshell_ifcparse_double_list_next(self.handle.?);
+        if (value == 0.0 and lastError().len > 0) return null;
+        return value;
+    }
+
     pub fn iterator(self: *DoubleList) Iterator {
         return Iterator{
             .list = self,
@@ -539,6 +796,134 @@ pub const DoubleList = struct {
             return self.list.at(self.index);
         }
     };
+};
+
+pub const IntMatrix = struct {
+    handle: ?*c.ifcopenshell_ifcparse_int_matrix_t,
+
+    pub fn deinit(self: *IntMatrix) void {
+        if (self.handle) |h| {
+            c.ifcopenshell_ifcparse_int_matrix_close(h);
+            self.handle = null;
+        }
+    }
+
+    pub fn rowCount(self: IntMatrix) usize {
+        if (self.handle == null) return 0;
+        return c.ifcopenshell_ifcparse_int_matrix_row_count(self.handle.?);
+    }
+
+    pub fn colCount(self: IntMatrix, row: usize) ?usize {
+        if (self.handle == null) return null;
+        const count = c.ifcopenshell_ifcparse_int_matrix_col_count(self.handle.?, row);
+        if (count == 0 and lastError().len > 0) return null;
+        return count;
+    }
+
+    pub fn at(self: IntMatrix, row: usize, col: usize) ?i32 {
+        if (self.handle == null) return null;
+        const value = c.ifcopenshell_ifcparse_int_matrix_get(self.handle.?, row, col);
+        if (value == 0 and lastError().len > 0) return null;
+        return value;
+    }
+};
+
+pub const DoubleMatrix = struct {
+    handle: ?*c.ifcopenshell_ifcparse_double_matrix_t,
+
+    pub fn deinit(self: *DoubleMatrix) void {
+        if (self.handle) |h| {
+            c.ifcopenshell_ifcparse_double_matrix_close(h);
+            self.handle = null;
+        }
+    }
+
+    pub fn rowCount(self: DoubleMatrix) usize {
+        if (self.handle == null) return 0;
+        return c.ifcopenshell_ifcparse_double_matrix_row_count(self.handle.?);
+    }
+
+    pub fn colCount(self: DoubleMatrix, row: usize) ?usize {
+        if (self.handle == null) return null;
+        const count = c.ifcopenshell_ifcparse_double_matrix_col_count(self.handle.?, row);
+        if (count == 0 and lastError().len > 0) return null;
+        return count;
+    }
+
+    pub fn at(self: DoubleMatrix, row: usize, col: usize) ?f64 {
+        if (self.handle == null) return null;
+        const value = c.ifcopenshell_ifcparse_double_matrix_get(self.handle.?, row, col);
+        if (value == 0.0 and lastError().len > 0) return null;
+        return value;
+    }
+};
+
+pub const EntityMatrix = struct {
+    handle: ?*c.ifcopenshell_ifcparse_entity_matrix_t,
+
+    pub fn deinit(self: *EntityMatrix) void {
+        if (self.handle) |h| {
+            c.ifcopenshell_ifcparse_entity_matrix_close(h);
+            self.handle = null;
+        }
+    }
+
+    pub fn rowCount(self: EntityMatrix) usize {
+        if (self.handle == null) return 0;
+        return c.ifcopenshell_ifcparse_entity_matrix_row_count(self.handle.?);
+    }
+
+    pub fn colCount(self: EntityMatrix, row: usize) ?usize {
+        if (self.handle == null) return null;
+        const count = c.ifcopenshell_ifcparse_entity_matrix_col_count(self.handle.?, row);
+        if (count == 0 and lastError().len > 0) return null;
+        return count;
+    }
+
+    pub fn at(self: EntityMatrix, row: usize, col: usize) ?EntityRef {
+        if (self.handle == null) return null;
+        const raw_entity = c.ifcopenshell_ifcparse_entity_matrix_get(self.handle.?, row, col);
+        if (raw_entity == null) return null;
+        return EntityRef{ .handle = raw_entity };
+    }
+};
+
+pub const ArgumentValue = union(ArgumentType) {
+    null: void,
+    derived: void,
+    int: i32,
+    bool: bool,
+    logical: i32,
+    double: f64,
+    string: []const u8,
+    binary: []const u8,
+    enumeration: []const u8,
+    entity_instance: ?EntityRef,
+    empty_aggregate: void,
+    aggregate_of_int: IntList,
+    aggregate_of_double: DoubleList,
+    aggregate_of_string: StringList,
+    aggregate_of_binary: StringList,
+    aggregate_of_entity_instance: EntityList,
+    aggregate_of_empty_aggregate: void,
+    aggregate_of_aggregate_of_int: IntMatrix,
+    aggregate_of_aggregate_of_double: DoubleMatrix,
+    aggregate_of_aggregate_of_entity_instance: EntityMatrix,
+    unknown: void,
+
+    pub fn deinit(self: *ArgumentValue) void {
+        switch (self.*) {
+            .aggregate_of_int => |*list| list.deinit(),
+            .aggregate_of_double => |*list| list.deinit(),
+            .aggregate_of_string => |*list| list.deinit(),
+            .aggregate_of_binary => |*list| list.deinit(),
+            .aggregate_of_entity_instance => |*list| list.deinit(),
+            .aggregate_of_aggregate_of_int => |*matrix| matrix.deinit(),
+            .aggregate_of_aggregate_of_double => |*matrix| matrix.deinit(),
+            .aggregate_of_aggregate_of_entity_instance => |*matrix| matrix.deinit(),
+            else => {},
+        }
+    }
 };
 
 pub const TypeRef = struct {
@@ -740,6 +1125,36 @@ pub const File = struct {
         return std.mem.span(raw_name);
     }
 
+    pub fn headerFileDescription(self: *File) QueryError!?EntityRef {
+        if (self.handle == null) return error.QueryFailed;
+        const raw_entity = c.ifcopenshell_ifcparse_file_header_file_description(self.handle.?);
+        if (raw_entity == null) {
+            if (self.lastError().len > 0) return error.QueryFailed;
+            return null;
+        }
+        return EntityRef{ .handle = raw_entity };
+    }
+
+    pub fn headerFileName(self: *File) QueryError!?EntityRef {
+        if (self.handle == null) return error.QueryFailed;
+        const raw_entity = c.ifcopenshell_ifcparse_file_header_file_name(self.handle.?);
+        if (raw_entity == null) {
+            if (self.lastError().len > 0) return error.QueryFailed;
+            return null;
+        }
+        return EntityRef{ .handle = raw_entity };
+    }
+
+    pub fn headerFileSchema(self: *File) QueryError!?EntityRef {
+        if (self.handle == null) return error.QueryFailed;
+        const raw_entity = c.ifcopenshell_ifcparse_file_header_file_schema(self.handle.?);
+        if (raw_entity == null) {
+            if (self.lastError().len > 0) return error.QueryFailed;
+            return null;
+        }
+        return EntityRef{ .handle = raw_entity };
+    }
+
     pub fn entityCount(self: File) usize {
         if (self.handle == null) return 0;
         return c.ifcopenshell_ifcparse_file_entity_count(self.handle.?);
@@ -750,6 +1165,13 @@ pub const File = struct {
         const raw_list = c.ifcopenshell_ifcparse_file_entities(self.handle.?);
         if (raw_list == null) return error.QueryFailed;
         return EntityList{ .handle = raw_list };
+    }
+
+    pub fn entityIds(self: *File) QueryError!IntList {
+        if (self.handle == null) return error.QueryFailed;
+        const raw_list = c.ifcopenshell_ifcparse_file_entity_ids(self.handle.?);
+        if (raw_list == null) return error.QueryFailed;
+        return IntList{ .handle = raw_list };
     }
 
     pub fn instanceById(self: *File, id: i32) ?EntityRef {
@@ -865,6 +1287,23 @@ pub const File = struct {
         return EntityList{ .handle = raw_list };
     }
 
+    pub fn traverse(
+        self: *File,
+        entity: EntityRef,
+        max_level: i32,
+        breadth_first: bool,
+    ) QueryError!EntityList {
+        if (self.handle == null or entity.handle == null) return error.InvalidArgument;
+        const raw_list = c.ifcopenshell_ifcparse_file_traverse(
+            self.handle.?,
+            entity.handle.?,
+            @intCast(max_level),
+            if (breadth_first) 1 else 0,
+        );
+        if (raw_list == null) return error.QueryFailed;
+        return EntityList{ .handle = raw_list };
+    }
+
     pub fn types(self: *File) QueryError!TypeList {
         if (self.handle == null) return error.QueryFailed;
         const raw_list = c.ifcopenshell_ifcparse_file_types(self.handle.?);
@@ -914,6 +1353,29 @@ pub const File = struct {
         );
         if (raw_entity == null) return error.QueryFailed;
         return EntityRef{ .handle = raw_entity };
+    }
+
+    pub fn addEntities(
+        self: *File,
+        allocator: std.mem.Allocator,
+        entity_values: []const EntityRef,
+    ) QueryError!void {
+        if (self.handle == null) return error.InvalidArgument;
+
+        const ptr_values = allocator.alloc(*const c.ifcopenshell_ifcparse_entity_ref_t, entity_values.len) catch return error.OutOfMemory;
+        defer allocator.free(ptr_values);
+
+        for (entity_values, 0..) |entity, i| {
+            ptr_values[i] = entity.handle orelse return error.InvalidArgument;
+        }
+
+        const ptr: ?[*]const *const c.ifcopenshell_ifcparse_entity_ref_t = if (ptr_values.len == 0) null else ptr_values.ptr;
+        const added_count = c.ifcopenshell_ifcparse_file_add_entities(
+            self.handle.?,
+            @ptrCast(ptr),
+            entity_values.len,
+        );
+        if (added_count != entity_values.len) return error.QueryFailed;
     }
 
     pub fn removeEntityById(self: *File, id: i32) QueryError!void {

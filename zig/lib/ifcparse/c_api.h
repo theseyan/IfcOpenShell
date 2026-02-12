@@ -12,6 +12,9 @@ typedef struct ifcopenshell_ifcparse_entity_ref ifcopenshell_ifcparse_entity_ref
 typedef struct ifcopenshell_ifcparse_entity_list ifcopenshell_ifcparse_entity_list_t;
 typedef struct ifcopenshell_ifcparse_int_list ifcopenshell_ifcparse_int_list_t;
 typedef struct ifcopenshell_ifcparse_double_list ifcopenshell_ifcparse_double_list_t;
+typedef struct ifcopenshell_ifcparse_int_matrix ifcopenshell_ifcparse_int_matrix_t;
+typedef struct ifcopenshell_ifcparse_double_matrix ifcopenshell_ifcparse_double_matrix_t;
+typedef struct ifcopenshell_ifcparse_entity_matrix ifcopenshell_ifcparse_entity_matrix_t;
 typedef struct ifcopenshell_ifcparse_type_ref ifcopenshell_ifcparse_type_ref_t;
 typedef struct ifcopenshell_ifcparse_type_list ifcopenshell_ifcparse_type_list_t;
 typedef struct ifcopenshell_ifcparse_string_list ifcopenshell_ifcparse_string_list_t;
@@ -87,9 +90,25 @@ const char* ifcopenshell_ifcparse_file_status_message(ifcopenshell_ifcparse_stat
 
 const char* ifcopenshell_ifcparse_file_schema_name(ifcopenshell_ifcparse_file_t* file);
 
+const ifcopenshell_ifcparse_entity_ref_t* ifcopenshell_ifcparse_file_header_file_description(
+    ifcopenshell_ifcparse_file_t* file
+);
+
+const ifcopenshell_ifcparse_entity_ref_t* ifcopenshell_ifcparse_file_header_file_name(
+    ifcopenshell_ifcparse_file_t* file
+);
+
+const ifcopenshell_ifcparse_entity_ref_t* ifcopenshell_ifcparse_file_header_file_schema(
+    ifcopenshell_ifcparse_file_t* file
+);
+
 size_t ifcopenshell_ifcparse_file_entity_count(const ifcopenshell_ifcparse_file_t* file);
 
 ifcopenshell_ifcparse_entity_list_t* ifcopenshell_ifcparse_file_entities(
+    ifcopenshell_ifcparse_file_t* file
+);
+
+ifcopenshell_ifcparse_int_list_t* ifcopenshell_ifcparse_file_entity_ids(
     ifcopenshell_ifcparse_file_t* file
 );
 
@@ -138,6 +157,13 @@ ifcopenshell_ifcparse_entity_list_t* ifcopenshell_ifcparse_file_traverse_by_id(
     int breadth_first
 );
 
+ifcopenshell_ifcparse_entity_list_t* ifcopenshell_ifcparse_file_traverse(
+    ifcopenshell_ifcparse_file_t* file,
+    const ifcopenshell_ifcparse_entity_ref_t* entity,
+    int max_level,
+    int breadth_first
+);
+
 const ifcopenshell_ifcparse_entity_ref_t* ifcopenshell_ifcparse_file_create_entity_by_type(
     ifcopenshell_ifcparse_file_t* file,
     const char* type_name
@@ -153,6 +179,12 @@ const ifcopenshell_ifcparse_entity_ref_t* ifcopenshell_ifcparse_file_add_entity(
     ifcopenshell_ifcparse_file_t* file,
     const ifcopenshell_ifcparse_entity_ref_t* entity,
     int id
+);
+
+size_t ifcopenshell_ifcparse_file_add_entities(
+    ifcopenshell_ifcparse_file_t* file,
+    const ifcopenshell_ifcparse_entity_ref_t* const* entities,
+    size_t entity_count
 );
 
 int ifcopenshell_ifcparse_file_remove_entity_by_id(
@@ -209,9 +241,26 @@ int ifcopenshell_ifcparse_entity_id(const ifcopenshell_ifcparse_entity_ref_t* en
 
 const char* ifcopenshell_ifcparse_entity_type_name(const ifcopenshell_ifcparse_entity_ref_t* entity);
 
+const char* ifcopenshell_ifcparse_entity_type_name_with_schema(
+    const ifcopenshell_ifcparse_entity_ref_t* entity
+);
+
 int ifcopenshell_ifcparse_entity_is_a(
     const ifcopenshell_ifcparse_entity_ref_t* entity,
     const char* type_name
+);
+
+int ifcopenshell_ifcparse_entity_attribute_category(
+    const ifcopenshell_ifcparse_entity_ref_t* entity,
+    const char* attribute_name
+);
+
+ifcopenshell_ifcparse_string_list_t* ifcopenshell_ifcparse_entity_attribute_names(
+    const ifcopenshell_ifcparse_entity_ref_t* entity
+);
+
+ifcopenshell_ifcparse_string_list_t* ifcopenshell_ifcparse_entity_inverse_attribute_names(
+    const ifcopenshell_ifcparse_entity_ref_t* entity
 );
 
 size_t ifcopenshell_ifcparse_entity_argument_count(
@@ -302,6 +351,26 @@ ifcopenshell_ifcparse_entity_list_t* ifcopenshell_ifcparse_entity_get_argument_a
     size_t index
 );
 
+ifcopenshell_ifcparse_entity_list_t* ifcopenshell_ifcparse_entity_get_inverse(
+    const ifcopenshell_ifcparse_entity_ref_t* entity,
+    const char* inverse_name
+);
+
+ifcopenshell_ifcparse_int_matrix_t* ifcopenshell_ifcparse_entity_get_argument_as_int_matrix(
+    const ifcopenshell_ifcparse_entity_ref_t* entity,
+    size_t index
+);
+
+ifcopenshell_ifcparse_double_matrix_t* ifcopenshell_ifcparse_entity_get_argument_as_double_matrix(
+    const ifcopenshell_ifcparse_entity_ref_t* entity,
+    size_t index
+);
+
+ifcopenshell_ifcparse_entity_matrix_t* ifcopenshell_ifcparse_entity_get_argument_as_entity_matrix(
+    const ifcopenshell_ifcparse_entity_ref_t* entity,
+    size_t index
+);
+
 int ifcopenshell_ifcparse_entity_set_argument_null(
     const ifcopenshell_ifcparse_entity_ref_t* entity,
     size_t index
@@ -376,6 +445,33 @@ int ifcopenshell_ifcparse_entity_set_argument_entity_list(
     size_t value_count
 );
 
+int ifcopenshell_ifcparse_entity_set_argument_int_matrix(
+    const ifcopenshell_ifcparse_entity_ref_t* entity,
+    size_t index,
+    const int* values,
+    size_t value_count,
+    const size_t* row_offsets,
+    size_t row_count
+);
+
+int ifcopenshell_ifcparse_entity_set_argument_double_matrix(
+    const ifcopenshell_ifcparse_entity_ref_t* entity,
+    size_t index,
+    const double* values,
+    size_t value_count,
+    const size_t* row_offsets,
+    size_t row_count
+);
+
+int ifcopenshell_ifcparse_entity_set_argument_entity_matrix(
+    const ifcopenshell_ifcparse_entity_ref_t* entity,
+    size_t index,
+    const ifcopenshell_ifcparse_entity_ref_t* const* values,
+    size_t value_count,
+    const size_t* row_offsets,
+    size_t row_count
+);
+
 void ifcopenshell_ifcparse_int_list_close(ifcopenshell_ifcparse_int_list_t* list);
 
 size_t ifcopenshell_ifcparse_int_list_count(const ifcopenshell_ifcparse_int_list_t* list);
@@ -401,6 +497,51 @@ double ifcopenshell_ifcparse_double_list_get(
 );
 
 double ifcopenshell_ifcparse_double_list_next(ifcopenshell_ifcparse_double_list_t* list);
+
+void ifcopenshell_ifcparse_int_matrix_close(ifcopenshell_ifcparse_int_matrix_t* matrix);
+
+size_t ifcopenshell_ifcparse_int_matrix_row_count(const ifcopenshell_ifcparse_int_matrix_t* matrix);
+
+size_t ifcopenshell_ifcparse_int_matrix_col_count(
+    const ifcopenshell_ifcparse_int_matrix_t* matrix,
+    size_t row
+);
+
+int ifcopenshell_ifcparse_int_matrix_get(
+    const ifcopenshell_ifcparse_int_matrix_t* matrix,
+    size_t row,
+    size_t col
+);
+
+void ifcopenshell_ifcparse_double_matrix_close(ifcopenshell_ifcparse_double_matrix_t* matrix);
+
+size_t ifcopenshell_ifcparse_double_matrix_row_count(const ifcopenshell_ifcparse_double_matrix_t* matrix);
+
+size_t ifcopenshell_ifcparse_double_matrix_col_count(
+    const ifcopenshell_ifcparse_double_matrix_t* matrix,
+    size_t row
+);
+
+double ifcopenshell_ifcparse_double_matrix_get(
+    const ifcopenshell_ifcparse_double_matrix_t* matrix,
+    size_t row,
+    size_t col
+);
+
+void ifcopenshell_ifcparse_entity_matrix_close(ifcopenshell_ifcparse_entity_matrix_t* matrix);
+
+size_t ifcopenshell_ifcparse_entity_matrix_row_count(const ifcopenshell_ifcparse_entity_matrix_t* matrix);
+
+size_t ifcopenshell_ifcparse_entity_matrix_col_count(
+    const ifcopenshell_ifcparse_entity_matrix_t* matrix,
+    size_t row
+);
+
+const ifcopenshell_ifcparse_entity_ref_t* ifcopenshell_ifcparse_entity_matrix_get(
+    const ifcopenshell_ifcparse_entity_matrix_t* matrix,
+    size_t row,
+    size_t col
+);
 
 ifcopenshell_ifcparse_type_list_t* ifcopenshell_ifcparse_file_types(ifcopenshell_ifcparse_file_t* file);
 

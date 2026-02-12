@@ -41,6 +41,21 @@ struct ifcopenshell_ifcparse_double_list {
     std::string last_error;
 };
 
+struct ifcopenshell_ifcparse_int_matrix {
+    std::vector<std::vector<int>> values;
+    std::string last_error;
+};
+
+struct ifcopenshell_ifcparse_double_matrix {
+    std::vector<std::vector<double>> values;
+    std::string last_error;
+};
+
+struct ifcopenshell_ifcparse_entity_matrix {
+    std::vector<std::vector<IfcUtil::IfcBaseClass*>> values;
+    std::string last_error;
+};
+
 struct ifcopenshell_ifcparse_type_list {
     std::shared_ptr<IfcParse::IfcFile> owner_file;
     std::vector<const IfcParse::declaration*> types;
@@ -60,6 +75,7 @@ thread_local std::string g_spf_buffer;
 thread_local std::string g_timestamp_buffer;
 thread_local std::string g_entity_spf_buffer;
 thread_local std::string g_argument_string_buffer;
+thread_local std::string g_entity_type_name_with_schema_buffer;
 
 const ifcopenshell_ifcparse_entity_ref_t* to_entity_ref(const IfcUtil::IfcBaseClass* entity) {
     return reinterpret_cast<const ifcopenshell_ifcparse_entity_ref_t*>(entity);
@@ -155,6 +171,48 @@ void set_type_list_error(ifcopenshell_ifcparse_type_list_t* list, const std::str
 void clear_type_list_error(ifcopenshell_ifcparse_type_list_t* list) {
     if (list != nullptr) {
         list->last_error.clear();
+    }
+    clear_global_error();
+}
+
+void set_int_matrix_error(ifcopenshell_ifcparse_int_matrix_t* matrix, const std::string& message) {
+    if (matrix != nullptr) {
+        matrix->last_error = message;
+    }
+    set_global_error(message);
+}
+
+void clear_int_matrix_error(ifcopenshell_ifcparse_int_matrix_t* matrix) {
+    if (matrix != nullptr) {
+        matrix->last_error.clear();
+    }
+    clear_global_error();
+}
+
+void set_double_matrix_error(ifcopenshell_ifcparse_double_matrix_t* matrix, const std::string& message) {
+    if (matrix != nullptr) {
+        matrix->last_error = message;
+    }
+    set_global_error(message);
+}
+
+void clear_double_matrix_error(ifcopenshell_ifcparse_double_matrix_t* matrix) {
+    if (matrix != nullptr) {
+        matrix->last_error.clear();
+    }
+    clear_global_error();
+}
+
+void set_entity_matrix_error(ifcopenshell_ifcparse_entity_matrix_t* matrix, const std::string& message) {
+    if (matrix != nullptr) {
+        matrix->last_error = message;
+    }
+    set_global_error(message);
+}
+
+void clear_entity_matrix_error(ifcopenshell_ifcparse_entity_matrix_t* matrix) {
+    if (matrix != nullptr) {
+        matrix->last_error.clear();
     }
     clear_global_error();
 }
@@ -534,6 +592,66 @@ const char* ifcopenshell_ifcparse_file_schema_name(ifcopenshell_ifcparse_file_t*
     }
 }
 
+const ifcopenshell_ifcparse_entity_ref_t* ifcopenshell_ifcparse_file_header_file_description(
+    ifcopenshell_ifcparse_file_t* file
+) {
+    if (file == nullptr || !file->file) {
+        set_global_error("IfcParse handle is null");
+        return nullptr;
+    }
+
+    try {
+        clear_file_error(file);
+        return to_entity_ref(file->file->header().file_description());
+    } catch (const std::exception& e) {
+        set_file_error(file, e.what());
+        return nullptr;
+    } catch (...) {
+        set_file_error(file, "Unknown native exception while querying FILE_DESCRIPTION");
+        return nullptr;
+    }
+}
+
+const ifcopenshell_ifcparse_entity_ref_t* ifcopenshell_ifcparse_file_header_file_name(
+    ifcopenshell_ifcparse_file_t* file
+) {
+    if (file == nullptr || !file->file) {
+        set_global_error("IfcParse handle is null");
+        return nullptr;
+    }
+
+    try {
+        clear_file_error(file);
+        return to_entity_ref(file->file->header().file_name());
+    } catch (const std::exception& e) {
+        set_file_error(file, e.what());
+        return nullptr;
+    } catch (...) {
+        set_file_error(file, "Unknown native exception while querying FILE_NAME");
+        return nullptr;
+    }
+}
+
+const ifcopenshell_ifcparse_entity_ref_t* ifcopenshell_ifcparse_file_header_file_schema(
+    ifcopenshell_ifcparse_file_t* file
+) {
+    if (file == nullptr || !file->file) {
+        set_global_error("IfcParse handle is null");
+        return nullptr;
+    }
+
+    try {
+        clear_file_error(file);
+        return to_entity_ref(file->file->header().file_schema());
+    } catch (const std::exception& e) {
+        set_file_error(file, e.what());
+        return nullptr;
+    } catch (...) {
+        set_file_error(file, "Unknown native exception while querying FILE_SCHEMA");
+        return nullptr;
+    }
+}
+
 size_t ifcopenshell_ifcparse_file_entity_count(const ifcopenshell_ifcparse_file_t* file) {
     if (file == nullptr || !file->file) {
         return 0;
@@ -566,6 +684,33 @@ ifcopenshell_ifcparse_entity_list_t* ifcopenshell_ifcparse_file_entities(
         return nullptr;
     } catch (...) {
         set_file_error(file, "Unknown native exception while collecting file entities");
+        return nullptr;
+    }
+}
+
+ifcopenshell_ifcparse_int_list_t* ifcopenshell_ifcparse_file_entity_ids(
+    ifcopenshell_ifcparse_file_t* file
+) {
+    if (file == nullptr || !file->file) {
+        set_global_error("IfcParse handle is null");
+        return nullptr;
+    }
+
+    try {
+        std::unique_ptr<ifcopenshell_ifcparse_int_list_t> list(new ifcopenshell_ifcparse_int_list_t());
+        list->owner_file = file->file;
+        list->cursor = 0;
+        for (auto it = file->file->begin(); it != file->file->end(); ++it) {
+            list->values.push_back(static_cast<int>(it->first));
+        }
+        clear_file_error(file);
+        clear_int_list_error(list.get());
+        return list.release();
+    } catch (const std::exception& e) {
+        set_file_error(file, e.what());
+        return nullptr;
+    } catch (...) {
+        set_file_error(file, "Unknown native exception while collecting entity ids");
         return nullptr;
     }
 }
@@ -770,6 +915,37 @@ ifcopenshell_ifcparse_entity_list_t* ifcopenshell_ifcparse_file_traverse_by_id(
     }
 }
 
+ifcopenshell_ifcparse_entity_list_t* ifcopenshell_ifcparse_file_traverse(
+    ifcopenshell_ifcparse_file_t* file,
+    const ifcopenshell_ifcparse_entity_ref_t* entity,
+    int max_level,
+    int breadth_first
+) {
+    if (file == nullptr || !file->file) {
+        set_global_error("IfcParse handle is null");
+        return nullptr;
+    }
+    if (entity == nullptr) {
+        set_file_error(file, "Entity handle is null");
+        return nullptr;
+    }
+
+    try {
+        auto* root = from_entity_ref_mut(entity);
+        aggregate_of_instance::ptr entities = breadth_first != 0
+            ? IfcParse::traverse_breadth_first(root, max_level)
+            : IfcParse::traverse(root, max_level);
+        clear_file_error(file);
+        return make_entity_list(file->file, entities);
+    } catch (const std::exception& e) {
+        set_file_error(file, e.what());
+        return nullptr;
+    } catch (...) {
+        set_file_error(file, "Unknown native exception while traversing entity graph");
+        return nullptr;
+    }
+}
+
 const ifcopenshell_ifcparse_entity_ref_t* ifcopenshell_ifcparse_file_create_entity_by_type(
     ifcopenshell_ifcparse_file_t* file,
     const char* type_name
@@ -880,6 +1056,42 @@ const ifcopenshell_ifcparse_entity_ref_t* ifcopenshell_ifcparse_file_add_entity(
     } catch (...) {
         set_file_error(file, "Unknown native exception while adding entity");
         return nullptr;
+    }
+}
+
+size_t ifcopenshell_ifcparse_file_add_entities(
+    ifcopenshell_ifcparse_file_t* file,
+    const ifcopenshell_ifcparse_entity_ref_t* const* entities,
+    size_t entity_count
+) {
+    if (file == nullptr || !file->file) {
+        set_global_error("IfcParse handle is null");
+        return 0;
+    }
+    if (entities == nullptr && entity_count > 0) {
+        set_file_error(file, "Entity array is null");
+        return 0;
+    }
+
+    try {
+        aggregate_of_instance::ptr aggregate(new aggregate_of_instance());
+        for (size_t i = 0; i < entity_count; ++i) {
+            auto* entity = from_entity_ref_mut(entities[i]);
+            if (entity == nullptr) {
+                set_file_error(file, "Entity array contains null handle");
+                return 0;
+            }
+            aggregate->push(entity);
+        }
+        file->file->addEntities(aggregate);
+        clear_file_error(file);
+        return entity_count;
+    } catch (const std::exception& e) {
+        set_file_error(file, e.what());
+        return 0;
+    } catch (...) {
+        set_file_error(file, "Unknown native exception while adding entities");
+        return 0;
     }
 }
 
@@ -1177,6 +1389,33 @@ const char* ifcopenshell_ifcparse_entity_type_name(const ifcopenshell_ifcparse_e
     }
 }
 
+const char* ifcopenshell_ifcparse_entity_type_name_with_schema(
+    const ifcopenshell_ifcparse_entity_ref_t* entity
+) {
+    const IfcUtil::IfcBaseClass* inst = from_entity_ref(entity);
+    if (inst == nullptr) {
+        set_global_error("Entity handle is null");
+        return nullptr;
+    }
+
+    try {
+        const auto* schema = inst->declaration().schema();
+        if (schema == nullptr) {
+            set_global_error("Entity schema is null");
+            return nullptr;
+        }
+        g_entity_type_name_with_schema_buffer = schema->name() + "." + inst->declaration().name();
+        clear_global_error();
+        return g_entity_type_name_with_schema_buffer.c_str();
+    } catch (const std::exception& e) {
+        set_global_error(e.what());
+        return nullptr;
+    } catch (...) {
+        set_global_error("Unknown native exception while reading schema-qualified type name");
+        return nullptr;
+    }
+}
+
 int ifcopenshell_ifcparse_entity_is_a(
     const ifcopenshell_ifcparse_entity_ref_t* entity,
     const char* type_name
@@ -1200,6 +1439,123 @@ int ifcopenshell_ifcparse_entity_is_a(
     } catch (...) {
         set_global_error("Unknown native exception while checking entity type");
         return 0;
+    }
+}
+
+int ifcopenshell_ifcparse_entity_attribute_category(
+    const ifcopenshell_ifcparse_entity_ref_t* entity,
+    const char* attribute_name
+) {
+    const IfcUtil::IfcBaseClass* inst = from_entity_ref(entity);
+    if (inst == nullptr) {
+        set_global_error("Entity handle is null");
+        return 0;
+    }
+    if (attribute_name == nullptr || attribute_name[0] == '\0') {
+        set_global_error("Attribute name is empty");
+        return 0;
+    }
+
+    try {
+        const auto* entity_decl = inst->declaration().as_entity();
+        const std::string requested(attribute_name);
+        if (entity_decl == nullptr) {
+            clear_global_error();
+            return requested == "wrappedValue" ? 1 : 0;
+        }
+
+        const auto attrs = entity_decl->all_attributes();
+        for (const auto* attr : attrs) {
+            if (attr != nullptr && attr->name() == requested) {
+                clear_global_error();
+                return 1;
+            }
+        }
+
+        const auto inverse_attrs = entity_decl->all_inverse_attributes();
+        for (const auto* inverse_attr : inverse_attrs) {
+            if (inverse_attr != nullptr && inverse_attr->name() == requested) {
+                clear_global_error();
+                return 2;
+            }
+        }
+
+        clear_global_error();
+        return 0;
+    } catch (const std::exception& e) {
+        set_global_error(e.what());
+        return 0;
+    } catch (...) {
+        set_global_error("Unknown native exception while querying attribute category");
+        return 0;
+    }
+}
+
+ifcopenshell_ifcparse_string_list_t* ifcopenshell_ifcparse_entity_attribute_names(
+    const ifcopenshell_ifcparse_entity_ref_t* entity
+) {
+    const IfcUtil::IfcBaseClass* inst = from_entity_ref(entity);
+    if (inst == nullptr) {
+        set_global_error("Entity handle is null");
+        return nullptr;
+    }
+
+    try {
+        std::unique_ptr<ifcopenshell_ifcparse_string_list_t> list(new ifcopenshell_ifcparse_string_list_t());
+        const auto* entity_decl = inst->declaration().as_entity();
+        if (entity_decl == nullptr) {
+            list->values.push_back("wrappedValue");
+        } else {
+            const auto attrs = entity_decl->all_attributes();
+            list->values.reserve(attrs.size());
+            for (const auto* attr : attrs) {
+                if (attr != nullptr) {
+                    list->values.push_back(attr->name());
+                }
+            }
+        }
+        list->cursor = 0;
+        clear_string_list_error(list.get());
+        return list.release();
+    } catch (const std::exception& e) {
+        set_global_error(e.what());
+        return nullptr;
+    } catch (...) {
+        set_global_error("Unknown native exception while listing attribute names");
+        return nullptr;
+    }
+}
+
+ifcopenshell_ifcparse_string_list_t* ifcopenshell_ifcparse_entity_inverse_attribute_names(
+    const ifcopenshell_ifcparse_entity_ref_t* entity
+) {
+    const IfcUtil::IfcBaseClass* inst = from_entity_ref(entity);
+    if (inst == nullptr) {
+        set_global_error("Entity handle is null");
+        return nullptr;
+    }
+
+    try {
+        std::unique_ptr<ifcopenshell_ifcparse_string_list_t> list(new ifcopenshell_ifcparse_string_list_t());
+        const auto* entity_decl = inst->declaration().as_entity();
+        if (entity_decl != nullptr) {
+            const auto attrs = entity_decl->all_inverse_attributes();
+            list->values.reserve(attrs.size());
+            for (const auto* attr : attrs) {
+                if (attr != nullptr) {
+                    list->values.push_back(attr->name());
+                }
+            }
+        }
+        list->cursor = 0;
+        clear_string_list_error(list.get());
+        return list.release();
+    } catch (const std::exception& e) {
+        set_global_error(e.what());
+        return nullptr;
+    } catch (...) {
+        set_global_error("Unknown native exception while listing inverse attribute names");
+        return nullptr;
     }
 }
 
@@ -1657,6 +2013,128 @@ ifcopenshell_ifcparse_entity_list_t* ifcopenshell_ifcparse_entity_get_argument_a
     }
 }
 
+ifcopenshell_ifcparse_entity_list_t* ifcopenshell_ifcparse_entity_get_inverse(
+    const ifcopenshell_ifcparse_entity_ref_t* entity,
+    const char* inverse_name
+) {
+    const IfcUtil::IfcBaseClass* inst = from_entity_ref(entity);
+    if (inst == nullptr) {
+        set_global_error("Entity handle is null");
+        return nullptr;
+    }
+    if (inverse_name == nullptr || inverse_name[0] == '\0') {
+        set_global_error("Inverse attribute name is empty");
+        return nullptr;
+    }
+
+    try {
+        const auto* base_entity = inst->as<IfcUtil::IfcBaseEntity>();
+        if (base_entity == nullptr) {
+            set_global_error("Only entity instances support inverse attribute lookups");
+            return nullptr;
+        }
+        aggregate_of_instance::ptr values = base_entity->get_inverse(std::string(inverse_name));
+        clear_global_error();
+        return make_entity_list(std::shared_ptr<IfcParse::IfcFile>(), values);
+    } catch (const std::exception& e) {
+        set_global_error(e.what());
+        return nullptr;
+    } catch (...) {
+        set_global_error("Unknown native exception while reading inverse attribute values");
+        return nullptr;
+    }
+}
+
+ifcopenshell_ifcparse_int_matrix_t* ifcopenshell_ifcparse_entity_get_argument_as_int_matrix(
+    const ifcopenshell_ifcparse_entity_ref_t* entity,
+    size_t index
+) {
+    const IfcUtil::IfcBaseClass* inst = from_entity_ref(entity);
+    if (inst == nullptr) {
+        set_global_error("Entity handle is null");
+        return nullptr;
+    }
+    try {
+        const auto argument = inst->get_attribute_value(index);
+        if (argument.type() != IfcUtil::Argument_AGGREGATE_OF_AGGREGATE_OF_INT) {
+            set_global_error("Argument is not an integer matrix");
+            return nullptr;
+        }
+        std::unique_ptr<ifcopenshell_ifcparse_int_matrix_t> matrix(new ifcopenshell_ifcparse_int_matrix_t());
+        matrix->values = static_cast<std::vector<std::vector<int>>>(argument);
+        clear_int_matrix_error(matrix.get());
+        return matrix.release();
+    } catch (const std::exception& e) {
+        set_global_error(e.what());
+        return nullptr;
+    } catch (...) {
+        set_global_error("Unknown native exception while reading integer matrix argument");
+        return nullptr;
+    }
+}
+
+ifcopenshell_ifcparse_double_matrix_t* ifcopenshell_ifcparse_entity_get_argument_as_double_matrix(
+    const ifcopenshell_ifcparse_entity_ref_t* entity,
+    size_t index
+) {
+    const IfcUtil::IfcBaseClass* inst = from_entity_ref(entity);
+    if (inst == nullptr) {
+        set_global_error("Entity handle is null");
+        return nullptr;
+    }
+    try {
+        const auto argument = inst->get_attribute_value(index);
+        if (argument.type() != IfcUtil::Argument_AGGREGATE_OF_AGGREGATE_OF_DOUBLE) {
+            set_global_error("Argument is not a double matrix");
+            return nullptr;
+        }
+        std::unique_ptr<ifcopenshell_ifcparse_double_matrix_t> matrix(new ifcopenshell_ifcparse_double_matrix_t());
+        matrix->values = static_cast<std::vector<std::vector<double>>>(argument);
+        clear_double_matrix_error(matrix.get());
+        return matrix.release();
+    } catch (const std::exception& e) {
+        set_global_error(e.what());
+        return nullptr;
+    } catch (...) {
+        set_global_error("Unknown native exception while reading double matrix argument");
+        return nullptr;
+    }
+}
+
+ifcopenshell_ifcparse_entity_matrix_t* ifcopenshell_ifcparse_entity_get_argument_as_entity_matrix(
+    const ifcopenshell_ifcparse_entity_ref_t* entity,
+    size_t index
+) {
+    const IfcUtil::IfcBaseClass* inst = from_entity_ref(entity);
+    if (inst == nullptr) {
+        set_global_error("Entity handle is null");
+        return nullptr;
+    }
+    try {
+        const auto argument = inst->get_attribute_value(index);
+        if (argument.type() != IfcUtil::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE) {
+            set_global_error("Argument is not an entity matrix");
+            return nullptr;
+        }
+        aggregate_of_aggregate_of_instance::ptr values = static_cast<aggregate_of_aggregate_of_instance::ptr>(argument);
+        std::unique_ptr<ifcopenshell_ifcparse_entity_matrix_t> matrix(new ifcopenshell_ifcparse_entity_matrix_t());
+        if (values != nullptr) {
+            matrix->values.reserve(values->size());
+            for (auto outer_it = values->begin(); outer_it != values->end(); ++outer_it) {
+                matrix->values.push_back(*outer_it);
+            }
+        }
+        clear_entity_matrix_error(matrix.get());
+        return matrix.release();
+    } catch (const std::exception& e) {
+        set_global_error(e.what());
+        return nullptr;
+    } catch (...) {
+        set_global_error("Unknown native exception while reading entity matrix argument");
+        return nullptr;
+    }
+}
+
 int ifcopenshell_ifcparse_entity_set_argument_null(
     const ifcopenshell_ifcparse_entity_ref_t* entity,
     size_t index
@@ -2056,6 +2534,175 @@ int ifcopenshell_ifcparse_entity_set_argument_entity_list(
     }
 }
 
+int ifcopenshell_ifcparse_entity_set_argument_int_matrix(
+    const ifcopenshell_ifcparse_entity_ref_t* entity,
+    size_t index,
+    const int* values,
+    size_t value_count,
+    const size_t* row_offsets,
+    size_t row_count
+) {
+    auto* inst = from_entity_ref_mut(entity);
+    if (inst == nullptr) {
+        set_global_error("Entity handle is null");
+        return 0;
+    }
+    if ((values == nullptr && value_count > 0) || row_offsets == nullptr) {
+        set_global_error("Invalid integer matrix input");
+        return 0;
+    }
+
+    try {
+        if (declared_argument_type(inst, index) != IfcUtil::Argument_AGGREGATE_OF_AGGREGATE_OF_INT) {
+            set_global_error("Attribute not set");
+            return 0;
+        }
+        if (row_offsets[0] != 0 || row_offsets[row_count] != value_count) {
+            set_global_error("Invalid row offsets for integer matrix");
+            return 0;
+        }
+        std::vector<std::vector<int>> matrix;
+        matrix.reserve(row_count);
+        for (size_t row = 0; row < row_count; ++row) {
+            const size_t begin = row_offsets[row];
+            const size_t end = row_offsets[row + 1];
+            if (begin > end || end > value_count) {
+                set_global_error("Invalid row offsets for integer matrix");
+                return 0;
+            }
+            std::vector<int> current;
+            current.reserve(end - begin);
+            for (size_t i = begin; i < end; ++i) {
+                current.push_back(values[i]);
+            }
+            matrix.push_back(std::move(current));
+        }
+        inst->set_attribute_value(index, matrix);
+        clear_global_error();
+        return 1;
+    } catch (const std::exception& e) {
+        set_global_error(e.what());
+        return 0;
+    } catch (...) {
+        set_global_error("Unknown native exception while setting integer matrix argument");
+        return 0;
+    }
+}
+
+int ifcopenshell_ifcparse_entity_set_argument_double_matrix(
+    const ifcopenshell_ifcparse_entity_ref_t* entity,
+    size_t index,
+    const double* values,
+    size_t value_count,
+    const size_t* row_offsets,
+    size_t row_count
+) {
+    auto* inst = from_entity_ref_mut(entity);
+    if (inst == nullptr) {
+        set_global_error("Entity handle is null");
+        return 0;
+    }
+    if ((values == nullptr && value_count > 0) || row_offsets == nullptr) {
+        set_global_error("Invalid double matrix input");
+        return 0;
+    }
+
+    try {
+        if (declared_argument_type(inst, index) != IfcUtil::Argument_AGGREGATE_OF_AGGREGATE_OF_DOUBLE) {
+            set_global_error("Attribute not set");
+            return 0;
+        }
+        if (row_offsets[0] != 0 || row_offsets[row_count] != value_count) {
+            set_global_error("Invalid row offsets for double matrix");
+            return 0;
+        }
+        std::vector<std::vector<double>> matrix;
+        matrix.reserve(row_count);
+        for (size_t row = 0; row < row_count; ++row) {
+            const size_t begin = row_offsets[row];
+            const size_t end = row_offsets[row + 1];
+            if (begin > end || end > value_count) {
+                set_global_error("Invalid row offsets for double matrix");
+                return 0;
+            }
+            std::vector<double> current;
+            current.reserve(end - begin);
+            for (size_t i = begin; i < end; ++i) {
+                current.push_back(values[i]);
+            }
+            matrix.push_back(std::move(current));
+        }
+        inst->set_attribute_value(index, matrix);
+        clear_global_error();
+        return 1;
+    } catch (const std::exception& e) {
+        set_global_error(e.what());
+        return 0;
+    } catch (...) {
+        set_global_error("Unknown native exception while setting double matrix argument");
+        return 0;
+    }
+}
+
+int ifcopenshell_ifcparse_entity_set_argument_entity_matrix(
+    const ifcopenshell_ifcparse_entity_ref_t* entity,
+    size_t index,
+    const ifcopenshell_ifcparse_entity_ref_t* const* values,
+    size_t value_count,
+    const size_t* row_offsets,
+    size_t row_count
+) {
+    auto* inst = from_entity_ref_mut(entity);
+    if (inst == nullptr) {
+        set_global_error("Entity handle is null");
+        return 0;
+    }
+    if ((values == nullptr && value_count > 0) || row_offsets == nullptr) {
+        set_global_error("Invalid entity matrix input");
+        return 0;
+    }
+
+    try {
+        if (declared_argument_type(inst, index) != IfcUtil::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE) {
+            set_global_error("Attribute not set");
+            return 0;
+        }
+        if (row_offsets[0] != 0 || row_offsets[row_count] != value_count) {
+            set_global_error("Invalid row offsets for entity matrix");
+            return 0;
+        }
+        aggregate_of_aggregate_of_instance::ptr matrix(new aggregate_of_aggregate_of_instance());
+        for (size_t row = 0; row < row_count; ++row) {
+            const size_t begin = row_offsets[row];
+            const size_t end = row_offsets[row + 1];
+            if (begin > end || end > value_count) {
+                set_global_error("Invalid row offsets for entity matrix");
+                return 0;
+            }
+            std::vector<IfcUtil::IfcBaseClass*> current;
+            current.reserve(end - begin);
+            for (size_t i = begin; i < end; ++i) {
+                auto* value = from_entity_ref_mut(values[i]);
+                if (value == nullptr) {
+                    set_global_error("Entity matrix contains null entry");
+                    return 0;
+                }
+                current.push_back(value);
+            }
+            matrix->push(current);
+        }
+        inst->set_attribute_value(index, matrix);
+        clear_global_error();
+        return 1;
+    } catch (const std::exception& e) {
+        set_global_error(e.what());
+        return 0;
+    } catch (...) {
+        set_global_error("Unknown native exception while setting entity matrix argument");
+        return 0;
+    }
+}
+
 void ifcopenshell_ifcparse_int_list_close(ifcopenshell_ifcparse_int_list_t* list) {
     delete list;
 }
@@ -2097,7 +2744,7 @@ int ifcopenshell_ifcparse_int_list_next(ifcopenshell_ifcparse_int_list_t* list) 
         return 0;
     }
     if (list->cursor >= list->values.size()) {
-        clear_int_list_error(list);
+        set_int_list_error(list, "End of integer list");
         return 0;
     }
     return ifcopenshell_ifcparse_int_list_get(list, list->cursor++);
@@ -2144,10 +2791,142 @@ double ifcopenshell_ifcparse_double_list_next(ifcopenshell_ifcparse_double_list_
         return 0.0;
     }
     if (list->cursor >= list->values.size()) {
-        clear_double_list_error(list);
+        set_double_list_error(list, "End of double list");
         return 0.0;
     }
     return ifcopenshell_ifcparse_double_list_get(list, list->cursor++);
+}
+
+void ifcopenshell_ifcparse_int_matrix_close(ifcopenshell_ifcparse_int_matrix_t* matrix) {
+    delete matrix;
+}
+
+size_t ifcopenshell_ifcparse_int_matrix_row_count(const ifcopenshell_ifcparse_int_matrix_t* matrix) {
+    if (matrix == nullptr) {
+        return 0;
+    }
+    return matrix->values.size();
+}
+
+size_t ifcopenshell_ifcparse_int_matrix_col_count(
+    const ifcopenshell_ifcparse_int_matrix_t* matrix,
+    size_t row
+) {
+    if (matrix == nullptr) {
+        set_global_error("Integer matrix handle is null");
+        return 0;
+    }
+    if (row >= matrix->values.size()) {
+        set_int_matrix_error(const_cast<ifcopenshell_ifcparse_int_matrix_t*>(matrix), "Integer matrix row out of range");
+        return 0;
+    }
+    clear_int_matrix_error(const_cast<ifcopenshell_ifcparse_int_matrix_t*>(matrix));
+    return matrix->values[row].size();
+}
+
+int ifcopenshell_ifcparse_int_matrix_get(
+    const ifcopenshell_ifcparse_int_matrix_t* matrix,
+    size_t row,
+    size_t col
+) {
+    if (matrix == nullptr) {
+        set_global_error("Integer matrix handle is null");
+        return 0;
+    }
+    if (row >= matrix->values.size() || col >= matrix->values[row].size()) {
+        set_int_matrix_error(const_cast<ifcopenshell_ifcparse_int_matrix_t*>(matrix), "Integer matrix index out of range");
+        return 0;
+    }
+    clear_int_matrix_error(const_cast<ifcopenshell_ifcparse_int_matrix_t*>(matrix));
+    return matrix->values[row][col];
+}
+
+void ifcopenshell_ifcparse_double_matrix_close(ifcopenshell_ifcparse_double_matrix_t* matrix) {
+    delete matrix;
+}
+
+size_t ifcopenshell_ifcparse_double_matrix_row_count(const ifcopenshell_ifcparse_double_matrix_t* matrix) {
+    if (matrix == nullptr) {
+        return 0;
+    }
+    return matrix->values.size();
+}
+
+size_t ifcopenshell_ifcparse_double_matrix_col_count(
+    const ifcopenshell_ifcparse_double_matrix_t* matrix,
+    size_t row
+) {
+    if (matrix == nullptr) {
+        set_global_error("Double matrix handle is null");
+        return 0;
+    }
+    if (row >= matrix->values.size()) {
+        set_double_matrix_error(const_cast<ifcopenshell_ifcparse_double_matrix_t*>(matrix), "Double matrix row out of range");
+        return 0;
+    }
+    clear_double_matrix_error(const_cast<ifcopenshell_ifcparse_double_matrix_t*>(matrix));
+    return matrix->values[row].size();
+}
+
+double ifcopenshell_ifcparse_double_matrix_get(
+    const ifcopenshell_ifcparse_double_matrix_t* matrix,
+    size_t row,
+    size_t col
+) {
+    if (matrix == nullptr) {
+        set_global_error("Double matrix handle is null");
+        return 0.0;
+    }
+    if (row >= matrix->values.size() || col >= matrix->values[row].size()) {
+        set_double_matrix_error(const_cast<ifcopenshell_ifcparse_double_matrix_t*>(matrix), "Double matrix index out of range");
+        return 0.0;
+    }
+    clear_double_matrix_error(const_cast<ifcopenshell_ifcparse_double_matrix_t*>(matrix));
+    return matrix->values[row][col];
+}
+
+void ifcopenshell_ifcparse_entity_matrix_close(ifcopenshell_ifcparse_entity_matrix_t* matrix) {
+    delete matrix;
+}
+
+size_t ifcopenshell_ifcparse_entity_matrix_row_count(const ifcopenshell_ifcparse_entity_matrix_t* matrix) {
+    if (matrix == nullptr) {
+        return 0;
+    }
+    return matrix->values.size();
+}
+
+size_t ifcopenshell_ifcparse_entity_matrix_col_count(
+    const ifcopenshell_ifcparse_entity_matrix_t* matrix,
+    size_t row
+) {
+    if (matrix == nullptr) {
+        set_global_error("Entity matrix handle is null");
+        return 0;
+    }
+    if (row >= matrix->values.size()) {
+        set_entity_matrix_error(const_cast<ifcopenshell_ifcparse_entity_matrix_t*>(matrix), "Entity matrix row out of range");
+        return 0;
+    }
+    clear_entity_matrix_error(const_cast<ifcopenshell_ifcparse_entity_matrix_t*>(matrix));
+    return matrix->values[row].size();
+}
+
+const ifcopenshell_ifcparse_entity_ref_t* ifcopenshell_ifcparse_entity_matrix_get(
+    const ifcopenshell_ifcparse_entity_matrix_t* matrix,
+    size_t row,
+    size_t col
+) {
+    if (matrix == nullptr) {
+        set_global_error("Entity matrix handle is null");
+        return nullptr;
+    }
+    if (row >= matrix->values.size() || col >= matrix->values[row].size()) {
+        set_entity_matrix_error(const_cast<ifcopenshell_ifcparse_entity_matrix_t*>(matrix), "Entity matrix index out of range");
+        return nullptr;
+    }
+    clear_entity_matrix_error(const_cast<ifcopenshell_ifcparse_entity_matrix_t*>(matrix));
+    return to_entity_ref(matrix->values[row][col]);
 }
 
 ifcopenshell_ifcparse_type_list_t* ifcopenshell_ifcparse_file_types(ifcopenshell_ifcparse_file_t* file) {

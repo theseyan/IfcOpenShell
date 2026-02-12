@@ -370,3 +370,158 @@ test "ifcparse mutation APIs create remove and batching" {
     try file.recalculateIdCounter();
     try std.testing.expect(file.maxId() > 0);
 }
+
+test "ifcparse list next helpers for numeric lists" {
+    const allocator = std.testing.allocator;
+
+    var file = try ifcparse.File.createEmpty(allocator, "IFC4");
+    defer file.deinit();
+
+    const point = try file.createEntityByType(allocator, "IfcCartesianPoint");
+    const coordinates_index = try point.argumentIndex(allocator, "Coordinates");
+    try point.setDoubleList(coordinates_index, &.{ 1.0, 2.0, 3.0 });
+
+    var coordinates = try point.getDoubleList(coordinates_index);
+    defer coordinates.deinit();
+    try std.testing.expectEqual(@as(f64, 1.0), coordinates.next().?);
+    try std.testing.expectEqual(@as(f64, 2.0), coordinates.next().?);
+    try std.testing.expectEqual(@as(f64, 3.0), coordinates.next().?);
+    try std.testing.expect(coordinates.next() == null);
+
+    var sample = try openEmbeddedSampleFile(allocator);
+    defer sample.deinit();
+
+    var inverse_indices = try sample.getInverseIndices(45);
+    defer inverse_indices.deinit();
+    try std.testing.expect(inverse_indices.next() != null);
+}
+
+test "ifcparse extended entity metadata and inverse queries" {
+    const allocator = std.testing.allocator;
+
+    var file = try openEmbeddedSampleFile(allocator);
+    defer file.deinit();
+
+    const project = file.instanceById(1) orelse return error.TestUnexpectedNull;
+    const scoped_type = project.typeNameWithSchema() orelse return error.TestUnexpectedNull;
+    try std.testing.expectEqualStrings("IFC4.IfcProject", scoped_type);
+
+    try std.testing.expectEqual(ifcparse.AttributeCategory.forward, try project.attributeCategory(allocator, "GlobalId"));
+    try std.testing.expectEqual(ifcparse.AttributeCategory.invalid, try project.attributeCategory(allocator, "MissingAttr"));
+
+    var attribute_names = try project.attributeNames();
+    defer attribute_names.deinit();
+    try std.testing.expect(attribute_names.len() > 0);
+
+    var inverse_names = try project.inverseAttributeNames();
+    defer inverse_names.deinit();
+    try std.testing.expect(inverse_names.len() > 0);
+
+    const wall = file.instanceById(45) orelse return error.TestUnexpectedNull;
+    var inverse_values = try wall.getInverse(allocator, "ContainedInStructure");
+    defer inverse_values.deinit();
+    try std.testing.expect(inverse_values.len() >= 1);
+
+    var argument_value = try project.getArgumentByName(allocator, "GlobalId");
+    defer argument_value.deinit();
+    switch (argument_value) {
+        .string => |value| try std.testing.expect(value.len > 0),
+        else => return error.TestUnexpectedResult,
+    }
+}
+
+test "ifcparse file header and entity traversal helpers" {
+    const allocator = std.testing.allocator;
+
+    var file = try openEmbeddedSampleFile(allocator);
+    defer file.deinit();
+
+    const file_description = (try file.headerFileDescription()) orelse return error.TestUnexpectedNull;
+    const file_name = (try file.headerFileName()) orelse return error.TestUnexpectedNull;
+    const file_schema = (try file.headerFileSchema()) orelse return error.TestUnexpectedNull;
+    try std.testing.expect(file_description.argumentCount() > 0);
+    try std.testing.expect(file_name.argumentCount() > 0);
+    try std.testing.expect(file_schema.argumentCount() > 0);
+
+    var ids = try file.entityIds();
+    defer ids.deinit();
+    try std.testing.expectEqual(file.entityCount(), ids.len());
+    try std.testing.expect(ids.next() != null);
+
+    const wall = file.instanceById(45) orelse return error.TestUnexpectedNull;
+    var traverse_by_entity = try file.traverse(wall, -1, false);
+    defer traverse_by_entity.deinit();
+    try std.testing.expect(traverse_by_entity.len() >= 1);
+    try std.testing.expectEqual(@as(u32, 45), traverse_by_entity.at(0).?.id());
+}
+
+test "ifcparse matrix argument setters and getters" {
+    const allocator = std.testing.allocator;
+
+    var file = try ifcparse.File.createEmpty(allocator, "IFC4");
+    defer file.deinit();
+
+    const triangulated = try file.createEntityByType(allocator, "IfcTriangulatedFaceSet");
+    const coord_index = try triangulated.argumentIndex(allocator, "CoordIndex");
+    const int_matrix_rows = [_][]const i32{
+        &.{ 1, 2, 3 },
+        &.{ 3, 4, 1 },
+    };
+    try triangulated.setIntMatrix(allocator, coord_index, int_matrix_rows[0..]);
+    var int_matrix = try triangulated.getIntMatrix(coord_index);
+    defer int_matrix.deinit();
+    try std.testing.expectEqual(@as(usize, 2), int_matrix.rowCount());
+    try std.testing.expectEqual(@as(usize, 3), int_matrix.colCount(0).?);
+    try std.testing.expectEqual(@as(i32, 4), int_matrix.at(1, 1).?);
+
+    const rational_surface = try file.createEntityByType(allocator, "IfcRationalBSplineSurfaceWithKnots");
+    const weights_data = try rational_surface.argumentIndex(allocator, "WeightsData");
+    const double_matrix_rows = [_][]const f64{
+        &.{ 1.0, 0.9 },
+        &.{ 0.8, 1.0 },
+    };
+    try rational_surface.setDoubleMatrix(allocator, weights_data, double_matrix_rows[0..]);
+    var double_matrix = try rational_surface.getDoubleMatrix(weights_data);
+    defer double_matrix.deinit();
+    try std.testing.expectEqual(@as(usize, 2), double_matrix.rowCount());
+    try std.testing.expectEqual(@as(f64, 0.8), double_matrix.at(1, 0).?);
+
+    const p1 = try file.createEntityByType(allocator, "IfcCartesianPoint");
+    const p2 = try file.createEntityByType(allocator, "IfcCartesianPoint");
+    const p3 = try file.createEntityByType(allocator, "IfcCartesianPoint");
+    const p4 = try file.createEntityByType(allocator, "IfcCartesianPoint");
+    const points = [_]ifcparse.EntityRef{ p1, p2, p3, p4 };
+    for (points) |point| {
+        const coordinates_index = try point.argumentIndex(allocator, "Coordinates");
+        try point.setDoubleList(coordinates_index, &.{ 0.0, 0.0, 0.0 });
+    }
+
+    const surface = try file.createEntityByType(allocator, "IfcBSplineSurface");
+    const control_points = try surface.argumentIndex(allocator, "ControlPointsList");
+    const row1 = [_]ifcparse.EntityRef{ p1, p2 };
+    const row2 = [_]ifcparse.EntityRef{ p3, p4 };
+    const entity_matrix_rows = [_][]const ifcparse.EntityRef{
+        row1[0..],
+        row2[0..],
+    };
+    try surface.setEntityMatrix(allocator, control_points, entity_matrix_rows[0..]);
+    var entity_matrix = try surface.getEntityMatrix(control_points);
+    defer entity_matrix.deinit();
+    try std.testing.expectEqual(@as(usize, 2), entity_matrix.rowCount());
+    try std.testing.expectEqual(p4.id(), entity_matrix.at(1, 1).?.id());
+}
+
+test "ifcparse bulk add entities" {
+    const allocator = std.testing.allocator;
+
+    var source = try openEmbeddedSampleFile(allocator);
+    defer source.deinit();
+
+    var target = try ifcparse.File.createEmpty(allocator, "IFC4");
+    defer target.deinit();
+
+    const e1 = source.instanceById(1) orelse return error.TestUnexpectedNull;
+    const e2 = source.instanceById(2) orelse return error.TestUnexpectedNull;
+    try target.addEntities(allocator, &.{ e1, e2 });
+    try std.testing.expect(target.entityCount() >= 2);
+}
