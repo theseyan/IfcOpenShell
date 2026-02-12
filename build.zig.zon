@@ -14,6 +14,22 @@
             .url = "git+https://github.com/boostorg/scope_exit?ref=boost-1.90.0#60baaae454b2da887a31cf939e22015b6263c9e4",
             .hash = "N-V-__8AACNjBQAD3q2hFj2F9f4C1-50R9v29N5_6qThh2yq",
         },
+        .boost_program_options = .{
+            .url = "git+https://github.com/boostorg/program_options?ref=boost-1.90.0#902aaedaaa157a92e649c3b1324c92f5a264a805",
+            .hash = "N-V-__8AAHWaCACkuZVjBm3Py7WCqbJSv9qK45z8mI2mZZxv",
+        },
+        .eigen = .{
+            .url = "git+https://gitlab.com/libeigen/eigen.git#23fcc1c6c9726ef212701971103b18cd1936ae9b",
+            .hash = "N-V-__8AAPXADgFHnfMP0c47XM1vclZ61SYl40u8z1S9uDg1",
+        },
+        .occt = .{
+            .url = "git+https://github.com/Open-Cascade-SAS/OCCT.git?ref=V7_9_3#a016080bf6738d6aeae020badee4e888ad1540a5",
+            .hash = "N-V-__8AALCM9gu73TKkC9MMAUGemG4jXhD6S6HmbgH1hq8W",
+        },
+        .boost_foreach = .{
+            .url = "git+https://github.com/boostorg/foreach?ref=boost-1.90.0#a5ae97ef513548ed44fca6d69f8c69f79e215088",
+            .hash = "N-V-__8AABrEAQDYwdeIZLHxzcCclrLa6MFQlmTc0E7JyV50",
+        },
     },
     .paths = .{""},
     .fingerprint = 0x50d492cc8048c359,
