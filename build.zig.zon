@@ -1,0 +1,20 @@
+.{
+    .name = .IfcOpenShell,
+    .version = "0.15.2",
+    .dependencies = .{
+        .boost = .{
+            .url = "git+https://github.com/allyourcodebase/boost-libraries-zig.git#d9e4a268088951e3ac67ee1a967d4b55f4878d67",
+            .hash = "boost_libraries-1.60.0-frkKHEaDAQDVC6FjpPLCIB4UdSea_vx-vg6FdwDLS1E4",
+        },
+        .boost_dynamic_bitset = .{
+            .url = "git+https://github.com/boostorg/dynamic_bitset?ref=boost-1.90.0#7c4dbfa2ac063cd6af8c6b7cb10bd70e353f590f",
+            .hash = "N-V-__8AADOeBgDDdMLmmPtdros7nZb2kq5LXDPVr047yjK5",
+        },
+        .boost_scope_exit = .{
+            .url = "git+https://github.com/boostorg/scope_exit?ref=boost-1.90.0#60baaae454b2da887a31cf939e22015b6263c9e4",
+            .hash = "N-V-__8AACNjBQAD3q2hFj2F9f4C1-50R9v29N5_6qThh2yq",
+        },
+    },
+    .paths = .{""},
+    .fingerprint = 0x50d492cc8048c359,
+}

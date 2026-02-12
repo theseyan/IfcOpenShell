@@ -113,3 +113,5 @@ dev_environment.bat
 
 src/ifcopenshell-python/ifcopenshell/express/*.exp
 src/ifcopenshell-python/ifcopenshell/express/*.exp.cache.dat
+zig-out
+.zig-cache
