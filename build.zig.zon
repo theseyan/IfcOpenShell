@@ -30,6 +30,10 @@
             .url = "git+https://github.com/boostorg/foreach?ref=boost-1.90.0#a5ae97ef513548ed44fca6d69f8c69f79e215088",
             .hash = "N-V-__8AABrEAQDYwdeIZLHxzcCclrLa6MFQlmTc0E7JyV50",
         },
+        .nlohmann_json = .{
+            .url = "git+https://github.com/nlohmann/json.git?ref=v3.11.3#904592d2a86bae5d9c191cdcb8f8fd9b136f71fa",
+            .hash = "N-V-__8AAO6D9QAMQ2LttOQuCKymxEREStjCcKQMETYMIpVZ",
+        },
     },
     .paths = .{""},
     .fingerprint = 0x50d492cc8048c359,

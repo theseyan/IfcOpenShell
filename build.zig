@@ -20,6 +20,8 @@ pub fn build(b: *std.Build) void {
     const link_occ_libraries = b.option(bool, "link_occ_libraries", "Link OpenCASCADE libraries into IfcGeom (off keeps compile-only path)") orelse false;
 
     const eigen_include_override = b.option([]const u8, "eigen_include_dir", "Path to Eigen headers (directory containing Eigen/Dense)");
+    const enable_gltf_serializer = b.option(bool, "serializers_gltf", "Enable GltfSerializer support in Serializers (requires nlohmann_json)") orelse true;
+    const enable_json_serializer = b.option(bool, "serializers_json", "Enable JsonSerializer support in Serializers (requires WITH_GLTF + nlohmann_json)") orelse true;
 
     var schemas = std.ArrayList([]const u8).empty;
     defer schemas.deinit(b.allocator);
@@ -53,6 +55,24 @@ pub fn build(b: *std.Build) void {
     const ifcgeom_install = b.addInstallArtifact(ifcgeom_lib, .{});
     b.getInstallStep().dependOn(&ifcgeom_install.step);
     ifcgeom_step.dependOn(&ifcgeom_install.step);
+
+    const serializers_step = b.step("serializers", "Build Serializers (IfcConvert API) static library without CLI/Collada/HDF5/RocksDB");
+    const serializers_lib = addSerializersLibrary(
+        b,
+        target,
+        optimize,
+        schemas.items,
+        schema_seq_macro,
+        occ_include_override,
+        eigen_include_override,
+        enable_gltf_serializer,
+        enable_json_serializer,
+        ifcgeom_lib,
+        ifcparse_lib,
+    );
+    const serializers_install = b.addInstallArtifact(serializers_lib, .{});
+    b.getInstallStep().dependOn(&serializers_install.step);
+    serializers_step.dependOn(&serializers_install.step);
 }
 
 fn addIfcParseLibrary(
@@ -219,6 +239,147 @@ fn addIfcGeomLibrary(
     return lib;
 }
 
+fn addSerializersLibrary(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    schemas: []const []const u8,
+    schema_seq_macro: []const u8,
+    occ_include_dir: ?[]const u8,
+    eigen_include_dir: ?[]const u8,
+    enable_gltf_serializer: bool,
+    enable_json_serializer: bool,
+    ifcgeom_lib: *std.Build.Step.Compile,
+    ifcparse_lib: *std.Build.Step.Compile,
+) *std.Build.Step.Compile {
+    const enable_with_gltf = enable_gltf_serializer or enable_json_serializer;
+
+    const root_module = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const lib = b.addLibrary(.{
+        .name = "Serializers",
+        .linkage = .static,
+        .root_module = root_module,
+    });
+
+    lib.linkLibC();
+    lib.linkLibCpp();
+
+    addSerializersIncludePaths(
+        b,
+        lib,
+        target,
+        optimize,
+        occ_include_dir,
+        eigen_include_dir,
+        enable_with_gltf,
+    );
+
+    var flags = std.ArrayList([]const u8).empty;
+    defer flags.deinit(b.allocator);
+    appendCommonCppFlags(b, &flags);
+    flags.append(b.allocator, "-DSERIALIZERS_EXPORTS") catch @panic("Out of memory building Serializers flags");
+    flags.append(b.allocator, "-DIFC_GEOM_EXPORTS") catch @panic("Out of memory building Serializers flags");
+    flags.append(b.allocator, "-DIFOPSH_WITH_OPENCASCADE") catch @panic("Out of memory building Serializers flags");
+    if (enable_with_gltf) {
+        flags.append(b.allocator, "-DWITH_GLTF") catch @panic("Out of memory building Serializers flags");
+    }
+    flags.append(b.allocator, b.fmt("-DSCHEMA_SEQ={s}", .{schema_seq_macro})) catch @panic("Out of memory building Serializers flags");
+    appendSchemaHasFlags(b, &flags, schemas);
+
+    const excluded_sources_no_gltf_no_json = [_][]const u8{
+        "ColladaSerializer.cpp",
+        "GltfSerializer.cpp",
+        "HdfSerializer.cpp",
+        "JsonSerializer.cpp",
+        "RocksDbSerializer.cpp",
+        "USDSerializer.cpp",
+    };
+    const excluded_sources_no_gltf_with_json = [_][]const u8{
+        "ColladaSerializer.cpp",
+        "GltfSerializer.cpp",
+        "HdfSerializer.cpp",
+        "RocksDbSerializer.cpp",
+        "USDSerializer.cpp",
+    };
+    const excluded_sources_with_gltf_no_json = [_][]const u8{
+        "ColladaSerializer.cpp",
+        "HdfSerializer.cpp",
+        "JsonSerializer.cpp",
+        "RocksDbSerializer.cpp",
+        "USDSerializer.cpp",
+    };
+    const excluded_sources_with_gltf_with_json = [_][]const u8{
+        "ColladaSerializer.cpp",
+        "HdfSerializer.cpp",
+        "RocksDbSerializer.cpp",
+        "USDSerializer.cpp",
+    };
+    const excluded_sources =
+        if (enable_gltf_serializer)
+            if (enable_json_serializer)
+                excluded_sources_with_gltf_with_json[0..]
+            else
+                excluded_sources_with_gltf_no_json[0..]
+        else
+            if (enable_json_serializer)
+                excluded_sources_no_gltf_with_json[0..]
+            else
+                excluded_sources_no_gltf_no_json[0..];
+    var sources = collectCppFilesInDirectoryExcluding(
+        b,
+        "src/serializers",
+        false,
+        excluded_sources,
+    );
+    defer sources.deinit(b.allocator);
+
+    lib.addCSourceFiles(.{
+        .files = sources.items,
+        .flags = flags.items,
+    });
+
+    const excluded_schema_sources_no_json = [_][]const u8{};
+    const excluded_schema_sources_with_json = [_][]const u8{
+        "JsonSerializer.cpp",
+    };
+    const excluded_schema_sources = if (enable_json_serializer)
+        excluded_schema_sources_no_json[0..]
+    else
+        excluded_schema_sources_with_json[0..];
+    var schema_sources = collectCppFilesInDirectoryExcluding(
+        b,
+        "src/serializers/schema_dependent",
+        false,
+        excluded_schema_sources,
+    );
+    defer schema_sources.deinit(b.allocator);
+
+    for (schemas) |schema| {
+        const serializer_obj = addSchemaSerializerObject(
+            b,
+            target,
+            optimize,
+            schemas,
+            schema_seq_macro,
+            schema,
+            schema_sources.items,
+            occ_include_dir,
+            eigen_include_dir,
+            enable_with_gltf,
+        );
+        lib.addObject(serializer_obj);
+    }
+
+    lib.linkLibrary(ifcgeom_lib);
+    lib.linkLibrary(ifcparse_lib);
+
+    return lib;
+}
+
 fn addKernelOpenCascadeObject(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
@@ -316,6 +477,61 @@ fn addSchemaMappingObject(
     return obj;
 }
 
+fn addSchemaSerializerObject(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    schemas: []const []const u8,
+    schema_seq_macro: []const u8,
+    schema: []const u8,
+    serializer_sources: []const []const u8,
+    occ_include_dir: ?[]const u8,
+    eigen_include_dir: ?[]const u8,
+    enable_with_gltf: bool,
+) *std.Build.Step.Compile {
+    const root_module = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const obj = b.addObject(.{
+        .name = b.fmt("serializers_ifc{s}", .{schema}),
+        .root_module = root_module,
+    });
+    obj.linkLibC();
+    obj.linkLibCpp();
+
+    addSerializersIncludePaths(
+        b,
+        obj,
+        target,
+        optimize,
+        occ_include_dir,
+        eigen_include_dir,
+        enable_with_gltf,
+    );
+
+    var flags = std.ArrayList([]const u8).empty;
+    defer flags.deinit(b.allocator);
+    appendCommonCppFlags(b, &flags);
+    flags.append(b.allocator, "-DSERIALIZERS_EXPORTS") catch @panic("Out of memory building schema serializer flags");
+    flags.append(b.allocator, "-DIFC_GEOM_EXPORTS") catch @panic("Out of memory building schema serializer flags");
+    flags.append(b.allocator, "-DIFOPSH_WITH_OPENCASCADE") catch @panic("Out of memory building schema serializer flags");
+    if (enable_with_gltf) {
+        flags.append(b.allocator, "-DWITH_GLTF") catch @panic("Out of memory building schema serializer flags");
+    }
+    flags.append(b.allocator, b.fmt("-DSCHEMA_SEQ={s}", .{schema_seq_macro})) catch @panic("Out of memory building schema serializer flags");
+    flags.append(b.allocator, b.fmt("-DIfcSchema=Ifc{s}", .{schema})) catch @panic("Out of memory building schema serializer flags");
+    appendSchemaHasFlags(b, &flags, schemas);
+
+    obj.addCSourceFiles(.{
+        .files = serializer_sources,
+        .flags = flags.items,
+    });
+
+    return obj;
+}
+
 fn addIfcGeomIncludePaths(
     b: *std.Build,
     compile: *std.Build.Step.Compile,
@@ -344,6 +560,33 @@ fn addIfcGeomIncludePaths(
     }
 
     addBoostIncludesFromDependency(b, compile, target, optimize);
+}
+
+fn addSerializersIncludePaths(
+    b: *std.Build,
+    compile: *std.Build.Step.Compile,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    occ_include_dir: ?[]const u8,
+    eigen_include_dir: ?[]const u8,
+    enable_with_gltf: bool,
+) void {
+    addIfcGeomIncludePaths(
+        b,
+        compile,
+        target,
+        optimize,
+        occ_include_dir,
+        eigen_include_dir,
+    );
+    compile.addIncludePath(b.path("src/serializers"));
+    compile.addIncludePath(b.path("src/serializers/schema_dependent"));
+
+    if (enable_with_gltf) {
+        const nlohmann_json_dep = b.dependency("nlohmann_json", .{});
+        compile.addIncludePath(nlohmann_json_dep.path("include"));
+        compile.addIncludePath(nlohmann_json_dep.path("single_include"));
+    }
 }
 
 fn addOcctIncludePathsFromDependency(
@@ -754,6 +997,57 @@ fn collectCppFilesInDirectory(
     }.lessThan);
 
     return files;
+}
+
+fn collectCppFilesInDirectoryExcluding(
+    b: *std.Build,
+    dir_path: []const u8,
+    exclude_if_name_has_digit: bool,
+    excluded_file_names: []const []const u8,
+) std.ArrayList([]const u8) {
+    var files = std.ArrayList([]const u8).empty;
+
+    var dir = std.fs.cwd().openDir(dir_path, .{ .iterate = true }) catch @panic("Failed to open source directory");
+    defer dir.close();
+
+    var it = dir.iterate();
+    while (it.next() catch @panic("Failed to iterate source directory")) |entry| {
+        if (entry.kind != .file) continue;
+        if (!std.mem.endsWith(u8, entry.name, ".cpp")) continue;
+        if (sliceContainsString(excluded_file_names, entry.name)) continue;
+
+        if (exclude_if_name_has_digit) {
+            var has_digit = false;
+            for (entry.name) |c| {
+                if (std.ascii.isDigit(c)) {
+                    has_digit = true;
+                    break;
+                }
+            }
+            if (has_digit) continue;
+        }
+
+        files.append(b.allocator, b.fmt("{s}/{s}", .{ dir_path, entry.name })) catch
+            @panic("Out of memory collecting C++ sources");
+    }
+
+    std.mem.sort([]const u8, files.items, {}, struct {
+        fn lessThan(_: void, a: []const u8, b_: []const u8) bool {
+            return std.mem.order(u8, a, b_) == .lt;
+        }
+    }.lessThan);
+
+    return files;
+}
+
+fn sliceContainsString(
+    values: []const []const u8,
+    value: []const u8,
+) bool {
+    for (values) |it| {
+        if (std.mem.eql(u8, it, value)) return true;
+    }
+    return false;
 }
 
 fn appendCommonCppFlags(
