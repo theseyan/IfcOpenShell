@@ -1,15 +1,27 @@
 #include "ifcgeom/c_api.h"
 
 #include "ifcgeom/ConversionSettings.h"
+#include "ifcgeom/Converter.h"
 #include "ifcgeom/IfcGeomElement.h"
 #include "ifcgeom/IfcGeomRepresentation.h"
 #include "ifcgeom/Iterator.h"
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#pragma clang diagnostic ignored "-Wunused-value"
+#endif
+#include "ifcgeom/kernels/opencascade/IfcGeomTree.h"
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
+#include "ifcgeom/taxonomy.h"
 #include "ifcgeom/hybrid_kernel.h"
 #include "ifcparse/IfcFile.h"
 
 #include <boost/variant/get.hpp>
 
 #include <array>
+#include <sstream>
 #include <memory>
 #include <set>
 #include <string>
@@ -51,6 +63,45 @@ struct ifcopenshell_ifcgeom_mesh {
     std::vector<int> edges_item_ids;
     std::vector<double> colors;
     std::vector<double> transform;
+};
+
+struct ifcopenshell_ifcgeom_serialized {
+    int id = 0;
+    int parent_id = -1;
+    std::string name;
+    std::string type;
+    std::string guid;
+    std::string context;
+    std::string unique_id;
+
+    std::string brep_data;
+    std::vector<double> surface_styles;
+    std::vector<int> surface_style_ids;
+    std::vector<double> transform;
+};
+
+struct ifcopenshell_ifcgeom_created_shape {
+    ifcopenshell_ifcgeom_created_shape_kind_t kind = IFCOPENSHELL_IFCGEOM_CREATED_SHAPE_NONE;
+    std::unique_ptr<ifcopenshell_ifcgeom_mesh_t> mesh;
+    std::unique_ptr<ifcopenshell_ifcgeom_serialized_t> serialized;
+    std::array<double, 16> transform{{0.0}};
+};
+
+struct ifcopenshell_ifcgeom_tree {
+    std::unique_ptr<IfcGeom::tree> value;
+    std::string last_error;
+};
+
+struct ifcopenshell_ifcgeom_id_list {
+    std::vector<int> values;
+    size_t cursor = 0;
+    std::string last_error;
+};
+
+struct ifcopenshell_ifcgeom_clash_list {
+    std::vector<ifcopenshell_ifcgeom_clash_t> values;
+    size_t cursor = 0;
+    std::string last_error;
 };
 
 namespace {
@@ -107,6 +158,48 @@ void clear_list_error(ifcopenshell_ifcgeom_string_list_t* list) {
     clear_global_error();
 }
 
+void set_tree_error(ifcopenshell_ifcgeom_tree_t* tree, const std::string& message) {
+    if (tree != nullptr) {
+        tree->last_error = message;
+    }
+    set_global_error(message);
+}
+
+void clear_tree_error(ifcopenshell_ifcgeom_tree_t* tree) {
+    if (tree != nullptr) {
+        tree->last_error.clear();
+    }
+    clear_global_error();
+}
+
+void set_id_list_error(ifcopenshell_ifcgeom_id_list_t* list, const std::string& message) {
+    if (list != nullptr) {
+        list->last_error = message;
+    }
+    set_global_error(message);
+}
+
+void clear_id_list_error(ifcopenshell_ifcgeom_id_list_t* list) {
+    if (list != nullptr) {
+        list->last_error.clear();
+    }
+    clear_global_error();
+}
+
+void set_clash_list_error(ifcopenshell_ifcgeom_clash_list_t* list, const std::string& message) {
+    if (list != nullptr) {
+        list->last_error = message;
+    }
+    set_global_error(message);
+}
+
+void clear_clash_list_error(ifcopenshell_ifcgeom_clash_list_t* list) {
+    if (list != nullptr) {
+        list->last_error.clear();
+    }
+    clear_global_error();
+}
+
 bool is_valid_name(const char* name) {
     return name != nullptr && name[0] != '\0';
 }
@@ -143,6 +236,173 @@ const std::string geometry_library_or_default(const char* geometry_library) {
 
 int normalize_num_threads(int num_threads) {
     return num_threads > 0 ? num_threads : 1;
+}
+
+IfcUtil::IfcBaseEntity* native_product_entity_from_file_and_id(
+    const ifcopenshell_ifcparse_file_t* file,
+    int id,
+    std::string& out_error
+) {
+    IfcParse::IfcFile* ifc_file = native_file_from_handle(file);
+    if (ifc_file == nullptr) {
+        out_error = parse_error_or_default("Unable to access native IfcFile from C ABI handle");
+        return nullptr;
+    }
+
+    IfcUtil::IfcBaseClass* instance = ifc_file->instance_by_id(id);
+    if (instance == nullptr) {
+        out_error = "Ifc entity id does not exist in file";
+        return nullptr;
+    }
+
+    if (!instance->declaration().is("IfcProduct")) {
+        out_error = "Ifc entity is not an IfcProduct";
+        return nullptr;
+    }
+
+    IfcUtil::IfcBaseEntity* entity = instance->as<IfcUtil::IfcBaseEntity>();
+    if (entity == nullptr) {
+        out_error = "Ifc entity is not a concrete IfcBaseEntity";
+        return nullptr;
+    }
+
+    return entity;
+}
+
+IfcUtil::IfcBaseClass* native_instance_from_file_and_id(
+    const ifcopenshell_ifcparse_file_t* file,
+    int id,
+    std::string& out_error
+) {
+    IfcParse::IfcFile* ifc_file = native_file_from_handle(file);
+    if (ifc_file == nullptr) {
+        out_error = parse_error_or_default("Unable to access native IfcFile from C ABI handle");
+        return nullptr;
+    }
+
+    IfcUtil::IfcBaseClass* instance = ifc_file->instance_by_id(id);
+    if (instance == nullptr) {
+        out_error = "Ifc entity id does not exist in file";
+        return nullptr;
+    }
+
+    return instance;
+}
+
+bool entity_exists_in_tree(
+    ifcopenshell_ifcgeom_tree_t* tree,
+    const IfcUtil::IfcBaseEntity* entity
+) {
+    if (tree == nullptr || !tree->value || entity == nullptr) {
+        return false;
+    }
+
+    try {
+        const auto selected = tree->value->select_box(entity, false, 0.0);
+        return !selected.empty();
+    } catch (...) {
+        return false;
+    }
+}
+
+ifcopenshell_ifcgeom_id_list_t* make_id_list_from_entities(
+    const std::vector<const IfcUtil::IfcBaseEntity*>& entities
+) {
+    std::unique_ptr<ifcopenshell_ifcgeom_id_list_t> list(new ifcopenshell_ifcgeom_id_list_t());
+    list->values.reserve(entities.size());
+    for (const auto* entity : entities) {
+        if (entity != nullptr) {
+            list->values.push_back(static_cast<int>(entity->id()));
+        }
+    }
+    clear_id_list_error(list.get());
+    return list.release();
+}
+
+ifcopenshell_ifcgeom_clash_list_t* make_clash_list(
+    const std::vector<IfcGeom::clash>& clashes
+) {
+    std::unique_ptr<ifcopenshell_ifcgeom_clash_list_t> list(new ifcopenshell_ifcgeom_clash_list_t());
+    list->values.reserve(clashes.size());
+    for (const auto& clash : clashes) {
+        ifcopenshell_ifcgeom_clash_t row{};
+        row.clash_type = clash.clash_type;
+        row.a_id = clash.a != nullptr ? static_cast<int>(clash.a->id()) : 0;
+        row.b_id = clash.b != nullptr ? static_cast<int>(clash.b->id()) : 0;
+        row.distance = clash.distance;
+        row.p1[0] = clash.p1[0];
+        row.p1[1] = clash.p1[1];
+        row.p1[2] = clash.p1[2];
+        row.p2[0] = clash.p2[0];
+        row.p2[1] = clash.p2[1];
+        row.p2[2] = clash.p2[2];
+        list->values.push_back(row);
+    }
+    clear_clash_list_error(list.get());
+    return list.release();
+}
+
+template <typename Fn>
+ifcopenshell_ifcgeom_clash_list_t* tree_run_clash_query(
+    ifcopenshell_ifcgeom_tree_t* tree,
+    const ifcopenshell_ifcparse_file_t* file,
+    const int* set_a_ids,
+    size_t set_a_count,
+    const int* set_b_ids,
+    size_t set_b_count,
+    Fn&& fn
+) {
+    if (tree == nullptr || !tree->value) {
+        set_tree_error(tree, "IfcGeom tree handle is null");
+        return nullptr;
+    }
+    if (set_a_count > 0 && set_a_ids == nullptr) {
+        set_tree_error(tree, "Set A ids pointer is null");
+        return nullptr;
+    }
+    if (set_b_count > 0 && set_b_ids == nullptr) {
+        set_tree_error(tree, "Set B ids pointer is null");
+        return nullptr;
+    }
+
+    std::vector<const IfcUtil::IfcBaseEntity*> set_a;
+    set_a.reserve(set_a_count);
+    std::vector<const IfcUtil::IfcBaseEntity*> set_b;
+    set_b.reserve(set_b_count);
+
+    std::string error_message;
+    for (size_t i = 0; i < set_a_count; ++i) {
+        const auto* entity = native_product_entity_from_file_and_id(file, set_a_ids[i], error_message);
+        if (entity == nullptr) {
+            set_tree_error(tree, error_message);
+            return nullptr;
+        }
+        if (entity_exists_in_tree(tree, entity)) {
+            set_a.push_back(entity);
+        }
+    }
+    for (size_t i = 0; i < set_b_count; ++i) {
+        const auto* entity = native_product_entity_from_file_and_id(file, set_b_ids[i], error_message);
+        if (entity == nullptr) {
+            set_tree_error(tree, error_message);
+            return nullptr;
+        }
+        if (entity_exists_in_tree(tree, entity)) {
+            set_b.push_back(entity);
+        }
+    }
+
+    try {
+        auto clashes = fn(set_a, set_b);
+        clear_tree_error(tree);
+        return make_clash_list(clashes);
+    } catch (const std::exception& e) {
+        set_tree_error(tree, e.what());
+        return nullptr;
+    } catch (...) {
+        set_tree_error(tree, "Unknown error querying tree clashes");
+        return nullptr;
+    }
 }
 
 const IfcGeom::Element* current_element(ifcopenshell_ifcgeom_iterator_t* iterator) {
@@ -219,6 +479,264 @@ ifcopenshell_ifcgeom_mesh_t* make_mesh_snapshot(
 
     clear_iterator_error(iterator);
     return mesh.release();
+}
+
+ifcopenshell_ifcgeom_serialized_t* make_serialized_snapshot(
+    ifcopenshell_ifcgeom_iterator_t* iterator,
+    const IfcGeom::Element* element
+) {
+    const auto* serialized = dynamic_cast<const IfcGeom::SerializedElement*>(element);
+    const auto* brep = dynamic_cast<const IfcGeom::BRepElement*>(element);
+    if (serialized == nullptr && brep == nullptr) {
+        set_iterator_error(iterator, "Current IfcGeom element is neither serialized nor native BRep");
+        return nullptr;
+    }
+
+    std::unique_ptr<ifcopenshell_ifcgeom_serialized_t> result(new ifcopenshell_ifcgeom_serialized_t());
+
+    result->id = element->id();
+    result->parent_id = element->parent_id();
+    result->name = element->name();
+    result->type = element->type();
+    result->guid = element->guid();
+    result->context = element->context();
+    result->unique_id = element->unique_id();
+
+    const auto* matrix_data = element->transformation().data()->ccomponents().data();
+    result->transform.assign(matrix_data, matrix_data + 16);
+
+    if (serialized != nullptr) {
+        const auto& geometry = serialized->geometry();
+        result->brep_data = geometry.brep_data();
+        result->surface_styles.assign(geometry.surface_styles().begin(), geometry.surface_styles().end());
+        result->surface_style_ids.assign(geometry.surface_style_ids().begin(), geometry.surface_style_ids().end());
+    } else {
+        IfcGeom::Representation::Serialization geometry(brep->geometry());
+        result->brep_data = geometry.brep_data();
+        result->surface_styles.assign(geometry.surface_styles().begin(), geometry.surface_styles().end());
+        result->surface_style_ids.assign(geometry.surface_style_ids().begin(), geometry.surface_style_ids().end());
+    }
+
+    clear_iterator_error(iterator);
+    return result.release();
+}
+
+void set_identity_transform(std::vector<double>& out_matrix) {
+    out_matrix.assign(16, 0.0);
+    out_matrix[0] = 1.0;
+    out_matrix[5] = 1.0;
+    out_matrix[10] = 1.0;
+    out_matrix[15] = 1.0;
+}
+
+int instance_id_or_zero(const IfcUtil::IfcBaseClass* instance) {
+    const auto* entity = instance != nullptr ? instance->as<IfcUtil::IfcBaseEntity>() : nullptr;
+    return entity != nullptr ? static_cast<int>(entity->id()) : 0;
+}
+
+ifcopenshell_ifcgeom_mesh_t* make_mesh_snapshot_from_representation(
+    const IfcGeom::Representation::Triangulation& geometry,
+    const IfcUtil::IfcBaseClass* instance
+) {
+    std::unique_ptr<ifcopenshell_ifcgeom_mesh_t> mesh(new ifcopenshell_ifcgeom_mesh_t());
+    mesh->id = instance_id_or_zero(instance);
+    mesh->parent_id = -1;
+    mesh->name.clear();
+    mesh->type = instance != nullptr ? instance->declaration().name() : "";
+    mesh->guid.clear();
+    mesh->context.clear();
+    mesh->unique_id.clear();
+    set_identity_transform(mesh->transform);
+
+    mesh->verts.assign(geometry.verts().begin(), geometry.verts().end());
+    mesh->faces.assign(geometry.faces().begin(), geometry.faces().end());
+    mesh->edges.assign(geometry.edges().begin(), geometry.edges().end());
+    mesh->normals.assign(geometry.normals().begin(), geometry.normals().end());
+    mesh->uvs.assign(geometry.uvs().begin(), geometry.uvs().end());
+    mesh->material_ids.assign(geometry.material_ids().begin(), geometry.material_ids().end());
+    mesh->item_ids.assign(geometry.item_ids().begin(), geometry.item_ids().end());
+    mesh->edges_item_ids.assign(geometry.edges_item_ids().begin(), geometry.edges_item_ids().end());
+
+    mesh->colors.reserve(geometry.materials().size() * 4);
+    for (const auto& style_ptr : geometry.materials()) {
+        const auto& color = style_ptr->get_color();
+        mesh->colors.push_back(color.ccomponents()[0]);
+        mesh->colors.push_back(color.ccomponents()[1]);
+        mesh->colors.push_back(color.ccomponents()[2]);
+        if (style_ptr->has_transparency()) {
+            mesh->colors.push_back(1.0 - style_ptr->transparency);
+        } else {
+            mesh->colors.push_back(1.0);
+        }
+    }
+
+    return mesh.release();
+}
+
+ifcopenshell_ifcgeom_serialized_t* make_serialized_snapshot_from_representation(
+    const IfcGeom::Representation::Serialization& geometry,
+    const IfcUtil::IfcBaseClass* instance
+) {
+    std::unique_ptr<ifcopenshell_ifcgeom_serialized_t> serialized(new ifcopenshell_ifcgeom_serialized_t());
+    serialized->id = instance_id_or_zero(instance);
+    serialized->parent_id = -1;
+    serialized->name.clear();
+    serialized->type = instance != nullptr ? instance->declaration().name() : "";
+    serialized->guid.clear();
+    serialized->context.clear();
+    serialized->unique_id.clear();
+    serialized->brep_data = geometry.brep_data();
+    serialized->surface_styles.assign(geometry.surface_styles().begin(), geometry.surface_styles().end());
+    serialized->surface_style_ids.assign(geometry.surface_style_ids().begin(), geometry.surface_style_ids().end());
+    set_identity_transform(serialized->transform);
+    return serialized.release();
+}
+
+template <typename FilterBuilder>
+ifcopenshell_ifcgeom_iterator_t* create_iterator_with_filters(
+    const ifcopenshell_ifcparse_file_t* file,
+    const ifcopenshell_ifcgeom_settings_t* settings,
+    const char* geometry_library,
+    int num_threads,
+    FilterBuilder&& filter_builder
+);
+
+ifcopenshell_ifcgeom_created_shape_t* make_created_shape_from_product_id(
+    const ifcopenshell_ifcparse_file_t* file,
+    const ifcopenshell_ifcgeom_settings_t* settings,
+    const char* geometry_library,
+    int id
+) {
+    std::unique_ptr<ifcopenshell_ifcgeom_iterator_t> iterator(
+        create_iterator_with_filters(
+            file,
+            settings,
+            geometry_library,
+            1,
+            [&](std::vector<IfcGeom::filter_t>& filters) {
+                std::set<int> set_ids;
+                set_ids.insert(id);
+                IfcGeom::instance_id_filter id_filter(true, false, set_ids);
+                filters.push_back(id_filter);
+            }
+        )
+    );
+
+    if (!iterator) {
+        return nullptr;
+    }
+
+    if (ifcopenshell_ifcgeom_iterator_initialize(iterator.get()) == 0) {
+        if (iterator->last_error.empty()) {
+            set_iterator_error(iterator.get(), "No geometry generated for requested entity id");
+        }
+        return nullptr;
+    }
+
+    const IfcGeom::Element* element = current_element(iterator.get());
+    if (element == nullptr) {
+        return nullptr;
+    }
+
+    std::unique_ptr<ifcopenshell_ifcgeom_created_shape_t> shape(new ifcopenshell_ifcgeom_created_shape_t());
+    const auto kind = ifcopenshell_ifcgeom_iterator_current_kind(iterator.get());
+    if (kind == IFCOPENSHELL_IFCGEOM_ELEMENT_TRIANGULATION) {
+        shape->kind = IFCOPENSHELL_IFCGEOM_CREATED_SHAPE_TRIANGULATION;
+        shape->mesh.reset(make_mesh_snapshot(iterator.get(), element));
+    } else if (kind == IFCOPENSHELL_IFCGEOM_ELEMENT_SERIALIZED) {
+        shape->kind = IFCOPENSHELL_IFCGEOM_CREATED_SHAPE_SERIALIZED;
+        shape->serialized.reset(make_serialized_snapshot(iterator.get(), element));
+    } else if (kind == IFCOPENSHELL_IFCGEOM_ELEMENT_BREP) {
+        shape->kind = IFCOPENSHELL_IFCGEOM_CREATED_SHAPE_BREP;
+        shape->serialized.reset(make_serialized_snapshot(iterator.get(), element));
+    } else {
+        set_iterator_error(iterator.get(), "Unsupported shape kind for product");
+        return nullptr;
+    }
+
+    if ((shape->mesh == nullptr && shape->kind == IFCOPENSHELL_IFCGEOM_CREATED_SHAPE_TRIANGULATION) ||
+        (shape->serialized == nullptr && (shape->kind == IFCOPENSHELL_IFCGEOM_CREATED_SHAPE_SERIALIZED ||
+                                          shape->kind == IFCOPENSHELL_IFCGEOM_CREATED_SHAPE_BREP))) {
+        return nullptr;
+    }
+    return shape.release();
+}
+
+ifcopenshell_ifcgeom_created_shape_t* make_created_shape_from_transform_instance(
+    IfcParse::IfcFile* ifc_file,
+    ifcopenshell::geometry::Settings settings_value,
+    const char* geometry_library,
+    IfcUtil::IfcBaseClass* instance
+) {
+    std::unique_ptr<ifcopenshell_ifcgeom_created_shape_t> shape(new ifcopenshell_ifcgeom_created_shape_t());
+
+    ifcopenshell::geometry::Converter kernel(
+        ifcopenshell::geometry::kernels::construct(ifc_file, geometry_library_or_default(geometry_library), settings_value),
+        ifc_file,
+        settings_value
+    );
+
+    auto item = ifcopenshell::geometry::taxonomy::cast<ifcopenshell::geometry::taxonomy::matrix4>(
+        kernel.mapping()->map(instance)
+    );
+    if (item == nullptr) {
+        set_global_error("Failed to convert placement into transformation matrix");
+        return nullptr;
+    }
+
+    if (settings_value.get<ifcopenshell::geometry::settings::ConvertBackUnits>().get()) {
+        item = ifcopenshell::geometry::taxonomy::matrix4::ptr(item->clone_());
+        item->components().col(3).head<3>() /= kernel.settings().get<ifcopenshell::geometry::settings::LengthUnit>().get();
+    }
+
+    shape->kind = IFCOPENSHELL_IFCGEOM_CREATED_SHAPE_TRANSFORM;
+    const auto* matrix_data = item->ccomponents().data();
+    for (size_t i = 0; i < 16; ++i) {
+        shape->transform[i] = matrix_data[i];
+    }
+    return shape.release();
+}
+
+ifcopenshell_ifcgeom_created_shape_t* make_created_shape_from_representation_instance(
+    IfcParse::IfcFile* ifc_file,
+    ifcopenshell::geometry::Settings settings_value,
+    const char* geometry_library,
+    IfcUtil::IfcBaseClass* instance
+) {
+    ifcopenshell::geometry::Converter kernel(
+        ifcopenshell::geometry::kernels::construct(ifc_file, geometry_library_or_default(geometry_library), settings_value),
+        ifc_file,
+        settings_value
+    );
+
+    IfcGeom::ConversionResults shapes;
+    try {
+        shapes = kernel.convert(instance);
+    } catch (...) {
+        set_global_error("Failed to process shape for representation instance");
+        return nullptr;
+    }
+
+    const std::string rep_id = std::to_string(instance_id_or_zero(instance));
+    IfcGeom::Representation::BRep brep(kernel.settings(), instance->declaration().name(), rep_id, shapes);
+
+    std::unique_ptr<ifcopenshell_ifcgeom_created_shape_t> shape(new ifcopenshell_ifcgeom_created_shape_t());
+    const auto output = settings_value.get<ifcopenshell::geometry::settings::IteratorOutput>().get();
+    if (output == ifcopenshell::geometry::settings::TRIANGULATED) {
+        IfcGeom::Representation::Triangulation triangulation(brep);
+        shape->kind = IFCOPENSHELL_IFCGEOM_CREATED_SHAPE_TRIANGULATION;
+        shape->mesh.reset(make_mesh_snapshot_from_representation(triangulation, instance));
+    } else if (output == ifcopenshell::geometry::settings::SERIALIZED) {
+        IfcGeom::Representation::Serialization serialized(brep);
+        shape->kind = IFCOPENSHELL_IFCGEOM_CREATED_SHAPE_SERIALIZED;
+        shape->serialized.reset(make_serialized_snapshot_from_representation(serialized, instance));
+    } else {
+        IfcGeom::Representation::Serialization serialized(brep);
+        shape->kind = IFCOPENSHELL_IFCGEOM_CREATED_SHAPE_BREP;
+        shape->serialized.reset(make_serialized_snapshot_from_representation(serialized, instance));
+    }
+
+    return shape.release();
 }
 
 ifcopenshell_ifcgeom_iterator_t* create_iterator_without_filters(
@@ -654,6 +1172,20 @@ const char* ifcopenshell_ifcgeom_settings_last_error(
     return settings->last_error.c_str();
 }
 
+void* ifcopenshell_ifcgeom_settings_native(ifcopenshell_ifcgeom_settings_t* settings) {
+    if (settings == nullptr) {
+        return nullptr;
+    }
+    return static_cast<void*>(&settings->value);
+}
+
+const void* ifcopenshell_ifcgeom_settings_native_const(const ifcopenshell_ifcgeom_settings_t* settings) {
+    if (settings == nullptr) {
+        return nullptr;
+    }
+    return static_cast<const void*>(&settings->value);
+}
+
 void ifcopenshell_ifcgeom_string_list_destroy(ifcopenshell_ifcgeom_string_list_t* list) {
     delete list;
 }
@@ -700,6 +1232,307 @@ const char* ifcopenshell_ifcgeom_string_list_next(ifcopenshell_ifcgeom_string_li
         return nullptr;
     }
     return ifcopenshell_ifcgeom_string_list_get(list, list->cursor++);
+}
+
+ifcopenshell_ifcgeom_tree_t* ifcopenshell_ifcgeom_tree_create(void) {
+    std::unique_ptr<ifcopenshell_ifcgeom_tree_t> tree(new ifcopenshell_ifcgeom_tree_t());
+    tree->value.reset(new IfcGeom::tree());
+    clear_tree_error(tree.get());
+    return tree.release();
+}
+
+void ifcopenshell_ifcgeom_tree_destroy(ifcopenshell_ifcgeom_tree_t* tree) {
+    delete tree;
+}
+
+int ifcopenshell_ifcgeom_tree_add_file(
+    ifcopenshell_ifcgeom_tree_t* tree,
+    const ifcopenshell_ifcparse_file_t* file,
+    const ifcopenshell_ifcgeom_settings_t* settings
+) {
+    if (tree == nullptr || !tree->value) {
+        set_tree_error(tree, "IfcGeom tree handle is null");
+        return 0;
+    }
+
+    IfcParse::IfcFile* ifc_file = native_file_from_handle(file);
+    if (ifc_file == nullptr) {
+        set_tree_error(tree, parse_error_or_default("Unable to access native IfcFile from C ABI handle"));
+        return 0;
+    }
+
+    try {
+        auto settings_value = settings_value_or_default(settings);
+        tree->value->add_file(*ifc_file, settings_value);
+        clear_tree_error(tree);
+        return 1;
+    } catch (const std::exception& e) {
+        set_tree_error(tree, e.what());
+        return 0;
+    } catch (...) {
+        set_tree_error(tree, "Unknown error adding file to IfcGeom tree");
+        return 0;
+    }
+}
+
+ifcopenshell_ifcgeom_id_list_t* ifcopenshell_ifcgeom_tree_select_by_id(
+    ifcopenshell_ifcgeom_tree_t* tree,
+    const ifcopenshell_ifcparse_file_t* file,
+    int id,
+    int completely_within,
+    double extend
+) {
+    if (tree == nullptr || !tree->value) {
+        set_tree_error(tree, "IfcGeom tree handle is null");
+        return nullptr;
+    }
+
+    std::string error_message;
+    IfcUtil::IfcBaseEntity* entity = native_product_entity_from_file_and_id(file, id, error_message);
+    if (entity == nullptr) {
+        set_tree_error(tree, error_message);
+        return nullptr;
+    }
+
+    try {
+        auto selected = tree->value->select(entity, completely_within != 0, extend);
+        clear_tree_error(tree);
+        return make_id_list_from_entities(selected);
+    } catch (const std::exception& e) {
+        set_tree_error(tree, e.what());
+        return nullptr;
+    } catch (...) {
+        set_tree_error(tree, "Unknown error selecting IfcGeom tree by id");
+        return nullptr;
+    }
+}
+
+ifcopenshell_ifcgeom_id_list_t* ifcopenshell_ifcgeom_tree_select_box(
+    ifcopenshell_ifcgeom_tree_t* tree,
+    const double min_xyz[3],
+    const double max_xyz[3],
+    int completely_within
+) {
+    if (tree == nullptr || !tree->value) {
+        set_tree_error(tree, "IfcGeom tree handle is null");
+        return nullptr;
+    }
+    if (min_xyz == nullptr || max_xyz == nullptr) {
+        set_tree_error(tree, "Bounding box pointers must not be null");
+        return nullptr;
+    }
+
+    try {
+        Bnd_Box box;
+        box.Add(gp_Pnt(min_xyz[0], min_xyz[1], min_xyz[2]));
+        box.Add(gp_Pnt(max_xyz[0], max_xyz[1], max_xyz[2]));
+        auto selected = tree->value->select_box(box, completely_within != 0);
+        clear_tree_error(tree);
+        return make_id_list_from_entities(selected);
+    } catch (const std::exception& e) {
+        set_tree_error(tree, e.what());
+        return nullptr;
+    } catch (...) {
+        set_tree_error(tree, "Unknown error selecting IfcGeom tree by bounding box");
+        return nullptr;
+    }
+}
+
+ifcopenshell_ifcgeom_id_list_t* ifcopenshell_ifcgeom_tree_select_point(
+    ifcopenshell_ifcgeom_tree_t* tree,
+    const double xyz[3],
+    double extend
+) {
+    if (tree == nullptr || !tree->value) {
+        set_tree_error(tree, "IfcGeom tree handle is null");
+        return nullptr;
+    }
+    if (xyz == nullptr) {
+        set_tree_error(tree, "Point pointer must not be null");
+        return nullptr;
+    }
+
+    try {
+        gp_Pnt point(xyz[0], xyz[1], xyz[2]);
+        auto selected = tree->value->select(point, extend);
+        clear_tree_error(tree);
+        return make_id_list_from_entities(selected);
+    } catch (const std::exception& e) {
+        set_tree_error(tree, e.what());
+        return nullptr;
+    } catch (...) {
+        set_tree_error(tree, "Unknown error selecting IfcGeom tree by point");
+        return nullptr;
+    }
+}
+
+ifcopenshell_ifcgeom_clash_list_t* ifcopenshell_ifcgeom_tree_clash_intersection_many(
+    ifcopenshell_ifcgeom_tree_t* tree,
+    const ifcopenshell_ifcparse_file_t* file,
+    const int* set_a_ids,
+    size_t set_a_count,
+    const int* set_b_ids,
+    size_t set_b_count,
+    double tolerance,
+    int check_all
+) {
+    return tree_run_clash_query(
+        tree,
+        file,
+        set_a_ids,
+        set_a_count,
+        set_b_ids,
+        set_b_count,
+        [&](const std::vector<const IfcUtil::IfcBaseEntity*>& set_a, const std::vector<const IfcUtil::IfcBaseEntity*>& set_b) {
+            return tree->value->clash_intersection_many(set_a, set_b, tolerance, check_all != 0);
+        }
+    );
+}
+
+ifcopenshell_ifcgeom_clash_list_t* ifcopenshell_ifcgeom_tree_clash_collision_many(
+    ifcopenshell_ifcgeom_tree_t* tree,
+    const ifcopenshell_ifcparse_file_t* file,
+    const int* set_a_ids,
+    size_t set_a_count,
+    const int* set_b_ids,
+    size_t set_b_count,
+    int allow_touching
+) {
+    return tree_run_clash_query(
+        tree,
+        file,
+        set_a_ids,
+        set_a_count,
+        set_b_ids,
+        set_b_count,
+        [&](const std::vector<const IfcUtil::IfcBaseEntity*>& set_a, const std::vector<const IfcUtil::IfcBaseEntity*>& set_b) {
+            return tree->value->clash_collision_many(set_a, set_b, allow_touching != 0);
+        }
+    );
+}
+
+ifcopenshell_ifcgeom_clash_list_t* ifcopenshell_ifcgeom_tree_clash_clearance_many(
+    ifcopenshell_ifcgeom_tree_t* tree,
+    const ifcopenshell_ifcparse_file_t* file,
+    const int* set_a_ids,
+    size_t set_a_count,
+    const int* set_b_ids,
+    size_t set_b_count,
+    double clearance,
+    int check_all
+) {
+    return tree_run_clash_query(
+        tree,
+        file,
+        set_a_ids,
+        set_a_count,
+        set_b_ids,
+        set_b_count,
+        [&](const std::vector<const IfcUtil::IfcBaseEntity*>& set_a, const std::vector<const IfcUtil::IfcBaseEntity*>& set_b) {
+            return tree->value->clash_clearance_many(set_a, set_b, clearance, check_all != 0);
+        }
+    );
+}
+
+const char* ifcopenshell_ifcgeom_tree_last_error(const ifcopenshell_ifcgeom_tree_t* tree) {
+    if (tree == nullptr) {
+        return g_last_error.c_str();
+    }
+    return tree->last_error.c_str();
+}
+
+void ifcopenshell_ifcgeom_id_list_destroy(ifcopenshell_ifcgeom_id_list_t* list) {
+    delete list;
+}
+
+size_t ifcopenshell_ifcgeom_id_list_count(const ifcopenshell_ifcgeom_id_list_t* list) {
+    return list != nullptr ? list->values.size() : 0;
+}
+
+void ifcopenshell_ifcgeom_id_list_reset(ifcopenshell_ifcgeom_id_list_t* list) {
+    if (list == nullptr) {
+        return;
+    }
+    list->cursor = 0;
+    clear_id_list_error(list);
+}
+
+int ifcopenshell_ifcgeom_id_list_get(
+    const ifcopenshell_ifcgeom_id_list_t* list,
+    size_t index,
+    int* out_value
+) {
+    if (list == nullptr || out_value == nullptr) {
+        set_global_error("ID list handle or output pointer is null");
+        return 0;
+    }
+    if (index >= list->values.size()) {
+        return 0;
+    }
+    *out_value = list->values[index];
+    clear_global_error();
+    return 1;
+}
+
+int ifcopenshell_ifcgeom_id_list_next(
+    ifcopenshell_ifcgeom_id_list_t* list,
+    int* out_value
+) {
+    if (list == nullptr || out_value == nullptr) {
+        set_id_list_error(list, "ID list handle or output pointer is null");
+        return 0;
+    }
+    if (list->cursor >= list->values.size()) {
+        return 0;
+    }
+    *out_value = list->values[list->cursor++];
+    clear_id_list_error(list);
+    return 1;
+}
+
+void ifcopenshell_ifcgeom_clash_list_destroy(ifcopenshell_ifcgeom_clash_list_t* list) {
+    delete list;
+}
+
+size_t ifcopenshell_ifcgeom_clash_list_count(const ifcopenshell_ifcgeom_clash_list_t* list) {
+    return list != nullptr ? list->values.size() : 0;
+}
+
+void ifcopenshell_ifcgeom_clash_list_reset(ifcopenshell_ifcgeom_clash_list_t* list) {
+    if (list == nullptr) {
+        return;
+    }
+    list->cursor = 0;
+    clear_clash_list_error(list);
+}
+
+const ifcopenshell_ifcgeom_clash_t* ifcopenshell_ifcgeom_clash_list_get(
+    const ifcopenshell_ifcgeom_clash_list_t* list,
+    size_t index
+) {
+    if (list == nullptr) {
+        set_global_error("Clash list handle is null");
+        return nullptr;
+    }
+    if (index >= list->values.size()) {
+        return nullptr;
+    }
+    clear_global_error();
+    return &list->values[index];
+}
+
+const ifcopenshell_ifcgeom_clash_t* ifcopenshell_ifcgeom_clash_list_next(
+    ifcopenshell_ifcgeom_clash_list_t* list
+) {
+    if (list == nullptr) {
+        set_clash_list_error(list, "Clash list handle is null");
+        return nullptr;
+    }
+    if (list->cursor >= list->values.size()) {
+        return nullptr;
+    }
+    clear_clash_list_error(list);
+    return &list->values[list->cursor++];
 }
 
 ifcopenshell_ifcgeom_iterator_t* ifcopenshell_ifcgeom_iterator_create(
@@ -1057,6 +1890,174 @@ ifcopenshell_ifcgeom_mesh_t* ifcopenshell_ifcgeom_iterator_get_mesh(
     return make_mesh_snapshot(iterator, element);
 }
 
+ifcopenshell_ifcgeom_serialized_t* ifcopenshell_ifcgeom_iterator_get_serialized(
+    ifcopenshell_ifcgeom_iterator_t* iterator
+) {
+    const IfcGeom::Element* element = current_element(iterator);
+    if (element == nullptr) {
+        return nullptr;
+    }
+
+    return make_serialized_snapshot(iterator, element);
+}
+
+ifcopenshell_ifcgeom_mesh_t* ifcopenshell_ifcgeom_create_mesh_for_id(
+    const ifcopenshell_ifcparse_file_t* file,
+    const ifcopenshell_ifcgeom_settings_t* settings,
+    const char* geometry_library,
+    int id
+) {
+    if (id <= 0) {
+        set_global_error("Entity id must be a positive integer");
+        return nullptr;
+    }
+
+    const int ids[1] = {id};
+    std::unique_ptr<ifcopenshell_ifcgeom_iterator_t> iterator(
+        ifcopenshell_ifcgeom_iterator_create_with_id_filter(
+            file,
+            settings,
+            geometry_library,
+            ids,
+            1,
+            1,
+            1
+        )
+    );
+
+    if (!iterator) {
+        return nullptr;
+    }
+
+    if (ifcopenshell_ifcgeom_iterator_initialize(iterator.get()) == 0) {
+        if (iterator->last_error.empty()) {
+            set_iterator_error(iterator.get(), "No geometry generated for requested entity id");
+        }
+        return nullptr;
+    }
+
+    const IfcGeom::Element* element = current_element(iterator.get());
+    if (element == nullptr) {
+        return nullptr;
+    }
+
+    return make_mesh_snapshot(iterator.get(), element);
+}
+
+ifcopenshell_ifcgeom_created_shape_t* ifcopenshell_ifcgeom_create_shape_for_id(
+    const ifcopenshell_ifcparse_file_t* file,
+    const ifcopenshell_ifcgeom_settings_t* settings,
+    const char* geometry_library,
+    int id
+) {
+    if (id <= 0) {
+        set_global_error("Entity id must be a positive integer");
+        return nullptr;
+    }
+
+    std::string error_message;
+    IfcUtil::IfcBaseClass* instance = native_instance_from_file_and_id(file, id, error_message);
+    if (instance == nullptr) {
+        set_global_error(error_message);
+        return nullptr;
+    }
+
+    IfcParse::IfcFile* ifc_file = native_file_from_handle(file);
+    if (ifc_file == nullptr) {
+        set_global_error(parse_error_or_default("Unable to access native IfcFile from C ABI handle"));
+        return nullptr;
+    }
+
+    try {
+        if (instance->declaration().is("IfcProduct")) {
+            auto* shape = make_created_shape_from_product_id(file, settings, geometry_library, id);
+            if (shape != nullptr) {
+                clear_global_error();
+            }
+            return shape;
+        }
+
+        auto settings_value = settings_value_or_default(settings);
+        if (instance->declaration().is("IfcPlacement") || instance->declaration().is("IfcObjectPlacement")) {
+            auto* shape = make_created_shape_from_transform_instance(ifc_file, settings_value, geometry_library, instance);
+            if (shape != nullptr) {
+                clear_global_error();
+            }
+            return shape;
+        }
+
+        if (instance->declaration().is("IfcRepresentationItem") ||
+            instance->declaration().is("IfcRepresentation") ||
+            instance->declaration().is("IfcProfileDef")) {
+            auto* shape = make_created_shape_from_representation_instance(ifc_file, settings_value, geometry_library, instance);
+            if (shape != nullptr) {
+                clear_global_error();
+            }
+            return shape;
+        }
+
+        set_global_error("Entity type is not supported by create_shape");
+        return nullptr;
+    } catch (const std::exception& e) {
+        set_global_error(e.what());
+        return nullptr;
+    } catch (...) {
+        set_global_error("Unknown error creating shape for entity");
+        return nullptr;
+    }
+}
+
+const char* ifcopenshell_ifcgeom_map_shape_repr_for_id(
+    const ifcopenshell_ifcparse_file_t* file,
+    const ifcopenshell_ifcgeom_settings_t* settings,
+    int id
+) {
+    if (id <= 0) {
+        set_global_error("Entity id must be a positive integer");
+        return nullptr;
+    }
+
+    std::string error_message;
+    IfcUtil::IfcBaseClass* instance = native_instance_from_file_and_id(file, id, error_message);
+    if (instance == nullptr) {
+        set_global_error(error_message);
+        return nullptr;
+    }
+
+    IfcParse::IfcFile* ifc_file = native_file_from_handle(file);
+    if (ifc_file == nullptr) {
+        set_global_error(parse_error_or_default("Unable to access native IfcFile from C ABI handle"));
+        return nullptr;
+    }
+
+    try {
+        auto settings_value = settings_value_or_default(settings);
+        std::unique_ptr<ifcopenshell::geometry::abstract_mapping> mapping(
+            ifcopenshell::geometry::impl::mapping_implementations().construct(ifc_file, settings_value)
+        );
+        auto item = mapping->map(instance);
+        if (item == nullptr) {
+            set_global_error("map_shape returned null taxonomy item");
+            return nullptr;
+        }
+
+        std::ostringstream oss;
+        item->print(oss);
+        g_string_cache = oss.str();
+        if (!g_string_cache.empty() && g_string_cache.back() == '\n') {
+            g_string_cache.pop_back();
+        }
+        clear_global_error();
+        return g_string_cache.c_str();
+    } catch (const std::exception& e) {
+        set_global_error(e.what());
+        return nullptr;
+    } catch (...) {
+        set_global_error("Unknown error mapping shape to taxonomy");
+        return nullptr;
+    }
+}
+
 const char* ifcopenshell_ifcgeom_iterator_log(ifcopenshell_ifcgeom_iterator_t* iterator) {
     if (iterator == nullptr || !iterator->value) {
         set_iterator_error(iterator, "IfcGeom iterator handle is null");
@@ -1195,6 +2196,113 @@ size_t ifcopenshell_ifcgeom_mesh_transform_count(const ifcopenshell_ifcgeom_mesh
 
 const double* ifcopenshell_ifcgeom_mesh_transform_data(const ifcopenshell_ifcgeom_mesh_t* mesh) {
     return mesh != nullptr ? vector_data_or_null(mesh->transform) : nullptr;
+}
+
+void ifcopenshell_ifcgeom_serialized_destroy(ifcopenshell_ifcgeom_serialized_t* serialized) {
+    delete serialized;
+}
+
+int ifcopenshell_ifcgeom_serialized_id(const ifcopenshell_ifcgeom_serialized_t* serialized) {
+    return serialized != nullptr ? serialized->id : 0;
+}
+
+int ifcopenshell_ifcgeom_serialized_parent_id(const ifcopenshell_ifcgeom_serialized_t* serialized) {
+    return serialized != nullptr ? serialized->parent_id : -1;
+}
+
+const char* ifcopenshell_ifcgeom_serialized_name(const ifcopenshell_ifcgeom_serialized_t* serialized) {
+    return serialized != nullptr ? serialized->name.c_str() : nullptr;
+}
+
+const char* ifcopenshell_ifcgeom_serialized_type(const ifcopenshell_ifcgeom_serialized_t* serialized) {
+    return serialized != nullptr ? serialized->type.c_str() : nullptr;
+}
+
+const char* ifcopenshell_ifcgeom_serialized_guid(const ifcopenshell_ifcgeom_serialized_t* serialized) {
+    return serialized != nullptr ? serialized->guid.c_str() : nullptr;
+}
+
+const char* ifcopenshell_ifcgeom_serialized_context(const ifcopenshell_ifcgeom_serialized_t* serialized) {
+    return serialized != nullptr ? serialized->context.c_str() : nullptr;
+}
+
+const char* ifcopenshell_ifcgeom_serialized_unique_id(const ifcopenshell_ifcgeom_serialized_t* serialized) {
+    return serialized != nullptr ? serialized->unique_id.c_str() : nullptr;
+}
+
+const char* ifcopenshell_ifcgeom_serialized_brep_data(const ifcopenshell_ifcgeom_serialized_t* serialized) {
+    return serialized != nullptr ? serialized->brep_data.c_str() : nullptr;
+}
+
+size_t ifcopenshell_ifcgeom_serialized_surface_styles_count(const ifcopenshell_ifcgeom_serialized_t* serialized) {
+    return serialized != nullptr ? serialized->surface_styles.size() : 0;
+}
+
+const double* ifcopenshell_ifcgeom_serialized_surface_styles_data(const ifcopenshell_ifcgeom_serialized_t* serialized) {
+    return serialized != nullptr ? vector_data_or_null(serialized->surface_styles) : nullptr;
+}
+
+size_t ifcopenshell_ifcgeom_serialized_surface_style_ids_count(const ifcopenshell_ifcgeom_serialized_t* serialized) {
+    return serialized != nullptr ? serialized->surface_style_ids.size() : 0;
+}
+
+const int* ifcopenshell_ifcgeom_serialized_surface_style_ids_data(const ifcopenshell_ifcgeom_serialized_t* serialized) {
+    return serialized != nullptr ? vector_data_or_null(serialized->surface_style_ids) : nullptr;
+}
+
+size_t ifcopenshell_ifcgeom_serialized_transform_count(const ifcopenshell_ifcgeom_serialized_t* serialized) {
+    return serialized != nullptr ? serialized->transform.size() : 0;
+}
+
+const double* ifcopenshell_ifcgeom_serialized_transform_data(const ifcopenshell_ifcgeom_serialized_t* serialized) {
+    return serialized != nullptr ? vector_data_or_null(serialized->transform) : nullptr;
+}
+
+void ifcopenshell_ifcgeom_created_shape_destroy(ifcopenshell_ifcgeom_created_shape_t* shape) {
+    delete shape;
+}
+
+ifcopenshell_ifcgeom_created_shape_kind_t ifcopenshell_ifcgeom_created_shape_kind(
+    const ifcopenshell_ifcgeom_created_shape_t* shape
+) {
+    return shape != nullptr ? shape->kind : IFCOPENSHELL_IFCGEOM_CREATED_SHAPE_NONE;
+}
+
+const ifcopenshell_ifcgeom_mesh_t* ifcopenshell_ifcgeom_created_shape_mesh(
+    const ifcopenshell_ifcgeom_created_shape_t* shape
+) {
+    if (shape == nullptr || !shape->mesh) {
+        return nullptr;
+    }
+    return shape->mesh.get();
+}
+
+const ifcopenshell_ifcgeom_serialized_t* ifcopenshell_ifcgeom_created_shape_serialized(
+    const ifcopenshell_ifcgeom_created_shape_t* shape
+) {
+    if (shape == nullptr || !shape->serialized) {
+        return nullptr;
+    }
+    return shape->serialized.get();
+}
+
+int ifcopenshell_ifcgeom_created_shape_transform(
+    const ifcopenshell_ifcgeom_created_shape_t* shape,
+    double out_matrix_16[16]
+) {
+    if (shape == nullptr || out_matrix_16 == nullptr) {
+        set_global_error("Created shape handle or output pointer is null");
+        return 0;
+    }
+    if (shape->kind != IFCOPENSHELL_IFCGEOM_CREATED_SHAPE_TRANSFORM) {
+        set_global_error("Created shape is not a transform");
+        return 0;
+    }
+    for (size_t i = 0; i < 16; ++i) {
+        out_matrix_16[i] = shape->transform[i];
+    }
+    clear_global_error();
+    return 1;
 }
 
 const char* ifcopenshell_ifcgeom_last_error(void) {

@@ -25,6 +25,7 @@ pub fn addIfcParseLibrary(
 
     lib.addIncludePath(b.path("src/ifcparse"));
     deps.addBoostIncludesFromDependency(b, lib, target, optimize);
+    deps.linkBoostLibraryFromDependency(b, lib, target, optimize);
 
     var cpp_flags = std.ArrayList([]const u8).empty;
     defer cpp_flags.deinit(b.allocator);

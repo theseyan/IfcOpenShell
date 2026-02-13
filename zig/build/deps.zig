@@ -7,9 +7,14 @@ pub fn addBoostIncludesFromDependency(
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
 ) void {
+    // Overlay for Boost.Regex trait lookup that avoids a Zig C++ local-static
+    // initialization bug while keeping Boost.Regex itself in use.
+    compile.addIncludePath(b.path("zig/patches/boost"));
+
     const boost_dep = b.dependency("boost", .{
         .target = target,
         .optimize = optimize,
+        .regex = true,
     });
     const boost_artifact = boost_dep.artifact("boost");
 
@@ -37,6 +42,21 @@ pub fn addBoostIncludesFromDependency(
     // IfcGeom requires <boost/foreach.hpp>.
     const boost_foreach_dep = b.dependency("boost_foreach", .{});
     compile.addIncludePath(boost_foreach_dep.path("include"));
+}
+
+pub fn linkBoostLibraryFromDependency(
+    b: *std.Build,
+    compile: *std.Build.Step.Compile,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+) void {
+    const boost_dep = b.dependency("boost", .{
+        .target = target,
+        .optimize = optimize,
+        .regex = true,
+    });
+    const boost_artifact = boost_dep.artifact("boost");
+    compile.linkLibrary(boost_artifact);
 }
 
 pub fn addIfcGeomIncludePaths(

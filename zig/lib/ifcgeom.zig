@@ -18,6 +18,14 @@ pub const ElementKind = enum(c.ifcopenshell_ifcgeom_element_kind_t) {
     serialized = c.IFCOPENSHELL_IFCGEOM_ELEMENT_SERIALIZED,
 };
 
+pub const CreateShapeKind = enum(c.ifcopenshell_ifcgeom_created_shape_kind_t) {
+    none = c.IFCOPENSHELL_IFCGEOM_CREATED_SHAPE_NONE,
+    triangulation = c.IFCOPENSHELL_IFCGEOM_CREATED_SHAPE_TRIANGULATION,
+    brep = c.IFCOPENSHELL_IFCGEOM_CREATED_SHAPE_BREP,
+    serialized = c.IFCOPENSHELL_IFCGEOM_CREATED_SHAPE_SERIALIZED,
+    transform = c.IFCOPENSHELL_IFCGEOM_CREATED_SHAPE_TRANSFORM,
+};
+
 pub const FilterMode = enum {
     include,
     exclude,
@@ -38,6 +46,181 @@ fn mapBoolResult(ok: c_int) QueryError!void {
     if (ok != 0) return;
     if (lastError().len > 0) return error.QueryFailed;
     return error.QueryFailed;
+}
+
+pub fn createMeshById(
+    file: *ifcparse.File,
+    settings: *const Settings,
+    allocator: std.mem.Allocator,
+    id: i32,
+    options: IteratorOptions,
+) QueryError!Mesh {
+    if (file.handle == null or settings.handle == null) return error.InvalidArgument;
+    if (id <= 0) return error.InvalidArgument;
+
+    const lib_z = allocator.dupeZ(u8, options.geometry_library) catch return error.OutOfMemory;
+    defer allocator.free(lib_z);
+
+    const file_handle: *const c.ifcopenshell_ifcparse_file_t = @ptrCast(file.handle.?);
+    const raw_mesh = c.ifcopenshell_ifcgeom_create_mesh_for_id(
+        file_handle,
+        settings.handle.?,
+        lib_z.ptr,
+        @intCast(id),
+    );
+    if (raw_mesh == null) return error.QueryFailed;
+    defer c.ifcopenshell_ifcgeom_mesh_destroy(raw_mesh.?);
+
+    return Mesh.fromRaw(allocator, raw_mesh.?);
+}
+
+pub fn createMeshForEntity(
+    file: *ifcparse.File,
+    settings: *const Settings,
+    allocator: std.mem.Allocator,
+    entity: ifcparse.EntityRef,
+    options: IteratorOptions,
+) QueryError!Mesh {
+    const raw_id = entity.id();
+    if (raw_id == 0 or raw_id > std.math.maxInt(i32)) return error.InvalidArgument;
+    const entity_id: i32 = @intCast(raw_id);
+    return createMeshById(file, settings, allocator, entity_id, options);
+}
+
+pub fn createShapeById(
+    file: *ifcparse.File,
+    settings: *const Settings,
+    allocator: std.mem.Allocator,
+    id: i32,
+    options: IteratorOptions,
+) QueryError!Shape {
+    if (file.handle == null or settings.handle == null) return error.InvalidArgument;
+    if (id <= 0) return error.InvalidArgument;
+
+    const ids = [_]i32{id};
+    var iterator = try Iterator.initWithIdFilter(
+        file,
+        settings,
+        allocator,
+        options,
+        ids[0..],
+        .include,
+    );
+    defer iterator.deinit();
+
+    if (!(try iterator.initialize())) return error.QueryFailed;
+
+    return switch (iterator.currentKind()) {
+        .triangulation => .{ .triangulation = try iterator.currentMesh(allocator) },
+        .serialized => .{ .serialized = try iterator.currentSerialized(allocator) },
+        .brep => .{ .brep = try iterator.currentSerialized(allocator) },
+        .none => error.QueryFailed,
+    };
+}
+
+pub fn createShapeForEntity(
+    file: *ifcparse.File,
+    settings: *const Settings,
+    allocator: std.mem.Allocator,
+    entity: ifcparse.EntityRef,
+    options: IteratorOptions,
+) QueryError!Shape {
+    const raw_id = entity.id();
+    if (raw_id == 0 or raw_id > std.math.maxInt(i32)) return error.InvalidArgument;
+    const entity_id: i32 = @intCast(raw_id);
+    return createShapeById(file, settings, allocator, entity_id, options);
+}
+
+pub fn createShapeAnyById(
+    file: *ifcparse.File,
+    settings: *const Settings,
+    allocator: std.mem.Allocator,
+    id: i32,
+    options: IteratorOptions,
+) QueryError!AnyShape {
+    if (file.handle == null or settings.handle == null) return error.InvalidArgument;
+    if (id <= 0) return error.InvalidArgument;
+
+    const lib_z = allocator.dupeZ(u8, options.geometry_library) catch return error.OutOfMemory;
+    defer allocator.free(lib_z);
+    const file_handle: *const c.ifcopenshell_ifcparse_file_t = @ptrCast(file.handle.?);
+    const raw_shape = c.ifcopenshell_ifcgeom_create_shape_for_id(
+        file_handle,
+        settings.handle.?,
+        lib_z.ptr,
+        @intCast(id),
+    );
+    if (raw_shape == null) return error.QueryFailed;
+    defer c.ifcopenshell_ifcgeom_created_shape_destroy(raw_shape.?);
+
+    const kind: CreateShapeKind = @enumFromInt(c.ifcopenshell_ifcgeom_created_shape_kind(raw_shape.?));
+    return switch (kind) {
+        .triangulation => blk: {
+            const raw_mesh = c.ifcopenshell_ifcgeom_created_shape_mesh(raw_shape.?);
+            if (raw_mesh == null) return error.QueryFailed;
+            break :blk .{ .triangulation = try Mesh.fromRaw(allocator, raw_mesh.?) };
+        },
+        .serialized => blk: {
+            const raw_serialized = c.ifcopenshell_ifcgeom_created_shape_serialized(raw_shape.?);
+            if (raw_serialized == null) return error.QueryFailed;
+            break :blk .{ .serialized = try Serialized.fromRaw(allocator, raw_serialized.?) };
+        },
+        .brep => blk: {
+            const raw_serialized = c.ifcopenshell_ifcgeom_created_shape_serialized(raw_shape.?);
+            if (raw_serialized == null) return error.QueryFailed;
+            break :blk .{ .brep = try Serialized.fromRaw(allocator, raw_serialized.?) };
+        },
+        .transform => blk: {
+            var out: [16]f64 = .{0.0} ** 16;
+            if (c.ifcopenshell_ifcgeom_created_shape_transform(raw_shape.?, &out) == 0) return error.QueryFailed;
+            break :blk .{ .transform = out };
+        },
+        .none => error.QueryFailed,
+    };
+}
+
+pub fn createShapeAnyForEntity(
+    file: *ifcparse.File,
+    settings: *const Settings,
+    allocator: std.mem.Allocator,
+    entity: ifcparse.EntityRef,
+    options: IteratorOptions,
+) QueryError!AnyShape {
+    const raw_id = entity.id();
+    if (raw_id == 0 or raw_id > std.math.maxInt(i32)) return error.InvalidArgument;
+    const entity_id: i32 = @intCast(raw_id);
+    return createShapeAnyById(file, settings, allocator, entity_id, options);
+}
+
+pub fn mapShapeReprById(
+    file: *ifcparse.File,
+    settings: *const Settings,
+    allocator: std.mem.Allocator,
+    id: i32,
+) QueryError![]u8 {
+    if (file.handle == null or settings.handle == null) return error.InvalidArgument;
+    if (id <= 0) return error.InvalidArgument;
+
+    const file_handle: *const c.ifcopenshell_ifcparse_file_t = @ptrCast(file.handle.?);
+    const raw = c.ifcopenshell_ifcgeom_map_shape_repr_for_id(
+        file_handle,
+        settings.handle.?,
+        @intCast(id),
+    );
+    if (raw == null) return error.QueryFailed;
+    return allocator.dupe(u8, std.mem.span(raw.?)) catch error.OutOfMemory;
+}
+
+pub fn mapShapeReprForEntity(
+    file: *ifcparse.File,
+    settings: *const Settings,
+    allocator: std.mem.Allocator,
+    entity: ifcparse.EntityRef,
+) QueryError![]u8 {
+    const raw_id = entity.id();
+    if (raw_id == 0 or raw_id > std.math.maxInt(i32)) return error.InvalidArgument;
+    const entity_id: i32 = @intCast(raw_id);
+    return mapShapeReprById(file, settings, allocator, entity_id);
 }
 
 fn toCStringArray(
@@ -62,6 +245,26 @@ fn toCStringArray(
     }
 
     return .{ .z_strings = z_strings, .ptrs = ptrs };
+}
+
+pub const TreeClash = struct {
+    clash_type: i32,
+    a_id: i32,
+    b_id: i32,
+    distance: f64,
+    p1: [3]f64,
+    p2: [3]f64,
+};
+
+fn treeClashFromRaw(raw: *const c.ifcopenshell_ifcgeom_clash_t) TreeClash {
+    return .{
+        .clash_type = @intCast(raw.clash_type),
+        .a_id = @intCast(raw.a_id),
+        .b_id = @intCast(raw.b_id),
+        .distance = raw.distance,
+        .p1 = .{ raw.p1[0], raw.p1[1], raw.p1[2] },
+        .p2 = .{ raw.p2[0], raw.p2[1], raw.p2[2] },
+    };
 }
 
 pub const StringList = struct {
@@ -109,6 +312,282 @@ pub const StringList = struct {
             return self.list.next();
         }
     };
+};
+
+pub const IdList = struct {
+    handle: ?*c.ifcopenshell_ifcgeom_id_list_t,
+
+    pub fn deinit(self: *IdList) void {
+        if (self.handle) |h| {
+            c.ifcopenshell_ifcgeom_id_list_destroy(h);
+            self.handle = null;
+        }
+    }
+
+    pub fn len(self: IdList) usize {
+        if (self.handle == null) return 0;
+        return c.ifcopenshell_ifcgeom_id_list_count(self.handle.?);
+    }
+
+    pub fn reset(self: *IdList) void {
+        if (self.handle == null) return;
+        c.ifcopenshell_ifcgeom_id_list_reset(self.handle.?);
+    }
+
+    pub fn at(self: IdList, index: usize) ?i32 {
+        if (self.handle == null) return null;
+        var out: c_int = 0;
+        if (c.ifcopenshell_ifcgeom_id_list_get(self.handle.?, index, &out) == 0) return null;
+        return @intCast(out);
+    }
+
+    pub fn next(self: *IdList) ?i32 {
+        if (self.handle == null) return null;
+        var out: c_int = 0;
+        if (c.ifcopenshell_ifcgeom_id_list_next(self.handle.?, &out) == 0) return null;
+        return @intCast(out);
+    }
+
+    pub fn iterator(self: *IdList) IdIterator {
+        return .{ .list = self };
+    }
+
+    pub fn toOwnedSlice(self: IdList, allocator: std.mem.Allocator) QueryError![]i32 {
+        const count = self.len();
+        const result = allocator.alloc(i32, count) catch return error.OutOfMemory;
+        for (0..count) |i| {
+            result[i] = self.at(i) orelse return error.QueryFailed;
+        }
+        return result;
+    }
+
+    pub const IdIterator = struct {
+        list: *IdList,
+
+        pub fn next(self: *IdIterator) ?i32 {
+            return self.list.next();
+        }
+    };
+};
+
+pub const ClashList = struct {
+    handle: ?*c.ifcopenshell_ifcgeom_clash_list_t,
+
+    pub fn deinit(self: *ClashList) void {
+        if (self.handle) |h| {
+            c.ifcopenshell_ifcgeom_clash_list_destroy(h);
+            self.handle = null;
+        }
+    }
+
+    pub fn len(self: ClashList) usize {
+        if (self.handle == null) return 0;
+        return c.ifcopenshell_ifcgeom_clash_list_count(self.handle.?);
+    }
+
+    pub fn reset(self: *ClashList) void {
+        if (self.handle == null) return;
+        c.ifcopenshell_ifcgeom_clash_list_reset(self.handle.?);
+    }
+
+    pub fn at(self: ClashList, index: usize) ?TreeClash {
+        if (self.handle == null) return null;
+        const raw = c.ifcopenshell_ifcgeom_clash_list_get(self.handle.?, index);
+        if (raw == null) return null;
+        return treeClashFromRaw(raw.?);
+    }
+
+    pub fn next(self: *ClashList) ?TreeClash {
+        if (self.handle == null) return null;
+        const raw = c.ifcopenshell_ifcgeom_clash_list_next(self.handle.?);
+        if (raw == null) return null;
+        return treeClashFromRaw(raw.?);
+    }
+
+    pub fn iterator(self: *ClashList) ClashIterator {
+        return .{ .list = self };
+    }
+
+    pub fn toOwnedSlice(self: ClashList, allocator: std.mem.Allocator) QueryError![]TreeClash {
+        const count = self.len();
+        const result = allocator.alloc(TreeClash, count) catch return error.OutOfMemory;
+        for (0..count) |i| {
+            result[i] = self.at(i) orelse return error.QueryFailed;
+        }
+        return result;
+    }
+
+    pub const ClashIterator = struct {
+        list: *ClashList,
+
+        pub fn next(self: *ClashIterator) ?TreeClash {
+            return self.list.next();
+        }
+    };
+};
+
+pub const Tree = struct {
+    handle: ?*c.ifcopenshell_ifcgeom_tree_t,
+
+    pub fn init() QueryError!Tree {
+        const raw = c.ifcopenshell_ifcgeom_tree_create();
+        if (raw == null) return error.QueryFailed;
+        return .{ .handle = raw };
+    }
+
+    pub fn deinit(self: *Tree) void {
+        if (self.handle) |h| {
+            c.ifcopenshell_ifcgeom_tree_destroy(h);
+            self.handle = null;
+        }
+    }
+
+    pub fn addFile(self: *Tree, file: *ifcparse.File, settings: *const Settings) QueryError!void {
+        if (self.handle == null or file.handle == null or settings.handle == null) return error.InvalidArgument;
+        const file_handle: *const c.ifcopenshell_ifcparse_file_t = @ptrCast(file.handle.?);
+        if (c.ifcopenshell_ifcgeom_tree_add_file(self.handle.?, file_handle, settings.handle.?) == 0) {
+            return error.QueryFailed;
+        }
+    }
+
+    pub fn selectById(
+        self: *Tree,
+        file: *ifcparse.File,
+        id: i32,
+        completely_within: bool,
+        extend: f64,
+    ) QueryError!IdList {
+        if (self.handle == null or file.handle == null or id <= 0) return error.InvalidArgument;
+        const file_handle: *const c.ifcopenshell_ifcparse_file_t = @ptrCast(file.handle.?);
+        const raw = c.ifcopenshell_ifcgeom_tree_select_by_id(
+            self.handle.?,
+            file_handle,
+            @intCast(id),
+            if (completely_within) 1 else 0,
+            extend,
+        );
+        if (raw == null) return error.QueryFailed;
+        return .{ .handle = raw };
+    }
+
+    pub fn selectByEntity(
+        self: *Tree,
+        file: *ifcparse.File,
+        entity: ifcparse.EntityRef,
+        completely_within: bool,
+        extend: f64,
+    ) QueryError!IdList {
+        const raw_id = entity.id();
+        if (raw_id == 0 or raw_id > std.math.maxInt(i32)) return error.InvalidArgument;
+        return self.selectById(file, @intCast(raw_id), completely_within, extend);
+    }
+
+    pub fn selectBox(
+        self: *Tree,
+        min_xyz: [3]f64,
+        max_xyz: [3]f64,
+        completely_within: bool,
+    ) QueryError!IdList {
+        if (self.handle == null) return error.InvalidArgument;
+        const raw = c.ifcopenshell_ifcgeom_tree_select_box(
+            self.handle.?,
+            &min_xyz,
+            &max_xyz,
+            if (completely_within) 1 else 0,
+        );
+        if (raw == null) return error.QueryFailed;
+        return .{ .handle = raw };
+    }
+
+    pub fn selectPoint(self: *Tree, xyz: [3]f64, extend: f64) QueryError!IdList {
+        if (self.handle == null) return error.InvalidArgument;
+        const raw = c.ifcopenshell_ifcgeom_tree_select_point(self.handle.?, &xyz, extend);
+        if (raw == null) return error.QueryFailed;
+        return .{ .handle = raw };
+    }
+
+    pub fn clashIntersectionMany(
+        self: *Tree,
+        file: *ifcparse.File,
+        set_a_ids: []const i32,
+        set_b_ids: []const i32,
+        tolerance: f64,
+        check_all: bool,
+    ) QueryError!ClashList {
+        if (self.handle == null or file.handle == null) return error.InvalidArgument;
+        const file_handle: *const c.ifcopenshell_ifcparse_file_t = @ptrCast(file.handle.?);
+        const set_a_ptr: ?[*]const c_int = if (set_a_ids.len == 0) null else @ptrCast(set_a_ids.ptr);
+        const set_b_ptr: ?[*]const c_int = if (set_b_ids.len == 0) null else @ptrCast(set_b_ids.ptr);
+        const raw = c.ifcopenshell_ifcgeom_tree_clash_intersection_many(
+            self.handle.?,
+            file_handle,
+            set_a_ptr,
+            set_a_ids.len,
+            set_b_ptr,
+            set_b_ids.len,
+            tolerance,
+            if (check_all) 1 else 0,
+        );
+        if (raw == null) return error.QueryFailed;
+        return .{ .handle = raw };
+    }
+
+    pub fn clashCollisionMany(
+        self: *Tree,
+        file: *ifcparse.File,
+        set_a_ids: []const i32,
+        set_b_ids: []const i32,
+        allow_touching: bool,
+    ) QueryError!ClashList {
+        if (self.handle == null or file.handle == null) return error.InvalidArgument;
+        const file_handle: *const c.ifcopenshell_ifcparse_file_t = @ptrCast(file.handle.?);
+        const set_a_ptr: ?[*]const c_int = if (set_a_ids.len == 0) null else @ptrCast(set_a_ids.ptr);
+        const set_b_ptr: ?[*]const c_int = if (set_b_ids.len == 0) null else @ptrCast(set_b_ids.ptr);
+        const raw = c.ifcopenshell_ifcgeom_tree_clash_collision_many(
+            self.handle.?,
+            file_handle,
+            set_a_ptr,
+            set_a_ids.len,
+            set_b_ptr,
+            set_b_ids.len,
+            if (allow_touching) 1 else 0,
+        );
+        if (raw == null) return error.QueryFailed;
+        return .{ .handle = raw };
+    }
+
+    pub fn clashClearanceMany(
+        self: *Tree,
+        file: *ifcparse.File,
+        set_a_ids: []const i32,
+        set_b_ids: []const i32,
+        clearance: f64,
+        check_all: bool,
+    ) QueryError!ClashList {
+        if (self.handle == null or file.handle == null) return error.InvalidArgument;
+        const file_handle: *const c.ifcopenshell_ifcparse_file_t = @ptrCast(file.handle.?);
+        const set_a_ptr: ?[*]const c_int = if (set_a_ids.len == 0) null else @ptrCast(set_a_ids.ptr);
+        const set_b_ptr: ?[*]const c_int = if (set_b_ids.len == 0) null else @ptrCast(set_b_ids.ptr);
+        const raw = c.ifcopenshell_ifcgeom_tree_clash_clearance_many(
+            self.handle.?,
+            file_handle,
+            set_a_ptr,
+            set_a_ids.len,
+            set_b_ptr,
+            set_b_ids.len,
+            clearance,
+            if (check_all) 1 else 0,
+        );
+        if (raw == null) return error.QueryFailed;
+        return .{ .handle = raw };
+    }
+
+    pub fn lastError(self: *const Tree) []const u8 {
+        if (self.handle == null) return "";
+        const raw = c.ifcopenshell_ifcgeom_tree_last_error(self.handle.?);
+        if (raw == null) return "";
+        return std.mem.span(raw);
+    }
 };
 
 pub const Settings = struct {
@@ -510,6 +989,16 @@ pub const Iterator = struct {
         return Mesh.fromRaw(allocator, raw_mesh.?);
     }
 
+    pub fn currentSerialized(self: *Iterator, allocator: std.mem.Allocator) QueryError!Serialized {
+        if (self.handle == null) return error.InvalidArgument;
+
+        const raw_serialized = c.ifcopenshell_ifcgeom_iterator_get_serialized(self.handle.?);
+        if (raw_serialized == null) return error.QueryFailed;
+        defer c.ifcopenshell_ifcgeom_serialized_destroy(raw_serialized.?);
+
+        return Serialized.fromRaw(allocator, raw_serialized.?);
+    }
+
     pub fn log(self: *Iterator) QueryError![]const u8 {
         if (self.handle == null) return error.InvalidArgument;
         const raw = c.ifcopenshell_ifcgeom_iterator_log(self.handle.?);
@@ -620,6 +1109,102 @@ pub const Mesh = struct {
         allocator.free(self.colors);
         allocator.free(self.transform);
 
+        self.* = undefined;
+    }
+};
+
+pub const Serialized = struct {
+    id: i32,
+    parent_id: i32,
+    name: []u8,
+    type_name: []u8,
+    guid: []u8,
+    context: []u8,
+    unique_id: []u8,
+
+    brep_data: []u8,
+    surface_styles: []f64,
+    surface_style_ids: []i32,
+    transform: []f64,
+
+    fn fromRaw(allocator: std.mem.Allocator, raw: *const c.ifcopenshell_ifcgeom_serialized_t) QueryError!Serialized {
+        return .{
+            .id = @intCast(c.ifcopenshell_ifcgeom_serialized_id(raw)),
+            .parent_id = @intCast(c.ifcopenshell_ifcgeom_serialized_parent_id(raw)),
+            .name = try dupRawOrEmpty(allocator, c.ifcopenshell_ifcgeom_serialized_name(raw)),
+            .type_name = try dupRawOrEmpty(allocator, c.ifcopenshell_ifcgeom_serialized_type(raw)),
+            .guid = try dupRawOrEmpty(allocator, c.ifcopenshell_ifcgeom_serialized_guid(raw)),
+            .context = try dupRawOrEmpty(allocator, c.ifcopenshell_ifcgeom_serialized_context(raw)),
+            .unique_id = try dupRawOrEmpty(allocator, c.ifcopenshell_ifcgeom_serialized_unique_id(raw)),
+            .brep_data = try dupRawOrEmpty(allocator, c.ifcopenshell_ifcgeom_serialized_brep_data(raw)),
+            .surface_styles = try copyFromRawSlice(
+                f64,
+                allocator,
+                c.ifcopenshell_ifcgeom_serialized_surface_styles_data(raw),
+                c.ifcopenshell_ifcgeom_serialized_surface_styles_count(raw),
+            ),
+            .surface_style_ids = try copyIntFromRawSlice(
+                allocator,
+                c.ifcopenshell_ifcgeom_serialized_surface_style_ids_data(raw),
+                c.ifcopenshell_ifcgeom_serialized_surface_style_ids_count(raw),
+            ),
+            .transform = try copyFromRawSlice(
+                f64,
+                allocator,
+                c.ifcopenshell_ifcgeom_serialized_transform_data(raw),
+                c.ifcopenshell_ifcgeom_serialized_transform_count(raw),
+            ),
+        };
+    }
+
+    pub fn deinit(self: *Serialized, allocator: std.mem.Allocator) void {
+        allocator.free(self.name);
+        allocator.free(self.type_name);
+        allocator.free(self.guid);
+        allocator.free(self.context);
+        allocator.free(self.unique_id);
+
+        allocator.free(self.brep_data);
+        allocator.free(self.surface_styles);
+        allocator.free(self.surface_style_ids);
+        allocator.free(self.transform);
+
+        self.* = undefined;
+    }
+};
+
+pub const Shape = union(ElementKind) {
+    none: void,
+    triangulation: Mesh,
+    brep: Serialized,
+    serialized: Serialized,
+
+    pub fn deinit(self: *Shape, allocator: std.mem.Allocator) void {
+        switch (self.*) {
+            .none => {},
+            .triangulation => |*mesh| mesh.deinit(allocator),
+            .brep => |*serialized| serialized.deinit(allocator),
+            .serialized => |*serialized| serialized.deinit(allocator),
+        }
+        self.* = undefined;
+    }
+};
+
+pub const AnyShape = union(CreateShapeKind) {
+    none: void,
+    triangulation: Mesh,
+    brep: Serialized,
+    serialized: Serialized,
+    transform: [16]f64,
+
+    pub fn deinit(self: *AnyShape, allocator: std.mem.Allocator) void {
+        switch (self.*) {
+            .none => {},
+            .triangulation => |*mesh| mesh.deinit(allocator),
+            .brep => |*serialized| serialized.deinit(allocator),
+            .serialized => |*serialized| serialized.deinit(allocator),
+            .transform => {},
+        }
         self.* = undefined;
     }
 };

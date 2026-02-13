@@ -6,6 +6,7 @@ const ifcparse_capi_build = @import("zig/build/ifcparse_capi.zig");
 const ifcgeom_build = @import("zig/build/ifcgeom.zig");
 const ifcgeom_capi_build = @import("zig/build/ifcgeom_capi.zig");
 const serializers_build = @import("zig/build/serializers.zig");
+const serializers_capi_build = @import("zig/build/serializers_capi.zig");
 
 const default_occ_libs =
     "TKernel;TKMath;TKBRep;TKGeomBase;TKGeomAlgo;TKG3d;TKG2d;TKShHealing;TKTopAlgo;TKMesh;TKPrim;TKBool;TKBO;TKFillet;TKXSBase;TKOffset;TKHLR;TKBin;TKDESTEP;TKDEIGES";
@@ -29,6 +30,7 @@ pub fn build(b: *std.Build) void {
     const eigen_include_override = b.option([]const u8, "eigen_include_dir", "Path to Eigen headers (directory containing Eigen/Dense)");
     const enable_gltf_serializer = b.option(bool, "serializers_gltf", "Enable GltfSerializer support in Serializers (requires nlohmann_json)") orelse true;
     const enable_json_serializer = b.option(bool, "serializers_json", "Enable JsonSerializer support in Serializers (requires WITH_GLTF + nlohmann_json)") orelse true;
+    const enable_with_gltf = enable_gltf_serializer or enable_json_serializer;
 
     var schemas = std.ArrayList([]const u8).empty;
     defer schemas.deinit(b.allocator);
@@ -46,7 +48,6 @@ pub fn build(b: *std.Build) void {
         b,
         target,
         optimize,
-        ifcparse_lib,
     );
     const ifcparse_capi_install = b.addInstallArtifact(ifcparse_capi_lib, .{});
     b.getInstallStep().dependOn(&ifcparse_capi_install.step);
@@ -80,26 +81,12 @@ pub fn build(b: *std.Build) void {
         optimize,
         occ_include_override,
         eigen_include_override,
-        ifcgeom_lib,
-        ifcparse_capi_lib,
     );
     const ifcgeom_capi_install = b.addInstallArtifact(ifcgeom_capi_lib, .{});
     b.getInstallStep().dependOn(&ifcgeom_capi_install.step);
 
     const ifcgeom_capi_step = b.step("ifcgeom-capi", "Build C ABI shim for IfcGeom used by Zig bindings");
     ifcgeom_capi_step.dependOn(&ifcgeom_capi_install.step);
-
-    const ifcgeom_zig_tests = ifcgeom_capi_build.addZigLibTests(
-        b,
-        target,
-        optimize,
-        ifcparse_capi_lib,
-        ifcgeom_capi_lib,
-    );
-    const ifcgeom_zig_test_run = b.addRunArtifact(ifcgeom_zig_tests);
-
-    const test_step = b.step("test", "Run all Zig wrapper tests");
-    test_step.dependOn(&ifcgeom_zig_test_run.step);
 
     const serializers_lib = serializers_build.addSerializersLibrary(
         b,
@@ -111,12 +98,53 @@ pub fn build(b: *std.Build) void {
         eigen_include_override,
         enable_gltf_serializer,
         enable_json_serializer,
-        ifcgeom_lib,
-        ifcparse_lib,
     );
     const serializers_install = b.addInstallArtifact(serializers_lib, .{});
     b.getInstallStep().dependOn(&serializers_install.step);
 
     const serializers_step = b.step("serializers", "Build Serializers (IfcConvert API) static library without CLI/Collada/HDF5/RocksDB");
     serializers_step.dependOn(&serializers_install.step);
+
+    const serializers_capi_lib = serializers_capi_build.addSerializersCApiLibrary(
+        b,
+        target,
+        optimize,
+        occ_include_override,
+        eigen_include_override,
+        enable_with_gltf,
+    );
+    const serializers_capi_install = b.addInstallArtifact(serializers_capi_lib, .{});
+    b.getInstallStep().dependOn(&serializers_capi_install.step);
+
+    const serializers_capi_step = b.step("serializers-capi", "Build C ABI shim for Serializers used by Zig bindings");
+    serializers_capi_step.dependOn(&serializers_capi_install.step);
+
+    const ifcgeom_zig_tests = ifcgeom_capi_build.addZigLibTests(
+        b,
+        target,
+        optimize,
+        ifcparse_lib,
+        ifcgeom_lib,
+        serializers_lib,
+        ifcparse_capi_lib,
+        ifcgeom_capi_lib,
+        serializers_capi_lib,
+    );
+    const ifcparse_test_run = b.addRunArtifact(ifcgeom_zig_tests.ifcparse_tests);
+    const ifcgeom_test_run = b.addRunArtifact(ifcgeom_zig_tests.ifcgeom_tests);
+    const serializers_test_run = b.addRunArtifact(ifcgeom_zig_tests.serializers_tests);
+
+    const test_ifcparse_step = b.step("test-ifcparse", "Run IfcParse Zig wrapper tests");
+    test_ifcparse_step.dependOn(&ifcparse_test_run.step);
+
+    const test_ifcgeom_step = b.step("test-ifcgeom", "Run IfcGeom Zig wrapper tests");
+    test_ifcgeom_step.dependOn(&ifcgeom_test_run.step);
+
+    const test_serializers_step = b.step("test-serializers", "Run Serializers Zig wrapper tests");
+    test_serializers_step.dependOn(&serializers_test_run.step);
+
+    const test_step = b.step("test", "Run all Zig wrapper tests");
+    test_step.dependOn(&ifcparse_test_run.step);
+    test_step.dependOn(&ifcgeom_test_run.step);
+    test_step.dependOn(&serializers_test_run.step);
 }

@@ -13,6 +13,20 @@ typedef struct ifcopenshell_ifcgeom_settings ifcopenshell_ifcgeom_settings_t;
 typedef struct ifcopenshell_ifcgeom_iterator ifcopenshell_ifcgeom_iterator_t;
 typedef struct ifcopenshell_ifcgeom_string_list ifcopenshell_ifcgeom_string_list_t;
 typedef struct ifcopenshell_ifcgeom_mesh ifcopenshell_ifcgeom_mesh_t;
+typedef struct ifcopenshell_ifcgeom_serialized ifcopenshell_ifcgeom_serialized_t;
+typedef struct ifcopenshell_ifcgeom_created_shape ifcopenshell_ifcgeom_created_shape_t;
+typedef struct ifcopenshell_ifcgeom_tree ifcopenshell_ifcgeom_tree_t;
+typedef struct ifcopenshell_ifcgeom_id_list ifcopenshell_ifcgeom_id_list_t;
+typedef struct ifcopenshell_ifcgeom_clash_list ifcopenshell_ifcgeom_clash_list_t;
+
+typedef struct ifcopenshell_ifcgeom_clash {
+    int clash_type;
+    int a_id;
+    int b_id;
+    double distance;
+    double p1[3];
+    double p2[3];
+} ifcopenshell_ifcgeom_clash_t;
 
 typedef enum ifcopenshell_ifcgeom_element_kind {
     IFCOPENSHELL_IFCGEOM_ELEMENT_NONE = 0,
@@ -20,6 +34,14 @@ typedef enum ifcopenshell_ifcgeom_element_kind {
     IFCOPENSHELL_IFCGEOM_ELEMENT_BREP = 2,
     IFCOPENSHELL_IFCGEOM_ELEMENT_SERIALIZED = 3,
 } ifcopenshell_ifcgeom_element_kind_t;
+
+typedef enum ifcopenshell_ifcgeom_created_shape_kind {
+    IFCOPENSHELL_IFCGEOM_CREATED_SHAPE_NONE = 0,
+    IFCOPENSHELL_IFCGEOM_CREATED_SHAPE_TRIANGULATION = 1,
+    IFCOPENSHELL_IFCGEOM_CREATED_SHAPE_BREP = 2,
+    IFCOPENSHELL_IFCGEOM_CREATED_SHAPE_SERIALIZED = 3,
+    IFCOPENSHELL_IFCGEOM_CREATED_SHAPE_TRANSFORM = 4,
+} ifcopenshell_ifcgeom_created_shape_kind_t;
 
 ifcopenshell_ifcgeom_settings_t* ifcopenshell_ifcgeom_settings_create(void);
 
@@ -106,6 +128,10 @@ const char* ifcopenshell_ifcgeom_settings_last_error(
     const ifcopenshell_ifcgeom_settings_t* settings
 );
 
+void* ifcopenshell_ifcgeom_settings_native(ifcopenshell_ifcgeom_settings_t* settings);
+
+const void* ifcopenshell_ifcgeom_settings_native_const(const ifcopenshell_ifcgeom_settings_t* settings);
+
 void ifcopenshell_ifcgeom_string_list_destroy(ifcopenshell_ifcgeom_string_list_t* list);
 
 size_t ifcopenshell_ifcgeom_string_list_count(const ifcopenshell_ifcgeom_string_list_t* list);
@@ -118,6 +144,103 @@ const char* ifcopenshell_ifcgeom_string_list_get(
 );
 
 const char* ifcopenshell_ifcgeom_string_list_next(ifcopenshell_ifcgeom_string_list_t* list);
+
+ifcopenshell_ifcgeom_tree_t* ifcopenshell_ifcgeom_tree_create(void);
+
+void ifcopenshell_ifcgeom_tree_destroy(ifcopenshell_ifcgeom_tree_t* tree);
+
+int ifcopenshell_ifcgeom_tree_add_file(
+    ifcopenshell_ifcgeom_tree_t* tree,
+    const ifcopenshell_ifcparse_file_t* file,
+    const ifcopenshell_ifcgeom_settings_t* settings
+);
+
+ifcopenshell_ifcgeom_id_list_t* ifcopenshell_ifcgeom_tree_select_by_id(
+    ifcopenshell_ifcgeom_tree_t* tree,
+    const ifcopenshell_ifcparse_file_t* file,
+    int id,
+    int completely_within,
+    double extend
+);
+
+ifcopenshell_ifcgeom_id_list_t* ifcopenshell_ifcgeom_tree_select_box(
+    ifcopenshell_ifcgeom_tree_t* tree,
+    const double min_xyz[3],
+    const double max_xyz[3],
+    int completely_within
+);
+
+ifcopenshell_ifcgeom_id_list_t* ifcopenshell_ifcgeom_tree_select_point(
+    ifcopenshell_ifcgeom_tree_t* tree,
+    const double xyz[3],
+    double extend
+);
+
+ifcopenshell_ifcgeom_clash_list_t* ifcopenshell_ifcgeom_tree_clash_intersection_many(
+    ifcopenshell_ifcgeom_tree_t* tree,
+    const ifcopenshell_ifcparse_file_t* file,
+    const int* set_a_ids,
+    size_t set_a_count,
+    const int* set_b_ids,
+    size_t set_b_count,
+    double tolerance,
+    int check_all
+);
+
+ifcopenshell_ifcgeom_clash_list_t* ifcopenshell_ifcgeom_tree_clash_collision_many(
+    ifcopenshell_ifcgeom_tree_t* tree,
+    const ifcopenshell_ifcparse_file_t* file,
+    const int* set_a_ids,
+    size_t set_a_count,
+    const int* set_b_ids,
+    size_t set_b_count,
+    int allow_touching
+);
+
+ifcopenshell_ifcgeom_clash_list_t* ifcopenshell_ifcgeom_tree_clash_clearance_many(
+    ifcopenshell_ifcgeom_tree_t* tree,
+    const ifcopenshell_ifcparse_file_t* file,
+    const int* set_a_ids,
+    size_t set_a_count,
+    const int* set_b_ids,
+    size_t set_b_count,
+    double clearance,
+    int check_all
+);
+
+const char* ifcopenshell_ifcgeom_tree_last_error(const ifcopenshell_ifcgeom_tree_t* tree);
+
+void ifcopenshell_ifcgeom_id_list_destroy(ifcopenshell_ifcgeom_id_list_t* list);
+
+size_t ifcopenshell_ifcgeom_id_list_count(const ifcopenshell_ifcgeom_id_list_t* list);
+
+void ifcopenshell_ifcgeom_id_list_reset(ifcopenshell_ifcgeom_id_list_t* list);
+
+int ifcopenshell_ifcgeom_id_list_get(
+    const ifcopenshell_ifcgeom_id_list_t* list,
+    size_t index,
+    int* out_value
+);
+
+int ifcopenshell_ifcgeom_id_list_next(
+    ifcopenshell_ifcgeom_id_list_t* list,
+    int* out_value
+);
+
+void ifcopenshell_ifcgeom_clash_list_destroy(ifcopenshell_ifcgeom_clash_list_t* list);
+
+size_t ifcopenshell_ifcgeom_clash_list_count(const ifcopenshell_ifcgeom_clash_list_t* list);
+
+void ifcopenshell_ifcgeom_clash_list_reset(ifcopenshell_ifcgeom_clash_list_t* list);
+
+const ifcopenshell_ifcgeom_clash_t* ifcopenshell_ifcgeom_clash_list_get(
+    const ifcopenshell_ifcgeom_clash_list_t* list,
+    size_t index
+);
+
+const ifcopenshell_ifcgeom_clash_t* ifcopenshell_ifcgeom_clash_list_next(
+    ifcopenshell_ifcgeom_clash_list_t* list
+);
 
 ifcopenshell_ifcgeom_iterator_t* ifcopenshell_ifcgeom_iterator_create(
     const ifcopenshell_ifcparse_file_t* file,
@@ -212,6 +335,24 @@ ifcopenshell_ifcgeom_mesh_t* ifcopenshell_ifcgeom_iterator_get_mesh(
     ifcopenshell_ifcgeom_iterator_t* iterator
 );
 
+ifcopenshell_ifcgeom_serialized_t* ifcopenshell_ifcgeom_iterator_get_serialized(
+    ifcopenshell_ifcgeom_iterator_t* iterator
+);
+
+ifcopenshell_ifcgeom_mesh_t* ifcopenshell_ifcgeom_create_mesh_for_id(
+    const ifcopenshell_ifcparse_file_t* file,
+    const ifcopenshell_ifcgeom_settings_t* settings,
+    const char* geometry_library,
+    int id
+);
+
+ifcopenshell_ifcgeom_created_shape_t* ifcopenshell_ifcgeom_create_shape_for_id(
+    const ifcopenshell_ifcparse_file_t* file,
+    const ifcopenshell_ifcgeom_settings_t* settings,
+    const char* geometry_library,
+    int id
+);
+
 const char* ifcopenshell_ifcgeom_iterator_log(ifcopenshell_ifcgeom_iterator_t* iterator);
 
 const char* ifcopenshell_ifcgeom_iterator_last_error(
@@ -273,6 +414,61 @@ const double* ifcopenshell_ifcgeom_mesh_colors_data(const ifcopenshell_ifcgeom_m
 size_t ifcopenshell_ifcgeom_mesh_transform_count(const ifcopenshell_ifcgeom_mesh_t* mesh);
 
 const double* ifcopenshell_ifcgeom_mesh_transform_data(const ifcopenshell_ifcgeom_mesh_t* mesh);
+
+void ifcopenshell_ifcgeom_serialized_destroy(ifcopenshell_ifcgeom_serialized_t* serialized);
+
+int ifcopenshell_ifcgeom_serialized_id(const ifcopenshell_ifcgeom_serialized_t* serialized);
+
+int ifcopenshell_ifcgeom_serialized_parent_id(const ifcopenshell_ifcgeom_serialized_t* serialized);
+
+const char* ifcopenshell_ifcgeom_serialized_name(const ifcopenshell_ifcgeom_serialized_t* serialized);
+
+const char* ifcopenshell_ifcgeom_serialized_type(const ifcopenshell_ifcgeom_serialized_t* serialized);
+
+const char* ifcopenshell_ifcgeom_serialized_guid(const ifcopenshell_ifcgeom_serialized_t* serialized);
+
+const char* ifcopenshell_ifcgeom_serialized_context(const ifcopenshell_ifcgeom_serialized_t* serialized);
+
+const char* ifcopenshell_ifcgeom_serialized_unique_id(const ifcopenshell_ifcgeom_serialized_t* serialized);
+
+const char* ifcopenshell_ifcgeom_serialized_brep_data(const ifcopenshell_ifcgeom_serialized_t* serialized);
+
+size_t ifcopenshell_ifcgeom_serialized_surface_styles_count(const ifcopenshell_ifcgeom_serialized_t* serialized);
+
+const double* ifcopenshell_ifcgeom_serialized_surface_styles_data(const ifcopenshell_ifcgeom_serialized_t* serialized);
+
+size_t ifcopenshell_ifcgeom_serialized_surface_style_ids_count(const ifcopenshell_ifcgeom_serialized_t* serialized);
+
+const int* ifcopenshell_ifcgeom_serialized_surface_style_ids_data(const ifcopenshell_ifcgeom_serialized_t* serialized);
+
+size_t ifcopenshell_ifcgeom_serialized_transform_count(const ifcopenshell_ifcgeom_serialized_t* serialized);
+
+const double* ifcopenshell_ifcgeom_serialized_transform_data(const ifcopenshell_ifcgeom_serialized_t* serialized);
+
+void ifcopenshell_ifcgeom_created_shape_destroy(ifcopenshell_ifcgeom_created_shape_t* shape);
+
+ifcopenshell_ifcgeom_created_shape_kind_t ifcopenshell_ifcgeom_created_shape_kind(
+    const ifcopenshell_ifcgeom_created_shape_t* shape
+);
+
+const ifcopenshell_ifcgeom_mesh_t* ifcopenshell_ifcgeom_created_shape_mesh(
+    const ifcopenshell_ifcgeom_created_shape_t* shape
+);
+
+const ifcopenshell_ifcgeom_serialized_t* ifcopenshell_ifcgeom_created_shape_serialized(
+    const ifcopenshell_ifcgeom_created_shape_t* shape
+);
+
+int ifcopenshell_ifcgeom_created_shape_transform(
+    const ifcopenshell_ifcgeom_created_shape_t* shape,
+    double out_matrix_16[16]
+);
+
+const char* ifcopenshell_ifcgeom_map_shape_repr_for_id(
+    const ifcopenshell_ifcparse_file_t* file,
+    const ifcopenshell_ifcgeom_settings_t* settings,
+    int id
+);
 
 const char* ifcopenshell_ifcgeom_last_error(void);
 

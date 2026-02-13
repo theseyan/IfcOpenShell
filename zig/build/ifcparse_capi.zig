@@ -6,7 +6,6 @@ pub fn addIfcParseCApiLibrary(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
-    ifcparse_lib: *std.Build.Step.Compile,
 ) *std.Build.Step.Compile {
     const root_module = b.createModule(.{
         .target = target,
@@ -36,6 +35,5 @@ pub fn addIfcParseCApiLibrary(
         .flags = cpp_flags.items,
     });
 
-    lib.linkLibrary(ifcparse_lib);
     return lib;
 }

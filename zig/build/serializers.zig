@@ -12,8 +12,6 @@ pub fn addSerializersLibrary(
     eigen_include_dir: ?[]const u8,
     enable_gltf_serializer: bool,
     enable_json_serializer: bool,
-    ifcgeom_lib: *std.Build.Step.Compile,
-    ifcparse_lib: *std.Build.Step.Compile,
 ) *std.Build.Step.Compile {
     const enable_with_gltf = enable_gltf_serializer or enable_json_serializer;
 
@@ -123,61 +121,29 @@ pub fn addSerializersLibrary(
     defer schema_sources.deinit(b.allocator);
 
     for (schemas) |schema| {
-        const serializer_obj = addSchemaSerializerObject(
+        addSchemaSerializerSources(
             b,
-            target,
-            optimize,
+            lib,
             schemas,
             schema_seq_macro,
             schema,
             schema_sources.items,
-            occ_include_dir,
-            eigen_include_dir,
             enable_with_gltf,
         );
-        lib.addObject(serializer_obj);
     }
-
-    lib.linkLibrary(ifcgeom_lib);
-    lib.linkLibrary(ifcparse_lib);
 
     return lib;
 }
 
-fn addSchemaSerializerObject(
+fn addSchemaSerializerSources(
     b: *std.Build,
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    lib: *std.Build.Step.Compile,
     schemas: []const []const u8,
     schema_seq_macro: []const u8,
     schema: []const u8,
     serializer_sources: []const []const u8,
-    occ_include_dir: ?[]const u8,
-    eigen_include_dir: ?[]const u8,
     enable_with_gltf: bool,
-) *std.Build.Step.Compile {
-    const root_module = b.createModule(.{
-        .target = target,
-        .optimize = optimize,
-    });
-
-    const obj = b.addObject(.{
-        .name = b.fmt("serializers_ifc{s}", .{schema}),
-        .root_module = root_module,
-    });
-    obj.linkLibC();
-    obj.linkLibCpp();
-
-    deps.addSerializersIncludePaths(
-        b,
-        obj,
-        target,
-        optimize,
-        occ_include_dir,
-        eigen_include_dir,
-        enable_with_gltf,
-    );
-
+) void {
     var flags = std.ArrayList([]const u8).empty;
     defer flags.deinit(b.allocator);
     common.appendCommonCppFlags(b, &flags);
@@ -191,10 +157,8 @@ fn addSchemaSerializerObject(
     flags.append(b.allocator, b.fmt("-DIfcSchema=Ifc{s}", .{schema})) catch @panic("Out of memory building schema serializer flags");
     common.appendSchemaHasFlags(b, &flags, schemas);
 
-    obj.addCSourceFiles(.{
+    lib.addCSourceFiles(.{
         .files = serializer_sources,
         .flags = flags.items,
     });
-
-    return obj;
 }

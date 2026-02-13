@@ -8,8 +8,6 @@ pub fn addIfcGeomCApiLibrary(
     optimize: std.builtin.OptimizeMode,
     occ_include_dir: ?[]const u8,
     eigen_include_dir: ?[]const u8,
-    ifcgeom_lib: *std.Build.Step.Compile,
-    ifcparse_capi_lib: *std.Build.Step.Compile,
 ) *std.Build.Step.Compile {
     const root_module = b.createModule(.{
         .target = target,
@@ -42,14 +40,19 @@ pub fn addIfcGeomCApiLibrary(
         @panic("Out of memory building C++ flags");
     cpp_flags.append(b.allocator, "-Wno-inconsistent-missing-override") catch
         @panic("Out of memory building C++ flags");
+    cpp_flags.append(b.allocator, "-Wno-deprecated-declarations") catch
+        @panic("Out of memory building C++ flags");
+    cpp_flags.append(b.allocator, "-Wno-error=deprecated-declarations") catch
+        @panic("Out of memory building C++ flags");
+    cpp_flags.append(b.allocator, "-Wno-error=unused-value") catch
+        @panic("Out of memory building C++ flags");
+    cpp_flags.append(b.allocator, "-Wno-unused-value") catch
+        @panic("Out of memory building C++ flags");
 
     lib.addCSourceFiles(.{
         .files = &.{"zig/lib/ifcgeom/c_api.cpp"},
         .flags = cpp_flags.items,
     });
-
-    lib.linkLibrary(ifcgeom_lib);
-    lib.linkLibrary(ifcparse_capi_lib);
 
     return lib;
 }
@@ -58,11 +61,17 @@ pub fn addZigLibTests(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
+    ifcparse_lib: *std.Build.Step.Compile,
+    ifcgeom_lib: *std.Build.Step.Compile,
+    serializers_lib: *std.Build.Step.Compile,
     ifcparse_capi_lib: *std.Build.Step.Compile,
     ifcgeom_capi_lib: *std.Build.Step.Compile,
-) *std.Build.Step.Compile {
-    _ = ifcparse_capi_lib;
-
+    ifcserializers_capi_lib: *std.Build.Step.Compile,
+) struct {
+    ifcparse_tests: *std.Build.Step.Compile,
+    ifcgeom_tests: *std.Build.Step.Compile,
+    serializers_tests: *std.Build.Step.Compile,
+} {
     const ifcparse_module = b.createModule(.{
         .root_source_file = b.path("zig/lib/ifcparse.zig"),
         .target = target,
@@ -78,23 +87,79 @@ pub fn addZigLibTests(
     ifcgeom_module.addIncludePath(b.path("zig/lib"));
     ifcgeom_module.addImport("ifcparse", ifcparse_module);
 
-    const root_module = b.createModule(.{
-        .root_source_file = b.path("zig/lib/tests/main.zig"),
+    const serializers_module = b.createModule(.{
+        .root_source_file = b.path("zig/lib/serializers.zig"),
         .target = target,
         .optimize = optimize,
     });
-    root_module.addImport("ifcparse", ifcparse_module);
-    root_module.addImport("ifcgeom", ifcgeom_module);
+    serializers_module.addIncludePath(b.path("zig/lib"));
+    serializers_module.addImport("ifcparse", ifcparse_module);
+    serializers_module.addImport("ifcgeom", ifcgeom_module);
 
-    const tests = b.addTest(.{
-        .name = "ifcopenshell_zig_tests",
-        .root_module = root_module,
+    const ifcparse_root_module = b.createModule(.{
+        .root_source_file = b.path("zig/lib/tests/ifcparse.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    ifcparse_root_module.addImport("ifcparse", ifcparse_module);
+
+    const ifcgeom_root_module = b.createModule(.{
+        .root_source_file = b.path("zig/lib/tests/ifcgeom.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    ifcgeom_root_module.addImport("ifcparse", ifcparse_module);
+    ifcgeom_root_module.addImport("ifcgeom", ifcgeom_module);
+
+    const serializers_root_module = b.createModule(.{
+        .root_source_file = b.path("zig/lib/tests/serializers.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    serializers_root_module.addImport("ifcparse", ifcparse_module);
+    serializers_root_module.addImport("ifcgeom", ifcgeom_module);
+    serializers_root_module.addImport("serializers", serializers_module);
+
+    const ifcparse_tests = b.addTest(.{
+        .name = "ifcopenshell_zig_ifcparse_tests",
+        .root_module = ifcparse_root_module,
     });
 
-    tests.linkLibC();
-    tests.linkLibCpp();
-    tests.addIncludePath(b.path("zig/lib"));
-    tests.linkLibrary(ifcgeom_capi_lib);
+    ifcparse_tests.linkLibC();
+    ifcparse_tests.linkLibCpp();
+    ifcparse_tests.addIncludePath(b.path("zig/lib"));
+    ifcparse_tests.linkLibrary(ifcparse_lib);
+    ifcparse_tests.linkLibrary(ifcparse_capi_lib);
 
-    return tests;
+    const ifcgeom_tests = b.addTest(.{
+        .name = "ifcopenshell_zig_ifcgeom_tests",
+        .root_module = ifcgeom_root_module,
+    });
+    ifcgeom_tests.linkLibC();
+    ifcgeom_tests.linkLibCpp();
+    ifcgeom_tests.addIncludePath(b.path("zig/lib"));
+    ifcgeom_tests.linkLibrary(ifcparse_lib);
+    ifcgeom_tests.linkLibrary(ifcgeom_lib);
+    ifcgeom_tests.linkLibrary(ifcparse_capi_lib);
+    ifcgeom_tests.linkLibrary(ifcgeom_capi_lib);
+
+    const serializers_tests = b.addTest(.{
+        .name = "ifcopenshell_zig_serializers_tests",
+        .root_module = serializers_root_module,
+    });
+    serializers_tests.linkLibC();
+    serializers_tests.linkLibCpp();
+    serializers_tests.addIncludePath(b.path("zig/lib"));
+    serializers_tests.linkLibrary(ifcparse_lib);
+    serializers_tests.linkLibrary(ifcgeom_lib);
+    serializers_tests.linkLibrary(serializers_lib);
+    serializers_tests.linkLibrary(ifcparse_capi_lib);
+    serializers_tests.linkLibrary(ifcgeom_capi_lib);
+    serializers_tests.linkLibrary(ifcserializers_capi_lib);
+
+    return .{
+        .ifcparse_tests = ifcparse_tests,
+        .ifcgeom_tests = ifcgeom_tests,
+        .serializers_tests = serializers_tests,
+    };
 }
