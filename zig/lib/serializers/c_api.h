@@ -12,6 +12,7 @@ extern "C" {
 
 typedef struct ifcopenshell_ifcserializers_settings ifcopenshell_ifcserializers_settings_t;
 typedef struct ifcopenshell_ifcserializers_string_list ifcopenshell_ifcserializers_string_list_t;
+typedef struct ifcopenshell_ifcserializers_serializer ifcopenshell_ifcserializers_serializer_t;
 
 ifcopenshell_ifcserializers_settings_t* ifcopenshell_ifcserializers_settings_create(void);
 
@@ -89,6 +90,63 @@ const char* ifcopenshell_ifcserializers_string_list_get(
 );
 
 const char* ifcopenshell_ifcserializers_string_list_next(ifcopenshell_ifcserializers_string_list_t* list);
+
+ifcopenshell_ifcserializers_serializer_t* ifcopenshell_ifcserializers_serializer_obj_create_file(
+    const ifcopenshell_ifcgeom_settings_t* geometry_settings,
+    const ifcopenshell_ifcserializers_settings_t* serializer_settings,
+    const char* obj_filename,
+    const char* mtl_filename
+);
+
+ifcopenshell_ifcserializers_serializer_t* ifcopenshell_ifcserializers_serializer_obj_create_buffer(
+    const ifcopenshell_ifcgeom_settings_t* geometry_settings,
+    const ifcopenshell_ifcserializers_settings_t* serializer_settings
+);
+
+ifcopenshell_ifcserializers_serializer_t* ifcopenshell_ifcserializers_serializer_svg_create_file(
+    const ifcopenshell_ifcgeom_settings_t* geometry_settings,
+    const ifcopenshell_ifcserializers_settings_t* serializer_settings,
+    const char* svg_filename
+);
+
+ifcopenshell_ifcserializers_serializer_t* ifcopenshell_ifcserializers_serializer_svg_create_buffer(
+    const ifcopenshell_ifcgeom_settings_t* geometry_settings,
+    const ifcopenshell_ifcserializers_settings_t* serializer_settings
+);
+
+ifcopenshell_ifcserializers_serializer_t* ifcopenshell_ifcserializers_serializer_ttl_create_file(
+    const ifcopenshell_ifcgeom_settings_t* geometry_settings,
+    const ifcopenshell_ifcserializers_settings_t* serializer_settings,
+    const char* ttl_filename
+);
+
+ifcopenshell_ifcserializers_serializer_t* ifcopenshell_ifcserializers_serializer_ttl_create_buffer(
+    const ifcopenshell_ifcgeom_settings_t* geometry_settings,
+    const ifcopenshell_ifcserializers_settings_t* serializer_settings
+);
+
+void ifcopenshell_ifcserializers_serializer_destroy(ifcopenshell_ifcserializers_serializer_t* serializer);
+
+int ifcopenshell_ifcserializers_serializer_ready(const ifcopenshell_ifcserializers_serializer_t* serializer);
+
+int ifcopenshell_ifcserializers_serializer_run(
+    ifcopenshell_ifcserializers_serializer_t* serializer,
+    const ifcopenshell_ifcparse_file_t* file,
+    const char* geometry_library,
+    int num_threads
+);
+
+const char* ifcopenshell_ifcserializers_serializer_buffer_primary(
+    ifcopenshell_ifcserializers_serializer_t* serializer
+);
+
+const char* ifcopenshell_ifcserializers_serializer_buffer_secondary(
+    ifcopenshell_ifcserializers_serializer_t* serializer
+);
+
+const char* ifcopenshell_ifcserializers_serializer_last_error(
+    const ifcopenshell_ifcserializers_serializer_t* serializer
+);
 
 int ifcopenshell_ifcserializers_export_obj(
     const ifcopenshell_ifcparse_file_t* file,

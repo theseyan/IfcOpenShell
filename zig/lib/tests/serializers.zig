@@ -239,3 +239,115 @@ test "serializers export geometry and schema outputs" {
         );
     }
 }
+
+test "serializers object api and buffer outputs" {
+    const allocator = std.testing.allocator;
+
+    var file = try ifcparse.File.openFromMemory(sample_ifc_data);
+    defer file.deinit();
+
+    var geom_settings = try ifcgeom.Settings.init();
+    defer geom_settings.deinit();
+    try geom_settings.setBool("use-world-coords", true);
+
+    var serializer_settings = try serializers.Settings.init();
+    defer serializer_settings.deinit();
+    try serializer_settings.setInt(allocator, "digits", 6);
+
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+
+    const tmp_dir_path = try tmp.dir.realpathAlloc(allocator, ".");
+    defer allocator.free(tmp_dir_path);
+
+    const obj_path = try std.fs.path.join(allocator, &.{ tmp_dir_path, "object-api.obj" });
+    defer allocator.free(obj_path);
+    const mtl_path = try std.fs.path.join(allocator, &.{ tmp_dir_path, "object-api.mtl" });
+    defer allocator.free(mtl_path);
+
+    var obj_file_serializer = try serializers.Serializer.initObjFile(
+        &geom_settings,
+        &serializer_settings,
+        allocator,
+        obj_path,
+        mtl_path,
+    );
+    defer obj_file_serializer.deinit();
+
+    try std.testing.expect(try obj_file_serializer.ready());
+    try obj_file_serializer.run(&file, allocator, .{ .num_threads = 1 });
+    try expectFileNonEmpty(obj_path);
+    try expectFileNonEmpty(mtl_path);
+
+    var obj_buffer_serializer = try serializers.Serializer.initObjBuffer(
+        &geom_settings,
+        &serializer_settings,
+    );
+    defer obj_buffer_serializer.deinit();
+
+    try obj_buffer_serializer.run(&file, allocator, .{ .num_threads = 1 });
+    const obj_buf = try obj_buffer_serializer.primaryBuffer(allocator);
+    defer allocator.free(obj_buf);
+    const mtl_buf_opt = try obj_buffer_serializer.secondaryBuffer(allocator);
+    try std.testing.expect(mtl_buf_opt != null);
+    const mtl_buf = mtl_buf_opt.?;
+    defer allocator.free(mtl_buf);
+
+    try std.testing.expect(obj_buf.len > 0);
+    try std.testing.expect(mtl_buf.len > 0);
+    try std.testing.expect(std.mem.indexOf(u8, obj_buf, "v ") != null or std.mem.indexOf(u8, obj_buf, "f ") != null);
+
+    try std.testing.expectError(
+        serializers.QueryError.QueryFailed,
+        obj_buffer_serializer.run(&file, allocator, .{ .num_threads = 1 }),
+    );
+
+    const obj_buffers = try serializers.exportObjBuffer(
+        &file,
+        &geom_settings,
+        &serializer_settings,
+        allocator,
+        .{ .num_threads = 1 },
+    );
+    defer allocator.free(obj_buffers.obj);
+    defer allocator.free(obj_buffers.mtl);
+    try std.testing.expect(obj_buffers.obj.len > 0);
+    try std.testing.expect(obj_buffers.mtl.len > 0);
+
+    if (serializers.hasSvg()) {
+        var svg_serializer = try serializers.Serializer.initSvgBuffer(
+            &geom_settings,
+            &serializer_settings,
+        );
+        defer svg_serializer.deinit();
+
+        try svg_serializer.run(&file, allocator, .{ .num_threads = 1 });
+        const svg_buf = try svg_serializer.primaryBuffer(allocator);
+        defer allocator.free(svg_buf);
+        try std.testing.expect(svg_buf.len > 0);
+    } else {
+        try std.testing.expectError(
+            serializers.QueryError.Unsupported,
+            serializers.Serializer.initSvgBuffer(&geom_settings, &serializer_settings),
+        );
+    }
+
+    if (serializers.hasTtl()) {
+        try geom_settings.setInt("triangulation-type", 2);
+        const ttl_buf = try serializers.exportTtlBuffer(
+            &file,
+            &geom_settings,
+            &serializer_settings,
+            allocator,
+            .{ .num_threads = 1 },
+        );
+        defer allocator.free(ttl_buf);
+        try std.testing.expect(ttl_buf.len > 0);
+        try geom_settings.setInt("triangulation-type", 0);
+    } else {
+        try std.testing.expectError(
+            serializers.QueryError.Unsupported,
+            serializers.Serializer.initTtlBuffer(&geom_settings, &serializer_settings),
+        );
+    }
+}

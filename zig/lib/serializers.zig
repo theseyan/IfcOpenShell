@@ -24,13 +24,27 @@ pub fn lastError() []const u8 {
     return std.mem.span(raw);
 }
 
-fn mapBoolResult(ok: c_int) QueryError!void {
-    if (ok != 0) return;
-    const err_msg = lastError();
+fn mapErrorMessage(err_msg: []const u8) QueryError {
     if (std.mem.indexOf(u8, err_msg, "not enabled") != null) {
         return error.Unsupported;
     }
+    if (std.mem.indexOf(u8, err_msg, "Invalid") != null) {
+        return error.InvalidArgument;
+    }
+    if (std.mem.indexOf(u8, err_msg, "Out of memory") != null) {
+        return error.OutOfMemory;
+    }
     return error.QueryFailed;
+}
+
+fn mapBoolResult(ok: c_int) QueryError!void {
+    if (ok != 0) return;
+    return mapErrorMessage(lastError());
+}
+
+fn mapHandleResult(raw: ?*c.ifcopenshell_ifcserializers_serializer_t) QueryError!*c.ifcopenshell_ifcserializers_serializer_t {
+    if (raw) |h| return h;
+    return mapErrorMessage(lastError());
 }
 
 fn toZ(allocator: std.mem.Allocator, value: []const u8) QueryError![:0]u8 {
@@ -250,6 +264,253 @@ pub const Settings = struct {
         return std.mem.span(raw);
     }
 };
+
+pub const Serializer = struct {
+    handle: ?*c.ifcopenshell_ifcserializers_serializer_t,
+    primary_buffer_enabled: bool,
+    secondary_buffer_enabled: bool,
+
+    pub fn deinit(self: *Serializer) void {
+        if (self.handle) |h| {
+            c.ifcopenshell_ifcserializers_serializer_destroy(h);
+            self.handle = null;
+        }
+    }
+
+    pub fn initObjFile(
+        geometry_settings: ?*const ifcgeom.Settings,
+        serializer_settings: ?*const Settings,
+        allocator: std.mem.Allocator,
+        obj_path: []const u8,
+        mtl_path: []const u8,
+    ) QueryError!Serializer {
+        const geom_h = try geomSettingsHandle(geometry_settings);
+        const ser_h = try serializerSettingsHandle(serializer_settings);
+        const obj_z = try toZ(allocator, obj_path);
+        defer allocator.free(obj_z);
+        const mtl_z = try toZ(allocator, mtl_path);
+        defer allocator.free(mtl_z);
+
+        const raw = c.ifcopenshell_ifcserializers_serializer_obj_create_file(
+            geom_h,
+            ser_h,
+            obj_z.ptr,
+            mtl_z.ptr,
+        );
+        const handle = try mapHandleResult(raw);
+        return .{
+            .handle = handle,
+            .primary_buffer_enabled = false,
+            .secondary_buffer_enabled = false,
+        };
+    }
+
+    pub fn initObjBuffer(
+        geometry_settings: ?*const ifcgeom.Settings,
+        serializer_settings: ?*const Settings,
+    ) QueryError!Serializer {
+        const geom_h = try geomSettingsHandle(geometry_settings);
+        const ser_h = try serializerSettingsHandle(serializer_settings);
+        const raw = c.ifcopenshell_ifcserializers_serializer_obj_create_buffer(geom_h, ser_h);
+        const handle = try mapHandleResult(raw);
+        return .{
+            .handle = handle,
+            .primary_buffer_enabled = true,
+            .secondary_buffer_enabled = true,
+        };
+    }
+
+    pub fn initSvgFile(
+        geometry_settings: ?*const ifcgeom.Settings,
+        serializer_settings: ?*const Settings,
+        allocator: std.mem.Allocator,
+        svg_path: []const u8,
+    ) QueryError!Serializer {
+        if (!hasSvg()) return error.Unsupported;
+        const geom_h = try geomSettingsHandle(geometry_settings);
+        const ser_h = try serializerSettingsHandle(serializer_settings);
+        const svg_z = try toZ(allocator, svg_path);
+        defer allocator.free(svg_z);
+
+        const raw = c.ifcopenshell_ifcserializers_serializer_svg_create_file(
+            geom_h,
+            ser_h,
+            svg_z.ptr,
+        );
+        const handle = try mapHandleResult(raw);
+        return .{
+            .handle = handle,
+            .primary_buffer_enabled = false,
+            .secondary_buffer_enabled = false,
+        };
+    }
+
+    pub fn initSvgBuffer(
+        geometry_settings: ?*const ifcgeom.Settings,
+        serializer_settings: ?*const Settings,
+    ) QueryError!Serializer {
+        if (!hasSvg()) return error.Unsupported;
+        const geom_h = try geomSettingsHandle(geometry_settings);
+        const ser_h = try serializerSettingsHandle(serializer_settings);
+        const raw = c.ifcopenshell_ifcserializers_serializer_svg_create_buffer(geom_h, ser_h);
+        const handle = try mapHandleResult(raw);
+        return .{
+            .handle = handle,
+            .primary_buffer_enabled = true,
+            .secondary_buffer_enabled = false,
+        };
+    }
+
+    pub fn initTtlFile(
+        geometry_settings: ?*const ifcgeom.Settings,
+        serializer_settings: ?*const Settings,
+        allocator: std.mem.Allocator,
+        ttl_path: []const u8,
+    ) QueryError!Serializer {
+        if (!hasTtl()) return error.Unsupported;
+        const geom_h = try geomSettingsHandle(geometry_settings);
+        const ser_h = try serializerSettingsHandle(serializer_settings);
+        const ttl_z = try toZ(allocator, ttl_path);
+        defer allocator.free(ttl_z);
+
+        const raw = c.ifcopenshell_ifcserializers_serializer_ttl_create_file(
+            geom_h,
+            ser_h,
+            ttl_z.ptr,
+        );
+        const handle = try mapHandleResult(raw);
+        return .{
+            .handle = handle,
+            .primary_buffer_enabled = false,
+            .secondary_buffer_enabled = false,
+        };
+    }
+
+    pub fn initTtlBuffer(
+        geometry_settings: ?*const ifcgeom.Settings,
+        serializer_settings: ?*const Settings,
+    ) QueryError!Serializer {
+        if (!hasTtl()) return error.Unsupported;
+        const geom_h = try geomSettingsHandle(geometry_settings);
+        const ser_h = try serializerSettingsHandle(serializer_settings);
+        const raw = c.ifcopenshell_ifcserializers_serializer_ttl_create_buffer(geom_h, ser_h);
+        const handle = try mapHandleResult(raw);
+        return .{
+            .handle = handle,
+            .primary_buffer_enabled = true,
+            .secondary_buffer_enabled = false,
+        };
+    }
+
+    pub fn ready(self: *const Serializer) QueryError!bool {
+        if (self.handle == null) return error.InvalidArgument;
+        const ok = c.ifcopenshell_ifcserializers_serializer_ready(self.handle.?);
+        if (ok != 0) return true;
+        const err_msg = self.lastError();
+        if (err_msg.len == 0) return false;
+        return mapErrorMessage(err_msg);
+    }
+
+    pub fn run(
+        self: *Serializer,
+        file: *ifcparse.File,
+        allocator: std.mem.Allocator,
+        options: ExportOptions,
+    ) QueryError!void {
+        if (self.handle == null or file.handle == null) return error.InvalidArgument;
+        const file_h = try fileHandle(file);
+        const lib_z = try toZ(allocator, options.geometry_library);
+        defer allocator.free(lib_z);
+
+        try mapBoolResult(c.ifcopenshell_ifcserializers_serializer_run(
+            self.handle.?,
+            file_h,
+            lib_z.ptr,
+            @intCast(options.num_threads),
+        ));
+    }
+
+    pub fn primaryBuffer(self: *Serializer, allocator: std.mem.Allocator) QueryError![]u8 {
+        if (self.handle == null) return error.InvalidArgument;
+        if (!self.primary_buffer_enabled) return error.InvalidArgument;
+
+        const raw = c.ifcopenshell_ifcserializers_serializer_buffer_primary(self.handle.?);
+        if (raw == null) return mapErrorMessage(self.lastError());
+        return allocator.dupe(u8, std.mem.span(raw.?)) catch error.OutOfMemory;
+    }
+
+    pub fn secondaryBuffer(self: *Serializer, allocator: std.mem.Allocator) QueryError!?[]u8 {
+        if (self.handle == null) return error.InvalidArgument;
+        if (!self.secondary_buffer_enabled) return null;
+
+        const raw = c.ifcopenshell_ifcserializers_serializer_buffer_secondary(self.handle.?);
+        if (raw == null) return mapErrorMessage(self.lastError());
+        return allocator.dupe(u8, std.mem.span(raw.?)) catch error.OutOfMemory;
+    }
+
+    pub fn lastError(self: *const Serializer) []const u8 {
+        if (self.handle == null) {
+            const raw_global = c.ifcopenshell_ifcserializers_last_error();
+            if (raw_global == null) return "";
+            return std.mem.span(raw_global);
+        }
+        const raw = c.ifcopenshell_ifcserializers_serializer_last_error(self.handle.?);
+        if (raw == null) return "";
+        return std.mem.span(raw);
+    }
+};
+
+pub const ObjBufferOutput = struct {
+    obj: []u8,
+    mtl: []u8,
+};
+
+pub fn exportObjBuffer(
+    file: *ifcparse.File,
+    geometry_settings: ?*const ifcgeom.Settings,
+    serializer_settings: ?*const Settings,
+    allocator: std.mem.Allocator,
+    options: ExportOptions,
+) QueryError!ObjBufferOutput {
+    var serializer = try Serializer.initObjBuffer(geometry_settings, serializer_settings);
+    defer serializer.deinit();
+    try serializer.run(file, allocator, options);
+
+    const obj = try serializer.primaryBuffer(allocator);
+    errdefer allocator.free(obj);
+    const mtl_opt = try serializer.secondaryBuffer(allocator);
+    if (mtl_opt == null) {
+        allocator.free(obj);
+        return error.QueryFailed;
+    }
+    return .{ .obj = obj, .mtl = mtl_opt.? };
+}
+
+pub fn exportSvgBuffer(
+    file: *ifcparse.File,
+    geometry_settings: ?*const ifcgeom.Settings,
+    serializer_settings: ?*const Settings,
+    allocator: std.mem.Allocator,
+    options: ExportOptions,
+) QueryError![]u8 {
+    var serializer = try Serializer.initSvgBuffer(geometry_settings, serializer_settings);
+    defer serializer.deinit();
+    try serializer.run(file, allocator, options);
+    return serializer.primaryBuffer(allocator);
+}
+
+pub fn exportTtlBuffer(
+    file: *ifcparse.File,
+    geometry_settings: ?*const ifcgeom.Settings,
+    serializer_settings: ?*const Settings,
+    allocator: std.mem.Allocator,
+    options: ExportOptions,
+) QueryError![]u8 {
+    var serializer = try Serializer.initTtlBuffer(geometry_settings, serializer_settings);
+    defer serializer.deinit();
+    try serializer.run(file, allocator, options);
+    return serializer.primaryBuffer(allocator);
+}
 
 pub fn exportObj(
     file: *ifcparse.File,
