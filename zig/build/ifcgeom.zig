@@ -16,7 +16,6 @@ pub fn addIfcGeomLibrary(
     occ_library_dir: ?[]const u8,
     occ_libs_arg: []const u8,
     link_occ_libraries: bool,
-    ifcparse_lib: *std.Build.Step.Compile,
 ) *std.Build.Step.Compile {
     const root_module = b.createModule(.{
         .target = target,
@@ -56,45 +55,33 @@ pub fn addIfcGeomLibrary(
         .flags = ifcgeom_flags.items,
     });
 
-    const kernel_occt_obj = addKernelOpenCascadeObject(
+    addKernelOpenCascadeSources(
         b,
-        target,
-        optimize,
+        lib,
         schemas,
         schema_seq_macro,
-        occ_include_dir,
-        eigen_include_dir,
     );
-    lib.addObject(kernel_occt_obj);
 
     var mapping_sources = common.collectCppFilesInDirectory(b, "src/ifcgeom/mapping", false);
     defer mapping_sources.deinit(b.allocator);
     for (schemas) |schema| {
-        const mapping_obj = addSchemaMappingObject(
+        addSchemaMappingSources(
             b,
-            target,
-            optimize,
+            lib,
             schemas,
             schema_seq_macro,
             schema,
             mapping_sources.items,
-            occ_include_dir,
-            eigen_include_dir,
         );
-        lib.addObject(mapping_obj);
     }
 
     if (bundle_occ_sources) {
-        occt.addOcctToolkitObjects(
+        occt.addOcctToolkitSources(
             b,
             lib,
-            target,
-            optimize,
             occ_toolkits_arg,
         );
     }
-
-    lib.linkLibrary(ifcparse_lib);
 
     if (link_occ_libraries) {
         if (occ_library_dir) |dir| {
@@ -106,36 +93,12 @@ pub fn addIfcGeomLibrary(
     return lib;
 }
 
-fn addKernelOpenCascadeObject(
+fn addKernelOpenCascadeSources(
     b: *std.Build,
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    lib: *std.Build.Step.Compile,
     schemas: []const []const u8,
     schema_seq_macro: []const u8,
-    occ_include_dir: ?[]const u8,
-    eigen_include_dir: ?[]const u8,
-) *std.Build.Step.Compile {
-    const root_module = b.createModule(.{
-        .target = target,
-        .optimize = optimize,
-    });
-
-    const obj = b.addObject(.{
-        .name = "geometry_kernel_opencascade",
-        .root_module = root_module,
-    });
-    obj.linkLibC();
-    obj.linkLibCpp();
-
-    deps.addIfcGeomIncludePaths(
-        b,
-        obj,
-        target,
-        optimize,
-        occ_include_dir,
-        eigen_include_dir,
-    );
-
+) void {
     var flags = std.ArrayList([]const u8).empty;
     defer flags.deinit(b.allocator);
     common.appendCommonCppFlags(b, &flags);
@@ -146,46 +109,20 @@ fn addKernelOpenCascadeObject(
 
     var sources = common.collectCppFilesInDirectory(b, "src/ifcgeom/kernels/opencascade", false);
     defer sources.deinit(b.allocator);
-    obj.addCSourceFiles(.{
+    lib.addCSourceFiles(.{
         .files = sources.items,
         .flags = flags.items,
     });
-
-    return obj;
 }
 
-fn addSchemaMappingObject(
+fn addSchemaMappingSources(
     b: *std.Build,
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    lib: *std.Build.Step.Compile,
     schemas: []const []const u8,
     schema_seq_macro: []const u8,
     schema: []const u8,
     mapping_sources: []const []const u8,
-    occ_include_dir: ?[]const u8,
-    eigen_include_dir: ?[]const u8,
-) *std.Build.Step.Compile {
-    const root_module = b.createModule(.{
-        .target = target,
-        .optimize = optimize,
-    });
-
-    const obj = b.addObject(.{
-        .name = b.fmt("geometry_mapping_ifc{s}", .{schema}),
-        .root_module = root_module,
-    });
-    obj.linkLibC();
-    obj.linkLibCpp();
-
-    deps.addIfcGeomIncludePaths(
-        b,
-        obj,
-        target,
-        optimize,
-        occ_include_dir,
-        eigen_include_dir,
-    );
-
+) void {
     var flags = std.ArrayList([]const u8).empty;
     defer flags.deinit(b.allocator);
     common.appendCommonCppFlags(b, &flags);
@@ -195,10 +132,8 @@ fn addSchemaMappingObject(
     flags.append(b.allocator, b.fmt("-DIfcSchema=Ifc{s}", .{schema})) catch @panic("Out of memory building mapping flags");
     common.appendSchemaHasFlags(b, &flags, schemas);
 
-    obj.addCSourceFiles(.{
+    lib.addCSourceFiles(.{
         .files = mapping_sources,
         .flags = flags.items,
     });
-
-    return obj;
 }

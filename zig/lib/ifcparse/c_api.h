@@ -579,6 +579,12 @@ const char* ifcopenshell_ifcparse_string_list_get(
 
 const char* ifcopenshell_ifcparse_string_list_next(ifcopenshell_ifcparse_string_list_t* list);
 
+void* ifcopenshell_ifcparse_file_native(ifcopenshell_ifcparse_file_t* file);
+
+const void* ifcopenshell_ifcparse_file_native_const(const ifcopenshell_ifcparse_file_t* file);
+
+void* ifcopenshell_ifcparse_entity_native(const ifcopenshell_ifcparse_entity_ref_t* entity);
+
 const char* ifcopenshell_ifcparse_file_last_error(const ifcopenshell_ifcparse_file_t* file);
 
 const char* ifcopenshell_ifcparse_last_error(void);

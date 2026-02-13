@@ -50,11 +50,9 @@ pub fn addOcctIncludePathsFromDependency(
     }
 }
 
-pub fn addOcctToolkitObjects(
+pub fn addOcctToolkitSources(
     b: *std.Build,
     lib: *std.Build.Step.Compile,
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
     toolkits_arg: []const u8,
 ) void {
     const occt_dep = b.dependency("occt", .{});
@@ -77,15 +75,13 @@ pub fn addOcctToolkitObjects(
     }.lessThan);
 
     for (toolkits.items) |toolkit| {
-        const toolkit_obj = addOcctToolkitObject(
+        appendOcctToolkitSourcesToLibrary(
             b,
-            target,
-            optimize,
+            lib,
             toolkit,
             occt_src_root,
             occt_src,
         );
-        lib.addObject(toolkit_obj);
     }
 }
 
@@ -101,28 +97,13 @@ pub fn linkOpenCascadeLibraries(
     }
 }
 
-fn addOcctToolkitObject(
+fn appendOcctToolkitSourcesToLibrary(
     b: *std.Build,
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    lib: *std.Build.Step.Compile,
     toolkit: []const u8,
     occt_src_root: std.Build.LazyPath,
     occt_src: []const u8,
-) *std.Build.Step.Compile {
-    const root_module = b.createModule(.{
-        .target = target,
-        .optimize = optimize,
-    });
-
-    const obj = b.addObject(.{
-        .name = b.fmt("occt_toolkit_{s}", .{toolkit}),
-        .root_module = root_module,
-    });
-    obj.linkLibC();
-    obj.linkLibCpp();
-
-    addOcctIncludePathsFromDependency(b, obj);
-
+) void {
     var cpp_sources = std.ArrayList([]const u8).empty;
     defer cpp_sources.deinit(b.allocator);
     var c_sources = std.ArrayList([]const u8).empty;
@@ -147,7 +128,7 @@ fn addOcctToolkitObject(
     cpp_flags.append(b.allocator, "-DOCCT_NO_PLUGINS") catch @panic("Out of memory building OCCT flags");
 
     if (cpp_sources.items.len > 0) {
-        obj.addCSourceFiles(.{
+        lib.addCSourceFiles(.{
             .root = occt_src_root,
             .files = cpp_sources.items,
             .flags = cpp_flags.items,
@@ -160,14 +141,12 @@ fn addOcctToolkitObject(
     c_flags.append(b.allocator, "-DOCCT_NO_PLUGINS") catch @panic("Out of memory building OCCT C flags");
 
     if (c_sources.items.len > 0) {
-        obj.addCSourceFiles(.{
+        lib.addCSourceFiles(.{
             .root = occt_src_root,
             .files = c_sources.items,
             .flags = c_flags.items,
         });
     }
-
-    return obj;
 }
 
 fn collectOcctToolkitSources(

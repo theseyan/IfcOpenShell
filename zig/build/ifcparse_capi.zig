@@ -39,36 +39,3 @@ pub fn addIfcParseCApiLibrary(
     lib.linkLibrary(ifcparse_lib);
     return lib;
 }
-
-pub fn addZigLibTests(
-    b: *std.Build,
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-    ifcparse_capi_lib: *std.Build.Step.Compile,
-) *std.Build.Step.Compile {
-    const ifcparse_module = b.createModule(.{
-        .root_source_file = b.path("zig/lib/ifcparse.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    ifcparse_module.addIncludePath(b.path("zig/lib"));
-
-    const root_module = b.createModule(.{
-        .root_source_file = b.path("zig/lib/tests/main.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    root_module.addImport("ifcparse", ifcparse_module);
-
-    const tests = b.addTest(.{
-        .name = "ifcopenshell_zig_tests",
-        .root_module = root_module,
-    });
-
-    tests.linkLibC();
-    tests.linkLibCpp();
-    tests.addIncludePath(b.path("zig/lib"));
-    tests.linkLibrary(ifcparse_capi_lib);
-
-    return tests;
-}

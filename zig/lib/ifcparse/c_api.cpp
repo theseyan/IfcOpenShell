@@ -3086,6 +3086,33 @@ const char* ifcopenshell_ifcparse_string_list_next(ifcopenshell_ifcparse_string_
     return ifcopenshell_ifcparse_string_list_get(list, list->cursor++);
 }
 
+void* ifcopenshell_ifcparse_file_native(ifcopenshell_ifcparse_file_t* file) {
+    if (file == nullptr || !file->file) {
+        set_global_error("IfcParse handle is null");
+        return nullptr;
+    }
+    clear_file_error(file);
+    return static_cast<void*>(file->file.get());
+}
+
+const void* ifcopenshell_ifcparse_file_native_const(const ifcopenshell_ifcparse_file_t* file) {
+    if (file == nullptr || !file->file) {
+        set_global_error("IfcParse handle is null");
+        return nullptr;
+    }
+    clear_file_error(const_cast<ifcopenshell_ifcparse_file_t*>(file));
+    return static_cast<const void*>(file->file.get());
+}
+
+void* ifcopenshell_ifcparse_entity_native(const ifcopenshell_ifcparse_entity_ref_t* entity) {
+    if (entity == nullptr) {
+        set_global_error("Entity handle is null");
+        return nullptr;
+    }
+    clear_global_error();
+    return const_cast<void*>(reinterpret_cast<const void*>(from_entity_ref(entity)));
+}
+
 const char* ifcopenshell_ifcparse_file_last_error(const ifcopenshell_ifcparse_file_t* file) {
     if (file == nullptr) {
         return g_last_error.c_str();

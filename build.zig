@@ -4,6 +4,7 @@ const common = @import("zig/build/common.zig");
 const ifcparse_build = @import("zig/build/ifcparse.zig");
 const ifcparse_capi_build = @import("zig/build/ifcparse_capi.zig");
 const ifcgeom_build = @import("zig/build/ifcgeom.zig");
+const ifcgeom_capi_build = @import("zig/build/ifcgeom_capi.zig");
 const serializers_build = @import("zig/build/serializers.zig");
 
 const default_occ_libs =
@@ -53,16 +54,6 @@ pub fn build(b: *std.Build) void {
     const ifcparse_capi_step = b.step("ifcparse-capi", "Build C ABI shim for IfcParse used by Zig bindings");
     ifcparse_capi_step.dependOn(&ifcparse_capi_install.step);
 
-    const zig_lib_tests = ifcparse_capi_build.addZigLibTests(
-        b,
-        target,
-        optimize,
-        ifcparse_capi_lib,
-    );
-    const zig_lib_test_run = b.addRunArtifact(zig_lib_tests);
-    const test_step = b.step("test", "Run all Zig wrapper tests");
-    test_step.dependOn(&zig_lib_test_run.step);
-
     const ifcgeom_lib = ifcgeom_build.addIfcGeomLibrary(
         b,
         target,
@@ -76,13 +67,39 @@ pub fn build(b: *std.Build) void {
         occ_library_dir,
         occ_libs_arg,
         link_occ_libraries,
-        ifcparse_lib,
     );
     const ifcgeom_install = b.addInstallArtifact(ifcgeom_lib, .{});
     b.getInstallStep().dependOn(&ifcgeom_install.step);
 
     const ifcgeom_step = b.step("ifcgeom", "Build IfcGeom + OpenCASCADE kernel + per-schema mapping object libraries");
     ifcgeom_step.dependOn(&ifcgeom_install.step);
+
+    const ifcgeom_capi_lib = ifcgeom_capi_build.addIfcGeomCApiLibrary(
+        b,
+        target,
+        optimize,
+        occ_include_override,
+        eigen_include_override,
+        ifcgeom_lib,
+        ifcparse_capi_lib,
+    );
+    const ifcgeom_capi_install = b.addInstallArtifact(ifcgeom_capi_lib, .{});
+    b.getInstallStep().dependOn(&ifcgeom_capi_install.step);
+
+    const ifcgeom_capi_step = b.step("ifcgeom-capi", "Build C ABI shim for IfcGeom used by Zig bindings");
+    ifcgeom_capi_step.dependOn(&ifcgeom_capi_install.step);
+
+    const ifcgeom_zig_tests = ifcgeom_capi_build.addZigLibTests(
+        b,
+        target,
+        optimize,
+        ifcparse_capi_lib,
+        ifcgeom_capi_lib,
+    );
+    const ifcgeom_zig_test_run = b.addRunArtifact(ifcgeom_zig_tests);
+
+    const test_step = b.step("test", "Run all Zig wrapper tests");
+    test_step.dependOn(&ifcgeom_zig_test_run.step);
 
     const serializers_lib = serializers_build.addSerializersLibrary(
         b,
