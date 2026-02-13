@@ -3,6 +3,7 @@
 #include "ifcparse/IfcFile.h"
 #include "ifcparse/IfcEntityInstanceData.h"
 #include "ifcparse/IfcParse.h"
+#include "ifcparse/IfcSchema.h"
 
 #include <boost/logic/tribool.hpp>
 
@@ -69,6 +70,18 @@ struct ifcopenshell_ifcparse_string_list {
     std::string last_error;
 };
 
+struct ifcopenshell_ifcparse_attribute_list {
+    std::vector<const IfcParse::attribute*> attributes;
+    size_t cursor = 0;
+    std::string last_error;
+};
+
+struct ifcopenshell_ifcparse_inverse_attribute_list {
+    std::vector<const IfcParse::inverse_attribute*> attributes;
+    size_t cursor = 0;
+    std::string last_error;
+};
+
 namespace {
 thread_local std::string g_last_error;
 thread_local std::string g_spf_buffer;
@@ -95,6 +108,30 @@ const ifcopenshell_ifcparse_type_ref_t* to_type_ref(const IfcParse::declaration*
 
 const IfcParse::declaration* from_type_ref(const ifcopenshell_ifcparse_type_ref_t* type_ref) {
     return reinterpret_cast<const IfcParse::declaration*>(type_ref);
+}
+
+const ifcopenshell_ifcparse_attribute_ref_t* to_attribute_ref(const IfcParse::attribute* attribute) {
+    return reinterpret_cast<const ifcopenshell_ifcparse_attribute_ref_t*>(attribute);
+}
+
+const IfcParse::attribute* from_attribute_ref(const ifcopenshell_ifcparse_attribute_ref_t* attribute_ref) {
+    return reinterpret_cast<const IfcParse::attribute*>(attribute_ref);
+}
+
+const ifcopenshell_ifcparse_inverse_attribute_ref_t* to_inverse_attribute_ref(const IfcParse::inverse_attribute* attribute) {
+    return reinterpret_cast<const ifcopenshell_ifcparse_inverse_attribute_ref_t*>(attribute);
+}
+
+const IfcParse::inverse_attribute* from_inverse_attribute_ref(const ifcopenshell_ifcparse_inverse_attribute_ref_t* inverse_attribute_ref) {
+    return reinterpret_cast<const IfcParse::inverse_attribute*>(inverse_attribute_ref);
+}
+
+const ifcopenshell_ifcparse_parameter_type_ref_t* to_parameter_type_ref(const IfcParse::parameter_type* parameter_type) {
+    return reinterpret_cast<const ifcopenshell_ifcparse_parameter_type_ref_t*>(parameter_type);
+}
+
+const IfcParse::parameter_type* from_parameter_type_ref(const ifcopenshell_ifcparse_parameter_type_ref_t* parameter_type_ref) {
+    return reinterpret_cast<const IfcParse::parameter_type*>(parameter_type_ref);
 }
 
 void set_global_error(const std::string& message) {
@@ -231,6 +268,34 @@ void clear_string_list_error(ifcopenshell_ifcparse_string_list_t* list) {
     clear_global_error();
 }
 
+void set_attribute_list_error(ifcopenshell_ifcparse_attribute_list_t* list, const std::string& message) {
+    if (list != nullptr) {
+        list->last_error = message;
+    }
+    set_global_error(message);
+}
+
+void clear_attribute_list_error(ifcopenshell_ifcparse_attribute_list_t* list) {
+    if (list != nullptr) {
+        list->last_error.clear();
+    }
+    clear_global_error();
+}
+
+void set_inverse_attribute_list_error(ifcopenshell_ifcparse_inverse_attribute_list_t* list, const std::string& message) {
+    if (list != nullptr) {
+        list->last_error = message;
+    }
+    set_global_error(message);
+}
+
+void clear_inverse_attribute_list_error(ifcopenshell_ifcparse_inverse_attribute_list_t* list) {
+    if (list != nullptr) {
+        list->last_error.clear();
+    }
+    clear_global_error();
+}
+
 ifcopenshell_ifcparse_entity_list_t* make_entity_list(
     const std::shared_ptr<IfcParse::IfcFile>& owner_file,
     const aggregate_of_instance::ptr& entities
@@ -327,6 +392,92 @@ ifcopenshell_ifcparse_argument_type_t to_c_argument_type(IfcUtil::ArgumentType t
             return IFCOPENSHELL_IFCPARSE_ARG_UNKNOWN;
         default:
             return IFCOPENSHELL_IFCPARSE_ARG_UNKNOWN;
+    }
+}
+
+ifcopenshell_ifcparse_declaration_kind_t to_c_declaration_kind(const IfcParse::declaration* decl) {
+    if (decl == nullptr) {
+        return IFCOPENSHELL_IFCPARSE_DECL_UNKNOWN;
+    }
+    if (decl->as_type_declaration() != nullptr) {
+        return IFCOPENSHELL_IFCPARSE_DECL_TYPE_DECLARATION;
+    }
+    if (decl->as_select_type() != nullptr) {
+        return IFCOPENSHELL_IFCPARSE_DECL_SELECT_TYPE;
+    }
+    if (decl->as_enumeration_type() != nullptr) {
+        return IFCOPENSHELL_IFCPARSE_DECL_ENUMERATION_TYPE;
+    }
+    if (decl->as_entity() != nullptr) {
+        return IFCOPENSHELL_IFCPARSE_DECL_ENTITY;
+    }
+    return IFCOPENSHELL_IFCPARSE_DECL_UNKNOWN;
+}
+
+ifcopenshell_ifcparse_parameter_type_kind_t to_c_parameter_type_kind(const IfcParse::parameter_type* parameter_type) {
+    if (parameter_type == nullptr) {
+        return IFCOPENSHELL_IFCPARSE_PARAM_UNKNOWN;
+    }
+    if (parameter_type->as_named_type() != nullptr) {
+        return IFCOPENSHELL_IFCPARSE_PARAM_NAMED;
+    }
+    if (parameter_type->as_simple_type() != nullptr) {
+        return IFCOPENSHELL_IFCPARSE_PARAM_SIMPLE;
+    }
+    if (parameter_type->as_aggregation_type() != nullptr) {
+        return IFCOPENSHELL_IFCPARSE_PARAM_AGGREGATION;
+    }
+    return IFCOPENSHELL_IFCPARSE_PARAM_UNKNOWN;
+}
+
+ifcopenshell_ifcparse_simple_type_t to_c_simple_type(IfcParse::simple_type::data_type simple_type) {
+    switch (simple_type) {
+        case IfcParse::simple_type::binary_type:
+            return IFCOPENSHELL_IFCPARSE_SIMPLE_BINARY;
+        case IfcParse::simple_type::boolean_type:
+            return IFCOPENSHELL_IFCPARSE_SIMPLE_BOOLEAN;
+        case IfcParse::simple_type::integer_type:
+            return IFCOPENSHELL_IFCPARSE_SIMPLE_INTEGER;
+        case IfcParse::simple_type::logical_type:
+            return IFCOPENSHELL_IFCPARSE_SIMPLE_LOGICAL;
+        case IfcParse::simple_type::number_type:
+            return IFCOPENSHELL_IFCPARSE_SIMPLE_NUMBER;
+        case IfcParse::simple_type::real_type:
+            return IFCOPENSHELL_IFCPARSE_SIMPLE_REAL;
+        case IfcParse::simple_type::string_type:
+            return IFCOPENSHELL_IFCPARSE_SIMPLE_STRING;
+        case IfcParse::simple_type::datatype_COUNT:
+            return IFCOPENSHELL_IFCPARSE_SIMPLE_INVALID;
+        default:
+            return IFCOPENSHELL_IFCPARSE_SIMPLE_INVALID;
+    }
+}
+
+ifcopenshell_ifcparse_aggregation_type_t to_c_aggregation_type(IfcParse::aggregation_type::aggregate_type aggregation_type) {
+    switch (aggregation_type) {
+        case IfcParse::aggregation_type::array_type:
+            return IFCOPENSHELL_IFCPARSE_AGGR_ARRAY;
+        case IfcParse::aggregation_type::bag_type:
+            return IFCOPENSHELL_IFCPARSE_AGGR_BAG;
+        case IfcParse::aggregation_type::list_type:
+            return IFCOPENSHELL_IFCPARSE_AGGR_LIST;
+        case IfcParse::aggregation_type::set_type:
+            return IFCOPENSHELL_IFCPARSE_AGGR_SET;
+        default:
+            return IFCOPENSHELL_IFCPARSE_AGGR_INVALID;
+    }
+}
+
+ifcopenshell_ifcparse_inverse_aggregation_type_t to_c_inverse_aggregation_type(IfcParse::inverse_attribute::aggregate_type aggregation_type) {
+    switch (aggregation_type) {
+        case IfcParse::inverse_attribute::bag_type:
+            return IFCOPENSHELL_IFCPARSE_INV_AGGR_BAG;
+        case IfcParse::inverse_attribute::set_type:
+            return IFCOPENSHELL_IFCPARSE_INV_AGGR_SET;
+        case IfcParse::inverse_attribute::unspecified_type:
+            return IFCOPENSHELL_IFCPARSE_INV_AGGR_UNSPECIFIED;
+        default:
+            return IFCOPENSHELL_IFCPARSE_INV_AGGR_INVALID;
     }
 }
 
@@ -3021,6 +3172,698 @@ int ifcopenshell_ifcparse_type_index(const ifcopenshell_ifcparse_type_ref_t* typ
     }
     clear_global_error();
     return decl->index_in_schema();
+}
+
+const ifcopenshell_ifcparse_type_ref_t* ifcopenshell_ifcparse_schema_declaration_by_name(
+    const char* schema_name,
+    const char* declaration_name
+) {
+    if (schema_name == nullptr || schema_name[0] == '\0') {
+        set_global_error("Schema name is empty");
+        return nullptr;
+    }
+    if (declaration_name == nullptr || declaration_name[0] == '\0') {
+        set_global_error("Declaration name is empty");
+        return nullptr;
+    }
+
+    try {
+        const IfcParse::schema_definition* schema = IfcParse::schema_by_name(std::string(schema_name));
+        const IfcParse::declaration* decl = schema->declaration_by_name(std::string(declaration_name));
+        clear_global_error();
+        return to_type_ref(decl);
+    } catch (const std::exception& e) {
+        set_global_error(e.what());
+        return nullptr;
+    } catch (...) {
+        set_global_error("Unknown native exception while resolving schema declaration by name");
+        return nullptr;
+    }
+}
+
+ifcopenshell_ifcparse_type_list_t* ifcopenshell_ifcparse_schema_entities(
+    const char* schema_name
+) {
+    if (schema_name == nullptr || schema_name[0] == '\0') {
+        set_global_error("Schema name is empty");
+        return nullptr;
+    }
+
+    try {
+        const IfcParse::schema_definition* schema = IfcParse::schema_by_name(std::string(schema_name));
+        std::unique_ptr<ifcopenshell_ifcparse_type_list_t> list(new ifcopenshell_ifcparse_type_list_t());
+        list->cursor = 0;
+        const auto& entities = schema->entities();
+        list->types.reserve(entities.size());
+        for (const auto* entity : entities) {
+            list->types.push_back(entity);
+        }
+        clear_type_list_error(list.get());
+        return list.release();
+    } catch (const std::exception& e) {
+        set_global_error(e.what());
+        return nullptr;
+    } catch (...) {
+        set_global_error("Unknown native exception while listing schema entities");
+        return nullptr;
+    }
+}
+
+const char* ifcopenshell_ifcparse_type_schema_name(const ifcopenshell_ifcparse_type_ref_t* type_ref) {
+    const IfcParse::declaration* decl = from_type_ref(type_ref);
+    if (decl == nullptr) {
+        set_global_error("Type reference is null");
+        return nullptr;
+    }
+    if (decl->schema() == nullptr) {
+        set_global_error("Declaration schema is null");
+        return nullptr;
+    }
+    clear_global_error();
+    return decl->schema()->name().c_str();
+}
+
+int ifcopenshell_ifcparse_type_is_a(
+    const ifcopenshell_ifcparse_type_ref_t* type_ref,
+    const char* type_name
+) {
+    const IfcParse::declaration* decl = from_type_ref(type_ref);
+    if (decl == nullptr) {
+        set_global_error("Type reference is null");
+        return 0;
+    }
+    if (type_name == nullptr || type_name[0] == '\0') {
+        set_global_error("Type name is empty");
+        return 0;
+    }
+    try {
+        const bool result = decl->is(std::string(type_name));
+        clear_global_error();
+        return result ? 1 : 0;
+    } catch (const std::exception& e) {
+        set_global_error(e.what());
+        return 0;
+    } catch (...) {
+        set_global_error("Unknown native exception while checking declaration inheritance");
+        return 0;
+    }
+}
+
+ifcopenshell_ifcparse_declaration_kind_t ifcopenshell_ifcparse_type_kind(
+    const ifcopenshell_ifcparse_type_ref_t* type_ref
+) {
+    const IfcParse::declaration* decl = from_type_ref(type_ref);
+    if (decl == nullptr) {
+        set_global_error("Type reference is null");
+        return IFCOPENSHELL_IFCPARSE_DECL_UNKNOWN;
+    }
+    clear_global_error();
+    return to_c_declaration_kind(decl);
+}
+
+int ifcopenshell_ifcparse_type_is_abstract(const ifcopenshell_ifcparse_type_ref_t* type_ref) {
+    const IfcParse::declaration* decl = from_type_ref(type_ref);
+    if (decl == nullptr) {
+        set_global_error("Type reference is null");
+        return 0;
+    }
+    const auto* entity_decl = decl->as_entity();
+    if (entity_decl == nullptr) {
+        set_global_error("Declaration is not an entity");
+        return 0;
+    }
+    clear_global_error();
+    return entity_decl->is_abstract() ? 1 : 0;
+}
+
+const ifcopenshell_ifcparse_type_ref_t* ifcopenshell_ifcparse_type_supertype(
+    const ifcopenshell_ifcparse_type_ref_t* type_ref
+) {
+    const IfcParse::declaration* decl = from_type_ref(type_ref);
+    if (decl == nullptr) {
+        set_global_error("Type reference is null");
+        return nullptr;
+    }
+    const auto* entity_decl = decl->as_entity();
+    if (entity_decl == nullptr) {
+        set_global_error("Declaration is not an entity");
+        return nullptr;
+    }
+    clear_global_error();
+    return to_type_ref(entity_decl->supertype());
+}
+
+ifcopenshell_ifcparse_type_list_t* ifcopenshell_ifcparse_type_subtypes(
+    const ifcopenshell_ifcparse_type_ref_t* type_ref
+) {
+    const IfcParse::declaration* decl = from_type_ref(type_ref);
+    if (decl == nullptr) {
+        set_global_error("Type reference is null");
+        return nullptr;
+    }
+    const auto* entity_decl = decl->as_entity();
+    if (entity_decl == nullptr) {
+        set_global_error("Declaration is not an entity");
+        return nullptr;
+    }
+
+    try {
+        std::unique_ptr<ifcopenshell_ifcparse_type_list_t> list(new ifcopenshell_ifcparse_type_list_t());
+        list->cursor = 0;
+        const auto& subtypes = entity_decl->subtypes();
+        list->types.reserve(subtypes.size());
+        for (const auto* subtype : subtypes) {
+            list->types.push_back(subtype);
+        }
+        clear_type_list_error(list.get());
+        return list.release();
+    } catch (const std::exception& e) {
+        set_global_error(e.what());
+        return nullptr;
+    } catch (...) {
+        set_global_error("Unknown native exception while listing declaration subtypes");
+        return nullptr;
+    }
+}
+
+const ifcopenshell_ifcparse_type_ref_t* ifcopenshell_ifcparse_type_declared_type(
+    const ifcopenshell_ifcparse_type_ref_t* type_ref
+) {
+    const IfcParse::declaration* decl = from_type_ref(type_ref);
+    if (decl == nullptr) {
+        set_global_error("Type reference is null");
+        return nullptr;
+    }
+    const auto* type_decl = decl->as_type_declaration();
+    if (type_decl == nullptr) {
+        set_global_error("Declaration is not a type declaration");
+        return nullptr;
+    }
+    const auto* declared_parameter_type = type_decl->declared_type();
+    if (declared_parameter_type == nullptr) {
+        set_global_error("Type declaration has no declared type");
+        return nullptr;
+    }
+    const auto* named_type = declared_parameter_type->as_named_type();
+    if (named_type == nullptr) {
+        clear_global_error();
+        return nullptr;
+    }
+    clear_global_error();
+    return to_type_ref(named_type->declared_type());
+}
+
+ifcopenshell_ifcparse_type_list_t* ifcopenshell_ifcparse_type_select_list(
+    const ifcopenshell_ifcparse_type_ref_t* type_ref
+) {
+    const IfcParse::declaration* decl = from_type_ref(type_ref);
+    if (decl == nullptr) {
+        set_global_error("Type reference is null");
+        return nullptr;
+    }
+    const auto* select_decl = decl->as_select_type();
+    if (select_decl == nullptr) {
+        set_global_error("Declaration is not a select type");
+        return nullptr;
+    }
+
+    try {
+        std::unique_ptr<ifcopenshell_ifcparse_type_list_t> list(new ifcopenshell_ifcparse_type_list_t());
+        list->cursor = 0;
+        const auto& select_list = select_decl->select_list();
+        list->types.reserve(select_list.size());
+        for (const auto* item : select_list) {
+            list->types.push_back(item);
+        }
+        clear_type_list_error(list.get());
+        return list.release();
+    } catch (const std::exception& e) {
+        set_global_error(e.what());
+        return nullptr;
+    } catch (...) {
+        set_global_error("Unknown native exception while listing select type members");
+        return nullptr;
+    }
+}
+
+ifcopenshell_ifcparse_string_list_t* ifcopenshell_ifcparse_type_enumeration_items(
+    const ifcopenshell_ifcparse_type_ref_t* type_ref
+) {
+    const IfcParse::declaration* decl = from_type_ref(type_ref);
+    if (decl == nullptr) {
+        set_global_error("Type reference is null");
+        return nullptr;
+    }
+    const auto* enumeration_decl = decl->as_enumeration_type();
+    if (enumeration_decl == nullptr) {
+        set_global_error("Declaration is not an enumeration type");
+        return nullptr;
+    }
+
+    try {
+        std::unique_ptr<ifcopenshell_ifcparse_string_list_t> list(new ifcopenshell_ifcparse_string_list_t());
+        list->cursor = 0;
+        const auto& items = enumeration_decl->enumeration_items();
+        list->values.reserve(items.size());
+        for (const auto& item : items) {
+            list->values.push_back(item);
+        }
+        clear_string_list_error(list.get());
+        return list.release();
+    } catch (const std::exception& e) {
+        set_global_error(e.what());
+        return nullptr;
+    } catch (...) {
+        set_global_error("Unknown native exception while listing enumeration items");
+        return nullptr;
+    }
+}
+
+int ifcopenshell_ifcparse_type_attribute_index(
+    const ifcopenshell_ifcparse_type_ref_t* type_ref,
+    const char* attribute_name
+) {
+    const IfcParse::declaration* decl = from_type_ref(type_ref);
+    if (decl == nullptr) {
+        set_global_error("Type reference is null");
+        return -1;
+    }
+    if (attribute_name == nullptr || attribute_name[0] == '\0') {
+        set_global_error("Attribute name is empty");
+        return -1;
+    }
+    const auto* entity_decl = decl->as_entity();
+    if (entity_decl == nullptr) {
+        set_global_error("Declaration is not an entity");
+        return -1;
+    }
+    const ptrdiff_t index = entity_decl->attribute_index(std::string(attribute_name));
+    if (index < 0) {
+        set_global_error("Attribute not found");
+        return -1;
+    }
+    clear_global_error();
+    return static_cast<int>(index);
+}
+
+ifcopenshell_ifcparse_attribute_list_t* ifcopenshell_ifcparse_type_attributes(
+    const ifcopenshell_ifcparse_type_ref_t* type_ref,
+    int include_inherited
+) {
+    const IfcParse::declaration* decl = from_type_ref(type_ref);
+    if (decl == nullptr) {
+        set_global_error("Type reference is null");
+        return nullptr;
+    }
+    const auto* entity_decl = decl->as_entity();
+    if (entity_decl == nullptr) {
+        set_global_error("Declaration is not an entity");
+        return nullptr;
+    }
+
+    try {
+        std::unique_ptr<ifcopenshell_ifcparse_attribute_list_t> list(new ifcopenshell_ifcparse_attribute_list_t());
+        list->cursor = 0;
+        if (include_inherited != 0) {
+            list->attributes = entity_decl->all_attributes();
+        } else {
+            const auto& attributes = entity_decl->attributes();
+            list->attributes.reserve(attributes.size());
+            for (const auto* attribute : attributes) {
+                list->attributes.push_back(attribute);
+            }
+        }
+        clear_attribute_list_error(list.get());
+        return list.release();
+    } catch (const std::exception& e) {
+        set_global_error(e.what());
+        return nullptr;
+    } catch (...) {
+        set_global_error("Unknown native exception while listing declaration attributes");
+        return nullptr;
+    }
+}
+
+ifcopenshell_ifcparse_inverse_attribute_list_t* ifcopenshell_ifcparse_type_inverse_attributes(
+    const ifcopenshell_ifcparse_type_ref_t* type_ref,
+    int include_inherited
+) {
+    const IfcParse::declaration* decl = from_type_ref(type_ref);
+    if (decl == nullptr) {
+        set_global_error("Type reference is null");
+        return nullptr;
+    }
+    const auto* entity_decl = decl->as_entity();
+    if (entity_decl == nullptr) {
+        set_global_error("Declaration is not an entity");
+        return nullptr;
+    }
+
+    try {
+        std::unique_ptr<ifcopenshell_ifcparse_inverse_attribute_list_t> list(new ifcopenshell_ifcparse_inverse_attribute_list_t());
+        list->cursor = 0;
+        if (include_inherited != 0) {
+            list->attributes = entity_decl->all_inverse_attributes();
+        } else {
+            const auto all_attributes = entity_decl->all_inverse_attributes();
+            size_t inherited_count = 0;
+            if (const auto* supertype = entity_decl->supertype()) {
+                inherited_count = supertype->all_inverse_attributes().size();
+            }
+            if (inherited_count > all_attributes.size()) {
+                inherited_count = all_attributes.size();
+            }
+            list->attributes.reserve(all_attributes.size() - inherited_count);
+            for (size_t i = inherited_count; i < all_attributes.size(); ++i) {
+                const auto* attribute = all_attributes[i];
+                list->attributes.push_back(attribute);
+            }
+        }
+        clear_inverse_attribute_list_error(list.get());
+        return list.release();
+    } catch (const std::exception& e) {
+        set_global_error(e.what());
+        return nullptr;
+    } catch (...) {
+        set_global_error("Unknown native exception while listing declaration inverse attributes");
+        return nullptr;
+    }
+}
+
+void ifcopenshell_ifcparse_attribute_list_close(ifcopenshell_ifcparse_attribute_list_t* list) {
+    delete list;
+}
+
+size_t ifcopenshell_ifcparse_attribute_list_count(const ifcopenshell_ifcparse_attribute_list_t* list) {
+    if (list == nullptr) {
+        return 0;
+    }
+    return list->attributes.size();
+}
+
+void ifcopenshell_ifcparse_attribute_list_reset(ifcopenshell_ifcparse_attribute_list_t* list) {
+    if (list == nullptr) {
+        return;
+    }
+    list->cursor = 0;
+    clear_attribute_list_error(list);
+}
+
+const ifcopenshell_ifcparse_attribute_ref_t* ifcopenshell_ifcparse_attribute_list_get(
+    const ifcopenshell_ifcparse_attribute_list_t* list,
+    size_t index
+) {
+    if (list == nullptr) {
+        set_global_error("Attribute list handle is null");
+        return nullptr;
+    }
+    if (index >= list->attributes.size()) {
+        set_attribute_list_error(const_cast<ifcopenshell_ifcparse_attribute_list_t*>(list), "Attribute list index out of range");
+        return nullptr;
+    }
+    clear_attribute_list_error(const_cast<ifcopenshell_ifcparse_attribute_list_t*>(list));
+    return to_attribute_ref(list->attributes[index]);
+}
+
+const ifcopenshell_ifcparse_attribute_ref_t* ifcopenshell_ifcparse_attribute_list_next(
+    ifcopenshell_ifcparse_attribute_list_t* list
+) {
+    if (list == nullptr) {
+        set_global_error("Attribute list handle is null");
+        return nullptr;
+    }
+    if (list->cursor >= list->attributes.size()) {
+        clear_attribute_list_error(list);
+        return nullptr;
+    }
+    return ifcopenshell_ifcparse_attribute_list_get(list, list->cursor++);
+}
+
+const char* ifcopenshell_ifcparse_attribute_name(const ifcopenshell_ifcparse_attribute_ref_t* attribute_ref) {
+    const IfcParse::attribute* attribute = from_attribute_ref(attribute_ref);
+    if (attribute == nullptr) {
+        set_global_error("Attribute reference is null");
+        return nullptr;
+    }
+    clear_global_error();
+    return attribute->name().c_str();
+}
+
+int ifcopenshell_ifcparse_attribute_optional(const ifcopenshell_ifcparse_attribute_ref_t* attribute_ref) {
+    const IfcParse::attribute* attribute = from_attribute_ref(attribute_ref);
+    if (attribute == nullptr) {
+        set_global_error("Attribute reference is null");
+        return 0;
+    }
+    clear_global_error();
+    return attribute->optional() ? 1 : 0;
+}
+
+const ifcopenshell_ifcparse_parameter_type_ref_t* ifcopenshell_ifcparse_attribute_parameter_type(
+    const ifcopenshell_ifcparse_attribute_ref_t* attribute_ref
+) {
+    const IfcParse::attribute* attribute = from_attribute_ref(attribute_ref);
+    if (attribute == nullptr) {
+        set_global_error("Attribute reference is null");
+        return nullptr;
+    }
+    clear_global_error();
+    return to_parameter_type_ref(attribute->type_of_attribute());
+}
+
+void ifcopenshell_ifcparse_inverse_attribute_list_close(ifcopenshell_ifcparse_inverse_attribute_list_t* list) {
+    delete list;
+}
+
+size_t ifcopenshell_ifcparse_inverse_attribute_list_count(const ifcopenshell_ifcparse_inverse_attribute_list_t* list) {
+    if (list == nullptr) {
+        return 0;
+    }
+    return list->attributes.size();
+}
+
+void ifcopenshell_ifcparse_inverse_attribute_list_reset(ifcopenshell_ifcparse_inverse_attribute_list_t* list) {
+    if (list == nullptr) {
+        return;
+    }
+    list->cursor = 0;
+    clear_inverse_attribute_list_error(list);
+}
+
+const ifcopenshell_ifcparse_inverse_attribute_ref_t* ifcopenshell_ifcparse_inverse_attribute_list_get(
+    const ifcopenshell_ifcparse_inverse_attribute_list_t* list,
+    size_t index
+) {
+    if (list == nullptr) {
+        set_global_error("Inverse attribute list handle is null");
+        return nullptr;
+    }
+    if (index >= list->attributes.size()) {
+        set_inverse_attribute_list_error(const_cast<ifcopenshell_ifcparse_inverse_attribute_list_t*>(list), "Inverse attribute list index out of range");
+        return nullptr;
+    }
+    clear_inverse_attribute_list_error(const_cast<ifcopenshell_ifcparse_inverse_attribute_list_t*>(list));
+    return to_inverse_attribute_ref(list->attributes[index]);
+}
+
+const ifcopenshell_ifcparse_inverse_attribute_ref_t* ifcopenshell_ifcparse_inverse_attribute_list_next(
+    ifcopenshell_ifcparse_inverse_attribute_list_t* list
+) {
+    if (list == nullptr) {
+        set_global_error("Inverse attribute list handle is null");
+        return nullptr;
+    }
+    if (list->cursor >= list->attributes.size()) {
+        clear_inverse_attribute_list_error(list);
+        return nullptr;
+    }
+    return ifcopenshell_ifcparse_inverse_attribute_list_get(list, list->cursor++);
+}
+
+const char* ifcopenshell_ifcparse_inverse_attribute_name(
+    const ifcopenshell_ifcparse_inverse_attribute_ref_t* inverse_attribute_ref
+) {
+    const IfcParse::inverse_attribute* attribute = from_inverse_attribute_ref(inverse_attribute_ref);
+    if (attribute == nullptr) {
+        set_global_error("Inverse attribute reference is null");
+        return nullptr;
+    }
+    clear_global_error();
+    return attribute->name().c_str();
+}
+
+ifcopenshell_ifcparse_inverse_aggregation_type_t ifcopenshell_ifcparse_inverse_attribute_aggregation_type(
+    const ifcopenshell_ifcparse_inverse_attribute_ref_t* inverse_attribute_ref
+) {
+    const IfcParse::inverse_attribute* attribute = from_inverse_attribute_ref(inverse_attribute_ref);
+    if (attribute == nullptr) {
+        set_global_error("Inverse attribute reference is null");
+        return IFCOPENSHELL_IFCPARSE_INV_AGGR_INVALID;
+    }
+    clear_global_error();
+    return to_c_inverse_aggregation_type(attribute->type_of_aggregation());
+}
+
+int ifcopenshell_ifcparse_inverse_attribute_bound1(
+    const ifcopenshell_ifcparse_inverse_attribute_ref_t* inverse_attribute_ref
+) {
+    const IfcParse::inverse_attribute* attribute = from_inverse_attribute_ref(inverse_attribute_ref);
+    if (attribute == nullptr) {
+        set_global_error("Inverse attribute reference is null");
+        return 0;
+    }
+    clear_global_error();
+    return attribute->bound1();
+}
+
+int ifcopenshell_ifcparse_inverse_attribute_bound2(
+    const ifcopenshell_ifcparse_inverse_attribute_ref_t* inverse_attribute_ref
+) {
+    const IfcParse::inverse_attribute* attribute = from_inverse_attribute_ref(inverse_attribute_ref);
+    if (attribute == nullptr) {
+        set_global_error("Inverse attribute reference is null");
+        return 0;
+    }
+    clear_global_error();
+    return attribute->bound2();
+}
+
+const ifcopenshell_ifcparse_type_ref_t* ifcopenshell_ifcparse_inverse_attribute_entity_reference(
+    const ifcopenshell_ifcparse_inverse_attribute_ref_t* inverse_attribute_ref
+) {
+    const IfcParse::inverse_attribute* attribute = from_inverse_attribute_ref(inverse_attribute_ref);
+    if (attribute == nullptr) {
+        set_global_error("Inverse attribute reference is null");
+        return nullptr;
+    }
+    clear_global_error();
+    return to_type_ref(attribute->entity_reference());
+}
+
+const ifcopenshell_ifcparse_attribute_ref_t* ifcopenshell_ifcparse_inverse_attribute_attribute_reference(
+    const ifcopenshell_ifcparse_inverse_attribute_ref_t* inverse_attribute_ref
+) {
+    const IfcParse::inverse_attribute* attribute = from_inverse_attribute_ref(inverse_attribute_ref);
+    if (attribute == nullptr) {
+        set_global_error("Inverse attribute reference is null");
+        return nullptr;
+    }
+    clear_global_error();
+    return to_attribute_ref(attribute->attribute_reference());
+}
+
+ifcopenshell_ifcparse_parameter_type_kind_t ifcopenshell_ifcparse_parameter_type_kind(
+    const ifcopenshell_ifcparse_parameter_type_ref_t* parameter_type_ref
+) {
+    const IfcParse::parameter_type* parameter_type = from_parameter_type_ref(parameter_type_ref);
+    if (parameter_type == nullptr) {
+        set_global_error("Parameter type reference is null");
+        return IFCOPENSHELL_IFCPARSE_PARAM_UNKNOWN;
+    }
+    clear_global_error();
+    return to_c_parameter_type_kind(parameter_type);
+}
+
+const ifcopenshell_ifcparse_type_ref_t* ifcopenshell_ifcparse_parameter_type_named_declared_type(
+    const ifcopenshell_ifcparse_parameter_type_ref_t* parameter_type_ref
+) {
+    const IfcParse::parameter_type* parameter_type = from_parameter_type_ref(parameter_type_ref);
+    if (parameter_type == nullptr) {
+        set_global_error("Parameter type reference is null");
+        return nullptr;
+    }
+    const auto* named_type = parameter_type->as_named_type();
+    if (named_type == nullptr) {
+        set_global_error("Parameter type is not a named type");
+        return nullptr;
+    }
+    clear_global_error();
+    return to_type_ref(named_type->declared_type());
+}
+
+ifcopenshell_ifcparse_simple_type_t ifcopenshell_ifcparse_parameter_type_simple_declared_type(
+    const ifcopenshell_ifcparse_parameter_type_ref_t* parameter_type_ref
+) {
+    const IfcParse::parameter_type* parameter_type = from_parameter_type_ref(parameter_type_ref);
+    if (parameter_type == nullptr) {
+        set_global_error("Parameter type reference is null");
+        return IFCOPENSHELL_IFCPARSE_SIMPLE_INVALID;
+    }
+    const auto* simple_type = parameter_type->as_simple_type();
+    if (simple_type == nullptr) {
+        set_global_error("Parameter type is not a simple type");
+        return IFCOPENSHELL_IFCPARSE_SIMPLE_INVALID;
+    }
+    clear_global_error();
+    return to_c_simple_type(simple_type->declared_type());
+}
+
+ifcopenshell_ifcparse_aggregation_type_t ifcopenshell_ifcparse_parameter_type_aggregation_type(
+    const ifcopenshell_ifcparse_parameter_type_ref_t* parameter_type_ref
+) {
+    const IfcParse::parameter_type* parameter_type = from_parameter_type_ref(parameter_type_ref);
+    if (parameter_type == nullptr) {
+        set_global_error("Parameter type reference is null");
+        return IFCOPENSHELL_IFCPARSE_AGGR_INVALID;
+    }
+    const auto* aggregation_type = parameter_type->as_aggregation_type();
+    if (aggregation_type == nullptr) {
+        set_global_error("Parameter type is not an aggregation type");
+        return IFCOPENSHELL_IFCPARSE_AGGR_INVALID;
+    }
+    clear_global_error();
+    return to_c_aggregation_type(aggregation_type->type_of_aggregation());
+}
+
+int ifcopenshell_ifcparse_parameter_type_aggregation_bound1(
+    const ifcopenshell_ifcparse_parameter_type_ref_t* parameter_type_ref
+) {
+    const IfcParse::parameter_type* parameter_type = from_parameter_type_ref(parameter_type_ref);
+    if (parameter_type == nullptr) {
+        set_global_error("Parameter type reference is null");
+        return 0;
+    }
+    const auto* aggregation_type = parameter_type->as_aggregation_type();
+    if (aggregation_type == nullptr) {
+        set_global_error("Parameter type is not an aggregation type");
+        return 0;
+    }
+    clear_global_error();
+    return aggregation_type->bound1();
+}
+
+int ifcopenshell_ifcparse_parameter_type_aggregation_bound2(
+    const ifcopenshell_ifcparse_parameter_type_ref_t* parameter_type_ref
+) {
+    const IfcParse::parameter_type* parameter_type = from_parameter_type_ref(parameter_type_ref);
+    if (parameter_type == nullptr) {
+        set_global_error("Parameter type reference is null");
+        return 0;
+    }
+    const auto* aggregation_type = parameter_type->as_aggregation_type();
+    if (aggregation_type == nullptr) {
+        set_global_error("Parameter type is not an aggregation type");
+        return 0;
+    }
+    clear_global_error();
+    return aggregation_type->bound2();
+}
+
+const ifcopenshell_ifcparse_parameter_type_ref_t* ifcopenshell_ifcparse_parameter_type_aggregation_element_type(
+    const ifcopenshell_ifcparse_parameter_type_ref_t* parameter_type_ref
+) {
+    const IfcParse::parameter_type* parameter_type = from_parameter_type_ref(parameter_type_ref);
+    if (parameter_type == nullptr) {
+        set_global_error("Parameter type reference is null");
+        return nullptr;
+    }
+    const auto* aggregation_type = parameter_type->as_aggregation_type();
+    if (aggregation_type == nullptr) {
+        set_global_error("Parameter type is not an aggregation type");
+        return nullptr;
+    }
+    clear_global_error();
+    return to_parameter_type_ref(aggregation_type->type_of_element());
 }
 
 ifcopenshell_ifcparse_string_list_t* ifcopenshell_ifcparse_schema_names(void) {

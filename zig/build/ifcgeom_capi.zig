@@ -79,6 +79,14 @@ pub fn addZigLibTests(
     });
     ifcparse_module.addIncludePath(b.path("zig/lib"));
 
+    const ifcutil_module = b.createModule(.{
+        .root_source_file = b.path("zig/lib/ifcutil.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    ifcutil_module.addIncludePath(b.path("zig/lib"));
+    ifcutil_module.addImport("ifcparse", ifcparse_module);
+
     const ifcgeom_module = b.createModule(.{
         .root_source_file = b.path("zig/lib/ifcgeom.zig"),
         .target = target,
@@ -102,6 +110,7 @@ pub fn addZigLibTests(
         .optimize = optimize,
     });
     ifcparse_root_module.addImport("ifcparse", ifcparse_module);
+    ifcparse_root_module.addImport("ifcutil", ifcutil_module);
 
     const ifcgeom_root_module = b.createModule(.{
         .root_source_file = b.path("zig/lib/tests/ifcgeom.zig"),

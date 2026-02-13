@@ -173,9 +173,12 @@ fn appendOcctToolkitSourcesToLibrary(
 
     var cpp_flags = std.ArrayList([]const u8).empty;
     defer cpp_flags.deinit(b.allocator);
+    const math_compat_header = b.path("zig/build/include/occt_math_compat.h").getPath(b);
     cpp_flags.append(b.allocator, "-std=c++17") catch @panic("Out of memory building OCCT flags");
     cpp_flags.append(b.allocator, "-Wno-error") catch @panic("Out of memory building OCCT flags");
     cpp_flags.append(b.allocator, "-DOCCT_NO_PLUGINS") catch @panic("Out of memory building OCCT flags");
+    cpp_flags.append(b.allocator, "-include") catch @panic("Out of memory building OCCT flags");
+    cpp_flags.append(b.allocator, math_compat_header) catch @panic("Out of memory building OCCT flags");
 
     if (cpp_sources.items.len > 0) {
         lib.addCSourceFiles(.{
@@ -189,6 +192,8 @@ fn appendOcctToolkitSourcesToLibrary(
     defer c_flags.deinit(b.allocator);
     c_flags.append(b.allocator, "-Wno-error") catch @panic("Out of memory building OCCT C flags");
     c_flags.append(b.allocator, "-DOCCT_NO_PLUGINS") catch @panic("Out of memory building OCCT C flags");
+    c_flags.append(b.allocator, "-include") catch @panic("Out of memory building OCCT C flags");
+    c_flags.append(b.allocator, math_compat_header) catch @panic("Out of memory building OCCT C flags");
 
     if (c_sources.items.len > 0) {
         lib.addCSourceFiles(.{

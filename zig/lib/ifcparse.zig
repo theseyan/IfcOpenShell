@@ -38,6 +38,52 @@ pub const ArgumentType = enum(c.ifcopenshell_ifcparse_argument_type_t) {
     _,
 };
 
+pub const DeclarationKind = enum(c.ifcopenshell_ifcparse_declaration_kind_t) {
+    unknown = c.IFCOPENSHELL_IFCPARSE_DECL_UNKNOWN,
+    type_declaration = c.IFCOPENSHELL_IFCPARSE_DECL_TYPE_DECLARATION,
+    select_type = c.IFCOPENSHELL_IFCPARSE_DECL_SELECT_TYPE,
+    enumeration_type = c.IFCOPENSHELL_IFCPARSE_DECL_ENUMERATION_TYPE,
+    entity = c.IFCOPENSHELL_IFCPARSE_DECL_ENTITY,
+    _,
+};
+
+pub const ParameterTypeKind = enum(c.ifcopenshell_ifcparse_parameter_type_kind_t) {
+    unknown = c.IFCOPENSHELL_IFCPARSE_PARAM_UNKNOWN,
+    named = c.IFCOPENSHELL_IFCPARSE_PARAM_NAMED,
+    simple = c.IFCOPENSHELL_IFCPARSE_PARAM_SIMPLE,
+    aggregation = c.IFCOPENSHELL_IFCPARSE_PARAM_AGGREGATION,
+    _,
+};
+
+pub const SimpleType = enum(c.ifcopenshell_ifcparse_simple_type_t) {
+    binary = c.IFCOPENSHELL_IFCPARSE_SIMPLE_BINARY,
+    boolean = c.IFCOPENSHELL_IFCPARSE_SIMPLE_BOOLEAN,
+    integer = c.IFCOPENSHELL_IFCPARSE_SIMPLE_INTEGER,
+    logical = c.IFCOPENSHELL_IFCPARSE_SIMPLE_LOGICAL,
+    number = c.IFCOPENSHELL_IFCPARSE_SIMPLE_NUMBER,
+    real = c.IFCOPENSHELL_IFCPARSE_SIMPLE_REAL,
+    string = c.IFCOPENSHELL_IFCPARSE_SIMPLE_STRING,
+    invalid = c.IFCOPENSHELL_IFCPARSE_SIMPLE_INVALID,
+    _,
+};
+
+pub const AggregationType = enum(c.ifcopenshell_ifcparse_aggregation_type_t) {
+    array = c.IFCOPENSHELL_IFCPARSE_AGGR_ARRAY,
+    bag = c.IFCOPENSHELL_IFCPARSE_AGGR_BAG,
+    list = c.IFCOPENSHELL_IFCPARSE_AGGR_LIST,
+    set = c.IFCOPENSHELL_IFCPARSE_AGGR_SET,
+    invalid = c.IFCOPENSHELL_IFCPARSE_AGGR_INVALID,
+    _,
+};
+
+pub const InverseAggregationType = enum(c.ifcopenshell_ifcparse_inverse_aggregation_type_t) {
+    bag = c.IFCOPENSHELL_IFCPARSE_INV_AGGR_BAG,
+    set = c.IFCOPENSHELL_IFCPARSE_INV_AGGR_SET,
+    unspecified = c.IFCOPENSHELL_IFCPARSE_INV_AGGR_UNSPECIFIED,
+    invalid = c.IFCOPENSHELL_IFCPARSE_INV_AGGR_INVALID,
+    _,
+};
+
 pub const AttributeCategory = enum(c_int) {
     invalid = 0,
     forward = 1,
@@ -940,6 +986,346 @@ pub const TypeRef = struct {
         if (self.handle == null) return -1;
         return c.ifcopenshell_ifcparse_type_index(self.handle.?);
     }
+
+    pub fn schemaName(self: TypeRef) ?[]const u8 {
+        if (self.handle == null) return null;
+        const raw_name = c.ifcopenshell_ifcparse_type_schema_name(self.handle.?);
+        if (raw_name == null) return null;
+        return std.mem.span(raw_name);
+    }
+
+    pub fn kind(self: TypeRef) DeclarationKind {
+        if (self.handle == null) return .unknown;
+        return @enumFromInt(c.ifcopenshell_ifcparse_type_kind(self.handle.?));
+    }
+
+    pub fn isA(
+        self: TypeRef,
+        allocator: std.mem.Allocator,
+        type_name: []const u8,
+    ) QueryError!bool {
+        if (self.handle == null) return error.InvalidArgument;
+        if (type_name.len == 0) return error.InvalidArgument;
+
+        const type_name_z = allocator.dupeZ(u8, type_name) catch return error.OutOfMemory;
+        defer allocator.free(type_name_z);
+
+        const result = c.ifcopenshell_ifcparse_type_is_a(self.handle.?, type_name_z.ptr);
+        if (result == 0 and lastError().len > 0) return error.QueryFailed;
+        return result != 0;
+    }
+
+    pub fn isAbstract(self: TypeRef) QueryError!bool {
+        if (self.handle == null) return error.InvalidArgument;
+        const result = c.ifcopenshell_ifcparse_type_is_abstract(self.handle.?);
+        if (result == 0 and lastError().len > 0) return error.QueryFailed;
+        return result != 0;
+    }
+
+    pub fn supertype(self: TypeRef) QueryError!?TypeRef {
+        if (self.handle == null) return error.InvalidArgument;
+        const raw_type = c.ifcopenshell_ifcparse_type_supertype(self.handle.?);
+        if (raw_type == null) {
+            if (lastError().len > 0) return error.QueryFailed;
+            return null;
+        }
+        return TypeRef{ .handle = raw_type };
+    }
+
+    pub fn subtypes(self: TypeRef) QueryError!TypeList {
+        if (self.handle == null) return error.InvalidArgument;
+        const raw_list = c.ifcopenshell_ifcparse_type_subtypes(self.handle.?);
+        if (raw_list == null) return error.QueryFailed;
+        return TypeList{ .handle = raw_list };
+    }
+
+    pub fn declaredType(self: TypeRef) QueryError!?TypeRef {
+        if (self.handle == null) return error.InvalidArgument;
+        const raw_type = c.ifcopenshell_ifcparse_type_declared_type(self.handle.?);
+        if (raw_type == null) {
+            if (lastError().len > 0) return error.QueryFailed;
+            return null;
+        }
+        return TypeRef{ .handle = raw_type };
+    }
+
+    pub fn selectList(self: TypeRef) QueryError!TypeList {
+        if (self.handle == null) return error.InvalidArgument;
+        const raw_list = c.ifcopenshell_ifcparse_type_select_list(self.handle.?);
+        if (raw_list == null) return error.QueryFailed;
+        return TypeList{ .handle = raw_list };
+    }
+
+    pub fn enumerationItems(self: TypeRef) QueryError!StringList {
+        if (self.handle == null) return error.InvalidArgument;
+        const raw_list = c.ifcopenshell_ifcparse_type_enumeration_items(self.handle.?);
+        if (raw_list == null) return error.QueryFailed;
+        return StringList{ .handle = raw_list };
+    }
+
+    pub fn attributeIndex(
+        self: TypeRef,
+        allocator: std.mem.Allocator,
+        attribute_name: []const u8,
+    ) QueryError!usize {
+        if (self.handle == null) return error.InvalidArgument;
+        if (attribute_name.len == 0) return error.InvalidArgument;
+
+        const attribute_name_z = allocator.dupeZ(u8, attribute_name) catch return error.OutOfMemory;
+        defer allocator.free(attribute_name_z);
+
+        const index = c.ifcopenshell_ifcparse_type_attribute_index(self.handle.?, attribute_name_z.ptr);
+        if (index < 0) return error.QueryFailed;
+        return @intCast(index);
+    }
+
+    pub fn attributes(self: TypeRef, include_inherited: bool) QueryError!AttributeList {
+        if (self.handle == null) return error.InvalidArgument;
+        const raw_list = c.ifcopenshell_ifcparse_type_attributes(self.handle.?, if (include_inherited) 1 else 0);
+        if (raw_list == null) return error.QueryFailed;
+        return AttributeList{ .handle = raw_list };
+    }
+
+    pub fn inverseAttributes(self: TypeRef, include_inherited: bool) QueryError!InverseAttributeList {
+        if (self.handle == null) return error.InvalidArgument;
+        const raw_list = c.ifcopenshell_ifcparse_type_inverse_attributes(self.handle.?, if (include_inherited) 1 else 0);
+        if (raw_list == null) return error.QueryFailed;
+        return InverseAttributeList{ .handle = raw_list };
+    }
+};
+
+pub const ParameterTypeRef = struct {
+    handle: ?*const c.ifcopenshell_ifcparse_parameter_type_ref_t,
+
+    pub fn kind(self: ParameterTypeRef) ParameterTypeKind {
+        if (self.handle == null) return .unknown;
+        return @enumFromInt(c.ifcopenshell_ifcparse_parameter_type_kind(self.handle.?));
+    }
+
+    pub fn namedDeclaredType(self: ParameterTypeRef) QueryError!?TypeRef {
+        if (self.handle == null) return error.InvalidArgument;
+        const raw_type = c.ifcopenshell_ifcparse_parameter_type_named_declared_type(self.handle.?);
+        if (raw_type == null) {
+            if (lastError().len > 0) return error.QueryFailed;
+            return null;
+        }
+        return TypeRef{ .handle = raw_type };
+    }
+
+    pub fn simpleDeclaredType(self: ParameterTypeRef) QueryError!SimpleType {
+        if (self.handle == null) return error.InvalidArgument;
+        const value = c.ifcopenshell_ifcparse_parameter_type_simple_declared_type(self.handle.?);
+        const result: SimpleType = @enumFromInt(value);
+        if (result == .invalid and lastError().len > 0) return error.QueryFailed;
+        return result;
+    }
+
+    pub fn aggregationType(self: ParameterTypeRef) QueryError!AggregationType {
+        if (self.handle == null) return error.InvalidArgument;
+        const value = c.ifcopenshell_ifcparse_parameter_type_aggregation_type(self.handle.?);
+        const result: AggregationType = @enumFromInt(value);
+        if (result == .invalid and lastError().len > 0) return error.QueryFailed;
+        return result;
+    }
+
+    pub fn aggregationBound1(self: ParameterTypeRef) QueryError!i32 {
+        if (self.handle == null) return error.InvalidArgument;
+        const value = c.ifcopenshell_ifcparse_parameter_type_aggregation_bound1(self.handle.?);
+        if (value == 0 and lastError().len > 0) return error.QueryFailed;
+        return value;
+    }
+
+    pub fn aggregationBound2(self: ParameterTypeRef) QueryError!i32 {
+        if (self.handle == null) return error.InvalidArgument;
+        const value = c.ifcopenshell_ifcparse_parameter_type_aggregation_bound2(self.handle.?);
+        if (value == 0 and lastError().len > 0) return error.QueryFailed;
+        return value;
+    }
+
+    pub fn aggregationElementType(self: ParameterTypeRef) QueryError!?ParameterTypeRef {
+        if (self.handle == null) return error.InvalidArgument;
+        const raw_type = c.ifcopenshell_ifcparse_parameter_type_aggregation_element_type(self.handle.?);
+        if (raw_type == null) {
+            if (lastError().len > 0) return error.QueryFailed;
+            return null;
+        }
+        return ParameterTypeRef{ .handle = raw_type };
+    }
+};
+
+pub const AttributeRef = struct {
+    handle: ?*const c.ifcopenshell_ifcparse_attribute_ref_t,
+
+    pub fn name(self: AttributeRef) ?[]const u8 {
+        if (self.handle == null) return null;
+        const raw_name = c.ifcopenshell_ifcparse_attribute_name(self.handle.?);
+        if (raw_name == null) return null;
+        return std.mem.span(raw_name);
+    }
+
+    pub fn optional(self: AttributeRef) QueryError!bool {
+        if (self.handle == null) return error.InvalidArgument;
+        const value = c.ifcopenshell_ifcparse_attribute_optional(self.handle.?);
+        if (value == 0 and lastError().len > 0) return error.QueryFailed;
+        return value != 0;
+    }
+
+    pub fn parameterType(self: AttributeRef) QueryError!?ParameterTypeRef {
+        if (self.handle == null) return error.InvalidArgument;
+        const raw_type = c.ifcopenshell_ifcparse_attribute_parameter_type(self.handle.?);
+        if (raw_type == null) {
+            if (lastError().len > 0) return error.QueryFailed;
+            return null;
+        }
+        return ParameterTypeRef{ .handle = raw_type };
+    }
+};
+
+pub const InverseAttributeRef = struct {
+    handle: ?*const c.ifcopenshell_ifcparse_inverse_attribute_ref_t,
+
+    pub fn name(self: InverseAttributeRef) ?[]const u8 {
+        if (self.handle == null) return null;
+        const raw_name = c.ifcopenshell_ifcparse_inverse_attribute_name(self.handle.?);
+        if (raw_name == null) return null;
+        return std.mem.span(raw_name);
+    }
+
+    pub fn aggregationType(self: InverseAttributeRef) QueryError!InverseAggregationType {
+        if (self.handle == null) return error.InvalidArgument;
+        const value = c.ifcopenshell_ifcparse_inverse_attribute_aggregation_type(self.handle.?);
+        const result: InverseAggregationType = @enumFromInt(value);
+        if (result == .invalid and lastError().len > 0) return error.QueryFailed;
+        return result;
+    }
+
+    pub fn bound1(self: InverseAttributeRef) QueryError!i32 {
+        if (self.handle == null) return error.InvalidArgument;
+        const value = c.ifcopenshell_ifcparse_inverse_attribute_bound1(self.handle.?);
+        if (value == 0 and lastError().len > 0) return error.QueryFailed;
+        return value;
+    }
+
+    pub fn bound2(self: InverseAttributeRef) QueryError!i32 {
+        if (self.handle == null) return error.InvalidArgument;
+        const value = c.ifcopenshell_ifcparse_inverse_attribute_bound2(self.handle.?);
+        if (value == 0 and lastError().len > 0) return error.QueryFailed;
+        return value;
+    }
+
+    pub fn entityReference(self: InverseAttributeRef) QueryError!?TypeRef {
+        if (self.handle == null) return error.InvalidArgument;
+        const raw_type = c.ifcopenshell_ifcparse_inverse_attribute_entity_reference(self.handle.?);
+        if (raw_type == null) {
+            if (lastError().len > 0) return error.QueryFailed;
+            return null;
+        }
+        return TypeRef{ .handle = raw_type };
+    }
+
+    pub fn attributeReference(self: InverseAttributeRef) QueryError!?AttributeRef {
+        if (self.handle == null) return error.InvalidArgument;
+        const raw_attribute = c.ifcopenshell_ifcparse_inverse_attribute_attribute_reference(self.handle.?);
+        if (raw_attribute == null) {
+            if (lastError().len > 0) return error.QueryFailed;
+            return null;
+        }
+        return AttributeRef{ .handle = raw_attribute };
+    }
+};
+
+pub const AttributeList = struct {
+    handle: ?*c.ifcopenshell_ifcparse_attribute_list_t,
+
+    pub fn deinit(self: *AttributeList) void {
+        if (self.handle) |h| {
+            c.ifcopenshell_ifcparse_attribute_list_close(h);
+            self.handle = null;
+        }
+    }
+
+    pub fn len(self: AttributeList) usize {
+        if (self.handle == null) return 0;
+        return c.ifcopenshell_ifcparse_attribute_list_count(self.handle.?);
+    }
+
+    pub fn reset(self: *AttributeList) void {
+        if (self.handle == null) return;
+        c.ifcopenshell_ifcparse_attribute_list_reset(self.handle.?);
+    }
+
+    pub fn at(self: AttributeList, index: usize) ?AttributeRef {
+        if (self.handle == null) return null;
+        const raw_attribute = c.ifcopenshell_ifcparse_attribute_list_get(self.handle.?, index);
+        if (raw_attribute == null) return null;
+        return AttributeRef{ .handle = raw_attribute };
+    }
+
+    pub fn next(self: *AttributeList) ?AttributeRef {
+        if (self.handle == null) return null;
+        const raw_attribute = c.ifcopenshell_ifcparse_attribute_list_next(self.handle.?);
+        if (raw_attribute == null) return null;
+        return AttributeRef{ .handle = raw_attribute };
+    }
+
+    pub fn iterator(self: *AttributeList) Iterator {
+        return Iterator{ .list = self };
+    }
+
+    pub const Iterator = struct {
+        list: *AttributeList,
+
+        pub fn next(self: *Iterator) ?AttributeRef {
+            return self.list.next();
+        }
+    };
+};
+
+pub const InverseAttributeList = struct {
+    handle: ?*c.ifcopenshell_ifcparse_inverse_attribute_list_t,
+
+    pub fn deinit(self: *InverseAttributeList) void {
+        if (self.handle) |h| {
+            c.ifcopenshell_ifcparse_inverse_attribute_list_close(h);
+            self.handle = null;
+        }
+    }
+
+    pub fn len(self: InverseAttributeList) usize {
+        if (self.handle == null) return 0;
+        return c.ifcopenshell_ifcparse_inverse_attribute_list_count(self.handle.?);
+    }
+
+    pub fn reset(self: *InverseAttributeList) void {
+        if (self.handle == null) return;
+        c.ifcopenshell_ifcparse_inverse_attribute_list_reset(self.handle.?);
+    }
+
+    pub fn at(self: InverseAttributeList, index: usize) ?InverseAttributeRef {
+        if (self.handle == null) return null;
+        const raw_attribute = c.ifcopenshell_ifcparse_inverse_attribute_list_get(self.handle.?, index);
+        if (raw_attribute == null) return null;
+        return InverseAttributeRef{ .handle = raw_attribute };
+    }
+
+    pub fn next(self: *InverseAttributeList) ?InverseAttributeRef {
+        if (self.handle == null) return null;
+        const raw_attribute = c.ifcopenshell_ifcparse_inverse_attribute_list_next(self.handle.?);
+        if (raw_attribute == null) return null;
+        return InverseAttributeRef{ .handle = raw_attribute };
+    }
+
+    pub fn iterator(self: *InverseAttributeList) Iterator {
+        return Iterator{ .list = self };
+    }
+
+    pub const Iterator = struct {
+        list: *InverseAttributeList,
+
+        pub fn next(self: *Iterator) ?InverseAttributeRef {
+            return self.list.next();
+        }
+    };
 };
 
 pub const TypeList = struct {
@@ -1123,6 +1509,10 @@ pub const File = struct {
         const raw_name = c.ifcopenshell_ifcparse_file_schema_name(self.handle.?);
         if (raw_name == null) return null;
         return std.mem.span(raw_name);
+    }
+
+    pub fn schemaIdentifier(self: *File) ?[]const u8 {
+        return self.schemaName();
     }
 
     pub fn headerFileDescription(self: *File) QueryError!?EntityRef {
@@ -1505,6 +1895,40 @@ pub fn schemaNames() QueryError!StringList {
     const raw_list = c.ifcopenshell_ifcparse_schema_names();
     if (raw_list == null) return error.QueryFailed;
     return StringList{ .handle = raw_list };
+}
+
+pub fn schemaDeclarationByName(
+    allocator: std.mem.Allocator,
+    schema_name: []const u8,
+    declaration_name: []const u8,
+) QueryError!?TypeRef {
+    if (schema_name.len == 0 or declaration_name.len == 0) return error.InvalidArgument;
+
+    const schema_name_z = allocator.dupeZ(u8, schema_name) catch return error.OutOfMemory;
+    defer allocator.free(schema_name_z);
+    const declaration_name_z = allocator.dupeZ(u8, declaration_name) catch return error.OutOfMemory;
+    defer allocator.free(declaration_name_z);
+
+    const raw_type = c.ifcopenshell_ifcparse_schema_declaration_by_name(schema_name_z.ptr, declaration_name_z.ptr);
+    if (raw_type == null) {
+        if (lastError().len > 0) return error.QueryFailed;
+        return null;
+    }
+    return TypeRef{ .handle = raw_type };
+}
+
+pub fn schemaEntities(
+    allocator: std.mem.Allocator,
+    schema_name: []const u8,
+) QueryError!TypeList {
+    if (schema_name.len == 0) return error.InvalidArgument;
+
+    const schema_name_z = allocator.dupeZ(u8, schema_name) catch return error.OutOfMemory;
+    defer allocator.free(schema_name_z);
+
+    const raw_list = c.ifcopenshell_ifcparse_schema_entities(schema_name_z.ptr);
+    if (raw_list == null) return error.QueryFailed;
+    return TypeList{ .handle = raw_list };
 }
 
 fn mapStatusToError(status: OpenStatus) OpenError {

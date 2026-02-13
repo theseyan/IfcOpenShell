@@ -18,6 +18,11 @@ typedef struct ifcopenshell_ifcparse_entity_matrix ifcopenshell_ifcparse_entity_
 typedef struct ifcopenshell_ifcparse_type_ref ifcopenshell_ifcparse_type_ref_t;
 typedef struct ifcopenshell_ifcparse_type_list ifcopenshell_ifcparse_type_list_t;
 typedef struct ifcopenshell_ifcparse_string_list ifcopenshell_ifcparse_string_list_t;
+typedef struct ifcopenshell_ifcparse_attribute_ref ifcopenshell_ifcparse_attribute_ref_t;
+typedef struct ifcopenshell_ifcparse_attribute_list ifcopenshell_ifcparse_attribute_list_t;
+typedef struct ifcopenshell_ifcparse_inverse_attribute_ref ifcopenshell_ifcparse_inverse_attribute_ref_t;
+typedef struct ifcopenshell_ifcparse_inverse_attribute_list ifcopenshell_ifcparse_inverse_attribute_list_t;
+typedef struct ifcopenshell_ifcparse_parameter_type_ref ifcopenshell_ifcparse_parameter_type_ref_t;
 
 typedef enum ifcopenshell_ifcparse_status {
     IFCOPENSHELL_IFCPARSE_STATUS_SUCCESS = 0,
@@ -60,6 +65,47 @@ typedef enum ifcopenshell_ifcparse_argument_type {
     IFCOPENSHELL_IFCPARSE_ARG_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE = 19,
     IFCOPENSHELL_IFCPARSE_ARG_UNKNOWN = 20
 } ifcopenshell_ifcparse_argument_type_t;
+
+typedef enum ifcopenshell_ifcparse_declaration_kind {
+    IFCOPENSHELL_IFCPARSE_DECL_UNKNOWN = 0,
+    IFCOPENSHELL_IFCPARSE_DECL_TYPE_DECLARATION = 1,
+    IFCOPENSHELL_IFCPARSE_DECL_SELECT_TYPE = 2,
+    IFCOPENSHELL_IFCPARSE_DECL_ENUMERATION_TYPE = 3,
+    IFCOPENSHELL_IFCPARSE_DECL_ENTITY = 4,
+} ifcopenshell_ifcparse_declaration_kind_t;
+
+typedef enum ifcopenshell_ifcparse_parameter_type_kind {
+    IFCOPENSHELL_IFCPARSE_PARAM_UNKNOWN = 0,
+    IFCOPENSHELL_IFCPARSE_PARAM_NAMED = 1,
+    IFCOPENSHELL_IFCPARSE_PARAM_SIMPLE = 2,
+    IFCOPENSHELL_IFCPARSE_PARAM_AGGREGATION = 3,
+} ifcopenshell_ifcparse_parameter_type_kind_t;
+
+typedef enum ifcopenshell_ifcparse_simple_type {
+    IFCOPENSHELL_IFCPARSE_SIMPLE_BINARY = 0,
+    IFCOPENSHELL_IFCPARSE_SIMPLE_BOOLEAN = 1,
+    IFCOPENSHELL_IFCPARSE_SIMPLE_INTEGER = 2,
+    IFCOPENSHELL_IFCPARSE_SIMPLE_LOGICAL = 3,
+    IFCOPENSHELL_IFCPARSE_SIMPLE_NUMBER = 4,
+    IFCOPENSHELL_IFCPARSE_SIMPLE_REAL = 5,
+    IFCOPENSHELL_IFCPARSE_SIMPLE_STRING = 6,
+    IFCOPENSHELL_IFCPARSE_SIMPLE_INVALID = 7,
+} ifcopenshell_ifcparse_simple_type_t;
+
+typedef enum ifcopenshell_ifcparse_aggregation_type {
+    IFCOPENSHELL_IFCPARSE_AGGR_ARRAY = 0,
+    IFCOPENSHELL_IFCPARSE_AGGR_BAG = 1,
+    IFCOPENSHELL_IFCPARSE_AGGR_LIST = 2,
+    IFCOPENSHELL_IFCPARSE_AGGR_SET = 3,
+    IFCOPENSHELL_IFCPARSE_AGGR_INVALID = 4,
+} ifcopenshell_ifcparse_aggregation_type_t;
+
+typedef enum ifcopenshell_ifcparse_inverse_aggregation_type {
+    IFCOPENSHELL_IFCPARSE_INV_AGGR_BAG = 0,
+    IFCOPENSHELL_IFCPARSE_INV_AGGR_SET = 1,
+    IFCOPENSHELL_IFCPARSE_INV_AGGR_UNSPECIFIED = 2,
+    IFCOPENSHELL_IFCPARSE_INV_AGGR_INVALID = 3,
+} ifcopenshell_ifcparse_inverse_aggregation_type_t;
 
 const char* ifcopenshell_ifcparse_version(void);
 
@@ -563,6 +609,153 @@ const ifcopenshell_ifcparse_type_ref_t* ifcopenshell_ifcparse_type_list_next(
 const char* ifcopenshell_ifcparse_type_name(const ifcopenshell_ifcparse_type_ref_t* type_ref);
 
 int ifcopenshell_ifcparse_type_index(const ifcopenshell_ifcparse_type_ref_t* type_ref);
+
+const ifcopenshell_ifcparse_type_ref_t* ifcopenshell_ifcparse_schema_declaration_by_name(
+    const char* schema_name,
+    const char* declaration_name
+);
+
+ifcopenshell_ifcparse_type_list_t* ifcopenshell_ifcparse_schema_entities(
+    const char* schema_name
+);
+
+const char* ifcopenshell_ifcparse_type_schema_name(const ifcopenshell_ifcparse_type_ref_t* type_ref);
+
+int ifcopenshell_ifcparse_type_is_a(
+    const ifcopenshell_ifcparse_type_ref_t* type_ref,
+    const char* type_name
+);
+
+ifcopenshell_ifcparse_declaration_kind_t ifcopenshell_ifcparse_type_kind(
+    const ifcopenshell_ifcparse_type_ref_t* type_ref
+);
+
+int ifcopenshell_ifcparse_type_is_abstract(const ifcopenshell_ifcparse_type_ref_t* type_ref);
+
+const ifcopenshell_ifcparse_type_ref_t* ifcopenshell_ifcparse_type_supertype(
+    const ifcopenshell_ifcparse_type_ref_t* type_ref
+);
+
+ifcopenshell_ifcparse_type_list_t* ifcopenshell_ifcparse_type_subtypes(
+    const ifcopenshell_ifcparse_type_ref_t* type_ref
+);
+
+const ifcopenshell_ifcparse_type_ref_t* ifcopenshell_ifcparse_type_declared_type(
+    const ifcopenshell_ifcparse_type_ref_t* type_ref
+);
+
+ifcopenshell_ifcparse_type_list_t* ifcopenshell_ifcparse_type_select_list(
+    const ifcopenshell_ifcparse_type_ref_t* type_ref
+);
+
+ifcopenshell_ifcparse_string_list_t* ifcopenshell_ifcparse_type_enumeration_items(
+    const ifcopenshell_ifcparse_type_ref_t* type_ref
+);
+
+int ifcopenshell_ifcparse_type_attribute_index(
+    const ifcopenshell_ifcparse_type_ref_t* type_ref,
+    const char* attribute_name
+);
+
+ifcopenshell_ifcparse_attribute_list_t* ifcopenshell_ifcparse_type_attributes(
+    const ifcopenshell_ifcparse_type_ref_t* type_ref,
+    int include_inherited
+);
+
+ifcopenshell_ifcparse_inverse_attribute_list_t* ifcopenshell_ifcparse_type_inverse_attributes(
+    const ifcopenshell_ifcparse_type_ref_t* type_ref,
+    int include_inherited
+);
+
+void ifcopenshell_ifcparse_attribute_list_close(ifcopenshell_ifcparse_attribute_list_t* list);
+
+size_t ifcopenshell_ifcparse_attribute_list_count(const ifcopenshell_ifcparse_attribute_list_t* list);
+
+void ifcopenshell_ifcparse_attribute_list_reset(ifcopenshell_ifcparse_attribute_list_t* list);
+
+const ifcopenshell_ifcparse_attribute_ref_t* ifcopenshell_ifcparse_attribute_list_get(
+    const ifcopenshell_ifcparse_attribute_list_t* list,
+    size_t index
+);
+
+const ifcopenshell_ifcparse_attribute_ref_t* ifcopenshell_ifcparse_attribute_list_next(
+    ifcopenshell_ifcparse_attribute_list_t* list
+);
+
+const char* ifcopenshell_ifcparse_attribute_name(const ifcopenshell_ifcparse_attribute_ref_t* attribute_ref);
+
+int ifcopenshell_ifcparse_attribute_optional(const ifcopenshell_ifcparse_attribute_ref_t* attribute_ref);
+
+const ifcopenshell_ifcparse_parameter_type_ref_t* ifcopenshell_ifcparse_attribute_parameter_type(
+    const ifcopenshell_ifcparse_attribute_ref_t* attribute_ref
+);
+
+void ifcopenshell_ifcparse_inverse_attribute_list_close(ifcopenshell_ifcparse_inverse_attribute_list_t* list);
+
+size_t ifcopenshell_ifcparse_inverse_attribute_list_count(const ifcopenshell_ifcparse_inverse_attribute_list_t* list);
+
+void ifcopenshell_ifcparse_inverse_attribute_list_reset(ifcopenshell_ifcparse_inverse_attribute_list_t* list);
+
+const ifcopenshell_ifcparse_inverse_attribute_ref_t* ifcopenshell_ifcparse_inverse_attribute_list_get(
+    const ifcopenshell_ifcparse_inverse_attribute_list_t* list,
+    size_t index
+);
+
+const ifcopenshell_ifcparse_inverse_attribute_ref_t* ifcopenshell_ifcparse_inverse_attribute_list_next(
+    ifcopenshell_ifcparse_inverse_attribute_list_t* list
+);
+
+const char* ifcopenshell_ifcparse_inverse_attribute_name(
+    const ifcopenshell_ifcparse_inverse_attribute_ref_t* inverse_attribute_ref
+);
+
+ifcopenshell_ifcparse_inverse_aggregation_type_t ifcopenshell_ifcparse_inverse_attribute_aggregation_type(
+    const ifcopenshell_ifcparse_inverse_attribute_ref_t* inverse_attribute_ref
+);
+
+int ifcopenshell_ifcparse_inverse_attribute_bound1(
+    const ifcopenshell_ifcparse_inverse_attribute_ref_t* inverse_attribute_ref
+);
+
+int ifcopenshell_ifcparse_inverse_attribute_bound2(
+    const ifcopenshell_ifcparse_inverse_attribute_ref_t* inverse_attribute_ref
+);
+
+const ifcopenshell_ifcparse_type_ref_t* ifcopenshell_ifcparse_inverse_attribute_entity_reference(
+    const ifcopenshell_ifcparse_inverse_attribute_ref_t* inverse_attribute_ref
+);
+
+const ifcopenshell_ifcparse_attribute_ref_t* ifcopenshell_ifcparse_inverse_attribute_attribute_reference(
+    const ifcopenshell_ifcparse_inverse_attribute_ref_t* inverse_attribute_ref
+);
+
+ifcopenshell_ifcparse_parameter_type_kind_t ifcopenshell_ifcparse_parameter_type_kind(
+    const ifcopenshell_ifcparse_parameter_type_ref_t* parameter_type_ref
+);
+
+const ifcopenshell_ifcparse_type_ref_t* ifcopenshell_ifcparse_parameter_type_named_declared_type(
+    const ifcopenshell_ifcparse_parameter_type_ref_t* parameter_type_ref
+);
+
+ifcopenshell_ifcparse_simple_type_t ifcopenshell_ifcparse_parameter_type_simple_declared_type(
+    const ifcopenshell_ifcparse_parameter_type_ref_t* parameter_type_ref
+);
+
+ifcopenshell_ifcparse_aggregation_type_t ifcopenshell_ifcparse_parameter_type_aggregation_type(
+    const ifcopenshell_ifcparse_parameter_type_ref_t* parameter_type_ref
+);
+
+int ifcopenshell_ifcparse_parameter_type_aggregation_bound1(
+    const ifcopenshell_ifcparse_parameter_type_ref_t* parameter_type_ref
+);
+
+int ifcopenshell_ifcparse_parameter_type_aggregation_bound2(
+    const ifcopenshell_ifcparse_parameter_type_ref_t* parameter_type_ref
+);
+
+const ifcopenshell_ifcparse_parameter_type_ref_t* ifcopenshell_ifcparse_parameter_type_aggregation_element_type(
+    const ifcopenshell_ifcparse_parameter_type_ref_t* parameter_type_ref
+);
 
 ifcopenshell_ifcparse_string_list_t* ifcopenshell_ifcparse_schema_names(void);
 
