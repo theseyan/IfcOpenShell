@@ -7,8 +7,20 @@
 #include "ifcgeom/hybrid_kernel.h"
 #include "ifcparse/IfcFile.h"
 #include <Standard_Handle.hxx>
+
+#ifdef IFOPSH_WITH_OPENCASCADE
+#ifndef Handle
+#define Handle(Class) opencascade::handle<Class>
+#endif
+#endif
+
+#include <HLRBRep_Algo.hxx>
+#include <HLRBRep_HLRToShape.hxx>
+#include <HLRBRep_PolyAlgo.hxx>
+#include <HLRAlgo_Projector.hxx>
 #include "serializers/GltfSerializer.h"
 #include "serializers/JsonSerializer.h"
+#include "serializers/SvgSerializer.h"
 #include "serializers/TtlWktSerializer.h"
 #include "serializers/WavefrontObjSerializer.h"
 #include "serializers/XmlSerializer.h"
@@ -546,14 +558,27 @@ int ifcopenshell_ifcserializers_export_svg(
     const char* geometry_library,
     int num_threads
 ) {
-    (void)file;
-    (void)geometry_settings;
-    (void)serializer_settings;
-    (void)svg_filename;
-    (void)geometry_library;
-    (void)num_threads;
-    set_global_error("SVG serializer is not enabled in this build");
-    return 0;
+    if (!is_valid_name(svg_filename)) {
+        set_global_error("Invalid SVG output filename");
+        return 0;
+    }
+
+    return export_geometry(
+        file,
+        geometry_settings,
+        serializer_settings,
+        geometry_library,
+        num_threads,
+        [&](const ifcopenshell::geometry::Settings& geometry, const ifcopenshell::geometry::SerializerSettings& serializer) {
+            return std::unique_ptr<GeometrySerializer>(
+                new SvgSerializer(
+                    stream_or_filename(std::string(svg_filename)),
+                    geometry,
+                    serializer
+                )
+            );
+        }
+    );
 }
 
 int ifcopenshell_ifcserializers_export_ttl(

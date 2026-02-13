@@ -91,17 +91,15 @@ test "serializers export geometry and schema outputs" {
     try expectFileNonEmpty(obj_path);
     try expectFileNonEmpty(mtl_path);
 
-    try std.testing.expectError(
-        serializers.QueryError.Unsupported,
-        serializers.exportSvg(
-            &file,
-            &geom_settings,
-            &serializer_settings,
-            allocator,
-            svg_path,
-            .{ .num_threads = 1 },
-        ),
+    try serializers.exportSvg(
+        &file,
+        &geom_settings,
+        &serializer_settings,
+        allocator,
+        svg_path,
+        .{ .num_threads = 1 },
     );
+    try expectFileNonEmpty(svg_path);
 
     // TtlWktSerializer requires POLYHEDRON_WITH_HOLES triangulation output.
     try geom_settings.setInt("triangulation-type", 2);

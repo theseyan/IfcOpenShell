@@ -109,6 +109,24 @@ int ifcopenshell_ifcserializers_export_svg(
     int num_threads
 );
 
+int ifcopenshell_ifcserializers_export_step(
+    const ifcopenshell_ifcparse_file_t* file,
+    const ifcopenshell_ifcgeom_settings_t* geometry_settings,
+    const ifcopenshell_ifcserializers_settings_t* serializer_settings,
+    const char* step_filename,
+    const char* geometry_library,
+    int num_threads
+);
+
+int ifcopenshell_ifcserializers_export_iges(
+    const ifcopenshell_ifcparse_file_t* file,
+    const ifcopenshell_ifcgeom_settings_t* geometry_settings,
+    const ifcopenshell_ifcserializers_settings_t* serializer_settings,
+    const char* iges_filename,
+    const char* geometry_library,
+    int num_threads
+);
+
 int ifcopenshell_ifcserializers_export_ttl(
     const ifcopenshell_ifcparse_file_t* file,
     const ifcopenshell_ifcgeom_settings_t* geometry_settings,
