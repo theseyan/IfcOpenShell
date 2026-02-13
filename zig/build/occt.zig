@@ -50,6 +50,56 @@ pub fn addOcctIncludePathsFromDependency(
     }
 }
 
+pub fn addOcctToolkitArchiveLibraries(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    toolkits_arg: []const u8,
+) []const *std.Build.Step.Compile {
+    const occt_dep = b.dependency("occt", .{});
+    const occt_src_root = occt_dep.path("src");
+    const occt_src = occt_src_root.getPath(b);
+
+    var requested = common.parseSemicolonList(b, toolkits_arg);
+    defer requested.deinit(b.allocator);
+    if (requested.items.len == 0) {
+        @panic("No OCCT toolkits selected. Provide -Docc_toolkits.");
+    }
+
+    var toolkits = resolveOcctToolkitClosure(b, occt_src, requested.items);
+    defer toolkits.deinit(b.allocator);
+
+    var archives = std.ArrayList(*std.Build.Step.Compile).empty;
+    for (toolkits.items) |toolkit| {
+        const root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+        });
+        const toolkit_archive = b.addLibrary(.{
+            .name = b.fmt("occt_{s}", .{toolkit}),
+            .linkage = .static,
+            .root_module = root_module,
+        });
+        toolkit_archive.linkLibC();
+        toolkit_archive.linkLibCpp();
+        addOcctIncludePathsFromDependency(b, toolkit_archive);
+
+        appendOcctToolkitSourcesToLibrary(
+            b,
+            toolkit_archive,
+            toolkit,
+            occt_src_root,
+            occt_src,
+        );
+
+        archives.append(b.allocator, toolkit_archive) catch
+            @panic("Out of memory collecting OCCT toolkit archive steps");
+    }
+
+    return archives.toOwnedSlice(b.allocator) catch
+        @panic("Out of memory finalizing OCCT toolkit archive list");
+}
+
 pub fn addOcctToolkitSources(
     b: *std.Build,
     lib: *std.Build.Step.Compile,

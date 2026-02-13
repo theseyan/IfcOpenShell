@@ -74,6 +74,10 @@ test "serializers export geometry and schema outputs" {
     defer allocator.free(mtl_path);
     const svg_path = try std.fs.path.join(allocator, &.{ tmp_dir_path, "model.svg" });
     defer allocator.free(svg_path);
+    const step_path = try std.fs.path.join(allocator, &.{ tmp_dir_path, "model.stp" });
+    defer allocator.free(step_path);
+    const iges_path = try std.fs.path.join(allocator, &.{ tmp_dir_path, "model.igs" });
+    defer allocator.free(iges_path);
     const ttl_path = try std.fs.path.join(allocator, &.{ tmp_dir_path, "model.ttl" });
     defer allocator.free(ttl_path);
     const xml_path = try std.fs.path.join(allocator, &.{ tmp_dir_path, "model.xml" });
@@ -91,34 +95,109 @@ test "serializers export geometry and schema outputs" {
     try expectFileNonEmpty(obj_path);
     try expectFileNonEmpty(mtl_path);
 
-    try serializers.exportSvg(
-        &file,
-        &geom_settings,
-        &serializer_settings,
-        allocator,
-        svg_path,
-        .{ .num_threads = 1 },
-    );
-    try expectFileNonEmpty(svg_path);
+    if (serializers.hasSvg()) {
+        try serializers.exportSvg(
+            &file,
+            &geom_settings,
+            &serializer_settings,
+            allocator,
+            svg_path,
+            .{ .num_threads = 1 },
+        );
+        try expectFileNonEmpty(svg_path);
+    } else {
+        try std.testing.expectError(
+            serializers.QueryError.Unsupported,
+            serializers.exportSvg(
+                &file,
+                &geom_settings,
+                &serializer_settings,
+                allocator,
+                "unused.svg",
+                .{},
+            ),
+        );
+    }
 
-    // TtlWktSerializer requires POLYHEDRON_WITH_HOLES triangulation output.
-    try geom_settings.setInt("triangulation-type", 2);
-    try serializers.exportTtl(
-        &file,
-        &geom_settings,
-        &serializer_settings,
-        allocator,
-        ttl_path,
-        .{ .num_threads = 1 },
-    );
-    try expectFileNonEmpty(ttl_path);
+    if (serializers.hasStep()) {
+        try serializers.exportStep(
+            &file,
+            &geom_settings,
+            &serializer_settings,
+            allocator,
+            step_path,
+            .{ .num_threads = 1 },
+        );
+        try expectFileNonEmpty(step_path);
+    } else {
+        try std.testing.expectError(
+            serializers.QueryError.Unsupported,
+            serializers.exportStep(
+                &file,
+                &geom_settings,
+                &serializer_settings,
+                allocator,
+                "unused.stp",
+                .{},
+            ),
+        );
+    }
+
+    if (serializers.hasIges()) {
+        try serializers.exportIges(
+            &file,
+            &geom_settings,
+            &serializer_settings,
+            allocator,
+            iges_path,
+            .{ .num_threads = 1 },
+        );
+        try expectFileNonEmpty(iges_path);
+    } else {
+        try std.testing.expectError(
+            serializers.QueryError.Unsupported,
+            serializers.exportIges(
+                &file,
+                &geom_settings,
+                &serializer_settings,
+                allocator,
+                "unused.igs",
+                .{},
+            ),
+        );
+    }
+
+    if (serializers.hasTtl()) {
+        // TtlWktSerializer requires POLYHEDRON_WITH_HOLES triangulation output.
+        try geom_settings.setInt("triangulation-type", 2);
+        try serializers.exportTtl(
+            &file,
+            &geom_settings,
+            &serializer_settings,
+            allocator,
+            ttl_path,
+            .{ .num_threads = 1 },
+        );
+        try expectFileNonEmpty(ttl_path);
+        // Restore default triangle mesh output for serializers that do not support
+        // polyhedron-with-holes output.
+        try geom_settings.setInt("triangulation-type", 0);
+    } else {
+        try std.testing.expectError(
+            serializers.QueryError.Unsupported,
+            serializers.exportTtl(
+                &file,
+                &geom_settings,
+                &serializer_settings,
+                allocator,
+                "unused.ttl",
+                .{},
+            ),
+        );
+    }
 
     try serializers.exportXml(&file, allocator, xml_path);
     try expectFileNonEmpty(xml_path);
-
-    // Restore default triangle mesh output for serializers that do not support
-    // polyhedron-with-holes output.
-    try geom_settings.setInt("triangulation-type", 0);
 
     if (serializers.hasGltf()) {
         const gltf_path = try std.fs.path.join(allocator, &.{ tmp_dir_path, "model.glb" });

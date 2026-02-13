@@ -14,14 +14,32 @@
 #endif
 #endif
 
+#if defined(IFCOPENSHELL_SERIALIZERS_HAS_SVG)
 #include <HLRBRep_Algo.hxx>
 #include <HLRBRep_HLRToShape.hxx>
 #include <HLRBRep_PolyAlgo.hxx>
 #include <HLRAlgo_Projector.hxx>
+#endif
+
+#if defined(IFCOPENSHELL_SERIALIZERS_HAS_GLTF)
 #include "serializers/GltfSerializer.h"
+#endif
+#if defined(IFCOPENSHELL_SERIALIZERS_HAS_IGES)
+#include "serializers/IgesSerializer.h"
+#include <IGESControl_Controller.hxx>
+#endif
+#if defined(IFCOPENSHELL_SERIALIZERS_HAS_JSON)
 #include "serializers/JsonSerializer.h"
+#endif
+#if defined(IFCOPENSHELL_SERIALIZERS_HAS_STEP)
+#include "serializers/StepSerializer.h"
+#endif
+#if defined(IFCOPENSHELL_SERIALIZERS_HAS_SVG)
 #include "serializers/SvgSerializer.h"
+#endif
+#if defined(IFCOPENSHELL_SERIALIZERS_HAS_TTL)
 #include "serializers/TtlWktSerializer.h"
+#endif
 #include "serializers/WavefrontObjSerializer.h"
 #include "serializers/XmlSerializer.h"
 
@@ -558,6 +576,7 @@ int ifcopenshell_ifcserializers_export_svg(
     const char* geometry_library,
     int num_threads
 ) {
+#if defined(IFCOPENSHELL_SERIALIZERS_HAS_SVG)
     if (!is_valid_name(svg_filename)) {
         set_global_error("Invalid SVG output filename");
         return 0;
@@ -579,6 +598,102 @@ int ifcopenshell_ifcserializers_export_svg(
             );
         }
     );
+#else
+    (void)file;
+    (void)geometry_settings;
+    (void)serializer_settings;
+    (void)svg_filename;
+    (void)geometry_library;
+    (void)num_threads;
+    set_global_error("SVG serializer is not enabled in this build");
+    return 0;
+#endif
+}
+
+int ifcopenshell_ifcserializers_export_step(
+    const ifcopenshell_ifcparse_file_t* file,
+    const ifcopenshell_ifcgeom_settings_t* geometry_settings,
+    const ifcopenshell_ifcserializers_settings_t* serializer_settings,
+    const char* step_filename,
+    const char* geometry_library,
+    int num_threads
+) {
+#if defined(IFCOPENSHELL_SERIALIZERS_HAS_STEP)
+    if (!is_valid_name(step_filename)) {
+        set_global_error("Invalid STEP output filename");
+        return 0;
+    }
+
+    return export_geometry(
+        file,
+        geometry_settings,
+        serializer_settings,
+        geometry_library,
+        num_threads,
+        [&](const ifcopenshell::geometry::Settings& geometry, const ifcopenshell::geometry::SerializerSettings& serializer) {
+            return std::unique_ptr<GeometrySerializer>(
+                new StepSerializer(
+                    std::string(step_filename),
+                    geometry,
+                    serializer
+                )
+            );
+        }
+    );
+#else
+    (void)file;
+    (void)geometry_settings;
+    (void)serializer_settings;
+    (void)step_filename;
+    (void)geometry_library;
+    (void)num_threads;
+    set_global_error("STEP serializer is not enabled in this build");
+    return 0;
+#endif
+}
+
+int ifcopenshell_ifcserializers_export_iges(
+    const ifcopenshell_ifcparse_file_t* file,
+    const ifcopenshell_ifcgeom_settings_t* geometry_settings,
+    const ifcopenshell_ifcserializers_settings_t* serializer_settings,
+    const char* iges_filename,
+    const char* geometry_library,
+    int num_threads
+) {
+#if defined(IFCOPENSHELL_SERIALIZERS_HAS_IGES)
+    if (!is_valid_name(iges_filename)) {
+        set_global_error("Invalid IGES output filename");
+        return 0;
+    }
+
+    IGESControl_Controller::Init();
+
+    return export_geometry(
+        file,
+        geometry_settings,
+        serializer_settings,
+        geometry_library,
+        num_threads,
+        [&](const ifcopenshell::geometry::Settings& geometry, const ifcopenshell::geometry::SerializerSettings& serializer) {
+            return std::unique_ptr<GeometrySerializer>(
+                new IgesSerializer(
+                    std::string(iges_filename),
+                    geometry,
+                    serializer
+                )
+            );
+        }
+    );
+#else
+    (void)file;
+    (void)geometry_settings;
+    (void)serializer_settings;
+    (void)iges_filename;
+    (void)geometry_library;
+    (void)num_threads;
+    set_global_error("IGES serializer is not enabled in this build");
+    return 0;
+#endif
 }
 
 int ifcopenshell_ifcserializers_export_ttl(
@@ -589,6 +704,7 @@ int ifcopenshell_ifcserializers_export_ttl(
     const char* geometry_library,
     int num_threads
 ) {
+#if defined(IFCOPENSHELL_SERIALIZERS_HAS_TTL)
     if (!is_valid_name(ttl_filename)) {
         set_global_error("Invalid TTL output filename");
         return 0;
@@ -610,6 +726,16 @@ int ifcopenshell_ifcserializers_export_ttl(
             );
         }
     );
+#else
+    (void)file;
+    (void)geometry_settings;
+    (void)serializer_settings;
+    (void)ttl_filename;
+    (void)geometry_library;
+    (void)num_threads;
+    set_global_error("TTL serializer is not enabled in this build");
+    return 0;
+#endif
 }
 
 int ifcopenshell_ifcserializers_export_gltf(
@@ -620,7 +746,7 @@ int ifcopenshell_ifcserializers_export_gltf(
     const char* geometry_library,
     int num_threads
 ) {
-#if defined(WITH_GLTF)
+#if defined(IFCOPENSHELL_SERIALIZERS_HAS_GLTF) && defined(WITH_GLTF)
     if (!is_valid_name(gltf_filename)) {
         set_global_error("Invalid glTF output filename");
         return 0;
@@ -687,7 +813,7 @@ int ifcopenshell_ifcserializers_export_json(
     const ifcopenshell_ifcparse_file_t* file,
     const char* json_filename
 ) {
-#if defined(WITH_GLTF)
+#if defined(IFCOPENSHELL_SERIALIZERS_HAS_JSON) && defined(WITH_GLTF)
     if (!is_valid_name(json_filename)) {
         set_global_error("Invalid JSON output filename");
         return 0;
@@ -728,7 +854,7 @@ int ifcopenshell_ifcserializers_export_json(
 }
 
 int ifcopenshell_ifcserializers_has_gltf(void) {
-#if defined(WITH_GLTF)
+#if defined(IFCOPENSHELL_SERIALIZERS_HAS_GLTF)
     return 1;
 #else
     return 0;
@@ -736,7 +862,39 @@ int ifcopenshell_ifcserializers_has_gltf(void) {
 }
 
 int ifcopenshell_ifcserializers_has_json(void) {
-#if defined(WITH_GLTF)
+#if defined(IFCOPENSHELL_SERIALIZERS_HAS_JSON)
+    return 1;
+#else
+    return 0;
+#endif
+}
+
+int ifcopenshell_ifcserializers_has_svg(void) {
+#if defined(IFCOPENSHELL_SERIALIZERS_HAS_SVG)
+    return 1;
+#else
+    return 0;
+#endif
+}
+
+int ifcopenshell_ifcserializers_has_ttl(void) {
+#if defined(IFCOPENSHELL_SERIALIZERS_HAS_TTL)
+    return 1;
+#else
+    return 0;
+#endif
+}
+
+int ifcopenshell_ifcserializers_has_step(void) {
+#if defined(IFCOPENSHELL_SERIALIZERS_HAS_STEP)
+    return 1;
+#else
+    return 0;
+#endif
+}
+
+int ifcopenshell_ifcserializers_has_iges(void) {
+#if defined(IFCOPENSHELL_SERIALIZERS_HAS_IGES)
     return 1;
 #else
     return 0;

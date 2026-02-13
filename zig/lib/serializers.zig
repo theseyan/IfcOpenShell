@@ -63,6 +63,22 @@ pub fn hasJson() bool {
     return c.ifcopenshell_ifcserializers_has_json() != 0;
 }
 
+pub fn hasSvg() bool {
+    return c.ifcopenshell_ifcserializers_has_svg() != 0;
+}
+
+pub fn hasTtl() bool {
+    return c.ifcopenshell_ifcserializers_has_ttl() != 0;
+}
+
+pub fn hasStep() bool {
+    return c.ifcopenshell_ifcserializers_has_step() != 0;
+}
+
+pub fn hasIges() bool {
+    return c.ifcopenshell_ifcserializers_has_iges() != 0;
+}
+
 pub const StringList = struct {
     handle: ?*c.ifcopenshell_ifcserializers_string_list_t,
 
@@ -274,6 +290,8 @@ pub fn exportSvg(
     svg_path: []const u8,
     options: ExportOptions,
 ) QueryError!void {
+    if (!hasSvg()) return error.Unsupported;
+
     const file_h = try fileHandle(file);
     const geom_h = try geomSettingsHandle(geometry_settings);
     const ser_h = try serializerSettingsHandle(serializer_settings);
@@ -293,6 +311,64 @@ pub fn exportSvg(
     ));
 }
 
+pub fn exportStep(
+    file: *ifcparse.File,
+    geometry_settings: ?*const ifcgeom.Settings,
+    serializer_settings: ?*const Settings,
+    allocator: std.mem.Allocator,
+    step_path: []const u8,
+    options: ExportOptions,
+) QueryError!void {
+    if (!hasStep()) return error.Unsupported;
+
+    const file_h = try fileHandle(file);
+    const geom_h = try geomSettingsHandle(geometry_settings);
+    const ser_h = try serializerSettingsHandle(serializer_settings);
+
+    const step_z = try toZ(allocator, step_path);
+    defer allocator.free(step_z);
+    const lib_z = try toZ(allocator, options.geometry_library);
+    defer allocator.free(lib_z);
+
+    try mapBoolResult(c.ifcopenshell_ifcserializers_export_step(
+        file_h,
+        geom_h,
+        ser_h,
+        step_z.ptr,
+        lib_z.ptr,
+        @intCast(options.num_threads),
+    ));
+}
+
+pub fn exportIges(
+    file: *ifcparse.File,
+    geometry_settings: ?*const ifcgeom.Settings,
+    serializer_settings: ?*const Settings,
+    allocator: std.mem.Allocator,
+    iges_path: []const u8,
+    options: ExportOptions,
+) QueryError!void {
+    if (!hasIges()) return error.Unsupported;
+
+    const file_h = try fileHandle(file);
+    const geom_h = try geomSettingsHandle(geometry_settings);
+    const ser_h = try serializerSettingsHandle(serializer_settings);
+
+    const iges_z = try toZ(allocator, iges_path);
+    defer allocator.free(iges_z);
+    const lib_z = try toZ(allocator, options.geometry_library);
+    defer allocator.free(lib_z);
+
+    try mapBoolResult(c.ifcopenshell_ifcserializers_export_iges(
+        file_h,
+        geom_h,
+        ser_h,
+        iges_z.ptr,
+        lib_z.ptr,
+        @intCast(options.num_threads),
+    ));
+}
+
 pub fn exportTtl(
     file: *ifcparse.File,
     geometry_settings: ?*const ifcgeom.Settings,
@@ -301,6 +377,8 @@ pub fn exportTtl(
     ttl_path: []const u8,
     options: ExportOptions,
 ) QueryError!void {
+    if (!hasTtl()) return error.Unsupported;
+
     const file_h = try fileHandle(file);
     const geom_h = try geomSettingsHandle(geometry_settings);
     const ser_h = try serializerSettingsHandle(serializer_settings);

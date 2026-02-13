@@ -159,6 +159,14 @@ int ifcopenshell_ifcserializers_has_gltf(void);
 
 int ifcopenshell_ifcserializers_has_json(void);
 
+int ifcopenshell_ifcserializers_has_svg(void);
+
+int ifcopenshell_ifcserializers_has_ttl(void);
+
+int ifcopenshell_ifcserializers_has_step(void);
+
+int ifcopenshell_ifcserializers_has_iges(void);
+
 const char* ifcopenshell_ifcserializers_last_error(void);
 
 #ifdef __cplusplus

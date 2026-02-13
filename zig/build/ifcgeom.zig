@@ -10,8 +10,6 @@ pub fn addIfcGeomLibrary(
     schemas: []const []const u8,
     schema_seq_macro: []const u8,
     occ_include_dir: ?[]const u8,
-    occ_toolkits_arg: []const u8,
-    bundle_occ_sources: bool,
     eigen_include_dir: ?[]const u8,
     occ_library_dir: ?[]const u8,
     occ_libs_arg: []const u8,
@@ -72,14 +70,6 @@ pub fn addIfcGeomLibrary(
             schema_seq_macro,
             schema,
             mapping_sources.items,
-        );
-    }
-
-    if (bundle_occ_sources) {
-        occt.addOcctToolkitSources(
-            b,
-            lib,
-            occ_toolkits_arg,
         );
     }
 

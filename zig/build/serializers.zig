@@ -12,6 +12,10 @@ pub fn addSerializersLibrary(
     eigen_include_dir: ?[]const u8,
     enable_gltf_serializer: bool,
     enable_json_serializer: bool,
+    enable_svg_serializer: bool,
+    enable_ttl_serializer: bool,
+    enable_step_serializer: bool,
+    enable_iges_serializer: bool,
 ) *std.Build.Step.Compile {
     const enable_with_gltf = enable_gltf_serializer or enable_json_serializer;
 
@@ -51,50 +55,41 @@ pub fn addSerializersLibrary(
     flags.append(b.allocator, b.fmt("-DSCHEMA_SEQ={s}", .{schema_seq_macro})) catch @panic("Out of memory building Serializers flags");
     common.appendSchemaHasFlags(b, &flags, schemas);
 
-    const excluded_sources_no_gltf_no_json = [_][]const u8{
-        "ColladaSerializer.cpp",
-        "GltfSerializer.cpp",
-        "HdfSerializer.cpp",
-        "JsonSerializer.cpp",
-        "RocksDbSerializer.cpp",
-        "USDSerializer.cpp",
-    };
-    const excluded_sources_no_gltf_with_json = [_][]const u8{
-        "ColladaSerializer.cpp",
-        "GltfSerializer.cpp",
-        "HdfSerializer.cpp",
-        "RocksDbSerializer.cpp",
-        "USDSerializer.cpp",
-    };
-    const excluded_sources_with_gltf_no_json = [_][]const u8{
-        "ColladaSerializer.cpp",
-        "HdfSerializer.cpp",
-        "JsonSerializer.cpp",
-        "RocksDbSerializer.cpp",
-        "USDSerializer.cpp",
-    };
-    const excluded_sources_with_gltf_with_json = [_][]const u8{
+    var excluded_sources = std.ArrayList([]const u8).empty;
+    defer excluded_sources.deinit(b.allocator);
+    excluded_sources.appendSlice(b.allocator, &.{
         "ColladaSerializer.cpp",
         "HdfSerializer.cpp",
         "RocksDbSerializer.cpp",
         "USDSerializer.cpp",
-    };
+    }) catch @panic("Out of memory collecting Serializers excluded sources");
 
-    const excluded_sources = if (enable_gltf_serializer)
-        if (enable_json_serializer)
-            excluded_sources_with_gltf_with_json[0..]
-        else
-            excluded_sources_with_gltf_no_json[0..]
-    else if (enable_json_serializer)
-        excluded_sources_no_gltf_with_json[0..]
-    else
-        excluded_sources_no_gltf_no_json[0..];
+    if (!enable_gltf_serializer) {
+        excluded_sources.append(b.allocator, "GltfSerializer.cpp") catch
+            @panic("Out of memory collecting Serializers excluded sources");
+    }
+    if (!enable_json_serializer) {
+        excluded_sources.append(b.allocator, "JsonSerializer.cpp") catch
+            @panic("Out of memory collecting Serializers excluded sources");
+    }
+    if (!enable_svg_serializer) {
+        excluded_sources.append(b.allocator, "SvgSerializer.cpp") catch
+            @panic("Out of memory collecting Serializers excluded sources");
+    }
+    if (!enable_ttl_serializer) {
+        excluded_sources.append(b.allocator, "TtlWktSerializer.cpp") catch
+            @panic("Out of memory collecting Serializers excluded sources");
+    }
+    if (!enable_step_serializer and !enable_iges_serializer) {
+        excluded_sources.append(b.allocator, "OpenCascadeBasedSerializer.cpp") catch
+            @panic("Out of memory collecting Serializers excluded sources");
+    }
 
     var sources = common.collectCppFilesInDirectoryExcluding(
         b,
         "src/serializers",
         false,
-        excluded_sources,
+        excluded_sources.items,
     );
     defer sources.deinit(b.allocator);
 
