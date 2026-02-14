@@ -37,8 +37,11 @@ pub fn appendCommonCppFlags(
     flags.append(b.allocator, "-std=c++17") catch @panic("Out of memory building C++ flags");
     flags.append(b.allocator, "-D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR") catch @panic("Out of memory building C++ flags");
     flags.append(b.allocator, "-DBOOST_ALL_NO_LIB") catch @panic("Out of memory building C++ flags");
-    // Keep bring-up aligned with CMake behavior where warnings are not fatal.
     flags.append(b.allocator, "-Wno-error") catch @panic("Out of memory building C++ flags");
+
+    const math_compat_header = b.path("zig/build/include/occt_math_compat.h").getPath(b);
+    flags.append(b.allocator, "-include") catch @panic("Out of memory building C++ flags");
+    flags.append(b.allocator, math_compat_header) catch @panic("Out of memory building C++ flags");
 }
 
 pub fn appendSchemaHasFlags(
