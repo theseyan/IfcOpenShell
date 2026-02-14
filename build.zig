@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const common = @import("zig/build/common.zig");
+const emscripten = @import("zig/build/emscripten.zig");
 const ifcparse_build = @import("zig/build/ifcparse.zig");
 const ifcparse_capi_build = @import("zig/build/ifcparse_capi.zig");
 const ifcgeom_build = @import("zig/build/ifcgeom.zig");
@@ -17,6 +18,13 @@ const default_occ_toolkits =
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+    const is_emscripten = emscripten.isEmscriptenTarget(target);
+
+    // For wasm32-emscripten, set up the Emscripten SDK (install + activate on first use).
+    const opt_emsdk_setup_step: ?*std.Build.Step.Run = if (is_emscripten)
+        emscripten.emSdkSetupStep(b)
+    else
+        null;
 
     const schemas_arg = b.option([]const u8, "schemas", "Semicolon-separated IFC schema versions (e.g. 4;2x3;4x3_add2)") orelse "4";
     const use_mmap = b.option(bool, "use_mmap", "Enable USE_MMAP support for IfcParse") orelse false;
@@ -47,6 +55,9 @@ pub fn build(b: *std.Build) void {
         optimize,
         effective_occ_toolkits,
     );
+    for (occt_toolkit_archives) |toolkit_archive| {
+        applyEmscriptenSysroot(b, is_emscripten, opt_emsdk_setup_step, toolkit_archive);
+    }
 
     var schemas = std.ArrayList([]const u8).empty;
     defer schemas.deinit(b.allocator);
@@ -54,6 +65,7 @@ pub fn build(b: *std.Build) void {
     const schema_seq_macro = common.makeSchemaSeqMacro(b, schemas.items);
 
     const ifcparse_lib = ifcparse_build.addIfcParseLibrary(b, target, optimize, schemas.items, use_mmap);
+    applyEmscriptenSysroot(b, is_emscripten, opt_emsdk_setup_step, ifcparse_lib);
     const ifcparse_install = b.addInstallArtifact(ifcparse_lib, .{});
     b.getInstallStep().dependOn(&ifcparse_install.step);
 
@@ -65,6 +77,7 @@ pub fn build(b: *std.Build) void {
         target,
         optimize,
     );
+    applyEmscriptenSysroot(b, is_emscripten, opt_emsdk_setup_step, ifcparse_capi_lib);
     const ifcparse_capi_install = b.addInstallArtifact(ifcparse_capi_lib, .{});
     b.getInstallStep().dependOn(&ifcparse_capi_install.step);
 
@@ -83,6 +96,7 @@ pub fn build(b: *std.Build) void {
         occ_libs_arg,
         link_occ_libraries,
     );
+    applyEmscriptenSysroot(b, is_emscripten, opt_emsdk_setup_step, ifcgeom_lib);
     const ifcgeom_install = b.addInstallArtifact(ifcgeom_lib, .{});
     b.getInstallStep().dependOn(&ifcgeom_install.step);
 
@@ -90,9 +104,6 @@ pub fn build(b: *std.Build) void {
     ifcgeom_step.dependOn(&ifcgeom_install.step);
     for (occt_toolkit_archives) |toolkit_archive| {
         ifcgeom_lib.linkLibrary(toolkit_archive);
-        const toolkit_install = b.addInstallArtifact(toolkit_archive, .{});
-        b.getInstallStep().dependOn(&toolkit_install.step);
-        ifcgeom_step.dependOn(&toolkit_install.step);
     }
 
     const ifcgeom_capi_lib = ifcgeom_capi_build.addIfcGeomCApiLibrary(
@@ -102,6 +113,7 @@ pub fn build(b: *std.Build) void {
         occ_include_override,
         eigen_include_override,
     );
+    applyEmscriptenSysroot(b, is_emscripten, opt_emsdk_setup_step, ifcgeom_capi_lib);
     const ifcgeom_capi_install = b.addInstallArtifact(ifcgeom_capi_lib, .{});
     b.getInstallStep().dependOn(&ifcgeom_capi_install.step);
 
@@ -126,6 +138,7 @@ pub fn build(b: *std.Build) void {
         enable_step_serializer,
         enable_iges_serializer,
     );
+    applyEmscriptenSysroot(b, is_emscripten, opt_emsdk_setup_step, serializers_lib);
     const serializers_install = b.addInstallArtifact(serializers_lib, .{});
     b.getInstallStep().dependOn(&serializers_install.step);
 
@@ -148,6 +161,7 @@ pub fn build(b: *std.Build) void {
         enable_step_serializer,
         enable_iges_serializer,
     );
+    applyEmscriptenSysroot(b, is_emscripten, opt_emsdk_setup_step, serializers_capi_lib);
     const serializers_capi_install = b.addInstallArtifact(serializers_capi_lib, .{});
     b.getInstallStep().dependOn(&serializers_capi_install.step);
 
@@ -223,4 +237,19 @@ fn augmentOccToolkitsForSerializers(
         joined.appendSlice(b.allocator, toolkit) catch @panic("Out of memory joining OCCT toolkit list");
     }
     return joined.toOwnedSlice(b.allocator) catch @panic("Out of memory finalizing OCCT toolkit list");
+}
+
+/// When building for wasm32-emscripten, add the Emscripten sysroot include
+/// path and make the compile step depend on the one-time emsdk setup.
+fn applyEmscriptenSysroot(
+    b: *std.Build,
+    is_emscripten: bool,
+    opt_emsdk_setup_step: ?*std.Build.Step.Run,
+    compile: *std.Build.Step.Compile,
+) void {
+    if (!is_emscripten) return;
+    emscripten.addEmscriptenSysrootIncludePaths(b, compile);
+    if (opt_emsdk_setup_step) |setup_step| {
+        compile.step.dependOn(&setup_step.step);
+    }
 }

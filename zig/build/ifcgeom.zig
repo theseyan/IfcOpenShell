@@ -40,7 +40,7 @@ pub fn addIfcGeomLibrary(
 
     var ifcgeom_flags = std.ArrayList([]const u8).empty;
     defer ifcgeom_flags.deinit(b.allocator);
-    common.appendCommonCppFlags(b, &ifcgeom_flags);
+    common.appendCommonCppFlags(b, &ifcgeom_flags, target);
     ifcgeom_flags.append(b.allocator, "-DIFC_GEOM_EXPORTS") catch @panic("Out of memory building IfcGeom flags");
     ifcgeom_flags.append(b.allocator, "-DIFOPSH_WITH_OPENCASCADE") catch @panic("Out of memory building IfcGeom flags");
     ifcgeom_flags.append(b.allocator, b.fmt("-DSCHEMA_SEQ={s}", .{schema_seq_macro})) catch @panic("Out of memory building IfcGeom flags");
@@ -58,6 +58,7 @@ pub fn addIfcGeomLibrary(
         lib,
         schemas,
         schema_seq_macro,
+        target,
     );
 
     var mapping_sources = common.collectCppFilesInDirectory(b, "src/ifcgeom/mapping", false);
@@ -70,6 +71,7 @@ pub fn addIfcGeomLibrary(
             schema_seq_macro,
             schema,
             mapping_sources.items,
+            target,
         );
     }
 
@@ -88,10 +90,11 @@ fn addKernelOpenCascadeSources(
     lib: *std.Build.Step.Compile,
     schemas: []const []const u8,
     schema_seq_macro: []const u8,
+    target: std.Build.ResolvedTarget,
 ) void {
     var flags = std.ArrayList([]const u8).empty;
     defer flags.deinit(b.allocator);
-    common.appendCommonCppFlags(b, &flags);
+    common.appendCommonCppFlags(b, &flags, target);
     flags.append(b.allocator, "-DIFC_GEOM_EXPORTS") catch @panic("Out of memory building kernel flags");
     flags.append(b.allocator, "-DIFOPSH_WITH_OPENCASCADE") catch @panic("Out of memory building kernel flags");
     flags.append(b.allocator, b.fmt("-DSCHEMA_SEQ={s}", .{schema_seq_macro})) catch @panic("Out of memory building kernel flags");
@@ -112,10 +115,11 @@ fn addSchemaMappingSources(
     schema_seq_macro: []const u8,
     schema: []const u8,
     mapping_sources: []const []const u8,
+    target: std.Build.ResolvedTarget,
 ) void {
     var flags = std.ArrayList([]const u8).empty;
     defer flags.deinit(b.allocator);
-    common.appendCommonCppFlags(b, &flags);
+    common.appendCommonCppFlags(b, &flags, target);
     flags.append(b.allocator, "-DIFC_GEOM_EXPORTS") catch @panic("Out of memory building mapping flags");
     flags.append(b.allocator, "-DIFOPSH_WITH_OPENCASCADE") catch @panic("Out of memory building mapping flags");
     flags.append(b.allocator, b.fmt("-DSCHEMA_SEQ={s}", .{schema_seq_macro})) catch @panic("Out of memory building mapping flags");

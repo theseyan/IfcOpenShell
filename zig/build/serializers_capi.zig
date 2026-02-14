@@ -44,7 +44,7 @@ pub fn addSerializersCApiLibrary(
 
     var cpp_flags = std.ArrayList([]const u8).empty;
     defer cpp_flags.deinit(b.allocator);
-    common.appendCommonCppFlags(b, &cpp_flags);
+    common.appendCommonCppFlags(b, &cpp_flags, target);
     cpp_flags.append(b.allocator, "-DIFOPSH_WITH_OPENCASCADE") catch
         @panic("Out of memory building C++ flags");
     cpp_flags.append(b.allocator, "-DSERIALIZERS_EXPORTS") catch

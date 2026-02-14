@@ -30,7 +30,7 @@ pub fn addIfcParseLibrary(
     var cpp_flags = std.ArrayList([]const u8).empty;
     defer cpp_flags.deinit(b.allocator);
 
-    common.appendCommonCppFlags(b, &cpp_flags);
+    common.appendCommonCppFlags(b, &cpp_flags, target);
     if (use_mmap) {
         cpp_flags.append(b.allocator, "-DUSE_MMAP") catch @panic("Out of memory building IfcParse flags");
     }

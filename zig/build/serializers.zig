@@ -45,7 +45,7 @@ pub fn addSerializersLibrary(
 
     var flags = std.ArrayList([]const u8).empty;
     defer flags.deinit(b.allocator);
-    common.appendCommonCppFlags(b, &flags);
+    common.appendCommonCppFlags(b, &flags, target);
     flags.append(b.allocator, "-DSERIALIZERS_EXPORTS") catch @panic("Out of memory building Serializers flags");
     flags.append(b.allocator, "-DIFC_GEOM_EXPORTS") catch @panic("Out of memory building Serializers flags");
     flags.append(b.allocator, "-DIFOPSH_WITH_OPENCASCADE") catch @panic("Out of memory building Serializers flags");
@@ -124,6 +124,7 @@ pub fn addSerializersLibrary(
             schema,
             schema_sources.items,
             enable_with_gltf,
+            target,
         );
     }
 
@@ -138,10 +139,11 @@ fn addSchemaSerializerSources(
     schema: []const u8,
     serializer_sources: []const []const u8,
     enable_with_gltf: bool,
+    target: std.Build.ResolvedTarget,
 ) void {
     var flags = std.ArrayList([]const u8).empty;
     defer flags.deinit(b.allocator);
-    common.appendCommonCppFlags(b, &flags);
+    common.appendCommonCppFlags(b, &flags, target);
     flags.append(b.allocator, "-DSERIALIZERS_EXPORTS") catch @panic("Out of memory building schema serializer flags");
     flags.append(b.allocator, "-DIFC_GEOM_EXPORTS") catch @panic("Out of memory building schema serializer flags");
     flags.append(b.allocator, "-DIFOPSH_WITH_OPENCASCADE") catch @panic("Out of memory building schema serializer flags");

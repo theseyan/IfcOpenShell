@@ -28,7 +28,7 @@ pub fn addIfcParseCApiLibrary(
 
     var cpp_flags = std.ArrayList([]const u8).empty;
     defer cpp_flags.deinit(b.allocator);
-    common.appendCommonCppFlags(b, &cpp_flags);
+    common.appendCommonCppFlags(b, &cpp_flags, target);
 
     lib.addCSourceFiles(.{
         .files = &.{"zig/lib/ifcparse/c_api.cpp"},

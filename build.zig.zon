@@ -34,6 +34,10 @@
             .url = "git+https://github.com/nlohmann/json.git?ref=v3.11.3#904592d2a86bae5d9c191cdcb8f8fd9b136f71fa",
             .hash = "N-V-__8AAO6D9QAMQ2LttOQuCKymxEREStjCcKQMETYMIpVZ",
         },
+        .emsdk = .{
+            .url = "git+https://github.com/emscripten-core/emsdk?ref=4.0.14#eff90ca04a3785f571a8095b3a42b63799cf384a",
+            .hash = "N-V-__8AAMGsDwC6L1OfDgzRF1zFI2t-CaR0sVhEm8pmrpxm",
+        },
     },
     .paths = .{""},
     .fingerprint = 0x50d492cc8048c359,

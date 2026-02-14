@@ -1,5 +1,6 @@
 const std = @import("std");
 const common = @import("common.zig");
+const emscripten = @import("emscripten.zig");
 
 pub fn addOcctIncludePathsFromDependency(
     b: *std.Build,
@@ -90,6 +91,7 @@ pub fn addOcctToolkitArchiveLibraries(
             toolkit,
             occt_src_root,
             occt_src,
+            target,
         );
 
         archives.append(b.allocator, toolkit_archive) catch
@@ -104,6 +106,7 @@ pub fn addOcctToolkitSources(
     b: *std.Build,
     lib: *std.Build.Step.Compile,
     toolkits_arg: []const u8,
+    target: std.Build.ResolvedTarget,
 ) void {
     const occt_dep = b.dependency("occt", .{});
     const occt_src_root = occt_dep.path("src");
@@ -131,6 +134,7 @@ pub fn addOcctToolkitSources(
             toolkit,
             occt_src_root,
             occt_src,
+            target,
         );
     }
 }
@@ -153,6 +157,7 @@ fn appendOcctToolkitSourcesToLibrary(
     toolkit: []const u8,
     occt_src_root: std.Build.LazyPath,
     occt_src: []const u8,
+    target: std.Build.ResolvedTarget,
 ) void {
     var cpp_sources = std.ArrayList([]const u8).empty;
     defer cpp_sources.deinit(b.allocator);
@@ -179,6 +184,7 @@ fn appendOcctToolkitSourcesToLibrary(
     cpp_flags.append(b.allocator, "-DOCCT_NO_PLUGINS") catch @panic("Out of memory building OCCT flags");
     cpp_flags.append(b.allocator, "-include") catch @panic("Out of memory building OCCT flags");
     cpp_flags.append(b.allocator, math_compat_header) catch @panic("Out of memory building OCCT flags");
+    common.appendEmscriptenSysrootFlags(b, &cpp_flags, target);
 
     if (cpp_sources.items.len > 0) {
         lib.addCSourceFiles(.{
@@ -194,6 +200,7 @@ fn appendOcctToolkitSourcesToLibrary(
     c_flags.append(b.allocator, "-DOCCT_NO_PLUGINS") catch @panic("Out of memory building OCCT C flags");
     c_flags.append(b.allocator, "-include") catch @panic("Out of memory building OCCT C flags");
     c_flags.append(b.allocator, math_compat_header) catch @panic("Out of memory building OCCT C flags");
+    common.appendEmscriptenSysrootFlags(b, &c_flags, target);
 
     if (c_sources.items.len > 0) {
         lib.addCSourceFiles(.{

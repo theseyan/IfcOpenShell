@@ -1,4 +1,5 @@
 const std = @import("std");
+const emscripten = @import("emscripten.zig");
 const occt = @import("occt.zig");
 
 pub fn addBoostIncludesFromDependency(
@@ -7,6 +8,8 @@ pub fn addBoostIncludesFromDependency(
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
 ) void {
+    const is_wasm = emscripten.isEmscriptenTarget(target);
+
     // Overlay for Boost.Regex trait lookup that avoids a Zig C++ local-static
     // initialization bug while keeping Boost.Regex itself in use.
     compile.addIncludePath(b.path("zig/patches/boost"));
@@ -14,7 +17,8 @@ pub fn addBoostIncludesFromDependency(
     const boost_dep = b.dependency("boost", .{
         .target = target,
         .optimize = optimize,
-        .regex = true,
+        // Boost.Regex requires threading; disable for wasm (single-threaded).
+        .regex = !is_wasm,
     });
     const boost_artifact = boost_dep.artifact("boost");
 
@@ -50,12 +54,20 @@ pub fn linkBoostLibraryFromDependency(
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
 ) void {
+    const is_wasm = emscripten.isEmscriptenTarget(target);
     const boost_dep = b.dependency("boost", .{
         .target = target,
         .optimize = optimize,
-        .regex = true,
+        .regex = !is_wasm,
     });
     const boost_artifact = boost_dep.artifact("boost");
+
+    // When targeting wasm32-emscripten the boost artifact needs the
+    // Emscripten sysroot so it can find standard C/C++ headers.
+    if (is_wasm) {
+        emscripten.addEmscriptenSysrootIncludePaths(b, boost_artifact);
+    }
+
     compile.linkLibrary(boost_artifact);
 }
 
