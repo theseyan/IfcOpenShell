@@ -8,42 +8,26 @@ pub fn addBoostIncludesFromDependency(
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
 ) void {
-    const is_wasm = emscripten.isEmscriptenTarget(target);
-
-    // Overlay for Boost.Regex trait lookup that avoids a Zig C++ local-static
-    // initialization bug while keeping Boost.Regex itself in use.
-    compile.addIncludePath(b.path("zig/patches/boost"));
-
-    const boost_dep = b.dependency("boost", .{
+    const boost_dep = b.lazyDependency("boost", .{
         .target = target,
         .optimize = optimize,
-        // Boost.Regex requires threading; disable for wasm (single-threaded).
-        .regex = !is_wasm,
+        .regex = true,
     });
-    const boost_artifact = boost_dep.artifact("boost");
 
-    for (boost_artifact.root_module.include_dirs.items) |include_dir| {
-        compile.root_module.include_dirs.append(b.allocator, include_dir) catch
-            @panic("Out of memory adding boost include dirs");
+    if (boost_dep) |dep| {
+        const boost_artifact = dep.artifact("boost");
+        for (boost_artifact.root_module.include_dirs.items) |include_dir| {
+            compile.root_module.include_dirs.append(b.allocator, include_dir) catch
+                @panic("Out of memory adding boost include dirs");
+        }
     }
 
-    // boost-libraries-zig currently does not export dynamic_bitset;
-    // IfcParse / IfcGeom require <boost/dynamic_bitset.hpp>.
     const boost_dynamic_bitset_dep = b.dependency("boost_dynamic_bitset", .{});
     compile.addIncludePath(boost_dynamic_bitset_dep.path("include"));
-
-    // boost-libraries-zig currently does not export scope_exit;
-    // IfcParse requires <boost/scope_exit.hpp>.
     const boost_scope_exit_dep = b.dependency("boost_scope_exit", .{});
     compile.addIncludePath(boost_scope_exit_dep.path("include"));
-
-    // boost-libraries-zig currently does not export program_options;
-    // IfcGeom requires <boost/program_options.hpp>.
     const boost_program_options_dep = b.dependency("boost_program_options", .{});
     compile.addIncludePath(boost_program_options_dep.path("include"));
-
-    // boost-libraries-zig currently does not export foreach;
-    // IfcGeom requires <boost/foreach.hpp>.
     const boost_foreach_dep = b.dependency("boost_foreach", .{});
     compile.addIncludePath(boost_foreach_dep.path("include"));
 }
@@ -55,20 +39,19 @@ pub fn linkBoostLibraryFromDependency(
     optimize: std.builtin.OptimizeMode,
 ) void {
     const is_wasm = emscripten.isEmscriptenTarget(target);
-    const boost_dep = b.dependency("boost", .{
+    const boost_dep = b.lazyDependency("boost", .{
         .target = target,
         .optimize = optimize,
-        .regex = !is_wasm,
+        .regex = true,
     });
-    const boost_artifact = boost_dep.artifact("boost");
 
-    // When targeting wasm32-emscripten the boost artifact needs the
-    // Emscripten sysroot so it can find standard C/C++ headers.
-    if (is_wasm) {
-        emscripten.addEmscriptenSysrootIncludePaths(b, boost_artifact);
+    if (boost_dep) |dep| {
+        const boost_artifact = dep.artifact("boost");
+        if (is_wasm) {
+            emscripten.addEmscriptenSysrootIncludePaths(b, boost_artifact);
+        }
+        compile.linkLibrary(boost_artifact);
     }
-
-    compile.linkLibrary(boost_artifact);
 }
 
 pub fn addIfcGeomIncludePaths(

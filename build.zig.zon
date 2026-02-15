@@ -5,6 +5,7 @@
         .boost = .{
             .url = "https://github.com/theseyan/boost-libraries-zig/archive/refs/tags/boost-1.86.0-zig-0.15.2.tar.gz",
             .hash = "boost_libraries-1.86.0-FfbafdJ6AQDxYX2MUxaaobCIqhmd_kvNwKAGcuqmw-Q5",
+            .lazy = true
         },
         .boost_dynamic_bitset = .{
             .url = "git+https://github.com/boostorg/dynamic_bitset?ref=boost-1.86.0#75d3e4d83d4d8f30871cf352c2343a2aee310769",
