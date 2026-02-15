@@ -48,10 +48,6 @@ pub fn appendCommonCppFlags(
     appendEmscriptenSysrootFlags(b, flags, target);
 }
 
-/// For wasm32-emscripten: add emscripten sysroot include paths with `-I`
-/// (not `-isystem`) so they take priority over zig's bundled libc++ headers.
-/// Also suppress macro redefinition warnings caused by zig defining libc++
-/// configuration macros that conflict with emscripten's `__config_site`.
 pub fn appendEmscriptenSysrootFlags(
     b: *std.Build,
     flags: *std.ArrayList([]const u8),
@@ -59,9 +55,11 @@ pub fn appendEmscriptenSysrootFlags(
 ) void {
     if (!emscripten.isEmscriptenTarget(target)) return;
     flags.append(b.allocator, "-Wno-macro-redefined") catch @panic("OOM");
-    // Disable UBSan for wasm — the instrumentation overhead on large
-    // generated files (e.g. Ifc4-schema.cpp) causes compilation to hang.
     flags.append(b.allocator, "-fno-sanitize=all") catch @panic("OOM");
+    // Emscripten JS-based exception handling (pairs with
+    // -sDISABLE_EXCEPTION_CATCHING=0 on the linker side in emscripten.zig).
+    flags.append(b.allocator, "-mllvm") catch @panic("OOM");
+    flags.append(b.allocator, "-enable-emscripten-cxx-exceptions") catch @panic("OOM");
     flags.append(b.allocator, "-I") catch @panic("OOM");
     flags.append(b.allocator, emscripten.emSdkSysrootCxxIncludePath(b)) catch @panic("OOM");
     flags.append(b.allocator, "-I") catch @panic("OOM");

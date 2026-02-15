@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const c = @cImport({
+pub const c = @cImport({
     @cInclude("ifcparse/c_api.h");
 });
 

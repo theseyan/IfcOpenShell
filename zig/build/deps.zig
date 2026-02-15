@@ -8,10 +8,11 @@ pub fn addBoostIncludesFromDependency(
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
 ) void {
+    const is_wasm = emscripten.isEmscriptenTarget(target);
     const boost_dep = b.lazyDependency("boost", .{
         .target = target,
         .optimize = optimize,
-        .regex = true,
+        .regex = !is_wasm,
     });
 
     if (boost_dep) |dep| {
@@ -42,7 +43,7 @@ pub fn linkBoostLibraryFromDependency(
     const boost_dep = b.lazyDependency("boost", .{
         .target = target,
         .optimize = optimize,
-        .regex = true,
+        .regex = !is_wasm,
     });
 
     if (boost_dep) |dep| {

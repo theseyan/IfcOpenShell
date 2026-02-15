@@ -1,6 +1,5 @@
 const std = @import("std");
 const common = @import("common.zig");
-const emscripten = @import("emscripten.zig");
 
 pub fn addOcctIncludePathsFromDependency(
     b: *std.Build,
