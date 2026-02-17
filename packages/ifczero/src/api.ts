@@ -23,14 +23,40 @@ export function getModule(): EmscriptenModule {
   return moduleInstance;
 }
 
-async function resolveBundledModuleFactory(moduleJs: "ifcopenshell.js" | "ifcparse.js"): Promise<CreateModuleFn> {
-  const url = new URL(`../wasm/${moduleJs}`, import.meta.url);
-  const imported = await import(/* @vite-ignore */ url.href);
+function asFactory(imported: unknown): CreateModuleFn | null {
   const factory = (imported as { default?: unknown }).default ?? imported;
-  if (typeof factory !== "function") {
-    throw new Error(`Failed to load module factory from ${moduleJs}`);
+  return typeof factory === "function" ? (factory as CreateModuleFn) : null;
+}
+
+async function tryImportFactory(specifier: string): Promise<CreateModuleFn | null> {
+  try {
+    const imported = await import(specifier);
+    return asFactory(imported);
+  } catch {
+    return null;
   }
-  return factory as CreateModuleFn;
+}
+
+async function resolveBundledModuleFactory(moduleJs: "ifcopenshell.js" | "ifcparse.js"): Promise<CreateModuleFn> {
+  if (moduleJs === "ifcopenshell.js") {
+    return (
+      (await tryImportFactory("ifczero/wasm/ifcopenshell.js")) ??
+      (await tryImportFactory(new URL("../wasm/ifcopenshell.js", import.meta.url).href)) ??
+      (await tryImportFactory(new URL("./wasm/ifcopenshell.js", import.meta.url).href)) ??
+      (() => {
+        throw new Error("Failed to load module factory: ifcopenshell.js");
+      })()
+    );
+  }
+
+  return (
+    (await tryImportFactory("ifczero/wasm/ifcparse.js")) ??
+    (await tryImportFactory(new URL("../wasm/ifcparse.js", import.meta.url).href)) ??
+    (await tryImportFactory(new URL("./wasm/ifcparse.js", import.meta.url).href)) ??
+    (() => {
+      throw new Error("Failed to load module factory: ifcparse.js");
+    })()
+  );
 }
 
 export async function initWith(

@@ -1,5 +1,5 @@
 {
-  "name": "ifczero-js",
+  "name": "ifczero",
   "version": "0.0.1",
   "type": "module",
   "main": "./dist/index.js",
@@ -10,14 +10,13 @@
     "./geom": "./dist/geom/index.js",
     "./serializers": "./dist/serializers/index.js",
     "./util": "./dist/util/index.js",
-    "./wasm/*": "./wasm/*"
+    "./wasm/*": "./dist/wasm/*"
   },
   "scripts": {
     "codegen": "tsx codegen/generate-bindings.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "tsc && npm run copy:wasm",
-    "copy:wasm": "node scripts/copy-wasm.mjs",
+    "build": "node scripts/clean-dist.mjs && tsc && node scripts/copy-wasm.mjs",
     "dev": "tsc --watch"
   },
   "devDependencies": {
@@ -26,7 +25,6 @@
     "vitest": "^4.0.18"
   },
   "files": [
-    "dist",
-    "wasm"
+    "dist"
   ]
 }

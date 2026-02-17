@@ -3,9 +3,9 @@
 Import styles:
 
 ```ts
-import * as ifc from "ifczero-js";
+import * as ifc from "ifczero";
 // or
-import * as geom from "ifczero-js/geom";
+import * as geom from "ifczero/geom";
 ```
 
 ## GeomSettings

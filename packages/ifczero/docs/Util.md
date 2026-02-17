@@ -3,9 +3,9 @@
 Import styles:
 
 ```ts
-import { util } from "ifczero-js";
+import { util } from "ifczero";
 // or
-import * as util from "ifczero-js/util";
+import * as util from "ifczero/util";
 ```
 
 These helpers operate on parse-level entities and IFC relationships/properties.

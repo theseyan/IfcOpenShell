@@ -1,4 +1,4 @@
-# ifczero-js
+# ifczero
 
 ## Initialize Once
 
@@ -17,14 +17,14 @@ Runtime helpers:
 Example using bundled full module:
 
 ```ts
-import { init } from "ifczero-js";
+import { init } from "ifczero";
 
 await init({
   locateFile: (file) => new URL(`../wasm/${file}`, import.meta.url).pathname,
 });
 ```
 
-You can also import `ifczero-js/wasm/*.js` directly and use `ccall`/`cwrap` manually, but the TS APIs are the recommended layer.
+You can also import `ifczero/wasm/*.js` directly and use `ccall`/`cwrap` manually, but the TS APIs are the recommended layer.
 
 ## Module Guides
 

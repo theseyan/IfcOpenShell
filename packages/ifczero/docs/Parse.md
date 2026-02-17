@@ -3,9 +3,9 @@
 Import styles:
 
 ```ts
-import * as ifc from "ifczero-js";
+import * as ifc from "ifczero";
 // or
-import * as parse from "ifczero-js/parse";
+import * as parse from "ifczero/parse";
 ```
 
 ## Parse Functions
