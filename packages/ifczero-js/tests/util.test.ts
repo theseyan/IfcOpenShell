@@ -1,10 +1,9 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { setModule } from "../src/api.js";
+import { init } from "../src/api.js";
 import { IfcFile } from "../src/parse/IfcFile.js";
 import { Entity } from "../src/parse/Entity.js";
 import {
@@ -31,7 +30,7 @@ import { UnitType } from "../src/util/types.js";
 import type { EmscriptenModule } from "../src/wasm/types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const WASM_DIR = join(__dirname, "../../../zig-out");
+const WASM_DIR = join(__dirname, "../wasm");
 const TEST_IFC = join(__dirname, "data/basic_shape_SweptSolid.ifc");
 
 let M: EmscriptenModule;
@@ -41,13 +40,9 @@ let project: Entity;
 let building: Entity;
 
 beforeAll(async () => {
-  const require = createRequire(import.meta.url);
-  const mod = require(join(WASM_DIR, "ifcopenshell.js"));
-  const createModule = mod.default || mod;
-  M = await createModule({
+  M = await init({
     locateFile: (f: string) => join(WASM_DIR, f),
   });
-  setModule(M);
   const content = readFileSync(TEST_IFC, "utf-8");
   file = IfcFile.openFromMemory(content)!;
 

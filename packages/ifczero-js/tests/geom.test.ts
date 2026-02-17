@@ -1,10 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { setModule } from "../src/api.js";
+import { init } from "../src/api.js";
 import { IfcFile } from "../src/parse/IfcFile.js";
 import { GeomSettings } from "../src/geom/Settings.js";
 import { Iterator } from "../src/geom/Iterator.js";
@@ -13,20 +12,16 @@ import { createMeshForId, createShapeForId, lastError as geomLastError } from ".
 import type { EmscriptenModule } from "../src/wasm/types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const WASM_DIR = join(__dirname, "../../../zig-out");
+const WASM_DIR = join(__dirname, "../wasm");
 const TEST_IFC = join(__dirname, "data/basic_shape_SweptSolid.ifc");
 
 let M: EmscriptenModule;
 let IFC_CONTENT: string;
 
 beforeAll(async () => {
-  const require = createRequire(import.meta.url);
-  const mod = require(join(WASM_DIR, "ifcopenshell.js"));
-  const createModule = mod.default || mod;
-  M = await createModule({
+  M = await init({
     locateFile: (file: string) => join(WASM_DIR, file),
   });
-  setModule(M);
   IFC_CONTENT = readFileSync(TEST_IFC, "utf-8");
 });
 

@@ -1,5 +1,5 @@
 {
-  "name": "@ifcopenshell/ifcwasm",
+  "name": "ifczero-js",
   "version": "0.0.1",
   "type": "module",
   "main": "./dist/index.js",
@@ -9,13 +9,15 @@
     "./parse": "./dist/parse/index.js",
     "./geom": "./dist/geom/index.js",
     "./serializers": "./dist/serializers/index.js",
-    "./util": "./dist/util/index.js"
+    "./util": "./dist/util/index.js",
+    "./wasm/*": "./wasm/*"
   },
   "scripts": {
     "codegen": "tsx codegen/generate-bindings.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "tsc",
+    "build": "tsc && npm run copy:wasm",
+    "copy:wasm": "node scripts/copy-wasm.mjs",
     "dev": "tsc --watch"
   },
   "devDependencies": {

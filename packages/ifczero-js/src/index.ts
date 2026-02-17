@@ -28,6 +28,8 @@ export { readString, writeBytes, readF64Array, readI32Array } from "./wasm/memor
 export {
   moduleInstance,
   init,
+  initParse,
+  initWith,
   setModule,
   getModule,
   clearModule,

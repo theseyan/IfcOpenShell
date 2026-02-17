@@ -39,6 +39,11 @@ export interface EmscriptenModule {
   };
 }
 
+export interface ModuleInitOverrides extends Partial<EmscriptenModule> {
+  locateFile?: (path: string, prefix?: string) => string;
+  [key: string]: unknown;
+}
+
 export type CreateModuleFn = (
-  overrides?: Partial<EmscriptenModule>,
+  overrides?: ModuleInitOverrides,
 ) => Promise<EmscriptenModule>;

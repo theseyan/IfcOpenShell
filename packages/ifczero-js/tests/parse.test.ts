@@ -1,10 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { setModule } from "../src/api.js";
+import { init } from "../src/api.js";
 import { IfcFile } from "../src/parse/IfcFile.js";
 import { Entity } from "../src/parse/Entity.js";
 import { Schema } from "../src/parse/Schema.js";
@@ -15,7 +14,7 @@ import { AggregationType, ArgumentType, ParameterTypeKind } from "../src/parse/t
 import type { EmscriptenModule } from "../src/wasm/types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const WASM_DIR = join(__dirname, "../../../zig-out");
+const WASM_DIR = join(__dirname, "../wasm");
 const TEST_IFC = join(__dirname, "data/basic_shape_SweptSolid.ifc");
 
 let M: EmscriptenModule;
@@ -23,13 +22,9 @@ let IFC_CONTENT: string;
 
 beforeAll(async () => {
   IFC_CONTENT = readFileSync(TEST_IFC, "utf-8");
-  const require = createRequire(import.meta.url);
-  const mod = require(join(WASM_DIR, "ifcopenshell.js"));
-  const createModule = mod.default || mod;
-  M = await createModule({
+  M = await init({
     locateFile: (path: string) => join(WASM_DIR, path),
   });
-  setModule(M);
 });
 
 describe("parse functions", () => {
