@@ -191,7 +191,14 @@ Helpers:
 
 ## PsetQto
 
-- `new PsetQto()` - Creates Pset/Qto template helper.
+- `new PsetQto()` - Creates Pset/Qto template helper. By default it attempts to auto-load bundled schema templates (`IFC2X3`, `IFC4`, `IFC4X3`) in the background; failures are ignored.
+- `bundledTemplateUrl(schema: string): URL | null` - Returns bundled template URL for supported schema, or `null`.
+- `loadTemplateFromMemory(schema: string, data: Uint8Array | ArrayBuffer): boolean` - Loads one schema template from IFC bytes.
+- `loadTemplateFromFile(schema: string, path: string): boolean` - Loads one schema template from an in-WASM filesystem path.
+- `loadTemplateFromUrl(schema: string, url: string | URL, init?: RequestInit): Promise<boolean>` - Fetches IFC template from URL and loads it.
+- `loadBundledTemplate(schema: string, init?: RequestInit): Promise<boolean>` - Loads packaged template for the schema.
+- `unloadTemplate(schema: string): boolean` - Unloads one schema template from native cache.
+- `isTemplateLoaded(schema: string): boolean` - Returns whether schema template is currently loaded.
 - `getApplicable(schema: string, ifcClass: string, options?): PropertySetTemplate[]` - Gets templates applicable to class/predefined type.
 - `getApplicableNames(schema: string, ifcClass: string, options?): string[]` - Gets applicable template names only.
 - `getByName(schema: string, name: string): PropertySetTemplate | null` - Gets one template by name.
@@ -199,6 +206,11 @@ Helpers:
 - `allTemplates(schema: string): PropertySetTemplate[]` - Lists all templates for schema.
 - `getProperties(templatePtr: Ptr): PropertyTemplate[]` - Lists property templates of one template.
 - `deinit(): void` - Releases native psetqto resources.
+
+Notes:
+
+- Autoload is best-effort and non-fatal. If bundled assets are not present, APIs continue to work once templates are loaded explicitly.
+- Schema query methods perform a lazy bundled-load attempt for the requested schema if not loaded yet.
 
 Template types:
 

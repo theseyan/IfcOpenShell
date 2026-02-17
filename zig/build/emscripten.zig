@@ -117,11 +117,14 @@ pub fn emccDefaultLibrarySettings(
             s.addFlag(b.allocator, "-g");
         },
         .ReleaseSafe => s.addFlag(b.allocator, "-O2"),
-        .ReleaseFast => {
-            s.addFlag(b.allocator, "-O3");
-            s.addFlag(b.allocator, "--lto");
-        },
-        .ReleaseSmall => s.addFlag(b.allocator, "-Oz"),
+        .ReleaseFast => s.addFlag(b.allocator, "-O3"),
+        .ReleaseSmall => {
+            s.addFlag(b.allocator, "-Oz");
+            s.addFlag(b.allocator, "-g0");
+        }
+    }
+    if (optimize != .Debug) {
+        s.addFlag(b.allocator, "-flto");
     }
 
     s.put("MODULARIZE", "1");

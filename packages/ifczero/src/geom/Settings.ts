@@ -42,24 +42,30 @@ export class GeomSettings {
 
   setStringSet(name: string, values: string[]): boolean {
     const stringPtrs: number[] = [];
-    for (const value of values) {
-      const len = this.M.lengthBytesUTF8(value) + 1;
-      const ptr = this.M._malloc(len);
-      this.M.stringToUTF8(value, ptr, len);
-      stringPtrs.push(ptr);
-    }
+    try {
+      for (const value of values) {
+        const len = this.M.lengthBytesUTF8(value) + 1;
+        const ptr = this.M._malloc(len);
+        if (!ptr) {
+          throw new Error(`Out of WASM memory while allocating ${len} bytes for string setting`);
+        }
+        this.M.stringToUTF8(value, ptr, len);
+        stringPtrs.push(ptr);
+      }
 
-    const sp = this.M.stackSave();
-    const valuesPtr = this.M.stackAlloc(stringPtrs.length * 4);
-    for (let i = 0; i < stringPtrs.length; i++) {
-      this.M.setValue(valuesPtr + i * 4, stringPtrs[i], "i32");
+      const sp = this.M.stackSave();
+      try {
+        const valuesPtr = this.M.stackAlloc(stringPtrs.length * 4);
+        for (let i = 0; i < stringPtrs.length; i++) {
+          this.M.setValue(valuesPtr + i * 4, stringPtrs[i], "i32");
+        }
+        return bind.settings_set_string_set(this.M, this.ptr, name, valuesPtr, stringPtrs.length) !== 0;
+      } finally {
+        this.M.stackRestore(sp);
+      }
+    } finally {
+      for (const ptr of stringPtrs) this.M._free(ptr);
     }
-
-    const ok =
-      bind.settings_set_string_set(this.M, this.ptr, name, valuesPtr, stringPtrs.length) !== 0;
-    this.M.stackRestore(sp);
-    for (const ptr of stringPtrs) this.M._free(ptr);
-    return ok;
   }
 
   setDoubleVector(name: string, values: number[]): boolean {

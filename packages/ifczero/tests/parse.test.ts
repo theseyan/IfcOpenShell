@@ -16,6 +16,7 @@ import type { EmscriptenModule } from "../src/wasm/types.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const WASM_DIR = join(__dirname, "../wasm");
 const TEST_IFC = join(__dirname, "data/basic_shape_SweptSolid.ifc");
+const TEST_PSETQTO_IFC4 = join(__dirname, "../wasm/psetqto/Pset_IFC4_ADD2.ifc");
 
 let M: EmscriptenModule;
 let IFC_CONTENT: string;
@@ -105,6 +106,21 @@ describe("IfcFile", () => {
       expect(file.schema).toBe("IFC4");
       expect(file.entityCount).toBeGreaterThan(0);
       file.close();
+    });
+
+    it("throws on unsupported schema", () => {
+      const unsupported = [
+        "ISO-10303-21;",
+        "HEADER;",
+        "FILE_DESCRIPTION(('ViewDefinition [CoordinationView]'),'2;1');",
+        "FILE_NAME('unsupported.ifc','2020-01-01T00:00:00',('author'),('org'),'pre','app','auth');",
+        "FILE_SCHEMA(('IFC9999'));",
+        "ENDSEC;",
+        "DATA;",
+        "ENDSEC;",
+        "END-ISO-10303-21;",
+      ].join("\n");
+      expect(() => IfcFile.openFromMemory(unsupported)).toThrow(/UNSUPPORTED_SCHEMA/);
     });
   });
 
@@ -946,6 +962,23 @@ describe("Entity.getInfo", () => {
     expect(nullAttrs.length).toBeGreaterThanOrEqual(0);
     file.close();
   });
+
+  it("getInfo returns JSON-serializable non-recursive values", () => {
+    const file = IfcFile.openFromMemory(IFC_CONTENT);
+    const project = file.byType("IfcProject")[0];
+    const info = project.getInfo({ recursive: false, includeId: true });
+    expect(() => JSON.stringify(info)).not.toThrow();
+    file.close();
+  });
+
+  it("getInfo returns JSON-serializable recursive values", () => {
+    const file = IfcFile.openFromMemory(IFC_CONTENT);
+    const proxy = file.byId(1000);
+    expect(proxy).not.toBeNull();
+    const info = proxy!.getInfo({ recursive: true, includeId: true });
+    expect(() => JSON.stringify(info)).not.toThrow();
+    file.close();
+  });
 });
 
 describe("Entity.withAttributes (dynamic access)", () => {
@@ -1062,6 +1095,11 @@ describe("PsetQto", () => {
 
   beforeAll(() => {
     pq = new PsetQto();
+    const templateData = readFileSync(TEST_PSETQTO_IFC4);
+    const loaded = pq.loadTemplateFromMemory("IFC4", templateData);
+    if (!loaded) {
+      throw new Error("Failed to load IFC4 PsetQto template for tests");
+    }
   });
 
   afterAll(() => {
@@ -1072,6 +1110,19 @@ describe("PsetQto", () => {
     const templates = pq.allTemplates("IFC4");
     expect(templates.length).toBeGreaterThan(0);
     expect(templates[0].name).toBeTruthy();
+  });
+
+  it("isTemplateLoaded returns true for loaded schema", () => {
+    expect(pq.isTemplateLoaded("IFC4")).toBe(true);
+  });
+
+  it("loadTemplateFromUrl loads template IFC data", async () => {
+    const templateData = readFileSync(TEST_PSETQTO_IFC4);
+    const dataUrl = `data:application/octet-stream;base64,${templateData.toString("base64")}`;
+    expect(pq.unloadTemplate("IFC4")).toBe(true);
+    expect(pq.isTemplateLoaded("IFC4")).toBe(false);
+    await expect(pq.loadTemplateFromUrl("IFC4", dataUrl)).resolves.toBe(true);
+    expect(pq.isTemplateLoaded("IFC4")).toBe(true);
   });
 
   it("allTemplates returns empty for invalid schema", () => {

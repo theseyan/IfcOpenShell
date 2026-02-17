@@ -11,14 +11,28 @@ if (!existsSync(wasmDir)) {
   throw new Error(`Missing wasm directory: ${wasmDir}. Run 'zig build wasm-full' first.`);
 }
 
-const entries = readdirSync(wasmDir).filter((name) => statSync(join(wasmDir, name)).isFile());
-if (entries.length === 0) {
+const fileCount = (dir) => {
+  let count = 0;
+  for (const entry of readdirSync(dir)) {
+    const fullPath = join(dir, entry);
+    const stat = statSync(fullPath);
+    if (stat.isDirectory()) {
+      count += fileCount(fullPath);
+    } else if (stat.isFile()) {
+      count += 1;
+    }
+  }
+  return count;
+};
+
+const entries = fileCount(wasmDir);
+if (entries === 0) {
   throw new Error(`No wasm artifacts found in ${wasmDir}. Run 'zig build wasm-full' first.`);
 }
 
 mkdirSync(distWasmDir, { recursive: true });
-for (const name of entries) {
-  cpSync(join(wasmDir, name), join(distWasmDir, name));
+for (const entry of readdirSync(wasmDir)) {
+  cpSync(join(wasmDir, entry), join(distWasmDir, entry), { recursive: true, force: true });
 }
 
-console.log(`Copied ${entries.length} wasm artifact(s) to dist/wasm`);
+console.log(`Copied ${entries} wasm artifact(s) to dist/wasm`);

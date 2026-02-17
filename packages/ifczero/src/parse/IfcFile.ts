@@ -20,6 +20,29 @@ export class IfcFile {
     return this._ptr;
   }
 
+  private static fromOpenedPtr(M: EmscriptenModule, ptr: Ptr, source: "memory" | "path"): IfcFile {
+    if (!ptr) {
+      if (source === "memory") {
+        throw new Error("Failed to open IFC file from memory");
+      }
+      throw new Error("Failed to open IFC file");
+    }
+
+    const file = new IfcFile(M, ptr);
+    const status = file.status;
+    if (status !== 0) {
+      const statusMessage = bind.file_status_message(M, status);
+      const detail = file.lastError || bind.last_error(M) || "";
+      file.close();
+      if (detail && detail !== statusMessage) {
+        throw new Error(`Failed to open IFC file (${source}): ${statusMessage} (${detail})`);
+      }
+      throw new Error(`Failed to open IFC file (${source}): ${statusMessage}`);
+    }
+
+    return file;
+  }
+
   static createEmpty(schema: string): IfcFile {
     const M = getModule();
     const ptr = bind.file_create_empty(M, schema);
@@ -30,21 +53,32 @@ export class IfcFile {
   static openFromMemory(data: Uint8Array | string): IfcFile {
     const M = getModule();
     const bytes = typeof data === "string" ? new TextEncoder().encode(data) : data;
-    const ptr = M.ccall(
-      "ifcopenshell_ifcparse_file_open_from_memory",
-      "number",
-      ["array", "number"],
-      [bytes, bytes.length],
-    );
-    if (!ptr) throw new Error("Failed to open IFC file from memory");
-    return new IfcFile(M, ptr);
+    if (bytes.length === 0) {
+      throw new Error("Cannot open IFC from an empty buffer");
+    }
+    const dataPtr = M._malloc(bytes.length);
+    if (!dataPtr) {
+      throw new Error("Failed to allocate IFC buffer");
+    }
+
+    M.HEAPU8.set(bytes, dataPtr);
+    try {
+      const ptr = M.ccall(
+        "ifcopenshell_ifcparse_file_open_from_memory",
+        "number",
+        ["number", "number"],
+        [dataPtr, bytes.length],
+      );
+      return IfcFile.fromOpenedPtr(M, ptr, "memory");
+    } finally {
+      M._free(dataPtr);
+    }
   }
 
   static open(path: string, fileType: FileType = FileType.AUTODETECT, readonly = false): IfcFile {
     const M = getModule();
     const ptr = bind.file_open(M, path, fileType, readonly ? 1 : 0);
-    if (!ptr) throw new Error(`Failed to open IFC file at ${path}`);
-    return new IfcFile(M, ptr);
+    return IfcFile.fromOpenedPtr(M, ptr, "path");
   }
 
   close(): void {

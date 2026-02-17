@@ -238,6 +238,15 @@ function extractParamNameAndType(param: string): {
   return { type, name };
 }
 
+function normalizeZigType(type: string): string {
+  return type.replace(/\s+/g, "");
+}
+
+function isZigCStringPointer(type: string): boolean {
+  const t = normalizeZigType(type);
+  return t.includes("[*:0]constu8");
+}
+
 // ── Zig export parser ───────────────────────────────────────────────
 
 function parseZigExports(path: string, prefix: string): ParsedFunction[] {
@@ -313,7 +322,7 @@ function parseZigExports(path: string, prefix: string): ParsedFunction[] {
         if (zigType.startsWith("?")) {
           // Unwrap optional to check the inner type
           const inner = zigType.slice(1);
-          if ((inner.startsWith("[*") || inner.startsWith("*")) && inner.includes("const") && inner.includes("u8")) {
+          if ((inner.startsWith("[*") || inner.startsWith("*")) && isZigCStringPointer(inner)) {
             info = { cwrap: "string", ts: "string | null" };
           } else {
             info = { cwrap: "number", ts: "number" };
@@ -321,8 +330,7 @@ function parseZigExports(path: string, prefix: string): ParsedFunction[] {
         } else if (ZIG_TYPE_MAP[zigType]) {
           info = ZIG_TYPE_MAP[zigType];
         } else if (zigType.startsWith("*") || zigType.startsWith("[*")) {
-          // Check for [*:0]const u8 → string (must have const)
-          if (zigType.includes("const") && zigType.includes("u8")) {
+          if (isZigCStringPointer(zigType)) {
             info = { cwrap: "string", ts: "string" };
           } else {
             info = { cwrap: "number", ts: "number" };

@@ -10,6 +10,9 @@ export function allocString(str: string): number {
   const M = getModule();
   const len = M.lengthBytesUTF8(str) + 1;
   const ptr = M._malloc(len);
+  if (!ptr) {
+    throw new Error(`Out of WASM memory while allocating ${len} bytes for string`);
+  }
   M.stringToUTF8(str, ptr, len);
   return ptr;
 }
@@ -33,8 +36,12 @@ export function readI32Array(
 export function writeBytes(
   data: Uint8Array,
 ): number {
+  if (data.length === 0) return 0;
   const M = getModule();
   const ptr = M._malloc(data.length);
+  if (!ptr) {
+    throw new Error(`Out of WASM memory while allocating ${data.length} bytes`);
+  }
   M.HEAPU8.set(data, ptr);
   return ptr;
 }

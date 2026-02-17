@@ -179,6 +179,22 @@ describe("exportToFile", () => {
     expect(ok).toBe(true);
     M.FS.unlink("/tmp/export.gltf");
   });
+
+  it("exports to TTL format", () => {
+    if (!hasFormat("ttl")) return;
+    const ok = exportToFile(
+      file.ptr,
+      geomSettings.ptr,
+      serSettings.ptr,
+      "ttl",
+      "/tmp/export.ttl",
+    );
+    expect(ok).toBe(true);
+    const content = M.FS.readFile("/tmp/export.ttl", { encoding: "utf8" }) as string;
+    expect(content.length).toBeGreaterThan(0);
+    expect(content).toContain("geo:wktLiteral");
+    M.FS.unlink("/tmp/export.ttl");
+  });
 });
 
 describe("OBJ export content", () => {
@@ -323,6 +339,20 @@ describe("Buffer-based export", () => {
     expect(objContent).toContain("v ");
     expect(typeof ser.lastError).toBe("string");
     ser.destroy();
+    ss.destroy();
+    gs.destroy();
+    file.close();
+  });
+
+  it("exportToBuffer returns TTL content as strings", () => {
+    if (!hasFormat("ttl")) return;
+    const file = IfcFile.openFromMemory(IFC_CONTENT);
+    const gs = new GeomSettings();
+    const ss = new SerializerSettings();
+    const result = exportToBuffer(file.ptr, gs.ptr, ss.ptr, "ttl");
+    expect(result).not.toBeNull();
+    expect(result!.primary.length).toBeGreaterThan(0);
+    expect(result!.primary).toContain("geo:wktLiteral");
     ss.destroy();
     gs.destroy();
     file.close();

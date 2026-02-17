@@ -233,6 +233,18 @@ pub fn build(b: *std.Build) void {
                 wasm_parse_link.wasm,
                 b.pathJoin(&.{ package_wasm_dir, "ifcparse.wasm" }),
             );
+            sync_parse_outputs.addCopyFileToSource(
+                b.path("zig/lib/psetqto/Pset_IFC2X3.ifc"),
+                b.pathJoin(&.{ package_wasm_dir, "psetqto", "Pset_IFC2X3.ifc" }),
+            );
+            sync_parse_outputs.addCopyFileToSource(
+                b.path("zig/lib/psetqto/Pset_IFC4_ADD2.ifc"),
+                b.pathJoin(&.{ package_wasm_dir, "psetqto", "Pset_IFC4_ADD2.ifc" }),
+            );
+            sync_parse_outputs.addCopyFileToSource(
+                b.path("zig/lib/psetqto/Pset_IFC4X3.ifc"),
+                b.pathJoin(&.{ package_wasm_dir, "psetqto", "Pset_IFC4X3.ifc" }),
+            );
 
             const step = b.step("wasm-parse", "Link IfcParse+IfcUtil WASM module");
             step.dependOn(&sync_parse_outputs.step);
@@ -284,6 +296,18 @@ pub fn build(b: *std.Build) void {
                 wasm_full_link.wasm,
                 b.pathJoin(&.{ package_wasm_dir, "ifcopenshell.wasm" }),
             );
+            sync_full_outputs.addCopyFileToSource(
+                b.path("zig/lib/psetqto/Pset_IFC2X3.ifc"),
+                b.pathJoin(&.{ package_wasm_dir, "psetqto", "Pset_IFC2X3.ifc" }),
+            );
+            sync_full_outputs.addCopyFileToSource(
+                b.path("zig/lib/psetqto/Pset_IFC4_ADD2.ifc"),
+                b.pathJoin(&.{ package_wasm_dir, "psetqto", "Pset_IFC4_ADD2.ifc" }),
+            );
+            sync_full_outputs.addCopyFileToSource(
+                b.path("zig/lib/psetqto/Pset_IFC4X3.ifc"),
+                b.pathJoin(&.{ package_wasm_dir, "psetqto", "Pset_IFC4X3.ifc" }),
+            );
 
             const step = b.step("wasm-full", "Link full IfcOpenShell WASM module");
             step.dependOn(&sync_full_outputs.step);
@@ -332,7 +356,7 @@ fn applyEmscriptenSysroot(
 ) void {
     if (!is_emscripten) return;
     emscripten.addEmscriptenSysrootIncludePaths(b, compile);
-    if (optimize == .ReleaseFast) {
+    if (optimize != .Debug) {
         compile.lto = .full;
     }
     if (opt_emsdk_setup_step) |setup_step| {

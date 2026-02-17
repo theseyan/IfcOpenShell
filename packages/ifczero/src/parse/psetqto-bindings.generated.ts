@@ -4,6 +4,22 @@ import type { EmscriptenModule } from "../wasm/types.js";
 
 export type Ptr = number;
 
+export function load_template_from_memory(M: EmscriptenModule, schema_name: string | null, data: number, length: number): number {
+  return M.ccall("ifcopenshell_psetqto_load_template_from_memory", "number", ["string", "number", "number"], [schema_name, data, length]);
+}
+
+export function load_template_from_file(M: EmscriptenModule, schema_name: string | null, path: string | null): number {
+  return M.ccall("ifcopenshell_psetqto_load_template_from_file", "number", ["string", "string"], [schema_name, path]);
+}
+
+export function unload_template(M: EmscriptenModule, schema_name: string | null): number {
+  return M.ccall("ifcopenshell_psetqto_unload_template", "number", ["string"], [schema_name]);
+}
+
+export function is_template_loaded(M: EmscriptenModule, schema_name: string | null): number {
+  return M.ccall("ifcopenshell_psetqto_is_template_loaded", "number", ["string"], [schema_name]);
+}
+
 export function get_applicable(M: EmscriptenModule, schema_name: string | null, ifc_class: string | null, predefined_type: string | null, pset_only: number, qto_only: number): number {
   return M.ccall("ifcopenshell_psetqto_get_applicable", "number", ["string", "string", "string", "number", "number"], [schema_name, ifc_class, predefined_type, pset_only, qto_only]);
 }

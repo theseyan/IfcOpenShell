@@ -277,9 +277,17 @@ export class Entity {
         continue;
       }
       const argType = this.argumentType(i);
-      result[name] = this._getValueByType(i, argType, recursive, includeId, seen);
+      result[name] = this._getValueByType(i, argType, recursive, includeId, seen, true);
     }
     return result;
+  }
+
+  private _entityInfoRef(e: Entity, includeId: boolean): Record<string, unknown> {
+    const ref: Record<string, unknown> = { type: e.typeName };
+    if (includeId) {
+      ref.id = e.id;
+    }
+    return ref;
   }
 
   private _getValueByType(
@@ -288,6 +296,7 @@ export class Entity {
     recursive: boolean,
     includeId: boolean,
     seen: Set<number>,
+    forInfo = false,
   ): unknown {
     switch (argType) {
       case ArgumentType.INT:
@@ -305,11 +314,12 @@ export class Entity {
       case ArgumentType.ENTITY_INSTANCE: {
         const e = this.getEntity(index);
         if (!e) return null;
+        if (!forInfo) return e;
         if (recursive && !seen.has(e.id)) {
           seen.add(e.id);
           return e._getInfoImpl(recursive, includeId, seen);
         }
-        return e;
+        return this._entityInfoRef(e, includeId);
       }
       case ArgumentType.EMPTY_AGGREGATE:
       case ArgumentType.AGGREGATE_OF_EMPTY_AGGREGATE:
@@ -323,14 +333,15 @@ export class Entity {
         return this.getStringList(index);
       case ArgumentType.AGGREGATE_OF_ENTITY_INSTANCE: {
         const entities = this.getEntityList(index);
+        if (!forInfo) return entities;
         if (recursive) {
           return entities.map(e => {
-            if (seen.has(e.id)) return e;
+            if (seen.has(e.id)) return this._entityInfoRef(e, includeId);
             seen.add(e.id);
             return e._getInfoImpl(recursive, includeId, seen);
           });
         }
-        return entities;
+        return entities.map(e => this._entityInfoRef(e, includeId));
       }
       case ArgumentType.AGGREGATE_OF_AGGREGATE_OF_INT:
         return this.getIntMatrix(index);
@@ -338,14 +349,15 @@ export class Entity {
         return this.getDoubleMatrix(index);
       case ArgumentType.AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE: {
         const mat = this.getEntityMatrix(index);
+        if (!forInfo) return mat;
         if (recursive) {
           return mat.map(row => row.map(e => {
-            if (seen.has(e.id)) return e;
+            if (seen.has(e.id)) return this._entityInfoRef(e, includeId);
             seen.add(e.id);
             return e._getInfoImpl(recursive, includeId, seen);
           }));
         }
-        return mat;
+        return mat.map(row => row.map(e => this._entityInfoRef(e, includeId)));
       }
       default: return null;
     }
@@ -462,21 +474,29 @@ export class Entity {
 
   setStringList(index: number, values: string[]): boolean {
     const ptrs: number[] = [];
-    for (const s of values) {
-      const len = this.M.lengthBytesUTF8(s) + 1;
-      const p = this.M._malloc(len);
-      this.M.stringToUTF8(s, p, len);
-      ptrs.push(p);
+    try {
+      for (const s of values) {
+        const len = this.M.lengthBytesUTF8(s) + 1;
+        const p = this.M._malloc(len);
+        if (!p) {
+          throw new Error(`Out of WASM memory while allocating ${len} bytes for string list`);
+        }
+        this.M.stringToUTF8(s, p, len);
+        ptrs.push(p);
+      }
+      const sp = this.M.stackSave();
+      try {
+        const buf = this.M.stackAlloc(ptrs.length * 4);
+        for (let i = 0; i < ptrs.length; i++) {
+          this.M.setValue(buf + i * 4, ptrs[i], "i32");
+        }
+        return bind.entity_set_argument_string_list(this.M, this.ptr, index, buf, ptrs.length) !== 0;
+      } finally {
+        this.M.stackRestore(sp);
+      }
+    } finally {
+      for (const p of ptrs) this.M._free(p);
     }
-    const sp = this.M.stackSave();
-    const buf = this.M.stackAlloc(ptrs.length * 4);
-    for (let i = 0; i < ptrs.length; i++) {
-      this.M.setValue(buf + i * 4, ptrs[i], "i32");
-    }
-    const ok = bind.entity_set_argument_string_list(this.M, this.ptr, index, buf, ptrs.length) !== 0;
-    this.M.stackRestore(sp);
-    for (const p of ptrs) this.M._free(p);
-    return ok;
   }
 
   setEntityList(index: number, entities: Entity[]): boolean {

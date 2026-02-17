@@ -1,8 +1,16 @@
 import type { EmscriptenModule } from "../wasm/types.js";
 import { getModule } from "../api.js";
 import * as bind from "./bindings.generated.js";
+import * as geomBind from "../geom/bindings.generated.js";
 
 type Ptr = number;
+const TTL_TRIANGULATION_SETTING = "triangulation-type";
+const TTL_POLYHEDRON_WITH_HOLES = 2;
+
+function ensureTtlSettings(M: EmscriptenModule, geomSettingsPtr: Ptr, format: SerializerFormat): void {
+  if (format !== "ttl") return;
+  geomBind.settings_set_int(M, geomSettingsPtr, TTL_TRIANGULATION_SETTING, TTL_POLYHEDRON_WITH_HOLES);
+}
 
 export type SerializerFormat =
   | "obj"
@@ -134,6 +142,7 @@ export function exportToFile(
   const M = getModule();
   const lib = opts.geometryLibrary ?? "opencascade";
   const threads = opts.numThreads ?? 1;
+  ensureTtlSettings(M, geomSettingsPtr, format);
 
   switch (format) {
     case "obj":
@@ -185,6 +194,7 @@ export class FileSerializer {
     options: { mtlFilename?: string } = {},
   ): FileSerializer {
     const M = getModule();
+    ensureTtlSettings(M, geomSettingsPtr, format);
     let ptr: Ptr;
     switch (format) {
       case "obj":
@@ -203,7 +213,12 @@ export class FileSerializer {
         ptr = bind.serializer_ttl_create_file(M, geomSettingsPtr, serializerSettingsPtr, filename);
         break;
     }
-    if (!ptr) throw new Error(`Failed to create file serializer for ${format}`);
+    if (!ptr) {
+      const detail = bind.last_error(M);
+      throw new Error(
+        detail ? `Failed to create file serializer for ${format}: ${detail}` : `Failed to create file serializer for ${format}`,
+      );
+    }
     return new FileSerializer(M, ptr);
   }
 
@@ -240,6 +255,7 @@ export class BufferSerializer {
     format: BufferSerializerFormat,
   ): BufferSerializer {
     const M = getModule();
+    ensureTtlSettings(M, geomSettingsPtr, format);
     let ptr: Ptr;
     switch (format) {
       case "obj":
@@ -252,7 +268,12 @@ export class BufferSerializer {
         ptr = bind.serializer_ttl_create_buffer(M, geomSettingsPtr, serializerSettingsPtr);
         break;
     }
-    if (!ptr) throw new Error(`Failed to create buffer serializer for ${format}`);
+    if (!ptr) {
+      const detail = bind.last_error(M);
+      throw new Error(
+        detail ? `Failed to create buffer serializer for ${format}: ${detail}` : `Failed to create buffer serializer for ${format}`,
+      );
+    }
     return new BufferSerializer(M, ptr);
   }
 

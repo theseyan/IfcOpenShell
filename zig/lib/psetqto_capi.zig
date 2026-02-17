@@ -17,10 +17,52 @@ const PropertyListHandle = struct {
 };
 
 const StringListHandle = struct {
-    items: [][]const u8,
+    items: [][:0]u8,
 };
 
-// Template list operations
+export fn ifcopenshell_psetqto_load_template_from_memory(
+    schema_name: ?[*:0]const u8,
+    data: ?[*]const u8,
+    length: usize,
+) c_int {
+    const schema_str = sliceFromC(schema_name);
+    if (schema_str.len == 0 or length == 0) return 0;
+
+    const raw_data = data orelse return 0;
+    const bytes = raw_data[0..length];
+    psetqto.loadTemplateFromMemory(schema_str, bytes) catch return 0;
+    return 1;
+}
+
+export fn ifcopenshell_psetqto_load_template_from_file(
+    schema_name: ?[*:0]const u8,
+    path: ?[*:0]const u8,
+) c_int {
+    const schema_str = sliceFromC(schema_name);
+    const path_str = sliceFromC(path);
+    if (schema_str.len == 0 or path_str.len == 0) return 0;
+
+    psetqto.loadTemplateFromFile(allocator, schema_str, path_str) catch return 0;
+    return 1;
+}
+
+export fn ifcopenshell_psetqto_unload_template(
+    schema_name: ?[*:0]const u8,
+) c_int {
+    const schema_str = sliceFromC(schema_name);
+    if (schema_str.len == 0) return 0;
+
+    psetqto.unloadTemplate(schema_str) catch return 0;
+    return 1;
+}
+
+export fn ifcopenshell_psetqto_is_template_loaded(
+    schema_name: ?[*:0]const u8,
+) c_int {
+    const schema_str = sliceFromC(schema_name);
+    if (schema_str.len == 0) return 0;
+    return if (psetqto.isTemplateLoaded(schema_str)) 1 else 0;
+}
 
 export fn ifcopenshell_psetqto_get_applicable(
     schema_name: ?[*:0]const u8,
@@ -341,7 +383,7 @@ export fn ifcopenshell_psetqto_string_list_get(
     if (index < 0) return null;
     const i: usize = @intCast(index);
     if (i >= h.items.len) return null;
-    return @ptrCast(h.items[i].ptr);
+    return h.items[i].ptr;
 }
 
 export fn ifcopenshell_psetqto_string_list_close(

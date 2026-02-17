@@ -28,6 +28,24 @@ function asFactory(imported: unknown): CreateModuleFn | null {
   return typeof factory === "function" ? (factory as CreateModuleFn) : null;
 }
 
+async function tryImportIfcOpenShellFactory(): Promise<CreateModuleFn | null> {
+  try {
+    const imported = await import("ifczero/wasm/ifcopenshell.js");
+    return asFactory(imported);
+  } catch {
+    return null;
+  }
+}
+
+async function tryImportIfcParseFactory(): Promise<CreateModuleFn | null> {
+  try {
+    const imported = await import("ifczero/wasm/ifcparse.js");
+    return asFactory(imported);
+  } catch {
+    return null;
+  }
+}
+
 async function tryImportFactory(specifier: string): Promise<CreateModuleFn | null> {
   try {
     const imported = await import(specifier);
@@ -37,22 +55,26 @@ async function tryImportFactory(specifier: string): Promise<CreateModuleFn | nul
   }
 }
 
-async function resolveBundledModuleFactory(moduleJs: "ifcopenshell.js" | "ifcparse.js"): Promise<CreateModuleFn> {
-  if (moduleJs === "ifcopenshell.js") {
-    return (
-      (await tryImportFactory("ifczero/wasm/ifcopenshell.js")) ??
-      (await tryImportFactory(new URL("../wasm/ifcopenshell.js", import.meta.url).href)) ??
-      (await tryImportFactory(new URL("./wasm/ifcopenshell.js", import.meta.url).href)) ??
-      (() => {
-        throw new Error("Failed to load module factory: ifcopenshell.js");
-      })()
-    );
-  }
+function moduleHref(path: string): string {
+  return new URL(path, import.meta.url).href;
+}
 
+async function resolveIfcOpenShellFactory(): Promise<CreateModuleFn> {
   return (
-    (await tryImportFactory("ifczero/wasm/ifcparse.js")) ??
-    (await tryImportFactory(new URL("../wasm/ifcparse.js", import.meta.url).href)) ??
-    (await tryImportFactory(new URL("./wasm/ifcparse.js", import.meta.url).href)) ??
+    (await tryImportIfcOpenShellFactory()) ??
+    (await tryImportFactory(moduleHref("../wasm/ifcopenshell.js"))) ??
+    (await tryImportFactory(moduleHref("./wasm/ifcopenshell.js"))) ??
+    (() => {
+      throw new Error("Failed to load module factory: ifcopenshell.js");
+    })()
+  );
+}
+
+async function resolveIfcParseFactory(): Promise<CreateModuleFn> {
+  return (
+    (await tryImportIfcParseFactory()) ??
+    (await tryImportFactory(moduleHref("../wasm/ifcparse.js"))) ??
+    (await tryImportFactory(moduleHref("./wasm/ifcparse.js"))) ??
     (() => {
       throw new Error("Failed to load module factory: ifcparse.js");
     })()
@@ -68,11 +90,11 @@ export async function initWith(
 }
 
 export async function init(overrides?: ModuleInitOverrides): Promise<EmscriptenModule> {
-  const createModule = await resolveBundledModuleFactory("ifcopenshell.js");
+  const createModule = await resolveIfcOpenShellFactory();
   return initWith(createModule, overrides);
 }
 
 export async function initParse(overrides?: ModuleInitOverrides): Promise<EmscriptenModule> {
-  const createModule = await resolveBundledModuleFactory("ifcparse.js");
+  const createModule = await resolveIfcParseFactory();
   return initWith(createModule, overrides);
 }

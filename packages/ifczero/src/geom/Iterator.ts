@@ -17,23 +17,28 @@ function withCStringArray<T>(
   fn: (bufferPtr: number, count: number) => T,
 ): T {
   const ptrs: number[] = [];
-  for (const value of values) {
-    const len = M.lengthBytesUTF8(value) + 1;
-    const ptr = M._malloc(len);
-    M.stringToUTF8(value, ptr, len);
-    ptrs.push(ptr);
-  }
-
-  const sp = M.stackSave();
-  const buf = M.stackAlloc(ptrs.length * 4);
-  for (let i = 0; i < ptrs.length; i++) {
-    M.setValue(buf + i * 4, ptrs[i], "i32");
-  }
-
   try {
-    return fn(buf, ptrs.length);
+    for (const value of values) {
+      const len = M.lengthBytesUTF8(value) + 1;
+      const ptr = M._malloc(len);
+      if (!ptr) {
+        throw new Error(`Out of WASM memory while allocating ${len} bytes for string filter`);
+      }
+      M.stringToUTF8(value, ptr, len);
+      ptrs.push(ptr);
+    }
+
+    const sp = M.stackSave();
+    try {
+      const buf = M.stackAlloc(ptrs.length * 4);
+      for (let i = 0; i < ptrs.length; i++) {
+        M.setValue(buf + i * 4, ptrs[i], "i32");
+      }
+      return fn(buf, ptrs.length);
+    } finally {
+      M.stackRestore(sp);
+    }
   } finally {
-    M.stackRestore(sp);
     for (const ptr of ptrs) M._free(ptr);
   }
 }
