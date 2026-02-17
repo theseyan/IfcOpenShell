@@ -1,0 +1,30 @@
+{
+  "name": "@ifcopenshell/ifcwasm",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./parse": "./dist/parse/index.js",
+    "./geom": "./dist/geom/index.js",
+    "./serializers": "./dist/serializers/index.js",
+    "./util": "./dist/util/index.js"
+  },
+  "scripts": {
+    "codegen": "tsx codegen/generate-bindings.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0",
+    "vitest": "^4.0.18"
+  },
+  "files": [
+    "dist",
+    "wasm"
+  ]
+}
