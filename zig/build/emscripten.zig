@@ -162,6 +162,7 @@ pub fn emccLinkStep(
         for (c_api_headers) |header_path| {
             const content = std.fs.cwd().readFileAlloc(alloc, header_path, 1024 * 1024) catch
                 @panic("failed to read C API header for export generation");
+            defer alloc.free(content);
 
             const is_zig = std.mem.endsWith(u8, header_path, ".zig");
 

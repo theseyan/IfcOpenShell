@@ -8,6 +8,8 @@
 #include <boost/logic/tribool.hpp>
 
 #include <fstream>
+#include <cstdlib>
+#include <cstring>
 #include <climits>
 #include <limits>
 #include <memory>
@@ -3965,4 +3967,38 @@ const char* ifcopenshell_ifcparse_file_last_error(const ifcopenshell_ifcparse_fi
 
 const char* ifcopenshell_ifcparse_last_error(void) {
     return g_last_error.c_str();
+}
+
+char* ifcopenshell_string_copy_n(const char* value, size_t length) {
+    if (value == nullptr && length != 0) {
+        set_global_error("String source pointer is null");
+        return nullptr;
+    }
+
+    char* copy = static_cast<char*>(std::malloc(length + 1));
+    if (copy == nullptr) {
+        set_global_error("Out of memory while copying string");
+        return nullptr;
+    }
+
+    if (length != 0 && value != nullptr) {
+        std::memcpy(copy, value, length);
+    }
+    copy[length] = '\0';
+    clear_global_error();
+    return copy;
+}
+
+char* ifcopenshell_string_copy(const char* value) {
+    if (value == nullptr) {
+        return nullptr;
+    }
+    return ifcopenshell_string_copy_n(value, std::strlen(value));
+}
+
+void ifcopenshell_string_free(char* value) {
+    if (value == nullptr) {
+        return;
+    }
+    std::free(value);
 }

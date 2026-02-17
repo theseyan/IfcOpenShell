@@ -15,6 +15,14 @@
 extern "C" {
 #endif
 
+/*
+ * String ownership contract across IfcOpenShell C APIs:
+ * - `const char*` returns are borrowed and become invalid after a subsequent
+ *   call that updates the same internal cache/handle.
+ * - owned strings are returned as `char*` from `*_copy` functions.
+ * - free all owned strings with `ifcopenshell_string_free`.
+ */
+
 typedef struct ifcopenshell_ifcparse_file ifcopenshell_ifcparse_file_t;
 typedef struct ifcopenshell_ifcparse_entity_ref ifcopenshell_ifcparse_entity_ref_t;
 typedef struct ifcopenshell_ifcparse_entity_list ifcopenshell_ifcparse_entity_list_t;
@@ -789,6 +797,12 @@ EMSCRIPTEN_KEEPALIVE void* ifcopenshell_ifcparse_entity_native(const ifcopenshel
 EMSCRIPTEN_KEEPALIVE const char* ifcopenshell_ifcparse_file_last_error(const ifcopenshell_ifcparse_file_t* file);
 
 EMSCRIPTEN_KEEPALIVE const char* ifcopenshell_ifcparse_last_error(void);
+
+EMSCRIPTEN_KEEPALIVE char* ifcopenshell_string_copy(const char* value);
+
+EMSCRIPTEN_KEEPALIVE char* ifcopenshell_string_copy_n(const char* value, size_t length);
+
+EMSCRIPTEN_KEEPALIVE void ifcopenshell_string_free(char* value);
 
 #ifdef __cplusplus
 }

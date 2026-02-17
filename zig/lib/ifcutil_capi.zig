@@ -1,11 +1,3 @@
-/// C ABI wrapper around the high-level ifcutil convenience APIs.
-///
-/// All exported functions use C-compatible types (pointers, ints, floats,
-/// null-terminated strings) and the naming convention
-/// `ifcopenshell_ifcutil_<category>_<action>`.
-///
-/// Opaque handles returned by these functions must be freed via the
-/// corresponding `_destroy` function to avoid memory leaks.
 const std = @import("std");
 const ifcparse = @import("ifcparse");
 const ifcutil = @import("ifcutil");
@@ -14,17 +6,11 @@ const ifcutil = @import("ifcutil");
 // creating duplicate opaque types.
 const c = ifcparse.c;
 
-// -----------------------------------------------------------------------
 // Allocator
-// -----------------------------------------------------------------------
 
-/// We use the libc allocator (backed by malloc/free) so that callers can
-/// also use malloc/free for string deallocation when documented.
 const allocator = std.heap.c_allocator;
 
-// -----------------------------------------------------------------------
 // Internal helpers
-// -----------------------------------------------------------------------
 
 fn entityToHandle(entity: ?ifcparse.EntityRef) ?*const c.ifcopenshell_ifcparse_entity_ref_t {
     const e = entity orelse return null;
@@ -35,14 +21,8 @@ fn handleToEntity(handle: ?*const c.ifcopenshell_ifcparse_entity_ref_t) ifcparse
     return .{ .handle = handle };
 }
 
-fn handleToFile(handle: ?*c.ifcopenshell_ifcparse_file_t) *ifcparse.File {
-    return @ptrCast(handle.?);
-}
-
 fn dupeToC(str: []const u8) ?[*:0]u8 {
-    const buf = allocator.allocSentinel(u8, str.len, 0) catch return null;
-    @memcpy(buf[0..str.len], str);
-    return buf;
+    return c.ifcopenshell_string_copy_n(@ptrCast(str.ptr), str.len);
 }
 
 fn sliceFromC(ptr: ?[*:0]const u8) []const u8 {
@@ -50,41 +30,30 @@ fn sliceFromC(ptr: ?[*:0]const u8) []const u8 {
     return std.mem.sliceTo(p, 0);
 }
 
-// -----------------------------------------------------------------------
 // Opaque handles for complex return types
-// -----------------------------------------------------------------------
 
-/// Opaque handle wrapping an entity-ref slice (caller-owned).
 const EntityListHandle = struct {
     items: []ifcparse.EntityRef,
 };
 
-/// Opaque handle wrapping a `PsetData` value (caller-owned).
 const PsetHandle = struct {
     data: ifcutil.PsetData,
 };
 
-/// Opaque handle wrapping a slice of `PsetData` values (caller-owned).
 const PsetListHandle = struct {
-    items: []ifcutil.PsetData,
+    items: []PsetHandle,
 };
 
-/// Opaque handle wrapping a `PropertyValue` (caller-owned).
 const PropertyValueHandle = struct {
     value: ifcutil.PropertyValue,
 };
 
-/// Opaque handle wrapping a `PropertyTableUnit` (caller-owned).
 const PropertyTableUnitHandle = struct {
     data: ifcutil.unit.PropertyTableUnit,
 };
 
-// -----------------------------------------------------------------------
 // element.* convenience functions
-// -----------------------------------------------------------------------
 
-/// Return the IfcTypeObject associated with an element (or the element
-/// itself if it is already a type). Returns null if none found.
 export fn ifcopenshell_ifcutil_element_get_type(
     entity: ?*const c.ifcopenshell_ifcparse_entity_ref_t,
 ) ?*const c.ifcopenshell_ifcparse_entity_ref_t {
@@ -92,20 +61,19 @@ export fn ifcopenshell_ifcutil_element_get_type(
     return entityToHandle(result);
 }
 
-/// Return the elements typed by the given IfcTypeObject.
-/// Caller must free the returned handle with `ifcopenshell_ifcutil_entity_list_destroy`.
 export fn ifcopenshell_ifcutil_element_get_types(
     entity: ?*const c.ifcopenshell_ifcparse_entity_ref_t,
 ) ?*EntityListHandle {
     const items = ifcutil.element.getTypes(allocator, handleToEntity(entity)) catch return null;
-    const handle = allocator.create(EntityListHandle) catch return null;
+    const handle = allocator.create(EntityListHandle) catch {
+        allocator.free(items);
+        return null;
+    };
     handle.* = .{ .items = items };
     return handle;
 }
 
-/// Return the PredefinedType string (caller must free with `free()`).
-/// Returns null if no predefined type can be determined.
-export fn ifcopenshell_ifcutil_element_get_predefined_type(
+export fn ifcopenshell_ifcutil_element_get_predefined_type_copy(
     entity: ?*const c.ifcopenshell_ifcparse_entity_ref_t,
 ) ?[*:0]u8 {
     const result = ifcutil.element.getPredefinedType(allocator, handleToEntity(entity)) catch return null;
@@ -114,7 +82,6 @@ export fn ifcopenshell_ifcutil_element_get_predefined_type(
     return dupeToC(value);
 }
 
-/// Return whether the element has a USERDEFINED predefined type.
 export fn ifcopenshell_ifcutil_element_is_userdefined_type(
     entity: ?*const c.ifcopenshell_ifcparse_entity_ref_t,
 ) c_int {
@@ -122,7 +89,6 @@ export fn ifcopenshell_ifcutil_element_is_userdefined_type(
     return if (result) 1 else 0;
 }
 
-/// Return the aggregate (IfcRelAggregates) parent of an element.
 export fn ifcopenshell_ifcutil_element_get_aggregate(
     entity: ?*const c.ifcopenshell_ifcparse_entity_ref_t,
 ) ?*const c.ifcopenshell_ifcparse_entity_ref_t {
@@ -130,7 +96,6 @@ export fn ifcopenshell_ifcutil_element_get_aggregate(
     return entityToHandle(result);
 }
 
-/// Return the nesting parent of an element.
 export fn ifcopenshell_ifcutil_element_get_nest(
     entity: ?*const c.ifcopenshell_ifcparse_entity_ref_t,
 ) ?*const c.ifcopenshell_ifcparse_entity_ref_t {
@@ -138,7 +103,6 @@ export fn ifcopenshell_ifcutil_element_get_nest(
     return entityToHandle(result);
 }
 
-/// Return the opening element that this element fills.
 export fn ifcopenshell_ifcutil_element_get_filled_void(
     entity: ?*const c.ifcopenshell_ifcparse_entity_ref_t,
 ) ?*const c.ifcopenshell_ifcparse_entity_ref_t {
@@ -146,7 +110,6 @@ export fn ifcopenshell_ifcutil_element_get_filled_void(
     return entityToHandle(result);
 }
 
-/// Return the building element voided by this opening.
 export fn ifcopenshell_ifcutil_element_get_voided_element(
     entity: ?*const c.ifcopenshell_ifcparse_entity_ref_t,
 ) ?*const c.ifcopenshell_ifcparse_entity_ref_t {
@@ -154,9 +117,6 @@ export fn ifcopenshell_ifcutil_element_get_voided_element(
     return entityToHandle(result);
 }
 
-/// Return the spatial container of an element.
-/// `should_get_direct`:  1 = only direct container, 0 = walk up hierarchy.
-/// `ifc_class`: optional class filter (e.g. "IfcBuilding"), or null.
 export fn ifcopenshell_ifcutil_element_get_container(
     entity: ?*const c.ifcopenshell_ifcparse_entity_ref_t,
     should_get_direct: c_int,
@@ -172,7 +132,6 @@ export fn ifcopenshell_ifcutil_element_get_container(
     return entityToHandle(result);
 }
 
-/// Return the logical parent (container, aggregate, nest, void).
 export fn ifcopenshell_ifcutil_element_get_parent(
     entity: ?*const c.ifcopenshell_ifcparse_entity_ref_t,
 ) ?*const c.ifcopenshell_ifcparse_entity_ref_t {
@@ -180,9 +139,6 @@ export fn ifcopenshell_ifcutil_element_get_parent(
     return entityToHandle(result);
 }
 
-/// Return the material associated with an element.
-/// `should_skip_usage`:  1 = unwrap LayerSetUsage/ProfileSetUsage.
-/// `should_inherit`:     1 = inherit from type if not directly associated.
 export fn ifcopenshell_ifcutil_element_get_material(
     entity: ?*const c.ifcopenshell_ifcparse_entity_ref_t,
     should_skip_usage: c_int,
@@ -197,15 +153,8 @@ export fn ifcopenshell_ifcutil_element_get_material(
     return entityToHandle(result);
 }
 
-// -----------------------------------------------------------------------
 // Property set (Pset) access
-// -----------------------------------------------------------------------
 
-/// Return the property-set definition entities for an element.
-/// `psets_only`:      1 = exclude quantity sets.
-/// `qtos_only`:       1 = exclude property sets.
-/// `should_inherit`:  1 = include inherited psets from type.
-/// Caller must free with `ifcopenshell_ifcutil_entity_list_destroy`.
 export fn ifcopenshell_ifcutil_element_get_pset_entities(
     entity: ?*const c.ifcopenshell_ifcparse_entity_ref_t,
     psets_only: c_int,
@@ -225,7 +174,6 @@ export fn ifcopenshell_ifcutil_element_get_pset_entities(
     return handle;
 }
 
-/// Look up a single property set definition entity by name.
 export fn ifcopenshell_ifcutil_element_get_pset_entity(
     entity: ?*const c.ifcopenshell_ifcparse_entity_ref_t,
     pset_name: ?[*:0]const u8,
@@ -242,8 +190,6 @@ export fn ifcopenshell_ifcutil_element_get_pset_entity(
     return entityToHandle(result);
 }
 
-/// Return the property entities within a property set definition.
-/// Caller must free with `ifcopenshell_ifcutil_entity_list_destroy`.
 export fn ifcopenshell_ifcutil_element_get_property_entities(
     definition: ?*const c.ifcopenshell_ifcparse_entity_ref_t,
 ) ?*EntityListHandle {
@@ -256,7 +202,6 @@ export fn ifcopenshell_ifcutil_element_get_property_entities(
     return handle;
 }
 
-/// Look up a single property entity by name within a definition.
 export fn ifcopenshell_ifcutil_element_get_property_entity(
     definition: ?*const c.ifcopenshell_ifcparse_entity_ref_t,
     property_name: ?[*:0]const u8,
@@ -266,19 +211,19 @@ export fn ifcopenshell_ifcutil_element_get_property_entity(
     return entityToHandle(result);
 }
 
-/// Get the value of a property entity.
-/// Caller must free with `ifcopenshell_ifcutil_property_value_destroy`.
 export fn ifcopenshell_ifcutil_element_get_property_value(
     property_entity: ?*const c.ifcopenshell_ifcparse_entity_ref_t,
 ) ?*PropertyValueHandle {
     const value = ifcutil.element.getPropertyValue(allocator, handleToEntity(property_entity)) catch return null;
-    const handle = allocator.create(PropertyValueHandle) catch return null;
+    const handle = allocator.create(PropertyValueHandle) catch {
+        var owned = value;
+        owned.deinit(allocator);
+        return null;
+    };
     handle.* = .{ .value = value };
     return handle;
 }
 
-/// Retrieve a fully-resolved PsetData by name.
-/// Caller must free with `ifcopenshell_ifcutil_pset_destroy`.
 export fn ifcopenshell_ifcutil_element_get_pset(
     entity: ?*const c.ifcopenshell_ifcparse_entity_ref_t,
     pset_name: ?[*:0]const u8,
@@ -293,28 +238,43 @@ export fn ifcopenshell_ifcutil_element_get_pset(
         .should_inherit = should_inherit != 0,
     }) catch return null;
     const data = result orelse return null;
-    const handle = allocator.create(PsetHandle) catch return null;
+    const handle = allocator.create(PsetHandle) catch {
+        var owned = data;
+        owned.deinit(allocator);
+        return null;
+    };
     handle.* = .{ .data = data };
     return handle;
 }
 
-/// Retrieve all property sets for an element.
-/// Caller must free with `ifcopenshell_ifcutil_pset_list_destroy`.
 export fn ifcopenshell_ifcutil_element_get_psets(
     entity: ?*const c.ifcopenshell_ifcparse_entity_ref_t,
     psets_only: c_int,
     qtos_only: c_int,
     should_inherit: c_int,
 ) ?*PsetListHandle {
-    const items = ifcutil.element.getPsets(allocator, handleToEntity(entity), .{
+    const raw_items = ifcutil.element.getPsets(allocator, handleToEntity(entity), .{
         .psets_only = psets_only != 0,
         .qtos_only = qtos_only != 0,
         .should_inherit = should_inherit != 0,
     }) catch return null;
+
+    const items = allocator.alloc(PsetHandle, raw_items.len) catch {
+        for (raw_items) |*item| {
+            var owned = item.*;
+            owned.deinit(allocator);
+        }
+        allocator.free(raw_items);
+        return null;
+    };
+    for (raw_items, 0..) |item, i| {
+        items[i] = .{ .data = item };
+    }
+    allocator.free(raw_items);
+
     const handle = allocator.create(PsetListHandle) catch {
         for (items) |*item| {
-            var m = item.*;
-            m.deinit(allocator);
+            item.data.deinit(allocator);
         }
         allocator.free(items);
         return null;
@@ -323,11 +283,9 @@ export fn ifcopenshell_ifcutil_element_get_psets(
     return handle;
 }
 
-// -----------------------------------------------------------------------
 // Pset/Property handle accessors & destructors
-// -----------------------------------------------------------------------
 
-export fn ifcopenshell_ifcutil_pset_name(handle: ?*const PsetHandle) ?[*:0]const u8 {
+export fn ifcopenshell_ifcutil_pset_name_copy(handle: ?*const PsetHandle) ?[*:0]u8 {
     const h = handle orelse return null;
     return dupeToC(h.data.name);
 }
@@ -342,7 +300,7 @@ export fn ifcopenshell_ifcutil_pset_property_count(handle: ?*const PsetHandle) u
     return h.data.properties.len;
 }
 
-export fn ifcopenshell_ifcutil_pset_property_name(handle: ?*const PsetHandle, index: usize) ?[*:0]const u8 {
+export fn ifcopenshell_ifcutil_pset_property_name_copy(handle: ?*const PsetHandle, index: usize) ?[*:0]u8 {
     const h = handle orelse return null;
     if (index >= h.data.properties.len) return null;
     return dupeToC(h.data.properties[index].name);
@@ -357,9 +315,6 @@ export fn ifcopenshell_ifcutil_pset_property_entity(
     return entityToHandle(h.data.properties[index].property_entity);
 }
 
-/// Get the property value at `index` inside a PsetHandle.
-/// Returns a non-owning view — valid only as long as the PsetHandle lives.
-/// Kind: 0=none, 1=int, 2=bool, 3=double, 4=string, 5=list, 6=table, 7=unsupported
 export fn ifcopenshell_ifcutil_pset_property_value_kind(
     handle: ?*const PsetHandle,
     index: usize,
@@ -385,7 +340,6 @@ fn propertyValueKind(value: ifcutil.PropertyValue) c_int {
     };
 }
 
-/// Get the int/logical value of a primitive property. Returns 0 on type mismatch.
 export fn ifcopenshell_ifcutil_pset_property_value_int(handle: ?*const PsetHandle, index: usize) c_int {
     const h = handle orelse return 0;
     if (index >= h.data.properties.len) return 0;
@@ -399,7 +353,6 @@ export fn ifcopenshell_ifcutil_pset_property_value_int(handle: ?*const PsetHandl
     };
 }
 
-/// Get the double value of a primitive property. Returns 0.0 on type mismatch.
 export fn ifcopenshell_ifcutil_pset_property_value_double(handle: ?*const PsetHandle, index: usize) f64 {
     const h = handle orelse return 0.0;
     if (index >= h.data.properties.len) return 0.0;
@@ -412,8 +365,7 @@ export fn ifcopenshell_ifcutil_pset_property_value_double(handle: ?*const PsetHa
     };
 }
 
-/// Get the string value of a primitive property (caller must free with `free()`).
-export fn ifcopenshell_ifcutil_pset_property_value_string(handle: ?*const PsetHandle, index: usize) ?[*:0]u8 {
+export fn ifcopenshell_ifcutil_pset_property_value_string_copy(handle: ?*const PsetHandle, index: usize) ?[*:0]u8 {
     const h = handle orelse return null;
     if (index >= h.data.properties.len) return null;
     return switch (h.data.properties[index].value) {
@@ -425,7 +377,6 @@ export fn ifcopenshell_ifcutil_pset_property_value_string(handle: ?*const PsetHa
     };
 }
 
-/// Get the number of items in a primitive_list property value.
 export fn ifcopenshell_ifcutil_pset_property_value_list_count(handle: ?*const PsetHandle, index: usize) usize {
     const h = handle orelse return 0;
     if (index >= h.data.properties.len) return 0;
@@ -435,8 +386,6 @@ export fn ifcopenshell_ifcutil_pset_property_value_list_count(handle: ?*const Ps
     };
 }
 
-/// Get the kind of the i-th element in a primitive_list property value.
-/// Kind: 1=int, 2=bool, 3=double, 4=string
 export fn ifcopenshell_ifcutil_pset_property_value_list_item_kind(
     handle: ?*const PsetHandle,
     prop_index: usize,
@@ -494,7 +443,7 @@ export fn ifcopenshell_ifcutil_pset_property_value_list_item_double(
     };
 }
 
-export fn ifcopenshell_ifcutil_pset_property_value_list_item_string(
+export fn ifcopenshell_ifcutil_pset_property_value_list_item_string_copy(
     handle: ?*const PsetHandle,
     prop_index: usize,
     list_index: usize,
@@ -518,37 +467,29 @@ export fn ifcopenshell_ifcutil_pset_destroy(handle: ?*PsetHandle) void {
     allocator.destroy(h);
 }
 
-// -----------------------------------------------------------------------
 // Pset list handle
-// -----------------------------------------------------------------------
 
 export fn ifcopenshell_ifcutil_pset_list_count(handle: ?*const PsetListHandle) usize {
     const h = handle orelse return 0;
     return h.items.len;
 }
 
-/// Get a non-owning PsetHandle pointer for the i-th pset.
-/// Valid only as long as the PsetListHandle lives.
 export fn ifcopenshell_ifcutil_pset_list_get(handle: ?*PsetListHandle, index: usize) ?*PsetHandle {
     const h = handle orelse return null;
     if (index >= h.items.len) return null;
-    // Return a pointer directly into the list item (reinterpreted).
-    // PsetHandle is layout-compatible (single PsetData field).
-    return @ptrCast(&h.items[index]);
+    return &h.items[index];
 }
 
 export fn ifcopenshell_ifcutil_pset_list_destroy(handle: ?*PsetListHandle) void {
     const h = handle orelse return;
     for (h.items) |*item| {
-        item.deinit(allocator);
+        item.data.deinit(allocator);
     }
     allocator.free(h.items);
     allocator.destroy(h);
 }
 
-// -----------------------------------------------------------------------
 // PropertyValue handle (standalone)
-// -----------------------------------------------------------------------
 
 export fn ifcopenshell_ifcutil_property_value_kind(handle: ?*const PropertyValueHandle) c_int {
     const h = handle orelse return 0;
@@ -578,7 +519,7 @@ export fn ifcopenshell_ifcutil_property_value_double(handle: ?*const PropertyVal
     };
 }
 
-export fn ifcopenshell_ifcutil_property_value_string(handle: ?*const PropertyValueHandle) ?[*:0]u8 {
+export fn ifcopenshell_ifcutil_property_value_string_copy(handle: ?*const PropertyValueHandle) ?[*:0]u8 {
     const h = handle orelse return null;
     return switch (h.value) {
         .primitive => |p| switch (p) {
@@ -603,9 +544,7 @@ export fn ifcopenshell_ifcutil_property_value_destroy(handle: ?*PropertyValueHan
     allocator.destroy(h);
 }
 
-// -----------------------------------------------------------------------
 // Entity list handle
-// -----------------------------------------------------------------------
 
 export fn ifcopenshell_ifcutil_entity_list_count(handle: ?*const EntityListHandle) usize {
     const h = handle orelse return 0;
@@ -627,11 +566,8 @@ export fn ifcopenshell_ifcutil_entity_list_destroy(handle: ?*EntityListHandle) v
     allocator.destroy(h);
 }
 
-// -----------------------------------------------------------------------
 // classification.*
-// -----------------------------------------------------------------------
 
-/// Walk up from a classification reference to its IfcClassification root.
 export fn ifcopenshell_ifcutil_classification_get_classification(
     reference: ?*const c.ifcopenshell_ifcparse_entity_ref_t,
 ) ?*const c.ifcopenshell_ifcparse_entity_ref_t {
@@ -639,8 +575,6 @@ export fn ifcopenshell_ifcutil_classification_get_classification(
     return entityToHandle(result);
 }
 
-/// Get the chain of intermediate references up to the classification root.
-/// Caller must free with `ifcopenshell_ifcutil_entity_list_destroy`.
 export fn ifcopenshell_ifcutil_classification_get_inherited_references(
     reference: ?*const c.ifcopenshell_ifcparse_entity_ref_t,
 ) ?*EntityListHandle {
@@ -653,9 +587,6 @@ export fn ifcopenshell_ifcutil_classification_get_inherited_references(
     return handle;
 }
 
-/// Get classification references for an element.
-/// `should_inherit`: 1 = include references from the element's type.
-/// Caller must free with `ifcopenshell_ifcutil_entity_list_destroy`.
 export fn ifcopenshell_ifcutil_classification_get_references(
     entity: ?*const c.ifcopenshell_ifcparse_entity_ref_t,
     should_inherit: c_int,
@@ -673,11 +604,8 @@ export fn ifcopenshell_ifcutil_classification_get_references(
     return handle;
 }
 
-// -----------------------------------------------------------------------
 // unit.*
-// -----------------------------------------------------------------------
 
-/// Get the project-level unit entity for a given unit type (e.g. "LENGTHUNIT").
 export fn ifcopenshell_ifcutil_unit_get_project_unit(
     file: ?*c.ifcopenshell_ifcparse_file_t,
     unit_type: ?[*:0]const u8,
@@ -687,7 +615,6 @@ export fn ifcopenshell_ifcutil_unit_get_project_unit(
     return entityToHandle(result);
 }
 
-/// Get the unit entity for a property.
 export fn ifcopenshell_ifcutil_unit_get_property_unit(
     property_entity: ?*const c.ifcopenshell_ifcparse_entity_ref_t,
     file: ?*c.ifcopenshell_ifcparse_file_t,
@@ -697,8 +624,6 @@ export fn ifcopenshell_ifcutil_unit_get_property_unit(
     return entityToHandle(result);
 }
 
-/// Get the defining and defined units for a property table.
-/// Caller must free with `ifcopenshell_ifcutil_property_table_unit_destroy`.
 export fn ifcopenshell_ifcutil_unit_get_property_table_unit(
     property_entity: ?*const c.ifcopenshell_ifcparse_entity_ref_t,
     file: ?*c.ifcopenshell_ifcparse_file_t,
@@ -729,7 +654,6 @@ export fn ifcopenshell_ifcutil_property_table_unit_destroy(handle: ?*PropertyTab
     allocator.destroy(h);
 }
 
-/// Convert a value between units.
 export fn ifcopenshell_ifcutil_unit_convert(
     value: f64,
     from_prefix: ?[*:0]const u8,
@@ -748,7 +672,6 @@ export fn ifcopenshell_ifcutil_unit_convert(
     );
 }
 
-/// Calculate the SI unit scale factor for a given unit type.
 export fn ifcopenshell_ifcutil_unit_calculate_unit_scale(
     file: ?*c.ifcopenshell_ifcparse_file_t,
     unit_type: ?[*:0]const u8,
@@ -757,22 +680,15 @@ export fn ifcopenshell_ifcutil_unit_calculate_unit_scale(
     return ifcutil.unit.calculateUnitScale(allocator, &f, sliceFromC(unit_type)) catch return 1.0;
 }
 
-/// Return the SI unit name for a unit type (e.g. "LENGTHUNIT" → "METRE").
-/// Returns null if no mapping exists. Caller must free with `free()`.
-export fn ifcopenshell_ifcutil_unit_si_type_name(
+export fn ifcopenshell_ifcutil_unit_si_type_name_copy(
     unit_type: ?[*:0]const u8,
 ) ?[*:0]u8 {
     const result = ifcutil.unit.siTypeName(sliceFromC(unit_type)) orelse return null;
     return dupeToC(result);
 }
 
-// -----------------------------------------------------------------------
 // Free helper — free a C string returned by any of the above functions.
-// -----------------------------------------------------------------------
 
 export fn ifcopenshell_ifcutil_free_string(ptr: ?[*:0]u8) void {
-    const p = ptr orelse return;
-    // Reconstruct the slice length from the sentinel.
-    const len = std.mem.len(p);
-    allocator.free(p[0 .. len + 1]);
+    c.ifcopenshell_string_free(ptr);
 }

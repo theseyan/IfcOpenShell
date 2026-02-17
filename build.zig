@@ -3,16 +3,12 @@ const std = @import("std");
 const common = @import("zig/build/common.zig");
 const emscripten = @import("zig/build/emscripten.zig");
 const ifcparse_build = @import("zig/build/ifcparse.zig");
-const ifcparse_capi_build = @import("zig/build/ifcparse_capi.zig");
 const ifcgeom_build = @import("zig/build/ifcgeom.zig");
-const ifcgeom_capi_build = @import("zig/build/ifcgeom_capi.zig");
 const occt_build = @import("zig/build/occt.zig");
 const serializers_build = @import("zig/build/serializers.zig");
-const serializers_capi_build = @import("zig/build/serializers_capi.zig");
 const ifcutil_capi_build = @import("zig/build/ifcutil_capi.zig");
+const psetqto_capi_build = @import("zig/build/psetqto_capi.zig");
 
-const default_occ_libs =
-    "TKernel;TKMath;TKBRep;TKGeomBase;TKGeomAlgo;TKG3d;TKG2d;TKShHealing;TKTopAlgo;TKMesh;TKPrim;TKBool;TKBO;TKFillet;TKXSBase;TKOffset;TKHLR;TKBin;TKDESTEP;TKDEIGES";
 const default_occ_toolkits =
     "TKernel;TKMath;TKBRep;TKGeomBase;TKGeomAlgo;TKG3d;TKG2d;TKShHealing;TKTopAlgo;TKMesh;TKPrim;TKBool;TKBO;TKFillet;TKXSBase;TKOffset";
 
@@ -20,35 +16,27 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
     const is_emscripten = emscripten.isEmscriptenTarget(target);
-
-    // For wasm32-emscripten, set up the Emscripten SDK (install + activate on first use).
     const opt_emsdk_setup_step: ?*std.Build.Step.Run = if (is_emscripten)
         emscripten.emSdkSetupStep(b)
     else
         null;
 
-    const schemas_arg = b.option([]const u8, "schemas", "Semicolon-separated IFC schema versions (e.g. 4;2x3;4x3_add2)") orelse "4";
-    const use_mmap = b.option(bool, "use_mmap", "Enable USE_MMAP support for IfcParse") orelse false;
+    const schemas_arg = b.option([]const u8, "schemas", "Comma-separated IFC schema versions (4,2x3,4x3_add2)") orelse "4";
+    const serializers_arg = b.option([]const u8, "serializers", "Comma-separated serializers to enable (gltf,json,svg,ttl,step,iges,all,none)") orelse "gltf,json";
+    const use_mmap = b.option(bool, "use_mmap", "Enable MMAP support for IfcParse") orelse false;
+    const enable_psetqto = b.option(bool, "with_psetqto", "Include PsetQto property set template lookup") orelse false;
 
-    const occ_include_override = b.option([]const u8, "occ_include_dir", "Path to OpenCASCADE headers (directory containing Standard_Version.hxx or opencascade/Standard_Version.hxx)");
-    const occ_toolkits_arg = b.option([]const u8, "occ_toolkits", "Semicolon-separated OpenCASCADE toolkits to compile as static archives and link into IfcGeom") orelse default_occ_toolkits;
-    const occ_library_dir = b.option([]const u8, "occ_library_dir", "Optional path to OpenCASCADE libraries");
-    const occ_libs_arg = b.option([]const u8, "occ_libs", "Semicolon-separated OpenCASCADE library names for link stage") orelse default_occ_libs;
-    const link_occ_libraries = b.option(bool, "link_occ_libraries", "Link OpenCASCADE libraries into IfcGeom (off keeps compile-only path)") orelse false;
+    var selected_serializers = common.parseCommaList(b, serializers_arg);
+    defer selected_serializers.deinit(b.allocator);
+    const enabled_serializers = serializers_build.EnabledSerializers.fromList(
+        b,
+        selected_serializers.items,
+    );
 
-    const eigen_include_override = b.option([]const u8, "eigen_include_dir", "Path to Eigen headers (directory containing Eigen/Dense)");
-    const enable_gltf_serializer = b.option(bool, "serializers_gltf", "Enable GltfSerializer support in Serializers (requires nlohmann_json)") orelse true;
-    const enable_json_serializer = b.option(bool, "serializers_json", "Enable JsonSerializer support in Serializers (requires WITH_GLTF + nlohmann_json)") orelse true;
-    const enable_svg_serializer = b.option(bool, "serializers_svg", "Enable SvgSerializer support in C ABI/Zig wrapper (requires TKHLR in -Docc_toolkits)") orelse false;
-    const enable_ttl_serializer = b.option(bool, "serializers_ttl", "Enable TtlWktSerializer support in C ABI/Zig wrapper") orelse false;
-    const enable_step_serializer = b.option(bool, "serializers_step", "Enable StepSerializer support in C ABI/Zig wrapper (requires TKDESTEP in -Docc_toolkits)") orelse false;
-    const enable_iges_serializer = b.option(bool, "serializers_iges", "Enable IgesSerializer support in C ABI/Zig wrapper (requires TKDEIGES in -Docc_toolkits)") orelse false;
     const effective_occ_toolkits = augmentOccToolkitsForSerializers(
         b,
-        occ_toolkits_arg,
-        enable_svg_serializer,
-        enable_step_serializer,
-        enable_iges_serializer,
+        default_occ_toolkits,
+        enabled_serializers,
     );
     const occt_toolkit_archives: []const *std.Build.Step.Compile = occt_build.addOcctToolkitArchiveLibraries(
         b,
@@ -69,29 +57,29 @@ pub fn build(b: *std.Build) void {
     applyEmscriptenSysroot(b, is_emscripten, opt_emsdk_setup_step, ifcparse_lib, optimize);
     const ifcparse_install = b.addInstallArtifact(ifcparse_lib, .{});
     b.getInstallStep().dependOn(&ifcparse_install.step);
-
-    const ifcparse_step = b.step("ifcparse", "Build the minimal IfcParse static library");
+    const ifcparse_step = b.step("ifcparse", "Build IfcParse static library");
     ifcparse_step.dependOn(&ifcparse_install.step);
-
-    const ifcparse_capi_lib = ifcparse_capi_build.addIfcParseCApiLibrary(
-        b,
-        target,
-        optimize,
-    );
-    applyEmscriptenSysroot(b, is_emscripten, opt_emsdk_setup_step, ifcparse_capi_lib, optimize);
-    const ifcparse_capi_install = b.addInstallArtifact(ifcparse_capi_lib, .{});
-    b.getInstallStep().dependOn(&ifcparse_capi_install.step);
-
-    const ifcparse_capi_step = b.step("ifcparse-capi", "Build C ABI shim for IfcParse used by Zig bindings");
-    ifcparse_capi_step.dependOn(&ifcparse_capi_install.step);
 
     const ifcutil_capi_lib = ifcutil_capi_build.addIfcUtilCApiLibrary(
         b,
         target,
         optimize,
-        ifcparse_capi_lib,
+        ifcparse_lib,
     );
     applyEmscriptenSysroot(b, is_emscripten, opt_emsdk_setup_step, ifcutil_capi_lib, optimize);
+
+    const opt_psetqto_capi_lib = if (enable_psetqto)
+        psetqto_capi_build.addPsetQtoCApiLibrary(b, target, optimize, ifcparse_lib, schemas.items)
+    else
+        null;
+    if (opt_psetqto_capi_lib) |lib| {
+        applyEmscriptenSysroot(b, is_emscripten, opt_emsdk_setup_step, lib, optimize);
+    }
+    const psetqto_lib_for_tests = opt_psetqto_capi_lib orelse
+        psetqto_capi_build.addPsetQtoCApiLibrary(b, target, optimize, ifcparse_lib, schemas.items);
+    if (!enable_psetqto) {
+        applyEmscriptenSysroot(b, is_emscripten, opt_emsdk_setup_step, psetqto_lib_for_tests, optimize);
+    }
 
     const ifcgeom_lib = ifcgeom_build.addIfcGeomLibrary(
         b,
@@ -99,38 +87,15 @@ pub fn build(b: *std.Build) void {
         optimize,
         schemas.items,
         schema_seq_macro,
-        occ_include_override,
-        eigen_include_override,
-        occ_library_dir,
-        occ_libs_arg,
-        link_occ_libraries,
     );
-    applyEmscriptenSysroot(b, is_emscripten, opt_emsdk_setup_step, ifcgeom_lib, optimize);
-    const ifcgeom_install = b.addInstallArtifact(ifcgeom_lib, .{});
-    b.getInstallStep().dependOn(&ifcgeom_install.step);
-
-    const ifcgeom_step = b.step("ifcgeom", "Build IfcGeom + OpenCASCADE kernel + per-schema mapping object libraries");
-    ifcgeom_step.dependOn(&ifcgeom_install.step);
     for (occt_toolkit_archives) |toolkit_archive| {
         ifcgeom_lib.linkLibrary(toolkit_archive);
     }
-
-    const ifcgeom_capi_lib = ifcgeom_capi_build.addIfcGeomCApiLibrary(
-        b,
-        target,
-        optimize,
-        occ_include_override,
-        eigen_include_override,
-    );
-    applyEmscriptenSysroot(b, is_emscripten, opt_emsdk_setup_step, ifcgeom_capi_lib, optimize);
-    const ifcgeom_capi_install = b.addInstallArtifact(ifcgeom_capi_lib, .{});
-    b.getInstallStep().dependOn(&ifcgeom_capi_install.step);
-
-    const ifcgeom_capi_step = b.step("ifcgeom-capi", "Build C ABI shim for IfcGeom used by Zig bindings");
-    ifcgeom_capi_step.dependOn(&ifcgeom_capi_install.step);
-    for (occt_toolkit_archives) |toolkit_archive| {
-        ifcgeom_capi_lib.linkLibrary(toolkit_archive);
-    }
+    applyEmscriptenSysroot(b, is_emscripten, opt_emsdk_setup_step, ifcgeom_lib, optimize);
+    const ifcgeom_install = b.addInstallArtifact(ifcgeom_lib, .{});
+    b.getInstallStep().dependOn(&ifcgeom_install.step);
+    const ifcgeom_step = b.step("ifcgeom", "Build IfcGeom static library");
+    ifcgeom_step.dependOn(&ifcgeom_install.step);
 
     const serializers_lib = serializers_build.addSerializersLibrary(
         b,
@@ -138,69 +103,41 @@ pub fn build(b: *std.Build) void {
         optimize,
         schemas.items,
         schema_seq_macro,
-        occ_include_override,
-        eigen_include_override,
-        enable_gltf_serializer,
-        enable_json_serializer,
-        enable_svg_serializer,
-        enable_ttl_serializer,
-        enable_step_serializer,
-        enable_iges_serializer,
+        enabled_serializers,
     );
-    applyEmscriptenSysroot(b, is_emscripten, opt_emsdk_setup_step, serializers_lib, optimize);
-    const serializers_install = b.addInstallArtifact(serializers_lib, .{});
-    b.getInstallStep().dependOn(&serializers_install.step);
-
-    const serializers_step = b.step("serializers", "Build Serializers (IfcConvert API) static library without CLI/Collada/HDF5/RocksDB");
-    serializers_step.dependOn(&serializers_install.step);
     for (occt_toolkit_archives) |toolkit_archive| {
         serializers_lib.linkLibrary(toolkit_archive);
     }
+    applyEmscriptenSysroot(b, is_emscripten, opt_emsdk_setup_step, serializers_lib, optimize);
+    const serializers_install = b.addInstallArtifact(serializers_lib, .{});
+    b.getInstallStep().dependOn(&serializers_install.step);
+    const serializers_step = b.step("serializers", "Build Serializers static library");
+    serializers_step.dependOn(&serializers_install.step);
 
-    const serializers_capi_lib = serializers_capi_build.addSerializersCApiLibrary(
-        b,
-        target,
-        optimize,
-        occ_include_override,
-        eigen_include_override,
-        enable_gltf_serializer,
-        enable_json_serializer,
-        enable_svg_serializer,
-        enable_ttl_serializer,
-        enable_step_serializer,
-        enable_iges_serializer,
-    );
-    applyEmscriptenSysroot(b, is_emscripten, opt_emsdk_setup_step, serializers_capi_lib, optimize);
-    const serializers_capi_install = b.addInstallArtifact(serializers_capi_lib, .{});
-    b.getInstallStep().dependOn(&serializers_capi_install.step);
-
-    const serializers_capi_step = b.step("serializers-capi", "Build C ABI shim for Serializers used by Zig bindings");
-    serializers_capi_step.dependOn(&serializers_capi_install.step);
-    for (occt_toolkit_archives) |toolkit_archive| {
-        serializers_capi_lib.linkLibrary(toolkit_archive);
-    }
-
-    const ifcgeom_zig_tests = ifcgeom_capi_build.addZigLibTests(
+    const zig_tests = ifcgeom_build.addZigLibTests(
         b,
         target,
         optimize,
         ifcparse_lib,
         ifcgeom_lib,
         serializers_lib,
-        ifcparse_capi_lib,
-        ifcgeom_capi_lib,
-        serializers_capi_lib,
     );
-    const ifcparse_test_run = b.addRunArtifact(ifcgeom_zig_tests.ifcparse_tests);
-    const ifcgeom_test_run = b.addRunArtifact(ifcgeom_zig_tests.ifcgeom_tests);
-    const serializers_test_run = b.addRunArtifact(ifcgeom_zig_tests.serializers_tests);
+    const ifcparse_test_run = b.addRunArtifact(zig_tests.ifcparse_tests);
+    const ifcutil_test_run = b.addRunArtifact(zig_tests.ifcutil_tests);
+    const ifcgeom_test_run = b.addRunArtifact(zig_tests.ifcgeom_tests);
+    const serializers_test_run = b.addRunArtifact(zig_tests.serializers_tests);
+    const all_tests_run = b.addRunArtifact(zig_tests.all_tests);
     for (occt_toolkit_archives) |toolkit_archive| {
-        ifcgeom_zig_tests.ifcgeom_tests.linkLibrary(toolkit_archive);
-        ifcgeom_zig_tests.serializers_tests.linkLibrary(toolkit_archive);
+        zig_tests.ifcgeom_tests.linkLibrary(toolkit_archive);
+        zig_tests.serializers_tests.linkLibrary(toolkit_archive);
+        zig_tests.all_tests.linkLibrary(toolkit_archive);
     }
 
     const test_ifcparse_step = b.step("test-ifcparse", "Run IfcParse Zig wrapper tests");
     test_ifcparse_step.dependOn(&ifcparse_test_run.step);
+
+    const test_ifcutil_step = b.step("test-ifcutil", "Run IfcUtil Zig wrapper tests");
+    test_ifcutil_step.dependOn(&ifcutil_test_run.step);
 
     const test_ifcgeom_step = b.step("test-ifcgeom", "Run IfcGeom Zig wrapper tests");
     test_ifcgeom_step.dependOn(&ifcgeom_test_run.step);
@@ -209,21 +146,75 @@ pub fn build(b: *std.Build) void {
     test_serializers_step.dependOn(&serializers_test_run.step);
 
     const test_step = b.step("test", "Run all Zig wrapper tests");
-    test_step.dependOn(&ifcparse_test_run.step);
-    test_step.dependOn(&ifcgeom_test_run.step);
-    test_step.dependOn(&serializers_test_run.step);
+    test_step.dependOn(&all_tests_run.step);
+
+    const psetqto_test_config = b.addOptions();
+    psetqto_test_config.addOption(bool, "has_ifc4", common.sliceContainsString(schemas.items, "4"));
+    psetqto_test_config.addOption(bool, "has_ifc2x3", common.sliceContainsString(schemas.items, "2x3"));
+    psetqto_test_config.addOption(bool, "has_ifc4x3", common.sliceContainsString(schemas.items, "4x3_add2"));
+
+    const ifcparse_mod_for_tests = b.createModule(.{
+        .root_source_file = b.path("zig/lib/ifcparse.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    ifcparse_mod_for_tests.addIncludePath(b.path("zig/lib"));
+
+    const psetqto_mod_for_tests = b.createModule(.{
+        .root_source_file = b.path("zig/lib/psetqto.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    psetqto_mod_for_tests.addIncludePath(b.path("zig/lib"));
+    psetqto_mod_for_tests.addImport("ifcparse", ifcparse_mod_for_tests);
+    psetqto_mod_for_tests.addImport("psetqto_config", psetqto_test_config.createModule());
+
+    const psetqto_test_module = b.createModule(.{
+        .root_source_file = b.path("zig/lib/tests/psetqto.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    psetqto_test_module.addImport("ifcparse", ifcparse_mod_for_tests);
+    psetqto_test_module.addImport("psetqto", psetqto_mod_for_tests);
+
+    const psetqto_tests = b.addTest(.{
+        .name = "ifcopenshell_zig_psetqto_tests",
+        .root_module = psetqto_test_module,
+    });
+    psetqto_tests.linkLibC();
+    psetqto_tests.linkLibCpp();
+    psetqto_tests.addIncludePath(b.path("zig/lib"));
+    psetqto_tests.linkLibrary(ifcparse_lib);
+    psetqto_tests.linkLibrary(psetqto_lib_for_tests);
+
+    const psetqto_test_run = b.addRunArtifact(psetqto_tests);
+    const test_psetqto_step = b.step("test-psetqto", "Run PsetQto Zig wrapper tests");
+    test_psetqto_step.dependOn(&psetqto_test_run.step);
+    test_step.dependOn(&psetqto_test_run.step);
 
     if (is_emscripten) {
         {
             var emcc_settings = emscripten.emccDefaultLibrarySettings(b, optimize);
             emcc_settings.put("EXPORT_NAME", "createIfcParseModule");
+
+            var parse_link_libs = std.ArrayList(*std.Build.Step.Compile).empty;
+            defer parse_link_libs.deinit(b.allocator);
+            if (opt_psetqto_capi_lib) |lib| parse_link_libs.append(b.allocator, lib) catch @panic("OOM");
+            parse_link_libs.append(b.allocator, ifcutil_capi_lib) catch @panic("OOM");
+            parse_link_libs.append(b.allocator, ifcparse_lib) catch @panic("OOM");
+
+            var parse_export_sources = std.ArrayList([]const u8).empty;
+            defer parse_export_sources.deinit(b.allocator);
+            parse_export_sources.appendSlice(b.allocator, &.{
+                "zig/lib/ifcparse/c_api.h",
+                "zig/lib/ifcutil_capi.zig",
+            }) catch @panic("OOM");
+            if (enable_psetqto) parse_export_sources.append(b.allocator, "zig/lib/psetqto_capi.zig") catch @panic("OOM");
+
             const wasm_parse_step = emscripten.emccLinkStep(
                 b,
-                &.{ ifcutil_capi_lib, ifcparse_capi_lib, ifcparse_lib },
-                &.{
-                    "zig/lib/ifcparse/c_api.h",
-                    "zig/lib/ifcutil_capi.zig",
-                },
+                parse_link_libs.items,
+                parse_export_sources.items,
                 emcc_settings,
                 "ifcparse.js",
                 .prefix,
@@ -241,26 +232,29 @@ pub fn build(b: *std.Build) void {
 
             var link_libs = std.ArrayList(*std.Build.Step.Compile).empty;
             defer link_libs.deinit(b.allocator);
-            link_libs.append(b.allocator, serializers_capi_lib) catch @panic("OOM");
-            link_libs.append(b.allocator, ifcgeom_capi_lib) catch @panic("OOM");
-            link_libs.append(b.allocator, ifcparse_capi_lib) catch @panic("OOM");
-            link_libs.append(b.allocator, ifcutil_capi_lib) catch @panic("OOM");
             link_libs.append(b.allocator, serializers_lib) catch @panic("OOM");
             link_libs.append(b.allocator, ifcgeom_lib) catch @panic("OOM");
+            link_libs.append(b.allocator, ifcutil_capi_lib) catch @panic("OOM");
+            if (opt_psetqto_capi_lib) |lib| link_libs.append(b.allocator, lib) catch @panic("OOM");
             link_libs.append(b.allocator, ifcparse_lib) catch @panic("OOM");
             for (occt_toolkit_archives) |toolkit_archive| {
                 link_libs.append(b.allocator, toolkit_archive) catch @panic("OOM");
             }
 
+            var full_export_sources = std.ArrayList([]const u8).empty;
+            defer full_export_sources.deinit(b.allocator);
+            full_export_sources.appendSlice(b.allocator, &.{
+                "zig/lib/ifcparse/c_api.h",
+                "zig/lib/ifcgeom/c_api.h",
+                "zig/lib/serializers/c_api.h",
+                "zig/lib/ifcutil_capi.zig",
+            }) catch @panic("OOM");
+            if (enable_psetqto) full_export_sources.append(b.allocator, "zig/lib/psetqto_capi.zig") catch @panic("OOM");
+
             const wasm_full_step = emscripten.emccLinkStep(
                 b,
                 link_libs.items,
-                &.{
-                    "zig/lib/ifcparse/c_api.h",
-                    "zig/lib/ifcgeom/c_api.h",
-                    "zig/lib/serializers/c_api.h",
-                    "zig/lib/ifcutil_capi.zig",
-                },
+                full_export_sources.items,
                 emcc_settings,
                 "ifcopenshell.js",
                 .prefix,
@@ -277,20 +271,18 @@ pub fn build(b: *std.Build) void {
 fn augmentOccToolkitsForSerializers(
     b: *std.Build,
     occ_toolkits_arg: []const u8,
-    enable_svg_serializer: bool,
-    enable_step_serializer: bool,
-    enable_iges_serializer: bool,
+    enabled_serializers: serializers_build.EnabledSerializers,
 ) []const u8 {
     var toolkits = common.parseSemicolonList(b, occ_toolkits_arg);
     defer toolkits.deinit(b.allocator);
 
-    if (enable_svg_serializer and !common.sliceContainsString(toolkits.items, "TKHLR")) {
+    if (enabled_serializers.svg and !common.sliceContainsString(toolkits.items, "TKHLR")) {
         toolkits.append(b.allocator, "TKHLR") catch @panic("Out of memory appending TKHLR toolkit");
     }
-    if (enable_step_serializer and !common.sliceContainsString(toolkits.items, "TKDESTEP")) {
+    if (enabled_serializers.step and !common.sliceContainsString(toolkits.items, "TKDESTEP")) {
         toolkits.append(b.allocator, "TKDESTEP") catch @panic("Out of memory appending TKDESTEP toolkit");
     }
-    if (enable_iges_serializer and !common.sliceContainsString(toolkits.items, "TKDEIGES")) {
+    if (enabled_serializers.iges and !common.sliceContainsString(toolkits.items, "TKDEIGES")) {
         toolkits.append(b.allocator, "TKDEIGES") catch @panic("Out of memory appending TKDEIGES toolkit");
     }
 
@@ -308,8 +300,6 @@ fn augmentOccToolkitsForSerializers(
     return joined.toOwnedSlice(b.allocator) catch @panic("Out of memory finalizing OCCT toolkit list");
 }
 
-/// When building for wasm32-emscripten, add the Emscripten sysroot include
-/// path and make the compile step depend on the one-time emsdk setup.
 fn applyEmscriptenSysroot(
     b: *std.Build,
     is_emscripten: bool,

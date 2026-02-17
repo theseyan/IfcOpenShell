@@ -9,6 +9,11 @@ pub fn addBoostIncludesFromDependency(
     optimize: std.builtin.OptimizeMode,
 ) void {
     const is_wasm = emscripten.isEmscriptenTarget(target);
+
+    // Overlay for Boost.Regex trait lookup that avoids a Zig C++ local-static
+    // initialization bug while keeping Boost.Regex itself in use.
+    compile.addIncludePath(b.path("zig/patches/boost"));
+
     const boost_dep = b.lazyDependency("boost", .{
         .target = target,
         .optimize = optimize,
@@ -60,8 +65,6 @@ pub fn addIfcGeomIncludePaths(
     compile: *std.Build.Step.Compile,
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
-    occ_include_dir: ?[]const u8,
-    eigen_include_dir: ?[]const u8,
 ) void {
     compile.addIncludePath(b.path("src"));
     compile.addIncludePath(b.path("src/ifcparse"));
@@ -70,18 +73,10 @@ pub fn addIfcGeomIncludePaths(
     compile.addIncludePath(b.path("src/ifcgeom/kernels"));
     compile.addIncludePath(b.path("src/ifcgeom/kernels/opencascade"));
 
-    if (occ_include_dir) |dir| {
-        compile.addIncludePath(.{ .cwd_relative = dir });
-    } else {
-        occt.addOcctIncludePathsFromDependency(b, compile);
-    }
+    occt.addOcctIncludePathsFromDependency(b, compile);
 
-    if (eigen_include_dir) |dir| {
-        compile.addIncludePath(.{ .cwd_relative = dir });
-    } else {
-        const eigen_dep = b.dependency("eigen", .{});
-        compile.addIncludePath(eigen_dep.path(""));
-    }
+    const eigen_dep = b.dependency("eigen", .{});
+    compile.addIncludePath(eigen_dep.path(""));
 
     addBoostIncludesFromDependency(b, compile, target, optimize);
 }
@@ -91,8 +86,6 @@ pub fn addSerializersIncludePaths(
     compile: *std.Build.Step.Compile,
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
-    occ_include_dir: ?[]const u8,
-    eigen_include_dir: ?[]const u8,
     enable_with_gltf: bool,
 ) void {
     addIfcGeomIncludePaths(
@@ -100,8 +93,6 @@ pub fn addSerializersIncludePaths(
         compile,
         target,
         optimize,
-        occ_include_dir,
-        eigen_include_dir,
     );
     compile.addIncludePath(b.path("src/serializers"));
     compile.addIncludePath(b.path("src/serializers/schema_dependent"));

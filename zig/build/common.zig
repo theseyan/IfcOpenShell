@@ -6,12 +6,7 @@ pub fn parseSchemas(
     schemas_arg: []const u8,
     out_schemas: *std.ArrayList([]const u8),
 ) void {
-    var schema_it = std.mem.splitScalar(u8, schemas_arg, ';');
-    while (schema_it.next()) |raw| {
-        const schema = std.mem.trim(u8, raw, " \t\r\n");
-        if (schema.len == 0) continue;
-        out_schemas.append(b.allocator, schema) catch @panic("Out of memory parsing -Dschemas");
-    }
+    appendUniqueTrimmedBySeparator(b, schemas_arg, ',', out_schemas, "Out of memory parsing -Dschemas");
 
     if (out_schemas.items.len == 0) {
         @panic("No schema versions provided. Pass -Dschemas=4 or similar.");
@@ -84,38 +79,12 @@ pub fn collectCppFilesInDirectory(
     dir_path: []const u8,
     exclude_if_name_has_digit: bool,
 ) std.ArrayList([]const u8) {
-    var files = std.ArrayList([]const u8).empty;
-
-    var dir = std.fs.cwd().openDir(dir_path, .{ .iterate = true }) catch @panic("Failed to open source directory");
-    defer dir.close();
-
-    var it = dir.iterate();
-    while (it.next() catch @panic("Failed to iterate source directory")) |entry| {
-        if (entry.kind != .file) continue;
-        if (!std.mem.endsWith(u8, entry.name, ".cpp")) continue;
-
-        if (exclude_if_name_has_digit) {
-            var has_digit = false;
-            for (entry.name) |c| {
-                if (std.ascii.isDigit(c)) {
-                    has_digit = true;
-                    break;
-                }
-            }
-            if (has_digit) continue;
-        }
-
-        files.append(b.allocator, b.fmt("{s}/{s}", .{ dir_path, entry.name })) catch
-            @panic("Out of memory collecting C++ sources");
-    }
-
-    std.mem.sort([]const u8, files.items, {}, struct {
-        fn lessThan(_: void, a: []const u8, b_: []const u8) bool {
-            return std.mem.order(u8, a, b_) == .lt;
-        }
-    }.lessThan);
-
-    return files;
+    return collectCppFilesInDirectoryExcluding(
+        b,
+        dir_path,
+        exclude_if_name_has_digit,
+        &.{},
+    );
 }
 
 pub fn collectCppFilesInDirectoryExcluding(
@@ -164,13 +133,39 @@ pub fn parseSemicolonList(
     value: []const u8,
 ) std.ArrayList([]const u8) {
     var list = std.ArrayList([]const u8).empty;
-    var it = std.mem.splitScalar(u8, value, ';');
+    appendUniqueTrimmedBySeparator(b, value, ';', &list, "Out of memory parsing semicolon-separated list");
+    return list;
+}
+
+pub fn parseCommaList(
+    b: *std.Build,
+    value: []const u8,
+) std.ArrayList([]const u8) {
+    var list = std.ArrayList([]const u8).empty;
+    appendUniqueTrimmedBySeparator(
+        b,
+        value,
+        ',',
+        &list,
+        "Out of memory parsing comma-separated list",
+    );
+    return list;
+}
+
+fn appendUniqueTrimmedBySeparator(
+    b: *std.Build,
+    value: []const u8,
+    separator: u8,
+    out: *std.ArrayList([]const u8),
+    oom_message: []const u8,
+) void {
+    var it = std.mem.splitScalar(u8, value, separator);
     while (it.next()) |raw| {
         const item = std.mem.trim(u8, raw, " \t\r\n");
         if (item.len == 0) continue;
-        list.append(b.allocator, item) catch @panic("Out of memory parsing semicolon-separated list");
+        if (sliceContainsString(out.items, item)) continue;
+        out.append(b.allocator, item) catch @panic(oom_message);
     }
-    return list;
 }
 
 pub fn appendUniqueString(

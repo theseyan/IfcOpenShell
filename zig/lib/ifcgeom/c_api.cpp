@@ -1602,7 +1602,6 @@ ifcopenshell_ifcgeom_iterator_t* ifcopenshell_ifcgeom_iterator_create_with_globa
                     ids.insert(values[i]);
                 }
             }
-
             IfcGeom::attribute_filter global_id_filter;
             global_id_filter.attribute_name = "GlobalId";
             global_id_filter.populate(ids);

@@ -17,6 +17,13 @@
 extern "C" {
 #endif
 
+/*
+ * String ownership contract across IfcOpenShell C APIs:
+ * - `const char*` returns are borrowed.
+ * - functions returning owned `char*` use `_copy` naming.
+ * - free owned strings with `ifcopenshell_string_free` from `ifcparse/c_api.h`.
+ */
+
 typedef struct ifcopenshell_ifcgeom_settings ifcopenshell_ifcgeom_settings_t;
 typedef struct ifcopenshell_ifcgeom_iterator ifcopenshell_ifcgeom_iterator_t;
 typedef struct ifcopenshell_ifcgeom_string_list ifcopenshell_ifcgeom_string_list_t;

@@ -23,7 +23,9 @@ pub fn addIfcParseLibrary(
     lib.linkLibC();
     lib.linkLibCpp();
 
+    lib.addIncludePath(b.path("src"));
     lib.addIncludePath(b.path("src/ifcparse"));
+    lib.addIncludePath(b.path("zig/lib"));
     deps.addBoostIncludesFromDependency(b, lib, target, optimize);
     deps.linkBoostLibraryFromDependency(b, lib, target, optimize);
 
@@ -58,6 +60,11 @@ pub fn addIfcParseLibrary(
 
     lib.addCSourceFiles(.{
         .files = sources.items,
+        .flags = cpp_flags.items,
+    });
+
+    lib.addCSourceFiles(.{
+        .files = &.{"zig/lib/ifcparse/c_api.cpp"},
         .flags = cpp_flags.items,
     });
 

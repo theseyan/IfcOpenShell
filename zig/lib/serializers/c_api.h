@@ -18,6 +18,13 @@
 extern "C" {
 #endif
 
+/*
+ * String ownership contract across IfcOpenShell C APIs:
+ * - `const char*` returns are borrowed.
+ * - functions returning owned `char*` use `_copy` naming.
+ * - free owned strings with `ifcopenshell_string_free` from `ifcparse/c_api.h`.
+ */
+
 typedef struct ifcopenshell_ifcserializers_settings ifcopenshell_ifcserializers_settings_t;
 typedef struct ifcopenshell_ifcserializers_string_list ifcopenshell_ifcserializers_string_list_t;
 typedef struct ifcopenshell_ifcserializers_serializer ifcopenshell_ifcserializers_serializer_t;
