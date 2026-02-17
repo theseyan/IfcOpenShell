@@ -1,6 +1,8 @@
 # ifczero
 
-## Initialize Once
+A complete IFC authoring, geometry and serialization library for the web, powered by [IfcOpenShell](https://github.com/ifcopenshell/ifcopenshell).
+
+## Initialize
 
 - `init(overrides?: ModuleInitOverrides): Promise<EmscriptenModule>`
   Loads the full bundled `ifcopenshell.js` and caches the module.
@@ -28,10 +30,10 @@ You can also import `ifczero/wasm/*.js` directly and use `ccall`/`cwrap` manuall
 
 ## Module Guides
 
-- [Parse.md](./Parse.md)
-- [Geom.md](./Geom.md)
-- [Serializers.md](./Serializers.md)
-- [Util.md](./Util.md)
+- [Parse.md](./docs/Parse.md)
+- [Geom.md](./docs/Geom.md)
+- [Serializers.md](./docs/Serializers.md)
+- [Util.md](./docs/Util.md)
 
 ## Low-level Helpers
 
