@@ -99,6 +99,12 @@ pub const EmccSettings = struct {
     }
 };
 
+pub const EmccLinkResult = struct {
+    step: *std.Build.Step,
+    js: std.Build.LazyPath,
+    wasm: std.Build.LazyPath,
+};
+
 pub fn emccDefaultLibrarySettings(
     b: *std.Build,
     optimize: std.builtin.OptimizeMode,
@@ -142,7 +148,7 @@ pub fn emccLinkStep(
     settings: EmccSettings,
     out_file_name: []const u8,
     install_dir: std.Build.InstallDir,
-) *std.Build.Step {
+) EmccLinkResult {
     const emcc = b.addSystemCommand(&.{emccPath(b)});
 
     for (settings.flags.items) |flag| {
@@ -228,15 +234,25 @@ pub fn emccLinkStep(
 
     emcc.addArg("-o");
     const out_file = emcc.addOutputFileArg(out_file_name);
+    const out_dir = out_file.dirname();
+    const wasm_name = if (std.mem.endsWith(u8, out_file_name, ".js"))
+        b.fmt("{s}.wasm", .{out_file_name[0 .. out_file_name.len - ".js".len]})
+    else
+        b.fmt("{s}.wasm", .{out_file_name});
+    const wasm_file = out_dir.path(b, wasm_name);
 
     const install_step = b.addInstallDirectory(.{
-        .source_dir = out_file.dirname(),
+        .source_dir = out_dir,
         .install_dir = install_dir,
         .install_subdir = "",
     });
     install_step.step.dependOn(&emcc.step);
 
-    return &install_step.step;
+    return .{
+        .step = &install_step.step,
+        .js = out_file,
+        .wasm = wasm_file,
+    };
 }
 
 fn emSdkLazyPath(b: *std.Build, emsdk: *std.Build.Dependency, sub_paths: []const []const u8) std.Build.LazyPath {

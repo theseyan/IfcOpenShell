@@ -25,6 +25,7 @@ pub fn build(b: *std.Build) void {
     const serializers_arg = b.option([]const u8, "serializers", "Comma-separated serializers to enable (gltf,json,svg,ttl,step,iges,all,none)") orelse "gltf,json";
     const use_mmap = b.option(bool, "use_mmap", "Enable MMAP support for IfcParse") orelse false;
     const enable_psetqto = b.option(bool, "with_psetqto", "Include PsetQto property set template lookup") orelse false;
+    const package_wasm_dir = "packages/ifczero/wasm";
 
     var selected_serializers = common.parseCommaList(b, serializers_arg);
     defer selected_serializers.deinit(b.allocator);
@@ -211,7 +212,7 @@ pub fn build(b: *std.Build) void {
             }) catch @panic("OOM");
             if (enable_psetqto) parse_export_sources.append(b.allocator, "zig/lib/psetqto_capi.zig") catch @panic("OOM");
 
-            const wasm_parse_step = emscripten.emccLinkStep(
+            const wasm_parse_link = emscripten.emccLinkStep(
                 b,
                 parse_link_libs.items,
                 parse_export_sources.items,
@@ -220,10 +221,21 @@ pub fn build(b: *std.Build) void {
                 .prefix,
             );
             if (opt_emsdk_setup_step) |setup_step| {
-                wasm_parse_step.dependOn(&setup_step.step);
+                wasm_parse_link.step.dependOn(&setup_step.step);
             }
+
+            const sync_parse_outputs = b.addUpdateSourceFiles();
+            sync_parse_outputs.addCopyFileToSource(
+                wasm_parse_link.js,
+                b.pathJoin(&.{ package_wasm_dir, "ifcparse.js" }),
+            );
+            sync_parse_outputs.addCopyFileToSource(
+                wasm_parse_link.wasm,
+                b.pathJoin(&.{ package_wasm_dir, "ifcparse.wasm" }),
+            );
+
             const step = b.step("wasm-parse", "Link IfcParse+IfcUtil WASM module");
-            step.dependOn(wasm_parse_step);
+            step.dependOn(&sync_parse_outputs.step);
         }
 
         {
@@ -251,7 +263,7 @@ pub fn build(b: *std.Build) void {
             }) catch @panic("OOM");
             if (enable_psetqto) full_export_sources.append(b.allocator, "zig/lib/psetqto_capi.zig") catch @panic("OOM");
 
-            const wasm_full_step = emscripten.emccLinkStep(
+            const wasm_full_link = emscripten.emccLinkStep(
                 b,
                 link_libs.items,
                 full_export_sources.items,
@@ -260,10 +272,21 @@ pub fn build(b: *std.Build) void {
                 .prefix,
             );
             if (opt_emsdk_setup_step) |setup_step| {
-                wasm_full_step.dependOn(&setup_step.step);
+                wasm_full_link.step.dependOn(&setup_step.step);
             }
+
+            const sync_full_outputs = b.addUpdateSourceFiles();
+            sync_full_outputs.addCopyFileToSource(
+                wasm_full_link.js,
+                b.pathJoin(&.{ package_wasm_dir, "ifcopenshell.js" }),
+            );
+            sync_full_outputs.addCopyFileToSource(
+                wasm_full_link.wasm,
+                b.pathJoin(&.{ package_wasm_dir, "ifcopenshell.wasm" }),
+            );
+
             const step = b.step("wasm-full", "Link full IfcOpenShell WASM module");
-            step.dependOn(wasm_full_step);
+            step.dependOn(&sync_full_outputs.step);
         }
     }
 }

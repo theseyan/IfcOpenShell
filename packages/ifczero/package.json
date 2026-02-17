@@ -1,6 +1,7 @@
 {
   "name": "ifczero",
   "version": "0.0.1",
+  "license": "LGPL-3.0-or-later",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -25,6 +26,7 @@
     "vitest": "^4.0.18"
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE"
   ]
 }

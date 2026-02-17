@@ -167,6 +167,7 @@ fn appendOcctToolkitSourcesToLibrary(
         b,
         occt_src,
         toolkit,
+        target,
         &cpp_sources,
         &c_sources,
     );
@@ -214,6 +215,7 @@ fn collectOcctToolkitSources(
     b: *std.Build,
     occt_src: []const u8,
     toolkit: []const u8,
+    target: std.Build.ResolvedTarget,
     cpp_sources: *std.ArrayList([]const u8),
     c_sources: *std.ArrayList([]const u8),
 ) void {
@@ -230,11 +232,13 @@ fn collectOcctToolkitSources(
     while (line_it.next()) |line_raw| {
         const package_name = sanitizeOcctListLine(line_raw);
         if (package_name.len == 0) continue;
+        if (!shouldIncludeOcctPackageForTarget(toolkit, package_name, target)) continue;
         has_package = true;
         appendOcctPackageSources(
             b,
             occt_src,
             package_name,
+            target,
             &seen_sources,
             cpp_sources,
             c_sources,
@@ -246,6 +250,7 @@ fn collectOcctToolkitSources(
             b,
             occt_src,
             toolkit,
+            target,
             &seen_sources,
             cpp_sources,
             c_sources,
@@ -257,6 +262,7 @@ fn appendOcctPackageSources(
     b: *std.Build,
     occt_src: []const u8,
     package_name: []const u8,
+    target: std.Build.ResolvedTarget,
     seen_sources: *std.StringHashMap(void),
     cpp_sources: *std.ArrayList([]const u8),
     c_sources: *std.ArrayList([]const u8),
@@ -269,7 +275,7 @@ fn appendOcctPackageSources(
     while (line_it.next()) |line_raw| {
         const file_name = sanitizeOcctListLine(line_raw);
         if (file_name.len == 0) continue;
-        if (!isOcctCppSource(file_name) and !isOcctCSource(file_name)) continue;
+        if (!isOcctCppSourceForTarget(file_name, target) and !isOcctCSource(file_name)) continue;
 
         const rel_path = b.fmt("{s}/{s}", .{ package_name, file_name });
         const abs_path = b.fmt("{s}/{s}", .{ occt_src, rel_path });
@@ -278,12 +284,40 @@ fn appendOcctPackageSources(
         const gop = seen_sources.getOrPut(rel_path) catch @panic("Out of memory collecting OCCT sources");
         if (gop.found_existing) continue;
 
-        if (isOcctCppSource(file_name)) {
+        if (isOcctCppSourceForTarget(file_name, target)) {
             cpp_sources.append(b.allocator, rel_path) catch @panic("Out of memory collecting OCCT C++ sources");
         } else {
             c_sources.append(b.allocator, rel_path) catch @panic("Out of memory collecting OCCT C sources");
         }
     }
+}
+
+fn shouldIncludeOcctPackageForTarget(
+    toolkit: []const u8,
+    package_name: []const u8,
+    target: std.Build.ResolvedTarget,
+) bool {
+    if (!std.mem.eql(u8, toolkit, "TKService")) return true;
+
+    const os_tag = target.result.os.tag;
+    const is_emscripten = os_tag == .emscripten;
+
+    if (std.mem.eql(u8, package_name, "Wasm")) {
+        return is_emscripten;
+    }
+    if (std.mem.eql(u8, package_name, "WNT")) {
+        return os_tag == .windows;
+    }
+    if (std.mem.eql(u8, package_name, "Cocoa")) {
+        return os_tag == .macos;
+    }
+    if (std.mem.eql(u8, package_name, "Xw")) {
+        return switch (os_tag) {
+            .linux, .freebsd, .openbsd, .netbsd, .dragonfly => true,
+            else => false,
+        };
+    }
+    return true;
 }
 
 fn resolveOcctToolkitClosure(
@@ -346,11 +380,13 @@ fn sanitizeOcctListLine(line_raw: []const u8) []const u8 {
     return line;
 }
 
-fn isOcctCppSource(file_name: []const u8) bool {
+fn isOcctCppSourceForTarget(file_name: []const u8, target: std.Build.ResolvedTarget) bool {
+    if (std.mem.endsWith(u8, file_name, ".mm")) {
+        return target.result.os.tag == .macos;
+    }
     return std.mem.endsWith(u8, file_name, ".cxx") or
         std.mem.endsWith(u8, file_name, ".cpp") or
-        std.mem.endsWith(u8, file_name, ".cc") or
-        std.mem.endsWith(u8, file_name, ".mm");
+        std.mem.endsWith(u8, file_name, ".cc");
 }
 
 fn isOcctCSource(file_name: []const u8) bool {
