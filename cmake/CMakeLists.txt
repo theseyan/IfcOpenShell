@@ -39,6 +39,10 @@ if(POLICY CMP0167) # 3.30
     cmake_policy(SET CMP0167 OLD)
 endif()
 
+project(IfcOpenShell VERSION ${RELEASE_VERSION})
+
+include(CTest)
+
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
@@ -63,6 +67,8 @@ option(NO_WARN "Disable all warnings" OFF)
 option(CREATE_BUNDLE "Copy .so files and don't create RPATHS or SOVERSION symlinks" )
 
 option(BUILD_IFCGEOM "Build IfcGeom." ON)
+option(BUILD_IFCCAPI "Build experimental generated C API." OFF)
+option(IFCCAPI_REGENERATE_BINDINGS "Regenerate checked-in IfcParse C API bindings during the build." OFF)
 option(BUILD_IFCPYTHON "Build IfcPython." ON)
 option(BUILD_IFCPARSE_EXPERIMENTAL_WRAPPER "Build the experimental Clang-generated ifcparse Python wrapper." OFF)
 option(BUILD_CONVERT "Build IfcConvert executable." ON)
@@ -644,7 +650,7 @@ if(BUILD_IFCPYTHON AND WITH_CGAL)
     add_subdirectory(../src/svgfill svgfill)
 endif()
 
-if(BUILD_IFCPYTHON)
+if(BUILD_IFCPYTHON OR BUILD_IFCCAPI)
     add_subdirectory(../src/ifcwrap ifcwrap)
 endif()
 
