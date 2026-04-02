@@ -50,6 +50,8 @@ endif()
 
 project(IfcOpenShell VERSION ${RELEASE_VERSION})
 
+include(CTest)
+
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
@@ -77,6 +79,8 @@ option(USE_MMAP "Adds a command line options to parse IFC files from memory mapp
 option(NO_WARN "Disable all warnings" OFF)
 
 option(BUILD_IFCGEOM "Build IfcGeom." ON)
+option(BUILD_IFCCAPI "Build experimental generated C API." OFF)
+option(IFCCAPI_REGENERATE_BINDINGS "Regenerate checked-in IfcParse C API bindings during the build." OFF)
 option(BUILD_IFCPYTHON "Build IfcPython." ON)
 option(BUILD_CONVERT "Build IfcConvert executable." ON)
 option(BUILD_DOCUMENTATION "Build IfcOpenShell Documentation." OFF)
@@ -669,7 +673,7 @@ if(BUILD_DOCUMENTATION)
     add_subdirectory(../docs docs)
 endif()
 
-if(BUILD_IFCPYTHON)
+if(BUILD_IFCPYTHON OR BUILD_IFCCAPI)
     add_subdirectory(../src/ifcwrap ifcwrap)
 endif()
 

@@ -24,6 +24,86 @@ if(POLICY CMP0177) # 3.31
     cmake_policy(SET CMP0177 OLD)
 endif()
 
+include(GNUInstallDirs)
+
+if(BUILD_IFCCAPI)
+    set(IFCPARSE_CAPI_GENERATED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/generated")
+    set(IFCPARSE_CAPI_SPEC "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/ifcparse.yml")
+    set(IFCPARSE_CAPI_GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/generate_c_backend.py")
+    set(IFCPARSE_CAPI_HEADER "${IFCPARSE_CAPI_GENERATED_DIR}/ifcparse_api.h")
+    set(IFCPARSE_CAPI_CPP "${IFCPARSE_CAPI_GENERATED_DIR}/ifcparse_api.cpp")
+
+    if(IFCCAPI_REGENERATE_BINDINGS)
+        if(NOT ${PYTHON_EXECUTABLE} STREQUAL "")
+            set(Python_EXECUTABLE "${PYTHON_EXECUTABLE}")
+            message(STATUS "Looking for Python interpreter in: ${PYTHON_EXECUTABLE}")
+        endif()
+        find_package(Python COMPONENTS Interpreter REQUIRED)
+
+        execute_process(
+            COMMAND ${Python_EXECUTABLE} -c "import yaml"
+            RESULT_VARIABLE IFCPARSE_CAPI_PYYAML_STATUS
+            OUTPUT_QUIET
+            ERROR_QUIET
+        )
+        if(NOT IFCPARSE_CAPI_PYYAML_STATUS EQUAL 0)
+            message(
+                FATAL_ERROR
+                "IFCCAPI_REGENERATE_BINDINGS enabled, but the selected Python interpreter does not provide PyYAML. "
+                "Install the generator dependencies or disable IFCCAPI_REGENERATE_BINDINGS."
+            )
+        endif()
+
+        add_custom_target(
+            ifcopenshell_ifcparse_capi_codegen
+            COMMAND
+                ${Python_EXECUTABLE} "${IFCPARSE_CAPI_GENERATOR}" --spec "${IFCPARSE_CAPI_SPEC}" --header-out
+                "${IFCPARSE_CAPI_HEADER}" --cpp-out "${IFCPARSE_CAPI_CPP}" --compile-commands
+                "${CMAKE_BINARY_DIR}/compile_commands.json"
+            DEPENDS
+                "${IFCPARSE_CAPI_SPEC}"
+                "${IFCPARSE_CAPI_GENERATOR}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/authored_spec.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/__init__.py"
+            VERBATIM
+        )
+    endif()
+
+    add_library(ifcopenshell_ifcparse_capi "${IFCPARSE_CAPI_HEADER}" "${IFCPARSE_CAPI_CPP}")
+    if(TARGET ifcopenshell_ifcparse_capi_codegen)
+        add_dependencies(ifcopenshell_ifcparse_capi ifcopenshell_ifcparse_capi_codegen)
+    endif()
+    target_link_libraries(ifcopenshell_ifcparse_capi PRIVATE IfcParse)
+    target_include_directories(
+        ifcopenshell_ifcparse_capi
+        PUBLIC "${IFCPARSE_CAPI_GENERATED_DIR}"
+        PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../ifcparse"
+    )
+
+    add_executable(ifcopenshell_ifcparse_capi_smoke "${CMAKE_CURRENT_SOURCE_DIR}/tests/ifcparse_c_api_smoke.c")
+    target_link_libraries(ifcopenshell_ifcparse_capi_smoke PRIVATE ifcopenshell_ifcparse_capi)
+    target_include_directories(ifcopenshell_ifcparse_capi_smoke PRIVATE "${IFCPARSE_CAPI_GENERATED_DIR}")
+
+    add_executable(ifcopenshell_ifcparse_capi_surface_smoke "${CMAKE_CURRENT_SOURCE_DIR}/tests/ifcparse_c_api_surface_smoke.c")
+    target_link_libraries(ifcopenshell_ifcparse_capi_surface_smoke PRIVATE ifcopenshell_ifcparse_capi)
+    target_include_directories(ifcopenshell_ifcparse_capi_surface_smoke PRIVATE "${IFCPARSE_CAPI_GENERATED_DIR}")
+
+    if(WITH_ROCKSDB)
+        add_executable(ifcopenshell_ifcparse_capi_rocksdb_smoke "${CMAKE_CURRENT_SOURCE_DIR}/tests/ifcparse_c_api_rocksdb_smoke.c")
+        target_link_libraries(ifcopenshell_ifcparse_capi_rocksdb_smoke PRIVATE ifcopenshell_ifcparse_capi)
+        target_include_directories(ifcopenshell_ifcparse_capi_rocksdb_smoke PRIVATE "${IFCPARSE_CAPI_GENERATED_DIR}")
+    endif()
+
+    if(BUILD_TESTING)
+        add_test(NAME ifcopenshell_ifcparse_capi_smoke COMMAND ifcopenshell_ifcparse_capi_smoke)
+        add_test(NAME ifcopenshell_ifcparse_capi_surface_smoke COMMAND ifcopenshell_ifcparse_capi_surface_smoke)
+        if(TARGET ifcopenshell_ifcparse_capi_rocksdb_smoke)
+            add_test(NAME ifcopenshell_ifcparse_capi_rocksdb_smoke COMMAND ifcopenshell_ifcparse_capi_rocksdb_smoke)
+        endif()
+    endif()
+endif()
+
+if(BUILD_IFCPYTHON)
 find_package(SWIG)
 if(NOT SWIG_FOUND)
     message(
@@ -32,7 +112,6 @@ if(NOT SWIG_FOUND)
         "Likely SWIG_EXECUTABLE is missing (current value - '${SWIG_EXECUTABLE}')."
     )
 endif()
-include(GNUInstallDirs)
 include(${SWIG_USE_FILE})
 
 if(NOT "${PYTHON_INCLUDE_DIR}" STREQUAL "")
@@ -204,4 +283,5 @@ if(Python_Interpreter_FOUND OR PYTHON_MODULE_INSTALL_DIR)
     endif()
 else()
     message(WARNING "No Python interpreter found, unable to install the Python wrapper")
+endif()
 endif()
