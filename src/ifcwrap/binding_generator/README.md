@@ -13,12 +13,10 @@ legacy SWIG-only binding flow for `IfcParse`.
 - The binding definition file is policy-oriented, not a full hand-written API
   inventory.
   For `IfcParse`, the main input is
-  `specs/ifcparse.yml`.
-- The generated C API is checked in at:
-  - `generated/ifcparse_api.h`
-  - `generated/ifcparse_api.cpp`
-- The parity audit snapshot is checked in at:
-  - `generated/ifcparse_parity.md`
+  `specs/ifcparse.yml`; for `IfcGeom`, `specs/ifcgeom.yml`.
+- The generated unified C API is checked in at:
+  - `generated/ifcopenshell_api.h`
+  - `generated/ifcopenshell_api.cpp`
 
 The current `IfcParse` parity audit reports:
 
@@ -39,7 +37,7 @@ typed C access.
   Clang AST discovery driven by `compile_commands.json`.
 - `authored_spec.py`
   Spec loading, validation, and normalization into generator calls.
-- `generate_c_backend.py`
+- `c_backend.py`
   C header and C++ glue generation.
 - `audit_ifcparse_parity.py`
   SWIG-vs-generated parity audit for `IfcParse`.

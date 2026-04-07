@@ -26,10 +26,12 @@ legacy SWIG layer: `205/205` covered entries.
 - `IfcPython.i`, `IfcParseWrapper.i`, `IfcGeomWrapper.i`
   Legacy SWIG binding inputs.
 - `binding_generator/specs/ifcparse.yml`
-  Coarse binding policy for the custom generator.
-- `binding_generator/generated/ifcparse_api.h`
-  Generated public C header.
-- `binding_generator/generated/ifcparse_api.cpp`
+  Coarse binding policy for ifcparse.
+- `binding_generator/specs/ifcgeom.yml`
+  Coarse binding policy for ifcgeom.
+- `binding_generator/generated/ifcopenshell_api.h`
+  Generated unified public C header (ifcparse + ifcgeom).
+- `binding_generator/generated/ifcopenshell_api.cpp`
   Generated C++ glue.
 - `tests/ifcparse_c_api_smoke.c`
   Main generated-C smoke test.
