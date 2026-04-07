@@ -5,13 +5,105 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 import re
+from typing import Union
 
 try:
-    from .authored_spec import AuthoredBindingSpec, CallSpec, HandleSpec, ParamSpec, TypeSpec, load_authored_spec
+    from .authored_spec import AuthoredBindingSpec, CallSpec, HandleSpec, MergedBindingSpec, ParamSpec, TypeSpec, load_authored_spec, load_merged_specs
 except ImportError:  # pragma: no cover - script execution fallback
-    from authored_spec import AuthoredBindingSpec, CallSpec, HandleSpec, ParamSpec, TypeSpec, load_authored_spec
+    from authored_spec import AuthoredBindingSpec, CallSpec, HandleSpec, MergedBindingSpec, ParamSpec, TypeSpec, load_authored_spec, load_merged_specs
+
+# Type alias for spec types
+BindingSpec = Union[AuthoredBindingSpec, MergedBindingSpec]
 
 AI_HEADER = "// This file was generated with the assistance of an AI coding tool.\n"
+
+# Common type implementations - shared across all API modules
+# Only the first module (ifcparse) should emit these; dependent modules skip them
+COMMON_TYPE_IMPLS = """
+void ifcopenshell_string_destroy(ifcopenshell_string_t* value) {
+    if (value == nullptr) {
+        return;
+    }
+    if (value->owned && value->data != nullptr) {
+        delete[] value->data;
+    }
+    value->data = nullptr;
+    value->size = 0;
+    value->owned = false;
+}
+
+void ifcopenshell_string_list_destroy(ifcopenshell_string_list_t* value) {
+    if (value == nullptr || value->items == nullptr) {
+        return;
+    }
+    for (size_t i = 0; i < value->size; ++i) {
+        ifcopenshell_string_destroy(&value->items[i]);
+    }
+    delete[] value->items;
+    value->items = nullptr;
+    value->size = 0;
+}
+
+void ifcopenshell_bool_list_destroy(ifcopenshell_bool_list_t* value) {
+    if (value == nullptr || value->items == nullptr) {
+        return;
+    }
+    delete[] value->items;
+    value->items = nullptr;
+    value->size = 0;
+}
+
+void ifcopenshell_int32_list_destroy(ifcopenshell_int32_list_t* value) {
+    if (value == nullptr || value->items == nullptr) {
+        return;
+    }
+    delete[] value->items;
+    value->items = nullptr;
+    value->size = 0;
+}
+
+void ifcopenshell_uint32_list_destroy(ifcopenshell_uint32_list_t* value) {
+    if (value == nullptr || value->items == nullptr) {
+        return;
+    }
+    delete[] value->items;
+    value->items = nullptr;
+    value->size = 0;
+}
+
+void ifcopenshell_int32_list_list_destroy(ifcopenshell_int32_list_list_t* value) {
+    if (value == nullptr || value->items == nullptr) {
+        return;
+    }
+    for (size_t i = 0; i < value->size; ++i) {
+        ifcopenshell_int32_list_destroy(&value->items[i]);
+    }
+    delete[] value->items;
+    value->items = nullptr;
+    value->size = 0;
+}
+
+void ifcopenshell_double_list_destroy(ifcopenshell_double_list_t* value) {
+    if (value == nullptr || value->items == nullptr) {
+        return;
+    }
+    delete[] value->items;
+    value->items = nullptr;
+    value->size = 0;
+}
+
+void ifcopenshell_double_list_list_destroy(ifcopenshell_double_list_list_t* value) {
+    if (value == nullptr || value->items == nullptr) {
+        return;
+    }
+    for (size_t i = 0; i < value->size; ++i) {
+        ifcopenshell_double_list_destroy(&value->items[i]);
+    }
+    delete[] value->items;
+    value->items = nullptr;
+    value->size = 0;
+}
+"""
 
 
 def _snake_name(c_type: str) -> str:
@@ -27,7 +119,7 @@ def _handle_list_helper_name(handle: HandleSpec) -> str:
     return f"make_{_snake_name(_handle_list_c_type(handle))}"
 
 
-def _used_handle_list_handles(spec: AuthoredBindingSpec) -> tuple[HandleSpec, ...]:
+def _used_handle_list_handles(spec: BindingSpec) -> tuple[HandleSpec, ...]:
     seen: set[str] = set()
     handles: list[HandleSpec] = []
     for call in (*spec.functions, *spec.methods):
@@ -56,88 +148,88 @@ def _normalize_cpp_type(cpp_type: str | None) -> str:
     )
 
 
-def _cpp_param_type(param: ParamSpec, spec: AuthoredBindingSpec) -> str:
-    type_spec = param.type
-    if type_spec.kind == "bool":
-        return "bool"
-    if type_spec.kind == "bool_list":
-        return "const ifcopenshell_bool_list_t*"
-    if type_spec.kind == "int32":
-        return "int32_t"
-    if type_spec.kind == "double":
-        return "double"
-    if type_spec.kind == "uint32":
-        return "uint32_t"
-    if type_spec.kind == "size":
-        return "size_t"
-    if type_spec.kind == "string":
+# Mapping from type kind to (param_type, out_type, result_template, needs_conversion).
+# Entries with None require handle-specific logic handled separately.
+_SCALAR_TYPE_MAP: dict[str, tuple[str, str, str]] = {
+    "bool":            ("bool",     "bool*",     "*out_result = {expr};"),
+    "int32":           ("int32_t",  "int32_t*",  "*out_result = static_cast<int32_t>({expr});"),
+    "double":          ("double",   "double*",   "*out_result = static_cast<double>({expr});"),
+    "uint32":          ("uint32_t", "uint32_t*", "*out_result = static_cast<uint32_t>({expr});"),
+    "size":            ("size_t",   "size_t*",   "*out_result = static_cast<size_t>({expr});"),
+}
+
+_LIST_TYPE_MAP: dict[str, tuple[str, str, str, str]] = {
+    # kind: (param_type, out_type, make_helper, to_cpp_helper)
+    "bool_list":         ("const ifcopenshell_bool_list_t*",         "ifcopenshell_bool_list_t*",         "make_bool_list",         "to_cpp_bool_list"),
+    "string_list":       ("const ifcopenshell_string_list_t*",       "ifcopenshell_string_list_t*",       "make_string_list",       "to_cpp_string_list"),
+    "int32_list":        ("const ifcopenshell_int32_list_t*",        "ifcopenshell_int32_list_t*",        "make_int32_list",        "to_cpp_int32_list"),
+    "uint32_list":       ("const ifcopenshell_uint32_list_t*",       "ifcopenshell_uint32_list_t*",       "make_uint32_list",       "to_cpp_uint32_list"),
+    "int32_list_list":   ("const ifcopenshell_int32_list_list_t*",   "ifcopenshell_int32_list_list_t*",   "make_int32_list_list",   "to_cpp_int32_list_list"),
+    "double_list":       ("const ifcopenshell_double_list_t*",       "ifcopenshell_double_list_t*",       "make_double_list",       "to_cpp_double_list"),
+    "double_list_list":  ("const ifcopenshell_double_list_list_t*",  "ifcopenshell_double_list_list_t*",  "make_double_list_list",  "to_cpp_double_list_list"),
+}
+
+_BUFFER_TYPE_MAP: dict[str, tuple[str, str]] = {
+    "double_buffer": ("const double*",   "const double**"),
+    "int32_buffer":  ("const int32_t*",  "const int32_t**"),
+}
+
+# Kinds whose C parameter uses a _cpp-suffixed variable after conversion
+_NEEDS_CONVERSION_KINDS = frozenset(
+    {"string", "string_list", "bool_list", "int32_list", "uint32_list",
+     "int32_list_list", "double_list", "double_list_list",
+     "handle", "handle_list", "opaque_ptr"}
+)
+
+
+def _cpp_param_type(param: ParamSpec, spec: BindingSpec) -> str:
+    kind = param.type.kind
+    if kind in _SCALAR_TYPE_MAP:
+        return _SCALAR_TYPE_MAP[kind][0]
+    if kind == "string":
         return "const char*"
-    if type_spec.kind == "string_list":
-        return "const ifcopenshell_string_list_t*"
-    if type_spec.kind == "int32_list":
-        return "const ifcopenshell_int32_list_t*"
-    if type_spec.kind == "uint32_list":
-        return "const ifcopenshell_uint32_list_t*"
-    if type_spec.kind == "int32_list_list":
-        return "const ifcopenshell_int32_list_list_t*"
-    if type_spec.kind == "double_list":
-        return "const ifcopenshell_double_list_t*"
-    if type_spec.kind == "double_list_list":
-        return "const ifcopenshell_double_list_list_t*"
-    if type_spec.kind == "handle":
-        return f"{spec.handles[type_spec.handle].c_type}*"
-    if type_spec.kind == "handle_list":
-        return f"const {_handle_list_c_type(spec.handles[type_spec.handle])}*"
-    msg = f"Unsupported parameter kind: {type_spec.kind}"
+    if kind in _LIST_TYPE_MAP:
+        return _LIST_TYPE_MAP[kind][0]
+    if kind in _BUFFER_TYPE_MAP:
+        return _BUFFER_TYPE_MAP[kind][0]
+    if kind == "handle":
+        return f"{spec.handles[param.type.handle].c_type}*"
+    if kind == "handle_list":
+        return f"const {_handle_list_c_type(spec.handles[param.type.handle])}*"
+    if kind == "opaque_ptr":
+        return "void*"
+    msg = f"Unsupported parameter kind: {kind}"
     raise ValueError(msg)
 
 
-def _header_param_type(param: ParamSpec, spec: AuthoredBindingSpec) -> str:
-    return _cpp_param_type(param, spec)
-
-
-def _out_param_type(type_spec: TypeSpec, spec: AuthoredBindingSpec) -> str:
-    if type_spec.kind == "void":
+def _out_param_type(type_spec: TypeSpec, spec: BindingSpec) -> str:
+    kind = type_spec.kind
+    if kind == "void":
         msg = "void has no out parameter"
         raise ValueError(msg)
-    if type_spec.kind in {"bool", "int32", "double", "uint32", "size"}:
-        mapping = {
-            "bool": "bool",
-            "int32": "int32_t",
-            "double": "double",
-            "uint32": "uint32_t",
-            "size": "size_t",
-        }
-        return f"{mapping[type_spec.kind]}*"
-    if type_spec.kind == "bool_list":
-        return "ifcopenshell_bool_list_t*"
-    if type_spec.kind == "string":
+    if kind in _SCALAR_TYPE_MAP:
+        return _SCALAR_TYPE_MAP[kind][1]
+    if kind == "string":
         return "ifcopenshell_string_t*"
-    if type_spec.kind == "string_list":
-        return "ifcopenshell_string_list_t*"
-    if type_spec.kind == "int32_list":
-        return "ifcopenshell_int32_list_t*"
-    if type_spec.kind == "uint32_list":
-        return "ifcopenshell_uint32_list_t*"
-    if type_spec.kind == "int32_list_list":
-        return "ifcopenshell_int32_list_list_t*"
-    if type_spec.kind == "double_list":
-        return "ifcopenshell_double_list_t*"
-    if type_spec.kind == "double_list_list":
-        return "ifcopenshell_double_list_list_t*"
-    if type_spec.kind == "handle":
+    if kind in _LIST_TYPE_MAP:
+        return _LIST_TYPE_MAP[kind][1]
+    if kind in _BUFFER_TYPE_MAP:
+        return _BUFFER_TYPE_MAP[kind][1]
+    if kind == "handle":
         return f"{spec.handles[type_spec.handle].c_type}**"
-    if type_spec.kind == "handle_list":
+    if kind == "handle_list":
         return f"{_handle_list_c_type(spec.handles[type_spec.handle])}*"
-    msg = f"Unsupported return kind: {type_spec.kind}"
+    if kind == "opaque_ptr":
+        return "void**"
+    msg = f"Unsupported return kind: {kind}"
     raise ValueError(msg)
 
 
-def _render_call_decl(call: CallSpec, spec: AuthoredBindingSpec) -> str:
+def _render_call_decl(call: CallSpec, spec: BindingSpec) -> str:
     parts = []
     if call.receiver is not None:
         parts.append(f"{spec.handles[call.receiver].c_type}* self")
-    parts.extend(f"{_header_param_type(param, spec)} {param.name}" for param in call.params)
+    parts.extend(f"{_cpp_param_type(param, spec)} {param.name}" for param in call.params)
     if call.returns.kind != "void":
         parts.append(f"{_out_param_type(call.returns, spec)} out_result")
     params = ", ".join(parts) if parts else "void"
@@ -153,7 +245,7 @@ def _render_handle_list_destroy_decl(handle: HandleSpec) -> str:
     return f"void ifcopenshell_{_snake_name(list_c_type)}_destroy({list_c_type}* value);"
 
 
-def _render_header(spec: AuthoredBindingSpec) -> str:
+def _render_header(spec: BindingSpec) -> str:
     guard = f"{spec.c_prefix.upper()}_API_H"
     handle_forwards = "\n".join(f"typedef struct {handle.c_type} {handle.c_type};" for handle in spec.handles.values())
     handle_list_types = _used_handle_list_handles(spec)
@@ -179,6 +271,10 @@ def _render_header(spec: AuthoredBindingSpec) -> str:
 #ifdef __cplusplus
 extern "C" {{
 #endif
+
+/* Common types - guarded to allow multiple API headers to be included */
+#ifndef IFCOPENSHELL_COMMON_TYPES_DEFINED
+#define IFCOPENSHELL_COMMON_TYPES_DEFINED
 
 typedef struct ifcopenshell_string_t {{
     char* data;
@@ -221,10 +317,6 @@ typedef struct ifcopenshell_double_list_list_t {{
     size_t size;
 }} ifcopenshell_double_list_list_t;
 
-{handle_forwards}
-
-{handle_list_forwards}
-
 void ifcopenshell_string_destroy(ifcopenshell_string_t* value);
 void ifcopenshell_string_list_destroy(ifcopenshell_string_list_t* value);
 void ifcopenshell_bool_list_destroy(ifcopenshell_bool_list_t* value);
@@ -233,6 +325,13 @@ void ifcopenshell_uint32_list_destroy(ifcopenshell_uint32_list_t* value);
 void ifcopenshell_int32_list_list_destroy(ifcopenshell_int32_list_list_t* value);
 void ifcopenshell_double_list_destroy(ifcopenshell_double_list_t* value);
 void ifcopenshell_double_list_list_destroy(ifcopenshell_double_list_list_t* value);
+
+#endif /* IFCOPENSHELL_COMMON_TYPES_DEFINED */
+
+{handle_forwards}
+
+{handle_list_forwards}
+
 void {spec.c_prefix}_clear_error(void);
 const char* {spec.c_prefix}_last_error_message(void);
 
@@ -254,21 +353,29 @@ def _handle_storage_type(handle: HandleSpec) -> str:
         return "AttributeValue"
     if handle.name == "instance_list":
         return "aggregate_of_instance::ptr"
+    if handle.ptr_type == "shared_ptr":
+        return f"std::shared_ptr<{handle.cpp_type}>"
     return f"{handle.cpp_type}*"
 
 
 def _destroy_body(handle: HandleSpec) -> str:
     if handle.name in {"attribute_value", "instance_list"}:
         return "delete handle;"
+    if handle.destructor == "shared_ptr":
+        # For shared_ptr handles, the shared_ptr destructor handles the ref count
+        return "handle->ptr.reset();\n    delete handle;"
     if handle.destructor == "delete":
         return "if (handle->owned && handle->ptr) { delete handle->ptr; }\n    delete handle;"
     return "delete handle;"
 
 
-def _wrap_handle_expr(type_spec: TypeSpec, expr: str, spec: AuthoredBindingSpec) -> str:
+def _wrap_handle_expr(type_spec: TypeSpec, expr: str, spec: BindingSpec) -> str:
     handle = spec.handles[type_spec.handle]
     owned = "true" if type_spec.ownership == "owned" else "false"
     if handle.name in {"attribute_value", "instance_list"}:
+        return f"new {handle.c_type}{{{expr}}}"
+    if handle.ptr_type == "shared_ptr":
+        # For shared_ptr types, we copy the shared_ptr
         return f"new {handle.c_type}{{{expr}}}"
     pointer_expr = expr
     if _normalize_cpp_type(type_spec.cpp_type).endswith("&"):
@@ -278,128 +385,94 @@ def _wrap_handle_expr(type_spec: TypeSpec, expr: str, spec: AuthoredBindingSpec)
     return f"new {handle.c_type}{{{pointer_expr}, {owned}}}"
 
 
-def _render_result_assignment(call: CallSpec, spec: AuthoredBindingSpec, expr: str) -> str:
+def _render_result_assignment(call: CallSpec, spec: BindingSpec, expr: str) -> str:
     type_spec = call.returns
-    if type_spec.kind == "void":
+    kind = type_spec.kind
+    if kind == "void":
         return f"{expr};"
-    if type_spec.kind == "bool":
-        return f"*out_result = {expr};"
-    if type_spec.kind == "bool_list":
-        return f"*out_result = make_bool_list({expr});"
-    if type_spec.kind == "int32":
-        return f"*out_result = static_cast<int32_t>({expr});"
-    if type_spec.kind == "double":
-        return f"*out_result = static_cast<double>({expr});"
-    if type_spec.kind == "uint32":
-        return f"*out_result = static_cast<uint32_t>({expr});"
-    if type_spec.kind == "size":
-        return f"*out_result = static_cast<size_t>({expr});"
-    if type_spec.kind == "string":
+    if kind in _SCALAR_TYPE_MAP:
+        return _SCALAR_TYPE_MAP[kind][2].format(expr=expr)
+    if kind == "string":
         helper = "make_static_string" if type_spec.ownership == "static" else "make_string"
         return f"*out_result = {helper}({expr});"
-    if type_spec.kind == "string_list":
-        return f"*out_result = make_string_list({expr});"
-    if type_spec.kind == "int32_list":
-        return f"*out_result = make_int32_list({expr});"
-    if type_spec.kind == "uint32_list":
-        return f"*out_result = make_uint32_list({expr});"
-    if type_spec.kind == "int32_list_list":
-        return f"*out_result = make_int32_list_list({expr});"
-    if type_spec.kind == "double_list":
-        return f"*out_result = make_double_list({expr});"
-    if type_spec.kind == "double_list_list":
-        return f"*out_result = make_double_list_list({expr});"
-    if type_spec.kind == "handle":
+    if kind in _LIST_TYPE_MAP:
+        return f"*out_result = {_LIST_TYPE_MAP[kind][2]}({expr});"
+    if kind in _BUFFER_TYPE_MAP:
+        return f"*out_result = ({expr}).data();"
+    if kind == "handle":
         return f"*out_result = {_wrap_handle_expr(type_spec, expr, spec)};"
-    if type_spec.kind == "handle_list":
+    if kind == "handle_list":
         helper = _handle_list_helper_name(spec.handles[type_spec.handle])
         return f"*out_result = {helper}({expr});"
-    msg = f"Unsupported return kind: {type_spec.kind}"
+    if kind == "opaque_ptr":
+        return f"*out_result = static_cast<void*>({expr});"
+    msg = f"Unsupported return kind: {kind}"
     raise ValueError(msg)
 
 
-def _render_param_prelude(param: ParamSpec, spec: AuthoredBindingSpec) -> str:
+def _null_check(param_name: str, label: str) -> str:
+    return f'    if ({param_name} == nullptr) {{ throw std::runtime_error("{label} \\"{param_name}\\" must not be null"); }}'
+
+
+def _render_param_prelude(param: ParamSpec, spec: BindingSpec) -> str:
     type_spec = param.type
-    if type_spec.kind == "string":
+    kind = type_spec.kind
+    if kind == "string":
+        if type_spec.nullable:
+            return f"    const char* {param.name}_str = {param.name};"
         return (
-            f'    if ({param.name} == nullptr) {{ throw std::runtime_error("Parameter \\"{param.name}\\" must not be null"); }}\n'
+            f'{_null_check(param.name, "Parameter")}\n'
             f"    std::string {param.name}_cpp({param.name});"
         )
-    if type_spec.kind == "string_list":
+    if kind in _LIST_TYPE_MAP:
+        to_cpp = _LIST_TYPE_MAP[kind][3]
         return (
-            f'    if ({param.name} == nullptr) {{ throw std::runtime_error("Parameter \\"{param.name}\\" must not be null"); }}\n'
-            f"    auto {param.name}_cpp = to_cpp_string_list({param.name});"
+            f'{_null_check(param.name, "Parameter")}\n'
+            f"    auto {param.name}_cpp = {to_cpp}({param.name});"
         )
-    if type_spec.kind == "bool_list":
-        return (
-            f'    if ({param.name} == nullptr) {{ throw std::runtime_error("Parameter \\"{param.name}\\" must not be null"); }}\n'
-            f"    auto {param.name}_cpp = to_cpp_bool_list({param.name});"
-        )
-    if type_spec.kind == "int32_list":
-        return (
-            f'    if ({param.name} == nullptr) {{ throw std::runtime_error("Parameter \\"{param.name}\\" must not be null"); }}\n'
-            f"    auto {param.name}_cpp = to_cpp_int32_list({param.name});"
-        )
-    if type_spec.kind == "uint32_list":
-        return (
-            f'    if ({param.name} == nullptr) {{ throw std::runtime_error("Parameter \\"{param.name}\\" must not be null"); }}\n'
-            f"    auto {param.name}_cpp = to_cpp_uint32_list({param.name});"
-        )
-    if type_spec.kind == "int32_list_list":
-        return (
-            f'    if ({param.name} == nullptr) {{ throw std::runtime_error("Parameter \\"{param.name}\\" must not be null"); }}\n'
-            f"    auto {param.name}_cpp = to_cpp_int32_list_list({param.name});"
-        )
-    if type_spec.kind == "double_list":
-        return (
-            f'    if ({param.name} == nullptr) {{ throw std::runtime_error("Parameter \\"{param.name}\\" must not be null"); }}\n'
-            f"    auto {param.name}_cpp = to_cpp_double_list({param.name});"
-        )
-    if type_spec.kind == "double_list_list":
-        return (
-            f'    if ({param.name} == nullptr) {{ throw std::runtime_error("Parameter \\"{param.name}\\" must not be null"); }}\n'
-            f"    auto {param.name}_cpp = to_cpp_double_list_list({param.name});"
-        )
-    if type_spec.kind == "handle":
+    if kind == "handle":
         handle = spec.handles[type_spec.handle]
         if handle.name in {"attribute_value", "instance_list"}:
             return (
-                f'    if ({param.name} == nullptr) {{ throw std::runtime_error("Handle parameter \\"{param.name}\\" is invalid"); }}\n'
+                f'{_null_check(param.name, "Handle parameter")}\n'
                 f"    auto {param.name}_cpp = {param.name}->value;"
             )
         cpp_type = _normalize_cpp_type(type_spec.cpp_type)
         value_expr = f"{param.name}->ptr"
         if cpp_type.endswith("&"):
             value_expr = f"*{value_expr}"
+        if type_spec.nullable:
+            return (
+                f"    auto {param.name}_cpp = ({param.name} != nullptr && {param.name}->ptr != nullptr) ? {value_expr} : nullptr;"
+            )
         return (
             f'    if ({param.name} == nullptr || {param.name}->ptr == nullptr) {{ throw std::runtime_error("Handle parameter \\"{param.name}\\" is invalid"); }}\n'
             f"    auto {param.name}_cpp = {value_expr};"
         )
-    if type_spec.kind == "handle_list":
+    if kind == "handle_list":
         handle = spec.handles[type_spec.handle]
         helper_name = f"to_cpp_{_snake_name(_handle_list_c_type(handle))}"
         return (
-            f'    if ({param.name} == nullptr) {{ throw std::runtime_error("Parameter \\"{param.name}\\" must not be null"); }}\n'
+            f'{_null_check(param.name, "Parameter")}\n'
             f"    auto {param.name}_cpp = {helper_name}({param.name});"
+        )
+    if kind == "opaque_ptr":
+        cpp_type = type_spec.cpp_type
+        return (
+            f'{_null_check(param.name, "Parameter")}\n'
+            f"    auto {param.name}_cpp = static_cast<{cpp_type}>({param.name});"
         )
     return ""
 
 
 def _call_expr_args(call: CallSpec) -> str:
-    args: list[str] = []
-    for param in call.params:
-        if param.type.kind == "string":
-            args.append(f"{param.name}_cpp")
-        elif param.type.kind in {"string_list", "bool_list", "int32_list", "uint32_list", "int32_list_list", "double_list", "double_list_list"}:
-            args.append(f"{param.name}_cpp")
-        elif param.type.kind in {"handle", "handle_list"}:
-            args.append(f"{param.name}_cpp")
-        else:
-            args.append(param.name)
-    return ", ".join(args)
+    return ", ".join(
+        f"{p.name}_cpp" if p.type.kind in _NEEDS_CONVERSION_KINDS else p.name
+        for p in call.params
+    )
 
 
-def _render_call_impl(call: CallSpec, spec: AuthoredBindingSpec) -> str:
+def _render_call_impl(call: CallSpec, spec: BindingSpec) -> str:
     params = [f"{_cpp_param_type(param, spec)} {param.name}" for param in call.params]
     if call.returns.kind != "void":
         params.append(f"{_out_param_type(call.returns, spec)} out_result")
@@ -422,6 +495,12 @@ def _render_call_impl(call: CallSpec, spec: AuthoredBindingSpec) -> str:
                 f'    if ({receiver_name} == nullptr) {{ throw std::runtime_error("Receiver handle is invalid"); }}'
             )
             prelude_lines.append(f"    auto& self_cpp = {receiver_name}->value;")
+        elif receiver_handle.ptr_type == "shared_ptr":
+            # For shared_ptr handles, check that the shared_ptr is not null and use .get()
+            prelude_lines.append(
+                f'    if ({receiver_name} == nullptr || {receiver_name}->ptr == nullptr) {{ throw std::runtime_error("Receiver handle is invalid"); }}'
+            )
+            prelude_lines.append(f"    auto* self_cpp = {receiver_name}->ptr.get();")
         else:
             prelude_lines.append(
                 f'    if ({receiver_name} == nullptr || {receiver_name}->ptr == nullptr) {{ throw std::runtime_error("Receiver handle is invalid"); }}'
@@ -468,12 +547,15 @@ def _render_call_impl(call: CallSpec, spec: AuthoredBindingSpec) -> str:
 }}"""
 
 
-def _render_cpp(spec: AuthoredBindingSpec, header_name: str) -> str:
+def _render_cpp(spec: BindingSpec, header_name: str) -> str:
     handle_structs = []
     for handle in spec.handles.values():
         storage_type = _handle_storage_type(handle)
         if handle.name in {"attribute_value", "instance_list"}:
             handle_structs.append(f"struct {handle.c_type} {{\n    {storage_type} value;\n}};")
+        elif handle.ptr_type == "shared_ptr":
+            # shared_ptr handles don't need owned field - ref counting handles ownership
+            handle_structs.append(f"struct {handle.c_type} {{\n    {storage_type} ptr;\n}};")
         else:
             handle_structs.append(f"struct {handle.c_type} {{\n    {storage_type} ptr;\n    bool owned;\n}};")
 
@@ -489,7 +571,10 @@ def _render_cpp(spec: AuthoredBindingSpec, header_name: str) -> str:
         )
 
     call_impls = "\n\n".join(_render_call_impl(call, spec) for call in (*spec.functions, *spec.methods))
-    includes = "\n".join(f'#include "{header}"' for header in spec.public_headers)
+    includes = "\n".join(
+        f'#include {header}' if header.startswith('<') else f'#include "{header}"'
+        for header in spec.public_headers
+    )
     handle_structs_block = "\n\n".join(handle_structs)
     destroy_impls_block = "\n\n".join(destroy_impls)
     handle_list_types = _used_handle_list_handles(spec)
@@ -531,6 +616,11 @@ static std::vector<const {handle.cpp_type}*> to_cpp_{_snake_name(_handle_list_c_
 }}"""
         for handle in handle_list_types
     )
+
+    # Only emit common type implementations if this is not a dependent module
+    # MergedBindingSpec always emits common types (no depends_on_common attribute)
+    depends_on_common = getattr(spec, 'depends_on_common', None)
+    common_type_impls = "" if depends_on_common else COMMON_TYPE_IMPLS
 
     return f"""{AI_HEADER}
 #include "{header_name}"
@@ -1048,89 +1138,7 @@ void set_instance_attribute_from_attribute_value(IfcUtil::IfcBaseClass* instance
 
 {handle_list_helpers}
 
-void ifcopenshell_string_destroy(ifcopenshell_string_t* value) {{
-    if (value == nullptr) {{
-        return;
-    }}
-    if (value->owned && value->data != nullptr) {{
-        delete[] value->data;
-    }}
-    value->data = nullptr;
-    value->size = 0;
-    value->owned = false;
-}}
-
-void ifcopenshell_string_list_destroy(ifcopenshell_string_list_t* value) {{
-    if (value == nullptr || value->items == nullptr) {{
-        return;
-    }}
-    for (size_t i = 0; i < value->size; ++i) {{
-        ifcopenshell_string_destroy(&value->items[i]);
-    }}
-    delete[] value->items;
-    value->items = nullptr;
-    value->size = 0;
-}}
-
-void ifcopenshell_bool_list_destroy(ifcopenshell_bool_list_t* value) {{
-    if (value == nullptr || value->items == nullptr) {{
-        return;
-    }}
-    delete[] value->items;
-    value->items = nullptr;
-    value->size = 0;
-}}
-
-void ifcopenshell_int32_list_destroy(ifcopenshell_int32_list_t* value) {{
-    if (value == nullptr || value->items == nullptr) {{
-        return;
-    }}
-    delete[] value->items;
-    value->items = nullptr;
-    value->size = 0;
-}}
-
-void ifcopenshell_uint32_list_destroy(ifcopenshell_uint32_list_t* value) {{
-    if (value == nullptr || value->items == nullptr) {{
-        return;
-    }}
-    delete[] value->items;
-    value->items = nullptr;
-    value->size = 0;
-}}
-
-void ifcopenshell_int32_list_list_destroy(ifcopenshell_int32_list_list_t* value) {{
-    if (value == nullptr || value->items == nullptr) {{
-        return;
-    }}
-    for (size_t i = 0; i < value->size; ++i) {{
-        ifcopenshell_int32_list_destroy(&value->items[i]);
-    }}
-    delete[] value->items;
-    value->items = nullptr;
-    value->size = 0;
-}}
-
-void ifcopenshell_double_list_destroy(ifcopenshell_double_list_t* value) {{
-    if (value == nullptr || value->items == nullptr) {{
-        return;
-    }}
-    delete[] value->items;
-    value->items = nullptr;
-    value->size = 0;
-}}
-
-void ifcopenshell_double_list_list_destroy(ifcopenshell_double_list_list_t* value) {{
-    if (value == nullptr || value->items == nullptr) {{
-        return;
-    }}
-    for (size_t i = 0; i < value->size; ++i) {{
-        ifcopenshell_double_list_destroy(&value->items[i]);
-    }}
-    delete[] value->items;
-    value->items = nullptr;
-    value->size = 0;
-}}
+{common_type_impls}
 
 void {spec.c_prefix}_clear_error(void) {{
     g_last_error.clear();
@@ -1155,9 +1163,26 @@ def generate(spec_path: Path, header_out: Path, cpp_out: Path, compile_commands_
     cpp_out.write_text(_render_cpp(spec, header_out.name), encoding="utf-8")
 
 
+def generate_merged(
+    spec_paths: list[Path],
+    module: str,
+    c_prefix: str,
+    header_out: Path,
+    cpp_out: Path,
+    compile_commands_path: Path | None = None,
+) -> None:
+    """Generate bindings from multiple specs merged together."""
+    spec = load_merged_specs(spec_paths, module, c_prefix, compile_commands_path=compile_commands_path)
+    header_out.parent.mkdir(parents=True, exist_ok=True)
+    cpp_out.parent.mkdir(parents=True, exist_ok=True)
+    header_out.write_text(_render_header(spec), encoding="utf-8")
+    cpp_out.write_text(_render_cpp(spec, header_out.name), encoding="utf-8")
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Generate the first C backend skeleton from a handwritten binding spec.")
-    parser.add_argument("--spec", type=Path, required=True, help="Path to the handwritten binding spec YAML.")
+    parser.add_argument("--spec", type=Path, action="append", required=True, 
+                        help="Path to a binding spec YAML. Can be specified multiple times for merged output.")
     parser.add_argument("--header-out", type=Path, required=True, help="Output path for the generated C header.")
     parser.add_argument("--cpp-out", type=Path, required=True, help="Output path for the generated C++ glue source.")
     parser.add_argument(
@@ -1166,12 +1191,36 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional path to compile_commands.json for AST-backed source discovery.",
     )
+    parser.add_argument(
+        "--module",
+        type=str,
+        default="ifcopenshell",
+        help="Module name for merged output (default: ifcopenshell).",
+    )
+    parser.add_argument(
+        "--c-prefix",
+        type=str,
+        default="ifcopenshell",
+        help="C function prefix for merged output (default: ifcopenshell).",
+    )
     return parser
 
 
 def main() -> int:
     args = _build_parser().parse_args()
-    generate(args.spec, args.header_out, args.cpp_out, compile_commands_path=args.compile_commands)
+    if len(args.spec) == 1:
+        # Single spec - use original behavior
+        generate(args.spec[0], args.header_out, args.cpp_out, compile_commands_path=args.compile_commands)
+    else:
+        # Multiple specs - merge them
+        generate_merged(
+            args.spec,
+            args.module,
+            args.c_prefix,
+            args.header_out,
+            args.cpp_out,
+            compile_commands_path=args.compile_commands,
+        )
     return 0
 
 

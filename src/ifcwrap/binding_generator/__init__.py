@@ -2,7 +2,7 @@
 
 from .clang_discovery import discover_namespace_functions_with_compile_commands, discover_public_methods_with_compile_commands
 from .authored_spec import load_authored_spec
-from .generate_c_backend import generate
+from .c_backend import generate
 
 __all__ = [
     "discover_public_methods_with_compile_commands",

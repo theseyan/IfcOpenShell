@@ -45,7 +45,7 @@ else()
     target_link_libraries(IfcGeom plugin IfcParse ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} "Eigen3::Eigen")
 endif()
 
-if((BUILD_CONVERT OR BUILD_IFCPYTHON) AND WITH_OPENCASCADE)
+if((BUILD_CONVERT OR BUILD_IFCPYTHON OR BUILD_IFCCAPI) AND WITH_OPENCASCADE)
     add_subdirectory(Serialization)
     set(IFCOPENSHELL_LIBRARIES ${IFCOPENSHELL_LIBRARIES} PARENT_SCOPE)
     set(geometry_serializer_libraries ${geometry_serializer_libraries} PARENT_SCOPE)

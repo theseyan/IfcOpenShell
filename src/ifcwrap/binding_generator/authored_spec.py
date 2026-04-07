@@ -33,6 +33,8 @@ _ALLOWED_TYPE_KINDS = {
     "double",
     "double_list",
     "double_list_list",
+    "double_buffer",  # Zero-copy borrowed pointer to double array
+    "int32_buffer",   # Zero-copy borrowed pointer to int32 array
     "uint32",
     "size",
     "string",
@@ -42,9 +44,11 @@ _ALLOWED_TYPE_KINDS = {
     "uint32_list",
     "handle",
     "handle_list",
+    "opaque_ptr",  # Raw pointer to an external type (passed through as void*)
 }
 _ALLOWED_OWNERSHIP = {"owned", "borrowed", "static", "copy"}
-_ALLOWED_DESTRUCTORS = {"delete", "none"}
+_ALLOWED_DESTRUCTORS = {"delete", "none", "shared_ptr"}
+_ALLOWED_PTR_TYPES = {"raw", "shared_ptr"}
 _ALLOWED_CALL_KINDS = {"function", "adapter_function", "method", "adapter_method"}
 _ALLOWED_IMPLEMENTATION_KINDS = {"inline_cpp"}
 
@@ -70,6 +74,7 @@ class HandleSpec:
     cpp_type: str
     c_type: str
     destructor: str
+    ptr_type: str = "raw"  # "raw" or "shared_ptr"
 
 
 @dataclass(frozen=True)
@@ -127,6 +132,13 @@ class DiscoveryOverloadSpec:
 
 
 @dataclass(frozen=True)
+class ImportedHandle:
+    """A handle imported from another slice."""
+    slice: str
+    handle: str
+
+
+@dataclass(frozen=True)
 class AuthoredBindingSpec:
     schema_version: int
     module: str
@@ -134,9 +146,22 @@ class AuthoredBindingSpec:
     c_prefix: str
     public_headers: tuple[str, ...]
     handles: dict[str, HandleSpec]
+    imports: tuple[ImportedHandle, ...]  # Handles imported from other slices
+    depends_on_common: str | None  # If set, skip emitting common type implementations
     discovery: DiscoverySpec | None
     functions: tuple[CallSpec, ...]
     methods: tuple[CallSpec, ...]
+
+
+@dataclass(frozen=True)
+class MergedBindingSpec:
+    """A merged binding spec containing multiple modules."""
+    module: str  # Common module name (e.g., "ifcopenshell")
+    c_prefix: str  # Common C prefix (e.g., "ifcopenshell")
+    public_headers: tuple[str, ...]  # Merged public headers
+    handles: dict[str, HandleSpec]  # All handles from all modules
+    functions: tuple[CallSpec, ...]  # All functions from all modules
+    methods: tuple[CallSpec, ...]  # All methods from all modules
 
 
 def _expect_mapping(value: Any, context: str) -> dict[str, Any]:
@@ -199,7 +224,14 @@ def _parse_type(raw: Any, *, context: str, known_handles: set[str]) -> TypeSpec:
         msg = f"{context}.nullable must be a boolean"
         raise ValueError(msg)
 
-    return TypeSpec(kind=kind, handle=handle, ownership=ownership, nullable=nullable)
+    cpp_type = mapping.get("cpp_type")
+    if cpp_type is not None:
+        cpp_type = _expect_str(cpp_type, f"{context}.cpp_type")
+    if kind == "opaque_ptr" and cpp_type is None:
+        msg = f"{context}.cpp_type is required for kind=opaque_ptr"
+        raise ValueError(msg)
+
+    return TypeSpec(kind=kind, handle=handle, ownership=ownership, nullable=nullable, cpp_type=cpp_type)
 
 
 def _parse_params(raw: Any, *, context: str, known_handles: set[str]) -> tuple[ParamSpec, ...]:
@@ -798,7 +830,19 @@ def _discover_function_calls(
     return tuple(calls)
 
 
-def load_authored_spec(path: Path, compile_commands_path: Path | None = None) -> AuthoredBindingSpec:
+def load_authored_spec(
+    path: Path,
+    compile_commands_path: Path | None = None,
+    existing_handles: dict[str, HandleSpec] | None = None,
+) -> AuthoredBindingSpec:
+    """Load a single authored binding spec.
+    
+    Args:
+        path: Path to the YAML spec file.
+        compile_commands_path: Optional path to compile_commands.json for AST discovery.
+        existing_handles: Optional dict of handles from previously loaded specs.
+                         These will be available for reference in this spec.
+    """
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     root = _expect_mapping(raw, "binding spec")
 
@@ -813,14 +857,26 @@ def load_authored_spec(path: Path, compile_commands_path: Path | None = None) ->
 
     raw_handles = _expect_list(root.get("handles", []), "handles")
     handles: dict[str, HandleSpec] = {}
+    # Start with existing handles if provided
+    if existing_handles:
+        handles.update(existing_handles)
     for index, item in enumerate(raw_handles):
         context = f"handles[{index}]"
         mapping = _expect_mapping(item, context)
+        destructor = _expect_str(mapping.get("destructor"), f"{context}.destructor")
+        ptr_type = mapping.get("ptr_type", "raw")
+        if not isinstance(ptr_type, str):
+            msg = f"{context}.ptr_type must be a string"
+            raise ValueError(msg)
+        if ptr_type not in _ALLOWED_PTR_TYPES:
+            msg = f"{context}.ptr_type must be one of {sorted(_ALLOWED_PTR_TYPES)}"
+            raise ValueError(msg)
         handle = HandleSpec(
             name=_expect_str(mapping.get("name"), f"{context}.name"),
             cpp_type=_expect_str(mapping.get("cpp_type"), f"{context}.cpp_type"),
             c_type=_expect_str(mapping.get("c_type"), f"{context}.c_type"),
-            destructor=_expect_str(mapping.get("destructor"), f"{context}.destructor"),
+            destructor=destructor,
+            ptr_type=ptr_type,
         )
         if handle.destructor not in _ALLOWED_DESTRUCTORS:
             msg = f"{context}.destructor must be one of {sorted(_ALLOWED_DESTRUCTORS)}"
@@ -830,7 +886,22 @@ def load_authored_spec(path: Path, compile_commands_path: Path | None = None) ->
             raise ValueError(msg)
         handles[handle.name] = handle
 
+    # Parse imports section
+    raw_imports = _expect_list(root.get("imports", []), "imports")
+    imports: list[ImportedHandle] = []
+    for index, item in enumerate(raw_imports):
+        context = f"imports[{index}]"
+        mapping = _expect_mapping(item, context)
+        slice_name_import = _expect_str(mapping.get("slice"), f"{context}.slice")
+        imported_handles = _expect_list(mapping.get("handles", []), f"{context}.handles")
+        for handle_index, handle_name in enumerate(imported_handles):
+            handle_name = _expect_str(handle_name, f"{context}.handles[{handle_index}]")
+            imports.append(ImportedHandle(slice=slice_name_import, handle=handle_name))
+
+    # Imported handles are added to known_handles for type resolution
     known_handles = set(handles)
+    for imp in imports:
+        known_handles.add(imp.handle)
     discovery = _parse_discovery(root.get("discover"), context="discover", known_handles=known_handles)
     if discovery is not None and compile_commands_path is None:
         msg = "compile_commands.json is required for AST-backed discovery"
@@ -849,6 +920,11 @@ def load_authored_spec(path: Path, compile_commands_path: Path | None = None) ->
         for index, item in enumerate(_expect_list(root.get("methods", []), "methods"))
     )
 
+    depends_on_common = root.get("depends_on_common")
+    if depends_on_common is not None and not isinstance(depends_on_common, str):
+        msg = "depends_on_common must be a string"
+        raise ValueError(msg)
+
     return AuthoredBindingSpec(
         schema_version=schema_version,
         module=module,
@@ -856,7 +932,64 @@ def load_authored_spec(path: Path, compile_commands_path: Path | None = None) ->
         c_prefix=c_prefix,
         public_headers=public_headers,
         handles=handles,
+        imports=tuple(imports),
+        depends_on_common=depends_on_common,
         discovery=discovery,
         functions=discovered_functions + adapter_functions,
         methods=discovered_methods + adapter_methods,
+    )
+
+
+def load_merged_specs(
+    spec_paths: list[Path],
+    module: str,
+    c_prefix: str,
+    compile_commands_path: Path | None = None,
+) -> MergedBindingSpec:
+    """Load multiple binding specs and merge them into a unified spec.
+    
+    Handles from earlier specs are available to later specs automatically.
+    This enables cross-module references like ifcgeom using ifcparse::file.
+    """
+    all_handles: dict[str, HandleSpec] = {}
+    all_headers: list[str] = []
+    all_functions: list[CallSpec] = []
+    all_methods: list[CallSpec] = []
+    
+    for spec_path in spec_paths:
+        # Load each spec - later specs can reference handles from earlier ones
+        spec = load_authored_spec(
+            spec_path,
+            compile_commands_path=compile_commands_path,
+            existing_handles=all_handles.copy(),  # Pass accumulated handles
+        )
+        
+        # Merge new handles (check for collisions with exact match to handle
+        # re-definitions gracefully - e.g., if both specs define the same handle)
+        for handle_name, handle_spec in spec.handles.items():
+            if handle_name in all_handles:
+                existing = all_handles[handle_name]
+                # Allow re-definitions if they're identical (from existing_handles)
+                if existing != handle_spec:
+                    msg = f"Handle collision: '{handle_name}' defined differently in multiple specs"
+                    raise ValueError(msg)
+            else:
+                all_handles[handle_name] = handle_spec
+        
+        # Merge headers (deduplicate)
+        for header in spec.public_headers:
+            if header not in all_headers:
+                all_headers.append(header)
+        
+        # Merge functions and methods
+        all_functions.extend(spec.functions)
+        all_methods.extend(spec.methods)
+    
+    return MergedBindingSpec(
+        module=module,
+        c_prefix=c_prefix,
+        public_headers=tuple(all_headers),
+        handles=all_handles,
+        functions=tuple(all_functions),
+        methods=tuple(all_methods),
     )

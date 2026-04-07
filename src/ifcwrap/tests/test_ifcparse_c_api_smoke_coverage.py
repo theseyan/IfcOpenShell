@@ -8,7 +8,7 @@ import re
 
 def test_ifcparse_smoke_sources_reference_every_generated_function() -> None:
     tests_dir = Path(__file__).resolve().parent
-    header_path = tests_dir.parent / "binding_generator" / "generated" / "ifcparse_api.h"
+    header_path = tests_dir.parent / "binding_generator" / "generated" / "ifcopenshell_api.h"
 
     header = header_path.read_text(encoding="utf-8")
     smoke_sources = list(tests_dir.glob("ifcparse_c_api*smoke.c"))

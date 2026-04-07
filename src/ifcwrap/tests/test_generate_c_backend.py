@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from src.ifcwrap.binding_generator.generate_c_backend import generate
+from src.ifcwrap.binding_generator.c_backend import generate
 
 
 def _compile_commands() -> Path:
@@ -18,8 +18,8 @@ def _compile_commands() -> Path:
 
 def test_generate_ifcparse_c_backend(tmp_path: Path) -> None:
     spec = Path(__file__).resolve().parents[1] / "binding_generator" / "specs" / "ifcparse.yml"
-    header_out = tmp_path / "ifcparse_api.h"
-    cpp_out = tmp_path / "ifcparse_api.cpp"
+    header_out = tmp_path / "ifcopenshell_api.h"
+    cpp_out = tmp_path / "ifcopenshell_api.cpp"
 
     generate(spec, header_out, cpp_out, compile_commands_path=_compile_commands())
 
@@ -234,8 +234,8 @@ def test_generate_ifcparse_c_backend_with_compile_commands_when_available(tmp_pa
     if not compile_commands.exists():
         return
 
-    header_out = tmp_path / "ifcparse_api.h"
-    cpp_out = tmp_path / "ifcparse_api.cpp"
+    header_out = tmp_path / "ifcopenshell_api.h"
+    cpp_out = tmp_path / "ifcopenshell_api.cpp"
 
     generate(spec, header_out, cpp_out, compile_commands_path=compile_commands)
 

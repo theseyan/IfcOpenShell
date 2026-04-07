@@ -29,9 +29,12 @@ include(GNUInstallDirs)
 if(BUILD_IFCCAPI)
     set(IFCPARSE_CAPI_GENERATED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/generated")
     set(IFCPARSE_CAPI_SPEC "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/ifcparse.yml")
-    set(IFCPARSE_CAPI_GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/generate_c_backend.py")
-    set(IFCPARSE_CAPI_HEADER "${IFCPARSE_CAPI_GENERATED_DIR}/ifcparse_api.h")
-    set(IFCPARSE_CAPI_CPP "${IFCPARSE_CAPI_GENERATED_DIR}/ifcparse_api.cpp")
+    set(IFCGEOM_CAPI_SPEC "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/ifcgeom.yml")
+    set(IFCPARSE_CAPI_GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/c_backend.py")
+    
+    # Unified API files
+    set(UNIFIED_CAPI_HEADER "${IFCPARSE_CAPI_GENERATED_DIR}/ifcopenshell_api.h")
+    set(UNIFIED_CAPI_CPP "${IFCPARSE_CAPI_GENERATED_DIR}/ifcopenshell_api.cpp")
 
     if(IFCCAPI_REGENERATE_BINDINGS)
         if(NOT ${PYTHON_EXECUTABLE} STREQUAL "")
@@ -54,14 +57,21 @@ if(BUILD_IFCCAPI)
             )
         endif()
 
+        # Unified C API code generation target - generates single header/source from all specs
         add_custom_target(
-            ifcopenshell_ifcparse_capi_codegen
+            ifcopenshell_capi_codegen
             COMMAND
-                ${Python_EXECUTABLE} "${IFCPARSE_CAPI_GENERATOR}" --spec "${IFCPARSE_CAPI_SPEC}" --header-out
-                "${IFCPARSE_CAPI_HEADER}" --cpp-out "${IFCPARSE_CAPI_CPP}" --compile-commands
-                "${CMAKE_BINARY_DIR}/compile_commands.json"
+                ${Python_EXECUTABLE} "${IFCPARSE_CAPI_GENERATOR}"
+                --spec "${IFCPARSE_CAPI_SPEC}"
+                --spec "${IFCGEOM_CAPI_SPEC}"
+                --header-out "${UNIFIED_CAPI_HEADER}"
+                --cpp-out "${UNIFIED_CAPI_CPP}"
+                --compile-commands "${CMAKE_BINARY_DIR}/compile_commands.json"
+                --module ifcopenshell
+                --c-prefix ifcopenshell
             DEPENDS
                 "${IFCPARSE_CAPI_SPEC}"
+                "${IFCGEOM_CAPI_SPEC}"
                 "${IFCPARSE_CAPI_GENERATOR}"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/authored_spec.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/__init__.py"
@@ -69,36 +79,53 @@ if(BUILD_IFCCAPI)
         )
     endif()
 
-    add_library(ifcopenshell_ifcparse_capi "${IFCPARSE_CAPI_HEADER}" "${IFCPARSE_CAPI_CPP}")
-    if(TARGET ifcopenshell_ifcparse_capi_codegen)
-        add_dependencies(ifcopenshell_ifcparse_capi ifcopenshell_ifcparse_capi_codegen)
-    endif()
-    target_link_libraries(ifcopenshell_ifcparse_capi PRIVATE IfcParse)
-    target_include_directories(
-        ifcopenshell_ifcparse_capi
-        PUBLIC "${IFCPARSE_CAPI_GENERATED_DIR}"
-        PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../ifcparse"
-    )
+    # Unified C API library (includes both ifcparse and ifcgeom)
+    if(EXISTS "${UNIFIED_CAPI_HEADER}" AND EXISTS "${UNIFIED_CAPI_CPP}")
+        add_library(ifcopenshell_capi "${UNIFIED_CAPI_HEADER}" "${UNIFIED_CAPI_CPP}")
+        if(TARGET ifcopenshell_capi_codegen)
+            add_dependencies(ifcopenshell_capi ifcopenshell_capi_codegen)
+        endif()
+        target_link_libraries(ifcopenshell_capi PRIVATE IfcParse IfcGeom ${kernel_libraries} ${OpenCASCADE_LIBRARIES})
+        if(TARGET Serializers)
+            target_link_libraries(ifcopenshell_capi PRIVATE Serializers)
+        endif()
+        if(TARGET geometry_serializer)
+            target_link_libraries(ifcopenshell_capi PRIVATE geometry_serializer)
+        endif()
+        target_include_directories(
+            ifcopenshell_capi
+            PUBLIC "${IFCPARSE_CAPI_GENERATED_DIR}"
+            PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../ifcparse"
+            PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../ifcgeom"
+            PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../serializers"
+            PRIVATE "${OCC_INCLUDE_DIR}"
+        )
 
-    add_executable(ifcopenshell_ifcparse_capi_smoke "${CMAKE_CURRENT_SOURCE_DIR}/tests/ifcparse_c_api_smoke.c")
-    target_link_libraries(ifcopenshell_ifcparse_capi_smoke PRIVATE ifcopenshell_ifcparse_capi)
-    target_include_directories(ifcopenshell_ifcparse_capi_smoke PRIVATE "${IFCPARSE_CAPI_GENERATED_DIR}")
+        # Smoke tests - separate executables for each test scope
+        add_executable(ifcopenshell_capi_smoke "${CMAKE_CURRENT_SOURCE_DIR}/tests/ifcgeom_c_api_smoke.c")
+        target_link_libraries(ifcopenshell_capi_smoke PRIVATE ifcopenshell_capi ${kernel_libraries} ${OpenCASCADE_LIBRARIES})
+        if(TARGET geometry_serializer)
+            target_link_libraries(ifcopenshell_capi_smoke PRIVATE geometry_serializer)
+        endif()
+        target_include_directories(ifcopenshell_capi_smoke PRIVATE "${IFCPARSE_CAPI_GENERATED_DIR}")
 
-    add_executable(ifcopenshell_ifcparse_capi_surface_smoke "${CMAKE_CURRENT_SOURCE_DIR}/tests/ifcparse_c_api_surface_smoke.c")
-    target_link_libraries(ifcopenshell_ifcparse_capi_surface_smoke PRIVATE ifcopenshell_ifcparse_capi)
-    target_include_directories(ifcopenshell_ifcparse_capi_surface_smoke PRIVATE "${IFCPARSE_CAPI_GENERATED_DIR}")
-
-    if(WITH_ROCKSDB)
-        add_executable(ifcopenshell_ifcparse_capi_rocksdb_smoke "${CMAKE_CURRENT_SOURCE_DIR}/tests/ifcparse_c_api_rocksdb_smoke.c")
-        target_link_libraries(ifcopenshell_ifcparse_capi_rocksdb_smoke PRIVATE ifcopenshell_ifcparse_capi)
-        target_include_directories(ifcopenshell_ifcparse_capi_rocksdb_smoke PRIVATE "${IFCPARSE_CAPI_GENERATED_DIR}")
+        add_executable(ifcparse_capi_smoke "${CMAKE_CURRENT_SOURCE_DIR}/tests/ifcparse_c_api_smoke.c")
+        target_link_libraries(ifcparse_capi_smoke PRIVATE ifcopenshell_capi ${kernel_libraries} ${OpenCASCADE_LIBRARIES})
+        if(TARGET geometry_serializer)
+            target_link_libraries(ifcparse_capi_smoke PRIVATE geometry_serializer)
+        endif()
+        target_include_directories(ifcparse_capi_smoke PRIVATE "${IFCPARSE_CAPI_GENERATED_DIR}")
+        target_compile_definitions(ifcparse_capi_smoke PRIVATE $<$<BOOL:${WITH_ROCKSDB}>:IFOPSH_WITH_ROCKSDB>)
+    else()
+        message(STATUS "Unified C API not built - generated files not found at ${UNIFIED_CAPI_HEADER}")
     endif()
 
     if(BUILD_TESTING)
-        add_test(NAME ifcopenshell_ifcparse_capi_smoke COMMAND ifcopenshell_ifcparse_capi_smoke)
-        add_test(NAME ifcopenshell_ifcparse_capi_surface_smoke COMMAND ifcopenshell_ifcparse_capi_surface_smoke)
-        if(TARGET ifcopenshell_ifcparse_capi_rocksdb_smoke)
-            add_test(NAME ifcopenshell_ifcparse_capi_rocksdb_smoke COMMAND ifcopenshell_ifcparse_capi_rocksdb_smoke)
+        if(TARGET ifcopenshell_capi_smoke)
+            add_test(NAME ifcopenshell_capi_smoke COMMAND ifcopenshell_capi_smoke)
+        endif()
+        if(TARGET ifcparse_capi_smoke)
+            add_test(NAME ifcparse_capi_smoke COMMAND ifcparse_capi_smoke)
         endif()
     endif()
 endif()

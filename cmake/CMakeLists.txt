@@ -561,9 +561,10 @@ if(BUILD_IFCGEOM)
     add_subdirectory(../src/ifcgeom ifcgeom)
 endif(BUILD_IFCGEOM)
 
-if(BUILD_CONVERT OR BUILD_IFCPYTHON)
+if(BUILD_CONVERT OR BUILD_IFCPYTHON OR BUILD_IFCCAPI)
     add_subdirectory(../src/serializers serializers)
-endif(BUILD_CONVERT OR BUILD_IFCPYTHON)
+    set(IFCOPENSHELL_LIBRARIES ${IFCOPENSHELL_LIBRARIES} ${SERIALIZER_SCHEMA_LIBRARIES})
+endif(BUILD_CONVERT OR BUILD_IFCPYTHON OR BUILD_IFCCAPI)
 
 if(BUILD_CONVERT)
     add_subdirectory(../src/ifcconvert ifcconvert)
