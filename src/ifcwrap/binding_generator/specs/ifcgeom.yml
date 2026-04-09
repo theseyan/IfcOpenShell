@@ -328,72 +328,512 @@ handles:
     c_type: ifcopenshell_ifcgeom_function_item_evaluator_t
     destructor: delete
 
-# No discovery for now - we'll add adapter functions manually
-# discover: null
+discover:
+  include_dir: ../../../ifcgeom
+  class_defaults:
+    include_all: true
+  classes:
+    - handle: triangulation
+      translation_unit: IfcGeomRepresentation.cpp
+      include_all: true
+      exclude:
+        - addEdge
+        - addNormal
+        - addVertex
+        - box_project_uvs
+        - empty
+        - registerEdge
+        - resetWelds
+        - uvs_ref
+      method_sizes:
+        verts: verts_buffer_size
+        faces: faces_buffer_size
+        normals: normals_buffer_size
+        edges: edges_buffer_size
+        material_ids: material_ids_buffer_size
+        item_ids: item_ids_buffer_size
+        edges_item_ids: edges_item_ids_buffer_size
+        uvs: uvs_buffer_size
+        materials: material_count
+
+    - handle: iterator
+      translation_unit: Iterator.cpp
+      include_all: true
+      exclude:
+        - bounds_min
+        - bounds_max
+        - next
+        - process_concurrently
+        - set_cache
+      rename:
+        getLog: get_log
+
+    - handle: brep_representation
+      translation_unit: IfcGeomRepresentation.cpp
+      include_all: true
+      include_inherited_methods: true
+      exclude:
+        - calculate_surface_area
+        - calculate_volume
+        - item
+
+    - handle: element
+      translation_unit: Iterator.cpp
+      include_all: true
+      exclude:
+        - SetParents
+
+    - handle: brep_element
+      translation_unit: Iterator.cpp
+      include_all: true
+      exclude:
+        - geometry_pointer
+
+    - handle: triangulation_element
+      translation_unit: Iterator.cpp
+      include_all: true
+      exclude:
+        - geometry_pointer
+
+    - handle: serialized_element
+      translation_unit: Iterator.cpp
+      include_all: true
+
+    - handle: conversion_result_shape
+      translation_unit: ConversionResult.cpp
+      include_all: true
+      exclude:
+        - Serialize
+        - area
+        - convex_decomposition
+        - length
+        - volume
+      overloads:
+        - cpp_name: solid
+          expose_as: solid_mt
+          params: []
+
+    - handle: serialization
+      translation_unit: IfcGeomRepresentation.cpp
+      include_all: true
+
+    - handle: geometry_serializer
+      translation_unit: ../serializers/WavefrontObjSerializer.cpp
+      include_all: true
+      include_inherited_methods: true
+      exclude:
+        - object_id
+      rename:
+        isTesselated: is_tesselated
+        setUnitNameAndMagnitude: set_unit_name_and_magnitude
+        writeHeader: write_header
+        setFile: set_file
+      overloads:
+        - cpp_name: write
+          expose_as: write_triangulation_element
+          params:
+            - "const IfcGeom::TriangulationElement *"
+        - cpp_name: write
+          expose_as: write_brep_element
+          params:
+            - "const IfcGeom::BRepElement *"
+
+    - handle: taxonomy_circle
+      translation_unit: Iterator.cpp
+      include_all: false
+      discover_fields: true
+      include_inherited_fields: true
+      exclude:
+        - instance
+        - orientation
+        - surface_style
+
+    - handle: taxonomy_line
+      translation_unit: Iterator.cpp
+      include_all: false
+      discover_fields: true
+      include_inherited_fields: true
+      discover_as_item: true
+      exclude:
+        - instance
+        - orientation
+        - surface_style
+
+    - handle: taxonomy_plane
+      translation_unit: Iterator.cpp
+      include_all: false
+      discover_fields: true
+      include_inherited_fields: true
+      exclude:
+        - instance
+        - orientation
+        - surface_style
+
+    - handle: taxonomy_ellipse
+      translation_unit: Iterator.cpp
+      include_all: false
+      discover_fields: true
+      include_inherited_fields: true
+      rename:
+        radius: radius1
+      exclude:
+        - instance
+        - orientation
+        - surface_style
+
+    - handle: taxonomy_style
+      translation_unit: Iterator.cpp
+      include_all: true
+      discover_fields: true
+      exclude:
+        - instance
+        - orientation
+        - surface_style
+        - clone_
+        - calc_hash
+        - reverse
+        - kind
+        - get_color
+
+    - handle: taxonomy_sphere
+      translation_unit: Iterator.cpp
+      include_all: false
+      discover_fields: true
+      include_inherited_fields: true
+      exclude:
+        - instance
+        - orientation
+        - surface_style
+
+    - handle: taxonomy_torus
+      translation_unit: Iterator.cpp
+      include_all: false
+      discover_fields: true
+      include_inherited_fields: true
+      exclude:
+        - instance
+        - orientation
+        - surface_style
+
+    - handle: taxonomy_cylinder
+      translation_unit: Iterator.cpp
+      include_all: false
+      discover_fields: true
+      include_inherited_fields: true
+      exclude:
+        - instance
+        - orientation
+        - surface_style
+
+    - handle: taxonomy_extrusion
+      translation_unit: Iterator.cpp
+      include_all: false
+      discover_fields: true
+      include_inherited_fields: true
+      exclude:
+        - instance
+        - orientation
+        - surface_style
+
+    - handle: taxonomy_offset_curve
+      translation_unit: Iterator.cpp
+      include_all: false
+      discover_fields: true
+      discover_as_item: true
+
+    - handle: taxonomy_revolve
+      translation_unit: Iterator.cpp
+      include_all: false
+      discover_fields: true
+      include_inherited_fields: true
+      discover_optional_fields: true
+      exclude:
+        - instance
+        - orientation
+        - surface_style
+
+    - handle: taxonomy_bspline_curve
+      translation_unit: Iterator.cpp
+      include_all: false
+      discover_fields: true
+      discover_as_item: true
+      discover_optional_fields: true
+      exclude:
+        - control_points
+      discover_children:
+        cpp_field: control_points
+        element_handle: taxonomy_point3
+        count_as: control_point_count
+        at_as: control_point_at
+
+    - handle: taxonomy_sweep_along_curve
+      translation_unit: Iterator.cpp
+      include_all: false
+      discover_fields: true
+      include_inherited_fields: true
+      discover_has_fields: true
+      exclude:
+        - instance
+        - orientation
+        - surface_style
+
+    - handle: taxonomy_face
+      translation_unit: Iterator.cpp
+      include_all: false
+      discover_fields: true
+      discover_as_item: true
+      extra_fields:
+        matrix: "matrix4::ptr"
+      discover_children:
+        element_handle: taxonomy_loop
+        count_as: loop_count
+        at_as: loop_at
+
+    - handle: taxonomy_loft
+      translation_unit: Iterator.cpp
+      include_all: false
+      discover_fields: true
+      discover_has_fields: true
+      field_setters:
+        - axis
+      discover_children:
+        element_handle: taxonomy_item
+        count_as: item_count
+        at_as: item_at
+        add_as: add_item
+        add_cast_cpp_type: "ifcopenshell::geometry::taxonomy::geom_item"
+
+    - handle: taxonomy_loop
+      translation_unit: Iterator.cpp
+      include_all: false
+      discover_children:
+        element_handle: taxonomy_edge
+        count_as: edge_count
+        at_as: edge_at
+
+    - handle: taxonomy_shell
+      translation_unit: Iterator.cpp
+      include_all: false
+      discover_children:
+        element_handle: taxonomy_face
+        count_as: face_count
+        at_as: face_at
+
+    - handle: taxonomy_solid
+      translation_unit: Iterator.cpp
+      include_all: false
+      extra_fields:
+        matrix: "matrix4::ptr"
+      discover_children:
+        element_handle: taxonomy_shell
+        count_as: shell_count
+        at_as: shell_at
+
+    - handle: taxonomy_collection
+      translation_unit: Iterator.cpp
+      include_all: false
+      discover_children:
+        element_handle: taxonomy_item
+        count_as: item_count
+        at_as: item_at
+        add_as: add_item
+        add_cast_cpp_type: "ifcopenshell::geometry::taxonomy::geom_item"
+
+    - handle: taxonomy_boolean_result
+      translation_unit: Iterator.cpp
+      include_all: false
+      discover_fields: true
+      enum_types_as_int32:
+        - operation_t
+      discover_children:
+        element_handle: taxonomy_item
+        count_as: item_count
+        at_as: item_at
+        add_as: add_item
+        add_cast_cpp_type: "ifcopenshell::geometry::taxonomy::geom_item"
+
+    - handle: taxonomy_bspline_surface
+      translation_unit: Iterator.cpp
+      include_all: false
+      discover_as_item: true
+      array_pair_fields:
+        degree: int32
+        multiplicities: int32_list
+        knots: double_list
+
+    - handle: opaque_number
+      translation_unit: ConversionResult.cpp
+      include_all: true
+      exclude:
+        - clone_
+      binary_operators:
+        add: "+"
+        subtract: "-"
+        multiply: "*"
+        divide: "/"
+      unary_operators:
+        negate: "-"
+      comparison_operators:
+        equals: "=="
+        less_than: "<"
+
+    - handle: serializer
+      translation_unit: Iterator.cpp
+      include_all: true
+      rename:
+        writeHeader: write_header
+        setFile: set_file
+
+    - handle: settings
+      translation_unit: Iterator.cpp
+      include_all: true
+      include_inherited_methods: true
+      exclude:
+        - set
+        - get
+      variant_accessors:
+        get_method: get
+        set_method: set
+        variant_type: "ifcopenshell::geometry::Settings::value_variant_t"
+        types:
+          bool: "bool"
+          int: "int"
+          double: "double"
+          string: "std::string"
+
+    - handle: serializer_settings
+      translation_unit: ../serializers/WavefrontObjSerializer.cpp
+      include_all: true
+      include_inherited_methods: true
+      exclude:
+        - set
+        - get
+      variant_accessors:
+        get_method: get
+        set_method: set
+        variant_type: "ifcopenshell::geometry::SerializerSettings::value_variant_t"
+        types:
+          bool: "bool"
+          int: "int"
+          double: "double"
+          string: "std::string"
+
+    - handle: buffer
+      translation_unit: ../serializers/WavefrontObjSerializer.cpp
+      include_all: true
+      exclude:
+        - filename
+
+    - handle: taxonomy_item
+      translation_unit: Iterator.cpp
+      include_all: true
+      enum_types_as_int32:
+        - kinds
+      exclude:
+        - clone_
+        - reverse
+        - calc_hash
+
+    - handle: tree
+      translation_unit: kernels/opencascade/boolean_utils.cpp
+      include_all: true
+      overloads:
+        - cpp_name: enable_face_styles
+          expose_as: enable_face_styles
+          params: []
+        - cpp_name: enable_face_styles
+          expose_as: set_enable_face_styles
+          params: [bool]
+        - cpp_name: add_file
+          expose_as: add_file
+          params: ["IfcParse::IfcFile &", "ifcopenshell::geometry::Settings"]
+        - cpp_name: add_file
+          expose_as: add_iterator
+          params: ["IfcGeom::Iterator &"]
+
+    - handle: tree_clash
+      translation_unit: kernels/opencascade/boolean_utils.cpp
+      include_all: false
+      discover_fields: true
+      rename:
+        clash_type: type
+
+    - handle: tree_ray_intersection
+      translation_unit: kernels/opencascade/boolean_utils.cpp
+      include_all: false
+      discover_fields: true
+      exclude:
+        - instance
+
+    - handle: taxonomy_point3
+      translation_unit: Iterator.cpp
+      include_all: false
+      ccomponents_accessor:
+        expose_as: get_data
+        dimensions: 3
+
+    - handle: taxonomy_direction3
+      translation_unit: Iterator.cpp
+      include_all: false
+      ccomponents_accessor:
+        expose_as: get_data
+        dimensions: 3
+
+    - handle: taxonomy_matrix4
+      translation_unit: Iterator.cpp
+      include_all: false
+      ccomponents_accessor:
+        expose_as: get_data
+        dimensions: 16
+
+    - handle: taxonomy_colour
+      translation_unit: Iterator.cpp
+      include_all: false
+      ccomponents_accessor:
+        expose_as: get_data
+        dimensions: 3
+
+    - handle: transformation
+      translation_unit: Iterator.cpp
+      include_all: false
+      ccomponents_accessor:
+        expose_as: matrix
+        dimensions: 16
+        access_via: "data()->ccomponents"
 
 functions:
-  - kind: adapter_function
+  - kind: constructor
     expose_as: create_settings
     c_name: ifcopenshell_ifcgeom_create_settings
-    returns:
-      kind: handle
-      handle: settings
-      ownership: owned
+    handle: settings
     params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return new ifcopenshell::geometry::Settings();
 
-  - kind: adapter_function
+  - kind: constructor
     expose_as: create_serializer_settings
     c_name: ifcopenshell_ifcgeom_create_serializer_settings
-    returns:
-      kind: handle
-      handle: serializer_settings
-      ownership: owned
+    handle: serializer_settings
     params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return new ifcopenshell::geometry::SerializerSettings();
 
-  - kind: adapter_function
+  - kind: constructor
     expose_as: create_buffer
     c_name: ifcopenshell_ifcgeom_create_buffer
-    returns:
-      kind: handle
-      handle: buffer
-      ownership: owned
+    handle: buffer
     params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return new stream_or_filename();
 
-  - kind: adapter_function
+  - kind: constructor
     expose_as: create_buffer_from_filename
     c_name: ifcopenshell_ifcgeom_create_buffer_from_filename
-    returns:
-      kind: handle
-      handle: buffer
-      ownership: owned
+    handle: buffer
     params:
       - name: filename
         type:
           kind: string
-    implementation:
-      kind: inline_cpp
-      body: |
-        return new stream_or_filename(filename_cpp);
 
-  - kind: adapter_function
+  - kind: constructor
     expose_as: create_obj_serializer
     c_name: ifcopenshell_ifcgeom_create_obj_serializer
-    returns:
-      kind: handle
-      handle: geometry_serializer
-      ownership: owned
+    handle: geometry_serializer
+    cpp_class: WaveFrontOBJSerializer
     params:
       - name: obj_output
         type:
@@ -415,19 +855,12 @@ functions:
           kind: handle
           handle: serializer_settings
           ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return static_cast<GeometrySerializer*>(
-            new WaveFrontOBJSerializer(*obj_output_cpp, *mtl_output_cpp, *geometry_settings_cpp, *serializer_settings_cpp));
 
-  - kind: adapter_function
+  - kind: constructor
     expose_as: create_ttl_serializer
     c_name: ifcopenshell_ifcgeom_create_ttl_serializer
-    returns:
-      kind: handle
-      handle: geometry_serializer
-      ownership: owned
+    handle: geometry_serializer
+    cpp_class: TtlWktSerializer
     params:
       - name: output
         type:
@@ -444,19 +877,12 @@ functions:
           kind: handle
           handle: serializer_settings
           ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return static_cast<GeometrySerializer*>(
-            new TtlWktSerializer(*output_cpp, *geometry_settings_cpp, *serializer_settings_cpp));
 
-  - kind: adapter_function
+  - kind: constructor
     expose_as: create_svg_serializer
     c_name: ifcopenshell_ifcgeom_create_svg_serializer
-    returns:
-      kind: handle
-      handle: geometry_serializer
-      ownership: owned
+    handle: geometry_serializer
+    cpp_class: SvgSerializer
     params:
       - name: output
         type:
@@ -473,24 +899,17 @@ functions:
           kind: handle
           handle: serializer_settings
           ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return static_cast<GeometrySerializer*>(
-            new SvgSerializer(*output_cpp, *geometry_settings_cpp, *serializer_settings_cpp));
 
-  - kind: adapter_function
+  - kind: constructor
     expose_as: create_gltf_serializer
     c_name: ifcopenshell_ifcgeom_create_gltf_serializer
-    returns:
-      kind: handle
-      handle: geometry_serializer
-      ownership: owned
+    handle: geometry_serializer
+    cpp_class: GltfSerializer
+    compile_guard: WITH_GLTF
     params:
       - name: filename
         type:
           kind: string
-          ownership: borrowed
       - name: geometry_settings
         type:
           kind: handle
@@ -501,28 +920,17 @@ functions:
           kind: handle
           handle: serializer_settings
           ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        #ifdef WITH_GLTF
-        return static_cast<GeometrySerializer*>(
-            new GltfSerializer(std::string(filename), *geometry_settings_cpp, *serializer_settings_cpp));
-        #else
-        throw std::runtime_error("GLTF support not enabled in this build");
-        #endif
 
-  - kind: adapter_function
+  - kind: constructor
     expose_as: create_iges_serializer
     c_name: ifcopenshell_ifcgeom_create_iges_serializer
-    returns:
-      kind: handle
-      handle: geometry_serializer
-      ownership: owned
+    handle: geometry_serializer
+    cpp_class: IgesSerializer
+    compile_guard: IFOPSH_WITH_OPENCASCADE
     params:
       - name: filename
         type:
           kind: string
-          ownership: borrowed
       - name: geometry_settings
         type:
           kind: handle
@@ -533,28 +941,17 @@ functions:
           kind: handle
           handle: serializer_settings
           ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        #ifdef IFOPSH_WITH_OPENCASCADE
-        return static_cast<GeometrySerializer*>(
-            new IgesSerializer(std::string(filename), *geometry_settings_cpp, *serializer_settings_cpp));
-        #else
-        throw std::runtime_error("IGES serializer requires OpenCascade");
-        #endif
 
-  - kind: adapter_function
+  - kind: constructor
     expose_as: create_step_serializer
     c_name: ifcopenshell_ifcgeom_create_step_serializer
-    returns:
-      kind: handle
-      handle: geometry_serializer
-      ownership: owned
+    handle: geometry_serializer
+    cpp_class: StepSerializer
+    compile_guard: IFOPSH_WITH_OPENCASCADE
     params:
       - name: filename
         type:
           kind: string
-          ownership: borrowed
       - name: geometry_settings
         type:
           kind: handle
@@ -565,28 +962,17 @@ functions:
           kind: handle
           handle: serializer_settings
           ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        #ifdef IFOPSH_WITH_OPENCASCADE
-        return static_cast<GeometrySerializer*>(
-            new StepSerializer(std::string(filename), *geometry_settings_cpp, *serializer_settings_cpp));
-        #else
-        throw std::runtime_error("STEP serializer requires OpenCascade");
-        #endif
 
-  - kind: adapter_function
+  - kind: constructor
     expose_as: create_collada_serializer
     c_name: ifcopenshell_ifcgeom_create_collada_serializer
-    returns:
-      kind: handle
-      handle: geometry_serializer
-      ownership: owned
+    handle: geometry_serializer
+    cpp_class: ColladaSerializer
+    compile_guard: WITH_OPENCOLLADA
     params:
       - name: filename
         type:
           kind: string
-          ownership: borrowed
       - name: geometry_settings
         type:
           kind: handle
@@ -597,29 +983,17 @@ functions:
           kind: handle
           handle: serializer_settings
           ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        #ifdef WITH_OPENCOLLADA
-        return static_cast<GeometrySerializer*>(
-            new ColladaSerializer(std::string(filename), *geometry_settings_cpp, *serializer_settings_cpp));
-        #else
-        throw std::runtime_error("COLLADA serializer not available in this build");
-        return static_cast<GeometrySerializer*>(nullptr); // unreachable; establishes return type
-        #endif
 
-  - kind: adapter_function
+  - kind: constructor
     expose_as: create_hdf_serializer
     c_name: ifcopenshell_ifcgeom_create_hdf_serializer
-    returns:
-      kind: handle
-      handle: geometry_serializer
-      ownership: owned
+    handle: geometry_serializer
+    cpp_class: HdfSerializer
+    compile_guard: "defined(WITH_HDF5) && defined(IFOPSH_WITH_OPENCASCADE)"
     params:
       - name: filename
         type:
           kind: string
-          ownership: borrowed
       - name: geometry_settings
         type:
           kind: handle
@@ -630,16 +1004,6 @@ functions:
           kind: handle
           handle: serializer_settings
           ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        #if defined(WITH_HDF5) && defined(IFOPSH_WITH_OPENCASCADE)
-        return static_cast<GeometrySerializer*>(
-            new HdfSerializer(std::string(filename), *geometry_settings_cpp, *serializer_settings_cpp));
-        #else
-        throw std::runtime_error("HDF serializer not available in this build");
-        return static_cast<GeometrySerializer*>(nullptr); // unreachable; establishes return type
-        #endif
 
   - kind: adapter_function
     expose_as: create_json_serializer
@@ -715,72 +1079,44 @@ functions:
         throw std::runtime_error("RocksDB serializer requires WITH_ROCKSDB support");
         #endif
 
-  - kind: adapter_function
+  - kind: constructor
     expose_as: create_rocksdb_serializer_streaming
     c_name: ifcopenshell_ifcgeom_create_rocksdb_serializer_streaming
-    returns:
-      kind: handle
-      handle: serializer
-      ownership: owned
+    handle: serializer
+    cpp_class: RocksDbSerializer
+    compile_guard: IFOPSH_WITH_ROCKSDB
     params:
       - name: input_filename
         type:
           kind: string
-          ownership: borrowed
       - name: rocksdb_filename
         type:
           kind: string
-          ownership: borrowed
       - name: stream
         type:
           kind: bool
-    implementation:
-      kind: inline_cpp
-      body: |
-        #ifdef IFOPSH_WITH_ROCKSDB
-        return new RocksDbSerializer(std::string(input_filename), std::string(rocksdb_filename), stream);
-        #else
-        throw std::runtime_error("RocksDB serializer requires WITH_ROCKSDB support");
-        #endif
 
-  - kind: adapter_function
+  - kind: constructor
     expose_as: create_tree
     c_name: ifcopenshell_ifcgeom_create_tree
-    returns:
-      kind: handle
-      handle: tree
-      ownership: owned
+    handle: tree
     params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return new IfcGeom::tree();
 
-  - kind: adapter_function
+  - kind: constructor
     expose_as: create_tree_from_file
     c_name: ifcopenshell_ifcgeom_create_tree_from_file
-    returns:
-      kind: handle
-      handle: tree
-      ownership: owned
+    handle: tree
     params:
       - name: file
         type:
           kind: handle
           handle: file
           ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return new IfcGeom::tree(*file_cpp);
 
-  - kind: adapter_function
+  - kind: constructor
     expose_as: create_tree_from_file_with_settings
     c_name: ifcopenshell_ifcgeom_create_tree_from_file_with_settings
-    returns:
-      kind: handle
-      handle: tree
-      ownership: owned
+    handle: tree
     params:
       - name: file
         type:
@@ -792,28 +1128,17 @@ functions:
           kind: handle
           handle: settings
           ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return new IfcGeom::tree(*file_cpp, *settings_cpp);
 
-  - kind: adapter_function
+  - kind: constructor
     expose_as: create_tree_from_iterator
     c_name: ifcopenshell_ifcgeom_create_tree_from_iterator
-    returns:
-      kind: handle
-      handle: tree
-      ownership: owned
+    handle: tree
     params:
       - name: iterator
         type:
           kind: handle
           handle: iterator
           ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return new IfcGeom::tree(*iterator_cpp);
 
   # Iterator constructor - takes file handle from ifcparse
   - kind: adapter_function
@@ -1886,50 +2211,28 @@ functions:
         #endif
 
   # create_epeck_from_int: Create CGAL exact precision number from integer
-  - kind: adapter_function
+  - kind: constructor
     expose_as: create_epeck_from_int
     c_name: ifcopenshell_ifcgeom_create_epeck_from_int
-    returns:
-      kind: handle
-      handle: opaque_number
-      ownership: owned
+    handle: opaque_number
+    cpp_class: "ifcopenshell::geometry::NumberEpeck"
+    compile_guard: IFOPSH_WITH_CGAL
     params:
       - name: value
         type:
           kind: int32
-    implementation:
-      kind: inline_cpp
-      body: |
-        #ifdef IFOPSH_WITH_CGAL
-        return new ifcopenshell::geometry::NumberEpeck(value);
-        #else
-        (void)value;
-        throw std::runtime_error("create_epeck requires IFOPSH_WITH_CGAL");
-        return (IfcGeom::OpaqueNumber*)nullptr;
-        #endif
 
   # create_epeck_from_double: Create CGAL exact precision number from double
-  - kind: adapter_function
+  - kind: constructor
     expose_as: create_epeck_from_double
     c_name: ifcopenshell_ifcgeom_create_epeck_from_double
-    returns:
-      kind: handle
-      handle: opaque_number
-      ownership: owned
+    handle: opaque_number
+    cpp_class: "ifcopenshell::geometry::NumberEpeck"
+    compile_guard: IFOPSH_WITH_CGAL
     params:
       - name: value
         type:
           kind: double
-    implementation:
-      kind: inline_cpp
-      body: |
-        #ifdef IFOPSH_WITH_CGAL
-        return new ifcopenshell::geometry::NumberEpeck(value);
-        #else
-        (void)value;
-        throw std::runtime_error("create_epeck requires IFOPSH_WITH_CGAL");
-        return (IfcGeom::OpaqueNumber*)nullptr;
-        #endif
 
   # create_epeck_from_string: Create CGAL exact precision number from string
   - kind: adapter_function
@@ -2269,77 +2572,6 @@ functions:
         return new ifcopenshell::geometry::function_item_evaluator(*settings_cpp, fn);
 
 methods:
-  # stream_or_filename methods
-  - kind: method
-    cpp_name: get_value
-    receiver: buffer
-    expose_as: get_value
-    c_name: ifcopenshell_ifcgeom_buffer_get_value
-    returns:
-      kind: string
-      ownership: copy
-    params: []
-
-  - kind: method
-    cpp_name: is_ready
-    receiver: buffer
-    expose_as: is_ready
-    c_name: ifcopenshell_ifcgeom_buffer_is_ready
-    returns:
-      kind: bool
-    params: []
-
-  # GeometrySerializer methods
-  - kind: method
-    cpp_name: ready
-    receiver: geometry_serializer
-    expose_as: ready
-    c_name: ifcopenshell_ifcgeom_geometry_serializer_ready
-    returns:
-      kind: bool
-    params: []
-
-  - kind: method
-    cpp_name: writeHeader
-    receiver: geometry_serializer
-    expose_as: write_header
-    c_name: ifcopenshell_ifcgeom_geometry_serializer_write_header
-    returns:
-      kind: void
-    params: []
-
-  - kind: method
-    cpp_name: finalize
-    receiver: geometry_serializer
-    expose_as: finalize
-    c_name: ifcopenshell_ifcgeom_geometry_serializer_finalize
-    returns:
-      kind: void
-    params: []
-
-  - kind: method
-    cpp_name: isTesselated
-    receiver: geometry_serializer
-    expose_as: is_tesselated
-    c_name: ifcopenshell_ifcgeom_geometry_serializer_is_tesselated
-    returns:
-      kind: bool
-    params: []
-
-  - kind: method
-    cpp_name: setFile
-    receiver: geometry_serializer
-    expose_as: set_file
-    c_name: ifcopenshell_ifcgeom_geometry_serializer_set_file
-    returns:
-      kind: void
-    params:
-      - name: file
-        type:
-          kind: handle
-          handle: file
-          ownership: borrowed
-
   - kind: adapter_method
     receiver: geometry_serializer
     expose_as: set_unit_name_and_magnitude
@@ -2358,97 +2590,7 @@ methods:
       body: |
         self_cpp->setUnitNameAndMagnitude(name_cpp, static_cast<float>(magnitude));
 
-  - kind: method
-    cpp_name: write
-    receiver: geometry_serializer
-    expose_as: write_triangulation_element
-    c_name: ifcopenshell_ifcgeom_geometry_serializer_write_triangulation_element
-    returns:
-      kind: void
-    params:
-      - name: element
-        type:
-          kind: handle
-          handle: triangulation_element
-          ownership: borrowed
-
-  - kind: method
-    cpp_name: write
-    receiver: geometry_serializer
-    expose_as: write_brep_element
-    c_name: ifcopenshell_ifcgeom_geometry_serializer_write_brep_element
-    returns:
-      kind: void
-    params:
-      - name: element
-        type:
-          kind: handle
-          handle: brep_element
-          ownership: borrowed
-
-  # === Serializer (old API) Methods ===
-
-  - kind: method
-    cpp_name: ready
-    receiver: serializer
-    expose_as: ready
-    c_name: ifcopenshell_ifcgeom_serializer_ready
-    returns:
-      kind: bool
-    params: []
-
-  - kind: method
-    cpp_name: writeHeader
-    receiver: serializer
-    expose_as: write_header
-    c_name: ifcopenshell_ifcgeom_serializer_write_header
-    returns:
-      kind: void
-    params: []
-
-  - kind: method
-    cpp_name: finalize
-    receiver: serializer
-    expose_as: finalize
-    c_name: ifcopenshell_ifcgeom_serializer_finalize
-    returns:
-      kind: void
-    params: []
-
-  - kind: method
-    cpp_name: setFile
-    receiver: serializer
-    expose_as: set_file
-    c_name: ifcopenshell_ifcgeom_serializer_set_file
-    returns:
-      kind: void
-    params:
-      - name: file
-        type:
-          kind: handle
-          handle: file
-          ownership: borrowed
-
   # SerializerSettings methods
-  - kind: adapter_method
-    receiver: serializer_settings
-    expose_as: get_bool
-    c_name: ifcopenshell_ifcgeom_serializer_settings_get_bool
-    returns:
-      kind: bool
-    params:
-      - name: name
-        type:
-          kind: string
-    implementation:
-      kind: inline_cpp
-      body: |
-        auto val = self_cpp->get(name_cpp);
-        if (auto* b = boost::get<bool>(&val)) {
-            return *b;
-        }
-        throw std::runtime_error("Serializer setting '" + name_cpp + "' is not a boolean");
-
   - kind: method
     cpp_name: set
     receiver: serializer_settings
@@ -2464,61 +2606,6 @@ methods:
         type:
           kind: bool
 
-  - kind: adapter_method
-    receiver: serializer_settings
-    expose_as: get_int
-    c_name: ifcopenshell_ifcgeom_serializer_settings_get_int
-    returns:
-      kind: int32
-    params:
-      - name: name
-        type:
-          kind: string
-    implementation:
-      kind: inline_cpp
-      body: |
-        auto val = self_cpp->get(name_cpp);
-        if (auto* i = boost::get<int>(&val)) {
-            return *i;
-        }
-        throw std::runtime_error("Serializer setting '" + name_cpp + "' is not an integer");
-
-  - kind: adapter_method
-    receiver: serializer_settings
-    expose_as: set_int
-    c_name: ifcopenshell_ifcgeom_serializer_settings_set_int
-    returns:
-      kind: void
-    params:
-      - name: name
-        type:
-          kind: string
-      - name: value
-        type:
-          kind: int32
-    implementation:
-      kind: inline_cpp
-      body: |
-        self_cpp->set(name_cpp, ifcopenshell::geometry::SerializerSettings::value_variant_t(static_cast<int>(value)));
-
-  - kind: adapter_method
-    receiver: serializer_settings
-    expose_as: get_double
-    c_name: ifcopenshell_ifcgeom_serializer_settings_get_double
-    returns:
-      kind: double
-    params:
-      - name: name
-        type:
-          kind: string
-    implementation:
-      kind: inline_cpp
-      body: |
-        auto val = self_cpp->get(name_cpp);
-        if (auto* d = boost::get<double>(&val)) {
-            return *d;
-        }
-        throw std::runtime_error("Serializer setting '" + name_cpp + "' is not a double");
 
   - kind: method
     cpp_name: set
@@ -2535,25 +2622,6 @@ methods:
         type:
           kind: double
 
-  - kind: adapter_method
-    receiver: serializer_settings
-    expose_as: get_string
-    c_name: ifcopenshell_ifcgeom_serializer_settings_get_string
-    returns:
-      kind: string
-      ownership: copy
-    params:
-      - name: name
-        type:
-          kind: string
-    implementation:
-      kind: inline_cpp
-      body: |
-        auto val = self_cpp->get(name_cpp);
-        if (auto* s = boost::get<std::string>(&val)) {
-            return *s;
-        }
-        throw std::runtime_error("Serializer setting '" + name_cpp + "' is not a string");
 
   - kind: method
     cpp_name: set
@@ -2570,69 +2638,7 @@ methods:
         type:
           kind: string
 
-  - kind: method
-    cpp_name: setting_names
-    receiver: serializer_settings
-    expose_as: setting_names
-    c_name: ifcopenshell_ifcgeom_serializer_settings_setting_names
-    returns:
-      kind: string_list
-      ownership: copy
-    params: []
-
-  - kind: method
-    cpp_name: get_type
-    receiver: serializer_settings
-    expose_as: get_type
-    c_name: ifcopenshell_ifcgeom_serializer_settings_get_type
-    returns:
-      kind: string
-      ownership: copy
-    params:
-      - name: name
-        type:
-          kind: string
-
   # Tree methods
-  - kind: adapter_method
-    receiver: tree
-    expose_as: add_file
-    c_name: ifcopenshell_ifcgeom_tree_add_file
-    returns:
-      kind: void
-    params:
-      - name: file
-        type:
-          kind: handle
-          handle: file
-          ownership: borrowed
-      - name: settings
-        type:
-          kind: handle
-          handle: settings
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        self_cpp->add_file(*file_cpp, *settings_cpp);
-
-  - kind: adapter_method
-    receiver: tree
-    expose_as: add_iterator
-    c_name: ifcopenshell_ifcgeom_tree_add_iterator
-    returns:
-      kind: void
-    params:
-      - name: iterator
-        type:
-          kind: handle
-          handle: iterator
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        self_cpp->add_file(*iterator_cpp);
-
   - kind: adapter_method
     receiver: tree
     expose_as: select_element
@@ -2733,47 +2739,6 @@ methods:
             result->push(const_cast<IfcUtil::IfcBaseEntity*>(item));
         }
         return result;
-
-  - kind: method
-    cpp_name: distances
-    receiver: tree
-    expose_as: distances
-    c_name: ifcopenshell_ifcgeom_tree_distances
-    returns:
-      kind: double_list
-      ownership: copy
-    params: []
-
-  - kind: method
-    cpp_name: protrusion_distances
-    receiver: tree
-    expose_as: protrusion_distances
-    c_name: ifcopenshell_ifcgeom_tree_protrusion_distances
-    returns:
-      kind: double_list
-      ownership: copy
-    params: []
-
-  - kind: method
-    cpp_name: enable_face_styles
-    receiver: tree
-    expose_as: enable_face_styles
-    c_name: ifcopenshell_ifcgeom_tree_enable_face_styles
-    returns:
-      kind: bool
-    params: []
-
-  - kind: method
-    cpp_name: enable_face_styles
-    receiver: tree
-    expose_as: set_enable_face_styles
-    c_name: ifcopenshell_ifcgeom_tree_set_enable_face_styles
-    returns:
-      kind: void
-    params:
-      - name: value
-        type:
-          kind: bool
 
   - kind: adapter_method
     receiver: tree
@@ -2997,113 +2962,6 @@ methods:
         }
         return new IfcGeom::clash((*clashes_cpp)[index]);
 
-  - kind: adapter_method
-    receiver: tree
-    expose_as: clash_type
-    c_name: ifcopenshell_ifcgeom_tree_clash_type
-    returns:
-      kind: int32
-    params:
-      - name: clash
-        type:
-          kind: handle
-          handle: tree_clash
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return static_cast<int32_t>(clash_cpp->clash_type);
-
-  - kind: adapter_method
-    receiver: tree
-    expose_as: clash_distance
-    c_name: ifcopenshell_ifcgeom_tree_clash_distance
-    returns:
-      kind: double
-    params:
-      - name: clash
-        type:
-          kind: handle
-          handle: tree_clash
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return clash_cpp->distance;
-
-  - kind: adapter_method
-    receiver: tree
-    expose_as: clash_a
-    c_name: ifcopenshell_ifcgeom_tree_clash_a
-    returns:
-      kind: handle
-      handle: instance
-      ownership: borrowed
-    params:
-      - name: clash
-        type:
-          kind: handle
-          handle: tree_clash
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return const_cast<IfcUtil::IfcBaseClass*>(clash_cpp->a);
-
-  - kind: adapter_method
-    receiver: tree
-    expose_as: clash_b
-    c_name: ifcopenshell_ifcgeom_tree_clash_b
-    returns:
-      kind: handle
-      handle: instance
-      ownership: borrowed
-    params:
-      - name: clash
-        type:
-          kind: handle
-          handle: tree_clash
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return const_cast<IfcUtil::IfcBaseClass*>(clash_cpp->b);
-
-  - kind: adapter_method
-    receiver: tree
-    expose_as: clash_p1
-    c_name: ifcopenshell_ifcgeom_tree_clash_p1
-    returns:
-      kind: double_list
-      ownership: copy
-    params:
-      - name: clash
-        type:
-          kind: handle
-          handle: tree_clash
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return std::vector<double>{clash_cpp->p1[0], clash_cpp->p1[1], clash_cpp->p1[2]};
-
-  - kind: adapter_method
-    receiver: tree
-    expose_as: clash_p2
-    c_name: ifcopenshell_ifcgeom_tree_clash_p2
-    returns:
-      kind: double_list
-      ownership: copy
-    params:
-      - name: clash
-        type:
-          kind: handle
-          handle: tree_clash
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return std::vector<double>{clash_cpp->p2[0], clash_cpp->p2[1], clash_cpp->p2[2]};
 
   - kind: adapter_method
     receiver: tree
@@ -3185,156 +3043,20 @@ methods:
         return new IfcGeom::ray_intersection_result((*intersections_cpp)[index]);
 
   - kind: adapter_method
-    receiver: tree
-    expose_as: ray_intersection_distance
-    c_name: ifcopenshell_ifcgeom_tree_ray_intersection_distance
-    returns:
-      kind: double
-    params:
-      - name: intersection
-        type:
-          kind: handle
-          handle: tree_ray_intersection
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return intersection_cpp->distance;
-
-  - kind: adapter_method
-    receiver: tree
-    expose_as: ray_intersection_style_index
-    c_name: ifcopenshell_ifcgeom_tree_ray_intersection_style_index
-    returns:
-      kind: int32
-    params:
-      - name: intersection
-        type:
-          kind: handle
-          handle: tree_ray_intersection
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return static_cast<int32_t>(intersection_cpp->style_index);
-
-  - kind: adapter_method
-    receiver: tree
-    expose_as: ray_intersection_instance
+    receiver: tree_ray_intersection
+    expose_as: instance
     c_name: ifcopenshell_ifcgeom_tree_ray_intersection_instance
     returns:
       kind: handle
       handle: instance
       ownership: borrowed
-    params:
-      - name: intersection
-        type:
-          kind: handle
-          handle: tree_ray_intersection
-          ownership: borrowed
+    params: []
     implementation:
       kind: inline_cpp
       body: |
-        return const_cast<IfcUtil::IfcBaseEntity*>(intersection_cpp->instance);
-
-  - kind: adapter_method
-    receiver: tree
-    expose_as: ray_intersection_position
-    c_name: ifcopenshell_ifcgeom_tree_ray_intersection_position
-    returns:
-      kind: double_list
-      ownership: copy
-    params:
-      - name: intersection
-        type:
-          kind: handle
-          handle: tree_ray_intersection
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return std::vector<double>{
-            intersection_cpp->position[0],
-            intersection_cpp->position[1],
-            intersection_cpp->position[2]
-        };
-
-  - kind: adapter_method
-    receiver: tree
-    expose_as: ray_intersection_normal
-    c_name: ifcopenshell_ifcgeom_tree_ray_intersection_normal
-    returns:
-      kind: double_list
-      ownership: copy
-    params:
-      - name: intersection
-        type:
-          kind: handle
-          handle: tree_ray_intersection
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return std::vector<double>{
-            intersection_cpp->normal[0],
-            intersection_cpp->normal[1],
-            intersection_cpp->normal[2]
-        };
-
-  - kind: adapter_method
-    receiver: tree
-    expose_as: ray_intersection_ray_distance
-    c_name: ifcopenshell_ifcgeom_tree_ray_intersection_ray_distance
-    returns:
-      kind: double
-    params:
-      - name: intersection
-        type:
-          kind: handle
-          handle: tree_ray_intersection
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return intersection_cpp->ray_distance;
-
-  - kind: adapter_method
-    receiver: tree
-    expose_as: ray_intersection_dot_product
-    c_name: ifcopenshell_ifcgeom_tree_ray_intersection_dot_product
-    returns:
-      kind: double
-    params:
-      - name: intersection
-        type:
-          kind: handle
-          handle: tree_ray_intersection
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return intersection_cpp->dot_product;
+        return const_cast<IfcUtil::IfcBaseEntity*>(self_cpp->instance);
 
   # Settings methods
-  - kind: adapter_method
-    receiver: settings
-    expose_as: get_bool
-    c_name: ifcopenshell_ifcgeom_settings_get_bool
-    returns:
-      kind: bool
-    params:
-      - name: name
-        type:
-          kind: string
-    implementation:
-      kind: inline_cpp
-      body: |
-        auto val = self_cpp->get(name_cpp);
-        if (auto* b = boost::get<bool>(&val)) {
-            return *b;
-        }
-        throw std::runtime_error("Setting '" + name_cpp + "' is not a boolean");
-
   - kind: method
     cpp_name: set
     receiver: settings
@@ -3350,24 +3072,6 @@ methods:
         type:
           kind: bool
 
-  - kind: adapter_method
-    receiver: settings
-    expose_as: get_double
-    c_name: ifcopenshell_ifcgeom_settings_get_double
-    returns:
-      kind: double
-    params:
-      - name: name
-        type:
-          kind: string
-    implementation:
-      kind: inline_cpp
-      body: |
-        auto val = self_cpp->get(name_cpp);
-        if (auto* d = boost::get<double>(&val)) {
-            return *d;
-        }
-        throw std::runtime_error("Setting '" + name_cpp + "' is not a double");
 
   - kind: method
     cpp_name: set
@@ -3383,29 +3087,6 @@ methods:
       - name: value
         type:
           kind: double
-
-  - kind: method
-    cpp_name: setting_names
-    receiver: settings
-    expose_as: setting_names
-    c_name: ifcopenshell_ifcgeom_settings_setting_names
-    returns:
-      kind: string_list
-      ownership: copy
-    params: []
-
-  - kind: method
-    cpp_name: get_type
-    receiver: settings
-    expose_as: get_type
-    c_name: ifcopenshell_ifcgeom_settings_get_type
-    returns:
-      kind: string
-      ownership: copy
-    params:
-      - name: name
-        type:
-          kind: string
 
   - kind: adapter_method
     receiver: settings
@@ -3438,43 +3119,7 @@ methods:
         }
         throw std::runtime_error("Setting '" + name_cpp + "' is not an integer");
 
-  - kind: adapter_method
-    receiver: settings
-    expose_as: set_int
-    c_name: ifcopenshell_ifcgeom_settings_set_int
-    returns:
-      kind: void
-    params:
-      - name: name
-        type:
-          kind: string
-      - name: value
-        type:
-          kind: int32
-    implementation:
-      kind: inline_cpp
-      body: |
-        self_cpp->set(name_cpp, ifcopenshell::geometry::Settings::value_variant_t(static_cast<int>(value)));
 
-  - kind: adapter_method
-    receiver: settings
-    expose_as: get_string
-    c_name: ifcopenshell_ifcgeom_settings_get_string
-    returns:
-      kind: string
-      ownership: copy
-    params:
-      - name: name
-        type:
-          kind: string
-    implementation:
-      kind: inline_cpp
-      body: |
-        auto val = self_cpp->get(name_cpp);
-        if (auto* s = boost::get<std::string>(&val)) {
-            return *s;
-        }
-        throw std::runtime_error("Setting '" + name_cpp + "' is not a string");
 
   - kind: method
     cpp_name: set
@@ -3492,15 +3137,6 @@ methods:
           kind: string
 
   # Iterator methods
-  - kind: method
-    cpp_name: initialize
-    receiver: iterator
-    expose_as: initialize
-    c_name: ifcopenshell_ifcgeom_iterator_initialize
-    returns:
-      kind: bool
-    params: []
-
   - kind: adapter_method
     receiver: iterator
     expose_as: next
@@ -3512,17 +3148,6 @@ methods:
       kind: inline_cpp
       body: |
         return self_cpp->next() != nullptr;
-
-  - kind: method
-    cpp_name: get
-    receiver: iterator
-    expose_as: get
-    c_name: ifcopenshell_ifcgeom_iterator_get
-    returns:
-      kind: handle
-      handle: element
-      ownership: borrowed
-    params: []
 
   - kind: adapter_method
     receiver: iterator
@@ -3581,118 +3206,6 @@ methods:
         }
         return serialized;
 
-  - kind: method
-    cpp_name: progress
-    receiver: iterator
-    expose_as: progress
-    c_name: ifcopenshell_ifcgeom_iterator_progress
-    returns:
-      kind: int32
-    params: []
-
-  - kind: method
-    cpp_name: unit_name
-    receiver: iterator
-    expose_as: unit_name
-    c_name: ifcopenshell_ifcgeom_iterator_unit_name
-    returns:
-      kind: string
-      ownership: copy
-    params: []
-
-  - kind: method
-    cpp_name: unit_magnitude
-    receiver: iterator
-    expose_as: unit_magnitude
-    c_name: ifcopenshell_ifcgeom_iterator_unit_magnitude
-    returns:
-      kind: double
-    params: []
-
-  - kind: method
-    cpp_name: get_native
-    receiver: iterator
-    expose_as: get_native
-    c_name: ifcopenshell_ifcgeom_iterator_get_native
-    returns:
-      kind: handle
-      handle: brep_element
-      ownership: borrowed
-    params: []
-
-  - kind: adapter_method
-    receiver: iterator
-    expose_as: get_object
-    c_name: ifcopenshell_ifcgeom_iterator_get_object
-    returns:
-      kind: handle
-      handle: element
-      ownership: borrowed
-    params:
-      - name: id
-        type:
-          kind: int32
-    implementation:
-      kind: inline_cpp
-      body: |
-        return const_cast<IfcGeom::Element*>(self_cpp->get_object(id));
-
-  - kind: adapter_method
-    receiver: iterator
-    expose_as: create
-    c_name: ifcopenshell_ifcgeom_iterator_create
-    returns:
-      kind: handle
-      handle: instance
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return const_cast<IfcUtil::IfcBaseClass*>(self_cpp->create());
-
-  - kind: method
-    cpp_name: file
-    receiver: iterator
-    expose_as: file
-    c_name: ifcopenshell_ifcgeom_iterator_file
-    returns:
-      kind: handle
-      handle: file
-      ownership: borrowed
-    params: []
-
-  - kind: method
-    cpp_name: had_error_processing_elements
-    receiver: iterator
-    expose_as: had_error_processing_elements
-    c_name: ifcopenshell_ifcgeom_iterator_had_error_processing_elements
-    returns:
-      kind: bool
-    params: []
-
-  - kind: method
-    cpp_name: getLog
-    receiver: iterator
-    expose_as: get_log
-    c_name: ifcopenshell_ifcgeom_iterator_get_log
-    returns:
-      kind: string
-      ownership: copy
-    params: []
-
-  - kind: method
-    cpp_name: compute_bounds
-    receiver: iterator
-    expose_as: compute_bounds
-    c_name: ifcopenshell_ifcgeom_iterator_compute_bounds
-    returns:
-      kind: void
-    params:
-      - name: with_geometry
-        type:
-          kind: bool
-
   - kind: adapter_method
     receiver: iterator
     expose_as: bounds_min
@@ -3724,88 +3237,6 @@ methods:
             static_cast<const ifcopenshell::geometry::taxonomy::point3&>(self_cpp->bounds_max()));
 
   # Element methods
-  - kind: method
-    cpp_name: id
-    receiver: element
-    expose_as: id
-    c_name: ifcopenshell_ifcgeom_element_id
-    returns:
-      kind: int32
-    params: []
-
-  - kind: method
-    cpp_name: guid
-    receiver: element
-    expose_as: guid
-    c_name: ifcopenshell_ifcgeom_element_guid
-    returns:
-      kind: string
-      ownership: copy
-    params: []
-
-  - kind: method
-    cpp_name: type
-    receiver: element
-    expose_as: type
-    c_name: ifcopenshell_ifcgeom_element_type
-    returns:
-      kind: string
-      ownership: copy
-    params: []
-
-  - kind: method
-    cpp_name: name
-    receiver: element
-    expose_as: name
-    c_name: ifcopenshell_ifcgeom_element_name
-    returns:
-      kind: string
-      ownership: copy
-    params: []
-
-  - kind: method
-    cpp_name: context
-    receiver: element
-    expose_as: context
-    c_name: ifcopenshell_ifcgeom_element_context
-    returns:
-      kind: string
-      ownership: copy
-    params: []
-
-  - kind: method
-    cpp_name: parent_id
-    receiver: element
-    expose_as: parent_id
-    c_name: ifcopenshell_ifcgeom_element_parent_id
-    returns:
-      kind: int32
-    params: []
-
-  - kind: method
-    cpp_name: unique_id
-    receiver: element
-    expose_as: unique_id
-    c_name: ifcopenshell_ifcgeom_element_unique_id
-    returns:
-      kind: string
-      ownership: copy
-    params: []
-
-  - kind: adapter_method
-    receiver: element
-    expose_as: transformation
-    c_name: ifcopenshell_ifcgeom_element_transformation
-    returns:
-      kind: handle
-      handle: transformation
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return const_cast<IfcGeom::Transformation*>(&self_cpp->transformation());
-
   - kind: adapter_method
     receiver: element
     expose_as: product
@@ -3844,42 +3275,8 @@ methods:
       body: |
         return 16; // 4x4 matrix
 
-  # Transformation methods
-  - kind: adapter_method
-    receiver: transformation
-    expose_as: matrix
-    c_name: ifcopenshell_ifcgeom_transformation_matrix
-    returns:
-      kind: double_list
-      ownership: copy
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        std::vector<double> data(16);
-        const auto& mat = self_cpp->data()->ccomponents();
-        for (int i = 0; i < 4; ++i) {
-            for (int j = 0; j < 4; ++j) {
-                data[i * 4 + j] = mat(i, j);
-            }
-        }
-        return data;
 
   # BRepElement methods
-  - kind: adapter_method
-    receiver: brep_element
-    expose_as: geometry
-    c_name: ifcopenshell_ifcgeom_brep_element_geometry
-    returns:
-      kind: handle
-      handle: brep_representation
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return const_cast<IfcGeom::Representation::BRep*>(&self_cpp->geometry());
-
   - kind: adapter_method
     receiver: brep_element
     expose_as: calc_volume
@@ -3912,40 +3309,6 @@ methods:
         }
         return std::numeric_limits<double>::quiet_NaN();
 
-  # SerializedElement methods
-  - kind: adapter_method
-    receiver: serialized_element
-    expose_as: geometry
-    c_name: ifcopenshell_ifcgeom_serialized_element_geometry
-    returns:
-      kind: handle
-      handle: serialization
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return const_cast<IfcGeom::Representation::Serialization*>(&self_cpp->geometry());
-
-  # BRep representation methods
-  - kind: method
-    cpp_name: id
-    receiver: brep_representation
-    expose_as: id
-    c_name: ifcopenshell_ifcgeom_brep_representation_id
-    returns:
-      kind: string
-      ownership: copy
-    params: []
-
-  - kind: method
-    cpp_name: size
-    receiver: brep_representation
-    expose_as: size
-    c_name: ifcopenshell_ifcgeom_brep_representation_size
-    returns:
-      kind: int32
-    params: []
 
   - kind: adapter_method
     receiver: brep_representation
@@ -3963,18 +3326,6 @@ methods:
       kind: inline_cpp
       body: |
         return const_cast<IfcGeom::ConversionResultShape*>(self_cpp->item(index));
-
-  - kind: method
-    cpp_name: item_id
-    receiver: brep_representation
-    expose_as: item_id
-    c_name: ifcopenshell_ifcgeom_brep_representation_item_id
-    returns:
-      kind: int32
-    params:
-      - name: index
-        type:
-          kind: int32
 
   - kind: adapter_method
     receiver: brep_representation
@@ -4008,21 +3359,6 @@ methods:
         }
         return std::numeric_limits<double>::quiet_NaN();
 
-  - kind: method
-    cpp_name: as_compound
-    receiver: brep_representation
-    expose_as: as_compound
-    c_name: ifcopenshell_ifcgeom_brep_representation_as_compound
-    returns:
-      kind: handle
-      handle: conversion_result_shape
-      ownership: owned
-    params:
-      - name: force_meters
-        type:
-          kind: bool
-
-  # ConversionResultShape methods
   - kind: adapter_method
     receiver: conversion_result_shape
     expose_as: serialize
@@ -4038,17 +3374,6 @@ methods:
         std::string result;
         self_cpp->Serialize(identity, result);
         return result;
-
-  - kind: method
-    cpp_name: solid
-    receiver: conversion_result_shape
-    expose_as: solid_mt
-    c_name: ifcopenshell_ifcgeom_conversion_result_shape_solid_mt
-    returns:
-      kind: handle
-      handle: conversion_result_shape
-      ownership: owned
-    params: []
 
   - kind: adapter_method
     receiver: conversion_result_shape
@@ -4098,130 +3423,6 @@ methods:
         throw std::runtime_error("convex_tag requires IFOPSH_WITH_CGAL");
         #endif
 
-  - kind: method
-    cpp_name: add
-    receiver: conversion_result_shape
-    expose_as: add
-    c_name: ifcopenshell_ifcgeom_conversion_result_shape_add
-    returns:
-      kind: handle
-      handle: conversion_result_shape
-      ownership: owned
-    params:
-      - name: other
-        type:
-          kind: handle
-          handle: conversion_result_shape
-          ownership: borrowed
-
-  - kind: method
-    cpp_name: subtract
-    receiver: conversion_result_shape
-    expose_as: subtract
-    c_name: ifcopenshell_ifcgeom_conversion_result_shape_subtract
-    returns:
-      kind: handle
-      handle: conversion_result_shape
-      ownership: owned
-    params:
-      - name: other
-        type:
-          kind: handle
-          handle: conversion_result_shape
-          ownership: borrowed
-
-  - kind: method
-    cpp_name: intersect
-    receiver: conversion_result_shape
-    expose_as: intersect
-    c_name: ifcopenshell_ifcgeom_conversion_result_shape_intersect
-    returns:
-      kind: handle
-      handle: conversion_result_shape
-      ownership: owned
-    params:
-      - name: other
-        type:
-          kind: handle
-          handle: conversion_result_shape
-          ownership: borrowed
-
-  - kind: method
-    cpp_name: concat
-    receiver: conversion_result_shape
-    expose_as: concat
-    c_name: ifcopenshell_ifcgeom_conversion_result_shape_concat
-    returns:
-      kind: handle
-      handle: conversion_result_shape
-      ownership: owned
-    params:
-      - name: other
-        type:
-          kind: handle
-          handle: conversion_result_shape
-          ownership: borrowed
-
-  - kind: method
-    cpp_name: halfspaces
-    receiver: conversion_result_shape
-    expose_as: halfspaces
-    c_name: ifcopenshell_ifcgeom_conversion_result_shape_halfspaces
-    returns:
-      kind: handle
-      handle: conversion_result_shape
-      ownership: owned
-    params: []
-
-  - kind: method
-    cpp_name: box
-    receiver: conversion_result_shape
-    expose_as: box
-    c_name: ifcopenshell_ifcgeom_conversion_result_shape_box
-    returns:
-      kind: handle
-      handle: conversion_result_shape
-      ownership: owned
-    params: []
-
-  - kind: method
-    cpp_name: solid
-    receiver: conversion_result_shape
-    expose_as: solid
-    c_name: ifcopenshell_ifcgeom_conversion_result_shape_solid
-    returns:
-      kind: handle
-      handle: conversion_result_shape
-      ownership: owned
-    params: []
-
-  - kind: method
-    cpp_name: wrap_in_compound
-    receiver: conversion_result_shape
-    expose_as: wrap_in_compound
-    c_name: ifcopenshell_ifcgeom_conversion_result_shape_wrap_in_compound
-    returns:
-      kind: handle
-      handle: conversion_result_shape
-      ownership: owned
-    params: []
-
-  - kind: method
-    cpp_name: moved
-    receiver: conversion_result_shape
-    expose_as: moved
-    c_name: ifcopenshell_ifcgeom_conversion_result_shape_moved
-    returns:
-      kind: handle
-      handle: conversion_result_shape
-      ownership: owned
-    params:
-      - name: matrix
-        type:
-          kind: handle
-          handle: taxonomy_matrix4
-          ownership: borrowed
-
   - kind: adapter_method
     receiver: conversion_result_shape
     expose_as: area
@@ -4267,143 +3468,8 @@ methods:
         delete result;
         return val;
 
-  # Serialization representation methods
-  - kind: method
-    cpp_name: brep_data
-    receiver: serialization
-    expose_as: brep_data
-    c_name: ifcopenshell_ifcgeom_serialization_brep_data
-    returns:
-      kind: string
-      ownership: copy
-    params: []
-
-  - kind: method
-    cpp_name: surface_styles
-    receiver: serialization
-    expose_as: surface_styles
-    c_name: ifcopenshell_ifcgeom_serialization_surface_styles
-    returns:
-      kind: double_list
-      ownership: copy
-    params: []
-
-  - kind: method
-    cpp_name: surface_style_ids
-    receiver: serialization
-    expose_as: surface_style_ids
-    c_name: ifcopenshell_ifcgeom_serialization_surface_style_ids
-    returns:
-      kind: int32_list
-      ownership: copy
-    params: []
-
-  # TriangulationElement methods
-  - kind: adapter_method
-    receiver: triangulation_element
-    expose_as: geometry
-    c_name: ifcopenshell_ifcgeom_triangulation_element_geometry
-    returns:
-      kind: handle
-      handle: triangulation
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return const_cast<IfcGeom::Representation::Triangulation*>(&self_cpp->geometry());
 
   # Triangulation representation methods
-  - kind: method
-    cpp_name: verts
-    receiver: triangulation
-    expose_as: verts
-    c_name: ifcopenshell_ifcgeom_triangulation_verts
-    returns:
-      kind: double_list
-      ownership: copy
-    params: []
-
-  - kind: method
-    cpp_name: faces
-    receiver: triangulation
-    expose_as: faces
-    c_name: ifcopenshell_ifcgeom_triangulation_faces
-    returns:
-      kind: int32_list
-      ownership: copy
-    params: []
-
-  - kind: method
-    cpp_name: normals
-    receiver: triangulation
-    expose_as: normals
-    c_name: ifcopenshell_ifcgeom_triangulation_normals
-    returns:
-      kind: double_list
-      ownership: copy
-    params: []
-
-  - kind: method
-    cpp_name: edges
-    receiver: triangulation
-    expose_as: edges
-    c_name: ifcopenshell_ifcgeom_triangulation_edges
-    returns:
-      kind: int32_list
-      ownership: copy
-    params: []
-
-  - kind: method
-    cpp_name: uvs
-    receiver: triangulation
-    expose_as: uvs
-    c_name: ifcopenshell_ifcgeom_triangulation_uvs
-    returns:
-      kind: double_list
-      ownership: copy
-    params: []
-
-  - kind: method
-    cpp_name: material_ids
-    receiver: triangulation
-    expose_as: material_ids
-    c_name: ifcopenshell_ifcgeom_triangulation_material_ids
-    returns:
-      kind: int32_list
-      ownership: copy
-    params: []
-
-  - kind: method
-    cpp_name: item_ids
-    receiver: triangulation
-    expose_as: item_ids
-    c_name: ifcopenshell_ifcgeom_triangulation_item_ids
-    returns:
-      kind: int32_list
-      ownership: copy
-    params: []
-
-  - kind: method
-    cpp_name: edges_item_ids
-    receiver: triangulation
-    expose_as: edges_item_ids
-    c_name: ifcopenshell_ifcgeom_triangulation_edges_item_ids
-    returns:
-      kind: int32_list
-      ownership: copy
-    params: []
-
-  - kind: method
-    cpp_name: polyhedral_faces_without_holes
-    receiver: triangulation
-    expose_as: polyhedral_faces_without_holes
-    c_name: ifcopenshell_ifcgeom_triangulation_polyhedral_faces_without_holes
-    returns:
-      kind: int32_list_list
-      ownership: copy
-    params: []
-
   - kind: adapter_method
     receiver: triangulation
     expose_as: polyhedral_faces_with_holes
@@ -4425,18 +3491,6 @@ methods:
 
   - kind: adapter_method
     receiver: triangulation
-    expose_as: material_count
-    c_name: ifcopenshell_ifcgeom_triangulation_material_count
-    returns:
-      kind: size
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->materials().size();
-
-  - kind: adapter_method
-    receiver: triangulation
     expose_as: material_at
     c_name: ifcopenshell_ifcgeom_triangulation_material_at
     returns:
@@ -4455,7 +3509,7 @@ methods:
         }
         return self_cpp->materials()[index];
 
-  # Triangulation buffer methods (zero-copy access)
+  # Triangulation buffer methods (zero-copy access, manually defined like SWIG %extend)
   - kind: method
     cpp_name: verts
     receiver: triangulation
@@ -4464,18 +3518,6 @@ methods:
     returns:
       kind: double_buffer
     params: []
-
-  - kind: adapter_method
-    receiver: triangulation
-    expose_as: verts_buffer_size
-    c_name: ifcopenshell_ifcgeom_triangulation_verts_buffer_size
-    returns:
-      kind: size
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->verts().size();
 
   - kind: method
     cpp_name: faces
@@ -4486,18 +3528,6 @@ methods:
       kind: int32_buffer
     params: []
 
-  - kind: adapter_method
-    receiver: triangulation
-    expose_as: faces_buffer_size
-    c_name: ifcopenshell_ifcgeom_triangulation_faces_buffer_size
-    returns:
-      kind: size
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->faces().size();
-
   - kind: method
     cpp_name: normals
     receiver: triangulation
@@ -4506,18 +3536,6 @@ methods:
     returns:
       kind: double_buffer
     params: []
-
-  - kind: adapter_method
-    receiver: triangulation
-    expose_as: normals_buffer_size
-    c_name: ifcopenshell_ifcgeom_triangulation_normals_buffer_size
-    returns:
-      kind: size
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->normals().size();
 
   - kind: method
     cpp_name: edges
@@ -4528,18 +3546,6 @@ methods:
       kind: int32_buffer
     params: []
 
-  - kind: adapter_method
-    receiver: triangulation
-    expose_as: edges_buffer_size
-    c_name: ifcopenshell_ifcgeom_triangulation_edges_buffer_size
-    returns:
-      kind: size
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->edges().size();
-
   - kind: method
     cpp_name: material_ids
     receiver: triangulation
@@ -4548,18 +3554,6 @@ methods:
     returns:
       kind: int32_buffer
     params: []
-
-  - kind: adapter_method
-    receiver: triangulation
-    expose_as: material_ids_buffer_size
-    c_name: ifcopenshell_ifcgeom_triangulation_material_ids_buffer_size
-    returns:
-      kind: size
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->material_ids().size();
 
   - kind: method
     cpp_name: item_ids
@@ -4570,18 +3564,6 @@ methods:
       kind: int32_buffer
     params: []
 
-  - kind: adapter_method
-    receiver: triangulation
-    expose_as: item_ids_buffer_size
-    c_name: ifcopenshell_ifcgeom_triangulation_item_ids_buffer_size
-    returns:
-      kind: size
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->item_ids().size();
-
   - kind: method
     cpp_name: edges_item_ids
     receiver: triangulation
@@ -4591,18 +3573,6 @@ methods:
       kind: int32_buffer
     params: []
 
-  - kind: adapter_method
-    receiver: triangulation
-    expose_as: edges_item_ids_buffer_size
-    c_name: ifcopenshell_ifcgeom_triangulation_edges_item_ids_buffer_size
-    returns:
-      kind: size
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->edges_item_ids().size();
-
   - kind: method
     cpp_name: uvs
     receiver: triangulation
@@ -4611,18 +3581,6 @@ methods:
     returns:
       kind: double_buffer
     params: []
-
-  - kind: adapter_method
-    receiver: triangulation
-    expose_as: uvs_buffer_size
-    c_name: ifcopenshell_ifcgeom_triangulation_uvs_buffer_size
-    returns:
-      kind: size
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->uvs().size();
 
   - kind: adapter_method
     receiver: triangulation
@@ -4668,570 +3626,40 @@ methods:
       body: |
         return self_cpp->materials().size() * 4;
 
-  # Taxonomy matrix4 methods
-  - kind: adapter_method
-    receiver: taxonomy_matrix4
-    expose_as: get_data
-    c_name: ifcopenshell_ifcgeom_taxonomy_matrix4_get_data
-    returns:
-      kind: double_list
-      ownership: copy
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        std::vector<double> data(16);
-        const auto& mat = self_cpp->ccomponents();
-        for (int i = 0; i < 4; ++i) {
-            for (int j = 0; j < 4; ++j) {
-                data[i * 4 + j] = mat(i, j);
-            }
-        }
-        return data;
-
-  # Taxonomy point3 methods
-  - kind: adapter_method
-    receiver: taxonomy_point3
-    expose_as: get_data
-    c_name: ifcopenshell_ifcgeom_taxonomy_point3_get_data
-    returns:
-      kind: double_list
-      ownership: copy
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        std::vector<double> data(3);
-        const auto& v = self_cpp->ccomponents();
-        data[0] = v(0);
-        data[1] = v(1);
-        data[2] = v(2);
-        return data;
-
-  # Taxonomy direction3 methods
-  - kind: adapter_method
-    receiver: taxonomy_direction3
-    expose_as: get_data
-    c_name: ifcopenshell_ifcgeom_taxonomy_direction3_get_data
-    returns:
-      kind: double_list
-      ownership: copy
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        std::vector<double> data(3);
-        const auto& v = self_cpp->ccomponents();
-        data[0] = v(0);
-        data[1] = v(1);
-        data[2] = v(2);
-        return data;
-
-  # Taxonomy colour methods
-  - kind: adapter_method
-    receiver: taxonomy_colour
-    expose_as: get_data
-    c_name: ifcopenshell_ifcgeom_taxonomy_colour_get_data
-    returns:
-      kind: double_list
-      ownership: copy
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        std::vector<double> data(3);
-        const auto& v = self_cpp->ccomponents();
-        data[0] = v(0);
-        data[1] = v(1);
-        data[2] = v(2);
-        return data;
 
   # Taxonomy style methods
-  - kind: adapter_method
-    receiver: taxonomy_style
-    expose_as: name
-    c_name: ifcopenshell_ifcgeom_taxonomy_style_name
-    returns:
-      kind: string
-      ownership: copy
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->name;
 
-  - kind: adapter_method
-    receiver: taxonomy_style
-    expose_as: diffuse
-    c_name: ifcopenshell_ifcgeom_taxonomy_style_diffuse
-    returns:
-      kind: handle
-      handle: taxonomy_colour
-      ownership: owned
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return std::make_shared<ifcopenshell::geometry::taxonomy::colour>(self_cpp->diffuse);
 
-  - kind: adapter_method
-    receiver: taxonomy_style
-    expose_as: surface
-    c_name: ifcopenshell_ifcgeom_taxonomy_style_surface
-    returns:
-      kind: handle
-      handle: taxonomy_colour
-      ownership: owned
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return std::make_shared<ifcopenshell::geometry::taxonomy::colour>(self_cpp->surface);
 
-  - kind: adapter_method
-    receiver: taxonomy_style
-    expose_as: specular
-    c_name: ifcopenshell_ifcgeom_taxonomy_style_specular
-    returns:
-      kind: handle
-      handle: taxonomy_colour
-      ownership: owned
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return std::make_shared<ifcopenshell::geometry::taxonomy::colour>(self_cpp->specular);
-
-  - kind: adapter_method
-    receiver: taxonomy_style
-    expose_as: specularity
-    c_name: ifcopenshell_ifcgeom_taxonomy_style_specularity
-    returns:
-      kind: double
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->specularity;
-
-  - kind: adapter_method
-    receiver: taxonomy_style
-    expose_as: transparency
-    c_name: ifcopenshell_ifcgeom_taxonomy_style_transparency
-    returns:
-      kind: double
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->transparency;
-
-  - kind: adapter_method
-    receiver: taxonomy_style
-    expose_as: use_surface_color
-    c_name: ifcopenshell_ifcgeom_taxonomy_style_use_surface_color
-    returns:
-      kind: bool
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->use_surface_color;
-
-  - kind: method
-    cpp_name: has_specularity
-    receiver: taxonomy_style
-    expose_as: has_specularity
-    c_name: ifcopenshell_ifcgeom_taxonomy_style_has_specularity
-    returns:
-      kind: bool
-    params: []
-
-  - kind: method
-    cpp_name: has_transparency
-    receiver: taxonomy_style
-    expose_as: has_transparency
-    c_name: ifcopenshell_ifcgeom_taxonomy_style_has_transparency
-    returns:
-      kind: bool
-    params: []
 
   # Taxonomy curve/surface scalar methods
-  - kind: adapter_method
-    receiver: taxonomy_circle
-    expose_as: radius
-    c_name: ifcopenshell_ifcgeom_taxonomy_circle_radius
-    returns:
-      kind: double
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->radius;
 
-  - kind: adapter_method
-    receiver: taxonomy_ellipse
-    expose_as: radius1
-    c_name: ifcopenshell_ifcgeom_taxonomy_ellipse_radius1
-    returns:
-      kind: double
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->radius;
 
-  - kind: adapter_method
-    receiver: taxonomy_ellipse
-    expose_as: radius2
-    c_name: ifcopenshell_ifcgeom_taxonomy_ellipse_radius2
-    returns:
-      kind: double
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->radius2;
 
-  - kind: adapter_method
-    receiver: taxonomy_cylinder
-    expose_as: radius
-    c_name: ifcopenshell_ifcgeom_taxonomy_cylinder_radius
-    returns:
-      kind: double
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->radius;
 
-  - kind: adapter_method
-    receiver: taxonomy_sphere
-    expose_as: radius
-    c_name: ifcopenshell_ifcgeom_taxonomy_sphere_radius
-    returns:
-      kind: double
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->radius;
 
-  - kind: adapter_method
-    receiver: taxonomy_torus
-    expose_as: radius1
-    c_name: ifcopenshell_ifcgeom_taxonomy_torus_radius1
-    returns:
-      kind: double
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->radius1;
 
-  - kind: adapter_method
-    receiver: taxonomy_torus
-    expose_as: radius2
-    c_name: ifcopenshell_ifcgeom_taxonomy_torus_radius2
-    returns:
-      kind: double
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->radius2;
+
 
   # Taxonomy matrix accessors
-  - kind: adapter_method
-    receiver: taxonomy_line
-    expose_as: matrix
-    c_name: ifcopenshell_ifcgeom_taxonomy_line_matrix
-    returns:
-      kind: handle
-      handle: taxonomy_matrix4
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->matrix) {
-            throw std::runtime_error("Line matrix is not set");
-        }
-        return self_cpp->matrix;
 
-  - kind: adapter_method
-    receiver: taxonomy_circle
-    expose_as: matrix
-    c_name: ifcopenshell_ifcgeom_taxonomy_circle_matrix
-    returns:
-      kind: handle
-      handle: taxonomy_matrix4
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->matrix) {
-            throw std::runtime_error("Circle matrix is not set");
-        }
-        return self_cpp->matrix;
 
-  - kind: adapter_method
-    receiver: taxonomy_ellipse
-    expose_as: matrix
-    c_name: ifcopenshell_ifcgeom_taxonomy_ellipse_matrix
-    returns:
-      kind: handle
-      handle: taxonomy_matrix4
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->matrix) {
-            throw std::runtime_error("Ellipse matrix is not set");
-        }
-        return self_cpp->matrix;
 
-  - kind: adapter_method
-    receiver: taxonomy_plane
-    expose_as: matrix
-    c_name: ifcopenshell_ifcgeom_taxonomy_plane_matrix
-    returns:
-      kind: handle
-      handle: taxonomy_matrix4
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->matrix) {
-            throw std::runtime_error("Plane matrix is not set");
-        }
-        return self_cpp->matrix;
 
-  - kind: adapter_method
-    receiver: taxonomy_cylinder
-    expose_as: matrix
-    c_name: ifcopenshell_ifcgeom_taxonomy_cylinder_matrix
-    returns:
-      kind: handle
-      handle: taxonomy_matrix4
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->matrix) {
-            throw std::runtime_error("Cylinder matrix is not set");
-        }
-        return self_cpp->matrix;
 
-  - kind: adapter_method
-    receiver: taxonomy_sphere
-    expose_as: matrix
-    c_name: ifcopenshell_ifcgeom_taxonomy_sphere_matrix
-    returns:
-      kind: handle
-      handle: taxonomy_matrix4
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->matrix) {
-            throw std::runtime_error("Sphere matrix is not set");
-        }
-        return self_cpp->matrix;
 
-  - kind: adapter_method
-    receiver: taxonomy_torus
-    expose_as: matrix
-    c_name: ifcopenshell_ifcgeom_taxonomy_torus_matrix
-    returns:
-      kind: handle
-      handle: taxonomy_matrix4
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->matrix) {
-            throw std::runtime_error("Torus matrix is not set");
-        }
-        return self_cpp->matrix;
 
   # Advanced taxonomy: bspline curve
-  - kind: adapter_method
-    receiver: taxonomy_bspline_curve
-    expose_as: degree
-    c_name: ifcopenshell_ifcgeom_taxonomy_bspline_curve_degree
-    returns:
-      kind: int32
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->degree;
 
-  - kind: adapter_method
-    receiver: taxonomy_bspline_curve
-    expose_as: control_point_count
-    c_name: ifcopenshell_ifcgeom_taxonomy_bspline_curve_control_point_count
-    returns:
-      kind: size
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->control_points.size();
 
-  - kind: adapter_method
-    receiver: taxonomy_bspline_curve
-    expose_as: control_point_at
-    c_name: ifcopenshell_ifcgeom_taxonomy_bspline_curve_control_point_at
-    returns:
-      kind: handle
-      handle: taxonomy_point3
-      ownership: borrowed
-    params:
-      - name: index
-        type:
-          kind: size
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (index >= self_cpp->control_points.size()) {
-            throw std::runtime_error("B-spline curve control-point index out of bounds");
-        }
-        return self_cpp->control_points[index];
 
-  - kind: adapter_method
-    receiver: taxonomy_bspline_curve
-    expose_as: multiplicities
-    c_name: ifcopenshell_ifcgeom_taxonomy_bspline_curve_multiplicities
-    returns:
-      kind: int32_list
-      ownership: copy
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->multiplicities;
 
-  - kind: adapter_method
-    receiver: taxonomy_bspline_curve
-    expose_as: knots
-    c_name: ifcopenshell_ifcgeom_taxonomy_bspline_curve_knots
-    returns:
-      kind: double_list
-      ownership: copy
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->knots;
-
-  - kind: adapter_method
-    receiver: taxonomy_bspline_curve
-    expose_as: has_weights
-    c_name: ifcopenshell_ifcgeom_taxonomy_bspline_curve_has_weights
-    returns:
-      kind: bool
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->weights.is_initialized();
-
-  - kind: adapter_method
-    receiver: taxonomy_bspline_curve
-    expose_as: weights
-    c_name: ifcopenshell_ifcgeom_taxonomy_bspline_curve_weights
-    returns:
-      kind: double_list
-      ownership: copy
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->weights.is_initialized()) {
-            throw std::runtime_error("B-spline curve weights are not set");
-        }
-        return *self_cpp->weights;
 
   # Advanced taxonomy: offset curve
-  - kind: adapter_method
-    receiver: taxonomy_offset_curve
-    expose_as: basis
-    c_name: ifcopenshell_ifcgeom_taxonomy_offset_curve_basis
-    returns:
-      kind: handle
-      handle: taxonomy_item
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->basis) {
-            throw std::runtime_error("Offset-curve basis is not set");
-        }
-        return self_cpp->basis;
 
-  - kind: adapter_method
-    receiver: taxonomy_offset_curve
-    expose_as: reference
-    c_name: ifcopenshell_ifcgeom_taxonomy_offset_curve_reference
-    returns:
-      kind: handle
-      handle: taxonomy_direction3
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->reference) {
-            throw std::runtime_error("Offset-curve reference direction is not set");
-        }
-        return self_cpp->reference;
 
-  - kind: adapter_method
-    receiver: taxonomy_offset_curve
-    expose_as: offset
-    c_name: ifcopenshell_ifcgeom_taxonomy_offset_curve_offset
-    returns:
-      kind: double
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->offset;
 
   # Advanced taxonomy: bspline surface
-  - kind: adapter_method
-    receiver: taxonomy_bspline_surface
-    expose_as: degree_u
-    c_name: ifcopenshell_ifcgeom_taxonomy_bspline_surface_degree_u
-    returns:
-      kind: int32
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->degree[0];
-
-  - kind: adapter_method
-    receiver: taxonomy_bspline_surface
-    expose_as: degree_v
-    c_name: ifcopenshell_ifcgeom_taxonomy_bspline_surface_degree_v
-    returns:
-      kind: int32
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->degree[1];
-
   - kind: adapter_method
     receiver: taxonomy_bspline_surface
     expose_as: control_point_row_count
@@ -5287,58 +3715,6 @@ methods:
             throw std::runtime_error("B-spline surface control-point column out of bounds");
         }
         return self_cpp->control_points[row][col];
-
-  - kind: adapter_method
-    receiver: taxonomy_bspline_surface
-    expose_as: multiplicities_u
-    c_name: ifcopenshell_ifcgeom_taxonomy_bspline_surface_multiplicities_u
-    returns:
-      kind: int32_list
-      ownership: copy
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->multiplicities[0];
-
-  - kind: adapter_method
-    receiver: taxonomy_bspline_surface
-    expose_as: multiplicities_v
-    c_name: ifcopenshell_ifcgeom_taxonomy_bspline_surface_multiplicities_v
-    returns:
-      kind: int32_list
-      ownership: copy
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->multiplicities[1];
-
-  - kind: adapter_method
-    receiver: taxonomy_bspline_surface
-    expose_as: knots_u
-    c_name: ifcopenshell_ifcgeom_taxonomy_bspline_surface_knots_u
-    returns:
-      kind: double_list
-      ownership: copy
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->knots[0];
-
-  - kind: adapter_method
-    receiver: taxonomy_bspline_surface
-    expose_as: knots_v
-    c_name: ifcopenshell_ifcgeom_taxonomy_bspline_surface_knots_v
-    returns:
-      kind: double_list
-      ownership: copy
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->knots[1];
 
   - kind: adapter_method
     receiver: taxonomy_bspline_surface
@@ -5415,892 +3791,26 @@ methods:
         }
         return (*self_cpp->weights)[row][col];
 
-  - kind: adapter_method
-    receiver: taxonomy_face
-    expose_as: matrix
-    c_name: ifcopenshell_ifcgeom_taxonomy_face_matrix
-    returns:
-      kind: handle
-      handle: taxonomy_matrix4
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->matrix) {
-            throw std::runtime_error("Face matrix is not set");
-        }
-        return self_cpp->matrix;
-
-  - kind: adapter_method
-    receiver: taxonomy_solid
-    expose_as: matrix
-    c_name: ifcopenshell_ifcgeom_taxonomy_solid_matrix
-    returns:
-      kind: handle
-      handle: taxonomy_matrix4
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->matrix) {
-            throw std::runtime_error("Solid matrix is not set");
-        }
-        return self_cpp->matrix;
 
   # Taxonomy collection traversal helpers
-  - kind: adapter_method
-    receiver: taxonomy_loop
-    expose_as: edge_count
-    c_name: ifcopenshell_ifcgeom_taxonomy_loop_edge_count
-    returns:
-      kind: size
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->children.size();
 
-  - kind: adapter_method
-    receiver: taxonomy_loop
-    expose_as: edge_at
-    c_name: ifcopenshell_ifcgeom_taxonomy_loop_edge_at
-    returns:
-      kind: handle
-      handle: taxonomy_edge
-      ownership: borrowed
-    params:
-      - name: index
-        type:
-          kind: size
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (index >= self_cpp->children.size()) {
-            throw std::runtime_error("Loop edge index out of bounds");
-        }
-        return self_cpp->children[index];
 
-  - kind: adapter_method
-    receiver: taxonomy_face
-    expose_as: loop_count
-    c_name: ifcopenshell_ifcgeom_taxonomy_face_loop_count
-    returns:
-      kind: size
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->children.size();
 
-  - kind: adapter_method
-    receiver: taxonomy_face
-    expose_as: loop_at
-    c_name: ifcopenshell_ifcgeom_taxonomy_face_loop_at
-    returns:
-      kind: handle
-      handle: taxonomy_loop
-      ownership: borrowed
-    params:
-      - name: index
-        type:
-          kind: size
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (index >= self_cpp->children.size()) {
-            throw std::runtime_error("Face loop index out of bounds");
-        }
-        return self_cpp->children[index];
 
-  - kind: adapter_method
-    receiver: taxonomy_shell
-    expose_as: face_count
-    c_name: ifcopenshell_ifcgeom_taxonomy_shell_face_count
-    returns:
-      kind: size
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->children.size();
 
-  - kind: adapter_method
-    receiver: taxonomy_shell
-    expose_as: face_at
-    c_name: ifcopenshell_ifcgeom_taxonomy_shell_face_at
-    returns:
-      kind: handle
-      handle: taxonomy_face
-      ownership: borrowed
-    params:
-      - name: index
-        type:
-          kind: size
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (index >= self_cpp->children.size()) {
-            throw std::runtime_error("Shell face index out of bounds");
-        }
-        return self_cpp->children[index];
 
-  - kind: adapter_method
-    receiver: taxonomy_solid
-    expose_as: shell_count
-    c_name: ifcopenshell_ifcgeom_taxonomy_solid_shell_count
-    returns:
-      kind: size
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->children.size();
 
-  - kind: adapter_method
-    receiver: taxonomy_solid
-    expose_as: shell_at
-    c_name: ifcopenshell_ifcgeom_taxonomy_solid_shell_at
-    returns:
-      kind: handle
-      handle: taxonomy_shell
-      ownership: borrowed
-    params:
-      - name: index
-        type:
-          kind: size
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (index >= self_cpp->children.size()) {
-            throw std::runtime_error("Solid shell index out of bounds");
-        }
-        return self_cpp->children[index];
 
-  - kind: adapter_method
-    receiver: taxonomy_item
-    expose_as: kind
-    c_name: ifcopenshell_ifcgeom_taxonomy_item_kind
-    returns:
-      kind: int32
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return static_cast<int>(self_cpp->kind());
 
-  - kind: method
-    cpp_name: identity
-    receiver: taxonomy_item
-    expose_as: identity
-    c_name: ifcopenshell_ifcgeom_taxonomy_item_identity
-    returns:
-      kind: uint32
-    params: []
-
-  - kind: adapter_method
-    receiver: taxonomy_line
-    expose_as: as_item
-    c_name: ifcopenshell_ifcgeom_taxonomy_line_as_item
-    returns:
-      kind: handle
-      handle: taxonomy_item
-      ownership: owned
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return std::static_pointer_cast<ifcopenshell::geometry::taxonomy::item>(self->ptr);
-
-  - kind: adapter_method
-    receiver: taxonomy_face
-    expose_as: as_item
-    c_name: ifcopenshell_ifcgeom_taxonomy_face_as_item
-    returns:
-      kind: handle
-      handle: taxonomy_item
-      ownership: owned
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return std::static_pointer_cast<ifcopenshell::geometry::taxonomy::item>(self->ptr);
-
-  - kind: adapter_method
-    receiver: taxonomy_bspline_curve
-    expose_as: as_item
-    c_name: ifcopenshell_ifcgeom_taxonomy_bspline_curve_as_item
-    returns:
-      kind: handle
-      handle: taxonomy_item
-      ownership: owned
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return std::static_pointer_cast<ifcopenshell::geometry::taxonomy::item>(self->ptr);
-
-  - kind: adapter_method
-    receiver: taxonomy_offset_curve
-    expose_as: as_item
-    c_name: ifcopenshell_ifcgeom_taxonomy_offset_curve_as_item
-    returns:
-      kind: handle
-      handle: taxonomy_item
-      ownership: owned
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return std::static_pointer_cast<ifcopenshell::geometry::taxonomy::item>(self->ptr);
-
-  - kind: adapter_method
-    receiver: taxonomy_bspline_surface
-    expose_as: as_item
-    c_name: ifcopenshell_ifcgeom_taxonomy_bspline_surface_as_item
-    returns:
-      kind: handle
-      handle: taxonomy_item
-      ownership: owned
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return std::static_pointer_cast<ifcopenshell::geometry::taxonomy::item>(self->ptr);
-
-  # Taxonomy collection operations
-  - kind: adapter_method
-    receiver: taxonomy_collection
-    expose_as: item_count
-    c_name: ifcopenshell_ifcgeom_taxonomy_collection_item_count
-    returns:
-      kind: size
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->children.size();
-
-  - kind: adapter_method
-    receiver: taxonomy_collection
-    expose_as: item_at
-    c_name: ifcopenshell_ifcgeom_taxonomy_collection_item_at
-    returns:
-      kind: handle
-      handle: taxonomy_item
-      ownership: borrowed
-    params:
-      - name: index
-        type:
-          kind: size
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (index >= self_cpp->children.size()) {
-            throw std::runtime_error("Collection item index out of bounds");
-        }
-        return self_cpp->children[index];
-
-  - kind: adapter_method
-    receiver: taxonomy_collection
-    expose_as: add_item
-    c_name: ifcopenshell_ifcgeom_taxonomy_collection_add_item
-    returns:
-      kind: void
-    params:
-      - name: item
-        type:
-          kind: handle
-          handle: taxonomy_item
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        auto geom = ifcopenshell::geometry::taxonomy::dcast<ifcopenshell::geometry::taxonomy::geom_item>(item_cpp);
-        if (!geom) {
-            throw std::runtime_error("Item must be a geometry item for collection");
-        }
-        self_cpp->children.push_back(geom);
-
-  # Taxonomy loft operations
-  - kind: adapter_method
-    receiver: taxonomy_loft
-    expose_as: item_count
-    c_name: ifcopenshell_ifcgeom_taxonomy_loft_item_count
-    returns:
-      kind: size
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->children.size();
-
-  - kind: adapter_method
-    receiver: taxonomy_loft
-    expose_as: item_at
-    c_name: ifcopenshell_ifcgeom_taxonomy_loft_item_at
-    returns:
-      kind: handle
-      handle: taxonomy_item
-      ownership: borrowed
-    params:
-      - name: index
-        type:
-          kind: size
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (index >= self_cpp->children.size()) {
-            throw std::runtime_error("Loft item index out of bounds");
-        }
-        return self_cpp->children[index];
-
-  - kind: adapter_method
-    receiver: taxonomy_loft
-    expose_as: add_item
-    c_name: ifcopenshell_ifcgeom_taxonomy_loft_add_item
-    returns:
-      kind: void
-    params:
-      - name: item
-        type:
-          kind: handle
-          handle: taxonomy_item
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        auto geom = ifcopenshell::geometry::taxonomy::dcast<ifcopenshell::geometry::taxonomy::geom_item>(item_cpp);
-        if (!geom) {
-            throw std::runtime_error("Item must be a geometry item for loft");
-        }
-        self_cpp->children.push_back(geom);
-
-  - kind: adapter_method
-    receiver: taxonomy_loft
-    expose_as: has_axis
-    c_name: ifcopenshell_ifcgeom_taxonomy_loft_has_axis
-    returns:
-      kind: bool
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->axis != nullptr;
-
-  - kind: adapter_method
-    receiver: taxonomy_loft
-    expose_as: axis
-    c_name: ifcopenshell_ifcgeom_taxonomy_loft_axis
-    returns:
-      kind: handle
-      handle: taxonomy_item
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->axis) {
-            throw std::runtime_error("Loft axis is not set");
-        }
-        return self_cpp->axis;
-
-  - kind: adapter_method
-    receiver: taxonomy_loft
-    expose_as: set_axis
-    c_name: ifcopenshell_ifcgeom_taxonomy_loft_set_axis
-    returns:
-      kind: void
-    params:
-      - name: axis
-        type:
-          kind: handle
-          handle: taxonomy_item
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        self_cpp->axis = axis_cpp;
-
-  # Taxonomy extrusion/revolve/sweep methods
-  - kind: adapter_method
-    receiver: taxonomy_extrusion
-    expose_as: basis
-    c_name: ifcopenshell_ifcgeom_taxonomy_extrusion_basis
-    returns:
-      kind: handle
-      handle: taxonomy_item
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->basis) {
-            throw std::runtime_error("Extrusion basis is not set");
-        }
-        return self_cpp->basis;
-
-  - kind: adapter_method
-    receiver: taxonomy_extrusion
-    expose_as: direction
-    c_name: ifcopenshell_ifcgeom_taxonomy_extrusion_direction
-    returns:
-      kind: handle
-      handle: taxonomy_direction3
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->direction) {
-            throw std::runtime_error("Extrusion direction is not set");
-        }
-        return self_cpp->direction;
-
-  - kind: adapter_method
-    receiver: taxonomy_extrusion
-    expose_as: depth
-    c_name: ifcopenshell_ifcgeom_taxonomy_extrusion_depth
-    returns:
-      kind: double
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->depth;
-
-  - kind: adapter_method
-    receiver: taxonomy_extrusion
-    expose_as: matrix
-    c_name: ifcopenshell_ifcgeom_taxonomy_extrusion_matrix
-    returns:
-      kind: handle
-      handle: taxonomy_matrix4
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->matrix) {
-            throw std::runtime_error("Extrusion matrix is not set");
-        }
-        return self_cpp->matrix;
-
-  - kind: adapter_method
-    receiver: taxonomy_revolve
-    expose_as: basis
-    c_name: ifcopenshell_ifcgeom_taxonomy_revolve_basis
-    returns:
-      kind: handle
-      handle: taxonomy_item
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->basis) {
-            throw std::runtime_error("Revolve basis is not set");
-        }
-        return self_cpp->basis;
-
-  - kind: adapter_method
-    receiver: taxonomy_revolve
-    expose_as: axis_origin
-    c_name: ifcopenshell_ifcgeom_taxonomy_revolve_axis_origin
-    returns:
-      kind: handle
-      handle: taxonomy_point3
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->axis_origin) {
-            throw std::runtime_error("Revolve axis origin is not set");
-        }
-        return self_cpp->axis_origin;
-
-  - kind: adapter_method
-    receiver: taxonomy_revolve
-    expose_as: direction
-    c_name: ifcopenshell_ifcgeom_taxonomy_revolve_direction
-    returns:
-      kind: handle
-      handle: taxonomy_direction3
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->direction) {
-            throw std::runtime_error("Revolve direction is not set");
-        }
-        return self_cpp->direction;
-
-  - kind: adapter_method
-    receiver: taxonomy_revolve
-    expose_as: has_angle
-    c_name: ifcopenshell_ifcgeom_taxonomy_revolve_has_angle
-    returns:
-      kind: bool
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->angle.is_initialized();
-
-  - kind: adapter_method
-    receiver: taxonomy_revolve
-    expose_as: angle
-    c_name: ifcopenshell_ifcgeom_taxonomy_revolve_angle
-    returns:
-      kind: double
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->angle.is_initialized()) {
-            throw std::runtime_error("Revolve angle is not set");
-        }
-        return *self_cpp->angle;
-
-  - kind: adapter_method
-    receiver: taxonomy_revolve
-    expose_as: matrix
-    c_name: ifcopenshell_ifcgeom_taxonomy_revolve_matrix
-    returns:
-      kind: handle
-      handle: taxonomy_matrix4
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->matrix) {
-            throw std::runtime_error("Revolve matrix is not set");
-        }
-        return self_cpp->matrix;
-
-  - kind: adapter_method
-    receiver: taxonomy_sweep_along_curve
-    expose_as: basis
-    c_name: ifcopenshell_ifcgeom_taxonomy_sweep_along_curve_basis
-    returns:
-      kind: handle
-      handle: taxonomy_item
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->basis) {
-            throw std::runtime_error("Sweep basis is not set");
-        }
-        return self_cpp->basis;
-
-  - kind: adapter_method
-    receiver: taxonomy_sweep_along_curve
-    expose_as: curve
-    c_name: ifcopenshell_ifcgeom_taxonomy_sweep_along_curve_curve
-    returns:
-      kind: handle
-      handle: taxonomy_item
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->curve) {
-            throw std::runtime_error("Sweep curve is not set");
-        }
-        return self_cpp->curve;
-
-  - kind: adapter_method
-    receiver: taxonomy_sweep_along_curve
-    expose_as: has_surface
-    c_name: ifcopenshell_ifcgeom_taxonomy_sweep_along_curve_has_surface
-    returns:
-      kind: bool
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->surface != nullptr;
-
-  - kind: adapter_method
-    receiver: taxonomy_sweep_along_curve
-    expose_as: surface
-    c_name: ifcopenshell_ifcgeom_taxonomy_sweep_along_curve_surface
-    returns:
-      kind: handle
-      handle: taxonomy_item
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->surface) {
-            throw std::runtime_error("Sweep surface is not set");
-        }
-        return self_cpp->surface;
-
-  - kind: adapter_method
-    receiver: taxonomy_sweep_along_curve
-    expose_as: has_direction
-    c_name: ifcopenshell_ifcgeom_taxonomy_sweep_along_curve_has_direction
-    returns:
-      kind: bool
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->direction != nullptr;
-
-  - kind: adapter_method
-    receiver: taxonomy_sweep_along_curve
-    expose_as: direction
-    c_name: ifcopenshell_ifcgeom_taxonomy_sweep_along_curve_direction
-    returns:
-      kind: handle
-      handle: taxonomy_direction3
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->direction) {
-            throw std::runtime_error("Sweep direction is not set");
-        }
-        return self_cpp->direction;
-
-  - kind: adapter_method
-    receiver: taxonomy_sweep_along_curve
-    expose_as: matrix
-    c_name: ifcopenshell_ifcgeom_taxonomy_sweep_along_curve_matrix
-    returns:
-      kind: handle
-      handle: taxonomy_matrix4
-      ownership: borrowed
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (!self_cpp->matrix) {
-            throw std::runtime_error("Sweep matrix is not set");
-        }
-        return self_cpp->matrix;
-
-  # Taxonomy boolean-result operations
-  - kind: adapter_method
-    receiver: taxonomy_boolean_result
-    expose_as: operation
-    c_name: ifcopenshell_ifcgeom_taxonomy_boolean_result_operation
-    returns:
-      kind: int32
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return static_cast<int>(self_cpp->operation);
-
-  - kind: adapter_method
-    receiver: taxonomy_boolean_result
-    expose_as: item_count
-    c_name: ifcopenshell_ifcgeom_taxonomy_boolean_result_item_count
-    returns:
-      kind: size
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->children.size();
-
-  - kind: adapter_method
-    receiver: taxonomy_boolean_result
-    expose_as: item_at
-    c_name: ifcopenshell_ifcgeom_taxonomy_boolean_result_item_at
-    returns:
-      kind: handle
-      handle: taxonomy_item
-      ownership: borrowed
-    params:
-      - name: index
-        type:
-          kind: size
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (index >= self_cpp->children.size()) {
-            throw std::runtime_error("Boolean-result item index out of bounds");
-        }
-        return self_cpp->children[index];
-
-  - kind: adapter_method
-    receiver: taxonomy_boolean_result
-    expose_as: add_item
-    c_name: ifcopenshell_ifcgeom_taxonomy_boolean_result_add_item
-    returns:
-      kind: void
-    params:
-      - name: item
-        type:
-          kind: handle
-          handle: taxonomy_item
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        auto geom = ifcopenshell::geometry::taxonomy::dcast<ifcopenshell::geometry::taxonomy::geom_item>(item_cpp);
-        if (!geom) {
-            throw std::runtime_error("Item must be a geometry item for boolean_result");
-        }
-        self_cpp->children.push_back(geom);
 
   # === OpaqueNumber methods ===
-  - kind: method
-    cpp_name: to_double
-    receiver: opaque_number
-    expose_as: to_double
-    c_name: ifcopenshell_ifcgeom_opaque_number_to_double
-    returns:
-      kind: double
-    params: []
 
-  - kind: method
-    cpp_name: to_string
-    receiver: opaque_number
-    expose_as: to_string
-    c_name: ifcopenshell_ifcgeom_opaque_number_to_string
-    returns:
-      kind: string
-      ownership: copy
-    params: []
 
-  - kind: adapter_method
-    receiver: opaque_number
-    expose_as: add
-    c_name: ifcopenshell_ifcgeom_opaque_number_add
-    returns:
-      kind: handle
-      handle: opaque_number
-      ownership: owned
-    params:
-      - name: other
-        type:
-          kind: handle
-          handle: opaque_number
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return (*self_cpp) + other_cpp;
 
-  - kind: adapter_method
-    receiver: opaque_number
-    expose_as: subtract
-    c_name: ifcopenshell_ifcgeom_opaque_number_subtract
-    returns:
-      kind: handle
-      handle: opaque_number
-      ownership: owned
-    params:
-      - name: other
-        type:
-          kind: handle
-          handle: opaque_number
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return (*self_cpp) - other_cpp;
 
-  - kind: adapter_method
-    receiver: opaque_number
-    expose_as: multiply
-    c_name: ifcopenshell_ifcgeom_opaque_number_multiply
-    returns:
-      kind: handle
-      handle: opaque_number
-      ownership: owned
-    params:
-      - name: other
-        type:
-          kind: handle
-          handle: opaque_number
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return (*self_cpp) * other_cpp;
 
-  - kind: adapter_method
-    receiver: opaque_number
-    expose_as: divide
-    c_name: ifcopenshell_ifcgeom_opaque_number_divide
-    returns:
-      kind: handle
-      handle: opaque_number
-      ownership: owned
-    params:
-      - name: other
-        type:
-          kind: handle
-          handle: opaque_number
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return (*self_cpp) / other_cpp;
-
-  - kind: adapter_method
-    receiver: opaque_number
-    expose_as: negate
-    c_name: ifcopenshell_ifcgeom_opaque_number_negate
-    returns:
-      kind: handle
-      handle: opaque_number
-      ownership: owned
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return -(*self_cpp);
-
-  - kind: adapter_method
-    receiver: opaque_number
-    expose_as: equals
-    c_name: ifcopenshell_ifcgeom_opaque_number_equals
-    returns:
-      kind: bool
-    params:
-      - name: other
-        type:
-          kind: handle
-          handle: opaque_number
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return (*self_cpp) == other_cpp;
-
-  - kind: adapter_method
-    receiver: opaque_number
-    expose_as: less_than
-    c_name: ifcopenshell_ifcgeom_opaque_number_less_than
-    returns:
-      kind: bool
-    params:
-      - name: other
-        type:
-          kind: handle
-          handle: opaque_number
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return (*self_cpp) < other_cpp;
-
+  # === OpaqueNumber methods ===
+  # === OpaqueNumber methods ===
   - kind: method
     cpp_name: clone
     receiver: opaque_number
