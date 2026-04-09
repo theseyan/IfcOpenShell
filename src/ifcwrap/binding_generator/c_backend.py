@@ -119,6 +119,64 @@ def _handle_list_helper_name(handle: HandleSpec) -> str:
     return f"make_{_snake_name(_handle_list_c_type(handle))}"
 
 
+def _render_handle_list_helpers(handle: HandleSpec) -> str:
+    """Generate make_ and to_cpp_ helpers for a handle list type."""
+    list_c = _handle_list_c_type(handle)
+    helper_name = _handle_list_helper_name(handle)
+    snake = _snake_name(list_c)
+    if handle.ptr_type == "shared_ptr":
+        return f"""static {list_c} {helper_name}(const std::vector<std::shared_ptr<{handle.cpp_type}>>& values) {{
+    auto** items = values.empty() ? nullptr : new {handle.c_type}*[values.size()];
+    for (size_t i = 0; i < values.size(); ++i) {{
+        items[i] = new {handle.c_type}{{values[i]}};
+    }}
+    return {list_c}{{items, values.size()}};
+}}
+
+static std::vector<std::shared_ptr<{handle.cpp_type}>> to_cpp_{snake}(const {list_c}* values) {{
+    validate_list_items("{snake}", values->items, values->size);
+    std::vector<std::shared_ptr<{handle.cpp_type}>> result;
+    result.reserve(values->size);
+    for (size_t i = 0; i < values->size; ++i) {{
+        auto* item = values->items[i];
+        if (item == nullptr) {{
+            throw std::runtime_error("handle_list contains an invalid handle");
+        }}
+        result.push_back(item->ptr);
+    }}
+    return result;
+}}"""
+    return f"""static {list_c} {helper_name}(const std::vector<{handle.cpp_type}*>& values) {{
+    auto** items = values.empty() ? nullptr : new {handle.c_type}*[values.size()];
+    for (size_t i = 0; i < values.size(); ++i) {{
+        items[i] = new {handle.c_type}{{values[i], false}};
+    }}
+    return {list_c}{{items, values.size()}};
+}}
+
+static {list_c} {helper_name}(const std::vector<const {handle.cpp_type}*>& values) {{
+    auto** items = values.empty() ? nullptr : new {handle.c_type}*[values.size()];
+    for (size_t i = 0; i < values.size(); ++i) {{
+        items[i] = new {handle.c_type}{{const_cast<{handle.cpp_type}*>(values[i]), false}};
+    }}
+    return {list_c}{{items, values.size()}};
+}}
+
+static std::vector<const {handle.cpp_type}*> to_cpp_{snake}(const {list_c}* values) {{
+    validate_list_items("{snake}", values->items, values->size);
+    std::vector<const {handle.cpp_type}*> result;
+    result.reserve(values->size);
+    for (size_t i = 0; i < values->size; ++i) {{
+        auto* item = values->items[i];
+        if (item == nullptr || item->ptr == nullptr) {{
+            throw std::runtime_error("handle_list contains an invalid handle");
+        }}
+        result.push_back(item->ptr);
+    }}
+    return result;
+}}"""
+
+
 def _used_handle_list_handles(spec: BindingSpec) -> tuple[HandleSpec, ...]:
     seen: set[str] = set()
     handles: list[HandleSpec] = []
@@ -438,16 +496,35 @@ def _render_param_prelude(param: ParamSpec, spec: BindingSpec) -> str:
                 f"    auto {param.name}_cpp = {param.name}->value;"
             )
         cpp_type = _normalize_cpp_type(type_spec.cpp_type)
-        value_expr = f"{param.name}->ptr"
-        if cpp_type.endswith("&"):
-            value_expr = f"*{value_expr}"
+        is_shared = handle.ptr_type == "shared_ptr"
+        # Check if cpp_type refers to the shared_ptr itself (e.g., "const T::ptr &")
+        refers_to_shared_ptr = is_shared and cpp_type is not None and (
+            "::ptr" in cpp_type or "shared_ptr" in cpp_type
+        )
+        if type_spec.cpp_type is not None and cpp_type.endswith("&"):
+            if refers_to_shared_ptr:
+                # Reference to the shared_ptr: pass ptr member directly as reference
+                value_expr = f"{param.name}->ptr"
+                auto_kw = "const auto&"
+            else:
+                # Reference to underlying object: dereference pointer
+                value_expr = f"*{param.name}->ptr"
+                auto_kw = "auto&"
+        elif type_spec.cpp_type is not None and not cpp_type.endswith("*") and not is_shared:
+            # Value parameter (discovered, raw-ptr handle): dereference to copy
+            value_expr = f"*{param.name}->ptr"
+            auto_kw = "auto"
+        else:
+            # Pointer, shared_ptr, or unspecified (adapter): keep as-is
+            value_expr = f"{param.name}->ptr"
+            auto_kw = "auto"
         if type_spec.nullable:
             return (
                 f"    auto {param.name}_cpp = ({param.name} != nullptr && {param.name}->ptr != nullptr) ? {value_expr} : nullptr;"
             )
         return (
             f'    if ({param.name} == nullptr || {param.name}->ptr == nullptr) {{ throw std::runtime_error("Handle parameter \\"{param.name}\\" is invalid"); }}\n'
-            f"    auto {param.name}_cpp = {value_expr};"
+            f"    {auto_kw} {param.name}_cpp = {value_expr};"
         )
     if kind == "handle_list":
         handle = spec.handles[type_spec.handle]
@@ -463,6 +540,42 @@ def _render_param_prelude(param: ParamSpec, spec: BindingSpec) -> str:
             f"    auto {param.name}_cpp = static_cast<{cpp_type}>({param.name});"
         )
     return ""
+
+
+def _constructor_arg(p: ParamSpec) -> str:
+    """Build the expression for a single constructor argument."""
+    if p.type.kind == "handle":
+        # Constructors take references; prelude gives us a pointer, so dereference
+        return f"*{p.name}_cpp"
+    if p.type.kind in _NEEDS_CONVERSION_KINDS:
+        return f"{p.name}_cpp"
+    return p.name
+
+
+def _render_constructor(call: CallSpec, spec: BindingSpec) -> str:
+    handle = spec.handles[call.returns.handle]
+    cpp_class = call.cpp_class or handle.cpp_type
+    arg_str = ", ".join(_constructor_arg(p) for p in call.params)
+    new_expr = f"new {cpp_class}({arg_str})"
+
+    if call.cpp_class and call.cpp_class != handle.cpp_type:
+        new_expr = f"static_cast<{handle.cpp_type}*>({new_expr})"
+
+    result_line = _render_result_assignment(call, spec, new_expr)
+
+    if call.compile_guard:
+        guard = call.compile_guard
+        # Use #if defined() for all guards; compound guards (containing "defined(") are used as-is
+        guard_expr = guard if "defined(" in guard else f"defined({guard})"
+        return (
+            f"#if {guard_expr}\n"
+            f"        {result_line}\n"
+            f"#else\n"
+            f'        throw std::runtime_error("{call.c_name} requires {guard}");\n'
+            f"#endif"
+        )
+
+    return result_line
 
 
 def _call_expr_args(call: CallSpec) -> str:
@@ -520,6 +633,109 @@ def _render_call_impl(call: CallSpec, spec: BindingSpec) -> str:
         call_target = f"self_cpp->{call.cpp_name}" if call.receiver is not None else call.cpp_name
         expr = f"{call_target}({_call_expr_args(call)})"
         body_line = _render_result_assignment(call, spec, expr)
+    elif call.kind == "field":
+        expr = f"self_cpp->{call.cpp_name}"
+        # Convert std::array fields to std::vector for list returns
+        cpp_type = call.returns.cpp_type or ""
+        if "std::array<" in cpp_type:
+            m = re.match(r".*std::array<\s*(\w+)", cpp_type)
+            elem = m.group(1) if m else "double"
+            expr = f"std::vector<{elem}>({expr}.begin(), {expr}.end())"
+        # Add null guard for handle fields (shared_ptr can be null)
+        if call.returns.kind == "handle":
+            field_expr = f"self_cpp->{call.cpp_name}"
+            null_guard = f'if (!{field_expr}) {{ throw std::runtime_error("{call.cpp_name} is not set"); }}\n        '
+            body_line = null_guard + _render_result_assignment(call, spec, expr)
+        else:
+            body_line = _render_result_assignment(call, spec, expr)
+    elif call.kind == "value_handle_field":
+        target_handle = spec.handles[call.returns.handle]
+        expr = f"std::make_shared<{target_handle.cpp_type}>(self_cpp->{call.cpp_name})"
+        body_line = _render_result_assignment(call, spec, expr)
+    elif call.kind == "has_field":
+        body_line = f"*out_result = (self_cpp->{call.cpp_name} != nullptr);"
+    elif call.kind == "children_count":
+        field = call.cpp_name
+        body_line = f"*out_result = self_cpp->{field}.size();"
+    elif call.kind == "children_at":
+        field = call.cpp_name
+        body_line = (
+            f'if (index >= self_cpp->{field}.size()) {{ throw std::runtime_error("Index out of bounds"); }}\n'
+            f"        {_render_result_assignment(call, spec, f'self_cpp->{field}[index]')}"
+        )
+    elif call.kind == "children_add":
+        cast_type = call.cpp_name  # stashed in cpp_name
+        if cast_type:
+            body_line = (
+                f"auto cast_item = ifcopenshell::geometry::taxonomy::dcast<{cast_type}>(item_cpp);\n"
+                f'        if (!cast_item) {{ throw std::runtime_error("Invalid item type"); }}\n'
+                f"        self_cpp->children.push_back(cast_item);"
+            )
+        else:
+            body_line = "self_cpp->children.push_back(item_cpp);"
+    elif call.kind == "field_setter":
+        body_line = f"self_cpp->{call.cpp_name} = value_cpp;"
+    elif call.kind == "method_size":
+        body_line = f"*out_result = self_cpp->{call.cpp_name}().size();"
+    elif call.kind == "array_field":
+        body_line = _render_result_assignment(call, spec, f"self_cpp->{call.cpp_name}")
+    elif call.kind == "optional_has":
+        body_line = f"*out_result = self_cpp->{call.cpp_name}.is_initialized();"
+    elif call.kind == "optional_get":
+        null_guard = (
+            f'if (!self_cpp->{call.cpp_name}.is_initialized()) '
+            f'{{ throw std::runtime_error("{call.cpp_name} is not set"); }}\n        '
+        )
+        body_line = null_guard + _render_result_assignment(call, spec, f"*self_cpp->{call.cpp_name}")
+    elif call.kind == "as_item_cast":
+        target_handle = spec.handles[call.returns.handle]
+        body_line = _render_result_assignment(
+            call, spec,
+            f"std::static_pointer_cast<{target_handle.cpp_type}>(self->ptr)"
+        )
+    elif call.kind == "ccomponents_vector":
+        access_via = call.cpp_name  # e.g. "ccomponents" or "data()->ccomponents"
+        body_line = (
+            f"const auto& v = self_cpp->{access_via}();\n"
+            f"        {_render_result_assignment(call, spec, 'std::vector<double>{{v(0), v(1), v(2)}}')}"
+        )
+    elif call.kind == "ccomponents_matrix":
+        access_via = call.cpp_name
+        body_line = (
+            f"std::vector<double> data(16);\n"
+            f"        const auto& mat = self_cpp->{access_via}();\n"
+            f"        for (int i = 0; i < 4; ++i) {{\n"
+            f"            for (int j = 0; j < 4; ++j) {{\n"
+            f"                data[i * 4 + j] = mat(i, j);\n"
+            f"            }}\n"
+            f"        }}\n"
+            f"        {_render_result_assignment(call, spec, 'data')}"
+        )
+    elif call.kind == "variant_get":
+        parts = call.cpp_name.split("|")  # method|cpp_type
+        method, cpp_type = parts[0], parts[1]
+        body_line = (
+            f"auto val = self_cpp->{method}(name_cpp);\n"
+            f"        auto* p = boost::get<{cpp_type}>(&val);\n"
+            f'        if (!p) {{ throw std::runtime_error("Setting is not of expected type"); }}\n'
+            f"        {_render_result_assignment(call, spec, '*p')}"
+        )
+    elif call.kind == "variant_set":
+        parts = call.cpp_name.split("|")  # method|variant_type|cpp_type
+        method, variant_type, cpp_type = parts[0], parts[1], parts[2]
+        if cpp_type == "int64_t":
+            value_expr = f"{variant_type}(static_cast<int64_t>(value))"
+        elif cpp_type == "double":
+            value_expr = f"{variant_type}(value)"
+        elif cpp_type == "bool":
+            value_expr = f"{variant_type}(value)"
+        elif cpp_type == "std::string":
+            value_expr = f"{variant_type}(value_cpp)"
+        else:
+            value_expr = f"{variant_type}({cpp_type}(value))"
+        body_line = f"self_cpp->{method}(name_cpp, {value_expr});"
+    elif call.kind == "constructor":
+        body_line = _render_constructor(call, spec)
     else:
         body = call.implementation.body.rstrip()
         if call.returns.kind == "void":
@@ -579,28 +795,7 @@ def _render_cpp(spec: BindingSpec, header_name: str) -> str:
     destroy_impls_block = "\n\n".join(destroy_impls)
     handle_list_types = _used_handle_list_handles(spec)
     handle_list_helpers = "\n\n".join(
-        f"""static {_handle_list_c_type(handle)} {_handle_list_helper_name(handle)}(const std::vector<const {handle.cpp_type}*>& values) {{
-    auto** items = values.empty() ? nullptr : new {handle.c_type}*[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {{
-        items[i] = new {handle.c_type}{{const_cast<{handle.cpp_type}*>(values[i]), false}};
-    }}
-    return {_handle_list_c_type(handle)}{{items, values.size()}};
-}}
-
-static std::vector<const {handle.cpp_type}*> to_cpp_{_snake_name(_handle_list_c_type(handle))}(const {_handle_list_c_type(handle)}* values) {{
-    validate_list_items("{_snake_name(_handle_list_c_type(handle))}", values->items, values->size);
-    std::vector<const {handle.cpp_type}*> result;
-    result.reserve(values->size);
-    for (size_t i = 0; i < values->size; ++i) {{
-        auto* item = values->items[i];
-        if (item == nullptr || item->ptr == nullptr) {{
-            throw std::runtime_error("handle_list contains an invalid handle");
-        }}
-        result.push_back(item->ptr);
-    }}
-    return result;
-}}"""
-        for handle in handle_list_types
+        _render_handle_list_helpers(handle) for handle in handle_list_types
     )
     handle_list_destroy_impls = "\n\n".join(
         f"""void ifcopenshell_{_snake_name(_handle_list_c_type(handle))}_destroy({_handle_list_c_type(handle)}* value) {{

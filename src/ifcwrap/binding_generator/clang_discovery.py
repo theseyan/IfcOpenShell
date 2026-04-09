@@ -27,6 +27,13 @@ class DiscoveredMethod:
 
 
 @dataclass(frozen=True)
+class DiscoveredField:
+    class_name: str
+    cpp_name: str
+    cpp_type: str
+
+
+@dataclass(frozen=True)
 class DiscoveredFunction:
     namespace: str
     cpp_name: str
@@ -89,9 +96,13 @@ def _build_ast_dump_command(command: CompileCommand, *, ast_filter: str) -> list
     return args
 
 
+def _default_access(record: dict) -> str:
+    return "public" if record.get("tagUsed") == "struct" else "private"
+
+
 def _extract_public_methods(record: dict) -> dict[str, tuple[DiscoveredMethod, ...]]:
     methods: dict[str, list[DiscoveredMethod]] = defaultdict(list)
-    access = "private"
+    access = _default_access(record)
     for child in record.get("inner", []):
         if child.get("kind") == "AccessSpecDecl":
             access = child.get("access", access)
@@ -120,6 +131,28 @@ def _extract_public_methods(record: dict) -> dict[str, tuple[DiscoveredMethod, .
             )
         )
     return {name: tuple(overloads) for name, overloads in methods.items()}
+
+
+def _extract_public_fields(record: dict) -> dict[str, DiscoveredField]:
+    fields: dict[str, DiscoveredField] = {}
+    access = _default_access(record)
+    for child in record.get("inner", []):
+        if child.get("kind") == "AccessSpecDecl":
+            access = child.get("access", access)
+            continue
+        if access != "public":
+            continue
+        if child.get("kind") != "FieldDecl":
+            continue
+        name = child.get("name")
+        if not name:
+            continue
+        fields[name] = DiscoveredField(
+            class_name=record.get("name", ""),
+            cpp_name=name,
+            cpp_type=child.get("type", {}).get("qualType", ""),
+        )
+    return fields
 
 
 def _qualified_namespace(prefix: str, name: str) -> str:
@@ -167,6 +200,7 @@ def discover_public_methods_with_compile_commands(
     compile_commands_path: Path,
     translation_unit: Path,
     class_name: str,
+    include_inherited: bool = False,
 ) -> dict[str, tuple[DiscoveredMethod, ...]]:
     compile_commands = _parse_compile_commands(compile_commands_path)
     tu_resolved = translation_unit.resolve()
@@ -187,15 +221,114 @@ def discover_public_methods_with_compile_commands(
         raise RuntimeError(msg)
 
     objects = _decode_json_stream(proc.stdout)
-    records = [
-        obj
-        for obj in objects
-        if obj.get("kind") == "CXXRecordDecl" and obj.get("name") == class_name and obj.get("completeDefinition")
-    ]
-    if not records:
+    record = _find_record_in_nodes(objects, class_name)
+    if record is None:
         msg = f"Class '{class_name}' not found in AST for '{translation_unit}'"
         raise ValueError(msg)
-    return _extract_public_methods(records[-1])
+    methods = _extract_public_methods(record)
+
+    if include_inherited:
+        visited: set[str] = {class_name}
+        queue = _get_base_class_names(record)
+        while queue:
+            base_name = queue.pop(0)
+            if base_name in visited:
+                continue
+            visited.add(base_name)
+            base_record = _ast_dump_record(command, base_name)
+            if base_record is None:
+                continue
+            base_methods = _extract_public_methods(base_record)
+            for mname, overloads in base_methods.items():
+                if mname not in methods:
+                    methods[mname] = overloads
+            queue.extend(_get_base_class_names(base_record))
+
+    return methods
+
+
+def _get_base_class_names(record: dict) -> list[str]:
+    """Extract direct base class names from a CXXRecordDecl AST node."""
+    bases = []
+    for base in record.get("bases", []):
+        qual_type = base.get("type", {}).get("qualType", "")
+        # Strip template args first (before ::), then extract simple name
+        template_start = qual_type.find("<")
+        name_part = qual_type[:template_start] if template_start >= 0 else qual_type
+        simple_name = name_part.rsplit("::", 1)[-1]
+        if simple_name:
+            bases.append(simple_name)
+    return bases
+
+
+def _find_record_in_nodes(nodes: list[dict], class_name: str) -> dict | None:
+    """Find the last CXXRecordDecl by name in AST nodes, searching inside namespace and template nodes."""
+    result = None
+    for obj in nodes:
+        if obj.get("kind") == "CXXRecordDecl" and obj.get("name") == class_name and obj.get("completeDefinition"):
+            result = obj
+        # Search inside namespace and class template nodes
+        if obj.get("kind") in ("NamespaceDecl", "ClassTemplateDecl"):
+            inner_result = _find_record_in_nodes(obj.get("inner", []), class_name)
+            if inner_result is not None:
+                result = inner_result
+    return result
+
+
+def _ast_dump_record(command: _CompileCommand, class_name: str) -> dict | None:
+    """Run clang AST dump for a class and return the CXXRecordDecl node, or None."""
+    proc = subprocess.run(
+        _build_ast_dump_command(command, ast_filter=class_name),
+        cwd=command.directory,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return None
+    objects = _decode_json_stream(proc.stdout)
+    return _find_record_in_nodes(objects, class_name)
+
+
+def discover_public_fields_with_compile_commands(
+    compile_commands_path: Path,
+    translation_unit: Path,
+    class_name: str,
+    include_inherited: bool = False,
+) -> dict[str, DiscoveredField]:
+    compile_commands = _parse_compile_commands(compile_commands_path)
+    tu_resolved = translation_unit.resolve()
+    command = next((item for item in compile_commands if item.file.resolve() == tu_resolved), None)
+    if command is None:
+        msg = f"Translation unit '{translation_unit}' not found in '{compile_commands_path}'"
+        raise ValueError(msg)
+
+    record = _ast_dump_record(command, class_name)
+    if record is None:
+        msg = f"Class '{class_name}' not found in AST for '{translation_unit}'"
+        raise ValueError(msg)
+
+    fields = _extract_public_fields(record)
+
+    if include_inherited:
+        # Walk base classes, collecting inherited fields (cache to avoid re-dumps)
+        visited: set[str] = {class_name}
+        queue = _get_base_class_names(record)
+        while queue:
+            base_name = queue.pop(0)
+            if base_name in visited:
+                continue
+            visited.add(base_name)
+            base_record = _ast_dump_record(command, base_name)
+            if base_record is None:
+                continue
+            base_fields = _extract_public_fields(base_record)
+            for fname, fval in base_fields.items():
+                if fname not in fields:
+                    fields[fname] = fval
+            queue.extend(_get_base_class_names(base_record))
+
+    return fields
 
 
 def discover_namespace_functions_with_compile_commands(
