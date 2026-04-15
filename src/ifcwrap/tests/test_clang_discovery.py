@@ -1,5 +1,3 @@
-# This file was generated with the assistance of an AI coding tool.
-
 from __future__ import annotations
 
 import json
@@ -9,7 +7,9 @@ import shutil
 import pytest
 
 from src.ifcwrap.binding_generator.clang_discovery import (
+    TranslationUnitIndex,
     discover_namespace_functions_with_compile_commands,
+    discover_public_fields_with_compile_commands,
     discover_public_methods_with_compile_commands,
 )
 
@@ -69,11 +69,18 @@ void hop(const std::string& guid);
     assert methods["bar"][0].params[0].cpp_type == "int"
     assert len(methods["baz"]) == 1
     assert methods["baz"][0].return_cpp_type == "const std::string &"
+    assert methods["baz"][0].return_type_ref.is_const
+    assert methods["baz"][0].return_type_ref.is_lvalue_reference
+    assert methods["baz"][0].return_type_ref.base_name == "std::string"
     assert methods["baz"][0].params[0].name == "guid"
     assert methods["baz"][0].params[0].cpp_type == "const std::string &"
+    assert methods["baz"][0].params[0].cpp_type_ref.base_name == "std::string"
     assert len(methods["qux"]) == 2
     assert [param.cpp_type for param in methods["qux"][0].params] == ["int"]
     assert [param.cpp_type for param in methods["qux"][1].params] == ["const std::string &"]
+
+    qualified_methods = discover_public_methods_with_compile_commands(compile_commands, source, "Demo::Foo")
+    assert set(qualified_methods) == {"bar", "baz", "qux"}
 
     functions = discover_namespace_functions_with_compile_commands(compile_commands, source, "Demo")
     assert set(functions) == {"walk", "hop"}
@@ -81,3 +88,290 @@ void hop(const std::string& guid);
     assert functions["walk"][0].return_cpp_type == "int"
     assert functions["walk"][0].params[0].cpp_type == "int"
     assert len(functions["hop"]) == 2
+
+
+def test_discover_public_fields_with_inheritance(tmp_path: Path) -> None:
+    compiler = shutil.which("clang++")
+    if compiler is None:
+        pytest.skip("clang++ is not available")
+
+    header = tmp_path / "fields.h"
+    source = tmp_path / "fields.cpp"
+    compile_commands = tmp_path / "compile_commands.json"
+
+    header.write_text(
+        """
+#include <memory>
+
+namespace Demo {
+struct Node {
+    using ptr = std::shared_ptr<Node>;
+};
+
+struct Base {
+public:
+    int inherited;
+};
+
+struct Derived : Base {
+public:
+    Node::ptr axis;
+private:
+    int hidden;
+};
+}
+
+namespace Other {
+struct Base {
+public:
+    int wrong;
+};
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "fields.h"\n', encoding="utf-8")
+    compile_commands.write_text(
+        json.dumps(
+            [
+                {
+                    "directory": str(tmp_path),
+                    "command": f"{compiler} -std=c++17 -I {tmp_path} -c {source}",
+                    "file": str(source),
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    own_fields = discover_public_fields_with_compile_commands(compile_commands, source, "Derived")
+    assert set(own_fields) == {"axis"}
+    assert own_fields["axis"].cpp_type == "Node::ptr"
+    assert own_fields["axis"].cpp_type_ref.desugared_spelling == "std::shared_ptr<Demo::Node>"
+    assert own_fields["axis"].cpp_type_ref.base_name == "std::shared_ptr"
+    assert own_fields["axis"].cpp_type_ref.template_args[0].base_name == "Demo::Node"
+
+    inherited_fields = discover_public_fields_with_compile_commands(
+        compile_commands, source, "Derived", include_inherited=True
+    )
+    assert set(inherited_fields) == {"axis", "inherited"}
+    assert inherited_fields["inherited"].cpp_type == "int"
+    assert inherited_fields["inherited"].cpp_type_ref.canonical_spelling == "int"
+
+    qualified_inherited_fields = discover_public_fields_with_compile_commands(
+        compile_commands, source, "Demo::Derived", include_inherited=True
+    )
+    assert set(qualified_inherited_fields) == {"axis", "inherited"}
+
+
+def test_discover_cpp_types_marks_enums(tmp_path: Path) -> None:
+    compiler = shutil.which("clang++")
+    if compiler is None:
+        pytest.skip("clang++ is not available")
+
+    header = tmp_path / "enums.h"
+    source = tmp_path / "enums.cpp"
+    compile_commands = tmp_path / "compile_commands.json"
+
+    header.write_text(
+        """
+namespace Demo {
+enum class Mode { A, B };
+
+struct Widget {
+    Mode mode() const;
+    void set_mode(Mode value);
+};
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "enums.h"\n', encoding="utf-8")
+    compile_commands.write_text(
+        json.dumps(
+            [
+                {
+                    "directory": str(tmp_path),
+                    "command": f"{compiler} -std=c++17 -I {tmp_path} -c {source}",
+                    "file": str(source),
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    methods = discover_public_methods_with_compile_commands(compile_commands, source, "Demo::Widget")
+
+    assert methods["mode"][0].return_type_ref.is_enum
+    assert methods["mode"][0].return_type_ref.base_name == "Mode"
+    assert methods["set_mode"][0].params[0].cpp_type_ref.is_enum
+
+
+def test_discovery_avoids_unscoped_and_std_ast_filters(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    compiler = shutil.which("clang++")
+    if compiler is None:
+        pytest.skip("clang++ is not available")
+
+    header = tmp_path / "scoped.h"
+    source = tmp_path / "scoped.cpp"
+    compile_commands = tmp_path / "compile_commands.json"
+
+    header.write_text(
+        """
+#include <string>
+
+namespace Demo {
+struct Outer {
+    struct Inner {};
+};
+
+struct Container {
+    Outer::Inner inner() const;
+    const std::string& name() const;
+};
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "scoped.h"\n', encoding="utf-8")
+    compile_commands.write_text(
+        json.dumps(
+            [
+                {
+                    "directory": str(tmp_path),
+                    "command": f"{compiler} -std=c++17 -I {tmp_path} -c {source}",
+                    "file": str(source),
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    seen_filters: list[str] = []
+    original = TranslationUnitIndex._run_ast_dump
+
+    def _recording_run_ast_dump(self: TranslationUnitIndex, ast_filter: str):
+        seen_filters.append(ast_filter)
+        return original(self, ast_filter)
+
+    monkeypatch.setattr(TranslationUnitIndex, "_run_ast_dump", _recording_run_ast_dump)
+
+    methods = discover_public_methods_with_compile_commands(compile_commands, source, "Demo::Container")
+
+    assert methods["inner"][0].return_type_ref.storage_spelling == "Outer::Inner"
+    assert methods["name"][0].return_type_ref.storage_spelling == "const std::string&"
+    assert "std" not in seen_filters
+    assert "Inner" not in seen_filters
+
+
+def test_discovery_avoids_lowercase_bare_type_filters(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    compiler = shutil.which("clang++")
+    if compiler is None:
+        pytest.skip("clang++ is not available")
+
+    header = tmp_path / "lowercase.h"
+    source = tmp_path / "lowercase.cpp"
+    compile_commands = tmp_path / "compile_commands.json"
+
+    header.write_text(
+        """
+namespace Demo {
+struct declaration {};
+
+struct schema_definition {
+    declaration declared() const;
+};
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "lowercase.h"\n', encoding="utf-8")
+    compile_commands.write_text(
+        json.dumps(
+            [
+                {
+                    "directory": str(tmp_path),
+                    "command": f"{compiler} -std=c++17 -I {tmp_path} -c {source}",
+                    "file": str(source),
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    seen_filters: list[str] = []
+    original = TranslationUnitIndex._run_ast_dump
+
+    def _recording_run_ast_dump(self: TranslationUnitIndex, ast_filter: str):
+        seen_filters.append(ast_filter)
+        return original(self, ast_filter)
+
+    monkeypatch.setattr(TranslationUnitIndex, "_run_ast_dump", _recording_run_ast_dump)
+
+    methods = discover_public_methods_with_compile_commands(compile_commands, source, "Demo::schema_definition")
+
+    assert methods["declared"][0].return_type_ref.storage_spelling == "Demo::declaration"
+    assert "declaration" not in seen_filters
+
+
+def test_discovery_avoids_bare_ptr_and_it_alias_filters(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    compiler = shutil.which("clang++")
+    if compiler is None:
+        pytest.skip("clang++ is not available")
+
+    header = tmp_path / "aliases.h"
+    source = tmp_path / "aliases.cpp"
+    compile_commands = tmp_path / "compile_commands.json"
+
+    header.write_text(
+        """
+#include <memory>
+
+namespace Demo {
+struct Derived {
+public:
+    using ptr = std::shared_ptr<Derived>;
+    using it = int;
+
+    ptr axis;
+    it index() const;
+};
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "aliases.h"\n', encoding="utf-8")
+    compile_commands.write_text(
+        json.dumps(
+            [
+                {
+                    "directory": str(tmp_path),
+                    "command": f"{compiler} -std=c++17 -I {tmp_path} -c {source}",
+                    "file": str(source),
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    seen_filters: list[str] = []
+    original = TranslationUnitIndex._run_ast_dump
+
+    def _recording_run_ast_dump(self: TranslationUnitIndex, ast_filter: str):
+        seen_filters.append(ast_filter)
+        return original(self, ast_filter)
+
+    monkeypatch.setattr(TranslationUnitIndex, "_run_ast_dump", _recording_run_ast_dump)
+
+    fields = discover_public_fields_with_compile_commands(compile_commands, source, "Demo::Derived")
+    methods = discover_public_methods_with_compile_commands(compile_commands, source, "Demo::Derived")
+
+    assert fields["axis"].cpp_type_ref.desugared_spelling == "std::shared_ptr<Demo::Derived>"
+    assert methods["index"][0].return_cpp_type == "it"
+    assert "ptr" not in seen_filters
+    assert "it" not in seen_filters

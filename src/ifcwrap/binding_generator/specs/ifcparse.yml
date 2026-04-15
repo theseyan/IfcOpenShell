@@ -1,4 +1,3 @@
-# This file was generated with the assistance of an AI coding tool.
 schema_version: 1
 module: ifcopenshell
 slice: ifcparse
@@ -112,12 +111,15 @@ discover:
     - handle: file
       translation_unit: IfcFile.cpp
       exclude:
+        - header
         - begin
         - end
         - getInverse
         - getUnit
         - good
         - internal_guid_map
+        - instances_by_type
+        - instances_by_type_excl_subtypes
         - register_inverse
         - types_begin
         - types_end
@@ -191,12 +193,15 @@ discover:
       translation_unit: IfcSchema.cpp
     - handle: parameter_type
       translation_unit: IfcSchema.cpp
+      include_all: false
       include:
         - as_aggregation_type
         - as_named_type
         - as_simple_type
     - handle: named_type
       translation_unit: IfcSchema.cpp
+      exclude:
+        - is
       overloads:
         - cpp_name: is
           expose_as: is_a
@@ -204,6 +209,10 @@ discover:
             - const std::string &
     - handle: simple_type
       translation_unit: IfcSchema.cpp
+      type_overrides:
+        declared_type:
+          returns:
+            kind: int32
     - handle: aggregation_type
       translation_unit: IfcSchema.cpp
       exclude:
@@ -211,6 +220,10 @@ discover:
     - handle: header
       translation_unit: IfcSpfHeader.cpp
       exclude:
+        - file
+        - file_description
+        - file_name
+        - file_schema
         - write
       overloads:
         - cpp_name: file
@@ -233,6 +246,8 @@ discover:
       translation_unit: Header_section_schema.cpp
     - handle: entity
       translation_unit: IfcSchema.cpp
+      exclude:
+        - attribute_index
       overloads:
         - cpp_name: attribute_index
           expose_as: attribute_index
@@ -246,6 +261,7 @@ discover:
         - type_of_aggregation
     - handle: instance_streamer
       translation_unit: IfcFile.cpp
+      include_all: false
       include:
         - bypassed_instances
         - hasSemicolon
@@ -253,6 +269,7 @@ discover:
         - semicolonCount
     - handle: instance_list
       translation_unit: IfcUtil.cpp
+      include_all: false
       include:
         - size
   functions:
@@ -260,13 +277,15 @@ discover:
       translation_unit: IfcParse.cpp
       exclude:
         - IfcSIPrefixToValue
+        - GeneralTokenPtr
+        - OperatorTokenPtr
+        - get_SI_equivalent
     - namespace: IfcParse
       translation_unit: IfcSchema.cpp
 
 functions:
   - kind: adapter_function
     expose_as: open
-    c_name: ifcopenshell_ifcparse_open
     returns:
       kind: handle
       handle: file
@@ -285,7 +304,6 @@ functions:
 
   - kind: adapter_function
     expose_as: new_file
-    c_name: ifcopenshell_ifcparse_new_file
     returns:
       kind: handle
       handle: file
@@ -308,7 +326,7 @@ functions:
 
   - kind: adapter_function
     expose_as: read
-    c_name: ifcopenshell_ifcparse_read_memory
+    c_expose_as: read_memory
     returns:
       kind: handle
       handle: file
@@ -320,13 +338,10 @@ functions:
     implementation:
       kind: inline_cpp
       body: |
-        char* copied_data = new char[data_cpp.size()];
-        memcpy(copied_data, data_cpp.c_str(), data_cpp.size());
-        return new IfcParse::IfcFile((void*)copied_data, static_cast<int>(data_cpp.size()));
+        return new IfcParse::IfcFile((void*)data_cpp.data(), static_cast<int>(data_cpp.size()));
 
   - kind: adapter_function
     expose_as: stream_from_string
-    c_name: ifcopenshell_ifcparse_stream_from_string
     returns:
       kind: handle
       handle: instance_streamer
@@ -338,13 +353,10 @@ functions:
     implementation:
       kind: inline_cpp
       body: |
-        char* copied_data = new char[data_cpp.size()];
-        memcpy(copied_data, data_cpp.c_str(), data_cpp.size());
-        return new IfcParse::InstanceStreamer((void*)copied_data, static_cast<int>(data_cpp.size()));
+        return new IfcParse::InstanceStreamer((void*)data_cpp.data(), static_cast<int>(data_cpp.size()));
 
   - kind: adapter_function
     expose_as: version
-    c_name: ifcopenshell_ifcparse_version
     returns:
       kind: string
       ownership: static
@@ -355,22 +367,7 @@ functions:
         return IFCOPENSHELL_VERSION;
 
   - kind: adapter_function
-    expose_as: guess_file_type
-    c_name: ifcopenshell_ifcparse_guess_file_type
-    returns:
-      kind: int32
-    params:
-      - name: path
-        type:
-          kind: string
-    implementation:
-      kind: inline_cpp
-      body: |
-        return static_cast<int>(IfcParse::guess_file_type(path_cpp));
-
-  - kind: adapter_function
     expose_as: set_feature
-    c_name: ifcopenshell_ifcparse_set_feature
     returns:
       kind: void
     params:
@@ -391,7 +388,6 @@ functions:
 
   - kind: adapter_function
     expose_as: get_feature
-    c_name: ifcopenshell_ifcparse_get_feature
     returns:
       kind: bool
     params:
@@ -408,7 +404,6 @@ functions:
 
   - kind: adapter_function
     expose_as: get_log
-    c_name: ifcopenshell_ifcparse_get_log
     returns:
       kind: string
       ownership: copy
@@ -424,7 +419,6 @@ functions:
 
   - kind: adapter_function
     expose_as: turn_on_detailed_logging
-    c_name: ifcopenshell_ifcparse_turn_on_detailed_logging
     returns:
       kind: void
     params: []
@@ -436,7 +430,6 @@ functions:
 
   - kind: adapter_function
     expose_as: turn_off_detailed_logging
-    c_name: ifcopenshell_ifcparse_turn_off_detailed_logging
     returns:
       kind: void
     params: []
@@ -449,7 +442,6 @@ functions:
 
   - kind: adapter_function
     expose_as: set_log_format_json
-    c_name: ifcopenshell_ifcparse_set_log_format_json
     returns:
       kind: void
     params: []
@@ -463,7 +455,6 @@ functions:
 
   - kind: adapter_function
     expose_as: set_log_format_text
-    c_name: ifcopenshell_ifcparse_set_log_format_text
     returns:
       kind: void
     params: []
@@ -477,7 +468,6 @@ functions:
 
   - kind: adapter_function
     expose_as: ifc_si_prefix_to_value
-    c_name: ifcopenshell_ifcparse_ifc_si_prefix_to_value
     returns:
       kind: double
     params:
@@ -491,7 +481,6 @@ functions:
 
   - kind: adapter_function
     expose_as: get_si_equivalent
-    c_name: ifcopenshell_ifcparse_get_si_equivalent
     returns:
       kind: double
     params:
@@ -535,7 +524,6 @@ functions:
 
   - kind: adapter_function
     expose_as: get_info_cpp
-    c_name: ifcopenshell_ifcparse_get_info_cpp
     returns:
       kind: string
       ownership: copy
@@ -555,7 +543,6 @@ functions:
 
   - kind: adapter_function
     expose_as: operator_token_ptr
-    c_name: ifcopenshell_ifcparse_operator_token_ptr
     returns:
       kind: int32
     params:
@@ -573,7 +560,6 @@ functions:
 
   - kind: adapter_function
     expose_as: general_token_ptr
-    c_name: ifcopenshell_ifcparse_general_token_ptr
     returns:
       kind: int32
     params:
@@ -590,7 +576,7 @@ functions:
 
   - kind: adapter_function
     expose_as: new_IfcBaseClass
-    c_name: ifcopenshell_ifcparse_new_instance
+    c_expose_as: new_instance
     returns:
       kind: handle
       handle: instance
@@ -617,31 +603,8 @@ functions:
 methods:
   - kind: adapter_method
     receiver: file
-    cpp_name: initialize
-    expose_as: initialize
-    c_name: ifcopenshell_ifc_file_initialize
-    returns:
-      kind: bool
-    params:
-      - name: path
-        type:
-          kind: string
-      - name: file_type
-        type:
-          kind: int32
-      - name: readonly
-        type:
-          kind: bool
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->initialize(path_cpp, static_cast<IfcParse::filetype>(file_type), readonly);
-
-  - kind: adapter_method
-    receiver: file
     cpp_name: write
     expose_as: write
-    c_name: ifcopenshell_ifc_file_write
     returns:
       kind: void
     params:
@@ -661,7 +624,6 @@ methods:
     receiver: file
     cpp_name: storage_mode
     expose_as: storage_mode
-    c_name: ifcopenshell_ifc_file_storage_mode
     returns:
       kind: int32
     params: []
@@ -682,7 +644,6 @@ methods:
     receiver: file
     cpp_name: schema_name
     expose_as: schema_name
-    c_name: ifcopenshell_ifc_file_schema_name
     returns:
       kind: string
       ownership: copy
@@ -699,7 +660,6 @@ methods:
     receiver: file
     cpp_name: get_inverse
     expose_as: get_inverse
-    c_name: ifcopenshell_ifc_file_get_inverse
     returns:
       kind: handle
       handle: instance_list
@@ -722,7 +682,6 @@ methods:
     receiver: file
     cpp_name: get_total_inverses
     expose_as: get_total_inverses
-    c_name: ifcopenshell_ifc_file_get_total_inverses
     returns:
       kind: int32
     params:
@@ -743,7 +702,6 @@ methods:
     receiver: file
     cpp_name: types
     expose_as: types
-    c_name: ifcopenshell_ifc_file_types
     returns:
       kind: string_list
       ownership: copy
@@ -763,7 +721,6 @@ methods:
     receiver: file
     cpp_name: to_string
     expose_as: to_string
-    c_name: ifcopenshell_ifc_file_to_string
     returns:
       kind: string
       ownership: copy
@@ -779,7 +736,6 @@ methods:
     receiver: file
     cpp_name: entity_names
     expose_as: entity_names
-    c_name: ifcopenshell_ifc_file_entity_names
     returns:
       kind: uint32_list
       ownership: copy
@@ -798,7 +754,6 @@ methods:
     receiver: file
     cpp_name: file_pointer
     expose_as: file_pointer
-    c_name: ifcopenshell_ifc_file_file_pointer
     returns:
       kind: size
     params: []
@@ -811,7 +766,6 @@ methods:
     receiver: file
     cpp_name: get_inverse_indices
     expose_as: get_inverse_indices
-    c_name: ifcopenshell_ifc_file_get_inverse_indices
     returns:
       kind: int32_list
       ownership: copy
@@ -833,7 +787,6 @@ methods:
     receiver: file
     cpp_name: good
     expose_as: good
-    c_name: ifcopenshell_ifc_file_good
     returns:
       kind: int32
     params: []
@@ -846,7 +799,6 @@ methods:
     receiver: file
     cpp_name: getUnit
     expose_as: get_unit
-    c_name: ifcopenshell_ifc_file_get_unit
     returns:
       kind: double
     params:
@@ -862,7 +814,6 @@ methods:
     receiver: file
     cpp_name: key_value_store_query
     expose_as: key_value_store_query
-    c_name: ifcopenshell_ifc_file_key_value_store_query
     returns:
       kind: string
       ownership: copy
@@ -897,7 +848,6 @@ methods:
     receiver: file
     cpp_name: key_value_store_iter
     expose_as: key_value_store_iter
-    c_name: ifcopenshell_ifc_file_key_value_store_iter
     returns:
       kind: string_list
       ownership: copy
@@ -932,7 +882,6 @@ methods:
     receiver: instance
     cpp_name: file_pointer
     expose_as: file_pointer
-    c_name: ifcopenshell_ifc_instance_file_pointer
     returns:
       kind: size
     params: []
@@ -945,7 +894,6 @@ methods:
     receiver: instance
     cpp_name: data
     expose_as: data
-    c_name: ifcopenshell_ifc_instance_data
     returns:
       kind: size
     params: []
@@ -958,7 +906,6 @@ methods:
     receiver: instance
     cpp_name: get_argument_index
     expose_as: get_argument_index
-    c_name: ifcopenshell_ifc_instance_get_argument_index
     returns:
       kind: uint32
     params:
@@ -980,7 +927,6 @@ methods:
     receiver: instance
     cpp_name: get_argument_name
     expose_as: get_argument_name
-    c_name: ifcopenshell_ifc_instance_get_argument_name
     returns:
       kind: string
       ownership: copy
@@ -1003,7 +949,6 @@ methods:
     receiver: instance
     cpp_name: get_attribute_category
     expose_as: get_attribute_category
-    c_name: ifcopenshell_ifc_instance_get_attribute_category
     returns:
       kind: int32
     params:
@@ -1032,7 +977,6 @@ methods:
     receiver: instance
     cpp_name: set_attribute_value
     expose_as: set_attribute_value
-    c_name: ifcopenshell_ifc_instance_set_attribute_value
     returns:
       kind: void
     params:
@@ -1064,7 +1008,6 @@ methods:
     receiver: instance
     cpp_name: unset_attribute_value
     expose_as: unset_attribute_value
-    c_name: ifcopenshell_ifc_instance_unset_attribute_value
     returns:
       kind: void
     params:
@@ -1091,7 +1034,6 @@ methods:
     receiver: instance
     cpp_name: get_inverse
     expose_as: get_inverse
-    c_name: ifcopenshell_ifc_instance_get_inverse
     returns:
       kind: handle
       handle: instance_list
@@ -1112,7 +1054,6 @@ methods:
     receiver: instance
     cpp_name: get_attribute_value
     expose_as: get_attribute_value
-    c_name: ifcopenshell_ifc_instance_get_attribute_value
     returns:
       kind: handle
       handle: attribute_value
@@ -1128,9 +1069,33 @@ methods:
 
   - kind: adapter_method
     receiver: instance
+    cpp_name: get_argument
+    expose_as: get_argument_by_name
+    returns:
+      kind: handle
+      handle: attribute_value
+      ownership: owned
+    params:
+      - name: name
+        type:
+          kind: string
+    implementation:
+      kind: inline_cpp
+      body: |
+        auto* entity = self_cpp->declaration().as_entity();
+        if (!entity) {
+            throw std::runtime_error("Attribute '" + name_cpp + "' not found on entity named " + self_cpp->declaration().name());
+        }
+        auto index = entity->attribute_index(name_cpp);
+        if (index == -1) {
+            throw std::runtime_error("Attribute '" + name_cpp + "' not found on entity named " + self_cpp->declaration().name());
+        }
+        return self_cpp->get_attribute_value(static_cast<unsigned>(index));
+
+  - kind: adapter_method
+    receiver: instance
     cpp_name: get_argument_type
     expose_as: get_argument_type
-    c_name: ifcopenshell_ifc_instance_get_argument_type
     returns:
       kind: string
       ownership: static
@@ -1147,7 +1112,6 @@ methods:
     receiver: instance
     cpp_name: to_string
     expose_as: to_string
-    c_name: ifcopenshell_ifc_instance_to_string
     returns:
       kind: string
       ownership: copy
@@ -1166,7 +1130,6 @@ methods:
     receiver: instance
     cpp_name: class_name
     expose_as: class_name
-    c_name: ifcopenshell_ifc_instance_class_name
     returns:
       kind: string
       ownership: copy
@@ -1187,7 +1150,6 @@ methods:
     receiver: instance
     cpp_name: is_a
     expose_as: is_a
-    c_name: ifcopenshell_ifc_instance_is_a
     returns:
       kind: bool
     params:
@@ -1203,7 +1165,6 @@ methods:
     receiver: instance
     cpp_name: get_attribute_names
     expose_as: get_attribute_names
-    c_name: ifcopenshell_ifc_instance_get_attribute_names
     returns:
       kind: string_list
       ownership: copy
@@ -1226,7 +1187,6 @@ methods:
     receiver: instance
     cpp_name: get_inverse_attribute_names
     expose_as: get_inverse_attribute_names
-    c_name: ifcopenshell_ifc_instance_get_inverse_attribute_names
     returns:
       kind: string_list
       ownership: copy
@@ -1249,7 +1209,6 @@ methods:
     receiver: instance
     cpp_name: unset_argument
     expose_as: unset_argument
-    c_name: ifcopenshell_ifc_instance_unset_argument
     returns:
       kind: void
     params:
@@ -1265,7 +1224,6 @@ methods:
     receiver: instance
     cpp_name: set_argument_bool
     expose_as: set_argument_bool
-    c_name: ifcopenshell_ifc_instance_set_argument_bool
     returns:
       kind: void
     params:
@@ -1284,7 +1242,6 @@ methods:
     receiver: instance
     cpp_name: set_argument_int32
     expose_as: set_argument_int32
-    c_name: ifcopenshell_ifc_instance_set_argument_int32
     returns:
       kind: void
     params:
@@ -1303,7 +1260,6 @@ methods:
     receiver: instance
     cpp_name: set_argument_double
     expose_as: set_argument_double
-    c_name: ifcopenshell_ifc_instance_set_argument_double
     returns:
       kind: void
     params:
@@ -1322,7 +1278,6 @@ methods:
     receiver: instance
     cpp_name: set_argument_string
     expose_as: set_argument_string
-    c_name: ifcopenshell_ifc_instance_set_argument_string
     returns:
       kind: void
     params:
@@ -1341,7 +1296,6 @@ methods:
     receiver: instance
     cpp_name: set_argument_instance
     expose_as: set_argument_instance
-    c_name: ifcopenshell_ifc_instance_set_argument_instance
     returns:
       kind: void
     params:
@@ -1362,7 +1316,6 @@ methods:
     receiver: instance
     cpp_name: set_argument_instance_list
     expose_as: set_argument_instance_list
-    c_name: ifcopenshell_ifc_instance_set_argument_instance_list
     returns:
       kind: void
     params:
@@ -1383,7 +1336,6 @@ methods:
     receiver: instance
     cpp_name: set_argument_int32_list
     expose_as: set_argument_int32_list
-    c_name: ifcopenshell_ifc_instance_set_argument_int32_list
     returns:
       kind: void
     params:
@@ -1403,7 +1355,6 @@ methods:
     receiver: instance
     cpp_name: set_argument_double_list
     expose_as: set_argument_double_list
-    c_name: ifcopenshell_ifc_instance_set_argument_double_list
     returns:
       kind: void
     params:
@@ -1423,7 +1374,6 @@ methods:
     receiver: instance
     cpp_name: set_argument_string_list
     expose_as: set_argument_string_list
-    c_name: ifcopenshell_ifc_instance_set_argument_string_list
     returns:
       kind: void
     params:
@@ -1443,7 +1393,6 @@ methods:
     receiver: instance
     cpp_name: set_argument_int32_list_list
     expose_as: set_argument_int32_list_list
-    c_name: ifcopenshell_ifc_instance_set_argument_int32_list_list
     returns:
       kind: void
     params:
@@ -1463,7 +1412,6 @@ methods:
     receiver: instance
     cpp_name: set_argument_double_list_list
     expose_as: set_argument_double_list_list
-    c_name: ifcopenshell_ifc_instance_set_argument_double_list_list
     returns:
       kind: void
     params:
@@ -1483,7 +1431,6 @@ methods:
     receiver: instance
     cpp_name: setArgumentAsLogical
     expose_as: set_argument_logical
-    c_name: ifcopenshell_ifc_instance_set_argument_logical
     returns:
       kind: void
     params:
@@ -1516,7 +1463,6 @@ methods:
     receiver: instance
     cpp_name: setArgumentAsAggregateOfAggregateOfEntityInstance
     expose_as: set_argument_as_aggregate_of_aggregate_of_entity_instance
-    c_name: ifcopenshell_ifc_instance_set_argument_as_aggregate_of_aggregate_of_entity_instance
     returns:
       kind: void
     params:
@@ -1556,7 +1502,6 @@ methods:
     receiver: instance
     cpp_name: set_argument_enumeration
     expose_as: set_argument_enumeration
-    c_name: ifcopenshell_ifc_instance_set_argument_enumeration
     returns:
       kind: void
     params:
@@ -1580,7 +1525,6 @@ methods:
     receiver: attribute_value
     cpp_name: is_null
     expose_as: is_null
-    c_name: ifcopenshell_ifcparse_attribute_value_is_null
     returns:
       kind: bool
     params: []
@@ -1593,7 +1537,6 @@ methods:
     receiver: attribute_value
     cpp_name: type
     expose_as: type
-    c_name: ifcopenshell_ifcparse_attribute_value_type
     returns:
       kind: string
       ownership: static
@@ -1607,7 +1550,6 @@ methods:
     receiver: attribute_value
     cpp_name: size
     expose_as: size
-    c_name: ifcopenshell_ifcparse_attribute_value_size
     returns:
       kind: size
     params: []
@@ -1620,7 +1562,6 @@ methods:
     receiver: attribute_value
     cpp_name: as_int32
     expose_as: as_int32
-    c_name: ifcopenshell_ifcparse_attribute_value_as_int32
     returns:
       kind: int32
     params: []
@@ -1633,7 +1574,6 @@ methods:
     receiver: attribute_value
     cpp_name: as_bool
     expose_as: as_bool
-    c_name: ifcopenshell_ifcparse_attribute_value_as_bool
     returns:
       kind: bool
     params: []
@@ -1646,7 +1586,6 @@ methods:
     receiver: attribute_value
     cpp_name: as_double
     expose_as: as_double
-    c_name: ifcopenshell_ifcparse_attribute_value_as_double
     returns:
       kind: double
     params: []
@@ -1659,7 +1598,6 @@ methods:
     receiver: attribute_value
     cpp_name: as_int32_list
     expose_as: as_int32_list
-    c_name: ifcopenshell_ifcparse_attribute_value_as_int32_list
     returns:
       kind: int32_list
       ownership: copy
@@ -1673,7 +1611,6 @@ methods:
     receiver: attribute_value
     cpp_name: as_double_list
     expose_as: as_double_list
-    c_name: ifcopenshell_ifcparse_attribute_value_as_double_list
     returns:
       kind: double_list
       ownership: copy
@@ -1687,7 +1624,6 @@ methods:
     receiver: attribute_value
     cpp_name: as_int32_list_list
     expose_as: as_int32_list_list
-    c_name: ifcopenshell_ifcparse_attribute_value_as_int32_list_list
     returns:
       kind: int32_list_list
       ownership: copy
@@ -1701,7 +1637,6 @@ methods:
     receiver: attribute_value
     cpp_name: as_double_list_list
     expose_as: as_double_list_list
-    c_name: ifcopenshell_ifcparse_attribute_value_as_double_list_list
     returns:
       kind: double_list_list
       ownership: copy
@@ -1715,7 +1650,6 @@ methods:
     receiver: attribute_value
     cpp_name: as_string_list
     expose_as: as_string_list
-    c_name: ifcopenshell_ifcparse_attribute_value_as_string_list
     returns:
       kind: string_list
       ownership: copy
@@ -1729,7 +1663,6 @@ methods:
     receiver: attribute_value
     cpp_name: as_string
     expose_as: as_string
-    c_name: ifcopenshell_ifcparse_attribute_value_as_string
     returns:
       kind: string
       ownership: copy
@@ -1743,7 +1676,6 @@ methods:
     receiver: attribute_value
     cpp_name: as_instance
     expose_as: as_instance
-    c_name: ifcopenshell_ifcparse_attribute_value_as_instance
     returns:
       kind: handle
       handle: instance
@@ -1759,7 +1691,6 @@ methods:
     receiver: attribute_value
     cpp_name: as_instance_list
     expose_as: as_instance_list
-    c_name: ifcopenshell_ifcparse_attribute_value_as_instance_list
     returns:
       kind: handle
       handle: instance_list
@@ -1774,7 +1705,6 @@ methods:
     receiver: attribute_value
     cpp_name: as_enumeration_value
     expose_as: as_enumeration_value
-    c_name: ifcopenshell_ifcparse_attribute_value_as_enumeration_value
     returns:
       kind: string
       ownership: copy
@@ -1788,7 +1718,6 @@ methods:
     receiver: attribute_value
     cpp_name: as_enumeration_index
     expose_as: as_enumeration_index
-    c_name: ifcopenshell_ifcparse_attribute_value_as_enumeration_index
     returns:
       kind: size
     params: []
@@ -1801,7 +1730,6 @@ methods:
     receiver: attribute_value
     cpp_name: as_enumeration_type
     expose_as: as_enumeration_type
-    c_name: ifcopenshell_ifcparse_attribute_value_as_enumeration_type
     returns:
       kind: handle
       handle: enumeration
@@ -1817,7 +1745,6 @@ methods:
     receiver: file
     cpp_name: header
     expose_as: header
-    c_name: ifcopenshell_ifc_file_header
     returns:
       kind: handle
       handle: header
@@ -1833,7 +1760,6 @@ methods:
     receiver: header
     cpp_name: write
     expose_as: write
-    c_name: ifcopenshell_ifc_header_write
     returns:
       kind: string
       ownership: copy
@@ -1849,7 +1775,6 @@ methods:
     receiver: schema
     cpp_name: instantiate
     expose_as: instantiate
-    c_name: ifcopenshell_ifc_schema_instantiate
     returns:
       kind: handle
       handle: instance
@@ -1874,7 +1799,6 @@ methods:
     receiver: select_type
     cpp_name: select_list_names
     expose_as: select_list_names
-    c_name: ifcopenshell_ifc_select_type_select_list_names
     returns:
       kind: string_list
       ownership: copy
@@ -1893,7 +1817,6 @@ methods:
     receiver: type_declaration
     cpp_name: argument_types
     expose_as: argument_types
-    c_name: ifcopenshell_ifc_type_declaration_argument_types
     returns:
       kind: string_list
       ownership: copy
@@ -1914,7 +1837,6 @@ methods:
     receiver: enumeration
     cpp_name: argument_types
     expose_as: argument_types
-    c_name: ifcopenshell_ifc_enumeration_argument_types
     returns:
       kind: string_list
       ownership: copy
@@ -1928,7 +1850,6 @@ methods:
     receiver: parameter_type
     cpp_name: kind
     expose_as: kind
-    c_name: ifcopenshell_ifc_parameter_type_kind
     returns:
       kind: string
       ownership: static
@@ -1949,22 +1870,8 @@ methods:
 
   - kind: adapter_method
     receiver: simple_type
-    cpp_name: declared_type
-    expose_as: declared_type
-    c_name: ifcopenshell_ifc_simple_type_declared_type
-    returns:
-      kind: int32
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return static_cast<int>(self_cpp->declared_type());
-
-  - kind: adapter_method
-    receiver: simple_type
     cpp_name: simple_kind
     expose_as: kind
-    c_name: ifcopenshell_ifc_simple_type_kind
     returns:
       kind: string
       ownership: static
@@ -1996,7 +1903,6 @@ methods:
     receiver: aggregation_type
     cpp_name: type_of_aggregation
     expose_as: type_of_aggregation
-    c_name: ifcopenshell_ifc_aggregation_type_type_of_aggregation
     returns:
       kind: int32
     params: []
@@ -2009,7 +1915,6 @@ methods:
     receiver: aggregation_type
     cpp_name: type_of_aggregation_string
     expose_as: type_of_aggregation_string
-    c_name: ifcopenshell_ifc_aggregation_type_type_of_aggregation_string
     returns:
       kind: string
       ownership: static
@@ -2033,7 +1938,6 @@ methods:
     receiver: inverse_attribute
     cpp_name: type_of_aggregation
     expose_as: type_of_aggregation
-    c_name: ifcopenshell_ifc_inverse_attribute_type_of_aggregation
     returns:
       kind: int32
     params: []
@@ -2046,7 +1950,6 @@ methods:
     receiver: inverse_attribute
     cpp_name: type_of_aggregation_string
     expose_as: type_of_aggregation_string
-    c_name: ifcopenshell_ifc_inverse_attribute_type_of_aggregation_string
     returns:
       kind: string
       ownership: static
@@ -2068,7 +1971,6 @@ methods:
     receiver: entity
     cpp_name: argument_types
     expose_as: argument_types
-    c_name: ifcopenshell_ifc_entity_argument_types
     returns:
       kind: string_list
       ownership: copy
@@ -2092,39 +1994,19 @@ methods:
 
   - kind: adapter_method
     receiver: instance_streamer
-    cpp_name: bypassTypes
-    expose_as: bypass_types
-    c_name: ifcopenshell_ifc_instance_streamer_bypass_types
-    returns:
-      kind: void
-    params:
-      - name: type_names
-        type:
-          kind: string_list
-    implementation:
-      kind: inline_cpp
-      body: |
-        std::set<std::string> names(type_names_cpp.begin(), type_names_cpp.end());
-        self_cpp->bypassTypes(names);
-
-  - kind: adapter_method
-    receiver: instance_streamer
-    cpp_name: status
     expose_as: status
-    c_name: ifcopenshell_ifc_instance_streamer_status
     returns:
       kind: int32
     params: []
     implementation:
       kind: inline_cpp
       body: |
-        return static_cast<int>(self_cpp->status().value());
+        return static_cast<int>(static_cast<IfcParse::file_open_status::file_open_enum>(self_cpp->status()));
 
   - kind: adapter_method
     receiver: instance_streamer
     cpp_name: references
     expose_as: references
-    c_name: ifcopenshell_ifc_instance_streamer_references
     returns:
       kind: string
       ownership: copy
@@ -2138,7 +2020,6 @@ methods:
     receiver: instance_streamer
     cpp_name: inverses
     expose_as: inverses
-    c_name: ifcopenshell_ifc_instance_streamer_inverses
     returns:
       kind: string
       ownership: copy
@@ -2152,7 +2033,6 @@ methods:
     receiver: instance_streamer
     cpp_name: readInstancePy
     expose_as: read_instance_py
-    c_name: ifcopenshell_ifc_instance_streamer_read_instance_py
     returns:
       kind: string
       ownership: copy
@@ -2169,7 +2049,7 @@ methods:
     receiver: aggregation_type
     cpp_name: aggregation_kind
     expose_as: aggregation_kind
-    c_name: ifcopenshell_ifc_aggregation_type_kind
+    c_expose_as: kind
     returns:
       kind: string
       ownership: static
@@ -2193,7 +2073,6 @@ methods:
     receiver: instance_list
     cpp_name: get
     expose_as: get
-    c_name: ifcopenshell_ifcparse_instance_list_get
     returns:
       kind: handle
       handle: instance

@@ -1,5 +1,3 @@
-# This file was generated with the assistance of an AI coding tool.
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -10,7 +8,65 @@ from typing import Any
 import yaml
 
 try:
+    from .binding_model import CallSpec, DiscoveryDiagnostic, HandleSpec, ImplementationSpec, ParamSpec, TypeSpec
+except ImportError:  # pragma: no cover - script execution fallback
+    from binding_model import CallSpec, DiscoveryDiagnostic, HandleSpec, ImplementationSpec, ParamSpec, TypeSpec
+
+try:
+    from .debug import debug_log, debug_path
+except ImportError:  # pragma: no cover - script execution fallback
+    from debug import debug_log, debug_path
+
+try:
+    from .policy_ir import (
+        ArrayElementFieldPolicyOp,
+        AsItemCastPolicyOp,
+        ChildrenAddPolicyOp,
+        ChildrenAtPolicyOp,
+        ChildrenCountPolicyOp,
+        CcomponentsAccessorPolicyOp,
+        ConstructorPolicyOp,
+        DirectFieldPolicyOp,
+        DirectFunctionPolicyOp,
+        DirectMethodPolicyOp,
+        FieldSetterPolicyOp,
+        InlineAdapterPolicyOp,
+        MethodSizePolicyOp,
+        OptionalGetPolicyOp,
+        OptionalHasPolicyOp,
+        PointerPresencePolicyOp,
+        PolicyCallSpec,
+        ValueHandleFieldPolicyOp,
+        VariantGetPolicyOp,
+        VariantSetPolicyOp,
+    )
+except ImportError:  # pragma: no cover - script execution fallback
+    from policy_ir import (
+        ArrayElementFieldPolicyOp,
+        AsItemCastPolicyOp,
+        ChildrenAddPolicyOp,
+        ChildrenAtPolicyOp,
+        ChildrenCountPolicyOp,
+        CcomponentsAccessorPolicyOp,
+        ConstructorPolicyOp,
+        DirectFieldPolicyOp,
+        DirectFunctionPolicyOp,
+        DirectMethodPolicyOp,
+        FieldSetterPolicyOp,
+        InlineAdapterPolicyOp,
+        MethodSizePolicyOp,
+        OptionalGetPolicyOp,
+        OptionalHasPolicyOp,
+        PointerPresencePolicyOp,
+        PolicyCallSpec,
+        ValueHandleFieldPolicyOp,
+        VariantGetPolicyOp,
+        VariantSetPolicyOp,
+    )
+
+try:
     from .clang_discovery import (
+        DiscoveredCppType,
         DiscoveredField,
         DiscoveredFunction,
         DiscoveredMethod,
@@ -20,6 +76,7 @@ try:
     )
 except ImportError:  # pragma: no cover - script execution fallback
     from clang_discovery import (
+        DiscoveredCppType,
         DiscoveredField,
         DiscoveredFunction,
         DiscoveredMethod,
@@ -28,77 +85,57 @@ except ImportError:  # pragma: no cover - script execution fallback
         discover_public_methods_with_compile_commands,
     )
 
+try:
+    from .semantic_types import (
+        EnumSemanticType,
+        RecordSemanticType,
+        ScalarSemanticType,
+        SequenceSemanticType,
+        StringSemanticType,
+        VoidSemanticType,
+        analyze_cpp_type,
+        semantic_leaf_type,
+        semantic_record_match_names,
+        semantic_sequence_depth,
+    )
+except ImportError:  # pragma: no cover - script execution fallback
+    from semantic_types import (
+        EnumSemanticType,
+        RecordSemanticType,
+        ScalarSemanticType,
+        SequenceSemanticType,
+        StringSemanticType,
+        VoidSemanticType,
+        analyze_cpp_type,
+        semantic_leaf_type,
+        semantic_record_match_names,
+        semantic_sequence_depth,
+    )
+
 
 _ALLOWED_TYPE_KINDS = {
     "void",
     "bool",
-    "bool_list",
     "int32",
+    "int64",
     "double",
-    "double_list",
-    "double_list_list",
     "double_buffer",  # Zero-copy borrowed pointer to double array
     "int32_buffer",   # Zero-copy borrowed pointer to int32 array
     "uint32",
     "size",
     "string",
-    "string_list",
-    "int32_list",
-    "int32_list_list",
-    "uint32_list",
     "handle",
     "handle_list",
+    "handle_list_list",
     "opaque_ptr",  # Raw pointer to an external type (passed through as void*)
 }
 _ALLOWED_OWNERSHIP = {"owned", "borrowed", "static", "copy"}
 _ALLOWED_DESTRUCTORS = {"delete", "none", "shared_ptr"}
 _ALLOWED_PTR_TYPES = {"raw", "shared_ptr"}
-_ALLOWED_CALL_KINDS = {"function", "adapter_function", "method", "adapter_method", "constructor", "field", "value_handle_field", "has_field", "field_setter", "children_count", "children_at", "children_add", "as_item_cast", "optional_has", "optional_get", "method_size", "array_field", "ccomponents_vector", "ccomponents_matrix", "variant_get", "variant_set"}
+_FUNCTION_CALL_KINDS = {"function", "adapter_function", "constructor"}
+_METHOD_CALL_KINDS = {"method", "adapter_method"}
 _ALLOWED_IMPLEMENTATION_KINDS = {"inline_cpp"}
-
-
-@dataclass(frozen=True)
-class TypeSpec:
-    kind: str
-    handle: str | None = None
-    ownership: str | None = None
-    nullable: bool = False
-    cpp_type: str | None = None
-
-
-@dataclass(frozen=True)
-class ParamSpec:
-    name: str
-    type: TypeSpec
-
-
-@dataclass(frozen=True)
-class HandleSpec:
-    name: str
-    cpp_type: str
-    c_type: str
-    destructor: str
-    ptr_type: str = "raw"  # "raw" or "shared_ptr"
-
-
-@dataclass(frozen=True)
-class ImplementationSpec:
-    kind: str
-    body: str
-
-
-@dataclass(frozen=True)
-class CallSpec:
-    kind: str
-    expose_as: str
-    c_name: str
-    receiver: str | None
-    cpp_name: str | None
-    returns: TypeSpec
-    params: tuple[ParamSpec, ...]
-    implementation: ImplementationSpec | None
-    cpp_class: str | None = None
-    compile_guard: str | None = None
+_SCALAR_SEQUENCE_FAMILIES = frozenset({"bool", "string", "int32", "uint8", "uint32", "double"})
 
 
 @dataclass(frozen=True)
@@ -119,11 +156,23 @@ class CcomponentsAccessorSpec:
 
 
 @dataclass(frozen=True)
+class VariantAccessorTypeSpec:
+    cpp_type: str
+    getter_types: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class VariantAccessorsSpec:
     get_method: str  # C++ method name for getter (e.g. "get")
     set_method: str  # C++ method name for setter (e.g. "set")
     variant_type: str  # full C++ variant type for constructing set values
-    types: dict[str, str]  # expose_suffix -> C++ type (e.g. {"bool": "bool", "int": "int64_t"})
+    types: dict[str, VariantAccessorTypeSpec]  # expose_suffix -> getter/setter type policy
+
+
+@dataclass(frozen=True)
+class DiscoveryTypeOverrideSpec:
+    returns: TypeSpec | None
+    params: dict[str, TypeSpec]
 
 
 @dataclass(frozen=True)
@@ -152,6 +201,7 @@ class DiscoveryClassSpec:
     ccomponents_accessor: CcomponentsAccessorSpec | None  # generates Eigen ccomponents data extraction
     variant_accessors: VariantAccessorsSpec | None  # generates typed get/set for variant methods
     enum_types_as_int32: frozenset[str]  # type names treated as enums → int32 with static_cast
+    type_overrides: dict[str, DiscoveryTypeOverrideSpec]  # cpp member name -> explicit type override policy
 
 
 @dataclass(frozen=True)
@@ -199,6 +249,7 @@ class AuthoredBindingSpec:
     discovery: DiscoverySpec | None
     functions: tuple[CallSpec, ...]
     methods: tuple[CallSpec, ...]
+    discovery_diagnostics: tuple[DiscoveryDiagnostic, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -210,6 +261,7 @@ class MergedBindingSpec:
     handles: dict[str, HandleSpec]  # All handles from all modules
     functions: tuple[CallSpec, ...]  # All functions from all modules
     methods: tuple[CallSpec, ...]  # All methods from all modules
+    discovery_diagnostics: tuple[DiscoveryDiagnostic, ...] = ()
 
 
 def _expect_mapping(value: Any, context: str) -> dict[str, Any]:
@@ -240,21 +292,66 @@ def _expect_int(value: Any, context: str) -> int:
     return value
 
 
+def _sequence_kind_parts(kind: str) -> tuple[str, int] | None:
+    match = re.fullmatch(r"([a-z0-9]+)((?:_list)+)", kind)
+    if match is None:
+        return None
+    leaf = match.group(1)
+    depth = match.group(2).count("_list")
+    if leaf not in _SCALAR_SEQUENCE_FAMILIES:
+        return None
+    return leaf, depth
+
+
+def _is_sequence_kind(kind: str) -> bool:
+    return _sequence_kind_parts(kind) is not None
+
+
+def _scalar_sequence_kind(family: str, depth: int) -> str | None:
+    if family not in _SCALAR_SEQUENCE_FAMILIES or depth <= 0:
+        return None
+    return f"{family}{'_list' * depth}"
+
+
+def _scalar_sequence_depth(kind: str) -> int | None:
+    parts = _sequence_kind_parts(kind)
+    if parts is None:
+        return None
+    return parts[1]
+
+
+def _normalized_scalar_kind(kind: str) -> str:
+    parts = _sequence_kind_parts(kind)
+    return parts[0] if parts is not None else kind
+
+
+def _handle_sequence_depth(kind: str) -> int | None:
+    if kind == "handle":
+        return 0
+    if kind == "handle_list":
+        return 1
+    if kind == "handle_list_list":
+        return 2
+    return None
+
+
 def _parse_type(raw: Any, *, context: str, known_handles: set[str]) -> TypeSpec:
     mapping = _expect_mapping(raw, context)
     kind = _expect_str(mapping.get("kind"), f"{context}.kind")
-    if kind not in _ALLOWED_TYPE_KINDS:
-        msg = f"{context}.kind must be one of {sorted(_ALLOWED_TYPE_KINDS)}"
+    if kind not in _ALLOWED_TYPE_KINDS and not _is_sequence_kind(kind):
+        msg = f"{context}.kind must be one of {sorted(_ALLOWED_TYPE_KINDS)} or a supported '*_list' sequence kind"
         raise ValueError(msg)
+    handle_sequence_depth = _handle_sequence_depth(kind)
+    scalar_sequence_depth = _scalar_sequence_depth(kind) if handle_sequence_depth is None else None
 
     handle = mapping.get("handle")
-    if kind in {"handle", "handle_list"}:
+    if handle_sequence_depth is not None:
         handle = _expect_str(handle, f"{context}.handle")
         if handle not in known_handles:
             msg = f"{context}.handle refers to unknown handle '{handle}'"
             raise ValueError(msg)
     elif handle is not None:
-        msg = f"{context}.handle is only valid for kind=handle or kind=handle_list"
+        msg = f"{context}.handle is only valid for kind=handle, kind=handle_list, or kind=handle_list_list"
         raise ValueError(msg)
 
     ownership = mapping.get("ownership")
@@ -263,7 +360,7 @@ def _parse_type(raw: Any, *, context: str, known_handles: set[str]) -> TypeSpec:
         if ownership not in _ALLOWED_OWNERSHIP:
             msg = f"{context}.ownership must be one of {sorted(_ALLOWED_OWNERSHIP)}"
             raise ValueError(msg)
-    if kind == "handle" and ownership is None:
+    if handle_sequence_depth == 0 and ownership is None:
         msg = f"{context}.ownership is required for kind=handle"
         raise ValueError(msg)
 
@@ -279,7 +376,15 @@ def _parse_type(raw: Any, *, context: str, known_handles: set[str]) -> TypeSpec:
         msg = f"{context}.cpp_type is required for kind=opaque_ptr"
         raise ValueError(msg)
 
-    return TypeSpec(kind=kind, handle=handle, ownership=ownership, nullable=nullable, cpp_type=cpp_type)
+    normalized_kind = "handle" if handle_sequence_depth is not None else _normalized_scalar_kind(kind)
+    return TypeSpec(
+        kind=normalized_kind,
+        handle=handle,
+        ownership=ownership,
+        nullable=nullable,
+        cpp_type=cpp_type,
+        sequence_depth=handle_sequence_depth if handle_sequence_depth is not None else (scalar_sequence_depth or 0),
+    )
 
 
 def _parse_params(raw: Any, *, context: str, known_handles: set[str]) -> tuple[ParamSpec, ...]:
@@ -316,17 +421,33 @@ def _parse_call(
     raw: Any,
     *,
     context: str,
+    c_prefix: str,
+    handles: dict[str, HandleSpec],
     known_handles: set[str],
     expect_receiver: bool,
 ) -> CallSpec:
     mapping = _expect_mapping(raw, context)
-    kind = _expect_str(mapping.get("kind"), f"{context}.kind")
-    if kind not in _ALLOWED_CALL_KINDS:
-        msg = f"{context}.kind must be one of {sorted(_ALLOWED_CALL_KINDS)}"
+    raw_kind = mapping.get("kind")
+    if raw_kind is not None:
+        kind = _expect_str(raw_kind, f"{context}.kind")
+    elif expect_receiver:
+        kind = "adapter_method" if "implementation" in mapping else "method"
+    elif "handle" in mapping:
+        kind = "constructor"
+    else:
+        kind = "adapter_function" if "implementation" in mapping else "function"
+
+    allowed_kinds = _METHOD_CALL_KINDS if expect_receiver else _FUNCTION_CALL_KINDS
+    if kind not in allowed_kinds:
+        msg = f"{context}.kind must be one of {sorted(allowed_kinds)}"
         raise ValueError(msg)
 
     expose_as = _expect_str(mapping.get("expose_as"), f"{context}.expose_as")
-    c_name = _expect_str(mapping.get("c_name"), f"{context}.c_name")
+    if "c_name" in mapping:
+        msg = f"{context}.c_name is not supported; C names are derived from expose_as and receiver"
+        raise ValueError(msg)
+    raw_c_expose_as = mapping.get("c_expose_as")
+    c_expose_as = expose_as if raw_c_expose_as is None else _expect_str(raw_c_expose_as, f"{context}.c_expose_as")
     cpp_name = mapping.get("cpp_name")
     if cpp_name is not None:
         cpp_name = _expect_str(cpp_name, f"{context}.cpp_name")
@@ -340,6 +461,11 @@ def _parse_call(
     elif receiver is not None:
         msg = f"{context}.receiver is only valid for methods"
         raise ValueError(msg)
+
+    if receiver is None:
+        c_name = _make_function_c_name(c_prefix, c_expose_as)
+    else:
+        c_name = _make_c_name(handles[receiver], c_expose_as)
 
     returns = None
     if kind == "constructor":
@@ -356,6 +482,9 @@ def _parse_call(
             msg = f"{context}: constructor requires either 'handle' or 'returns'"
             raise ValueError(msg)
     else:
+        if "handle" in mapping:
+            msg = f"{context}.handle is only valid for constructors"
+            raise ValueError(msg)
         returns = _parse_type(mapping.get("returns"), context=f"{context}.returns", known_handles=known_handles)
     params = _parse_params(mapping.get("params", []), context=f"{context}.params", known_handles=known_handles)
 
@@ -375,18 +504,46 @@ def _parse_call(
         raw_compile_guard = mapping.get("compile_guard")
         if raw_compile_guard is not None:
             compile_guard = _expect_str(raw_compile_guard, f"{context}.compile_guard")
+    else:
+        if "cpp_class" in mapping:
+            msg = f"{context}.cpp_class is only valid for constructors"
+            raise ValueError(msg)
+        if "compile_guard" in mapping:
+            msg = f"{context}.compile_guard is only valid for constructors"
+            raise ValueError(msg)
+
+    if kind == "function":
+        policy_operation = DirectFunctionPolicyOp(cpp_name=cpp_name)
+    elif kind == "method":
+        policy_operation = DirectMethodPolicyOp(cpp_name=cpp_name)
+    elif kind == "field":
+        if cpp_name is None:
+            msg = f"{context}.cpp_name is required for field calls"
+            raise ValueError(msg)
+        policy_operation = DirectFieldPolicyOp(field_name=cpp_name)
+    elif kind == "value_handle_field":
+        if cpp_name is None:
+            msg = f"{context}.cpp_name is required for value_handle_field calls"
+            raise ValueError(msg)
+        policy_operation = ValueHandleFieldPolicyOp(field_name=cpp_name)
+    elif kind == "constructor":
+        policy_operation = ConstructorPolicyOp(cpp_class=cpp_class, compile_guard=compile_guard)
+    elif kind.startswith("adapter_"):
+        if implementation is None:
+            msg = f"{context}.implementation is required for adapter calls"
+            raise ValueError(msg)
+        policy_operation = InlineAdapterPolicyOp(implementation=implementation)
+    else:
+        msg = f"{context}.kind '{kind}' must use typed policy operations, not legacy call kinds"
+        raise ValueError(msg)
 
     return CallSpec(
-        kind=kind,
         expose_as=expose_as,
         c_name=c_name,
         receiver=receiver,
-        cpp_name=cpp_name,
         returns=returns,
         params=params,
-        implementation=implementation,
-        cpp_class=cpp_class,
-        compile_guard=compile_guard,
+        policy_operation=policy_operation,
     )
 
 
@@ -571,12 +728,28 @@ def _parse_discovery(raw: Any, *, context: str, known_handles: set[str]) -> Disc
             va_set = _expect_str(va_mapping.get("set_method"), f"{va_context}.set_method")
             va_variant_type = _expect_str(va_mapping.get("variant_type"), f"{va_context}.variant_type")
             va_types_raw = _expect_mapping(va_mapping.get("types", {}), f"{va_context}.types")
-            va_types: dict[str, str] = {}
+            va_types: dict[str, VariantAccessorTypeSpec] = {}
             for suffix, cpp_type_val in va_types_raw.items():
                 if not isinstance(suffix, str) or not suffix:
                     msg = f"{va_context}.types keys must be non-empty strings"
                     raise ValueError(msg)
-                va_types[suffix] = _expect_str(cpp_type_val, f"{va_context}.types[{suffix}]")
+                type_context = f"{va_context}.types[{suffix}]"
+                if isinstance(cpp_type_val, str):
+                    cpp_type = _expect_str(cpp_type_val, type_context)
+                    getter_types = (cpp_type,)
+                else:
+                    type_mapping = _expect_mapping(cpp_type_val, type_context)
+                    cpp_type = _expect_str(type_mapping.get("cpp_type"), f"{type_context}.cpp_type")
+                    getter_types_raw = type_mapping.get("getter_types", [cpp_type])
+                    getter_types_list = _expect_list(getter_types_raw, f"{type_context}.getter_types")
+                    getter_types = tuple(
+                        _expect_str(value, f"{type_context}.getter_types[{index}]")
+                        for index, value in enumerate(getter_types_list)
+                    )
+                    if not getter_types:
+                        msg = f"{type_context}.getter_types must not be empty"
+                        raise ValueError(msg)
+                va_types[suffix] = VariantAccessorTypeSpec(cpp_type=cpp_type, getter_types=getter_types)
             variant_accessors = VariantAccessorsSpec(
                 get_method=va_get, set_method=va_set,
                 variant_type=va_variant_type, types=va_types,
@@ -589,12 +762,38 @@ def _parse_discovery(raw: Any, *, context: str, known_handles: set[str]) -> Disc
             raise ValueError(msg)
         enum_types_as_int32 = frozenset(str(t) for t in enum_types_raw)
 
+        type_overrides_raw = _expect_mapping(item_mapping.get("type_overrides", {}), f"{item_context}.type_overrides")
+        type_overrides: dict[str, DiscoveryTypeOverrideSpec] = {}
+        for member_name, override_raw in type_overrides_raw.items():
+            if not isinstance(member_name, str) or not member_name:
+                msg = f"{item_context}.type_overrides keys must be non-empty strings"
+                raise ValueError(msg)
+            override_context = f"{item_context}.type_overrides[{member_name}]"
+            override_mapping = _expect_mapping(override_raw, override_context)
+            returns_raw = override_mapping.get("returns")
+            returns = None
+            if returns_raw is not None:
+                returns = _parse_type(returns_raw, context=f"{override_context}.returns", known_handles=known_handles)
+            params_raw = _expect_mapping(override_mapping.get("params", {}), f"{override_context}.params")
+            params: dict[str, TypeSpec] = {}
+            for param_name, param_type_raw in params_raw.items():
+                if not isinstance(param_name, str) or not param_name:
+                    msg = f"{override_context}.params keys must be non-empty strings"
+                    raise ValueError(msg)
+                params[param_name] = _parse_type(
+                    param_type_raw,
+                    context=f"{override_context}.params[{param_name}]",
+                    known_handles=known_handles,
+                )
+            type_overrides[member_name] = DiscoveryTypeOverrideSpec(returns=returns, params=params)
+
         has_any_feature = (include_all or include or overloads or discover_fields
                           or discover_children is not None or discover_as_item
                           or extra_fields or field_setters or discover_optional_fields
                           or method_sizes or array_pair_fields
                           or binary_operators or unary_operators or comparison_operators
-                          or ccomponents_accessor is not None or variant_accessors is not None)
+                          or ccomponents_accessor is not None or variant_accessors is not None
+                          or type_overrides)
         if not has_any_feature:
             msg = f"{item_context} must specify at least one discovery feature"
             raise ValueError(msg)
@@ -624,6 +823,7 @@ def _parse_discovery(raw: Any, *, context: str, known_handles: set[str]) -> Disc
                 ccomponents_accessor=ccomponents_accessor,
                 variant_accessors=variant_accessors,
                 enum_types_as_int32=enum_types_as_int32,
+                type_overrides=type_overrides,
             )
         )
 
@@ -684,156 +884,422 @@ def _normalize_cpp_type(cpp_type: str) -> str:
     return cpp_type
 
 
-def _base_cpp_type(cpp_type: str) -> str:
+def _cpp_type_variants(cpp_type: str | DiscoveredCppType) -> tuple[str, ...]:
+    if isinstance(cpp_type, DiscoveredCppType):
+        ordered = [
+            cpp_type.canonical_spelling,
+            cpp_type.normalized_desugared_spelling,
+            cpp_type.normalized_spelling,
+            cpp_type.desugared_spelling,
+            cpp_type.spelling,
+        ]
+    else:
+        normalized = _normalize_cpp_type(cpp_type)
+        ordered = [normalized, cpp_type]
+    variants: list[str] = []
+    seen: set[str] = set()
+    for value in ordered:
+        if not value:
+            continue
+        normalized_value = _normalize_cpp_type(value)
+        if normalized_value in seen:
+            continue
+        seen.add(normalized_value)
+        variants.append(normalized_value)
+    return tuple(variants)
+
+
+def _cpp_type_primary(cpp_type: str | DiscoveredCppType) -> str:
+    variants = _cpp_type_variants(cpp_type)
+    return variants[0] if variants else ""
+
+
+def _base_cpp_type(cpp_type: str | DiscoveredCppType) -> str:
+    if isinstance(cpp_type, DiscoveredCppType):
+        return cpp_type.base_name
     return _normalize_cpp_type(cpp_type).removesuffix("&").removesuffix("*").strip()
 
 
-def _find_handle_for_cpp_type(cpp_type: str, handles: dict[str, HandleSpec]) -> str | None:
-    normalized = _normalize_cpp_type(cpp_type)
-    base = normalized.removesuffix("&").removesuffix("*").strip().removeprefix("const ")
-    for handle_name, handle in handles.items():
-        handle_base = handle.cpp_type.rsplit("::", 1)[-1]
-        if handle.cpp_type == base or handle_base == base:
-            return handle_name
-    # T::ptr → look up T (shared_ptr typedef)
-    if base.endswith("::ptr"):
-        sp_base = base.removesuffix("::ptr")
+def _cpp_type_bases(cpp_type: str | DiscoveredCppType) -> set[str]:
+    if isinstance(cpp_type, DiscoveredCppType):
+        bases = {_base_cpp_type(cpp_type)}
+        if cpp_type.normalized_spelling:
+            bases.add(_base_cpp_type(cpp_type.normalized_spelling))
+        if cpp_type.normalized_desugared_spelling:
+            bases.add(_base_cpp_type(cpp_type.normalized_desugared_spelling))
+        return {base for base in bases if base}
+    return {_base_cpp_type(cpp_type)}
+
+
+def _cpp_type_debug(cpp_type: str | DiscoveredCppType) -> str:
+    if isinstance(cpp_type, DiscoveredCppType):
+        if cpp_type.desugared_spelling and _normalize_cpp_type(cpp_type.desugared_spelling) != _normalize_cpp_type(cpp_type.spelling):
+            return f"{cpp_type.spelling} -> {cpp_type.desugared_spelling}"
+        return cpp_type.spelling
+    return cpp_type
+
+
+def _cpp_type_storage(cpp_type: str | DiscoveredCppType) -> str:
+    if isinstance(cpp_type, DiscoveredCppType):
+        return cpp_type.storage_spelling or cpp_type.canonical_spelling or cpp_type.normalized_spelling or cpp_type.spelling
+    return _normalize_cpp_type(cpp_type)
+
+
+def _qualified_name_suffixes(name: str) -> tuple[str, ...]:
+    normalized = _normalize_cpp_type(name)
+    parts = [part for part in normalized.split("::") if part]
+    if not parts:
+        return tuple()
+    return tuple("::".join(parts[index:]) for index in range(len(parts)))
+
+
+def _cpp_type_names_match(candidate: str, target: str) -> bool:
+    candidate_suffixes = set(_qualified_name_suffixes(candidate))
+    target_suffixes = set(_qualified_name_suffixes(target))
+    return bool(candidate_suffixes and target_suffixes and candidate_suffixes.intersection(target_suffixes))
+
+
+def _find_handle_for_cpp_type(cpp_type: str | DiscoveredCppType, handles: dict[str, HandleSpec]) -> str | None:
+    bases = [
+        variant.removesuffix("&").removesuffix("*").strip().removeprefix("const ")
+        for variant in _cpp_type_variants(cpp_type)
+    ]
+    seen_bases: set[str] = set()
+    ordered_bases: list[str] = []
+    for base in bases:
+        if base and base not in seen_bases:
+            seen_bases.add(base)
+            ordered_bases.append(base)
+    fallback_bases: tuple[str, ...] = ()
+    if isinstance(cpp_type, DiscoveredCppType):
+        fallback_bases = tuple(base for base in cpp_type.base_record_names if base and base not in seen_bases)
+
+    for base in (*ordered_bases, *fallback_bases):
         for handle_name, handle in handles.items():
-            handle_base = handle.cpp_type.rsplit("::", 1)[-1]
-            if handle.cpp_type == sp_base or handle_base == sp_base:
+            if _cpp_type_names_match(handle.cpp_type, base):
                 return handle_name
-    # std::shared_ptr<T> → look up T
-    m = re.match(r"(?:const\s+)?(?:std::)?shared_ptr<\s*(.+?)\s*>", base)
-    if m:
-        inner = m.group(1).removeprefix("const ").strip()
-        for handle_name, handle in handles.items():
-            handle_base = handle.cpp_type.rsplit("::", 1)[-1]
-            if handle.cpp_type == inner or handle_base == inner:
-                return handle_name
+        if base.endswith("::ptr"):
+            sp_base = base.removesuffix("::ptr")
+            for handle_name, handle in handles.items():
+                if _cpp_type_names_match(handle.cpp_type, sp_base):
+                    return handle_name
+        m = re.match(r"(?:const\s+)?(?:(?:std|boost)::)?shared_ptr<\s*(.+?)\s*>", base)
+        if m:
+            inner = m.group(1).removeprefix("const ").strip()
+            for handle_name, handle in handles.items():
+                if _cpp_type_names_match(handle.cpp_type, inner):
+                    return handle_name
     return None
 
 
-def _vector_element_cpp_type(cpp_type: str) -> str | None:
-    base = _base_cpp_type(cpp_type)
-    if not base.startswith("std::vector<") or not base.endswith(">"):
-        return None
-    return base[len("std::vector<") : -1].strip()
-
-
-def _infer_return_type(cpp_type: str, handles: dict[str, HandleSpec]) -> TypeSpec:
-    normalized = _normalize_cpp_type(cpp_type)
-    base = _base_cpp_type(cpp_type)
-    vector_element = _vector_element_cpp_type(cpp_type)
-    if base == "void":
-        return TypeSpec(kind="void", cpp_type=cpp_type)
-    if vector_element is not None:
-        handle_name = _find_handle_for_cpp_type(vector_element, handles)
+def _type_spec_from_record_semantic(
+    semantic: RecordSemanticType,
+    *,
+    handles: dict[str, HandleSpec],
+    ownership: str,
+) -> TypeSpec | None:
+    for match_name in semantic_record_match_names(semantic):
+        handle_name = _find_handle_for_cpp_type(match_name, handles)
         if handle_name is not None:
-            return TypeSpec(kind="handle_list", handle=handle_name, ownership="copy", cpp_type=cpp_type)
-    handle_name = _find_handle_for_cpp_type(cpp_type, handles)
-    if handle_name is not None:
+            resolved_ownership = "owned" if semantic.pointer_wrapper == "unique_ptr" else ownership
+            return TypeSpec(
+                kind="handle",
+                handle=handle_name,
+                ownership=resolved_ownership,
+                nullable=_normalize_cpp_type(semantic.cpp_type).endswith("*"),
+                cpp_type=semantic.cpp_type,
+            )
+    return None
+
+
+def _sequence_scalar_kind(semantic: ScalarSemanticType | StringSemanticType) -> str | None:
+    if isinstance(semantic, StringSemanticType):
+        return _scalar_sequence_kind("string", 1)
+    return _scalar_sequence_kind(semantic.family, 1)
+
+
+def _sequence_leaf_kind(semantic: ScalarSemanticType | StringSemanticType) -> str:
+    if isinstance(semantic, StringSemanticType):
+        return "string"
+    return semantic.family
+
+
+def _lower_generic_sequence_type(
+    semantic: SequenceSemanticType,
+    *,
+    handles: dict[str, HandleSpec],
+    ownership: str,
+) -> TypeSpec | None:
+    leaf = semantic_leaf_type(semantic)
+    depth = semantic_sequence_depth(semantic)
+
+    if isinstance(leaf, RecordSemanticType):
+        record_spec = _type_spec_from_record_semantic(leaf, handles=handles, ownership=ownership)
+        if record_spec is None:
+            return None
         return TypeSpec(
             kind="handle",
-            handle=handle_name,
-            ownership="borrowed",
-            nullable=normalized.endswith("*"),
-            cpp_type=cpp_type,
+            handle=record_spec.handle,
+            ownership=ownership,
+            cpp_type=semantic.cpp_type,
+            sequence_depth=depth,
         )
-    if base in {"bool"}:
-        return TypeSpec(kind="bool", cpp_type=cpp_type)
-    if base in {"std::vector<bool>"}:
-        return TypeSpec(kind="bool_list", ownership="copy", cpp_type=cpp_type)
-    if base in {"std::vector<int>"}:
-        return TypeSpec(kind="int32_list", ownership="copy", cpp_type=cpp_type)
-    if base in {"std::vector<unsigned>", "std::vector<unsigned int>", "std::vector<uint32_t>"}:
-        return TypeSpec(kind="uint32_list", ownership="copy", cpp_type=cpp_type)
-    if base in {"std::vector<std::vector<int>>"}:
-        return TypeSpec(kind="int32_list_list", ownership="copy", cpp_type=cpp_type)
-    if base in {"std::vector<double>"}:
-        return TypeSpec(kind="double_list", ownership="copy", cpp_type=cpp_type)
-    if base in {"std::vector<std::vector<double>>"}:
-        return TypeSpec(kind="double_list_list", ownership="copy", cpp_type=cpp_type)
-    if base in {"int", "int32_t"}:
-        return TypeSpec(kind="int32", cpp_type=cpp_type)
-    if base in {"ptrdiff_t"}:
-        return TypeSpec(kind="int32", cpp_type=cpp_type)
-    if base in {"double", "float"}:
-        return TypeSpec(kind="double", cpp_type=cpp_type)
-    if base in {"unsigned int", "uint32_t"}:
-        return TypeSpec(kind="uint32", cpp_type=cpp_type)
-    if base in {"size_t", "std::size_t"}:
-        return TypeSpec(kind="size", cpp_type=cpp_type)
-    if base in {"std::vector<std::string>", "std::vector<std::string >"}:
-        return TypeSpec(kind="string_list", ownership="copy", cpp_type=cpp_type)
-    if (base == "char" and normalized.endswith("*")) or base in {"std::string"}:
-        return TypeSpec(kind="string", ownership="copy", cpp_type=cpp_type)
-    # std::array<double, N> → double_list (copy via begin/end)
-    if re.match(r"std::array<\s*double\s*,\s*\d+\s*>", base):
-        return TypeSpec(kind="double_list", ownership="copy", cpp_type=cpp_type)
-    # std::array<int, N> → int32_list
-    if re.match(r"std::array<\s*int\s*,\s*\d+\s*>", base):
-        return TypeSpec(kind="int32_list", ownership="copy", cpp_type=cpp_type)
-    msg = f"Unsupported discovered return type '{cpp_type}'"
+
+    if isinstance(leaf, StringSemanticType):
+        return TypeSpec(kind="string", ownership="copy", cpp_type=semantic.cpp_type, sequence_depth=depth)
+
+    if isinstance(leaf, ScalarSemanticType):
+        if leaf.family in _SCALAR_SEQUENCE_FAMILIES:
+            return TypeSpec(kind=_sequence_leaf_kind(leaf), ownership="copy", cpp_type=semantic.cpp_type, sequence_depth=depth)
+    return None
+
+
+def _infer_type(cpp_type: str | DiscoveredCppType, handles: dict[str, HandleSpec], *, ownership: str) -> TypeSpec:
+    semantic = analyze_cpp_type(cpp_type)
+    if isinstance(semantic, VoidSemanticType):
+        return TypeSpec(kind="void", cpp_type=_cpp_type_storage(cpp_type))
+    if isinstance(semantic, EnumSemanticType):
+        return TypeSpec(kind="int32", cpp_type=_cpp_type_storage(cpp_type))
+    if isinstance(semantic, StringSemanticType):
+        return TypeSpec(kind="string", ownership="copy", cpp_type=_cpp_type_storage(cpp_type))
+    if isinstance(semantic, ScalarSemanticType):
+        scalar_kind = {
+            "bool": "bool",
+            "int32": "int32",
+            "int64": "int64",
+            "uint32": "uint32",
+            "size": "size",
+            "double": "double",
+        }.get(semantic.family)
+        if scalar_kind is not None:
+            return TypeSpec(kind=scalar_kind, cpp_type=_cpp_type_storage(cpp_type))
+    if isinstance(semantic, RecordSemanticType):
+        record_spec = _type_spec_from_record_semantic(semantic, handles=handles, ownership=ownership)
+        if record_spec is not None:
+            return record_spec
+    if isinstance(semantic, SequenceSemanticType):
+        sequence_spec = _lower_generic_sequence_type(semantic, handles=handles, ownership=ownership)
+        if sequence_spec is not None:
+            return sequence_spec
+
+    msg = f"Unsupported discovered type '{_cpp_type_debug(cpp_type)}'"
     raise ValueError(msg)
 
 
-def _infer_param_type(cpp_type: str, handles: dict[str, HandleSpec]) -> TypeSpec:
-    normalized = _normalize_cpp_type(cpp_type)
-    base = _base_cpp_type(cpp_type)
-    handle_name = _find_handle_for_cpp_type(cpp_type, handles)
-    if handle_name is not None:
-        return TypeSpec(kind="handle", handle=handle_name, ownership="borrowed", nullable=normalized.endswith("*"), cpp_type=cpp_type)
-    vector_element = _vector_element_cpp_type(cpp_type)
-    if vector_element is not None and vector_element.endswith("*"):
-        handle_name = _find_handle_for_cpp_type(vector_element, handles)
-        if handle_name is not None:
-            return TypeSpec(kind="handle_list", handle=handle_name, ownership="borrowed", cpp_type=cpp_type)
-    if base in {"bool"}:
-        return TypeSpec(kind="bool", cpp_type=cpp_type)
-    if base in {"std::vector<bool>"}:
-        return TypeSpec(kind="bool_list", ownership="copy", cpp_type=cpp_type)
-    if base in {"std::vector<int>"}:
-        return TypeSpec(kind="int32_list", ownership="copy", cpp_type=cpp_type)
-    if base in {"std::vector<unsigned>", "std::vector<unsigned int>", "std::vector<uint32_t>"}:
-        return TypeSpec(kind="uint32_list", ownership="copy", cpp_type=cpp_type)
-    if base in {"std::vector<std::vector<int>>"}:
-        return TypeSpec(kind="int32_list_list", ownership="copy", cpp_type=cpp_type)
-    if base in {"std::vector<double>"}:
-        return TypeSpec(kind="double_list", ownership="copy", cpp_type=cpp_type)
-    if base in {"std::vector<std::vector<double>>"}:
-        return TypeSpec(kind="double_list_list", ownership="copy", cpp_type=cpp_type)
-    if base in {"int", "int32_t"}:
-        return TypeSpec(kind="int32", cpp_type=cpp_type)
-    if base in {"ptrdiff_t"}:
-        return TypeSpec(kind="int32", cpp_type=cpp_type)
-    if base in {"double", "float"}:
-        return TypeSpec(kind="double", cpp_type=cpp_type)
-    if base in {"unsigned int", "uint32_t"}:
-        return TypeSpec(kind="uint32", cpp_type=cpp_type)
-    if base in {"size_t", "std::size_t"}:
-        return TypeSpec(kind="size", cpp_type=cpp_type)
-    if base in {"std::vector<std::string>", "std::vector<std::string >"}:
-        return TypeSpec(kind="string_list", ownership="copy", cpp_type=cpp_type)
-    if (base == "char" and normalized.endswith("*")) or base in {"std::string"}:
-        return TypeSpec(kind="string", cpp_type=cpp_type)
-    msg = f"Unsupported discovered parameter type '{cpp_type}'"
-    raise ValueError(msg)
+def _infer_return_type(cpp_type: str | DiscoveredCppType, handles: dict[str, HandleSpec]) -> TypeSpec:
+    try:
+        return _infer_type(cpp_type, handles, ownership="borrowed")
+    except ValueError as exc:
+        msg = str(exc).replace("Unsupported discovered type", "Unsupported discovered return type")
+        raise ValueError(msg) from exc
 
 
-def _make_c_name(prefix: str, handle: HandleSpec, expose_as: str) -> str:
+def _infer_param_type(cpp_type: str | DiscoveredCppType, handles: dict[str, HandleSpec]) -> TypeSpec:
+    try:
+        return _infer_type(cpp_type, handles, ownership="borrowed")
+    except ValueError as exc:
+        msg = str(exc).replace("Unsupported discovered type", "Unsupported discovered parameter type")
+        raise ValueError(msg) from exc
+
+
+def _apply_method_type_override(
+    discovered: DiscoveredMethod,
+    *,
+    override: DiscoveryTypeOverrideSpec | None,
+    inferred_returns: TypeSpec,
+    inferred_params: tuple[ParamSpec, ...],
+) -> tuple[TypeSpec, tuple[ParamSpec, ...]]:
+    if override is None:
+        return inferred_returns, inferred_params
+    returns = _merge_type_override(inferred_returns, override.returns)
+    param_names = {param.name for param in discovered.params}
+    unknown = set(override.params) - param_names
+    if unknown:
+        msg = f"type override for '{discovered.cpp_name}' references unknown params {sorted(unknown)}"
+        raise ValueError(msg)
+    params = tuple(
+        ParamSpec(
+            name=param.name,
+            type=_merge_type_override(inferred_param.type, override.params.get(param.name)),
+        )
+        for param, inferred_param in zip(discovered.params, inferred_params, strict=True)
+    )
+    return returns, params
+
+
+def _apply_field_type_override(
+    field: DiscoveredField,
+    *,
+    override: DiscoveryTypeOverrideSpec | None,
+    inferred_returns: TypeSpec,
+) -> TypeSpec:
+    if override is None:
+        return inferred_returns
+    if override.params:
+        msg = f"type override for field '{field.cpp_name}' cannot define params"
+        raise ValueError(msg)
+    return _merge_type_override(inferred_returns, override.returns)
+
+
+def _merge_type_override(inferred: TypeSpec, override: TypeSpec | None) -> TypeSpec:
+    if override is None:
+        return inferred
+    return TypeSpec(
+        kind=override.kind or inferred.kind,
+        handle=override.handle if override.handle is not None else inferred.handle,
+        ownership=override.ownership if override.ownership is not None else inferred.ownership,
+        nullable=override.nullable,
+        cpp_type=override.cpp_type if override.cpp_type is not None else inferred.cpp_type,
+        sequence_depth=override.sequence_depth if override.sequence_depth != 0 else inferred.sequence_depth,
+    )
+
+
+def _infer_method_signature(
+    discovered: DiscoveredMethod,
+    *,
+    handles: dict[str, HandleSpec],
+    enum_types_as_int32: frozenset[str],
+    override: DiscoveryTypeOverrideSpec | None,
+) -> tuple[TypeSpec, tuple[ParamSpec, ...]]:
+    if override is not None and override.returns is not None:
+        returns = _merge_type_override(
+            TypeSpec(kind=override.returns.kind, cpp_type=_cpp_type_storage(discovered.return_type_ref)),
+            override.returns,
+        )
+    else:
+        ret_type = discovered.return_cpp_type
+        if _normalize_cpp_type(ret_type) in enum_types_as_int32:
+            returns = TypeSpec(kind="int32", cpp_type=_cpp_type_storage(discovered.return_type_ref))
+        else:
+            returns = _infer_return_type(discovered.return_type_ref, handles)
+
+    params_list: list[ParamSpec] = []
+    override_params = override.params if override is not None else {}
+    for param in discovered.params:
+        param_type = override_params.get(param.name)
+        if param_type is None:
+            param_type = _infer_param_type(param.cpp_type_ref, handles)
+        else:
+            param_type = _merge_type_override(
+                TypeSpec(kind=param_type.kind, cpp_type=_cpp_type_storage(param.cpp_type_ref)),
+                param_type,
+            )
+        params_list.append(ParamSpec(name=param.name, type=param_type))
+
+    return _apply_method_type_override(
+        discovered,
+        override=override,
+        inferred_returns=returns,
+        inferred_params=tuple(params_list),
+    )
+
+
+def _make_c_name(handle: HandleSpec, expose_as: str) -> str:
     receiver = handle.c_type.removeprefix("ifcopenshell_").removesuffix("_t")
     return f"ifcopenshell_{receiver}_{expose_as}"
 
 
 def _simple_type_spec(kind_str: str) -> TypeSpec:
     """Create a TypeSpec from a simple kind string (e.g. 'int32', 'double_list')."""
-    if kind_str in ("int32_list", "double_list", "string_list"):
-        return TypeSpec(kind=kind_str, ownership="copy")
+    parts = _sequence_kind_parts(kind_str)
+    if parts is not None:
+        return TypeSpec(kind=parts[0], ownership="copy", sequence_depth=parts[1])
     return TypeSpec(kind=kind_str)
 
 
 def _make_function_c_name(prefix: str, expose_as: str) -> str:
     return f"{prefix}_{expose_as}"
+
+
+def _append_discovery_diagnostic(
+    diagnostics: list[DiscoveryDiagnostic],
+    *,
+    owner: str,
+    member: str,
+    code: str,
+    message: str,
+) -> None:
+    diagnostics.append(
+        DiscoveryDiagnostic(owner=owner, member=member, code=code, message=message)
+    )
+
+
+def _register_generated_call(
+    call: CallSpec,
+    *,
+    calls: list[CallSpec],
+    calls_by_c_name: dict[str, CallSpec],
+    reserved_c_names: frozenset[str] | set[str],
+    diagnostics: list[DiscoveryDiagnostic],
+    owner: str,
+    member: str,
+) -> bool:
+    if call.c_name in reserved_c_names:
+        _append_discovery_diagnostic(
+            diagnostics,
+            owner=owner,
+            member=member,
+            code="reserved_c_name",
+            message=f"Skipped generated call '{call.c_name}' because an authored entry takes precedence",
+        )
+        return False
+    existing = calls_by_c_name.get(call.c_name)
+    if existing is not None:
+        if existing != call:
+            _append_discovery_diagnostic(
+                diagnostics,
+                owner=owner,
+                member=member,
+                code="generated_name_collision",
+                message=f"Skipped generated call '{call.c_name}' because another generated call already uses that name",
+            )
+        return False
+    calls_by_c_name[call.c_name] = call
+    calls.append(call)
+    return True
+
+
+def _register_policy_call(
+    policy_call: PolicyCallSpec,
+    *,
+    handle: HandleSpec | None,
+    c_prefix: str = "ifcopenshell",
+    calls: list[CallSpec],
+    calls_by_c_name: dict[str, CallSpec],
+    reserved_c_names: frozenset[str] | set[str],
+    diagnostics: list[DiscoveryDiagnostic],
+    owner: str,
+    member: str,
+) -> bool:
+    if handle is None:
+        c_name = _make_function_c_name(c_prefix, policy_call.expose_as)
+    else:
+        c_name = _make_c_name(handle, policy_call.expose_as)
+    call = _materialize_policy_call(policy_call, c_name=c_name)
+    return _register_generated_call(
+        call,
+        calls=calls,
+        calls_by_c_name=calls_by_c_name,
+        reserved_c_names=reserved_c_names,
+        diagnostics=diagnostics,
+        owner=owner,
+        member=member,
+    )
+
+
+def _materialize_policy_call(
+    call: PolicyCallSpec,
+    *,
+    c_name: str,
+) -> CallSpec:
+    return CallSpec(
+        expose_as=call.expose_as,
+        c_name=c_name,
+        receiver=call.receiver,
+        returns=call.returns,
+        params=call.params,
+        policy_operation=call.operation,
+    )
 
 
 def _snake_case_identifier(name: str) -> str:
@@ -868,12 +1334,27 @@ def _select_overload(
     raise ValueError(msg)
 
 
-def _extract_optional_inner_type(cpp_type: str) -> str | None:
+def _extract_optional_inner_type(cpp_type: str | DiscoveredCppType) -> str | DiscoveredCppType | None:
     """Extract T from boost::optional<T>. Returns None if not an optional type."""
-    normalized = _normalize_cpp_type(cpp_type)
+    if isinstance(cpp_type, DiscoveredCppType):
+        if cpp_type.template_name == "boost::optional" and len(cpp_type.template_args) == 1:
+            return cpp_type.template_args[0]
+        normalized = cpp_type.canonical_spelling
+    else:
+        normalized = _normalize_cpp_type(cpp_type)
     if normalized.startswith("boost::optional<") and normalized.endswith(">"):
         return normalized[len("boost::optional<"):-1].strip()
     return None
+
+
+def _method_signature_debug(method: DiscoveredMethod) -> str:
+    params = ", ".join(_cpp_type_debug(param.cpp_type_ref) for param in method.params)
+    return f"{_cpp_type_debug(method.return_type_ref)} {method.cpp_name}({params})"
+
+
+def _function_signature_debug(function: DiscoveredFunction) -> str:
+    params = ", ".join(_cpp_type_debug(param.cpp_type_ref) for param in function.params)
+    return f"{_cpp_type_debug(function.return_type_ref)} {function.cpp_name}({params})"
 
 
 def _emit_optional_field_calls(
@@ -885,46 +1366,237 @@ def _emit_optional_field_calls(
     handles: dict[str, HandleSpec],
     calls: list[CallSpec],
     calls_by_c_name: dict[str, CallSpec],
-    reserved_c_names: frozenset[str],
+    reserved_c_names: frozenset[str] | set[str],
+    diagnostics: list[DiscoveryDiagnostic],
 ) -> None:
     """Generate has_X / X pair for a boost::optional<T> field."""
     try:
         returns = _infer_return_type(inner_cpp_type, handles)
     except ValueError:
-        return  # Can't infer inner type — skip silently
+        _append_discovery_diagnostic(
+            diagnostics,
+            owner=item.handle,
+            member=field_name,
+            code="unsupported_optional_inner_type",
+            message=f"Skipped optional field '{field_name}' because inner type '{inner_cpp_type}' is not supported",
+        )
+        return
 
     expose_as = item.rename.get(field_name, _snake_case_identifier(field_name))
 
     # has_X
     has_expose = f"has_{expose_as}"
-    has_call = CallSpec(
-        kind="optional_has",
+    has_call = PolicyCallSpec(
         expose_as=has_expose,
-        c_name=_make_c_name("ifcopenshell", handle, has_expose),
         receiver=item.handle,
-        cpp_name=cpp_name,
         returns=TypeSpec(kind="bool", cpp_type=None),
         params=(),
-        implementation=None,
+        operation=OptionalHasPolicyOp(field_name=cpp_name),
     )
-    if has_call.c_name not in reserved_c_names and has_call.c_name not in calls_by_c_name:
-        calls_by_c_name[has_call.c_name] = has_call
-        calls.append(has_call)
+    _register_policy_call(
+        has_call,
+        handle=handle,
+        calls=calls,
+        calls_by_c_name=calls_by_c_name,
+        reserved_c_names=reserved_c_names,
+        diagnostics=diagnostics,
+        owner=item.handle,
+        member=field_name,
+    )
 
     # X (the getter)
-    get_call = CallSpec(
-        kind="optional_get",
+    get_call = PolicyCallSpec(
         expose_as=expose_as,
-        c_name=_make_c_name("ifcopenshell", handle, expose_as),
         receiver=item.handle,
-        cpp_name=cpp_name,
         returns=returns,
         params=(),
-        implementation=None,
+        operation=OptionalGetPolicyOp(field_name=cpp_name),
     )
-    if get_call.c_name not in reserved_c_names and get_call.c_name not in calls_by_c_name:
-        calls_by_c_name[get_call.c_name] = get_call
-        calls.append(get_call)
+    _register_policy_call(
+        get_call,
+        handle=handle,
+        calls=calls,
+        calls_by_c_name=calls_by_c_name,
+        reserved_c_names=reserved_c_names,
+        diagnostics=diagnostics,
+        owner=item.handle,
+        member=field_name,
+    )
+
+
+def _emit_children_calls(
+    item: DiscoveryClassSpec,
+    handle: HandleSpec,
+    calls: list[CallSpec],
+    calls_by_c_name: dict[str, CallSpec],
+    reserved_c_names: frozenset[str] | set[str],
+    diagnostics: list[DiscoveryDiagnostic],
+) -> None:
+    dc = item.discover_children
+    if dc is None:
+        return
+
+    count_call = PolicyCallSpec(
+        expose_as=dc.count_as,
+        receiver=item.handle,
+        returns=TypeSpec(kind="size", handle=None, ownership=None, nullable=False, cpp_type=None),
+        params=(),
+        operation=ChildrenCountPolicyOp(field_name=dc.cpp_field),
+    )
+    _register_policy_call(
+        count_call,
+        handle=handle,
+        calls=calls,
+        calls_by_c_name=calls_by_c_name,
+        reserved_c_names=reserved_c_names,
+        diagnostics=diagnostics,
+        owner=item.handle,
+        member=dc.cpp_field,
+    )
+
+    at_call = PolicyCallSpec(
+        expose_as=dc.at_as,
+        receiver=item.handle,
+        returns=TypeSpec(kind="handle", handle=dc.element_handle, ownership="borrowed", nullable=False, cpp_type=None),
+        params=(ParamSpec(name="index", type=TypeSpec(kind="size", handle=None, ownership=None, nullable=False, cpp_type=None)),),
+        operation=ChildrenAtPolicyOp(field_name=dc.cpp_field),
+    )
+    _register_policy_call(
+        at_call,
+        handle=handle,
+        calls=calls,
+        calls_by_c_name=calls_by_c_name,
+        reserved_c_names=reserved_c_names,
+        diagnostics=diagnostics,
+        owner=item.handle,
+        member=dc.cpp_field,
+    )
+
+    if dc.add_as is None:
+        return
+
+    add_call = PolicyCallSpec(
+        expose_as=dc.add_as,
+        receiver=item.handle,
+        returns=TypeSpec(kind="void"),
+        params=(ParamSpec(name="item", type=TypeSpec(kind="handle", handle=dc.element_handle, ownership="borrowed")),),
+        operation=ChildrenAddPolicyOp(field_name=dc.cpp_field, cast_cpp_type=dc.add_cast_cpp_type),
+    )
+    _register_policy_call(
+        add_call,
+        handle=handle,
+        calls=calls,
+        calls_by_c_name=calls_by_c_name,
+        reserved_c_names=reserved_c_names,
+        diagnostics=diagnostics,
+        owner=item.handle,
+        member=dc.cpp_field,
+    )
+
+
+def _emit_ccomponents_call(
+    item: DiscoveryClassSpec,
+    handle: HandleSpec,
+    calls: list[CallSpec],
+    calls_by_c_name: dict[str, CallSpec],
+    reserved_c_names: frozenset[str] | set[str],
+    diagnostics: list[DiscoveryDiagnostic],
+) -> None:
+    cc = item.ccomponents_accessor
+    if cc is None:
+        return
+    cc_call = PolicyCallSpec(
+        expose_as=cc.expose_as,
+        receiver=item.handle,
+        returns=TypeSpec(kind="double", ownership="copy", sequence_depth=1),
+        params=(),
+        operation=CcomponentsAccessorPolicyOp(access_via=cc.access_via, dimensions=cc.dimensions),
+    )
+    _register_policy_call(
+        cc_call,
+        handle=handle,
+        calls=calls,
+        calls_by_c_name=calls_by_c_name,
+        reserved_c_names=reserved_c_names,
+        diagnostics=diagnostics,
+        owner=item.handle,
+        member=cc.access_via,
+    )
+
+
+def _emit_variant_accessor_calls(
+    item: DiscoveryClassSpec,
+    handle: HandleSpec,
+    calls: list[CallSpec],
+    calls_by_c_name: dict[str, CallSpec],
+    reserved_c_names: frozenset[str] | set[str],
+    diagnostics: list[DiscoveryDiagnostic],
+) -> None:
+    va = item.variant_accessors
+    if va is None:
+        return
+
+    type_map = {
+        "bool": "bool",
+        "int": "int32",
+        "int64_t": "int64",
+        "std::int64_t": "int64",
+        "double": "double",
+        "std::string": "string",
+    }
+    for suffix, type_spec in va.types.items():
+        cpp_type = type_spec.cpp_type
+        ret_kind = type_map.get(cpp_type)
+        if ret_kind is None:
+            _append_discovery_diagnostic(
+                diagnostics,
+                owner=item.handle,
+                member=suffix,
+                code="unsupported_variant_accessor_type",
+                message=f"Skipped variant accessor '{suffix}' because type '{cpp_type}' is not supported",
+            )
+            continue
+
+        get_expose = f"get_{suffix}"
+        get_call = PolicyCallSpec(
+            expose_as=get_expose,
+            receiver=item.handle,
+            returns=TypeSpec(kind=ret_kind),
+            params=(ParamSpec(name="name", type=TypeSpec(kind="string")),),
+            operation=VariantGetPolicyOp(method_name=va.get_method, cpp_type=cpp_type, getter_types=type_spec.getter_types),
+        )
+        _register_policy_call(
+            get_call,
+            handle=handle,
+            calls=calls,
+            calls_by_c_name=calls_by_c_name,
+            reserved_c_names=reserved_c_names,
+            diagnostics=diagnostics,
+            owner=item.handle,
+            member=suffix,
+        )
+
+        set_expose = f"set_{suffix}"
+        set_call = PolicyCallSpec(
+            expose_as=set_expose,
+            receiver=item.handle,
+            returns=TypeSpec(kind="void"),
+            params=(
+                ParamSpec(name="name", type=TypeSpec(kind="string")),
+                ParamSpec(name="value", type=TypeSpec(kind=ret_kind)),
+            ),
+            operation=VariantSetPolicyOp(method_name=va.set_method, variant_type=va.variant_type, cpp_type=cpp_type),
+        )
+        _register_policy_call(
+            set_call,
+            handle=handle,
+            calls=calls,
+            calls_by_c_name=calls_by_c_name,
+            reserved_c_names=reserved_c_names,
+            diagnostics=diagnostics,
+            owner=item.handle,
+            member=suffix,
+        )
 
 
 def _discover_method_calls(
@@ -933,16 +1605,26 @@ def _discover_method_calls(
     handles: dict[str, HandleSpec],
     compile_commands_path: Path,
     authored_c_names: frozenset[str] = frozenset(),
-) -> tuple[CallSpec, ...]:
+) -> tuple[tuple[CallSpec, ...], tuple[DiscoveryDiagnostic, ...]]:
     include_dir = (spec_path.parent / discovery.include_dir).resolve()
     class_cache: dict[tuple[str, str], dict[str, tuple[DiscoveredMethod, ...]]] = {}
     calls: list[CallSpec] = []
     calls_by_c_name: dict[str, CallSpec] = {}
     reserved_c_names: set[str] = set(authored_c_names)
+    diagnostics: list[DiscoveryDiagnostic] = []
 
-    for item in discovery.classes:
+    debug_log(
+        "spec.discover_methods.start",
+        f"spec={debug_path(spec_path)} classes={len(discovery.classes)} include_dir={debug_path(include_dir)}",
+    )
+
+    for item_index, item in enumerate(discovery.classes, start=1):
         handle = handles[item.handle]
         excluded = set(item.exclude)
+        debug_log(
+            "spec.discover_methods.class",
+            f"{item_index}/{len(discovery.classes)} handle={item.handle} cpp={handle.cpp_type} tu={item.translation_unit}",
+        )
 
         # Only run AST method discovery if there's something to discover
         needs_method_discovery = item.include_all or item.include or item.overloads
@@ -951,10 +1633,9 @@ def _discover_method_calls(
             cache_key = (handle.cpp_type, item.translation_unit, item.include_inherited_methods)
             cached = class_cache.get(cache_key)
             if cached is None:
-                class_name = handle.cpp_type.rsplit("::", 1)[-1]
                 translation_unit = (include_dir / item.translation_unit).resolve()
                 cached = discover_public_methods_with_compile_commands(
-                    compile_commands_path, translation_unit, class_name,
+                    compile_commands_path, translation_unit, handle.cpp_type,
                     include_inherited=item.include_inherited_methods,
                 )
                 class_cache[cache_key] = cached
@@ -966,23 +1647,29 @@ def _discover_method_calls(
                 msg = f"Unable to discover method '{overload_spec.cpp_name}' on handle '{item.handle}'"
                 raise ValueError(msg)
             discovered = _select_overload(overloads, overload_spec)
-            returns = _infer_return_type(discovered.return_cpp_type, handles)
-            params = tuple(
-                ParamSpec(name=param.name, type=_infer_param_type(param.cpp_type, handles))
-                for param in discovered.params
+            returns, params = _infer_method_signature(
+                discovered,
+                handles=handles,
+                enum_types_as_int32=item.enum_types_as_int32,
+                override=item.type_overrides.get(overload_spec.cpp_name),
             )
             call = CallSpec(
-                kind="method",
                 expose_as=overload_spec.expose_as,
-                c_name=_make_c_name("ifcopenshell", handle, overload_spec.expose_as),
+                c_name=_make_c_name(handle, overload_spec.expose_as),
                 receiver=item.handle,
-                cpp_name=discovered.cpp_name,
                 returns=returns,
                 params=params,
-                implementation=None,
+                policy_operation=DirectMethodPolicyOp(cpp_name=discovered.cpp_name),
             )
             existing = calls_by_c_name.get(call.c_name)
             if call.c_name in reserved_c_names:
+                _append_discovery_diagnostic(
+                    diagnostics,
+                    owner=item.handle,
+                    member=overload_spec.cpp_name,
+                    code="reserved_c_name",
+                    message=f"Skipped discovered method '{overload_spec.cpp_name}' because an authored entry takes precedence",
+                )
                 continue  # Authored entry takes precedence
             if existing is not None:
                 if existing == call:
@@ -1008,39 +1695,58 @@ def _discover_method_calls(
             is_explicit = cpp_name in explicit_includes
             if len(overloads) != 1:
                 if item.include_all and not is_explicit:
+                    _append_discovery_diagnostic(
+                        diagnostics,
+                        owner=item.handle,
+                        member=cpp_name,
+                        code="overloaded_method_requires_policy",
+                        message=f"Skipped auto-discovered method '{cpp_name}' because it is overloaded",
+                    )
                     continue
                 msg = f"Method '{cpp_name}' on handle '{item.handle}' is overloaded and requires an explicit policy"
                 raise ValueError(msg)
 
             discovered = overloads[0]
             try:
-                ret_type = discovered.return_cpp_type
-                if _normalize_cpp_type(ret_type) in item.enum_types_as_int32:
-                    returns = TypeSpec(kind="int32", cpp_type=ret_type)
-                else:
-                    returns = _infer_return_type(ret_type, handles)
-                params = tuple(
-                    ParamSpec(name=param.name, type=_infer_param_type(param.cpp_type, handles))
-                    for param in discovered.params
+                returns, params = _infer_method_signature(
+                    discovered,
+                    handles=handles,
+                    enum_types_as_int32=item.enum_types_as_int32,
+                    override=item.type_overrides.get(cpp_name),
                 )
-            except ValueError:
+            except ValueError as exc:
                 if item.include_all and not is_explicit:
+                    _append_discovery_diagnostic(
+                        diagnostics,
+                        owner=item.handle,
+                        member=cpp_name,
+                        code="unsupported_method_signature",
+                        message=(
+                            f"Skipped auto-discovered method '{cpp_name}' because signature "
+                            f"'{_method_signature_debug(discovered)}' is not supported: {exc}"
+                        ),
+                    )
                     continue
                 raise
 
             expose_as = item.rename.get(cpp_name, _snake_case_identifier(cpp_name))
             call = CallSpec(
-                kind="method",
                 expose_as=expose_as,
-                c_name=_make_c_name("ifcopenshell", handle, expose_as),
+                c_name=_make_c_name(handle, expose_as),
                 receiver=item.handle,
-                cpp_name=discovered.cpp_name,
                 returns=returns,
                 params=params,
-                implementation=None,
+                policy_operation=DirectMethodPolicyOp(cpp_name=discovered.cpp_name),
             )
             existing = calls_by_c_name.get(call.c_name)
             if call.c_name in reserved_c_names:
+                _append_discovery_diagnostic(
+                    diagnostics,
+                    owner=item.handle,
+                    member=cpp_name,
+                    code="reserved_c_name",
+                    message=f"Skipped discovered method '{cpp_name}' because an authored entry takes precedence",
+                )
                 continue  # Authored entry takes precedence
             if existing is not None:
                 if existing == call:
@@ -1055,10 +1761,9 @@ def _discover_method_calls(
             field_cache_key = ("fields", handle.cpp_type, item.translation_unit, item.include_inherited_fields)
             fields_by_name = class_cache.get(field_cache_key)
             if fields_by_name is None:
-                class_name = handle.cpp_type.rsplit("::", 1)[-1]
                 translation_unit = (include_dir / item.translation_unit).resolve()
                 fields_by_name = discover_public_fields_with_compile_commands(
-                    compile_commands_path, translation_unit, class_name,
+                    compile_commands_path, translation_unit, handle.cpp_type,
                     include_inherited=item.include_inherited_fields,
                 )
                 class_cache[field_cache_key] = fields_by_name
@@ -1069,22 +1774,41 @@ def _discover_method_calls(
                 field = fields_by_name[field_name]
 
                 # Handle boost::optional<T> fields
-                optional_inner = _extract_optional_inner_type(field.cpp_type)
+                optional_inner = _extract_optional_inner_type(field.cpp_type_ref)
                 if optional_inner is not None:
                     if item.discover_optional_fields:
                         _emit_optional_field_calls(
                             item, handle, field_name, field.cpp_name, optional_inner,
-                            handles, calls, calls_by_c_name, reserved_c_names,
+                            handles, calls, calls_by_c_name, reserved_c_names, diagnostics,
                         )
                     continue
 
                 try:
-                    cpp_type = field.cpp_type
-                    if _normalize_cpp_type(cpp_type) in item.enum_types_as_int32:
-                        returns = TypeSpec(kind="int32", cpp_type=cpp_type)
+                    field_override = item.type_overrides.get(field_name)
+                    if field_override is not None and field_override.returns is not None:
+                        returns = field_override.returns
                     else:
-                        returns = _infer_return_type(cpp_type, handles)
-                except ValueError:
+                        cpp_type = field.cpp_type
+                        if _normalize_cpp_type(cpp_type) in item.enum_types_as_int32:
+                            returns = TypeSpec(kind="int32", cpp_type=_cpp_type_storage(field.cpp_type_ref))
+                        else:
+                            returns = _infer_return_type(field.cpp_type_ref, handles)
+                    returns = _apply_field_type_override(
+                        field,
+                        override=field_override,
+                        inferred_returns=returns,
+                    )
+                except ValueError as exc:
+                    _append_discovery_diagnostic(
+                        diagnostics,
+                        owner=item.handle,
+                        member=field_name,
+                        code="unsupported_field_type",
+                        message=(
+                            f"Skipped auto-discovered field '{field_name}' because type "
+                            f"'{_cpp_type_debug(field.cpp_type_ref)}' is not supported: {exc}"
+                        ),
+                    )
                     continue
 
                 # Determine if this is a value-typed handle field (not a pointer/shared_ptr).
@@ -1106,18 +1830,26 @@ def _discover_method_calls(
 
                 expose_as = item.rename.get(field_name, _snake_case_identifier(field_name))
                 call = CallSpec(
-                    kind=field_kind,
                     expose_as=expose_as,
-                    c_name=_make_c_name("ifcopenshell", handle, expose_as),
+                    c_name=_make_c_name(handle, expose_as),
                     receiver=item.handle,
-                    cpp_name=field.cpp_name,
                     returns=returns,
                     params=(),
-                    implementation=None,
+                    policy_operation=(
+                        DirectFieldPolicyOp(field_name=field.cpp_name)
+                        if field_kind == "field"
+                        else ValueHandleFieldPolicyOp(field_name=field.cpp_name)
+                    ),
                 )
                 existing = calls_by_c_name.get(call.c_name)
                 if existing is not None or call.c_name in reserved_c_names:
-                    # Skip silently — adapter_method or method already provides this
+                    _append_discovery_diagnostic(
+                        diagnostics,
+                        owner=item.handle,
+                        member=field_name,
+                        code="field_name_collision",
+                        message=f"Skipped generated field accessor '{call.c_name}' because another call already uses that name",
+                    )
                     continue
                 calls_by_c_name[call.c_name] = call
                 calls.append(call)
@@ -1125,69 +1857,32 @@ def _discover_method_calls(
                 # For nullable handle fields, optionally generate has_X
                 if item.discover_has_fields and field_kind == "field" and returns.kind == "handle":
                     has_expose = f"has_{expose_as}"
-                    has_call = CallSpec(
-                        kind="has_field",
+                    has_call = PolicyCallSpec(
                         expose_as=has_expose,
-                        c_name=_make_c_name("ifcopenshell", handle, has_expose),
                         receiver=item.handle,
-                        cpp_name=field.cpp_name,
                         returns=TypeSpec(kind="bool", cpp_type=None),
                         params=(),
-                        implementation=None,
+                        operation=PointerPresencePolicyOp(field_name=field.cpp_name),
                     )
-                    if has_call.c_name not in reserved_c_names and has_call.c_name not in calls_by_c_name:
-                        calls_by_c_name[has_call.c_name] = has_call
-                        calls.append(has_call)
+                    _register_policy_call(
+                        has_call,
+                        handle=handle,
+                        calls=calls,
+                        calls_by_c_name=calls_by_c_name,
+                        reserved_c_names=reserved_c_names,
+                        diagnostics=diagnostics,
+                        owner=item.handle,
+                        member=field_name,
+                    )
 
-        # Generate children count/at pair if requested
-        if item.discover_children is not None:
-            dc = item.discover_children
-            # Count function
-            count_call = CallSpec(
-                kind="children_count",
-                expose_as=dc.count_as,
-                c_name=_make_c_name("ifcopenshell", handle, dc.count_as),
-                receiver=item.handle,
-                cpp_name=dc.cpp_field,
-                returns=TypeSpec(kind="size", handle=None, ownership=None, nullable=False, cpp_type=None),
-                params=(),
-                implementation=None,
-            )
-            if count_call.c_name not in reserved_c_names and count_call.c_name not in calls_by_c_name:
-                calls_by_c_name[count_call.c_name] = count_call
-                calls.append(count_call)
-
-            # At function
-            at_call = CallSpec(
-                kind="children_at",
-                expose_as=dc.at_as,
-                c_name=_make_c_name("ifcopenshell", handle, dc.at_as),
-                receiver=item.handle,
-                cpp_name=dc.cpp_field,
-                returns=TypeSpec(kind="handle", handle=dc.element_handle, ownership="borrowed", nullable=False, cpp_type=None),
-                params=(ParamSpec(name="index", type=TypeSpec(kind="size", handle=None, ownership=None, nullable=False, cpp_type=None)),),
-                implementation=None,
-            )
-            if at_call.c_name not in reserved_c_names and at_call.c_name not in calls_by_c_name:
-                calls_by_c_name[at_call.c_name] = at_call
-                calls.append(at_call)
-
-            # Add function with dcast
-            if dc.add_as is not None:
-                param_handle_name = dc.element_handle
-                add_call = CallSpec(
-                    kind="children_add",
-                    expose_as=dc.add_as,
-                    c_name=_make_c_name("ifcopenshell", handle, dc.add_as),
-                    receiver=item.handle,
-                    cpp_name=dc.add_cast_cpp_type,  # stash cast target in cpp_name
-                    returns=TypeSpec(kind="void"),
-                    params=(ParamSpec(name="item", type=TypeSpec(kind="handle", handle=param_handle_name, ownership="borrowed")),),
-                    implementation=None,
-                )
-                if add_call.c_name not in reserved_c_names and add_call.c_name not in calls_by_c_name:
-                    calls_by_c_name[add_call.c_name] = add_call
-                    calls.append(add_call)
+        _emit_children_calls(
+            item,
+            handle,
+            calls,
+            calls_by_c_name,
+            reserved_c_names,
+            diagnostics,
+        )
 
         # Generate extra fields (manually specified for template classes)
         for field_name, cpp_type in item.extra_fields.items():
@@ -1214,35 +1909,47 @@ def _discover_method_calls(
 
             expose_as = item.rename.get(field_name, _snake_case_identifier(field_name))
             call = CallSpec(
-                kind=field_kind,
                 expose_as=expose_as,
-                c_name=_make_c_name("ifcopenshell", handle, expose_as),
+                c_name=_make_c_name(handle, expose_as),
                 receiver=item.handle,
-                cpp_name=field_name,
                 returns=returns,
                 params=(),
-                implementation=None,
+                policy_operation=(
+                    DirectFieldPolicyOp(field_name=field_name)
+                    if field_kind == "field"
+                    else ValueHandleFieldPolicyOp(field_name=field_name)
+                ),
             )
-            if call.c_name not in reserved_c_names and call.c_name not in calls_by_c_name:
-                calls_by_c_name[call.c_name] = call
-                calls.append(call)
+            _register_generated_call(
+                call,
+                calls=calls,
+                calls_by_c_name=calls_by_c_name,
+                reserved_c_names=reserved_c_names,
+                diagnostics=diagnostics,
+                owner=item.handle,
+                member=field_name,
+            )
 
             # Also generate has_X for nullable handle extra fields
             if item.discover_has_fields and field_kind == "field" and returns.kind == "handle":
                 has_expose = f"has_{expose_as}"
-                has_call = CallSpec(
-                    kind="has_field",
+                has_call = PolicyCallSpec(
                     expose_as=has_expose,
-                    c_name=_make_c_name("ifcopenshell", handle, has_expose),
                     receiver=item.handle,
-                    cpp_name=field_name,
                     returns=TypeSpec(kind="bool", cpp_type=None),
                     params=(),
-                    implementation=None,
+                    operation=PointerPresencePolicyOp(field_name=field_name),
                 )
-                if has_call.c_name not in reserved_c_names and has_call.c_name not in calls_by_c_name:
-                    calls_by_c_name[has_call.c_name] = has_call
-                    calls.append(has_call)
+                _register_policy_call(
+                    has_call,
+                    handle=handle,
+                    calls=calls,
+                    calls_by_c_name=calls_by_c_name,
+                    reserved_c_names=reserved_c_names,
+                    diagnostics=diagnostics,
+                    owner=item.handle,
+                    member=field_name,
+                )
 
         # Generate field setters
         for setter_field in item.field_setters:
@@ -1266,181 +1973,160 @@ def _discover_method_calls(
                 raise ValueError(msg)
 
             set_expose = f"set_{_snake_case_identifier(setter_field)}"
-            set_call = CallSpec(
-                kind="field_setter",
+            set_call = PolicyCallSpec(
                 expose_as=set_expose,
-                c_name=_make_c_name("ifcopenshell", handle, set_expose),
                 receiver=item.handle,
-                cpp_name=setter_field,
                 returns=TypeSpec(kind="void"),
                 params=(ParamSpec(name="value", type=param_type),),
-                implementation=None,
+                operation=FieldSetterPolicyOp(field_name=setter_field),
             )
-            if set_call.c_name not in reserved_c_names and set_call.c_name not in calls_by_c_name:
-                calls_by_c_name[set_call.c_name] = set_call
-                calls.append(set_call)
+            _register_policy_call(
+                set_call,
+                handle=handle,
+                calls=calls,
+                calls_by_c_name=calls_by_c_name,
+                reserved_c_names=reserved_c_names,
+                diagnostics=diagnostics,
+                owner=item.handle,
+                member=setter_field,
+            )
 
         # Generate method_size calls (method().size())
         for method_name, expose_as in item.method_sizes.items():
-            ms_call = CallSpec(
-                kind="method_size",
+            ms_call = PolicyCallSpec(
                 expose_as=expose_as,
-                c_name=_make_c_name("ifcopenshell", handle, expose_as),
                 receiver=item.handle,
-                cpp_name=method_name,
                 returns=TypeSpec(kind="size"),
                 params=(),
-                implementation=None,
+                operation=MethodSizePolicyOp(method_name=method_name),
             )
-            if ms_call.c_name not in reserved_c_names and ms_call.c_name not in calls_by_c_name:
-                calls_by_c_name[ms_call.c_name] = ms_call
-                calls.append(ms_call)
+            _register_policy_call(
+                ms_call,
+                handle=handle,
+                calls=calls,
+                calls_by_c_name=calls_by_c_name,
+                reserved_c_names=reserved_c_names,
+                diagnostics=diagnostics,
+                owner=item.handle,
+                member=method_name,
+            )
 
         # Generate array_pair_field calls (field[0] as _u, field[1] as _v)
         for field_name, return_kind in item.array_pair_fields.items():
             ret_type = _simple_type_spec(return_kind)
             for suffix, index in [("_u", 0), ("_v", 1)]:
                 expose = f"{field_name}{suffix}"
-                ap_call = CallSpec(
-                    kind="array_field",
+                ap_call = PolicyCallSpec(
                     expose_as=expose,
-                    c_name=_make_c_name("ifcopenshell", handle, expose),
                     receiver=item.handle,
-                    cpp_name=f"{field_name}[{index}]",
                     returns=ret_type,
                     params=(),
-                    implementation=None,
+                    operation=ArrayElementFieldPolicyOp(expression=f"{field_name}[{index}]"),
                 )
-                if ap_call.c_name not in reserved_c_names and ap_call.c_name not in calls_by_c_name:
-                    calls_by_c_name[ap_call.c_name] = ap_call
-                    calls.append(ap_call)
+                _register_policy_call(
+                    ap_call,
+                    handle=handle,
+                    calls=calls,
+                    calls_by_c_name=calls_by_c_name,
+                    reserved_c_names=reserved_c_names,
+                    diagnostics=diagnostics,
+                    owner=item.handle,
+                    member=field_name,
+                )
 
         # Generate operator calls (binary, unary, comparison)
         def _add_op_call(expose_as: str, call_spec: CallSpec) -> None:
-            if call_spec.c_name not in reserved_c_names and call_spec.c_name not in calls_by_c_name:
-                calls_by_c_name[call_spec.c_name] = call_spec
-                calls.append(call_spec)
+            _register_generated_call(
+                call_spec,
+                calls=calls,
+                calls_by_c_name=calls_by_c_name,
+                reserved_c_names=reserved_c_names,
+                diagnostics=diagnostics,
+                owner=item.handle,
+                member=expose_as,
+            )
 
         handle_return_owned = TypeSpec(kind="handle", handle=item.handle, ownership="owned", nullable=False, cpp_type=None)
         other_param = ParamSpec(name="other", type=TypeSpec(kind="handle", handle=item.handle, ownership="borrowed", nullable=False, cpp_type=None))
 
         for expose_as, op in item.binary_operators.items():
             _add_op_call(expose_as, CallSpec(
-                kind="adapter_method",
                 expose_as=expose_as,
-                c_name=_make_c_name("ifcopenshell", handle, expose_as),
+                c_name=_make_c_name(handle, expose_as),
                 receiver=item.handle,
-                cpp_name=None,
                 returns=handle_return_owned,
                 params=(other_param,),
-                implementation=ImplementationSpec(kind="inline_cpp", body=f"return (*self_cpp) {op} other_cpp;\n"),
+                policy_operation=InlineAdapterPolicyOp(
+                    implementation=ImplementationSpec(kind="inline_cpp", body=f"return (*self_cpp) {op} other_cpp;\n")
+                ),
             ))
 
         for expose_as, op in item.unary_operators.items():
             _add_op_call(expose_as, CallSpec(
-                kind="adapter_method",
                 expose_as=expose_as,
-                c_name=_make_c_name("ifcopenshell", handle, expose_as),
+                c_name=_make_c_name(handle, expose_as),
                 receiver=item.handle,
-                cpp_name=None,
                 returns=handle_return_owned,
                 params=(),
-                implementation=ImplementationSpec(kind="inline_cpp", body=f"return {op}(*self_cpp);\n"),
+                policy_operation=InlineAdapterPolicyOp(
+                    implementation=ImplementationSpec(kind="inline_cpp", body=f"return {op}(*self_cpp);\n")
+                ),
             ))
 
         for expose_as, op in item.comparison_operators.items():
             _add_op_call(expose_as, CallSpec(
-                kind="adapter_method",
                 expose_as=expose_as,
-                c_name=_make_c_name("ifcopenshell", handle, expose_as),
+                c_name=_make_c_name(handle, expose_as),
                 receiver=item.handle,
-                cpp_name=None,
                 returns=TypeSpec(kind="bool"),
                 params=(other_param,),
-                implementation=ImplementationSpec(kind="inline_cpp", body=f"return (*self_cpp) {op} other_cpp;\n"),
+                policy_operation=InlineAdapterPolicyOp(
+                    implementation=ImplementationSpec(kind="inline_cpp", body=f"return (*self_cpp) {op} other_cpp;\n")
+                ),
             ))
 
         # Generate as_item cast if requested
         if item.discover_as_item:
-            as_item_call = CallSpec(
-                kind="as_item_cast",
+            as_item_call = PolicyCallSpec(
                 expose_as="as_item",
-                c_name=_make_c_name("ifcopenshell", handle, "as_item"),
                 receiver=item.handle,
-                cpp_name=None,
                 returns=TypeSpec(kind="handle", handle="taxonomy_item", ownership="owned", nullable=False, cpp_type=None),
                 params=(),
-                implementation=None,
+                operation=AsItemCastPolicyOp(),
             )
-            if as_item_call.c_name not in reserved_c_names and as_item_call.c_name not in calls_by_c_name:
-                calls_by_c_name[as_item_call.c_name] = as_item_call
-                calls.append(as_item_call)
-
-        # Generate ccomponents accessor (Eigen data extraction)
-        if item.ccomponents_accessor is not None:
-            cc = item.ccomponents_accessor
-            cc_kind = "ccomponents_matrix" if cc.dimensions > 3 else "ccomponents_vector"
-            cc_call = CallSpec(
-                kind=cc_kind,
-                expose_as=cc.expose_as,
-                c_name=_make_c_name("ifcopenshell", handle, cc.expose_as),
-                receiver=item.handle,
-                cpp_name=cc.access_via,  # stash access path in cpp_name
-                returns=TypeSpec(kind="double_list", ownership="copy"),
-                params=(),
-                implementation=None,
+            _register_policy_call(
+                as_item_call,
+                handle=handle,
+                calls=calls,
+                calls_by_c_name=calls_by_c_name,
+                reserved_c_names=reserved_c_names,
+                diagnostics=diagnostics,
+                owner=item.handle,
+                member="as_item",
             )
-            if cc_call.c_name not in reserved_c_names and cc_call.c_name not in calls_by_c_name:
-                calls_by_c_name[cc_call.c_name] = cc_call
-                calls.append(cc_call)
 
-        # Generate variant accessors (typed get/set for variant methods)
-        if item.variant_accessors is not None:
-            va = item.variant_accessors
-            for suffix, cpp_type in va.types.items():
-                # Map C++ type to return kind
-                type_map = {
-                    "bool": "bool", "int64_t": "int64", "double": "double",
-                    "std::string": "string", "int": "int32",
-                }
-                ret_kind = type_map.get(cpp_type, "string")
-                # Generate getter: get_SUFFIX(name) -> TYPE
-                get_expose = f"get_{suffix}"
-                get_call = CallSpec(
-                    kind="variant_get",
-                    expose_as=get_expose,
-                    c_name=_make_c_name("ifcopenshell", handle, get_expose),
-                    receiver=item.handle,
-                    cpp_name=f"{va.get_method}|{cpp_type}",  # stash method|type
-                    returns=TypeSpec(kind=ret_kind),
-                    params=(ParamSpec(name="name", type=TypeSpec(kind="string")),),
-                    implementation=None,
-                )
-                if get_call.c_name not in reserved_c_names and get_call.c_name not in calls_by_c_name:
-                    calls_by_c_name[get_call.c_name] = get_call
-                    calls.append(get_call)
+        _emit_ccomponents_call(
+            item,
+            handle,
+            calls,
+            calls_by_c_name,
+            reserved_c_names,
+            diagnostics,
+        )
+        _emit_variant_accessor_calls(
+            item,
+            handle,
+            calls,
+            calls_by_c_name,
+            reserved_c_names,
+            diagnostics,
+        )
 
-                # Generate setter: set_SUFFIX(name, value) -> void
-                set_expose = f"set_{suffix}"
-                param_type = TypeSpec(kind=ret_kind)
-                set_call = CallSpec(
-                    kind="variant_set",
-                    expose_as=set_expose,
-                    c_name=_make_c_name("ifcopenshell", handle, set_expose),
-                    receiver=item.handle,
-                    cpp_name=f"{va.set_method}|{va.variant_type}|{cpp_type}",  # stash method|variant|type
-                    returns=TypeSpec(kind="void"),
-                    params=(
-                        ParamSpec(name="name", type=TypeSpec(kind="string")),
-                        ParamSpec(name="value", type=param_type),
-                    ),
-                    implementation=None,
-                )
-                if set_call.c_name not in reserved_c_names and set_call.c_name not in calls_by_c_name:
-                    calls_by_c_name[set_call.c_name] = set_call
-                    calls.append(set_call)
-
-    return tuple(calls)
+    debug_log(
+        "spec.discover_methods.done",
+        f"spec={debug_path(spec_path)} calls={len(calls)} diagnostics={len(diagnostics)}",
+    )
+    return tuple(calls), tuple(diagnostics)
 
 
 def _discover_function_calls(
@@ -1449,13 +2135,23 @@ def _discover_function_calls(
     handles: dict[str, HandleSpec],
     c_prefix: str,
     compile_commands_path: Path,
-) -> tuple[CallSpec, ...]:
+) -> tuple[tuple[CallSpec, ...], tuple[DiscoveryDiagnostic, ...]]:
     include_dir = (spec_path.parent / discovery.include_dir).resolve()
     namespace_cache: dict[tuple[str, str], dict[str, tuple[DiscoveredFunction, ...]]] = {}
     calls: list[CallSpec] = []
     calls_by_c_name: dict[str, CallSpec] = {}
+    diagnostics: list[DiscoveryDiagnostic] = []
 
-    for item in discovery.functions:
+    debug_log(
+        "spec.discover_functions.start",
+        f"spec={debug_path(spec_path)} namespaces={len(discovery.functions)} include_dir={debug_path(include_dir)}",
+    )
+
+    for item_index, item in enumerate(discovery.functions, start=1):
+        debug_log(
+            "spec.discover_functions.namespace",
+            f"{item_index}/{len(discovery.functions)} namespace={item.namespace} tu={item.translation_unit}",
+        )
         cache_key = (item.namespace, item.translation_unit)
         functions_by_name = namespace_cache.get(cache_key)
         if functions_by_name is None:
@@ -1471,20 +2167,18 @@ def _discover_function_calls(
                 msg = f"Unable to discover function '{overload_spec.cpp_name}' in namespace '{item.namespace}'"
                 raise ValueError(msg)
             discovered = _select_overload(overloads, overload_spec)
-            returns = _infer_return_type(discovered.return_cpp_type, handles)
+            returns = _infer_return_type(discovered.return_type_ref, handles)
             params = tuple(
-                ParamSpec(name=param.name, type=_infer_param_type(param.cpp_type, handles))
+                ParamSpec(name=param.name, type=_infer_param_type(param.cpp_type_ref, handles))
                 for param in discovered.params
             )
             call = CallSpec(
-                kind="function",
                 expose_as=overload_spec.expose_as,
                 c_name=_make_function_c_name(c_prefix, overload_spec.expose_as),
                 receiver=None,
-                cpp_name=f"{item.namespace}::{discovered.cpp_name}",
                 returns=returns,
                 params=params,
-                implementation=None,
+                policy_operation=DirectFunctionPolicyOp(cpp_name=f"{item.namespace}::{discovered.cpp_name}"),
             )
             existing = calls_by_c_name.get(call.c_name)
             if existing is not None:
@@ -1509,32 +2203,47 @@ def _discover_function_calls(
             is_explicit = cpp_name in explicit_includes
             if len(overloads) != 1:
                 if item.include_all and not is_explicit:
+                    _append_discovery_diagnostic(
+                        diagnostics,
+                        owner=item.namespace,
+                        member=cpp_name,
+                        code="overloaded_function_requires_policy",
+                        message=f"Skipped auto-discovered function '{cpp_name}' because it is overloaded",
+                    )
                     continue
                 msg = f"Function '{cpp_name}' in namespace '{item.namespace}' is overloaded and requires an explicit policy"
                 raise ValueError(msg)
 
             discovered = overloads[0]
             try:
-                returns = _infer_return_type(discovered.return_cpp_type, handles)
+                returns = _infer_return_type(discovered.return_type_ref, handles)
                 params = tuple(
-                    ParamSpec(name=param.name, type=_infer_param_type(param.cpp_type, handles))
+                    ParamSpec(name=param.name, type=_infer_param_type(param.cpp_type_ref, handles))
                     for param in discovered.params
                 )
-            except ValueError:
+            except ValueError as exc:
                 if item.include_all and not is_explicit:
+                    _append_discovery_diagnostic(
+                        diagnostics,
+                        owner=item.namespace,
+                        member=cpp_name,
+                        code="unsupported_function_signature",
+                        message=(
+                            f"Skipped auto-discovered function '{cpp_name}' because signature "
+                            f"'{_function_signature_debug(discovered)}' is not supported: {exc}"
+                        ),
+                    )
                     continue
                 raise
 
             expose_as = item.rename.get(cpp_name, _snake_case_identifier(cpp_name))
             call = CallSpec(
-                kind="function",
                 expose_as=expose_as,
                 c_name=_make_function_c_name(c_prefix, expose_as),
                 receiver=None,
-                cpp_name=f"{item.namespace}::{discovered.cpp_name}",
                 returns=returns,
                 params=params,
-                implementation=None,
+                policy_operation=DirectFunctionPolicyOp(cpp_name=f"{item.namespace}::{discovered.cpp_name}"),
             )
             existing = calls_by_c_name.get(call.c_name)
             if existing is not None:
@@ -1545,7 +2254,11 @@ def _discover_function_calls(
             calls_by_c_name[call.c_name] = call
             calls.append(call)
 
-    return tuple(calls)
+    debug_log(
+        "spec.discover_functions.done",
+        f"spec={debug_path(spec_path)} calls={len(calls)} diagnostics={len(diagnostics)}",
+    )
+    return tuple(calls), tuple(diagnostics)
 
 
 def load_authored_spec(
@@ -1561,6 +2274,10 @@ def load_authored_spec(
         existing_handles: Optional dict of handles from previously loaded specs.
                          These will be available for reference in this spec.
     """
+    debug_log(
+        "spec.load.start",
+        f"path={debug_path(path)} compile_commands={debug_path(compile_commands_path)} existing_handles={len(existing_handles or {})}",
+    )
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     root = _expect_mapping(raw, "binding spec")
 
@@ -1625,28 +2342,49 @@ def load_authored_spec(
         msg = "compile_commands.json is required for AST-backed discovery"
         raise ValueError(msg)
 
-    adapter_functions = tuple(
-        _parse_call(item, context=f"functions[{index}]", known_handles=known_handles, expect_receiver=False)
+    authored_functions = tuple(
+        _parse_call(
+            item,
+            context=f"functions[{index}]",
+            c_prefix=c_prefix,
+            handles=handles,
+            known_handles=known_handles,
+            expect_receiver=False,
+        )
         for index, item in enumerate(_expect_list(root.get("functions", []), "functions"))
     )
-    adapter_methods = tuple(
-        _parse_call(item, context=f"methods[{index}]", known_handles=known_handles, expect_receiver=True)
+    authored_methods = tuple(
+        _parse_call(
+            item,
+            context=f"methods[{index}]",
+            c_prefix=c_prefix,
+            handles=handles,
+            known_handles=known_handles,
+            expect_receiver=True,
+        )
         for index, item in enumerate(_expect_list(root.get("methods", []), "methods"))
     )
 
     # Collect authored c_names so discovery can skip collisions
-    authored_c_names = frozenset(c.c_name for c in (*adapter_functions, *adapter_methods))
-    discovered_methods = _discover_method_calls(path, discovery, handles, compile_commands_path, authored_c_names) if discovery is not None else tuple()
-    discovered_functions = (
-        _discover_function_calls(path, discovery, handles, c_prefix, compile_commands_path) if discovery is not None else tuple()
-    )
+    authored_c_names = frozenset(c.c_name for c in (*authored_functions, *authored_methods))
+    discovered_methods: tuple[CallSpec, ...] = tuple()
+    discovered_functions: tuple[CallSpec, ...] = tuple()
+    discovery_diagnostics: tuple[DiscoveryDiagnostic, ...] = tuple()
+    if discovery is not None:
+        discovered_methods, method_diagnostics = _discover_method_calls(
+            path, discovery, handles, compile_commands_path, authored_c_names
+        )
+        discovered_functions, function_diagnostics = _discover_function_calls(
+            path, discovery, handles, c_prefix, compile_commands_path
+        )
+        discovery_diagnostics = method_diagnostics + function_diagnostics
 
     depends_on_common = root.get("depends_on_common")
     if depends_on_common is not None and not isinstance(depends_on_common, str):
         msg = "depends_on_common must be a string"
         raise ValueError(msg)
 
-    return AuthoredBindingSpec(
+    spec = AuthoredBindingSpec(
         schema_version=schema_version,
         module=module,
         slice=slice_name,
@@ -1656,9 +2394,15 @@ def load_authored_spec(
         imports=tuple(imports),
         depends_on_common=depends_on_common,
         discovery=discovery,
-        functions=discovered_functions + adapter_functions,
-        methods=discovered_methods + adapter_methods,
+        functions=discovered_functions + authored_functions,
+        methods=discovered_methods + authored_methods,
+        discovery_diagnostics=discovery_diagnostics,
     )
+    debug_log(
+        "spec.load.done",
+        f"path={debug_path(path)} handles={len(spec.handles)} functions={len(spec.functions)} methods={len(spec.methods)} diagnostics={len(spec.discovery_diagnostics)}",
+    )
+    return spec
 
 
 def load_merged_specs(
@@ -1672,12 +2416,18 @@ def load_merged_specs(
     Handles from earlier specs are available to later specs automatically.
     This enables cross-module references like ifcgeom using ifcparse::file.
     """
+    debug_log(
+        "spec.merge.start",
+        f"specs={len(spec_paths)} module={module} compile_commands={debug_path(compile_commands_path)}",
+    )
     all_handles: dict[str, HandleSpec] = {}
     all_headers: list[str] = []
     all_functions: list[CallSpec] = []
     all_methods: list[CallSpec] = []
+    all_diagnostics: list[DiscoveryDiagnostic] = []
     
-    for spec_path in spec_paths:
+    for index, spec_path in enumerate(spec_paths, start=1):
+        debug_log("spec.merge.item", f"{index}/{len(spec_paths)} path={debug_path(spec_path)}")
         # Load each spec - later specs can reference handles from earlier ones
         spec = load_authored_spec(
             spec_path,
@@ -1705,12 +2455,19 @@ def load_merged_specs(
         # Merge functions and methods
         all_functions.extend(spec.functions)
         all_methods.extend(spec.methods)
+        all_diagnostics.extend(spec.discovery_diagnostics)
     
-    return MergedBindingSpec(
+    merged = MergedBindingSpec(
         module=module,
         c_prefix=c_prefix,
         public_headers=tuple(all_headers),
         handles=all_handles,
         functions=tuple(all_functions),
         methods=tuple(all_methods),
+        discovery_diagnostics=tuple(all_diagnostics),
     )
+    debug_log(
+        "spec.merge.done",
+        f"module={module} handles={len(merged.handles)} functions={len(merged.functions)} methods={len(merged.methods)} diagnostics={len(merged.discovery_diagnostics)}",
+    )
+    return merged

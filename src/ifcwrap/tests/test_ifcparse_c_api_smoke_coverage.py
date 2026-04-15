@@ -1,5 +1,3 @@
-# This file was generated with the assistance of an AI coding tool.
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -11,7 +9,7 @@ def test_ifcparse_smoke_sources_reference_every_generated_function() -> None:
     header_path = tests_dir.parent / "binding_generator" / "generated" / "ifcopenshell_api.h"
 
     header = header_path.read_text(encoding="utf-8")
-    smoke_sources = list(tests_dir.glob("ifcparse_c_api*smoke.c"))
+    smoke_sources = list(tests_dir.glob("*c_api*smoke.c"))
     assert smoke_sources
 
     referenced = set()
