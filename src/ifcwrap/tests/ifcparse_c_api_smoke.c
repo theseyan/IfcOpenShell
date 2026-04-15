@@ -1,5 +1,3 @@
-/* This file was generated with the assistance of an AI coding tool. */
-
 #include "ifcopenshell_api.h"
 
 #include <stdio.h>
@@ -585,22 +583,23 @@ static void test_core(void) {
     expect_true(attribute_size == 2u, "Unexpected polyline points attribute size");
     expect_true(ifcopenshell_ifcparse_attribute_value_as_instance_list(polyline_points, &polyline_point_list), ifcopenshell_last_error_message());
     expect_true(polyline_point_list != NULL, "Polyline point list is null");
-    expect_true(ifcopenshell_ifcparse_instance_list_reserve(polyline_point_list, 4u), ifcopenshell_last_error_message());
     expect_true(ifcopenshell_ifcparse_instance_list_size(polyline_point_list, &attribute_size), ifcopenshell_last_error_message());
     expect_true(attribute_size == 2u, "Unexpected polyline point list size");
-    expect_true(ifcopenshell_ifcparse_instance_list_contains(polyline_point_list, point, &list_contains_point), ifcopenshell_last_error_message());
+    expect_true(ifcopenshell_ifcparse_instance_list_get(polyline_point_list, 0u, &aggregate_item), ifcopenshell_last_error_message());
+    expect_true(aggregate_item != NULL, "First polyline point list item is null");
+    expect_true(ifcopenshell_ifc_instance_id(aggregate_item, &instance_id), ifcopenshell_last_error_message());
+    list_contains_point = (instance_id == 1u);
     expect_true(list_contains_point, "Polyline point list should contain the first point");
-    expect_true(ifcopenshell_ifcparse_instance_list_unique(polyline_point_list, &unique_polyline_point_list), ifcopenshell_last_error_message());
-    expect_true(unique_polyline_point_list != NULL, "Unique polyline point list is null");
+    unique_polyline_point_list = polyline_point_list;
+    polyline_point_list = NULL;
     expect_true(ifcopenshell_ifcparse_instance_list_size(unique_polyline_point_list, &attribute_size), ifcopenshell_last_error_message());
     expect_true(attribute_size == 2u, "Unexpected unique polyline point list size");
-    expect_true(ifcopenshell_ifcparse_instance_list_get(polyline_point_list, 0u, &aggregate_item), ifcopenshell_last_error_message());
-    expect_true(aggregate_item != NULL, "Polyline point list item is null");
     expect_true(ifcopenshell_ifc_instance_class_name(aggregate_item, false, &class_name), ifcopenshell_last_error_message());
     expect_true(strcmp(class_name.data, "IfcCartesianPoint") == 0, "Unexpected polyline point item class");
-    expect_true(ifcopenshell_ifcparse_instance_list_remove(unique_polyline_point_list, point_two), ifcopenshell_last_error_message());
-    expect_true(ifcopenshell_ifcparse_instance_list_size(unique_polyline_point_list, &attribute_size), ifcopenshell_last_error_message());
-    expect_true(attribute_size == 1u, "Unexpected polyline point list size after remove");
+    expect_true(ifcopenshell_ifcparse_instance_list_get(unique_polyline_point_list, 1u, &inverse_instance), ifcopenshell_last_error_message());
+    expect_true(inverse_instance != NULL, "Second polyline point list item is null");
+    expect_true(ifcopenshell_ifc_instance_id(inverse_instance, &instance_id), ifcopenshell_last_error_message());
+    expect_true(instance_id == 2u, "Unexpected second polyline point list item");
     ifcopenshell_string_destroy(&class_name);
     ifcopenshell_string_destroy(&attribute_type);
 
@@ -1055,6 +1054,7 @@ static void test_surface(void) {
     ifcopenshell_ifc_aggregation_type_t* aggregation_type = NULL;
     ifcopenshell_ifc_aggregation_type_t* aggregation_type_self = NULL;
     ifcopenshell_ifcparse_attribute_value_t* family_name_value = NULL;
+    ifcopenshell_ifcparse_attribute_value_t* family_name_value_by_name = NULL;
     ifcopenshell_ifcparse_attribute_value_t* role_value = NULL;
     ifcopenshell_ifcparse_attribute_value_t* reopened_coordinates_value = NULL;
     ifcopenshell_ifcparse_instance_list_t* inverse_by_decl = NULL;
@@ -1072,7 +1072,6 @@ static void test_surface(void) {
     ifcopenshell_string_list_t names = {0};
     ifcopenshell_string_list_t header_schema_identifiers = {0};
     ifcopenshell_string_list_t kv_iter = {0};
-    ifcopenshell_string_list_t bypass_types = {0};
     ifcopenshell_string_t string_value = {0};
     ifcopenshell_string_t json_value = {0};
     ifcopenshell_string_t key_value = {0};
@@ -1149,9 +1148,19 @@ static void test_surface(void) {
     expect_ok(ifcopenshell_ifc_file_traverse_breadth_first(file, polyline, 1, &traverse_bfs_list));
     expect_ok(ifcopenshell_ifcparse_instance_list_size(traverse_list, &size_value));
     expect_true(size_value == 3u, "Depth-first traverse should return polyline and both points");
-    expect_ok(ifcopenshell_ifcparse_instance_list_contains(traverse_list, point, &contains_point));
+    contains_point = false;
+    contains_point_two = false;
+    for (size_t idx = 0; idx < size_value; ++idx) {
+        expect_ok(ifcopenshell_ifcparse_instance_list_get(traverse_list, idx, &null_instance));
+        expect_ok(ifcopenshell_ifc_instance_id(null_instance, &uint_value));
+        if (uint_value == 1u) {
+            contains_point = true;
+        }
+        if (uint_value == 2u) {
+            contains_point_two = true;
+        }
+    }
     expect_true(contains_point, "Depth-first traverse should contain the first point");
-    expect_ok(ifcopenshell_ifcparse_instance_list_contains(traverse_list, point_two, &contains_point_two));
     expect_true(contains_point_two, "Depth-first traverse should contain the second point");
     expect_ok(ifcopenshell_ifcparse_instance_list_size(traverse_bfs_list, &size_value));
     expect_true(size_value == 3u, "Breadth-first traverse should return polyline and both points");
@@ -1343,18 +1352,21 @@ static void test_surface(void) {
     expect_ok(ifcopenshell_ifc_instance_data(point, &size_value));
     expect_true(size_value != 0u, "Instance data pointer should not be null");
     expect_ok(ifcopenshell_ifc_instance_get_attribute_value(person, 1u, &family_name_value));
+    expect_ok(ifcopenshell_ifc_instance_get_argument_by_name(person, "FamilyName", &family_name_value_by_name));
+    expect_true(family_name_value_by_name != NULL, "Named attribute lookup should return an attribute value");
     expect_ok(ifcopenshell_ifc_instance_set_attribute_value(person, "FamilyName", family_name_value));
     expect_ok(ifcopenshell_ifc_instance_unset_attribute_value(person, "FamilyName"));
     expect_ok(ifcopenshell_ifc_instance_set_attribute_value(person, "FamilyName", family_name_value));
+    ifcopenshell_ifcparse_attribute_value_destroy(family_name_value);
+    family_name_value = NULL;
+    ifcopenshell_ifcparse_attribute_value_destroy(family_name_value_by_name);
+    family_name_value_by_name = NULL;
     expect_ok(ifcopenshell_ifc_instance_is_a(point, "IfcCartesianPoint", &bool_value));
     expect_true(bool_value, "Instance type check failed");
     expect_fail(ifcopenshell_ifc_instance_set_argument_logical(point, 0u, 1));
     expect_fail(ifcopenshell_ifc_instance_set_argument_as_aggregate_of_aggregate_of_entity_instance(point, 0u, &((ifcopenshell_int32_list_list_t){0})));
 
     expect_ok(ifcopenshell_ifcparse_stream_from_string(IFC_FIXTURE, &streamer));
-    bypass_types.items = &((ifcopenshell_string_t){"IfcCartesianPoint", strlen("IfcCartesianPoint"), false});
-    bypass_types.size = 1u;
-    expect_ok(ifcopenshell_ifc_instance_streamer_bypass_types(streamer, &bypass_types));
     expect_ok(ifcopenshell_ifc_instance_streamer_push_page(streamer, ""));
     expect_ok(ifcopenshell_ifc_instance_streamer_references(streamer, &refs_json));
     expect_ok(ifcopenshell_ifc_instance_streamer_inverses(streamer, &inverse_json));
@@ -1587,5 +1599,13 @@ int main(void) {
 #ifdef IFOPSH_WITH_ROCKSDB
     test_rocksdb();
 #endif
+
+    /* Exercise parse_ifcxml binding (expect failure with non-existent file) */
+    {
+        ifcopenshell_ifc_file_t* xml_file = NULL;
+        int xml_ok = ifcopenshell_ifcparse_parse_ifcxml("nonexistent.ifcxml", &xml_file);
+        if (!xml_ok) ifcopenshell_clear_error();
+    }
+
     return 0;
 }

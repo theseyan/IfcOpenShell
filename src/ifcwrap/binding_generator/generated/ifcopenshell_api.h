@@ -1,5 +1,3 @@
-// This file was generated with the assistance of an AI coding tool.
-
 #ifndef IFCOPENSHELL_API_H
 #define IFCOPENSHELL_API_H
 
@@ -26,15 +24,20 @@ typedef struct ifcopenshell_string_list_t {
     size_t size;
 } ifcopenshell_string_list_t;
 
-typedef struct ifcopenshell_bool_list_t {
-    bool* items;
-    size_t size;
-} ifcopenshell_bool_list_t;
-
 typedef struct ifcopenshell_int32_list_t {
     int32_t* items;
     size_t size;
 } ifcopenshell_int32_list_t;
+
+typedef struct ifcopenshell_double_list_t {
+    double* items;
+    size_t size;
+} ifcopenshell_double_list_t;
+
+typedef struct ifcopenshell_bool_list_t {
+    bool* items;
+    size_t size;
+} ifcopenshell_bool_list_t;
 
 typedef struct ifcopenshell_uint32_list_t {
     uint32_t* items;
@@ -46,24 +49,40 @@ typedef struct ifcopenshell_int32_list_list_t {
     size_t size;
 } ifcopenshell_int32_list_list_t;
 
-typedef struct ifcopenshell_double_list_t {
-    double* items;
-    size_t size;
-} ifcopenshell_double_list_t;
-
 typedef struct ifcopenshell_double_list_list_t {
     ifcopenshell_double_list_t* items;
     size_t size;
 } ifcopenshell_double_list_list_t;
 
+typedef struct ifcopenshell_int32_list_list_list_t {
+    ifcopenshell_int32_list_list_t* items;
+    size_t size;
+} ifcopenshell_int32_list_list_list_t;
+
+typedef struct ifcopenshell_uint8_list_t {
+    uint8_t* items;
+    size_t size;
+} ifcopenshell_uint8_list_t;
+
 void ifcopenshell_string_destroy(ifcopenshell_string_t* value);
+
 void ifcopenshell_string_list_destroy(ifcopenshell_string_list_t* value);
-void ifcopenshell_bool_list_destroy(ifcopenshell_bool_list_t* value);
+
 void ifcopenshell_int32_list_destroy(ifcopenshell_int32_list_t* value);
-void ifcopenshell_uint32_list_destroy(ifcopenshell_uint32_list_t* value);
-void ifcopenshell_int32_list_list_destroy(ifcopenshell_int32_list_list_t* value);
+
 void ifcopenshell_double_list_destroy(ifcopenshell_double_list_t* value);
+
+void ifcopenshell_bool_list_destroy(ifcopenshell_bool_list_t* value);
+
+void ifcopenshell_uint32_list_destroy(ifcopenshell_uint32_list_t* value);
+
+void ifcopenshell_int32_list_list_destroy(ifcopenshell_int32_list_list_t* value);
+
 void ifcopenshell_double_list_list_destroy(ifcopenshell_double_list_list_t* value);
+
+void ifcopenshell_int32_list_list_list_destroy(ifcopenshell_int32_list_list_list_t* value);
+
+void ifcopenshell_uint8_list_destroy(ifcopenshell_uint8_list_t* value);
 
 #endif /* IFCOPENSHELL_COMMON_TYPES_DEFINED */
 
@@ -188,6 +207,62 @@ typedef struct ifcopenshell_ifcgeom_element_list_t {
     ifcopenshell_ifcgeom_element_t** items;
     size_t size;
 } ifcopenshell_ifcgeom_element_list_t;
+typedef struct ifcopenshell_ifc_instance_list_t {
+    ifcopenshell_ifc_instance_t** items;
+    size_t size;
+} ifcopenshell_ifc_instance_list_t;
+typedef struct ifcopenshell_ifcgeom_conversion_result_shape_list_list_t {
+    ifcopenshell_ifcgeom_conversion_result_shape_list_t* items;
+    size_t size;
+} ifcopenshell_ifcgeom_conversion_result_shape_list_list_t;
+typedef struct ifcopenshell_ifcgeom_svgfill_polygon_list_list_t {
+    ifcopenshell_ifcgeom_svgfill_polygon_list_t* items;
+    size_t size;
+} ifcopenshell_ifcgeom_svgfill_polygon_list_list_t;
+typedef struct ifcopenshell_ifc_declaration_list_list_t {
+    ifcopenshell_ifc_declaration_list_t* items;
+    size_t size;
+} ifcopenshell_ifc_declaration_list_list_t;
+typedef struct ifcopenshell_ifc_entity_list_list_t {
+    ifcopenshell_ifc_entity_list_t* items;
+    size_t size;
+} ifcopenshell_ifc_entity_list_list_t;
+typedef struct ifcopenshell_ifc_enumeration_list_list_t {
+    ifcopenshell_ifc_enumeration_list_t* items;
+    size_t size;
+} ifcopenshell_ifc_enumeration_list_list_t;
+typedef struct ifcopenshell_ifc_select_type_list_list_t {
+    ifcopenshell_ifc_select_type_list_t* items;
+    size_t size;
+} ifcopenshell_ifc_select_type_list_list_t;
+typedef struct ifcopenshell_ifc_type_declaration_list_list_t {
+    ifcopenshell_ifc_type_declaration_list_t* items;
+    size_t size;
+} ifcopenshell_ifc_type_declaration_list_list_t;
+typedef struct ifcopenshell_ifc_attribute_list_list_t {
+    ifcopenshell_ifc_attribute_list_t* items;
+    size_t size;
+} ifcopenshell_ifc_attribute_list_list_t;
+typedef struct ifcopenshell_ifc_inverse_attribute_list_list_t {
+    ifcopenshell_ifc_inverse_attribute_list_t* items;
+    size_t size;
+} ifcopenshell_ifc_inverse_attribute_list_list_t;
+typedef struct ifcopenshell_ifcgeom_taxonomy_style_list_list_t {
+    ifcopenshell_ifcgeom_taxonomy_style_list_t* items;
+    size_t size;
+} ifcopenshell_ifcgeom_taxonomy_style_list_list_t;
+typedef struct ifcopenshell_ifcgeom_taxonomy_item_list_list_t {
+    ifcopenshell_ifcgeom_taxonomy_item_list_t* items;
+    size_t size;
+} ifcopenshell_ifcgeom_taxonomy_item_list_list_t;
+typedef struct ifcopenshell_ifcgeom_element_list_list_t {
+    ifcopenshell_ifcgeom_element_list_t* items;
+    size_t size;
+} ifcopenshell_ifcgeom_element_list_list_t;
+typedef struct ifcopenshell_ifc_instance_list_list_t {
+    ifcopenshell_ifc_instance_list_t* items;
+    size_t size;
+} ifcopenshell_ifc_instance_list_list_t;
 
 void ifcopenshell_clear_error(void);
 const char* ifcopenshell_last_error_message(void);
@@ -276,8 +351,23 @@ void ifcopenshell_ifc_inverse_attribute_list_destroy(ifcopenshell_ifc_inverse_at
 void ifcopenshell_ifcgeom_taxonomy_style_list_destroy(ifcopenshell_ifcgeom_taxonomy_style_list_t* value);
 void ifcopenshell_ifcgeom_taxonomy_item_list_destroy(ifcopenshell_ifcgeom_taxonomy_item_list_t* value);
 void ifcopenshell_ifcgeom_element_list_destroy(ifcopenshell_ifcgeom_element_list_t* value);
+void ifcopenshell_ifc_instance_list_destroy(ifcopenshell_ifc_instance_list_t* value);
+void ifcopenshell_ifcgeom_conversion_result_shape_list_list_destroy(ifcopenshell_ifcgeom_conversion_result_shape_list_list_t* value);
+void ifcopenshell_ifcgeom_svgfill_polygon_list_list_destroy(ifcopenshell_ifcgeom_svgfill_polygon_list_list_t* value);
+void ifcopenshell_ifc_declaration_list_list_destroy(ifcopenshell_ifc_declaration_list_list_t* value);
+void ifcopenshell_ifc_entity_list_list_destroy(ifcopenshell_ifc_entity_list_list_t* value);
+void ifcopenshell_ifc_enumeration_list_list_destroy(ifcopenshell_ifc_enumeration_list_list_t* value);
+void ifcopenshell_ifc_select_type_list_list_destroy(ifcopenshell_ifc_select_type_list_list_t* value);
+void ifcopenshell_ifc_type_declaration_list_list_destroy(ifcopenshell_ifc_type_declaration_list_list_t* value);
+void ifcopenshell_ifc_attribute_list_list_destroy(ifcopenshell_ifc_attribute_list_list_t* value);
+void ifcopenshell_ifc_inverse_attribute_list_list_destroy(ifcopenshell_ifc_inverse_attribute_list_list_t* value);
+void ifcopenshell_ifcgeom_taxonomy_style_list_list_destroy(ifcopenshell_ifcgeom_taxonomy_style_list_list_t* value);
+void ifcopenshell_ifcgeom_taxonomy_item_list_list_destroy(ifcopenshell_ifcgeom_taxonomy_item_list_list_t* value);
+void ifcopenshell_ifcgeom_element_list_list_destroy(ifcopenshell_ifcgeom_element_list_list_t* value);
+void ifcopenshell_ifc_instance_list_list_destroy(ifcopenshell_ifc_instance_list_list_t* value);
 
 bool ifcopenshell_ifcparse_clear_schemas(void);
+bool ifcopenshell_ifcparse_guess_file_type(const char* fn, int32_t* out_result);
 bool ifcopenshell_ifcparse_parse_ifcxml(const char* filename, ifcopenshell_ifc_file_t** out_result);
 bool ifcopenshell_ifcparse_register_schema(ifcopenshell_ifc_schema_t* arg_0);
 bool ifcopenshell_ifcparse_schema_by_name(const char* arg_0, ifcopenshell_ifc_schema_t** out_result);
@@ -289,7 +379,6 @@ bool ifcopenshell_ifcparse_new_file(const char* schema_identifier, int32_t file_
 bool ifcopenshell_ifcparse_read_memory(const char* data, ifcopenshell_ifc_file_t** out_result);
 bool ifcopenshell_ifcparse_stream_from_string(const char* data, ifcopenshell_ifc_instance_streamer_t** out_result);
 bool ifcopenshell_ifcparse_version(ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifcparse_guess_file_type(const char* path, int32_t* out_result);
 bool ifcopenshell_ifcparse_set_feature(const char* name, bool value);
 bool ifcopenshell_ifcparse_get_feature(const char* name, bool* out_result);
 bool ifcopenshell_ifcparse_get_log(ifcopenshell_string_t* out_result);
@@ -379,6 +468,7 @@ bool ifcopenshell_ifc_file_get_max_id(ifcopenshell_ifc_file_t* self, uint32_t* o
 bool ifcopenshell_ifc_file_get_total_inverses_by_id(ifcopenshell_ifc_file_t* self, int32_t instance_id, size_t* out_result);
 bool ifcopenshell_ifc_file_get_inverse_indices_by_id(ifcopenshell_ifc_file_t* self, int32_t instance_id, ifcopenshell_int32_list_t* out_result);
 bool ifcopenshell_ifc_file_ifcroot_type(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_declaration_t** out_result);
+bool ifcopenshell_ifc_file_initialize(ifcopenshell_ifc_file_t* self, const char* path, int32_t ty, bool readonly, bool* out_result);
 bool ifcopenshell_ifc_file_by_guid(ifcopenshell_ifc_file_t* self, const char* guid, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifc_file_by_id(ifcopenshell_ifc_file_t* self, int32_t id, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifc_file_instances_by_reference(ifcopenshell_ifc_file_t* self, int32_t id, ifcopenshell_ifcparse_instance_list_t** out_result);
@@ -428,6 +518,7 @@ bool ifcopenshell_ifc_named_type_is_a(ifcopenshell_ifc_named_type_t* self, const
 bool ifcopenshell_ifc_named_type_as_named_type(ifcopenshell_ifc_named_type_t* self, ifcopenshell_ifc_named_type_t** out_result);
 bool ifcopenshell_ifc_named_type_declared_type(ifcopenshell_ifc_named_type_t* self, ifcopenshell_ifc_declaration_t** out_result);
 bool ifcopenshell_ifc_simple_type_as_simple_type(ifcopenshell_ifc_simple_type_t* self, ifcopenshell_ifc_simple_type_t** out_result);
+bool ifcopenshell_ifc_simple_type_declared_type(ifcopenshell_ifc_simple_type_t* self, int32_t* out_result);
 bool ifcopenshell_ifc_aggregation_type_as_aggregation_type(ifcopenshell_ifc_aggregation_type_t* self, ifcopenshell_ifc_aggregation_type_t** out_result);
 bool ifcopenshell_ifc_aggregation_type_bound1(ifcopenshell_ifc_aggregation_type_t* self, int32_t* out_result);
 bool ifcopenshell_ifc_aggregation_type_bound2(ifcopenshell_ifc_aggregation_type_t* self, int32_t* out_result);
@@ -490,12 +581,7 @@ bool ifcopenshell_ifc_instance_streamer_bypassed_instances(ifcopenshell_ifc_inst
 bool ifcopenshell_ifc_instance_streamer_has_semicolon(ifcopenshell_ifc_instance_streamer_t* self, bool* out_result);
 bool ifcopenshell_ifc_instance_streamer_push_page(ifcopenshell_ifc_instance_streamer_t* self, const char* page);
 bool ifcopenshell_ifc_instance_streamer_semicolon_count(ifcopenshell_ifc_instance_streamer_t* self, size_t* out_result);
-bool ifcopenshell_ifcparse_instance_list_contains(ifcopenshell_ifcparse_instance_list_t* self, ifcopenshell_ifc_instance_t* arg_0, bool* out_result);
-bool ifcopenshell_ifcparse_instance_list_remove(ifcopenshell_ifcparse_instance_list_t* self, ifcopenshell_ifc_instance_t* arg_0);
-bool ifcopenshell_ifcparse_instance_list_reserve(ifcopenshell_ifcparse_instance_list_t* self, size_t capacity);
 bool ifcopenshell_ifcparse_instance_list_size(ifcopenshell_ifcparse_instance_list_t* self, size_t* out_result);
-bool ifcopenshell_ifcparse_instance_list_unique(ifcopenshell_ifcparse_instance_list_t* self, ifcopenshell_ifcparse_instance_list_t** out_result);
-bool ifcopenshell_ifc_file_initialize(ifcopenshell_ifc_file_t* self, const char* path, int32_t file_type, bool readonly, bool* out_result);
 bool ifcopenshell_ifc_file_write(ifcopenshell_ifc_file_t* self, const char* path);
 bool ifcopenshell_ifc_file_storage_mode(ifcopenshell_ifc_file_t* self, int32_t* out_result);
 bool ifcopenshell_ifc_file_schema_name(ifcopenshell_ifc_file_t* self, ifcopenshell_string_t* out_result);
@@ -519,6 +605,7 @@ bool ifcopenshell_ifc_instance_set_attribute_value(ifcopenshell_ifc_instance_t* 
 bool ifcopenshell_ifc_instance_unset_attribute_value(ifcopenshell_ifc_instance_t* self, const char* name);
 bool ifcopenshell_ifc_instance_get_inverse(ifcopenshell_ifc_instance_t* self, const char* name, ifcopenshell_ifcparse_instance_list_t** out_result);
 bool ifcopenshell_ifc_instance_get_attribute_value(ifcopenshell_ifc_instance_t* self, size_t index, ifcopenshell_ifcparse_attribute_value_t** out_result);
+bool ifcopenshell_ifc_instance_get_argument_by_name(ifcopenshell_ifc_instance_t* self, const char* name, ifcopenshell_ifcparse_attribute_value_t** out_result);
 bool ifcopenshell_ifc_instance_get_argument_type(ifcopenshell_ifc_instance_t* self, uint32_t index, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifc_instance_to_string(ifcopenshell_ifc_instance_t* self, bool valid_spf, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifc_instance_class_name(ifcopenshell_ifc_instance_t* self, bool with_schema, ifcopenshell_string_t* out_result);
@@ -564,14 +651,12 @@ bool ifcopenshell_ifc_select_type_select_list_names(ifcopenshell_ifc_select_type
 bool ifcopenshell_ifc_type_declaration_argument_types(ifcopenshell_ifc_type_declaration_t* self, ifcopenshell_string_list_t* out_result);
 bool ifcopenshell_ifc_enumeration_argument_types(ifcopenshell_ifc_enumeration_t* self, ifcopenshell_string_list_t* out_result);
 bool ifcopenshell_ifc_parameter_type_kind(ifcopenshell_ifc_parameter_type_t* self, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifc_simple_type_declared_type(ifcopenshell_ifc_simple_type_t* self, int32_t* out_result);
 bool ifcopenshell_ifc_simple_type_kind(ifcopenshell_ifc_simple_type_t* self, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifc_aggregation_type_type_of_aggregation(ifcopenshell_ifc_aggregation_type_t* self, int32_t* out_result);
 bool ifcopenshell_ifc_aggregation_type_type_of_aggregation_string(ifcopenshell_ifc_aggregation_type_t* self, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifc_inverse_attribute_type_of_aggregation(ifcopenshell_ifc_inverse_attribute_t* self, int32_t* out_result);
 bool ifcopenshell_ifc_inverse_attribute_type_of_aggregation_string(ifcopenshell_ifc_inverse_attribute_t* self, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifc_entity_argument_types(ifcopenshell_ifc_entity_t* self, ifcopenshell_string_list_t* out_result);
-bool ifcopenshell_ifc_instance_streamer_bypass_types(ifcopenshell_ifc_instance_streamer_t* self, const ifcopenshell_string_list_t* type_names);
 bool ifcopenshell_ifc_instance_streamer_status(ifcopenshell_ifc_instance_streamer_t* self, int32_t* out_result);
 bool ifcopenshell_ifc_instance_streamer_references(ifcopenshell_ifc_instance_streamer_t* self, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifc_instance_streamer_inverses(ifcopenshell_ifc_instance_streamer_t* self, ifcopenshell_string_t* out_result);
@@ -585,6 +670,7 @@ bool ifcopenshell_ifcgeom_triangulation_item_ids(ifcopenshell_ifcgeom_triangulat
 bool ifcopenshell_ifcgeom_triangulation_material_ids(ifcopenshell_ifcgeom_triangulation_t* self, ifcopenshell_int32_list_t* out_result);
 bool ifcopenshell_ifcgeom_triangulation_materials(ifcopenshell_ifcgeom_triangulation_t* self, ifcopenshell_ifcgeom_taxonomy_style_list_t* out_result);
 bool ifcopenshell_ifcgeom_triangulation_normals(ifcopenshell_ifcgeom_triangulation_t* self, ifcopenshell_double_list_t* out_result);
+bool ifcopenshell_ifcgeom_triangulation_polyhedral_faces_with_holes(ifcopenshell_ifcgeom_triangulation_t* self, ifcopenshell_int32_list_list_list_t* out_result);
 bool ifcopenshell_ifcgeom_triangulation_polyhedral_faces_without_holes(ifcopenshell_ifcgeom_triangulation_t* self, ifcopenshell_int32_list_list_t* out_result);
 bool ifcopenshell_ifcgeom_triangulation_uvs(ifcopenshell_ifcgeom_triangulation_t* self, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_ifcgeom_triangulation_verts(ifcopenshell_ifcgeom_triangulation_t* self, ifcopenshell_double_list_t* out_result);
@@ -610,7 +696,6 @@ bool ifcopenshell_ifcgeom_iterator_initialize(ifcopenshell_ifcgeom_iterator_t* s
 bool ifcopenshell_ifcgeom_iterator_progress(ifcopenshell_ifcgeom_iterator_t* self, int32_t* out_result);
 bool ifcopenshell_ifcgeom_iterator_unit_magnitude(ifcopenshell_ifcgeom_iterator_t* self, double* out_result);
 bool ifcopenshell_ifcgeom_iterator_unit_name(ifcopenshell_ifcgeom_iterator_t* self, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifcgeom_brep_representation_as_compound(ifcopenshell_ifcgeom_brep_representation_t* self, bool force_meters, ifcopenshell_ifcgeom_conversion_result_shape_t** out_result);
 bool ifcopenshell_ifcgeom_brep_representation_calculate_projected_surface_area(ifcopenshell_ifcgeom_brep_representation_t* self, ifcopenshell_ifcgeom_taxonomy_matrix4_t* ax, double along_x, double along_y, double along_z, bool* out_result);
 bool ifcopenshell_ifcgeom_brep_representation_entity(ifcopenshell_ifcgeom_brep_representation_t* self, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcgeom_brep_representation_id(ifcopenshell_ifcgeom_brep_representation_t* self, ifcopenshell_string_t* out_result);
@@ -623,6 +708,7 @@ bool ifcopenshell_ifcgeom_element_id(ifcopenshell_ifcgeom_element_t* self, int32
 bool ifcopenshell_ifcgeom_element_name(ifcopenshell_ifcgeom_element_t* self, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcgeom_element_parent_id(ifcopenshell_ifcgeom_element_t* self, int32_t* out_result);
 bool ifcopenshell_ifcgeom_element_parents(ifcopenshell_ifcgeom_element_t* self, ifcopenshell_ifcgeom_element_list_t* out_result);
+bool ifcopenshell_ifcgeom_element_product(ifcopenshell_ifcgeom_element_t* self, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcgeom_element_transformation(ifcopenshell_ifcgeom_element_t* self, ifcopenshell_ifcgeom_transformation_t** out_result);
 bool ifcopenshell_ifcgeom_element_type(ifcopenshell_ifcgeom_element_t* self, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcgeom_element_unique_id(ifcopenshell_ifcgeom_element_t* self, ifcopenshell_string_t* out_result);
@@ -649,15 +735,21 @@ bool ifcopenshell_ifcgeom_conversion_result_shape_surface_area_along_direction(i
 bool ifcopenshell_ifcgeom_conversion_result_shape_surface_genus(ifcopenshell_ifcgeom_conversion_result_shape_t* self, int32_t* out_result);
 bool ifcopenshell_ifcgeom_conversion_result_shape_vertices(ifcopenshell_ifcgeom_conversion_result_shape_t* self, ifcopenshell_ifcgeom_conversion_result_shape_list_t* out_result);
 bool ifcopenshell_ifcgeom_conversion_result_shape_wrap_in_compound(ifcopenshell_ifcgeom_conversion_result_shape_t* self, ifcopenshell_ifcgeom_conversion_result_shape_t** out_result);
+bool ifcopenshell_ifcgeom_function_item_evaluator_evaluation_points(ifcopenshell_ifcgeom_function_item_evaluator_t* self, ifcopenshell_double_list_t* out_result);
+bool ifcopenshell_ifcgeom_function_item_evaluator_evaluate(ifcopenshell_ifcgeom_function_item_evaluator_t* self, ifcopenshell_ifcgeom_taxonomy_item_t** out_result);
 bool ifcopenshell_ifcgeom_serialization_brep_data(ifcopenshell_ifcgeom_serialization_t* self, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcgeom_serialization_surface_style_ids(ifcopenshell_ifcgeom_serialization_t* self, ifcopenshell_int32_list_t* out_result);
 bool ifcopenshell_ifcgeom_serialization_surface_styles(ifcopenshell_ifcgeom_serialization_t* self, ifcopenshell_double_list_t* out_result);
+bool ifcopenshell_ifcgeom_geometry_serializer_geometry_settings(ifcopenshell_ifcgeom_geometry_serializer_t* self, ifcopenshell_ifcgeom_settings_t** out_result);
+bool ifcopenshell_ifcgeom_geometry_serializer_settings(ifcopenshell_ifcgeom_geometry_serializer_t* self, ifcopenshell_ifcgeom_serializer_settings_t** out_result);
 bool ifcopenshell_ifcgeom_geometry_serializer_write_triangulation_element(ifcopenshell_ifcgeom_geometry_serializer_t* self, ifcopenshell_ifcgeom_triangulation_element_t* o);
 bool ifcopenshell_ifcgeom_geometry_serializer_write_brep_element(ifcopenshell_ifcgeom_geometry_serializer_t* self, ifcopenshell_ifcgeom_brep_element_t* o);
 bool ifcopenshell_ifcgeom_geometry_serializer_finalize(ifcopenshell_ifcgeom_geometry_serializer_t* self);
 bool ifcopenshell_ifcgeom_geometry_serializer_is_tesselated(ifcopenshell_ifcgeom_geometry_serializer_t* self, bool* out_result);
+bool ifcopenshell_ifcgeom_geometry_serializer_read(ifcopenshell_ifcgeom_geometry_serializer_t* self, ifcopenshell_ifc_file_t* f, const char* guid, const char* representation_id, int32_t rt, ifcopenshell_ifcgeom_element_t** out_result);
 bool ifcopenshell_ifcgeom_geometry_serializer_ready(ifcopenshell_ifcgeom_geometry_serializer_t* self, bool* out_result);
 bool ifcopenshell_ifcgeom_geometry_serializer_set_file(ifcopenshell_ifcgeom_geometry_serializer_t* self, ifcopenshell_ifc_file_t* arg_0);
+bool ifcopenshell_ifcgeom_geometry_serializer_set_unit_name_and_magnitude(ifcopenshell_ifcgeom_geometry_serializer_t* self, const char* name, double magnitude);
 bool ifcopenshell_ifcgeom_geometry_serializer_write_header(ifcopenshell_ifcgeom_geometry_serializer_t* self);
 bool ifcopenshell_ifcgeom_taxonomy_circle_matrix(ifcopenshell_ifcgeom_taxonomy_circle_t* self, ifcopenshell_ifcgeom_taxonomy_matrix4_t** out_result);
 bool ifcopenshell_ifcgeom_taxonomy_circle_radius(ifcopenshell_ifcgeom_taxonomy_circle_t* self, double* out_result);
@@ -747,6 +839,7 @@ bool ifcopenshell_ifcgeom_taxonomy_bspline_surface_multiplicities_v(ifcopenshell
 bool ifcopenshell_ifcgeom_taxonomy_bspline_surface_knots_u(ifcopenshell_ifcgeom_taxonomy_bspline_surface_t* self, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_ifcgeom_taxonomy_bspline_surface_knots_v(ifcopenshell_ifcgeom_taxonomy_bspline_surface_t* self, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_ifcgeom_taxonomy_bspline_surface_as_item(ifcopenshell_ifcgeom_taxonomy_bspline_surface_t* self, ifcopenshell_ifcgeom_taxonomy_item_t** out_result);
+bool ifcopenshell_ifcgeom_opaque_number_clone(ifcopenshell_ifcgeom_opaque_number_t* self, ifcopenshell_ifcgeom_opaque_number_t** out_result);
 bool ifcopenshell_ifcgeom_opaque_number_to_double(ifcopenshell_ifcgeom_opaque_number_t* self, double* out_result);
 bool ifcopenshell_ifcgeom_opaque_number_to_string(ifcopenshell_ifcgeom_opaque_number_t* self, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcgeom_opaque_number_add(ifcopenshell_ifcgeom_opaque_number_t* self, ifcopenshell_ifcgeom_opaque_number_t* other, ifcopenshell_ifcgeom_opaque_number_t** out_result);
@@ -763,16 +856,23 @@ bool ifcopenshell_ifcgeom_serializer_write_header(ifcopenshell_ifcgeom_serialize
 bool ifcopenshell_ifcgeom_settings_get_type(ifcopenshell_ifcgeom_settings_t* self, const char* name, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcgeom_settings_setting_names(ifcopenshell_ifcgeom_settings_t* self, ifcopenshell_string_list_t* out_result);
 bool ifcopenshell_ifcgeom_settings_get_bool(ifcopenshell_ifcgeom_settings_t* self, const char* name, bool* out_result);
+bool ifcopenshell_ifcgeom_settings_set_bool(ifcopenshell_ifcgeom_settings_t* self, const char* name, bool value);
+bool ifcopenshell_ifcgeom_settings_get_int(ifcopenshell_ifcgeom_settings_t* self, const char* name, int32_t* out_result);
 bool ifcopenshell_ifcgeom_settings_set_int(ifcopenshell_ifcgeom_settings_t* self, const char* name, int32_t value);
 bool ifcopenshell_ifcgeom_settings_get_double(ifcopenshell_ifcgeom_settings_t* self, const char* name, double* out_result);
+bool ifcopenshell_ifcgeom_settings_set_double(ifcopenshell_ifcgeom_settings_t* self, const char* name, double value);
 bool ifcopenshell_ifcgeom_settings_get_string(ifcopenshell_ifcgeom_settings_t* self, const char* name, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcgeom_settings_set_string(ifcopenshell_ifcgeom_settings_t* self, const char* name, const char* value);
 bool ifcopenshell_ifcgeom_serializer_settings_get_type(ifcopenshell_ifcgeom_serializer_settings_t* self, const char* name, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcgeom_serializer_settings_setting_names(ifcopenshell_ifcgeom_serializer_settings_t* self, ifcopenshell_string_list_t* out_result);
 bool ifcopenshell_ifcgeom_serializer_settings_get_bool(ifcopenshell_ifcgeom_serializer_settings_t* self, const char* name, bool* out_result);
+bool ifcopenshell_ifcgeom_serializer_settings_set_bool(ifcopenshell_ifcgeom_serializer_settings_t* self, const char* name, bool value);
 bool ifcopenshell_ifcgeom_serializer_settings_get_int(ifcopenshell_ifcgeom_serializer_settings_t* self, const char* name, int32_t* out_result);
 bool ifcopenshell_ifcgeom_serializer_settings_set_int(ifcopenshell_ifcgeom_serializer_settings_t* self, const char* name, int32_t value);
 bool ifcopenshell_ifcgeom_serializer_settings_get_double(ifcopenshell_ifcgeom_serializer_settings_t* self, const char* name, double* out_result);
+bool ifcopenshell_ifcgeom_serializer_settings_set_double(ifcopenshell_ifcgeom_serializer_settings_t* self, const char* name, double value);
 bool ifcopenshell_ifcgeom_serializer_settings_get_string(ifcopenshell_ifcgeom_serializer_settings_t* self, const char* name, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcgeom_serializer_settings_set_string(ifcopenshell_ifcgeom_serializer_settings_t* self, const char* name, const char* value);
 bool ifcopenshell_ifcgeom_buffer_get_value(ifcopenshell_ifcgeom_buffer_t* self, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcgeom_buffer_is_ready(ifcopenshell_ifcgeom_buffer_t* self, bool* out_result);
 bool ifcopenshell_ifcgeom_taxonomy_item_hash(ifcopenshell_ifcgeom_taxonomy_item_t* self, size_t* out_result);
@@ -786,6 +886,7 @@ bool ifcopenshell_ifcgeom_tree_distances(ifcopenshell_ifcgeom_tree_t* self, ifco
 bool ifcopenshell_ifcgeom_tree_is_manifold(ifcopenshell_ifcgeom_tree_t* self, const ifcopenshell_int32_list_t* fs, bool* out_result);
 bool ifcopenshell_ifcgeom_tree_protrusion_distances(ifcopenshell_ifcgeom_tree_t* self, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_ifcgeom_tree_styles(ifcopenshell_ifcgeom_tree_t* self, ifcopenshell_ifcgeom_taxonomy_style_list_t* out_result);
+bool ifcopenshell_ifcgeom_tree_uint8_to_b64(ifcopenshell_ifcgeom_tree_t* self, const ifcopenshell_uint8_list_t* uuids_array, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcgeom_tree_clash_a(ifcopenshell_ifcgeom_tree_clash_t* self, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcgeom_tree_clash_b(ifcopenshell_ifcgeom_tree_clash_t* self, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcgeom_tree_clash_type(ifcopenshell_ifcgeom_tree_clash_t* self, int32_t* out_result);
@@ -803,13 +904,21 @@ bool ifcopenshell_ifcgeom_taxonomy_direction3_get_data(ifcopenshell_ifcgeom_taxo
 bool ifcopenshell_ifcgeom_taxonomy_matrix4_get_data(ifcopenshell_ifcgeom_taxonomy_matrix4_t* self, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_ifcgeom_taxonomy_colour_get_data(ifcopenshell_ifcgeom_taxonomy_colour_t* self, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_ifcgeom_transformation_matrix(ifcopenshell_ifcgeom_transformation_t* self, ifcopenshell_double_list_t* out_result);
-bool ifcopenshell_ifcgeom_geometry_serializer_set_unit_name_and_magnitude(ifcopenshell_ifcgeom_geometry_serializer_t* self, const char* name, double magnitude);
-bool ifcopenshell_ifcgeom_serializer_settings_set_bool(ifcopenshell_ifcgeom_serializer_settings_t* self, const char* name, bool value);
-bool ifcopenshell_ifcgeom_serializer_settings_set_double(ifcopenshell_ifcgeom_serializer_settings_t* self, const char* name, double value);
-bool ifcopenshell_ifcgeom_serializer_settings_set_string(ifcopenshell_ifcgeom_serializer_settings_t* self, const char* name, const char* value);
+bool ifcopenshell_ifcgeom_settings_get_int_set(ifcopenshell_ifcgeom_settings_t* self, const char* name, ifcopenshell_int32_list_t* out_result);
+bool ifcopenshell_ifcgeom_settings_set_int_set(ifcopenshell_ifcgeom_settings_t* self, const char* name, const ifcopenshell_int32_list_t* value);
+bool ifcopenshell_ifcgeom_settings_get_string_set(ifcopenshell_ifcgeom_settings_t* self, const char* name, ifcopenshell_string_list_t* out_result);
+bool ifcopenshell_ifcgeom_settings_set_string_set(ifcopenshell_ifcgeom_settings_t* self, const char* name, const ifcopenshell_string_list_t* value);
+bool ifcopenshell_ifcgeom_settings_get_double_list(ifcopenshell_ifcgeom_settings_t* self, const char* name, ifcopenshell_double_list_t* out_result);
+bool ifcopenshell_ifcgeom_settings_set_double_list(ifcopenshell_ifcgeom_settings_t* self, const char* name, const ifcopenshell_double_list_t* value);
+bool ifcopenshell_ifcgeom_serializer_settings_get_int_set(ifcopenshell_ifcgeom_serializer_settings_t* self, const char* name, ifcopenshell_int32_list_t* out_result);
+bool ifcopenshell_ifcgeom_serializer_settings_set_int_set(ifcopenshell_ifcgeom_serializer_settings_t* self, const char* name, const ifcopenshell_int32_list_t* value);
 bool ifcopenshell_ifcgeom_tree_select_element(ifcopenshell_ifcgeom_tree_t* self, ifcopenshell_ifc_instance_t* instance, bool completely_within, double extend, ifcopenshell_ifcparse_instance_list_t** out_result);
 bool ifcopenshell_ifcgeom_tree_select_point(ifcopenshell_ifcgeom_tree_t* self, double x, double y, double z, double extend, ifcopenshell_ifcparse_instance_list_t** out_result);
+bool ifcopenshell_ifcgeom_tree_select_brep_element(ifcopenshell_ifcgeom_tree_t* self, ifcopenshell_ifcgeom_brep_element_t* element, bool completely_within, double extend, ifcopenshell_ifcparse_instance_list_t** out_result);
+bool ifcopenshell_ifcgeom_tree_select_shape_serialization(ifcopenshell_ifcgeom_tree_t* self, const char* shape_serialization, bool completely_within, double extend, ifcopenshell_ifcparse_instance_list_t** out_result);
 bool ifcopenshell_ifcgeom_tree_select_box_point(ifcopenshell_ifcgeom_tree_t* self, double x, double y, double z, double extend, ifcopenshell_ifcparse_instance_list_t** out_result);
+bool ifcopenshell_ifcgeom_tree_select_box_element(ifcopenshell_ifcgeom_tree_t* self, ifcopenshell_ifc_instance_t* instance, bool completely_within, double extend, ifcopenshell_ifcparse_instance_list_t** out_result);
+bool ifcopenshell_ifcgeom_tree_select_box_bounds(ifcopenshell_ifcgeom_tree_t* self, double xmin, double ymin, double zmin, double xmax, double ymax, double zmax, bool completely_within, ifcopenshell_ifcparse_instance_list_t** out_result);
 bool ifcopenshell_ifcgeom_tree_style_count(ifcopenshell_ifcgeom_tree_t* self, size_t* out_result);
 bool ifcopenshell_ifcgeom_tree_style_at(ifcopenshell_ifcgeom_tree_t* self, size_t index, ifcopenshell_ifcgeom_taxonomy_style_t** out_result);
 bool ifcopenshell_ifcgeom_tree_clash_intersection_many(ifcopenshell_ifcgeom_tree_t* self, ifcopenshell_ifcparse_instance_list_t* set_a, ifcopenshell_ifcparse_instance_list_t* set_b, double tolerance, bool check_all, ifcopenshell_ifcgeom_tree_clash_list_t** out_result);
@@ -821,21 +930,18 @@ bool ifcopenshell_ifcgeom_tree_select_ray(ifcopenshell_ifcgeom_tree_t* self, dou
 bool ifcopenshell_ifcgeom_tree_ray_intersection_count(ifcopenshell_ifcgeom_tree_t* self, ifcopenshell_ifcgeom_tree_ray_intersection_list_t* intersections, size_t* out_result);
 bool ifcopenshell_ifcgeom_tree_ray_intersection_at(ifcopenshell_ifcgeom_tree_t* self, ifcopenshell_ifcgeom_tree_ray_intersection_list_t* intersections, size_t index, ifcopenshell_ifcgeom_tree_ray_intersection_t** out_result);
 bool ifcopenshell_ifcgeom_tree_ray_intersection_instance(ifcopenshell_ifcgeom_tree_ray_intersection_t* self, ifcopenshell_ifc_instance_t** out_result);
-bool ifcopenshell_ifcgeom_settings_set_bool(ifcopenshell_ifcgeom_settings_t* self, const char* name, bool value);
-bool ifcopenshell_ifcgeom_settings_set_double(ifcopenshell_ifcgeom_settings_t* self, const char* name, double value);
-bool ifcopenshell_ifcgeom_settings_get_int(ifcopenshell_ifcgeom_settings_t* self, const char* name, int32_t* out_result);
-bool ifcopenshell_ifcgeom_settings_set_string(ifcopenshell_ifcgeom_settings_t* self, const char* name, const char* value);
 bool ifcopenshell_ifcgeom_iterator_next(ifcopenshell_ifcgeom_iterator_t* self, bool* out_result);
 bool ifcopenshell_ifcgeom_iterator_get_as_triangulation_element(ifcopenshell_ifcgeom_iterator_t* self, ifcopenshell_ifcgeom_triangulation_element_t** out_result);
 bool ifcopenshell_ifcgeom_iterator_get_as_brep_element(ifcopenshell_ifcgeom_iterator_t* self, ifcopenshell_ifcgeom_brep_element_t** out_result);
 bool ifcopenshell_ifcgeom_iterator_get_as_serialized_element(ifcopenshell_ifcgeom_iterator_t* self, ifcopenshell_ifcgeom_serialized_element_t** out_result);
 bool ifcopenshell_ifcgeom_iterator_bounds_min(ifcopenshell_ifcgeom_iterator_t* self, ifcopenshell_ifcgeom_taxonomy_point3_t** out_result);
 bool ifcopenshell_ifcgeom_iterator_bounds_max(ifcopenshell_ifcgeom_iterator_t* self, ifcopenshell_ifcgeom_taxonomy_point3_t** out_result);
-bool ifcopenshell_ifcgeom_element_product(ifcopenshell_ifcgeom_element_t* self, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcgeom_iterator_get_task_products(ifcopenshell_ifcgeom_iterator_t* self, ifcopenshell_ifc_instance_list_list_t* out_result);
 bool ifcopenshell_ifcgeom_element_transformation_buffer(ifcopenshell_ifcgeom_element_t* self, const double** out_result);
 bool ifcopenshell_ifcgeom_element_transformation_buffer_size(ifcopenshell_ifcgeom_element_t* self, size_t* out_result);
 bool ifcopenshell_ifcgeom_brep_element_calc_volume(ifcopenshell_ifcgeom_brep_element_t* self, double* out_result);
 bool ifcopenshell_ifcgeom_brep_element_calc_surface_area(ifcopenshell_ifcgeom_brep_element_t* self, double* out_result);
+bool ifcopenshell_ifcgeom_brep_representation_as_compound(ifcopenshell_ifcgeom_brep_representation_t* self, bool force_meters, ifcopenshell_ifcgeom_conversion_result_shape_t** out_result);
 bool ifcopenshell_ifcgeom_brep_representation_item(ifcopenshell_ifcgeom_brep_representation_t* self, int32_t index, ifcopenshell_ifcgeom_conversion_result_shape_t** out_result);
 bool ifcopenshell_ifcgeom_brep_representation_calculate_volume(ifcopenshell_ifcgeom_brep_representation_t* self, double* out_result);
 bool ifcopenshell_ifcgeom_brep_representation_calculate_surface_area(ifcopenshell_ifcgeom_brep_representation_t* self, double* out_result);
@@ -845,7 +951,6 @@ bool ifcopenshell_ifcgeom_conversion_result_shape_convex_tag(ifcopenshell_ifcgeo
 bool ifcopenshell_ifcgeom_conversion_result_shape_area(ifcopenshell_ifcgeom_conversion_result_shape_t* self, double* out_result);
 bool ifcopenshell_ifcgeom_conversion_result_shape_volume(ifcopenshell_ifcgeom_conversion_result_shape_t* self, double* out_result);
 bool ifcopenshell_ifcgeom_conversion_result_shape_length(ifcopenshell_ifcgeom_conversion_result_shape_t* self, double* out_result);
-bool ifcopenshell_ifcgeom_triangulation_polyhedral_faces_with_holes(ifcopenshell_ifcgeom_triangulation_t* self, ifcopenshell_int32_list_list_t* out_result);
 bool ifcopenshell_ifcgeom_triangulation_material_at(ifcopenshell_ifcgeom_triangulation_t* self, size_t index, ifcopenshell_ifcgeom_taxonomy_style_t** out_result);
 bool ifcopenshell_ifcgeom_triangulation_verts_buffer(ifcopenshell_ifcgeom_triangulation_t* self, const double** out_result);
 bool ifcopenshell_ifcgeom_triangulation_faces_buffer(ifcopenshell_ifcgeom_triangulation_t* self, const int32_t** out_result);
@@ -857,6 +962,7 @@ bool ifcopenshell_ifcgeom_triangulation_edges_item_ids_buffer(ifcopenshell_ifcge
 bool ifcopenshell_ifcgeom_triangulation_uvs_buffer(ifcopenshell_ifcgeom_triangulation_t* self, const double** out_result);
 bool ifcopenshell_ifcgeom_triangulation_colors_buffer(ifcopenshell_ifcgeom_triangulation_t* self, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_ifcgeom_triangulation_colors_buffer_size(ifcopenshell_ifcgeom_triangulation_t* self, size_t* out_result);
+bool ifcopenshell_ifcgeom_taxonomy_style_instance_id(ifcopenshell_ifcgeom_taxonomy_style_t* self, size_t* out_result);
 bool ifcopenshell_ifcgeom_taxonomy_bspline_surface_control_point_row_count(ifcopenshell_ifcgeom_taxonomy_bspline_surface_t* self, size_t* out_result);
 bool ifcopenshell_ifcgeom_taxonomy_bspline_surface_control_point_col_count_at(ifcopenshell_ifcgeom_taxonomy_bspline_surface_t* self, size_t row, size_t* out_result);
 bool ifcopenshell_ifcgeom_taxonomy_bspline_surface_control_point_at(ifcopenshell_ifcgeom_taxonomy_bspline_surface_t* self, size_t row, size_t col, ifcopenshell_ifcgeom_taxonomy_point3_t** out_result);
@@ -864,16 +970,13 @@ bool ifcopenshell_ifcgeom_taxonomy_bspline_surface_has_weights(ifcopenshell_ifcg
 bool ifcopenshell_ifcgeom_taxonomy_bspline_surface_weight_row_count(ifcopenshell_ifcgeom_taxonomy_bspline_surface_t* self, size_t* out_result);
 bool ifcopenshell_ifcgeom_taxonomy_bspline_surface_weight_col_count_at(ifcopenshell_ifcgeom_taxonomy_bspline_surface_t* self, size_t row, size_t* out_result);
 bool ifcopenshell_ifcgeom_taxonomy_bspline_surface_weight_at(ifcopenshell_ifcgeom_taxonomy_bspline_surface_t* self, size_t row, size_t col, double* out_result);
-bool ifcopenshell_ifcgeom_opaque_number_clone(ifcopenshell_ifcgeom_opaque_number_t* self, ifcopenshell_ifcgeom_opaque_number_t** out_result);
 bool ifcopenshell_ifcgeom_svgfill_polygon_boundary_size(ifcopenshell_ifcgeom_svgfill_polygon_t* self, size_t* out_result);
 bool ifcopenshell_ifcgeom_svgfill_polygon_boundary_point(ifcopenshell_ifcgeom_svgfill_polygon_t* self, size_t index, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_ifcgeom_svgfill_polygon_inner_boundary_count(ifcopenshell_ifcgeom_svgfill_polygon_t* self, size_t* out_result);
 bool ifcopenshell_ifcgeom_svgfill_polygon_inner_boundary_size(ifcopenshell_ifcgeom_svgfill_polygon_t* self, size_t boundary_index, size_t* out_result);
 bool ifcopenshell_ifcgeom_svgfill_polygon_inner_boundary_point(ifcopenshell_ifcgeom_svgfill_polygon_t* self, size_t boundary_index, size_t point_index, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_ifcgeom_svgfill_polygon_point_inside(ifcopenshell_ifcgeom_svgfill_polygon_t* self, ifcopenshell_double_list_t* out_result);
-bool ifcopenshell_ifcgeom_function_item_evaluator_evaluation_points(ifcopenshell_ifcgeom_function_item_evaluator_t* self, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_ifcgeom_function_item_evaluator_evaluation_points_range(ifcopenshell_ifcgeom_function_item_evaluator_t* self, double ustart, double uend, int32_t nsteps, ifcopenshell_double_list_t* out_result);
-bool ifcopenshell_ifcgeom_function_item_evaluator_evaluate(ifcopenshell_ifcgeom_function_item_evaluator_t* self, ifcopenshell_ifcgeom_taxonomy_item_t** out_result);
 bool ifcopenshell_ifcgeom_function_item_evaluator_evaluate_range(ifcopenshell_ifcgeom_function_item_evaluator_t* self, double ustart, double uend, int32_t nsteps, ifcopenshell_ifcgeom_taxonomy_item_t** out_result);
 bool ifcopenshell_ifcgeom_function_item_evaluator_evaluate_at(ifcopenshell_ifcgeom_function_item_evaluator_t* self, double u, ifcopenshell_double_list_t* out_result);
 

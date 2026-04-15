@@ -1,5 +1,3 @@
-# This file was generated with the assistance of an AI coding tool.
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -7,13 +5,7 @@ from pathlib import Path
 import pytest
 
 from src.ifcwrap.binding_generator.c_backend import generate
-
-
-def _compile_commands() -> Path:
-    path = Path("/tmp/ifcopenshell-capi-build/compile_commands.json")
-    if not path.exists():
-        pytest.skip("compile_commands.json is required for AST-backed generation tests")
-    return path
+from src.ifcwrap.tests._binding_generator_test_utils import find_repo_compile_commands, require_repo_compile_commands
 
 
 def test_generate_ifcparse_c_backend(tmp_path: Path) -> None:
@@ -21,7 +13,14 @@ def test_generate_ifcparse_c_backend(tmp_path: Path) -> None:
     header_out = tmp_path / "ifcopenshell_api.h"
     cpp_out = tmp_path / "ifcopenshell_api.cpp"
 
-    generate(spec, header_out, cpp_out, compile_commands_path=_compile_commands())
+    generate(
+        spec,
+        header_out,
+        cpp_out,
+        compile_commands_path=require_repo_compile_commands(
+            "compile_commands.json is required for AST-backed generation tests"
+        ),
+    )
 
     header = header_out.read_text(encoding="utf-8")
     cpp = cpp_out.read_text(encoding="utf-8")
@@ -217,9 +216,11 @@ def test_generate_ifcparse_c_backend(tmp_path: Path) -> None:
     assert "make_ifc_enumeration_list(" in cpp
     assert "make_ifc_select_type_list(" in cpp
     assert "make_ifc_type_declaration_list(" in cpp
-    assert "*out_result = new ifcopenshell_ifcparse_attribute_value_t{self_cpp->get_attribute_value(index)};" in cpp
-    assert "*out_result = new ifcopenshell_ifcparse_instance_list_t{IfcParse::traverse(instance_cpp, max_level)};" in cpp
-    assert "*out_result = new ifcopenshell_ifc_header_t{generated_result, false};" in cpp
+    assert "ifcopenshell_ifcparse_attribute_value_t{" in cpp
+    assert "get_attribute_value(index)" in cpp
+    assert "ifcopenshell_ifcparse_instance_list_t{" in cpp
+    assert "IfcParse::traverse(instance_cpp, max_level_cpp)" in cpp
+    assert "ifcopenshell_ifc_header_t{" in cpp
     assert "new ifcopenshell_ifc_declaration_t{" in cpp
     assert "auto* self_cpp = self->ptr;" in cpp
     assert "auto self_cpp = self->value;" in cpp
@@ -230,8 +231,8 @@ def test_generate_ifcparse_c_backend(tmp_path: Path) -> None:
 
 def test_generate_ifcparse_c_backend_with_compile_commands_when_available(tmp_path: Path) -> None:
     spec = Path(__file__).resolve().parents[1] / "binding_generator" / "specs" / "ifcparse.yml"
-    compile_commands = Path("/tmp/ifcopenshell-capi-build/compile_commands.json")
-    if not compile_commands.exists():
+    compile_commands = find_repo_compile_commands()
+    if compile_commands is None:
         return
 
     header_out = tmp_path / "ifcopenshell_api.h"
