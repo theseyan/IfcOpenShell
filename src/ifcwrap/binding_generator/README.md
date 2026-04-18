@@ -1,5 +1,3 @@
-<!-- This file was generated with the assistance of an AI coding tool. -->
-
 # IfcWrap Binding Generator
 
 This directory contains the custom binding generator that is replacing the
@@ -14,6 +12,11 @@ legacy SWIG-only binding flow for `IfcParse`.
   inventory.
   For `IfcParse`, the main input is
   `specs/ifcparse.yml`; for `IfcGeom`, `specs/ifcgeom.yml`.
+- Authored YAML is intentionally minimal.
+  The spec names the exposed operation and any adapter implementation, while
+  C ABI names are derived automatically from `expose_as` and `receiver`.
+  Rare ABI-only naming exceptions use `c_expose_as` instead of a full manual
+  `c_name`.
 - The generated unified C API is checked in at:
   - `generated/ifcopenshell_api.h`
   - `generated/ifcopenshell_api.cpp`

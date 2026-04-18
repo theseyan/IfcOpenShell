@@ -68,6 +68,7 @@ option(CREATE_BUNDLE "Copy .so files and don't create RPATHS or SOVERSION symlin
 
 option(BUILD_IFCGEOM "Build IfcGeom." ON)
 option(BUILD_IFCCAPI "Build experimental generated C API." OFF)
+option(BUILD_IFCAPI "Build high-level IFC authoring C API (ifcapi)." OFF)
 option(IFCCAPI_REGENERATE_BINDINGS "Regenerate checked-in IfcParse C API bindings during the build." OFF)
 option(BUILD_IFCPYTHON "Build IfcPython." ON)
 option(BUILD_IFCPARSE_EXPERIMENTAL_WRAPPER "Build the experimental Clang-generated ifcparse Python wrapper." OFF)
@@ -653,6 +654,10 @@ endif()
 
 if(BUILD_IFCPYTHON OR BUILD_IFCCAPI)
     add_subdirectory(../src/ifcwrap ifcwrap)
+endif()
+
+if(BUILD_IFCAPI)
+    add_subdirectory(../src/ifcapi ifcapi)
 endif()
 
 if(BUILD_QTVIEWER)

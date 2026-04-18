@@ -1,4 +1,5 @@
 #include "ifcopenshell_api.h"
+#include "ifcopenshell_api_internal.hpp"
 
 #include <algorithm>
 #include <cstring>
@@ -13,49 +14,27 @@
 #include <utility>
 #include <vector>
 
-#include "ifc_parse_api.h"
-#include "IfcParse.h"
-#include "IfcSIPrefix.h"
-#include "IfcLogger.h"
-#include "Header_section_schema.h"
-#include "IfcSpfHeader.h"
-#include "IfcFile.h"
-#include "file_open_status.h"
-#include "IfcBaseClass.h"
-#include "IfcSchema.h"
-#include "ifc_geom_api.h"
-#include "Iterator.h"
-#include "IfcGeomElement.h"
-#include "IfcGeomRepresentation.h"
-#include "ConversionSettings.h"
-#include "GeometrySerializer.h"
-#include "WavefrontObjSerializer.h"
-#include "TtlWktSerializer.h"
-#include "SvgSerializer.h"
-#include "HdfSerializer.h"
-#include "ColladaSerializer.h"
-#include "GltfSerializer.h"
-#include "JsonSerializer.h"
-#include "XmlSerializer.h"
-#include "IgesSerializer.h"
-#include "StepSerializer.h"
-#include "RocksDbSerializer.h"
-#include "Serializer.h"
-#include "kernels/opencascade/IfcGeomTree.h"
-#include <BRepTools_ShapeSet.hxx>
-#include "taxonomy.h"
-#include "hybrid_kernel.h"
-#include "Converter.h"
-#include "abstract_mapping.h"
-#include "function_item_evaluator.h"
-#include "Serialization/Serialization.h"
-#include "../svgfill/src/svgfill.h"
-#include "aggregate_of_instance.h"
-#include "IfcEntityInstanceData.h"
+// Note: project-specific headers (geometry, serializers, schema, etc.) are
+// pulled in transitively via ifcopenshell_api_internal.hpp; do not re-include them
+// here to avoid header-guard-less redefinitions in third-party headers.
 #include "utils.h"
 
-namespace {
+// Error reporting state. Defined in the named ifcopenshell::capi namespace so
+// that external translation units can participate via the internal header.
+namespace ifcopenshell {
+namespace capi {
 thread_local std::string g_last_error;
+
+void set_last_error(const std::string& message) {
+    g_last_error = message;
+}
+} // namespace capi
+} // namespace ifcopenshell
+
+namespace {
+using ifcopenshell::capi::g_last_error;
+using ifcopenshell::capi::set_last_error;
+
 bool feature_use_attribute_value_derived = false;
 std::stringstream ifcopenshell_log_stream;
 bool g_log_stream_initialized = false;
@@ -84,10 +63,6 @@ IfcUtil::ArgumentType helper_fn_attribute_type(const IfcUtil::IfcBaseClass* inst
         return IfcUtil::Argument_UNKNOWN;
     }
     return IfcUtil::from_parameter_type(parameter_type);
-}
-
-void set_last_error(const std::string& message) {
-    g_last_error = message;
 }
 
 void validate_list_items(const char* name, const void* items, size_t size) {
@@ -414,342 +389,17 @@ void set_instance_attribute_from_attribute_value(IfcUtil::IfcBaseClass* instance
         using T = std::decay_t<decltype(inner)>;
         if constexpr (std::is_same_v<T, Derived>) {
             throw std::runtime_error("Cannot assign a derived attribute sentinel.");
+        } else if constexpr (std::is_same_v<T, empty_aggregate_t> ||
+                              std::is_same_v<T, empty_aggregate_of_aggregate_t>) {
+            // Empty-aggregate sentinels arise when reading absent aggregate
+            // values; assigning them is equivalent to unsetting the attribute.
+            unset_instance_argument(instance, index);
         } else {
             set_instance_argument(instance, index, inner);
         }
     });
 }
 } // namespace
-
-struct ifcopenshell_ifc_file_t {
-    IfcParse::IfcFile* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifc_instance_streamer_t {
-    IfcParse::InstanceStreamer* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifc_instance_t {
-    IfcUtil::IfcBaseClass* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifc_header_t {
-    IfcParse::IfcSpfHeader* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifc_file_description_t {
-    Header_section_schema::file_description* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifc_file_name_t {
-    Header_section_schema::file_name* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifc_file_schema_t {
-    Header_section_schema::file_schema* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifc_declaration_t {
-    IfcParse::declaration* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifc_type_declaration_t {
-    IfcParse::type_declaration* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifc_select_type_t {
-    IfcParse::select_type* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifc_schema_t {
-    IfcParse::schema_definition* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifc_enumeration_t {
-    IfcParse::enumeration_type* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifc_parameter_type_t {
-    IfcParse::parameter_type* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifc_named_type_t {
-    IfcParse::named_type* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifc_simple_type_t {
-    IfcParse::simple_type* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifc_aggregation_type_t {
-    IfcParse::aggregation_type* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifc_entity_t {
-    IfcParse::entity* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifc_attribute_t {
-    IfcParse::attribute* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifc_inverse_attribute_t {
-    IfcParse::inverse_attribute* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcparse_attribute_value_t {
-    AttributeValue value;
-};
-
-struct ifcopenshell_ifcparse_instance_list_t {
-    aggregate_of_instance::ptr value;
-};
-
-struct ifcopenshell_ifcgeom_iterator_t {
-    IfcGeom::Iterator* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_settings_t {
-    ifcopenshell::geometry::Settings* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_serializer_settings_t {
-    ifcopenshell::geometry::SerializerSettings* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_geometry_serializer_t {
-    GeometrySerializer* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_serializer_t {
-    Serializer* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_buffer_t {
-    stream_or_filename* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_tree_t {
-    IfcGeom::tree* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_tree_clash_list_t {
-    std::vector<IfcGeom::clash>* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_tree_clash_t {
-    IfcGeom::clash* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_tree_ray_intersection_list_t {
-    std::vector<IfcGeom::ray_intersection_result>* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_tree_ray_intersection_t {
-    IfcGeom::ray_intersection_result* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_transformation_t {
-    IfcGeom::Transformation* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_element_t {
-    IfcGeom::Element* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_brep_element_t {
-    IfcGeom::BRepElement* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_triangulation_element_t {
-    IfcGeom::TriangulationElement* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_serialized_element_t {
-    IfcGeom::SerializedElement* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_triangulation_t {
-    IfcGeom::Representation::Triangulation* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_brep_representation_t {
-    IfcGeom::Representation::BRep* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_serialization_t {
-    IfcGeom::Representation::Serialization* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_conversion_result_shape_t {
-    IfcGeom::ConversionResultShape* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_item_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::item> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_matrix4_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::matrix4> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_point3_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::point3> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_direction3_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::direction3> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_style_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::style> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_colour_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::colour> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_line_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::line> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_circle_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::circle> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_ellipse_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::ellipse> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_bspline_curve_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::bspline_curve> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_offset_curve_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::offset_curve> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_edge_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::edge> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_loop_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::loop> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_face_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::face> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_shell_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::shell> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_solid_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::solid> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_plane_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::plane> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_cylinder_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::cylinder> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_sphere_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::sphere> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_torus_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::torus> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_bspline_surface_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::bspline_surface> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_collection_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::collection> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_loft_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::loft> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_extrusion_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::extrusion> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_revolve_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::revolve> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_sweep_along_curve_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::sweep_along_curve> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_node_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::node> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_boolean_result_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::boolean_result> ptr;
-};
-
-struct ifcopenshell_ifcgeom_opaque_number_t {
-    IfcGeom::OpaqueNumber* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_svgfill_polygon_t {
-    svgfill::polygon_2* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_function_item_evaluator_t {
-    ifcopenshell::geometry::function_item_evaluator* ptr;
-    bool owned;
-};
 
 static ifcopenshell_ifcgeom_conversion_result_shape_list_t make_ifcgeom_conversion_result_shape_list(const std::vector<IfcGeom::ConversionResultShape*>& values) {
     auto** items = values.empty() ? nullptr : new ifcopenshell_ifcgeom_conversion_result_shape_t*[values.size()];
@@ -2088,11 +1738,11 @@ static std::vector<uint8_t> to_cpp_uint8_list(const ifcopenshell_uint8_list_t* v
 }
 
 void ifcopenshell_clear_error(void) {
-    g_last_error.clear();
+    ifcopenshell::capi::g_last_error.clear();
 }
 
 const char* ifcopenshell_last_error_message(void) {
-    return g_last_error.c_str();
+    return ifcopenshell::capi::g_last_error.c_str();
 }
 
 void ifcopenshell_ifc_file_destroy(ifcopenshell_ifc_file_t* handle) {
