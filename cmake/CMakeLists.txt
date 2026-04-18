@@ -80,6 +80,7 @@ option(NO_WARN "Disable all warnings" OFF)
 
 option(BUILD_IFCGEOM "Build IfcGeom." ON)
 option(BUILD_IFCCAPI "Build experimental generated C API." OFF)
+option(BUILD_IFCAPI "Build high-level IFC authoring C API (ifcapi)." OFF)
 option(IFCCAPI_REGENERATE_BINDINGS "Regenerate checked-in IfcParse C API bindings during the build." OFF)
 option(BUILD_IFCPYTHON "Build IfcPython." ON)
 option(BUILD_CONVERT "Build IfcConvert executable." ON)
@@ -675,6 +676,10 @@ endif()
 
 if(BUILD_IFCPYTHON OR BUILD_IFCCAPI)
     add_subdirectory(../src/ifcwrap ifcwrap)
+endif()
+
+if(BUILD_IFCAPI)
+    add_subdirectory(../src/ifcapi ifcapi)
 endif()
 
 if(BUILD_EXAMPLES)

@@ -79,9 +79,17 @@ if(BUILD_IFCCAPI)
         )
     endif()
 
-    # Unified C API library (includes both ifcparse and ifcgeom)
+    # Unified C API library (includes both ifcparse and ifcgeom; optionally
+    # bundles the high-level handwritten layer from src/ifcapi as well).
     if(EXISTS "${UNIFIED_CAPI_HEADER}" AND EXISTS "${UNIFIED_CAPI_CPP}")
-        add_library(ifcopenshell_capi "${UNIFIED_CAPI_HEADER}" "${UNIFIED_CAPI_CPP}")
+        # Build the unified C API as a SHARED library so that consumers (any
+        # language: C, Zig, Rust, Python via ctypes) get a single distribution
+        # exposing both the autogen low-level surface and the optional
+        # handwritten high-level surface, sharing the same opaque handle types.
+        # A separate static archive is also produced (BUILD_IFCCAPI_STATIC)
+        # for users who want to embed the autogen-only core into their own
+        # executables.
+        add_library(ifcopenshell_capi SHARED "${UNIFIED_CAPI_HEADER}" "${UNIFIED_CAPI_CPP}")
         if(TARGET ifcopenshell_capi_codegen)
             add_dependencies(ifcopenshell_capi ifcopenshell_capi_codegen)
         endif()
@@ -99,6 +107,9 @@ if(BUILD_IFCCAPI)
             PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../ifcgeom"
             PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../serializers"
             PRIVATE "${OCC_INCLUDE_DIR}"
+        )
+        set_target_properties(ifcopenshell_capi PROPERTIES
+            POSITION_INDEPENDENT_CODE ON
         )
 
         # Smoke tests - separate executables for each test scope

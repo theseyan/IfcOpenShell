@@ -1,0 +1,54 @@
+# This file was generated with the assistance of an AI coding tool.
+
+import pytest
+
+import ifcopenshell.api.cogo
+
+
+def test_bearing2dd():
+    assert 44.743888875 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("N 45 15 22.5 E"))
+    assert 135.256111125 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("N 45 15 22.5 W"))
+    assert 224.743888875 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("S 45 15 22.5 W"))
+    assert 315.256111125 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("S 45 15 22.5 E"))
+
+    assert 44.743888875 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("n 45 15 22.5 e"))
+    assert 135.256111125 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("n 45 15 22.5 w"))
+    assert 224.743888875 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("s 45 15 22.5 w"))
+    assert 315.256111125 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("s 45 15 22.5 e"))
+
+    assert 0.0 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("N 90 E"))
+    assert 0.0 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("S 90 E"))
+
+    assert 180.0 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("N 90 W"))
+    assert 180.0 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("S 90 W"))
+
+    assert 120.0 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("N 30 W"))
+    assert 120.16666666666667 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("N 30 10 W"))
+
+    assert 89.999722222222228 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("N 00 00 1 E"))
+    assert 89.99972222222222 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("N 0 0 1 E"))
+    assert 89.99972222222222 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("N 00 00 1.0 E"))
+
+    with pytest.raises(ValueError, match="Invalid bearing string"):
+        ifcopenshell.api.cogo.bearing2dd("Bad String")
+
+    with pytest.raises(ValueError, match="Invalid bearing string"):
+        ifcopenshell.api.cogo.bearing2dd("Very Bad String")
+
+    with pytest.raises(ValueError, match="Invalid bearing string"):
+        ifcopenshell.api.cogo.bearing2dd("N 100 15 22.5 E")
+
+    with pytest.raises(ValueError, match="Invalid bearing string"):
+        ifcopenshell.api.cogo.bearing2dd("N -45 15 22.5 E")
+
+    with pytest.raises(ValueError, match="Invalid bearing string"):
+        ifcopenshell.api.cogo.bearing2dd("N 45 -15 22.5 E")
+
+    with pytest.raises(ValueError, match="Invalid bearing string"):
+        ifcopenshell.api.cogo.bearing2dd("N 45 88 22.5 E")
+
+    with pytest.raises(ValueError, match="Invalid bearing string"):
+        ifcopenshell.api.cogo.bearing2dd("N 45 15 -22.5 E")
+
+    with pytest.raises(ValueError, match="Invalid bearing string"):
+        ifcopenshell.api.cogo.bearing2dd("N 45 15 99.5 E")

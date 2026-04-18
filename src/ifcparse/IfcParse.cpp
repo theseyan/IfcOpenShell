@@ -1324,7 +1324,6 @@ IfcFile::IfcFile(const IfcParse::schema_definition* schema, filetype ty, const s
     : schema_(schema)
     , ifcroot_type_(schema_->declaration_by_name("IfcRoot"))
     , max_id_(0)
-    , _header(this)
 {
     if (ty == FT_AUTODETECT) {
         ty = guess_file_type(path);
@@ -1348,6 +1347,7 @@ IfcFile::IfcFile(const IfcParse::schema_definition* schema, filetype ty, const s
     } else {
         throw std::runtime_error("Unsupported file format");
     }
+    _header = IfcSpfHeader(this);
     setDefaultHeaderValues();
 }
 
@@ -1882,20 +1882,18 @@ IfcUtil::IfcBaseClass* IfcFile::addEntity(IfcUtil::IfcBaseClass* entity, int id)
 
     // Obtain all forward references by a depth-first
     // traversal and add them to the file.
-    if (entity->file_ != nullptr) {
-        try {
-            aggregate_of_instance::ptr entity_attributes = traverse(entity, 1);
-            for (aggregate_of_instance::it it = entity_attributes->begin(); it != entity_attributes->end(); ++it) {
-                if (*it != entity) {
-                    entity_entity_map_t::iterator mit2 = entity_file_map_.find((*it)->identity());
-                    if (mit2 == entity_file_map_.end()) {
-                        entity_file_map_.insert(entity_entity_map_t::value_type((*it)->identity(), addEntity(*it)));
-                    }
+    try {
+        aggregate_of_instance::ptr entity_attributes = traverse(entity, 1);
+        for (aggregate_of_instance::it it = entity_attributes->begin(); it != entity_attributes->end(); ++it) {
+            if (*it != entity) {
+                entity_entity_map_t::iterator mit2 = entity_file_map_.find((*it)->identity());
+                if (mit2 == entity_file_map_.end()) {
+                    entity_file_map_.insert(entity_entity_map_t::value_type((*it)->identity(), addEntity(*it)));
                 }
             }
-        } catch (...) {
-            Logger::Message(Logger::LOG_ERROR, "Failed to visit forward references of", entity);
         }
+    } catch (...) {
+        Logger::Message(Logger::LOG_ERROR, "Failed to visit forward references of", entity);
     }
 
     // See whether the instance is already part of a file
