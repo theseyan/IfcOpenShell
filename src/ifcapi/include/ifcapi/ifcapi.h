@@ -1,4 +1,3 @@
-// This file was generated with the assistance of an AI coding tool.
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #ifndef IFCAPI_H
@@ -529,7 +528,7 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_representation_get_prio
 /// If `product` is an IfcProduct that is typed by an IfcTypeProduct that
 /// already has IfcRepresentationMaps (and the new representation is not
 /// itself a MappedRepresentation), the assignment is silently re-routed to
-/// the type, mirroring upstream Python behaviour.
+/// the type.
 ///
 /// If `product` is an IfcTypeProduct, a new IfcRepresentationMap is created
 /// for it and a MappedRepresentation is added to every related occurrence.
@@ -686,5 +685,10 @@ IFCAPI_EXPORT const void* ifcopenshell_aggregation_type_element(const void* pt);
 #ifdef __cplusplus
 }
 #endif
+
+/* ------------------------------------------------------------------ */
+/*  Selector parser AST                                                */
+/* ------------------------------------------------------------------ */
+#include "ifcapi/selector_ast.h"
 
 #endif /* IFCAPI_H */

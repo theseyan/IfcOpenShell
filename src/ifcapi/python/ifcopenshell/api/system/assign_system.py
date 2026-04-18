@@ -1,4 +1,3 @@
-# This file was generated with the assistance of an AI coding tool.
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
 """system.assign_system — assign distribution elements to a system."""

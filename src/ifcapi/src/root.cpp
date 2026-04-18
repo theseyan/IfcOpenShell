@@ -1,4 +1,3 @@
-// This file was generated with the assistance of an AI coding tool.
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
@@ -115,7 +114,6 @@ void ifcopenshell_free_string(char* str) {
     std::free(str);
 }
 
-// Ported from ifcopenshell.api.root.create_entity (Python).
 ifcopenshell_ifc_instance_t* ifcopenshell_root_create_entity(
     ifcopenshell_ifc_file_t* file_ptr,
     const char* ifc_class,

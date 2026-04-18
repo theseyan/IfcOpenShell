@@ -1,4 +1,3 @@
-# This file was generated with the assistance of an AI coding tool.
 # IfcOpenShell - IFC toolkit and geometry engine
 # Copyright (C) 2021 Thomas Krijnen <thomas@aecgeeks.com>
 #

@@ -1,4 +1,3 @@
-# This file was generated with the assistance of an AI coding tool.
 import ifcopenshell.api.pset
 import ifcopenshell.api.root
 import ifcopenshell.api.system

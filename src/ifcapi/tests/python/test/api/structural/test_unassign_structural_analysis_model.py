@@ -1,4 +1,3 @@
-# This file was generated with the assistance of an AI coding tool.
 # SPDX-License-Identifier: LGPL-3.0-or-later
 # Adapted from src/ifcopenshell-python/test/api/structural/test_unassign_structural_analysis_model.py
 

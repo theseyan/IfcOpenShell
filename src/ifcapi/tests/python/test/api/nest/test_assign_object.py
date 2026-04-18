@@ -1,4 +1,3 @@
-# This file was generated with the assistance of an AI coding tool.
 # SPDX-License-Identifier: LGPL-3.0-or-later
 # Adapted from src/ifcopenshell-python/test/api/nest/test_assign_object.py
 

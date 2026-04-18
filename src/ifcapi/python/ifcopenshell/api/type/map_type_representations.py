@@ -1,4 +1,3 @@
-# This file was generated with the assistance of an AI coding tool.
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Thin ctypes wrapper around the native ifcopenshell_type_map_type_representations."""
 
