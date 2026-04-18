@@ -1,4 +1,3 @@
-# This file was generated with the assistance of an AI coding tool.
 # Tests for file and entity_instance operations in the native ifcopenshell package.
 
 import os

@@ -1,4 +1,3 @@
-# This file was generated with the assistance of an AI coding tool.
 # SPDX-License-Identifier: LGPL-3.0-or-later
 #
 # The handwritten high-level IFC authoring layer (root.create_entity, pset
@@ -45,6 +44,7 @@ set(IFCAPI_SOURCES
     src/representation.cpp
     src/geometry.cpp
     src/schema.cpp
+    src/selector_parser.cpp
 )
 list(TRANSFORM IFCAPI_SOURCES PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
 

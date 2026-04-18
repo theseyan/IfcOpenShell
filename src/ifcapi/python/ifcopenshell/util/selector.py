@@ -1,4 +1,3 @@
-# This file was generated with the assistance of an AI coding tool.
 # IfcOpenShell - IFC toolkit and geometry engine
 # Copyright (C) 2021 Dion Moult <dion@thinkmoult.com>
 #
@@ -23,7 +22,8 @@ from decimal import Decimal
 from types import EllipsisType
 from typing import Any, Optional, Union
 
-import lark
+import ctypes
+
 import numpy as np
 
 import ifcopenshell.api.geometry
@@ -39,164 +39,165 @@ import ifcopenshell.util.schema
 import ifcopenshell.util.shape
 import ifcopenshell.util.system
 import ifcopenshell.util.unit
-
-filter_elements_grammar = lark.Lark("""start: filter_group
-    filter_group: facet_list ("+" facet_list)*
-    facet_list: facet ("," facet)*
-
-    facet: instance | entity | attribute | type | material | query | classification | location | property | group | parent
-
-    instance: not? globalid
-    globalid: /[0-3][a-zA-Z0-9_$]{21}/
-    entity: not? ifc_class
-    attribute: attribute_name comparison value
-    type: "type" comparison value
-    material: "material" comparison value
-    property: pset "." prop comparison value
-    classification: "classification" comparison value
-    location: "location" comparison value
-    group: "group" comparison value
-    parent: "parent" comparison value
-    query: "query:" keys comparison value
-
-    pset: quoted_string | regex_string | unquoted_string
-    prop: quoted_string | regex_string | unquoted_string
-    keys: quoted_string | unquoted_string
-
-    attribute_name: /[A-Z]\\w+/
-    ifc_class: /Ifc\\w+/
-
-    value: special | quoted_string | regex_string | unquoted_string
-    unquoted_string: /[^,.=><*!\\s]+/
-    regex_string: "/" /[^\\/]+/ "/"
-    quoted_string: ESCAPED_STRING
-
-    special: null | true | false
-
-    comparison: not? equals | morethanequalto | lessthanequalto | morethan | lessthan | not? contains
-    not: "!"
-    equals: "="
-    morethanequalto: ">="
-    lessthanequalto: "<="
-    morethan: ">"
-    lessthan: "<"
-    contains: "*="
-    null: "NULL"
-    true: "TRUE"
-    false: "FALSE"
-
-    // Embed common.lark for packaging
-    DIGIT: "0".."9"
-    HEXDIGIT: "a".."f"|"A".."F"|DIGIT
-    INT: DIGIT+
-    SIGNED_INT: ["+"|"-"] INT
-    DECIMAL: INT "." INT? | "." INT
-    _EXP: ("e"|"E") SIGNED_INT
-    FLOAT: INT _EXP | DECIMAL _EXP?
-    SIGNED_FLOAT: ["+"|"-"] FLOAT
-    NUMBER: FLOAT | INT
-    SIGNED_NUMBER: ["+"|"-"] NUMBER
-    _STRING_INNER: /.*?/
-    _STRING_ESC_INNER: _STRING_INNER /(?<!\\\\)(\\\\\\\\)*?/
-    ESCAPED_STRING : "\\"" _STRING_ESC_INNER "\\""
-    LCASE_LETTER: "a".."z"
-    UCASE_LETTER: "A".."Z"
-    LETTER: UCASE_LETTER | LCASE_LETTER
-    WORD: LETTER+
-    CNAME: ("_"|LETTER) ("_"|LETTER|DIGIT)*
-    WS_INLINE: (" "|/\\t/)+
-    WS: /[ \\t\\f\\r\\n]/+
-    CR : /\\r/
-    LF : /\\n/
-    NEWLINE: (CR? LF)+
-
-    %ignore WS // Disregard spaces in text
-""")
-
-get_element_grammar = lark.Lark("""start: keys
-
-    keys: key ("." key)*
-    key: quoted_string | regex_string | unquoted_string
-    unquoted_string: /[^.=\\/\\s]+/
-    regex_string: "/" /[^\\/]+/ "/"
-    quoted_string: ESCAPED_STRING
-
-    // Embed common.lark for packaging
-    _STRING_INNER: /.*?/
-    _STRING_ESC_INNER: _STRING_INNER /(?<!\\\\)(\\\\\\\\)*?/
-    ESCAPED_STRING : "\\"" _STRING_ESC_INNER "\\""
-    WS: /[ \\t\\f\\r\\n]/+
-
-    %ignore WS // Disregard spaces in text
- """)
-
-format_grammar = lark.Lark("""start: expression
-
-    ?expression: add_sub
-    ?add_sub: mul_div
-        | add_sub "+" mul_div   -> add
-        | add_sub "-" mul_div   -> subtract
-    ?mul_div: function
-        | mul_div "*" function  -> multiply
-        | mul_div "/" function  -> divide
-    
-    function: round | number | int | format_length | lower | upper | title | concat | substr | sort | reverse | join | variable | ESCAPED_STRING | SIGNED_NUMBER | "(" expression ")"
-
-    variable: "{{" query_path "}}"
-    query_path: /[^}]+/
-
-    round: "round(" expression "," NUMBER ")"
-    number: "number(" expression ["," ESCAPED_STRING ["," ESCAPED_STRING]] ")"
-    int: "int(" expression ")"
-    format_length: metric_length | imperial_length
-    metric_length: "metric_length(" expression "," NUMBER "," NUMBER ")"
-    imperial_length: "imperial_length(" expression "," NUMBER ["," ESCAPED_STRING "," ESCAPED_STRING ["," boolean]] ")"
-    lower: "lower(" expression ")"
-    upper: "upper(" expression ")"
-    title: "title(" expression ")"
-    concat: "concat(" expression ("," expression)* ")"
-    substr: "substr(" expression "," SIGNED_INT ["," SIGNED_INT] ")"
-    sort: "sort(" expression ")"
-    reverse: "reverse(" expression ")"
-    join: "join(" ESCAPED_STRING "," expression ")"
-    boolean: TRUE | FALSE
-
-    TRUE: "true" | "True" | "TRUE"
-    FALSE: "false" | "False" | "FALSE"
-    // Embed common.lark for packaging
-    DIGIT: "0".."9"
-    HEXDIGIT: "a".."f"|"A".."F"|DIGIT
-    INT: DIGIT+
-    SIGNED_INT: ["+"|"-"] INT
-    DECIMAL: INT "." INT? | "." INT
-    _EXP: ("e"|"E") SIGNED_INT
-    FLOAT: INT _EXP | DECIMAL _EXP?
-    SIGNED_FLOAT: ["+"|"-"] FLOAT
-    NUMBER: FLOAT | INT
-    SIGNED_NUMBER: ["+"|"-"] NUMBER
-    _STRING_INNER: /.*?/
-    _STRING_ESC_INNER: _STRING_INNER /(?<!\\\\)(\\\\\\\\)*?/
-    ESCAPED_STRING : "\\"" _STRING_ESC_INNER "\\""
-    LCASE_LETTER: "a".."z"
-    UCASE_LETTER: "A".."Z"
-    LETTER: UCASE_LETTER | LCASE_LETTER
-    WORD: LETTER+
-    CNAME: ("_"|LETTER) ("_"|LETTER|DIGIT)*
-    WS_INLINE: (" "|/\\t/)+
-    WS: /[ \\t\\f\\r\\n]/+
-    CR : /\\r/
-    LF : /\\n/
-    NEWLINE: (CR? LF)+
-
-    %ignore WS // Disregard spaces in text
-""")
+from ifcopenshell import _get_lib
 
 
-class FormatTransformer(lark.Transformer):
+# Node-kind constants mirroring selector_ast.h
+_NK_TOKEN_FIRST = 100
+
+_NK_RULE_NAMES = {
+    0:  "start",           1:  "filter_group",    2:  "facet_list",
+    3:  "facet",           4:  "instance",         5:  "entity",
+    6:  "attribute",       7:  "type",             8:  "material",
+    9:  "query",           10: "classification",   11: "location",
+    12: "group",           13: "parent",           14: "property",
+    15: "pset",            16: "prop",             17: "keys",
+    18: "attribute_name",  19: "ifc_class",        20: "globalid",
+    21: "value",           22: "unquoted_string",  23: "regex_string",
+    24: "quoted_string",   25: "special",          26: "null",
+    27: "true",            28: "false",            29: "comparison",
+    30: "not",             31: "equals",           32: "morethanequalto",
+    33: "lessthanequalto", 34: "morethan",         35: "lessthan",
+    36: "contains",        37: "keys",             38: "key",
+    39: "add",             40: "subtract",         41: "multiply",
+    42: "divide",          43: "function",         44: "variable",
+    45: "query_path",      46: "round",            47: "number",
+    48: "int",             49: "format_length",    50: "metric_length",
+    51: "imperial_length", 52: "lower",            53: "upper",
+    54: "title",           55: "concat",           56: "substr",
+    57: "sort",            58: "reverse",          59: "join",
+    60: "boolean",
+}
+
+_NK_TOKEN_NAMES = {
+    100: "ESCAPED_STRING", 101: "SIGNED_NUMBER", 102: "NUMBER",
+    103: "SIGNED_INT",     104: "TRUE",          105: "FALSE",
+    106: "__ANON_0",
+}
+
+
+class SelectorToken(str):
+    """Leaf node from the native C parser. A str subclass with .type and .value."""
+
+    __slots__ = ("type",)
+
+    def __new__(cls, type_: str, value: str):
+        instance = str.__new__(cls, value)
+        instance.type = type_
+        return instance
+
+    @property
+    def value(self) -> str:
+        return str(self)
+
+    def __repr__(self) -> str:
+        return f"Token({self.type!r}, {str(self)!r})"
+
+
+class SelectorNode:
+    """Rule node from the native C parser. Provides .data and .children."""
+
+    __slots__ = ("data", "children")
+
+    def __init__(self, data: str, children: list):
+        self.data = data
+        self.children = children
+
+    def __repr__(self) -> str:
+        return f"Tree({self.data!r}, {self.children!r})"
+
+
+_selector_lib_configured = False
+
+
+def _configure_selector_lib(lib) -> None:
+    global _selector_lib_configured
+    if _selector_lib_configured:
+        return
+    lib.ifcopenshell_selector_parse_filter.restype = ctypes.c_void_p
+    lib.ifcopenshell_selector_parse_filter.argtypes = [ctypes.c_char_p]
+    lib.ifcopenshell_selector_parse_get_element.restype = ctypes.c_void_p
+    lib.ifcopenshell_selector_parse_get_element.argtypes = [ctypes.c_char_p]
+    lib.ifcopenshell_selector_parse_format.restype = ctypes.c_void_p
+    lib.ifcopenshell_selector_parse_format.argtypes = [ctypes.c_char_p]
+    lib.ifcopenshell_selector_node_kind.restype = ctypes.c_int
+    lib.ifcopenshell_selector_node_kind.argtypes = [ctypes.c_void_p]
+    lib.ifcopenshell_selector_node_child_count.restype = ctypes.c_size_t
+    lib.ifcopenshell_selector_node_child_count.argtypes = [ctypes.c_void_p]
+    lib.ifcopenshell_selector_node_child.restype = ctypes.c_void_p
+    lib.ifcopenshell_selector_node_child.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+    lib.ifcopenshell_selector_node_text.restype = ctypes.c_char_p
+    lib.ifcopenshell_selector_node_text.argtypes = [ctypes.c_void_p]
+    lib.ifcopenshell_selector_node_free.restype = None
+    lib.ifcopenshell_selector_node_free.argtypes = [ctypes.c_void_p]
+    _selector_lib_configured = True
+
+
+def _build_tree(lib, ptr: int) -> "SelectorNode | SelectorToken":
+    """Recursively build a SelectorNode / SelectorToken tree from a C AST pointer."""
+    kind = lib.ifcopenshell_selector_node_kind(ptr)
+    if kind >= _NK_TOKEN_FIRST:
+        tok_type = _NK_TOKEN_NAMES.get(kind, "__ANON_0")
+        raw = lib.ifcopenshell_selector_node_text(ptr)
+        text = raw.decode("utf-8", errors="replace") if raw else ""
+        return SelectorToken(tok_type, text)
+    rule_name = _NK_RULE_NAMES.get(kind, f"__unknown_{kind}")
+    n = lib.ifcopenshell_selector_node_child_count(ptr)
+    children = [_build_tree(lib, lib.ifcopenshell_selector_node_child(ptr, i)) for i in range(n)]
+    return SelectorNode(rule_name, children)
+
+
+def _native_parse(query: str, kind: str) -> SelectorNode:
+    """Parse *query* with the native C parser and return a SelectorNode tree.
+
+    *kind* is one of ``"filter"``, ``"get_element"``, or ``"format"``.
+    Raises ``ValueError`` on a parse error.
+    """
+    lib = _get_lib()
+    _configure_selector_lib(lib)
+    encoded = query.encode("utf-8")
+    if kind == "filter":
+        root_ptr = lib.ifcopenshell_selector_parse_filter(encoded)
+    elif kind == "get_element":
+        root_ptr = lib.ifcopenshell_selector_parse_get_element(encoded)
+    else:
+        root_ptr = lib.ifcopenshell_selector_parse_format(encoded)
+    if not root_ptr:
+        err = lib.ifcopenshell_last_error_message()
+        err_str = err.decode("utf-8", errors="replace") if err else "unknown"
+        raise ValueError(f"selector parse error: {err_str}")
+    try:
+        tree = _build_tree(lib, root_ptr)
+    finally:
+        lib.ifcopenshell_selector_node_free(root_ptr)
+    return tree
+
+
+def _selector_transform(tree: "SelectorNode | SelectorToken", transformer) -> object:
+    """Bottom-up tree transformation.
+
+    Dispatches terminal nodes to same-named methods on *transformer* (e.g.
+    ESCAPED_STRING), and rule nodes to same-named methods (e.g. attribute).
+    Returns the transformed value.
+    """
+    if isinstance(tree, SelectorToken):
+        method = getattr(transformer, tree.type, None)
+        if method is not None:
+            return method(tree)
+        return tree
+    transformed = [_selector_transform(child, transformer) for child in tree.children]
+    method = getattr(transformer, tree.data, None)
+    if method is not None:
+        return method(transformed)
+    return SelectorNode(tree.data, transformed)
+
+
+class FormatTransformer:
     def __init__(self, element=None):
-        """Initialize transformer with optional element for variable substitution"""
-        super().__init__()
         self.element = element
+
+    def transform(self, tree):
+        return _selector_transform(tree, self)
 
     def start(self, args):
         if isinstance(args[0], (list, tuple)):
@@ -374,7 +375,10 @@ class FormatTransformer(lark.Transformer):
         return str(int(float(value)))
 
 
-class GetElementTransformer(lark.Transformer):
+class GetElementTransformer:
+    def transform(self, tree):
+        return _selector_transform(tree, self)
+
     def start(self, args):
         return args[0]
 
@@ -408,11 +412,11 @@ def format(query: str, element: Optional[ifcopenshell.entity_instance] = None) -
         format("{{z}} / 2", element)  # Substitutes element's z value
         format("imperial_length({{z}} / 2, 4)", element)  # Uses z in calculation
     """
-    return FormatTransformer(element).transform(format_grammar.parse(query))
+    return FormatTransformer(element).transform(_native_parse(query, "format"))
 
 
 def get_element_value(element: ifcopenshell.entity_instance, query: str) -> Any:
-    keys: list[str] = GetElementTransformer().transform(get_element_grammar.parse(query))
+    keys: list[str] = GetElementTransformer().transform(_native_parse(query, "get_element"))
     return _get_element_value(element, keys)
 
 
@@ -584,7 +588,7 @@ def filter_elements(
     if elements and not edit_in_place:
         elements = elements.copy()
     transformer = FacetTransformer(ifc_file, elements)
-    transformer.transform(filter_elements_grammar.parse(query))
+    transformer.transform(_native_parse(query, "filter"))
     return transformer.get_results()
 
 
@@ -616,7 +620,7 @@ def set_element_value(
     if isinstance(query, (list, tuple)):
         keys = query
     else:
-        keys = GetElementTransformer().transform(get_element_grammar.parse(query))
+        keys = GetElementTransformer().transform(_native_parse(query, "get_element"))
 
     for i, key in enumerate(keys):
         if element is None:
@@ -879,7 +883,7 @@ def set_element_value(
     )
 
 
-class FacetTransformer(lark.Transformer):
+class FacetTransformer:
     results: list[set[ifcopenshell.entity_instance]]
     base_elements: Optional[set[ifcopenshell.entity_instance]]
     elements: set[ifcopenshell.entity_instance]
@@ -896,6 +900,9 @@ class FacetTransformer(lark.Transformer):
             self.elements = set()
         self.has_additive_facet_in_current_list = False
         self.container_trees = {}
+
+    def transform(self, tree):
+        return _selector_transform(tree, self)
 
     def add_default_elements(self):
         if self.has_additive_facet_in_current_list:

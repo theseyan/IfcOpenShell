@@ -1,4 +1,3 @@
-# This file was generated with the assistance of an AI coding tool.
 # IfcOpenShell - IFC toolkit and geometry engine
 # Copyright (C) 2026 Dion Moult <dion@thinkmoult.com>
 #

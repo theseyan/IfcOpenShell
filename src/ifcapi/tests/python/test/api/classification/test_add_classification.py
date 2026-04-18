@@ -1,4 +1,3 @@
-# This file was generated with the assistance of an AI coding tool.
 import ifcopenshell.api.classification
 import ifcopenshell.api.root
 import test.bootstrap

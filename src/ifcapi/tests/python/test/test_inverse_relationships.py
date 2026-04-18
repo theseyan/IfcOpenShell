@@ -1,4 +1,3 @@
-# This file was generated with the assistance of an AI coding tool.
 # Tests for inverse attribute access, remove_deep2, and relationship patterns
 # needed by the high-level APIs (aggregate, spatial, type, etc.).
 

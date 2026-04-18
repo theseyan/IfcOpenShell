@@ -1,4 +1,3 @@
-# This file was generated with the assistance of an AI coding tool.
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
 """Tests for the native-backed helpers in ``ifcopenshell.util.representation``.

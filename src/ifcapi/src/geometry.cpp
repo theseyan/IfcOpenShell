@@ -1,4 +1,3 @@
-// This file was generated with the assistance of an AI coding tool.
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
 // Native port of the high-level representation-mapping APIs from
@@ -13,7 +12,7 @@
 //
 // These are used internally by ifcopenshell_type_assign_type to propagate
 // IfcRepresentationMaps onto related occurrences when a typed object is
-// assigned, mirroring upstream Python ifcopenshell behaviour.
+// assigned.
 
 #include "ifcapi/ifcapi.h"
 #include "guid.h"
@@ -653,7 +652,6 @@ void remove_subgraph(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* root) {
     }
 }
 
-// Mirrors process_shape_aspects() from the Python implementation.
 void process_shape_aspects_for_rep_map(IfcParse::IfcFile* file,
                                        IfcUtil::IfcBaseClass* rep_map) {
     std::vector<IfcUtil::IfcBaseClass*> shape_aspects;
@@ -690,7 +688,6 @@ void process_shape_aspects_for_rep_map(IfcParse::IfcFile* file,
     }
 }
 
-// Mirrors unassign_products_using_mapped_representation() from Python.
 void unassign_products_using_mapped_representation(IfcParse::IfcFile* file,
                                                    IfcUtil::IfcBaseClass* rep_map) {
     struct PR { IfcUtil::IfcBaseClass* product; IfcUtil::IfcBaseClass* rep; };

@@ -1,4 +1,3 @@
-# This file was generated with the assistance of an AI coding tool.
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
 """unit.add_si_unit — create a new SI unit."""

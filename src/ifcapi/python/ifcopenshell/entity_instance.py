@@ -1,4 +1,3 @@
-# This file was generated with the assistance of an AI coding tool.
 """entity_instance class backed by the native ifcapi C library."""
 
 from __future__ import annotations
