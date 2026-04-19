@@ -3,8 +3,10 @@
 """Property set management API backed by the native ifcapi C library."""
 
 from .add_pset import add_pset
+from .add_qto import add_qto
 from .assign_pset import assign_pset
 from .edit_pset import edit_pset
+from .edit_qto import edit_qto
 from .remove_pset import remove_pset
 from .unassign_pset import unassign_pset
 

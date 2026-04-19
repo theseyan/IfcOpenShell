@@ -49,6 +49,11 @@ def _bind():
     lib.ifcopenshell_free_instance_array_only.restype = None
     lib.ifcopenshell_free_instance_array_only.argtypes = [ctypes.POINTER(ctypes.c_void_p)]
 
+    lib.ifcopenshell_util_element_get_styles.restype = ctypes.POINTER(ctypes.c_void_p)
+    lib.ifcopenshell_util_element_get_styles.argtypes = [
+        ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32)
+    ]
+
     _bound = True
     return lib
 
@@ -445,6 +450,20 @@ def get_decomposition(element, is_recursive=True):
         if ptr:
             lib.ifcopenshell_free_instance_array_only(ptr)
     return result
+
+
+def get_styles(element):
+    """Retrieves the IfcSurfaceStyle instances used by *element* (via materials and body representation)."""
+    lib = _bind()
+    count = ctypes.c_uint32(0)
+    ptr = lib.ifcopenshell_util_element_get_styles(element._handle, ctypes.byref(count))
+    try:
+        if not ptr or count.value == 0:
+            return []
+        return [entity_instance(element.file, ptr[i]) for i in range(count.value)]
+    finally:
+        if ptr:
+            lib.ifcopenshell_free_instance_array_only(ptr)
 
 
 def replace_attribute(element, old, new):

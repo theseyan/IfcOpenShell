@@ -2,40 +2,46 @@
 
 """Utility functions for classification data."""
 
-import ifcopenshell.util.element
+import ctypes
+
+import ifcopenshell
+from ifcopenshell.entity_instance import entity_instance
+
+
+_lib_configured = False
+
+
+def _configure_lib(lib) -> None:
+    global _lib_configured
+    if _lib_configured:
+        return
+    lib.ifcopenshell_util_classification_get_references.restype = ctypes.POINTER(ctypes.c_void_p)
+    lib.ifcopenshell_util_classification_get_references.argtypes = [
+        ctypes.c_void_p, ctypes.c_bool, ctypes.POINTER(ctypes.c_uint32)
+    ]
+    lib.ifcopenshell_free_instance_array_only.restype = None
+    lib.ifcopenshell_free_instance_array_only.argtypes = [ctypes.POINTER(ctypes.c_void_p)]
+    _lib_configured = True
 
 
 def get_references(element, should_inherit=True):
-    results = set()
-    if not element.is_a("IfcRoot"):
-        references = getattr(element, "HasExternalReferences", None)
-        if references is None:
-            references = getattr(element, "HasExternalReference", None)
-        if references is not None:
-            return {r.RelatingReference for r in references}
-    if should_inherit and element.is_a("IfcObject"):
-        element_type = ifcopenshell.util.element.get_type(element)
-        if element_type and element_type != element:
-            results = get_references(element_type)
-    occurrence_results = {
-        r.RelatingClassification
-        for r in getattr(element, "HasAssociations", []) or []
-        if r.is_a("IfcRelAssociatesClassification")
-    }
-    if results:
-        type_references_per_system = {}
-        occurrence_references_per_system = {}
-        for result in results:
-            type_references_per_system.setdefault(get_classification(result), []).append(result)
-        for result in occurrence_results:
-            occurrence_references_per_system.setdefault(get_classification(result), []).append(result)
-        type_references_per_system.update(occurrence_references_per_system)
-        results = set()
-        for values in type_references_per_system.values():
-            for v in values:
-                results.add(v)
-        return results
-    return occurrence_results
+    if element is None:
+        return set()
+    lib = ifcopenshell._get_lib()
+    _configure_lib(lib)
+    count = ctypes.c_uint32(0)
+    arr = lib.ifcopenshell_util_classification_get_references(
+        element._handle, bool(should_inherit), ctypes.byref(count)
+    )
+    if not arr or count.value == 0:
+        if arr:
+            lib.ifcopenshell_free_instance_array_only(arr)
+        return set()
+    try:
+        ifc_file = element.file
+        return {entity_instance(ifc_file, arr[i]) for i in range(count.value)}
+    finally:
+        lib.ifcopenshell_free_instance_array_only(arr)
 
 
 def get_classification(reference):
