@@ -97,7 +97,7 @@ void normalize3(double v[3]) {
 }
 
 // Computes a 4x4 placement matrix (row-major) from origin O, Z axis, X axis.
-// Matches Python's a2p(o, z, x) semantics: places local axes into world.
+// Places local axes into world.
 void a2p(const double o[3], const double z[3], const double x[3], double* m) {
     double xn[3] = {x[0], x[1], x[2]};
     double zn[3] = {z[0], z[1], z[2]};

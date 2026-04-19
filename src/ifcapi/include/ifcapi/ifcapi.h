@@ -275,15 +275,14 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_entity_get_inverse_attr
 /* ------------------------------------------------------------------ */
 
 /// Recursively remove an entity and any entities it references that would
-/// become orphaned (total_inverses == 0 after removal). Equivalent to
-/// ifcopenshell.util.element.remove_deep2().
+/// become orphaned (total_inverses == 0 after removal).
 IFCAPI_EXPORT void ifcopenshell_util_remove_deep2(ifcopenshell_ifc_instance_t* instance);
 
 /* ------------------------------------------------------------------ */
 /*  High-level: root module                                            */
 /* ------------------------------------------------------------------ */
 
-/// Creates a new rooted IFC entity (equivalent to ifcopenshell.api.root.create_entity).
+/// Creates a new rooted IFC entity.
 IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_root_create_entity(
     ifcopenshell_ifc_file_t* file,
     const char* ifc_class,
@@ -340,7 +339,7 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_type_assign_type(
     ifcopenshell_ifc_instance_t* relating_type);
 
 /// Variant of ifcopenshell_type_assign_type that takes a `should_map_representations`
-/// flag matching the upstream Python API. When true (the default), this also
+/// flag. When true (the default), this also
 /// propagates the relating type's IfcRepresentationMaps onto each related
 /// object as IfcMappedItem-based IfcShapeRepresentations and clears any
 /// PredefinedType/ObjectType to avoid double-typing.
