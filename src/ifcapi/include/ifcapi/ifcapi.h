@@ -715,6 +715,46 @@ IFCAPI_EXPORT ifcopenshell_value_t* ifcopenshell_selector_filter_elements(
     size_t elements_count,
     int edit_in_place);
 
+/* ------------------------------------------------------------------ */
+/*  Selector format(): evaluates a format query string                 */
+/* ------------------------------------------------------------------ */
+
+/* Returns a freshly malloc'd UTF-8 string with the formatted result.
+   Returns NULL if the query evaluated to None (e.g. {{undefined}} with no
+   element) or on a parse / evaluation error. Use
+   ifcopenshell_last_error_message() to disambiguate. The caller must free
+   the returned buffer with ifcopenshell_free_string(). Both file and
+   instance may be NULL, in which case variable substitutions evaluate to
+   None. */
+IFCAPI_EXPORT char* ifcopenshell_selector_format(
+    ifcopenshell_ifc_file_t* file,
+    ifcopenshell_ifc_instance_t* instance,
+    const char* query);
+
+/* ------------------------------------------------------------------ */
+/*  Selector key extraction (used by set_element_value)                */
+/* ------------------------------------------------------------------ */
+
+typedef struct ifcopenshell_selector_keys_t ifcopenshell_selector_keys_t;
+
+IFCAPI_EXPORT ifcopenshell_selector_keys_t*
+ifcopenshell_selector_parse_keys(const char* query);
+
+IFCAPI_EXPORT uint32_t
+ifcopenshell_selector_keys_count(ifcopenshell_selector_keys_t* h);
+
+/* Returns the raw text of the i-th key. For regex keys the text is the
+   pattern source (no surrounding slashes). The pointer is valid until
+   ifcopenshell_selector_keys_free(). */
+IFCAPI_EXPORT const char*
+ifcopenshell_selector_keys_get(ifcopenshell_selector_keys_t* h, uint32_t i);
+
+IFCAPI_EXPORT bool
+ifcopenshell_selector_keys_is_regex(ifcopenshell_selector_keys_t* h, uint32_t i);
+
+IFCAPI_EXPORT void
+ifcopenshell_selector_keys_free(ifcopenshell_selector_keys_t* h);
+
 #ifdef __cplusplus
 }
 #endif

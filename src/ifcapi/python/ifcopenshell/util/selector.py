@@ -18,7 +18,6 @@
 
 import re
 from collections.abc import Iterable
-from decimal import Decimal
 from types import EllipsisType
 from typing import Any, Optional, Union
 
@@ -42,75 +41,6 @@ import ifcopenshell.util.unit
 from ifcopenshell import _get_lib
 
 
-# Node-kind constants mirroring selector_ast.h
-_NK_TOKEN_FIRST = 100
-
-_NK_RULE_NAMES = {
-    0:  "start",           1:  "filter_group",    2:  "facet_list",
-    3:  "facet",           4:  "instance",         5:  "entity",
-    6:  "attribute",       7:  "type",             8:  "material",
-    9:  "query",           10: "classification",   11: "location",
-    12: "group",           13: "parent",           14: "property",
-    15: "pset",            16: "prop",             17: "keys",
-    18: "attribute_name",  19: "ifc_class",        20: "globalid",
-    21: "value",           22: "unquoted_string",  23: "regex_string",
-    24: "quoted_string",   25: "special",          26: "null",
-    27: "true",            28: "false",            29: "comparison",
-    30: "not",             31: "equals",           32: "morethanequalto",
-    33: "lessthanequalto", 34: "morethan",         35: "lessthan",
-    36: "contains",        37: "keys",             38: "key",
-    39: "add",             40: "subtract",         41: "multiply",
-    42: "divide",          43: "function",         44: "variable",
-    45: "query_path",      46: "round",            47: "number",
-    48: "int",             49: "format_length",    50: "metric_length",
-    51: "imperial_length", 52: "lower",            53: "upper",
-    54: "title",           55: "concat",           56: "substr",
-    57: "sort",            58: "reverse",          59: "join",
-    60: "boolean",
-}
-
-_NK_TOKEN_NAMES = {
-    100: "ESCAPED_STRING", 101: "SIGNED_NUMBER", 102: "NUMBER",
-    103: "SIGNED_INT",     104: "TRUE",          105: "FALSE",
-    106: "__ANON_0",
-}
-
-
-class SelectorToken(str):
-    """Leaf node from the native C parser. A str subclass with .type and .value."""
-
-    __slots__ = ("type",)
-
-    def __new__(cls, type_: str, value: str):
-        instance = str.__new__(cls, value)
-        instance.type = type_
-        return instance
-
-    @property
-    def value(self) -> str:
-        return str(self)
-
-    def __repr__(self) -> str:
-        return f"Token({self.type!r}, {str(self)!r})"
-
-
-class SelectorNode:
-    """Rule node from the native C parser. Provides .data and .children."""
-
-    __slots__ = ("data", "children")
-
-    def __init__(self, data: str, children: list):
-        self.data = data
-        self.children = children
-
-    def __repr__(self) -> str:
-        return f"Tree({self.data!r}, {self.children!r})"
-
-
-_selector_lib_configured = False
-_value_lib_configured = False
-_filter_lib_configured = False
-
 # ifcopenshell_value_kind_t constants (must match value.h)
 _IFCSEL_VALUE_NONE     = 0
 _IFCSEL_VALUE_BOOL     = 1
@@ -121,28 +51,10 @@ _IFCSEL_VALUE_INSTANCE = 5
 _IFCSEL_VALUE_LIST     = 6
 _IFCSEL_VALUE_DICT     = 7
 
-
-def _configure_selector_lib(lib) -> None:
-    global _selector_lib_configured
-    if _selector_lib_configured:
-        return
-    lib.ifcopenshell_selector_parse_filter.restype = ctypes.c_void_p
-    lib.ifcopenshell_selector_parse_filter.argtypes = [ctypes.c_char_p]
-    lib.ifcopenshell_selector_parse_get_element.restype = ctypes.c_void_p
-    lib.ifcopenshell_selector_parse_get_element.argtypes = [ctypes.c_char_p]
-    lib.ifcopenshell_selector_parse_format.restype = ctypes.c_void_p
-    lib.ifcopenshell_selector_parse_format.argtypes = [ctypes.c_char_p]
-    lib.ifcopenshell_selector_node_kind.restype = ctypes.c_int
-    lib.ifcopenshell_selector_node_kind.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_selector_node_child_count.restype = ctypes.c_size_t
-    lib.ifcopenshell_selector_node_child_count.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_selector_node_child.restype = ctypes.c_void_p
-    lib.ifcopenshell_selector_node_child.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
-    lib.ifcopenshell_selector_node_text.restype = ctypes.c_char_p
-    lib.ifcopenshell_selector_node_text.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_selector_node_free.restype = None
-    lib.ifcopenshell_selector_node_free.argtypes = [ctypes.c_void_p]
-    _selector_lib_configured = True
+_value_lib_configured = False
+_filter_lib_configured = False
+_format_lib_configured = False
+_keys_lib_configured = False
 
 
 def _configure_value_lib(lib) -> None:
@@ -195,12 +107,38 @@ def _configure_filter_lib(lib) -> None:
     _filter_lib_configured = True
 
 
-def _value_to_python(lib, ptr, element):
-    """Recursively convert an ifcopenshell_value_t* to a Python object.
+def _configure_format_lib(lib) -> None:
+    global _format_lib_configured
+    if _format_lib_configured:
+        return
+    lib.ifcopenshell_selector_format.restype = ctypes.c_void_p
+    lib.ifcopenshell_selector_format.argtypes = [
+        ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p
+    ]
+    lib.ifcopenshell_free_string.restype = None
+    lib.ifcopenshell_free_string.argtypes = [ctypes.c_void_p]
+    _format_lib_configured = True
 
-    *ptr* is a ctypes c_void_p integer.  Children are owned by their parent
-    and must NOT be freed individually.
-    """
+
+def _configure_keys_lib(lib) -> None:
+    global _keys_lib_configured
+    if _keys_lib_configured:
+        return
+    lib.ifcopenshell_selector_parse_keys.restype = ctypes.c_void_p
+    lib.ifcopenshell_selector_parse_keys.argtypes = [ctypes.c_char_p]
+    lib.ifcopenshell_selector_keys_count.restype = ctypes.c_uint32
+    lib.ifcopenshell_selector_keys_count.argtypes = [ctypes.c_void_p]
+    lib.ifcopenshell_selector_keys_get.restype = ctypes.c_char_p
+    lib.ifcopenshell_selector_keys_get.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
+    lib.ifcopenshell_selector_keys_is_regex.restype = ctypes.c_bool
+    lib.ifcopenshell_selector_keys_is_regex.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
+    lib.ifcopenshell_selector_keys_free.restype = None
+    lib.ifcopenshell_selector_keys_free.argtypes = [ctypes.c_void_p]
+    _keys_lib_configured = True
+
+
+def _value_to_python(lib, ptr, element):
+    """Recursively convert an ifcopenshell_value_t* to a Python object."""
     if not ptr:
         return None
     kind = lib.ifcopenshell_value_kind(ptr)
@@ -238,291 +176,39 @@ def _value_to_python(lib, ptr, element):
         return result
     return None
 
-def _build_tree(lib, ptr: int) -> "SelectorNode | SelectorToken":
-    """Recursively build a SelectorNode / SelectorToken tree from a C AST pointer."""
-    kind = lib.ifcopenshell_selector_node_kind(ptr)
-    if kind >= _NK_TOKEN_FIRST:
-        tok_type = _NK_TOKEN_NAMES.get(kind, "__ANON_0")
-        raw = lib.ifcopenshell_selector_node_text(ptr)
-        text = raw.decode("utf-8", errors="replace") if raw else ""
-        return SelectorToken(tok_type, text)
-    rule_name = _NK_RULE_NAMES.get(kind, f"__unknown_{kind}")
-    n = lib.ifcopenshell_selector_node_child_count(ptr)
-    children = [_build_tree(lib, lib.ifcopenshell_selector_node_child(ptr, i)) for i in range(n)]
-    return SelectorNode(rule_name, children)
 
 
-def _native_parse(query: str, kind: str) -> SelectorNode:
-    """Parse *query* with the native C parser and return a SelectorNode tree.
-
-    *kind* is one of ``"filter"``, ``"get_element"``, or ``"format"``.
-    Raises ``ValueError`` on a parse error.
-    """
-    lib = _get_lib()
-    _configure_selector_lib(lib)
-    encoded = query.encode("utf-8")
-    if kind == "filter":
-        root_ptr = lib.ifcopenshell_selector_parse_filter(encoded)
-    elif kind == "get_element":
-        root_ptr = lib.ifcopenshell_selector_parse_get_element(encoded)
-    else:
-        root_ptr = lib.ifcopenshell_selector_parse_format(encoded)
-    if not root_ptr:
-        err = lib.ifcopenshell_last_error_message()
-        err_str = err.decode("utf-8", errors="replace") if err else "unknown"
-        raise ValueError(f"selector parse error: {err_str}")
-    try:
-        tree = _build_tree(lib, root_ptr)
-    finally:
-        lib.ifcopenshell_selector_node_free(root_ptr)
-    return tree
-
-
-def _selector_transform(tree: "SelectorNode | SelectorToken", transformer) -> object:
-    """Bottom-up tree transformation.
-
-    Dispatches terminal nodes to same-named methods on *transformer* (e.g.
-    ESCAPED_STRING), and rule nodes to same-named methods (e.g. attribute).
-    Returns the transformed value.
-    """
-    if isinstance(tree, SelectorToken):
-        method = getattr(transformer, tree.type, None)
-        if method is not None:
-            return method(tree)
-        return tree
-    transformed = [_selector_transform(child, transformer) for child in tree.children]
-    method = getattr(transformer, tree.data, None)
-    if method is not None:
-        return method(transformed)
-    return SelectorNode(tree.data, transformed)
-
-
-class FormatTransformer:
-    def __init__(self, element=None):
-        self.element = element
-
-    def transform(self, tree):
-        return _selector_transform(tree, self)
-
-    def start(self, args):
-        if isinstance(args[0], (list, tuple)):
-            return ", ".join(args[0])
-        return args[0]
-
-    def expression(self, args):
-        return args[0]
-
-    def variable(self, args):
-        """Handle variable substitution like {{z}} or {{Pset_Wall.FireRating}}"""
-        if self.element:
-            try:
-                return get_element_value(self.element, args[0])
-            except:
-                pass
-
-    def query_path(self, args):
-        """Extract the query path from variable"""
-        return str(args[0]).strip()
-
-    def add(self, args):
-        """Handle addition operation"""
-        left, right = args
-        try:
-            left_val = float(left) if left != "None" and left is not None else 0.0
-            right_val = float(right) if right != "None" and right is not None else 0.0
-            result = left_val + right_val
-            # Return integer if result has no decimal part
-            if result % 1 == 0:
-                return str(int(result))
-            return str(result)
-        except (ValueError, TypeError):
-            # If can't convert to numbers, concatenate as strings
-            return str(left) + str(right)
-
-    def subtract(self, args):
-        """Handle subtraction operation"""
-        left, right = args
-        left_val = float(left) if left != "None" and left is not None else 0.0
-        right_val = float(right) if right != "None" and right is not None else 0.0
-        result = left_val - right_val
-        if result % 1 == 0:
-            return str(int(result))
-        return str(result)
-
-    def multiply(self, args):
-        """Handle multiplication operation"""
-        left, right = args
-        left_val = float(left) if left != "None" and left is not None else 0.0
-        right_val = float(right) if right != "None" and right is not None else 0.0
-        result = left_val * right_val
-        if result % 1 == 0:
-            return str(int(result))
-        return str(result)
-
-    def divide(self, args):
-        """Handle division operation"""
-        left, right = args
-        left_val = float(left) if left != "None" and left is not None else 0.0
-        right_val = float(right) if right != "None" and right is not None else 1.0
-        if right_val == 0:
-            return "inf"  # or raise an error, or return "0"
-        result = left_val / right_val
-        if result % 1 == 0:
-            return str(int(result))
-        return str(result)
-
-    def function(self, args):
-        return args[0]
-
-    def ESCAPED_STRING(self, args):
-        return args[1:-1].replace("\\", "")
-
-    def NUMBER(self, args):
-        return str(args)
-
-    def lower(self, args):
-        return str(args[0]).lower()
-
-    def upper(self, args):
-        return str(args[0]).upper()
-
-    def title(self, args):
-        return str(args[0]).title()
-
-    def concat(self, args):
-        return "".join(str(arg) for arg in args)
-
-    def substr(self, args):
-        if len(args) == 3:
-            if args[2] is None:
-                return str(args[0])[int(args[1]) :]
-            return str(args[0])[int(args[1]) : int(args[2])]
-        elif len(args) == 2:
-            return str(args[0])[int(args[1]) :]
-
-    def sort(self, args):
-        return sorted(args[0])
-
-    def reverse(self, args):
-        return list(reversed(args[0]))
-
-    def join(self, args):
-        return args[0].join(args[1])
-
-    def boolean(self, args):
-        if not args:
-            return True
-        token = args[0]
-        if hasattr(token, "type"):
-            return token.type == "TRUE"
-        value = str(token).lower()
-        if hasattr(token, "value"):
-            value = str(token.value).lower()
-        return value in ("true", "1", "yes")
-
-    def round(self, args):
-        value = Decimal(0.0 if args[0] == "None" else args[0] or 0.0)
-        nearest = Decimal(args[1])
-        result = round(value / nearest) * nearest
-        if nearest % 1 == 0:
-            return str(int(result))
-        return str(result)
-
-    def number(self, args):
-        arg_val = args[0]
-        if isinstance(arg_val, str):
-            arg_val = float(arg_val) if "." in arg_val else int(arg_val)
-        if len(args) >= 3 and args[2]:
-            return "{:,}".format(arg_val).replace(".", "*").replace(",", args[2]).replace("*", args[1])
-        elif len(args) >= 2 and args[1]:
-            return "{}".format(arg_val).replace(".", args[1])
-        return "{:,}".format(arg_val)
-
-    def format_length(self, args):
-        return args[0]
-
-    def metric_length(self, args):
-        value, precision, decimal_places = args
-        return ifcopenshell.util.unit.format_length(
-            float(value), float(precision), int(decimal_places), unit_system="metric"
-        )
-
-    def imperial_length(self, args):
-        args = list(filter(lambda x: x is not None, args))
-        if len(args) == 2:
-            input_unit, output_unit = "foot", "foot"
-            value, precision = args
-            suppress_zero_inches = True
-        elif len(args) == 3:
-            value, precision, suppress_zero_inches = args
-            input_unit, output_unit = "foot", "foot"
-        elif len(args) == 4:
-            value, precision, input_unit, output_unit = args
-            input_unit = "inch" if input_unit == "inch" else "foot"
-            output_unit = "inch" if output_unit == "inch" else "foot"
-            suppress_zero_inches = True
-        else:
-            value, precision, input_unit, output_unit, suppress_zero_inches = args
-            input_unit = "inch" if input_unit == "inch" else "foot"
-            output_unit = "inch" if output_unit == "inch" else "foot"
-
-        return ifcopenshell.util.unit.format_length(
-            float(value),
-            int(precision),
-            suppress_zero_inches=(suppress_zero_inches if suppress_zero_inches is not None else False),
-            unit_system="imperial",
-            input_unit=input_unit,
-            output_unit=output_unit,
-        )
-
-    def int(self, args: list[str]) -> str:
-        value = 0.0 if args[0] == "None" else args[0] or 0.0
-        return str(int(float(value)))
-
-
-class GetElementTransformer:
-    def transform(self, tree):
-        return _selector_transform(tree, self)
-
-    def start(self, args):
-        return args[0]
-
-    def keys(self, args):
-        return args
-
-    def key(self, args):
-        return args[0]
-
-    def quoted_string(self, args):
-        return str(args[0])
-
-    def regex_string(self, args):
-        return re.compile(args[0])
-
-    def unquoted_string(self, args):
-        return str(args[0])
-
-    def ESCAPED_STRING(self, args):
-        return args[1:-1].replace("\\", "")
-
-
-def format(query: str, element: Optional[ifcopenshell.entity_instance] = None) -> str:
+def format(query: str, element: Optional[ifcopenshell.entity_instance] = None) -> Optional[str]:
     """Format a query string with optional element context for variable substitution.
 
     :param query: Format query string (can include {{variable}} placeholders)
     :param element: Optional IFC element for variable substitution
-    :return: Formatted string
+    :return: Formatted string, or ``None`` if the query evaluated to None
+        (e.g. ``{{undefined}}`` with no matching element).
 
     Example:
         format("{{z}} / 2", element)  # Substitutes element's z value
         format("imperial_length({{z}} / 2, 4)", element)  # Uses z in calculation
     """
-    return FormatTransformer(element).transform(_native_parse(query, "format"))
+    lib = _get_lib()
+    _configure_format_lib(lib)
+    file_ptr = None
+    elem_ptr = None
+    if element is not None:
+        file_ptr = getattr(element.file, "_ptr", None)
+        elem_ptr = element._handle
+    raw = lib.ifcopenshell_selector_format(file_ptr, elem_ptr, query.encode("utf-8"))
+    if not raw:
+        return None
+    try:
+        result = ctypes.string_at(raw).decode("utf-8", errors="replace")
+    finally:
+        lib.ifcopenshell_free_string(raw)
+    return result
 
 
 def get_element_value(element: ifcopenshell.entity_instance, query: str) -> Any:
     lib = _get_lib()
-    _configure_selector_lib(lib)
     _configure_value_lib(lib)
     file_ptr = getattr(element.file, "_ptr", None)
     ptr = lib.ifcopenshell_selector_get_element_value(
@@ -535,133 +221,32 @@ def get_element_value(element: ifcopenshell.entity_instance, query: str) -> Any:
     return result
 
 
-def _get_element_value(element: ifcopenshell.entity_instance, keys: list[str]) -> Any:
-    value = element
-    for key in keys:
-        if value is None:
-            return
-        if key == "type":
-            value = ifcopenshell.util.element.get_type(value)
-        elif key in ("material", "mat"):
-            value = ifcopenshell.util.element.get_material(value, should_skip_usage=True)
-        elif key in ("materials", "mats"):
-            value = ifcopenshell.util.element.get_materials(value)
-        elif key == "profiles":
-            value = ifcopenshell.util.shape.get_profiles(value)
-        elif key == "styles":
-            value = ifcopenshell.util.element.get_styles(value)
-        elif key in ("item", "i"):
-            if value.is_a("IfcMaterialLayerSet"):
-                value = value.MaterialLayers
-            elif value.is_a("IfcMaterialProfileSet"):
-                value = value.MaterialProfiles
-            elif value.is_a("IfcMaterialConstituentSet"):
-                value = value.MaterialConstituents
-        elif key == "container":
-            value = ifcopenshell.util.element.get_container(value)
-        elif key == "space":
-            value = ifcopenshell.util.element.get_parent(value, ifc_class="IfcSpace")
-        elif key == "storey":
-            value = ifcopenshell.util.element.get_parent(value, ifc_class="IfcBuildingStorey")
-        elif key == "building":
-            value = ifcopenshell.util.element.get_parent(value, ifc_class="IfcBuilding")
-        elif key == "site":
-            value = ifcopenshell.util.element.get_parent(value, ifc_class="IfcSite")
-        elif key == "parent":
-            value = ifcopenshell.util.element.get_parent(value)
-        elif key in ("types", "occurrences"):
-            value = ifcopenshell.util.element.get_types(value)
-        elif key == "count":
-            if isinstance(value, set):
-                value = len(list(value))
-            elif isinstance(value, (list, tuple)):
-                value = len(value)
-            else:
-                value = 1
-        elif key == "class":
-            value = value.is_a()
-        elif key == "predefined_type":
-            value = ifcopenshell.util.element.get_predefined_type(value)
-        elif key == "id":
-            value = value.id()
-        elif key == "classification":
-            value = ifcopenshell.util.classification.get_references(value)
-        elif key == "group":
-            value = ifcopenshell.util.element.get_groups(value)
-        elif key == "system":
-            value = ifcopenshell.util.system.get_element_systems(value)
-        elif key == "zone":
-            value = ifcopenshell.util.system.get_element_zones(value)
-        elif key in ("x", "y", "z", "easting", "northing", "elevation") and hasattr(value, "ObjectPlacement"):
-            if getattr(value, "ObjectPlacement", None):
-                matrix = ifcopenshell.util.placement.get_local_placement(value.ObjectPlacement)
-                xyz = matrix[:, 3][:3]
-                if key in ("x", "y", "z"):
-                    value = xyz["xyz".index(key)]
-                else:
-                    enh = ifcopenshell.util.geolocation.auto_xyz2enh(element.wrapped_data.file, *xyz)
-                    value = enh[("easting", "northing", "elevation").index(key)]
-            else:
-                value = None
-        elif isinstance(value, ifcopenshell.entity_instance):
-            if key == "Name" and value.is_a("IfcMaterialLayerSet"):
-                key = "LayerSetName"  # This oddity in the IFC spec is annoying so we account for it.
 
-            if isinstance(key, re.Pattern):
-                attribute = None  # Should we support regex attributes? Probably not for now.
-            else:
-                attribute = getattr(value, key, None)
 
-            if attribute is not None:
-                value = attribute
+def _parse_selector_keys(query: str) -> list[Union[str, re.Pattern]]:
+    """Parse a get_element query into a list of keys (strings or compiled regexes)."""
+    lib = _get_lib()
+    _configure_keys_lib(lib)
+    h = lib.ifcopenshell_selector_parse_keys(query.encode("utf-8"))
+    if not h:
+        err = lib.ifcopenshell_last_error_message()
+        err_str = err.decode("utf-8", errors="replace") if err else "unknown"
+        raise ValueError(f"selector parse error: {err_str}")
+    try:
+        n = lib.ifcopenshell_selector_keys_count(h)
+        keys: list[Union[str, re.Pattern]] = []
+        for i in range(n):
+            raw = lib.ifcopenshell_selector_keys_get(h, i)
+            text = raw.decode("utf-8", errors="replace") if raw else ""
+            if lib.ifcopenshell_selector_keys_is_regex(h, i):
+                keys.append(re.compile(text))
             else:
-                # Try to extract pset
-                if isinstance(key, re.Pattern):
-                    psets = ifcopenshell.util.element.get_psets(value)
-                    matching_psets = []
-                    for pset_name, pset in psets.items():
-                        if key.match(pset_name):
-                            del pset["id"]
-                            matching_psets.append(pset)
-                    result = matching_psets or None
-                    if result and len(result) == 1:
-                        result = result[0]
-                else:
-                    result = ifcopenshell.util.element.get_pset(value, key)
-                    if result:
-                        del result["id"]
+                keys.append(text)
+    finally:
+        lib.ifcopenshell_selector_keys_free(h)
+    return keys
 
-                value = result
-        elif isinstance(value, dict):  # Such as from the result of a prior get_pset
-            if isinstance(key, re.Pattern):
-                results = []
-                for prop_name, prop_value in value.items():
-                    if key.match(prop_name):
-                        if isinstance(prop_value, (list, tuple)):
-                            results.extend(prop_value)
-                        else:
-                            results.append(prop_value)
-                value = results or None
-                if value and len(value) == 1:
-                    value = value[0]
-            else:
-                value = value.get(key, None)
-        elif isinstance(value, (list, tuple, set)):  # If we use regex
-            if isinstance(key, str) and key.isnumeric():
-                try:
-                    value = value[int(key)]
-                except IndexError:
-                    return
-            else:
-                results = []
-                for v in value:
-                    subvalue = _get_element_value(v, [key])
-                    if isinstance(subvalue, list):
-                        results.extend(subvalue)
-                    else:
-                        results.append(subvalue)
-                value = results
-    return value
+
 
 
 def filter_elements(
@@ -775,7 +360,7 @@ def set_element_value(
     if isinstance(query, (list, tuple)):
         keys = query
     else:
-        keys = GetElementTransformer().transform(_native_parse(query, "get_element"))
+        keys = _parse_selector_keys(query)
 
     for i, key in enumerate(keys):
         if element is None:
