@@ -55,7 +55,7 @@ set(IFCAPI_SOURCES
     src/util_element_styles.cpp
     src/util_pset_template.cpp
     src/util_schema.cpp
-    src/util_unit_scale.cpp
+    src/util_unit.cpp
     src/api_pset_add.cpp
     src/api_pset_edit.cpp
     src/api_geometry_placement.cpp

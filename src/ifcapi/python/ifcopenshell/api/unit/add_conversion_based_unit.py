@@ -27,8 +27,8 @@ named_dimensions = {
 
 
 def add_conversion_based_unit(file, name="foot", conversion_offset=None):
-    unit_type = imperial_types.get(name, "USERDEFINED")
-    dimensions = named_dimensions.get(unit_type, (0, 0, 0, 0, 0, 0, 0))
+    unit_type = ifcopenshell.util.unit.imperial_types.get(name, "USERDEFINED")
+    dimensions = ifcopenshell.util.unit.named_dimensions.get(unit_type, (0, 0, 0, 0, 0, 0, 0))
     exponents = file.createIfcDimensionalExponents(*dimensions)
     si_name = ifcopenshell.util.unit.si_type_names.get(unit_type, "METRE")
 
