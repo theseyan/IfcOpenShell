@@ -108,6 +108,17 @@ class SelectorNode:
 
 
 _selector_lib_configured = False
+_value_lib_configured = False
+
+# ifcopenshell_value_kind_t constants (must match value.h)
+_IFCSEL_VALUE_NONE     = 0
+_IFCSEL_VALUE_BOOL     = 1
+_IFCSEL_VALUE_INT      = 2
+_IFCSEL_VALUE_DOUBLE   = 3
+_IFCSEL_VALUE_STRING   = 4
+_IFCSEL_VALUE_INSTANCE = 5
+_IFCSEL_VALUE_LIST     = 6
+_IFCSEL_VALUE_DICT     = 7
 
 
 def _configure_selector_lib(lib) -> None:
@@ -132,6 +143,84 @@ def _configure_selector_lib(lib) -> None:
     lib.ifcopenshell_selector_node_free.argtypes = [ctypes.c_void_p]
     _selector_lib_configured = True
 
+
+def _configure_value_lib(lib) -> None:
+    global _value_lib_configured
+    if _value_lib_configured:
+        return
+    lib.ifcopenshell_selector_get_element_value.restype = ctypes.c_void_p
+    lib.ifcopenshell_selector_get_element_value.argtypes = [
+        ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p
+    ]
+    lib.ifcopenshell_value_free.restype = None
+    lib.ifcopenshell_value_free.argtypes = [ctypes.c_void_p]
+    lib.ifcopenshell_value_kind.restype = ctypes.c_int
+    lib.ifcopenshell_value_kind.argtypes = [ctypes.c_void_p]
+    lib.ifcopenshell_value_as_bool.restype = ctypes.c_bool
+    lib.ifcopenshell_value_as_bool.argtypes = [ctypes.c_void_p]
+    lib.ifcopenshell_value_as_int64.restype = ctypes.c_int64
+    lib.ifcopenshell_value_as_int64.argtypes = [ctypes.c_void_p]
+    lib.ifcopenshell_value_as_double.restype = ctypes.c_double
+    lib.ifcopenshell_value_as_double.argtypes = [ctypes.c_void_p]
+    lib.ifcopenshell_value_as_string.restype = ctypes.c_char_p
+    lib.ifcopenshell_value_as_string.argtypes = [ctypes.c_void_p]
+    lib.ifcopenshell_value_as_instance.restype = ctypes.c_void_p
+    lib.ifcopenshell_value_as_instance.argtypes = [ctypes.c_void_p]
+    lib.ifcopenshell_value_list_size.restype = ctypes.c_size_t
+    lib.ifcopenshell_value_list_size.argtypes = [ctypes.c_void_p]
+    lib.ifcopenshell_value_list_at.restype = ctypes.c_void_p
+    lib.ifcopenshell_value_list_at.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+    lib.ifcopenshell_value_dict_size.restype = ctypes.c_size_t
+    lib.ifcopenshell_value_dict_size.argtypes = [ctypes.c_void_p]
+    lib.ifcopenshell_value_dict_key_at.restype = ctypes.c_char_p
+    lib.ifcopenshell_value_dict_key_at.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+    lib.ifcopenshell_value_dict_value_at.restype = ctypes.c_void_p
+    lib.ifcopenshell_value_dict_value_at.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+    _value_lib_configured = True
+
+
+def _value_to_python(lib, ptr, element):
+    """Recursively convert an ifcopenshell_value_t* to a Python object.
+
+    *ptr* is a ctypes c_void_p integer.  Children are owned by their parent
+    and must NOT be freed individually.
+    """
+    if not ptr:
+        return None
+    kind = lib.ifcopenshell_value_kind(ptr)
+    if kind == _IFCSEL_VALUE_NONE:
+        return None
+    if kind == _IFCSEL_VALUE_BOOL:
+        return bool(lib.ifcopenshell_value_as_bool(ptr))
+    if kind == _IFCSEL_VALUE_INT:
+        return int(lib.ifcopenshell_value_as_int64(ptr))
+    if kind == _IFCSEL_VALUE_DOUBLE:
+        return float(lib.ifcopenshell_value_as_double(ptr))
+    if kind == _IFCSEL_VALUE_STRING:
+        raw = lib.ifcopenshell_value_as_string(ptr)
+        return raw.decode("utf-8", errors="replace") if raw else None
+    if kind == _IFCSEL_VALUE_INSTANCE:
+        h = lib.ifcopenshell_value_as_instance(ptr)
+        if not h:
+            return None
+        from ifcopenshell.entity_instance import entity_instance as _ei
+        return _ei(element.file, h)
+    if kind == _IFCSEL_VALUE_LIST:
+        n = lib.ifcopenshell_value_list_size(ptr)
+        return [
+            _value_to_python(lib, lib.ifcopenshell_value_list_at(ptr, i), element)
+            for i in range(n)
+        ]
+    if kind == _IFCSEL_VALUE_DICT:
+        n = lib.ifcopenshell_value_dict_size(ptr)
+        result = {}
+        for i in range(n):
+            key_raw = lib.ifcopenshell_value_dict_key_at(ptr, i)
+            key = key_raw.decode("utf-8", errors="replace") if key_raw else ""
+            val = _value_to_python(lib, lib.ifcopenshell_value_dict_value_at(ptr, i), element)
+            result[key] = val
+        return result
+    return None
 
 def _build_tree(lib, ptr: int) -> "SelectorNode | SelectorToken":
     """Recursively build a SelectorNode / SelectorToken tree from a C AST pointer."""
@@ -416,8 +505,18 @@ def format(query: str, element: Optional[ifcopenshell.entity_instance] = None) -
 
 
 def get_element_value(element: ifcopenshell.entity_instance, query: str) -> Any:
-    keys: list[str] = GetElementTransformer().transform(_native_parse(query, "get_element"))
-    return _get_element_value(element, keys)
+    lib = _get_lib()
+    _configure_selector_lib(lib)
+    _configure_value_lib(lib)
+    file_ptr = getattr(element.file, "_ptr", None)
+    ptr = lib.ifcopenshell_selector_get_element_value(
+        file_ptr, element._handle, query.encode("utf-8")
+    )
+    if ptr is None:
+        return None
+    result = _value_to_python(lib, ptr, element)
+    lib.ifcopenshell_value_free(ptr)
+    return result
 
 
 def _get_element_value(element: ifcopenshell.entity_instance, keys: list[str]) -> Any:
