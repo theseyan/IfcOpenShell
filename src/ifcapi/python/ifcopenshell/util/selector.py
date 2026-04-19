@@ -109,6 +109,7 @@ class SelectorNode:
 
 _selector_lib_configured = False
 _value_lib_configured = False
+_filter_lib_configured = False
 
 # ifcopenshell_value_kind_t constants (must match value.h)
 _IFCSEL_VALUE_NONE     = 0
@@ -177,6 +178,21 @@ def _configure_value_lib(lib) -> None:
     lib.ifcopenshell_value_dict_value_at.restype = ctypes.c_void_p
     lib.ifcopenshell_value_dict_value_at.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
     _value_lib_configured = True
+
+
+def _configure_filter_lib(lib) -> None:
+    global _filter_lib_configured
+    if _filter_lib_configured:
+        return
+    lib.ifcopenshell_selector_filter_elements.restype = ctypes.c_void_p
+    lib.ifcopenshell_selector_filter_elements.argtypes = [
+        ctypes.c_void_p,   # ifcopenshell_ifc_file_t*
+        ctypes.c_char_p,   # query
+        ctypes.c_void_p,   # ifcopenshell_ifc_instance_t* const* elements
+        ctypes.c_size_t,   # elements_count
+        ctypes.c_int,      # edit_in_place
+    ]
+    _filter_lib_configured = True
 
 
 def _value_to_python(lib, ptr, element):
@@ -684,11 +700,51 @@ def filter_elements(
     """
     if not query:
         return elements or set()
-    if elements and not edit_in_place:
-        elements = elements.copy()
-    transformer = FacetTransformer(ifc_file, elements)
-    transformer.transform(_native_parse(query, "filter"))
-    return transformer.get_results()
+
+    lib = _get_lib()
+    _configure_value_lib(lib)
+    _configure_filter_lib(lib)
+
+    from ifcopenshell.entity_instance import entity_instance as _ei
+
+    # Build the optional elements array.
+    elem_list = list(elements) if elements else []
+    if elem_list:
+        arr = (ctypes.c_void_p * len(elem_list))(*[e._handle for e in elem_list])
+        elem_ptr = ctypes.cast(arr, ctypes.c_void_p)
+        elem_count = len(elem_list)
+    else:
+        arr = None
+        elem_ptr = None
+        elem_count = 0
+
+    val_ptr = lib.ifcopenshell_selector_filter_elements(
+        ifc_file._ptr,
+        query.encode("utf-8"),
+        elem_ptr,
+        elem_count,
+        int(edit_in_place),
+    )
+
+    if not val_ptr:
+        return set()
+
+    result: set[ifcopenshell.entity_instance] = set()
+    n = lib.ifcopenshell_value_list_size(val_ptr)
+    for i in range(n):
+        item_ptr = lib.ifcopenshell_value_list_at(val_ptr, i)
+        if item_ptr and lib.ifcopenshell_value_kind(item_ptr) == _IFCSEL_VALUE_INSTANCE:
+            h = lib.ifcopenshell_value_as_instance(item_ptr)
+            if h:
+                result.add(_ei(ifc_file, h))
+
+    lib.ifcopenshell_value_free(val_ptr)
+
+    if edit_in_place and elements is not None:
+        elements.clear()
+        elements.update(result)
+        return elements
+    return result
 
 
 class SetElementValueException(Exception): ...
@@ -982,385 +1038,3 @@ def set_element_value(
     )
 
 
-class FacetTransformer:
-    results: list[set[ifcopenshell.entity_instance]]
-    base_elements: Optional[set[ifcopenshell.entity_instance]]
-    elements: set[ifcopenshell.entity_instance]
-    container_trees: dict[ifcopenshell.entity_instance, list[ifcopenshell.entity_instance]]
-
-    def __init__(self, ifc_file: ifcopenshell.file, elements: Optional[set[ifcopenshell.entity_instance]] = None):
-        self.file = ifc_file
-        self.results = []
-        if elements is None:
-            self.base_elements = None
-            self.elements = set()
-        else:
-            self.base_elements = elements.copy()
-            self.elements = set()
-        self.has_additive_facet_in_current_list = False
-        self.container_trees = {}
-
-    def transform(self, tree):
-        return _selector_transform(tree, self)
-
-    def add_default_elements(self):
-        if self.has_additive_facet_in_current_list:
-            return
-        self.has_additive_facet_in_current_list = True
-        if self.base_elements:
-            self.elements.update(self.base_elements)
-        else:
-            self.elements.update(self.file.by_type("IfcProduct"))
-            self.elements.update(self.file.by_type("IfcTypeProduct"))
-
-    def get_results(self) -> set[ifcopenshell.entity_instance]:
-        results: set[ifcopenshell.entity_instance] = set()
-        for r in self.results:
-            results |= r
-        return results
-
-    def facet_list(self, args):
-        if self.elements:
-            self.results.append(self.elements)
-            self.elements = set()
-            self.has_additive_facet_in_current_list = False
-
-    def instance(self, args):
-        self.has_additive_facet_in_current_list = True
-        if self.base_elements is None:
-            if args[0].data == "globalid":
-                try:
-                    self.elements.add(self.file.by_guid(args[0].children[0].value))
-                except:
-                    pass
-            else:
-                try:
-                    self.elements.remove(self.file.by_guid(args[1].children[0].value))
-                except:
-                    pass
-        else:
-            if args[0].data == "globalid":
-                self.elements |= {
-                    e for e in self.base_elements if getattr(e, "GlobalId", None) == args[0].children[0].value
-                }
-            else:
-                self.elements -= {
-                    e for e in self.base_elements if getattr(e, "GlobalId", None) == args[1].children[0].value
-                }
-
-    def entity(self, args):
-        self.has_additive_facet_in_current_list = True
-        if self.base_elements is None:
-            if args[0].data == "ifc_class":
-                try:
-                    self.elements |= set(self.file.by_type(args[0].children[0].value))
-                except:
-                    pass
-            else:
-                try:
-                    self.elements -= set(self.file.by_type(args[1].children[0].value))
-                except:
-                    pass
-        else:
-            if args[0].data == "ifc_class":
-                self.elements |= {e for e in self.base_elements if e.is_a(args[0].children[0].value)}
-            else:
-                self.elements -= {e for e in self.base_elements if e.is_a(args[1].children[0].value)}
-
-    def attribute(self, args):
-        name, comparison, value = args
-        name = name.children[0].value
-
-        def filter_function(element: ifcopenshell.entity_instance) -> bool:
-            if name == "PredefinedType":
-                element_value = ifcopenshell.util.element.get_predefined_type(element)
-            else:
-                element_value = getattr(element, name, None)
-            return self.compare(element_value, comparison, value)
-
-        self.add_default_elements()
-        self.elements = set(filter(filter_function, self.elements))
-
-    def type(self, args):
-        comparison, value = args
-
-        def filter_function(element: ifcopenshell.entity_instance) -> bool:
-            element_type = ifcopenshell.util.element.get_type(element)
-            return self.compare(getattr(element_type, "Name", None), comparison, value) or self.compare(
-                getattr(element_type, "GlobalId", None), comparison, value
-            )
-
-        self.add_default_elements()
-        self.elements = set(filter(filter_function, self.elements))
-
-    def material(self, args):
-        comparison, value = args
-
-        def filter_function(element: ifcopenshell.entity_instance) -> bool:
-            materials = ifcopenshell.util.element.get_materials(element)
-            result = False if materials else None
-            for material in materials:
-                if self.compare(material.Name, comparison, value):
-                    result = True
-                if self.compare(getattr(material, "Category", None), comparison, value):
-                    result = True
-            if result is not None:
-                return result if comparison == "=" else not result
-            return self.compare(None, comparison, value)
-
-        self.add_default_elements()
-        self.elements = set(filter(filter_function, self.elements))
-
-    def property(self, args):
-        pset, prop, comparison, value = args
-
-        def filter_function(element: ifcopenshell.entity_instance) -> bool:
-            if isinstance(pset, str) and isinstance(prop, str):
-                element_value = ifcopenshell.util.element.get_pset(element, pset, prop)
-                return self.compare(element_value, comparison, value)
-            elif isinstance(pset, str) and isinstance(prop, re.Pattern):
-                element_props = ifcopenshell.util.element.get_pset(element, pset) or {}
-                for element_prop, element_value in element_props.items():
-                    if prop.match(element_prop):
-                        return self.compare(element_value, comparison, value)
-            elif isinstance(pset, re.Pattern):
-                element_psets = ifcopenshell.util.element.get_psets(element)
-                for element_pset, element_props in element_psets.items():
-                    if not pset.match(element_pset):
-                        continue
-                    if isinstance(prop, str):
-                        element_value = element_props.get(prop, None)
-                        if element_value is not None:
-                            return self.compare(element_value, comparison, value)
-                    elif isinstance(prop, re.Pattern):
-                        for element_prop, element_value in element_props.items():
-                            if prop.match(element_prop):
-                                return self.compare(element_value, comparison, value)
-            return self.compare(None, comparison, value)
-
-        self.add_default_elements()
-        self.elements = set(filter(filter_function, self.elements))
-
-    def classification(self, args):
-        comparison, value = args
-
-        def filter_function(element: ifcopenshell.entity_instance) -> bool:
-            references = ifcopenshell.util.classification.get_references(element)
-            result = False if references else None
-            for reference in references:
-                if self.compare(reference.Name, comparison, value):
-                    result = True
-                if self.compare(
-                    getattr(reference, "Identification", getattr(reference, "ItemReference", None)), comparison, value
-                ):
-                    result = True
-            if result is not None:
-                return result if comparison == "=" else not result
-            return self.compare(None, comparison, value)
-
-        self.add_default_elements()
-        self.elements = set(filter(filter_function, self.elements))
-
-    def location(self, args):
-        comparison, value = args
-
-        def filter_function(element: ifcopenshell.entity_instance) -> bool:
-            container = ifcopenshell.util.element.get_container(element)
-            if not container:
-                container = ifcopenshell.util.element.get_aggregate(element)
-            containers = self.get_container_tree(container)
-            result = False if containers else None
-            for container in containers:
-                if self.compare(container.Name, "=", value) or self.compare(container.GlobalId, "=", value):
-                    result = True
-            if result is not None:
-                return result if comparison == "=" else not result
-            return self.compare(None, comparison, value)
-
-        self.add_default_elements()
-        self.elements = set(filter(filter_function, self.elements))
-
-    def group(self, args):
-        comparison, value = args
-
-        def filter_function(element: ifcopenshell.entity_instance) -> bool:
-            result = False
-            for rel in getattr(element, "HasAssignments", []):
-                if rel.is_a("IfcRelAssignsToGroup") and rel.RelatingGroup:
-                    if self.compare(rel.RelatingGroup.Name, "=", value):
-                        result = True
-                    elif self.compare(rel.RelatingGroup.GlobalId, "=", value):
-                        result = True
-            return result if comparison == "=" else not result
-
-        self.add_default_elements()
-        self.elements = set(filter(filter_function, self.elements))
-
-    def parent(self, args):
-        comparison, value = args
-
-        parents = set()
-        for rel in self.file.by_type("IfcRelAggregates"):
-            parent = rel.RelatingObject
-            if parent and (
-                self.compare(parent.Name, comparison, value) or self.compare(parent.GlobalId, comparison, value)
-            ):
-                parents.add(parent)
-
-        for rel in self.file.by_type("IfcRelContainedInSpatialStructure"):
-            parent = rel.RelatingStructure
-            if parent and (
-                self.compare(parent.Name, comparison, value) or self.compare(parent.GlobalId, comparison, value)
-            ):
-                parents.add(parent)
-
-        for rel in self.file.by_type("IfcRelNests"):
-            parent = rel.RelatingObject
-            if parent and (
-                self.compare(parent.Name, comparison, value) or self.compare(parent.GlobalId, comparison, value)
-            ):
-                parents.add(parent)
-
-        for rel in self.file.by_type("IfcRelVoidsElement"):
-            parent = rel.RelatingBuildingElement
-            if parent and (
-                self.compare(parent.Name, comparison, value) or self.compare(parent.GlobalId, comparison, value)
-            ):
-                parents.add(parent)
-
-        for rel in self.file.by_type("IfcRelFillsElement"):
-            parent = rel.RelatingOpeningElement
-            if parent and (
-                self.compare(parent.Name, comparison, value) or self.compare(parent.GlobalId, comparison, value)
-            ):
-                parents.add(parent)
-
-        # Get all children of the matched parents
-        children: set[ifcopenshell.entity_instance] = set()
-        for parent in parents:
-            children |= set(ifcopenshell.util.element.get_decomposition(parent))
-
-        # Combine parents and children into a single result set
-        result = parents | children
-
-        self.add_default_elements()
-        if comparison == "=":
-            self.elements = self.elements & result
-        else:
-            self.elements -= result
-
-    def query(self, args):
-        keys, comparison, value = args
-
-        def filter_function(element: ifcopenshell.entity_instance) -> bool:
-            return self.compare(get_element_value(element, keys), comparison, value)
-
-        self.add_default_elements()
-        self.elements = set(filter(filter_function, self.elements))
-
-    def get_container_tree(self, container: ifcopenshell.entity_instance) -> list[ifcopenshell.entity_instance]:
-        tree: Union[list[ifcopenshell.entity_instance], None]
-        tree = self.container_trees.get(container, None)
-        if tree:
-            return tree
-
-        tree = []
-
-        while container:
-            if container.is_a("IfcProject"):
-                break
-            tree.append(container)
-            container = ifcopenshell.util.element.get_aggregate(container)
-
-        tree_copy = tree.copy()
-        while tree_copy:
-            self.container_trees[tree_copy.pop(0)] = tree_copy.copy()
-        return tree
-
-    def comparison(self, args):
-        if args[0].data == "not":
-            comparison = args[1].data
-            is_not = "!"
-        else:
-            comparison = args[0].data
-            is_not = ""
-
-        return (
-            is_not
-            + {
-                "equals": "=",
-                "morethanequalto": ">=",
-                "lessthanequalto": "<=",
-                "morethan": ">",
-                "lessthan": "<",
-                "contains": "*=",
-            }[comparison]
-        )
-
-    def keys(self, args):
-        return self.value(args)
-
-    def pset(self, args):
-        return self.value(args)
-
-    def prop(self, args):
-        return self.value(args)
-
-    def value(self, args):
-        if args[0].data == "unquoted_string":
-            return args[0].children[0].value
-        elif args[0].data == "quoted_string":
-            return args[0].children[0].value[1:-1].replace('\\"', '"')
-        elif args[0].data == "regex_string":
-            return re.compile(args[0].children[0].value)
-        elif args[0].data == "special":
-            if args[0].children[0].data == "null":
-                return None
-            elif args[0].children[0].data == "true":
-                return True
-            elif args[0].children[0].data == "false":
-                return False
-
-    def compare(self, element_value, comparison, value) -> bool:
-        if isinstance(element_value, (list, tuple)):
-            return any(self.compare(ev, comparison, value) for ev in element_value)
-        elif isinstance(value, str):
-            try:
-                if isinstance(element_value, int):
-                    value = int(value)
-                elif isinstance(element_value, float):
-                    value = float(value)
-
-                if isinstance(element_value, (int, float)):
-                    operator = comparison.lstrip("!")
-                    if operator == ">=":
-                        result = element_value >= value
-                    elif operator == "<=":
-                        result = element_value <= value
-                    elif operator == ">":
-                        result = element_value > value
-                    elif operator == "<":
-                        result = element_value < value
-                    else:
-                        result = element_value == value  # Tolerance?
-                elif isinstance(element_value, str):
-                    operator = comparison.lstrip("!")
-                    if operator == "*=":
-                        result = value in element_value
-                    else:
-                        result = element_value == value
-                else:
-                    result = element_value == value
-            except:
-                # Potentially they are trying to compare a value which cannot
-                # be legally casted to the element_value, or cannot use the
-                # `in` or more / less than comparison operators.
-                result = False
-        elif isinstance(value, re.Pattern):
-            result = bool(value.match(element_value)) if element_value is not None else False
-        elif value in (None, True, False):
-            result = element_value is value
-
-        if comparison.startswith("!"):
-            return not result
-        return result
