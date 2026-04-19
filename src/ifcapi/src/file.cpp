@@ -64,6 +64,24 @@ ifcopenshell_ifc_file_t* ifcopenshell_file_open(const char* path) {
     }
 }
 
+ifcopenshell_ifc_file_t* ifcopenshell_file_from_string(const char* data, int length) {
+    ifcopenshell_clear_error();
+    if (!data) { set_error("data is NULL"); return nullptr; }
+    if (length < 0) { set_error("length is negative"); return nullptr; }
+    try {
+        auto* file = new IfcParse::IfcFile(const_cast<char*>(data), length);
+        if (!file->good()) {
+            set_error("Failed to parse IFC data from string");
+            delete file;
+            return nullptr;
+        }
+        return ifcopenshell::capi::wrap_file(file, /*owned=*/true);
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
 void ifcopenshell_file_free(ifcopenshell_ifc_file_t* file) {
     if (!file) return;
     if (file->owned) delete file->ptr;

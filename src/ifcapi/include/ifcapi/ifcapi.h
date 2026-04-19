@@ -72,6 +72,7 @@ IFCAPI_EXPORT void ifcopenshell_free_string(char* str);
 /// Opens an IFC file from disk.  Returns an opaque IfcFile pointer (free with
 /// ifcopenshell_file_free), or NULL on failure (use ifcopenshell_last_error_message() for details).
 IFCAPI_EXPORT ifcopenshell_ifc_file_t* ifcopenshell_file_open(const char* path);
+IFCAPI_EXPORT ifcopenshell_ifc_file_t* ifcopenshell_file_from_string(const char* data, int length);
 
 /// Returns an opaque IfcFile pointer. Free with ifcopenshell_file_free().
 IFCAPI_EXPORT ifcopenshell_ifc_file_t* ifcopenshell_file_create(const char* schema_name);
@@ -952,6 +953,59 @@ IFCAPI_EXPORT bool ifcopenshell_api_pset_edit_qto(
 IFCAPI_EXPORT double ifcopenshell_util_unit_calculate_unit_scale(
     ifcopenshell_ifc_file_t* file,
     const char* unit_type);
+
+/* Pure-string helpers. The const char* returns reference static storage and
+   must NOT be freed by the caller. char* returns are heap-allocated and must
+   be released with ifcopenshell_free_string. */
+IFCAPI_EXPORT const char* ifcopenshell_util_unit_get_prefix(const char* text);
+IFCAPI_EXPORT double ifcopenshell_util_unit_get_prefix_multiplier(const char* text);
+IFCAPI_EXPORT const char* ifcopenshell_util_unit_get_unit_name(const char* text);
+IFCAPI_EXPORT const char* ifcopenshell_util_unit_get_unit_name_universal(const char* text);
+IFCAPI_EXPORT char* ifcopenshell_util_unit_get_measure_class(const char* unit_type);
+IFCAPI_EXPORT char* ifcopenshell_util_unit_get_measure_unit_type(const char* measure_class);
+IFCAPI_EXPORT const char* ifcopenshell_util_unit_get_symbol_measure_class(const char* symbol);
+IFCAPI_EXPORT const char* ifcopenshell_util_unit_get_symbol_quantity_class(const char* symbol);
+IFCAPI_EXPORT void ifcopenshell_util_unit_get_si_dimensions(const char* name, int* out7);
+IFCAPI_EXPORT void ifcopenshell_util_unit_get_named_dimensions(const char* name, int* out7);
+IFCAPI_EXPORT double ifcopenshell_util_unit_convert(
+    double value,
+    const char* from_prefix, const char* from_unit,
+    const char* to_prefix, const char* to_unit);
+IFCAPI_EXPORT char* ifcopenshell_util_unit_format_length(
+    double value, double precision, int decimal_places,
+    int suppress_zero_inches, const char* unit_system,
+    const char* input_unit, const char* output_unit);
+
+/* Entity-based helpers. Returned ifc_instance handles are caller-owned and
+   must be released with ifcopenshell_ifc_instance_destroy. char* returns
+   must be released with ifcopenshell_free_string. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_util_unit_get_unit_assignment(
+    ifcopenshell_ifc_file_t* file);
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_util_unit_get_project_unit(
+    ifcopenshell_ifc_file_t* file, const char* unit_type);
+IFCAPI_EXPORT char* ifcopenshell_util_unit_get_full_unit_name(
+    ifcopenshell_ifc_instance_t* unit);
+IFCAPI_EXPORT char* ifcopenshell_util_unit_get_unit_symbol(
+    ifcopenshell_ifc_instance_t* unit);
+IFCAPI_EXPORT double ifcopenshell_util_unit_convert_unit(
+    double value,
+    ifcopenshell_ifc_instance_t* from_unit,
+    ifcopenshell_ifc_instance_t* to_unit);
+/* Inspect a property/quantity. Either *out_unit is populated (a directly
+   attached Unit), or *out_measure_class is populated with the IFC measure class
+   string (e.g. "IfcLengthMeasure") and the caller resolves it via
+   get_project_unit. Both out arguments may be NULL on input if not needed. The
+   returned char* must be released with ifcopenshell_free_string. */
+IFCAPI_EXPORT void ifcopenshell_util_unit_resolve_property(
+    ifcopenshell_ifc_instance_t* prop,
+    ifcopenshell_ifc_instance_t** out_unit,
+    char** out_measure_class);
+IFCAPI_EXPORT void ifcopenshell_util_unit_resolve_property_table(
+    ifcopenshell_ifc_instance_t* prop,
+    ifcopenshell_ifc_instance_t** out_defining_unit,
+    char** out_defining_measure_class,
+    ifcopenshell_ifc_instance_t** out_defined_unit,
+    char** out_defined_measure_class);
 
 /* ------------------------------------------------------------------ */
 /*  api.geometry.edit_object_placement                                 */

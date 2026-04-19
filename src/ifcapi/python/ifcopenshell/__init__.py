@@ -66,6 +66,8 @@ def _get_lib():
     _lib.ifcopenshell_file_create.argtypes = [ctypes.c_char_p]
     _lib.ifcopenshell_file_open.restype = ctypes.c_void_p
     _lib.ifcopenshell_file_open.argtypes = [ctypes.c_char_p]
+    _lib.ifcopenshell_file_from_string.restype = ctypes.c_void_p
+    _lib.ifcopenshell_file_from_string.argtypes = [ctypes.c_char_p, ctypes.c_int]
     _lib.ifcopenshell_file_free.restype = None
     _lib.ifcopenshell_file_free.argtypes = [ctypes.c_void_p]
     _lib.ifcopenshell_file_schema.restype = ctypes.c_char_p
@@ -405,6 +407,7 @@ class file:
         self.history = []
         self.future = []
         self.history_size = 64
+        self.units = {}
 
     def __del__(self):
         if getattr(self, "_ptr", None):
@@ -423,7 +426,6 @@ class file:
         return self.schema
 
     def create_entity(self, type_name=None, *args, **kwargs):
-        # Support upstream pattern: create_entity(type="IfcFoo", ...)
         if type_name is None:
             type_name = kwargs.pop("type", None)
         elif "type" in kwargs:
@@ -541,6 +543,25 @@ class file:
         lib = _get_lib()
         return lib.ifcopenshell_file_entity_count(self._ptr)
 
+    def entity_names(self) -> list:
+        return [inst.id() for inst in self]
+
+    @classmethod
+    def from_string(cls, data) -> "file":
+        lib = _get_lib()
+        if isinstance(data, str):
+            buf = data.encode("utf-8")
+        elif isinstance(data, (bytes, bytearray)):
+            buf = bytes(data)
+        else:
+            raise TypeError("from_string expects str or bytes")
+        ptr = lib.ifcopenshell_file_from_string(buf, len(buf))
+        if not ptr:
+            err = lib.ifcopenshell_last_error_message()
+            msg = err.decode("utf-8") if err else "Unknown error"
+            raise RuntimeError(f"Failed to parse IFC from string: {msg}")
+        return _wrap_file_ptr(ptr)
+
     def __iter__(self):
         lib = _get_lib()
         count = ctypes.c_uint32(0)
@@ -567,6 +588,8 @@ class file:
         return False
 
     def __getattr__(self, name):
+        if name == "wrapped_data":
+            return self
         if name.startswith("create") and name != "create_entity":
             type_name = name[6:]  # strip 'create' prefix
             def creator(*args, **kwargs):
@@ -607,6 +630,18 @@ def schema_by_name(name):
     return _W.schema_by_name(name)
 
 
+def _wrap_file_ptr(ptr) -> "file":
+    f = file.__new__(file)
+    f._ptr = ptr
+    f.header = _file_header()
+    f.transaction = None
+    f.history = []
+    f.future = []
+    f.history_size = 64
+    f.units = {}
+    return f
+
+
 def open(path, should_stream=False, format=None):  # noqa: A001
     """Load an IFC file from disk.
 
@@ -620,11 +655,4 @@ def open(path, should_stream=False, format=None):  # noqa: A001
         err = lib.ifcopenshell_last_error_message()
         msg = err.decode("utf-8") if err else "Unknown error"
         raise RuntimeError(f"Failed to open {path}: {msg}")
-    f = file.__new__(file)
-    f._ptr = ptr
-    f.header = _file_header()
-    f.transaction = None
-    f.history = []
-    f.future = []
-    f.history_size = 64
-    return f
+    return _wrap_file_ptr(ptr)
