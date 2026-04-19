@@ -691,4 +691,22 @@ IFCAPI_EXPORT const void* ifcopenshell_aggregation_type_element(const void* pt);
 /* ------------------------------------------------------------------ */
 #include "ifcapi/selector_ast.h"
 
+/* ------------------------------------------------------------------ */
+/*  Selector value type + get_element_value                           */
+/* ------------------------------------------------------------------ */
+#include "ifcapi/value.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+IFCAPI_EXPORT ifcopenshell_value_t* ifcopenshell_selector_get_element_value(
+    ifcopenshell_ifc_file_t* file,
+    ifcopenshell_ifc_instance_t* element,
+    const char* query);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* IFCAPI_H */

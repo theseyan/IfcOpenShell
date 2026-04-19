@@ -45,6 +45,7 @@ set(IFCAPI_SOURCES
     src/geometry.cpp
     src/schema.cpp
     src/selector_parser.cpp
+    src/selector_get.cpp
 )
 list(TRANSFORM IFCAPI_SOURCES PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
 
