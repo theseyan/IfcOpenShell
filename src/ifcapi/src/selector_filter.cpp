@@ -147,7 +147,7 @@ static FilterValue extract_filter_value(const ifcopenshell_selector_node_t* val_
     return fv;
 }
 
-/* --- Comparison logic (mirrors Python FacetTransformer.compare) ---
+/* --- Comparison logic ---
  *
  *  compare_base: apply the base operator, ignoring is_negated.
  *  compare_full: apply base then negate if is_negated.
@@ -503,11 +503,8 @@ static void apply_material_facet(
             /* No materials: compare against None */
             filter_result = compare_full(nullptr, cmp, fv);
         } else {
-            /* Mirror Python:
-             *   result = False
-             *   for each material: if compare(Name, cmp, fv): result = True
-             *                      if compare(Category, cmp, fv): result = True
-             *   return result if comparison=="=" else not result          */
+            /* For each material, OR together Name and Category matches.
+             * For non-equals operators the final result is inverted. */
             bool any_triggered = false;
             for (auto* m : materials) {
                 std::string name = get_string_attr(m, "Name");

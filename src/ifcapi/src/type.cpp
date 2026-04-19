@@ -128,9 +128,9 @@ bool ifcopenshell_type_map_type_representations(
     ifcopenshell_ifc_instance_t* relating_type_h);
 
 namespace {
-// Strip ObjectType / PredefinedType from related objects when relating
-// type already declares a non-NOTDEFINED PredefinedType, mirroring the
-// upstream Python guard against "double typing" (issue 7006).
+// Strip ObjectType / PredefinedType from related objects when the relating
+// type already declares a non-NOTDEFINED PredefinedType (avoids "double
+// typing"; see ifcopenshell issue 7006).
 void clear_predefined_type_on_objects(
     const std::set<IfcUtil::IfcBaseClass*>& objects_set,
     IfcUtil::IfcBaseClass* relating_type)
@@ -169,7 +169,7 @@ void clear_predefined_type_on_objects(
 // ifcopenshell_type_assign_type_ex. When should_map_representations is
 // true we additionally propagate the relating type's IfcRepresentationMaps
 // onto each newly-assigned related object and clear any redundant
-// ObjectType / PredefinedType (matching upstream Python behaviour).
+// ObjectType / PredefinedType.
 ifcopenshell_ifc_instance_t* assign_type_core(
     ifcopenshell_ifc_file_t* file_ptr,
     ifcopenshell_ifc_instance_t** objects,

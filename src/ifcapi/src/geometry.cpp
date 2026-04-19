@@ -605,8 +605,7 @@ namespace {
 
 // Fixed-point inverse-purge starting at `root`. Deletes `root` and any
 // transitively reachable entity whose only remaining inverses are also in
-// the to-be-deleted set. Mirrors ifcopenshell.util.element.remove_deep2 for
-// the small subgraphs encountered when removing an IfcRepresentationMap.
+// the to-be-deleted set.
 void remove_subgraph(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* root) {
     if (!root) return;
     auto subs = file->traverse(root, -1);
