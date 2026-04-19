@@ -46,6 +46,7 @@ set(IFCAPI_SOURCES
     src/schema.cpp
     src/selector_parser.cpp
     src/selector_get.cpp
+    src/selector_filter.cpp
 )
 list(TRANSFORM IFCAPI_SOURCES PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
 
