@@ -242,6 +242,34 @@ def _get_lib():
     _lib.ifcopenshell_root_create_entity.restype = ctypes.c_void_p
     _lib.ifcopenshell_root_create_entity.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_void_p]
 
+    # -- High-level: util.pset templates --------------------------------------
+    _lib.ifcopenshell_util_pset_set_template_dir.restype = None
+    _lib.ifcopenshell_util_pset_set_template_dir.argtypes = [ctypes.c_char_p]
+    _lib.ifcopenshell_util_pset_get_template.restype = ctypes.c_void_p
+    _lib.ifcopenshell_util_pset_get_template.argtypes = [ctypes.c_char_p]
+    _lib.ifcopenshell_util_pset_template_get_by_name.restype = ctypes.c_void_p
+    _lib.ifcopenshell_util_pset_template_get_by_name.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+    _lib.ifcopenshell_util_pset_template_is_templated.restype = ctypes.c_bool
+    _lib.ifcopenshell_util_pset_template_is_templated.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+    _lib.ifcopenshell_util_pset_template_get_applicable.restype = ctypes.POINTER(ctypes.c_void_p)
+    _lib.ifcopenshell_util_pset_template_get_applicable.argtypes = [
+        ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p,
+        ctypes.c_bool, ctypes.c_bool, ctypes.c_char_p, ctypes.POINTER(ctypes.c_uint32)
+    ]
+    _lib.ifcopenshell_util_pset_template_get_applicable_names.restype = ctypes.POINTER(ctypes.c_char_p)
+    _lib.ifcopenshell_util_pset_template_get_applicable_names.argtypes = [
+        ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p,
+        ctypes.c_bool, ctypes.c_bool, ctypes.c_char_p, ctypes.POINTER(ctypes.c_uint32)
+    ]
+    _lib.ifcopenshell_util_pset_template_pset_type.restype = ctypes.c_char_p
+    _lib.ifcopenshell_util_pset_template_pset_type.argtypes = [ctypes.c_void_p]
+
+    # -- High-level: util.schema.reassign_class -------------------------------
+    _lib.ifcopenshell_util_schema_reassign_class.restype = ctypes.c_void_p
+    _lib.ifcopenshell_util_schema_reassign_class.argtypes = [
+        ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p
+    ]
+
     return _lib
 
 

@@ -79,6 +79,21 @@ ifcopenshell_value_dict_key_at(const ifcopenshell_value_t* v, size_t idx);
 IFCAPI_EXPORT const ifcopenshell_value_t*
 ifcopenshell_value_dict_value_at(const ifcopenshell_value_t* v, size_t idx);
 
+/* ------------------------------------------------------------------ */
+/* Value builders — used by handwritten C++ callers (e.g. set_element_value)
+   to construct values from Python. The returned value is owned by the
+   caller and must be released with ifcopenshell_value_free unless it has
+   been transferred (e.g. via ifcopenshell_value_list_append, which takes
+   ownership of `item`). */
+IFCAPI_EXPORT ifcopenshell_value_t* ifcopenshell_value_new_none(void);
+IFCAPI_EXPORT ifcopenshell_value_t* ifcopenshell_value_new_bool(bool b);
+IFCAPI_EXPORT ifcopenshell_value_t* ifcopenshell_value_new_int(int64_t i);
+IFCAPI_EXPORT ifcopenshell_value_t* ifcopenshell_value_new_double(double d);
+IFCAPI_EXPORT ifcopenshell_value_t* ifcopenshell_value_new_string(const char* s);
+IFCAPI_EXPORT ifcopenshell_value_t* ifcopenshell_value_new_instance(struct ifcopenshell_ifc_instance_t* h);
+IFCAPI_EXPORT ifcopenshell_value_t* ifcopenshell_value_new_list(void);
+IFCAPI_EXPORT void ifcopenshell_value_list_append(ifcopenshell_value_t* list, ifcopenshell_value_t* item);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

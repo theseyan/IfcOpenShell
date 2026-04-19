@@ -681,6 +681,53 @@ IFCAPI_EXPORT int32_t     ifcopenshell_aggregation_type_bound1(const void* pt);
 IFCAPI_EXPORT int32_t     ifcopenshell_aggregation_type_bound2(const void* pt);
 IFCAPI_EXPORT const void* ifcopenshell_aggregation_type_element(const void* pt);
 
+/* ------------------------------------------------------------------ */
+/*  util.attribute                                                     */
+/* ------------------------------------------------------------------ */
+/* Returns the leaf-level primitive type string for an attribute. One of:
+ *   "string", "float", "integer", "boolean", "entity", "enum", "select",
+ *   "binary", "logical", "aggregate", "derived", "unknown".
+ * For aggregate / select attributes the caller is expected to walk the
+ * parameter_type tree separately when nested results are required.
+ * Returned pointer is a static string literal — caller must NOT free. */
+IFCAPI_EXPORT const char* ifcopenshell_util_attribute_get_primitive_type(const void* attribute);
+
+/* Returns a heap-allocated NULL-terminated array of enum item C strings
+ * (length written to *out_count). Caller must free with
+ * ifcopenshell_free_string_array(arr, *out_count). Returns NULL with
+ * *out_count == 0 if the attribute is not an enumeration. */
+IFCAPI_EXPORT char** ifcopenshell_util_attribute_get_enum_items(
+    const void* attribute, uint32_t* out_count);
+
+/* ------------------------------------------------------------------ */
+/*  util.shape                                                         */
+/* ------------------------------------------------------------------ */
+/* Tolerance comparator. Returns true if abs(x - value) < tolerance.
+ * Pass tolerance == 0.0 to use the default (1e-6). */
+IFCAPI_EXPORT bool ifcopenshell_util_shape_is_x(double value, double x, double tolerance);
+
+/* ------------------------------------------------------------------ */
+/*  util.classification                                                */
+/* ------------------------------------------------------------------ */
+/* Returns the IfcClassificationReference instances associated with
+ * `element` (de-duplicated, with type-inheritance rules matching
+ * ifcopenshell.util.classification.get_references). Caller must free with
+ * ifcopenshell_free_instance_array. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_classification_get_references(
+    ifcopenshell_ifc_instance_t* element,
+    bool should_inherit,
+    uint32_t* out_count);
+
+/* ------------------------------------------------------------------ */
+/*  util.element.get_styles                                            */
+/* ------------------------------------------------------------------ */
+/* Returns the IfcSurfaceStyle entities associated with `element`
+ * (drawn from material representations and from the element's body
+ * representation). Caller must free with ifcopenshell_free_instance_array. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_styles(
+    ifcopenshell_ifc_instance_t* element,
+    uint32_t* out_count);
+
 #ifdef __cplusplus
 }
 #endif
@@ -754,6 +801,218 @@ ifcopenshell_selector_keys_is_regex(ifcopenshell_selector_keys_t* h, uint32_t i)
 
 IFCAPI_EXPORT void
 ifcopenshell_selector_keys_free(ifcopenshell_selector_keys_t* h);
+
+/* ------------------------------------------------------------------ */
+/*  util.pset: PSD template lookup                                     */
+/* ------------------------------------------------------------------ */
+
+typedef struct ifcopenshell_pset_template_t ifcopenshell_pset_template_t;
+
+/* Set the directory containing Pset_IFC2X3.ifc, Pset_IFC4_ADD2.ifc and
+   Pset_IFC4X3.ifc. Must be called once per process before
+   ifcopenshell_util_pset_get_template(). The directory string is copied. */
+IFCAPI_EXPORT void ifcopenshell_util_pset_set_template_dir(const char* dir);
+
+/* Returns a process-cached, non-owned handle for the templates of the
+   given schema_identifier (as in file.schema_identifier; e.g. "IFC2X3",
+   "IFC4_ADD2", "IFC4X3_ADD2"). Returns NULL on failure. */
+IFCAPI_EXPORT ifcopenshell_pset_template_t* ifcopenshell_util_pset_get_template(
+    const char* schema_identifier);
+
+/* Returns the IfcPropertySetTemplate instance with matching Name, or NULL.
+   The instance lives in the cached templates file; the caller owns the
+   returned handle and must free it with ifcopenshell_ifc_instance_destroy. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_util_pset_template_get_by_name(
+    ifcopenshell_pset_template_t* pqt, const char* name);
+
+/* Returns true if a template with that name exists in the cached file. */
+IFCAPI_EXPORT bool ifcopenshell_util_pset_template_is_templated(
+    ifcopenshell_pset_template_t* pqt, const char* name);
+
+/* Get applicable property set templates. Returns a malloc'd array of
+   instance handles; caller frees with ifcopenshell_free_instance_array.
+   pset_only/qto_only mirror Python; ifc_class="" means any class. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_pset_template_get_applicable(
+    ifcopenshell_pset_template_t* pqt,
+    const char* ifc_class,
+    const char* predefined_type,
+    bool pset_only,
+    bool qto_only,
+    const char* schema,
+    uint32_t* out_count);
+
+/* Names variant — returns NULL-terminated array of strings; caller frees
+   each entry plus the outer array with ifcopenshell_free_string_array. */
+IFCAPI_EXPORT char** ifcopenshell_util_pset_template_get_applicable_names(
+    ifcopenshell_pset_template_t* pqt,
+    const char* ifc_class,
+    const char* predefined_type,
+    bool pset_only,
+    bool qto_only,
+    const char* schema,
+    uint32_t* out_count);
+
+/* Returns "PSET", "QTO", or NULL (mixed/undetermined). The returned C
+   string is statically allocated and must NOT be freed. */
+IFCAPI_EXPORT const char* ifcopenshell_util_pset_template_pset_type(
+    ifcopenshell_ifc_instance_t* pset_template);
+
+/* ------------------------------------------------------------------ */
+/*  api.pset: add_pset / add_qto / edit_pset / edit_qto                */
+/* ------------------------------------------------------------------ */
+
+/* Builder for the properties dict consumed by edit_pset / edit_qto.
+   The caller constructs the builder, populates entries via the per-entry
+   setters below, and frees it with ifcopenshell_pset_props_free.
+   All strings and arrays are copied internally — callers retain ownership. */
+typedef struct ifcopenshell_pset_props_t ifcopenshell_pset_props_t;
+
+IFCAPI_EXPORT ifcopenshell_pset_props_t* ifcopenshell_pset_props_new(void);
+IFCAPI_EXPORT void ifcopenshell_pset_props_free(ifcopenshell_pset_props_t* props);
+
+IFCAPI_EXPORT void ifcopenshell_pset_props_set_null(ifcopenshell_pset_props_t* props, const char* key);
+IFCAPI_EXPORT void ifcopenshell_pset_props_set_bool(ifcopenshell_pset_props_t* props, const char* key, bool v);
+IFCAPI_EXPORT void ifcopenshell_pset_props_set_int(ifcopenshell_pset_props_t* props, const char* key, int64_t v);
+IFCAPI_EXPORT void ifcopenshell_pset_props_set_double(ifcopenshell_pset_props_t* props, const char* key, double v);
+IFCAPI_EXPORT void ifcopenshell_pset_props_set_string(ifcopenshell_pset_props_t* props, const char* key, const char* v);
+IFCAPI_EXPORT void ifcopenshell_pset_props_set_instance(
+    ifcopenshell_pset_props_t* props, const char* key, ifcopenshell_ifc_instance_t* v);
+
+/* The (value, ifc_type) tuple form — value already wrapped to a specific IFC simple type. */
+IFCAPI_EXPORT void ifcopenshell_pset_props_set_typed_string(
+    ifcopenshell_pset_props_t* props, const char* key, const char* v, const char* ifc_type);
+IFCAPI_EXPORT void ifcopenshell_pset_props_set_typed_double(
+    ifcopenshell_pset_props_t* props, const char* key, double v, const char* ifc_type);
+IFCAPI_EXPORT void ifcopenshell_pset_props_set_typed_int(
+    ifcopenshell_pset_props_t* props, const char* key, int64_t v, const char* ifc_type);
+IFCAPI_EXPORT void ifcopenshell_pset_props_set_typed_bool(
+    ifcopenshell_pset_props_t* props, const char* key, bool v, const char* ifc_type);
+
+/* Aggregate values (enum / list properties). */
+IFCAPI_EXPORT void ifcopenshell_pset_props_set_string_list(
+    ifcopenshell_pset_props_t* props, const char* key, const char** vals, uint32_t count);
+IFCAPI_EXPORT void ifcopenshell_pset_props_set_double_list(
+    ifcopenshell_pset_props_t* props, const char* key, const double* vals, uint32_t count);
+IFCAPI_EXPORT void ifcopenshell_pset_props_set_int_list(
+    ifcopenshell_pset_props_t* props, const char* key, const int64_t* vals, uint32_t count);
+
+/* Nested dict — value is itself a properties builder. The outer builder takes
+   ownership of the inner; do NOT free the inner separately. */
+IFCAPI_EXPORT void ifcopenshell_pset_props_set_dict(
+    ifcopenshell_pset_props_t* outer, const char* key, ifcopenshell_pset_props_t* inner);
+
+/* Create an empty IfcPropertySet on `product`. owner_history may be NULL.
+   Returns a caller-owned handle (free with ifcopenshell_ifc_instance_destroy)
+   that wraps the resulting (or pre-existing) IfcPropertySet, or NULL on error. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_api_pset_add_pset(
+    ifcopenshell_ifc_file_t* file,
+    ifcopenshell_ifc_instance_t* product,
+    const char* name,
+    ifcopenshell_ifc_instance_t* owner_history);
+
+/* Create an empty IfcElementQuantity on `product`. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_api_pset_add_qto(
+    ifcopenshell_ifc_file_t* file,
+    ifcopenshell_ifc_instance_t* product,
+    const char* name,
+    ifcopenshell_ifc_instance_t* owner_history);
+
+/* Edit a property set (name + properties). Both `name` and `properties` may
+   be NULL. `pset_template` overrides the auto-loaded buildingSMART template
+   when non-NULL. Returns true on success. */
+IFCAPI_EXPORT bool ifcopenshell_api_pset_edit_pset(
+    ifcopenshell_ifc_file_t* file,
+    ifcopenshell_ifc_instance_t* pset,
+    const char* name,
+    ifcopenshell_pset_props_t* properties,
+    ifcopenshell_ifc_instance_t* pset_template,
+    bool should_purge);
+
+IFCAPI_EXPORT bool ifcopenshell_api_pset_edit_qto(
+    ifcopenshell_ifc_file_t* file,
+    ifcopenshell_ifc_instance_t* qto,
+    const char* name,
+    ifcopenshell_pset_props_t* properties,
+    ifcopenshell_ifc_instance_t* qto_template);
+
+/* ------------------------------------------------------------------ */
+/*  util.unit                                                          */
+/* ------------------------------------------------------------------ */
+
+/* Returns the project unit-scale factor (multiplier from project units to
+   SI) for the given unit_type ("LENGTHUNIT", "AREAUNIT", ...). Returns 1.0
+   when the project has no UnitsInContext, when the requested unit is not
+   present, or on any error. The returned value follows the upstream
+   ifcopenshell.util.unit.calculate_unit_scale semantics:
+
+       si_value = project_value * unit_scale
+       project_value = si_value / unit_scale
+
+   Pass NULL or empty string for unit_type to default to "LENGTHUNIT". */
+IFCAPI_EXPORT double ifcopenshell_util_unit_calculate_unit_scale(
+    ifcopenshell_ifc_file_t* file,
+    const char* unit_type);
+
+/* ------------------------------------------------------------------ */
+/*  api.geometry.edit_object_placement                                 */
+/* ------------------------------------------------------------------ */
+
+/* Set the IfcLocalPlacement on `product` from a 4x4 row-major matrix
+   (16 doubles). Pass NULL for `matrix` to use the identity. When `is_si`
+   is true, the matrix translation column (matrix[3], matrix[7], matrix[11])
+   is divided by the project's length-unit scale before being recorded.
+   When `should_transform_children` is false, descendants whose placements
+   referenced the previous placement have their relative placements rewritten
+   so their world transforms are preserved.
+
+   Returns a freshly wrapped handle for the new IfcLocalPlacement (caller
+   frees with ifcopenshell_ifc_instance_destroy), or NULL on error / when
+   `product` does not carry an ObjectPlacement attribute. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_api_geometry_edit_object_placement(
+    ifcopenshell_ifc_file_t* file,
+    ifcopenshell_ifc_instance_t* product,
+    const double* matrix,
+    bool is_si,
+    bool should_transform_children);
+
+/* ------------------------------------------------------------------ */
+/*  util.schema.reassign_class                                         */
+/* ------------------------------------------------------------------ */
+
+/* Mirrors ifcopenshell.util.schema.reassign_class(file, element, new_class).
+   Returns the new (reassigned) instance handle (caller-owned, free with
+   ifcopenshell_ifc_instance_destroy), or NULL on failure. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_util_schema_reassign_class(
+    ifcopenshell_ifc_file_t* file,
+    ifcopenshell_ifc_instance_t* element,
+    const char* new_class);
+
+/* ------------------------------------------------------------------ */
+/*  util.selector.set_element_value                                    */
+/* ------------------------------------------------------------------ */
+
+/* Opaque heterogeneous list of selector keys. Each entry is either a plain
+   string key or a regular-expression key (POSIX-ish ECMAScript syntax). */
+typedef struct ifcopenshell_selector_keylist_t ifcopenshell_selector_keylist_t;
+
+IFCAPI_EXPORT ifcopenshell_selector_keylist_t* ifcopenshell_selector_keylist_create(void);
+IFCAPI_EXPORT void ifcopenshell_selector_keylist_destroy(ifcopenshell_selector_keylist_t* h);
+IFCAPI_EXPORT void ifcopenshell_selector_keylist_append_string(
+    ifcopenshell_selector_keylist_t* h, const char* str);
+IFCAPI_EXPORT void ifcopenshell_selector_keylist_append_regex(
+    ifcopenshell_selector_keylist_t* h, const char* pattern);
+
+/* Set the value addressed by `keys` on `element`. The `value` argument uses
+   the existing ifcopenshell_value_t variant (NULL == None). `concat` is the
+   separator used when deserialising property-set enum values from a string
+   (defaults to ", " when NULL). Returns 0 on success, non-zero on error
+   (call ifcopenshell_last_error_message()). */
+IFCAPI_EXPORT int ifcopenshell_util_selector_set_element_value(
+    ifcopenshell_ifc_file_t* file,
+    ifcopenshell_ifc_instance_t* element,
+    const ifcopenshell_selector_keylist_t* keys,
+    const ifcopenshell_value_t* value,
+    const char* concat);
 
 #ifdef __cplusplus
 }

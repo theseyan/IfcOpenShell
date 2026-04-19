@@ -31,13 +31,10 @@ import ifcopenshell.util
 import ifcopenshell.util.attribute
 import ifcopenshell.util.classification
 import ifcopenshell.util.element
-import ifcopenshell.util.geolocation
 import ifcopenshell.util.placement
 import ifcopenshell.util.pset
 import ifcopenshell.util.schema
 import ifcopenshell.util.shape
-import ifcopenshell.util.system
-import ifcopenshell.util.unit
 from ifcopenshell import _get_lib
 
 
@@ -55,6 +52,68 @@ _value_lib_configured = False
 _filter_lib_configured = False
 _format_lib_configured = False
 _keys_lib_configured = False
+_set_lib_configured = False
+
+
+def _configure_set_lib(lib) -> None:
+    global _set_lib_configured
+    if _set_lib_configured:
+        return
+    lib.ifcopenshell_selector_keylist_create.restype = ctypes.c_void_p
+    lib.ifcopenshell_selector_keylist_create.argtypes = []
+    lib.ifcopenshell_selector_keylist_destroy.restype = None
+    lib.ifcopenshell_selector_keylist_destroy.argtypes = [ctypes.c_void_p]
+    lib.ifcopenshell_selector_keylist_append_string.restype = None
+    lib.ifcopenshell_selector_keylist_append_string.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+    lib.ifcopenshell_selector_keylist_append_regex.restype = None
+    lib.ifcopenshell_selector_keylist_append_regex.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+    lib.ifcopenshell_util_selector_set_element_value.restype = ctypes.c_int
+    lib.ifcopenshell_util_selector_set_element_value.argtypes = [
+        ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p,
+    ]
+    lib.ifcopenshell_value_new_none.restype = ctypes.c_void_p
+    lib.ifcopenshell_value_new_none.argtypes = []
+    lib.ifcopenshell_value_new_bool.restype = ctypes.c_void_p
+    lib.ifcopenshell_value_new_bool.argtypes = [ctypes.c_bool]
+    lib.ifcopenshell_value_new_int.restype = ctypes.c_void_p
+    lib.ifcopenshell_value_new_int.argtypes = [ctypes.c_int64]
+    lib.ifcopenshell_value_new_double.restype = ctypes.c_void_p
+    lib.ifcopenshell_value_new_double.argtypes = [ctypes.c_double]
+    lib.ifcopenshell_value_new_string.restype = ctypes.c_void_p
+    lib.ifcopenshell_value_new_string.argtypes = [ctypes.c_char_p]
+    lib.ifcopenshell_value_new_instance.restype = ctypes.c_void_p
+    lib.ifcopenshell_value_new_instance.argtypes = [ctypes.c_void_p]
+    lib.ifcopenshell_value_new_list.restype = ctypes.c_void_p
+    lib.ifcopenshell_value_new_list.argtypes = []
+    lib.ifcopenshell_value_list_append.restype = None
+    lib.ifcopenshell_value_list_append.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    lib.ifcopenshell_value_free.restype = None
+    lib.ifcopenshell_value_free.argtypes = [ctypes.c_void_p]
+    _set_lib_configured = True
+
+
+def _build_native_value(lib, value) -> Optional[int]:
+    """Marshal a Python value to a freshly allocated ifcopenshell_value_t*."""
+    if value is None:
+        return lib.ifcopenshell_value_new_none()
+    if isinstance(value, bool):
+        return lib.ifcopenshell_value_new_bool(value)
+    if isinstance(value, int):
+        return lib.ifcopenshell_value_new_int(value)
+    if isinstance(value, float):
+        return lib.ifcopenshell_value_new_double(value)
+    if isinstance(value, str):
+        return lib.ifcopenshell_value_new_string(value.encode("utf-8"))
+    if isinstance(value, ifcopenshell.entity_instance):
+        return lib.ifcopenshell_value_new_instance(value._handle)
+    if isinstance(value, (list, tuple, set)):
+        list_ptr = lib.ifcopenshell_value_new_list()
+        for item in value:
+            item_ptr = _build_native_value(lib, item)
+            lib.ifcopenshell_value_list_append(list_ptr, item_ptr)
+        return list_ptr
+    # Fallback: convert via str.
+    return lib.ifcopenshell_value_new_string(str(value).encode("utf-8"))
 
 
 def _configure_value_lib(lib) -> None:
@@ -356,270 +415,52 @@ def set_element_value(
     :param concat: Concatenation symbol, used only to deserialize property
         set enum values from string values.
     """
-    original_element = element
+    lib = _get_lib()
+    _configure_set_lib(lib)
+
     if isinstance(query, (list, tuple)):
-        keys = query
+        keys = list(query)
     else:
         keys = _parse_selector_keys(query)
 
-    for i, key in enumerate(keys):
-        if element is None:
-            return
-        if key == "type":
-            element = ifcopenshell.util.element.get_type(element)
-        elif key in ("material", "mat"):
-            element = ifcopenshell.util.element.get_material(element, should_skip_usage=True)
-        elif key in ("materials", "mats"):
-            element = ifcopenshell.util.element.get_materials(element)
-        elif key == "styles":
-            element = ifcopenshell.util.element.get_styles(element)
-        elif key in ("item", "i"):
-            if element.is_a("IfcMaterialLayerSet"):
-                element = element.MaterialLayers
-            elif element.is_a("IfcMaterialProfileSet"):
-                element = element.MaterialProfiles
-            elif element.is_a("IfcMaterialConstituentSet"):
-                element = element.MaterialConstituents
-        elif key == "container":
-            element = ifcopenshell.util.element.get_container(element)
-        elif key == "space":
-            element = ifcopenshell.util.element.get_container(element, ifc_class="IfcSpace")
-        elif key == "storey":
-            element = ifcopenshell.util.element.get_container(element, ifc_class="IfcBuildingStorey")
-        elif key == "building":
-            element = ifcopenshell.util.element.get_container(element, ifc_class="IfcBuilding")
-        elif key == "site":
-            element = ifcopenshell.util.element.get_container(element, ifc_class="IfcSite")
-        elif key == "parent":
-            element = ifcopenshell.util.element.get_parent(element)
-        elif key == "class":
-            if element.is_a().lower() != value.lower():
-                return ifcopenshell.util.schema.reassign_class(ifc_file, element, value)
-            return
-        elif key == "id":
-            return
-        elif key == "predefined_type":
-            current_value = ifcopenshell.util.element.get_predefined_type(element)
-            if current_value == value:
-                return
-
-            def set_predefined_type(
-                element: ifcopenshell.entity_instance, value: Union[str, None], *, is_type: bool
-            ) -> None:
-                predefined_type = element.PredefinedType
-                declaration = element.wrapped_data.declaration()
-                entity = declaration.as_entity()
-                enum_attr = next(attr for attr in entity.attributes() if attr.name() == "PredefinedType")
-                enum_items = ifcopenshell.util.attribute.get_enum_items(enum_attr)
-
-                # USERDEFINED shouldn't occur here, if it does then it means
-                # then it was artificially added and PredefinedType is actually unset.
-                if value in (None, "NOTDEFINED", "USERDEFINED"):
-                    element.PredefinedType = "NOTDEFINED"
-                    setattr(element, "ElementType" if is_type else "ObjectType", None)
-                elif value in enum_items:
-                    if predefined_type == value:
-                        return
-                    element.PredefinedType = value
-                    return
-
-                # Value not in PredefinedType enum items.
-                if predefined_type != "USERDEFINED":
-                    element.PredefinedType = "USERDEFINED"
-                setattr(element, "ElementType" if is_type else "ObjectType", value)
-                return
-
-            if element_type := ifcopenshell.util.element.get_type(element):
-                set_predefined_type(element_type, value, is_type=True)
-                return
-            set_predefined_type(element, value, is_type=False)
-            return
-        elif key == "classification":
-            element = ifcopenshell.util.classification.get_references(element)
-        elif key in ("x", "y", "z", "easting", "northing", "elevation") and hasattr(element, "ObjectPlacement"):
-            # TODO: add support
-            if key in ("easting", "northing", "elevation"):
-                return
-
-            placement = element.ObjectPlacement
-            if placement is None:
-                matrix = np.eye(4)
-            else:
-                matrix = ifcopenshell.util.placement.get_local_placement(placement)
-
-            # check if value is within tolerance to avoid api calls
-            coord_i = "xyz".index(key)
-            prev_value = matrix[coord_i][3]
-            new_value = float(value) if value else 0.0
-            if ifcopenshell.util.shape.is_x(new_value, prev_value):
-                return
-
-            matrix[coord_i][3] = new_value
-            ifcopenshell.api.geometry.edit_object_placement(ifc_file, product=element, matrix=matrix, is_si=False)
-            return
-        elif isinstance(element, ifcopenshell.entity_instance):
-            if key == "Name" and element.is_a("IfcMaterialLayerSet"):
-                key = "LayerSetName"  # This oddity in the IFC spec is annoying so we account for it.
-
-            if isinstance(key, str) and ((current_value := getattr(element, key, ...)) is not ...):
-                # check if key is not last
-                if len(keys) != i + 1:
-                    element = current_value
-                    continue
-
-                if current_value == value:
-                    return
+    if isinstance(element, ifcopenshell.entity_instance) or element is None:
+        klist = lib.ifcopenshell_selector_keylist_create()
+        try:
+            for k in keys:
+                if isinstance(k, re.Pattern):
+                    lib.ifcopenshell_selector_keylist_append_regex(klist, k.pattern.encode("utf-8"))
                 else:
-                    # check if key is not last
-                    try:
-                        # Try our luck
-                        return setattr(element, key, value)
-                    except:
-                        # Try to cast
-                        data_type = ifcopenshell.util.attribute.get_primitive_type(
-                            element.wrapped_data.declaration()
-                            .as_entity()
-                            .attribute_by_index(element.wrapped_data.get_argument_index(key))
-                        )
-                        if data_type == "string":
-                            value = str(value)
-                        elif data_type == "float":
-                            value = float(value)
-                        elif data_type == "integer":
-                            value = int(value)
-                        elif data_type == "boolean":
-                            if value in ("True", "true", "TRUE", "Yes", "1"):
-                                value = True
-                            elif value in ("False", "false", "FALSE", "No", "0"):
-                                value = False
-                            else:
-                                value = bool(value)
-                        elif data_type == "entity":
-                            value = ifc_file.by_guid(value)
-                        if current_value == value:
-                            return
-                        return setattr(element, key, value)
-            else:
-                # Try to extract pset
-                if isinstance(key, re.Pattern):
-                    psets = ifcopenshell.util.element.get_psets(element)
-                    matching_psets = []
-                    for pset_name, pset in psets.items():
-                        if key.match(pset_name):
-                            matching_psets.append(pset)
-                    result = matching_psets or None
-                    if result and len(result) == 1:
-                        result = result[0]
-                else:
-                    result = ifcopenshell.util.element.get_pset(element, key)
+                    lib.ifcopenshell_selector_keylist_append_string(klist, str(k).encode("utf-8"))
+            val_ptr = _build_native_value(lib, value)
+            try:
+                file_ptr = getattr(ifc_file, "_ptr", None)
+                elem_ptr = element._handle if isinstance(element, ifcopenshell.entity_instance) else None
+                rc = lib.ifcopenshell_util_selector_set_element_value(
+                    file_ptr, elem_ptr, klist, val_ptr, concat.encode("utf-8")
+                )
+                if rc != 0:
+                    msg = lib.ifcopenshell_last_error_message()
+                    msg = msg.decode("utf-8", errors="replace") if msg else (
+                        f"Failed to set value '{value}' for element '{element}' "
+                        f"with query '{query}' (invalid or unsupported query)."
+                    )
+                    raise SetElementValueException(msg)
+            finally:
+                if val_ptr:
+                    lib.ifcopenshell_value_free(val_ptr)
+        finally:
+            lib.ifcopenshell_selector_keylist_destroy(klist)
+        return
 
-                    if value and not result and len(keys) == i + 2:  # The next key is the prop name
-                        if "qto" in key.lower() or "quantity" in key.lower() or "quantities" in key.lower():
-                            pset = ifcopenshell.api.pset.add_qto(ifc_file, product=element, name=key)
-                        else:
-                            pset = ifcopenshell.api.pset.add_pset(ifc_file, product=element, name=key)
-                        result = {"id": pset.id()}
-
-                element = result
-        elif isinstance(element, dict):  # Such as from the result of a prior get_pset
-            pset = ifc_file.by_id(element["id"])
-            if isinstance(key, re.Pattern):
-                for prop, prop_value in element.items():
-                    if key.match(prop):
-                        if pset.is_a("IfcPropertySet") and prop_value != value:
-                            ifcopenshell.api.pset.edit_pset(ifc_file, pset=pset, properties={prop: value})
-                        elif pset.is_a("IfcElementQuantity") and prop_value != float(value):
-                            ifcopenshell.api.pset.edit_qto(ifc_file, qto=pset, properties={prop: float(value)})
-            elif pset.is_a("IfcPropertySet") and element.get(key, None) != value:
-
-                def process_pset_prop_value(
-                    pset: ifcopenshell.entity_instance, prop: str, value: Any
-                ) -> Union[Any, EllipsisType]:
-                    """Try to process value for edit_pset.
-
-                    `edit_pset` is expecting a sequence of values
-                    for enum properties, not just a string of some-symbol-separated values.
-
-                    Return `...` if property can be skipped as it has the same value.
-                    """
-                    if not isinstance(value, str):
-                        return value
-
-                    current_value = element.get(key, ...)
-                    # Check if previous value is a list as a fast way to identify enum properties.
-                    if not isinstance(current_value, (EllipsisType, list)):
-                        return value
-
-                    if isinstance(current_value, list):
-                        # Value won't change, safe to skip editing IFC.
-                        enum_values = value.split(concat)
-                        if len(enum_values) == len(current_value) and set(enum_values) == set(current_value):
-                            return ...
-
-                    template = ifcopenshell.util.pset.get_template(ifc_file.schema_identifier)
-                    pset_template = template.get_by_name(pset.Name)
-                    if pset_template is None:
-                        return value
-                    for prop_template in pset_template.HasPropertyTemplates:
-                        # 2 IfcSimplePropertyTemplate.Name
-                        if prop_template[2] != prop:
-                            continue
-
-                        # 4 IfcSimplePropertyTemplate.TemplateType
-                        if prop_template[4] != "P_ENUMERATEDVALUE":
-                            # Not a enum property.
-                            return value
-
-                        # 7 IfcSimplePropertyTemplate.Enumerators
-                        if (enumeration := prop_template[7]) is None:
-                            # Enum property but without enumerators,
-                            # make it a sequence to keep it assignable as a enum.
-                            return (value,)
-
-                        # 1 IfcPropertyEnumeration.EnumerationValues
-                        available_enum_values = {v.wrappedValue for v in enumeration[1]}
-                        if value in available_enum_values:
-                            # Valid enum item, just keep it a sequence.
-                            return (value,)
-
-                        # Taking a wild guess that it's `concat` separated list.
-                        enum_values = value.split(concat)
-                        if not all(v in available_enum_values for v in enum_values):
-                            raise Exception(
-                                "Error setting pset enum property.\n"
-                                f"Invalid enum values for property '{prop} in pset '{pset}': '{', '.join(enum_values)}'.\n"
-                                f"Possible enum values for this property: {', '.join(available_enum_values)}."
-                            )
-                        return enum_values
-
-                    # Couldn't find property template for this prop - delegate decision to edit_pset.
-                    return value
-
-                value = process_pset_prop_value(pset, key, value)
-                if value == ...:
-                    return
-                ifcopenshell.api.pset.edit_pset(ifc_file, pset=pset, properties={key: value})
-            elif pset.is_a("IfcElementQuantity"):
-                try:
-                    value = float(value)
-                    if element.get(key, None) != value:
-                        ifcopenshell.api.pset.edit_qto(ifc_file, qto=pset, properties={key: value})
-                except:
-                    pass
+    if isinstance(element, dict):
+        pset_id = element.get("id")
+        if pset_id is None:
             return
-        elif isinstance(element, (list, tuple, set)):  # If we use regex
-            if key.isnumeric():
-                try:
-                    element = element[int(key)]
-                except IndexError:
-                    return
-            else:
-                for v in element:
-                    set_element_value(ifc_file, v, keys[i:], value)
-                return
+        pset_inst = ifc_file.by_id(pset_id)
+        set_element_value(ifc_file, pset_inst, keys, value, concat=concat)
+        return
 
-    raise SetElementValueException(
-        f"Failed to set value '{value}' for element '{original_element}' with query '{query}' (invalid or unsupported query)."
-    )
-
-
+    if isinstance(element, (list, tuple, set)):
+        for v in element:
+            set_element_value(ifc_file, v, keys, value, concat=concat)
+        return

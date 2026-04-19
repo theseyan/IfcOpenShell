@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
+import ctypes
 import json
 import os
 import time
@@ -24,6 +25,7 @@ from typing import Any, Literal, Union
 import ifcopenshell
 import ifcopenshell.ifcopenshell_wrapper as ifcopenshell_wrapper
 import ifcopenshell.util.attribute
+from ifcopenshell.entity_instance import entity_instance
 
 # This is highly experimental and incomplete, however, it may work for simple datasets.
 
@@ -156,64 +158,30 @@ def reassign_class(
     removing element and recreating a similar instance of type `new_class`
     with the same id.
 
-    In certain cases it may affect the structure of inversely related instances:
-    - Multiple occurrences of reassigned instance within the same aggregate
-      (such as start and end-point of polyline)
-    - Occurrences of reassigned instance within an ordered aggregate
-      (such as IfcRelNests)
-
-    It's unlikely that this affects real-world usage of this function.
-
     :raises ValueError: If ``new_class`` does not exist in the provided file schema.
     """
-
     if element.is_a() == new_class:
         return element
 
     if not ifc_file:
         ifc_file = element.file
 
-    schema = ifcopenshell_wrapper.schema_by_name(ifc_file.schema_identifier)
-    try:
-        declaration = schema.declaration_by_name(new_class)
-    except RuntimeError:
-        raise ValueError(
-            f"Class of {element} could not be changed to {new_class} as the class does not exist in schema {ifc_file.schema_identifier}."
-        )
-
-    info = element.get_info()
-
-    new_attributes = {}
-    for attribute in declaration.all_attributes():
-        name = attribute.name()
-        old_attribute = info.get(name, None)
-        if old_attribute:
-            if ifcopenshell.util.attribute.get_primitive_type(attribute) == "enum":
-                if old_attribute in ifcopenshell.util.attribute.get_enum_items(attribute):
-                    new_attributes[name] = old_attribute
-            else:
-                new_attributes[name] = old_attribute
-
-    inverse_pairs = ifc_file.get_inverse(element, allow_duplicate=True, with_attribute_indices=True)
-    ifc_file.remove(element)
-
-    try:
-        new_element = ifc_file.create_entity(new_class, id=info["id"], **new_attributes)
-    except:
-        print(f"Class of {element} could not be changed to {new_class}")
-        old_class = info.pop("type")
-        return ifc_file.create_entity(old_class, **info)
-
-    for inverse_pair in inverse_pairs:
-        inverse, index = inverse_pair
-        if inverse[index] is None:
-            inverse[index] = new_element
-        elif isinstance(inverse[index], tuple):
-            item = list(inverse[index])
-            item.append(new_element)
-            inverse[index] = item
-
-    return new_element
+    lib = ifcopenshell._get_lib()
+    new_handle = lib.ifcopenshell_util_schema_reassign_class(
+        ifc_file._ptr, element._handle, new_class.encode("utf-8")
+    )
+    if not new_handle:
+        err = lib.ifcopenshell_last_error_message()
+        msg = err.decode("utf-8") if err else "Unknown error"
+        if "does not exist in schema" in msg or "not an entity declaration" in msg:
+            raise ValueError(
+                f"Class of {element} could not be changed to {new_class} as the class does not exist in schema {ifc_file.schema_identifier}."
+            )
+        raise RuntimeError(f"reassign_class failed: {msg}")
+    # The C ABI removes the original element; invalidate the Python wrapper's
+    # handle so we don't double-free or use a dangling pointer.
+    element._handle = 0
+    return entity_instance(ifc_file, new_handle)
 
 
 class BatchReassignClass:

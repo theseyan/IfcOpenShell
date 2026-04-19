@@ -48,6 +48,17 @@ set(IFCAPI_SOURCES
     src/selector_get.cpp
     src/selector_filter.cpp
     src/selector_format.cpp
+    src/selector_set.cpp
+    src/util_attribute.cpp
+    src/util_shape.cpp
+    src/util_classification.cpp
+    src/util_element_styles.cpp
+    src/util_pset_template.cpp
+    src/util_schema.cpp
+    src/util_unit_scale.cpp
+    src/api_pset_add.cpp
+    src/api_pset_edit.cpp
+    src/api_geometry_placement.cpp
 )
 list(TRANSFORM IFCAPI_SOURCES PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
 
