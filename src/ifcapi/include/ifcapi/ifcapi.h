@@ -729,6 +729,98 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_styles
     ifcopenshell_ifc_instance_t* element,
     uint32_t* out_count);
 
+/* ------------------------------------------------------------------ */
+/*  util.element traversal helpers                                     */
+/* ------------------------------------------------------------------ */
+
+/* Get all occurrences of a type element. Caller frees with
+ * ifcopenshell_free_instance_array. Returns NULL when empty. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_types(
+    ifcopenshell_ifc_instance_t* type_element, uint32_t* out_count);
+
+/* Get IfcShapeAspect entities associated with a product or product type. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_shape_aspects(
+    ifcopenshell_ifc_instance_t* element, bool should_inherit, uint32_t* out_count);
+
+/* Get IfcGroup entities `element` is assigned to via IfcRelAssignsToGroup. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_groups(
+    ifcopenshell_ifc_instance_t* element, uint32_t* out_count);
+
+/* Get IfcControl entities assigned to `element` via IfcRelAssignsToControl. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_controls(
+    ifcopenshell_ifc_instance_t* element, uint32_t* out_count);
+
+/* Get the parts of `element` that have an aggregation relationship. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_parts(
+    ifcopenshell_ifc_instance_t* element, uint32_t* out_count);
+
+/* Get the contained elements of a spatial element. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_contained(
+    ifcopenshell_ifc_instance_t* element, uint32_t* out_count);
+
+/* Get IfcSpatialElement entities referenced by `element`'s ReferencedInStructures. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_referenced_structures(
+    ifcopenshell_ifc_instance_t* element, uint32_t* out_count);
+
+/* Get the elements referenced by `structure` via IfcRelReferencedInSpatialStructure. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_structure_referenced_elements(
+    ifcopenshell_ifc_instance_t* structure, uint32_t* out_count);
+
+/* Get IfcRelVoidsElements relationships for `element`, recursing through aggregates. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_openings(
+    ifcopenshell_ifc_instance_t* element, uint32_t* out_count);
+
+/* Get the IfcOpeningElement filled by `element`, or NULL. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_util_element_get_filled_void(
+    ifcopenshell_ifc_instance_t* element);
+
+/* Get the building element voided by an opening, or NULL. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_util_element_get_voided_element(
+    ifcopenshell_ifc_instance_t* element);
+
+/* True if the predefined type of `element` is userdefined. */
+IFCAPI_EXPORT bool ifcopenshell_util_element_is_userdefined_type(
+    ifcopenshell_ifc_instance_t* element);
+
+/* Returns elements with `reference` (IfcExternalReference subtype) assigned. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_referenced_elements(
+    ifcopenshell_ifc_instance_t* reference, uint32_t* out_count);
+
+/* Returns all elements (including via material sets/usages/lists) that use `material`. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_elements_by_material(
+    ifcopenshell_ifc_instance_t* material, uint32_t* out_count);
+
+/* Returns all elements whose representation uses `style`. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_elements_by_style(
+    ifcopenshell_ifc_instance_t* style, uint32_t* out_count);
+
+/* Returns all elements using a geometric IfcShapeRepresentation. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_elements_by_representation(
+    ifcopenshell_ifc_instance_t* representation, uint32_t* out_count);
+
+/* Returns elements whose representation uses an IfcProfileDef. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_elements_by_profile(
+    ifcopenshell_ifc_instance_t* profile, uint32_t* out_count);
+
+/* Returns elements whose geometry is assigned to a presentation layer. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_elements_by_layer(
+    ifcopenshell_ifc_instance_t* layer, uint32_t* out_count);
+
+/* Returns the presentation layers that any portion of `element`'s geometry is on. */
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_layers(
+    ifcopenshell_ifc_instance_t* element, uint32_t* out_count);
+
+/* Replace every occurrence of `old_element` with `new_element` in the file's graph. */
+IFCAPI_EXPORT void ifcopenshell_util_element_replace_element(
+    ifcopenshell_ifc_instance_t* old_element,
+    ifcopenshell_ifc_instance_t* new_element);
+
+/* Recursively purges a subgraph rooted at `element` (only entities whose inverses are
+ * fully contained in the subgraph). See ifcopenshell.util.element.remove_deep. */
+IFCAPI_EXPORT void ifcopenshell_util_element_remove_deep(
+    ifcopenshell_ifc_instance_t* element);
+
+
 #ifdef __cplusplus
 }
 #endif

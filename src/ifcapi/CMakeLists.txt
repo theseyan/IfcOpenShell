@@ -53,6 +53,7 @@ set(IFCAPI_SOURCES
     src/util_shape.cpp
     src/util_classification.cpp
     src/util_element_styles.cpp
+    src/util_element_traversal.cpp
     src/util_pset_template.cpp
     src/util_schema.cpp
     src/util_unit.cpp

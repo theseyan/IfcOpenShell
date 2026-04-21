@@ -112,7 +112,13 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_styles
             ifcopenshell_ifc_instance_destroy(mat_h);
         }
         for (auto* material : materials) {
-            for (auto* mdr : read_ref_list(material, "HasRepresentation")) {
+            std::vector<IfcUtil::IfcBaseClass*> mdrs = read_ref_list(material, "HasRepresentation");
+            if (mdrs.empty()) {
+                if (auto inv = get_inverse(material, "HasRepresentation")) {
+                    for (size_t i = 0; i < inv->size(); ++i) mdrs.push_back((*inv)[i]);
+                }
+            }
+            for (auto* mdr : mdrs) {
                 for (auto* rep : read_ref_list(mdr, "Representations")) {
                     for (auto* item : read_ref_list(rep, "Items")) {
                         for (auto* style : read_ref_list(item, "Styles")) {

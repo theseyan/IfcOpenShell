@@ -301,33 +301,137 @@ def _enc(s):
 # _typed_value — lightweight wrapper for inline IFC simple types
 # ---------------------------------------------------------------------------
 
-# Map IFC type names to Python conversion functions
-_TYPE_CONVERTERS = {
-    "string": str,
-    "real": float,
-    "number": float,
-    "integer": int,
-    "boolean": lambda v: v.lower() in ("true", "1", ".t."),
-    "logical": lambda v: v.lower() in ("true", "1", ".t."),
+# Cache: (schema_name, type_name) -> resolver kind tuple
+# Resolver kinds: ("scalar", primitive), ("aggregate", element_kind), ("unknown",)
+_TYPED_VALUE_KIND_CACHE: dict = {}
+
+_SIMPLE_KIND_TO_PRIMITIVE = {
+    "string": "string",
+    "real": "real",
+    "number": "real",
+    "integer": "integer",
+    "boolean": "boolean",
+    "logical": "logical",
+    "binary": "string",
 }
 
-# Map IFC type names to their underlying kind for wrappedValue conversion
-_TYPE_KIND_CACHE: dict = {}
 
-
-def _resolve_type_kind(type_name: str) -> str:
-    """Heuristic: determine the underlying Python type for an IFC type name."""
-    low = type_name.lower()
-    if "label" in low or "text" in low or "identifier" in low or "uri" in low or "name" in low:
-        return "string"
-    if "integer" in low or "count" in low:
-        return "integer"
-    if "boolean" in low:
-        return "boolean"
-    if "logical" in low:
-        return "logical"
-    # Most IFC measure types are real-valued
+def _scalar_kind_for_pt(pt) -> str:
+    """Walk a parameter_type fully through nested typedefs to its scalar kind."""
+    seen = 0
+    while pt is not None and seen < 16:
+        seen += 1
+        st = pt.as_simple_type()
+        if st is not None:
+            return _SIMPLE_KIND_TO_PRIMITIVE.get(st.declared_type(), "real")
+        nt = pt.as_named_type()
+        if nt is not None:
+            inner = nt.declared_type()
+            inner_td = inner.as_type_declaration() if inner else None
+            if inner_td is not None:
+                pt = inner_td.declared_type()
+                continue
+        return "real"
     return "real"
+
+
+def _resolve_typed_value_kind(file_obj, type_name: str):
+    """Use schema introspection to map an IFC type name to a python kind.
+
+    Returns one of:
+      ("scalar", "string"|"real"|"integer"|"boolean"|"logical")
+      ("aggregate", <scalar_kind>)
+      ("unknown",)
+    """
+    if file_obj is None or not type_name:
+        return ("unknown",)
+    schema_name = getattr(file_obj, "_schema_name", None)
+    if schema_name is None:
+        try:
+            schema_name = file_obj.schema
+        except Exception:
+            schema_name = None
+        if schema_name:
+            try:
+                file_obj._schema_name = schema_name
+            except Exception:
+                pass
+    cache_key = (schema_name or "", type_name)
+    cached = _TYPED_VALUE_KIND_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    kind = ("unknown",)
+    try:
+        from ifcopenshell import ifcopenshell_wrapper as _wrapper
+        schema = _wrapper.schema_by_name(schema_name) if schema_name else None
+        decl = schema.declaration_by_name(type_name) if schema else None
+        td = decl.as_type_declaration() if decl else None
+        pt = td.declared_type() if td else None
+        # Walk through nested named types (typedefs of typedefs)
+        seen = 0
+        while pt is not None and seen < 16:
+            seen += 1
+            nt = pt.as_named_type()
+            if nt is not None:
+                inner = nt.declared_type()
+                inner_td = inner.as_type_declaration() if inner else None
+                if inner_td is not None:
+                    pt = inner_td.declared_type()
+                    continue
+                pt = None
+                break
+            agg = pt.as_aggregation_type()
+            if agg is not None:
+                kind = ("aggregate", _scalar_kind_for_pt(agg.type_of_element()))
+                break
+            st = pt.as_simple_type()
+            if st is not None:
+                kind = ("scalar", _SIMPLE_KIND_TO_PRIMITIVE.get(st.declared_type(), "real"))
+                break
+            break
+    except Exception:
+        kind = ("unknown",)
+
+    _TYPED_VALUE_KIND_CACHE[cache_key] = kind
+    return kind
+
+
+def _convert_scalar(prim: str, raw):
+    if raw is None:
+        return None
+    if not isinstance(raw, str):
+        return raw
+    if prim == "integer":
+        try:
+            return int(raw)
+        except (ValueError, TypeError):
+            return raw
+    if prim == "real":
+        try:
+            return float(raw)
+        except (ValueError, TypeError):
+            return raw
+    if prim in ("boolean", "logical"):
+        return raw.lower() in ("true", "1", ".t.")
+    return raw
+
+
+def _parse_aggregate_literal(raw, elem_prim: str):
+    if raw is None:
+        return None
+    if isinstance(raw, (list, tuple)):
+        return tuple(_convert_scalar(elem_prim, v) for v in raw)
+    if not isinstance(raw, str):
+        return raw
+    s = raw.strip()
+    if s.startswith("(") and s.endswith(")"):
+        inner = s[1:-1].strip()
+        if not inner:
+            return ()
+        parts = [p.strip() for p in inner.split(",")]
+        return tuple(_convert_scalar(elem_prim, p) for p in parts)
+    return raw
 
 
 class _typed_value:
@@ -339,20 +443,21 @@ class _typed_value:
     - `id()` returns 0
     """
 
-    def __init__(self, file_obj, type_name: str, str_value: str | None):
+    def __init__(self, file_obj, type_name: str, value):
         self._file = file_obj
         self._type_name = type_name
-        self._str_value = str_value
-        # Convert to appropriate Python type
-        kind = _TYPE_KIND_CACHE.get(type_name)
-        if kind is None:
-            kind = _resolve_type_kind(type_name)
-            _TYPE_KIND_CACHE[type_name] = kind
-        converter = _TYPE_CONVERTERS.get(kind, str)
-        try:
-            self._wrapped = converter(str_value) if str_value is not None else None
-        except (ValueError, TypeError):
-            self._wrapped = str_value
+        kind = _resolve_typed_value_kind(file_obj, type_name)
+        if kind[0] == "aggregate":
+            self._wrapped = _parse_aggregate_literal(value, kind[1])
+        elif kind[0] == "scalar":
+            self._wrapped = _convert_scalar(kind[1], value)
+        elif value is None or not isinstance(value, str):
+            self._wrapped = value
+        else:
+            try:
+                self._wrapped = float(value)
+            except (ValueError, TypeError):
+                self._wrapped = value
 
     def is_a(self, ifc_class: str | None = None) -> bool | str:
         if ifc_class is None:
@@ -381,6 +486,23 @@ class _typed_value:
     def __hash__(self):
         return hash((self._type_name, self._wrapped))
 
+    def __getitem__(self, index):
+        if index == 0:
+            return self._wrapped
+        if isinstance(self._wrapped, (list, tuple)):
+            return self._wrapped[index]
+        raise IndexError(index)
+
+    def __len__(self):
+        if isinstance(self._wrapped, (list, tuple)):
+            return len(self._wrapped)
+        return 1
+
+    def __iter__(self):
+        if isinstance(self._wrapped, (list, tuple)):
+            return iter(self._wrapped)
+        return iter((self._wrapped,))
+
 
 # ---------------------------------------------------------------------------
 # entity_instance
@@ -408,6 +530,13 @@ class file:
         self.future = []
         self.history_size = 64
         self.units = {}
+        self.to_delete = None
+
+    def batch(self) -> None:
+        return None
+
+    def unbatch(self) -> None:
+        return None
 
     def __del__(self):
         if getattr(self, "_ptr", None):
@@ -437,8 +566,8 @@ class file:
         if not h:
             # Might be a type instance (IfcLabel, IfcReal, etc.)
             val_arg = args[0] if args else kwargs.get("wrappedValue")
-            if val_arg is not None:
-                return _typed_value(self, type_name, str(val_arg))
+            if val_arg is not None or "wrappedValue" in kwargs:
+                return _typed_value(self, type_name, val_arg)
             err = lib.ifcopenshell_last_error_message()
             msg = err.decode("utf-8") if err else "Unknown error"
             raise RuntimeError(f"Failed to create entity '{type_name}': {msg}")
@@ -630,6 +759,25 @@ def schema_by_name(name):
     return _W.schema_by_name(name)
 
 
+_SCRATCH_FILES: dict = {}
+
+
+def _scratch_file(schema: str) -> "file":
+    f = _SCRATCH_FILES.get(schema)
+    if f is None:
+        f = file(schema=schema)
+        _SCRATCH_FILES[schema] = f
+    return f
+
+
+def create_entity(type: str, schema: str = "IFC4", *args, **kwargs):
+    """Create an IFC entity in a per-schema scratch file.
+
+    Used by the auto-generated EXPRESS rules modules to construct intermediate
+    geometric entities while computing DERIVE attributes."""
+    return _scratch_file(schema).create_entity(type, *args, **kwargs)
+
+
 def _wrap_file_ptr(ptr) -> "file":
     f = file.__new__(file)
     f._ptr = ptr
@@ -639,6 +787,7 @@ def _wrap_file_ptr(ptr) -> "file":
     f.future = []
     f.history_size = 64
     f.units = {}
+    f.to_delete = None
     return f
 
 
