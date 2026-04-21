@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import ctypes
+import importlib
 from typing import List, Optional, Set, Tuple
 
 from ifcopenshell import (
     _get_lib,
     _enc,
     _typed_value,
-    _resolve_type_kind,
-    _TYPE_CONVERTERS,
     ATTR_NULL,
     ATTR_STRING,
     ATTR_INT,
@@ -22,6 +21,20 @@ from ifcopenshell import (
     ATTR_DERIVED,
     ATTR_UNKNOWN,
 )
+
+
+_RULES_CACHE: dict = {}
+
+
+def _load_rules_module(schema_name: str):
+    if schema_name in _RULES_CACHE:
+        return _RULES_CACHE[schema_name]
+    try:
+        mod = importlib.import_module(f"ifcopenshell.express.rules.{schema_name}")
+    except ImportError:
+        mod = None
+    _RULES_CACHE[schema_name] = mod
+    return mod
 
 
 class entity_instance:
@@ -220,97 +233,123 @@ class entity_instance:
         raise AttributeError(f"Entity #{self.id()} has no attribute '{name}'")
 
     def _get_derived(self, name):
-        """Compute common derived attributes."""
-        type_name = self.is_a()
-        if name == "Dim":
-            if type_name == "IfcCartesianPoint":
-                coords = self.Coordinates
-                return len(coords) if coords else 0
-            elif type_name == "IfcDirection":
-                ratios = self.DirectionRatios
-                return len(ratios) if ratios else 0
-            elif type_name == "IfcVector":
-                return self.Orientation.Dim
-            elif type_name in ("IfcGradientCurve", "IfcSegmentedReferenceCurve"):
-                return 3
-            elif self.is_a("IfcCurve"):
-                # For composite curves and other curves, try to infer from segments
-                segs = getattr(self, "Segments", None)
-                if segs and len(segs) > 0:
-                    seg = segs[0]
-                    parent_curve = getattr(seg, "ParentCurve", None)
-                    if parent_curve:
-                        return parent_curve.Dim
-                # Fallback for curves with points
-                pts = getattr(self, "Points", None)
-                if pts:
-                    if hasattr(pts, "Dim"):
-                        return pts.Dim
-                    if hasattr(pts, "CoordList") and pts.CoordList:
-                        return len(pts.CoordList[0])
-                    if hasattr(pts, "__len__") and len(pts) > 0:
-                        return pts[0].Dim
-                # Default to 2D for curves with no segments
-                return 2
+        """Compute a DERIVE attribute via the upstream EXPRESS rules module
+        for this file's schema. Falls back to None when no rule matches."""
+        from ifcopenshell import ifcopenshell_wrapper
+
+        try:
+            schema_name = self._file.schema
+        except Exception:
+            return None
+        if not schema_name:
+            return None
+        rules = _load_rules_module(schema_name)
+        if rules is None:
+            return None
+        try:
+            schema = ifcopenshell_wrapper.schema_by_name(schema_name)
+            decl = schema.declaration_by_name(self.is_a())
+        except Exception:
+            return None
+        while decl is not None:
+            sty = decl.name()
+            fn = getattr(rules, f"calc_{sty}_{name}", None)
+            if fn is not None:
+                try:
+                    return fn(self)
+                except Exception:
+                    return None
+            try:
+                decl = decl.supertype()
+            except Exception:
+                return None
         return None
 
     def _get_aggregate(self, h, attr, name):
-        """Read an aggregate attribute, returning a Python list."""
+        """Read an aggregate attribute, returning a Python tuple.
+
+        Codec is selected from the schema-declared element type."""
         lib = _get_lib()
 
-        # Prefer inline typed values (SET OF IfcValue etc.): the C layer stores
-        # them as references to type-declaration entities, but we want the
-        # Python side to surface _typed_value wrappers. If this path returns
-        # results, use it authoritatively.
-        tv_result = self._get_aggregate_typed_value(h, attr)
-        if tv_result is not None and len(tv_result) > 0:
-            return tv_result
+        pt = self._declared_attribute_primitive(name)
+        elem_kind = None
+        nested_double = False
+        if isinstance(pt, tuple) and len(pt) == 2:
+            inner = pt[1]
+            if isinstance(inner, tuple) and len(inner) == 2 and inner[1] == "float":
+                nested_double = True
+            elif isinstance(inner, str):
+                elem_kind = inner
+            elif isinstance(inner, tuple) and inner and inner[0] == "select":
+                elem_kind = "select"
+        elif isinstance(pt, str):
+            # Schema declares scalar but runtime is aggregate: caller stored
+            # a list in a scalar attribute. Treat declared scalar as element type.
+            elem_kind = pt
+        elif isinstance(pt, tuple) and pt and pt[0] == "select":
+            elem_kind = "select"
 
-        count = ctypes.c_uint32(0)
-        arr = lib.ifcopenshell_entity_get_aggregate_ref(h, attr, ctypes.byref(count))
-        if arr and count.value > 0:
-            all_null = all(not arr[i] for i in range(count.value))
-            if all_null:
+        if elem_kind == "entity":
+            count = ctypes.c_uint32(0)
+            arr = lib.ifcopenshell_entity_get_aggregate_ref(h, attr, ctypes.byref(count))
+            if arr and count.value > 0:
+                result = tuple(entity_instance(self._file, arr[i]) for i in range(count.value))
+                lib.ifcopenshell_free_instance_array_only(arr)
+                return result
+            if arr:
                 lib.ifcopenshell_free_instance_array(arr, count.value)
-                return self._get_aggregate_typed_value(h, attr) or tuple()
-            result = tuple(entity_instance(self._file, arr[i]) for i in range(count.value))
-            lib.ifcopenshell_free_instance_array_only(arr)
-            return result
+            return tuple()
 
-        if tv_result is not None:
-            return tv_result
+        if elem_kind == "float":
+            count = ctypes.c_uint32(0)
+            darr = lib.ifcopenshell_entity_get_aggregate_double(h, attr, ctypes.byref(count))
+            if darr and count.value > 0:
+                result = tuple(darr[i] for i in range(count.value))
+                lib.ifcopenshell_free_double_array(darr)
+                return result
+            return tuple()
 
-        # Try doubles
-        count = ctypes.c_uint32(0)
-        darr = lib.ifcopenshell_entity_get_aggregate_double(h, attr, ctypes.byref(count))
-        if darr and count.value > 0:
-            result = tuple(darr[i] for i in range(count.value))
-            lib.ifcopenshell_free_double_array(darr)
-            return result
+        if elem_kind in ("integer", "boolean"):
+            count = ctypes.c_uint32(0)
+            iarr = lib.ifcopenshell_entity_get_aggregate_int(h, attr, ctypes.byref(count))
+            if iarr and count.value > 0:
+                if elem_kind == "boolean":
+                    result = tuple(bool(iarr[i]) for i in range(count.value))
+                else:
+                    result = tuple(iarr[i] for i in range(count.value))
+                lib.ifcopenshell_free_int_array(iarr)
+                return result
+            return tuple()
 
-        # Try ints
-        count = ctypes.c_uint32(0)
-        iarr = lib.ifcopenshell_entity_get_aggregate_int(h, attr, ctypes.byref(count))
-        if iarr and count.value > 0:
-            result = tuple(iarr[i] for i in range(count.value))
-            lib.ifcopenshell_free_int_array(iarr)
-            return result
+        if elem_kind in ("string", "enum", "binary"):
+            count = ctypes.c_uint32(0)
+            sarr = lib.ifcopenshell_entity_get_aggregate_string(h, attr, ctypes.byref(count))
+            if sarr and count.value > 0:
+                result = tuple(sarr[i].decode("utf-8") if sarr[i] else "" for i in range(count.value))
+                lib.ifcopenshell_free_string_array(sarr, count)
+                return result
+            return tuple()
 
-        # Try strings
-        count = ctypes.c_uint32(0)
-        sarr = lib.ifcopenshell_entity_get_aggregate_string(h, attr, ctypes.byref(count))
-        if sarr and count.value > 0:
-            result = tuple(sarr[i].decode("utf-8") if sarr[i] else "" for i in range(count.value))
-            lib.ifcopenshell_free_string_array(sarr, count)
-            return result
+        if nested_double:
+            nested = self._get_aggregate_double_list_list(name)
+            return nested if nested is not None else tuple()
 
-        # Try nested double list (e.g. IfcCartesianPointList2D.CoordList) via
-        # the autogen low-level API.
-        nested = self._get_aggregate_double_list_list(name)
-        if nested is not None:
-            return nested
+        if elem_kind == "select":
+            tv_result = self._get_aggregate_typed_value(h, attr)
+            if tv_result is not None and len(tv_result) > 0:
+                return tv_result
+            count = ctypes.c_uint32(0)
+            arr = lib.ifcopenshell_entity_get_aggregate_ref(h, attr, ctypes.byref(count))
+            if arr and count.value > 0:
+                non_null = [arr[i] for i in range(count.value) if arr[i]]
+                if non_null and len(non_null) == count.value:
+                    result = tuple(entity_instance(self._file, p) for p in non_null)
+                    lib.ifcopenshell_free_instance_array_only(arr)
+                    return result
+                lib.ifcopenshell_free_instance_array(arr, count.value)
+            return tv_result if tv_result is not None else tuple()
 
-        return tuple()
+        raise TypeError(f"Unsupported aggregate element type for '{name}': {pt!r}")
 
     def _get_aggregate_double_list_list(self, name):
         """Read LIST OF LIST OF REAL via autogen attribute_value_as_double_list_list."""
@@ -470,66 +509,104 @@ class entity_instance:
                 return i
         return -1
 
+    def _declared_attribute_primitive(self, name):
+        """Return the schema-declared primitive type for `name`.
+
+        Returns either a leaf primitive ("string"/"float"/"integer"/"boolean"/
+        "entity"/"enum"/"binary") or a tuple ("list"|"set"|"array"|"bag",
+        <element-primitive>) for aggregates, or None when the schema lookup
+        fails (caller should fall back to value-driven dispatch)."""
+        try:
+            from ifcopenshell.util.attribute import get_primitive_type
+            decl = self.declaration()
+            for a in decl.all_attributes():
+                if a.name() == name:
+                    return get_primitive_type(a)
+        except Exception:
+            return None
+        return None
+
     def _set_aggregate(self, h, attr, name, items):
-        """Write a Python list to an aggregate attribute."""
+        """Write a Python list to an aggregate attribute.
+
+        Codec is chosen from the schema-declared element type whenever
+        possible; the value-driven path is only taken when no declaration
+        is available (e.g. derived attributes)."""
         lib = _get_lib()
         if not items:
             lib.ifcopenshell_entity_set_aggregate_ref(h, attr, None, 0)
             return
 
+        pt = self._declared_attribute_primitive(name)
+        elem_kind = None
+        nested_double = False
+        if isinstance(pt, tuple) and len(pt) == 2:
+            inner = pt[1]
+            if isinstance(inner, tuple) and len(inner) == 2 and inner[1] == "float":
+                nested_double = True
+            elif isinstance(inner, str):
+                elem_kind = inner
+        elif isinstance(pt, str):
+            elem_kind = pt
+
         first = items[0]
-        if isinstance(first, (list, tuple)):
-            inner_first = first[0] if len(first) else None
-            if isinstance(inner_first, float) or (isinstance(inner_first, (int,)) and not isinstance(inner_first, bool)):
-                idx = self._attr_index(name)
-                if idx < 0:
-                    raise TypeError(f"Unknown attribute '{name}'")
-                class _DL(ctypes.Structure):
-                    _fields_ = [("items", ctypes.POINTER(ctypes.c_double)), ("size", ctypes.c_size_t)]
-                class _DLL(ctypes.Structure):
-                    _fields_ = [("items", ctypes.POINTER(_DL)), ("size", ctypes.c_size_t)]
-                inner_arrays = []
-                dl_items = (_DL * len(items))()
-                for i, row in enumerate(items):
-                    row_vals = [float(v) for v in row]
-                    buf = (ctypes.c_double * len(row_vals))(*row_vals)
-                    inner_arrays.append(buf)
-                    dl_items[i].items = ctypes.cast(buf, ctypes.POINTER(ctypes.c_double))
-                    dl_items[i].size = len(row_vals)
-                dll = _DLL()
-                dll.items = dl_items
-                dll.size = len(items)
-                lib.ifcopenshell_ifc_instance_set_argument_double_list_list.restype = ctypes.c_bool
-                lib.ifcopenshell_ifc_instance_set_argument_double_list_list.argtypes = [
-                    ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(_DLL),
-                ]
-                ok = lib.ifcopenshell_ifc_instance_set_argument_double_list_list(h, idx, ctypes.byref(dll))
-                if not ok:
-                    raise RuntimeError(f"Failed to set nested double aggregate '{name}'")
-                return
-            raise TypeError(f"Cannot set aggregate '{name}' with nested element type {type(inner_first)}")
-        if isinstance(first, entity_instance):
-            arr = (ctypes.c_void_p * len(items))(*[e._handle for e in items])
-            lib.ifcopenshell_entity_set_aggregate_ref(h, attr, arr, len(items))
-        elif isinstance(first, _typed_value):
+        if nested_double:
+            idx = self._attr_index(name)
+            if idx < 0:
+                raise TypeError(f"Unknown attribute '{name}'")
+            class _DL(ctypes.Structure):
+                _fields_ = [("items", ctypes.POINTER(ctypes.c_double)), ("size", ctypes.c_size_t)]
+            class _DLL(ctypes.Structure):
+                _fields_ = [("items", ctypes.POINTER(_DL)), ("size", ctypes.c_size_t)]
+            inner_arrays = []
+            dl_items = (_DL * len(items))()
+            for i, row in enumerate(items):
+                row_vals = [float(v) for v in row]
+                buf = (ctypes.c_double * len(row_vals))(*row_vals)
+                inner_arrays.append(buf)
+                dl_items[i].items = ctypes.cast(buf, ctypes.POINTER(ctypes.c_double))
+                dl_items[i].size = len(row_vals)
+            dll = _DLL()
+            dll.items = dl_items
+            dll.size = len(items)
+            lib.ifcopenshell_ifc_instance_set_argument_double_list_list.restype = ctypes.c_bool
+            lib.ifcopenshell_ifc_instance_set_argument_double_list_list.argtypes = [
+                ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(_DLL),
+            ]
+            ok = lib.ifcopenshell_ifc_instance_set_argument_double_list_list(h, idx, ctypes.byref(dll))
+            if not ok:
+                raise RuntimeError(f"Failed to set nested double aggregate '{name}'")
+            return
+
+        if isinstance(first, _typed_value):
             type_names = (ctypes.c_char_p * len(items))(*[_enc(v._type_name) for v in items])
             str_vals = (ctypes.c_char_p * len(items))(
                 *[_enc(str(v._wrapped)) if v._wrapped is not None else _enc("") for v in items])
             lib.ifcopenshell_entity_set_aggregate_typed_value(h, attr, type_names, str_vals, len(items))
-        elif isinstance(first, float):
-            arr = (ctypes.c_double * len(items))(*items)
+            return
+        if isinstance(first, entity_instance):
+            arr = (ctypes.c_void_p * len(items))(*[e._handle for e in items])
+            lib.ifcopenshell_entity_set_aggregate_ref(h, attr, arr, len(items))
+            return
+
+        if elem_kind == "entity":
+            arr = (ctypes.c_void_p * len(items))(
+                *[e._handle if isinstance(e, entity_instance) else None for e in items])
+            lib.ifcopenshell_entity_set_aggregate_ref(h, attr, arr, len(items))
+        elif elem_kind == "float":
+            arr = (ctypes.c_double * len(items))(*[float(v) for v in items])
             lib.ifcopenshell_entity_set_aggregate_double(h, attr, arr, len(items))
-        elif isinstance(first, bool):
+        elif elem_kind == "integer":
             arr = (ctypes.c_int64 * len(items))(*[int(v) for v in items])
             lib.ifcopenshell_entity_set_aggregate_int(h, attr, arr, len(items))
-        elif isinstance(first, int):
-            arr = (ctypes.c_int64 * len(items))(*items)
+        elif elem_kind == "boolean":
+            arr = (ctypes.c_int64 * len(items))(*[int(bool(v)) for v in items])
             lib.ifcopenshell_entity_set_aggregate_int(h, attr, arr, len(items))
-        elif isinstance(first, str):
-            arr = (ctypes.c_char_p * len(items))(*[_enc(s) for s in items])
+        elif elem_kind in ("string", "enum", "binary"):
+            arr = (ctypes.c_char_p * len(items))(*[_enc(str(s)) for s in items])
             lib.ifcopenshell_entity_set_aggregate_string(h, attr, arr, len(items))
         else:
-            raise TypeError(f"Cannot set aggregate '{name}' with element type {type(first)}")
+            raise TypeError(f"Cannot set aggregate '{name}' with declared primitive {pt!r}")
 
     def __repr__(self):
         lib = _get_lib()

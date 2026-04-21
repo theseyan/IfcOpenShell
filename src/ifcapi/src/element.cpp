@@ -338,7 +338,7 @@ ifcopenshell_ifc_instance_t** ifcopenshell_element_get_pset_ids(const ifcopenshe
 
     auto push_def = [&](IfcUtil::IfcBaseClass* d) {
         if (!d) return;
-        if (psets_only && !is_a(d, "IfcPropertySet")) return;
+        if (psets_only && !is_a(d, "IfcPropertySet") && !is_a(d, "IfcPreDefinedPropertySet")) return;
         if (qtos_only && !is_a(d, "IfcElementQuantity")) return;
         int32_t did = id_of(d);
         if (did && seen.insert(did).second) result.push_back(did);
@@ -363,7 +363,10 @@ ifcopenshell_ifc_instance_t** ifcopenshell_element_get_pset_ids(const ifcopenshe
                 }
             }
         } else if (!is_ifc2x3) {
-            for (auto* d : read_ref_list(e, "HasProperties")) push_def(d);
+            // HasProperties is an INVERSE attribute on IfcMaterial/IfcProfileDef.
+            if (auto inv = get_inverse(e, "HasProperties")) {
+                for (size_t i = 0; i < inv->size(); ++i) push_def((*inv)[i]);
+            }
         }
         return alloc_id_handles(instance ? instance->ptr->file_ : nullptr, result, out_count);
     }
