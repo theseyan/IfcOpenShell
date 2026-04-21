@@ -60,6 +60,7 @@ set(IFCAPI_SOURCES
     src/api_pset_add.cpp
     src/api_pset_edit.cpp
     src/api_geometry_placement.cpp
+    src/express/runtime.cpp
 )
 list(TRANSFORM IFCAPI_SOURCES PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
 
