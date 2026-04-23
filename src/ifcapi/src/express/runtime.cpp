@@ -12,8 +12,10 @@
 #include "ifcparse/IfcSchema.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstring>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace ifcapi {
@@ -189,6 +191,19 @@ Value argument_to_value(const AttributeValue& a) {
 }  // namespace
 
 Value express_getattr(const Value& v, std::string_view attr_name) {
+    if (v.is_entity_proxy()) {
+        const auto& px = v.as_proxy();
+        // Most-recent override wins.
+        for (auto it = px.overrides.rbegin(); it != px.overrides.rend(); ++it) {
+            if (it->first == attr_name) return it->second;
+        }
+        if (px.base.ptr) {
+            // Fall through to underlying entity read.
+            Value base_val = Value(px.base);
+            return express_getattr(base_val, attr_name);
+        }
+        return Indeterminate{};
+    }
     auto* e = as_baseclass(v);
     if (!e) return Indeterminate{};
     auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(e);
@@ -196,22 +211,142 @@ Value express_getattr(const Value& v, std::string_view attr_name) {
     auto* d = be->declaration().as_entity();
     if (!d) return Indeterminate{};
     std::string name(attr_name);
-    int idx;
+
+    // 1) Try direct (stored) attribute lookup.
+    int idx = -1;
     try {
         idx = static_cast<int>(d->attribute_index(name));
     } catch (...) {
+        idx = -1;
+    }
+    if (idx >= 0) {
+        try {
+            return argument_to_value(e->get_attribute_value(static_cast<size_t>(idx)));
+        } catch (...) {
+            return Indeterminate{};
+        }
+    }
+
+    // 2) Fall through to DERIVE dispatch. Derived attributes are not
+    // stored in the schema's attributes_ vector, so attribute_index
+    // returns -1 for them.
+    DeriveFn fn = lookup_derived(d, name);
+    if (fn) {
+        EntityRef self_ref; self_ref.ptr = static_cast<void*>(e);
+        try { return fn(self_ref); } catch (...) { return Indeterminate{}; }
+    }
+    return Indeterminate{};
+}
+
+/* ================================================================== */
+/*  Derived-attribute dispatch registry                               */
+/* ================================================================== */
+namespace {
+struct DerivedKey {
+    std::string entity;
+    std::string attr;
+    bool operator==(const DerivedKey& o) const noexcept {
+        return entity == o.entity && attr == o.attr;
+    }
+};
+struct DerivedKeyHash {
+    size_t operator()(const DerivedKey& k) const noexcept {
+        return std::hash<std::string>{}(k.entity) ^ (std::hash<std::string>{}(k.attr) << 1);
+    }
+};
+// Keyed on (entity_lower, attr_lower); schema is implicit because each
+// entity name is unique within a schema and a given decl* lookup walks
+// just one schema's chain.
+using DerivedMap = std::unordered_map<DerivedKey, DeriveFn, DerivedKeyHash>;
+DerivedMap& derived_registry() {
+    static DerivedMap m;
+    return m;
+}
+std::string lc_copy(std::string_view s) {
+    std::string out(s);
+    for (auto& c : out) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return out;
+}
+}  // namespace
+
+void register_derived(std::string_view /*schema_name*/,
+                      std::string_view entity_name,
+                      std::string_view attr_name,
+                      DeriveFn fn) {
+    if (!fn) return;
+    derived_registry()[DerivedKey{lc_copy(entity_name), lc_copy(attr_name)}] = fn;
+}
+
+DeriveFn lookup_derived(const void* decl_ptr, std::string_view attr_name) {
+    auto* d = static_cast<const IfcParse::entity*>(decl_ptr);
+    if (!d) return nullptr;
+    auto& reg = derived_registry();
+    std::string attr_lc = lc_copy(attr_name);
+    const IfcParse::entity* cur = d;
+    while (cur) {
+        auto it = reg.find(DerivedKey{lc_copy(cur->name()), attr_lc});
+        if (it != reg.end()) return it->second;
+        cur = cur->supertype();
+    }
+    return nullptr;
+}
+
+
+Value set_index(const Value& container, const Value& idx, const Value& value) {
+    if (container.is_indeterminate() || idx.is_indeterminate()) return Indeterminate{};
+    if (!idx.is_int()) return Indeterminate{};
+    auto i = idx.as_int();
+    if (i < 1) return Indeterminate{};
+    auto pos = static_cast<size_t>(i - 1);
+    if (container.is_list()) {
+        auto data = std::make_shared<ListData>(container.as_list());
+        if (pos >= data->size()) data->resize(pos + 1);
+        (*data)[pos] = value;
+        return Value(ListPtr{std::move(data)});
+    }
+    if (container.is_set()) {
+        auto data = std::make_shared<SetData>(container.as_set());
+        if (pos >= data->size()) data->resize(pos + 1);
+        (*data)[pos] = value;
+        return Value(SetPtr{std::move(data)});
+    }
+    return Indeterminate{};
+}
+
+Value set_attr(const Value& v, std::string_view attr_name, const Value& value) {
+    if (v.is_indeterminate()) return Indeterminate{};
+    auto px = std::make_shared<EntityProxyData>();
+    if (v.is_entity_proxy()) {
+        *px = v.as_proxy();  // copy existing overrides
+    } else if (v.is_entity()) {
+        if (auto* e = as_baseclass(v)) {
+            const auto* d = &e->declaration();
+            px->type_name = d->name();
+            if (d->schema()) px->schema_name = d->schema()->name();
+            px->base = v.as_entity();
+        }
+    } else {
         return Indeterminate{};
     }
-    if (idx < 0) return Indeterminate{};
-    try {
-        return argument_to_value(e->get_attribute_value(static_cast<size_t>(idx)));
-    } catch (...) {
-        return Indeterminate{};
-    }
+    px->overrides.emplace_back(std::string(attr_name), value);
+    return Value(EntityProxyPtr{std::move(px)});
 }
 
 Value typeof_(const Value& v) {
     if (v.is_indeterminate()) return Indeterminate{};
+    if (v.is_entity_proxy()) {
+        const auto& px = v.as_proxy();
+        if (px.base.ptr) {
+            return typeof_(Value(px.base));
+        }
+        // No base: just emit the recorded type.
+        auto out = std::make_shared<SetData>();
+        std::string s = px.schema_name + "." + px.type_name;
+        std::transform(s.begin(), s.end(), s.begin(),
+                       [](unsigned char c) { return std::tolower(c); });
+        out->emplace_back(s);
+        return Value(SetPtr{std::move(out)});
+    }
     auto* e = as_baseclass(v);
     if (!e) return Indeterminate{};
     auto out = std::make_shared<SetData>();
@@ -296,6 +431,27 @@ Value usedin(const Value& v, std::string_view qualified_attr) {
             for (auto& it : *out)
                 if (it.is_entity() && it.as_entity().ptr == ref.ptr) { dup = true; break; }
             if (!dup) out->emplace_back(ref);
+        }
+    } catch (...) {}
+    return Value(SetPtr{std::move(out)});
+}
+
+/* ================================================================== */
+/*  File-level helpers                                                */
+/* ================================================================== */
+
+Value file_by_type(IfcFile* file, const char* type_name) {
+    auto out = std::make_shared<SetData>();
+    if (!file || !type_name || !*type_name) return Value(SetPtr{std::move(out)});
+    auto* real = reinterpret_cast<IfcParse::IfcFile*>(file);
+    try {
+        auto insts = real->instances_by_type(type_name);
+        if (insts) {
+            for (auto& it : *insts) {
+                if (!it) continue;
+                EntityRef ref; ref.ptr = static_cast<void*>(it);
+                out->emplace_back(ref);
+            }
         }
     } catch (...) {}
     return Value(SetPtr{std::move(out)});
@@ -477,6 +633,63 @@ Value math_abs(const Value& v) {
     if (v.is_int())  return static_cast<std::int64_t>(std::llabs(v.as_int()));
     if (v.is_real()) return std::fabs(v.as_double());
     return Indeterminate{};
+}
+
+/* --- Membership / coercion / iteration --------------------------------- */
+
+Value express_in(const Value& needle, const Value& container) {
+    if (needle.is_indeterminate() || container.is_indeterminate())
+        return Indeterminate{};
+    auto hits = [&](const std::vector<Value>& xs) -> Value {
+        for (const auto& x : xs) {
+            Value eq = (needle == x);
+            if (eq.is_indeterminate()) return Indeterminate{};
+            if (eq.as_bool()) return true;
+        }
+        return false;
+    };
+    if (container.is_list()) return hits(container.as_list());
+    if (container.is_set())  return hits(container.as_set());
+    return Indeterminate{};
+}
+
+Value express_value(const Value& v) {
+    if (v.is_indeterminate()) return Indeterminate{};
+    if (v.is_number()) return v;
+    if (v.is_string()) {
+        try { return std::stod(v.as_string()); } catch (...) { return Indeterminate{}; }
+    }
+    return Indeterminate{};
+}
+
+namespace {
+const std::vector<Value>& empty_view() {
+    static const std::vector<Value> e;
+    return e;
+}
+}  // namespace
+
+const std::vector<Value>& iter(const Value& v) {
+    if (v.is_list()) return v.as_list();
+    if (v.is_set())  return v.as_set();
+    return empty_view();
+}
+
+Value repeat(const Value& v, const Value& count) {
+    if (v.is_indeterminate() || count.is_indeterminate() || !count.is_number())
+        return Indeterminate{};
+    std::int64_t n = count.is_int() ? count.as_int()
+                                    : static_cast<std::int64_t>(count.as_double());
+    auto p = make_list_ptr();
+    p.p->reserve(n > 0 ? static_cast<std::size_t>(n) : 0);
+    for (std::int64_t i = 0; i < n; ++i) p.p->push_back(v);
+    return Value(std::move(p));
+}
+
+std::vector<Value> to_list(const Value& v) {
+    if (v.is_list()) return v.as_list();
+    if (v.is_set())  return v.as_set();
+    return {};
 }
 
 }  // namespace express

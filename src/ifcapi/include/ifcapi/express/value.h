@@ -67,6 +67,20 @@ using SetData  = std::vector<Value>; ///< Order-preserving set; uniqueness
                                      ///< enforced by insert/union/intersect.
 struct SetPtr  { std::shared_ptr<SetData> p; };
 
+/// Mutable in-memory entity proxy. Used by generated rules that perform
+/// in-place attribute mutation on a local variable (e.g.
+/// `u[i].DirectionRatios[j] := …`). Reads via `express_getattr` consult
+/// `overrides` first then fall back to `base`. Writes via `set_attr` add
+/// to `overrides`. `schema_name`/`type_name` carry just enough info for
+/// `typeof_` to behave correctly.
+struct EntityProxyData {
+    std::string schema_name;
+    std::string type_name;
+    EntityRef   base{};  // optional source entity; .ptr may be nullptr
+    std::vector<std::pair<std::string, Value>> overrides;
+};
+struct EntityProxyPtr { std::shared_ptr<EntityProxyData> p; };
+
 inline ListPtr make_list_ptr() { return {std::make_shared<ListData>()}; }
 inline SetPtr  make_set_ptr()  { return {std::make_shared<SetData>()}; }
 
@@ -83,7 +97,8 @@ class Value {
         std::string,
         EntityRef,
         ListPtr,
-        SetPtr>;
+        SetPtr,
+        EntityProxyPtr>;
 
     enum class Tag : std::uint8_t {
         Indeterminate = 0,
@@ -94,6 +109,7 @@ class Value {
         Entity        = 5,
         List          = 6,
         Set           = 7,
+        EntityProxy   = 8,
     };
 
     /// Constructors — implicit so generated code can write
@@ -109,6 +125,7 @@ class Value {
     Value(EntityRef e)                 : data_(e) {}
     Value(ListPtr p)                   : data_(std::move(p)) {}
     Value(SetPtr p)                    : data_(std::move(p)) {}
+    Value(EntityProxyPtr p)            : data_(std::move(p)) {}
 
     /// Convenience: build a fresh empty list/set.
     static Value make_list() { return Value(make_list_ptr()); }
@@ -118,6 +135,13 @@ class Value {
         p.p->reserve(items.size());
         for (const auto& v : items) p.p->push_back(v);
         return Value(std::move(p));
+    }
+
+    /// Mutate-in-place append, used by generated query-comprehensions.
+    /// No-op if this Value is not a list (the comprehension scaffolding
+    /// always constructs a list with `make_list({})` first).
+    void append(Value v) {
+        if (is_list()) std::get<ListPtr>(data_).p->push_back(std::move(v));
     }
 
     Tag tag() const noexcept { return static_cast<Tag>(data_.index()); }
@@ -132,8 +156,9 @@ class Value {
     bool is_string()        const noexcept { return tag() == Tag::Str; }
     bool is_entity()        const noexcept { return tag() == Tag::Entity; }
     bool is_list()          const noexcept { return tag() == Tag::List; }
-    bool is_set()           const noexcept { return tag() == Tag::Set; }
-    bool is_collection()    const noexcept { return is_list() || is_set(); }
+    bool is_set()          const noexcept { return tag() == Tag::Set; }
+    bool is_entity_proxy() const noexcept { return tag() == Tag::EntityProxy; }
+    bool is_collection()   const noexcept { return is_list() || is_set(); }
 
     bool        as_bool()    const { return std::get<bool>(data_); }
     std::int64_t as_int()    const { return std::get<std::int64_t>(data_); }
@@ -147,6 +172,8 @@ class Value {
     ListData&          as_list_mut()     { return *std::get<ListPtr>(data_).p; }
     const SetData&     as_set()    const { return *std::get<SetPtr>(data_).p; }
     SetData&           as_set_mut()      { return *std::get<SetPtr>(data_).p; }
+    EntityProxyData&   as_proxy()        { return *std::get<EntityProxyPtr>(data_).p; }
+    const EntityProxyData& as_proxy() const { return *std::get<EntityProxyPtr>(data_).p; }
 
     /// Truthiness — used by generated `if`/`and`/`or` code. Mirrors
     /// Python: 0/0.0/""/empty-collection/false are falsy; INDETERMINATE
@@ -164,6 +191,7 @@ class Value {
             case Tag::Entity:        return as_entity().ptr != nullptr;
             case Tag::List:          return !as_list().empty();
             case Tag::Set:           return !as_set().empty();
+            case Tag::EntityProxy:   return true;
         }
         return false;
     }
@@ -260,6 +288,19 @@ inline Value operator/(const Value& a, const Value& b) {
     return detail::to_d(a) / bd;
 }
 
+inline Value operator%(const Value& a, const Value& b) {
+    if (a.is_indeterminate() || b.is_indeterminate()) return Indeterminate{};
+    if (!detail::both_numeric(a, b)) return Indeterminate{};
+    if (a.is_int() && b.is_int()) {
+        auto bi = b.as_int();
+        if (bi == 0) return Indeterminate{};
+        return static_cast<std::int64_t>(a.as_int() % bi);
+    }
+    double bd = detail::to_d(b);
+    if (bd == 0.0) return Indeterminate{};
+    return std::fmod(detail::to_d(a), bd);
+}
+
 inline Value operator-(const Value& a) {
     if (a.is_indeterminate()) return Indeterminate{};
     if (a.is_int())  return static_cast<std::int64_t>(-a.as_int());
@@ -270,6 +311,30 @@ inline Value operator-(const Value& a) {
 inline Value operator!(const Value& a) {
     if (a.is_indeterminate()) return Indeterminate{};
     return !a.truthy();
+}
+
+// ---------------------------------------------------------------------
+//  Logical operators on Value pairs.
+//
+//  EXPRESS three-valued logic does NOT short-circuit on the C++ side: we
+//  cannot overload `&&`/`||` to keep short-circuit semantics (the language
+//  forbids it for overloaded operators). Generated rule code is total —
+//  every operand must be evaluated regardless — so absorbing-INDETERMINATE
+//  semantics applied eagerly are correct.
+// ---------------------------------------------------------------------
+inline Value operator&&(const Value& a, const Value& b) {
+    if (a.is_indeterminate() || b.is_indeterminate()) return Indeterminate{};
+    return a.truthy() && b.truthy();
+}
+inline Value operator||(const Value& a, const Value& b) {
+    if (a.is_indeterminate() || b.is_indeterminate()) return Indeterminate{};
+    return a.truthy() || b.truthy();
+}
+/// EXPRESS XOR — total, INDETERMINATE-absorbing. Reuses C++ `^` so the
+/// codegen can keep emitting it textually without a runtime call.
+inline Value operator^(const Value& a, const Value& b) {
+    if (a.is_indeterminate() || b.is_indeterminate()) return Indeterminate{};
+    return a.truthy() != b.truthy();
 }
 
 }  // namespace express
