@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import ctypes
-import importlib
 from typing import List, Optional, Set, Tuple
 
 from ifcopenshell import (
@@ -21,20 +20,40 @@ from ifcopenshell import (
     ATTR_DERIVED,
     ATTR_UNKNOWN,
 )
+from ifcopenshell._value_api import configure_value_lib, value_to_python
 
 
-_RULES_CACHE: dict = {}
+_derived_lib_configured = False
 
 
-def _load_rules_module(schema_name: str):
-    if schema_name in _RULES_CACHE:
-        return _RULES_CACHE[schema_name]
+def _configure_derived_lib(lib) -> None:
+    """Bind ctypes signatures for the native DERIVE rule dispatcher."""
+    global _derived_lib_configured
+    if _derived_lib_configured:
+        return
+    configure_value_lib(lib)
+    lib.ifcopenshell_compute_derived.restype = ctypes.c_void_p
+    lib.ifcopenshell_compute_derived.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+    _derived_lib_configured = True
+
+
+def _should_unpack_inverse(file_obj: "file", type_name: str, attr_name: str) -> bool:
     try:
-        mod = importlib.import_module(f"ifcopenshell.express.rules.{schema_name}")
-    except ImportError:
-        mod = None
-    _RULES_CACHE[schema_name] = mod
-    return mod
+        import ifcopenshell.settings as settings
+        if not settings.unpack_non_aggregate_inverses:
+            return False
+    except Exception:
+        return False
+
+    try:
+        from . import ifcopenshell_wrapper as W
+
+        schema = W.schema_by_name(file_obj.schema)
+        ent = schema.declaration_by_name(type_name)
+        inv = next(i for i in ent.all_inverse_attributes() if i.name() == attr_name)
+        return (inv.bound1(), inv.bound2()) == (-1, -1)
+    except Exception:
+        return False
 
 
 class entity_instance:
@@ -222,6 +241,8 @@ class entity_instance:
             if arr and count.value > 0:
                 result = tuple(entity_instance(self._file, arr[i]) for i in range(count.value))
                 lib.ifcopenshell_free_instance_array_only(arr)
+                if _should_unpack_inverse(self._file, self.is_a(), name):
+                    return result[0]
                 return result
             return tuple()
 
@@ -233,37 +254,21 @@ class entity_instance:
         raise AttributeError(f"Entity #{self.id()} has no attribute '{name}'")
 
     def _get_derived(self, name):
-        """Compute a DERIVE attribute via the upstream EXPRESS rules module
-        for this file's schema. Falls back to None when no rule matches."""
-        from ifcopenshell import ifcopenshell_wrapper
+        """Compute a DERIVE attribute via the native ``ifcopenshell_compute_derived``
+        C ABI. Returns ``None`` when no rule is registered for this entity/attr
+        or when the rule evaluates to INDETERMINATE."""
+        if not self._handle:
+            return None
 
-        try:
-            schema_name = self._file.schema
-        except Exception:
-            return None
-        if not schema_name:
-            return None
-        rules = _load_rules_module(schema_name)
-        if rules is None:
+        lib = _get_lib()
+        _configure_derived_lib(lib)
+        ptr = lib.ifcopenshell_compute_derived(self._handle, _enc(name))
+        if not ptr:
             return None
         try:
-            schema = ifcopenshell_wrapper.schema_by_name(schema_name)
-            decl = schema.declaration_by_name(self.is_a())
-        except Exception:
-            return None
-        while decl is not None:
-            sty = decl.name()
-            fn = getattr(rules, f"calc_{sty}_{name}", None)
-            if fn is not None:
-                try:
-                    return fn(self)
-                except Exception:
-                    return None
-            try:
-                decl = decl.supertype()
-            except Exception:
-                return None
-        return None
+            return value_to_python(lib, ptr, self)
+        finally:
+            lib.ifcopenshell_value_free(ptr)
 
     def _get_aggregate(self, h, attr, name):
         """Read an aggregate attribute, returning a Python tuple.
@@ -646,4 +651,3 @@ class entity_instance:
         if isinstance(v, (list, tuple)):
             return type(v)(entity_instance.wrap_value(i, file_obj) for i in v)
         return v
-

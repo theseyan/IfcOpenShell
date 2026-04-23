@@ -4,6 +4,7 @@
 
 #include "ifcapi/express/runtime.h"
 #include <cmath>
+#include <cstdio>
 
 namespace ifcapi { namespace express { namespace IFC4 {
 
@@ -2024,18 +2025,18 @@ Value IfcBaseAxis(Value dim, Value axis1, Value axis2, Value axis3) {
             d1 = IfcNormalise(axis1);
             u = Value::make_list({d1, IfcOrthogonalComplement(d1)});
             if (Value(exists(axis2)).truthy()) {
-                factor = IfcDotProduct(axis2, express_getitem(u, 2 - 1));
+                factor = IfcDotProduct(axis2, express_getitem(u, 2));
                 if (Value(factor < 0.0).truthy()) {
-                    u = ifcapi::express::set_index(u, 2 - 1, ifcapi::express::set_attr(ifcapi::express::express_getitem(u, 2 - 1), "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(ifcapi::express::express_getitem(u, 2 - 1), "DirectionRatios"), 1 - 1, -express_getitem(express_getattr(express_getitem(u, 2 - 1), "DirectionRatios"), 1 - 1))));
-                    u = ifcapi::express::set_index(u, 2 - 1, ifcapi::express::set_attr(ifcapi::express::express_getitem(u, 2 - 1), "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(ifcapi::express::express_getitem(u, 2 - 1), "DirectionRatios"), 2 - 1, -express_getitem(express_getattr(express_getitem(u, 2 - 1), "DirectionRatios"), 2 - 1))));
+                    u = ifcapi::express::set_index(u, 2, ifcapi::express::set_attr(ifcapi::express::express_getitem(u, 2), "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(ifcapi::express::express_getitem(u, 2), "DirectionRatios"), 1, -express_getitem(express_getattr(express_getitem(u, 2), "DirectionRatios"), 1))));
+                    u = ifcapi::express::set_index(u, 2, ifcapi::express::set_attr(ifcapi::express::express_getitem(u, 2), "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(ifcapi::express::express_getitem(u, 2), "DirectionRatios"), 2, -express_getitem(express_getattr(express_getitem(u, 2), "DirectionRatios"), 2))));
                 }
             }
         } else {
             if (Value(exists(axis2)).truthy()) {
                 d1 = IfcNormalise(axis2);
                 u = Value::make_list({IfcOrthogonalComplement(d1), d1});
-                u = ifcapi::express::set_index(u, 1 - 1, ifcapi::express::set_attr(ifcapi::express::express_getitem(u, 1 - 1), "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(ifcapi::express::express_getitem(u, 1 - 1), "DirectionRatios"), 1 - 1, -express_getitem(express_getattr(express_getitem(u, 1 - 1), "DirectionRatios"), 1 - 1))));
-                u = ifcapi::express::set_index(u, 1 - 1, ifcapi::express::set_attr(ifcapi::express::express_getitem(u, 1 - 1), "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(ifcapi::express::express_getitem(u, 1 - 1), "DirectionRatios"), 2 - 1, -express_getitem(express_getattr(express_getitem(u, 1 - 1), "DirectionRatios"), 2 - 1))));
+                u = ifcapi::express::set_index(u, 1, ifcapi::express::set_attr(ifcapi::express::express_getitem(u, 1), "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(ifcapi::express::express_getitem(u, 1), "DirectionRatios"), 1, -express_getitem(express_getattr(express_getitem(u, 1), "DirectionRatios"), 1))));
+                u = ifcapi::express::set_index(u, 1, ifcapi::express::set_attr(ifcapi::express::express_getitem(u, 1), "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(ifcapi::express::express_getitem(u, 1), "DirectionRatios"), 2, -express_getitem(express_getattr(express_getitem(u, 1), "DirectionRatios"), 2))));
             } else {
                 u = Value::make_list({IfcDirection(Value::make_list({1.0, 0.0})), IfcDirection(Value::make_list({0.0, 1.0}))});
             }
@@ -2072,7 +2073,7 @@ Value IfcBuildAxes(Value axis, Value refdirection) {
 Value IfcConsecutiveSegments(Value segments) {
     Value result = true;
     for (Value i = 1; (Value(i) <= Value(hiindex(segments) - 1)).truthy(); i = i + Value((int64_t)1)) {
-        if (Value((express_getitem(express_getitem(segments, i - 1), hiindex(express_getitem(segments, i - 1)) - 1)) != (express_getitem(express_getitem(segments, i + 1 - 1), 1 - 1))).truthy()) {
+        if (Value((express_getitem(express_getitem(segments, i), hiindex(express_getitem(segments, i)))) != (express_getitem(express_getitem(segments, i + 1), 1))).truthy()) {
             result = false;
             break;
         }
@@ -2086,25 +2087,25 @@ Value IfcConstraintsParamBSpline(Value degree, Value upknots, Value upcp, Value 
     Value k;
     Value result = true;
     
-    sum = express_getitem(knotmult, 1 - 1);
+    sum = express_getitem(knotmult, 1);
     for (Value i = 2; (Value(i) <= Value(upknots)).truthy(); i = i + Value((int64_t)1)) {
-        sum = sum + (express_getitem(knotmult, i - 1));
+        sum = sum + (express_getitem(knotmult, i));
     }
     if (Value((degree < 1) || (upknots < 2) || (upcp < degree) || (sum != (degree + upcp + 2))).truthy()) {
         result = false;
         return result;
     }
-    k = express_getitem(knotmult, 1 - 1);
+    k = express_getitem(knotmult, 1);
     if (Value((k < 1) || (k > (degree + 1))).truthy()) {
         result = false;
         return result;
     }
     for (Value i = 2; (Value(i) <= Value(upknots)).truthy(); i = i + Value((int64_t)1)) {
-        if (Value(((express_getitem(knotmult, i - 1)) < 1) || ((express_getitem(knots, i - 1)) <= (express_getitem(knots, i - 1 - 1)))).truthy()) {
+        if (Value(((express_getitem(knotmult, i)) < 1) || ((express_getitem(knots, i)) <= (express_getitem(knots, i - 1)))).truthy()) {
             result = false;
             return result;
         }
-        k = express_getitem(knotmult, i - 1);
+        k = express_getitem(knotmult, i);
         if (Value((i < upknots) && (k > degree)).truthy()) {
             result = false;
             return result;
@@ -2120,8 +2121,8 @@ Value IfcConstraintsParamBSpline(Value degree, Value upknots, Value upcp, Value 
 
 Value IfcConvertDirectionInto2D(Value direction) {
     Value direction2d = IfcDirection(Value::make_list({0., 1.}));
-    direction2d = ifcapi::express::set_attr(direction2d, "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(direction2d, "DirectionRatios"), 1 - 1, express_getitem(express_getattr(direction, "DirectionRatios"), 1 - 1)));
-    direction2d = ifcapi::express::set_attr(direction2d, "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(direction2d, "DirectionRatios"), 2 - 1, express_getitem(express_getattr(direction, "DirectionRatios"), 2 - 1)));
+    direction2d = ifcapi::express::set_attr(direction2d, "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(direction2d, "DirectionRatios"), 1, express_getitem(express_getattr(direction, "DirectionRatios"), 1)));
+    direction2d = ifcapi::express::set_attr(direction2d, "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(direction2d, "DirectionRatios"), 2, express_getitem(express_getattr(direction, "DirectionRatios"), 2)));
     return direction2d;
     return Value();
 }
@@ -2434,11 +2435,11 @@ Value IfcCorrectUnitAssignment(Value units) {
     derivedunitnumber = sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(units)) { if (Value((ifcapi::express::express_in(Value(std::string("ifc4.ifcderivedunit")), typeof_(temp))) && (!(((express_getattr(temp, "UnitType")) == Value(std::string("USERDEFINED")))))).truthy()) __r.append(temp); } return __r; })());
     monetaryunitnumber = sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(units)) { if (Value(ifcapi::express::express_in(Value(std::string("ifc4.ifcmonetaryunit")), typeof_(temp))).truthy()) __r.append(temp); } return __r; })());
     for (Value i = 1; (Value(i) <= Value(sizeof_(units))).truthy(); i = i + Value((int64_t)1)) {
-        if (Value((ifcapi::express::express_in(Value(std::string("ifc4.ifcnamedunit")), typeof_(express_getitem(units, i - 1)))) && (!(((express_getattr(express_getitem(units, i - 1), "UnitType")) == Value(std::string("USERDEFINED")))))).truthy()) {
-            namedunitnames = namedunitnames + (express_getattr(express_getitem(units, i - 1), "UnitType"));
+        if (Value((ifcapi::express::express_in(Value(std::string("ifc4.ifcnamedunit")), typeof_(express_getitem(units, i)))) && (!(((express_getattr(express_getitem(units, i), "UnitType")) == Value(std::string("USERDEFINED")))))).truthy()) {
+            namedunitnames = namedunitnames + (express_getattr(express_getitem(units, i), "UnitType"));
         }
-        if (Value((ifcapi::express::express_in(Value(std::string("ifc4.ifcderivedunit")), typeof_(express_getitem(units, i - 1)))) && (!(((express_getattr(express_getitem(units, i - 1), "UnitType")) == Value(std::string("USERDEFINED")))))).truthy()) {
-            derivedunitnames = derivedunitnames + (express_getattr(express_getitem(units, i - 1), "UnitType"));
+        if (Value((ifcapi::express::express_in(Value(std::string("ifc4.ifcderivedunit")), typeof_(express_getitem(units, i)))) && (!(((express_getattr(express_getitem(units, i), "UnitType")) == Value(std::string("USERDEFINED")))))).truthy()) {
+            derivedunitnames = derivedunitnames + (express_getattr(express_getitem(units, i), "UnitType"));
         }
     }
     return (sizeof_(namedunitnames) == namedunitnumber) && (sizeof_(derivedunitnames) == derivedunitnumber) && (monetaryunitnumber <= 1);
@@ -2456,10 +2457,10 @@ Value IfcCrossProduct(Value arg1, Value arg2) {
     } else {
         v1 = express_getattr(IfcNormalise(arg1), "DirectionRatios");
         v2 = express_getattr(IfcNormalise(arg2), "DirectionRatios");
-        res = IfcDirection(Value::make_list({((express_getitem(v1, 2 - 1)) * (express_getitem(v2, 3 - 1))) - ((express_getitem(v1, 3 - 1)) * (express_getitem(v2, 2 - 1))), ((express_getitem(v1, 3 - 1)) * (express_getitem(v2, 1 - 1))) - ((express_getitem(v1, 1 - 1)) * (express_getitem(v2, 3 - 1))), ((express_getitem(v1, 1 - 1)) * (express_getitem(v2, 2 - 1))) - ((express_getitem(v1, 2 - 1)) * (express_getitem(v2, 1 - 1)))}));
+        res = IfcDirection(Value::make_list({((express_getitem(v1, 2)) * (express_getitem(v2, 3))) - ((express_getitem(v1, 3)) * (express_getitem(v2, 2))), ((express_getitem(v1, 3)) * (express_getitem(v2, 1))) - ((express_getitem(v1, 1)) * (express_getitem(v2, 3))), ((express_getitem(v1, 1)) * (express_getitem(v2, 2))) - ((express_getitem(v1, 2)) * (express_getitem(v2, 1)))}));
         mag = 0.0;
         for (Value i = 1; (Value(i) <= Value(3)).truthy(); i = i + Value((int64_t)1)) {
-            mag = mag + ((express_getitem(express_getattr(res, "DirectionRatios"), i - 1)) * (express_getitem(express_getattr(res, "DirectionRatios"), i - 1)));
+            mag = mag + ((express_getitem(express_getattr(res, "DirectionRatios"), i)) * (express_getitem(express_getattr(res, "DirectionRatios"), i)));
         }
         if (Value(mag > 0.0).truthy()) {
             result = IfcVector(res,  math_sqrt(mag));
@@ -2479,16 +2480,16 @@ Value IfcCurveDim(Value curve) {
         return express_getattr(express_getattr(curve, "Position"), "Dim");
     }
     if (Value(ifcapi::express::express_in(Value(std::string("ifc4.ifcpolyline")), typeof_(curve))).truthy()) {
-        return express_getattr(express_getitem(express_getattr(curve, "Points"), 1 - 1), "Dim");
+        return express_getattr(express_getitem(express_getattr(curve, "Points"), 1), "Dim");
     }
     if (Value(ifcapi::express::express_in(Value(std::string("ifc4.ifctrimmedcurve")), typeof_(curve))).truthy()) {
         return IfcCurveDim(express_getattr(curve, "BasisCurve"));
     }
     if (Value(ifcapi::express::express_in(Value(std::string("ifc4.ifccompositecurve")), typeof_(curve))).truthy()) {
-        return express_getattr(express_getitem(express_getattr(curve, "Segments"), 1 - 1), "Dim");
+        return express_getattr(express_getitem(express_getattr(curve, "Segments"), 1), "Dim");
     }
     if (Value(ifcapi::express::express_in(Value(std::string("ifc4.ifcbsplinecurve")), typeof_(curve))).truthy()) {
-        return express_getattr(express_getitem(express_getattr(curve, "ControlPointsList"), 1 - 1), "Dim");
+        return express_getattr(express_getitem(express_getattr(curve, "ControlPointsList"), 1), "Dim");
     }
     if (Value(ifcapi::express::express_in(Value(std::string("ifc4.ifcoffsetcurve2d")), typeof_(curve))).truthy()) {
         return 2;
@@ -2509,7 +2510,7 @@ Value IfcCurveDim(Value curve) {
 Value IfcCurveWeightsPositive(Value b) {
     Value result = true;
     for (Value i = 0; (Value(i) <= Value(express_getattr(b, "UpperIndexOnControlPoints"))).truthy(); i = i + Value((int64_t)1)) {
-        if (Value((express_getitem(express_getattr(b, "Weights"), i - 1)) <= 0.0).truthy()) {
+        if (Value((express_getitem(express_getattr(b, "Weights"), i)) <= 0.0).truthy()) {
             result = false;
             return result;
         }
@@ -2521,13 +2522,13 @@ Value IfcCurveWeightsPositive(Value b) {
 Value IfcDeriveDimensionalExponents(Value unitelements) {
     Value result = IfcDimensionalExponents(0, 0, 0, 0, 0, 0, 0);
     for (Value i = loindex(unitelements); (Value(i) <= Value(hiindex(unitelements))).truthy(); i = i + Value((int64_t)1)) {
-        result = ifcapi::express::set_attr(result, "LengthExponent", (express_getattr(result, "LengthExponent")) + ((express_getattr(express_getitem(unitelements, i - 1), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i - 1), "Unit"), "Dimensions"), "LengthExponent"))));
-        result = ifcapi::express::set_attr(result, "MassExponent", (express_getattr(result, "MassExponent")) + ((express_getattr(express_getitem(unitelements, i - 1), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i - 1), "Unit"), "Dimensions"), "MassExponent"))));
-        result = ifcapi::express::set_attr(result, "TimeExponent", (express_getattr(result, "TimeExponent")) + ((express_getattr(express_getitem(unitelements, i - 1), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i - 1), "Unit"), "Dimensions"), "TimeExponent"))));
-        result = ifcapi::express::set_attr(result, "ElectricCurrentExponent", (express_getattr(result, "ElectricCurrentExponent")) + ((express_getattr(express_getitem(unitelements, i - 1), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i - 1), "Unit"), "Dimensions"), "ElectricCurrentExponent"))));
-        result = ifcapi::express::set_attr(result, "ThermodynamicTemperatureExponent", (express_getattr(result, "ThermodynamicTemperatureExponent")) + ((express_getattr(express_getitem(unitelements, i - 1), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i - 1), "Unit"), "Dimensions"), "ThermodynamicTemperatureExponent"))));
-        result = ifcapi::express::set_attr(result, "AmountOfSubstanceExponent", (express_getattr(result, "AmountOfSubstanceExponent")) + ((express_getattr(express_getitem(unitelements, i - 1), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i - 1), "Unit"), "Dimensions"), "AmountOfSubstanceExponent"))));
-        result = ifcapi::express::set_attr(result, "LuminousIntensityExponent", (express_getattr(result, "LuminousIntensityExponent")) + ((express_getattr(express_getitem(unitelements, i - 1), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i - 1), "Unit"), "Dimensions"), "LuminousIntensityExponent"))));
+        result = ifcapi::express::set_attr(result, "LengthExponent", (express_getattr(result, "LengthExponent")) + ((express_getattr(express_getitem(unitelements, i), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i), "Unit"), "Dimensions"), "LengthExponent"))));
+        result = ifcapi::express::set_attr(result, "MassExponent", (express_getattr(result, "MassExponent")) + ((express_getattr(express_getitem(unitelements, i), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i), "Unit"), "Dimensions"), "MassExponent"))));
+        result = ifcapi::express::set_attr(result, "TimeExponent", (express_getattr(result, "TimeExponent")) + ((express_getattr(express_getitem(unitelements, i), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i), "Unit"), "Dimensions"), "TimeExponent"))));
+        result = ifcapi::express::set_attr(result, "ElectricCurrentExponent", (express_getattr(result, "ElectricCurrentExponent")) + ((express_getattr(express_getitem(unitelements, i), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i), "Unit"), "Dimensions"), "ElectricCurrentExponent"))));
+        result = ifcapi::express::set_attr(result, "ThermodynamicTemperatureExponent", (express_getattr(result, "ThermodynamicTemperatureExponent")) + ((express_getattr(express_getitem(unitelements, i), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i), "Unit"), "Dimensions"), "ThermodynamicTemperatureExponent"))));
+        result = ifcapi::express::set_attr(result, "AmountOfSubstanceExponent", (express_getattr(result, "AmountOfSubstanceExponent")) + ((express_getattr(express_getitem(unitelements, i), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i), "Unit"), "Dimensions"), "AmountOfSubstanceExponent"))));
+        result = ifcapi::express::set_attr(result, "LuminousIntensityExponent", (express_getattr(result, "LuminousIntensityExponent")) + ((express_getattr(express_getitem(unitelements, i), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i), "Unit"), "Dimensions"), "LuminousIntensityExponent"))));
     }
     return result;
     return Value();
@@ -2645,7 +2646,7 @@ Value IfcDotProduct(Value arg1, Value arg2) {
             ndim = express_getattr(arg1, "Dim");
             scalar = 0.0;
             for (Value i = 1; (Value(i) <= Value(ndim)).truthy(); i = i + Value((int64_t)1)) {
-                scalar = scalar + ((express_getitem(express_getattr(vec1, "DirectionRatios"), i - 1)) * (express_getitem(express_getattr(vec2, "DirectionRatios"), i - 1)));
+                scalar = scalar + ((express_getitem(express_getattr(vec1, "DirectionRatios"), i)) * (express_getitem(express_getattr(vec2, "DirectionRatios"), i)));
             }
         }
     }
@@ -2696,16 +2697,16 @@ Value IfcGetBasisSurface(Value c) {
         if (Value(ifcapi::express::express_in(Value(std::string("ifc4.ifcsurfacecurve")), typeof_(c))).truthy()) {
             n = sizeof_(express_getattr(c, "AssociatedGeometry"));
             for (Value i = 1; (Value(i) <= Value(n)).truthy(); i = i + Value((int64_t)1)) {
-                surfs = surfs + (IfcAssociatedSurface(express_getitem(express_getattr(c, "AssociatedGeometry"), i - 1)));
+                surfs = surfs + (IfcAssociatedSurface(express_getitem(express_getattr(c, "AssociatedGeometry"), i)));
             }
         }
     }
     if (Value(ifcapi::express::express_in(Value(std::string("ifc4.ifccompositecurveonsurface")), typeof_(c))).truthy()) {
         n = sizeof_(express_getattr(c, "Segments"));
-        surfs = IfcGetBasisSurface(express_getattr(express_getitem(express_getattr(c, "Segments"), 1 - 1), "ParentCurve"));
+        surfs = IfcGetBasisSurface(express_getattr(express_getitem(express_getattr(c, "Segments"), 1), "ParentCurve"));
         if (Value(n > 1).truthy()) {
             for (Value i = 2; (Value(i) <= Value(n)).truthy(); i = i + Value((int64_t)1)) {
-                surfs = surfs * (IfcGetBasisSurface(express_getattr(express_getitem(express_getattr(c, "Segments"), 1 - 1), "ParentCurve")));
+                surfs = surfs * (IfcGetBasisSurface(express_getattr(express_getitem(express_getattr(c, "Segments"), 1), "ParentCurve")));
             }
         }
     }
@@ -2720,9 +2721,9 @@ Value IfcListToArray(Value lis, Value low, Value u) {
     if (Value(n != (u - low + 1)).truthy()) {
         return Value();
     } else {
-        res = ifcapi::express::repeat(express_getitem(lis, 1 - 1), n);
+        res = ifcapi::express::repeat(express_getitem(lis, 1), n);
         for (Value i = 2; (Value(i) <= Value(n)).truthy(); i = i + Value((int64_t)1)) {
-            res = ifcapi::express::set_index(res, low + i - 1 - 1, express_getitem(lis, i - 1));
+            res = ifcapi::express::set_index(res, low + i - 1, express_getitem(lis, i));
         }
         return res;
     }
@@ -2735,7 +2736,7 @@ Value IfcLoopHeadToTail(Value aloop) {
     Value p = true;
     n = sizeof_(express_getattr(aloop, "EdgeList"));
     for (Value i = 2; (Value(i) <= Value(n)).truthy(); i = i + Value((int64_t)1)) {
-        p = p && ((express_getattr(express_getitem(express_getattr(aloop, "EdgeList"), i - 1 - 1), "EdgeEnd")) == (express_getattr(express_getitem(express_getattr(aloop, "EdgeList"), i - 1), "EdgeStart")));
+        p = p && ((express_getattr(express_getitem(express_getattr(aloop, "EdgeList"), i - 1), "EdgeEnd")) == (express_getattr(express_getitem(express_getattr(aloop, "EdgeList"), i), "EdgeStart")));
     }
     return p;
     return Value();
@@ -2746,25 +2747,25 @@ Value IfcMakeArrayOfArray(Value lis, Value low1, Value u1, Value low2, Value u2)
     if (Value((u1 - low1 + 1) != sizeof_(lis)).truthy()) {
         return Value();
     }
-    if (Value((u2 - low2 + 1) != (sizeof_(express_getitem(lis, 1 - 1)))).truthy()) {
+    if (Value((u2 - low2 + 1) != (sizeof_(express_getitem(lis, 1)))).truthy()) {
         return Value();
     }
-    res = ifcapi::express::repeat(IfcListToArray(express_getitem(lis, 1 - 1), low2, u2), u1 - low1 + 1);
+    res = ifcapi::express::repeat(IfcListToArray(express_getitem(lis, 1), low2, u2), u1 - low1 + 1);
     for (Value i = 2; (Value(i) <= Value(hiindex(lis))).truthy(); i = i + Value((int64_t)1)) {
-        if (Value((u2 - low2 + 1) != (sizeof_(express_getitem(lis, i - 1)))).truthy()) {
+        if (Value((u2 - low2 + 1) != (sizeof_(express_getitem(lis, i)))).truthy()) {
             return Value();
         }
-        res = ifcapi::express::set_index(res, low1 + i - 1 - 1, IfcListToArray(express_getitem(lis, i - 1), low2, u2));
+        res = ifcapi::express::set_index(res, low1 + i - 1, IfcListToArray(express_getitem(lis, i), low2, u2));
     }
     return res;
     return Value();
 }
 
 Value IfcMlsTotalThickness(Value layerset) {
-    Value max = express_getattr(express_getitem(express_getattr(layerset, "MaterialLayers"), 1 - 1), "LayerThickness");
+    Value max = express_getattr(express_getitem(express_getattr(layerset, "MaterialLayers"), 1), "LayerThickness");
     if (Value((sizeof_(express_getattr(layerset, "MaterialLayers"))) > 1).truthy()) {
         for (Value i = 2; (Value(i) <= Value(hiindex(express_getattr(layerset, "MaterialLayers")))).truthy(); i = i + Value((int64_t)1)) {
-            max = max + (express_getattr(express_getitem(express_getattr(layerset, "MaterialLayers"), i - 1), "LayerThickness"));
+            max = max + (express_getattr(express_getitem(express_getattr(layerset, "MaterialLayers"), i), "LayerThickness"));
         }
     }
     return max;
@@ -2798,12 +2799,12 @@ Value IfcNormalise(Value arg) {
         }
         mag = 0.0;
         for (Value i = 1; (Value(i) <= Value(ndim)).truthy(); i = i + Value((int64_t)1)) {
-            mag = mag + ((express_getitem(express_getattr(v, "DirectionRatios"), i - 1)) * (express_getitem(express_getattr(v, "DirectionRatios"), i - 1)));
+            mag = mag + ((express_getitem(express_getattr(v, "DirectionRatios"), i)) * (express_getitem(express_getattr(v, "DirectionRatios"), i)));
         }
         if (Value(mag > 0.0).truthy()) {
             mag = math_sqrt(mag);
             for (Value i = 1; (Value(i) <= Value(ndim)).truthy(); i = i + Value((int64_t)1)) {
-                v = ifcapi::express::set_attr(v, "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(v, "DirectionRatios"), i - 1, (express_getitem(express_getattr(v, "DirectionRatios"), i - 1)) / mag));
+                v = ifcapi::express::set_attr(v, "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(v, "DirectionRatios"), i, (express_getitem(express_getattr(v, "DirectionRatios"), i)) / mag));
             }
             if (Value(ifcapi::express::express_in(Value(std::string("ifc4.ifcvector")), typeof_(arg))).truthy()) {
                 vec = ifcapi::express::set_attr(vec, "Orientation", v);
@@ -2824,7 +2825,7 @@ Value IfcOrthogonalComplement(Value vec) {
     if (Value(!(exists(vec)) || ((express_getattr(vec, "Dim")) != 2)).truthy()) {
         return Value();
     } else {
-        result = IfcDirection(Value::make_list({-express_getitem(express_getattr(vec, "DirectionRatios"), 2 - 1), express_getitem(express_getattr(vec, "DirectionRatios"), 1 - 1)}));
+        result = IfcDirection(Value::make_list({-express_getitem(express_getattr(vec, "DirectionRatios"), 2), express_getitem(express_getattr(vec, "DirectionRatios"), 1)}));
         return result;
     }
     return Value();
@@ -2835,7 +2836,7 @@ Value IfcPathHeadToTail(Value apath) {
     Value p = unknown;
     n = sizeof_(express_getattr(apath, "EdgeList"));
     for (Value i = 2; (Value(i) <= Value(n)).truthy(); i = i + Value((int64_t)1)) {
-        p = p && ((express_getattr(express_getitem(express_getattr(apath, "EdgeList"), i - 1 - 1), "EdgeEnd")) == (express_getattr(express_getitem(express_getattr(apath, "EdgeList"), i - 1), "EdgeStart")));
+        p = p && ((express_getattr(express_getitem(express_getattr(apath, "EdgeList"), i - 1), "EdgeEnd")) == (express_getattr(express_getitem(express_getattr(apath, "EdgeList"), i), "EdgeStart")));
     }
     return p;
     return Value();
@@ -2853,39 +2854,39 @@ Value IfcPointListDim(Value pointlist) {
 }
 
 Value IfcSameAxis2Placement(Value ap1, Value ap2, Value epsilon) {
-    return (IfcSameDirection(express_getitem(express_getattr(ap1, "P"), 1 - 1), express_getitem(express_getattr(ap2, "P"), 1 - 1), epsilon)) && (IfcSameDirection(express_getitem(express_getattr(ap1, "P"), 2 - 1), express_getitem(express_getattr(ap2, "P"), 2 - 1), epsilon)) && (IfcSameCartesianPoint(express_getattr(ap1, "Location"), express_getattr(ap1, "Location"), epsilon));
+    return (IfcSameDirection(express_getitem(express_getattr(ap1, "P"), 1), express_getitem(express_getattr(ap2, "P"), 1), epsilon)) && (IfcSameDirection(express_getitem(express_getattr(ap1, "P"), 2), express_getitem(express_getattr(ap2, "P"), 2), epsilon)) && (IfcSameCartesianPoint(express_getattr(ap1, "Location"), express_getattr(ap1, "Location"), epsilon));
     return Value();
 }
 
 Value IfcSameCartesianPoint(Value cp1, Value cp2, Value epsilon) {
-    Value cp1x = express_getitem(express_getattr(cp1, "Coordinates"), 1 - 1);
-    Value cp1y = express_getitem(express_getattr(cp1, "Coordinates"), 2 - 1);
+    Value cp1x = express_getitem(express_getattr(cp1, "Coordinates"), 1);
+    Value cp1y = express_getitem(express_getattr(cp1, "Coordinates"), 2);
     Value cp1z = 0;
-    Value cp2x = express_getitem(express_getattr(cp2, "Coordinates"), 1 - 1);
-    Value cp2y = express_getitem(express_getattr(cp2, "Coordinates"), 2 - 1);
+    Value cp2x = express_getitem(express_getattr(cp2, "Coordinates"), 1);
+    Value cp2y = express_getitem(express_getattr(cp2, "Coordinates"), 2);
     Value cp2z = 0;
     if (Value((sizeof_(express_getattr(cp1, "Coordinates"))) > 2).truthy()) {
-        cp1z = express_getitem(express_getattr(cp1, "Coordinates"), 3 - 1);
+        cp1z = express_getitem(express_getattr(cp1, "Coordinates"), 3);
     }
     if (Value((sizeof_(express_getattr(cp2, "Coordinates"))) > 2).truthy()) {
-        cp2z = express_getitem(express_getattr(cp2, "Coordinates"), 3 - 1);
+        cp2z = express_getitem(express_getattr(cp2, "Coordinates"), 3);
     }
     return (IfcSameValue(cp1x, cp2x, epsilon)) && (IfcSameValue(cp1y, cp2y, epsilon)) && (IfcSameValue(cp1z, cp2z, epsilon));
     return Value();
 }
 
 Value IfcSameDirection(Value dir1, Value dir2, Value epsilon) {
-    Value dir1x = express_getitem(express_getattr(dir1, "DirectionRatios"), 1 - 1);
-    Value dir1y = express_getitem(express_getattr(dir1, "DirectionRatios"), 2 - 1);
+    Value dir1x = express_getitem(express_getattr(dir1, "DirectionRatios"), 1);
+    Value dir1y = express_getitem(express_getattr(dir1, "DirectionRatios"), 2);
     Value dir1z = 0;
-    Value dir2x = express_getitem(express_getattr(dir2, "DirectionRatios"), 1 - 1);
-    Value dir2y = express_getitem(express_getattr(dir2, "DirectionRatios"), 2 - 1);
+    Value dir2x = express_getitem(express_getattr(dir2, "DirectionRatios"), 1);
+    Value dir2y = express_getitem(express_getattr(dir2, "DirectionRatios"), 2);
     Value dir2z = 0;
     if (Value((sizeof_(express_getattr(dir1, "DirectionRatios"))) > 2).truthy()) {
-        dir1z = express_getitem(express_getattr(dir1, "DirectionRatios"), 3 - 1);
+        dir1z = express_getitem(express_getattr(dir1, "DirectionRatios"), 3);
     }
     if (Value((sizeof_(express_getattr(dir2, "DirectionRatios"))) > 2).truthy()) {
-        dir2z = express_getitem(express_getattr(dir2, "DirectionRatios"), 3 - 1);
+        dir2z = express_getitem(express_getattr(dir2, "DirectionRatios"), 3);
     }
     return (IfcSameValue(dir1x, dir2x, epsilon)) && (IfcSameValue(dir1y, dir2y, epsilon)) && (IfcSameValue(dir1z, dir2z, epsilon));
     return Value();
@@ -2929,7 +2930,7 @@ Value IfcScalarTimesVector(Value scalar, Value vec) {
         }
         if (Value(mag < 0.0).truthy()) {
             for (Value i = 1; (Value(i) <= Value(sizeof_(express_getattr(v, "DirectionRatios")))).truthy(); i = i + Value((int64_t)1)) {
-                v = ifcapi::express::set_attr(v, "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(v, "DirectionRatios"), i - 1, -express_getitem(express_getattr(v, "DirectionRatios"), i - 1)));
+                v = ifcapi::express::set_attr(v, "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(v, "DirectionRatios"), i, -express_getitem(express_getattr(v, "DirectionRatios"), i)));
             }
             mag = -mag;
         }
@@ -3001,8 +3002,8 @@ Value IfcShapeRepresentationTypes(Value reptype, Value items) {
     } else if (Value((reptype) == Value(std::string("geometriccurveset"))).truthy()) {
         count = sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(items)) { if (Value((ifcapi::express::express_in(Value(std::string("ifc4.ifcgeometriccurveset")), typeof_(temp))) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcgeometricset")), typeof_(temp))) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcpoint")), typeof_(temp))) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccurve")), typeof_(temp)))).truthy()) __r.append(temp); } return __r; })());
         for (Value i = 1; (Value(i) <= Value(hiindex(items))).truthy(); i = i + Value((int64_t)1)) {
-            if (Value(ifcapi::express::express_in(Value(std::string("ifc4.ifcgeometricset")), typeof_(express_getitem(items, i - 1)))).truthy()) {
-                if (Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(express_getitem(items, i - 1), "Elements"))) { if (Value(ifcapi::express::express_in(Value(std::string("ifc4.ifcsurface")), typeof_(temp))).truthy()) __r.append(temp); } return __r; })())) > 0).truthy()) {
+            if (Value(ifcapi::express::express_in(Value(std::string("ifc4.ifcgeometricset")), typeof_(express_getitem(items, i)))).truthy()) {
+                if (Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(express_getitem(items, i), "Elements"))) { if (Value(ifcapi::express::express_in(Value(std::string("ifc4.ifcsurface")), typeof_(temp))).truthy()) __r.append(temp); } return __r; })())) > 0).truthy()) {
                     count = count - 1;
                 }
             }
@@ -3064,7 +3065,7 @@ Value IfcSurfaceWeightsPositive(Value b) {
     Value weights = express_getattr(b, "Weights");
     for (Value i = 0; (Value(i) <= Value(express_getattr(b, "UUpper"))).truthy(); i = i + Value((int64_t)1)) {
         for (Value j = 0; (Value(j) <= Value(express_getattr(b, "VUpper"))).truthy(); j = j + Value((int64_t)1)) {
-            if (Value((express_getitem(express_getitem(weights, i - 1), j - 1)) <= 0.0).truthy()) {
+            if (Value((express_getitem(express_getitem(weights, i), j)) <= 0.0).truthy()) {
                 result = false;
                 return result;
             }
@@ -3131,14 +3132,14 @@ Value IfcUniqueDefinitionNames(Value relations) {
         return true;
     }
     for (Value i = 1; (Value(i) <= Value(hiindex(relations))).truthy(); i = i + Value((int64_t)1)) {
-        definition = express_getattr(express_getitem(relations, i - 1), "RelatingPropertyDefinition");
+        definition = express_getattr(express_getitem(relations, i), "RelatingPropertyDefinition");
         if (Value(ifcapi::express::express_in(Value(std::string("ifc4.ifcpropertysetdefinition")), typeof_(definition))).truthy()) {
             properties = properties + definition;
         } else {
             if (Value(ifcapi::express::express_in(Value(std::string("ifc4.ifcpropertysetdefinitionset")), typeof_(definition))).truthy()) {
                 definitionset = definition;
                 for (Value j = 1; (Value(j) <= Value(hiindex(definitionset))).truthy(); j = j + Value((int64_t)1)) {
-                    properties = properties + (express_getitem(definitionset, j - 1));
+                    properties = properties + (express_getitem(definitionset, j));
                 }
             }
         }
@@ -3151,7 +3152,7 @@ Value IfcUniqueDefinitionNames(Value relations) {
 Value IfcUniquePropertyName(Value properties) {
     Value names = Value::make_list({});
     for (Value i = 1; (Value(i) <= Value(hiindex(properties))).truthy(); i = i + Value((int64_t)1)) {
-        names = names + (express_getattr(express_getitem(properties, i - 1), "Name"));
+        names = names + (express_getattr(express_getitem(properties, i), "Name"));
     }
     return sizeof_(names) == sizeof_(properties);
     return Value();
@@ -3161,8 +3162,8 @@ Value IfcUniquePropertySetNames(Value properties) {
     Value names = Value::make_list({});
     Value unnamed = 0;
     for (Value i = 1; (Value(i) <= Value(hiindex(properties))).truthy(); i = i + Value((int64_t)1)) {
-        if (Value(ifcapi::express::express_in(Value(std::string("ifc4.ifcpropertyset")), typeof_(express_getitem(properties, i - 1)))).truthy()) {
-            names = names + (express_getattr(express_getitem(properties, i - 1), "Name"));
+        if (Value(ifcapi::express::express_in(Value(std::string("ifc4.ifcpropertyset")), typeof_(express_getitem(properties, i)))).truthy()) {
+            names = names + (express_getattr(express_getitem(properties, i), "Name"));
         } else {
             unnamed = unnamed + 1;
         }
@@ -3174,7 +3175,7 @@ Value IfcUniquePropertySetNames(Value properties) {
 Value IfcUniquePropertyTemplateNames(Value properties) {
     Value names = Value::make_list({});
     for (Value i = 1; (Value(i) <= Value(hiindex(properties))).truthy(); i = i + Value((int64_t)1)) {
-        names = names + (express_getattr(express_getitem(properties, i - 1), "Name"));
+        names = names + (express_getattr(express_getitem(properties, i), "Name"));
     }
     return sizeof_(names) == sizeof_(properties);
     return Value();
@@ -3183,7 +3184,7 @@ Value IfcUniquePropertyTemplateNames(Value properties) {
 Value IfcUniqueQuantityNames(Value properties) {
     Value names = Value::make_list({});
     for (Value i = 1; (Value(i) <= Value(hiindex(properties))).truthy(); i = i + Value((int64_t)1)) {
-        names = names + (express_getattr(express_getitem(properties, i - 1), "Name"));
+        names = names + (express_getattr(express_getitem(properties, i), "Name"));
     }
     return sizeof_(names) == sizeof_(properties);
     return Value();
@@ -3221,8 +3222,8 @@ Value IfcVectorDifference(Value arg1, Value arg2) {
         mag = 0.0;
         res = IfcDirection(ifcapi::express::repeat(0.0, ndim));
         for (Value i = 1; (Value(i) <= Value(ndim)).truthy(); i = i + Value((int64_t)1)) {
-            res = ifcapi::express::set_attr(res, "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(res, "DirectionRatios"), i - 1, (mag1 * (express_getitem(express_getattr(vec1, "DirectionRatios"), i - 1))) - (mag2 * (express_getitem(express_getattr(vec2, "DirectionRatios"), i - 1)))));
-            mag = mag + ((express_getitem(express_getattr(res, "DirectionRatios"), i - 1)) * (express_getitem(express_getattr(res, "DirectionRatios"), i - 1)));
+            res = ifcapi::express::set_attr(res, "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(res, "DirectionRatios"), i, (mag1 * (express_getitem(express_getattr(vec1, "DirectionRatios"), i))) - (mag2 * (express_getitem(express_getattr(vec2, "DirectionRatios"), i)))));
+            mag = mag + ((express_getitem(express_getattr(res, "DirectionRatios"), i)) * (express_getitem(express_getattr(res, "DirectionRatios"), i)));
         }
         if (Value(mag > 0.0).truthy()) {
             result = IfcVector(res,  math_sqrt(mag));
@@ -3266,8 +3267,8 @@ Value IfcVectorSum(Value arg1, Value arg2) {
         mag = 0.0;
         res = IfcDirection(ifcapi::express::repeat(0.0, ndim));
         for (Value i = 1; (Value(i) <= Value(ndim)).truthy(); i = i + Value((int64_t)1)) {
-            res = ifcapi::express::set_attr(res, "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(res, "DirectionRatios"), i - 1, (mag1 * (express_getitem(express_getattr(vec1, "DirectionRatios"), i - 1))) + (mag2 * (express_getitem(express_getattr(vec2, "DirectionRatios"), i - 1)))));
-            mag = mag + ((express_getitem(express_getattr(res, "DirectionRatios"), i - 1)) * (express_getitem(express_getattr(res, "DirectionRatios"), i - 1)));
+            res = ifcapi::express::set_attr(res, "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(res, "DirectionRatios"), i, (mag1 * (express_getitem(express_getattr(vec1, "DirectionRatios"), i))) + (mag2 * (express_getitem(express_getattr(vec2, "DirectionRatios"), i)))));
+            mag = mag + ((express_getitem(express_getattr(res, "DirectionRatios"), i)) * (express_getitem(express_getattr(res, "DirectionRatios"), i)));
         }
         if (Value(mag > 0.0).truthy()) {
             result = IfcVector(res,  math_sqrt(mag));
@@ -3291,22 +3292,22 @@ bool IfcCardinalPointReference_GreaterThanZero(EntityRef self) {
 }
 
 bool IfcCompoundPlaneAngleMeasure_MinutesInRange(EntityRef self) {
-    if (!Value((math_abs(express_getitem(self, 2 - 1))) < 60).truthy()) return false;
+    if (!Value((math_abs(express_getitem(self, 2))) < 60).truthy()) return false;
     return true;
 }
 
 bool IfcCompoundPlaneAngleMeasure_SecondsInRange(EntityRef self) {
-    if (!Value((math_abs(express_getitem(self, 3 - 1))) < 60).truthy()) return false;
+    if (!Value((math_abs(express_getitem(self, 3))) < 60).truthy()) return false;
     return true;
 }
 
 bool IfcCompoundPlaneAngleMeasure_MicrosecondsInRange(EntityRef self) {
-    if (!Value((sizeof_(self) == 3) || ((math_abs(express_getitem(self, 4 - 1))) < 1000000)).truthy()) return false;
+    if (!Value((sizeof_(self) == 3) || ((math_abs(express_getitem(self, 4))) < 1000000)).truthy()) return false;
     return true;
 }
 
 bool IfcCompoundPlaneAngleMeasure_ConsistentSign(EntityRef self) {
-    if (!Value((((express_getitem(self, 1 - 1)) >= 0) && ((express_getitem(self, 2 - 1)) >= 0) && ((express_getitem(self, 3 - 1)) >= 0) && ((sizeof_(self) == 3) || ((express_getitem(self, 4 - 1)) >= 0))) || (((express_getitem(self, 1 - 1)) <= 0) && ((express_getitem(self, 2 - 1)) <= 0) && ((express_getitem(self, 3 - 1)) <= 0) && ((sizeof_(self) == 3) || ((express_getitem(self, 4 - 1)) <= 0)))).truthy()) return false;
+    if (!Value((((express_getitem(self, 1)) >= 0) && ((express_getitem(self, 2)) >= 0) && ((express_getitem(self, 3)) >= 0) && ((sizeof_(self) == 3) || ((express_getitem(self, 4)) >= 0))) || (((express_getitem(self, 1)) <= 0) && ((express_getitem(self, 2)) <= 0) && ((express_getitem(self, 3)) <= 0) && ((sizeof_(self) == 3) || ((express_getitem(self, 4)) <= 0)))).truthy()) return false;
     return true;
 }
 
@@ -3419,7 +3420,7 @@ bool IfcActuator_CorrectPredefinedType(EntityRef self) {
 
 bool IfcActuator_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcactuatortype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcactuatortype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -3469,7 +3470,7 @@ bool IfcAirTerminal_CorrectPredefinedType(EntityRef self) {
 
 bool IfcAirTerminal_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcairterminaltype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcairterminaltype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -3481,7 +3482,7 @@ bool IfcAirTerminalBox_CorrectPredefinedType(EntityRef self) {
 
 bool IfcAirTerminalBox_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcairterminalboxtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcairterminalboxtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -3505,7 +3506,7 @@ bool IfcAirToAirHeatRecovery_CorrectPredefinedType(EntityRef self) {
 
 bool IfcAirToAirHeatRecovery_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcairtoairheatrecoverytype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcairtoairheatrecoverytype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -3523,7 +3524,7 @@ bool IfcAlarm_CorrectPredefinedType(EntityRef self) {
 
 bool IfcAlarm_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcalarmtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcalarmtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -3626,7 +3627,7 @@ bool IfcAudioVisualAppliance_CorrectPredefinedType(EntityRef self) {
 
 bool IfcAudioVisualAppliance_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcaudiovisualappliancetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcaudiovisualappliancetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -3707,7 +3708,7 @@ Value calc_IfcAxis2Placement3D_P(EntityRef self) {
 
 bool IfcBSplineCurve_SameDim(EntityRef self) {
     Value controlpointslist = express_getattr(self, "ControlPointsList");
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(controlpointslist)) { if (Value((express_getattr(temp, "Dim")) != (express_getattr(express_getitem(controlpointslist, 1 - 1), "Dim"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(controlpointslist)) { if (Value((express_getattr(temp, "Dim")) != (express_getattr(express_getitem(controlpointslist, 1), "Dim"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
@@ -3751,7 +3752,7 @@ Value calc_IfcBSplineSurface_UUpper(EntityRef self) {
 
 Value calc_IfcBSplineSurface_VUpper(EntityRef self) {
     Value controlpointslist = express_getattr(self, "ControlPointsList");
-    return (sizeof_(express_getitem(controlpointslist, 1 - 1))) - 1;
+    return (sizeof_(express_getitem(controlpointslist, 1))) - 1;
 }
 
 Value calc_IfcBSplineSurface_ControlPoints(EntityRef self) {
@@ -3809,7 +3810,7 @@ bool IfcBeam_CorrectPredefinedType(EntityRef self) {
 
 bool IfcBeam_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcbeamtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcbeamtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -3843,7 +3844,7 @@ bool IfcBoiler_CorrectPredefinedType(EntityRef self) {
 
 bool IfcBoiler_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcboilertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcboilertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -3922,7 +3923,7 @@ bool IfcBuildingElementPart_CorrectPredefinedType(EntityRef self) {
 
 bool IfcBuildingElementPart_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcbuildingelementparttype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcbuildingelementparttype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -3945,7 +3946,7 @@ bool IfcBuildingElementProxy_CorrectPredefinedType(EntityRef self) {
 
 bool IfcBuildingElementProxy_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcbuildingelementproxytype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcbuildingelementproxytype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -3963,7 +3964,7 @@ bool IfcBurner_CorrectPredefinedType(EntityRef self) {
 
 bool IfcBurner_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcburnertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcburnertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4005,7 +4006,7 @@ bool IfcCableCarrierFitting_CorrectPredefinedType(EntityRef self) {
 
 bool IfcCableCarrierFitting_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccablecarrierfittingtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccablecarrierfittingtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4023,7 +4024,7 @@ bool IfcCableCarrierSegment_CorrectPredefinedType(EntityRef self) {
 
 bool IfcCableCarrierSegment_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccablecarriersegmenttype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccablecarriersegmenttype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4041,7 +4042,7 @@ bool IfcCableFitting_CorrectPredefinedType(EntityRef self) {
 
 bool IfcCableFitting_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccablefittingtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccablefittingtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4059,7 +4060,7 @@ bool IfcCableSegment_CorrectPredefinedType(EntityRef self) {
 
 bool IfcCableSegment_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccablesegmenttype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccablesegmenttype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4186,7 +4187,7 @@ bool IfcChiller_CorrectPredefinedType(EntityRef self) {
 
 bool IfcChiller_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcchillertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcchillertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4204,7 +4205,7 @@ bool IfcChimney_CorrectPredefinedType(EntityRef self) {
 
 bool IfcChimney_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcchimneytype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcchimneytype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4228,7 +4229,7 @@ bool IfcCoil_CorrectPredefinedType(EntityRef self) {
 
 bool IfcCoil_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccoiltype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccoiltype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4246,7 +4247,7 @@ bool IfcColumn_CorrectPredefinedType(EntityRef self) {
 
 bool IfcColumn_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccolumntype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccolumntype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4269,7 +4270,7 @@ bool IfcCommunicationsAppliance_CorrectPredefinedType(EntityRef self) {
 
 bool IfcCommunicationsAppliance_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccommunicationsappliancetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccommunicationsappliancetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4312,7 +4313,7 @@ bool IfcCompositeCurve_CurveContinuous(EntityRef self) {
 
 bool IfcCompositeCurve_SameDim(EntityRef self) {
     Value segments = express_getattr(self, "Segments");
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(segments)) { if (Value((express_getattr(temp, "Dim")) != (express_getattr(express_getitem(segments, 1 - 1), "Dim"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(segments)) { if (Value((express_getattr(temp, "Dim")) != (express_getattr(express_getitem(segments, 1), "Dim"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
@@ -4324,7 +4325,7 @@ Value calc_IfcCompositeCurve_NSegments(EntityRef self) {
 Value calc_IfcCompositeCurve_ClosedCurve(EntityRef self) {
     Value segments = express_getattr(self, "Segments");
     Value nsegments = express_getattr(self, "NSegments");
-    return (express_getattr(express_getitem(segments, nsegments - 1), "Transition")) != discontinuous;
+    return (express_getattr(express_getitem(segments, nsegments), "Transition")) != discontinuous;
 }
 
 bool IfcCompositeCurveOnSurface_SameSurface(EntityRef self) {
@@ -4350,7 +4351,7 @@ Value calc_IfcCompositeCurveSegment_Dim(EntityRef self) {
 
 bool IfcCompositeProfileDef_InvariantProfileType(EntityRef self) {
     Value profiles = express_getattr(self, "Profiles");
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(profiles)) { if (Value((express_getattr(temp, "ProfileType")) != (express_getattr(express_getitem(profiles, 1 - 1), "ProfileType"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(profiles)) { if (Value((express_getattr(temp, "ProfileType")) != (express_getattr(express_getitem(profiles, 1), "ProfileType"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
@@ -4368,7 +4369,7 @@ bool IfcCompressor_CorrectPredefinedType(EntityRef self) {
 
 bool IfcCompressor_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccompressortype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccompressortype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4386,7 +4387,7 @@ bool IfcCondenser_CorrectPredefinedType(EntityRef self) {
 
 bool IfcCondenser_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccondensertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccondensertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4446,7 +4447,7 @@ bool IfcController_CorrectPredefinedType(EntityRef self) {
 
 bool IfcController_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccontrollertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccontrollertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4464,7 +4465,7 @@ bool IfcCooledBeam_CorrectPredefinedType(EntityRef self) {
 
 bool IfcCooledBeam_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccooledbeamtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccooledbeamtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4482,7 +4483,7 @@ bool IfcCoolingTower_CorrectPredefinedType(EntityRef self) {
 
 bool IfcCoolingTower_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccoolingtowertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccoolingtowertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4500,7 +4501,7 @@ bool IfcCovering_CorrectPredefinedType(EntityRef self) {
 
 bool IfcCovering_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccoveringtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccoveringtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4534,7 +4535,7 @@ bool IfcCurtainWall_CorrectPredefinedType(EntityRef self) {
 
 bool IfcCurtainWall_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccurtainwalltype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifccurtainwalltype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4576,7 +4577,7 @@ bool IfcDamper_CorrectPredefinedType(EntityRef self) {
 
 bool IfcDamper_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcdampertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcdampertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4594,7 +4595,7 @@ bool IfcDerivedProfileDef_InvariantProfileType(EntityRef self) {
 
 bool IfcDerivedUnit_WR1(EntityRef self) {
     Value elements = express_getattr(self, "Elements");
-    if (!Value((sizeof_(elements) > 1) || ((sizeof_(elements) == 1) && ((express_getattr(express_getitem(elements, 1 - 1), "Exponent")) != 1))).truthy()) return false;
+    if (!Value((sizeof_(elements) > 1) || ((sizeof_(elements) == 1) && ((express_getattr(express_getitem(elements, 1), "Exponent")) != 1))).truthy()) return false;
     return true;
 }
 
@@ -4628,7 +4629,7 @@ bool IfcDiscreteAccessory_CorrectPredefinedType(EntityRef self) {
 
 bool IfcDiscreteAccessory_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcdiscreteaccessorytype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcdiscreteaccessorytype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4646,7 +4647,7 @@ bool IfcDistributionChamberElement_CorrectPredefinedType(EntityRef self) {
 
 bool IfcDistributionChamberElement_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcdistributionchamberelementtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcdistributionchamberelementtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4665,7 +4666,7 @@ bool IfcDocumentReference_WR1(EntityRef self) {
 
 bool IfcDoor_CorrectStyleAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcdoortype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcdoortype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4698,12 +4699,12 @@ bool IfcDoorLiningProperties_WR34(EntityRef self) {
 }
 
 bool IfcDoorLiningProperties_WR35(EntityRef self) {
-    if (!Value((exists(express_getitem(express_getattr(self, "DefinesType"), 1 - 1))) && ((ifcapi::express::express_in(Value(std::string("ifc4.ifcdoortype")), typeof_(express_getitem(express_getattr(self, "DefinesType"), 1 - 1)))) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcdoorstyle")), typeof_(express_getitem(express_getattr(self, "DefinesType"), 1 - 1)))))).truthy()) return false;
+    if (!Value((exists(express_getitem(express_getattr(self, "DefinesType"), 1))) && ((ifcapi::express::express_in(Value(std::string("ifc4.ifcdoortype")), typeof_(express_getitem(express_getattr(self, "DefinesType"), 1)))) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcdoorstyle")), typeof_(express_getitem(express_getattr(self, "DefinesType"), 1)))))).truthy()) return false;
     return true;
 }
 
 bool IfcDoorPanelProperties_ApplicableToType(EntityRef self) {
-    if (!Value((exists(express_getitem(express_getattr(self, "DefinesType"), 1 - 1))) && ((ifcapi::express::express_in(Value(std::string("ifc4.ifcdoortype")), typeof_(express_getitem(express_getattr(self, "DefinesType"), 1 - 1)))) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcdoorstyle")), typeof_(express_getitem(express_getattr(self, "DefinesType"), 1 - 1)))))).truthy()) return false;
+    if (!Value((exists(express_getitem(express_getattr(self, "DefinesType"), 1))) && ((ifcapi::express::express_in(Value(std::string("ifc4.ifcdoortype")), typeof_(express_getitem(express_getattr(self, "DefinesType"), 1)))) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcdoorstyle")), typeof_(express_getitem(express_getattr(self, "DefinesType"), 1)))))).truthy()) return false;
     return true;
 }
 
@@ -4731,7 +4732,7 @@ bool IfcDuctFitting_CorrectPredefinedType(EntityRef self) {
 
 bool IfcDuctFitting_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcductfittingtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcductfittingtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4749,7 +4750,7 @@ bool IfcDuctSegment_CorrectPredefinedType(EntityRef self) {
 
 bool IfcDuctSegment_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcductsegmenttype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcductsegmenttype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4767,7 +4768,7 @@ bool IfcDuctSilencer_CorrectPredefinedType(EntityRef self) {
 
 bool IfcDuctSilencer_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcductsilencertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcductsilencertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4780,7 +4781,7 @@ bool IfcDuctSilencerType_CorrectPredefinedType(EntityRef self) {
 bool IfcEdgeLoop_IsClosed(EntityRef self) {
     Value edgelist = express_getattr(self, "EdgeList");
     Value ne = express_getattr(self, "Ne");
-    if (!Value((express_getattr(express_getitem(edgelist, 1 - 1), "EdgeStart")) == (express_getattr(express_getitem(edgelist, ne - 1), "EdgeEnd"))).truthy()) return false;
+    if (!Value((express_getattr(express_getitem(edgelist, 1), "EdgeStart")) == (express_getattr(express_getitem(edgelist, ne), "EdgeEnd"))).truthy()) return false;
     return true;
 }
 
@@ -4802,7 +4803,7 @@ bool IfcElectricAppliance_CorrectPredefinedType(EntityRef self) {
 
 bool IfcElectricAppliance_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcelectricappliancetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcelectricappliancetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4820,7 +4821,7 @@ bool IfcElectricDistributionBoard_CorrectPredefinedType(EntityRef self) {
 
 bool IfcElectricDistributionBoard_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcelectricdistributionboardtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcelectricdistributionboardtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4838,7 +4839,7 @@ bool IfcElectricFlowStorageDevice_CorrectPredefinedType(EntityRef self) {
 
 bool IfcElectricFlowStorageDevice_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcelectricflowstoragedevicetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcelectricflowstoragedevicetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4856,7 +4857,7 @@ bool IfcElectricGenerator_CorrectPredefinedType(EntityRef self) {
 
 bool IfcElectricGenerator_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcelectricgeneratortype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcelectricgeneratortype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4874,7 +4875,7 @@ bool IfcElectricMotor_CorrectPredefinedType(EntityRef self) {
 
 bool IfcElectricMotor_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcelectricmotortype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcelectricmotortype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4892,7 +4893,7 @@ bool IfcElectricTimeControl_CorrectPredefinedType(EntityRef self) {
 
 bool IfcElectricTimeControl_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcelectrictimecontroltype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcelectrictimecontroltype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4910,7 +4911,7 @@ bool IfcElementAssembly_CorrectPredefinedType(EntityRef self) {
 
 bool IfcElementAssembly_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcelementassemblytype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcelementassemblytype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4934,7 +4935,7 @@ bool IfcEngine_CorrectPredefinedType(EntityRef self) {
 
 bool IfcEngine_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcenginetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcenginetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4952,7 +4953,7 @@ bool IfcEvaporativeCooler_CorrectPredefinedType(EntityRef self) {
 
 bool IfcEvaporativeCooler_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcevaporativecoolertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcevaporativecoolertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -4970,7 +4971,7 @@ bool IfcEvaporator_CorrectPredefinedType(EntityRef self) {
 
 bool IfcEvaporator_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcevaporatortype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcevaporatortype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5042,7 +5043,7 @@ bool IfcFan_CorrectPredefinedType(EntityRef self) {
 
 bool IfcFan_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcfantype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcfantype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5060,7 +5061,7 @@ bool IfcFastener_CorrectPredefinedType(EntityRef self) {
 
 bool IfcFastener_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcfastenertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcfastenertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5115,7 +5116,7 @@ bool IfcFilter_CorrectPredefinedType(EntityRef self) {
 
 bool IfcFilter_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcfiltertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcfiltertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5133,7 +5134,7 @@ bool IfcFireSuppressionTerminal_CorrectPredefinedType(EntityRef self) {
 
 bool IfcFireSuppressionTerminal_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcfiresuppressionterminaltype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcfiresuppressionterminaltype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5159,7 +5160,7 @@ bool IfcFlowInstrument_CorrectPredefinedType(EntityRef self) {
 
 bool IfcFlowInstrument_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcflowinstrumenttype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcflowinstrumenttype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5177,7 +5178,7 @@ bool IfcFlowMeter_CorrectPredefinedType(EntityRef self) {
 
 bool IfcFlowMeter_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcflowmetertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcflowmetertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5195,7 +5196,7 @@ bool IfcFooting_CorrectPredefinedType(EntityRef self) {
 
 bool IfcFooting_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcfootingtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcfootingtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5213,7 +5214,7 @@ bool IfcFurniture_CorrectPredefinedType(EntityRef self) {
 
 bool IfcFurniture_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcfurnituretype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcfurnituretype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5231,7 +5232,7 @@ bool IfcGeographicElement_CorrectPredefinedType(EntityRef self) {
 
 bool IfcGeographicElement_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcgeographicelementtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcgeographicelementtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5282,7 +5283,7 @@ Value calc_IfcGeometricRepresentationSubContext_CoordinateSpaceDimension(EntityR
 
 Value calc_IfcGeometricRepresentationSubContext_TrueNorth(EntityRef self) {
     Value parentcontext = express_getattr(self, "ParentContext");
-    return nvl(express_getattr(parentcontext, "TrueNorth"), IfcConvertDirectionInto2D(express_getitem(express_getattr(express_getattr(self, "WorldCoordinateSystem"), "P"), 2 - 1)));
+    return nvl(express_getattr(parentcontext, "TrueNorth"), IfcConvertDirectionInto2D(express_getitem(express_getattr(express_getattr(self, "WorldCoordinateSystem"), "P"), 2)));
 }
 
 Value calc_IfcGeometricRepresentationSubContext_Precision(EntityRef self) {
@@ -5292,13 +5293,13 @@ Value calc_IfcGeometricRepresentationSubContext_Precision(EntityRef self) {
 
 bool IfcGeometricSet_ConsistentDim(EntityRef self) {
     Value elements = express_getattr(self, "Elements");
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(elements)) { if (Value((express_getattr(temp, "Dim")) != (express_getattr(express_getitem(elements, 1 - 1), "Dim"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(elements)) { if (Value((express_getattr(temp, "Dim")) != (express_getattr(express_getitem(elements, 1), "Dim"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
 Value calc_IfcGeometricSet_Dim(EntityRef self) {
     Value elements = express_getattr(self, "Elements");
-    return express_getattr(express_getitem(elements, 1 - 1), "Dim");
+    return express_getattr(express_getitem(elements, 1), "Dim");
 }
 
 bool IfcGrid_HasPlacement(EntityRef self) {
@@ -5332,7 +5333,7 @@ bool IfcHeatExchanger_CorrectPredefinedType(EntityRef self) {
 
 bool IfcHeatExchanger_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcheatexchangertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcheatexchangertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5350,7 +5351,7 @@ bool IfcHumidifier_CorrectPredefinedType(EntityRef self) {
 
 bool IfcHumidifier_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifchumidifiertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifchumidifiertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5398,7 +5399,7 @@ bool IfcInterceptor_CorrectPredefinedType(EntityRef self) {
 
 bool IfcInterceptor_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcinterceptortype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcinterceptortype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5414,7 +5415,7 @@ bool IfcIntersectionCurve_TwoPCurves(EntityRef self) {
 }
 
 bool IfcIntersectionCurve_DistinctSurfaces(EntityRef self) {
-    if (!Value((IfcAssociatedSurface(express_getitem(express_getattr(self, "AssociatedGeometry"), 1 - 1))) != (IfcAssociatedSurface(express_getitem(express_getattr(self, "AssociatedGeometry"), 2 - 1)))).truthy()) return false;
+    if (!Value((IfcAssociatedSurface(express_getitem(express_getattr(self, "AssociatedGeometry"), 1))) != (IfcAssociatedSurface(express_getitem(express_getattr(self, "AssociatedGeometry"), 2)))).truthy()) return false;
     return true;
 }
 
@@ -5426,7 +5427,7 @@ bool IfcJunctionBox_CorrectPredefinedType(EntityRef self) {
 
 bool IfcJunctionBox_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcjunctionboxtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcjunctionboxtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5464,7 +5465,7 @@ bool IfcLamp_CorrectPredefinedType(EntityRef self) {
 
 bool IfcLamp_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifclamptype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifclamptype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5482,7 +5483,7 @@ bool IfcLightFixture_CorrectPredefinedType(EntityRef self) {
 
 bool IfcLightFixture_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifclightfixturetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifclightfixturetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5536,7 +5537,7 @@ bool IfcMechanicalFastener_CorrectPredefinedType(EntityRef self) {
 
 bool IfcMechanicalFastener_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcmechanicalfastenertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcmechanicalfastenertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5554,7 +5555,7 @@ bool IfcMedicalDevice_CorrectPredefinedType(EntityRef self) {
 
 bool IfcMedicalDevice_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcmedicaldevicetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcmedicaldevicetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5572,7 +5573,7 @@ bool IfcMember_CorrectPredefinedType(EntityRef self) {
 
 bool IfcMember_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcmembertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcmembertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5599,7 +5600,7 @@ bool IfcMotorConnection_CorrectPredefinedType(EntityRef self) {
 
 bool IfcMotorConnection_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcmotorconnectiontype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcmotorconnectiontype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5670,7 +5671,7 @@ bool IfcOutlet_CorrectPredefinedType(EntityRef self) {
 
 bool IfcOutlet_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcoutlettype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcoutlettype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5734,7 +5735,7 @@ bool IfcPile_CorrectPredefinedType(EntityRef self) {
 
 bool IfcPile_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcpiletype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcpiletype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5752,7 +5753,7 @@ bool IfcPipeFitting_CorrectPredefinedType(EntityRef self) {
 
 bool IfcPipeFitting_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcpipefittingtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcpipefittingtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5770,7 +5771,7 @@ bool IfcPipeSegment_CorrectPredefinedType(EntityRef self) {
 
 bool IfcPipeSegment_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcpipesegmenttype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcpipesegmenttype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5808,7 +5809,7 @@ bool IfcPixelTexture_SizeOfPixelList(EntityRef self) {
 
 bool IfcPixelTexture_PixelAsByteAndSameLength(EntityRef self) {
     Value pixel = express_getattr(self, "Pixel");
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(pixel)) { if (Value(((blength(temp) % 8) == 0) && (blength(temp) == (blength(express_getitem(pixel, 1 - 1))))).truthy()) __r.append(temp); } return __r; })())) == sizeof_(pixel)).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(pixel)) { if (Value(((blength(temp) % 8) == 0) && (blength(temp) == (blength(express_getitem(pixel, 1))))).truthy()) __r.append(temp); } return __r; })())) == sizeof_(pixel)).truthy()) return false;
     return true;
 }
 
@@ -5825,7 +5826,7 @@ bool IfcPlate_CorrectPredefinedType(EntityRef self) {
 
 bool IfcPlate_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcplatetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcplatetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -5852,7 +5853,7 @@ Value calc_IfcPointOnSurface_Dim(EntityRef self) {
 
 bool IfcPolyLoop_AllPointsSameDim(EntityRef self) {
     Value polygon = express_getattr(self, "Polygon");
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(polygon)) { if (Value((express_getattr(temp, "Dim")) != (express_getattr(express_getitem(polygon, 1 - 1), "Dim"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(polygon)) { if (Value((express_getattr(temp, "Dim")) != (express_getattr(express_getitem(polygon, 1), "Dim"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
@@ -5870,7 +5871,7 @@ bool IfcPolygonalBoundedHalfSpace_BoundaryType(EntityRef self) {
 
 bool IfcPolyline_SameDim(EntityRef self) {
     Value points = express_getattr(self, "Points");
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(points)) { if (Value((express_getattr(temp, "Dim")) != (express_getattr(express_getitem(points, 1 - 1), "Dim"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(points)) { if (Value((express_getattr(temp, "Dim")) != (express_getattr(express_getitem(points, 1), "Dim"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
@@ -5985,12 +5986,12 @@ bool IfcPropertyEnumeratedValue_WR21(EntityRef self) {
 }
 
 bool IfcPropertyEnumeration_WR01(EntityRef self) {
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(self, "EnumerationValues"))) { if (Value(!(((typeof_(express_getitem(express_getattr(self, "EnumerationValues"), 1 - 1))) == typeof_(temp)))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(self, "EnumerationValues"))) { if (Value(!(((typeof_(express_getitem(express_getattr(self, "EnumerationValues"), 1))) == typeof_(temp)))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
 bool IfcPropertyListValue_WR31(EntityRef self) {
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(self, "ListValues"))) { if (Value(!(((typeof_(express_getitem(express_getattr(self, "ListValues"), 1 - 1))) == typeof_(temp)))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(self, "ListValues"))) { if (Value(!(((typeof_(express_getitem(express_getattr(self, "ListValues"), 1))) == typeof_(temp)))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
@@ -6025,13 +6026,13 @@ bool IfcPropertyTableValue_WR21(EntityRef self) {
 
 bool IfcPropertyTableValue_WR22(EntityRef self) {
     Value definingvalues = express_getattr(self, "DefiningValues");
-    if (!Value(!(exists(definingvalues)) || ((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(self, "DefiningValues"))) { if (Value(typeof_(temp) != (typeof_(express_getitem(express_getattr(self, "DefiningValues"), 1 - 1)))).truthy()) __r.append(temp); } return __r; })())) == 0)).truthy()) return false;
+    if (!Value(!(exists(definingvalues)) || ((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(self, "DefiningValues"))) { if (Value(typeof_(temp) != (typeof_(express_getitem(express_getattr(self, "DefiningValues"), 1)))).truthy()) __r.append(temp); } return __r; })())) == 0)).truthy()) return false;
     return true;
 }
 
 bool IfcPropertyTableValue_WR23(EntityRef self) {
     Value definedvalues = express_getattr(self, "DefinedValues");
-    if (!Value(!(exists(definedvalues)) || ((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(self, "DefinedValues"))) { if (Value(typeof_(temp) != (typeof_(express_getitem(express_getattr(self, "DefinedValues"), 1 - 1)))).truthy()) __r.append(temp); } return __r; })())) == 0)).truthy()) return false;
+    if (!Value(!(exists(definedvalues)) || ((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(self, "DefinedValues"))) { if (Value(typeof_(temp) != (typeof_(express_getitem(express_getattr(self, "DefinedValues"), 1)))).truthy()) __r.append(temp); } return __r; })())) == 0)).truthy()) return false;
     return true;
 }
 
@@ -6043,7 +6044,7 @@ bool IfcProtectiveDevice_CorrectPredefinedType(EntityRef self) {
 
 bool IfcProtectiveDevice_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcprotectivedevicetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcprotectivedevicetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -6055,7 +6056,7 @@ bool IfcProtectiveDeviceTrippingUnit_CorrectPredefinedType(EntityRef self) {
 
 bool IfcProtectiveDeviceTrippingUnit_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcprotectivedevicetrippingunittype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcprotectivedevicetrippingunittype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -6084,7 +6085,7 @@ bool IfcPump_CorrectPredefinedType(EntityRef self) {
 
 bool IfcPump_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcpumptype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcpumptype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -6163,7 +6164,7 @@ bool IfcRailing_CorrectPredefinedType(EntityRef self) {
 
 bool IfcRailing_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcrailingtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcrailingtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -6181,7 +6182,7 @@ bool IfcRamp_CorrectPredefinedType(EntityRef self) {
 
 bool IfcRamp_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcramptype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcramptype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -6193,7 +6194,7 @@ bool IfcRampFlight_CorrectPredefinedType(EntityRef self) {
 
 bool IfcRampFlight_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcrampflighttype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcrampflighttype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -6227,7 +6228,7 @@ Value calc_IfcRationalBSplineCurveWithKnots_Weights(EntityRef self) {
 
 bool IfcRationalBSplineSurfaceWithKnots_CorrespondingWeightsDataLists(EntityRef self) {
     Value weightsdata = express_getattr(self, "WeightsData");
-    if (!Value((sizeof_(weightsdata) == (sizeof_(express_getattr(self, "ControlPointsList")))) && ((sizeof_(express_getitem(weightsdata, 1 - 1))) == (sizeof_(express_getitem(express_getattr(self, "ControlPointsList"), 1 - 1))))).truthy()) return false;
+    if (!Value((sizeof_(weightsdata) == (sizeof_(express_getattr(self, "ControlPointsList")))) && ((sizeof_(express_getitem(weightsdata, 1))) == (sizeof_(express_getitem(express_getattr(self, "ControlPointsList"), 1))))).truthy()) return false;
     return true;
 }
 
@@ -6301,7 +6302,7 @@ bool IfcReinforcingBar_CorrectPredefinedType(EntityRef self) {
 
 bool IfcReinforcingBar_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcreinforcingbartype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcreinforcingbartype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -6326,7 +6327,7 @@ bool IfcReinforcingMesh_CorrectPredefinedType(EntityRef self) {
 
 bool IfcReinforcingMesh_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcreinforcingmeshtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcreinforcingmeshtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -6502,13 +6503,13 @@ bool IfcRepresentationMap_ApplicableMappedRepr(EntityRef self) {
 
 bool IfcRevolvedAreaSolid_AxisStartInXY(EntityRef self) {
     Value axis = express_getattr(self, "Axis");
-    if (!Value((express_getitem(express_getattr(express_getattr(axis, "Location"), "Coordinates"), 3 - 1)) == 0.0).truthy()) return false;
+    if (!Value((express_getitem(express_getattr(express_getattr(axis, "Location"), "Coordinates"), 3)) == 0.0).truthy()) return false;
     return true;
 }
 
 bool IfcRevolvedAreaSolid_AxisDirectionInXY(EntityRef self) {
     Value axis = express_getattr(self, "Axis");
-    if (!Value((express_getitem(express_getattr(express_getattr(axis, "Z"), "DirectionRatios"), 3 - 1)) == 0.0).truthy()) return false;
+    if (!Value((express_getitem(express_getattr(express_getattr(axis, "Z"), "DirectionRatios"), 3)) == 0.0).truthy()) return false;
     return true;
 }
 
@@ -6530,7 +6531,7 @@ bool IfcRoof_CorrectPredefinedType(EntityRef self) {
 
 bool IfcRoof_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcrooftype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcrooftype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -6558,7 +6559,7 @@ bool IfcSanitaryTerminal_CorrectPredefinedType(EntityRef self) {
 
 bool IfcSanitaryTerminal_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcsanitaryterminaltype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcsanitaryterminaltype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -6574,7 +6575,7 @@ bool IfcSeamCurve_TwoPCurves(EntityRef self) {
 }
 
 bool IfcSeamCurve_SameSurface(EntityRef self) {
-    if (!Value((IfcAssociatedSurface(express_getitem(express_getattr(self, "AssociatedGeometry"), 1 - 1))) == (IfcAssociatedSurface(express_getitem(express_getattr(self, "AssociatedGeometry"), 2 - 1)))).truthy()) return false;
+    if (!Value((IfcAssociatedSurface(express_getitem(express_getattr(self, "AssociatedGeometry"), 1))) == (IfcAssociatedSurface(express_getitem(express_getattr(self, "AssociatedGeometry"), 2)))).truthy()) return false;
     return true;
 }
 
@@ -6587,7 +6588,7 @@ bool IfcSectionedSpine_CorrespondingSectionPositions(EntityRef self) {
 
 bool IfcSectionedSpine_ConsistentProfileTypes(EntityRef self) {
     Value crosssections = express_getattr(self, "CrossSections");
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(crosssections)) { if (Value((express_getattr(express_getitem(crosssections, 1 - 1), "ProfileType")) != (express_getattr(temp, "ProfileType"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(crosssections)) { if (Value((express_getattr(express_getitem(crosssections, 1), "ProfileType")) != (express_getattr(temp, "ProfileType"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
@@ -6609,7 +6610,7 @@ bool IfcSensor_CorrectPredefinedType(EntityRef self) {
 
 bool IfcSensor_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcsensortype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcsensortype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -6627,7 +6628,7 @@ bool IfcShadingDevice_CorrectPredefinedType(EntityRef self) {
 
 bool IfcShadingDevice_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcshadingdevicetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcshadingdevicetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -6681,7 +6682,7 @@ bool IfcSlab_CorrectPredefinedType(EntityRef self) {
 
 bool IfcSlab_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcslabtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcslabtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -6709,7 +6710,7 @@ bool IfcSolarDevice_CorrectPredefinedType(EntityRef self) {
 
 bool IfcSolarDevice_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcsolardevicetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcsolardevicetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -6731,7 +6732,7 @@ bool IfcSpace_CorrectPredefinedType(EntityRef self) {
 
 bool IfcSpace_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcspacetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcspacetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -6743,7 +6744,7 @@ bool IfcSpaceHeater_CorrectPredefinedType(EntityRef self) {
 
 bool IfcSpaceHeater_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcspaceheatertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcspaceheatertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -6760,7 +6761,7 @@ bool IfcSpaceType_CorrectPredefinedType(EntityRef self) {
 }
 
 bool IfcSpatialStructureElement_WR41(EntityRef self) {
-    if (!Value(((hiindex(express_getattr(self, "Decomposes"))) == 1) && (ifcapi::express::express_in(Value(std::string("ifc4.ifcrelaggregates")), typeof_(express_getitem(express_getattr(self, "Decomposes"), 1 - 1)))) && ((ifcapi::express::express_in(Value(std::string("ifc4.ifcproject")), typeof_(express_getattr(express_getitem(express_getattr(self, "Decomposes"), 1 - 1), "RelatingObject")))) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcspatialstructureelement")), typeof_(express_getattr(express_getitem(express_getattr(self, "Decomposes"), 1 - 1), "RelatingObject")))))).truthy()) return false;
+    if (!Value(((hiindex(express_getattr(self, "Decomposes"))) == 1) && (ifcapi::express::express_in(Value(std::string("ifc4.ifcrelaggregates")), typeof_(express_getitem(express_getattr(self, "Decomposes"), 1)))) && ((ifcapi::express::express_in(Value(std::string("ifc4.ifcproject")), typeof_(express_getattr(express_getitem(express_getattr(self, "Decomposes"), 1), "RelatingObject")))) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcspatialstructureelement")), typeof_(express_getattr(express_getitem(express_getattr(self, "Decomposes"), 1), "RelatingObject")))))).truthy()) return false;
     return true;
 }
 
@@ -6772,7 +6773,7 @@ bool IfcSpatialZone_CorrectPredefinedType(EntityRef self) {
 
 bool IfcSpatialZone_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcspatialzonetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcspatialzonetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -6790,7 +6791,7 @@ bool IfcStackTerminal_CorrectPredefinedType(EntityRef self) {
 
 bool IfcStackTerminal_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcstackterminaltype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcstackterminaltype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -6808,7 +6809,7 @@ bool IfcStair_CorrectPredefinedType(EntityRef self) {
 
 bool IfcStair_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcstairtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcstairtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -6820,7 +6821,7 @@ bool IfcStairFlight_CorrectPredefinedType(EntityRef self) {
 
 bool IfcStairFlight_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcstairflighttype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcstairflighttype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -7042,13 +7043,13 @@ bool IfcSurfaceReinforcementArea_SurfaceAndOrShearAreaSpecified(EntityRef self) 
 
 bool IfcSurfaceReinforcementArea_NonnegativeArea1(EntityRef self) {
     Value surfacereinforcement1 = express_getattr(self, "SurfaceReinforcement1");
-    if (!Value(!(exists(surfacereinforcement1)) || (((express_getitem(surfacereinforcement1, 1 - 1)) >= 0.) && ((express_getitem(surfacereinforcement1, 2 - 1)) >= 0.) && ((sizeof_(surfacereinforcement1) == 1) || ((express_getitem(surfacereinforcement1, 1 - 1)) >= 0.)))).truthy()) return false;
+    if (!Value(!(exists(surfacereinforcement1)) || (((express_getitem(surfacereinforcement1, 1)) >= 0.) && ((express_getitem(surfacereinforcement1, 2)) >= 0.) && ((sizeof_(surfacereinforcement1) == 1) || ((express_getitem(surfacereinforcement1, 1)) >= 0.)))).truthy()) return false;
     return true;
 }
 
 bool IfcSurfaceReinforcementArea_NonnegativeArea2(EntityRef self) {
     Value surfacereinforcement2 = express_getattr(self, "SurfaceReinforcement2");
-    if (!Value(!(exists(surfacereinforcement2)) || (((express_getitem(surfacereinforcement2, 1 - 1)) >= 0.) && ((express_getitem(surfacereinforcement2, 2 - 1)) >= 0.) && ((sizeof_(surfacereinforcement2) == 1) || ((express_getitem(surfacereinforcement2, 1 - 1)) >= 0.)))).truthy()) return false;
+    if (!Value(!(exists(surfacereinforcement2)) || (((express_getitem(surfacereinforcement2, 1)) >= 0.) && ((express_getitem(surfacereinforcement2, 2)) >= 0.) && ((sizeof_(surfacereinforcement2) == 1) || ((express_getitem(surfacereinforcement2, 1)) >= 0.)))).truthy()) return false;
     return true;
 }
 
@@ -7135,7 +7136,7 @@ bool IfcSwitchingDevice_CorrectPredefinedType(EntityRef self) {
 
 bool IfcSwitchingDevice_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcswitchingdevicetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcswitchingdevicetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -7153,7 +7154,7 @@ bool IfcSystemFurnitureElement_CorrectPredefinedType(EntityRef self) {
 
 bool IfcSystemFurnitureElement_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcsystemfurnitureelementtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcsystemfurnitureelementtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -7179,7 +7180,7 @@ bool IfcTShapeProfileDef_ValidWebThickness(EntityRef self) {
 
 bool IfcTable_WR1(EntityRef self) {
     Value rows = express_getattr(self, "Rows");
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(rows)) { if (Value((hiindex(express_getattr(temp, "RowCells"))) != (hiindex(express_getattr(express_getitem(rows, 1 - 1), "RowCells")))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(rows)) { if (Value((hiindex(express_getattr(temp, "RowCells"))) != (hiindex(express_getattr(express_getitem(rows, 1), "RowCells")))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
@@ -7191,7 +7192,7 @@ bool IfcTable_WR2(EntityRef self) {
 
 Value calc_IfcTable_NumberOfCellsInRow(EntityRef self) {
     Value rows = express_getattr(self, "Rows");
-    return hiindex(express_getattr(express_getitem(rows, 1 - 1), "RowCells"));
+    return hiindex(express_getattr(express_getitem(rows, 1), "RowCells"));
 }
 
 Value calc_IfcTable_NumberOfHeadings(EntityRef self) {
@@ -7212,7 +7213,7 @@ bool IfcTank_CorrectPredefinedType(EntityRef self) {
 
 bool IfcTank_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifctanktype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifctanktype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -7258,7 +7259,7 @@ bool IfcTendon_CorrectPredefinedType(EntityRef self) {
 
 bool IfcTendon_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifctendontype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifctendontype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -7270,7 +7271,7 @@ bool IfcTendonAnchor_CorrectPredefinedType(EntityRef self) {
 
 bool IfcTendonAnchor_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifctendonanchortype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifctendonanchortype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -7331,7 +7332,7 @@ bool IfcTransformer_CorrectPredefinedType(EntityRef self) {
 
 bool IfcTransformer_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifctranformertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifctranformertype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -7349,7 +7350,7 @@ bool IfcTransportElement_CorrectPredefinedType(EntityRef self) {
 
 bool IfcTransportElement_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifctransportelementtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifctransportelementtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -7366,13 +7367,13 @@ Value calc_IfcTriangulatedFaceSet_NumberOfTriangles(EntityRef self) {
 
 bool IfcTrimmedCurve_Trim1ValuesConsistent(EntityRef self) {
     Value trim1 = express_getattr(self, "Trim1");
-    if (!Value((hiindex(trim1) == 1) || ((typeof_(express_getitem(trim1, 1 - 1))) != (typeof_(express_getitem(trim1, 2 - 1))))).truthy()) return false;
+    if (!Value((hiindex(trim1) == 1) || ((typeof_(express_getitem(trim1, 1))) != (typeof_(express_getitem(trim1, 2))))).truthy()) return false;
     return true;
 }
 
 bool IfcTrimmedCurve_Trim2ValuesConsistent(EntityRef self) {
     Value trim2 = express_getattr(self, "Trim2");
-    if (!Value((hiindex(trim2) == 1) || ((typeof_(express_getitem(trim2, 1 - 1))) != (typeof_(express_getitem(trim2, 2 - 1))))).truthy()) return false;
+    if (!Value((hiindex(trim2) == 1) || ((typeof_(express_getitem(trim2, 1))) != (typeof_(express_getitem(trim2, 2))))).truthy()) return false;
     return true;
 }
 
@@ -7390,7 +7391,7 @@ bool IfcTubeBundle_CorrectPredefinedType(EntityRef self) {
 
 bool IfcTubeBundle_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifctubebundletype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifctubebundletype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -7412,7 +7413,7 @@ bool IfcTypeObject_UniquePropertySetNames(EntityRef self) {
 }
 
 bool IfcTypeProduct_ApplicableOccurrence(EntityRef self) {
-    if (!Value((!((exists(express_getitem(express_getattr(self, "Types"), 1 - 1))))) || ((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(express_getitem(express_getattr(self, "Types"), 1 - 1), "RelatedObjects"))) { if (Value(!((ifcapi::express::express_in(Value(std::string("ifc4.ifcproduct")), typeof_(temp))))).truthy()) __r.append(temp); } return __r; })())) == 0)).truthy()) return false;
+    if (!Value((!((exists(express_getitem(express_getattr(self, "Types"), 1))))) || ((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(express_getitem(express_getattr(self, "Types"), 1), "RelatedObjects"))) { if (Value(!((ifcapi::express::express_in(Value(std::string("ifc4.ifcproduct")), typeof_(temp))))).truthy()) __r.append(temp); } return __r; })())) == 0)).truthy()) return false;
     return true;
 }
 
@@ -7444,7 +7445,7 @@ bool IfcUnitaryControlElement_CorrectPredefinedType(EntityRef self) {
 
 bool IfcUnitaryControlElement_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcunitarycontrolelementtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcunitarycontrolelementtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -7462,7 +7463,7 @@ bool IfcUnitaryEquipment_CorrectPredefinedType(EntityRef self) {
 
 bool IfcUnitaryEquipment_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcunitaryequipmenttype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcunitaryequipmenttype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -7480,7 +7481,7 @@ bool IfcValve_CorrectPredefinedType(EntityRef self) {
 
 bool IfcValve_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcvalvetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcvalvetype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -7509,7 +7510,7 @@ bool IfcVibrationIsolator_CorrectPredefinedType(EntityRef self) {
 
 bool IfcVibrationIsolator_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcvibrationisolatortype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcvibrationisolatortype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -7533,7 +7534,7 @@ bool IfcWall_CorrectPredefinedType(EntityRef self) {
 
 bool IfcWall_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcwalltype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcwalltype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -7561,7 +7562,7 @@ bool IfcWasteTerminal_CorrectPredefinedType(EntityRef self) {
 
 bool IfcWasteTerminal_CorrectTypeAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcwasteterminaltype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcwasteterminaltype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -7573,7 +7574,7 @@ bool IfcWasteTerminalType_CorrectPredefinedType(EntityRef self) {
 
 bool IfcWindow_CorrectStyleAssigned(EntityRef self) {
     Value istypedby = express_getattr(self, "IsTypedBy");
-    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcwindowtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1 - 1), "RelatingType"))))).truthy()) return false;
+    if (!Value((sizeof_(istypedby) == 0) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcwindowtype")), typeof_(express_getattr(express_getitem(express_getattr(self, "IsTypedBy"), 1), "RelatingType"))))).truthy()) return false;
     return true;
 }
 
@@ -7599,12 +7600,12 @@ bool IfcWindowLiningProperties_WR33(EntityRef self) {
 }
 
 bool IfcWindowLiningProperties_WR34(EntityRef self) {
-    if (!Value((exists(express_getitem(express_getattr(self, "DefinesType"), 1 - 1))) && ((ifcapi::express::express_in(Value(std::string("ifc4.ifcwindowtype")), typeof_(express_getitem(express_getattr(self, "DefinesType"), 1 - 1)))) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcwindowstyle")), typeof_(express_getitem(express_getattr(self, "DefinesType"), 1 - 1)))))).truthy()) return false;
+    if (!Value((exists(express_getitem(express_getattr(self, "DefinesType"), 1))) && ((ifcapi::express::express_in(Value(std::string("ifc4.ifcwindowtype")), typeof_(express_getitem(express_getattr(self, "DefinesType"), 1)))) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcwindowstyle")), typeof_(express_getitem(express_getattr(self, "DefinesType"), 1)))))).truthy()) return false;
     return true;
 }
 
 bool IfcWindowPanelProperties_ApplicableToType(EntityRef self) {
-    if (!Value((exists(express_getitem(express_getattr(self, "DefinesType"), 1 - 1))) && ((ifcapi::express::express_in(Value(std::string("ifc4.ifcwindowtype")), typeof_(express_getitem(express_getattr(self, "DefinesType"), 1 - 1)))) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcwindowstyle")), typeof_(express_getitem(express_getattr(self, "DefinesType"), 1 - 1)))))).truthy()) return false;
+    if (!Value((exists(express_getitem(express_getattr(self, "DefinesType"), 1))) && ((ifcapi::express::express_in(Value(std::string("ifc4.ifcwindowtype")), typeof_(express_getitem(express_getattr(self, "DefinesType"), 1)))) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcwindowstyle")), typeof_(express_getitem(express_getattr(self, "DefinesType"), 1)))))).truthy()) return false;
     return true;
 }
 
@@ -7640,7 +7641,7 @@ bool IfcZShapeProfileDef_ValidFlangeThickness(EntityRef self) {
 }
 
 bool IfcZone_WR1(EntityRef self) {
-    if (!Value(((sizeof_(express_getattr(self, "IsGroupedBy"))) == 0) || ((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(express_getitem(express_getattr(self, "IsGroupedBy"), 1 - 1), "RelatedObjects"))) { if (Value(!(((ifcapi::express::express_in(Value(std::string("ifc4.ifczone")), typeof_(temp))) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcspace")), typeof_(temp))) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcspatialzone")), typeof_(temp)))))).truthy()) __r.append(temp); } return __r; })())) == 0)).truthy()) return false;
+    if (!Value(((sizeof_(express_getattr(self, "IsGroupedBy"))) == 0) || ((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(express_getitem(express_getattr(self, "IsGroupedBy"), 1), "RelatedObjects"))) { if (Value(!(((ifcapi::express::express_in(Value(std::string("ifc4.ifczone")), typeof_(temp))) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcspace")), typeof_(temp))) || (ifcapi::express::express_in(Value(std::string("ifc4.ifcspatialzone")), typeof_(temp)))))).truthy()) __r.append(temp); } return __r; })())) == 0)).truthy()) return false;
     return true;
 }
 
@@ -7649,8 +7650,8 @@ bool IfcRepresentationContextSameWCS(IfcFile* file) {
     Value isdifferent = false;
     if (Value(sizeof_(IfcGeometricRepresentationContext) > 1).truthy()) {
         for (Value i = 2; (Value(i) <= Value(hiindex(IfcGeometricRepresentationContext))).truthy(); i = i + Value((int64_t)1)) {
-            if (Value((express_getattr(express_getitem(IfcGeometricRepresentationContext, 1 - 1), "WorldCoordinateSystem")) != (express_getattr(express_getitem(IfcGeometricRepresentationContext, i - 1), "WorldCoordinateSystem"))).truthy()) {
-                isdifferent = (!((IfcSameValidPrecision(express_getattr(express_getitem(IfcGeometricRepresentationContext, 1 - 1), "Precision"), express_getattr(express_getitem(IfcGeometricRepresentationContext, i - 1), "Precision"))))) || (!((IfcSameAxis2Placement(express_getattr(express_getitem(IfcGeometricRepresentationContext, 1 - 1), "WorldCoordinateSystem"), express_getattr(express_getitem(IfcGeometricRepresentationContext, i - 1), "WorldCoordinateSystem"), express_getattr(express_getitem(IfcGeometricRepresentationContext, 1 - 1), "Precision")))));
+            if (Value((express_getattr(express_getitem(IfcGeometricRepresentationContext, 1), "WorldCoordinateSystem")) != (express_getattr(express_getitem(IfcGeometricRepresentationContext, i), "WorldCoordinateSystem"))).truthy()) {
+                isdifferent = (!((IfcSameValidPrecision(express_getattr(express_getitem(IfcGeometricRepresentationContext, 1), "Precision"), express_getattr(express_getitem(IfcGeometricRepresentationContext, i), "Precision"))))) || (!((IfcSameAxis2Placement(express_getattr(express_getitem(IfcGeometricRepresentationContext, 1), "WorldCoordinateSystem"), express_getattr(express_getitem(IfcGeometricRepresentationContext, i), "WorldCoordinateSystem"), express_getattr(express_getitem(IfcGeometricRepresentationContext, 1), "Precision")))));
                 if (Value(isdifferent == true).truthy()) {
                     break;
                 }

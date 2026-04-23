@@ -55,6 +55,19 @@ Value blength(const Value& v) {
 
 namespace {
 
+std::string lc_copy(std::string_view s) {
+    std::string out(s);
+    for (auto& c : out) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return out;
+}
+
+std::string schema_name_for(const IfcUtil::IfcBaseClass* e,
+                            const IfcParse::declaration* d) {
+    if (d && d->schema()) return d->schema()->name();
+    if (e && e->file_ && e->file_->schema()) return e->file_->schema()->name();
+    return {};
+}
+
 // O(n*m) but EXPRESS sets are tiny (cartesian-point coordinates etc.).
 bool contains_value(const SetData& s, const Value& v) {
     for (const auto& it : s) {
@@ -243,48 +256,47 @@ Value express_getattr(const Value& v, std::string_view attr_name) {
 /* ================================================================== */
 namespace {
 struct DerivedKey {
+    std::string schema;
     std::string entity;
     std::string attr;
     bool operator==(const DerivedKey& o) const noexcept {
-        return entity == o.entity && attr == o.attr;
+        return schema == o.schema && entity == o.entity && attr == o.attr;
     }
 };
 struct DerivedKeyHash {
     size_t operator()(const DerivedKey& k) const noexcept {
-        return std::hash<std::string>{}(k.entity) ^ (std::hash<std::string>{}(k.attr) << 1);
+        size_t h1 = std::hash<std::string>{}(k.schema);
+        size_t h2 = std::hash<std::string>{}(k.entity);
+        size_t h3 = std::hash<std::string>{}(k.attr);
+        return h1 ^ (h2 << 1) ^ (h3 << 2);
     }
 };
-// Keyed on (entity_lower, attr_lower); schema is implicit because each
-// entity name is unique within a schema and a given decl* lookup walks
-// just one schema's chain.
+// Keyed on (schema_lower, entity_lower, attr_lower). Entity names repeat
+// across schemas, so schema must participate in dispatch.
 using DerivedMap = std::unordered_map<DerivedKey, DeriveFn, DerivedKeyHash>;
 DerivedMap& derived_registry() {
     static DerivedMap m;
     return m;
 }
-std::string lc_copy(std::string_view s) {
-    std::string out(s);
-    for (auto& c : out) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-    return out;
-}
 }  // namespace
 
-void register_derived(std::string_view /*schema_name*/,
+void register_derived(std::string_view schema_name,
                       std::string_view entity_name,
                       std::string_view attr_name,
                       DeriveFn fn) {
     if (!fn) return;
-    derived_registry()[DerivedKey{lc_copy(entity_name), lc_copy(attr_name)}] = fn;
+    derived_registry()[DerivedKey{lc_copy(schema_name), lc_copy(entity_name), lc_copy(attr_name)}] = fn;
 }
 
 DeriveFn lookup_derived(const void* decl_ptr, std::string_view attr_name) {
     auto* d = static_cast<const IfcParse::entity*>(decl_ptr);
     if (!d) return nullptr;
     auto& reg = derived_registry();
+    std::string schema_lc = lc_copy(d->schema() ? d->schema()->name() : std::string{});
     std::string attr_lc = lc_copy(attr_name);
     const IfcParse::entity* cur = d;
     while (cur) {
-        auto it = reg.find(DerivedKey{lc_copy(cur->name()), attr_lc});
+        auto it = reg.find(DerivedKey{schema_lc, lc_copy(cur->name()), attr_lc});
         if (it != reg.end()) return it->second;
         cur = cur->supertype();
     }
@@ -322,7 +334,7 @@ Value set_attr(const Value& v, std::string_view attr_name, const Value& value) {
         if (auto* e = as_baseclass(v)) {
             const auto* d = &e->declaration();
             px->type_name = d->name();
-            if (d->schema()) px->schema_name = d->schema()->name();
+            px->schema_name = schema_name_for(e, d);
             px->base = v.as_entity();
         }
     } else {
@@ -341,9 +353,8 @@ Value typeof_(const Value& v) {
         }
         // No base: just emit the recorded type.
         auto out = std::make_shared<SetData>();
-        std::string s = px.schema_name + "." + px.type_name;
-        std::transform(s.begin(), s.end(), s.begin(),
-                       [](unsigned char c) { return std::tolower(c); });
+        std::string s = lc_copy(px.type_name);
+        if (!px.schema_name.empty()) s = lc_copy(px.schema_name) + "." + s;
         out->emplace_back(s);
         return Value(SetPtr{std::move(out)});
     }
@@ -351,17 +362,13 @@ Value typeof_(const Value& v) {
     if (!e) return Indeterminate{};
     auto out = std::make_shared<SetData>();
     const IfcParse::declaration* d = &e->declaration();
-    std::string schema = d->schema() ? d->schema()->name() : std::string{};
+    std::string schema = schema_name_for(e, d);
     // Lower-case schema for matching: EXPRESS typeof yields names like
     // "ifc4.ifccartesianpoint".
-    std::string schema_lc = schema;
-    std::transform(schema_lc.begin(), schema_lc.end(), schema_lc.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
+    std::string schema_lc = lc_copy(schema);
     while (d) {
-        std::string name = d->name();
-        std::transform(name.begin(), name.end(), name.begin(),
-                       [](unsigned char c) { return std::tolower(c); });
-        std::string qual = schema_lc + "." + name;
+        std::string name = lc_copy(d->name());
+        std::string qual = schema_lc.empty() ? name : (schema_lc + "." + name);
         // Dedupe.
         bool dup = false;
         for (auto& it : *out) if (it.is_string() && it.as_string() == qual) { dup = true; break; }

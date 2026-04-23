@@ -512,6 +512,71 @@ inline Val* resolve_occurrences(IfcUtil::IfcBaseClass* e) {
     return list;
 }
 
+inline Val* resolve_styles(IfcUtil::IfcBaseClass* e) {
+    auto* list = make_list();
+    if (!e) return list;
+    ScopedHandle sh(e);
+    uint32_t n = 0;
+    auto** arr = ifcopenshell_util_element_get_styles(sh.get(), &n);
+    if (!arr) return list;
+    for (uint32_t i = 0; i < n; ++i) {
+        if (arr[i] && arr[i]->ptr) list->list_val.push_back(make_instance(arr[i]->ptr));
+    }
+    ifcopenshell_free_instance_array(arr, n);
+    return list;
+}
+
+inline Val* resolve_systems(IfcUtil::IfcBaseClass* e, bool zones_only) {
+    auto* list = make_list();
+    for (auto* rel : get_inverse_list(e, "HasAssignments")) {
+        if (!entity_is_a(rel, "IfcRelAssignsToGroup")) continue;
+        auto* grp = get_entity_ref(rel, "RelatingGroup");
+        if (!grp) continue;
+        bool is_zone = entity_is_a(grp, "IfcZone");
+        bool is_system = entity_is_a(grp, "IfcSystem") && !entity_is_a(grp, "IfcStructuralAnalysisModel");
+        if ((zones_only && is_zone) || (!zones_only && is_system && !is_zone)) {
+            list->list_val.push_back(make_instance(grp));
+        }
+    }
+    return list;
+}
+
+inline Val* resolve_profiles(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e) {
+    auto* list = make_list();
+    if (!e) return list;
+
+    ScopedHandle sh(e);
+    auto* mat_h = ifcopenshell_element_get_material(sh.get(), true, true);
+    auto* mat = mat_h ? mat_h->ptr : nullptr;
+    if (mat_h) ifcopenshell_ifc_instance_destroy(mat_h);
+    if (mat && entity_is_a(mat, "IfcMaterialProfileSet")) {
+        for (auto* mp : get_entity_list(mat, "MaterialProfiles")) {
+            auto* profile = get_entity_ref(mp, "Profile");
+            if (profile) list->list_val.push_back(make_instance(profile));
+        }
+        return list;
+    }
+
+    if (!file) return list;
+    ifcopenshell_ifc_file_t fh{file, false};
+    auto* rep_h = ifcopenshell_representation_get_product_representation(
+        &fh, sh.get(), nullptr, "Model", "Body", "MODEL_VIEW");
+    if (!rep_h) return list;
+
+    uint32_t n = 0;
+    auto** items = ifcopenshell_representation_resolve_base_items(&fh, rep_h, &n);
+    ifcopenshell_ifc_instance_destroy(rep_h);
+    if (!items) return list;
+    for (uint32_t i = 0; i < n; ++i) {
+        auto* item = items[i] ? items[i]->ptr : nullptr;
+        if (!item || !entity_is_a(item, "IfcExtrudedAreaSolid")) continue;
+        auto* swept = get_entity_ref(item, "SweptArea");
+        if (swept) list->list_val.push_back(make_instance(swept));
+    }
+    ifcopenshell_free_instance_array(items, n);
+    return list;
+}
+
 inline Val* resolve_xyz(IfcUtil::IfcBaseClass* e, const std::string& k) {
     auto* placement_e = get_entity_ref(e, "ObjectPlacement");
     if (!placement_e) return make_none();
@@ -520,6 +585,156 @@ inline Val* resolve_xyz(IfcUtil::IfcBaseClass* e, const std::string& k) {
     if (!ifcopenshell_placement_get_local_placement(sh.get(), matrix)) return make_none();
     int ci = (k == "x") ? 0 : (k == "y") ? 1 : 2;
     return make_double(matrix[ci * 4 + 3]);
+}
+
+inline bool get_numeric_attr(IfcUtil::IfcBaseClass* e, const char* attr, double* out) {
+    int idx = find_attr_idx(e, attr);
+    if (idx < 0) return false;
+    try {
+        auto v = e->get_attribute_value(static_cast<size_t>(idx));
+        if (v.isNull()) return false;
+        if (v.type() == IfcUtil::Argument_DOUBLE) {
+            *out = (double)v;
+            return true;
+        }
+        if (v.type() == IfcUtil::Argument_INT) {
+            *out = (double)(int)v;
+            return true;
+        }
+    } catch (...) {}
+    return false;
+}
+
+inline bool invert_rigid4(const double* m, double* out) {
+    if (!m || !out) return false;
+    out[0] = m[0]; out[1] = m[4]; out[2] = m[8];  out[3] = 0.0;
+    out[4] = m[1]; out[5] = m[5]; out[6] = m[9];  out[7] = 0.0;
+    out[8] = m[2]; out[9] = m[6]; out[10] = m[10]; out[11] = 0.0;
+    out[12] = 0.0; out[13] = 0.0; out[14] = 0.0; out[15] = 1.0;
+    out[3] = -(out[0] * m[3] + out[1] * m[7] + out[2] * m[11]);
+    out[7] = -(out[4] * m[3] + out[5] * m[7] + out[6] * m[11]);
+    out[11] = -(out[8] * m[3] + out[9] * m[7] + out[10] * m[11]);
+    return true;
+}
+
+inline void transform_point4(const double* m, double& x, double& y, double& z) {
+    double ox = x;
+    double oy = y;
+    double oz = z;
+    x = (m[0] * ox) + (m[1] * oy) + (m[2] * oz) + m[3];
+    y = (m[4] * ox) + (m[5] * oy) + (m[6] * oz) + m[7];
+    z = (m[8] * ox) + (m[9] * oy) + (m[10] * oz) + m[11];
+}
+
+inline bool get_typed_numeric_value(IfcUtil::IfcBaseClass* e, double* out) {
+    if (!e || !out) return false;
+    try {
+        auto inner = e->get_attribute_value(0);
+        if (inner.isNull()) return false;
+        if (inner.type() == IfcUtil::Argument_DOUBLE) {
+            *out = (double)inner;
+            return true;
+        }
+        if (inner.type() == IfcUtil::Argument_INT) {
+            *out = (double)(int)inner;
+            return true;
+        }
+    } catch (...) {}
+    return false;
+}
+
+inline bool apply_wcs_inverse(IfcParse::IfcFile* file, double& x, double& y, double& z) {
+    if (!file) return false;
+    auto ctxs = file->instances_by_type("IfcGeometricRepresentationContext");
+    if (!ctxs) return false;
+    IfcUtil::IfcBaseClass* chosen = nullptr;
+    for (auto& ctx : *ctxs) {
+        if (!ctx) continue;
+        chosen = ctx;
+        if (get_string_attr(ctx, "ContextType") == "Model") break;
+    }
+    if (!chosen) return false;
+    auto* wcs = get_entity_ref(chosen, "WorldCoordinateSystem");
+    if (!wcs) return false;
+    ScopedHandle sh(wcs);
+    double m[16];
+    if (!ifcopenshell_placement_get_axis2placement(sh.get(), m)) return false;
+    double inv[16];
+    if (!invert_rigid4(m, inv)) return false;
+    transform_point4(inv, x, y, z);
+    return true;
+}
+
+inline bool get_map_conversion(IfcParse::IfcFile* file, double& eastings, double& northings,
+                               double& orthogonal_height, double& xaa, double& xao,
+                               double& scale, double& factor_x, double& factor_y, double& factor_z) {
+    eastings = northings = orthogonal_height = 0.0;
+    xaa = 1.0;
+    xao = 0.0;
+    scale = factor_x = factor_y = factor_z = 1.0;
+    if (!file) return false;
+
+    auto conversions = file->instances_by_type("IfcCoordinateOperation");
+    if (!conversions || conversions->size() == 0) return false;
+    auto* conversion = (*conversions)[0];
+    if (!conversion) return false;
+
+    if (entity_is_a(conversion, "IfcMapConversion")) {
+        get_numeric_attr(conversion, "Eastings", &eastings);
+        get_numeric_attr(conversion, "Northings", &northings);
+        get_numeric_attr(conversion, "OrthogonalHeight", &orthogonal_height);
+        get_numeric_attr(conversion, "XAxisAbscissa", &xaa);
+        get_numeric_attr(conversion, "XAxisOrdinate", &xao);
+        get_numeric_attr(conversion, "Scale", &scale);
+        if (entity_is_a(conversion, "IfcMapConversionScaled")) {
+            get_numeric_attr(conversion, "FactorX", &factor_x);
+            get_numeric_attr(conversion, "FactorY", &factor_y);
+            get_numeric_attr(conversion, "FactorZ", &factor_z);
+        }
+        if (xaa == 0.0 && xao == 0.0) {
+            xaa = 1.0;
+            xao = 0.0;
+        }
+        return true;
+    }
+
+    if (entity_is_a(conversion, "IfcRigidOperation")) {
+        auto* first = get_entity_ref(conversion, "FirstCoordinate");
+        auto* second = get_entity_ref(conversion, "SecondCoordinate");
+        get_typed_numeric_value(first, &eastings);
+        get_typed_numeric_value(second, &northings);
+        get_numeric_attr(conversion, "Height", &orthogonal_height);
+        return true;
+    }
+
+    return false;
+}
+
+inline Val* resolve_map_coordinate(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e, const std::string& k) {
+    auto* placement_e = get_entity_ref(e, "ObjectPlacement");
+    if (!placement_e) return make_none();
+    double matrix[16];
+    ScopedHandle sh(placement_e);
+    if (!ifcopenshell_placement_get_local_placement(sh.get(), matrix)) return make_none();
+    double x = matrix[3];
+    double y = matrix[7];
+    double z = matrix[11];
+    apply_wcs_inverse(file, x, y, z);
+
+    double eastings, northings, orthogonal_height, xaa, xao, scale, factor_x, factor_y, factor_z;
+    if (get_map_conversion(file, eastings, northings, orthogonal_height, xaa, xao, scale, factor_x, factor_y, factor_z)) {
+        double theta = std::atan2(xao, xaa);
+        double easting = (scale * factor_x * std::cos(theta) * x) - (scale * factor_y * std::sin(theta) * y) + eastings;
+        double northing = (scale * factor_x * std::sin(theta) * x) + (scale * factor_y * std::cos(theta) * y) + northings;
+        double elevation = (scale * factor_z * z) + orthogonal_height;
+        if (k == "easting") return make_double(easting);
+        if (k == "northing") return make_double(northing);
+        return make_double(elevation);
+    }
+
+    if (k == "easting") return make_double(x);
+    if (k == "northing") return make_double(y);
+    return make_double(z);
 }
 
 /* ====================================================================
@@ -648,8 +863,10 @@ inline Val* apply_key(IfcParse::IfcFile* file, const Val* cur, const KeyEntry& k
             }
             return list;
         }
-        if (k == "profiles" || k == "styles" || k == "system" || k == "zone")
-            return make_none();
+        if (k == "profiles")        return resolve_profiles(file, e);
+        if (k == "styles")          return resolve_styles(e);
+        if (k == "system")          return resolve_systems(e, false);
+        if (k == "zone")            return resolve_systems(e, true);
 
         if (k == "item" || k == "i") {
             const char* attr = entity_is_a(e, "IfcMaterialLayerSet")  ? "MaterialLayers"
@@ -723,7 +940,7 @@ inline Val* apply_key(IfcParse::IfcFile* file, const Val* cur, const KeyEntry& k
         }
         if ((k == "easting" || k == "northing" || k == "elevation") &&
             find_attr_idx(e, "ObjectPlacement") >= 0) {
-            return make_none();
+            return resolve_map_coordinate(file, e, k);
         }
 
         std::string attr_key = k;

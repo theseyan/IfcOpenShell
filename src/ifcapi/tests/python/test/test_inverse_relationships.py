@@ -9,6 +9,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "python"))
 import ifcopenshell
 import ifcopenshell.guid
+import ifcopenshell.settings
 import ifcopenshell.util.element
 
 
@@ -17,6 +18,7 @@ class TestInverseAttributes:
 
     def setup_method(self):
         self.f = ifcopenshell.file(schema="IFC4")
+        ifcopenshell.settings.unpack_non_aggregate_inverses = False
 
     def test_is_decomposed_by(self):
         site = self.f.create_entity("IfcSite")
@@ -134,6 +136,19 @@ class TestInverseAttributes:
         )
         types = wall_type.Types
         assert len(types) == 1
+
+    def test_unpack_non_aggregate_inverses_setting(self):
+        wall = self.f.create_entity("IfcWall")
+        opening = self.f.create_entity("IfcOpeningElement")
+        rel = self.f.create_entity(
+            "IfcRelVoidsElement",
+            GlobalId=ifcopenshell.guid.new(),
+            RelatingBuildingElement=wall,
+            RelatedOpeningElement=opening,
+        )
+        assert isinstance(opening.VoidsElements, tuple)
+        ifcopenshell.settings.unpack_non_aggregate_inverses = True
+        assert opening.VoidsElements.id() == rel.id()
 
 
 class TestRelationshipAggregate:

@@ -12,6 +12,7 @@ from __future__ import annotations
 import ctypes
 import ctypes.util
 import os
+import re
 from typing import List, Optional, Set, Tuple
 
 version = "0.8.1"
@@ -517,7 +518,15 @@ from ifcopenshell.entity_instance import entity_instance  # noqa: E402
 class file:
     """Wraps a native IFC file."""
 
+    # Canonical schema aliasing — map user-facing schema names that don't
+    # have a dedicated EXPRESS schema to the canonical release that backs
+    # them. Mirrors the mapping in ifcopenshell.schema_by_name upstream so
+    # DERIVE/WHERE rules registered against the canonical name resolve
+    # correctly when the file is created with the bare-major name.
+    _SCHEMA_ALIASES = {"IFC4X3": "IFC4X3_ADD2"}
+
     def __init__(self, schema="IFC4"):
+        schema = self._SCHEMA_ALIASES.get(schema, schema)
         lib = _get_lib()
         self._ptr = lib.ifcopenshell_file_create(_enc(schema))
         if not self._ptr:
@@ -545,14 +554,28 @@ class file:
             self._ptr = None
 
     @property
-    def schema(self) -> str:
+    def schema_identifier(self) -> str:
+        """Full IFC schema version: IFC2X3_TC1, IFC4_ADD2, IFC4X3_ADD2, etc."""
         lib = _get_lib()
         val = lib.ifcopenshell_file_schema(self._ptr)
         return val.decode("utf-8") if val else ""
 
     @property
-    def schema_identifier(self) -> str:
-        return self.schema
+    def schema(self) -> str:
+        """General IFC schema version: IFC2X3, IFC4, IFC4X3."""
+        prefixes = ("IFC", "X", "_ADD", "_TC")
+        reg = "".join(f"(?P<{s}>{s}\\d+)?" for s in prefixes)
+        match = re.match(reg, self.schema_identifier)
+        if not match:
+            return self.schema_identifier
+        version_tuple = tuple(
+            (int(match.group(p)[len(p):]) if match.group(p) else None)
+            for p in prefixes
+        )
+        return "".join(
+            f"{p}{v}" if v is not None else ""
+            for p, v in zip(prefixes, version_tuple[0:2])
+        )
 
     def create_entity(self, type_name=None, *args, **kwargs):
         if type_name is None:

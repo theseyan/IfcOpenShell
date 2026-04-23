@@ -1735,7 +1735,7 @@ Value IfcAddToBeginOfList(Value ascalar, Value alist) {
         result = result + ascalar;
         if (Value(hiindex(alist) >= 1).truthy()) {
             for (Value i = 1; (Value(i) <= Value(hiindex(alist))).truthy(); i = i + Value((int64_t)1)) {
-                result = ifcapi::express::set_index(result, i + 1 - 1, express_getitem(alist, i - 1));
+                result = ifcapi::express::set_index(result, i + 1, express_getitem(alist, i));
             }
         }
     }
@@ -1757,18 +1757,18 @@ Value IfcBaseAxis(Value dim, Value axis1, Value axis2, Value axis3) {
             d1 = IfcNormalise(axis1);
             u = Value::make_list({d1, IfcOrthogonalComplement(d1)});
             if (Value(exists(axis2)).truthy()) {
-                factor = IfcDotProduct(axis2, express_getitem(u, 2 - 1));
+                factor = IfcDotProduct(axis2, express_getitem(u, 2));
                 if (Value(factor < 0.0).truthy()) {
-                    u = ifcapi::express::set_index(u, 2 - 1, ifcapi::express::set_attr(ifcapi::express::express_getitem(u, 2 - 1), "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(ifcapi::express::express_getitem(u, 2 - 1), "DirectionRatios"), 1 - 1, -express_getitem(express_getattr(express_getitem(u, 2 - 1), "DirectionRatios"), 1 - 1))));
-                    u = ifcapi::express::set_index(u, 2 - 1, ifcapi::express::set_attr(ifcapi::express::express_getitem(u, 2 - 1), "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(ifcapi::express::express_getitem(u, 2 - 1), "DirectionRatios"), 2 - 1, -express_getitem(express_getattr(express_getitem(u, 2 - 1), "DirectionRatios"), 2 - 1))));
+                    u = ifcapi::express::set_index(u, 2, ifcapi::express::set_attr(ifcapi::express::express_getitem(u, 2), "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(ifcapi::express::express_getitem(u, 2), "DirectionRatios"), 1, -express_getitem(express_getattr(express_getitem(u, 2), "DirectionRatios"), 1))));
+                    u = ifcapi::express::set_index(u, 2, ifcapi::express::set_attr(ifcapi::express::express_getitem(u, 2), "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(ifcapi::express::express_getitem(u, 2), "DirectionRatios"), 2, -express_getitem(express_getattr(express_getitem(u, 2), "DirectionRatios"), 2))));
                 }
             }
         } else {
             if (Value(exists(axis2)).truthy()) {
                 d1 = IfcNormalise(axis2);
                 u = Value::make_list({IfcOrthogonalComplement(d1), d1});
-                u = ifcapi::express::set_index(u, 1 - 1, ifcapi::express::set_attr(ifcapi::express::express_getitem(u, 1 - 1), "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(ifcapi::express::express_getitem(u, 1 - 1), "DirectionRatios"), 1 - 1, -express_getitem(express_getattr(express_getitem(u, 1 - 1), "DirectionRatios"), 1 - 1))));
-                u = ifcapi::express::set_index(u, 1 - 1, ifcapi::express::set_attr(ifcapi::express::express_getitem(u, 1 - 1), "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(ifcapi::express::express_getitem(u, 1 - 1), "DirectionRatios"), 2 - 1, -express_getitem(express_getattr(express_getitem(u, 1 - 1), "DirectionRatios"), 2 - 1))));
+                u = ifcapi::express::set_index(u, 1, ifcapi::express::set_attr(ifcapi::express::express_getitem(u, 1), "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(ifcapi::express::express_getitem(u, 1), "DirectionRatios"), 1, -express_getitem(express_getattr(express_getitem(u, 1), "DirectionRatios"), 1))));
+                u = ifcapi::express::set_index(u, 1, ifcapi::express::set_attr(ifcapi::express::express_getitem(u, 1), "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(ifcapi::express::express_getitem(u, 1), "DirectionRatios"), 2, -express_getitem(express_getattr(express_getitem(u, 1), "DirectionRatios"), 2))));
             } else {
                 u = Value::make_list({IfcDirection(Value::make_list({1.0, 0.0})), IfcDirection(Value::make_list({0.0, 1.0}))});
             }
@@ -2110,11 +2110,11 @@ Value IfcCorrectUnitAssignment(Value units) {
     derivedunitnumber = sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(units)) { if (Value((ifcapi::express::express_in(Value(std::string("ifc2x3.ifcderivedunit")), typeof_(temp))) && (!(((express_getattr(temp, "UnitType")) == Value(std::string("USERDEFINED")))))).truthy()) __r.append(temp); } return __r; })());
     monetaryunitnumber = sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(units)) { if (Value(ifcapi::express::express_in(Value(std::string("ifc2x3.ifcmonetaryunit")), typeof_(temp))).truthy()) __r.append(temp); } return __r; })());
     for (Value i = 1; (Value(i) <= Value(sizeof_(units))).truthy(); i = i + Value((int64_t)1)) {
-        if (Value((ifcapi::express::express_in(Value(std::string("ifc2x3.ifcnamedunit")), typeof_(express_getitem(units, i - 1)))) && (!(((express_getattr(express_getitem(units, i - 1), "UnitType")) == Value(std::string("USERDEFINED")))))).truthy()) {
-            namedunitnames = namedunitnames + (express_getattr(express_getitem(units, i - 1), "UnitType"));
+        if (Value((ifcapi::express::express_in(Value(std::string("ifc2x3.ifcnamedunit")), typeof_(express_getitem(units, i)))) && (!(((express_getattr(express_getitem(units, i), "UnitType")) == Value(std::string("USERDEFINED")))))).truthy()) {
+            namedunitnames = namedunitnames + (express_getattr(express_getitem(units, i), "UnitType"));
         }
-        if (Value((ifcapi::express::express_in(Value(std::string("ifc2x3.ifcderivedunit")), typeof_(express_getitem(units, i - 1)))) && (!(((express_getattr(express_getitem(units, i - 1), "UnitType")) == Value(std::string("USERDEFINED")))))).truthy()) {
-            derivedunitnames = derivedunitnames + (express_getattr(express_getitem(units, i - 1), "UnitType"));
+        if (Value((ifcapi::express::express_in(Value(std::string("ifc2x3.ifcderivedunit")), typeof_(express_getitem(units, i)))) && (!(((express_getattr(express_getitem(units, i), "UnitType")) == Value(std::string("USERDEFINED")))))).truthy()) {
+            derivedunitnames = derivedunitnames + (express_getattr(express_getitem(units, i), "UnitType"));
         }
     }
     return (sizeof_(namedunitnames) == namedunitnumber) && (sizeof_(derivedunitnames) == derivedunitnumber) && (monetaryunitnumber <= 1);
@@ -2132,10 +2132,10 @@ Value IfcCrossProduct(Value arg1, Value arg2) {
     } else {
         v1 = express_getattr(IfcNormalise(arg1), "DirectionRatios");
         v2 = express_getattr(IfcNormalise(arg2), "DirectionRatios");
-        res = IfcDirection(Value::make_list({((express_getitem(v1, 2 - 1)) * (express_getitem(v2, 3 - 1))) - ((express_getitem(v1, 3 - 1)) * (express_getitem(v2, 2 - 1))), ((express_getitem(v1, 3 - 1)) * (express_getitem(v2, 1 - 1))) - ((express_getitem(v1, 1 - 1)) * (express_getitem(v2, 3 - 1))), ((express_getitem(v1, 1 - 1)) * (express_getitem(v2, 2 - 1))) - ((express_getitem(v1, 2 - 1)) * (express_getitem(v2, 1 - 1)))}));
+        res = IfcDirection(Value::make_list({((express_getitem(v1, 2)) * (express_getitem(v2, 3))) - ((express_getitem(v1, 3)) * (express_getitem(v2, 2))), ((express_getitem(v1, 3)) * (express_getitem(v2, 1))) - ((express_getitem(v1, 1)) * (express_getitem(v2, 3))), ((express_getitem(v1, 1)) * (express_getitem(v2, 2))) - ((express_getitem(v1, 2)) * (express_getitem(v2, 1)))}));
         mag = 0.0;
         for (Value i = 1; (Value(i) <= Value(3)).truthy(); i = i + Value((int64_t)1)) {
-            mag = mag + ((express_getitem(express_getattr(res, "DirectionRatios"), i - 1)) * (express_getitem(express_getattr(res, "DirectionRatios"), i - 1)));
+            mag = mag + ((express_getitem(express_getattr(res, "DirectionRatios"), i)) * (express_getitem(express_getattr(res, "DirectionRatios"), i)));
         }
         if (Value(mag > 0.0).truthy()) {
             result = IfcVector(res,  math_sqrt(mag));
@@ -2155,16 +2155,16 @@ Value IfcCurveDim(Value curve) {
         return express_getattr(express_getattr(curve, "Position"), "Dim");
     }
     if (Value(ifcapi::express::express_in(Value(std::string("ifc2x3.ifcpolyline")), typeof_(curve))).truthy()) {
-        return express_getattr(express_getitem(express_getattr(curve, "Points"), 1 - 1), "Dim");
+        return express_getattr(express_getitem(express_getattr(curve, "Points"), 1), "Dim");
     }
     if (Value(ifcapi::express::express_in(Value(std::string("ifc2x3.ifctrimmedcurve")), typeof_(curve))).truthy()) {
         return IfcCurveDim(express_getattr(curve, "BasisCurve"));
     }
     if (Value(ifcapi::express::express_in(Value(std::string("ifc2x3.ifccompositecurve")), typeof_(curve))).truthy()) {
-        return express_getattr(express_getitem(express_getattr(curve, "Segments"), 1 - 1), "Dim");
+        return express_getattr(express_getitem(express_getattr(curve, "Segments"), 1), "Dim");
     }
     if (Value(ifcapi::express::express_in(Value(std::string("ifc2x3.ifcbsplinecurve")), typeof_(curve))).truthy()) {
-        return express_getattr(express_getitem(express_getattr(curve, "ControlPointsList"), 1 - 1), "Dim");
+        return express_getattr(express_getitem(express_getattr(curve, "ControlPointsList"), 1), "Dim");
     }
     if (Value(ifcapi::express::express_in(Value(std::string("ifc2x3.ifcoffsetcurve2d")), typeof_(curve))).truthy()) {
         return 2;
@@ -2179,7 +2179,7 @@ Value IfcCurveDim(Value curve) {
 Value IfcCurveWeightsPositive(Value b) {
     Value result = true;
     for (Value i = 0; (Value(i) <= Value(express_getattr(b, "UpperIndexOnControlPoints"))).truthy(); i = i + Value((int64_t)1)) {
-        if (Value((express_getitem(express_getattr(b, "Weights"), i - 1)) <= 0.0).truthy()) {
+        if (Value((express_getitem(express_getattr(b, "Weights"), i)) <= 0.0).truthy()) {
             result = false;
             return result;
         }
@@ -2191,13 +2191,13 @@ Value IfcCurveWeightsPositive(Value b) {
 Value IfcDeriveDimensionalExponents(Value unitelements) {
     Value result = IfcDimensionalExponents(0, 0, 0, 0, 0, 0, 0);
     for (Value i = loindex(unitelements); (Value(i) <= Value(hiindex(unitelements))).truthy(); i = i + Value((int64_t)1)) {
-        result = ifcapi::express::set_attr(result, "LengthExponent", (express_getattr(result, "LengthExponent")) + ((express_getattr(express_getitem(unitelements, i - 1), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i - 1), "Unit"), "Dimensions"), "LengthExponent"))));
-        result = ifcapi::express::set_attr(result, "MassExponent", (express_getattr(result, "MassExponent")) + ((express_getattr(express_getitem(unitelements, i - 1), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i - 1), "Unit"), "Dimensions"), "MassExponent"))));
-        result = ifcapi::express::set_attr(result, "TimeExponent", (express_getattr(result, "TimeExponent")) + ((express_getattr(express_getitem(unitelements, i - 1), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i - 1), "Unit"), "Dimensions"), "TimeExponent"))));
-        result = ifcapi::express::set_attr(result, "ElectricCurrentExponent", (express_getattr(result, "ElectricCurrentExponent")) + ((express_getattr(express_getitem(unitelements, i - 1), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i - 1), "Unit"), "Dimensions"), "ElectricCurrentExponent"))));
-        result = ifcapi::express::set_attr(result, "ThermodynamicTemperatureExponent", (express_getattr(result, "ThermodynamicTemperatureExponent")) + ((express_getattr(express_getitem(unitelements, i - 1), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i - 1), "Unit"), "Dimensions"), "ThermodynamicTemperatureExponent"))));
-        result = ifcapi::express::set_attr(result, "AmountOfSubstanceExponent", (express_getattr(result, "AmountOfSubstanceExponent")) + ((express_getattr(express_getitem(unitelements, i - 1), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i - 1), "Unit"), "Dimensions"), "AmountOfSubstanceExponent"))));
-        result = ifcapi::express::set_attr(result, "LuminousIntensityExponent", (express_getattr(result, "LuminousIntensityExponent")) + ((express_getattr(express_getitem(unitelements, i - 1), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i - 1), "Unit"), "Dimensions"), "LuminousIntensityExponent"))));
+        result = ifcapi::express::set_attr(result, "LengthExponent", (express_getattr(result, "LengthExponent")) + ((express_getattr(express_getitem(unitelements, i), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i), "Unit"), "Dimensions"), "LengthExponent"))));
+        result = ifcapi::express::set_attr(result, "MassExponent", (express_getattr(result, "MassExponent")) + ((express_getattr(express_getitem(unitelements, i), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i), "Unit"), "Dimensions"), "MassExponent"))));
+        result = ifcapi::express::set_attr(result, "TimeExponent", (express_getattr(result, "TimeExponent")) + ((express_getattr(express_getitem(unitelements, i), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i), "Unit"), "Dimensions"), "TimeExponent"))));
+        result = ifcapi::express::set_attr(result, "ElectricCurrentExponent", (express_getattr(result, "ElectricCurrentExponent")) + ((express_getattr(express_getitem(unitelements, i), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i), "Unit"), "Dimensions"), "ElectricCurrentExponent"))));
+        result = ifcapi::express::set_attr(result, "ThermodynamicTemperatureExponent", (express_getattr(result, "ThermodynamicTemperatureExponent")) + ((express_getattr(express_getitem(unitelements, i), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i), "Unit"), "Dimensions"), "ThermodynamicTemperatureExponent"))));
+        result = ifcapi::express::set_attr(result, "AmountOfSubstanceExponent", (express_getattr(result, "AmountOfSubstanceExponent")) + ((express_getattr(express_getitem(unitelements, i), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i), "Unit"), "Dimensions"), "AmountOfSubstanceExponent"))));
+        result = ifcapi::express::set_attr(result, "LuminousIntensityExponent", (express_getattr(result, "LuminousIntensityExponent")) + ((express_getattr(express_getitem(unitelements, i), "Exponent")) * (express_getattr(express_getattr(express_getattr(express_getitem(unitelements, i), "Unit"), "Dimensions"), "LuminousIntensityExponent"))));
     }
     return result;
     return Value();
@@ -2315,7 +2315,7 @@ Value IfcDotProduct(Value arg1, Value arg2) {
             ndim = express_getattr(arg1, "Dim");
             scalar = 0.0;
             for (Value i = 1; (Value(i) <= Value(ndim)).truthy(); i = i + Value((int64_t)1)) {
-                scalar = scalar + ((express_getitem(express_getattr(vec1, "DirectionRatios"), i - 1)) * (express_getitem(express_getattr(vec2, "DirectionRatios"), i - 1)));
+                scalar = scalar + ((express_getitem(express_getattr(vec1, "DirectionRatios"), i)) * (express_getitem(express_getattr(vec2, "DirectionRatios"), i)));
             }
         }
     }
@@ -2372,9 +2372,9 @@ Value IfcListToArray(Value lis, Value low, Value u) {
     if (Value(n != (u - low + 1)).truthy()) {
         return Value();
     } else {
-        res = ifcapi::express::repeat(express_getitem(lis, 1 - 1), n);
+        res = ifcapi::express::repeat(express_getitem(lis, 1), n);
         for (Value i = 2; (Value(i) <= Value(n)).truthy(); i = i + Value((int64_t)1)) {
-            res = ifcapi::express::set_index(res, low + i - 1 - 1, express_getitem(lis, i - 1));
+            res = ifcapi::express::set_index(res, low + i - 1, express_getitem(lis, i));
         }
         return res;
     }
@@ -2387,17 +2387,17 @@ Value IfcLoopHeadToTail(Value aloop) {
     Value p = true;
     n = sizeof_(express_getattr(aloop, "EdgeList"));
     for (Value i = 2; (Value(i) <= Value(n)).truthy(); i = i + Value((int64_t)1)) {
-        p = p && ((express_getattr(express_getitem(express_getattr(aloop, "EdgeList"), i - 1 - 1), "EdgeEnd")) == (express_getattr(express_getitem(express_getattr(aloop, "EdgeList"), i - 1), "EdgeStart")));
+        p = p && ((express_getattr(express_getitem(express_getattr(aloop, "EdgeList"), i - 1), "EdgeEnd")) == (express_getattr(express_getitem(express_getattr(aloop, "EdgeList"), i), "EdgeStart")));
     }
     return p;
     return Value();
 }
 
 Value IfcMlsTotalThickness(Value layerset) {
-    Value max = express_getattr(express_getitem(express_getattr(layerset, "MaterialLayers"), 1 - 1), "LayerThickness");
+    Value max = express_getattr(express_getitem(express_getattr(layerset, "MaterialLayers"), 1), "LayerThickness");
     if (Value((sizeof_(express_getattr(layerset, "MaterialLayers"))) > 1).truthy()) {
         for (Value i = 2; (Value(i) <= Value(hiindex(express_getattr(layerset, "MaterialLayers")))).truthy(); i = i + Value((int64_t)1)) {
-            max = max + (express_getattr(express_getitem(express_getattr(layerset, "MaterialLayers"), i - 1), "LayerThickness"));
+            max = max + (express_getattr(express_getitem(express_getattr(layerset, "MaterialLayers"), i), "LayerThickness"));
         }
     }
     return max;
@@ -2430,12 +2430,12 @@ Value IfcNormalise(Value arg) {
         }
         mag = 0.0;
         for (Value i = 1; (Value(i) <= Value(ndim)).truthy(); i = i + Value((int64_t)1)) {
-            mag = mag + ((express_getitem(express_getattr(v, "DirectionRatios"), i - 1)) * (express_getitem(express_getattr(v, "DirectionRatios"), i - 1)));
+            mag = mag + ((express_getitem(express_getattr(v, "DirectionRatios"), i)) * (express_getitem(express_getattr(v, "DirectionRatios"), i)));
         }
         if (Value(mag > 0.0).truthy()) {
             mag = math_sqrt(mag);
             for (Value i = 1; (Value(i) <= Value(ndim)).truthy(); i = i + Value((int64_t)1)) {
-                v = ifcapi::express::set_attr(v, "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(v, "DirectionRatios"), i - 1, (express_getitem(express_getattr(v, "DirectionRatios"), i - 1)) / mag));
+                v = ifcapi::express::set_attr(v, "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(v, "DirectionRatios"), i, (express_getitem(express_getattr(v, "DirectionRatios"), i)) / mag));
             }
             if (Value(ifcapi::express::express_in(Value(std::string("ifc2x3.ifcvector")), typeof_(arg))).truthy()) {
                 vec = ifcapi::express::set_attr(vec, "Orientation", v);
@@ -2456,7 +2456,7 @@ Value IfcOrthogonalComplement(Value vec) {
     if (Value(!(exists(vec)) || ((express_getattr(vec, "Dim")) != 2)).truthy()) {
         return Value();
     } else {
-        result = IfcDirection(Value::make_list({-express_getitem(express_getattr(vec, "DirectionRatios"), 2 - 1), express_getitem(express_getattr(vec, "DirectionRatios"), 1 - 1)}));
+        result = IfcDirection(Value::make_list({-express_getitem(express_getattr(vec, "DirectionRatios"), 2), express_getitem(express_getattr(vec, "DirectionRatios"), 1)}));
         return result;
     }
     return Value();
@@ -2467,46 +2467,46 @@ Value IfcPathHeadToTail(Value apath) {
     Value p = unknown;
     n = sizeof_(express_getattr(apath, "EdgeList"));
     for (Value i = 2; (Value(i) <= Value(n)).truthy(); i = i + Value((int64_t)1)) {
-        p = p && ((express_getattr(express_getitem(express_getattr(apath, "EdgeList"), i - 1 - 1), "EdgeEnd")) == (express_getattr(express_getitem(express_getattr(apath, "EdgeList"), i - 1), "EdgeStart")));
+        p = p && ((express_getattr(express_getitem(express_getattr(apath, "EdgeList"), i - 1), "EdgeEnd")) == (express_getattr(express_getitem(express_getattr(apath, "EdgeList"), i), "EdgeStart")));
     }
     return p;
     return Value();
 }
 
 Value IfcSameAxis2Placement(Value ap1, Value ap2, Value epsilon) {
-    return (IfcSameDirection(express_getitem(express_getattr(ap1, "P"), 1 - 1), express_getitem(express_getattr(ap2, "P"), 1 - 1), epsilon)) && (IfcSameDirection(express_getitem(express_getattr(ap1, "P"), 2 - 1), express_getitem(express_getattr(ap2, "P"), 2 - 1), epsilon)) && (IfcSameCartesianPoint(express_getattr(ap1, "Location"), express_getattr(ap1, "Location"), epsilon));
+    return (IfcSameDirection(express_getitem(express_getattr(ap1, "P"), 1), express_getitem(express_getattr(ap2, "P"), 1), epsilon)) && (IfcSameDirection(express_getitem(express_getattr(ap1, "P"), 2), express_getitem(express_getattr(ap2, "P"), 2), epsilon)) && (IfcSameCartesianPoint(express_getattr(ap1, "Location"), express_getattr(ap1, "Location"), epsilon));
     return Value();
 }
 
 Value IfcSameCartesianPoint(Value cp1, Value cp2, Value epsilon) {
-    Value cp1x = express_getitem(express_getattr(cp1, "Coordinates"), 1 - 1);
-    Value cp1y = express_getitem(express_getattr(cp1, "Coordinates"), 2 - 1);
+    Value cp1x = express_getitem(express_getattr(cp1, "Coordinates"), 1);
+    Value cp1y = express_getitem(express_getattr(cp1, "Coordinates"), 2);
     Value cp1z = 0;
-    Value cp2x = express_getitem(express_getattr(cp2, "Coordinates"), 1 - 1);
-    Value cp2y = express_getitem(express_getattr(cp2, "Coordinates"), 2 - 1);
+    Value cp2x = express_getitem(express_getattr(cp2, "Coordinates"), 1);
+    Value cp2y = express_getitem(express_getattr(cp2, "Coordinates"), 2);
     Value cp2z = 0;
     if (Value((sizeof_(express_getattr(cp1, "Coordinates"))) > 2).truthy()) {
-        cp1z = express_getitem(express_getattr(cp1, "Coordinates"), 3 - 1);
+        cp1z = express_getitem(express_getattr(cp1, "Coordinates"), 3);
     }
     if (Value((sizeof_(express_getattr(cp2, "Coordinates"))) > 2).truthy()) {
-        cp2z = express_getitem(express_getattr(cp2, "Coordinates"), 3 - 1);
+        cp2z = express_getitem(express_getattr(cp2, "Coordinates"), 3);
     }
     return (IfcSameValue(cp1x, cp2x, epsilon)) && (IfcSameValue(cp1y, cp2y, epsilon)) && (IfcSameValue(cp1z, cp2z, epsilon));
     return Value();
 }
 
 Value IfcSameDirection(Value dir1, Value dir2, Value epsilon) {
-    Value dir1x = express_getitem(express_getattr(dir1, "DirectionRatios"), 1 - 1);
-    Value dir1y = express_getitem(express_getattr(dir1, "DirectionRatios"), 2 - 1);
+    Value dir1x = express_getitem(express_getattr(dir1, "DirectionRatios"), 1);
+    Value dir1y = express_getitem(express_getattr(dir1, "DirectionRatios"), 2);
     Value dir1z = 0;
-    Value dir2x = express_getitem(express_getattr(dir2, "DirectionRatios"), 1 - 1);
-    Value dir2y = express_getitem(express_getattr(dir2, "DirectionRatios"), 2 - 1);
+    Value dir2x = express_getitem(express_getattr(dir2, "DirectionRatios"), 1);
+    Value dir2y = express_getitem(express_getattr(dir2, "DirectionRatios"), 2);
     Value dir2z = 0;
     if (Value((sizeof_(express_getattr(dir1, "DirectionRatios"))) > 2).truthy()) {
-        dir1z = express_getitem(express_getattr(dir1, "DirectionRatios"), 3 - 1);
+        dir1z = express_getitem(express_getattr(dir1, "DirectionRatios"), 3);
     }
     if (Value((sizeof_(express_getattr(dir2, "DirectionRatios"))) > 2).truthy()) {
-        dir2z = express_getitem(express_getattr(dir2, "DirectionRatios"), 3 - 1);
+        dir2z = express_getitem(express_getattr(dir2, "DirectionRatios"), 3);
     }
     return (IfcSameValue(dir1x, dir2x, epsilon)) && (IfcSameValue(dir1y, dir2y, epsilon)) && (IfcSameValue(dir1z, dir2z, epsilon));
     return Value();
@@ -2550,7 +2550,7 @@ Value IfcScalarTimesVector(Value scalar, Value vec) {
         }
         if (Value(mag < 0.0).truthy()) {
             for (Value i = 1; (Value(i) <= Value(sizeof_(express_getattr(v, "DirectionRatios")))).truthy(); i = i + Value((int64_t)1)) {
-                v = ifcapi::express::set_attr(v, "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(v, "DirectionRatios"), i - 1, -express_getitem(express_getattr(v, "DirectionRatios"), i - 1)));
+                v = ifcapi::express::set_attr(v, "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(v, "DirectionRatios"), i, -express_getitem(express_getattr(v, "DirectionRatios"), i)));
             }
             mag = -mag;
         }
@@ -2592,8 +2592,8 @@ Value IfcShapeRepresentationTypes(Value reptype, Value items) {
     } else if (Value((reptype) == Value(std::string("geometriccurveset"))).truthy()) {
         count = sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(items)) { if (Value((ifcapi::express::express_in(Value(std::string("ifc2x3.ifcgeometriccurveset")), typeof_(temp))) || (ifcapi::express::express_in(Value(std::string("ifc2x3.ifcgeometricset")), typeof_(temp))) || (ifcapi::express::express_in(Value(std::string("ifc2x3.ifcpoint")), typeof_(temp))) || (ifcapi::express::express_in(Value(std::string("ifc2x3.ifccurve")), typeof_(temp)))).truthy()) __r.append(temp); } return __r; })());
         for (Value i = 1; (Value(i) <= Value(hiindex(items))).truthy(); i = i + Value((int64_t)1)) {
-            if (Value(ifcapi::express::express_in(Value(std::string("ifc2x3.ifcgeometricset")), typeof_(express_getitem(items, i - 1)))).truthy()) {
-                if (Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(express_getitem(items, i - 1), "Elements"))) { if (Value(ifcapi::express::express_in(Value(std::string("ifc2x3.ifcsurface")), typeof_(temp))).truthy()) __r.append(temp); } return __r; })())) > 0).truthy()) {
+            if (Value(ifcapi::express::express_in(Value(std::string("ifc2x3.ifcgeometricset")), typeof_(express_getitem(items, i)))).truthy()) {
+                if (Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(express_getitem(items, i), "Elements"))) { if (Value(ifcapi::express::express_in(Value(std::string("ifc2x3.ifcsurface")), typeof_(temp))).truthy()) __r.append(temp); } return __r; })())) > 0).truthy()) {
                     count = count - 1;
                 }
             }
@@ -2667,7 +2667,7 @@ Value IfcTopologyRepresentationTypes(Value reptype, Value items) {
 Value IfcUniquePropertyName(Value properties) {
     Value names = Value::make_list({});
     for (Value i = 1; (Value(i) <= Value(hiindex(properties))).truthy(); i = i + Value((int64_t)1)) {
-        names = names + (express_getattr(express_getitem(properties, i - 1), "Name"));
+        names = names + (express_getattr(express_getitem(properties, i), "Name"));
     }
     return sizeof_(names) == sizeof_(properties);
     return Value();
@@ -2742,8 +2742,8 @@ Value IfcVectorDifference(Value arg1, Value arg2) {
         mag = 0.0;
         res = IfcDirection(ifcapi::express::repeat(0.0, ndim));
         for (Value i = 1; (Value(i) <= Value(ndim)).truthy(); i = i + Value((int64_t)1)) {
-            res = ifcapi::express::set_attr(res, "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(res, "DirectionRatios"), i - 1, (mag1 * (express_getitem(express_getattr(vec1, "DirectionRatios"), i - 1))) - (mag2 * (express_getitem(express_getattr(vec2, "DirectionRatios"), i - 1)))));
-            mag = mag + ((express_getitem(express_getattr(res, "DirectionRatios"), i - 1)) * (express_getitem(express_getattr(res, "DirectionRatios"), i - 1)));
+            res = ifcapi::express::set_attr(res, "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(res, "DirectionRatios"), i, (mag1 * (express_getitem(express_getattr(vec1, "DirectionRatios"), i))) - (mag2 * (express_getitem(express_getattr(vec2, "DirectionRatios"), i)))));
+            mag = mag + ((express_getitem(express_getattr(res, "DirectionRatios"), i)) * (express_getitem(express_getattr(res, "DirectionRatios"), i)));
         }
         if (Value(mag > 0.0).truthy()) {
             result = IfcVector(res,  math_sqrt(mag));
@@ -2787,8 +2787,8 @@ Value IfcVectorSum(Value arg1, Value arg2) {
         mag = 0.0;
         res = IfcDirection(ifcapi::express::repeat(0.0, ndim));
         for (Value i = 1; (Value(i) <= Value(ndim)).truthy(); i = i + Value((int64_t)1)) {
-            res = ifcapi::express::set_attr(res, "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(res, "DirectionRatios"), i - 1, (mag1 * (express_getitem(express_getattr(vec1, "DirectionRatios"), i - 1))) + (mag2 * (express_getitem(express_getattr(vec2, "DirectionRatios"), i - 1)))));
-            mag = mag + ((express_getitem(express_getattr(res, "DirectionRatios"), i - 1)) * (express_getitem(express_getattr(res, "DirectionRatios"), i - 1)));
+            res = ifcapi::express::set_attr(res, "DirectionRatios", ifcapi::express::set_index(ifcapi::express::express_getattr(res, "DirectionRatios"), i, (mag1 * (express_getitem(express_getattr(vec1, "DirectionRatios"), i))) + (mag2 * (express_getitem(express_getattr(vec2, "DirectionRatios"), i)))));
+            mag = mag + ((express_getitem(express_getattr(res, "DirectionRatios"), i)) * (express_getitem(express_getattr(res, "DirectionRatios"), i)));
         }
         if (Value(mag > 0.0).truthy()) {
             result = IfcVector(res,  math_sqrt(mag));
@@ -2807,22 +2807,22 @@ bool IfcBoxAlignment_WR1(EntityRef self) {
 }
 
 bool IfcCompoundPlaneAngleMeasure_WR1(EntityRef self) {
-    if (!Value(-360 <= express_getitem(self, 1 - 1) < 360).truthy()) return false;
+    if (!Value(-360 <= express_getitem(self, 1) < 360).truthy()) return false;
     return true;
 }
 
 bool IfcCompoundPlaneAngleMeasure_WR2(EntityRef self) {
-    if (!Value(-60 <= express_getitem(self, 2 - 1) < 60).truthy()) return false;
+    if (!Value(-60 <= express_getitem(self, 2) < 60).truthy()) return false;
     return true;
 }
 
 bool IfcCompoundPlaneAngleMeasure_WR3(EntityRef self) {
-    if (!Value(-60 <= express_getitem(self, 3 - 1) < 60).truthy()) return false;
+    if (!Value(-60 <= express_getitem(self, 3) < 60).truthy()) return false;
     return true;
 }
 
 bool IfcCompoundPlaneAngleMeasure_WR4(EntityRef self) {
-    if (!Value((((express_getitem(self, 1 - 1)) >= 0) && ((express_getitem(self, 2 - 1)) >= 0) && ((express_getitem(self, 3 - 1)) >= 0)) || (((express_getitem(self, 1 - 1)) <= 0) && ((express_getitem(self, 2 - 1)) <= 0) && ((express_getitem(self, 3 - 1)) <= 0))).truthy()) return false;
+    if (!Value((((express_getitem(self, 1)) >= 0) && ((express_getitem(self, 2)) >= 0) && ((express_getitem(self, 3)) >= 0)) || (((express_getitem(self, 1)) <= 0) && ((express_getitem(self, 2)) <= 0) && ((express_getitem(self, 3)) <= 0))).truthy()) return false;
     return true;
 }
 
@@ -3121,7 +3121,7 @@ Value calc_IfcAxis2Placement3D_P(EntityRef self) {
 
 bool IfcBSplineCurve_WR41(EntityRef self) {
     Value controlpointslist = express_getattr(self, "ControlPointsList");
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(controlpointslist)) { if (Value((express_getattr(temp, "Dim")) != (express_getattr(express_getitem(controlpointslist, 1 - 1), "Dim"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(controlpointslist)) { if (Value((express_getattr(temp, "Dim")) != (express_getattr(express_getitem(controlpointslist, 1), "Dim"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
@@ -3369,7 +3369,7 @@ bool IfcCompositeCurve_WR41(EntityRef self) {
 
 bool IfcCompositeCurve_WR42(EntityRef self) {
     Value segments = express_getattr(self, "Segments");
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(segments)) { if (Value((express_getattr(temp, "Dim")) != (express_getattr(express_getitem(segments, 1 - 1), "Dim"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(segments)) { if (Value((express_getattr(temp, "Dim")) != (express_getattr(express_getitem(segments, 1), "Dim"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
@@ -3381,7 +3381,7 @@ Value calc_IfcCompositeCurve_NSegments(EntityRef self) {
 Value calc_IfcCompositeCurve_ClosedCurve(EntityRef self) {
     Value segments = express_getattr(self, "Segments");
     Value nsegments = express_getattr(self, "NSegments");
-    return (express_getattr(express_getitem(segments, nsegments - 1), "Transition")) != discontinuous;
+    return (express_getattr(express_getitem(segments, nsegments), "Transition")) != discontinuous;
 }
 
 bool IfcCompositeCurveSegment_WR1(EntityRef self) {
@@ -3397,7 +3397,7 @@ Value calc_IfcCompositeCurveSegment_Dim(EntityRef self) {
 
 bool IfcCompositeProfileDef_WR1(EntityRef self) {
     Value profiles = express_getattr(self, "Profiles");
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(profiles)) { if (Value((express_getattr(temp, "ProfileType")) != (express_getattr(express_getitem(profiles, 1 - 1), "ProfileType"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(profiles)) { if (Value((express_getattr(temp, "ProfileType")) != (express_getattr(express_getitem(profiles, 1), "ProfileType"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
@@ -3450,7 +3450,7 @@ bool IfcConstructionMaterialResource_WR1(EntityRef self) {
 }
 
 bool IfcConstructionMaterialResource_WR2(EntityRef self) {
-    if (!Value((!((exists(express_getitem(express_getattr(self, "ResourceOf"), 1 - 1))))) || ((express_getattr(express_getitem(express_getattr(self, "ResourceOf"), 1 - 1), "RelatedObjectsType")) == Value(std::string("PRODUCT")))).truthy()) return false;
+    if (!Value((!((exists(express_getitem(express_getattr(self, "ResourceOf"), 1))))) || ((express_getattr(express_getitem(express_getattr(self, "ResourceOf"), 1), "RelatedObjectsType")) == Value(std::string("PRODUCT")))).truthy()) return false;
     return true;
 }
 
@@ -3460,7 +3460,7 @@ bool IfcConstructionProductResource_WR1(EntityRef self) {
 }
 
 bool IfcConstructionProductResource_WR2(EntityRef self) {
-    if (!Value((!((exists(express_getitem(express_getattr(self, "ResourceOf"), 1 - 1))))) || ((express_getattr(express_getitem(express_getattr(self, "ResourceOf"), 1 - 1), "RelatedObjectsType")) == Value(std::string("PRODUCT")))).truthy()) return false;
+    if (!Value((!((exists(express_getitem(express_getattr(self, "ResourceOf"), 1))))) || ((express_getattr(express_getitem(express_getattr(self, "ResourceOf"), 1), "RelatedObjectsType")) == Value(std::string("PRODUCT")))).truthy()) return false;
     return true;
 }
 
@@ -3521,7 +3521,7 @@ bool IfcDerivedProfileDef_WR1(EntityRef self) {
 
 bool IfcDerivedUnit_WR1(EntityRef self) {
     Value elements = express_getattr(self, "Elements");
-    if (!Value((sizeof_(elements) > 1) || ((sizeof_(elements) == 1) && ((express_getattr(express_getitem(elements, 1 - 1), "Exponent")) != 1))).truthy()) return false;
+    if (!Value((sizeof_(elements) > 1) || ((sizeof_(elements) == 1) && ((express_getattr(express_getitem(elements, 1), "Exponent")) != 1))).truthy()) return false;
     return true;
 }
 
@@ -3613,7 +3613,7 @@ bool IfcDocumentElectronicFormat_WR1(EntityRef self) {
 bool IfcDocumentReference_WR1(EntityRef self) {
     Value name = express_getattr(self, "Name");
     Value referencetodocument = express_getattr(self, "ReferenceToDocument");
-    if (!Value(exists(name) ^ (exists(express_getitem(referencetodocument, 1 - 1)))).truthy()) return false;
+    if (!Value(exists(name) ^ (exists(express_getitem(referencetodocument, 1)))).truthy()) return false;
     return true;
 }
 
@@ -3646,12 +3646,12 @@ bool IfcDoorLiningProperties_WR34(EntityRef self) {
 }
 
 bool IfcDoorLiningProperties_WR35(EntityRef self) {
-    if (!Value((exists(express_getitem(express_getattr(self, "DefinesType"), 1 - 1))) && (ifcapi::express::express_in(Value(std::string("ifc2x3.ifcdoorstyle")), typeof_(express_getitem(express_getattr(self, "DefinesType"), 1 - 1))))).truthy()) return false;
+    if (!Value((exists(express_getitem(express_getattr(self, "DefinesType"), 1))) && (ifcapi::express::express_in(Value(std::string("ifc2x3.ifcdoorstyle")), typeof_(express_getitem(express_getattr(self, "DefinesType"), 1))))).truthy()) return false;
     return true;
 }
 
 bool IfcDoorPanelProperties_WR31(EntityRef self) {
-    if (!Value((exists(express_getitem(express_getattr(self, "DefinesType"), 1 - 1))) && (ifcapi::express::express_in(Value(std::string("ifc2x3.ifcdoorstyle")), typeof_(express_getitem(express_getattr(self, "DefinesType"), 1 - 1))))).truthy()) return false;
+    if (!Value((exists(express_getitem(express_getattr(self, "DefinesType"), 1))) && (ifcapi::express::express_in(Value(std::string("ifc2x3.ifcdoorstyle")), typeof_(express_getitem(express_getattr(self, "DefinesType"), 1))))).truthy()) return false;
     return true;
 }
 
@@ -3691,7 +3691,7 @@ bool IfcDuctSilencerType_WR1(EntityRef self) {
 bool IfcEdgeLoop_WR1(EntityRef self) {
     Value edgelist = express_getattr(self, "EdgeList");
     Value ne = express_getattr(self, "Ne");
-    if (!Value((express_getattr(express_getitem(edgelist, 1 - 1), "EdgeStart")) == (express_getattr(express_getitem(edgelist, ne - 1), "EdgeEnd"))).truthy()) return false;
+    if (!Value((express_getattr(express_getitem(edgelist, 1), "EdgeStart")) == (express_getattr(express_getitem(edgelist, ne), "EdgeEnd"))).truthy()) return false;
     return true;
 }
 
@@ -3862,7 +3862,7 @@ Value calc_IfcGeometricRepresentationSubContext_CoordinateSpaceDimension(EntityR
 
 Value calc_IfcGeometricRepresentationSubContext_TrueNorth(EntityRef self) {
     Value parentcontext = express_getattr(self, "ParentContext");
-    return nvl(express_getattr(parentcontext, "TrueNorth"), express_getitem(express_getattr(express_getattr(self, "WorldCoordinateSystem"), "P"), 2 - 1));
+    return nvl(express_getattr(parentcontext, "TrueNorth"), express_getitem(express_getattr(express_getattr(self, "WorldCoordinateSystem"), "P"), 2));
 }
 
 Value calc_IfcGeometricRepresentationSubContext_Precision(EntityRef self) {
@@ -3872,13 +3872,13 @@ Value calc_IfcGeometricRepresentationSubContext_Precision(EntityRef self) {
 
 bool IfcGeometricSet_WR21(EntityRef self) {
     Value elements = express_getattr(self, "Elements");
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(elements)) { if (Value((express_getattr(temp, "Dim")) != (express_getattr(express_getitem(elements, 1 - 1), "Dim"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(elements)) { if (Value((express_getattr(temp, "Dim")) != (express_getattr(express_getitem(elements, 1), "Dim"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
 Value calc_IfcGeometricSet_Dim(EntityRef self) {
     Value elements = express_getattr(self, "Elements");
-    return express_getattr(express_getitem(elements, 1 - 1), "Dim");
+    return express_getattr(express_getitem(elements, 1), "Dim");
 }
 
 bool IfcGrid_WR41(EntityRef self) {
@@ -4172,7 +4172,7 @@ Value calc_IfcPointOnSurface_Dim(EntityRef self) {
 
 bool IfcPolyLoop_WR21(EntityRef self) {
     Value polygon = express_getattr(self, "Polygon");
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(polygon)) { if (Value((express_getattr(temp, "Dim")) != (express_getattr(express_getitem(polygon, 1 - 1), "Dim"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(polygon)) { if (Value((express_getattr(temp, "Dim")) != (express_getattr(express_getitem(polygon, 1), "Dim"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
@@ -4190,7 +4190,7 @@ bool IfcPolygonalBoundedHalfSpace_WR42(EntityRef self) {
 
 bool IfcPolyline_WR41(EntityRef self) {
     Value points = express_getattr(self, "Points");
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(points)) { if (Value((express_getattr(temp, "Dim")) != (express_getattr(express_getitem(points, 1 - 1), "Dim"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(points)) { if (Value((express_getattr(temp, "Dim")) != (express_getattr(express_getitem(points, 1), "Dim"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
@@ -4300,12 +4300,12 @@ bool IfcPropertyEnumeratedValue_WR1(EntityRef self) {
 }
 
 bool IfcPropertyEnumeration_WR01(EntityRef self) {
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(self, "EnumerationValues"))) { if (Value(!(((typeof_(express_getitem(express_getattr(self, "EnumerationValues"), 1 - 1))) == typeof_(temp)))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(self, "EnumerationValues"))) { if (Value(!(((typeof_(express_getitem(express_getattr(self, "EnumerationValues"), 1))) == typeof_(temp)))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
 bool IfcPropertyListValue_WR31(EntityRef self) {
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(self, "ListValues"))) { if (Value(!(((typeof_(express_getitem(express_getattr(self, "ListValues"), 1 - 1))) == typeof_(temp)))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(self, "ListValues"))) { if (Value(!(((typeof_(express_getitem(express_getattr(self, "ListValues"), 1))) == typeof_(temp)))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
@@ -4328,12 +4328,12 @@ bool IfcPropertyTableValue_WR1(EntityRef self) {
 }
 
 bool IfcPropertyTableValue_WR2(EntityRef self) {
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(self, "DefiningValues"))) { if (Value(typeof_(temp) != (typeof_(express_getitem(express_getattr(self, "DefiningValues"), 1 - 1)))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(self, "DefiningValues"))) { if (Value(typeof_(temp) != (typeof_(express_getitem(express_getattr(self, "DefiningValues"), 1)))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
 bool IfcPropertyTableValue_WR3(EntityRef self) {
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(self, "DefinedValues"))) { if (Value(typeof_(temp) != (typeof_(express_getitem(express_getattr(self, "DefinedValues"), 1 - 1)))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(self, "DefinedValues"))) { if (Value(typeof_(temp) != (typeof_(express_getitem(express_getattr(self, "DefinedValues"), 1)))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
@@ -4510,7 +4510,7 @@ bool IfcRelAssignsTasks_WR1(EntityRef self) {
 }
 
 bool IfcRelAssignsTasks_WR2(EntityRef self) {
-    if (!Value(ifcapi::express::express_in(Value(std::string("ifc2x3.ifctask")), typeof_(express_getitem(express_getattr(self, "RelatedObjects"), 1 - 1)))).truthy()) return false;
+    if (!Value(ifcapi::express::express_in(Value(std::string("ifc2x3.ifctask")), typeof_(express_getitem(express_getattr(self, "RelatedObjects"), 1)))).truthy()) return false;
     return true;
 }
 
@@ -4633,13 +4633,13 @@ bool IfcRelSpaceBoundary_WR1(EntityRef self) {
 
 bool IfcRevolvedAreaSolid_WR31(EntityRef self) {
     Value axis = express_getattr(self, "Axis");
-    if (!Value((express_getitem(express_getattr(express_getattr(axis, "Location"), "Coordinates"), 3 - 1)) == 0.0).truthy()) return false;
+    if (!Value((express_getitem(express_getattr(express_getattr(axis, "Location"), "Coordinates"), 3)) == 0.0).truthy()) return false;
     return true;
 }
 
 bool IfcRevolvedAreaSolid_WR32(EntityRef self) {
     Value axis = express_getattr(self, "Axis");
-    if (!Value((express_getitem(express_getattr(express_getattr(axis, "Z"), "DirectionRatios"), 3 - 1)) == 0.0).truthy()) return false;
+    if (!Value((express_getitem(express_getattr(express_getattr(axis, "Z"), "DirectionRatios"), 3)) == 0.0).truthy()) return false;
     return true;
 }
 
@@ -4672,7 +4672,7 @@ bool IfcSectionedSpine_WR1(EntityRef self) {
 
 bool IfcSectionedSpine_WR2(EntityRef self) {
     Value crosssections = express_getattr(self, "CrossSections");
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(crosssections)) { if (Value((express_getattr(express_getitem(crosssections, 1 - 1), "ProfileType")) != (express_getattr(temp, "ProfileType"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(crosssections)) { if (Value((express_getattr(express_getitem(crosssections, 1), "ProfileType")) != (express_getattr(temp, "ProfileType"))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
@@ -4740,7 +4740,7 @@ bool IfcSpaceHeaterType_WR1(EntityRef self) {
 }
 
 bool IfcSpatialStructureElement_WR41(EntityRef self) {
-    if (!Value(((hiindex(express_getattr(self, "Decomposes"))) == 1) && (ifcapi::express::express_in(Value(std::string("ifc2x3.ifcrelaggregates")), typeof_(express_getitem(express_getattr(self, "Decomposes"), 1 - 1)))) && ((ifcapi::express::express_in(Value(std::string("ifc2x3.ifcproject")), typeof_(express_getattr(express_getitem(express_getattr(self, "Decomposes"), 1 - 1), "RelatingObject")))) || (ifcapi::express::express_in(Value(std::string("ifc2x3.ifcspatialstructureelement")), typeof_(express_getattr(express_getitem(express_getattr(self, "Decomposes"), 1 - 1), "RelatingObject")))))).truthy()) return false;
+    if (!Value(((hiindex(express_getattr(self, "Decomposes"))) == 1) && (ifcapi::express::express_in(Value(std::string("ifc2x3.ifcrelaggregates")), typeof_(express_getitem(express_getattr(self, "Decomposes"), 1)))) && ((ifcapi::express::express_in(Value(std::string("ifc2x3.ifcproject")), typeof_(express_getattr(express_getitem(express_getattr(self, "Decomposes"), 1), "RelatingObject")))) || (ifcapi::express::express_in(Value(std::string("ifc2x3.ifcspatialstructureelement")), typeof_(express_getattr(express_getitem(express_getattr(self, "Decomposes"), 1), "RelatingObject")))))).truthy()) return false;
     return true;
 }
 
@@ -4814,7 +4814,7 @@ bool IfcStructuralSurfaceMemberVarying_WR62(EntityRef self) {
 }
 
 bool IfcStructuralSurfaceMemberVarying_WR63(EntityRef self) {
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(express_getattr(self, "VaryingThicknessLocation"), "ShapeRepresentations"))) { if (Value(!(((ifcapi::express::express_in(Value(std::string("ifc2x3.ifccartesianpoint")), typeof_(express_getitem(express_getattr(temp, "Items"), 1 - 1)))) || (ifcapi::express::express_in(Value(std::string("ifc2x3.ifcpointonsurface")), typeof_(express_getitem(express_getattr(temp, "Items"), 1 - 1))))))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(express_getattr(self, "VaryingThicknessLocation"), "ShapeRepresentations"))) { if (Value(!(((ifcapi::express::express_in(Value(std::string("ifc2x3.ifccartesianpoint")), typeof_(express_getitem(express_getattr(temp, "Items"), 1)))) || (ifcapi::express::express_in(Value(std::string("ifc2x3.ifcpointonsurface")), typeof_(express_getitem(express_getattr(temp, "Items"), 1))))))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
@@ -4940,13 +4940,13 @@ bool IfcTShapeProfileDef_WR2(EntityRef self) {
 
 bool IfcTable_WR1(EntityRef self) {
     Value rows = express_getattr(self, "Rows");
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(rows)) { if (Value((hiindex(express_getattr(temp, "RowCells"))) != (hiindex(express_getattr(express_getitem(rows, 1 - 1), "RowCells")))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(rows)) { if (Value((hiindex(express_getattr(temp, "RowCells"))) != (hiindex(express_getattr(express_getitem(rows, 1), "RowCells")))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
 bool IfcTable_WR2(EntityRef self) {
     Value rows = express_getattr(self, "Rows");
-    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(rows)) { if (Value((hiindex(express_getattr(temp, "RowCells"))) != (hiindex(express_getattr(express_getitem(rows, 1 - 1), "RowCells")))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
+    if (!Value((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(rows)) { if (Value((hiindex(express_getattr(temp, "RowCells"))) != (hiindex(express_getattr(express_getitem(rows, 1), "RowCells")))).truthy()) __r.append(temp); } return __r; })())) == 0).truthy()) return false;
     return true;
 }
 
@@ -4958,7 +4958,7 @@ bool IfcTable_WR3(EntityRef self) {
 
 Value calc_IfcTable_NumberOfCellsInRow(EntityRef self) {
     Value rows = express_getattr(self, "Rows");
-    return hiindex(express_getattr(express_getitem(rows, 1 - 1), "RowCells"));
+    return hiindex(express_getattr(express_getitem(rows, 1), "RowCells"));
 }
 
 Value calc_IfcTable_NumberOfHeadings(EntityRef self) {
@@ -5020,7 +5020,7 @@ bool IfcTextStyleFontModel_WR31(EntityRef self) {
 }
 
 bool IfcTextureMap_WR11(EntityRef self) {
-    if (!Value((sizeof_((Value::make_list({Value(std::string("ifc2x3.ifcshellbasedsurfacemodel")), Value(std::string("ifc2x3.ifcfacebasedsurfacemodel")), Value(std::string("ifc2x3.ifcfacetedbrep")), Value(std::string("ifc2x3.ifcfacetedbrepwithvoids"))})) * (typeof_(express_getattr(express_getitem(express_getattr(self, "AnnotatedSurface"), 1 - 1), "Item"))))) >= 1).truthy()) return false;
+    if (!Value((sizeof_((Value::make_list({Value(std::string("ifc2x3.ifcshellbasedsurfacemodel")), Value(std::string("ifc2x3.ifcfacebasedsurfacemodel")), Value(std::string("ifc2x3.ifcfacetedbrep")), Value(std::string("ifc2x3.ifcfacetedbrepwithvoids"))})) * (typeof_(express_getattr(express_getitem(express_getattr(self, "AnnotatedSurface"), 1), "Item"))))) >= 1).truthy()) return false;
     return true;
 }
 
@@ -5047,13 +5047,13 @@ bool IfcTopologyRepresentation_WR23(EntityRef self) {
 
 bool IfcTrimmedCurve_WR41(EntityRef self) {
     Value trim1 = express_getattr(self, "Trim1");
-    if (!Value((hiindex(trim1) == 1) || ((typeof_(express_getitem(trim1, 1 - 1))) != (typeof_(express_getitem(trim1, 2 - 1))))).truthy()) return false;
+    if (!Value((hiindex(trim1) == 1) || ((typeof_(express_getitem(trim1, 1))) != (typeof_(express_getitem(trim1, 2))))).truthy()) return false;
     return true;
 }
 
 bool IfcTrimmedCurve_WR42(EntityRef self) {
     Value trim2 = express_getattr(self, "Trim2");
-    if (!Value((hiindex(trim2) == 1) || ((typeof_(express_getitem(trim2, 1 - 1))) != (typeof_(express_getitem(trim2, 2 - 1))))).truthy()) return false;
+    if (!Value((hiindex(trim2) == 1) || ((typeof_(express_getitem(trim2, 1))) != (typeof_(express_getitem(trim2, 2))))).truthy()) return false;
     return true;
 }
 
@@ -5075,7 +5075,7 @@ bool IfcTypeObject_WR1(EntityRef self) {
 }
 
 bool IfcTypeProduct_WR41(EntityRef self) {
-    if (!Value((!((exists(express_getitem(express_getattr(self, "ObjectTypeOf"), 1 - 1))))) || ((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(express_getitem(express_getattr(self, "ObjectTypeOf"), 1 - 1), "RelatedObjects"))) { if (Value(!((ifcapi::express::express_in(Value(std::string("ifc2x3.ifcproduct")), typeof_(temp))))).truthy()) __r.append(temp); } return __r; })())) == 0)).truthy()) return false;
+    if (!Value((!((exists(express_getitem(express_getattr(self, "ObjectTypeOf"), 1))))) || ((sizeof_(([&]() { auto __r = Value::make_list({}); for (auto& temp : ifcapi::express::iter(express_getattr(express_getitem(express_getattr(self, "ObjectTypeOf"), 1), "RelatedObjects"))) { if (Value(!((ifcapi::express::express_in(Value(std::string("ifc2x3.ifcproduct")), typeof_(temp))))).truthy()) __r.append(temp); } return __r; })())) == 0)).truthy()) return false;
     return true;
 }
 
@@ -5160,7 +5160,7 @@ bool IfcWindowLiningProperties_WR33(EntityRef self) {
 }
 
 bool IfcWindowLiningProperties_WR34(EntityRef self) {
-    if (!Value((exists(express_getitem(express_getattr(self, "DefinesType"), 1 - 1))) && (ifcapi::express::express_in(Value(std::string("ifc2x3.ifcwindowstyle")), typeof_(express_getitem(express_getattr(self, "DefinesType"), 1 - 1))))).truthy()) return false;
+    if (!Value((exists(express_getitem(express_getattr(self, "DefinesType"), 1))) && (ifcapi::express::express_in(Value(std::string("ifc2x3.ifcwindowstyle")), typeof_(express_getitem(express_getattr(self, "DefinesType"), 1))))).truthy()) return false;
     return true;
 }
 
@@ -5187,8 +5187,8 @@ bool IfcRepresentationContextSameWCS(IfcFile* file) {
     Value isdifferent = false;
     if (Value(sizeof_(IfcGeometricRepresentationContext) > 1).truthy()) {
         for (Value i = 2; (Value(i) <= Value(hiindex(IfcGeometricRepresentationContext))).truthy(); i = i + Value((int64_t)1)) {
-            if (Value((express_getattr(express_getitem(IfcGeometricRepresentationContext, 1 - 1), "WorldCoordinateSystem")) != (express_getattr(express_getitem(IfcGeometricRepresentationContext, i - 1), "WorldCoordinateSystem"))).truthy()) {
-                isdifferent = (!((IfcSameValidPrecision(express_getattr(express_getitem(IfcGeometricRepresentationContext, 1 - 1), "Precision"), express_getattr(express_getitem(IfcGeometricRepresentationContext, i - 1), "Precision"))))) || (!((IfcSameAxis2Placement(express_getattr(express_getitem(IfcGeometricRepresentationContext, 1 - 1), "WorldCoordinateSystem"), express_getattr(express_getitem(IfcGeometricRepresentationContext, i - 1), "WorldCoordinateSystem"), express_getattr(express_getitem(IfcGeometricRepresentationContext, 1 - 1), "Precision")))));
+            if (Value((express_getattr(express_getitem(IfcGeometricRepresentationContext, 1), "WorldCoordinateSystem")) != (express_getattr(express_getitem(IfcGeometricRepresentationContext, i), "WorldCoordinateSystem"))).truthy()) {
+                isdifferent = (!((IfcSameValidPrecision(express_getattr(express_getitem(IfcGeometricRepresentationContext, 1), "Precision"), express_getattr(express_getitem(IfcGeometricRepresentationContext, i), "Precision"))))) || (!((IfcSameAxis2Placement(express_getattr(express_getitem(IfcGeometricRepresentationContext, 1), "WorldCoordinateSystem"), express_getattr(express_getitem(IfcGeometricRepresentationContext, i), "WorldCoordinateSystem"), express_getattr(express_getitem(IfcGeometricRepresentationContext, 1), "Precision")))));
                 if (Value(isdifferent == true).truthy()) {
                     break;
                 }
