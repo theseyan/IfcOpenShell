@@ -43,7 +43,6 @@ set(IFCAPI_SOURCES
     src/element.cpp
     src/representation.cpp
     src/geometry.cpp
-    src/schema.cpp
     src/selector_parser.cpp
     src/selector_get.cpp
     src/selector_filter.cpp
