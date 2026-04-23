@@ -580,22 +580,6 @@ IFCAPI_EXPORT bool ifcopenshell_geometry_profile_extents(
     double* x_out,
     double* y_out);
 
-/* ------------------------------------------------------------------ */
-/*  Schema introspection                                               */
-/* ------------------------------------------------------------------ */
-/*
- * These functions expose IfcParse's static schema metadata (declarations,
- * attributes, types, enumerations, selects, inverse attributes). All
- * returned handles are non-owning pointers into program-lifetime objects
- * (schema singletons) and must NOT be freed. Returned C strings likewise
- * point into schema storage and remain valid for the program's lifetime.
- *
- * Array-returning functions (enumeration_items, select_list,
- * all_attributes, all_inverse_attributes) allocate a heap array of
- * pointers; caller must free the outer array with ifcopenshell_free_ptr_array.
- * The pointed-to strings/handles stay owned by the schema.
- */
-
 /* parameter_type kind tag */
 #define IFCAPI_PT_NAMED       0
 #define IFCAPI_PT_SIMPLE      1
@@ -620,67 +604,6 @@ IFCAPI_EXPORT bool ifcopenshell_geometry_profile_extents(
 #define IFCAPI_INV_AGG_BAG         0
 #define IFCAPI_INV_AGG_SET         1
 #define IFCAPI_INV_AGG_UNSPECIFIED 2
-
-/* Free a heap-allocated array of pointers returned by this API. The
-   pointees themselves are NOT freed (they are owned by the schema). */
-IFCAPI_EXPORT void ifcopenshell_free_ptr_array(void* arr);
-
-/* --- schema_definition --- */
-IFCAPI_EXPORT const void* ifcopenshell_schema_by_name(const char* name);
-IFCAPI_EXPORT const void* ifcopenshell_file_schema_def(const ifcopenshell_ifc_file_t* file);
-IFCAPI_EXPORT const char* ifcopenshell_schema_name(const void* schema);
-IFCAPI_EXPORT const void* ifcopenshell_schema_declaration_by_name(const void* schema, const char* name);
-IFCAPI_EXPORT const void** ifcopenshell_schema_declarations(const void* schema, uint32_t* out_count);
-
-/* --- declaration (polymorphic) --- */
-IFCAPI_EXPORT const char* ifcopenshell_declaration_name(const void* decl);
-IFCAPI_EXPORT bool        ifcopenshell_declaration_is(const void* decl, const char* name);
-IFCAPI_EXPORT const void* ifcopenshell_declaration_as_entity(const void* decl);
-IFCAPI_EXPORT const void* ifcopenshell_declaration_as_type(const void* decl);
-IFCAPI_EXPORT const void* ifcopenshell_declaration_as_select(const void* decl);
-IFCAPI_EXPORT const void* ifcopenshell_declaration_as_enumeration(const void* decl);
-IFCAPI_EXPORT const void* ifcopenshell_declaration_schema(const void* decl);
-
-/* --- entity --- */
-IFCAPI_EXPORT bool        ifcopenshell_entity_is_abstract(const void* entity);
-IFCAPI_EXPORT const void* ifcopenshell_entity_supertype(const void* entity);
-IFCAPI_EXPORT uint32_t    ifcopenshell_entity_attribute_count(const void* entity);
-IFCAPI_EXPORT const void* ifcopenshell_entity_attribute_by_index(const void* entity, uint32_t index);
-IFCAPI_EXPORT int32_t     ifcopenshell_entity_attribute_index_by_name(const void* entity, const char* name);
-IFCAPI_EXPORT const void** ifcopenshell_entity_all_attributes(const void* entity, uint32_t* out_count);
-IFCAPI_EXPORT const void** ifcopenshell_entity_all_inverse_attributes(const void* entity, uint32_t* out_count);
-IFCAPI_EXPORT bool        ifcopenshell_entity_attribute_derived(const void* entity, uint32_t index);
-
-/* --- type_declaration --- */
-IFCAPI_EXPORT const void* ifcopenshell_type_declaration_declared_type(const void* type_decl);
-
-/* --- enumeration_type --- */
-IFCAPI_EXPORT const char** ifcopenshell_enumeration_items(const void* enum_decl, uint32_t* out_count);
-
-/* --- select_type --- */
-IFCAPI_EXPORT const void** ifcopenshell_select_list(const void* select_decl, uint32_t* out_count);
-
-/* --- attribute --- */
-IFCAPI_EXPORT const char* ifcopenshell_attribute_name(const void* attr);
-IFCAPI_EXPORT bool        ifcopenshell_attribute_optional(const void* attr);
-IFCAPI_EXPORT const void* ifcopenshell_attribute_type_of_attribute(const void* attr);
-
-/* --- inverse_attribute --- */
-IFCAPI_EXPORT const char* ifcopenshell_inverse_attribute_name(const void* iattr);
-IFCAPI_EXPORT int         ifcopenshell_inverse_attribute_type_of_aggregation(const void* iattr);
-IFCAPI_EXPORT int32_t     ifcopenshell_inverse_attribute_bound1(const void* iattr);
-IFCAPI_EXPORT int32_t     ifcopenshell_inverse_attribute_bound2(const void* iattr);
-IFCAPI_EXPORT const void* ifcopenshell_inverse_attribute_entity_reference(const void* iattr);
-IFCAPI_EXPORT const void* ifcopenshell_inverse_attribute_attribute_reference(const void* iattr);
-
-/* --- parameter_type (polymorphic) --- */
-IFCAPI_EXPORT int         ifcopenshell_parameter_type_kind(const void* pt);
-IFCAPI_EXPORT const void* ifcopenshell_named_type_declared_type(const void* pt);
-IFCAPI_EXPORT int         ifcopenshell_simple_type_data_type(const void* pt);
-IFCAPI_EXPORT int         ifcopenshell_aggregation_type_kind(const void* pt);
-IFCAPI_EXPORT int32_t     ifcopenshell_aggregation_type_bound1(const void* pt);
-IFCAPI_EXPORT int32_t     ifcopenshell_aggregation_type_bound2(const void* pt);
-IFCAPI_EXPORT const void* ifcopenshell_aggregation_type_element(const void* pt);
 
 /* ------------------------------------------------------------------ */
 /*  util.attribute                                                     */
