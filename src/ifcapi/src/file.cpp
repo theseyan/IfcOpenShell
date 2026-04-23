@@ -48,6 +48,15 @@ ifcopenshell_ifc_file_t* ifcopenshell_file_create(const char* schema_name) {
 ifcopenshell_ifc_file_t* ifcopenshell_file_open(const char* path) {
     ifcopenshell_clear_error();
     if (!path) { set_error("path is NULL"); return nullptr; }
+    {
+        std::ifstream probe(path, std::ios::binary);
+        if (!probe.good()) {
+            std::ostringstream oss;
+            oss << "File does not exist or is not readable: " << path;
+            set_error(oss.str());
+            return nullptr;
+        }
+    }
     try {
         auto* file = new IfcParse::IfcFile(path);
         if (!file->good()) {

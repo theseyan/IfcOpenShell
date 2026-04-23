@@ -383,3 +383,14 @@ class TestCreateHelpers:
     def test_create_shorthand_with_kwargs(self):
         wall = self.file.createIfcWall(Name="ShortWall")
         assert wall.Name == "ShortWall"
+
+
+@pytest.mark.parametrize("schema", ["IFC2X3", "IFC4", "IFC4X1", "IFC4X3_ADD2"])
+def test_curve_dim_derive_for_polyline(schema):
+    file = ifcopenshell.file(schema=schema)
+    p1 = file.create_entity("IfcCartesianPoint", Coordinates=(0.0, 0.0, 0.0))
+    p2 = file.create_entity("IfcCartesianPoint", Coordinates=(1.0, 1.0, 1.0))
+    poly = file.create_entity("IfcPolyline", Points=[p1, p2])
+
+    assert poly.Points[0].Dim == 3
+    assert poly.Dim == 3

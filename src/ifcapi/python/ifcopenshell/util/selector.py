@@ -36,23 +36,31 @@ import ifcopenshell.util.pset
 import ifcopenshell.util.schema
 import ifcopenshell.util.shape
 from ifcopenshell import _get_lib
+from ifcopenshell._value_api import (
+    IFCSEL_VALUE_NONE     as _IFCSEL_VALUE_NONE,
+    IFCSEL_VALUE_BOOL     as _IFCSEL_VALUE_BOOL,
+    IFCSEL_VALUE_INT      as _IFCSEL_VALUE_INT,
+    IFCSEL_VALUE_DOUBLE   as _IFCSEL_VALUE_DOUBLE,
+    IFCSEL_VALUE_STRING   as _IFCSEL_VALUE_STRING,
+    IFCSEL_VALUE_INSTANCE as _IFCSEL_VALUE_INSTANCE,
+    IFCSEL_VALUE_LIST     as _IFCSEL_VALUE_LIST,
+    IFCSEL_VALUE_DICT     as _IFCSEL_VALUE_DICT,
+    configure_value_lib   as _configure_value_lib_core,
+    value_to_python       as _value_to_python,
+)
 
-
-# ifcopenshell_value_kind_t constants (must match value.h)
-_IFCSEL_VALUE_NONE     = 0
-_IFCSEL_VALUE_BOOL     = 1
-_IFCSEL_VALUE_INT      = 2
-_IFCSEL_VALUE_DOUBLE   = 3
-_IFCSEL_VALUE_STRING   = 4
-_IFCSEL_VALUE_INSTANCE = 5
-_IFCSEL_VALUE_LIST     = 6
-_IFCSEL_VALUE_DICT     = 7
 
 _value_lib_configured = False
 _filter_lib_configured = False
 _format_lib_configured = False
 _keys_lib_configured = False
 _set_lib_configured = False
+
+
+def _selector_error(lib, fallback: str) -> Exception:
+    msg = lib.ifcopenshell_last_error_message()
+    text = msg.decode("utf-8", errors="replace") if msg else fallback
+    return ValueError(text)
 
 
 def _configure_set_lib(lib) -> None:
@@ -124,30 +132,7 @@ def _configure_value_lib(lib) -> None:
     lib.ifcopenshell_selector_get_element_value.argtypes = [
         ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p
     ]
-    lib.ifcopenshell_value_free.restype = None
-    lib.ifcopenshell_value_free.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_value_kind.restype = ctypes.c_int
-    lib.ifcopenshell_value_kind.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_value_as_bool.restype = ctypes.c_bool
-    lib.ifcopenshell_value_as_bool.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_value_as_int64.restype = ctypes.c_int64
-    lib.ifcopenshell_value_as_int64.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_value_as_double.restype = ctypes.c_double
-    lib.ifcopenshell_value_as_double.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_value_as_string.restype = ctypes.c_char_p
-    lib.ifcopenshell_value_as_string.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_value_as_instance.restype = ctypes.c_void_p
-    lib.ifcopenshell_value_as_instance.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_value_list_size.restype = ctypes.c_size_t
-    lib.ifcopenshell_value_list_size.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_value_list_at.restype = ctypes.c_void_p
-    lib.ifcopenshell_value_list_at.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
-    lib.ifcopenshell_value_dict_size.restype = ctypes.c_size_t
-    lib.ifcopenshell_value_dict_size.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_value_dict_key_at.restype = ctypes.c_char_p
-    lib.ifcopenshell_value_dict_key_at.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
-    lib.ifcopenshell_value_dict_value_at.restype = ctypes.c_void_p
-    lib.ifcopenshell_value_dict_value_at.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+    _configure_value_lib_core(lib)
     _value_lib_configured = True
 
 
@@ -196,46 +181,6 @@ def _configure_keys_lib(lib) -> None:
     _keys_lib_configured = True
 
 
-def _value_to_python(lib, ptr, element):
-    """Recursively convert an ifcopenshell_value_t* to a Python object."""
-    if not ptr:
-        return None
-    kind = lib.ifcopenshell_value_kind(ptr)
-    if kind == _IFCSEL_VALUE_NONE:
-        return None
-    if kind == _IFCSEL_VALUE_BOOL:
-        return bool(lib.ifcopenshell_value_as_bool(ptr))
-    if kind == _IFCSEL_VALUE_INT:
-        return int(lib.ifcopenshell_value_as_int64(ptr))
-    if kind == _IFCSEL_VALUE_DOUBLE:
-        return float(lib.ifcopenshell_value_as_double(ptr))
-    if kind == _IFCSEL_VALUE_STRING:
-        raw = lib.ifcopenshell_value_as_string(ptr)
-        return raw.decode("utf-8", errors="replace") if raw else None
-    if kind == _IFCSEL_VALUE_INSTANCE:
-        h = lib.ifcopenshell_value_as_instance(ptr)
-        if not h:
-            return None
-        from ifcopenshell.entity_instance import entity_instance as _ei
-        return _ei(element.file, h)
-    if kind == _IFCSEL_VALUE_LIST:
-        n = lib.ifcopenshell_value_list_size(ptr)
-        return [
-            _value_to_python(lib, lib.ifcopenshell_value_list_at(ptr, i), element)
-            for i in range(n)
-        ]
-    if kind == _IFCSEL_VALUE_DICT:
-        n = lib.ifcopenshell_value_dict_size(ptr)
-        result = {}
-        for i in range(n):
-            key_raw = lib.ifcopenshell_value_dict_key_at(ptr, i)
-            key = key_raw.decode("utf-8", errors="replace") if key_raw else ""
-            val = _value_to_python(lib, lib.ifcopenshell_value_dict_value_at(ptr, i), element)
-            result[key] = val
-        return result
-    return None
-
-
 
 def format(query: str, element: Optional[ifcopenshell.entity_instance] = None) -> Optional[str]:
     """Format a query string with optional element context for variable substitution.
@@ -251,6 +196,7 @@ def format(query: str, element: Optional[ifcopenshell.entity_instance] = None) -
     """
     lib = _get_lib()
     _configure_format_lib(lib)
+    lib.ifcopenshell_clear_error()
     file_ptr = None
     elem_ptr = None
     if element is not None:
@@ -258,6 +204,9 @@ def format(query: str, element: Optional[ifcopenshell.entity_instance] = None) -
         elem_ptr = element._handle
     raw = lib.ifcopenshell_selector_format(file_ptr, elem_ptr, query.encode("utf-8"))
     if not raw:
+        msg = lib.ifcopenshell_last_error_message()
+        if msg:
+            raise _selector_error(lib, "selector format failed")
         return None
     try:
         result = ctypes.string_at(raw).decode("utf-8", errors="replace")
@@ -267,13 +216,18 @@ def format(query: str, element: Optional[ifcopenshell.entity_instance] = None) -
 
 
 def get_element_value(element: ifcopenshell.entity_instance, query: str) -> Any:
+    _parse_selector_keys(query)
     lib = _get_lib()
     _configure_value_lib(lib)
+    lib.ifcopenshell_clear_error()
     file_ptr = getattr(element.file, "_ptr", None)
     ptr = lib.ifcopenshell_selector_get_element_value(
         file_ptr, element._handle, query.encode("utf-8")
     )
     if ptr is None:
+        msg = lib.ifcopenshell_last_error_message()
+        if msg:
+            raise _selector_error(lib, "selector get_element_value failed")
         return None
     result = _value_to_python(lib, ptr, element)
     lib.ifcopenshell_value_free(ptr)
@@ -348,6 +302,7 @@ def filter_elements(
     lib = _get_lib()
     _configure_value_lib(lib)
     _configure_filter_lib(lib)
+    lib.ifcopenshell_clear_error()
 
     from ifcopenshell.entity_instance import entity_instance as _ei
 
@@ -371,6 +326,9 @@ def filter_elements(
     )
 
     if not val_ptr:
+        msg = lib.ifcopenshell_last_error_message()
+        if msg:
+            raise _selector_error(lib, "selector filter_elements failed")
         return set()
 
     result: set[ifcopenshell.entity_instance] = set()

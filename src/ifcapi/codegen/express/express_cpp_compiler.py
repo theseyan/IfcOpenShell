@@ -759,7 +759,10 @@ def process_aggregate_initializer(context):
 def process_index(context):
     if context.parent().key() == "index_qualifier":
         return context
-    return f"[{context} - 1]"
+    # EXPRESS uses 1-based indexing; the runtime helpers (express_getitem,
+    # set_index) preserve that convention and convert to 0-based internally.
+    # Emit the index expression verbatim — DO NOT subtract one here.
+    return f"[{context}]"
 
 
 def _split_qualifiers(s):
