@@ -1,60 +1,38 @@
-# SPDX-License-Identifier: LGPL-3.0-or-later
-"""Type assignment API — thin wrappers around native C functions."""
+# IfcOpenShell - IFC toolkit and geometry engine
+# Copyright (C) 2022 Dion Moult <dion@thinkmoult.com>
+#
+# This file is part of IfcOpenShell.
+#
+# IfcOpenShell is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# IfcOpenShell is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ctypes
-from ... import _get_lib, entity_instance
+"""Manage common construction types of physical elements
 
+Almost all constructed elements may be grouped into "types". Types include wall
+types, window types, column types, equipment types, and more.
 
-def assign_type(file, related_objects=None, relating_type=None, should_map_representations=True):
-    """Assign objects to a type via IfcRelDefinesByType.
+Using types is critical to the success of any project.
+"""
 
-    When ``should_map_representations`` is true (the default) this also
-    propagates the relating type's ``IfcRepresentationMaps`` onto each
-    related occurrence as ``IfcMappedItem``-based ``IfcShapeRepresentation``
-    entries, and clears any redundant ``ObjectType`` / ``PredefinedType``
-    on the occurrences (matching upstream Python behaviour).
-    """
-    lib = _get_lib()
-    handles = [o._handle for o in (related_objects or []) if isinstance(o, entity_instance)]
-    if not handles or relating_type is None:
-        return None
-    arr = (ctypes.c_void_p * len(handles))(*handles)
-    rt_handle = relating_type._handle
-    lib.ifcopenshell_type_assign_type_ex.restype = ctypes.c_void_p
-    lib.ifcopenshell_type_assign_type_ex.argtypes = [
-        ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p), ctypes.c_uint32,
-        ctypes.c_void_p, ctypes.c_bool,
-    ]
-    rel_h = lib.ifcopenshell_type_assign_type_ex(
-        file._ptr, arr, len(handles), rt_handle, bool(should_map_representations)
-    )
-    if not rel_h:
-        return None
-    return entity_instance(file, rel_h)
+from .. import wrap_usecases
+from .assign_type import assign_type
+from .map_type_representations import map_type_representations
+from .unassign_type import unassign_type
 
+wrap_usecases(__path__, __name__)
 
-def unassign_type(file, related_objects=None):
-    """Unassign objects from their type."""
-    lib = _get_lib()
-    handles = [o._handle for o in (related_objects or []) if isinstance(o, entity_instance)]
-    if not handles:
-        return
-    arr = (ctypes.c_void_p * len(handles))(*handles)
-    lib.ifcopenshell_type_unassign_type.restype = None
-    lib.ifcopenshell_type_unassign_type.argtypes = [
-        ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p), ctypes.c_uint32,
-    ]
-    lib.ifcopenshell_type_unassign_type(file._ptr, arr, len(handles))
-
-import importlib as _importlib
-
-def __getattr__(name):
-    try:
-        module = _importlib.import_module(f".{name}", __name__)
-    except ModuleNotFoundError:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    func = getattr(module, name, None)
-    if func is None:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    globals()[name] = func
-    return func
+__all__ = [
+    "assign_type",
+    "map_type_representations",
+    "unassign_type",
+]

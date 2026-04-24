@@ -1,82 +1,43 @@
-# SPDX-License-Identifier: LGPL-3.0-or-later
+# IfcOpenShell - IFC toolkit and geometry engine
+# Copyright (C) 2022 Dion Moult <dion@thinkmoult.com>
+#
+# This file is part of IfcOpenShell.
+#
+# IfcOpenShell is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# IfcOpenShell is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ctypes
-import ifcopenshell
-import ifcopenshell.guid
-import ifcopenshell.util.element
-from ifcopenshell.entity_instance import entity_instance
+"""Elements may be arbitrarily assigned to groups for organisation
 
+Groups are useful for filtering elements or non-hierarchical organisation of a
+model. Note that this only targets arbitrary groups. If you want to group
+elements into a distribution system, see :mod:`ifcopenshell.api.system`.
+"""
 
-def add_group(file, name="Unnamed", description=None):
-    """Add a new IfcGroup."""
-    return file.create_entity("IfcGroup", GlobalId=ifcopenshell.guid.new(), Name=name, Description=description)
+from .. import wrap_usecases
+from .add_group import add_group
+from .assign_group import assign_group
+from .edit_group import edit_group
+from .remove_group import remove_group
+from .unassign_group import unassign_group
+from .update_group_products import update_group_products
 
+wrap_usecases(__path__, __name__)
 
-def edit_group(file, group=None, attributes=None):
-    """Edit the attributes of an IfcGroup."""
-    if not attributes:
-        return
-    for name, value in attributes.items():
-        setattr(group, name, value)
-
-
-def assign_group(file, products=None, group=None):
-    """Assign products to a group."""
-    if not products or group is None:
-        return None
-    lib = ifcopenshell._get_lib()
-    handles = [o._handle for o in products]
-    arr = (ctypes.c_void_p * len(handles))(*handles)
-    lib.ifcopenshell_group_assign_group.restype = ctypes.c_void_p
-    lib.ifcopenshell_group_assign_group.argtypes = [
-        ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p), ctypes.c_uint32, ctypes.c_void_p,
-    ]
-    rel_h = lib.ifcopenshell_group_assign_group(file._ptr, arr, len(handles), group._handle)
-    if not rel_h:
-        return None
-    return entity_instance(file, rel_h)
-
-
-def unassign_group(file, products=None, group=None):
-    """Unassign products from a group."""
-    if not products or group is None:
-        return
-    lib = ifcopenshell._get_lib()
-    handles = [o._handle for o in products]
-    arr = (ctypes.c_void_p * len(handles))(*handles)
-    lib.ifcopenshell_group_unassign_group.restype = None
-    lib.ifcopenshell_group_unassign_group.argtypes = [
-        ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p), ctypes.c_uint32, ctypes.c_void_p,
-    ]
-    lib.ifcopenshell_group_unassign_group(file._ptr, arr, len(handles), group._handle)
-
-
-def remove_group(file, group=None):
-    """Remove an IfcGroup and its relationships."""
-    if group is None:
-        return
-    # Remove IfcRelAssignsToGroup relationships where this is the relating group
-    is_grouped_by = getattr(group, "IsGroupedBy", ())
-    for rel in list(is_grouped_by):
-        if rel.RelatingGroup == group:
-            history = getattr(rel, "OwnerHistory", None)
-            file.remove(rel)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
-    history = getattr(group, "OwnerHistory", None)
-    file.remove(group)
-    if history:
-        ifcopenshell.util.element.remove_deep2(file, history)
-
-import importlib as _importlib
-
-def __getattr__(name):
-    try:
-        module = _importlib.import_module(f".{name}", __name__)
-    except ModuleNotFoundError:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    func = getattr(module, name, None)
-    if func is None:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    globals()[name] = func
-    return func
+__all__ = [
+    "add_group",
+    "assign_group",
+    "edit_group",
+    "remove_group",
+    "unassign_group",
+    "update_group_products",
+]

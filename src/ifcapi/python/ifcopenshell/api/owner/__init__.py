@@ -1,8 +1,30 @@
-# SPDX-License-Identifier: LGPL-3.0-or-later
+# IfcOpenShell - IFC toolkit and geometry engine
+# Copyright (C) 2022 Dion Moult <dion@thinkmoult.com>
+#
+# This file is part of IfcOpenShell.
+#
+# IfcOpenShell is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# IfcOpenShell is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Owner history and actor/person/organisation management for the native ifcapi backend."""
+"""An element may have an owner, indicating who is responsible, liable, or
+contactable regarding that element
 
-from . import settings
+Note that in IFC2X3, element ownership is mandatory and must be addressed prior
+to the creation of any element at all. See :func:`create_owner_history` for
+examples.
+"""
+
+from .. import wrap_usecases
 from .add_actor import add_actor
 from .add_address import add_address
 from .add_application import add_application
@@ -27,6 +49,8 @@ from .remove_person_and_organisation import remove_person_and_organisation
 from .remove_role import remove_role
 from .unassign_actor import unassign_actor
 from .update_owner_history import update_owner_history
+
+wrap_usecases(__path__, __name__)
 
 __all__ = [
     "add_actor",
@@ -54,16 +78,3 @@ __all__ = [
     "unassign_actor",
     "update_owner_history",
 ]
-
-import importlib as _importlib
-
-def __getattr__(name):
-    try:
-        module = _importlib.import_module(f".{name}", __name__)
-    except ModuleNotFoundError:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    func = getattr(module, name, None)
-    if func is None:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    globals()[name] = func
-    return func

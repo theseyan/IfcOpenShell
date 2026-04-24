@@ -1,25 +1,72 @@
-# SPDX-License-Identifier: LGPL-3.0-or-later
+# IfcOpenShell - IFC toolkit and geometry engine
+# Copyright (C) 2023 Dion Moult <dion@thinkmoult.com>
+#
+# This file is part of IfcOpenShell.
+#
+# IfcOpenShell is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# IfcOpenShell is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
+
+import ifcopenshell
 import ifcopenshell.api.style
 import ifcopenshell.util.element
 
 
-def unassign_material_style(file, material=None, style=None, context=None):
-    for definition in material.HasRepresentation:
+def unassign_material_style(
+    file: ifcopenshell.file,
+    material: ifcopenshell.entity_instance,
+    style: ifcopenshell.entity_instance,
+    context: ifcopenshell.entity_instance,
+) -> None:
+    """Unassigns a style to a material
+
+    This does the inverse of assign_material_style.
+
+    :param material: The IfcMaterial which you want to unassign the style from.
+    :param style: The IfcPresentationStyle (typically IfcSurfaceStyle) that
+        you want to unassign from material. This will then be applied to all
+        objects that have that material.
+    :param context: The IfcGeometricRepresentationSubContext at which this
+        style should be unassigned. Typically this is the Model BODY context.
+    :return: None
+
+    Example:
+
+    .. code:: python
+
+        ifcopenshell.api.style.unassign_material_style(model, material=concrete, style=style, context=body)
+    """
+    settings = {
+        "material": material,
+        "style": style,
+        "context": context,
+    }
+
+    for definition in settings["material"].HasRepresentation:
         for representation in definition.Representations:
             if not representation.is_a("IfcStyledRepresentation"):
                 continue
-            if representation.ContextOfItems != context:
+            if representation.ContextOfItems != settings["context"]:
                 continue
             for item in representation.Items:
                 if not item.is_a("IfcStyledItem"):
                     continue
                 styles = []
                 for s in item.Styles:
-                    if s == style:
+                    if s == settings["style"]:
                         continue
                     if s.is_a("IfcPresentationStyleAssignment"):
-                        if s.Styles == (style,):
+                        if s.Styles == (settings["style"],):
                             continue
                     styles.append(s)
                 if not styles:
@@ -31,53 +78,24 @@ def unassign_material_style(file, material=None, style=None, context=None):
         if not definition.Representations:
             file.remove(definition)
 
-    # Handle material constituents and shape aspects.
-    constituent_names = []
-    for inverse in file.get_inverse(material):
+    # handle material constituents and shape aspects
+    material_constituents_names = []
+    for inverse in file.get_inverse(settings["material"]):
         if inverse.is_a("IfcMaterialConstituent") and inverse.Name:
-            constituent_names.append(inverse.Name)
-    if not constituent_names:
+            material_constituents_names.append(inverse.Name)
+    if not material_constituents_names:
         return
 
-    elements = _get_elements_by_material(file, material)
+    elements = ifcopenshell.util.element.get_elements_by_material(file, settings["material"])
     shape_aspects = []
     for element in elements:
-        shape_aspects += _get_shape_aspects(file, element)
+        shape_aspects += ifcopenshell.util.element.get_shape_aspects(element)
 
     for shape_aspect in shape_aspects:
-        if shape_aspect.Name not in constituent_names:
+        if shape_aspect.Name not in material_constituents_names:
             continue
+
         for rep in shape_aspect.ShapeRepresentations:
             ifcopenshell.api.style.unassign_representation_styles(
-                file, shape_representation=rep, styles=[style])
-
-
-def _get_elements_by_material(ifc_file, material):
-    results = set()
-    for inverse in ifc_file.get_inverse(material):
-        if inverse.is_a("IfcRelAssociatesMaterial"):
-            results.update(inverse.RelatedObjects or [])
-        elif inverse.is_a("IfcMaterialLayer"):
-            for ms in inverse.ToMaterialLayerSet:
-                results.update(_get_elements_by_material(ifc_file, ms))
-        elif inverse.is_a("IfcMaterialProfile"):
-            for ms in inverse.ToMaterialProfileSet:
-                results.update(_get_elements_by_material(ifc_file, ms))
-        elif inverse.is_a("IfcMaterialConstituent"):
-            for ms in inverse.ToMaterialConstituentSet:
-                results.update(_get_elements_by_material(ifc_file, ms))
-        elif inverse.is_a("IfcMaterialLayerSetUsage"):
-            results.update(_get_elements_by_material(ifc_file, inverse))
-        elif inverse.is_a("IfcMaterialProfileSetUsage"):
-            results.update(_get_elements_by_material(ifc_file, inverse))
-        elif inverse.is_a("IfcMaterialList"):
-            results.update(_get_elements_by_material(ifc_file, inverse))
-    return results
-
-
-def _get_shape_aspects(ifc_file, element):
-    representation = getattr(element, "Representation", None)
-    if representation is None:
-        return []
-    shape_aspects = list(representation.HasShapeAspects or [])
-    return shape_aspects
+                file, shape_representation=rep, styles=[settings["style"]]
+            )

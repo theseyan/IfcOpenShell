@@ -1,53 +1,43 @@
-# SPDX-License-Identifier: LGPL-3.0-or-later
+# IfcOpenShell - IFC toolkit and geometry engine
+# Copyright (C) 2022 Dion Moult <dion@thinkmoult.com>
+#
+# This file is part of IfcOpenShell.
+#
+# IfcOpenShell is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# IfcOpenShell is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ctypes
-import ifcopenshell
-from ifcopenshell.entity_instance import entity_instance
+"""Nesting is when a component is attached to a host element
 
+Examples include when a faucet is attached using a predrilled hole in a basin,
+or when a modular connection occurs through a connection point. This implies
+that when a host element moves, the child nested components must move as well.
+
+Note that this API is not meant to be used for connection points on
+distribution systems. For that purpose, such as for pipe fittings and
+equipment, please see :mod:`ifcopenshell.api.system`.
+"""
+
+from .. import wrap_usecases
+from .assign_object import assign_object
+from .change_nest import change_nest
 from .reorder_nesting import reorder_nesting
+from .unassign_object import unassign_object
 
+wrap_usecases(__path__, __name__)
 
-def assign_object(file, related_objects=None, relating_object=None):
-    """Assign objects as nested children of a host."""
-    if not related_objects or relating_object is None:
-        return None
-    lib = ifcopenshell._get_lib()
-    handles = [o._handle for o in related_objects]
-    arr = (ctypes.c_void_p * len(handles))(*handles)
-    lib.ifcopenshell_nest_assign_object.restype = ctypes.c_void_p
-    lib.ifcopenshell_nest_assign_object.argtypes = [
-        ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p), ctypes.c_uint32, ctypes.c_void_p,
-    ]
-    rel_h = lib.ifcopenshell_nest_assign_object(
-        file._ptr, arr, len(handles), relating_object._handle
-    )
-    if not rel_h:
-        return None
-    return entity_instance(file, rel_h)
-
-
-def unassign_object(file, related_objects=None):
-    """Unassign objects from their nest."""
-    if not related_objects:
-        return
-    lib = ifcopenshell._get_lib()
-    handles = [o._handle for o in related_objects]
-    arr = (ctypes.c_void_p * len(handles))(*handles)
-    lib.ifcopenshell_nest_unassign_object.restype = None
-    lib.ifcopenshell_nest_unassign_object.argtypes = [
-        ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p), ctypes.c_uint32,
-    ]
-    lib.ifcopenshell_nest_unassign_object(file._ptr, arr, len(handles))
-
-import importlib as _importlib
-
-def __getattr__(name):
-    try:
-        module = _importlib.import_module(f".{name}", __name__)
-    except ModuleNotFoundError:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    func = getattr(module, name, None)
-    if func is None:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    globals()[name] = func
-    return func
+__all__ = [
+    "assign_object",
+    "change_nest",
+    "reorder_nesting",
+    "unassign_object",
+]

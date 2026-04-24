@@ -18,11 +18,11 @@
 
 import re
 from collections.abc import Iterable
+from decimal import Decimal
 from types import EllipsisType
 from typing import Any, Optional, Union
 
-import ctypes
-
+import lark
 import numpy as np
 
 import ifcopenshell.api.geometry
@@ -31,235 +31,517 @@ import ifcopenshell.util
 import ifcopenshell.util.attribute
 import ifcopenshell.util.classification
 import ifcopenshell.util.element
+import ifcopenshell.util.geolocation
 import ifcopenshell.util.placement
 import ifcopenshell.util.pset
 import ifcopenshell.util.schema
 import ifcopenshell.util.shape
-from ifcopenshell import _get_lib
-from ifcopenshell._value_api import (
-    IFCSEL_VALUE_NONE     as _IFCSEL_VALUE_NONE,
-    IFCSEL_VALUE_BOOL     as _IFCSEL_VALUE_BOOL,
-    IFCSEL_VALUE_INT      as _IFCSEL_VALUE_INT,
-    IFCSEL_VALUE_DOUBLE   as _IFCSEL_VALUE_DOUBLE,
-    IFCSEL_VALUE_STRING   as _IFCSEL_VALUE_STRING,
-    IFCSEL_VALUE_INSTANCE as _IFCSEL_VALUE_INSTANCE,
-    IFCSEL_VALUE_LIST     as _IFCSEL_VALUE_LIST,
-    IFCSEL_VALUE_DICT     as _IFCSEL_VALUE_DICT,
-    configure_value_lib   as _configure_value_lib_core,
-    value_to_python       as _value_to_python,
-)
+import ifcopenshell.util.system
+import ifcopenshell.util.unit
+
+filter_elements_grammar = lark.Lark("""start: filter_group
+    filter_group: facet_list ("+" facet_list)*
+    facet_list: facet ("," facet)*
+
+    facet: instance | entity | attribute | type | material | query | classification | location | property | group | parent
+
+    instance: not? globalid
+    globalid: /[0-3][a-zA-Z0-9_$]{21}/
+    entity: not? ifc_class
+    attribute: attribute_name comparison value
+    type: "type" comparison value
+    material: "material" comparison value
+    property: pset "." prop comparison value
+    classification: "classification" comparison value
+    location: "location" comparison value
+    group: "group" comparison value
+    parent: "parent" comparison value
+    query: "query:" keys comparison value
+
+    pset: quoted_string | regex_string | unquoted_string
+    prop: quoted_string | regex_string | unquoted_string
+    keys: quoted_string | unquoted_string
+
+    attribute_name: /[A-Z]\\w+/
+    ifc_class: /Ifc\\w+/
+
+    value: special | quoted_string | regex_string | unquoted_string
+    unquoted_string: /[^,.=><*!\\s]+/
+    regex_string: "/" /[^\\/]+/ "/"
+    quoted_string: ESCAPED_STRING
+
+    special: null | true | false
+
+    comparison: not? equals | morethanequalto | lessthanequalto | morethan | lessthan | not? contains
+    not: "!"
+    equals: "="
+    morethanequalto: ">="
+    lessthanequalto: "<="
+    morethan: ">"
+    lessthan: "<"
+    contains: "*="
+    null: "NULL"
+    true: "TRUE"
+    false: "FALSE"
+
+    // Embed common.lark for packaging
+    DIGIT: "0".."9"
+    HEXDIGIT: "a".."f"|"A".."F"|DIGIT
+    INT: DIGIT+
+    SIGNED_INT: ["+"|"-"] INT
+    DECIMAL: INT "." INT? | "." INT
+    _EXP: ("e"|"E") SIGNED_INT
+    FLOAT: INT _EXP | DECIMAL _EXP?
+    SIGNED_FLOAT: ["+"|"-"] FLOAT
+    NUMBER: FLOAT | INT
+    SIGNED_NUMBER: ["+"|"-"] NUMBER
+    _STRING_INNER: /.*?/
+    _STRING_ESC_INNER: _STRING_INNER /(?<!\\\\)(\\\\\\\\)*?/
+    ESCAPED_STRING : "\\"" _STRING_ESC_INNER "\\""
+    LCASE_LETTER: "a".."z"
+    UCASE_LETTER: "A".."Z"
+    LETTER: UCASE_LETTER | LCASE_LETTER
+    WORD: LETTER+
+    CNAME: ("_"|LETTER) ("_"|LETTER|DIGIT)*
+    WS_INLINE: (" "|/\\t/)+
+    WS: /[ \\t\\f\\r\\n]/+
+    CR : /\\r/
+    LF : /\\n/
+    NEWLINE: (CR? LF)+
+
+    %ignore WS // Disregard spaces in text
+""")
+
+get_element_grammar = lark.Lark("""start: keys
+
+    keys: key ("." key)*
+    key: quoted_string | regex_string | unquoted_string
+    unquoted_string: /[^.=\\/\\s]+/
+    regex_string: "/" /[^\\/]+/ "/"
+    quoted_string: ESCAPED_STRING
+
+    // Embed common.lark for packaging
+    _STRING_INNER: /.*?/
+    _STRING_ESC_INNER: _STRING_INNER /(?<!\\\\)(\\\\\\\\)*?/
+    ESCAPED_STRING : "\\"" _STRING_ESC_INNER "\\""
+    WS: /[ \\t\\f\\r\\n]/+
+
+    %ignore WS // Disregard spaces in text
+ """)
+
+format_grammar = lark.Lark("""start: expression
+
+    ?expression: add_sub
+    ?add_sub: mul_div
+        | add_sub "+" mul_div   -> add
+        | add_sub "-" mul_div   -> subtract
+    ?mul_div: function
+        | mul_div "*" function  -> multiply
+        | mul_div "/" function  -> divide
+    
+    function: round | number | int | format_length | lower | upper | title | concat | substr | sort | reverse | join | variable | ESCAPED_STRING | SIGNED_NUMBER | "(" expression ")"
+
+    variable: "{{" query_path "}}"
+    query_path: /[^}]+/
+
+    round: "round(" expression "," NUMBER ")"
+    number: "number(" expression ["," ESCAPED_STRING ["," ESCAPED_STRING]] ")"
+    int: "int(" expression ")"
+    format_length: metric_length | imperial_length
+    metric_length: "metric_length(" expression "," NUMBER "," NUMBER ")"
+    imperial_length: "imperial_length(" expression "," NUMBER ["," ESCAPED_STRING "," ESCAPED_STRING ["," boolean]] ")"
+    lower: "lower(" expression ")"
+    upper: "upper(" expression ")"
+    title: "title(" expression ")"
+    concat: "concat(" expression ("," expression)* ")"
+    substr: "substr(" expression "," SIGNED_INT ["," SIGNED_INT] ")"
+    sort: "sort(" expression ")"
+    reverse: "reverse(" expression ")"
+    join: "join(" ESCAPED_STRING "," expression ")"
+    boolean: TRUE | FALSE
+
+    TRUE: "true" | "True" | "TRUE"
+    FALSE: "false" | "False" | "FALSE"
+    // Embed common.lark for packaging
+    DIGIT: "0".."9"
+    HEXDIGIT: "a".."f"|"A".."F"|DIGIT
+    INT: DIGIT+
+    SIGNED_INT: ["+"|"-"] INT
+    DECIMAL: INT "." INT? | "." INT
+    _EXP: ("e"|"E") SIGNED_INT
+    FLOAT: INT _EXP | DECIMAL _EXP?
+    SIGNED_FLOAT: ["+"|"-"] FLOAT
+    NUMBER: FLOAT | INT
+    SIGNED_NUMBER: ["+"|"-"] NUMBER
+    _STRING_INNER: /.*?/
+    _STRING_ESC_INNER: _STRING_INNER /(?<!\\\\)(\\\\\\\\)*?/
+    ESCAPED_STRING : "\\"" _STRING_ESC_INNER "\\""
+    LCASE_LETTER: "a".."z"
+    UCASE_LETTER: "A".."Z"
+    LETTER: UCASE_LETTER | LCASE_LETTER
+    WORD: LETTER+
+    CNAME: ("_"|LETTER) ("_"|LETTER|DIGIT)*
+    WS_INLINE: (" "|/\\t/)+
+    WS: /[ \\t\\f\\r\\n]/+
+    CR : /\\r/
+    LF : /\\n/
+    NEWLINE: (CR? LF)+
+
+    %ignore WS // Disregard spaces in text
+""")
 
 
-_value_lib_configured = False
-_filter_lib_configured = False
-_format_lib_configured = False
-_keys_lib_configured = False
-_set_lib_configured = False
+class FormatTransformer(lark.Transformer):
+    def __init__(self, element=None):
+        """Initialize transformer with optional element for variable substitution"""
+        super().__init__()
+        self.element = element
+
+    def start(self, args):
+        if isinstance(args[0], (list, tuple)):
+            return ", ".join(args[0])
+        return args[0]
+
+    def expression(self, args):
+        return args[0]
+
+    def variable(self, args):
+        """Handle variable substitution like {{z}} or {{Pset_Wall.FireRating}}"""
+        if self.element:
+            try:
+                return get_element_value(self.element, args[0])
+            except:
+                pass
+
+    def query_path(self, args):
+        """Extract the query path from variable"""
+        return str(args[0]).strip()
+
+    def add(self, args):
+        """Handle addition operation"""
+        left, right = args
+        try:
+            left_val = float(left) if left != "None" and left is not None else 0.0
+            right_val = float(right) if right != "None" and right is not None else 0.0
+            result = left_val + right_val
+            # Return integer if result has no decimal part
+            if result % 1 == 0:
+                return str(int(result))
+            return str(result)
+        except (ValueError, TypeError):
+            # If can't convert to numbers, concatenate as strings
+            return str(left) + str(right)
+
+    def subtract(self, args):
+        """Handle subtraction operation"""
+        left, right = args
+        left_val = float(left) if left != "None" and left is not None else 0.0
+        right_val = float(right) if right != "None" and right is not None else 0.0
+        result = left_val - right_val
+        if result % 1 == 0:
+            return str(int(result))
+        return str(result)
+
+    def multiply(self, args):
+        """Handle multiplication operation"""
+        left, right = args
+        left_val = float(left) if left != "None" and left is not None else 0.0
+        right_val = float(right) if right != "None" and right is not None else 0.0
+        result = left_val * right_val
+        if result % 1 == 0:
+            return str(int(result))
+        return str(result)
+
+    def divide(self, args):
+        """Handle division operation"""
+        left, right = args
+        left_val = float(left) if left != "None" and left is not None else 0.0
+        right_val = float(right) if right != "None" and right is not None else 1.0
+        if right_val == 0:
+            return "inf"  # or raise an error, or return "0"
+        result = left_val / right_val
+        if result % 1 == 0:
+            return str(int(result))
+        return str(result)
+
+    def function(self, args):
+        return args[0]
+
+    def ESCAPED_STRING(self, args):
+        return args[1:-1].replace("\\", "")
+
+    def NUMBER(self, args):
+        return str(args)
+
+    def lower(self, args):
+        return str(args[0]).lower()
+
+    def upper(self, args):
+        return str(args[0]).upper()
+
+    def title(self, args):
+        return str(args[0]).title()
+
+    def concat(self, args):
+        return "".join(str(arg) for arg in args)
+
+    def substr(self, args):
+        if len(args) == 3:
+            if args[2] is None:
+                return str(args[0])[int(args[1]) :]
+            return str(args[0])[int(args[1]) : int(args[2])]
+        elif len(args) == 2:
+            return str(args[0])[int(args[1]) :]
+
+    def sort(self, args):
+        return sorted(args[0])
+
+    def reverse(self, args):
+        return list(reversed(args[0]))
+
+    def join(self, args):
+        return args[0].join(args[1])
+
+    def boolean(self, args):
+        if not args:
+            return True
+        token = args[0]
+        if hasattr(token, "type"):
+            return token.type == "TRUE"
+        value = str(token).lower()
+        if hasattr(token, "value"):
+            value = str(token.value).lower()
+        return value in ("true", "1", "yes")
+
+    def round(self, args):
+        value = Decimal(0.0 if args[0] == "None" else args[0] or 0.0)
+        nearest = Decimal(args[1])
+        result = round(value / nearest) * nearest
+        if nearest % 1 == 0:
+            return str(int(result))
+        return str(result)
+
+    def number(self, args):
+        arg_val = args[0]
+        if isinstance(arg_val, str):
+            arg_val = float(arg_val) if "." in arg_val else int(arg_val)
+        if len(args) >= 3 and args[2]:
+            return "{:,}".format(arg_val).replace(".", "*").replace(",", args[2]).replace("*", args[1])
+        elif len(args) >= 2 and args[1]:
+            return "{}".format(arg_val).replace(".", args[1])
+        return "{:,}".format(arg_val)
+
+    def format_length(self, args):
+        return args[0]
+
+    def metric_length(self, args):
+        value, precision, decimal_places = args
+        return ifcopenshell.util.unit.format_length(
+            float(value), float(precision), int(decimal_places), unit_system="metric"
+        )
+
+    def imperial_length(self, args):
+        args = list(filter(lambda x: x is not None, args))
+        if len(args) == 2:
+            input_unit, output_unit = "foot", "foot"
+            value, precision = args
+            suppress_zero_inches = True
+        elif len(args) == 3:
+            value, precision, suppress_zero_inches = args
+            input_unit, output_unit = "foot", "foot"
+        elif len(args) == 4:
+            value, precision, input_unit, output_unit = args
+            input_unit = "inch" if input_unit == "inch" else "foot"
+            output_unit = "inch" if output_unit == "inch" else "foot"
+            suppress_zero_inches = True
+        else:
+            value, precision, input_unit, output_unit, suppress_zero_inches = args
+            input_unit = "inch" if input_unit == "inch" else "foot"
+            output_unit = "inch" if output_unit == "inch" else "foot"
+
+        return ifcopenshell.util.unit.format_length(
+            float(value),
+            int(precision),
+            suppress_zero_inches=(suppress_zero_inches if suppress_zero_inches is not None else False),
+            unit_system="imperial",
+            input_unit=input_unit,
+            output_unit=output_unit,
+        )
+
+    def int(self, args: list[str]) -> str:
+        value = 0.0 if args[0] == "None" else args[0] or 0.0
+        return str(int(float(value)))
 
 
-def _selector_error(lib, fallback: str) -> Exception:
-    msg = lib.ifcopenshell_last_error_message()
-    text = msg.decode("utf-8", errors="replace") if msg else fallback
-    return ValueError(text)
+class GetElementTransformer(lark.Transformer):
+    def start(self, args):
+        return args[0]
+
+    def keys(self, args):
+        return args
+
+    def key(self, args):
+        return args[0]
+
+    def quoted_string(self, args):
+        return str(args[0])
+
+    def regex_string(self, args):
+        return re.compile(args[0])
+
+    def unquoted_string(self, args):
+        return str(args[0])
+
+    def ESCAPED_STRING(self, args):
+        return args[1:-1].replace("\\", "")
 
 
-def _configure_set_lib(lib) -> None:
-    global _set_lib_configured
-    if _set_lib_configured:
-        return
-    lib.ifcopenshell_selector_keylist_create.restype = ctypes.c_void_p
-    lib.ifcopenshell_selector_keylist_create.argtypes = []
-    lib.ifcopenshell_selector_keylist_destroy.restype = None
-    lib.ifcopenshell_selector_keylist_destroy.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_selector_keylist_append_string.restype = None
-    lib.ifcopenshell_selector_keylist_append_string.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-    lib.ifcopenshell_selector_keylist_append_regex.restype = None
-    lib.ifcopenshell_selector_keylist_append_regex.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-    lib.ifcopenshell_util_selector_set_element_value.restype = ctypes.c_int
-    lib.ifcopenshell_util_selector_set_element_value.argtypes = [
-        ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p,
-    ]
-    lib.ifcopenshell_value_new_none.restype = ctypes.c_void_p
-    lib.ifcopenshell_value_new_none.argtypes = []
-    lib.ifcopenshell_value_new_bool.restype = ctypes.c_void_p
-    lib.ifcopenshell_value_new_bool.argtypes = [ctypes.c_bool]
-    lib.ifcopenshell_value_new_int.restype = ctypes.c_void_p
-    lib.ifcopenshell_value_new_int.argtypes = [ctypes.c_int64]
-    lib.ifcopenshell_value_new_double.restype = ctypes.c_void_p
-    lib.ifcopenshell_value_new_double.argtypes = [ctypes.c_double]
-    lib.ifcopenshell_value_new_string.restype = ctypes.c_void_p
-    lib.ifcopenshell_value_new_string.argtypes = [ctypes.c_char_p]
-    lib.ifcopenshell_value_new_instance.restype = ctypes.c_void_p
-    lib.ifcopenshell_value_new_instance.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_value_new_list.restype = ctypes.c_void_p
-    lib.ifcopenshell_value_new_list.argtypes = []
-    lib.ifcopenshell_value_list_append.restype = None
-    lib.ifcopenshell_value_list_append.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-    lib.ifcopenshell_value_free.restype = None
-    lib.ifcopenshell_value_free.argtypes = [ctypes.c_void_p]
-    _set_lib_configured = True
-
-
-def _build_native_value(lib, value) -> Optional[int]:
-    """Marshal a Python value to a freshly allocated ifcopenshell_value_t*."""
-    if value is None:
-        return lib.ifcopenshell_value_new_none()
-    if isinstance(value, bool):
-        return lib.ifcopenshell_value_new_bool(value)
-    if isinstance(value, int):
-        return lib.ifcopenshell_value_new_int(value)
-    if isinstance(value, float):
-        return lib.ifcopenshell_value_new_double(value)
-    if isinstance(value, str):
-        return lib.ifcopenshell_value_new_string(value.encode("utf-8"))
-    if isinstance(value, ifcopenshell.entity_instance):
-        return lib.ifcopenshell_value_new_instance(value._handle)
-    if isinstance(value, (list, tuple, set)):
-        list_ptr = lib.ifcopenshell_value_new_list()
-        for item in value:
-            item_ptr = _build_native_value(lib, item)
-            lib.ifcopenshell_value_list_append(list_ptr, item_ptr)
-        return list_ptr
-    # Fallback: convert via str.
-    return lib.ifcopenshell_value_new_string(str(value).encode("utf-8"))
-
-
-def _configure_value_lib(lib) -> None:
-    global _value_lib_configured
-    if _value_lib_configured:
-        return
-    lib.ifcopenshell_selector_get_element_value.restype = ctypes.c_void_p
-    lib.ifcopenshell_selector_get_element_value.argtypes = [
-        ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p
-    ]
-    _configure_value_lib_core(lib)
-    _value_lib_configured = True
-
-
-def _configure_filter_lib(lib) -> None:
-    global _filter_lib_configured
-    if _filter_lib_configured:
-        return
-    lib.ifcopenshell_selector_filter_elements.restype = ctypes.c_void_p
-    lib.ifcopenshell_selector_filter_elements.argtypes = [
-        ctypes.c_void_p,   # ifcopenshell_ifc_file_t*
-        ctypes.c_char_p,   # query
-        ctypes.c_void_p,   # ifcopenshell_ifc_instance_t* const* elements
-        ctypes.c_size_t,   # elements_count
-        ctypes.c_int,      # edit_in_place
-    ]
-    _filter_lib_configured = True
-
-
-def _configure_format_lib(lib) -> None:
-    global _format_lib_configured
-    if _format_lib_configured:
-        return
-    lib.ifcopenshell_selector_format.restype = ctypes.c_void_p
-    lib.ifcopenshell_selector_format.argtypes = [
-        ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p
-    ]
-    lib.ifcopenshell_free_string.restype = None
-    lib.ifcopenshell_free_string.argtypes = [ctypes.c_void_p]
-    _format_lib_configured = True
-
-
-def _configure_keys_lib(lib) -> None:
-    global _keys_lib_configured
-    if _keys_lib_configured:
-        return
-    lib.ifcopenshell_selector_parse_keys.restype = ctypes.c_void_p
-    lib.ifcopenshell_selector_parse_keys.argtypes = [ctypes.c_char_p]
-    lib.ifcopenshell_selector_keys_count.restype = ctypes.c_uint32
-    lib.ifcopenshell_selector_keys_count.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_selector_keys_get.restype = ctypes.c_char_p
-    lib.ifcopenshell_selector_keys_get.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
-    lib.ifcopenshell_selector_keys_is_regex.restype = ctypes.c_bool
-    lib.ifcopenshell_selector_keys_is_regex.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
-    lib.ifcopenshell_selector_keys_free.restype = None
-    lib.ifcopenshell_selector_keys_free.argtypes = [ctypes.c_void_p]
-    _keys_lib_configured = True
-
-
-
-def format(query: str, element: Optional[ifcopenshell.entity_instance] = None) -> Optional[str]:
+def format(query: str, element: Optional[ifcopenshell.entity_instance] = None) -> str:
     """Format a query string with optional element context for variable substitution.
 
     :param query: Format query string (can include {{variable}} placeholders)
     :param element: Optional IFC element for variable substitution
-    :return: Formatted string, or ``None`` if the query evaluated to None
-        (e.g. ``{{undefined}}`` with no matching element).
+    :return: Formatted string
 
     Example:
         format("{{z}} / 2", element)  # Substitutes element's z value
         format("imperial_length({{z}} / 2, 4)", element)  # Uses z in calculation
     """
-    lib = _get_lib()
-    _configure_format_lib(lib)
-    lib.ifcopenshell_clear_error()
-    file_ptr = None
-    elem_ptr = None
-    if element is not None:
-        file_ptr = getattr(element.file, "_ptr", None)
-        elem_ptr = element._handle
-    raw = lib.ifcopenshell_selector_format(file_ptr, elem_ptr, query.encode("utf-8"))
-    if not raw:
-        msg = lib.ifcopenshell_last_error_message()
-        if msg:
-            raise _selector_error(lib, "selector format failed")
-        return None
-    try:
-        result = ctypes.string_at(raw).decode("utf-8", errors="replace")
-    finally:
-        lib.ifcopenshell_free_string(raw)
-    return result
+    return FormatTransformer(element).transform(format_grammar.parse(query))
 
 
 def get_element_value(element: ifcopenshell.entity_instance, query: str) -> Any:
-    _parse_selector_keys(query)
-    lib = _get_lib()
-    _configure_value_lib(lib)
-    lib.ifcopenshell_clear_error()
-    file_ptr = getattr(element.file, "_ptr", None)
-    ptr = lib.ifcopenshell_selector_get_element_value(
-        file_ptr, element._handle, query.encode("utf-8")
-    )
-    if ptr is None:
-        msg = lib.ifcopenshell_last_error_message()
-        if msg:
-            raise _selector_error(lib, "selector get_element_value failed")
-        return None
-    result = _value_to_python(lib, ptr, element)
-    lib.ifcopenshell_value_free(ptr)
-    return result
+    keys: list[str] = GetElementTransformer().transform(get_element_grammar.parse(query))
+    return _get_element_value(element, keys)
 
 
-
-
-def _parse_selector_keys(query: str) -> list[Union[str, re.Pattern]]:
-    """Parse a get_element query into a list of keys (strings or compiled regexes)."""
-    lib = _get_lib()
-    _configure_keys_lib(lib)
-    h = lib.ifcopenshell_selector_parse_keys(query.encode("utf-8"))
-    if not h:
-        err = lib.ifcopenshell_last_error_message()
-        err_str = err.decode("utf-8", errors="replace") if err else "unknown"
-        raise ValueError(f"selector parse error: {err_str}")
-    try:
-        n = lib.ifcopenshell_selector_keys_count(h)
-        keys: list[Union[str, re.Pattern]] = []
-        for i in range(n):
-            raw = lib.ifcopenshell_selector_keys_get(h, i)
-            text = raw.decode("utf-8", errors="replace") if raw else ""
-            if lib.ifcopenshell_selector_keys_is_regex(h, i):
-                keys.append(re.compile(text))
+def _get_element_value(element: ifcopenshell.entity_instance, keys: list[str]) -> Any:
+    value = element
+    for key in keys:
+        if value is None:
+            return
+        if key == "type":
+            value = ifcopenshell.util.element.get_type(value)
+        elif key in ("material", "mat"):
+            value = ifcopenshell.util.element.get_material(value, should_skip_usage=True)
+        elif key in ("materials", "mats"):
+            value = ifcopenshell.util.element.get_materials(value)
+        elif key == "profiles":
+            value = ifcopenshell.util.shape.get_profiles(value)
+        elif key == "styles":
+            value = ifcopenshell.util.element.get_styles(value)
+        elif key in ("item", "i"):
+            if value.is_a("IfcMaterialLayerSet"):
+                value = value.MaterialLayers
+            elif value.is_a("IfcMaterialProfileSet"):
+                value = value.MaterialProfiles
+            elif value.is_a("IfcMaterialConstituentSet"):
+                value = value.MaterialConstituents
+        elif key == "container":
+            value = ifcopenshell.util.element.get_container(value)
+        elif key == "space":
+            value = ifcopenshell.util.element.get_parent(value, ifc_class="IfcSpace")
+        elif key == "storey":
+            value = ifcopenshell.util.element.get_parent(value, ifc_class="IfcBuildingStorey")
+        elif key == "building":
+            value = ifcopenshell.util.element.get_parent(value, ifc_class="IfcBuilding")
+        elif key == "site":
+            value = ifcopenshell.util.element.get_parent(value, ifc_class="IfcSite")
+        elif key == "parent":
+            value = ifcopenshell.util.element.get_parent(value)
+        elif key in ("types", "occurrences"):
+            value = ifcopenshell.util.element.get_types(value)
+        elif key == "count":
+            if isinstance(value, set):
+                value = len(list(value))
+            elif isinstance(value, (list, tuple)):
+                value = len(value)
             else:
-                keys.append(text)
-    finally:
-        lib.ifcopenshell_selector_keys_free(h)
-    return keys
+                value = 1
+        elif key == "class":
+            value = value.is_a()
+        elif key == "predefined_type":
+            value = ifcopenshell.util.element.get_predefined_type(value)
+        elif key == "id":
+            value = value.id()
+        elif key == "classification":
+            value = ifcopenshell.util.classification.get_references(value)
+        elif key == "group":
+            value = ifcopenshell.util.element.get_groups(value)
+        elif key == "system":
+            value = ifcopenshell.util.system.get_element_systems(value)
+        elif key == "zone":
+            value = ifcopenshell.util.system.get_element_zones(value)
+        elif key in ("x", "y", "z", "easting", "northing", "elevation") and hasattr(value, "ObjectPlacement"):
+            if getattr(value, "ObjectPlacement", None):
+                matrix = ifcopenshell.util.placement.get_local_placement(value.ObjectPlacement)
+                xyz = matrix[:, 3][:3]
+                if key in ("x", "y", "z"):
+                    value = xyz["xyz".index(key)]
+                else:
+                    enh = ifcopenshell.util.geolocation.auto_xyz2enh(element.wrapped_data.file, *xyz)
+                    value = enh[("easting", "northing", "elevation").index(key)]
+            else:
+                value = None
+        elif isinstance(value, ifcopenshell.entity_instance):
+            if key == "Name" and value.is_a("IfcMaterialLayerSet"):
+                key = "LayerSetName"  # This oddity in the IFC spec is annoying so we account for it.
 
+            if isinstance(key, re.Pattern):
+                attribute = None  # Should we support regex attributes? Probably not for now.
+            else:
+                attribute = getattr(value, key, None)
 
+            if attribute is not None:
+                value = attribute
+            else:
+                # Try to extract pset
+                if isinstance(key, re.Pattern):
+                    psets = ifcopenshell.util.element.get_psets(value)
+                    matching_psets = []
+                    for pset_name, pset in psets.items():
+                        if key.match(pset_name):
+                            del pset["id"]
+                            matching_psets.append(pset)
+                    result = matching_psets or None
+                    if result and len(result) == 1:
+                        result = result[0]
+                else:
+                    result = ifcopenshell.util.element.get_pset(value, key)
+                    if result:
+                        del result["id"]
+
+                value = result
+        elif isinstance(value, dict):  # Such as from the result of a prior get_pset
+            if isinstance(key, re.Pattern):
+                results = []
+                for prop_name, prop_value in value.items():
+                    if key.match(prop_name):
+                        if isinstance(prop_value, (list, tuple)):
+                            results.extend(prop_value)
+                        else:
+                            results.append(prop_value)
+                value = results or None
+                if value and len(value) == 1:
+                    value = value[0]
+            else:
+                value = value.get(key, None)
+        elif isinstance(value, (list, tuple, set)):  # If we use regex
+            if isinstance(key, str) and key.isnumeric():
+                try:
+                    value = value[int(key)]
+                except IndexError:
+                    return
+            else:
+                results = []
+                for v in value:
+                    subvalue = _get_element_value(v, [key])
+                    if isinstance(subvalue, list):
+                        results.extend(subvalue)
+                    else:
+                        results.append(subvalue)
+                value = results
+    return value
 
 
 def filter_elements(
@@ -298,55 +580,11 @@ def filter_elements(
     """
     if not query:
         return elements or set()
-
-    lib = _get_lib()
-    _configure_value_lib(lib)
-    _configure_filter_lib(lib)
-    lib.ifcopenshell_clear_error()
-
-    from ifcopenshell.entity_instance import entity_instance as _ei
-
-    # Build the optional elements array.
-    elem_list = list(elements) if elements else []
-    if elem_list:
-        arr = (ctypes.c_void_p * len(elem_list))(*[e._handle for e in elem_list])
-        elem_ptr = ctypes.cast(arr, ctypes.c_void_p)
-        elem_count = len(elem_list)
-    else:
-        arr = None
-        elem_ptr = None
-        elem_count = 0
-
-    val_ptr = lib.ifcopenshell_selector_filter_elements(
-        ifc_file._ptr,
-        query.encode("utf-8"),
-        elem_ptr,
-        elem_count,
-        int(edit_in_place),
-    )
-
-    if not val_ptr:
-        msg = lib.ifcopenshell_last_error_message()
-        if msg:
-            raise _selector_error(lib, "selector filter_elements failed")
-        return set()
-
-    result: set[ifcopenshell.entity_instance] = set()
-    n = lib.ifcopenshell_value_list_size(val_ptr)
-    for i in range(n):
-        item_ptr = lib.ifcopenshell_value_list_at(val_ptr, i)
-        if item_ptr and lib.ifcopenshell_value_kind(item_ptr) == _IFCSEL_VALUE_INSTANCE:
-            h = lib.ifcopenshell_value_as_instance(item_ptr)
-            if h:
-                result.add(_ei(ifc_file, h))
-
-    lib.ifcopenshell_value_free(val_ptr)
-
-    if edit_in_place and elements is not None:
-        elements.clear()
-        elements.update(result)
-        return elements
-    return result
+    if elements and not edit_in_place:
+        elements = elements.copy()
+    transformer = FacetTransformer(ifc_file, elements)
+    transformer.transform(filter_elements_grammar.parse(query))
+    return transformer.get_results()
 
 
 class SetElementValueException(Exception): ...
@@ -373,52 +611,649 @@ def set_element_value(
     :param concat: Concatenation symbol, used only to deserialize property
         set enum values from string values.
     """
-    lib = _get_lib()
-    _configure_set_lib(lib)
-
+    original_element = element
     if isinstance(query, (list, tuple)):
-        keys = list(query)
+        keys = query
     else:
-        keys = _parse_selector_keys(query)
+        keys = GetElementTransformer().transform(get_element_grammar.parse(query))
 
-    if isinstance(element, ifcopenshell.entity_instance) or element is None:
-        klist = lib.ifcopenshell_selector_keylist_create()
-        try:
-            for k in keys:
-                if isinstance(k, re.Pattern):
-                    lib.ifcopenshell_selector_keylist_append_regex(klist, k.pattern.encode("utf-8"))
-                else:
-                    lib.ifcopenshell_selector_keylist_append_string(klist, str(k).encode("utf-8"))
-            val_ptr = _build_native_value(lib, value)
-            try:
-                file_ptr = getattr(ifc_file, "_ptr", None)
-                elem_ptr = element._handle if isinstance(element, ifcopenshell.entity_instance) else None
-                rc = lib.ifcopenshell_util_selector_set_element_value(
-                    file_ptr, elem_ptr, klist, val_ptr, concat.encode("utf-8")
-                )
-                if rc != 0:
-                    msg = lib.ifcopenshell_last_error_message()
-                    msg = msg.decode("utf-8", errors="replace") if msg else (
-                        f"Failed to set value '{value}' for element '{element}' "
-                        f"with query '{query}' (invalid or unsupported query)."
-                    )
-                    raise SetElementValueException(msg)
-            finally:
-                if val_ptr:
-                    lib.ifcopenshell_value_free(val_ptr)
-        finally:
-            lib.ifcopenshell_selector_keylist_destroy(klist)
-        return
-
-    if isinstance(element, dict):
-        pset_id = element.get("id")
-        if pset_id is None:
+    for i, key in enumerate(keys):
+        if element is None:
             return
-        pset_inst = ifc_file.by_id(pset_id)
-        set_element_value(ifc_file, pset_inst, keys, value, concat=concat)
-        return
+        if key == "type":
+            element = ifcopenshell.util.element.get_type(element)
+        elif key in ("material", "mat"):
+            element = ifcopenshell.util.element.get_material(element, should_skip_usage=True)
+        elif key in ("materials", "mats"):
+            element = ifcopenshell.util.element.get_materials(element)
+        elif key == "styles":
+            element = ifcopenshell.util.element.get_styles(element)
+        elif key in ("item", "i"):
+            if element.is_a("IfcMaterialLayerSet"):
+                element = element.MaterialLayers
+            elif element.is_a("IfcMaterialProfileSet"):
+                element = element.MaterialProfiles
+            elif element.is_a("IfcMaterialConstituentSet"):
+                element = element.MaterialConstituents
+        elif key == "container":
+            element = ifcopenshell.util.element.get_container(element)
+        elif key == "space":
+            element = ifcopenshell.util.element.get_container(element, ifc_class="IfcSpace")
+        elif key == "storey":
+            element = ifcopenshell.util.element.get_container(element, ifc_class="IfcBuildingStorey")
+        elif key == "building":
+            element = ifcopenshell.util.element.get_container(element, ifc_class="IfcBuilding")
+        elif key == "site":
+            element = ifcopenshell.util.element.get_container(element, ifc_class="IfcSite")
+        elif key == "parent":
+            element = ifcopenshell.util.element.get_parent(element)
+        elif key == "class":
+            if element.is_a().lower() != value.lower():
+                return ifcopenshell.util.schema.reassign_class(ifc_file, element, value)
+            return
+        elif key == "id":
+            return
+        elif key == "predefined_type":
+            current_value = ifcopenshell.util.element.get_predefined_type(element)
+            if current_value == value:
+                return
 
-    if isinstance(element, (list, tuple, set)):
-        for v in element:
-            set_element_value(ifc_file, v, keys, value, concat=concat)
-        return
+            def set_predefined_type(
+                element: ifcopenshell.entity_instance, value: Union[str, None], *, is_type: bool
+            ) -> None:
+                predefined_type = element.PredefinedType
+                declaration = element.wrapped_data.declaration()
+                entity = declaration.as_entity()
+                enum_attr = next(attr for attr in entity.attributes() if attr.name() == "PredefinedType")
+                enum_items = ifcopenshell.util.attribute.get_enum_items(enum_attr)
+
+                # USERDEFINED shouldn't occur here, if it does then it means
+                # then it was artificially added and PredefinedType is actually unset.
+                if value in (None, "NOTDEFINED", "USERDEFINED"):
+                    element.PredefinedType = "NOTDEFINED"
+                    setattr(element, "ElementType" if is_type else "ObjectType", None)
+                elif value in enum_items:
+                    if predefined_type == value:
+                        return
+                    element.PredefinedType = value
+                    return
+
+                # Value not in PredefinedType enum items.
+                if predefined_type != "USERDEFINED":
+                    element.PredefinedType = "USERDEFINED"
+                setattr(element, "ElementType" if is_type else "ObjectType", value)
+                return
+
+            if element_type := ifcopenshell.util.element.get_type(element):
+                set_predefined_type(element_type, value, is_type=True)
+                return
+            set_predefined_type(element, value, is_type=False)
+            return
+        elif key == "classification":
+            element = ifcopenshell.util.classification.get_references(element)
+        elif key in ("x", "y", "z", "easting", "northing", "elevation") and hasattr(element, "ObjectPlacement"):
+            # TODO: add support
+            if key in ("easting", "northing", "elevation"):
+                return
+
+            placement = element.ObjectPlacement
+            if placement is None:
+                matrix = np.eye(4)
+            else:
+                matrix = ifcopenshell.util.placement.get_local_placement(placement)
+
+            # check if value is within tolerance to avoid api calls
+            coord_i = "xyz".index(key)
+            prev_value = matrix[coord_i][3]
+            new_value = float(value) if value else 0.0
+            if ifcopenshell.util.shape.is_x(new_value, prev_value):
+                return
+
+            matrix[coord_i][3] = new_value
+            ifcopenshell.api.geometry.edit_object_placement(ifc_file, product=element, matrix=matrix, is_si=False)
+            return
+        elif isinstance(element, ifcopenshell.entity_instance):
+            if key == "Name" and element.is_a("IfcMaterialLayerSet"):
+                key = "LayerSetName"  # This oddity in the IFC spec is annoying so we account for it.
+
+            if isinstance(key, str) and ((current_value := getattr(element, key, ...)) is not ...):
+                # check if key is not last
+                if len(keys) != i + 1:
+                    element = current_value
+                    continue
+
+                if current_value == value:
+                    return
+                else:
+                    # check if key is not last
+                    try:
+                        # Try our luck
+                        return setattr(element, key, value)
+                    except:
+                        # Try to cast
+                        data_type = ifcopenshell.util.attribute.get_primitive_type(
+                            element.wrapped_data.declaration()
+                            .as_entity()
+                            .attribute_by_index(element.wrapped_data.get_argument_index(key))
+                        )
+                        if data_type == "string":
+                            value = str(value)
+                        elif data_type == "float":
+                            value = float(value)
+                        elif data_type == "integer":
+                            value = int(value)
+                        elif data_type == "boolean":
+                            if value in ("True", "true", "TRUE", "Yes", "1"):
+                                value = True
+                            elif value in ("False", "false", "FALSE", "No", "0"):
+                                value = False
+                            else:
+                                value = bool(value)
+                        elif data_type == "entity":
+                            value = ifc_file.by_guid(value)
+                        if current_value == value:
+                            return
+                        return setattr(element, key, value)
+            else:
+                # Try to extract pset
+                if isinstance(key, re.Pattern):
+                    psets = ifcopenshell.util.element.get_psets(element)
+                    matching_psets = []
+                    for pset_name, pset in psets.items():
+                        if key.match(pset_name):
+                            matching_psets.append(pset)
+                    result = matching_psets or None
+                    if result and len(result) == 1:
+                        result = result[0]
+                else:
+                    result = ifcopenshell.util.element.get_pset(element, key)
+
+                    if value and not result and len(keys) == i + 2:  # The next key is the prop name
+                        if "qto" in key.lower() or "quantity" in key.lower() or "quantities" in key.lower():
+                            pset = ifcopenshell.api.pset.add_qto(ifc_file, product=element, name=key)
+                        else:
+                            pset = ifcopenshell.api.pset.add_pset(ifc_file, product=element, name=key)
+                        result = {"id": pset.id()}
+
+                element = result
+        elif isinstance(element, dict):  # Such as from the result of a prior get_pset
+            pset = ifc_file.by_id(element["id"])
+            if isinstance(key, re.Pattern):
+                for prop, prop_value in element.items():
+                    if key.match(prop):
+                        if pset.is_a("IfcPropertySet") and prop_value != value:
+                            ifcopenshell.api.pset.edit_pset(ifc_file, pset=pset, properties={prop: value})
+                        elif pset.is_a("IfcElementQuantity") and prop_value != float(value):
+                            ifcopenshell.api.pset.edit_qto(ifc_file, qto=pset, properties={prop: float(value)})
+            elif pset.is_a("IfcPropertySet") and element.get(key, None) != value:
+
+                def process_pset_prop_value(
+                    pset: ifcopenshell.entity_instance, prop: str, value: Any
+                ) -> Union[Any, EllipsisType]:
+                    """Try to process value for edit_pset.
+
+                    `edit_pset` is expecting a sequence of values
+                    for enum properties, not just a string of some-symbol-separated values.
+
+                    Return `...` if property can be skipped as it has the same value.
+                    """
+                    if not isinstance(value, str):
+                        return value
+
+                    current_value = element.get(key, ...)
+                    # Check if previous value is a list as a fast way to identify enum properties.
+                    if not isinstance(current_value, (EllipsisType, list)):
+                        return value
+
+                    if isinstance(current_value, list):
+                        # Value won't change, safe to skip editing IFC.
+                        enum_values = value.split(concat)
+                        if len(enum_values) == len(current_value) and set(enum_values) == set(current_value):
+                            return ...
+
+                    template = ifcopenshell.util.pset.get_template(ifc_file.schema_identifier)
+                    pset_template = template.get_by_name(pset.Name)
+                    if pset_template is None:
+                        return value
+                    for prop_template in pset_template.HasPropertyTemplates:
+                        # 2 IfcSimplePropertyTemplate.Name
+                        if prop_template[2] != prop:
+                            continue
+
+                        # 4 IfcSimplePropertyTemplate.TemplateType
+                        if prop_template[4] != "P_ENUMERATEDVALUE":
+                            # Not a enum property.
+                            return value
+
+                        # 7 IfcSimplePropertyTemplate.Enumerators
+                        if (enumeration := prop_template[7]) is None:
+                            # Enum property but without enumerators,
+                            # make it a sequence to keep it assignable as a enum.
+                            return (value,)
+
+                        # 1 IfcPropertyEnumeration.EnumerationValues
+                        available_enum_values = {v.wrappedValue for v in enumeration[1]}
+                        if value in available_enum_values:
+                            # Valid enum item, just keep it a sequence.
+                            return (value,)
+
+                        # Taking a wild guess that it's `concat` separated list.
+                        enum_values = value.split(concat)
+                        if not all(v in available_enum_values for v in enum_values):
+                            raise Exception(
+                                "Error setting pset enum property.\n"
+                                f"Invalid enum values for property '{prop} in pset '{pset}': '{', '.join(enum_values)}'.\n"
+                                f"Possible enum values for this property: {', '.join(available_enum_values)}."
+                            )
+                        return enum_values
+
+                    # Couldn't find property template for this prop - delegate decision to edit_pset.
+                    return value
+
+                value = process_pset_prop_value(pset, key, value)
+                if value == ...:
+                    return
+                ifcopenshell.api.pset.edit_pset(ifc_file, pset=pset, properties={key: value})
+            elif pset.is_a("IfcElementQuantity"):
+                try:
+                    value = float(value)
+                    if element.get(key, None) != value:
+                        ifcopenshell.api.pset.edit_qto(ifc_file, qto=pset, properties={key: value})
+                except:
+                    pass
+            return
+        elif isinstance(element, (list, tuple, set)):  # If we use regex
+            if key.isnumeric():
+                try:
+                    element = element[int(key)]
+                except IndexError:
+                    return
+            else:
+                for v in element:
+                    set_element_value(ifc_file, v, keys[i:], value)
+                return
+
+    raise SetElementValueException(
+        f"Failed to set value '{value}' for element '{original_element}' with query '{query}' (invalid or unsupported query)."
+    )
+
+
+class FacetTransformer(lark.Transformer):
+    results: list[set[ifcopenshell.entity_instance]]
+    base_elements: Optional[set[ifcopenshell.entity_instance]]
+    elements: set[ifcopenshell.entity_instance]
+    container_trees: dict[ifcopenshell.entity_instance, list[ifcopenshell.entity_instance]]
+
+    def __init__(self, ifc_file: ifcopenshell.file, elements: Optional[set[ifcopenshell.entity_instance]] = None):
+        self.file = ifc_file
+        self.results = []
+        if elements is None:
+            self.base_elements = None
+            self.elements = set()
+        else:
+            self.base_elements = elements.copy()
+            self.elements = set()
+        self.has_additive_facet_in_current_list = False
+        self.container_trees = {}
+
+    def add_default_elements(self):
+        if self.has_additive_facet_in_current_list:
+            return
+        self.has_additive_facet_in_current_list = True
+        if self.base_elements:
+            self.elements.update(self.base_elements)
+        else:
+            self.elements.update(self.file.by_type("IfcProduct"))
+            self.elements.update(self.file.by_type("IfcTypeProduct"))
+
+    def get_results(self) -> set[ifcopenshell.entity_instance]:
+        results: set[ifcopenshell.entity_instance] = set()
+        for r in self.results:
+            results |= r
+        return results
+
+    def facet_list(self, args):
+        if self.elements:
+            self.results.append(self.elements)
+            self.elements = set()
+            self.has_additive_facet_in_current_list = False
+
+    def instance(self, args):
+        self.has_additive_facet_in_current_list = True
+        if self.base_elements is None:
+            if args[0].data == "globalid":
+                try:
+                    self.elements.add(self.file.by_guid(args[0].children[0].value))
+                except:
+                    pass
+            else:
+                try:
+                    self.elements.remove(self.file.by_guid(args[1].children[0].value))
+                except:
+                    pass
+        else:
+            if args[0].data == "globalid":
+                self.elements |= {
+                    e for e in self.base_elements if getattr(e, "GlobalId", None) == args[0].children[0].value
+                }
+            else:
+                self.elements -= {
+                    e for e in self.base_elements if getattr(e, "GlobalId", None) == args[1].children[0].value
+                }
+
+    def entity(self, args):
+        self.has_additive_facet_in_current_list = True
+        if self.base_elements is None:
+            if args[0].data == "ifc_class":
+                try:
+                    self.elements |= set(self.file.by_type(args[0].children[0].value))
+                except:
+                    pass
+            else:
+                try:
+                    self.elements -= set(self.file.by_type(args[1].children[0].value))
+                except:
+                    pass
+        else:
+            if args[0].data == "ifc_class":
+                self.elements |= {e for e in self.base_elements if e.is_a(args[0].children[0].value)}
+            else:
+                self.elements -= {e for e in self.base_elements if e.is_a(args[1].children[0].value)}
+
+    def attribute(self, args):
+        name, comparison, value = args
+        name = name.children[0].value
+
+        def filter_function(element: ifcopenshell.entity_instance) -> bool:
+            if name == "PredefinedType":
+                element_value = ifcopenshell.util.element.get_predefined_type(element)
+            else:
+                element_value = getattr(element, name, None)
+            return self.compare(element_value, comparison, value)
+
+        self.add_default_elements()
+        self.elements = set(filter(filter_function, self.elements))
+
+    def type(self, args):
+        comparison, value = args
+
+        def filter_function(element: ifcopenshell.entity_instance) -> bool:
+            element_type = ifcopenshell.util.element.get_type(element)
+            return self.compare(getattr(element_type, "Name", None), comparison, value) or self.compare(
+                getattr(element_type, "GlobalId", None), comparison, value
+            )
+
+        self.add_default_elements()
+        self.elements = set(filter(filter_function, self.elements))
+
+    def material(self, args):
+        comparison, value = args
+
+        def filter_function(element: ifcopenshell.entity_instance) -> bool:
+            materials = ifcopenshell.util.element.get_materials(element)
+            result = False if materials else None
+            for material in materials:
+                if self.compare(material.Name, comparison, value):
+                    result = True
+                if self.compare(getattr(material, "Category", None), comparison, value):
+                    result = True
+            if result is not None:
+                return result if comparison == "=" else not result
+            return self.compare(None, comparison, value)
+
+        self.add_default_elements()
+        self.elements = set(filter(filter_function, self.elements))
+
+    def property(self, args):
+        pset, prop, comparison, value = args
+
+        def filter_function(element: ifcopenshell.entity_instance) -> bool:
+            if isinstance(pset, str) and isinstance(prop, str):
+                element_value = ifcopenshell.util.element.get_pset(element, pset, prop)
+                return self.compare(element_value, comparison, value)
+            elif isinstance(pset, str) and isinstance(prop, re.Pattern):
+                element_props = ifcopenshell.util.element.get_pset(element, pset) or {}
+                for element_prop, element_value in element_props.items():
+                    if prop.match(element_prop):
+                        return self.compare(element_value, comparison, value)
+            elif isinstance(pset, re.Pattern):
+                element_psets = ifcopenshell.util.element.get_psets(element)
+                for element_pset, element_props in element_psets.items():
+                    if not pset.match(element_pset):
+                        continue
+                    if isinstance(prop, str):
+                        element_value = element_props.get(prop, None)
+                        if element_value is not None:
+                            return self.compare(element_value, comparison, value)
+                    elif isinstance(prop, re.Pattern):
+                        for element_prop, element_value in element_props.items():
+                            if prop.match(element_prop):
+                                return self.compare(element_value, comparison, value)
+            return self.compare(None, comparison, value)
+
+        self.add_default_elements()
+        self.elements = set(filter(filter_function, self.elements))
+
+    def classification(self, args):
+        comparison, value = args
+
+        def filter_function(element: ifcopenshell.entity_instance) -> bool:
+            references = ifcopenshell.util.classification.get_references(element)
+            result = False if references else None
+            for reference in references:
+                if self.compare(reference.Name, comparison, value):
+                    result = True
+                if self.compare(
+                    getattr(reference, "Identification", getattr(reference, "ItemReference", None)), comparison, value
+                ):
+                    result = True
+            if result is not None:
+                return result if comparison == "=" else not result
+            return self.compare(None, comparison, value)
+
+        self.add_default_elements()
+        self.elements = set(filter(filter_function, self.elements))
+
+    def location(self, args):
+        comparison, value = args
+
+        def filter_function(element: ifcopenshell.entity_instance) -> bool:
+            container = ifcopenshell.util.element.get_container(element)
+            if not container:
+                container = ifcopenshell.util.element.get_aggregate(element)
+            containers = self.get_container_tree(container)
+            result = False if containers else None
+            for container in containers:
+                if self.compare(container.Name, "=", value) or self.compare(container.GlobalId, "=", value):
+                    result = True
+            if result is not None:
+                return result if comparison == "=" else not result
+            return self.compare(None, comparison, value)
+
+        self.add_default_elements()
+        self.elements = set(filter(filter_function, self.elements))
+
+    def group(self, args):
+        comparison, value = args
+
+        def filter_function(element: ifcopenshell.entity_instance) -> bool:
+            result = False
+            for rel in getattr(element, "HasAssignments", []):
+                if rel.is_a("IfcRelAssignsToGroup") and rel.RelatingGroup:
+                    if self.compare(rel.RelatingGroup.Name, "=", value):
+                        result = True
+                    elif self.compare(rel.RelatingGroup.GlobalId, "=", value):
+                        result = True
+            return result if comparison == "=" else not result
+
+        self.add_default_elements()
+        self.elements = set(filter(filter_function, self.elements))
+
+    def parent(self, args):
+        comparison, value = args
+
+        parents = set()
+        for rel in self.file.by_type("IfcRelAggregates"):
+            parent = rel.RelatingObject
+            if parent and (
+                self.compare(parent.Name, comparison, value) or self.compare(parent.GlobalId, comparison, value)
+            ):
+                parents.add(parent)
+
+        for rel in self.file.by_type("IfcRelContainedInSpatialStructure"):
+            parent = rel.RelatingStructure
+            if parent and (
+                self.compare(parent.Name, comparison, value) or self.compare(parent.GlobalId, comparison, value)
+            ):
+                parents.add(parent)
+
+        for rel in self.file.by_type("IfcRelNests"):
+            parent = rel.RelatingObject
+            if parent and (
+                self.compare(parent.Name, comparison, value) or self.compare(parent.GlobalId, comparison, value)
+            ):
+                parents.add(parent)
+
+        for rel in self.file.by_type("IfcRelVoidsElement"):
+            parent = rel.RelatingBuildingElement
+            if parent and (
+                self.compare(parent.Name, comparison, value) or self.compare(parent.GlobalId, comparison, value)
+            ):
+                parents.add(parent)
+
+        for rel in self.file.by_type("IfcRelFillsElement"):
+            parent = rel.RelatingOpeningElement
+            if parent and (
+                self.compare(parent.Name, comparison, value) or self.compare(parent.GlobalId, comparison, value)
+            ):
+                parents.add(parent)
+
+        # Get all children of the matched parents
+        children: set[ifcopenshell.entity_instance] = set()
+        for parent in parents:
+            children |= set(ifcopenshell.util.element.get_decomposition(parent))
+
+        # Combine parents and children into a single result set
+        result = parents | children
+
+        self.add_default_elements()
+        if comparison == "=":
+            self.elements = self.elements & result
+        else:
+            self.elements -= result
+
+    def query(self, args):
+        keys, comparison, value = args
+
+        def filter_function(element: ifcopenshell.entity_instance) -> bool:
+            return self.compare(get_element_value(element, keys), comparison, value)
+
+        self.add_default_elements()
+        self.elements = set(filter(filter_function, self.elements))
+
+    def get_container_tree(self, container: ifcopenshell.entity_instance) -> list[ifcopenshell.entity_instance]:
+        tree: Union[list[ifcopenshell.entity_instance], None]
+        tree = self.container_trees.get(container, None)
+        if tree:
+            return tree
+
+        tree = []
+
+        while container:
+            if container.is_a("IfcProject"):
+                break
+            tree.append(container)
+            container = ifcopenshell.util.element.get_aggregate(container)
+
+        tree_copy = tree.copy()
+        while tree_copy:
+            self.container_trees[tree_copy.pop(0)] = tree_copy.copy()
+        return tree
+
+    def comparison(self, args):
+        if args[0].data == "not":
+            comparison = args[1].data
+            is_not = "!"
+        else:
+            comparison = args[0].data
+            is_not = ""
+
+        return (
+            is_not
+            + {
+                "equals": "=",
+                "morethanequalto": ">=",
+                "lessthanequalto": "<=",
+                "morethan": ">",
+                "lessthan": "<",
+                "contains": "*=",
+            }[comparison]
+        )
+
+    def keys(self, args):
+        return self.value(args)
+
+    def pset(self, args):
+        return self.value(args)
+
+    def prop(self, args):
+        return self.value(args)
+
+    def value(self, args):
+        if args[0].data == "unquoted_string":
+            return args[0].children[0].value
+        elif args[0].data == "quoted_string":
+            return args[0].children[0].value[1:-1].replace('\\"', '"')
+        elif args[0].data == "regex_string":
+            return re.compile(args[0].children[0].value)
+        elif args[0].data == "special":
+            if args[0].children[0].data == "null":
+                return None
+            elif args[0].children[0].data == "true":
+                return True
+            elif args[0].children[0].data == "false":
+                return False
+
+    def compare(self, element_value, comparison, value) -> bool:
+        if isinstance(element_value, (list, tuple)):
+            return any(self.compare(ev, comparison, value) for ev in element_value)
+        elif isinstance(value, str):
+            try:
+                if isinstance(element_value, int):
+                    value = int(value)
+                elif isinstance(element_value, float):
+                    value = float(value)
+
+                if isinstance(element_value, (int, float)):
+                    operator = comparison.lstrip("!")
+                    if operator == ">=":
+                        result = element_value >= value
+                    elif operator == "<=":
+                        result = element_value <= value
+                    elif operator == ">":
+                        result = element_value > value
+                    elif operator == "<":
+                        result = element_value < value
+                    else:
+                        result = element_value == value  # Tolerance?
+                elif isinstance(element_value, str):
+                    operator = comparison.lstrip("!")
+                    if operator == "*=":
+                        result = value in element_value
+                    else:
+                        result = element_value == value
+                else:
+                    result = element_value == value
+            except:
+                # Potentially they are trying to compare a value which cannot
+                # be legally casted to the element_value, or cannot use the
+                # `in` or more / less than comparison operators.
+                result = False
+        elif isinstance(value, re.Pattern):
+            result = bool(value.match(element_value)) if element_value is not None else False
+        elif value in (None, True, False):
+            result = element_value is value
+
+        if comparison.startswith("!"):
+            return not result
+        return result

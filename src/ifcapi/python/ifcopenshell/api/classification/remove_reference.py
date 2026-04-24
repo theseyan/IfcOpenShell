@@ -1,35 +1,93 @@
-# SPDX-License-Identifier: LGPL-3.0-or-later
-
-"""classification.remove_reference — remove a classification reference from products."""
+# IfcOpenShell - IFC toolkit and geometry engine
+# Copyright (C) 2021 Dion Moult <dion@thinkmoult.com>
+#
+# This file is part of IfcOpenShell.
+#
+# IfcOpenShell is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# IfcOpenShell is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
 import ifcopenshell.api.owner
 import ifcopenshell.util.element
 
 
-def remove_reference(file, reference, products):
+def remove_reference(
+    file: ifcopenshell.file,
+    reference: ifcopenshell.entity_instance,
+    products: list[ifcopenshell.entity_instance],
+) -> None:
+    """Removes a classification reference from the list of products
+
+    If the classification reference is no longer associated to any products,
+    the classification reference itself is also removed.
+
+    :param reference: The IfcClassificationReference entity of the
+        relationship you want to remove.
+    :param product: The list fo object entities of the relationship you want to
+        remove.
+
+    :raises TypeError: If file is IFC2X3 and `products` has non-IfcRoot elements.
+
+    :return: None
+
+    Example:
+
+    .. code:: python
+
+        wall_type = model.by_type("IfcWallType")[0]
+        classification = ifcopenshell.api.classification.add_classification(
+            model, classification="MyCustomClassification")
+        reference = ifcopenshell.api.classification.add_reference(model,
+            products=[wall_type], classification=classification,
+            identification="W_01", name="Interior Walls")
+        ifcopenshell.api.classification.remove_reference(model,
+            reference=reference, products=[wall_type])
+    """
+    is_ifc2x3 = file.schema == "IFC2X3"
     products_set = set(products)
+    referenced = ifcopenshell.util.element.get_referenced_elements(reference)
+    products_set -= products_set.difference(referenced)
+
+    # all products are already unassigned from a reference
     if not products_set:
         return
 
-    rooted = set()
-    non_rooted = set()
-    for p in products_set:
-        (rooted if p.is_a("IfcRoot") else non_rooted).add(p)
+    rooted_products: set[ifcopenshell.entity_instance] = set()
+    non_rooted_products: set[ifcopenshell.entity_instance] = set()
+    for product in products:
+        if product.is_a("IfcRoot"):
+            rooted_products.add(product)
+        else:
+            non_rooted_products.add(product)
 
-    if non_rooted and file.schema == "IFC2X3":
-        raise TypeError("Cannot remove reference from non-IfcRoot element in IFC2X3")
+    if non_rooted_products and is_ifc2x3:
+        raise TypeError(f"Cannot add reference to non-IfcRoot element in IFC2X3: {non_rooted_products}.")
 
-    if rooted:
-        rels = set()
-        for p in rooted:
-            for a in getattr(p, "HasAssociations", ()) or ():
-                if a.is_a("IfcRelAssociatesClassification") and a.RelatingClassification == reference:
-                    rels.add(a)
-        for rel in rels:
-            remaining = set(rel.RelatedObjects) - rooted
-            if remaining:
-                rel.RelatedObjects = list(remaining)
+    if rooted_products:
+        reference_rels: set[ifcopenshell.entity_instance] = set()
+        for product in rooted_products:
+            reference_rels.update(product.HasAssociations)
+
+        reference_rels = {
+            rel
+            for rel in reference_rels
+            if rel.is_a("IfcRelAssociatesClassification") and rel.RelatingClassification == reference
+        }
+
+        for rel in reference_rels:
+            related_objects = set(rel.RelatedObjects) - rooted_products
+            if related_objects:
+                rel.RelatedObjects = list(related_objects)
                 ifcopenshell.api.owner.update_owner_history(file, element=rel)
             else:
                 history = rel.OwnerHistory
@@ -37,37 +95,23 @@ def remove_reference(file, reference, products):
                 if history:
                     ifcopenshell.util.element.remove_deep2(file, history)
 
-    if non_rooted:
-        rels = set()
-        for p in non_rooted:
-            for r in getattr(p, "HasExternalReferences", ()) or getattr(p, "HasExternalReference", ()) or ():
-                if r.RelatingReference == reference:
-                    rels.add(r)
-        for rel in rels:
-            remaining = set(rel.RelatedResourceObjects) - non_rooted
-            if remaining:
-                rel.RelatedResourceObjects = list(remaining)
+    if non_rooted_products:
+        reference_rels: set[ifcopenshell.entity_instance] = set()
+        for product in non_rooted_products:
+            rels = getattr(product, "HasExternalReferences", None)
+            if rels is None:
+                rels = getattr(product, "HasExternalReference", [])
+            reference_rels.update(rels)
+
+        reference_rels = {rel for rel in reference_rels if rel.RelatingReference == reference}
+        for rel in reference_rels:
+            related_objects = set(rel.RelatedResourceObjects) - non_rooted_products
+            if related_objects:
+                rel.RelatedResourceObjects = list(related_objects)
             else:
                 file.remove(rel)
 
-    # Check if reference is now orphaned
-    ref_elements = _get_referenced_elements(file, reference)
-    if not ref_elements:
+    # TODO: we only handle lightweight classifications here
+    referenced_elements = ifcopenshell.util.element.get_referenced_elements(reference)
+    if not referenced_elements:
         file.remove(reference)
-
-
-def _get_referenced_elements(file, reference):
-    elements = set()
-    if file.schema == "IFC2X3":
-        for rel in file.by_type("IfcRelAssociatesClassification"):
-            if rel.RelatingClassification == reference:
-                for obj in rel.RelatedObjects:
-                    elements.add(obj)
-    else:
-        for rel in getattr(reference, "ClassificationRefForObjects", ()) or ():
-            for obj in rel.RelatedObjects:
-                elements.add(obj)
-        for rel in getattr(reference, "ExternalReferenceForResources", ()) or ():
-            for obj in rel.RelatedResourceObjects:
-                elements.add(obj)
-    return elements
