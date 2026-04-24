@@ -771,7 +771,7 @@ IFCAPI_EXPORT void ifcopenshell_util_element_remove_deep(
 /* ------------------------------------------------------------------ */
 /*  Selector parser AST                                                */
 /* ------------------------------------------------------------------ */
-#include "ifcapi/selector_ast.h"
+#include "ifcapi/selector/ast.h"
 
 /* ------------------------------------------------------------------ */
 /*  Selector value type + get_element_value                           */

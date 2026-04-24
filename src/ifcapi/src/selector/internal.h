@@ -8,7 +8,7 @@
 #define IFCAPI_SELECTOR_INTERNAL_H
 
 #include "ifcapi/value.h"
-#include "ifcapi/selector_ast.h"
+#include "ifcapi/selector/ast.h"
 #include "ifcapi/ifcapi.h"
 
 #include "ifcopenshell_api_internal.hpp"

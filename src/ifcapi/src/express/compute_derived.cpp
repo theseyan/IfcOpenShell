@@ -6,7 +6,7 @@
 // rule dispatch table populated by the generated per-schema translation
 // units.
 
-#include "selector_internal.h"
+#include "selector/internal.h"
 
 #include "ifcapi/express_rules.h"
 #include "ifcapi/express/runtime.h"
