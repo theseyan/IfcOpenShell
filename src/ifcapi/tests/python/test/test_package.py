@@ -1,0 +1,110 @@
+# IfcOpenShell - IFC toolkit and geometry engine
+# Copyright (C) 2021 Thomas Krijnen <thomas@aecgeeks.com>
+#
+# This file is part of IfcOpenShell.
+#
+# IfcOpenShell is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# IfcOpenShell is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
+
+import http.client
+from collections.abc import Sequence
+from pathlib import Path
+from urllib.parse import urlparse
+
+from typing_extensions import assert_never
+
+try:
+    from bs4 import BeautifulSoup
+except:
+    pass
+
+# Where it's also reflected:
+# - .github/workflows/ci-ifcopenshell-python.yml
+# - .github/workflows/ci-ifcopenshell-python-pypi.yml
+# - src/ifcopenshell-python/Makefile (PYVERSION check)
+SUPPORTED_PY_VERSIONS = ("310", "311", "312", "313", "314")
+SUPPORTED_PLATFORMS = ("win64", "linux64", "macos64", "macosm164")
+
+WASM_SUPPORTED_PY_VERSIONS = ("313",)
+WASM_PLATFORM = "pyodide_2025_0_wasm32"
+WASM_TEMPLATE = "https://s3.amazonaws.com/ifcopenshell-builds/ifcopenshell-{BINARY_VERSION}%2B{BUILD_COMMIT}-cp{PYNUMBER}-cp{PYNUMBER}-{PLATFORM}.whl"
+
+
+class TestPackageSupportedPlatforms:
+    def test_run(self) -> None:
+        IOS_REPO = Path(__file__).parents[3]
+        makefile = IOS_REPO / "src/ifcopenshell-python/Makefile"
+        text = makefile.read_text()
+
+        # We don't use requests in ifcopenshell, so we use Python builtin stuff.
+        parsed = urlparse("https://builds.ifcopenshell.org")
+        conn = http.client.HTTPSConnection(parsed.netloc)
+        conn.request("GET", parsed.path)
+        response = conn.getresponse()
+        build_html = response.read().decode("utf-8")
+
+        def find_make_var(var_name: str) -> str:
+            line = next(l for l in text.splitlines() if l.startswith(f"{var_name}:="))
+            return line.partition(":=")[2]
+
+        BINARY_VERSION = find_make_var("BINARY_VERSION")
+        BUILD_COMMIT = find_make_var("BUILD_COMMIT")
+
+        required_urls: list[str] = []
+
+        base_kwargs = {
+            "BINARY_VERSION": BINARY_VERSION,
+            "BUILD_COMMIT": BUILD_COMMIT,
+        }
+
+        # Non-WASM binaries.
+        URL_TYPES = ("IOS_URL", "IFCCONVERT_URL")
+        for url_type in URL_TYPES:
+            url_template = find_make_var(url_type)
+            url_template = url_template.replace("$(", "{").replace(")", "}")
+            for platform in SUPPORTED_PLATFORMS:
+                kwargs = base_kwargs | {"PLATFORM": platform}
+
+                if url_type == "IOS_URL":
+                    for pyver in SUPPORTED_PY_VERSIONS:
+                        url = url_template.format(**kwargs, PYNUMBER=pyver)
+                        required_urls.append(url)
+
+                elif url_type == "IFCCONVERT_URL":
+                    url = url_template.format(**kwargs)
+                    required_urls.append(url)
+
+                else:
+                    assert_never(url_type)
+
+        # WASM wheels.
+        for pyver in WASM_SUPPORTED_PY_VERSIONS:
+            url = WASM_TEMPLATE.format(
+                PYNUMBER=pyver,
+                PLATFORM=WASM_PLATFORM,
+                BINARY_VERSION=BINARY_VERSION,
+                BUILD_COMMIT=BUILD_COMMIT,
+            )
+            required_urls.append(url)
+
+        # Verify all required URLs are present in the build HTML.
+        missing_urls: Sequence[str]
+        if "BeautifulSoup" in globals():
+            missing_urls = set(required_urls) - set(a["href"] for a in BeautifulSoup(build_html).find_all("a"))
+        else:
+            missing_urls = []
+            for url in required_urls:
+                if url not in build_html:
+                    missing_urls.append(url)
+
+        assert not missing_urls

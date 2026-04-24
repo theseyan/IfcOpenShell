@@ -40,11 +40,6 @@ from ifcopenshell.util.shape_builder import (
 
 
 class TestMathutilsCompatibleMethods(test.bootstrap.IFC4):
-    pytestmark = pytest.mark.skipif(
-        pytest.importorskip is None or __import__("importlib").util.find_spec("mathutils") is None,
-        reason="mathutils (Blender) not available",
-    )
-
     def test_np_rotation_matrix(self):
         from mathutils import Matrix, Vector  # pyright: ignore[reportMissingImports]  # ty:ignore[unresolved-import]
 

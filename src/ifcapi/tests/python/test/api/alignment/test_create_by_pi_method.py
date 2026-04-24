@@ -63,3 +63,4 @@ def test_create_by_pi_method():
     assert len(vertical_segment_nest.RelatedObjects) == 10
 
 
+test_create_by_pi_method()

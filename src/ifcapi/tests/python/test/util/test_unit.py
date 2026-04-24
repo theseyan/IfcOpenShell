@@ -19,7 +19,6 @@
 from math import pi
 
 import numpy as np
-import pytest
 
 import ifcopenshell.api.context
 import ifcopenshell.api.georeference

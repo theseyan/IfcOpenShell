@@ -86,6 +86,22 @@ IFCAPI_EXPORT const char* ifcopenshell_file_schema(const ifcopenshell_ifc_file_t
 /// Creates a blank entity of the given type. Returns its STEP ID, or 0 on error.
 IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_file_create_entity(ifcopenshell_ifc_file_t* file, const char* type_name);
 
+/// Same as ifcopenshell_file_create_entity, but assigns an explicit STEP ID
+/// (used by the Python transaction system to recreate deleted entities at
+/// their original ID during undo). Returns NULL if the ID is already in use.
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_file_create_entity_with_id(
+    ifcopenshell_ifc_file_t* file, const char* type_name, uint32_t id);
+
+/// Adds an entity (and all of its forward references) into `file`.
+/// `instance` may belong to another file — in that case a deep copy is made
+/// and the copy is registered. Returns the (possibly new) handle owned by
+/// `file`, or NULL on failure. Pass `id == 0` to auto-assign a fresh ID.
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_file_add_entity(
+    ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* instance, uint32_t id);
+
+/// Returns the largest STEP ID currently assigned in `file` (0 if empty).
+IFCAPI_EXPORT uint32_t ifcopenshell_file_get_max_id(const ifcopenshell_ifc_file_t* file);
+
 /// Returns the number of entities of the given type.
 IFCAPI_EXPORT int32_t ifcopenshell_file_by_type_count(const ifcopenshell_ifc_file_t* file, const char* type_name);
 

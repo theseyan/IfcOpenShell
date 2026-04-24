@@ -54,3 +54,4 @@ def test_horizontal_layout_by_pi_method():
     assert len(segment_nest.RelatedObjects) == 3  # segments in horizontal layout
 
 
+test_horizontal_layout_by_pi_method()

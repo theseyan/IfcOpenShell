@@ -46,3 +46,4 @@ def test_create_as_polyline():
     assert len(curve.Points) == 10
 
 
+test_create_as_polyline()

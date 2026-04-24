@@ -49,3 +49,4 @@ def test_add_stationing_to_alignment():
     assert referent.ObjectPlacement != None
 
 
+test_add_stationing_to_alignment()

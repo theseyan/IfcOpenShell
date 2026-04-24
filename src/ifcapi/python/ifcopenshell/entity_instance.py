@@ -467,6 +467,18 @@ class entity_instance:
 
         value = self._coerce_to_declared_type(name, value)
 
+        # Record the edit before mutation so the transaction captures the
+        # pre-image. Only entities that belong to a file (id != 0) are tracked.
+        file_obj = getattr(self, "_file", None)
+        transaction = getattr(file_obj, "transaction", None) if file_obj is not None else None
+        if transaction is not None and self.id():
+            idx = self._attr_index(name)
+            if idx >= 0:
+                try:
+                    transaction.store_edit(self, idx, value)
+                except Exception:
+                    pass
+
         if value is None:
             lib.ifcopenshell_entity_set_null(h, attr)
         elif isinstance(value, bool):

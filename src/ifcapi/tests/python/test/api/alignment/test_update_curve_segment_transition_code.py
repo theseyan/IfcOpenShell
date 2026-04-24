@@ -24,8 +24,6 @@ from ifcopenshell.api.alignment._update_curve_segment_transition_code import (
 )
 
 
-import pytest
-
 def _test1():
     file = ifcopenshell.file(schema="IFC4X3")
     project = file.createIfcProject(GlobalId=ifcopenshell.guid.new(), Name="Test")
@@ -245,9 +243,9 @@ def _test2():
     assert clothoid2.Transition == "CONTSAMEGRADIENTSAMECURVATURE"
 
 
-@pytest.mark.xfail(reason="Requires C++ geometry kernel for curvature evaluation")
 def test_update_curve_segment_transition_code():
     _test1()
     _test2()
 
 
+test_update_curve_segment_transition_code()

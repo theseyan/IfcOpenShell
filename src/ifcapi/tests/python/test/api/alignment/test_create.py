@@ -83,3 +83,4 @@ def test_create():
             assert ifcopenshell.api.alignment.has_zero_length_segment(curve)
 
 
+test_create()

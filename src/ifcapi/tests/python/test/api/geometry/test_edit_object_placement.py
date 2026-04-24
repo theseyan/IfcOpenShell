@@ -1,3 +1,20 @@
+# IfcOpenShell - IFC toolkit and geometry engine
+# Copyright (C) 2021 Dion Moult <dion@thinkmoult.com>
+#
+# This file is part of IfcOpenShell.
+#
+# IfcOpenShell is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# IfcOpenShell is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy
 import pytest
@@ -175,7 +192,6 @@ class TestEditObjectPlacement(test.bootstrap.IFC4):
         assert numpy.array_equal(ifcopenshell.util.placement.get_local_placement(subelement.ObjectPlacement), matrix2)
         assert element.ObjectPlacement != subelement.ObjectPlacement
 
-    @pytest.mark.skip(reason="Minimal C API edit_object_placement does not resolve placement hierarchy or transform children")
     def test_changing_placements_relative_to_a_spatial_container(self):
         ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
         ifcopenshell.api.unit.assign_unit(self.file)
@@ -206,7 +222,6 @@ class TestEditObjectPlacement(test.bootstrap.IFC4):
         assert numpy.array_equal(ifcopenshell.util.placement.get_local_placement(subelement.ObjectPlacement), submatrix)
         assert subelement.ObjectPlacement.PlacementRelTo == element.ObjectPlacement
 
-    @pytest.mark.skip(reason="Minimal C API edit_object_placement does not resolve placement hierarchy or transform children")
     def test_changing_placements_relative_to_an_aggregate(self):
         ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
         ifcopenshell.api.unit.assign_unit(self.file)
@@ -237,7 +252,6 @@ class TestEditObjectPlacement(test.bootstrap.IFC4):
         assert numpy.array_equal(ifcopenshell.util.placement.get_local_placement(subelement.ObjectPlacement), submatrix)
         assert subelement.ObjectPlacement.PlacementRelTo == element.ObjectPlacement
 
-    @pytest.mark.skip(reason="Minimal C API edit_object_placement does not resolve placement hierarchy or transform children")
     def test_changing_placements_relative_to_a_nest_parent(self):
         ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
         ifcopenshell.api.unit.assign_unit(self.file)
@@ -267,7 +281,6 @@ class TestEditObjectPlacement(test.bootstrap.IFC4):
         assert numpy.array_equal(ifcopenshell.util.placement.get_local_placement(subelement.ObjectPlacement), submatrix)
         assert subelement.ObjectPlacement.PlacementRelTo == element.ObjectPlacement
 
-    @pytest.mark.skip(reason="Minimal C API edit_object_placement does not resolve placement hierarchy or transform children")
     def test_changing_placements_relative_to_a_voided_element(self):
         ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
         ifcopenshell.api.unit.assign_unit(self.file)
@@ -300,7 +313,6 @@ class TestEditObjectPlacement(test.bootstrap.IFC4):
         assert numpy.array_equal(ifcopenshell.util.placement.get_local_placement(subelement.ObjectPlacement), submatrix)
         assert subelement.ObjectPlacement.PlacementRelTo == element.ObjectPlacement
 
-    @pytest.mark.skip(reason="Minimal C API edit_object_placement does not resolve placement hierarchy or transform children")
     def test_changing_placements_relative_to_an_opening(self):
         ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
         ifcopenshell.api.unit.assign_unit(self.file)
@@ -341,7 +353,6 @@ class TestEditObjectPlacement(test.bootstrap.IFC4):
         assert element.ObjectPlacement.PlacementRelTo == wall.ObjectPlacement
         assert subelement.ObjectPlacement.PlacementRelTo == element.ObjectPlacement
 
-    @pytest.mark.skip(reason="Minimal C API edit_object_placement does not resolve placement hierarchy or transform children")
     def test_changing_placements_relative_to_a_projected_element(self):
         ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
         ifcopenshell.api.unit.assign_unit(self.file)
@@ -379,7 +390,6 @@ class TestEditObjectPlacement(test.bootstrap.IFC4):
         assert numpy.array_equal(ifcopenshell.util.placement.get_local_placement(subelement.ObjectPlacement), submatrix)
         assert subelement.ObjectPlacement.PlacementRelTo == element.ObjectPlacement
 
-    @pytest.mark.skip(reason="Minimal C API edit_object_placement does not resolve placement hierarchy or transform children")
     def test_changing_placements_without_affecting_children(self):
         ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
         ifcopenshell.api.unit.assign_unit(self.file)
@@ -413,7 +423,6 @@ class TestEditObjectPlacement(test.bootstrap.IFC4):
         assert numpy.array_equal(ifcopenshell.util.placement.get_local_placement(subelement.ObjectPlacement), submatrix)
         assert subelement.ObjectPlacement.PlacementRelTo == element.ObjectPlacement
 
-    @pytest.mark.skip(reason="Minimal C API edit_object_placement does not resolve placement hierarchy or transform children")
     def test_changing_placements_with_affecting_children(self):
         ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
         ifcopenshell.api.unit.assign_unit(self.file)
@@ -461,7 +470,6 @@ class TestEditObjectPlacement(test.bootstrap.IFC4):
         )
         assert subelement.ObjectPlacement.PlacementRelTo == element.ObjectPlacement
 
-    @pytest.mark.skip(reason="Minimal C API edit_object_placement does not resolve placement hierarchy or transform children")
     def test_changing_placements_with_children_using_non_si_units(self):
         ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
         ifcopenshell.api.unit.assign_unit(self.file)
@@ -501,7 +509,6 @@ class TestEditObjectPlacement(test.bootstrap.IFC4):
         assert numpy.array_equal(ifcopenshell.util.placement.get_local_placement(subelement.ObjectPlacement), submatrix)
         assert subelement.ObjectPlacement.PlacementRelTo == element.ObjectPlacement
 
-    @pytest.mark.skip(reason="Minimal C API edit_object_placement does not resolve placement hierarchy or transform children")
     def test_changing_placements_always_affecting_child_ports_as_a_special_case(self):
         ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
         ifcopenshell.api.unit.assign_unit(self.file)
@@ -539,7 +546,6 @@ class TestEditObjectPlacement(test.bootstrap.IFC4):
         with pytest.raises(RuntimeError):
             self.file.by_id(previous_placement_id)
 
-    @pytest.mark.skip(reason="Minimal C API edit_object_placement does not resolve placement hierarchy or transform children")
     def test_changing_placements_always_affecting_child_features_but_not_subchildren_as_a_special_case(self):
         ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
         ifcopenshell.api.unit.assign_unit(self.file)
@@ -590,7 +596,6 @@ class TestEditObjectPlacement(test.bootstrap.IFC4):
         with pytest.raises(RuntimeError):
             self.file.by_id(previous_placement_id)
 
-    @pytest.mark.skip(reason="Minimal C API edit_object_placement does not resolve placement hierarchy or transform children")
     def test_changing_placements_without_affecting_children_doesnt_affect_subchildren(self):
         def np_matrix_translation(translation):
             (m := numpy.eye(4))[:3, 3] = translation
@@ -633,7 +638,6 @@ class TestEditObjectPlacement(test.bootstrap.IFC4):
 
 
 class TestEditObjectPlacementIFC2X3(test.bootstrap.IFC2X3, TestEditObjectPlacement):
-    @pytest.mark.skip(reason="Minimal C API edit_object_placement does not resolve placement hierarchy or transform children")
     def test_changing_placements_relative_to_a_distribution_element(self):
         ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
         ifcopenshell.api.unit.assign_unit(self.file)

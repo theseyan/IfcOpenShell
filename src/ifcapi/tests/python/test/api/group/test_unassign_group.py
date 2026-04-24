@@ -1,12 +1,27 @@
-# SPDX-License-Identifier: LGPL-3.0-or-later
-# Adapted from src/ifcopenshell-python/test/api/group/test_unassign_group.py
+# IfcOpenShell - IFC toolkit and geometry engine
+# Copyright (C) 2022 Dion Moult <dion@thinkmoult.com>
+#
+# This file is part of IfcOpenShell.
+#
+# IfcOpenShell is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# IfcOpenShell is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell.api.group
 import ifcopenshell.api.root
 import test.bootstrap
 
 
-class TestUnassignGroup(test.bootstrap.IFC4):
+class TestAssignGroup(test.bootstrap.IFC4):
     def test_group_unassignment(self):
         element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
         element2 = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
@@ -29,5 +44,5 @@ class TestUnassignGroup(test.bootstrap.IFC4):
         assert len(self.file.by_type("IfcRelAssignsToGroup")) == 0
 
 
-class TestUnassignGroupIFC2X3(test.bootstrap.IFC2X3, TestUnassignGroup):
+class TestAssignGroupIFC2X3(test.bootstrap.IFC2X3, TestAssignGroup):
     pass

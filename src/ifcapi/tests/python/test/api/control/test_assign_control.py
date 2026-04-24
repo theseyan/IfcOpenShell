@@ -1,40 +1,54 @@
+# IfcOpenShell - IFC toolkit and geometry engine
+# Copyright (C) 2022 Dion Moult <dion@thinkmoult.com>
+#
+# This file is part of IfcOpenShell.
+#
+# IfcOpenShell is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# IfcOpenShell is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell.api.control
-import ifcopenshell.api.root
+import ifcopenshell.api.cost
 import test.bootstrap
 
 
 class TestAssignControl(test.bootstrap.IFC4):
     def test_run(self):
         wall = self.file.createIfcWall()
-        control = self.file.createIfcCostSchedule()
+        control = ifcopenshell.api.cost.add_cost_schedule(self.file)
 
-        relation = ifcopenshell.api.control.assign_control(
-            self.file, relating_control=control, related_objects=[wall])
+        # simple assignment
+        relation = ifcopenshell.api.control.assign_control(self.file, relating_control=control, related_objects=[wall])
         assert relation
         assert len(self.file.by_type("IfcRelAssignsToControl")) == 1
         assert relation.RelatingControl == control
         assert relation.RelatedObjects == (wall,)
 
-        # Trying to establish existing relationship returns None
-        relation = ifcopenshell.api.control.assign_control(
-            self.file, relating_control=control, related_objects=[wall])
+        # trying to establish existing relationship
+        relation = ifcopenshell.api.control.assign_control(self.file, relating_control=control, related_objects=[wall])
         assert relation is None
 
-        # Assigning same control to another object reuses the relationship
+        # assigning same control to another object
         wall1 = self.file.createIfcWall()
-        relation = ifcopenshell.api.control.assign_control(
-            self.file, relating_control=control, related_objects=[wall1])
+        relation = ifcopenshell.api.control.assign_control(self.file, relating_control=control, related_objects=[wall1])
         assert relation is not None
         assert len(self.file.by_type("IfcRelAssignsToControl")) == 1
         assert relation.RelatingControl == control
-        assert set(relation.RelatedObjects) == {wall, wall1}
+        assert set(relation.RelatedObjects) == set((wall, wall1))
 
     def test_batch_assignment(self):
         walls = [self.file.createIfcWall() for _ in range(5)]
-        control = self.file.createIfcCostSchedule()
-        relation = ifcopenshell.api.control.assign_control(
-            self.file, relating_control=control, related_objects=walls)
+        control = ifcopenshell.api.cost.add_cost_schedule(self.file)
+        relation = ifcopenshell.api.control.assign_control(self.file, relating_control=control, related_objects=walls)
         assert relation
         assert len(self.file.by_type("IfcRelAssignsToControl")) == 1
         assert relation.RelatingControl == control

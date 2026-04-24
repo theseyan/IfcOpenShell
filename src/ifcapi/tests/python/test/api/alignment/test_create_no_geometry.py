@@ -64,3 +64,4 @@ def test_create_no_geometry():
     assert end == None
 
 
+test_create_no_geometry()
