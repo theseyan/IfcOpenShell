@@ -8,7 +8,6 @@ from typing import List, Optional, Set, Tuple
 from ifcopenshell import (
     _get_lib,
     _enc,
-    _typed_value,
     ATTR_NULL,
     ATTR_STRING,
     ATTR_INT,
@@ -21,6 +20,15 @@ from ifcopenshell import (
     ATTR_UNKNOWN,
 )
 from ifcopenshell._value_api import configure_value_lib, value_to_python
+
+
+def _tv_class():
+    """Lazily resolve ``ifcopenshell._typed_value`` to avoid the circular
+    import at module load time (``_typed_value`` inherits from
+    :class:`entity_instance` and is therefore defined *after* this module
+    finishes loading)."""
+    from ifcopenshell import _typed_value
+    return _typed_value
 
 
 def _typed_value_str(tv):
@@ -135,6 +143,20 @@ class entity_instance:
         return (id(self._file), self.id(), self.is_a())
 
     def is_a(self, type_name=None):
+        # Inline typed values (``_typed_value`` subclass with ``_handle == 0``)
+        # carry their declared type in ``_type_name``. ``entity_instance.is_a``
+        # is sometimes called as an unbound function on these objects (mirrors
+        # SWIG's ``entity_instance`` behaviour where inline values have
+        # ``id() == 0``); Python 3 does not dispatch through the subclass for
+        # such calls, so the fallback must live here.
+        if not getattr(self, "_handle", 0) and hasattr(self, "_type_name"):
+            tn = self._type_name
+            if type_name is None:
+                return tn
+            if isinstance(type_name, bool) and type_name:
+                schema = getattr(self._file, "schema", "")
+                return f"{schema}.{tn}" if schema else tn
+            return tn.lower() == type_name.lower()
         lib = _get_lib()
         if type_name is None:
             result = lib.ifcopenshell_entity_type(self._handle)
@@ -258,7 +280,7 @@ class entity_instance:
                 type_name = lib.ifcopenshell_entity_get_typed_value(
                     h, attr, ctypes.byref(value_out))
                 if type_name:
-                    return _typed_value(
+                    return _tv_class()(
                         self._file, type_name.decode("utf-8"),
                         value_out.value.decode("utf-8") if value_out.value else None)
                 ref_h = lib.ifcopenshell_entity_get_reference(h, attr)
@@ -448,7 +470,7 @@ class entity_instance:
         for i in range(n):
             tn = type_names_ptr[i].decode("utf-8") if type_names_ptr[i] else ""
             sv = values_ptr[i].decode("utf-8") if values_ptr[i] else ""
-            result.append(_typed_value(self._file, tn, sv))
+            result.append(_tv_class()(self._file, tn, sv))
         lib.ifcopenshell_free_string_array(type_names_ptr, n)
         lib.ifcopenshell_free_string_array(values_ptr, n)
         return tuple(result)
@@ -487,7 +509,7 @@ class entity_instance:
             lib.ifcopenshell_entity_set_int(h, attr, value)
         elif isinstance(value, float):
             lib.ifcopenshell_entity_set_double(h, attr, value)
-        elif isinstance(value, _typed_value):
+        elif isinstance(value, _tv_class()):
             lib.ifcopenshell_entity_set_typed_value(
                 h, attr, _enc(value._type_name),
                 _enc(_typed_value_str(value)) if value._wrapped is not None else None)
@@ -507,7 +529,7 @@ class entity_instance:
         Mirrors SWIG's implicit coercion: e.g. passing int 123 for an
         IfcLabel attribute yields the string "123".
         """
-        if value is None or isinstance(value, (list, tuple, _typed_value, entity_instance)):
+        if value is None or isinstance(value, (list, tuple, entity_instance)):
             return value
         try:
             from ifcopenshell.util.attribute import get_primitive_type
@@ -641,7 +663,7 @@ class entity_instance:
                 raise RuntimeError(f"Failed to set nested aggregate '{name}'")
             return
 
-        if isinstance(first, _typed_value):
+        if isinstance(first, _tv_class()):
             type_names = (ctypes.c_char_p * len(items))(*[_enc(v._type_name) for v in items])
             str_vals = (ctypes.c_char_p * len(items))(
                 *[_enc(_typed_value_str(v)) if v._wrapped is not None else _enc("") for v in items])
