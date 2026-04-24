@@ -308,6 +308,29 @@ ifcopenshell_ifc_instance_t** ifcopenshell_file_get_inverse(ifcopenshell_ifc_ins
     }
 }
 
+int32_t* ifcopenshell_file_get_inverse_indices(ifcopenshell_ifc_instance_t* instance, uint32_t* count) {
+    if (!instance || !instance->ptr || !count) return nullptr;
+    *count = 0;
+    try {
+        auto* entity = instance->ptr;
+        auto* f = entity->file_;
+        if (!f) return nullptr;
+        auto idxs = f->get_inverse_indices(static_cast<int>(entity->id()));
+        if (idxs.empty()) return nullptr;
+        auto* arr = static_cast<int32_t*>(std::malloc(idxs.size() * sizeof(int32_t)));
+        if (!arr) return nullptr;
+        for (size_t i = 0; i < idxs.size(); ++i) arr[i] = static_cast<int32_t>(idxs[i]);
+        *count = static_cast<uint32_t>(idxs.size());
+        return arr;
+    } catch (...) {
+        return nullptr;
+    }
+}
+
+void ifcopenshell_free_int32_array(int32_t* arr) {
+    if (arr) std::free(arr);
+}
+
 ifcopenshell_ifc_instance_t** ifcopenshell_file_traverse(ifcopenshell_ifc_instance_t* instance, int max_levels, uint32_t* count) {
     if (!instance || !instance->ptr || !count) return nullptr;
     *count = 0;

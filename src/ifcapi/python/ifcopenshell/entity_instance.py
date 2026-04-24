@@ -516,7 +516,13 @@ class entity_instance:
         elif isinstance(value, entity_instance):
             lib.ifcopenshell_entity_set_reference(h, attr, value._handle)
         elif isinstance(value, str):
+            lib.ifcopenshell_clear_error()
             if not lib.ifcopenshell_entity_set_enum(h, attr, _enc(value)):
+                err = lib.ifcopenshell_last_error_message()
+                if err:
+                    msg = err.decode("utf-8", errors="replace")
+                    lib.ifcopenshell_clear_error()
+                    raise RuntimeError(msg)
                 lib.ifcopenshell_entity_set_string(h, attr, _enc(value))
         elif isinstance(value, (list, tuple)):
             self._set_aggregate(h, attr, name, value)

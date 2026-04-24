@@ -135,6 +135,14 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_file_entity_ids(const i
 /// Caller must free the returned array with ifcopenshell_free_instance_array().
 IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_file_get_inverse(ifcopenshell_ifc_instance_t* instance, uint32_t* count);
 
+/// Returns the attribute indices (one per inverse pair, parallel to
+/// ifcopenshell_file_get_inverse) of attributes pointing back at the given
+/// entity. Caller must free with ifcopenshell_free_int32_array().
+IFCAPI_EXPORT int32_t* ifcopenshell_file_get_inverse_indices(ifcopenshell_ifc_instance_t* instance, uint32_t* count);
+
+/// Frees an int32_t array returned by the API.
+IFCAPI_EXPORT void ifcopenshell_free_int32_array(int32_t* arr);
+
 /// Recursively traverses all entities referenced by the given entity.
 /// max_levels=0 means unlimited. Caller must free with ifcopenshell_free_instance_array().
 IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_file_traverse(ifcopenshell_ifc_instance_t* instance, int max_levels, uint32_t* count);
