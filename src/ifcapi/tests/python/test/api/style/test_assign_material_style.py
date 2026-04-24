@@ -1,3 +1,20 @@
+# IfcOpenShell - IFC toolkit and geometry engine
+# Copyright (C) 2022 Dion Moult <dion@thinkmoult.com>
+#
+# This file is part of IfcOpenShell.
+#
+# IfcOpenShell is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# IfcOpenShell is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell.api.material
 import ifcopenshell.api.root
@@ -24,12 +41,14 @@ class TestAssignMaterialStyleIFC2X3(test.bootstrap.IFC2X3):
         if self.file.schema != "IFC2X3":
             assert item.Styles == (style,)
         else:
+            # IfcPresentationStyleAssignment
             assert len(item.Styles[0]) == 1
             assert item.Styles[0].Styles == (style,)
 
         style2 = self.file.createIfcSurfaceStyle()
         ifcopenshell.api.style.assign_material_style(self.file, material=material, style=style2, context=context)
 
+        # reuse existing elements and reassign the style
         assert material.HasRepresentation == (definition,)
         assert definition.Representations == (representation,)
         assert len(representation.Items) == 1
@@ -37,11 +56,13 @@ class TestAssignMaterialStyleIFC2X3(test.bootstrap.IFC2X3):
         if self.file.schema != "IFC2X3":
             assert representation.Items[0].Styles == (style2,)
         else:
+            # IfcPresentationStyleAssignment
             assert len(representation.Items[0].Styles) == 1
             assert representation.Items[0].Styles == (style2,)
 
 
 class TestAssignMaterialStyleIFC4(test.bootstrap.IFC4, TestAssignMaterialStyleIFC2X3):
+    # IfcMaterialConstituentSet was added in IFC4
     def test_update_shape_aspect_representations_items_styles_if_material_is_part_of_matching_material_constituents(
         self,
     ):

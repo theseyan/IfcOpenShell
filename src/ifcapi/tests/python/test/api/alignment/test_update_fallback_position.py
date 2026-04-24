@@ -23,7 +23,6 @@ import ifcopenshell.api.context
 import ifcopenshell.api.unit
 
 
-@pytest.mark.xfail(reason="Requires C++ geometry kernel for fallback position evaluation")
 def test_update_fallback_position():
     file = ifcopenshell.file(schema="IFC4X3")
     project = file.createIfcProject(GlobalId=ifcopenshell.guid.new(), Name="Test")
@@ -70,3 +69,4 @@ def test_update_fallback_position():
     assert lp.CartesianPosition.Axis.DirectionRatios == pytest.approx((0.0, 0.0, 1.0))
 
 
+test_update_fallback_position()

@@ -73,3 +73,4 @@ def test_add_segment_to_layout():
     assert len(referent_nest.RelatedObjects) == 3
 
 
+test_add_segment_to_layout()

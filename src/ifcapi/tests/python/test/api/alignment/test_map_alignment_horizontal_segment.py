@@ -2558,7 +2558,6 @@ def _VienneseBend_100_0__inf__300_1_Meter(file):
     assert mapped_segment.ParentCurve.ConstantTerm == pytest.approx(None)
 
 
-@pytest.mark.xfail(reason="Requires C++ geometry kernel for curve evaluation")
 def test_map_alignment_horizontal_segment():
     file = ifcopenshell.file(schema="IFC4X3")
     _BlossCurve_100_0_300_1000_1_Meter(file)
@@ -2635,3 +2634,4 @@ def test_map_alignment_horizontal_segment():
     _VienneseBend_100_0__inf__300_1_Meter(file)
 
 
+test_map_alignment_horizontal_segment()

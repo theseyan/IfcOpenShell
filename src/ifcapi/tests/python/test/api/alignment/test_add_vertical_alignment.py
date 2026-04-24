@@ -72,3 +72,4 @@ def test_add_vertical_alignment():
     assert layout_nest.RelatedObjects[0].is_a("IfcAlignmentHorizontal")
 
 
+test_add_vertical_alignment()

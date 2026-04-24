@@ -71,3 +71,4 @@ def test_vertical_layout_by_pi_method():
     assert len(segment_nest.RelatedObjects) == 3
 
 
+test_vertical_layout_by_pi_method()

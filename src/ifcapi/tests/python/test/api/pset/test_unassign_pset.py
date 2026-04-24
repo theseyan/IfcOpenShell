@@ -1,40 +1,64 @@
-# SPDX-License-Identifier: LGPL-3.0-or-later
+# IfcOpenShell - IFC toolkit and geometry engine
+# Copyright (C) 2021 Dion Moult <dion@thinkmoult.com>
+#
+# This file is part of IfcOpenShell.
+#
+# IfcOpenShell is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# IfcOpenShell is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Tests for pset.unassign_pset — adapted from the original test suite."""
-
-import ifcopenshell
 import ifcopenshell.api.pset
-import ifcopenshell.api.root
-import ifcopenshell.util.element
 import test.bootstrap
 
 
 class TestUnassignPset(test.bootstrap.IFC4):
-    def test_unassign_from_last_occurrence(self):
-        e1 = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
-        pset = ifcopenshell.api.pset.add_pset(self.file, product=e1, name="Foo")
-        ifcopenshell.api.pset.unassign_pset(self.file, [e1], pset)
-        # Rel should be removed
+    def test_unassign_pset_from_last_occurrence_and_remove_rel(self):
+        elements = [self.file.create_entity("IfcWall") for _ in range(3)]
+        pset = self.file.create_entity("IfcPropertySet")
+        ifcopenshell.api.pset.assign_pset(self.file, elements, pset)
+
+        ifcopenshell.api.pset.unassign_pset(self.file, elements, pset)
         assert len(self.file.by_type("IfcRelDefinesByProperties")) == 0
 
-    def test_unassign_from_non_last_occurrence(self):
-        e1 = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
-        e2 = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
-        pset = ifcopenshell.api.pset.add_pset(self.file, product=e1, name="Foo")
-        ifcopenshell.api.pset.assign_pset(self.file, [e2], pset)
-        ifcopenshell.api.pset.unassign_pset(self.file, [e1], pset)
-        # Rel should still exist with e2
-        rels = self.file.by_type("IfcRelDefinesByProperties")
-        assert len(rels) == 1
-        assert e2 in rels[0].RelatedObjects
-        assert e1 not in rels[0].RelatedObjects
+    def test_unassign_pset_from_non_last_occurrence_and_reuse_rel(self):
+        elements = [self.file.create_entity("IfcWall") for _ in range(3)]
+        pset = self.file.create_entity("IfcPropertySet")
+        rel = ifcopenshell.api.pset.assign_pset(self.file, elements, pset)
+        assert rel
 
-    def test_unassign_from_type(self):
-        t1 = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWallType")
-        pset = ifcopenshell.api.pset.add_pset(self.file, product=t1, name="Foo")
-        assert pset in (t1.HasPropertySets or ())
-        ifcopenshell.api.pset.unassign_pset(self.file, [t1], pset)
-        assert t1.HasPropertySets is None or pset not in t1.HasPropertySets
+        ifcopenshell.api.pset.unassign_pset(self.file, elements[1:], pset)
+        assert rel.RelatedObjects == (elements[0],)
+
+    def test_unassign_non_last_pset_from_type(self):
+        elements = [self.file.create_entity("IfcWallType") for _ in range(3)]
+        pset = self.file.create_entity("IfcPropertySet")
+        pset2 = self.file.create_entity("IfcPropertySet")
+        ifcopenshell.api.pset.assign_pset(self.file, elements, pset)
+        ifcopenshell.api.pset.assign_pset(self.file, elements, pset2)
+
+        ifcopenshell.api.pset.unassign_pset(self.file, elements, pset)
+        assert pset.DefinesType == tuple()
+        assert set(pset2.DefinesType) == set(elements)
+        for element in elements:
+            assert element.HasPropertySets == (pset2,)
+
+    def test_unassign_last_pset_from_type_and_set_prop_to_none(self):
+        elements = [self.file.create_entity("IfcWallType") for _ in range(3)]
+        pset = self.file.create_entity("IfcPropertySet")
+        ifcopenshell.api.pset.assign_pset(self.file, elements, pset)
+        ifcopenshell.api.pset.unassign_pset(self.file, elements, pset)
+        assert pset.DefinesType == tuple()
+        for element in elements:
+            assert element.HasPropertySets is None
 
 
 class TestUnassignPsetIFC2X3(test.bootstrap.IFC2X3, TestUnassignPset):

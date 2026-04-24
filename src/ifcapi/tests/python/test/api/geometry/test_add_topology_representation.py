@@ -15,6 +15,7 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
+# This file was generated with the assistance of an AI coding tool.
 
 import ifcopenshell.api.context
 import ifcopenshell.api.geometry

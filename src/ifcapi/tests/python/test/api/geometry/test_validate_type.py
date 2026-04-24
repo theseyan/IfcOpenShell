@@ -1,5 +1,20 @@
-
-import pytest
+# IfcOpenShell - IFC toolkit and geometry engine
+# Copyright (C) 2023 Dion Moult <dion@thinkmoult.com>
+#
+# This file is part of IfcOpenShell.
+#
+# IfcOpenShell is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# IfcOpenShell is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell.api.context
 import ifcopenshell.api.geometry
@@ -9,7 +24,6 @@ import test.bootstrap
 
 
 class TestValidateType(test.bootstrap.IFC4):
-    @pytest.mark.skip(reason="C API does not support nested aggregates (IfcCartesianPointList2D)")
     def test_validating_a_non_csg_representation(self):
         ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
         model = ifcopenshell.api.context.add_context(self.file, context_type="Model")
@@ -21,7 +35,6 @@ class TestValidateType(test.bootstrap.IFC4):
         assert ifcopenshell.api.geometry.validate_type(self.file, rep) is True
         assert rep.RepresentationType == "Curve2D"
 
-    @pytest.mark.skip(reason="C API does not support nested aggregates (IfcCartesianPointList2D)")
     def test_failing_a_non_csg_representation(self):
         ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
         model = ifcopenshell.api.context.add_context(self.file, context_type="Model")
@@ -69,7 +82,6 @@ class TestValidateType(test.bootstrap.IFC4):
         assert rep.RepresentationType == "CSG"
         assert rep.Items[0].Operator == "UNION"
 
-    @pytest.mark.skip(reason="C API does not support nested aggregates (IfcCartesianPointList2D)")
     def test_failing_validation_on_unreconcilable_types(self):
         ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
         model = ifcopenshell.api.context.add_context(self.file, context_type="Model")

@@ -24,11 +24,6 @@ import ifcopenshell.util.unit
 
 UNITS_FIXTURE_DIR = pathlib.Path(__file__).parent.parent / "fixtures" / "units"
 
-pytestmark = pytest.mark.skipif(
-    not UNITS_FIXTURE_DIR.is_dir(),
-    reason="units fixtures are not bundled with the native ifcapi test tree",
-)
-
 
 @pytest.mark.parametrize("ifc_file", UNITS_FIXTURE_DIR.glob("*.ifc"))
 def test_file_units_length_convert(ifc_file: str):

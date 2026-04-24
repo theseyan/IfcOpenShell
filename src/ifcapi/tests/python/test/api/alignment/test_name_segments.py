@@ -56,3 +56,4 @@ def test_name_segments():
             i += 1
 
 
+test_name_segments()

@@ -134,6 +134,42 @@ ifcopenshell_ifc_instance_t* ifcopenshell_file_create_entity(ifcopenshell_ifc_fi
     }
 }
 
+ifcopenshell_ifc_instance_t* ifcopenshell_file_create_entity_with_id(
+    ifcopenshell_ifc_file_t* file, const char* type_name, uint32_t id) {
+    ifcopenshell_clear_error();
+    if (!file) { set_error("file is NULL"); return nullptr; }
+    if (!type_name) { set_error("type_name is NULL"); return nullptr; }
+    try {
+        auto* f = file->ptr;
+        const auto* schema = f->schema();
+        const auto* decl = schema->declaration_by_name(type_name);
+        if (!decl || !decl->as_entity()) {
+            set_error("Type declaration is not an entity");
+            return nullptr;
+        }
+        // Bypass IfcFile::create() (which auto-assigns IDs sequentially).
+        // Instantiate the entity directly, then register it via addEntity()
+        // with the explicit ID. addEntity() throws if the ID is taken.
+        auto* inst = schema->instantiate(
+            decl, in_memory_attribute_storage(decl->as_entity()->attribute_count()));
+        // file_ must be nullptr so addEntity() runs its registration path
+        // (mirrors what in_memory_file_storage::create() does).
+        inst->file_ = nullptr;
+        auto* entity = f->addEntity(inst, static_cast<int>(id));
+        if (!entity) {
+            set_error("Failed to create entity with id");
+            return nullptr;
+        }
+        return ifcopenshell::capi::wrap_instance(entity);
+    } catch (const IfcParse::IfcException& e) {
+        set_error(e.what());
+        return nullptr;
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
 int32_t ifcopenshell_file_by_type_count(const ifcopenshell_ifc_file_t* file, const char* type_name) {
     if (!file || !type_name) return 0;
     try {
@@ -205,6 +241,33 @@ uint32_t ifcopenshell_file_entity_count(const ifcopenshell_ifc_file_t* file) {
         ++count;
     }
     return count;
+}
+
+uint32_t ifcopenshell_file_get_max_id(const ifcopenshell_ifc_file_t* file) {
+    if (!file) return 0;
+    return file->ptr->getMaxId();
+}
+
+ifcopenshell_ifc_instance_t* ifcopenshell_file_add_entity(
+    ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* instance, uint32_t id) {
+    ifcopenshell_clear_error();
+    if (!file) { set_error("file is NULL"); return nullptr; }
+    if (!instance) { set_error("instance is NULL"); return nullptr; }
+    try {
+        auto* added = file->ptr->addEntity(
+            instance->ptr, id == 0 ? -1 : static_cast<int>(id));
+        if (!added) {
+            set_error("Failed to add entity");
+            return nullptr;
+        }
+        return ifcopenshell::capi::wrap_instance(added);
+    } catch (const IfcParse::IfcException& e) {
+        set_error(e.what());
+        return nullptr;
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
 }
 
 ifcopenshell_ifc_instance_t** ifcopenshell_file_entity_ids(const ifcopenshell_ifc_file_t* file, uint32_t* count) {

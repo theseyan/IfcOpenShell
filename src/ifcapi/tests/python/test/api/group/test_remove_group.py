@@ -1,7 +1,23 @@
-# SPDX-License-Identifier: LGPL-3.0-or-later
-# Adapted from src/ifcopenshell-python/test/api/group/test_remove_group.py
+# IfcOpenShell - IFC toolkit and geometry engine
+# Copyright (C) 2022 Dion Moult <dion@thinkmoult.com>
+#
+# This file is part of IfcOpenShell.
+#
+# IfcOpenShell is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# IfcOpenShell is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell.api.group
+import ifcopenshell.api.pset
 import ifcopenshell.api.root
 import test.bootstrap
 
@@ -19,7 +35,14 @@ class TestRemoveGroup(test.bootstrap.IFC4):
         ifcopenshell.api.group.remove_group(self.file, group=group)
         assert not self.file.by_type("IfcRelAssignsToGroup")
 
-    # test_removing_orphaned_property_relationships skipped — requires pset API
+    def test_removing_orphaned_property_relationships(self):
+        group = ifcopenshell.api.group.add_group(self.file)
+        pset = ifcopenshell.api.pset.add_pset(self.file, product=group, name="Foo_Bar")
+        ifcopenshell.api.pset.edit_pset(self.file, pset=pset, properties={"Foo": "Bar"})
+        ifcopenshell.api.group.remove_group(self.file, group=group)
+        assert not self.file.by_type("IfcRelDefinesByProperties")
+        assert not self.file.by_type("IfcPropertySet")
+        assert not self.file.by_type("IfcPropertySingleValue")
 
 
 class TestRemoveGroupIFC2X3(test.bootstrap.IFC2X3, TestRemoveGroup):

@@ -115,6 +115,7 @@ class TestAddBoolean(test.bootstrap.IFC4):
         assert result.SecondOperand == second1
         result2 = next(iter(self.file.get_inverse(result)))
         assert result2.FirstOperand == result
+        # Second2 is now used twice. Reusing is OK (albeit confusing), so long as things don't get recursive.
         assert result2.SecondOperand == second2
 
         assert self.file.get_total_inverses(first2) == 1

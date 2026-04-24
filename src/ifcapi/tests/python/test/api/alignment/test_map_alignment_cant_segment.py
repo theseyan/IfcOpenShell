@@ -1956,3 +1956,4 @@ def test_map_alignment_cant_segment():
     _VienneseBend_100_0__inf__300_1_Meter(file)
 
 
+test_map_alignment_cant_segment()

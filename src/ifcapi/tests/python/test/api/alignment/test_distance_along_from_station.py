@@ -53,3 +53,4 @@ def test_distance_along_from_station():
     assert ifcopenshell.api.alignment.distance_along_from_station(file, alignment, 17525.36) == pytest.approx(7525.36)
 
 
+test_distance_along_from_station()

@@ -36,6 +36,165 @@ class SchemaError(Error):
     pass
 
 
+class UndoSystemError(Exception):
+    def __init__(self, message: str, transaction: "Transaction"):
+        super().__init__(message)
+        self.transaction = transaction
+
+
+class Transaction:
+    """Records create/edit/delete operations and replays them for undo/redo.
+
+    Mirrors the upstream ``ifcopenshell.file.Transaction`` semantics so that
+    file-level ``begin_transaction``/``end_transaction``/``undo``/``redo``
+    behave identically to the SWIG-backed implementation.
+    """
+
+    def __init__(self, ifc_file: "file"):
+        self.file = ifc_file
+        self.operations: list = []
+        self.is_batched = False
+        self.batch_delete_index = 0
+        self.batch_delete_ids: set = set()
+        self.batch_inverses: list = []
+
+    def serialise_entity_instance(self, element) -> dict:
+        info = element.get_info()
+        for key, value in info.items():
+            info[key] = self.serialise_value(element, value)
+        return info
+
+    def serialise_value(self, element, value):
+        return entity_instance.walk(
+            lambda v: isinstance(v, entity_instance),
+            lambda v: {"id": v.id()} if v.id() else {"type": v.is_a(), "value": v.wrappedValue},
+            value,
+        )
+
+    def unserialise_value(self, element, value):
+        return entity_instance.walk(
+            lambda v: isinstance(v, dict),
+            lambda v: self.file.by_id(v["id"]) if v.get("id") else self.file.create_entity(v["type"], v["value"]),
+            value,
+        )
+
+    def batch(self) -> None:
+        self.is_batched = True
+        self.batch_delete_index = len(self.operations)
+        self.batch_delete_ids = set()
+        self.batch_inverses = []
+
+    def unbatch(self) -> None:
+        for inverses in self.batch_inverses:
+            if inverses:
+                self.operations.insert(self.batch_delete_index, {"action": "batch_delete", "inverses": inverses})
+        self.is_batched = False
+        self.batch_delete_index = 0
+        self.batch_delete_ids = set()
+        self.batch_inverses = []
+
+    def store_create(self, element) -> None:
+        if element.id():
+            self.operations.append({"action": "create", "value": self.serialise_entity_instance(element)})
+
+    def store_edit(self, element, index: int, value) -> None:
+        if element.id():
+            self.operations.append(
+                {
+                    "action": "edit",
+                    "id": element.id(),
+                    "index": index,
+                    "old": self.serialise_value(element, element[index]),
+                    "new": self.serialise_value(element, value),
+                }
+            )
+
+    def store_delete(self, element) -> None:
+        inverses: dict = {}
+        if self.is_batched:
+            if element.id() not in self.batch_delete_ids:
+                self.batch_inverses.append(self.get_element_inverses(element))
+            self.batch_delete_ids.add(element.id())
+        else:
+            inverses = self.get_element_inverses(element)
+        self.operations.append(
+            {"action": "delete", "inverses": inverses, "value": self.serialise_entity_instance(element)}
+        )
+
+    def get_element_inverses(self, element) -> dict:
+        inverses: dict = {}
+        for inverse in self.file.get_inverse(element):
+            inverse_references: list = []
+            for i, attribute in enumerate(inverse):
+                if self.has_element_reference(attribute, element):
+                    inverse_references.append((i, self.serialise_value(inverse, attribute)))
+            inverses[inverse.id()] = inverse_references
+        return inverses
+
+    def has_element_reference(self, value, element) -> bool:
+        if isinstance(value, (tuple, list)):
+            for v in value:
+                if self.has_element_reference(v, element):
+                    return True
+            return False
+        return value == element
+
+    def rollback(self) -> None:
+        for operation in self.operations[::-1]:
+            if operation["action"] == "create":
+                element = self.file.by_id(operation["value"]["id"])
+                if hasattr(element, "GlobalId") and element.GlobalId is None:
+                    # Hack: the validator forbids removal when GlobalId is null,
+                    # so set a placeholder before removing.
+                    element.GlobalId = "x"
+                self.file.remove(element)
+            elif operation["action"] == "edit":
+                element = self.file.by_id(operation["id"])
+                try:
+                    element[operation["index"]] = self.unserialise_value(element, operation["old"])
+                except Exception:
+                    # Tolerate values the schema accepts on parse but rejects on edit.
+                    pass
+            elif operation["action"] == "delete":
+                e = self.file.create_entity(operation["value"]["type"], id=operation["value"]["id"])
+                for k, v in operation["value"].items():
+                    if k in ("id", "type"):
+                        continue
+                    try:
+                        setattr(e, k, self.unserialise_value(e, v))
+                    except Exception:
+                        pass
+                for inverse_id, data in operation["inverses"].items():
+                    inverse = self.file.by_id(inverse_id)
+                    for index, value in data:
+                        inverse[index] = self.unserialise_value(inverse, value)
+            elif operation["action"] == "batch_delete":
+                for inverse_id, data in operation["inverses"].items():
+                    inverse = self.file.by_id(inverse_id)
+                    for index, value in data:
+                        inverse[index] = self.unserialise_value(inverse, value)
+
+    def commit(self) -> None:
+        for operation in self.operations:
+            if operation["action"] == "create":
+                e = self.file.create_entity(operation["value"]["type"], id=operation["value"]["id"])
+                for k, v in operation["value"].items():
+                    if k in ("id", "type"):
+                        continue
+                    try:
+                        setattr(e, k, self.unserialise_value(e, v))
+                    except Exception:
+                        pass
+            elif operation["action"] == "edit":
+                element = self.file.by_id(operation["id"])
+                element[operation["index"]] = self.unserialise_value(element, operation["new"])
+            elif operation["action"] == "delete":
+                element = self.file.by_id(operation["value"]["id"])
+                self.file.remove(element)
+            elif operation["action"] == "batch_delete":
+                pass
+
+
 _lib = None
 
 
@@ -94,6 +253,12 @@ def _get_lib():
     _lib.ifcopenshell_file_schema.argtypes = [ctypes.c_void_p]
     _lib.ifcopenshell_file_create_entity.restype = ctypes.c_void_p
     _lib.ifcopenshell_file_create_entity.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+    _lib.ifcopenshell_file_create_entity_with_id.restype = ctypes.c_void_p
+    _lib.ifcopenshell_file_create_entity_with_id.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_uint32]
+    _lib.ifcopenshell_file_add_entity.restype = ctypes.c_void_p
+    _lib.ifcopenshell_file_add_entity.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint32]
+    _lib.ifcopenshell_file_get_max_id.restype = ctypes.c_uint32
+    _lib.ifcopenshell_file_get_max_id.argtypes = [ctypes.c_void_p]
     _lib.ifcopenshell_file_by_type_count.restype = ctypes.c_int32
     _lib.ifcopenshell_file_by_type_count.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
     _lib.ifcopenshell_file_by_type.restype = ctypes.c_int32
@@ -564,10 +729,54 @@ class file:
         self.to_delete = None
 
     def batch(self) -> None:
-        return None
+        if self.transaction:
+            self.transaction.batch()
 
     def unbatch(self) -> None:
-        return None
+        if self.transaction:
+            self.transaction.unbatch()
+
+    def set_history_size(self, size: int) -> None:
+        self.history_size = size
+        while len(self.history) > self.history_size:
+            self.history.pop(0)
+
+    def begin_transaction(self) -> None:
+        if self.history_size:
+            self.transaction = Transaction(self)
+
+    def end_transaction(self) -> None:
+        if self.transaction:
+            self.history.append(self.transaction)
+            if len(self.history) > self.history_size:
+                self.history.pop(0)
+            self.future = []
+            self.transaction = None
+
+    def discard_transaction(self) -> None:
+        if self.transaction:
+            self.transaction.rollback()
+        self.transaction = None
+
+    def undo(self) -> None:
+        if not self.history:
+            return
+        transaction = self.history.pop()
+        try:
+            transaction.rollback()
+        except Exception as e:
+            raise UndoSystemError("Error during transaction undo.", transaction) from e
+        self.future.append(transaction)
+
+    def redo(self) -> None:
+        if not self.future:
+            return
+        transaction = self.future.pop()
+        try:
+            transaction.commit()
+        except Exception as e:
+            raise UndoSystemError("Error during transaction redo.", transaction) from e
+        self.history.append(transaction)
 
     def __del__(self):
         if getattr(self, "_ptr", None) and getattr(self, "_owns_ptr", True):
@@ -606,8 +815,12 @@ class file:
             kwargs.pop("type")
         if type_name is None:
             raise TypeError("create_entity() requires a type name")
+        eid = kwargs.pop("id", -1)
         lib = _get_lib()
-        h = lib.ifcopenshell_file_create_entity(self._ptr, _enc(type_name))
+        if eid == -1 or eid is None:
+            h = lib.ifcopenshell_file_create_entity(self._ptr, _enc(type_name))
+        else:
+            h = lib.ifcopenshell_file_create_entity_with_id(self._ptr, _enc(type_name), int(eid))
         if not h:
             # Might be a type instance (IfcLabel, IfcReal, etc.)
             val_arg = args[0] if args else kwargs.get("wrappedValue")
@@ -617,13 +830,21 @@ class file:
             msg = err.decode("utf-8") if err else "Unknown error"
             raise RuntimeError(f"Failed to create entity '{type_name}': {msg}")
         entity = entity_instance(self, h)
-        # Positional args: set by attribute index
-        for i, arg in enumerate(args):
-            if arg is not None:
-                entity[i] = arg
-        # Keyword args
-        for attr_name, value in kwargs.items():
-            setattr(entity, attr_name, value)
+        # Suspend transaction recording while populating attributes — the
+        # creation itself already captures the full attribute payload.
+        active_transaction = self.transaction
+        if args or kwargs:
+            self.transaction = None
+        try:
+            for i, arg in enumerate(args):
+                if arg is not None:
+                    entity[i] = arg
+            for attr_name, value in kwargs.items():
+                setattr(entity, attr_name, value)
+        finally:
+            self.transaction = active_transaction
+        if active_transaction is not None:
+            active_transaction.store_create(entity)
         return entity
 
     def by_type(self, type_name, include_subtypes=True) -> list:
@@ -658,13 +879,43 @@ class file:
 
     def remove(self, entity) -> None:
         lib = _get_lib()
-        if isinstance(entity, entity_instance):
-            lib.ifcopenshell_file_remove(entity._handle)
-        elif isinstance(entity, int):
-            target = self.by_id(entity)
-            lib.ifcopenshell_file_remove(target._handle)
-        else:
+        if isinstance(entity, int):
+            entity = self.by_id(entity)
+        if not isinstance(entity, entity_instance):
             raise TypeError(f"Expected entity_instance or int, got {type(entity)}")
+        if self.transaction is not None:
+            self.transaction.store_delete(entity)
+        lib.ifcopenshell_file_remove(entity._handle)
+
+    def get_max_id(self) -> int:
+        lib = _get_lib()
+        return int(lib.ifcopenshell_file_get_max_id(self._ptr))
+
+    def add(self, inst, _id=None):
+        """Adds an entity (and its forward references) to this file.
+
+        Mirrors upstream's ``file.add()``: when the source instance belongs
+        to a different file, it is deep-copied across; otherwise it is
+        re-registered (idempotent). When a transaction is active, every
+        newly assigned ID becomes a ``store_create`` operation so that undo
+        removes the entire subtree.
+        """
+        if not isinstance(inst, entity_instance):
+            raise TypeError(f"Expected entity_instance, got {type(inst)}")
+        lib = _get_lib()
+        max_id = self.get_max_id() if self.transaction is not None else 0
+        h = lib.ifcopenshell_file_add_entity(
+            self._ptr, inst._handle, 0 if _id is None else int(_id))
+        if not h:
+            err = lib.ifcopenshell_last_error_message()
+            msg = err.decode("utf-8") if err else "Unknown error"
+            raise RuntimeError(f"Failed to add entity: {msg}")
+        result = entity_instance(self, h)
+        if self.transaction is not None:
+            added = [e for e in self.traverse(result) if e.id() > max_id]
+            for e in reversed(added):
+                self.transaction.store_create(e)
+        return result
 
     def get_inverse(self, entity, allow_duplicate=False, with_attribute_indices=False):
         lib = _get_lib()

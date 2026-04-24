@@ -1,27 +1,19 @@
-# SPDX-License-Identifier: LGPL-3.0-or-later
-# Adapted from src/ifcopenshell-python/test/api/resource/test_remove_resource.py
+# IfcOpenShell - IFC toolkit and geometry engine
+# Copyright (C) 2024 Dion Moult <dion@thinkmoult.com>
+#
+# This file is part of IfcOpenShell.
+#
+# IfcOpenShell is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# IfcOpenShell is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ifcopenshell.api.resource
-import test.bootstrap
-
-
-class TestRemoveResource(test.bootstrap.IFC4):
-    def test_removing_a_simple_resource(self):
-        self.file.create_entity("IfcProject")
-        resource = ifcopenshell.api.resource.add_resource(self.file, ifc_class="IfcLaborResource")
-        ifcopenshell.api.resource.remove_resource(self.file, resource=resource)
-        assert len(self.file.by_type("IfcLaborResource")) == 0
-
-    def test_removing_a_resource_with_quantity(self):
-        self.file.create_entity("IfcProject")
-        resource = ifcopenshell.api.resource.add_resource(self.file, ifc_class="IfcLaborResource")
-        ifcopenshell.api.resource.add_resource_quantity(
-            self.file, resource=resource, ifc_class="IfcQuantityTime"
-        )
-        ifcopenshell.api.resource.remove_resource(self.file, resource=resource)
-        assert len(self.file.by_type("IfcLaborResource")) == 0
-        assert len(self.file.by_type("IfcPhysicalSimpleQuantity")) == 0
-
-
-class TestRemoveResourceIFC2X3(test.bootstrap.IFC2X3, TestRemoveResource):
-    pass
+# remove_resource tests is partially covered by test_add_resource_quantity.

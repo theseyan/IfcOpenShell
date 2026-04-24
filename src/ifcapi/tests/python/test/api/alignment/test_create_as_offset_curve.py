@@ -137,3 +137,4 @@ def test_create_as_offset_curve():
     assert curve.BasisCurve == basis_curve
 
 
+test_create_as_offset_curve()

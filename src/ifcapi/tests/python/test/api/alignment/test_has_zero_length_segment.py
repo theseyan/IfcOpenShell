@@ -90,3 +90,4 @@ def test_has_zero_length_segment():
     _test_horizontal_vertical_cant()
 
 
+test_has_zero_length_segment()

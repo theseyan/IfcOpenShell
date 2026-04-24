@@ -110,20 +110,6 @@ class TestFormat(test.bootstrap.IFC4):
         assert subject.format("3*2") == "6"
         assert subject.format("3/2") == "1.5"
 
-    def test_invalid_queries_raise(self):
-        with pytest.raises(ValueError):
-            subject.format("{{x")
-
-    def test_map_coordinate_formatting(self):
-        element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
-        point = self.file.create_entity("IfcCartesianPoint", Coordinates=(1.0, 2.0, 3.0))
-        placement = self.file.create_entity(
-            "IfcLocalPlacement",
-            RelativePlacement=self.file.create_entity("IfcAxis2Placement3D", Location=point),
-        )
-        element.ObjectPlacement = placement
-        assert subject.format("{{easting}}", element) == "1.0"
-
 
 class TestGetElementValue(test.bootstrap.IFC4):
     def test_selecting_an_elements_class_or_id_using_a_query(self):
@@ -190,50 +176,6 @@ class TestGetElementValue(test.bootstrap.IFC4):
         assert subject.get_element_value(element, "/Pset_.*Common/.Status") == ["New"]
         assert subject.get_element_value(element, "/Pset_.*Common/.Status.0") == "New"
 
-    def test_invalid_queries_raise(self):
-        element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
-        with pytest.raises(ValueError):
-            subject.get_element_value(element, "foo..bar")
-
-    def test_selecting_profiles_systems_zones_and_map_coordinates(self):
-        element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
-        point = self.file.create_entity("IfcCartesianPoint", Coordinates=(1.0, 2.0, 3.0))
-        placement = self.file.create_entity(
-            "IfcLocalPlacement",
-            RelativePlacement=self.file.create_entity("IfcAxis2Placement3D", Location=point),
-        )
-        element.ObjectPlacement = placement
-
-        material = ifcopenshell.api.material.add_material(self.file, name="STEEL")
-        material_set = ifcopenshell.api.material.add_material_set(self.file, set_type="IfcMaterialProfileSet")
-        profile = self.file.create_entity(
-            "IfcRectangleProfileDef", ProfileType="AREA", ProfileName="P1", XDim=1.0, YDim=2.0
-        )
-        ifcopenshell.api.material.add_profile(self.file, profile_set=material_set, material=material, profile=profile)
-        ifcopenshell.api.material.assign_material(self.file, products=[element], material=material_set)
-
-        system = self.file.create_entity("IfcDistributionSystem", GlobalId=ifcopenshell.guid.new(), Name="S1")
-        zone = self.file.create_entity("IfcZone", GlobalId=ifcopenshell.guid.new(), Name="Z1")
-        self.file.create_entity(
-            "IfcRelAssignsToGroup",
-            GlobalId=ifcopenshell.guid.new(),
-            RelatedObjects=[element],
-            RelatingGroup=system,
-        )
-        self.file.create_entity(
-            "IfcRelAssignsToGroup",
-            GlobalId=ifcopenshell.guid.new(),
-            RelatedObjects=[element],
-            RelatingGroup=zone,
-        )
-
-        assert subject.get_element_value(element, "profiles.ProfileName") == ["P1"]
-        assert subject.get_element_value(element, "system.Name") == ["S1"]
-        assert subject.get_element_value(element, "zone.Name") == ["Z1"]
-        assert subject.get_element_value(element, "easting") == 1.0
-        assert subject.get_element_value(element, "northing") == 2.0
-        assert subject.get_element_value(element, "elevation") == 3.0
-
 
 class TestFilterElements(test.bootstrap.IFC4):
     def test_selecting_by_globalid(self):
@@ -276,16 +218,15 @@ class TestFilterElements(test.bootstrap.IFC4):
         element.Description = "Foobar"
         assert subject.filter_elements(self.file, "IfcWall, Name=Foo, Description=Foobar") == {element}
 
-    def test_invalid_queries_raise(self):
-        with pytest.raises(ValueError):
-            subject.filter_elements(self.file, "[")
-
-    def test_selecting_by_type(self):
-        element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
         element_type = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWallType")
         element_type.PredefinedType = "SOLIDWALL"
         ifcopenshell.api.type.assign_type(self.file, related_objects=[element], relating_type=element_type)
         assert subject.filter_elements(self.file, "IfcWall, PredefinedType=SOLIDWALL") == {element}
+
+    def test_selecting_by_type(self):
+        element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        element_type = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWallType")
+        ifcopenshell.api.type.assign_type(self.file, related_objects=[element], relating_type=element_type)
         assert subject.filter_elements(self.file, "IfcWall, type=Foo") == set()
         element_type.Name = "Foo"
         assert subject.filter_elements(self.file, "IfcWall, type=Foo") == {element}

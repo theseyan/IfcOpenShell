@@ -23,8 +23,6 @@ import ifcopenshell.api.context
 import ifcopenshell.api.unit
 
 
-import pytest
-
 def _test_horizontal() -> ifcopenshell.file:
     file = ifcopenshell.file(schema="IFC4X3_ADD2")
     project = file.createIfcProject(GlobalId=ifcopenshell.guid.new(), Name="Test")
@@ -270,10 +268,10 @@ def _test_horizontal_vertical2(file: ifcopenshell.file):
     assert len(curve.Segments) == 3
 
 
-@pytest.mark.xfail(reason="Requires C++ geometry kernel for curve evaluation")
 def test_append_segment():
     file = _test_horizontal()
     _test_horizontal_vertical()
     _test_horizontal_vertical2(file)
 
 
+test_append_segment()
