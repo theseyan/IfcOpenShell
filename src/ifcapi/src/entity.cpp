@@ -346,7 +346,11 @@ void ifcopenshell_entity_set_null(ifcopenshell_ifc_instance_t* instance, const c
     try {
         auto* entity_decl = e->declaration().as_entity();
         size_t idx = entity_decl->attribute_index(attr);
-        e->unset_attribute_value(idx);
+        // Match SWIG's setArgumentAsNull: route through the templated
+        // set_attribute_value with Blank{} so the file's inverse index is
+        // properly maintained. The low-level unset_attribute_value()
+        // bypasses unregister_inverse and leaves stale inverses behind.
+        e->set_attribute_value(idx, Blank{});
     } catch (const std::exception& ex) {
         set_error(ex.what());
     }
