@@ -459,6 +459,18 @@ def _get_lib():
         ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p
     ]
 
+    # Make the bundled buildingSMART pset templates discoverable to the
+    # native pset edit / template code. Templates ship under
+    # ``ifcopenshell/util/schema/`` and are loaded lazily on first lookup.
+    try:
+        _schema_dir = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "util", "schema"
+        )
+        if os.path.isdir(_schema_dir):
+            _lib.ifcopenshell_util_pset_set_template_dir(_enc(_schema_dir))
+    except Exception:
+        pass
+
     return _lib
 
 
@@ -621,34 +633,51 @@ def _parse_aggregate_literal(raw, elem_prim: str):
     return raw
 
 
-class _typed_value:
-    """Represents an inline IFC type instance like IfcLabel('Hello').
+# ---------------------------------------------------------------------------
+# entity_instance
+# ---------------------------------------------------------------------------
 
-    Compatible with the SWIG entity_instance interface for typed values:
-    - `is_a()` returns the type name (e.g. "IfcLabel")
-    - `wrappedValue` returns the Python-typed value
-    - `id()` returns 0
+from ifcopenshell.entity_instance import entity_instance  # noqa: E402
+
+
+class _typed_value(entity_instance):
+    """Represents an inline IFC type instance like ``IfcLabel('Hello')``.
+
+    Inherits from :class:`entity_instance` so that ``isinstance`` checks and
+    unbound-method calls (e.g. ``entity_instance.is_a(tv)``) behave the same
+    as SWIG, where inline values are returned as ``entity_instance`` objects
+    with ``id() == 0``. The handle is set to ``0`` and the typed-value
+    payload is stored in ``_type_name`` / ``_wrapped``; base methods on
+    ``entity_instance`` detect this inline mode and dispatch on the payload.
     """
 
     def __init__(self, file_obj, type_name: str, value):
-        self._file = file_obj
-        self._type_name = type_name
+        # Bypass entity_instance.__init__'s handle bookkeeping; inline values
+        # never own a native handle. Setting attributes directly via
+        # object.__setattr__ avoids tripping any future descriptor logic.
+        object.__setattr__(self, "_file", file_obj)
+        object.__setattr__(self, "_handle", 0)
+        object.__setattr__(self, "_type_name", type_name)
         kind = _resolve_typed_value_kind(file_obj, type_name)
         if kind[0] == "aggregate":
-            self._wrapped = _parse_aggregate_literal(value, kind[1])
+            wrapped = _parse_aggregate_literal(value, kind[1])
         elif kind[0] == "scalar":
-            self._wrapped = _convert_scalar(kind[1], value)
+            wrapped = _convert_scalar(kind[1], value)
         elif value is None or not isinstance(value, str):
-            self._wrapped = value
+            wrapped = value
         else:
             try:
-                self._wrapped = float(value)
+                wrapped = float(value)
             except (ValueError, TypeError):
-                self._wrapped = value
+                wrapped = value
+        object.__setattr__(self, "_wrapped", wrapped)
 
-    def is_a(self, ifc_class: str | None = None) -> bool | str:
+    def is_a(self, ifc_class=None):
         if ifc_class is None:
             return self._type_name
+        if isinstance(ifc_class, bool) and ifc_class:
+            schema = getattr(self._file, "schema", "")
+            return f"{schema}.{self._type_name}" if schema else self._type_name
         return self._type_name.lower() == ifc_class.lower()
 
     @property
@@ -657,7 +686,7 @@ class _typed_value:
 
     @wrappedValue.setter
     def wrappedValue(self, value):
-        self._wrapped = value
+        object.__setattr__(self, "_wrapped", value)
 
     def id(self) -> int:
         return 0
@@ -674,28 +703,44 @@ class _typed_value:
         return hash((self._type_name, self._wrapped))
 
     def __getitem__(self, index):
+        # Mirrors entity_instance: index 0 returns the only positional
+        # attribute (the wrapped value); other indices raise IndexError.
         if index == 0:
             return self._wrapped
-        if isinstance(self._wrapped, (list, tuple)):
-            return self._wrapped[index]
         raise IndexError(index)
 
     def __len__(self):
-        if isinstance(self._wrapped, (list, tuple)):
-            return len(self._wrapped)
+        # Mirrors entity_instance: number of positional attributes. Inline
+        # typed values always have exactly one (the wrapped value).
         return 1
 
     def __iter__(self):
-        if isinstance(self._wrapped, (list, tuple)):
-            return iter(self._wrapped)
+        # Inline typed values have a single positional slot (the wrapped
+        # value). Iteration should always yield exactly one item — the full
+        # wrapped payload — so ``enumerate(tv)`` matches SWIG's behaviour
+        # (one attribute named ``wrappedValue``).
         return iter((self._wrapped,))
 
+    def __setitem__(self, index, value):
+        # Inline typed values have a single positional slot (the wrapped
+        # value). copy_deep / similar utilities assign to ``[0]`` after
+        # creating the value via ``create_entity``.
+        if index == 0:
+            object.__setattr__(self, "_wrapped", value)
+            return
+        raise IndexError(index)
 
-# ---------------------------------------------------------------------------
-# entity_instance
-# ---------------------------------------------------------------------------
+    def __setattr__(self, name, value):
+        # Bypass entity_instance.__setattr__ — inline values have no handle,
+        # so the native attribute path would crash. Property setters (e.g.
+        # ``wrappedValue``) are still honoured because ``object.__setattr__``
+        # respects data descriptors defined on the class.
+        object.__setattr__(self, name, value)
 
-from ifcopenshell.entity_instance import entity_instance  # noqa: E402
+    def __del__(self):
+        # Inline values never own a native handle; suppress entity_instance's
+        # destroy call entirely.
+        pass
 
 # ---------------------------------------------------------------------------
 # file
@@ -817,15 +862,20 @@ class file:
             raise TypeError("create_entity() requires a type name")
         eid = kwargs.pop("id", -1)
         lib = _get_lib()
+        # Probe the schema to see whether this name is a type declaration
+        # (IfcLabel, IfcLineIndex, ...) rather than an entity. Type
+        # declarations are not creatable via the C entity API and must be
+        # returned as inline ``_typed_value`` instances (mirrors SWIG, where
+        # ``create_entity('IfcLabel', 'foo')`` yields an ``entity_instance``
+        # with ``id() == 0``).
+        if _resolve_typed_value_kind(self, type_name)[0] != "unknown":
+            val_arg = args[0] if args else kwargs.get("wrappedValue")
+            return _typed_value(self, type_name, val_arg)
         if eid == -1 or eid is None:
             h = lib.ifcopenshell_file_create_entity(self._ptr, _enc(type_name))
         else:
             h = lib.ifcopenshell_file_create_entity_with_id(self._ptr, _enc(type_name), int(eid))
         if not h:
-            # Might be a type instance (IfcLabel, IfcReal, etc.)
-            val_arg = args[0] if args else kwargs.get("wrappedValue")
-            if val_arg is not None or "wrappedValue" in kwargs:
-                return _typed_value(self, type_name, val_arg)
             err = lib.ifcopenshell_last_error_message()
             msg = err.decode("utf-8") if err else "Unknown error"
             raise RuntimeError(f"Failed to create entity '{type_name}': {msg}")
@@ -902,6 +952,11 @@ class file:
         """
         if not isinstance(inst, entity_instance):
             raise TypeError(f"Expected entity_instance, got {type(inst)}")
+        # Inline typed values (``_typed_value`` subclass with ``_handle == 0``)
+        # have no STEP identity; SWIG's wrapped_data.add() returns an
+        # equivalent inline value bound to the target file. Mirror that here.
+        if isinstance(inst, _typed_value):
+            return _typed_value(self, inst._type_name, inst._wrapped)
         lib = _get_lib()
         max_id = self.get_max_id() if self.transaction is not None else 0
         h = lib.ifcopenshell_file_add_entity(

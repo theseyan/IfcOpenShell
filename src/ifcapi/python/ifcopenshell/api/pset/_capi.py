@@ -114,11 +114,9 @@ def _add_entry(lib, props, key, value):
         lib.ifcopenshell_pset_props_set_dict(props, k, inner)
         return
 
-    # entity_instance — could be IfcProperty, IfcValue/typed value, or arbitrary entity.
-    if isinstance(value, ifcopenshell.entity_instance):
-        lib.ifcopenshell_pset_props_set_instance(props, k, value._handle)
-        return
-
+    # _typed_value (now a subclass of entity_instance for SWIG parity) must be
+    # checked before the generic entity_instance branch — otherwise inline
+    # values would be mis-routed through the entity-handle path.
     if isinstance(value, _typed_value):
         ifc_type = value.is_a()
         py_val = value.wrappedValue
@@ -130,6 +128,11 @@ def _add_entry(lib, props, key, value):
             lib.ifcopenshell_pset_props_set_typed_double(props, k, float(py_val), _enc(ifc_type))
         else:
             lib.ifcopenshell_pset_props_set_typed_string(props, k, _enc(str(py_val)), _enc(ifc_type))
+        return
+
+    # entity_instance — could be IfcProperty, IfcValue/typed value, or arbitrary entity.
+    if isinstance(value, ifcopenshell.entity_instance):
+        lib.ifcopenshell_pset_props_set_instance(props, k, value._handle)
         return
 
     if isinstance(value, (list, tuple)):
