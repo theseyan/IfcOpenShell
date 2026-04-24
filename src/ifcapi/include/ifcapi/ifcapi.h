@@ -937,6 +937,12 @@ IFCAPI_EXPORT void ifcopenshell_pset_props_set_int_list(
 IFCAPI_EXPORT void ifcopenshell_pset_props_set_dict(
     ifcopenshell_pset_props_t* outer, const char* key, ifcopenshell_pset_props_t* inner);
 
+/* Attach an IfcUnit instance to the most recently appended entry. Mirrors
+   upstream ``unpack_unit_value`` for ``{NominalValue, Unit}`` shaped values:
+   the unit becomes the resulting IfcPropertySingleValue's ``Unit`` attribute. */
+IFCAPI_EXPORT void ifcopenshell_pset_props_set_unit_for_last(
+    ifcopenshell_pset_props_t* props, ifcopenshell_ifc_instance_t* unit);
+
 /* Create an empty IfcPropertySet on `product`. owner_history may be NULL.
    `ifc2x3_subclass` may be NULL; when non-NULL it overrides the default
    IfcMaterialProperties / IfcProfileProperties subclass selection in

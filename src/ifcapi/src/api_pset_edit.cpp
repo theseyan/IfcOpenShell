@@ -268,6 +268,17 @@ IfcUtil::IfcBaseClass* create_typed_value(IfcParse::IfcFile* file, const std::st
 // Determine the IFC primary measure type for a single-value property.
 std::string primary_measure_type(IfcUtil::IfcBaseClass* pset_template, const std::string& prop_name,
                                  IfcUtil::IfcBaseClass* old_value, const Entry& new_value) {
+    // An explicit type from the new value (TYPED_* kinds or an INSTANCE
+    // wrapping a typed value) overrides any old/template-derived type;
+    // mirrors upstream where ``prop.NominalValue = file.createIfcBoolean(...)``
+    // swaps the underlying value type.
+    if (new_value.kind == Kind::TYPED_STRING || new_value.kind == Kind::TYPED_DOUBLE
+        || new_value.kind == Kind::TYPED_INT || new_value.kind == Kind::TYPED_BOOL) {
+        return new_value.ifc_type;
+    }
+    if (new_value.kind == Kind::INSTANCE && new_value.inst) {
+        return new_value.inst->declaration().name();
+    }
     if (old_value) {
         return old_value->declaration().name();
     }
@@ -278,13 +289,6 @@ std::string primary_measure_type(IfcUtil::IfcBaseClass* pset_template, const std
                 return pmt.empty() ? std::string("IfcLabel") : pmt;
             }
         }
-    }
-    if (new_value.kind == Kind::INSTANCE && new_value.inst) {
-        return new_value.inst->declaration().name();
-    }
-    if (new_value.kind == Kind::TYPED_STRING || new_value.kind == Kind::TYPED_DOUBLE
-        || new_value.kind == Kind::TYPED_INT || new_value.kind == Kind::TYPED_BOOL) {
-        return new_value.ifc_type;
     }
     switch (new_value.kind) {
         case Kind::STRING: return "IfcLabel";
@@ -339,6 +343,10 @@ bool process_existing_single_value(IfcParse::IfcFile* file, IfcUtil::IfcBaseClas
             int idx = attr_index_of(prop, "NominalValue");
             if (idx >= 0) prop->set_attribute_value(static_cast<size_t>(idx), entry.inst);
         }
+        if (entry.unit) {
+            int u_idx = attr_index_of(prop, "Unit");
+            if (u_idx >= 0) prop->set_attribute_value(static_cast<size_t>(u_idx), entry.unit);
+        }
         return true;
     }
 
@@ -349,6 +357,10 @@ bool process_existing_single_value(IfcParse::IfcFile* file, IfcUtil::IfcBaseClas
     if (!typed) return false;
     int idx = attr_index_of(prop, "NominalValue");
     if (idx >= 0) prop->set_attribute_value(static_cast<size_t>(idx), typed);
+    if (entry.unit) {
+        int u_idx = attr_index_of(prop, "Unit");
+        if (u_idx >= 0) prop->set_attribute_value(static_cast<size_t>(u_idx), entry.unit);
+    }
     return true;
 }
 
@@ -408,6 +420,10 @@ IfcUtil::IfcBaseClass* build_new_property(IfcParse::IfcFile* file, IfcUtil::IfcB
         write_string_attr(sv, "Name", name);
         int nv_idx = attr_index_of(sv, "NominalValue");
         if (nv_idx >= 0) sv->set_attribute_value(static_cast<size_t>(nv_idx), entry.inst);
+        if (entry.unit) {
+            int u_idx = attr_index_of(sv, "Unit");
+            if (u_idx >= 0) sv->set_attribute_value(static_cast<size_t>(u_idx), entry.unit);
+        }
         return sv;
     }
 
@@ -471,6 +487,10 @@ IfcUtil::IfcBaseClass* build_new_property(IfcParse::IfcFile* file, IfcUtil::IfcB
     write_string_attr(sv, "Name", name);
     int nv_idx = attr_index_of(sv, "NominalValue");
     if (nv_idx >= 0) sv->set_attribute_value(static_cast<size_t>(nv_idx), tv);
+    if (entry.unit) {
+        int u_idx = attr_index_of(sv, "Unit");
+        if (u_idx >= 0) sv->set_attribute_value(static_cast<size_t>(u_idx), entry.unit);
+    }
     return sv;
 }
 
@@ -620,6 +640,15 @@ IFCAPI_EXPORT void ifcopenshell_pset_props_set_dict(
     auto& e = append_entry(outer, key);
     e.kind = Kind::DICT;
     e.nested.reset(inner);
+}
+
+// Attach an IfcUnit to the most recently added entry (mirrors upstream's
+// ``unpack_unit_value`` shape ``{NominalValue, Unit}``). The unit becomes the
+// ``Unit`` attribute on the resulting IfcPropertySingleValue.
+IFCAPI_EXPORT void ifcopenshell_pset_props_set_unit_for_last(
+    ifcopenshell_pset_props_t* p, ifcopenshell_ifc_instance_t* unit) {
+    if (!p || p->entries.empty()) return;
+    p->entries.back().unit = unit ? unit->ptr : nullptr;
 }
 
 /* ---- edit_pset ---- */
