@@ -899,7 +899,7 @@ int do_set(IfcParse::IfcFile* file,
                     if (is_qto) {
                         h = ifcopenshell_api_pset_add_qto(file_h, eh.get(), k.c_str(), nullptr);
                     } else {
-                        h = ifcopenshell_api_pset_add_pset(file_h, eh.get(), k.c_str(), nullptr);
+                        h = ifcopenshell_api_pset_add_pset(file_h, eh.get(), k.c_str(), nullptr, nullptr);
                     }
                     if (h) {
                         pset_inst = h->ptr;

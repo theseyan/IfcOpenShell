@@ -74,7 +74,8 @@ def _bind() -> ctypes.CDLL:
 
     lib.ifcopenshell_api_pset_add_pset.restype = ctypes.c_void_p
     lib.ifcopenshell_api_pset_add_pset.argtypes = [
-        ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p, ctypes.c_void_p
+        ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p, ctypes.c_void_p,
+        ctypes.c_char_p,
     ]
     lib.ifcopenshell_api_pset_add_qto.restype = ctypes.c_void_p
     lib.ifcopenshell_api_pset_add_qto.argtypes = [

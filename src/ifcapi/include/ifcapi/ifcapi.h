@@ -938,13 +938,17 @@ IFCAPI_EXPORT void ifcopenshell_pset_props_set_dict(
     ifcopenshell_pset_props_t* outer, const char* key, ifcopenshell_pset_props_t* inner);
 
 /* Create an empty IfcPropertySet on `product`. owner_history may be NULL.
-   Returns a caller-owned handle (free with ifcopenshell_ifc_instance_destroy)
-   that wraps the resulting (or pre-existing) IfcPropertySet, or NULL on error. */
+   `ifc2x3_subclass` may be NULL; when non-NULL it overrides the default
+   IfcMaterialProperties / IfcProfileProperties subclass selection in
+   IFC2X3 (no effect for >=IFC4). Returns a caller-owned handle (free with
+   ifcopenshell_ifc_instance_destroy) that wraps the resulting (or
+   pre-existing) IfcPropertySet, or NULL on error. */
 IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_api_pset_add_pset(
     ifcopenshell_ifc_file_t* file,
     ifcopenshell_ifc_instance_t* product,
     const char* name,
-    ifcopenshell_ifc_instance_t* owner_history);
+    ifcopenshell_ifc_instance_t* owner_history,
+    const char* ifc2x3_subclass);
 
 /* Create an empty IfcElementQuantity on `product`. */
 IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_api_pset_add_qto(
