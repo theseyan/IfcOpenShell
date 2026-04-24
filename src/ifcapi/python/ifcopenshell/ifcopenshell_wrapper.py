@@ -152,6 +152,8 @@ def _bind():
         "ifcopenshell_ifc_entity_attributes": (c_bool, [H, Ap]),
         "ifcopenshell_ifc_entity_all_attributes": (c_bool, [H, Ap]),
         "ifcopenshell_ifc_entity_all_inverse_attributes": (c_bool, [H, Ip]),
+        # instance -> declaration (used to look up header-section schema)
+        "ifcopenshell_ifc_instance_declaration": (c_bool, [H, HH]),
         # type/select/enum
         "ifcopenshell_ifc_type_declaration_declared_type": (c_bool, [H, HH]),
         "ifcopenshell_ifc_select_type_select_list": (c_bool, [H, Dp]),
@@ -851,6 +853,22 @@ def schema_by_name(name: str) -> schema_definition:
             _bind().ifcopenshell_ifc_schema_destroy(out)
         raise RuntimeError("Schema not found: %s" % name)
     return schema_definition(out)
+
+
+def instance_declaration(handle_value) -> declaration:
+    """Return the schema declaration for a raw entity instance handle.
+
+    `handle_value` is the int address of an `ifcopenshell_ifc_instance_t*`
+    (matches the `_handle` field of `ifcopenshell.entity_instance`)."""
+    inst_h = ctypes.cast(c_void_p(int(handle_value)), _HandleStructP)
+    out = _HandleStructP()
+    if not _bind().ifcopenshell_ifc_instance_declaration(inst_h, byref(out)):
+        raise RuntimeError("Instance has no declaration")
+    if not out or not out.contents.ptr:
+        if out:
+            _bind().ifcopenshell_ifc_declaration_destroy(out)
+        raise RuntimeError("Instance has no declaration")
+    return _wrap_decl(out)
 
 
 # ---------------------------------------------------------------------------

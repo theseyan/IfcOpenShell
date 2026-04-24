@@ -83,6 +83,17 @@ IFCAPI_EXPORT void ifcopenshell_file_free(ifcopenshell_ifc_file_t* file);
 /// Returns the schema identifier string (e.g. "IFC4"). Do NOT free.
 IFCAPI_EXPORT const char* ifcopenshell_file_schema(const ifcopenshell_ifc_file_t* file);
 
+/// Returns the FILE_DESCRIPTION header section as an instance handle, or NULL.
+/// The wrapper must be freed with ifcopenshell_instance_free; the underlying
+/// C++ entity is owned by the file.
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_file_header_file_description(ifcopenshell_ifc_file_t* file);
+
+/// Returns the FILE_NAME header section as an instance handle, or NULL.
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_file_header_file_name(ifcopenshell_ifc_file_t* file);
+
+/// Returns the FILE_SCHEMA header section as an instance handle, or NULL.
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_file_header_file_schema(ifcopenshell_ifc_file_t* file);
+
 /// Creates a blank entity of the given type. Returns its STEP ID, or 0 on error.
 IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_file_create_entity(ifcopenshell_ifc_file_t* file, const char* type_name);
 

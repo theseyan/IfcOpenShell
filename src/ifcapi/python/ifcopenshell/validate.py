@@ -60,6 +60,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 
 import ifcopenshell
 import ifcopenshell.express.rule_executor
+import ifcopenshell.guid
 import ifcopenshell.ifcopenshell_wrapper
 
 if TYPE_CHECKING:

@@ -4,6 +4,7 @@
 
 #include "ifcparse/IfcFile.h"
 #include "ifcparse/IfcSchema.h"
+#include "ifcparse/IfcSpfHeader.h"
 #include "ifcparse/IfcBaseClass.h"
 #include "ifcparse/IfcException.h"
 
@@ -102,6 +103,33 @@ const char* ifcopenshell_file_schema(const ifcopenshell_ifc_file_t* file) {
     auto* f = file->ptr;
     auto* schema = f->schema();
     return schema ? schema->name().c_str() : "";
+}
+
+ifcopenshell_ifc_instance_t* ifcopenshell_file_header_file_description(ifcopenshell_ifc_file_t* file) {
+    if (!file || !file->ptr) return nullptr;
+    try {
+        auto* h = file->ptr->header().file_description();
+        if (!h) return nullptr;
+        return ifcopenshell::capi::wrap_instance(const_cast<IfcUtil::IfcBaseClass*>(static_cast<const IfcUtil::IfcBaseClass*>(h)));
+    } catch (...) { return nullptr; }
+}
+
+ifcopenshell_ifc_instance_t* ifcopenshell_file_header_file_name(ifcopenshell_ifc_file_t* file) {
+    if (!file || !file->ptr) return nullptr;
+    try {
+        auto* h = file->ptr->header().file_name();
+        if (!h) return nullptr;
+        return ifcopenshell::capi::wrap_instance(const_cast<IfcUtil::IfcBaseClass*>(static_cast<const IfcUtil::IfcBaseClass*>(h)));
+    } catch (...) { return nullptr; }
+}
+
+ifcopenshell_ifc_instance_t* ifcopenshell_file_header_file_schema(ifcopenshell_ifc_file_t* file) {
+    if (!file || !file->ptr) return nullptr;
+    try {
+        auto* h = file->ptr->header().file_schema();
+        if (!h) return nullptr;
+        return ifcopenshell::capi::wrap_instance(const_cast<IfcUtil::IfcBaseClass*>(static_cast<const IfcUtil::IfcBaseClass*>(h)));
+    } catch (...) { return nullptr; }
 }
 
 ifcopenshell_ifc_instance_t* ifcopenshell_file_create_entity(ifcopenshell_ifc_file_t* file, const char* type_name) {
