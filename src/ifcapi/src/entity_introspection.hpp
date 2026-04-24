@@ -103,7 +103,7 @@ inline void set_entity_ref(IfcUtil::IfcBaseClass* e, const char* attr, IfcUtil::
         was_set = !cur.isNull();
     } catch (...) {}
     if (was_set) {
-        try { e->unset_attribute_value(static_cast<size_t>(idx)); } catch (...) {}
+        try { e->set_attribute_value(static_cast<size_t>(idx), Blank{}); } catch (...) {}
     }
 }
 

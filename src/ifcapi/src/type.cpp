@@ -156,11 +156,11 @@ void clear_predefined_type_on_objects(
         if (!od) continue;
         int ot_idx = od->attribute_index("ObjectType");
         if (ot_idx >= 0) {
-            try { obj->unset_attribute_value(static_cast<size_t>(ot_idx)); } catch (...) {}
+            try { obj->set_attribute_value(static_cast<size_t>(ot_idx), Blank{}); } catch (...) {}
         }
         int p_idx = od->attribute_index("PredefinedType");
         if (p_idx >= 0) {
-            try { obj->unset_attribute_value(static_cast<size_t>(p_idx)); } catch (...) {}
+            try { obj->set_attribute_value(static_cast<size_t>(p_idx), Blank{}); } catch (...) {}
         }
     }
 }

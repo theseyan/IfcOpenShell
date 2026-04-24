@@ -359,7 +359,7 @@ void apply_set_predefined_type(IfcParse::IfcFile* /*file*/, IfcUtil::IfcBaseClas
         try { element->set_attribute_value((size_t)idx, std::string("NOTDEFINED")); } catch (...) {}
         int t_idx = ifcapi::find_attr_idx(element, type_attr_name);
         if (t_idx >= 0) {
-            try { element->unset_attribute_value((size_t)t_idx); } catch (...) {}
+            try { element->set_attribute_value((size_t)t_idx, Blank{}); } catch (...) {}
         }
         return;
     }
@@ -609,7 +609,7 @@ void setattr_with_cast(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e,
     std::string dts = dt ? dt : "";
 
     auto try_set_none = [&]() {
-        try { e->unset_attribute_value((size_t)idx); } catch (...) {}
+        try { e->set_attribute_value((size_t)idx, Blank{}); } catch (...) {}
     };
 
     if (val_is_none(value)) {

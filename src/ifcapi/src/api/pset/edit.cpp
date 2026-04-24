@@ -332,7 +332,7 @@ bool process_existing_single_value(IfcParse::IfcFile* file, IfcUtil::IfcBaseClas
         }
         // Set NominalValue = NULL.
         int idx = attr_index_of(prop, "NominalValue");
-        if (idx >= 0) prop->unset_attribute_value(static_cast<size_t>(idx));
+        if (idx >= 0) prop->set_attribute_value(static_cast<size_t>(idx), Blank{});
         return true;
     }
 
@@ -400,7 +400,7 @@ bool process_existing_enumerated(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass*
     }
     if (sel_vals.empty()) {
         int idx = attr_index_of(prop, "EnumerationValues");
-        if (idx >= 0) prop->unset_attribute_value(static_cast<size_t>(idx));
+        if (idx >= 0) prop->set_attribute_value(static_cast<size_t>(idx), Blank{});
     } else {
         write_ref_aggregate(prop, "EnumerationValues", sel_vals);
     }
