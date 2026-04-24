@@ -40,6 +40,7 @@ struct Entry {
     std::string s_val;
     std::string ifc_type;
     IfcUtil::IfcBaseClass* inst = nullptr;
+    IfcUtil::IfcBaseClass* unit = nullptr;
     std::vector<std::string> str_list;
     std::vector<double> dbl_list;
     std::vector<int64_t> int_list;

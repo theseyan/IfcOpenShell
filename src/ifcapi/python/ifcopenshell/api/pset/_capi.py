@@ -72,6 +72,9 @@ def _bind() -> ctypes.CDLL:
     lib.ifcopenshell_pset_props_set_dict.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_void_p]
     lib.ifcopenshell_pset_props_set_dict.restype = None
 
+    lib.ifcopenshell_pset_props_set_unit_for_last.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    lib.ifcopenshell_pset_props_set_unit_for_last.restype = None
+
     lib.ifcopenshell_api_pset_add_pset.restype = ctypes.c_void_p
     lib.ifcopenshell_api_pset_add_pset.argtypes = [
         ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p, ctypes.c_void_p,
@@ -104,6 +107,14 @@ def _add_entry(lib, props, key, value):
         return
 
     if isinstance(value, dict):
+        # ``{NominalValue, Unit}`` shape: a custom IfcUnit attached to a
+        # property single value. Mirrors upstream's ``unpack_unit_value``.
+        if "NominalValue" in value and "Unit" in value:
+            _add_entry(lib, props, key, value["NominalValue"])
+            unit = value["Unit"]
+            unit_handle = unit._handle if isinstance(unit, ifcopenshell.entity_instance) else None
+            lib.ifcopenshell_pset_props_set_unit_for_last(props, unit_handle)
+            return
         inner = lib.ifcopenshell_pset_props_new()
         if not inner:
             raise RuntimeError("Failed to allocate nested property builder")
