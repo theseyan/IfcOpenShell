@@ -23,6 +23,35 @@ from ifcopenshell import (
 from ifcopenshell._value_api import configure_value_lib, value_to_python
 
 
+def _typed_value_str(tv):
+    """Serialise a ``_typed_value``'s wrapped payload into the canonical
+    SPF representation expected by the C ``create_type_value`` helper.
+
+    For aggregate payloads (``IfcLineIndex((1,2,3,4,1))`` etc.) we emit a
+    parenthesised, comma-separated literal with no whitespace so that the
+    C-side parser can dispatch unambiguously on the declared element type.
+    Strings are kept bare; the C side strips a single layer of quotes.
+    """
+    w = tv._wrapped
+    if w is None:
+        return ""
+    if isinstance(w, (list, tuple)):
+        parts = []
+        for item in w:
+            if isinstance(item, bool):
+                parts.append("true" if item else "false")
+            elif isinstance(item, (int, float)):
+                parts.append(repr(item))
+            elif isinstance(item, str):
+                parts.append("'" + item.replace("'", "''") + "'")
+            else:
+                parts.append(str(item))
+        return "(" + ",".join(parts) + ")"
+    if isinstance(w, bool):
+        return "true" if w else "false"
+    return str(w)
+
+
 _derived_lib_configured = False
 
 
@@ -96,6 +125,14 @@ class entity_instance:
         if lib.ifcopenshell_ifc_instance_id(self._handle, ctypes.byref(out)):
             return int(out.value)
         return 0
+
+    def identity(self) -> tuple:
+        """Stable identity key for this instance (parity with SWIG wrapped_data.identity()).
+
+        Returns a tuple unique per (file, instance) so it can be used as a
+        dict key for caching, e.g. by ifcopenshell.api.project.append_asset.
+        """
+        return (id(self._file), self.id(), self.is_a())
 
     def is_a(self, type_name=None):
         lib = _get_lib()
@@ -441,7 +478,7 @@ class entity_instance:
         elif isinstance(value, _typed_value):
             lib.ifcopenshell_entity_set_typed_value(
                 h, attr, _enc(value._type_name),
-                _enc(str(value._wrapped)) if value._wrapped is not None else None)
+                _enc(_typed_value_str(value)) if value._wrapped is not None else None)
         elif isinstance(value, entity_instance):
             lib.ifcopenshell_entity_set_reference(h, attr, value._handle)
         elif isinstance(value, str):
@@ -545,48 +582,57 @@ class entity_instance:
         pt = self._declared_attribute_primitive(name)
         elem_kind = None
         nested_double = False
+        nested_int = False
         if isinstance(pt, tuple) and len(pt) == 2:
             inner = pt[1]
-            if isinstance(inner, tuple) and len(inner) == 2 and inner[1] == "float":
-                nested_double = True
+            if isinstance(inner, tuple) and len(inner) == 2:
+                if inner[1] == "float":
+                    nested_double = True
+                elif inner[1] == "integer":
+                    nested_int = True
             elif isinstance(inner, str):
                 elem_kind = inner
         elif isinstance(pt, str):
             elem_kind = pt
 
         first = items[0]
-        if nested_double:
+        if nested_double or nested_int:
             idx = self._attr_index(name)
             if idx < 0:
                 raise TypeError(f"Unknown attribute '{name}'")
-            class _DL(ctypes.Structure):
-                _fields_ = [("items", ctypes.POINTER(ctypes.c_double)), ("size", ctypes.c_size_t)]
-            class _DLL(ctypes.Structure):
-                _fields_ = [("items", ctypes.POINTER(_DL)), ("size", ctypes.c_size_t)]
+            c_elem = ctypes.c_double if nested_double else ctypes.c_int32
+            py_cast = float if nested_double else int
+            class _L(ctypes.Structure):
+                _fields_ = [("items", ctypes.POINTER(c_elem)), ("size", ctypes.c_size_t)]
+            class _LL(ctypes.Structure):
+                _fields_ = [("items", ctypes.POINTER(_L)), ("size", ctypes.c_size_t)]
             inner_arrays = []
-            dl_items = (_DL * len(items))()
+            l_items = (_L * len(items))()
             for i, row in enumerate(items):
-                row_vals = [float(v) for v in row]
-                buf = (ctypes.c_double * len(row_vals))(*row_vals)
+                row_vals = [py_cast(v) for v in row]
+                buf = (c_elem * len(row_vals))(*row_vals)
                 inner_arrays.append(buf)
-                dl_items[i].items = ctypes.cast(buf, ctypes.POINTER(ctypes.c_double))
-                dl_items[i].size = len(row_vals)
-            dll = _DLL()
-            dll.items = dl_items
-            dll.size = len(items)
-            lib.ifcopenshell_ifc_instance_set_argument_double_list_list.restype = ctypes.c_bool
-            lib.ifcopenshell_ifc_instance_set_argument_double_list_list.argtypes = [
-                ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(_DLL),
-            ]
-            ok = lib.ifcopenshell_ifc_instance_set_argument_double_list_list(h, idx, ctypes.byref(dll))
+                l_items[i].items = ctypes.cast(buf, ctypes.POINTER(c_elem))
+                l_items[i].size = len(row_vals)
+            ll = _LL()
+            ll.items = l_items
+            ll.size = len(items)
+            sym = (
+                lib.ifcopenshell_ifc_instance_set_argument_double_list_list
+                if nested_double
+                else lib.ifcopenshell_ifc_instance_set_argument_int32_list_list
+            )
+            sym.restype = ctypes.c_bool
+            sym.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(_LL)]
+            ok = sym(h, idx, ctypes.byref(ll))
             if not ok:
-                raise RuntimeError(f"Failed to set nested double aggregate '{name}'")
+                raise RuntimeError(f"Failed to set nested aggregate '{name}'")
             return
 
         if isinstance(first, _typed_value):
             type_names = (ctypes.c_char_p * len(items))(*[_enc(v._type_name) for v in items])
             str_vals = (ctypes.c_char_p * len(items))(
-                *[_enc(str(v._wrapped)) if v._wrapped is not None else _enc("") for v in items])
+                *[_enc(_typed_value_str(v)) if v._wrapped is not None else _enc("") for v in items])
             lib.ifcopenshell_entity_set_aggregate_typed_value(h, attr, type_names, str_vals, len(items))
             return
         if isinstance(first, entity_instance):

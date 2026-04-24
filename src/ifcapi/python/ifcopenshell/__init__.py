@@ -17,6 +17,25 @@ from typing import List, Optional, Set, Tuple
 
 version = "0.8.1"
 
+
+def get_log() -> str:
+    """Return the accumulated parser/validator log (parity with SWIG)."""
+    from ifcopenshell import ifcopenshell_wrapper as _W
+    return _W.get_log()
+
+
+class Error(Exception):
+    """Error used when a generic problem occurs"""
+
+    pass
+
+
+class SchemaError(Error):
+    """Error used when an IFC schema related problem occurs"""
+
+    pass
+
+
 _lib = None
 
 
@@ -97,6 +116,8 @@ def _get_lib():
     _lib.ifcopenshell_ifc_file_by_id.argtypes = [ctypes.c_void_p, ctypes.c_int32, ctypes.POINTER(ctypes.c_void_p)]
     _lib.ifcopenshell_ifc_instance_id.restype = ctypes.c_bool
     _lib.ifcopenshell_ifc_instance_id.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32)]
+    _lib.ifcopenshell_ifc_instance_file.restype = ctypes.c_void_p
+    _lib.ifcopenshell_ifc_instance_file.argtypes = [ctypes.c_void_p]
     _lib.ifcopenshell_file_get_inverse.restype = ctypes.POINTER(ctypes.c_void_p)
     _lib.ifcopenshell_file_get_inverse.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32)]
     _lib.ifcopenshell_file_traverse.restype = ctypes.POINTER(ctypes.c_void_p)
@@ -533,6 +554,7 @@ class file:
             err = lib.ifcopenshell_last_error_message()
             msg = err.decode("utf-8") if err else "Unknown error"
             raise RuntimeError(f"Failed to create IFC file: {msg}")
+        self._owns_ptr = True
         self.header = _file_header()
         self.transaction = None
         self.history = []
@@ -548,10 +570,10 @@ class file:
         return None
 
     def __del__(self):
-        if getattr(self, "_ptr", None):
+        if getattr(self, "_ptr", None) and getattr(self, "_owns_ptr", True):
             lib = _get_lib()
             lib.ifcopenshell_file_free(self._ptr)
-            self._ptr = None
+        self._ptr = None
 
     @property
     def schema_identifier(self) -> str:
@@ -783,6 +805,7 @@ def schema_by_name(name):
 
 
 _SCRATCH_FILES: dict = {}
+_BORROWED_FILES: dict[int, file] = {}
 
 
 def _scratch_file(schema: str) -> "file":
@@ -801,9 +824,12 @@ def create_entity(type: str, schema: str = "IFC4", *args, **kwargs):
     return _scratch_file(schema).create_entity(type, *args, **kwargs)
 
 
-def _wrap_file_ptr(ptr) -> "file":
+def _wrap_file_ptr(ptr, *, owned=True) -> "file":
+    if isinstance(ptr, ctypes.c_void_p):
+        ptr = ptr.value
     f = file.__new__(file)
     f._ptr = ptr
+    f._owns_ptr = owned
     f.header = _file_header()
     f.transaction = None
     f.history = []
@@ -814,10 +840,25 @@ def _wrap_file_ptr(ptr) -> "file":
     return f
 
 
-def open(path, should_stream=False, format=None):  # noqa: A001
+def _borrow_file_ptr(ptr, fallback=None) -> "file":
+    if isinstance(ptr, ctypes.c_void_p):
+        ptr = ptr.value
+    if not ptr:
+        return fallback
+    if fallback is not None and getattr(fallback, "_ptr", None) == ptr:
+        return fallback
+    borrowed = _BORROWED_FILES.get(ptr)
+    if borrowed is None or getattr(borrowed, "_ptr", None) != ptr:
+        borrowed = _wrap_file_ptr(ptr, owned=False)
+        _BORROWED_FILES[ptr] = borrowed
+    return borrowed
+
+
+def open(path, should_stream=False, format=None, readonly=False):  # noqa: A001
     """Load an IFC file from disk.
 
-    Minimal implementation backed by the native C API.
+    Minimal implementation backed by the native C API. ``readonly`` is
+    accepted for upstream API parity but currently has no native effect.
     """
     lib = _get_lib()
     if not hasattr(lib, "ifcopenshell_file_open"):

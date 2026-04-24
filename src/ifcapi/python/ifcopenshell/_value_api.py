@@ -11,6 +11,7 @@ Only depends on :mod:`ctypes` and the standard library."""
 from __future__ import annotations
 
 import ctypes
+import sys
 
 
 # ifcopenshell_value_kind_t constants (must match value.h)
@@ -88,7 +89,8 @@ def value_to_python(lib, ptr, element):
         # Local import avoids circular dep on entity_instance at module
         # load time.
         from ifcopenshell.entity_instance import entity_instance as _ei
-        return _ei(element.file, h)
+        borrow_file_ptr = sys.modules["ifcopenshell"]._borrow_file_ptr
+        return _ei(borrow_file_ptr(lib.ifcopenshell_ifc_instance_file(h), fallback=element.file), h)
     if kind == IFCSEL_VALUE_LIST:
         n = lib.ifcopenshell_value_list_size(ptr)
         return [

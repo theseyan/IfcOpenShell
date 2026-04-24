@@ -153,6 +153,10 @@ typedef enum {
 /// Returns the IFC type name of the entity (e.g. "IfcWall"). Do NOT free.
 IFCAPI_EXPORT const char* ifcopenshell_entity_type(const ifcopenshell_ifc_instance_t* instance);
 
+/// Returns a borrowed handle to the file that owns this instance, or NULL if
+/// the instance is detached. Destroy only the returned handle wrapper.
+IFCAPI_EXPORT ifcopenshell_ifc_file_t* ifcopenshell_ifc_instance_file(const ifcopenshell_ifc_instance_t* instance);
+
 /// Returns true if the entity is-a (subtype of) the given type name.
 /// If type_name is NULL, returns false.
 IFCAPI_EXPORT bool ifcopenshell_entity_is_a(const ifcopenshell_ifc_instance_t* instance, const char* type_name);

@@ -30,13 +30,14 @@ COMPILER="${REPO_ROOT}/src/ifcapi/codegen/express/express_cpp_compiler.py"
 
 mkdir -p "${CACHE_DIR}" "${OUT_DIR}"
 
-declare SCHEMAS_LIST="IFC2X3_TC1 IFC4 IFC4X1 IFC4X3_ADD2"
+declare SCHEMAS_LIST="IFC2X3_TC1 IFC4 IFC4X1 IFC4X2 IFC4X3_ADD2"
 
 url_for() {
     case "$1" in
         IFC2X3_TC1)  echo "https://standards.buildingsmart.org/IFC/RELEASE/IFC2x3/TC1/EXPRESS/IFC2X3_TC1.exp" ;;
         IFC4)        echo "https://standards.buildingsmart.org/IFC/RELEASE/IFC4/ADD2_TC1/EXPRESS/IFC4.exp" ;;
         IFC4X1)      echo "https://raw.githubusercontent.com/ifcwebserver/ifcwebserver/master/express/IFC4X1.exp" ;;
+        IFC4X2)      echo "https://standards.buildingsmart.org/IFC/DEV/IFC4_2/FINAL/EXPRESS/IFC4x2.exp" ;;
         IFC4X3_ADD2) echo "https://raw.githubusercontent.com/ifcwebserver/ifcwebserver/master/express/IFC4X3_ADD2.exp" ;;
         *)           echo "" ;;
     esac

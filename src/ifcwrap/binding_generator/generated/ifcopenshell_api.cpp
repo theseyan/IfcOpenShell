@@ -401,6 +401,68 @@ void set_instance_attribute_from_attribute_value(IfcUtil::IfcBaseClass* instance
 }
 } // namespace
 
+static ifcopenshell_ifc_instance_list_t make_ifc_instance_list(const std::vector<IfcUtil::IfcBaseClass*>& values) {
+    auto** items = values.empty() ? nullptr : new ifcopenshell_ifc_instance_t*[values.size()];
+    size_t initialized = 0;
+    try {
+        for (size_t i = 0; i < values.size(); ++i) {
+            items[i] = new ifcopenshell_ifc_instance_t{values[i], false};
+            ++initialized;
+        }
+    } catch (...) {
+        for (size_t j = 0; j < initialized; ++j) { delete items[j]; }
+        delete[] items;
+        throw;
+    }
+    return ifcopenshell_ifc_instance_list_t{items, values.size()};
+}
+
+static ifcopenshell_ifc_instance_list_t make_ifc_instance_list(const std::vector<const IfcUtil::IfcBaseClass*>& values) {
+    auto** items = values.empty() ? nullptr : new ifcopenshell_ifc_instance_t*[values.size()];
+    size_t initialized = 0;
+    try {
+        for (size_t i = 0; i < values.size(); ++i) {
+            items[i] = new ifcopenshell_ifc_instance_t{const_cast<IfcUtil::IfcBaseClass*>(values[i]), false};
+            ++initialized;
+        }
+    } catch (...) {
+        for (size_t j = 0; j < initialized; ++j) { delete items[j]; }
+        delete[] items;
+        throw;
+    }
+    return ifcopenshell_ifc_instance_list_t{items, values.size()};
+}
+
+static ifcopenshell_ifc_instance_list_t make_ifc_instance_list(std::vector<std::unique_ptr<IfcUtil::IfcBaseClass>> values) {
+    auto** items = values.empty() ? nullptr : new ifcopenshell_ifc_instance_t*[values.size()];
+    size_t initialized = 0;
+    try {
+        for (size_t i = 0; i < values.size(); ++i) {
+            items[i] = new ifcopenshell_ifc_instance_t{values[i].release(), true};
+            ++initialized;
+        }
+    } catch (...) {
+        for (size_t j = 0; j < initialized; ++j) { delete items[j]; }
+        delete[] items;
+        throw;
+    }
+    return ifcopenshell_ifc_instance_list_t{items, values.size()};
+}
+
+static std::vector<const IfcUtil::IfcBaseClass*> to_cpp_ifc_instance_list(const ifcopenshell_ifc_instance_list_t* values) {
+    validate_list_items("ifc_instance_list", values->items, values->size);
+    std::vector<const IfcUtil::IfcBaseClass*> result;
+    result.reserve(values->size);
+    for (size_t i = 0; i < values->size; ++i) {
+        auto* item = values->items[i];
+        if (item == nullptr || item->ptr == nullptr) {
+            throw std::runtime_error("handle_list contains an invalid handle");
+        }
+        result.push_back(item->ptr);
+    }
+    return result;
+}
+
 static ifcopenshell_ifcgeom_conversion_result_shape_list_t make_ifcgeom_conversion_result_shape_list(const std::vector<IfcGeom::ConversionResultShape*>& values) {
     auto** items = values.empty() ? nullptr : new ifcopenshell_ifcgeom_conversion_result_shape_t*[values.size()];
     size_t initialized = 0;
@@ -1080,68 +1142,32 @@ static std::vector<const IfcGeom::Element*> to_cpp_ifcgeom_element_list(const if
     }
     return result;
 }
-
-static ifcopenshell_ifc_instance_list_t make_ifc_instance_list(const std::vector<IfcUtil::IfcBaseClass*>& values) {
-    auto** items = values.empty() ? nullptr : new ifcopenshell_ifc_instance_t*[values.size()];
-    size_t initialized = 0;
-    try {
-        for (size_t i = 0; i < values.size(); ++i) {
-            items[i] = new ifcopenshell_ifc_instance_t{values[i], false};
-            ++initialized;
-        }
-    } catch (...) {
-        for (size_t j = 0; j < initialized; ++j) { delete items[j]; }
-        delete[] items;
-        throw;
+static ifcopenshell_ifc_instance_list_list_t make_ifc_instance_list_list(const std::vector<std::vector<IfcUtil::IfcBaseClass*>>& values) {
+    auto* items = values.empty() ? nullptr : new ifcopenshell_ifc_instance_list_t[values.size()];
+    for (size_t i = 0; i < values.size(); ++i) {
+        items[i] = make_ifc_instance_list(values[i]);
     }
-    return ifcopenshell_ifc_instance_list_t{items, values.size()};
+    return ifcopenshell_ifc_instance_list_list_t{items, values.size()};
 }
 
-static ifcopenshell_ifc_instance_list_t make_ifc_instance_list(const std::vector<const IfcUtil::IfcBaseClass*>& values) {
-    auto** items = values.empty() ? nullptr : new ifcopenshell_ifc_instance_t*[values.size()];
-    size_t initialized = 0;
-    try {
-        for (size_t i = 0; i < values.size(); ++i) {
-            items[i] = new ifcopenshell_ifc_instance_t{const_cast<IfcUtil::IfcBaseClass*>(values[i]), false};
-            ++initialized;
-        }
-    } catch (...) {
-        for (size_t j = 0; j < initialized; ++j) { delete items[j]; }
-        delete[] items;
-        throw;
+static ifcopenshell_ifc_instance_list_list_t make_ifc_instance_list_list(const std::vector<std::vector<const IfcUtil::IfcBaseClass*>>& values) {
+    auto* items = values.empty() ? nullptr : new ifcopenshell_ifc_instance_list_t[values.size()];
+    for (size_t i = 0; i < values.size(); ++i) {
+        items[i] = make_ifc_instance_list(values[i]);
     }
-    return ifcopenshell_ifc_instance_list_t{items, values.size()};
+    return ifcopenshell_ifc_instance_list_list_t{items, values.size()};
 }
 
-static ifcopenshell_ifc_instance_list_t make_ifc_instance_list(std::vector<std::unique_ptr<IfcUtil::IfcBaseClass>> values) {
-    auto** items = values.empty() ? nullptr : new ifcopenshell_ifc_instance_t*[values.size()];
-    size_t initialized = 0;
-    try {
-        for (size_t i = 0; i < values.size(); ++i) {
-            items[i] = new ifcopenshell_ifc_instance_t{values[i].release(), true};
-            ++initialized;
-        }
-    } catch (...) {
-        for (size_t j = 0; j < initialized; ++j) { delete items[j]; }
-        delete[] items;
-        throw;
-    }
-    return ifcopenshell_ifc_instance_list_t{items, values.size()};
-}
-
-static std::vector<const IfcUtil::IfcBaseClass*> to_cpp_ifc_instance_list(const ifcopenshell_ifc_instance_list_t* values) {
-    validate_list_items("ifc_instance_list", values->items, values->size);
-    std::vector<const IfcUtil::IfcBaseClass*> result;
+static std::vector<std::vector<const IfcUtil::IfcBaseClass*>> to_cpp_ifc_instance_list_list(const ifcopenshell_ifc_instance_list_list_t* values) {
+    validate_list_items("ifc_instance_list_list", values->items, values->size);
+    std::vector<std::vector<const IfcUtil::IfcBaseClass*>> result;
     result.reserve(values->size);
     for (size_t i = 0; i < values->size; ++i) {
-        auto* item = values->items[i];
-        if (item == nullptr || item->ptr == nullptr) {
-            throw std::runtime_error("handle_list contains an invalid handle");
-        }
-        result.push_back(item->ptr);
+        result.push_back(to_cpp_ifc_instance_list(&values->items[i]));
     }
     return result;
 }
+
 static ifcopenshell_ifcgeom_conversion_result_shape_list_list_t make_ifcgeom_conversion_result_shape_list_list(const std::vector<std::vector<IfcGeom::ConversionResultShape*>>& values) {
     auto* items = values.empty() ? nullptr : new ifcopenshell_ifcgeom_conversion_result_shape_list_t[values.size()];
     for (size_t i = 0; i < values.size(); ++i) {
@@ -1434,32 +1460,6 @@ static std::vector<std::vector<const IfcGeom::Element*>> to_cpp_ifcgeom_element_
     result.reserve(values->size);
     for (size_t i = 0; i < values->size; ++i) {
         result.push_back(to_cpp_ifcgeom_element_list(&values->items[i]));
-    }
-    return result;
-}
-
-static ifcopenshell_ifc_instance_list_list_t make_ifc_instance_list_list(const std::vector<std::vector<IfcUtil::IfcBaseClass*>>& values) {
-    auto* items = values.empty() ? nullptr : new ifcopenshell_ifc_instance_list_t[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {
-        items[i] = make_ifc_instance_list(values[i]);
-    }
-    return ifcopenshell_ifc_instance_list_list_t{items, values.size()};
-}
-
-static ifcopenshell_ifc_instance_list_list_t make_ifc_instance_list_list(const std::vector<std::vector<const IfcUtil::IfcBaseClass*>>& values) {
-    auto* items = values.empty() ? nullptr : new ifcopenshell_ifc_instance_list_t[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {
-        items[i] = make_ifc_instance_list(values[i]);
-    }
-    return ifcopenshell_ifc_instance_list_list_t{items, values.size()};
-}
-
-static std::vector<std::vector<const IfcUtil::IfcBaseClass*>> to_cpp_ifc_instance_list_list(const ifcopenshell_ifc_instance_list_list_t* values) {
-    validate_list_items("ifc_instance_list_list", values->items, values->size);
-    std::vector<std::vector<const IfcUtil::IfcBaseClass*>> result;
-    result.reserve(values->size);
-    for (size_t i = 0; i < values->size; ++i) {
-        result.push_back(to_cpp_ifc_instance_list(&values->items[i]));
     }
     return result;
 }
@@ -2299,6 +2299,20 @@ void ifcopenshell_ifcgeom_function_item_evaluator_destroy(ifcopenshell_ifcgeom_f
     if (handle->owned && handle->ptr) { delete handle->ptr; }
     delete handle;
 }
+void ifcopenshell_ifc_instance_list_destroy(ifcopenshell_ifc_instance_list_t* value) {
+    if (value == nullptr || value->items == nullptr) {
+        return;
+    }
+    for (size_t i = 0; i < value->size; ++i) {
+        if (value->items[i] != nullptr) {
+            ifcopenshell_ifc_instance_destroy(value->items[i]);
+        }
+    }
+    delete[] value->items;
+    value->items = nullptr;
+    value->size = 0;
+}
+
 void ifcopenshell_ifcgeom_conversion_result_shape_list_destroy(ifcopenshell_ifcgeom_conversion_result_shape_list_t* value) {
     if (value == nullptr || value->items == nullptr) {
         return;
@@ -2466,20 +2480,18 @@ void ifcopenshell_ifcgeom_element_list_destroy(ifcopenshell_ifcgeom_element_list
     value->items = nullptr;
     value->size = 0;
 }
-
-void ifcopenshell_ifc_instance_list_destroy(ifcopenshell_ifc_instance_list_t* value) {
+void ifcopenshell_ifc_instance_list_list_destroy(ifcopenshell_ifc_instance_list_list_t* value) {
     if (value == nullptr || value->items == nullptr) {
         return;
     }
     for (size_t i = 0; i < value->size; ++i) {
-        if (value->items[i] != nullptr) {
-            ifcopenshell_ifc_instance_destroy(value->items[i]);
-        }
+        ifcopenshell_ifc_instance_list_destroy(&value->items[i]);
     }
     delete[] value->items;
     value->items = nullptr;
     value->size = 0;
 }
+
 void ifcopenshell_ifcgeom_conversion_result_shape_list_list_destroy(ifcopenshell_ifcgeom_conversion_result_shape_list_list_t* value) {
     if (value == nullptr || value->items == nullptr) {
         return;
@@ -2618,18 +2630,6 @@ void ifcopenshell_ifcgeom_element_list_list_destroy(ifcopenshell_ifcgeom_element
     }
     for (size_t i = 0; i < value->size; ++i) {
         ifcopenshell_ifcgeom_element_list_destroy(&value->items[i]);
-    }
-    delete[] value->items;
-    value->items = nullptr;
-    value->size = 0;
-}
-
-void ifcopenshell_ifc_instance_list_list_destroy(ifcopenshell_ifc_instance_list_list_t* value) {
-    if (value == nullptr || value->items == nullptr) {
-        return;
-    }
-    for (size_t i = 0; i < value->size; ++i) {
-        ifcopenshell_ifc_instance_list_destroy(&value->items[i]);
     }
     delete[] value->items;
     value->items = nullptr;
@@ -2958,6 +2958,33 @@ ensure_log_stream_initialized();
 Logger::SetOutput(nullptr, &ifcopenshell_log_stream);
 Logger::Verbosity(Logger::LOG_WARNING);
         }();
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_instance_list_create_from_handles(const ifcopenshell_ifc_instance_list_t* instances, ifcopenshell_ifcparse_instance_list_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (instances == nullptr) { throw std::runtime_error("Parameter \"instances\" must not be null"); }
+    auto instances_cpp = to_cpp_ifc_instance_list(instances);
+        auto generated_result = [&]() {
+boost::shared_ptr<aggregate_of_instance> agg(new aggregate_of_instance());
+agg->reserve(instances_cpp.size());
+for (const auto* inst : instances_cpp) {
+    if (inst != nullptr) {
+        agg->push(const_cast<IfcUtil::IfcBaseClass*>(inst));
+    }
+}
+return agg;
+        }();
+        *out_result = new ifcopenshell_ifcparse_instance_list_t{generated_result};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -4335,7 +4362,8 @@ if (entity->declaration().is("IfcProduct")) {
     }
     return static_cast<IfcGeom::Element*>(brep);
 }
-// Handle representation items directly
+// Handle representation items directly (mirrors SWIG's behaviour
+// for IfcRepresentationItem / IfcRepresentation / IfcProfileDef).
 else if (entity->declaration().is("IfcRepresentationItem") ||
          entity->declaration().is("IfcRepresentation") ||
          entity->declaration().is("IfcProfileDef")) {
@@ -4345,27 +4373,39 @@ else if (entity->declaration().is("IfcRepresentationItem") ||
     } catch (...) {
         throw IfcParse::IfcException("Failed to process representation item");
     }
-    IfcGeom::Representation::BRep brep_rep(kernel.settings(), entity->declaration().name(),
-        std::to_string(entity->id()), shapes);
+    if (shapes.empty()) {
+        throw IfcParse::IfcException(std::string("kernel.convert produced no shapes for ") + entity->declaration().name() + " #" + std::to_string(entity->id()));
+    }
+    auto brep_rep = boost::shared_ptr<IfcGeom::Representation::BRep>(
+        new IfcGeom::Representation::BRep(
+            kernel.settings(), entity->declaration().name(),
+            std::to_string(entity->id()), shapes));
 
     auto output_type = settings_cpp->get<ifcopenshell::geometry::settings::IteratorOutput>().get();
+    // Build a lightweight BRepElement that wraps the bare
+    // representation so the resulting handle can flow through
+    // ``element_geometry`` accessors uniformly.
+    auto identity = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::matrix4>();
+    const IfcUtil::IfcBaseEntity* null_product = nullptr;
+    auto* brep_elem = new IfcGeom::BRepElement(
+        entity->id(), -1,
+        entity->declaration().name(),
+        entity->declaration().name(),
+        std::string(),
+        std::string(),
+        identity, brep_rep,
+        null_product);
     if (output_type == ifcopenshell::geometry::settings::SERIALIZED) {
-        throw IfcParse::IfcException("Serialized output for bare representation items not supported in C API");
-    }
-    // Create a BRepElement from the representation, then triangulate
-    IfcGeom::BRepElement* brep = kernel.create_brep_for_representation_and_product(
-        ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::collection>(),
-        entity,
-        ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::matrix4>());
-    if (!brep) {
-        throw IfcParse::IfcException("Failed to create element for representation item");
-    }
-    if (output_type == ifcopenshell::geometry::settings::TRIANGULATED) {
-        IfcGeom::Element* result = new IfcGeom::TriangulationElement(*brep);
-        delete brep;
+        IfcGeom::Element* result = new IfcGeom::SerializedElement(*brep_elem);
+        delete brep_elem;
         return result;
     }
-    return static_cast<IfcGeom::Element*>(brep);
+    if (output_type == ifcopenshell::geometry::settings::TRIANGULATED) {
+        IfcGeom::Element* result = new IfcGeom::TriangulationElement(*brep_elem);
+        delete brep_elem;
+        return result;
+    }
+    return static_cast<IfcGeom::Element*>(brep_elem);
 }
 throw IfcParse::IfcException("Unsupported instance type for create_shape. Use map_shape for placements.");
         }();

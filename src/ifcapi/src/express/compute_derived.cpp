@@ -21,24 +21,25 @@ namespace {
 using ifcapi::express::Value;
 
 ifcopenshell_value_t* convert(const Value& v) {
-    switch (v.tag()) {
+    Value abi_value = ifcapi::express::materialize_for_abi(v);
+    switch (abi_value.tag()) {
         case Value::Tag::Indeterminate:
             return nullptr;
         case Value::Tag::Bool:
-            return make_bool(v.as_bool());
+            return make_bool(abi_value.as_bool());
         case Value::Tag::Int:
-            return make_int(static_cast<int64_t>(v.as_int()));
+            return make_int(static_cast<int64_t>(abi_value.as_int()));
         case Value::Tag::Real:
-            return make_double(v.as_double());
+            return make_double(abi_value.as_double());
         case Value::Tag::Str:
-            return make_string(v.as_string());
+            return make_string(abi_value.as_string());
         case Value::Tag::Entity: {
-            auto* e = static_cast<IfcUtil::IfcBaseClass*>(v.as_entity().ptr);
+            auto* e = static_cast<IfcUtil::IfcBaseClass*>(abi_value.as_entity().ptr);
             return e ? make_instance(e) : make_none();
         }
         case Value::Tag::List: {
             auto* out = make_list();
-            for (const auto& item : v.as_list()) {
+            for (const auto& item : abi_value.as_list()) {
                 out->list_val.push_back(convert(item));
             }
             return out;
@@ -47,15 +48,13 @@ ifcopenshell_value_t* convert(const Value& v) {
             // Represent sets as lists over the ABI — Python side treats
             // aggregate DERIVE results as tuples regardless.
             auto* out = make_list();
-            for (const auto& item : v.as_set()) {
+            for (const auto& item : abi_value.as_set()) {
                 out->list_val.push_back(convert(item));
             }
             return out;
         }
         case Value::Tag::EntityProxy:
-            // Scratch in-memory proxies have no stable identity across the
-            // ABI; surface them as INDETERMINATE. Rules in shipping schemas
-            // never return bare proxies as top-level results.
+            // materialize_for_abi() should already have converted proxies.
             return nullptr;
     }
     return nullptr;

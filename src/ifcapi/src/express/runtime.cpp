@@ -151,6 +151,9 @@ IfcUtil::IfcBaseClass* as_baseclass(const Value& v) {
     return static_cast<IfcUtil::IfcBaseClass*>(v.as_entity().ptr);
 }
 
+bool set_attr_from_value(IfcUtil::IfcBaseClass* e, size_t idx, const Value& v);
+bool is_scratch_entity(IfcUtil::IfcBaseClass* e);
+
 // Convert an IfcParse Argument to a Value. Recurses for aggregates.
 Value argument_to_value(const AttributeValue& a) {
     if (a.isNull()) return Indeterminate{};
@@ -333,6 +336,19 @@ Value set_attr(const Value& v, std::string_view attr_name, const Value& value) {
     } else if (v.is_entity()) {
         if (auto* e = as_baseclass(v)) {
             const auto* d = &e->declaration();
+            if (auto* entity_decl = d->as_entity(); entity_decl && is_scratch_entity(e)) {
+                int idx = -1;
+                try {
+                    idx = static_cast<int>(entity_decl->attribute_index(std::string(attr_name)));
+                } catch (...) {
+                    idx = -1;
+                }
+                if (idx < 0) return Indeterminate{};
+                Value attr_value = materialize_for_abi(value);
+                if (attr_value.is_indeterminate()) return Indeterminate{};
+                if (!set_attr_from_value(e, static_cast<size_t>(idx), attr_value)) return Indeterminate{};
+                return v;
+            }
             px->type_name = d->name();
             px->schema_name = schema_name_for(e, d);
             px->base = v.as_entity();
@@ -507,6 +523,97 @@ IfcParse::IfcFile* get_scratch_file(std::string_view schema_name) {
     return raw;
 }
 
+bool set_attr_from_value(IfcUtil::IfcBaseClass* e, size_t idx, const Value& v);
+
+bool is_scratch_entity(IfcUtil::IfcBaseClass* e) {
+    if (!e || !e->file_) return false;
+    const auto* decl = e->declaration().as_entity();
+    std::string schema_name = schema_name_for(e, decl);
+    if (schema_name.empty()) return false;
+    auto* scratch = get_scratch_file(schema_name);
+    return scratch && e->file_ == scratch;
+}
+
+using ProxyMaterializationCache = std::unordered_map<const EntityProxyData*, EntityRef>;
+
+Value materialize_impl(const Value& v, ProxyMaterializationCache& cache);
+
+EntityRef materialize_proxy_impl(const Value& proxy_v, ProxyMaterializationCache& cache) {
+    const auto& px = proxy_v.as_proxy();
+    const auto* key = &px;
+    if (auto it = cache.find(key); it != cache.end()) return it->second;
+
+    std::string schema_name = px.schema_name;
+    std::string type_name = px.type_name;
+    if (px.base.ptr) {
+        auto* base = static_cast<IfcUtil::IfcBaseClass*>(px.base.ptr);
+        if (base) {
+            const auto* decl = base->declaration().as_entity();
+            if (decl) {
+                if (type_name.empty()) type_name = decl->name();
+                if (schema_name.empty()) schema_name = schema_name_for(base, decl);
+            }
+        }
+    }
+
+    if (schema_name.empty() || type_name.empty()) return {};
+    auto* file = get_scratch_file(schema_name);
+    if (!file || !file->schema()) return {};
+
+    const IfcParse::declaration* decl = nullptr;
+    try {
+        decl = file->schema()->declaration_by_name(type_name);
+    } catch (...) {
+        return {};
+    }
+    if (!decl || !decl->as_entity()) return {};
+    auto* entity_decl = decl->as_entity();
+
+    IfcUtil::IfcBaseClass* entity = nullptr;
+    try {
+        entity = file->create(decl);
+    } catch (...) {
+        return {};
+    }
+    if (!entity) return {};
+
+    EntityRef ref;
+    ref.ptr = static_cast<void*>(entity);
+    cache.emplace(key, ref);
+
+    for (size_t i = 0; i < entity_decl->attribute_count(); ++i) {
+        const auto* attr = entity_decl->attribute_by_index(i);
+        if (!attr) continue;
+        Value attr_value = materialize_impl(express_getattr(proxy_v, attr->name()), cache);
+        if (attr_value.is_indeterminate()) continue;
+        if (!set_attr_from_value(entity, i, attr_value)) return {};
+    }
+    return ref;
+}
+
+Value materialize_impl(const Value& v, ProxyMaterializationCache& cache) {
+    switch (v.tag()) {
+        case Value::Tag::List: {
+            auto out = make_list_ptr();
+            out.p->reserve(v.as_list().size());
+            for (const auto& item : v.as_list()) out.p->push_back(materialize_impl(item, cache));
+            return Value(std::move(out));
+        }
+        case Value::Tag::Set: {
+            auto out = make_set_ptr();
+            out.p->reserve(v.as_set().size());
+            for (const auto& item : v.as_set()) out.p->push_back(materialize_impl(item, cache));
+            return Value(std::move(out));
+        }
+        case Value::Tag::EntityProxy: {
+            EntityRef ref = materialize_proxy_impl(v, cache);
+            return ref.ptr ? Value(ref) : Value(Indeterminate{});
+        }
+        default:
+            return v;
+    }
+}
+
 // Set a single attribute on `e` from a Value, dispatching on the
 // declared parameter type. Returns true on success. Unsupported / type
 // mismatched assignments silently fail (return false) — a rule that
@@ -596,11 +703,18 @@ Value make_entity(std::string_view schema_name,
         try { idx = static_cast<int>(ent->attribute_index(name)); }
         catch (...) { continue; }
         if (idx < 0) continue;
-        set_attr_from_value(e, static_cast<size_t>(idx), kv.second);
+        Value attr_value = materialize_for_abi(kv.second);
+        if (attr_value.is_indeterminate()) continue;
+        set_attr_from_value(e, static_cast<size_t>(idx), attr_value);
     }
     EntityRef ref;
     ref.ptr = static_cast<void*>(e);
     return ref;
+}
+
+Value materialize_for_abi(const Value& v) {
+    ProxyMaterializationCache cache;
+    return materialize_impl(v, cache);
 }
 
 /* ================================================================== */

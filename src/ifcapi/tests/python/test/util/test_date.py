@@ -1,5 +1,5 @@
 # IfcOpenShell - IFC toolkit and geometry engine
-# Copyright (C) 2021 Thomas Krijnen <thomas@aecgeeks.com>
+# Copyright (C) 2021 Dion Moult <dion@thinkmoult.com>
 #
 # This file is part of IfcOpenShell.
 #
@@ -16,28 +16,16 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import annotations
-import os
-import sys
-import subprocess
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    import schema_class
-
-d = os.path.abspath(os.path.dirname(__file__))
-sys.path.append(d)
-
-exp_parser_fn = os.path.join(d, "express_parser.py")
-
-if not os.path.exists(exp_parser_fn):
-    with open(exp_parser_fn, "w") as f:
-        subprocess.call([sys.executable, "bootstrap.py"], cwd=d, stdout=f)
+import ifcopenshell.util.date as subject
 
 
-def parse(fn: str) -> schema_class.SchemaClass:
-    import express_parser
-    import schema_class
+class TestReadableIFCDuration:
+    def test_run(self):
+        assert subject.readable_ifc_duration("P0Y0M1DT16H0M0S") == "1D 16h"
+        assert subject.readable_ifc_duration("P2Y3M1W4DT5H45M30S") == "2Y 3M 1W 4D 5h 45m 30s"
+        assert subject.readable_ifc_duration("PT40H") == "40h"
 
-    mapping = express_parser.parse(fn)
-    return schema_class.SchemaClass(mapping, schema_class.LateBoundSchemaInstantiator).code
+        # Float values.
+        assert subject.readable_ifc_duration("P2.5D") == "2.5D"
+        assert subject.readable_ifc_duration("PT1.5H") == "1.5h"

@@ -882,3 +882,79 @@ def helmert_curve_point(A0, A1, A2, length):
 
 def convert_loop_to_function_item(fn):
     return _MockFunctionItem()
+
+
+# ---------------------------------------------------------------------------
+# Geometry-settings enum constants exposed for upstream API parity.
+#
+# Mirrors ``ifcopenshell::geometry::settings::OutputDimensionalityTypes``
+# and ``IteratorOutputOptions`` (see ``src/ifcgeom/ConversionSettings.h``).
+# Upstream callers reference these as ``ifcopenshell.ifcopenshell_wrapper.*``.
+# ---------------------------------------------------------------------------
+
+CURVES = 0
+SURFACES_AND_SOLIDS = 1
+CURVES_SURFACES_AND_SOLIDS = 2
+
+TRIANGULATED = 0
+NATIVE = 1
+SERIALIZED = 2
+
+
+def version():
+    """Return the ifcopenshell library version string (parity with SWIG)."""
+    return ifcopenshell.version
+
+
+_FEATURES: dict = {}
+
+
+def get_feature(name: str):
+    """Return a feature flag value (parity with SWIG get_feature).
+
+    Backed by a process-wide dict; consulted by validate.py and a few other
+    upstream code paths to toggle behaviour. Unknown features return None.
+    """
+    return _FEATURES.get(name)
+
+
+def set_feature(name: str, value) -> None:
+    """Set a feature flag value (parity with SWIG set_feature)."""
+    _FEATURES[name] = value
+
+
+_LOG_BUFFER: list = []
+_LOG_FORMAT = "text"
+
+
+def get_log() -> str:
+    """Return the accumulated parser/validator log and clear it (parity with SWIG)."""
+    global _LOG_BUFFER
+    if _LOG_FORMAT == "json":
+        out = "\n".join(_LOG_BUFFER)
+    else:
+        out = "\n".join(_LOG_BUFFER)
+    _LOG_BUFFER = []
+    return out
+
+
+def turn_on_detailed_logging() -> None:
+    """No-op stub for SWIG turn_on_detailed_logging()."""
+    pass
+
+
+def turn_off_detailed_logging() -> None:
+    """No-op stub for SWIG turn_off_detailed_logging()."""
+    pass
+
+
+def set_log_format_json() -> None:
+    """Set log output format to JSON (parity with SWIG)."""
+    global _LOG_FORMAT
+    _LOG_FORMAT = "json"
+
+
+def set_log_format_text() -> None:
+    """Set log output format to text (parity with SWIG)."""
+    global _LOG_FORMAT
+    _LOG_FORMAT = "text"

@@ -2084,7 +2084,8 @@ functions:
             }
             return static_cast<IfcGeom::Element*>(brep);
         }
-        // Handle representation items directly
+        // Handle representation items directly (mirrors SWIG's behaviour
+        // for IfcRepresentationItem / IfcRepresentation / IfcProfileDef).
         else if (entity->declaration().is("IfcRepresentationItem") ||
                  entity->declaration().is("IfcRepresentation") ||
                  entity->declaration().is("IfcProfileDef")) {
@@ -2094,27 +2095,39 @@ functions:
             } catch (...) {
                 throw IfcParse::IfcException("Failed to process representation item");
             }
-            IfcGeom::Representation::BRep brep_rep(kernel.settings(), entity->declaration().name(),
-                std::to_string(entity->id()), shapes);
+            if (shapes.empty()) {
+                throw IfcParse::IfcException(std::string("kernel.convert produced no shapes for ") + entity->declaration().name() + " #" + std::to_string(entity->id()));
+            }
+            auto brep_rep = boost::shared_ptr<IfcGeom::Representation::BRep>(
+                new IfcGeom::Representation::BRep(
+                    kernel.settings(), entity->declaration().name(),
+                    std::to_string(entity->id()), shapes));
 
             auto output_type = settings_cpp->get<ifcopenshell::geometry::settings::IteratorOutput>().get();
+            // Build a lightweight BRepElement that wraps the bare
+            // representation so the resulting handle can flow through
+            // ``element_geometry`` accessors uniformly.
+            auto identity = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::matrix4>();
+            const IfcUtil::IfcBaseEntity* null_product = nullptr;
+            auto* brep_elem = new IfcGeom::BRepElement(
+                entity->id(), -1,
+                entity->declaration().name(),
+                entity->declaration().name(),
+                std::string(),
+                std::string(),
+                identity, brep_rep,
+                null_product);
             if (output_type == ifcopenshell::geometry::settings::SERIALIZED) {
-                throw IfcParse::IfcException("Serialized output for bare representation items not supported in C API");
-            }
-            // Create a BRepElement from the representation, then triangulate
-            IfcGeom::BRepElement* brep = kernel.create_brep_for_representation_and_product(
-                ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::collection>(),
-                entity,
-                ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::matrix4>());
-            if (!brep) {
-                throw IfcParse::IfcException("Failed to create element for representation item");
-            }
-            if (output_type == ifcopenshell::geometry::settings::TRIANGULATED) {
-                IfcGeom::Element* result = new IfcGeom::TriangulationElement(*brep);
-                delete brep;
+                IfcGeom::Element* result = new IfcGeom::SerializedElement(*brep_elem);
+                delete brep_elem;
                 return result;
             }
-            return static_cast<IfcGeom::Element*>(brep);
+            if (output_type == ifcopenshell::geometry::settings::TRIANGULATED) {
+                IfcGeom::Element* result = new IfcGeom::TriangulationElement(*brep_elem);
+                delete brep_elem;
+                return result;
+            }
+            return static_cast<IfcGeom::Element*>(brep_elem);
         }
         throw IfcParse::IfcException("Unsupported instance type for create_shape. Use map_shape for placements.");
 
