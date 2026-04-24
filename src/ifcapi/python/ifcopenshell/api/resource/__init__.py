@@ -1,5 +1,29 @@
-# SPDX-License-Identifier: LGPL-3.0-or-later
+# IfcOpenShell - IFC toolkit and geometry engine
+# Copyright (C) 2022 Dion Moult <dion@thinkmoult.com>
+#
+# This file is part of IfcOpenShell.
+#
+# IfcOpenShell is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# IfcOpenShell is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
+"""Manage construction and maintenance resources
+
+Resources include equipment (cranes, etc), labour, material, and products. They
+are typically referenced in construction planning, maintenance schedules, or
+cost items.
+"""
+
+from .. import wrap_usecases
 from .add_resource import add_resource
 from .add_resource_quantity import add_resource_quantity
 from .add_resource_time import add_resource_time
@@ -12,6 +36,8 @@ from .edit_resource_time import edit_resource_time
 from .remove_resource import remove_resource
 from .remove_resource_quantity import remove_resource_quantity
 from .unassign_resource import unassign_resource
+
+wrap_usecases(__path__, __name__)
 
 __all__ = [
     "add_resource",
@@ -27,16 +53,3 @@ __all__ = [
     "remove_resource_quantity",
     "unassign_resource",
 ]
-
-import importlib as _importlib
-
-def __getattr__(name):
-    try:
-        module = _importlib.import_module(f".{name}", __name__)
-    except ModuleNotFoundError:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    func = getattr(module, name, None)
-    if func is None:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    globals()[name] = func
-    return func

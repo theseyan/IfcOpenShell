@@ -1,5 +1,28 @@
-# SPDX-License-Identifier: LGPL-3.0-or-later
+# IfcOpenShell - IFC toolkit and geometry engine
+# Copyright (C) 2022 Dion Moult <dion@thinkmoult.com>
+#
+# This file is part of IfcOpenShell.
+#
+# IfcOpenShell is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# IfcOpenShell is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
+"""Manage work schedules, tasks, calendars, and more for 4D
+
+These are typically used for construction planning, but may also be used in
+managing recurring facility maintenance schedules.
+"""
+
+from .. import wrap_usecases
 from .add_date_time import add_date_time
 from .add_task import add_task
 from .add_task_time import add_task_time
@@ -33,7 +56,6 @@ try:
     from .recalculate_schedule import recalculate_schedule
 except ModuleNotFoundError as e:
     print(f"Note: API not available due to missing dependencies: sequence.recalculate_schedule - {e}")
-
 from .remove_task import remove_task
 from .remove_time_period import remove_time_period
 from .remove_work_calendar import remove_work_calendar
@@ -45,6 +67,8 @@ from .unassign_process import unassign_process
 from .unassign_product import unassign_product
 from .unassign_recurrence_pattern import unassign_recurrence_pattern
 from .unassign_sequence import unassign_sequence
+
+wrap_usecases(__path__, __name__)
 
 __all__ = [
     "add_date_time",
@@ -88,16 +112,3 @@ __all__ = [
     "unassign_recurrence_pattern",
     "unassign_sequence",
 ]
-
-import importlib as _importlib
-
-def __getattr__(name):
-    try:
-        module = _importlib.import_module(f".{name}", __name__)
-    except ModuleNotFoundError:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    func = getattr(module, name, None)
-    if func is None:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    globals()[name] = func
-    return func

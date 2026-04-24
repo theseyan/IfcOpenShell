@@ -1,168 +1,247 @@
-# SPDX-License-Identifier: LGPL-3.0-or-later
+# IfcOpenShell - IFC toolkit and geometry engine
+# Copyright (C) 2021 Dion Moult <dion@thinkmoult.com>
+#
+# This file is part of IfcOpenShell.
+#
+# IfcOpenShell is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# IfcOpenShell is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
+from typing import Any
+
+import ifcopenshell
 import ifcopenshell.api.style
 import ifcopenshell.util.element
 
 
-def assign_material_style(file, material=None, style=None, context=None,
-                          should_use_presentation_style_assignment=False):
-    wrapped_style = style
-    if file.schema == "IFC2X3" or should_use_presentation_style_assignment:
-        wrapped_style = file.createIfcPresentationStyleAssignment([style])
+def assign_material_style(
+    file: ifcopenshell.file,
+    material: ifcopenshell.entity_instance,
+    style: ifcopenshell.entity_instance,
+    context: ifcopenshell.entity_instance,
+    should_use_presentation_style_assignment: bool = False,
+) -> None:
+    """Assigns a style to a material
 
-    if material.HasRepresentation:
-        _modify_existing_definition_representation(
-            file, material, style, wrapped_style, context,
-            should_use_presentation_style_assignment)
-    else:
-        _create_new_definition_representation(file, material, style, wrapped_style, context)
+    A style may either be assigned directly to an object's representation,
+    or to a material which is then associated with the object. If both
+    exist, then the style assigned directly to the object's representation
+    takes precedence. It is recommended to use materials and assign styles
+    to materials. This API function provides that capability.
 
-    # Handle material constituents and shape aspects.
-    constituent_names = []
-    for inverse in file.get_inverse(material):
-        if inverse.is_a("IfcMaterialConstituent") and inverse.Name:
-            constituent_names.append(inverse.Name)
-    if not constituent_names:
-        return
+    :param material: The IfcMaterial which you want to assign the style to.
+    :param style: The IfcPresentationStyle (typically IfcSurfaceStyle) that
+        you want to assign to the material. This will then be applied to all
+        objects that have that material.
+    :param context: The IfcGeometricRepresentationSubContext at which this
+        style should be used. Typically this is the Model BODY context.
+    :param should_use_presentation_style_assignment: This is a technical
+        detail to accomodate a bug in Revit. This should always be left as
+        the default of False, unless you are finding that colours aren't
+        showing up in Revit. In that case, set it to True, but keep in mind
+        that this is no longer a valid IFC. Blame Autodesk.
+    :return: None
 
-    elements = _get_elements_by_material(file, material)
-    shape_aspects = []
-    for element in elements:
-        shape_aspects += _get_shape_aspects(file, element)
+    Example:
 
-    for shape_aspect in shape_aspects:
-        if shape_aspect.Name not in constituent_names:
-            continue
-        for rep in shape_aspect.ShapeRepresentations:
-            ifcopenshell.api.style.assign_representation_styles(
-                file, shape_representation=rep, styles=[wrapped_style])
+    .. code:: python
+
+        # A model context is needed to store 3D geometry
+        model3d = ifcopenshell.api.context.add_context(model, context_type="Model")
+
+        # Specifically, we want to store body geometry
+        body = ifcopenshell.api.context.add_context(model,
+            context_type="Model", context_identifier="Body", target_view="MODEL_VIEW", parent=model3d)
+
+        # Let's create a new wall. The wall does not have any geometry yet.
+        wall = ifcopenshell.api.root.create_entity(model, ifc_class="IfcWall")
+
+        # Let's use the "3D Body" representation we created earlier to add a
+        # new wall-like body geometry, 5 meters long, 3 meters high, and
+        # 200mm thick
+        representation = ifcopenshell.api.geometry.add_wall_representation(model,
+            context=body, length=5, height=3, thickness=0.2)
+
+        # Assign our new body geometry back to our wall
+        ifcopenshell.api.geometry.assign_representation(model,
+            product=wall, representation=representation)
+
+        # Place our wall at the origin
+        ifcopenshell.api.geometry.edit_object_placement(model, product=wall)
+
+        # Let's prepare a concrete material. Note that our concrete material
+        # does not have any colours (styles) at this point.
+        concrete = ifcopenshell.api.material.add_material(model, name="CON01", category="concrete")
+
+        # Assign our concrete material to our wall
+        ifcopenshell.api.material.assign_material(model,
+            products=[wall], type="IfcMaterial", material=concrete)
+
+        # Create a new surface style
+        style = ifcopenshell.api.style.add_style(model)
+
+        # Create a simple grey shading colour and transparency.
+        ifcopenshell.api.style.add_surface_style(model,
+            style=style, ifc_class="IfcSurfaceStyleShading", attributes={
+                "SurfaceColour": { "Name": None, "Red": 0.5, "Green": 0.5, "Blue": 0.5 },
+                "Transparency": 0., # 0 is opaque, 1 is transparent
+            })
+
+        # Now any element (like our wall) with a concrete material will have
+        # a grey colour applied.
+        ifcopenshell.api.style.assign_material_style(model, material=concrete, style=style, context=body)
+    """
+    usecase = Usecase()
+    usecase.file = file
+    usecase.settings = {
+        "material": material,
+        "style": style,
+        "context": context,
+        "should_use_presentation_style_assignment": should_use_presentation_style_assignment,
+    }
+    return usecase.execute()
 
 
-def _modify_existing_definition_representation(file, material, style, wrapped_style,
-                                                context, use_psa):
-    definition_representation = material.HasRepresentation[0]
-    representation = _get_styled_representation(definition_representation, context)
-    if representation:
-        items = list(representation.Items)
-        new_items = []
-        same_style_items = []
-        for item in items:
-            if not item.is_a("IfcStyledItem"):
+class Usecase:
+    file: ifcopenshell.file
+    settings: dict[str, Any]
+
+    def execute(self):
+        self.style = self.settings["style"]
+        if self.file.schema == "IFC2X3" or self.settings["should_use_presentation_style_assignment"]:
+            self.style = self.file.createIfcPresentationStyleAssignment([self.settings["style"]])
+
+        if self.settings["material"].HasRepresentation:
+            self.modify_existing_definition_representation()
+        else:
+            self.create_new_definition_representation()
+
+        # handle material constituents and shape aspects
+        material_constituents_names = []
+        for inverse in self.file.get_inverse(self.settings["material"]):
+            if inverse.is_a("IfcMaterialConstituent") and inverse.Name:
+                material_constituents_names.append(inverse.Name)
+        if not material_constituents_names:
+            return
+
+        elements = ifcopenshell.util.element.get_elements_by_material(self.file, self.settings["material"])
+        shape_aspects = []
+        for element in elements:
+            shape_aspects += ifcopenshell.util.element.get_shape_aspects(element)
+
+        for shape_aspect in shape_aspects:
+            if shape_aspect.Name not in material_constituents_names:
                 continue
-            if _has_proposed_style(file, item, style):
-                return
-            if _has_same_style_type(item, style):
-                same_style_items.append(item)
-            else:
-                new_items.append(item)
-        item_to_reuse = same_style_items.pop(0) if same_style_items else None
-        new_items.append(_create_styled_item(file, style, wrapped_style, item_to_reuse))
-        representation.Items = new_items
-        for item in same_style_items:
-            if file.get_total_inverses(item) == 0:
-                file.remove(item)
-    else:
-        representations = list(definition_representation.Representations)
-        representations.append(_create_styled_representation(file, style, wrapped_style, context))
-        definition_representation.Representations = representations
 
+            for rep in shape_aspect.ShapeRepresentations:
+                ifcopenshell.api.style.assign_representation_styles(
+                    self.file, shape_representation=rep, styles=[self.style]
+                )
 
-def _has_proposed_style(file, styled_item, style):
-    styles = styled_item.Styles
-    if style in styles:
-        return True
-    if file.schema != "IFC4X3":
-        for s in styles:
-            if s.is_a("IfcPresentationStyleAssignment"):
-                if style in s.Styles:
-                    return True
-    return False
+    def modify_existing_definition_representation(self):
+        # NOTE: while it's theoritically possible to have multiple styles per 1 material
+        # (either with multiple styled items or multiple styles in 1 item)
+        # we use an implicit convention that there is only 1 style per material.
+        definition_representation = self.settings["material"].HasRepresentation[0]
+        representation = self.get_styled_representation(definition_representation)
+        if representation:
+            items = list(representation.Items)
+            new_items = []
+            same_style_items = []
+            for item in items:
+                if not item.is_a("IfcStyledItem"):
+                    continue
+                if self.has_proposed_style(item):
+                    return
+                if self.has_same_style_type(item):
+                    same_style_items.append(item)
+                else:
+                    new_items.append(item)
+            item_to_reuse = same_style_items.pop(0) if same_style_items else None
+            new_items.append(self.create_styled_item(item_to_reuse))
+            representation.Items = new_items
+            for item in same_style_items:
+                if self.file.get_total_inverses(item) == 0:
+                    self.file.remove(item)
+        else:
+            representations = list(definition_representation.Representations)
+            representations.append(self.create_styled_representation())
+            definition_representation.Representations = representations
 
-
-def _has_same_style_type(styled_item, style):
-    style_class = style.is_a()
-    for s in styled_item.Styles:
-        s_class = s.is_a()
-        if s_class == style_class:
+    def has_proposed_style(self, styled_item: ifcopenshell.entity_instance) -> bool:
+        style = self.settings["style"]
+        styles = styled_item.Styles
+        if style in styles:
             return True
-        elif s_class == "IfcPresentationStyleAssignment":
-            for ss in s.Styles:
-                if ss.is_a() == style_class:
-                    return True
-    return False
+        if self.file.schema != "IFC4X3":
+            # IfcPresentationStyleAssignment is removed in IFC4X3
+            for s in styles:
+                if s.is_a("IfcPresentationStyleAssignment"):
+                    if style in s.Styles:
+                        return True
+        return False
 
+    def has_same_style_type(self, styled_item: ifcopenshell.entity_instance) -> bool:
+        style = self.settings["style"]
+        style_class = style.is_a()
+        for s in styled_item.Styles:
+            s_class = s.is_a()
+            if s_class == style_class:
+                return True
+            elif s_class == "IfcPresentationStyleAssignment":
+                for ss in s.Styles:
+                    if ss.is_a() == style_class:
+                        return True
+        return False
 
-def _create_new_definition_representation(file, material, style, wrapped_style, context):
-    representation = _create_styled_representation(file, style, wrapped_style, context)
-    file.create_entity(
-        "IfcMaterialDefinitionRepresentation",
-        Representations=[representation],
-        RepresentedMaterial=material)
+    def create_new_definition_representation(self):
+        representation = self.create_styled_representation()
+        definition_representation = self.file.create_entity(
+            "IfcMaterialDefinitionRepresentation",
+            **{"Representations": [representation], "RepresentedMaterial": self.settings["material"]},
+        )
 
+    def get_styled_representation(self, definition_representation):
+        representations = [
+            r
+            for r in definition_representation.Representations
+            if r.is_a("IfcStyledRepresentation") and r.ContextOfItems == self.settings["context"]
+        ]
+        if representations:
+            return representations[0]
 
-def _get_styled_representation(definition_representation, context):
-    for r in definition_representation.Representations:
-        if r.is_a("IfcStyledRepresentation") and r.ContextOfItems == context:
-            return r
-    return None
+    def create_styled_representation(self):
+        return self.file.create_entity(
+            "IfcStyledRepresentation",
+            **{
+                "ContextOfItems": self.settings["context"],
+                "RepresentationIdentifier": self.settings["context"].ContextIdentifier,
+                "Items": [self.create_styled_item()],
+            },
+        )
 
+    def create_styled_item(self, reuse_item=None):
+        if reuse_item is None:
+            return self.file.create_entity(
+                "IfcStyledItem", **{"Styles": [self.style], "Name": self.settings["style"].Name}
+            )
 
-def _create_styled_representation(file, style, wrapped_style, context):
-    return file.create_entity(
-        "IfcStyledRepresentation",
-        ContextOfItems=context,
-        RepresentationIdentifier=context.ContextIdentifier,
-        Items=[_create_styled_item(file, style, wrapped_style)])
+        # IfcPresentationStyleAssignment we created end up not being used
+        # TODO: do not create IfcPresentationStyleAssignment in the first place
+        # as it might get removed
+        if reuse_item.is_a("IfcPresentationStyleAssignment") and self.style.is_a("IfcPresentationStyleAssignment"):
+            self.file.remove(self.style)
+            self.style = reuse_item
 
-
-def _create_styled_item(file, style, wrapped_style, reuse_item=None):
-    if reuse_item is None:
-        return file.create_entity("IfcStyledItem", Styles=[wrapped_style], Name=style.Name)
-
-    if (reuse_item.is_a("IfcPresentationStyleAssignment")
-            and wrapped_style.is_a("IfcPresentationStyleAssignment")):
-        file.remove(wrapped_style)
-        wrapped_style = reuse_item
-
-    reuse_item.Styles = (style,)
-    reuse_item.Name = style.Name
-    return reuse_item
-
-
-# -- Inline helpers for util functions not present in this package -----------
-
-def _get_elements_by_material(ifc_file, material):
-    """Simplified get_elements_by_material."""
-    results = set()
-    for inverse in ifc_file.get_inverse(material):
-        if inverse.is_a("IfcRelAssociatesMaterial"):
-            results.update(inverse.RelatedObjects or [])
-        elif inverse.is_a("IfcMaterialLayer"):
-            for material_set in inverse.ToMaterialLayerSet:
-                results.update(_get_elements_by_material(ifc_file, material_set))
-        elif inverse.is_a("IfcMaterialProfile"):
-            for material_set in inverse.ToMaterialProfileSet:
-                results.update(_get_elements_by_material(ifc_file, material_set))
-        elif inverse.is_a("IfcMaterialConstituent"):
-            for material_set in inverse.ToMaterialConstituentSet:
-                results.update(_get_elements_by_material(ifc_file, material_set))
-        elif inverse.is_a("IfcMaterialLayerSetUsage"):
-            results.update(_get_elements_by_material(ifc_file, inverse))
-        elif inverse.is_a("IfcMaterialProfileSetUsage"):
-            results.update(_get_elements_by_material(ifc_file, inverse))
-        elif inverse.is_a("IfcMaterialList"):
-            results.update(_get_elements_by_material(ifc_file, inverse))
-    return results
-
-
-def _get_shape_aspects(ifc_file, element):
-    """Simplified get_shape_aspects for an IfcProduct."""
-    representation = getattr(element, "Representation", None)
-    if representation is None:
-        return []
-    shape_aspects = list(representation.HasShapeAspects or [])
-    element_type = ifcopenshell.util.element.get_type(element)
-    if element_type:
-        for rm in getattr(element_type, "RepresentationMaps", ()) or ():
-            shape_aspects += list(rm.HasShapeAspects or [])
-    return shape_aspects
+        reuse_item.Styles = (self.settings["style"],)
+        reuse_item.Name = self.settings["style"].Name
+        return reuse_item

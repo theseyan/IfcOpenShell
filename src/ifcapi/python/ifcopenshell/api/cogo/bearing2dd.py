@@ -1,68 +1,96 @@
-# SPDX-License-Identifier: LGPL-3.0-or-later
+# IfcOpenShell - IFC toolkit and geometry engine
+# Copyright (C) 2025 Thomas Krijnen <thomas@aecgeeks.com>
+#
+# This file is part of IfcOpenShell.
+#
+# IfcOpenShell is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# IfcOpenShell is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
+
+import ifcopenshell.util.geolocation
 
 
-def _dms2dd(degrees, minutes, seconds, us=0):
-    """Convert degrees, minutes, seconds, microseconds to decimal degrees."""
-    all_positive = degrees >= 0 and minutes >= 0 and seconds >= 0 and us >= 0
-    all_negative = degrees <= 0 and minutes <= 0 and seconds <= 0 and us <= 0
-    if not (all_positive or all_negative):
-        raise ValueError("Invalid bearing string")
-    return degrees + minutes / 60.0 + seconds / 3600.0 + us / 3600000000.0
+def bearing2dd(bearing: str) -> float:
+    """
+    Converts a quadrant bearing string to decimal degrees
 
+    The format of the string is "N|S dd (mm (ss.s)) E|W"
+    where:
+    N|S is N or S for North or South
+    dd is degree (required)
+    mm is minute (optional, but required if second is provided)
+    ss.s is second (required)
+    E|W is E or W for East or West
 
-def bearing2dd(bearing):
+    :param str: the bearing string
+    :return: Angle in radian
+    """
     error_msg = "Invalid bearing string"
 
-    bearing = bearing.strip()
-    bearing = " ".join(bearing.split())
+    bearing = bearing.strip()  # trim external white space
+    bearing = " ".join(bearing.split())  # make sure all parts separated by a single space
     parts = bearing.split()
-    n_parts = len(parts)
-    if n_parts < 3 or 5 < n_parts:
+    nParts = len(parts)
+    if nParts < 3 or 5 < nParts:
         raise ValueError(error_msg)
 
-    c_y = parts[0].upper()
-    if c_y not in ("N", "S"):
+    cY = parts[0]
+    cY = cY.upper()
+    if cY != "N" and cY != "S":
         raise ValueError(error_msg)
 
-    c_x = parts[-1].upper()
-    if c_x not in ("E", "W"):
+    cX = parts[-1]
+    cX = cX.upper()
+    if cX != "E" and cX != "W":
         raise ValueError(error_msg)
 
     d = 0
     m = 0
     s = 0.0
+    ms = 0
 
-    if n_parts == 3:
+    if nParts == 3:
         d = int(parts[1])
-    elif n_parts == 4:
+    elif nParts == 4:
         d = int(parts[1])
         m = int(parts[2])
-    elif n_parts == 5:
+    elif nParts == 5:
         d = int(parts[1])
         m = int(parts[2])
         s = float(parts[3])
 
+    # s in a decimal number
+    # need to break it into whole seconds and milliseconds
     ms = 100.0 * (s - int(s))
     s = int(s)
 
     if d < 0 or (m < 0 or 60 <= m) or (s < 0 or 60 <= s) or ms < 0:
         raise ValueError(error_msg)
 
-    if c_y == "N" and c_x == "E":
+    if cY == "N" and cX == "E":
         angle = 90.0
         sign = -1.0
-    elif c_y == "N" and c_x == "W":
+    elif cY == "N" and cX == "W":
         angle = 90.0
         sign = 1.0
-    elif c_y == "S" and c_x == "E":
+    elif cY == "S" and cX == "E":
         angle = 270.0
         sign = 1.0
-    elif c_y == "S" and c_x == "W":
+    elif cY == "S" and cX == "W":
         angle = 270.0
         sign = -1.0
 
     try:
-        dms = _dms2dd(d, m, s, ms)
+        dms = ifcopenshell.util.geolocation.dms2dd(d, m, s, ms)
     except ValueError:
         raise ValueError(error_msg)
 
@@ -71,6 +99,7 @@ def bearing2dd(bearing):
 
     angle += sign * dms
 
+    # S 90 E will evaluate to 360
     if angle == 360.0:
         angle = 0.0
 

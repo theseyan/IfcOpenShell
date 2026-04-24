@@ -18,7 +18,6 @@
 
 from __future__ import annotations
 
-import ctypes
 from math import cos, radians
 from typing import TYPE_CHECKING, Literal, Optional, Union
 
@@ -27,7 +26,6 @@ import numpy.typing as npt
 import shapely
 import shapely.ops
 
-import ifcopenshell
 import ifcopenshell.util.element
 import ifcopenshell.util.placement
 import ifcopenshell.util.representation
@@ -48,18 +46,6 @@ MatrixType = npt.NDArray[np.float64]
 
 tol = 1e-6
 
-_shape_lib_configured = False
-
-
-def _configure_shape_lib(lib) -> None:
-    global _shape_lib_configured
-    if _shape_lib_configured:
-        return
-    lib.ifcopenshell_util_shape_is_x.restype = ctypes.c_bool
-    lib.ifcopenshell_util_shape_is_x.argtypes = [ctypes.c_double, ctypes.c_double, ctypes.c_double]
-    _shape_lib_configured = True
-
-
 # NOTE: See IfcGeomRepresentation.h for W.Triangulation buffer types.
 
 # NOTE: For functions that return a single scalar ensure to use .item() to
@@ -77,11 +63,9 @@ def is_x(value: float, x: float, tolerance: Optional[float] = None) -> bool:
     :param tolerance: The tolerance to use. Defaults to 1e-6.
     :return: True or false
     """
-    lib = ifcopenshell._get_lib()
-    _configure_shape_lib(lib)
-    return bool(lib.ifcopenshell_util_shape_is_x(
-        float(value), float(x), 0.0 if tolerance is None else float(tolerance)
-    ))
+    if tolerance is None:
+        tolerance = tol
+    return abs(x - value) < tolerance
 
 
 def get_volume(geometry: W.Triangulation) -> float:

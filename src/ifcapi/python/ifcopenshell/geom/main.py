@@ -85,6 +85,9 @@ TRIANGULATED = 0
 NATIVE = 1
 SERIALIZED = 2
 
+ShapeType = Union["BRepRepresentation", "Triangulation", "Serialization"]
+ShapeElementType = Union["BRepElement", "TriangulationElement", "SerializedElement"]
+
 
 # ---------------------------------------------------------------------------
 # Settings
@@ -2227,6 +2230,7 @@ def make_shape_function(fn):
 __all__ = [
     "SETTING", "SERIALIZER_SETTING", "GEOMETRY_LIBRARY",
     "NATIVE", "TRIANGULATED", "SERIALIZED",
+    "ShapeType", "ShapeElementType",
     "missing_setting", "settings_mixin", "settings", "serializer_settings",
     "Element", "BRepElement", "TriangulationElement", "SerializedElement",
     "Triangulation", "BRepRepresentation", "Serialization",

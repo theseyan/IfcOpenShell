@@ -1,4 +1,20 @@
-# SPDX-License-Identifier: LGPL-3.0-or-later
+# IfcOpenShell - IFC toolkit and geometry engine
+# Copyright (C) 2021 Dion Moult <dion@thinkmoult.com>
+#
+# This file is part of IfcOpenShell.
+#
+# IfcOpenShell is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# IfcOpenShell is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import datetime
 from re import findall
@@ -24,21 +40,23 @@ def timedelta2duration(timedelta):
     return isodate.Duration(**components)
 
 
-def ifc2datetime(element):
+def ifc2datetime(element: Union[str, int, ifcopenshell.entity_instance]):
     if isinstance(element, str):
-        if "P" in element[0:2]:
+        if "P" in element[0:2]:  # IfcDuration
             duration = parse_duration(element)
             if isinstance(duration, datetime.timedelta):
                 return timedelta2duration(duration)
             return duration
-        elif len(element) > 3 and element[2] == ":":
+        elif len(element) > 3 and element[2] == ":":  # IfcTime
             return datetime.time.fromisoformat(element)
-        elif ":" in element:
+        elif ":" in element:  # IfcDateTime
             return datetime.datetime.fromisoformat(element)
-        else:
+        else:  # IfcDate
             return datetime.date.fromisoformat(element)
-    elif isinstance(element, int):
+
+    elif isinstance(element, int):  # IfcTimeStamp
         return datetime.datetime.fromtimestamp(element)
+
     elif isinstance(element, ifcopenshell.entity_instance):
         if element.is_a("IfcDateAndTime"):
             return datetime.datetime(
@@ -48,6 +66,7 @@ def ifc2datetime(element):
                 element.TimeComponent.HourComponent,
                 element.TimeComponent.MinuteComponent,
                 int(element.TimeComponent.SecondComponent),
+                # TODO: implement TimeComponent timezone
             )
         elif element.is_a("IfcCalendarDate"):
             return datetime.date(
@@ -57,19 +76,32 @@ def ifc2datetime(element):
             )
 
 
-def readable_ifc_duration(duration):
+def readable_ifc_duration(duration: str) -> str:
+    """Convert ISO duration to more readable string format.
+
+    Examples:
+    - "P2Y3M1W4DT5H45M30S" -> "2 Y 3 M 1 W 4 D 5 h 45 m 30 s"
+    - "P2Y3MT30S" -> "2 Y 3 M 30 s"
+    - "PT2500H" -> "2500 h" (hours are not converted to days)
+    """
+    # NOTE: we don't use isodate.parseduration as it's going to
+    # represent "PT2500H" as "12w 6d 4h", though user may want
+    # intentionally to use just hours.
+
     if "T" in duration:
         period_duration, time_duration = duration.split("T")
         period_duration = period_duration[1:]
     else:
         period_duration = duration[1:]
         time_duration = ""
-    result = []
+
+    result: list[str] = []
     for designator in ("Y", "M", "W", "D"):
         if designator in period_duration:
             value, period_duration = period_duration.split(designator)
             if float(value):
                 result.append(f"{value}{designator}")
+
     if time_duration:
         for designator in ("H", "M", "S"):
             if designator in time_duration:
@@ -79,7 +111,33 @@ def readable_ifc_duration(duration):
     return " ".join(result)
 
 
-def datetime2ifc(dt, ifc_type):
+@overload
+def datetime2ifc(dt: None, ifc_type: Any) -> None: ...
+@overload
+def datetime2ifc(
+    dt: Union[datetime.date, str, None],
+    ifc_type: Literal[
+        "IfcDuration",
+        "IfcTimeStamp",
+        "IfcDateTime",
+        "IfcDate",
+        "IfcTime",
+        "IfcCalendarDate",
+        "IfcLocalTime",
+    ],
+) -> Union[int, str, dict[str, Any], None]: ...
+def datetime2ifc(
+    dt: Union[datetime.date, str, None],
+    ifc_type: Literal[
+        "IfcDuration",
+        "IfcTimeStamp",
+        "IfcDateTime",
+        "IfcDate",
+        "IfcTime",
+        "IfcCalendarDate",
+        "IfcLocalTime",
+    ],
+) -> Union[int, str, dict[str, Any], None]:
     if isinstance(dt, str):
         if ifc_type == "IfcDuration":
             return dt
@@ -89,6 +147,7 @@ def datetime2ifc(dt, ifc_type):
             dt = datetime.time.fromisoformat(dt)
     elif dt is None:
         return
+
     if ifc_type == "IfcDuration":
         return isodate.duration_isoformat(dt)
     elif ifc_type == "IfcTimeStamp":
@@ -115,11 +174,13 @@ def datetime2ifc(dt, ifc_type):
             "YearComponent": dt.year,
         }
     elif ifc_type == "IfcLocalTime":
+        # TODO implement timezones
         return {
             "HourComponent": dt.hour,
             "MinuteComponent": dt.minute,
             "SecondComponent": dt.second,
         }
+
     raise TypeError(f"Unsupported ifc_type for conversion from datetime.datetime = {ifc_type}, value = {dt}")
 
 
@@ -136,6 +197,7 @@ def string_to_date(string):
 
 
 def string_to_duration(duration_string):
+    # TODO support years, months, weeks aswell
     days = 0
     hours = 0
     minutes = 0
@@ -155,7 +217,7 @@ def string_to_duration(duration_string):
     return isodate.duration_isoformat(datetime.timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds))
 
 
-def parse_duration(value):
+def parse_duration(value: Union[str, None]) -> Union[datetime.timedelta, None]:
     if not value:
         return None
     if isinstance(value, str):
@@ -202,7 +264,7 @@ def parse_duration(value):
                 return None
 
 
-def canonicalise_time(time):
+def canonicalise_time(time: Union[datetime.datetime, None]) -> str:
     if not time:
         return "-"
     return time.strftime("%d/%m/%y")

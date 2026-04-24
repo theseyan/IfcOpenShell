@@ -16,7 +16,6 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ctypes
 from collections.abc import Generator, Sequence
 from typing import Literal, Optional, TypedDict, Union
 
@@ -24,40 +23,9 @@ import numpy as np
 import numpy.typing as npt
 
 import ifcopenshell
-from ifcopenshell.entity_instance import entity_instance
 import ifcopenshell.util.placement
 import ifcopenshell.util.representation
-
-
-_bound = False
-
-
-def _bind():
-    global _bound
-    lib = ifcopenshell._get_lib()
-    if _bound:
-        return lib
-    lib.ifcopenshell_representation_get_context.restype = ctypes.c_void_p
-    lib.ifcopenshell_representation_get_context.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
-    lib.ifcopenshell_representation_resolve.restype = ctypes.c_void_p
-    lib.ifcopenshell_representation_resolve.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-    lib.ifcopenshell_representation_get_product_representation.restype = ctypes.c_void_p
-    lib.ifcopenshell_representation_get_product_representation.argtypes = [
-        ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p,
-        ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p,
-    ]
-    lib.ifcopenshell_representation_resolve_base_items.restype = ctypes.POINTER(ctypes.c_void_p)
-    lib.ifcopenshell_representation_resolve_base_items.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32)]
-    lib.ifcopenshell_representation_get_prioritised_contexts.restype = ctypes.POINTER(ctypes.c_void_p)
-    lib.ifcopenshell_representation_get_prioritised_contexts.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32)]
-    lib.ifcopenshell_free_instance_array_only.restype = None
-    lib.ifcopenshell_free_instance_array_only.argtypes = [ctypes.POINTER(ctypes.c_void_p)]
-    _bound = True
-    return lib
-
-
-def _enc(s):
-    return s.encode("utf-8") if s else None
+import ifcopenshell.util.shape
 
 CONTEXT_TYPE = Literal["Model", "Plan", "NotDefined"]
 REPRESENTATION_IDENTIFIER = Literal[
@@ -99,11 +67,19 @@ def get_context(
     :param subcontext: A ContextIdentifier string, or any if left blank.
     :param target_view: A TargetView string, or any if left blank.
     """
-    lib = _bind()
-    rid = lib.ifcopenshell_representation_get_context(
-        ifc_file._ptr, _enc(context), _enc(subcontext), _enc(target_view),
-    )
-    return entity_instance(ifc_file, rid) if rid else None
+
+    if subcontext or target_view:
+        elements = ifc_file.by_type("IfcGeometricRepresentationSubContext")
+    else:
+        elements = ifc_file.by_type("IfcGeometricRepresentationContext", include_subtypes=False)
+    for element in elements:
+        if context and element.ContextType != context:
+            continue
+        if subcontext and getattr(element, "ContextIdentifier") != subcontext:
+            continue
+        if target_view and getattr(element, "TargetView") != target_view:
+            continue
+        return element
 
 
 def is_representation_of_context(
@@ -169,18 +145,9 @@ def get_representation(
     :param target_view: A TargetView string, or any if left blank.
     :return: The first IfcShapeRepresentation matching the criteria.
     """
-    lib = _bind()
-    ifc_file = element.file
-    if isinstance(context, ifcopenshell.entity_instance):
-        rid = lib.ifcopenshell_representation_get_product_representation(
-            ifc_file._ptr, element._handle, context._handle, None, None, None,
-        )
-    else:
-        rid = lib.ifcopenshell_representation_get_product_representation(
-            ifc_file._ptr, element._handle, None,
-            _enc(context), _enc(subcontext), _enc(target_view),
-        )
-    return entity_instance(ifc_file, rid) if rid else None
+    for r in get_representations_iter(element):
+        if is_representation_of_context(r, context, subcontext, target_view):
+            return r
 
 
 def guess_type(items: Sequence[ifcopenshell.entity_instance]) -> Union[str, None]:
@@ -340,42 +307,19 @@ def resolve_representation(representation: ifcopenshell.entity_instance) -> ifco
     :param representation: IfcRepresentation
     :return: Representation resolved from mappings
     """
-    lib = _bind()
-    ifc_file = representation.file
-    rid = lib.ifcopenshell_representation_resolve(ifc_file._ptr, representation._handle)
-    return entity_instance(ifc_file, rid) if rid else representation
+    # Tekla 2023 has missing items and mapped representation, though it's invalid IFC.
+    if (
+        len(representation.Items or []) == 1
+        and representation.Items[0].is_a("IfcMappedItem")
+        and (mapped_rep := representation.Items[0].MappingSource.MappedRepresentation)
+    ):
+        return resolve_representation(mapped_rep)
+    return representation
 
 
 class ResolvedItemDict(TypedDict):
     matrix: npt.NDArray[np.float64]
     item: ifcopenshell.entity_instance
-
-
-def _get_mappeditem_transformation(item: ifcopenshell.entity_instance) -> npt.NDArray[np.float64]:
-    """Minimal fallback for ifcopenshell.util.placement.get_mappeditem_transformation.
-
-    Used when the full function is not available in this package.
-    """
-    m4 = ifcopenshell.util.placement.get_axis2placement(item.MappingSource.MappingOrigin)
-    target = item.MappingTarget
-    if target.is_a("IfcCartesianTransformationOperator3D"):
-        origin = np.array(target.LocalOrigin.Coordinates)
-        axis1 = np.array(target.Axis1.DirectionRatios if target.Axis1 else (1.0, 0.0, 0.0))
-        axis2 = np.array(target.Axis2.DirectionRatios if target.Axis2 else (0.0, 1.0, 0.0))
-        axis3 = np.array(target.Axis3.DirectionRatios if target.Axis3 else (0.0, 0.0, 1.0))
-        scale1 = target.Scale if target.Scale else 1.0
-        scale2 = target.Scale2 if hasattr(target, "Scale2") and target.Scale2 else scale1
-        scale3 = target.Scale3 if hasattr(target, "Scale3") and target.Scale3 else scale1
-        axis1 = axis1 / np.linalg.norm(axis1) * scale1
-        axis2 = axis2 / np.linalg.norm(axis2) * scale2
-        axis3 = axis3 / np.linalg.norm(axis3) * scale3
-        t = np.eye(4)
-        t[0, :3] = axis1
-        t[1, :3] = axis2
-        t[2, :3] = axis3
-        t[:3, 3] = origin
-        return t @ m4
-    return m4
 
 
 def resolve_items(
@@ -386,10 +330,7 @@ def resolve_items(
     results: list[ResolvedItemDict] = []
     for item in representation.Items or []:  # Be forgiving of invalid IFCs because Revit :(
         if item.is_a("IfcMappedItem"):
-            try:
-                rep_matrix = ifcopenshell.util.placement.get_mappeditem_transformation(item)
-            except AttributeError:
-                rep_matrix = _get_mappeditem_transformation(item)
+            rep_matrix = ifcopenshell.util.placement.get_mappeditem_transformation(item)
             if not np.allclose(rep_matrix, np.eye(4)):
                 rep_matrix = rep_matrix @ matrix.copy()
             results.extend(resolve_items(item.MappingSource.MappedRepresentation, rep_matrix))
@@ -402,18 +343,16 @@ def resolve_base_items(
     representation: ifcopenshell.entity_instance,
 ) -> Generator[ifcopenshell.entity_instance, None, None]:
     """Resolve representation to it's base items resolving mapped items and boolean results to it's operands."""
-    lib = _bind()
-    ifc_file = representation.file
-    count = ctypes.c_uint32(0)
-    ptr = lib.ifcopenshell_representation_resolve_base_items(
-        ifc_file._ptr, representation._handle, ctypes.byref(count)
-    )
-    try:
-        for i in range(count.value):
-            yield entity_instance(ifc_file, ptr[i])
-    finally:
-        if ptr:
-            lib.ifcopenshell_free_instance_array_only(ptr)
+    queue: list[ifcopenshell.entity_instance] = list(representation.Items)
+    while queue:
+        item = queue.pop()
+        if item.is_a("IfcMappedItem"):
+            yield from resolve_base_items(item.MappingSource.MappedRepresentation)
+        elif item.is_a("IfcBooleanResult"):
+            queue.append(item.FirstOperand)
+            queue.append(item.SecondOperand)
+        else:
+            yield item
 
 
 def get_prioritised_contexts(ifc_file: ifcopenshell.file) -> list[ifcopenshell.entity_instance]:
@@ -431,14 +370,59 @@ def get_prioritised_contexts(ifc_file: ifcopenshell.file) -> list[ifcopenshell.e
     :return: A list of IfcGeometricRepresentationContext (or SubContext) from
         high priority to low priority.
     """
-    lib = _bind()
-    count = ctypes.c_uint32(0)
-    ptr = lib.ifcopenshell_representation_get_prioritised_contexts(ifc_file._ptr, ctypes.byref(count))
-    try:
-        return [entity_instance(ifc_file, ptr[i]) for i in range(count.value)]
-    finally:
-        if ptr:
-            lib.ifcopenshell_free_instance_array_only(ptr)
+    # Annotation ContextType is to accommodate broken Revit files
+    # See https://github.com/Autodesk/revit-ifc/issues/187
+    type_priority = ["Model", "Plan", "Annotation"]
+    identifier_priority = [
+        "Body",
+        "Body-FallBack",
+        "Facetation",
+        "FootPrint",
+        "Profile",
+        "Surface",
+        "Reference",
+        "Axis",
+        "Clearance",
+        "Box",
+        "Lighting",
+        "Annotation",
+        "CoG",
+    ]
+    target_view_priority = [
+        "MODEL_VIEW",
+        "PLAN_VIEW",
+        "REFLECTED_PLAN_VIEW",
+        "ELEVATION_VIEW",
+        "SECTION_VIEW",
+        "GRAPH_VIEW",
+        "SKETCH_VIEW",
+        "USERDEFINED",
+        "NOTDEFINED",
+    ]
+
+    def sort_context(context):
+        priority = []
+
+        if context.ContextType in type_priority:
+            priority.append(len(type_priority) - type_priority.index(context.ContextType))
+        else:
+            priority.append(0)
+
+        if context.ContextIdentifier in identifier_priority:
+            priority.append(len(identifier_priority) - identifier_priority.index(context.ContextIdentifier))
+        else:
+            priority.append(0)
+
+        if getattr(context, "TargetView", None) in target_view_priority:
+            priority.append(len(target_view_priority) - target_view_priority.index(context.TargetView))
+        else:
+            priority.append(0)
+
+        priority.append(getattr(context, "TargetScale", None) or 0)  # Big then small
+
+        return tuple(priority)
+
+    return sorted(ifc_file.by_type("IfcGeometricRepresentationContext"), key=sort_context, reverse=True)
 
 
 def get_part_of_product(
@@ -523,23 +507,17 @@ def get_reference_line(wall: ifcopenshell.entity_instance, fallback_length: floa
             if points[0][0] < points[1][0]:  # An axis always goes in the +X direction
                 return [np.array(points[0]), np.array(points[1])]
             return [np.array(points[1]), np.array(points[0])]
-    # ifcopenshell.util.shape.get_base_extrusions dependency – optional
-    try:
-        import ifcopenshell.util.shape
-
-        if extrusions := ifcopenshell.util.shape.get_base_extrusions(wall):
-            for extrusion in extrusions:
-                profile = extrusion.SweptArea
-                curve = getattr(profile, "OuterCurve", None)
-                if not curve:
-                    continue
-                elif curve.is_a("IfcPolyline"):
-                    x = [p[0][0] for p in curve.Points]
-                elif curve.is_a("IfcIndexedPolyCurve"):
-                    x = [p[0] for p in curve.Points.CoordList]
-                else:
-                    continue
-                return [np.array((min(x), 0.0)), np.array((max(x), 0.0))]
-    except (ImportError, AttributeError):
-        pass
+    elif extrusions := ifcopenshell.util.shape.get_base_extrusions(wall):
+        for extrusion in extrusions:
+            profile = extrusion.SweptArea
+            curve = getattr(profile, "OuterCurve", None)
+            if not curve:
+                continue
+            elif curve.is_a("IfcPolyline"):
+                x = [p[0][0] for p in curve.Points]
+            elif curve.is_a("IfcIndexedPolyCurve"):
+                x = [p[0] for p in curve.Points.CoordList]
+            else:
+                continue
+            return [np.array((min(x), 0.0)), np.array((max(x), 0.0))]
     return [np.array((0.0, 0.0)), np.array((fallback_length, 0.0))]

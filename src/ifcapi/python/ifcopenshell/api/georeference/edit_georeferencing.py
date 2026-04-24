@@ -1,13 +1,87 @@
-# SPDX-License-Identifier: LGPL-3.0-or-later
+# IfcOpenShell - IFC toolkit and geometry engine
+# Copyright (C) 2021 Dion Moult <dion@thinkmoult.com>
+#
+# This file is part of IfcOpenShell.
+#
+# IfcOpenShell is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# IfcOpenShell is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Edit georeferencing attributes (CRS and map conversion)."""
+from typing import Any, Optional
 
+import ifcopenshell
 import ifcopenshell.api.pset
 import ifcopenshell.util.element
 
 
-def edit_georeferencing(file, coordinate_operation=None, projected_crs=None):
-    """Edit the attributes of a map conversion and/or projected CRS."""
+def edit_georeferencing(
+    file: ifcopenshell.file,
+    coordinate_operation: Optional[dict[str, Any]] = None,
+    projected_crs: Optional[dict[str, Any]] = None,
+) -> None:
+    """Edits the attributes of a map conversion, projected CRS, and true north
+
+    Setting the correct georeferencing parameters is a complex topic and
+    should ideally be done with three parties present: the lead architect,
+    surveyor, and a third-party digital engineer with expertise in IFC to
+    moderate. For more information, read the Bonsai documentation
+    for Georeferencing:
+    https://docs.bonsaibim.org/guides/authoring/georeferencing.html
+
+    For more information about the attributes and data types of an
+    IfcCoordinateOperation, consult the IFC documentation.
+
+    For more information about the attributes and data types of an
+    IfcProjectedCRS, consult the IFC documentation.
+
+    See ifcopenshell.util.geolocation for more utilities to convert to and
+    from local and map coordinates to check your results.
+
+    :param coordinate_operation: The dictionary of attribute names and values
+        you want to edit.
+        'MapUnit' attribute in IFC2X3 should be presented as a full unit name (string),
+        in other IFC versions it's presented an IfcNamedUnit.
+    :param projected_crs: The IfcProjectedCRS dictionary of attribute
+        names and values you want to edit.
+
+    Example:
+
+    .. code:: python
+
+        ifcopenshell.api.georeference.add_georeferencing(model)
+        # This is the simplest scenario, a defined CRS (GDA2020 / MGA Zone
+        # 56, typically used in Sydney, Australia) but with no local
+        # coordinates. This is only recommended for horizontal construction
+        # projects, not for vertical construction (such as buildings).
+        ifcopenshell.api.georeference.edit_georeferencing(model,
+            projected_crs={"Name": "EPSG:7856"})
+
+        # For buildings, it is almost always recommended to specify map
+        # conversion parameters to a false origin and orientation to project
+        # north. See the diagram in the Bonsai Georeferencing
+        # documentation for correct calculation of the X Axis Abcissa and
+        # Ordinate.
+        ifcopenshell.api.georeference.edit_georeferencing(model,
+            projected_crs={"Name": "EPSG:7856"},
+            coordinate_operation={
+                "Eastings": 335087.17, # The architect nominates a false origin
+                "Northings": 6251635.41, # The architect nominates a false origin
+                # Note: this is the angle difference between Project North
+                # and Grid North. Remember: True North should never be used!
+                "XAxisAbscissa": cos(radians(-30)), # The architect nominates a project north
+                "XAxisOrdinate": sin(radians(-30)), # The architect nominates a project north
+                "Scale": 0.99956, # Ask your surveyor for your site's average combined scale factor!
+            })
+    """
     if file.schema == "IFC2X3":
         if not (project := file.by_type("IfcProject")):
             return
@@ -33,7 +107,6 @@ def edit_georeferencing(file, coordinate_operation=None, projected_crs=None):
                         v = file.createIfcLengthMeasure(v)
                 ifcopenshell.api.pset.edit_pset(file, conversion, properties=coordinate_operation)
         return
-
     if projected_crs:
         crs = file.by_type("IfcProjectedCRS")[0]
         for name, value in projected_crs.items():

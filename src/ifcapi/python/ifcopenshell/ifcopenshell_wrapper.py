@@ -958,3 +958,16 @@ def set_log_format_text() -> None:
     """Set log output format to text (parity with SWIG)."""
     global _LOG_FORMAT
     _LOG_FORMAT = "text"
+
+
+# Type alias for parity with SWIG's ifcopenshell_wrapper.file. Upstream
+# pure-Python helper modules use this purely as a type annotation; the
+# real Python-facing class lives in ifcopenshell.file. Resolved lazily to
+# avoid circular imports during package bootstrap.
+class _FileTypeAlias:
+    """Forward-ref placeholder for ifcopenshell_wrapper.file (type-only use)."""
+
+    def __class_getitem__(cls, item):  # support `wrapper.file[...]` (rare)
+        return cls
+
+file = _FileTypeAlias  # noqa: A001 - intentional shadowing of builtin name

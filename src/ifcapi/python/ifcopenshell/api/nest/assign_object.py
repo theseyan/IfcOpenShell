@@ -1,4 +1,22 @@
-# SPDX-License-Identifier: LGPL-3.0-or-later
+# IfcOpenShell - IFC toolkit and geometry engine
+# Copyright (C) 2021 Dion Moult <dion@thinkmoult.com>
+#
+# This file is part of IfcOpenShell.
+#
+# IfcOpenShell is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# IfcOpenShell is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
+
+from typing import Union
 
 import ifcopenshell
 import ifcopenshell.api.aggregate
@@ -8,8 +26,81 @@ import ifcopenshell.guid
 import ifcopenshell.util.element
 
 
-def assign_object(file, related_objects, relating_object):
-    if not related_objects:
+def assign_object(
+    file: ifcopenshell.file,
+    related_objects: list[ifcopenshell.entity_instance],
+    relating_object: ifcopenshell.entity_instance,
+) -> Union[ifcopenshell.entity_instance, None]:
+    """Assigns objects as nested children to a parent host
+
+    All physical IFC model elements must be part of a hierarchical tree
+    called the "spatial decomposition", where large things are made up of
+    smaller things. This tree always begins at an "IfcProject" and is then
+    broken down using "decomposition" relationships, of which aggregation is
+    the first relationship you will use.
+
+    Another type of "decomposition" relationship is known as "nesting".
+    Nesting is used when an child object is physically attached to a parent
+    host object, through a physical predetermined connection point. The
+    child object must be specifically designed to attach to a other objects
+    at specific positions with a particular form factor. Examples include
+    faucets which must always be attached through a predrilled hole in a
+    basin. Alternatively, it could be a modular attachment with a
+    correlating male and female joint that must join at a particular point.
+    Because there is a strict connection point, when the parent moves, all
+    nested children must move with the parent. Another example might be a
+    predrilled hole in a door panel where hardware must fit through.
+
+    Nesting relationships are not very commonly used in most design and
+    construction models. Its main usecase is in modular construction, kit of
+    parts, or fabrication models.
+
+    As a product may only have a single location in the "spatial
+    decomposition" tree, assigning an nesting relationship will remove any
+    previous aggregation, containment, or nesting relationships it may have.
+
+    IFC placements follow a convention where the placement is relative to
+    its parent in the spatial hierarchy. If your product has a placement,
+    its placement will be recalculated to follow this convention.
+
+    For physical connections which are part of a distribution system, such
+    as a plug connecting into a GPO, or a duct connecting to an AHU, or two
+    pipe segments connecting with a bend, tee, or wye fitting, you should
+    not nest the two objects directly. Instead, you should nest a connection
+    port, which determines the type of compatible distribution flow that can
+    be connected to it. To do this, do not use this function, but instead
+    use the more specific functions in the ifcopenshell.api.system module.
+
+    Note that nesting relationships may also be used by non-physical
+    elements, such as cost items or tasks. In this context, nesting means
+    that there is an implied order to the child cost items or tasks (i.e.
+    task 1 should be shown before task 2). It is not necessary to use this
+    function for nesting non-physical elements. Instead, it is recommended
+    to instead just use the relevant API functions, like
+    ifcopenshell.api.cost.add_cost_item or
+    ifcopenshell.api.sequence.add_task.
+
+    :param related_objects: The list of children of the nesting relationship,
+        typically IfcElements.
+    :param relating_object: The host parent of the nesting relationship,
+        typically an IfcElement.
+    :return: The IfcRelNests relationship instance
+        or `None` if `related_objects` was empty list.
+
+    Example:
+
+    .. code:: python
+
+        # Faucets are designed to attach onto a sink through a predrilled hole.
+        sink = ifcopenshell.api.root.create_entity(model,
+            ifc_class="IfcSanitaryTerminal", predefined_type="SINK")
+        faucet = ifcopenshell.api.root.create_entity(model,
+            ifc_class="IfcValve", predefined_type="FAUCET")
+        ifcopenshell.api.nest.assign_object(model, related_objects=[faucet], relating_object=sink)
+    """
+    settings = {"related_objects": related_objects, "relating_object": relating_object}
+
+    if not settings["related_objects"]:
         return
 
     ifc2x3 = file.schema == "IFC2X3"
@@ -21,9 +112,9 @@ def assign_object(file, related_objects, relating_object):
         is_nested_by = next((i for i in relating_object.IsNestedBy), None)
 
     # NOTE: maintain .RelatedObjects order as it has meaning in IFC
-    previous_nests_rels = set()
-    objects_without_nests = []
-    objects_with_nests = []
+    previous_nests_rels: set[ifcopenshell.entity_instance] = set()
+    objects_without_nests: list[ifcopenshell.entity_instance] = []
+    objects_with_nests: list[ifcopenshell.entity_instance] = []
 
     # check if there is anything to change
     for object in related_objects_set:

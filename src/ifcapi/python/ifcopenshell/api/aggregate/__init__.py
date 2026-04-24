@@ -1,53 +1,35 @@
-# SPDX-License-Identifier: LGPL-3.0-or-later
-"""Aggregate assignment API — thin wrappers around native C functions."""
+# IfcOpenShell - IFC toolkit and geometry engine
+# Copyright (C) 2022 Dion Moult <dion@thinkmoult.com>
+#
+# This file is part of IfcOpenShell.
+#
+# IfcOpenShell is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# IfcOpenShell is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ctypes
-from ... import _get_lib, entity_instance
+"""Aggregates is the concept of breaking down larger wholes into smaller parts.
 
+For example, spatial elements such as sites are broken down into one or more
+buildings, and a building is broken down into storeys. Another example is for
+physical elements, such as how a wall is made out of members and coverings.
+"""
 
-def assign_object(file, products=None, relating_object=None):
-    """Assign products as parts of a whole via IfcRelAggregates.
+from .. import wrap_usecases
+from .assign_object import assign_object
+from .unassign_object import unassign_object
 
-    Returns the IfcRelAggregates entity_instance.
-    """
-    lib = _get_lib()
-    handles = [p._handle for p in (products or []) if isinstance(p, entity_instance)]
-    if not handles or relating_object is None:
-        return None
-    arr = (ctypes.c_void_p * len(handles))(*handles)
-    ro_h = relating_object._handle
-    lib.ifcopenshell_aggregate_assign_object.restype = ctypes.c_void_p
-    lib.ifcopenshell_aggregate_assign_object.argtypes = [
-        ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p), ctypes.c_uint32, ctypes.c_void_p,
-    ]
-    rel_h = lib.ifcopenshell_aggregate_assign_object(file._ptr, arr, len(handles), ro_h)
-    if not rel_h:
-        return None
-    return entity_instance(file, rel_h)
+wrap_usecases(__path__, __name__)
 
-
-def unassign_object(file, products=None):
-    """Unassign products from their aggregate."""
-    lib = _get_lib()
-    handles = [p._handle for p in (products or []) if isinstance(p, entity_instance)]
-    if not handles:
-        return
-    arr = (ctypes.c_void_p * len(handles))(*handles)
-    lib.ifcopenshell_aggregate_unassign_object.restype = None
-    lib.ifcopenshell_aggregate_unassign_object.argtypes = [
-        ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p), ctypes.c_uint32,
-    ]
-    lib.ifcopenshell_aggregate_unassign_object(file._ptr, arr, len(handles))
-
-import importlib as _importlib
-
-def __getattr__(name):
-    try:
-        module = _importlib.import_module(f".{name}", __name__)
-    except ModuleNotFoundError:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    func = getattr(module, name, None)
-    if func is None:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    globals()[name] = func
-    return func
+__all__ = [
+    "assign_object",
+    "unassign_object",
+]
