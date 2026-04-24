@@ -148,7 +148,10 @@ class TestInverseAttributes:
         )
         assert isinstance(opening.VoidsElements, tuple)
         ifcopenshell.settings.unpack_non_aggregate_inverses = True
-        assert opening.VoidsElements.id() == rel.id()
+        try:
+            assert opening.VoidsElements.id() == rel.id()
+        finally:
+            ifcopenshell.settings.unpack_non_aggregate_inverses = False
 
 
 class TestRelationshipAggregate:

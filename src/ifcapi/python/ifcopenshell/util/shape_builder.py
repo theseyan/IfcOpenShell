@@ -1368,18 +1368,144 @@ class ShapeBuilder:
         face_set = self.polygonal_face_set(all_points, faces)
         return face_set
 
-    # --- MEP methods (Bonsai-specific, not ported) ---
+    # --- MEP methods ---
+
+    def mep_transition_length(
+        self,
+        start_half_dim: np.ndarray,
+        end_half_dim: np.ndarray,
+        angle: float,
+        profile_offset: VectorType = (0.0, 0.0),
+        verbose: bool = True,
+    ) -> Optional[float]:
+        """Get the transition length for two profile half-dimensions, an angle, and an XY offset."""
+        print = lambda *args, **kwargs: __builtins__["print"](*args, **kwargs) if verbose else None
+        np_X, np_Y = 0, 1
+        np_XY = slice(2)
+
+        offset = np_round_to_precision(np.array(profile_offset), 1)
+        diff = start_half_dim[np_XY] - end_half_dim[np_XY]
+        diff = np.abs(diff)
+
+        print(f"offset = {profile_offset} / {offset}")
+        print(f"diff = {diff}")
+
+        calculation_arguments = {
+            "start_half_dim": start_half_dim,
+            "end_half_dim": end_half_dim,
+            "diff": diff,
+            "offset": offset,
+            "verbose": verbose,
+        }
+
+        def check_transition(end_profile: bool = False) -> Union[float, None]:
+            length = self.mep_transition_calculate(**calculation_arguments, angle=angle, end_profile=end_profile)
+            if length is None:
+                return
+
+            other_side_angle = self.mep_transition_calculate(
+                **calculation_arguments, length=length, end_profile=not end_profile
+            )
+            if other_side_angle is None:
+                return None
+
+            same_dimension = is_x(diff[np_Y] if not end_profile else diff[np_X], 0)
+            if same_dimension and is_x(offset[np_Y] if not end_profile else offset[np_X], 0):
+                requested_angle = 90.0
+            else:
+                requested_angle = angle
+
+            print(f"other_side_angle = {other_side_angle}, requested_angle = {requested_angle}")
+            if other_side_angle < requested_angle or is_x(other_side_angle, requested_angle):
+                print(f"final length = {length}, angle = {requested_angle}, other side angle = {other_side_angle}")
+                return length
+
+        return check_transition() or check_transition(True)
+
+    def mep_transition_calculate(
+        self,
+        start_half_dim: np.ndarray,
+        end_half_dim: np.ndarray,
+        offset: np.ndarray,
+        diff: Optional[np.ndarray] = None,
+        end_profile: bool = False,
+        length: Optional[float] = None,
+        angle: Optional[float] = None,
+        verbose: bool = True,
+    ) -> Union[float, None]:
+        """Calculate MEP transition length from angle, or transition angle from length."""
+        print = lambda *args, **kwargs: __builtins__["print"](*args, **kwargs) if verbose else None
+
+        if diff is None:
+            diff = start_half_dim[:2] - end_half_dim[:2]
+            diff = np.abs(diff)
+
+        np_X, np_Y = 0, 1
+        np_YX = [1, 0]
+
+        if end_profile:
+            diff, offset = diff[np_YX], offset[np_YX]
+
+        same_dimension = is_x(diff[0], 0)
+        a = diff[np_X] + offset[np_X]
+        b = diff[np_X] - offset[np_X]
+        if length is None:
+            if not same_dimension:
+                assert angle is not None
+                t = tan(radians(angle))
+                h0 = a**2 + 4 * a * b * t**2 + 2 * a * b + b**2
+                if h0 < 0:
+                    print(f"B. Coulndn't calculate transition length for angle = {angle}, offset = {offset}, diff = {diff}")
+                    return None
+
+                h = (a + b + sqrt(h0)) / (2 * t)
+                length_squared = h**2 - offset[np_Y] ** 2
+                if length_squared <= 0:
+                    print(f"B. angle = {angle} requires h = {h} which is not possible with y offset = {offset[np_Y]}")
+                    return None
+                length = sqrt(length_squared)
+            else:
+                if is_x(offset[np_X], 0):
+                    angle = 90
+                    h = start_half_dim[np_X] / tan(radians(angle / 2))
+                    length_squared = h**2 - offset[np_Y] ** 2
+                    if length_squared <= 0:
+                        print(f"B. angle = {angle} requires h = {h} which is not possible with y offset = {offset[np_Y]}")
+                        return None
+                    length = sqrt(length_squared)
+                else:
+                    assert angle is not None
+                    h = offset[np_X] / tan(radians(angle))
+                    length_squared = h**2 - offset[np_Y] ** 2
+                    if length_squared <= 0:
+                        print(f"C. angle = {angle} requires h = {h} which is not possible with y offset = {offset[np_Y]}")
+                        return None
+                    length = sqrt(length_squared)
+
+            return length
+
+        elif angle is None:
+            if not same_dimension:
+                if length == 0:
+                    return 0
+
+                h = sqrt(length**2 + offset[np_Y] ** 2)
+                t = -h * (a + b) / (a * b - h**2)
+                angle = degrees(atan(t))
+            else:
+                h = sqrt(length**2 + offset[np_Y] ** 2)
+                if is_x(offset[np_X], 0):
+                    angle = degrees(2 * atan(start_half_dim[np_X] / h))
+                else:
+                    angle = degrees(atan(offset[np_X] / h))
+            return angle
+
+    # --- Bonsai/Blender-specific shape construction (not ported) ---
 
     def create_z_profile_lips_curve(self, *args: Any, **kwargs: Any) -> Any:
         raise NotImplementedError("Not ported to ifcapi")
 
     def mep_transition_shape(self, *args: Any, **kwargs: Any) -> Any:
-        raise NotImplementedError("Not ported to ifcapi")
-
-    def mep_transition_length(self, *args: Any, **kwargs: Any) -> Any:
-        raise NotImplementedError("Not ported to ifcapi")
-
-    def mep_transition_calculate(self, *args: Any, **kwargs: Any) -> Any:
         raise NotImplementedError("Not ported to ifcapi")
 
     def mep_bend_shape(self, *args: Any, **kwargs: Any) -> Any:

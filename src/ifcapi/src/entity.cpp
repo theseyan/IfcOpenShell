@@ -10,10 +10,12 @@
 #include "ifcparse/utils.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cstdlib>
 #include <cstring>
 #include <sstream>
 #include <string>
+#include <vector>
 
 // Shared error helpers (defined in root.cpp)
 #include "ifcopenshell_api_internal.hpp"
@@ -62,6 +64,12 @@ const char* ifcopenshell_entity_type(const ifcopenshell_ifc_instance_t* instance
     auto* e = instance ? instance->ptr : nullptr;
     if (!e) return "";
     return e->declaration().name().c_str();
+}
+
+ifcopenshell_ifc_file_t* ifcopenshell_ifc_instance_file(const ifcopenshell_ifc_instance_t* instance) {
+    auto* e = instance ? instance->ptr : nullptr;
+    auto* file = e ? e->file_ : nullptr;
+    return file ? ifcopenshell::capi::wrap_file(file, false) : nullptr;
 }
 
 bool ifcopenshell_entity_is_a(const ifcopenshell_ifc_instance_t* instance, const char* type_name) {
@@ -362,6 +370,109 @@ static IfcUtil::IfcBaseClass* create_type_value(IfcParse::IfcFile* file, const c
 
     auto* param_type = type_decl->declared_type();
 
+    // Aggregation-typed defined types (e.g. IfcLineIndex = LIST OF
+    // IfcPositiveInteger). The wrapped attribute is a vector, not a
+    // simple scalar; parse the canonical SPF list literal "(a,b,c,...)"
+    // emitted by the Python layer and dispatch to the right vector setter.
+    auto* aggregation = param_type ? param_type->as_aggregation_type() : nullptr;
+    if (aggregation && str_value) {
+        std::string raw(str_value);
+        // Strip surrounding whitespace and matching parentheses/brackets.
+        size_t l = 0, r = raw.size();
+        while (l < r && std::isspace(static_cast<unsigned char>(raw[l]))) ++l;
+        while (r > l && std::isspace(static_cast<unsigned char>(raw[r - 1]))) --r;
+        if (l < r && (raw[l] == '(' || raw[l] == '[') && (raw[r - 1] == ')' || raw[r - 1] == ']')) {
+            ++l;
+            --r;
+        }
+        std::vector<std::string> tokens;
+        {
+            std::string cur;
+            for (size_t i = l; i < r; ++i) {
+                char c = raw[i];
+                if (c == ',') {
+                    tokens.push_back(cur);
+                    cur.clear();
+                } else {
+                    cur.push_back(c);
+                }
+            }
+            if (!cur.empty() || !tokens.empty()) tokens.push_back(cur);
+        }
+        // Trim each token.
+        for (auto& t : tokens) {
+            size_t a = 0, b = t.size();
+            while (a < b && std::isspace(static_cast<unsigned char>(t[a]))) ++a;
+            while (b > a && std::isspace(static_cast<unsigned char>(t[b - 1]))) --b;
+            t = t.substr(a, b - a);
+        }
+        // Determine element kind by walking the element parameter_type.
+        const IfcParse::parameter_type* elem = aggregation->type_of_element();
+        // unwrap named_type chain to a simple_type if possible.
+        const IfcParse::simple_type* elem_simple = elem ? elem->as_simple_type() : nullptr;
+        if (!elem_simple && elem) {
+            const IfcParse::named_type* nt = elem->as_named_type();
+            while (nt && !elem_simple) {
+                auto* inner_decl = nt->declared_type();  // IfcParse::declaration*
+                if (!inner_decl) break;
+                auto* td = inner_decl->as_type_declaration();
+                if (!td) break;
+                auto* dt = td->declared_type();          // IfcParse::parameter_type*
+                if (!dt) break;
+                elem_simple = dt->as_simple_type();
+                if (!elem_simple) nt = dt->as_named_type();
+            }
+        }
+        IfcParse::simple_type::data_type kind = elem_simple
+            ? elem_simple->declared_type()
+            : IfcParse::simple_type::number_type;
+        try {
+            switch (kind) {
+                case IfcParse::simple_type::integer_type: {
+                    std::vector<int> v;
+                    v.reserve(tokens.size());
+                    for (auto& t : tokens) if (!t.empty()) v.push_back(std::stoi(t));
+                    inst->set_attribute_value(0, v);
+                    break;
+                }
+                case IfcParse::simple_type::real_type:
+                case IfcParse::simple_type::number_type: {
+                    std::vector<double> v;
+                    v.reserve(tokens.size());
+                    for (auto& t : tokens) if (!t.empty()) v.push_back(std::stod(t));
+                    inst->set_attribute_value(0, v);
+                    break;
+                }
+                case IfcParse::simple_type::boolean_type:
+                case IfcParse::simple_type::logical_type:
+                    // List-of-bool/logical typed defined types are exceedingly
+                    // rare in published IFC schemas and the parser exposes
+                    // them as ``vector<dynamic_bitset>``, not ``vector<bool>``.
+                    // Fall back to string storage if encountered.
+                    inst->set_attribute_value(0, std::string(str_value));
+                    break;
+                default: {
+                    std::vector<std::string> v;
+                    v.reserve(tokens.size());
+                    for (auto& t : tokens) {
+                        // Strip surrounding single quotes if present.
+                        if (t.size() >= 2 && t.front() == '\'' && t.back() == '\'') {
+                            v.push_back(t.substr(1, t.size() - 2));
+                        } else {
+                            v.push_back(t);
+                        }
+                    }
+                    inst->set_attribute_value(0, v);
+                    break;
+                }
+            }
+        } catch (const std::exception& e) {
+            set_error(std::string("Failed to parse aggregate literal for ") + type_name + ": " + e.what());
+            return nullptr;
+        }
+        return inst;
+    }
+
     // Walk named_type chain to find the underlying simple_type
     auto* simple = param_type ? param_type->as_simple_type() : nullptr;
     if (!simple) {
@@ -475,6 +586,36 @@ const char* ifcopenshell_entity_get_typed_value(const ifcopenshell_ifc_instance_
                         case IfcUtil::Argument_BOOL:
                             str_val = (bool)inner ? "true" : "false";
                             break;
+                        case IfcUtil::Argument_AGGREGATE_OF_INT: {
+                            auto vec = (std::vector<int>)inner;
+                            str_val = "(";
+                            for (size_t k = 0; k < vec.size(); ++k) {
+                                if (k) str_val += ",";
+                                str_val += std::to_string(vec[k]);
+                            }
+                            str_val += ")";
+                            break;
+                        }
+                        case IfcUtil::Argument_AGGREGATE_OF_DOUBLE: {
+                            auto vec = (std::vector<double>)inner;
+                            str_val = "(";
+                            for (size_t k = 0; k < vec.size(); ++k) {
+                                if (k) str_val += ",";
+                                str_val += std::to_string(vec[k]);
+                            }
+                            str_val += ")";
+                            break;
+                        }
+                        case IfcUtil::Argument_AGGREGATE_OF_STRING: {
+                            auto vec = (std::vector<std::string>)inner;
+                            str_val = "(";
+                            for (size_t k = 0; k < vec.size(); ++k) {
+                                if (k) str_val += ",";
+                                str_val += "'" + vec[k] + "'";
+                            }
+                            str_val += ")";
+                            break;
+                        }
                         default:
                             str_val = "?";
                             break;
@@ -662,6 +803,39 @@ int32_t ifcopenshell_entity_get_aggregate_typed_value(const ifcopenshell_ifc_ins
                         case IfcUtil::Argument_DOUBLE: str_val = std::to_string((double)inner); break;
                         case IfcUtil::Argument_INT: str_val = std::to_string((int)inner); break;
                         case IfcUtil::Argument_BOOL: str_val = (bool)inner ? "true" : "false"; break;
+                        case IfcUtil::Argument_AGGREGATE_OF_INT: {
+                            auto vec = (std::vector<int>)inner;
+                            std::string s = "(";
+                            for (size_t k = 0; k < vec.size(); ++k) {
+                                if (k) s += ",";
+                                s += std::to_string(vec[k]);
+                            }
+                            s += ")";
+                            str_val = s;
+                            break;
+                        }
+                        case IfcUtil::Argument_AGGREGATE_OF_DOUBLE: {
+                            auto vec = (std::vector<double>)inner;
+                            std::string s = "(";
+                            for (size_t k = 0; k < vec.size(); ++k) {
+                                if (k) s += ",";
+                                s += std::to_string(vec[k]);
+                            }
+                            s += ")";
+                            str_val = s;
+                            break;
+                        }
+                        case IfcUtil::Argument_AGGREGATE_OF_STRING: {
+                            auto vec = (std::vector<std::string>)inner;
+                            std::string s = "(";
+                            for (size_t k = 0; k < vec.size(); ++k) {
+                                if (k) s += ",";
+                                s += "'" + vec[k] + "'";
+                            }
+                            s += ")";
+                            str_val = s;
+                            break;
+                        }
                         default: str_val = ""; break;
                     }
                 }

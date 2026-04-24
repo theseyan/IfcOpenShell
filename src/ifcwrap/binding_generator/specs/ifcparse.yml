@@ -441,6 +441,29 @@ functions:
         Logger::Verbosity(Logger::LOG_WARNING);
 
   - kind: adapter_function
+    expose_as: instance_list_create_from_handles
+    returns:
+      kind: handle
+      handle: instance_list
+      ownership: owned
+    params:
+      - name: instances
+        type:
+          kind: handle_list
+          handle: instance
+    implementation:
+      kind: inline_cpp
+      body: |
+        boost::shared_ptr<aggregate_of_instance> agg(new aggregate_of_instance());
+        agg->reserve(instances_cpp.size());
+        for (const auto* inst : instances_cpp) {
+            if (inst != nullptr) {
+                agg->push(const_cast<IfcUtil::IfcBaseClass*>(inst));
+            }
+        }
+        return agg;
+
+  - kind: adapter_function
     expose_as: set_log_format_json
     returns:
       kind: void

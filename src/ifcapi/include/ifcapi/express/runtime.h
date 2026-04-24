@@ -171,6 +171,11 @@ Value make_entity(std::string_view schema_name,
                   std::string_view type_name,
                   std::initializer_list<std::pair<std::string_view, Value>> attrs = {});
 
+/// Recursively materialize any EntityProxy overlays into real scratch-file
+/// entities so the result can safely cross the C ABI as ordinary instance
+/// handles. Scalars and already-materialized entities are returned unchanged.
+Value materialize_for_abi(const Value& v);
+
 /* --- Math passthroughs --------------------------------------------- */
 
 Value math_sqrt(const Value& v);

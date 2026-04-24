@@ -159,6 +159,10 @@ typedef struct ifcopenshell_ifcgeom_opaque_number_t ifcopenshell_ifcgeom_opaque_
 typedef struct ifcopenshell_ifcgeom_svgfill_polygon_t ifcopenshell_ifcgeom_svgfill_polygon_t;
 typedef struct ifcopenshell_ifcgeom_function_item_evaluator_t ifcopenshell_ifcgeom_function_item_evaluator_t;
 
+typedef struct ifcopenshell_ifc_instance_list_t {
+    ifcopenshell_ifc_instance_t** items;
+    size_t size;
+} ifcopenshell_ifc_instance_list_t;
 typedef struct ifcopenshell_ifcgeom_conversion_result_shape_list_t {
     ifcopenshell_ifcgeom_conversion_result_shape_t** items;
     size_t size;
@@ -207,10 +211,10 @@ typedef struct ifcopenshell_ifcgeom_element_list_t {
     ifcopenshell_ifcgeom_element_t** items;
     size_t size;
 } ifcopenshell_ifcgeom_element_list_t;
-typedef struct ifcopenshell_ifc_instance_list_t {
-    ifcopenshell_ifc_instance_t** items;
+typedef struct ifcopenshell_ifc_instance_list_list_t {
+    ifcopenshell_ifc_instance_list_t* items;
     size_t size;
-} ifcopenshell_ifc_instance_list_t;
+} ifcopenshell_ifc_instance_list_list_t;
 typedef struct ifcopenshell_ifcgeom_conversion_result_shape_list_list_t {
     ifcopenshell_ifcgeom_conversion_result_shape_list_t* items;
     size_t size;
@@ -259,10 +263,6 @@ typedef struct ifcopenshell_ifcgeom_element_list_list_t {
     ifcopenshell_ifcgeom_element_list_t* items;
     size_t size;
 } ifcopenshell_ifcgeom_element_list_list_t;
-typedef struct ifcopenshell_ifc_instance_list_list_t {
-    ifcopenshell_ifc_instance_list_t* items;
-    size_t size;
-} ifcopenshell_ifc_instance_list_list_t;
 
 void ifcopenshell_clear_error(void);
 const char* ifcopenshell_last_error_message(void);
@@ -339,6 +339,7 @@ void ifcopenshell_ifcgeom_taxonomy_boolean_result_destroy(ifcopenshell_ifcgeom_t
 void ifcopenshell_ifcgeom_opaque_number_destroy(ifcopenshell_ifcgeom_opaque_number_t* handle);
 void ifcopenshell_ifcgeom_svgfill_polygon_destroy(ifcopenshell_ifcgeom_svgfill_polygon_t* handle);
 void ifcopenshell_ifcgeom_function_item_evaluator_destroy(ifcopenshell_ifcgeom_function_item_evaluator_t* handle);
+void ifcopenshell_ifc_instance_list_destroy(ifcopenshell_ifc_instance_list_t* value);
 void ifcopenshell_ifcgeom_conversion_result_shape_list_destroy(ifcopenshell_ifcgeom_conversion_result_shape_list_t* value);
 void ifcopenshell_ifcgeom_svgfill_polygon_list_destroy(ifcopenshell_ifcgeom_svgfill_polygon_list_t* value);
 void ifcopenshell_ifc_declaration_list_destroy(ifcopenshell_ifc_declaration_list_t* value);
@@ -351,7 +352,7 @@ void ifcopenshell_ifc_inverse_attribute_list_destroy(ifcopenshell_ifc_inverse_at
 void ifcopenshell_ifcgeom_taxonomy_style_list_destroy(ifcopenshell_ifcgeom_taxonomy_style_list_t* value);
 void ifcopenshell_ifcgeom_taxonomy_item_list_destroy(ifcopenshell_ifcgeom_taxonomy_item_list_t* value);
 void ifcopenshell_ifcgeom_element_list_destroy(ifcopenshell_ifcgeom_element_list_t* value);
-void ifcopenshell_ifc_instance_list_destroy(ifcopenshell_ifc_instance_list_t* value);
+void ifcopenshell_ifc_instance_list_list_destroy(ifcopenshell_ifc_instance_list_list_t* value);
 void ifcopenshell_ifcgeom_conversion_result_shape_list_list_destroy(ifcopenshell_ifcgeom_conversion_result_shape_list_list_t* value);
 void ifcopenshell_ifcgeom_svgfill_polygon_list_list_destroy(ifcopenshell_ifcgeom_svgfill_polygon_list_list_t* value);
 void ifcopenshell_ifc_declaration_list_list_destroy(ifcopenshell_ifc_declaration_list_list_t* value);
@@ -364,7 +365,6 @@ void ifcopenshell_ifc_inverse_attribute_list_list_destroy(ifcopenshell_ifc_inver
 void ifcopenshell_ifcgeom_taxonomy_style_list_list_destroy(ifcopenshell_ifcgeom_taxonomy_style_list_list_t* value);
 void ifcopenshell_ifcgeom_taxonomy_item_list_list_destroy(ifcopenshell_ifcgeom_taxonomy_item_list_list_t* value);
 void ifcopenshell_ifcgeom_element_list_list_destroy(ifcopenshell_ifcgeom_element_list_list_t* value);
-void ifcopenshell_ifc_instance_list_list_destroy(ifcopenshell_ifc_instance_list_list_t* value);
 
 bool ifcopenshell_ifcparse_clear_schemas(void);
 bool ifcopenshell_ifcparse_guess_file_type(const char* fn, int32_t* out_result);
@@ -384,6 +384,7 @@ bool ifcopenshell_ifcparse_get_feature(const char* name, bool* out_result);
 bool ifcopenshell_ifcparse_get_log(ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcparse_turn_on_detailed_logging(void);
 bool ifcopenshell_ifcparse_turn_off_detailed_logging(void);
+bool ifcopenshell_ifcparse_instance_list_create_from_handles(const ifcopenshell_ifc_instance_list_t* instances, ifcopenshell_ifcparse_instance_list_t** out_result);
 bool ifcopenshell_ifcparse_set_log_format_json(void);
 bool ifcopenshell_ifcparse_set_log_format_text(void);
 bool ifcopenshell_ifcparse_ifc_si_prefix_to_value(const char* prefix, double* out_result);
