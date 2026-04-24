@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-#include "selector_internal.h"
+#include "selector/internal.h"
 
 #include <algorithm>
 #include <unordered_set>

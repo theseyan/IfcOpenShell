@@ -4,7 +4,7 @@
 // (filter_elements, get_element, format). Produces an opaque C AST consumed
 // through the C ABI declared in ifcapi/selector_ast.h.
 
-#include "ifcapi/selector_ast.h"
+#include "ifcapi/selector/ast.h"
 #include "ifcopenshell_api_internal.hpp"
 
 #include <cctype>

@@ -2,7 +2,7 @@
 
 #include "ifcapi/ifcapi.h"
 #include "ifcopenshell_api_internal.hpp"
-#include "api_pset_props.hpp"
+#include "api/pset/props.hpp"
 
 #include "ifcparse/IfcFile.h"
 #include "ifcparse/IfcSchema.h"
@@ -790,8 +790,16 @@ std::string infer_qto_class(const std::string& name, const Entry& e) {
 }
 
 std::string qto_canonical_type(const std::string& name, const Entry& e, IfcUtil::IfcBaseClass* qto_template) {
+    std::string explicit_type;
     if (e.kind == Kind::INSTANCE && e.inst) {
-        std::string n = e.inst->declaration().name();
+        explicit_type = e.inst->declaration().name();
+    } else if ((e.kind == Kind::TYPED_DOUBLE || e.kind == Kind::TYPED_INT
+                || e.kind == Kind::TYPED_BOOL || e.kind == Kind::TYPED_STRING)
+               && !e.ifc_type.empty()) {
+        explicit_type = e.ifc_type;
+    }
+    if (!explicit_type.empty()) {
+        std::string n = explicit_type;
         // Strip "Ifc" prefix and "Measure" suffix.
         if (n.rfind("Ifc", 0) == 0) n = n.substr(3);
         const std::string suffix = "Measure";

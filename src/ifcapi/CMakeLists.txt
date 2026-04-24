@@ -43,22 +43,22 @@ set(IFCAPI_SOURCES
     src/element.cpp
     src/representation.cpp
     src/geometry.cpp
-    src/selector_parser.cpp
-    src/selector_get.cpp
-    src/selector_filter.cpp
-    src/selector_format.cpp
-    src/selector_set.cpp
-    src/util_attribute.cpp
-    src/util_shape.cpp
-    src/util_classification.cpp
-    src/util_element_styles.cpp
-    src/util_element_traversal.cpp
-    src/util_pset_template.cpp
-    src/util_schema.cpp
-    src/util_unit.cpp
-    src/api_pset_add.cpp
-    src/api_pset_edit.cpp
-    src/api_geometry_placement.cpp
+    src/selector/parser.cpp
+    src/selector/get.cpp
+    src/selector/filter.cpp
+    src/selector/format.cpp
+    src/selector/set.cpp
+    src/util/attribute.cpp
+    src/util/shape.cpp
+    src/util/classification.cpp
+    src/util/element/styles.cpp
+    src/util/element/traversal.cpp
+    src/util/pset/template.cpp
+    src/util/schema.cpp
+    src/util/unit.cpp
+    src/api/pset/add.cpp
+    src/api/pset/edit.cpp
+    src/api/geometry/placement.cpp
     src/express/runtime.cpp
     src/express/compute_derived.cpp
     src/express/generated/IFC2X3_TC1.cpp

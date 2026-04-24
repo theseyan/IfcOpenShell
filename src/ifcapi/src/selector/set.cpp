@@ -3,10 +3,10 @@
 #include "ifcapi/ifcapi.h"
 #include "ifcapi/value.h"
 #include "ifcopenshell_api_internal.hpp"
-#include "selector_internal.h"
+#include "selector/internal.h"
 #include "entity_introspection.hpp"
 #include "placement_helpers.hpp"
-#include "api_pset_props.hpp"
+#include "api/pset/props.hpp"
 
 #include "ifcparse/IfcFile.h"
 #include "ifcparse/IfcSchema.h"
