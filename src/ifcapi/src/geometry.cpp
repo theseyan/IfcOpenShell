@@ -91,7 +91,7 @@ void write_ref_list(IfcUtil::IfcBaseClass* e, const char* attr,
     int idx = attr_index_of(e, attr);
     if (idx < 0) return;
     if (refs.empty()) {
-        e->unset_attribute_value(static_cast<size_t>(idx));
+        e->set_attribute_value(static_cast<size_t>(idx), Blank{});
         return;
     }
     auto agg = aggregate_of_instance::ptr(new aggregate_of_instance());
@@ -122,7 +122,7 @@ void write_ref(IfcUtil::IfcBaseClass* e, const char* attr, IfcUtil::IfcBaseClass
     int idx = attr_index_of(e, attr);
     if (idx < 0) return;
     if (!ref) {
-        e->unset_attribute_value(static_cast<size_t>(idx));
+        e->set_attribute_value(static_cast<size_t>(idx), Blank{});
         return;
     }
     e->set_attribute_value(static_cast<size_t>(idx), ref);
@@ -748,7 +748,7 @@ void unassign_type_representation(IfcParse::IfcFile* file,
     for (auto* rm : rep_maps) if (rm != matching) remaining.push_back(rm);
     if (remaining.empty()) {
         int idx = attr_index_of(type_product, "RepresentationMaps");
-        if (idx >= 0) type_product->unset_attribute_value(idx);
+        if (idx >= 0) type_product->set_attribute_value(static_cast<size_t>(idx), Blank{});
     } else {
         write_ref_list(type_product, "RepresentationMaps", remaining);
     }
