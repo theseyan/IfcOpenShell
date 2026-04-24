@@ -173,11 +173,12 @@ class entity_instance:
     def declaration(self):
         """Return the schema declaration for this entity's type.
 
-        Mirrors SWIG's wrapped_data.declaration() API.
+        Routes through the autogen ABI (`ifcopenshell_ifc_instance_declaration`)
+        so header-section entities (which live in `Header_section_schema` rather
+        than the file's IFC schema) are also resolvable.
         """
         from . import ifcopenshell_wrapper as W
-        schema = W.schema_by_name(self._file.schema)
-        return schema.declaration_by_name(self.is_a())
+        return W.instance_declaration(self._handle)
 
     def attribute_name(self, index: int) -> str:
         lib = _get_lib()
@@ -261,7 +262,7 @@ class entity_instance:
                 return None
             elif atype == ATTR_STRING:
                 val = lib.ifcopenshell_entity_get_string(h, attr)
-                return val.decode("utf-8") if val else None
+                return val.decode("utf-8") if val is not None else None
             elif atype == ATTR_INT:
                 return lib.ifcopenshell_entity_get_int(h, attr)
             elif atype == ATTR_DOUBLE:

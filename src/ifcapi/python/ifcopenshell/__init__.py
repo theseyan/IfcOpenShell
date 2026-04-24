@@ -295,6 +295,12 @@ def _get_lib():
     _lib.ifcopenshell_file_write.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
     _lib.ifcopenshell_file_to_string.restype = ctypes.c_char_p
     _lib.ifcopenshell_file_to_string.argtypes = [ctypes.c_void_p]
+    _lib.ifcopenshell_file_header_file_description.restype = ctypes.c_void_p
+    _lib.ifcopenshell_file_header_file_description.argtypes = [ctypes.c_void_p]
+    _lib.ifcopenshell_file_header_file_name.restype = ctypes.c_void_p
+    _lib.ifcopenshell_file_header_file_name.argtypes = [ctypes.c_void_p]
+    _lib.ifcopenshell_file_header_file_schema.restype = ctypes.c_void_p
+    _lib.ifcopenshell_file_header_file_schema.argtypes = [ctypes.c_void_p]
 
     # -- Entity operations ----------------------------------------------------
     _lib.ifcopenshell_entity_type.restype = ctypes.c_char_p
@@ -769,7 +775,7 @@ class file:
             msg = err.decode("utf-8") if err else "Unknown error"
             raise RuntimeError(f"Failed to create IFC file: {msg}")
         self._owns_ptr = True
-        self.header = _file_header()
+        self.header = _file_header(self)
         self.transaction = None
         self.history = []
         self.future = []
@@ -1101,11 +1107,40 @@ class file:
 # ---------------------------------------------------------------------------
 
 class _file_header:
-    """Stub file header for compatibility."""
+    """File header backed by real header-section entity instances from C++."""
 
-    def __init__(self):
-        self.file_name = _header_file_name()
-        self.file_description = _header_file_description()
+    def __init__(self, file_obj=None):
+        self._file = file_obj
+
+    @property
+    def file_description(self):
+        if self._file is None:
+            return _header_file_description()
+        lib = _get_lib()
+        h = lib.ifcopenshell_file_header_file_description(self._file._ptr)
+        if not h:
+            return _header_file_description()
+        return entity_instance(self._file, h)
+
+    @property
+    def file_name(self):
+        if self._file is None:
+            return _header_file_name()
+        lib = _get_lib()
+        h = lib.ifcopenshell_file_header_file_name(self._file._ptr)
+        if not h:
+            return _header_file_name()
+        return entity_instance(self._file, h)
+
+    @property
+    def file_schema(self):
+        if self._file is None:
+            return None
+        lib = _get_lib()
+        h = lib.ifcopenshell_file_header_file_schema(self._file._ptr)
+        if not h:
+            return None
+        return entity_instance(self._file, h)
 
 
 class _header_file_name:
@@ -1154,7 +1189,7 @@ def _wrap_file_ptr(ptr, *, owned=True) -> "file":
     f = file.__new__(file)
     f._ptr = ptr
     f._owns_ptr = owned
-    f.header = _file_header()
+    f.header = _file_header(f)
     f.transaction = None
     f.history = []
     f.future = []
