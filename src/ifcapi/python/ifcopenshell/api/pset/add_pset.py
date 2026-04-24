@@ -18,8 +18,9 @@ def add_pset(file, product, name, ifc2x3_subclass=None):
         owner_history = None
 
     oh_handle = owner_history._handle if owner_history is not None else 0
+    subclass_arg = ifc2x3_subclass.encode("utf-8") if ifc2x3_subclass else None
     handle = lib.ifcopenshell_api_pset_add_pset(
-        file._ptr, product._handle, name.encode("utf-8"), oh_handle
+        file._ptr, product._handle, name.encode("utf-8"), oh_handle, subclass_arg
     )
     if not handle:
         raise_last_error(f"Failed to add property set '{name}'")

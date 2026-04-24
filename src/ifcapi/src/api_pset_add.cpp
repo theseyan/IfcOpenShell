@@ -194,7 +194,8 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_api_pset_add_pset(
     ifcopenshell_ifc_file_t* file_h,
     ifcopenshell_ifc_instance_t* product_h,
     const char* name,
-    ifcopenshell_ifc_instance_t* owner_history_h)
+    ifcopenshell_ifc_instance_t* owner_history_h,
+    const char* ifc2x3_subclass)
 {
     if (!file_h || !product_h || !name) {
         set_error("ifcopenshell_api_pset_add_pset: missing required argument");
@@ -232,7 +233,14 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_api_pset_add_pset(
         bool is_ifc2x3 = (std::string(file->schema()->name()) == "IFC2X3");
 
         if (entity_is_a(product, "IfcMaterial") || entity_is_a(product, "IfcMaterialDefinition")) {
-            std::string ifc_class = is_ifc2x3 ? "IfcExtendedMaterialProperties" : "IfcMaterialProperties";
+            std::string ifc_class;
+            if (is_ifc2x3) {
+                ifc_class = (ifc2x3_subclass && *ifc2x3_subclass)
+                    ? std::string(ifc2x3_subclass)
+                    : std::string("IfcExtendedMaterialProperties");
+            } else {
+                ifc_class = "IfcMaterialProperties";
+            }
             std::vector<IfcUtil::IfcBaseClass*> defs;
             if (is_ifc2x3) {
                 try {
@@ -277,7 +285,14 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_api_pset_add_pset(
                     }
                 }
             }
-            std::string ifc_class = is_ifc2x3 ? "IfcGeneralProfileProperties" : "IfcProfileProperties";
+            std::string ifc_class;
+            if (is_ifc2x3) {
+                ifc_class = (ifc2x3_subclass && *ifc2x3_subclass)
+                    ? std::string(ifc2x3_subclass)
+                    : std::string("IfcGeneralProfileProperties");
+            } else {
+                ifc_class = "IfcProfileProperties";
+            }
             const auto* decl = file->schema()->declaration_by_name(ifc_class);
             auto* def = file->create(decl);
             auto* entity_decl = decl->as_entity();
