@@ -565,6 +565,9 @@ class declaration(_Handle):
             return False
         return bool(v.value)
 
+    # Upstream SWIG renames the C++ `is(...)` method to `_is(...)` in Python.
+    _is = is_
+
     # SWIG exposes the method as `is()` but that's a Python keyword; the real
     # SWIG wrapper works because SWIG renames it. Provide both spellings.
     def __getattr__(self, name):

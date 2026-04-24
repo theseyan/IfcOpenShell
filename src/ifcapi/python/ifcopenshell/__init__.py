@@ -285,6 +285,10 @@ def _get_lib():
     _lib.ifcopenshell_ifc_instance_file.argtypes = [ctypes.c_void_p]
     _lib.ifcopenshell_file_get_inverse.restype = ctypes.POINTER(ctypes.c_void_p)
     _lib.ifcopenshell_file_get_inverse.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32)]
+    _lib.ifcopenshell_file_get_inverse_indices.restype = ctypes.POINTER(ctypes.c_int32)
+    _lib.ifcopenshell_file_get_inverse_indices.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32)]
+    _lib.ifcopenshell_free_int32_array.restype = None
+    _lib.ifcopenshell_free_int32_array.argtypes = [ctypes.POINTER(ctypes.c_int32)]
     _lib.ifcopenshell_file_traverse.restype = ctypes.POINTER(ctypes.c_void_p)
     _lib.ifcopenshell_file_traverse.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_uint32)]
     _lib.ifcopenshell_file_write.restype = ctypes.c_bool
@@ -973,16 +977,30 @@ class file:
         return result
 
     def get_inverse(self, entity, allow_duplicate=False, with_attribute_indices=False):
+        if with_attribute_indices and not allow_duplicate:
+            raise ValueError("with_attribute_indices requires allow_duplicate to be True")
         lib = _get_lib()
         if not isinstance(entity, entity_instance):
             entity = self.by_id(entity)
         count = ctypes.c_uint32(0)
         arr = lib.ifcopenshell_file_get_inverse(entity._handle, ctypes.byref(count))
         if not arr or count.value == 0:
-            return set()
-        result = {entity_instance(self, arr[i]) for i in range(count.value)}
-        lib.ifcopenshell_free_instance_array_only(arr)
-        return result
+            inverses = []
+        else:
+            inverses = [entity_instance(self, arr[i]) for i in range(count.value)]
+            lib.ifcopenshell_free_instance_array_only(arr)
+        if allow_duplicate:
+            if with_attribute_indices:
+                idx_count = ctypes.c_uint32(0)
+                idx_arr = lib.ifcopenshell_file_get_inverse_indices(entity._handle, ctypes.byref(idx_count))
+                if not idx_arr or idx_count.value == 0:
+                    idxs = []
+                else:
+                    idxs = [int(idx_arr[i]) for i in range(idx_count.value)]
+                    lib.ifcopenshell_free_int32_array(idx_arr)
+                return list(zip(inverses, idxs))
+            return inverses
+        return set(inverses)
 
     def get_total_inverses(self, entity) -> int:
         lib = _get_lib()

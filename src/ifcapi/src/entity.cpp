@@ -308,16 +308,26 @@ bool ifcopenshell_entity_set_enum(ifcopenshell_ifc_instance_t* instance, const c
         auto* entity_decl = e->declaration().as_entity();
         size_t idx = entity_decl->attribute_index(attr);
         auto* enum_type = resolve_enum_type_for_attr(entity_decl, idx);
-        if (!enum_type) return false;
+        if (!enum_type) return false;  // not an enum attribute; caller may fall back
 
         const auto& items = enum_type->enumeration_items();
         std::string val_str(val);
         auto it = std::find(items.begin(), items.end(), val_str);
-        if (it == items.end()) return false;
+        if (it == items.end()) {
+            // Attribute IS an enum, but value isn't a valid item. Match SWIG
+            // behaviour: surface as an error rather than silently falling
+            // through to set_string (which would corrupt the slot).
+            set_error("'" + val_str + "' is not a valid value for enumeration "
+                      + enum_type->name());
+            return false;
+        }
 
         size_t enum_idx = static_cast<size_t>(std::distance(items.begin(), it));
         e->set_attribute_value(idx, EnumerationReference(enum_type, enum_idx));
         return true;
+    } catch (const std::exception& ex) {
+        set_error(ex.what());
+        return false;
     } catch (...) {
         return false;
     }
