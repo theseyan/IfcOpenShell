@@ -691,7 +691,7 @@ def convert_file_length_units(ifc_file, target_units: str = "METER"):
             return c
         if isinstance(c, ifcopenshell.entity_instance):
             if c.is_a("IfcLengthMeasure"):
-                c.wrappedValue = convert_value(c.wrappedValue)
+                return ifcopenshell._typed_value(file_patched, c.is_a(), str(convert_value(c.wrappedValue)))
             return c
         if isinstance(c, (list, tuple)):
             return type(c)(_convert_typed(x) for x in c)

@@ -223,8 +223,11 @@ IFCAPI_EXPORT uint32_t ifcopenshell_entity_attr_count(const ifcopenshell_ifc_ins
 /// Returns the name of the attribute at the given index. Caller must free with ifcopenshell_free_string().
 IFCAPI_EXPORT char* ifcopenshell_entity_attr_name(const ifcopenshell_ifc_instance_t* instance, uint32_t index);
 
-/// Returns the IFC-SPF string representation of the entity. Caller must free with ifcopenshell_free_string().
+/// Returns the raw string representation of the entity. Caller must free with ifcopenshell_free_string().
 IFCAPI_EXPORT char* ifcopenshell_entity_to_string(const ifcopenshell_ifc_instance_t* instance);
+
+/// Returns the valid IFC-SPF string representation of the entity. Caller must free with ifcopenshell_free_string().
+IFCAPI_EXPORT char* ifcopenshell_entity_to_string_valid_spf(const ifcopenshell_ifc_instance_t* instance);
 
 /* ------------------------------------------------------------------ */
 /*  Entity attribute getters (caller frees char* with free_string)     */
@@ -281,6 +284,15 @@ IFCAPI_EXPORT char** ifcopenshell_entity_get_aggregate_string(const ifcopenshell
 
 /// Returns an array of STEP IDs (entity references). Caller frees with ifcopenshell_free_instance_array().
 IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_entity_get_aggregate_ref(const ifcopenshell_ifc_instance_t* instance, const char* attr, uint32_t* count);
+
+/// Returns the outer size of an aggregate-of-aggregate-of-entity attribute, or -1 on error.
+IFCAPI_EXPORT int32_t ifcopenshell_entity_get_aggregate_ref_list_list_size(const ifcopenshell_ifc_instance_t* instance, const char* attr);
+
+/// Returns the inner size at `outer_index` for an aggregate-of-aggregate-of-entity attribute, or -1 on error.
+IFCAPI_EXPORT int32_t ifcopenshell_entity_get_aggregate_ref_list_list_inner_size(const ifcopenshell_ifc_instance_t* instance, const char* attr, uint32_t outer_index);
+
+/// Returns an entity reference at `[outer_index][inner_index]` for an aggregate-of-aggregate-of-entity attribute, or NULL on error.
+IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_entity_get_aggregate_ref_list_list_item(const ifcopenshell_ifc_instance_t* instance, const char* attr, uint32_t outer_index, uint32_t inner_index);
 
 /// Reads an aggregate of inline typed values (e.g. SET OF IfcValue).
 /// Fills type_names_out and values_out arrays (caller frees each string, then arrays).

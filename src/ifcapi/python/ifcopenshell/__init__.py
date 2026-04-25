@@ -15,6 +15,10 @@ import builtins
 import json
 import os
 import re
+import tempfile
+import weakref
+import zipfile
+from pathlib import Path
 from typing import List, Optional, Set, Tuple
 
 version = "0.8.1"
@@ -361,6 +365,8 @@ def _get_lib():
     _lib.ifcopenshell_entity_attr_name.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
     _lib.ifcopenshell_entity_to_string.restype = ctypes.c_char_p
     _lib.ifcopenshell_entity_to_string.argtypes = [ctypes.c_void_p]
+    _lib.ifcopenshell_entity_to_string_valid_spf.restype = ctypes.c_char_p
+    _lib.ifcopenshell_entity_to_string_valid_spf.argtypes = [ctypes.c_void_p]
 
     # -- Scalar getters -------------------------------------------------------
     _lib.ifcopenshell_entity_get_string.restype = ctypes.c_char_p
@@ -798,6 +804,39 @@ class _typed_value(entity_instance):
 # file
 # ---------------------------------------------------------------------------
 
+HEADER_FIELDS = {
+    "file_description": ("description", "implementation_level"),
+    "file_name": (
+        "name",
+        "time_stamp",
+        "author",
+        "organization",
+        "preprocessor_version",
+        "originating_system",
+        "authorization",
+    ),
+}
+
+
+def _schema_identifier_from_version(schema_version) -> str:
+    major, minor, addendum, corrigendum = tuple(schema_version)
+    schema = f"IFC{major}"
+    if minor:
+        schema += f"X{minor}"
+    if addendum:
+        schema += f"_ADD{addendum}"
+    if corrigendum:
+        schema += f"_TC{corrigendum}"
+    return file._SCHEMA_ALIASES.get(schema, schema)
+
+
+def _schema_version_from_identifier(schema_identifier: str) -> tuple[int, int, int, int]:
+    match = re.fullmatch(r"IFC(?P<major>\d+)(?:X(?P<minor>\d+))?(?:_ADD(?P<addendum>\d+))?(?:_TC(?P<corrigendum>\d+))?", schema_identifier)
+    if not match:
+        return ()
+    return tuple(int(match.group(name) or 0) for name in ("major", "minor", "addendum", "corrigendum"))
+
+
 class file:
     """Wraps a native IFC file."""
 
@@ -808,8 +847,11 @@ class file:
     # correctly when the file is created with the bare-major name.
     _SCHEMA_ALIASES = {"IFC4X3": "IFC4X3_ADD2"}
 
-    def __init__(self, schema="IFC4"):
-        schema = self._SCHEMA_ALIASES.get(schema, schema)
+    def __init__(self, schema="IFC4", schema_version=None):
+        if schema_version is not None:
+            schema = _schema_identifier_from_version(schema_version)
+        else:
+            schema = self._SCHEMA_ALIASES.get(schema, schema)
         lib = _get_lib()
         self._ptr = lib.ifcopenshell_file_create(_enc(schema))
         if not self._ptr:
@@ -875,6 +917,20 @@ class file:
             raise UndoSystemError("Error during transaction redo.", transaction) from e
         self.history.append(transaction)
 
+    def assign_header_from(self, other: "file") -> None:
+        for section_name, attr_names in HEADER_FIELDS.items():
+            try:
+                target = getattr(self.header, section_name)
+                source = getattr(other.header, section_name)
+            except AttributeError:
+                continue
+            for attr_name in attr_names:
+                try:
+                    value = getattr(source, attr_name)
+                except AttributeError:
+                    continue
+                setattr(target, attr_name, value)
+
     def __del__(self):
         if getattr(self, "_ptr", None) and getattr(self, "_owns_ptr", True):
             lib = _get_lib()
@@ -904,6 +960,18 @@ class file:
             f"{p}{v}" if v is not None else ""
             for p, v in zip(prefixes, version_tuple[0:2])
         )
+
+    @property
+    def schema_version(self) -> tuple[int, int, int, int]:
+        return _schema_version_from_identifier(self.schema_identifier)
+
+    @property
+    def mvd(self):
+        from ifcopenshell.util.mvd_info import LARK_AVAILABLE, MvdInfo
+
+        if not LARK_AVAILABLE:
+            return None
+        return MvdInfo(self.header)
 
     def create_entity(self, type_name=None, *args, **kwargs):
         if type_name is None:
@@ -962,6 +1030,8 @@ class file:
         return result
 
     def by_id(self, id: int) -> entity_instance:
+        if isinstance(id, (str, bytes)):
+            return self.by_guid(id.decode("utf-8") if isinstance(id, bytes) else id)
         lib = _get_lib()
         out = ctypes.c_void_p(0)
         ok = lib.ifcopenshell_ifc_file_by_id(self._ptr, id, ctypes.byref(out))
@@ -976,6 +1046,8 @@ class file:
         raise AttributeError(f"'{type(self).__name__}' object has no attribute '{attr}'")
 
     def by_guid(self, guid: str) -> entity_instance:
+        if isinstance(guid, int):
+            return self.by_id(guid)
         lib = _get_lib()
         h = lib.ifcopenshell_file_by_guid(self._ptr, _enc(guid))
         if not h:
@@ -1099,11 +1171,25 @@ class file:
         return result
 
     def write(self, path, format=None, zipped=False) -> None:
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if format is None:
+            format = ".ifcZIP" if path.suffix.lower() in (".ifczip", ".zip") else ".ifc"
+        if format == ".ifcXML":
+            raise NotImplementedError("Writing .ifcXML files is not supported")
+        if format == ".ifcZIP":
+            return self.write(path, ".ifc", zipped=True)
         lib = _get_lib()
-        if not lib.ifcopenshell_file_write(self._ptr, _enc(path)):
+        if not lib.ifcopenshell_file_write(self._ptr, _enc(str(path))):
             err = lib.ifcopenshell_last_error_message()
             msg = err.decode("utf-8") if err else "Unknown error"
             raise RuntimeError(f"Failed to write file: {msg}")
+        if zipped:
+            unzipped_path = path.with_suffix(format)
+            path.rename(unzipped_path)
+            with zipfile.ZipFile(path, "w") as zip_file:
+                zip_file.write(unzipped_path, unzipped_path.name, compress_type=zipfile.ZIP_DEFLATED)
+            unzipped_path.unlink()
 
     def to_string(self) -> str:
         lib = _get_lib()
@@ -1148,8 +1234,8 @@ class file:
     def __getitem__(self, key):
         if isinstance(key, int):
             return self.by_id(key)
-        if isinstance(key, str):
-            return self.by_guid(key)
+        if isinstance(key, (str, bytes)):
+            return self.by_guid(key.decode("utf-8") if isinstance(key, bytes) else key)
         raise TypeError(f"Expected int or str key, got {type(key)}")
 
     def __contains__(self, entity):
@@ -1177,7 +1263,11 @@ class _file_header:
     """File header backed by real header-section entity instances from C++."""
 
     def __init__(self, file_obj=None):
-        self._file = file_obj
+        self._file_ref = weakref.ref(file_obj) if file_obj is not None else None
+
+    @property
+    def _file(self):
+        return self._file_ref() if self._file_ref is not None else None
 
     @property
     def file_description(self):
@@ -1472,15 +1562,29 @@ def _open_bypass(path, bypass_types):
 from ifcopenshell.sql import sqlite  # noqa: E402
 
 
-def open(path, should_stream=False, format=None, readonly=False, bypass_types=None):  # noqa: A001
+def open(path, format=None, should_stream=False, readonly=False, bypass_types=None):  # noqa: A001
     """Load an IFC file from disk.
 
     Minimal implementation backed by the native C API. ``readonly`` is
     accepted for upstream API parity but currently has no native effect.
     """
-    suffix = os.path.splitext(str(path))[1].lower()
+    path = Path(path)
+    suffix = path.suffix.lower()
+    if format is None and suffix in (".ifczip", ".zip"):
+        format = ".ifcZIP"
+    if format == ".ifcZIP":
+        with tempfile.TemporaryDirectory() as unzipped_path:
+            with zipfile.ZipFile(path) as zf:
+                for name in zf.namelist():
+                    if Path(name).suffix.lower() in (".ifc", ".ifcxml"):
+                        return open(zf.extract(name, unzipped_path), should_stream=should_stream, readonly=readonly)
+                raise LookupError(f"No .ifc or .ifcXML file found in {path}")
     if format == ".ifcSQLite" or suffix in (".ifcsqlite", ".sqlite", ".db"):
         return sqlite(str(path))
+    if should_stream:
+        from ifcopenshell.stream import stream
+
+        return stream(str(path))
 
     lib = _get_lib()
     if not hasattr(lib, "ifcopenshell_file_open"):

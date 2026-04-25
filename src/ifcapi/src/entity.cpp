@@ -13,6 +13,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
+#include <iterator>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -157,6 +158,18 @@ char* ifcopenshell_entity_to_string(const ifcopenshell_ifc_instance_t* instance)
     try {
         std::ostringstream oss;
         e->toString(oss);
+        return alloc_cstr(oss.str());
+    } catch (...) {
+        return nullptr;
+    }
+}
+
+char* ifcopenshell_entity_to_string_valid_spf(const ifcopenshell_ifc_instance_t* instance) {
+    auto* e = instance ? instance->ptr : nullptr;
+    if (!e) return nullptr;
+    try {
+        std::ostringstream oss;
+        e->toString(oss, true);
         return alloc_cstr(oss.str());
     } catch (...) {
         return nullptr;
@@ -767,6 +780,51 @@ ifcopenshell_ifc_instance_t** ifcopenshell_entity_get_aggregate_ref(const ifcope
         }
         *count = i;
         return out;
+    } catch (...) {
+        return nullptr;
+    }
+}
+
+static aggregate_of_aggregate_of_instance::ptr get_aggregate_ref_list_list_value(const ifcopenshell_ifc_instance_t* instance, const char* attr) {
+    auto* e = instance ? instance->ptr : nullptr;
+    if (!e || !attr) return nullptr;
+    size_t idx = resolve_attr_idx(e, attr);
+    auto val = e->get_attribute_value(idx);
+    if (val.isNull() || val.type() != IfcUtil::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE) return nullptr;
+    return (aggregate_of_aggregate_of_instance::ptr)val;
+}
+
+int32_t ifcopenshell_entity_get_aggregate_ref_list_list_size(const ifcopenshell_ifc_instance_t* instance, const char* attr) {
+    try {
+        auto agg = get_aggregate_ref_list_list_value(instance, attr);
+        return agg ? static_cast<int32_t>(agg->size()) : -1;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int32_t ifcopenshell_entity_get_aggregate_ref_list_list_inner_size(const ifcopenshell_ifc_instance_t* instance, const char* attr, uint32_t outer_index) {
+    try {
+        auto agg = get_aggregate_ref_list_list_value(instance, attr);
+        if (!agg || outer_index >= agg->size()) return -1;
+        auto outer_it = agg->begin();
+        std::advance(outer_it, outer_index);
+        return static_cast<int32_t>(outer_it->size());
+    } catch (...) {
+        return -1;
+    }
+}
+
+ifcopenshell_ifc_instance_t* ifcopenshell_entity_get_aggregate_ref_list_list_item(const ifcopenshell_ifc_instance_t* instance, const char* attr, uint32_t outer_index, uint32_t inner_index) {
+    try {
+        auto agg = get_aggregate_ref_list_list_value(instance, attr);
+        if (!agg || outer_index >= agg->size()) return nullptr;
+        auto outer_it = agg->begin();
+        std::advance(outer_it, outer_index);
+        if (inner_index >= outer_it->size()) return nullptr;
+        auto inner_it = outer_it->begin();
+        std::advance(inner_it, inner_index);
+        return ifcopenshell::capi::wrap_instance(*inner_it);
     } catch (...) {
         return nullptr;
     }

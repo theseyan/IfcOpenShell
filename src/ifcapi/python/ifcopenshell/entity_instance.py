@@ -69,6 +69,10 @@ class _Int32List(ctypes.Structure):
     _fields_ = [("items", ctypes.POINTER(ctypes.c_int32)), ("size", ctypes.c_size_t)]
 
 
+class _Int32ListList(ctypes.Structure):
+    _fields_ = [("items", ctypes.POINTER(_Int32List)), ("size", ctypes.c_size_t)]
+
+
 class _DoubleList(ctypes.Structure):
     _fields_ = [("items", ctypes.POINTER(ctypes.c_double)), ("size", ctypes.c_size_t)]
 
@@ -304,17 +308,40 @@ class entity_instance:
             if recursive and isinstance(val, entity_instance):
                 val = val.get_info(include_identifier, recursive, return_type, ignore, scalar_only)
             elif recursive and isinstance(val, (list, tuple)):
-                val = type(val)(
-                    v.get_info(include_identifier, recursive, return_type, ignore, scalar_only)
-                    if isinstance(v, entity_instance) else v
-                    for v in val
+                val = entity_instance.walk(
+                    lambda v: isinstance(v, entity_instance),
+                    lambda v: v.get_info(include_identifier, recursive, return_type, ignore, scalar_only),
+                    val,
                 )
             info[name] = val
         return info
 
+    def get_info_2(self, include_identifier=True, recursive=False, return_type=dict, ignore=()):
+        assert recursive
+        assert return_type is dict
+        assert len(ignore) == 0
+        result = self.get_info(include_identifier=True, recursive=True, return_type=dict)
+        if include_identifier:
+            return result
+
+        def strip_id(value):
+            if isinstance(value, dict):
+                value.pop("id", None)
+                for child in value.values():
+                    strip_id(child)
+            elif isinstance(value, (list, tuple)):
+                for child in value:
+                    strip_id(child)
+            return value
+
+        return strip_id(result)
+
+    __dict__ = property(get_info)
+
     def to_string(self, valid_spf=True) -> str:
         lib = _get_lib()
-        val = lib.ifcopenshell_entity_to_string(self._handle)
+        fn = lib.ifcopenshell_entity_to_string_valid_spf if valid_spf else lib.ifcopenshell_entity_to_string
+        val = fn(self._handle)
         return val.decode("utf-8") if val else ""
 
     def __len__(self) -> int:
@@ -584,10 +611,13 @@ class entity_instance:
         pt = self._declared_attribute_primitive(name)
         elem_kind = None
         nested_double = False
+        nested_entity = False
         if isinstance(pt, tuple) and len(pt) == 2:
             inner = pt[1]
             if isinstance(inner, tuple) and len(inner) == 2 and inner[1] == "float":
                 nested_double = True
+            elif isinstance(inner, tuple) and len(inner) == 2 and inner[1] == "entity":
+                nested_entity = True
             elif isinstance(inner, str):
                 elem_kind = inner
             elif isinstance(inner, tuple) and inner and inner[0] == "select":
@@ -644,6 +674,9 @@ class entity_instance:
             nested = self._get_aggregate_double_list_list(name)
             return nested if nested is not None else tuple()
 
+        if nested_entity:
+            return self._get_aggregate_ref_list_list(h, attr)
+
         if elem_kind == "select":
             tv_result = self._get_aggregate_typed_value(h, attr)
             if tv_result is not None and len(tv_result) > 0:
@@ -660,6 +693,40 @@ class entity_instance:
             return tv_result if tv_result is not None else tuple()
 
         raise TypeError(f"Unsupported aggregate element type for '{name}': {pt!r}")
+
+    def _get_aggregate_ref_list_list(self, h, attr):
+        lib = _get_lib()
+        lib.ifcopenshell_entity_get_aggregate_ref_list_list_size.restype = ctypes.c_int32
+        lib.ifcopenshell_entity_get_aggregate_ref_list_list_size.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        lib.ifcopenshell_entity_get_aggregate_ref_list_list_inner_size.restype = ctypes.c_int32
+        lib.ifcopenshell_entity_get_aggregate_ref_list_list_inner_size.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_char_p,
+            ctypes.c_uint32,
+        ]
+        lib.ifcopenshell_entity_get_aggregate_ref_list_list_item.restype = ctypes.c_void_p
+        lib.ifcopenshell_entity_get_aggregate_ref_list_list_item.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_char_p,
+            ctypes.c_uint32,
+            ctypes.c_uint32,
+        ]
+        outer_size = lib.ifcopenshell_entity_get_aggregate_ref_list_list_size(h, attr)
+        if outer_size <= 0:
+            return tuple()
+        rows = []
+        for i in range(outer_size):
+            inner_size = lib.ifcopenshell_entity_get_aggregate_ref_list_list_inner_size(h, attr, i)
+            if inner_size < 0:
+                raise RuntimeError("Failed to read nested aggregate size")
+            row = []
+            for j in range(inner_size):
+                item = lib.ifcopenshell_entity_get_aggregate_ref_list_list_item(h, attr, i, j)
+                if not item:
+                    raise RuntimeError("Failed to read nested aggregate item")
+                row.append(entity_instance(self._file, item))
+            rows.append(tuple(row))
+        return tuple(rows)
 
     def _get_aggregate_double_list_list(self, name):
         """Read LIST OF LIST OF REAL via autogen attribute_value_as_double_list_list."""
@@ -789,6 +856,7 @@ class entity_instance:
             for a in decl.all_attributes():
                 if a.name() == name:
                     pt = get_primitive_type(a)
+                    attr_type = str(a.type_of_attribute()).lower()
                     break
             else:
                 return value
@@ -809,6 +877,8 @@ class entity_instance:
                 except ValueError:
                     return value
             if isinstance(value, float):
+                if "<number>" in attr_type:
+                    return value
                 return int(value)
             return value
         if pt == "float":
@@ -869,6 +939,7 @@ class entity_instance:
         elem_kind = None
         nested_double = False
         nested_int = False
+        nested_entity = False
         if isinstance(pt, tuple) and len(pt) == 2:
             inner = pt[1]
             if isinstance(inner, tuple) and len(inner) == 2:
@@ -876,6 +947,8 @@ class entity_instance:
                     nested_double = True
                 elif inner[1] == "integer":
                     nested_int = True
+                elif inner[1] == "entity":
+                    nested_entity = True
             elif isinstance(inner, str):
                 elem_kind = inner
         elif isinstance(pt, str):
@@ -913,6 +986,39 @@ class entity_instance:
             ok = sym(h, idx, ctypes.byref(ll))
             if not ok:
                 raise RuntimeError(f"Failed to set nested aggregate '{name}'")
+            return
+
+        if nested_entity:
+            idx = self._attr_index(name)
+            if idx < 0:
+                raise TypeError(f"Unknown attribute '{name}'")
+            inner_arrays = []
+            l_items = (_Int32List * len(items))()
+            for i, row in enumerate(items):
+                ids = []
+                for v in row:
+                    if not isinstance(v, entity_instance):
+                        raise TypeError(f"Cannot set nested aggregate '{name}' with {type(v)}")
+                    ids.append(v.id())
+                buf = (ctypes.c_int32 * len(ids))(*ids)
+                inner_arrays.append(buf)
+                l_items[i].items = ctypes.cast(buf, ctypes.POINTER(ctypes.c_int32))
+                l_items[i].size = len(ids)
+            ll = _Int32ListList()
+            ll.items = l_items
+            ll.size = len(items)
+            lib.ifcopenshell_ifc_instance_set_argument_as_aggregate_of_aggregate_of_entity_instance.restype = ctypes.c_bool
+            lib.ifcopenshell_ifc_instance_set_argument_as_aggregate_of_aggregate_of_entity_instance.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_size_t,
+                ctypes.POINTER(_Int32ListList),
+            ]
+            ok = lib.ifcopenshell_ifc_instance_set_argument_as_aggregate_of_aggregate_of_entity_instance(
+                h, idx, ctypes.byref(ll)
+            )
+            if not ok:
+                err = lib.ifcopenshell_last_error_message()
+                raise RuntimeError(err.decode("utf-8", errors="replace") if err else f"Failed to set nested aggregate '{name}'")
             return
 
         if isinstance(first, _tv_class()):

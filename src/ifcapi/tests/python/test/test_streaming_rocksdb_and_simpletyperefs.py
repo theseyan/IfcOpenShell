@@ -17,8 +17,11 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import gc
+import json
 import os
 import struct
+import subprocess
+import sys
 import tempfile
 
 import pytest
@@ -74,14 +77,30 @@ def test_opening_unicode():
 
 @pytest.mark.skipif(psutil is None, reason="psutil not installed")
 def test_memusage_partial_open():
-    m0 = psutil.Process().memory_info().rss
-    f = ifcopenshell.open(fn)
-    m1 = psutil.Process().memory_info().rss
-    g = ifcopenshell.open(fn, bypass_types=("IfcRepresentationItem",))
-    m2 = psutil.Process().memory_info().rss
+    script = f"""
+import json
+import psutil
+import ifcopenshell
+
+proc = psutil.Process()
+m0 = proc.memory_info().rss
+f = ifcopenshell.open({fn!r})
+m1 = proc.memory_info().rss
+g = ifcopenshell.open({fn!r}, bypass_types=("IfcRepresentationItem",))
+m2 = proc.memory_info().rss
+print(json.dumps({{
+    "full_delta": m1 - m0,
+    "bypass_delta": m2 - m1,
+    "full_count": len(list(f)),
+    "bypass_count": len(list(g)),
+}}))
+"""
+    result = json.loads(subprocess.check_output([sys.executable, "-c", script], text=True))
     # arbitrary...
     expected_ratio = 0.75
-    assert (m2 - m1) < (m1 - m0) * expected_ratio
+    assert result["bypass_count"] < result["full_count"]
+    assert result["full_delta"] > 0
+    assert result["bypass_delta"] < result["full_delta"] * expected_ratio
 
 
 def test_rocks():
