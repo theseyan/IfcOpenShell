@@ -1159,7 +1159,7 @@ IfcUtil::IfcBaseClass::set_attribute_value(size_t i, const T& t) {
                 auto guid = (std::string) new_attribute;
                 auto it = file_->internal_guid_map().find(guid);
                 if (it != file_->internal_guid_map().end()) {
-                    Logger::Warning("Duplicate guid " + guid);
+                    Logger::Warning("Overwriting entity with guid " + guid);
                 }
                 file_->internal_guid_map().insert({ guid, this });
             } catch (IfcParse::IfcException& e) {

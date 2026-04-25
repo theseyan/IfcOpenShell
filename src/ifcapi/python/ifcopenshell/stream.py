@@ -323,6 +323,9 @@ try:
         def id(self) -> int:
             return self.stream_wrapper.id
 
+        def __bool__(self) -> bool:
+            return True
+
         def __repr__(self) -> str:
             offset = self.stream_wrapper.file.id_offset[self.stream_wrapper.id]
             self.stream_wrapper.file.file.seek(offset)

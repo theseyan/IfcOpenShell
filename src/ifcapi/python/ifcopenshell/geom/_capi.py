@@ -786,7 +786,7 @@ def to_string_list(values) -> ifcopenshell_string_list_t:
             s = str(s).encode("utf-8")
         b = ctypes.create_string_buffer(s)
         keep.append(b)
-        items[i].data = ctypes.cast(b, c_char_p)
+        items[i].data = ctypes.cast(b, c_void_p)
         items[i].size = len(s)
         items[i].owned = False
     out = ifcopenshell_string_list_t()

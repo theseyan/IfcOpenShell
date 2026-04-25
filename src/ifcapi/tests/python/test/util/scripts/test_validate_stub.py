@@ -16,10 +16,12 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
+import pytest
 
-import ifcopenshell.util.scripts.validate_stub as subject
 
-
+@pytest.mark.skip("SWIG ifcopenshell_wrapper.pyi validation is not part of the native C ABI package")
 class TestValidateStub:
     def test_run(self):
+        import ifcopenshell.util.scripts.validate_stub as subject
+
         subject.main()
