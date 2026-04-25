@@ -154,6 +154,12 @@ def _bind():
         "ifcopenshell_ifc_entity_all_inverse_attributes": (c_bool, [H, Ip]),
         # instance -> declaration (used to look up header-section schema)
         "ifcopenshell_ifc_instance_declaration": (c_bool, [H, HH]),
+        # logging
+        "ifcopenshell_ifcparse_get_log": (c_bool, [Sp]),
+        "ifcopenshell_ifcparse_set_log_format_json": (c_bool, []),
+        "ifcopenshell_ifcparse_set_log_format_text": (c_bool, []),
+        "ifcopenshell_ifcparse_turn_on_detailed_logging": (c_bool, []),
+        "ifcopenshell_ifcparse_turn_off_detailed_logging": (c_bool, []),
         # type/select/enum
         "ifcopenshell_ifc_type_declaration_declared_type": (c_bool, [H, HH]),
         "ifcopenshell_ifc_select_type_select_list": (c_bool, [H, Dp]),
@@ -948,37 +954,74 @@ _LOG_BUFFER: list = []
 _LOG_FORMAT = "text"
 
 
+def _split_json_objects(s: str) -> str:
+    """Insert newlines between concatenated top-level JSON objects.
+
+    Boost < 1.86 emits property_tree JSON without trailing newlines,
+    producing ``}{`` boundaries between log entries. Walk the string
+    counting braces (skipping over JSON string literals) and insert a
+    newline between completed top-level objects."""
+    if not s or "}{" not in s:
+        return s
+    out = []
+    depth = 0
+    in_str = False
+    escape = False
+    for i, ch in enumerate(s):
+        out.append(ch)
+        if in_str:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0 and i + 1 < len(s) and s[i + 1] == "{":
+                out.append("\n")
+    return "".join(out)
+
+
 def get_log() -> str:
     """Return the accumulated parser/validator log and clear it (parity with SWIG)."""
     global _LOG_BUFFER
+    out = ifcopenshell_string_t()
+    if not _bind().ifcopenshell_ifcparse_get_log(byref(out)):
+        return ""
+    cpp_log = _take_string(out)
     if _LOG_FORMAT == "json":
-        out = "\n".join(_LOG_BUFFER)
-    else:
-        out = "\n".join(_LOG_BUFFER)
-    _LOG_BUFFER = []
-    return out
+        cpp_log = _split_json_objects(cpp_log)
+    if _LOG_BUFFER:
+        py_log = "\n".join(_LOG_BUFFER)
+        _LOG_BUFFER = []
+        return (cpp_log + ("\n" if cpp_log and py_log else "") + py_log) if (cpp_log or py_log) else ""
+    return cpp_log
 
 
 def turn_on_detailed_logging() -> None:
-    """No-op stub for SWIG turn_on_detailed_logging()."""
-    pass
+    _bind().ifcopenshell_ifcparse_turn_on_detailed_logging()
 
 
 def turn_off_detailed_logging() -> None:
-    """No-op stub for SWIG turn_off_detailed_logging()."""
-    pass
+    _bind().ifcopenshell_ifcparse_turn_off_detailed_logging()
 
 
 def set_log_format_json() -> None:
-    """Set log output format to JSON (parity with SWIG)."""
     global _LOG_FORMAT
     _LOG_FORMAT = "json"
+    _bind().ifcopenshell_ifcparse_set_log_format_json()
 
 
 def set_log_format_text() -> None:
-    """Set log output format to text (parity with SWIG)."""
     global _LOG_FORMAT
     _LOG_FORMAT = "text"
+    _bind().ifcopenshell_ifcparse_set_log_format_text()
 
 
 # Type alias for parity with SWIG's ifcopenshell_wrapper.file. Upstream
