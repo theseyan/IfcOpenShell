@@ -101,6 +101,8 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_file_header_file_schema(
 IFCAPI_EXPORT ifcopenshell_ifc_instance_streamer_t* ifcopenshell_instance_streamer_create(void);
 IFCAPI_EXPORT ifcopenshell_ifc_instance_streamer_t* ifcopenshell_instance_streamer_create_from_path(
     const char* path, bool mmap);
+IFCAPI_EXPORT bool ifcopenshell_instance_streamer_semicolon_count(
+    ifcopenshell_ifc_instance_streamer_t* streamer, size_t* out_count);
 IFCAPI_EXPORT bool ifcopenshell_taxonomy_function_item_start(
     ifcopenshell_ifcgeom_taxonomy_item_t* item, double* out);
 IFCAPI_EXPORT bool ifcopenshell_taxonomy_function_item_end(

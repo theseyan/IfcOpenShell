@@ -143,6 +143,20 @@ ifcopenshell_ifc_instance_streamer_t* ifcopenshell_instance_streamer_create_from
     }
 }
 
+bool ifcopenshell_instance_streamer_semicolon_count(
+    ifcopenshell_ifc_instance_streamer_t* streamer, size_t* out_count) {
+    ifcopenshell_clear_error();
+    if (!streamer || !streamer->ptr) { set_error("streamer is NULL"); return false; }
+    if (!out_count) { set_error("out_count is NULL"); return false; }
+    try {
+        *out_count = streamer->ptr->semicolonCount();
+        return true;
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return false;
+    }
+}
+
 bool ifcopenshell_taxonomy_function_item_start(ifcopenshell_ifcgeom_taxonomy_item_t* item, double* out) {
     ifcopenshell_clear_error();
     if (!item || !item->ptr) { set_error("item is NULL"); return false; }

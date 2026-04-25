@@ -100,6 +100,9 @@ if(BUILD_IFCCAPI)
         if(TARGET geometry_serializer)
             target_link_libraries(ifcopenshell_capi PRIVATE geometry_serializer)
         endif()
+        if(TARGET svgfill)
+            target_link_libraries(ifcopenshell_capi PRIVATE svgfill)
+        endif()
         target_include_directories(
             ifcopenshell_capi
             PUBLIC "${IFCPARSE_CAPI_GENERATED_DIR}"

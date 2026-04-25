@@ -338,7 +338,12 @@ def _get_lib():
     _lib.ifcopenshell_ifc_instance_streamer_destroy.restype = None
     _lib.ifcopenshell_ifc_instance_streamer_destroy.argtypes = [ctypes.c_void_p]
     _lib.ifcopenshell_ifc_instance_streamer_has_semicolon.restype = ctypes.c_bool
-    _lib.ifcopenshell_ifc_instance_streamer_has_semicolon.argtypes = [ctypes.c_void_p]
+    _lib.ifcopenshell_ifc_instance_streamer_has_semicolon.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_bool)]
+    _lib.ifcopenshell_instance_streamer_semicolon_count.restype = ctypes.c_bool
+    _lib.ifcopenshell_instance_streamer_semicolon_count.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(ctypes.c_size_t),
+    ]
     _lib.ifcopenshell_ifc_instance_streamer_push_page.restype = ctypes.c_bool
     _lib.ifcopenshell_ifc_instance_streamer_push_page.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
     _lib.ifcopenshell_ifc_instance_streamer_read_instance_py.restype = ctypes.c_bool
@@ -1417,7 +1422,20 @@ class _InstanceStreamer:
         return _get_lib().ifcopenshell_ifc_instance_streamer_push_page(self._ptr, data)
 
     def hasSemicolon(self):
-        return _get_lib().ifcopenshell_ifc_instance_streamer_has_semicolon(self._ptr)
+        out = ctypes.c_bool(False)
+        if not _get_lib().ifcopenshell_ifc_instance_streamer_has_semicolon(self._ptr, ctypes.byref(out)):
+            err = _get_lib().ifcopenshell_last_error_message()
+            msg = err.decode("utf-8") if err else "Unknown error"
+            raise RuntimeError(f"Failed to query streamed IFC semicolons: {msg}")
+        return bool(out.value)
+
+    def semicolonCount(self):
+        out = ctypes.c_size_t(0)
+        if not _get_lib().ifcopenshell_instance_streamer_semicolon_count(self._ptr, ctypes.byref(out)):
+            err = _get_lib().ifcopenshell_last_error_message()
+            msg = err.decode("utf-8") if err else "Unknown error"
+            raise RuntimeError(f"Failed to count streamed IFC semicolons: {msg}")
+        return int(out.value)
 
     def readInstancePy(self, type_as_declaration_instance=False):
         from ifcopenshell import ifcopenshell_wrapper as _W
