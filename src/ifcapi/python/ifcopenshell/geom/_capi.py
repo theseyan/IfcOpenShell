@@ -129,6 +129,7 @@ def bind():
         "ifcopenshell_ifcgeom_taxonomy_style_destroy": (None, [HandleP]),
         "ifcopenshell_ifcgeom_taxonomy_colour_destroy": (None, [HandleP]),
         "ifcopenshell_ifcgeom_taxonomy_item_destroy": (None, [HandleP]),
+        "ifcopenshell_ifcgeom_function_item_evaluator_destroy": (None, [HandleP]),
         "ifcopenshell_ifcgeom_transformation_destroy": (None, [HandleP]),
         "ifcopenshell_ifcgeom_taxonomy_style_list_destroy": (None, [StyleListP]),
         "ifcopenshell_ifcgeom_element_list_destroy": (None, [ElementListP]),
@@ -312,6 +313,24 @@ def bind():
         ),
         "ifcopenshell_ifcgeom_map_shape": (
             c_bool, [HandleP, c_void_p, HandlePP],
+        ),
+        "ifcopenshell_ifcgeom_create_function_item_evaluator": (
+            c_bool, [HandleP, HandleP, HandlePP],
+        ),
+        "ifcopenshell_ifcgeom_convert_loop_to_function_item": (
+            c_bool, [HandleP, HandlePP],
+        ),
+        "ifcopenshell_ifcgeom_helmert_curve_point": (
+            c_bool, [c_double, c_double, c_double, c_double, Dp],
+        ),
+        "ifcopenshell_ifcgeom_function_item_evaluator_evaluate_at": (
+            c_bool, [HandleP, c_double, Dp],
+        ),
+        "ifcopenshell_taxonomy_function_item_start": (
+            c_bool, [HandleP, POINTER(c_double)],
+        ),
+        "ifcopenshell_taxonomy_function_item_end": (
+            c_bool, [HandleP, POINTER(c_double)],
         ),
         "ifcopenshell_ifcgeom_settings_get_type": (c_bool, [HandleP, c_char_p, Sp]),
         "ifcopenshell_ifcgeom_settings_setting_names": (c_bool, [HandleP, SLp]),

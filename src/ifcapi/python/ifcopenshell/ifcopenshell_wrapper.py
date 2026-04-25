@@ -35,13 +35,12 @@ from ctypes import (
     byref,
     c_bool,
     c_char_p,
+    c_double,
     c_int32,
     c_size_t,
     c_void_p,
 )
 from typing import Optional
-
-import numpy as np
 
 import ifcopenshell
 
@@ -52,11 +51,15 @@ import ifcopenshell
 
 
 class ifcopenshell_string_t(Structure):
-    _fields_ = [("data", c_char_p), ("size", c_size_t), ("owned", c_bool)]
+    _fields_ = [("data", c_void_p), ("size", c_size_t), ("owned", c_bool)]
 
 
 class ifcopenshell_string_list_t(Structure):
     _fields_ = [("items", POINTER(ifcopenshell_string_t)), ("size", c_size_t)]
+
+
+class ifcopenshell_bool_list_t(Structure):
+    _fields_ = [("items", POINTER(c_bool)), ("size", c_size_t)]
 
 
 class _HandleStruct(Structure):
@@ -103,6 +106,7 @@ def _bind():
     cstr = c_char_p
     Sp = POINTER(ifcopenshell_string_t)
     SLp = POINTER(ifcopenshell_string_list_t)
+    BLp = POINTER(ifcopenshell_bool_list_t)
     Ep = POINTER(ifcopenshell_ifc_entity_list_t)
     Ap = POINTER(ifcopenshell_ifc_attribute_list_t)
     Ip = POINTER(ifcopenshell_ifc_inverse_attribute_list_t)
@@ -112,6 +116,7 @@ def _bind():
         # destroy
         "ifcopenshell_string_destroy": (None, [Sp]),
         "ifcopenshell_string_list_destroy": (None, [SLp]),
+        "ifcopenshell_bool_list_destroy": (None, [BLp]),
         "ifcopenshell_ifc_entity_destroy": (None, [H]),
         "ifcopenshell_ifc_attribute_destroy": (None, [H]),
         "ifcopenshell_ifc_inverse_attribute_destroy": (None, [H]),
@@ -150,6 +155,7 @@ def _bind():
         "ifcopenshell_ifc_entity_attribute_by_index": (c_bool, [H, c_size_t, HH]),
         "ifcopenshell_ifc_entity_attribute_index": (c_bool, [H, cstr, POINTER(c_size_t)]),
         "ifcopenshell_ifc_entity_attributes": (c_bool, [H, Ap]),
+        "ifcopenshell_ifc_entity_derived": (c_bool, [H, BLp]),
         "ifcopenshell_ifc_entity_all_attributes": (c_bool, [H, Ap]),
         "ifcopenshell_ifc_entity_all_inverse_attributes": (c_bool, [H, Ip]),
         # instance -> declaration (used to look up header-section schema)
@@ -239,6 +245,13 @@ def _take_string_list(lst: ifcopenshell_string_list_t) -> tuple:
         return tuple(out)
     finally:
         _bind().ifcopenshell_string_list_destroy(byref(lst))
+
+
+def _take_bool_list(lst: ifcopenshell_bool_list_t) -> tuple:
+    try:
+        return tuple(bool(lst.items[i]) for i in range(lst.size))
+    finally:
+        _bind().ifcopenshell_bool_list_destroy(byref(lst))
 
 
 def _move_handle_list(lst, destroy_list_fn, wrap):
@@ -682,10 +695,15 @@ class entity(declaration):
         )
 
     def derived(self) -> tuple:
-        # The autogen ABI does not expose per-attribute derived bits and no
-        # ported util.* code consumes this; return empty tuple for SWIG-shape
-        # parity with consumers that just call ``len()`` on it.
-        return tuple(False for _ in range(self.attribute_count()))
+        own = ifcopenshell_bool_list_t()
+        if not _bind().ifcopenshell_ifc_entity_derived(self._h, byref(own)):
+            own_derived = ()
+        else:
+            own_derived = _take_bool_list(own)
+        if len(own_derived) == len(self.all_attributes()):
+            return own_derived
+        supertype = self.supertype()
+        return (supertype.derived() if supertype is not None else ()) + own_derived
 
     def __repr__(self) -> str:
         return "<entity %s>" % self.name()
@@ -841,6 +859,14 @@ class schema_definition(_Handle):
             lst, _bind().ifcopenshell_ifc_declaration_list_destroy, _wrap_decl
         )
 
+    def entities(self) -> tuple:
+        result = []
+        for declaration in self.declarations():
+            entity_decl = declaration.as_entity()
+            if entity_decl is not None:
+                result.append(entity_decl)
+        return tuple(result)
+
     def __repr__(self) -> str:
         return "<schema %s>" % self.name()
 
@@ -859,6 +885,37 @@ def schema_by_name(name: str) -> schema_definition:
             _bind().ifcopenshell_ifc_schema_destroy(out)
         raise RuntimeError("Schema not found: %s" % name)
     return schema_definition(out)
+
+
+class _IfcBaseClassInfo:
+    INVALID, FORWARD, INVERSE = range(3)
+
+    def __init__(self, schema_name: str, ifc_class: str):
+        self.schema_name = schema_name
+        self.ifc_class = ifc_class
+        declaration = schema_by_name(schema_name).declaration_by_name(ifc_class)
+        self.entity = declaration.as_entity() if declaration is not None else None
+        self.forward_names = {
+            attribute.name().lower() for attribute in (self.entity.all_attributes() if self.entity else ())
+        }
+        self.inverse_names = {
+            attribute.name().lower() for attribute in (self.entity.all_inverse_attributes() if self.entity else ())
+        }
+
+    def is_a(self, full=False):
+        return f"{self.schema_name}.{self.ifc_class}" if full else self.ifc_class
+
+    def get_attribute_category(self, name: str) -> int:
+        lowered = name.lower()
+        if lowered in self.forward_names:
+            return self.FORWARD
+        if lowered in self.inverse_names:
+            return self.INVERSE
+        return self.INVALID
+
+
+def new_IfcBaseClass(schema_name: str, ifc_class: str):
+    return _IfcBaseClassInfo(schema_name, ifc_class)
 
 
 def instance_declaration(handle_value) -> declaration:
@@ -882,33 +939,104 @@ def instance_declaration(handle_value) -> declaration:
 # ---------------------------------------------------------------------------
 
 
-class _MockFunctionItem:
+class _FunctionItem:
+    def __init__(self, item):
+        self._item = item
+        self._h = item._h
+
+    def _distance(self, fn_name):
+        from ifcopenshell.geom._capi import bind
+
+        out = c_double(0.0)
+        if not getattr(bind(), fn_name)(self._h, byref(out)):
+            raise RuntimeError(ifcopenshell.get_log() or fn_name)
+        return float(out.value)
+
     def start(self):
-        return 0.0
+        return self._distance("ifcopenshell_taxonomy_function_item_start")
 
     def end(self):
-        return 0.0
+        return self._distance("ifcopenshell_taxonomy_function_item_end")
 
 
-class _MockEvaluator:
+class function_item_evaluator:
+    def __init__(self, settings, fn):
+        from ifcopenshell.geom._capi import HandleP, bind
+
+        out = HandleP()
+        if not bind().ifcopenshell_ifcgeom_create_function_item_evaluator(settings._h, fn._h, byref(out)):
+            raise RuntimeError(ifcopenshell.get_log() or "Failed to create function_item_evaluator")
+        self._h = out
+
+    def __del__(self):
+        h = getattr(self, "_h", None)
+        if h:
+            try:
+                from ifcopenshell.geom._capi import bind
+
+                bind().ifcopenshell_ifcgeom_function_item_evaluator_destroy(h)
+            except Exception:
+                pass
+            self._h = None
+
     def evaluate(self, distance_along):
-        return np.eye(4)
+        from ifcopenshell.geom._capi import bind, ifcopenshell_double_list_t, take_double_list
+
+        out = ifcopenshell_double_list_t()
+        if not bind().ifcopenshell_ifcgeom_function_item_evaluator_evaluate_at(
+            self._h, float(distance_along), byref(out)
+        ):
+            raise RuntimeError(ifcopenshell.get_log() or "Failed to evaluate function_item")
+        values = take_double_list(out)
+        return [values[i : i + 4] for i in range(0, 16, 4)]
 
 
 def map_shape(settings, wrapped_data):
-    return _MockFunctionItem()
+    import ifcopenshell.geom
 
-
-def function_item_evaluator(settings, fn):
-    return _MockEvaluator()
+    return _FunctionItem(ifcopenshell.geom.map_shape(settings, wrapped_data))
 
 
 def helmert_curve_point(A0, A1, A2, length):
-    return (0.0, 0.0, 0.0)
+    from ifcopenshell.geom._capi import bind, ifcopenshell_double_list_t, take_double_list
+
+    out = ifcopenshell_double_list_t()
+    if not bind().ifcopenshell_ifcgeom_helmert_curve_point(
+        float(A0), float(A1), float(A2), float(length), byref(out)
+    ):
+        raise RuntimeError(ifcopenshell.get_log() or "Failed to evaluate helmert_curve_point")
+    return tuple(take_double_list(out))
 
 
 def convert_loop_to_function_item(fn):
-    return _MockFunctionItem()
+    from ifcopenshell.geom._capi import HandleP, bind
+    from ifcopenshell.geom.main import TaxonomyItem
+
+    out = HandleP()
+    if not bind().ifcopenshell_ifcgeom_convert_loop_to_function_item(fn._h, byref(out)):
+        raise RuntimeError(ifcopenshell.get_log() or "Failed to convert loop to function_item")
+    return _FunctionItem(TaxonomyItem(out))
+
+
+_GEOM_CLASS_ALIASES = {
+    "Element",
+    "BRepElement",
+    "TriangulationElement",
+    "SerializedElement",
+    "Triangulation",
+    "BRepRepresentation",
+    "SerializedRepresentation",
+}
+
+
+def __getattr__(name):
+    if name in _GEOM_CLASS_ALIASES:
+        import ifcopenshell.geom
+
+        value = getattr(ifcopenshell.geom, name)
+        globals()[name] = value
+        return value
+    raise AttributeError(name)
 
 
 # ---------------------------------------------------------------------------
@@ -934,6 +1062,12 @@ def version():
 
 
 _FEATURES: dict = {}
+
+
+class attribute_value_derived:
+    """Sentinel for raw SPF ``*`` values when validation requests them."""
+
+    pass
 
 
 def get_feature(name: str):

@@ -345,6 +345,12 @@ class sqlite_entity(entity_instance):
     def id(self) -> int:
         return self.sqlite_wrapper.id
 
+    def __bool__(self) -> bool:
+        return True
+
+    def __len__(self) -> int:
+        return len(self.sqlite_wrapper.attributes)
+
     def __del__(self) -> None:
         pass
 

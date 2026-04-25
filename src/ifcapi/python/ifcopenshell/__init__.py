@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import ctypes
 import ctypes.util
+import builtins
+import json
 import os
 import re
 from typing import List, Optional, Set, Tuple
@@ -22,6 +24,14 @@ def get_log() -> str:
     """Return the accumulated parser/validator log (parity with SWIG)."""
     from ifcopenshell import ifcopenshell_wrapper as _W
     return _W.get_log()
+
+
+def convert_path_to_rocksdb(ifcspf_path, rocksdb_path) -> None:
+    """Convert an IFC-SPF file on disk to IfcOpenShell's RocksDB encoding."""
+    from ifcopenshell.geom import serializers
+
+    serializer = serializers.rocksdb_streaming(str(ifcspf_path), str(rocksdb_path), True)
+    serializer.finalize()
 
 
 class Error(Exception):
@@ -245,6 +255,12 @@ def _get_lib():
     _lib.ifcopenshell_file_create.argtypes = [ctypes.c_char_p]
     _lib.ifcopenshell_file_open.restype = ctypes.c_void_p
     _lib.ifcopenshell_file_open.argtypes = [ctypes.c_char_p]
+    _lib.ifcopenshell_file_open_bypass.restype = ctypes.c_void_p
+    _lib.ifcopenshell_file_open_bypass.argtypes = [
+        ctypes.c_char_p,
+        ctypes.POINTER(ctypes.c_char_p),
+        ctypes.c_size_t,
+    ]
     _lib.ifcopenshell_file_from_string.restype = ctypes.c_void_p
     _lib.ifcopenshell_file_from_string.argtypes = [ctypes.c_char_p, ctypes.c_int]
     _lib.ifcopenshell_file_free.restype = None
@@ -301,6 +317,32 @@ def _get_lib():
     _lib.ifcopenshell_file_header_file_name.argtypes = [ctypes.c_void_p]
     _lib.ifcopenshell_file_header_file_schema.restype = ctypes.c_void_p
     _lib.ifcopenshell_file_header_file_schema.argtypes = [ctypes.c_void_p]
+    _lib.ifcopenshell_ifc_file_storage_mode.restype = ctypes.c_bool
+    _lib.ifcopenshell_ifc_file_storage_mode.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int32)]
+    _lib.ifcopenshell_ifc_file_key_value_store_query.restype = ctypes.c_bool
+    _lib.ifcopenshell_ifc_file_key_value_store_query.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_char_p,
+        ctypes.c_void_p,
+    ]
+    _lib.ifcopenshell_instance_streamer_create.restype = ctypes.c_void_p
+    _lib.ifcopenshell_instance_streamer_create.argtypes = []
+    _lib.ifcopenshell_instance_streamer_create_from_path.restype = ctypes.c_void_p
+    _lib.ifcopenshell_instance_streamer_create_from_path.argtypes = [ctypes.c_char_p, ctypes.c_bool]
+    _lib.ifcopenshell_ifcparse_stream_from_string.restype = ctypes.c_bool
+    _lib.ifcopenshell_ifcparse_stream_from_string.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p)]
+    _lib.ifcopenshell_ifc_instance_streamer_destroy.restype = None
+    _lib.ifcopenshell_ifc_instance_streamer_destroy.argtypes = [ctypes.c_void_p]
+    _lib.ifcopenshell_ifc_instance_streamer_has_semicolon.restype = ctypes.c_bool
+    _lib.ifcopenshell_ifc_instance_streamer_has_semicolon.argtypes = [ctypes.c_void_p]
+    _lib.ifcopenshell_ifc_instance_streamer_push_page.restype = ctypes.c_bool
+    _lib.ifcopenshell_ifc_instance_streamer_push_page.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+    _lib.ifcopenshell_ifc_instance_streamer_read_instance_py.restype = ctypes.c_bool
+    _lib.ifcopenshell_ifc_instance_streamer_read_instance_py.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_bool,
+        ctypes.c_void_p,
+    ]
 
     # -- Entity operations ----------------------------------------------------
     _lib.ifcopenshell_entity_type.restype = ctypes.c_char_p
@@ -914,7 +956,10 @@ class file:
             return []
         handles = (ctypes.c_void_p * count)()
         lib.ifcopenshell_file_by_type(self._ptr, _enc(type_name), handles)
-        return [entity_instance(self, handles[i]) for i in range(count)]
+        result = [entity_instance(self, handles[i]) for i in range(count)]
+        if not include_subtypes:
+            result = [e for e in result if e.is_a().lower() == type_name.lower()]
+        return result
 
     def by_id(self, id: int) -> entity_instance:
         lib = _get_lib()
@@ -936,6 +981,28 @@ class file:
         if not h:
             raise RuntimeError(f"Entity with GUID '{guid}' not found")
         return entity_instance(self, h)
+
+    def storage_mode(self) -> int:
+        lib = _get_lib()
+        out = ctypes.c_int32(-1)
+        if not lib.ifcopenshell_ifc_file_storage_mode(self._ptr, ctypes.byref(out)):
+            return -1
+        return int(out.value)
+
+    def key_value_store_query(self, key: str) -> bytes:
+        from ifcopenshell import ifcopenshell_wrapper as W
+
+        lib = _get_lib()
+        W._bind()
+        out = W.ifcopenshell_string_t()
+        if not lib.ifcopenshell_ifc_file_key_value_store_query(self._ptr, _enc(key), ctypes.byref(out)):
+            return b""
+        try:
+            if out.data and out.size:
+                return ctypes.string_at(out.data, out.size)
+            return b""
+        finally:
+            lib.ifcopenshell_string_destroy(ctypes.byref(out))
 
     def remove(self, entity) -> None:
         lib = _get_lib()
@@ -1165,6 +1232,7 @@ def schema_by_name(name):
 
 _SCRATCH_FILES: dict = {}
 _BORROWED_FILES: dict[int, file] = {}
+_STREAM_ATTR_TYPE_CACHE: dict = {}
 
 
 def _scratch_file(schema: str) -> "file":
@@ -1213,16 +1281,211 @@ def _borrow_file_ptr(ptr, fallback=None) -> "file":
     return borrowed
 
 
-def open(path, should_stream=False, format=None, readonly=False):  # noqa: A001
+class _InstanceStreamer:
+    def __init__(self, ptr):
+        self._ptr = ptr.value if isinstance(ptr, ctypes.c_void_p) else ptr
+
+    @classmethod
+    def create(cls):
+        ptr = _get_lib().ifcopenshell_instance_streamer_create()
+        if not ptr:
+            raise RuntimeError("Failed to create InstanceStreamer")
+        return cls(ptr)
+
+    @classmethod
+    def create_from_path(cls, path, mmap=False):
+        ptr = _get_lib().ifcopenshell_instance_streamer_create_from_path(_enc(str(path)), bool(mmap))
+        if not ptr:
+            err = _get_lib().ifcopenshell_last_error_message()
+            msg = err.decode("utf-8") if err else "Unknown error"
+            raise RuntimeError(f"Failed to stream {path}: {msg}")
+        return cls(ptr)
+
+    @classmethod
+    def from_string(cls, data):
+        if isinstance(data, str):
+            data = data.encode("utf-8")
+        out = ctypes.c_void_p()
+        if not _get_lib().ifcopenshell_ifcparse_stream_from_string(data, ctypes.byref(out)):
+            err = _get_lib().ifcopenshell_last_error_message()
+            msg = err.decode("utf-8") if err else "Unknown error"
+            raise RuntimeError(f"Failed to stream IFC data: {msg}")
+        return cls(out)
+
+    def __del__(self):
+        ptr = getattr(self, "_ptr", None)
+        if ptr:
+            try:
+                _get_lib().ifcopenshell_ifc_instance_streamer_destroy(ptr)
+            except Exception:
+                pass
+            self._ptr = None
+
+    def pushPage(self, data):
+        if isinstance(data, str):
+            data = data.encode("utf-8")
+        return _get_lib().ifcopenshell_ifc_instance_streamer_push_page(self._ptr, data)
+
+    def hasSemicolon(self):
+        return _get_lib().ifcopenshell_ifc_instance_streamer_has_semicolon(self._ptr)
+
+    def readInstancePy(self, type_as_declaration_instance=False):
+        from ifcopenshell import ifcopenshell_wrapper as _W
+
+        out = _W.ifcopenshell_string_t()
+        ok = _get_lib().ifcopenshell_ifc_instance_streamer_read_instance_py(
+            self._ptr,
+            bool(type_as_declaration_instance),
+            ctypes.byref(out),
+        )
+        if not ok:
+            err = _get_lib().ifcopenshell_last_error_message()
+            msg = err.decode("utf-8") if err else "Unknown error"
+            raise RuntimeError(f"Failed to read streamed IFC instance: {msg}")
+        text = _W._take_string(out)
+        value = json.loads(text)
+        return None if value is None else value
+
+
+def _schema_name_from_spf(data: str) -> Optional[str]:
+    match = re.search(r"FILE_SCHEMA\s*\(\s*\(\s*'([^']+)'", data, re.IGNORECASE)
+    return match.group(1) if match else None
+
+
+def _schema_from_spf_path(path):
+    try:
+        with builtins.open(path, encoding="ascii", errors="ignore") as f:
+            return _schema_name_from_spf(f.read(8192))
+    except OSError:
+        return None
+
+
+def _schema_by_name_or_none(schema_name):
+    if not schema_name:
+        return None
+    try:
+        from ifcopenshell import ifcopenshell_wrapper as _W
+
+        return _W.schema_by_name(schema_name)
+    except Exception:
+        return None
+
+
+def _type_decl_wrap_candidate(parameter_type, value):
+    named = parameter_type.as_named_type() if parameter_type is not None else None
+    declaration = named.declared_type() if named is not None else None
+    if declaration is None:
+        return None
+
+    type_decl = declaration.as_type_declaration()
+    if type_decl is not None:
+        declared_type = type_decl.declared_type()
+        if declared_type is not None and declared_type.as_aggregation_type() is not None and isinstance(value, list):
+            return type_decl.name()
+        if not isinstance(value, (dict, list)):
+            return type_decl.name()
+        return None
+
+    select = declaration.as_select_type()
+    if select is None:
+        return None
+    for item in select.select_list():
+        type_decl = item.as_type_declaration()
+        if type_decl is None:
+            continue
+        declared_type = type_decl.declared_type()
+        aggregate = declared_type.as_aggregation_type() if declared_type is not None else None
+        if aggregate is not None and isinstance(value, list):
+            return type_decl.name()
+        if aggregate is None and not isinstance(value, (dict, list)):
+            return type_decl.name()
+    return None
+
+
+def _stream_attr_type_name(schema, entity_name: str, attribute_name: str, value):
+    if schema is None:
+        return None
+    key = (schema.name(), entity_name, attribute_name, isinstance(value, list), isinstance(value, dict))
+    if key in _STREAM_ATTR_TYPE_CACHE:
+        return _STREAM_ATTR_TYPE_CACHE[key]
+    result = None
+    declaration = schema.declaration_by_name(entity_name)
+    entity = declaration.as_entity() if declaration is not None else None
+    if entity is not None:
+        index = entity.attribute_index(attribute_name)
+        attributes = entity.all_attributes()
+        if 0 <= index < len(attributes):
+            result = _type_decl_wrap_candidate(attributes[index].type_of_attribute(), value)
+    _STREAM_ATTR_TYPE_CACHE[key] = result
+    return result
+
+
+def _postprocess_stream_instance(instance, schema):
+    if instance is None or schema is None:
+        return instance
+    entity_name = instance.get("type")
+    if not entity_name:
+        return instance
+    for key, value in tuple(instance.items()):
+        if key in ("id", "type"):
+            continue
+        type_name = _stream_attr_type_name(schema, entity_name, key, value)
+        if type_name is not None:
+            instance[key] = {"type": type_name, "value": tuple(value) if isinstance(value, list) else value}
+    return instance
+
+
+def stream2(path, mmap=False, page_size=0):
+    """Yield parsed STEP instances without materialising a full file."""
+    schema = _schema_by_name_or_none(_schema_from_spf_path(path))
+    if page_size:
+        with builtins.open(path, encoding="ascii") as f:
+            yield from stream2_from_string(f.read())
+        return
+
+    streamer = _InstanceStreamer.create_from_path(path, mmap)
+    while True:
+        instance = streamer.readInstancePy()
+        if instance is None:
+            break
+        yield _postprocess_stream_instance(instance, schema)
+
+
+def stream2_from_string(data):
+    """Yield parsed STEP instances from an in-memory IFC-SPF string."""
+    streamer = _InstanceStreamer.from_string(data)
+    schema_text = data if isinstance(data, str) else data.decode("ascii", errors="ignore")
+    schema = _schema_by_name_or_none(_schema_name_from_spf(schema_text))
+    while True:
+        instance = streamer.readInstancePy()
+        if instance is None:
+            break
+        yield _postprocess_stream_instance(instance, schema)
+
+
+def _open_bypass(path, bypass_types):
+    type_names = tuple(_enc(str(name)) for name in bypass_types)
+    array_type = ctypes.c_char_p * len(type_names)
+    return _get_lib().ifcopenshell_file_open_bypass(_enc(str(path)), array_type(*type_names), len(type_names))
+
+
+from ifcopenshell.sql import sqlite  # noqa: E402
+
+
+def open(path, should_stream=False, format=None, readonly=False, bypass_types=None):  # noqa: A001
     """Load an IFC file from disk.
 
     Minimal implementation backed by the native C API. ``readonly`` is
     accepted for upstream API parity but currently has no native effect.
     """
+    suffix = os.path.splitext(str(path))[1].lower()
+    if format == ".ifcSQLite" or suffix in (".ifcsqlite", ".sqlite", ".db"):
+        return sqlite(str(path))
+
     lib = _get_lib()
     if not hasattr(lib, "ifcopenshell_file_open"):
         raise NotImplementedError("ifcopenshell_file_open is not exported by the native library")
-    ptr = lib.ifcopenshell_file_open(_enc(str(path)))
+    ptr = _open_bypass(path, bypass_types) if bypass_types else lib.ifcopenshell_file_open(_enc(str(path)))
     if not ptr:
         err = lib.ifcopenshell_last_error_message()
         msg = err.decode("utf-8") if err else "Unknown error"

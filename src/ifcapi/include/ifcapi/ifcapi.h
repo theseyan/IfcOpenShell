@@ -43,6 +43,8 @@ extern "C" {
 
 typedef struct ifcopenshell_ifc_file_t ifcopenshell_ifc_file_t;
 typedef struct ifcopenshell_ifc_instance_t ifcopenshell_ifc_instance_t;
+typedef struct ifcopenshell_ifc_instance_streamer_t ifcopenshell_ifc_instance_streamer_t;
+typedef struct ifcopenshell_ifcgeom_taxonomy_item_t ifcopenshell_ifcgeom_taxonomy_item_t;
 
 /* ------------------------------------------------------------------ */
 /*  Error handling                                                     */
@@ -72,6 +74,8 @@ IFCAPI_EXPORT void ifcopenshell_free_string(char* str);
 /// Opens an IFC file from disk.  Returns an opaque IfcFile pointer (free with
 /// ifcopenshell_file_free), or NULL on failure (use ifcopenshell_last_error_message() for details).
 IFCAPI_EXPORT ifcopenshell_ifc_file_t* ifcopenshell_file_open(const char* path);
+IFCAPI_EXPORT ifcopenshell_ifc_file_t* ifcopenshell_file_open_bypass(
+    const char* path, const char** type_names, size_t type_name_count);
 IFCAPI_EXPORT ifcopenshell_ifc_file_t* ifcopenshell_file_from_string(const char* data, int length);
 
 /// Returns an opaque IfcFile pointer. Free with ifcopenshell_file_free().
@@ -93,6 +97,14 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_file_header_file_name(if
 
 /// Returns the FILE_SCHEMA header section as an instance handle, or NULL.
 IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_file_header_file_schema(ifcopenshell_ifc_file_t* file);
+
+IFCAPI_EXPORT ifcopenshell_ifc_instance_streamer_t* ifcopenshell_instance_streamer_create(void);
+IFCAPI_EXPORT ifcopenshell_ifc_instance_streamer_t* ifcopenshell_instance_streamer_create_from_path(
+    const char* path, bool mmap);
+IFCAPI_EXPORT bool ifcopenshell_taxonomy_function_item_start(
+    ifcopenshell_ifcgeom_taxonomy_item_t* item, double* out);
+IFCAPI_EXPORT bool ifcopenshell_taxonomy_function_item_end(
+    ifcopenshell_ifcgeom_taxonomy_item_t* item, double* out);
 
 /// Creates a blank entity of the given type. Returns its STEP ID, or 0 on error.
 IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_file_create_entity(ifcopenshell_ifc_file_t* file, const char* type_name);

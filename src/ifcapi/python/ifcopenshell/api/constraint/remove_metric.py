@@ -47,8 +47,8 @@ class Usecase:
     file: ifcopenshell.file
 
     def execute(self, metric: ifcopenshell.entity_instance) -> None:
-        if metric.ReferencePath:
-            reference = metric.ReferencePath
+        reference = getattr(metric, "ReferencePath", None)
+        if reference:
             self.delete_reference(reference)
 
         self.file.remove(metric)
