@@ -81,13 +81,29 @@ def get_axis2placement(placement: "ifcopenshell.entity_instance") -> MatrixType:
     )
     if ok:
         return _mat_to_numpy(out)
-    # Fallback for IfcAxis2PlacementLinear: evaluate via geom engine.
+    # Fallback for IfcAxis2PlacementLinear with IfcPointByDistanceExpression.
     if placement.is_a("IfcAxis2PlacementLinear"):
+        import ifcopenshell.ifcopenshell_wrapper as ifcopenshell_wrapper
         import ifcopenshell.geom
+        import ifcopenshell.util.unit
+
+        location = placement.Location
+        basis_curve = getattr(location, "BasisCurve", None)
+        distance = getattr(location, "DistanceAlong", None)
+        if basis_curve is None or distance is None:
+            return np.eye(4)
+
+        unit_scale = ifcopenshell.util.unit.calculate_unit_scale(placement.file)
+        distance_along = getattr(distance, "wrappedValue", distance)
+        offset_lateral = getattr(getattr(location, "OffsetLateral", 0.0), "wrappedValue", location.OffsetLateral or 0.0)
+
         settings = ifcopenshell.geom.settings()
         settings.set("convert-back-units", True)
-        shape = ifcopenshell.geom.create_shape(settings, placement)
-        return np.array(shape.matrix).reshape((4, 4), order="F")
+        fn = ifcopenshell_wrapper.map_shape(settings, basis_curve.wrapped_data)
+        evaluator = ifcopenshell_wrapper.function_item_evaluator(settings, fn)
+        matrix = np.array(evaluator.evaluate(float(distance_along) * unit_scale), dtype=np.float64)
+        matrix[0:3, 3] = matrix[0:3, 3] / unit_scale + matrix[0:3, 1] * float(offset_lateral)
+        return matrix
     return np.eye(4)
 
 

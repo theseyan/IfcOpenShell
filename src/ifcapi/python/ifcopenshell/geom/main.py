@@ -534,6 +534,11 @@ class Triangulation(_OwnedHandle):
 
     _destroy_fn_name = "ifcopenshell_ifcgeom_triangulation_destroy"
 
+    @property
+    def id(self) -> str:
+        owner = getattr(self, "_element_owner", None)
+        return owner.unique_id if owner is not None else ""
+
     # ---- bulk numeric arrays --------------------------------------------
     #
     # The non-``_buffer`` properties mirror SWIG's behaviour: a
@@ -917,7 +922,9 @@ class TriangulationElement(Element):
             self._h, byref(out)
         ) or not out:
             return Triangulation(None)
-        return Triangulation(out)
+        geometry = Triangulation(out)
+        geometry._element_owner = self
+        return geometry
 
 
 class SerializedElement(Element):

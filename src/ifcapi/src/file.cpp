@@ -13,6 +13,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <sys/stat.h>
 
 // Defined in root.cpp
 #include "ifcopenshell_api_internal.hpp"
@@ -50,8 +51,8 @@ ifcopenshell_ifc_file_t* ifcopenshell_file_open(const char* path) {
     ifcopenshell_clear_error();
     if (!path) { set_error("path is NULL"); return nullptr; }
     {
-        std::ifstream probe(path, std::ios::binary);
-        if (!probe.good()) {
+        struct stat st;
+        if (stat(path, &st) != 0) {
             std::ostringstream oss;
             oss << "File does not exist or is not readable: " << path;
             set_error(oss.str());
@@ -61,6 +62,31 @@ ifcopenshell_ifc_file_t* ifcopenshell_file_open(const char* path) {
     try {
         auto* file = new IfcParse::IfcFile(path);
         if (!file->good()) {
+            std::ostringstream oss;
+            oss << "Failed to open IFC file: " << path;
+            set_error(oss.str());
+            delete file;
+            return nullptr;
+        }
+        return ifcopenshell::capi::wrap_file(file, /*owned=*/true);
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
+ifcopenshell_ifc_file_t* ifcopenshell_file_open_bypass(
+    const char* path, const char** type_names, size_t type_name_count) {
+    ifcopenshell_clear_error();
+    if (!path) { set_error("path is NULL"); return nullptr; }
+    try {
+        auto* file = new IfcParse::IfcFile(IfcParse::uninitialized_tag{});
+        for (size_t i = 0; i < type_name_count; ++i) {
+            if (type_names && type_names[i]) {
+                file->bypass_type(type_names[i]);
+            }
+        }
+        if (!file->initialize(path)) {
             std::ostringstream oss;
             oss << "Failed to open IFC file: " << path;
             set_error(oss.str());
@@ -90,6 +116,51 @@ ifcopenshell_ifc_file_t* ifcopenshell_file_from_string(const char* data, int len
         set_error(e.what());
         return nullptr;
     }
+}
+
+ifcopenshell_ifc_instance_streamer_t* ifcopenshell_instance_streamer_create(void) {
+    ifcopenshell_clear_error();
+    try {
+        return new ifcopenshell_ifc_instance_streamer_t{new IfcParse::InstanceStreamer(), true};
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
+ifcopenshell_ifc_instance_streamer_t* ifcopenshell_instance_streamer_create_from_path(
+    const char* path, bool mmap) {
+    ifcopenshell_clear_error();
+    if (!path) { set_error("path is NULL"); return nullptr; }
+    try {
+#ifndef USE_MMAP
+        mmap = false;
+#endif
+        return new ifcopenshell_ifc_instance_streamer_t{new IfcParse::InstanceStreamer(path, mmap), true};
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
+bool ifcopenshell_taxonomy_function_item_start(ifcopenshell_ifcgeom_taxonomy_item_t* item, double* out) {
+    ifcopenshell_clear_error();
+    if (!item || !item->ptr) { set_error("item is NULL"); return false; }
+    if (!out) { set_error("out is NULL"); return false; }
+    auto fn = ifcopenshell::geometry::taxonomy::dcast<ifcopenshell::geometry::taxonomy::function_item>(item->ptr);
+    if (!fn) { set_error("item is not a function_item"); return false; }
+    *out = fn->start();
+    return true;
+}
+
+bool ifcopenshell_taxonomy_function_item_end(ifcopenshell_ifcgeom_taxonomy_item_t* item, double* out) {
+    ifcopenshell_clear_error();
+    if (!item || !item->ptr) { set_error("item is NULL"); return false; }
+    if (!out) { set_error("out is NULL"); return false; }
+    auto fn = ifcopenshell::geometry::taxonomy::dcast<ifcopenshell::geometry::taxonomy::function_item>(item->ptr);
+    if (!fn) { set_error("item is not a function_item"); return false; }
+    *out = fn->end();
+    return true;
 }
 
 void ifcopenshell_file_free(ifcopenshell_ifc_file_t* file) {
