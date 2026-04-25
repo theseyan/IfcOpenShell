@@ -12,16 +12,21 @@ from __future__ import annotations
 import ctypes
 import ctypes.util
 import builtins
+import functools
 import json
 import os
 import re
+import struct
 import tempfile
 import weakref
 import zipfile
 from pathlib import Path
 from typing import List, Optional, Set, Tuple
 
+from . import guid, settings
+
 version = "0.8.1"
+version_core = version
 
 
 def get_log() -> str:
@@ -325,6 +330,12 @@ def _get_lib():
     _lib.ifcopenshell_ifc_file_storage_mode.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int32)]
     _lib.ifcopenshell_ifc_file_key_value_store_query.restype = ctypes.c_bool
     _lib.ifcopenshell_ifc_file_key_value_store_query.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_char_p,
+        ctypes.c_void_p,
+    ]
+    _lib.ifcopenshell_ifc_file_key_value_store_iter.restype = ctypes.c_bool
+    _lib.ifcopenshell_ifc_file_key_value_store_iter.argtypes = [
         ctypes.c_void_p,
         ctypes.c_char_p,
         ctypes.c_void_p,
@@ -700,7 +711,7 @@ def _parse_aggregate_literal(raw, elem_prim: str):
 # entity_instance
 # ---------------------------------------------------------------------------
 
-from ifcopenshell.entity_instance import entity_instance  # noqa: E402
+from ifcopenshell.entity_instance import entity_instance, register_schema_attributes  # noqa: E402
 
 
 class _typed_value(entity_instance):
@@ -1066,6 +1077,9 @@ class file:
             return -1
         return int(out.value)
 
+    def file_pointer(self) -> int:
+        return int(self._ptr or 0)
+
     def key_value_store_query(self, key: str) -> bytes:
         from ifcopenshell import ifcopenshell_wrapper as W
 
@@ -1080,6 +1094,28 @@ class file:
             return b""
         finally:
             lib.ifcopenshell_string_destroy(ctypes.byref(out))
+
+    def key_value_store_iter(self, prefix: str) -> tuple[bytes, ...]:
+        from ifcopenshell import ifcopenshell_wrapper as W
+
+        lib = _get_lib()
+        W._bind()
+        out = W.ifcopenshell_string_list_t()
+        if not lib.ifcopenshell_ifc_file_key_value_store_iter(self._ptr, _enc(prefix), ctypes.byref(out)):
+            return ()
+        try:
+            return tuple(
+                ctypes.string_at(out.items[i].data, out.items[i].size)
+                if out.items[i].data and out.items[i].size
+                else b""
+                for i in range(out.size)
+            )
+        finally:
+            lib.ifcopenshell_string_list_destroy(ctypes.byref(out))
+
+    @property
+    def storage(self) -> Optional[rocksdb_file_storage]:
+        return rocksdb_file_storage(self) if self.storage_mode() == 1 else None
 
     def remove(self, entity) -> None:
         lib = _get_lib()
@@ -1323,6 +1359,220 @@ def schema_by_name(name):
     """Look up an IFC schema by its string identifier (e.g. 'IFC4')."""
     from ifcopenshell import ifcopenshell_wrapper as _W
     return _W.schema_by_name(name)
+
+
+def register_schema(schema) -> None:
+    """Register a custom schema object with the native schema registry."""
+    from ifcopenshell import ifcopenshell_wrapper as _W
+
+    wrapper_schema = getattr(schema, "schema", schema)
+    if hasattr(wrapper_schema, "this"):
+        raise TypeError("SWIG schema objects cannot be registered by the native ABI wrapper")
+    if not isinstance(wrapper_schema, _W.schema_definition):
+        raise TypeError("register_schema() expects a native schema_definition or an object with a .schema member")
+    _W.register_schema(wrapper_schema)
+    register_schema_attributes(wrapper_schema)
+
+
+def _consume_binary_buffer(value: bytes, inner):
+    while value:
+        size = struct.unpack("@q", value[:8])[0]
+        value = value[8:]
+        yield inner(value[:size])
+        value = value[size:]
+
+
+@functools.cache
+def _rocksdb_attribute_lookup(schema_name, entity_name):
+    from ifcopenshell import ifcopenshell_wrapper as _W
+
+    declaration = _W.schema_by_name(schema_name).declaration_by_name(entity_name)
+    entity_decl = declaration.as_entity()
+    attributes = entity_decl.all_attributes()
+    lookup = {attribute.name(): index for index, attribute in enumerate(attributes)}
+    for inverse in entity_decl.all_inverse_attributes():
+        def visit(decl):
+            yield decl.index_in_schema()
+            for subtype in decl.subtypes():
+                yield from visit(subtype)
+
+        lookup[inverse.name()] = (
+            tuple(visit(inverse.entity_reference())),
+            inverse.entity_reference().attribute_index(inverse.attribute_reference().name()),
+        )
+    return lookup
+
+
+@functools.cache
+def _rocksdb_entity_name_lookup(schema_name, index):
+    from ifcopenshell import ifcopenshell_wrapper as _W
+
+    return _W.schema_by_name(schema_name).declarations()[index].name()
+
+
+def _rocksdb_binary_deserializers():
+    from ifcopenshell import ifcopenshell_wrapper as _W
+
+    return (
+        lambda __, _: None,
+        lambda __, _: None,
+        lambda __, value: struct.unpack("@i", value)[0],
+        lambda __, value: value[0] == 1,
+        lambda __, value: value[0] == 1,
+        lambda __, value: struct.unpack("@d", value)[0],
+        lambda __, value: value.decode("utf-8"),
+        lambda __, value: value.decode("utf-8"),
+        lambda storage, value: _W.schema_by_name(storage.schema_identifier)
+        .declarations()[struct.unpack("@q", value[:8])[0]]
+        .enumeration_items()[struct.unpack("@q", value[8:])[0]],
+        lambda storage, value: storage.by_id((value[0] == 105, struct.unpack("@q", value[1:])[0])),
+        lambda __, _: (),
+        lambda __, value: struct.unpack("@" + "i" * (len(value) // 4), value),
+        lambda __, value: struct.unpack("@" + "d" * (len(value) // 8), value),
+        lambda __, value: tuple(_consume_binary_buffer(value, lambda inner: inner.decode("utf-8"))),
+        lambda __, value: tuple(_consume_binary_buffer(value, lambda inner: inner.decode("utf-8"))),
+        lambda storage, value: tuple(
+            storage.by_id((value[i * 9] == 105, struct.unpack("@q", value[i * 9 + 1: i * 9 + 9])[0]))
+            for i in range(len(value) // 9)
+        ),
+        lambda __, _: ((),),
+        lambda __, value: tuple(
+            _consume_binary_buffer(value, lambda inner: struct.unpack("@" + "i" * (len(inner) // 4), inner))
+        ),
+        lambda __, value: tuple(
+            _consume_binary_buffer(value, lambda inner: struct.unpack("@" + "d" * (len(inner) // 8), inner))
+        ),
+        lambda storage, value: tuple(
+            _consume_binary_buffer(
+                value,
+                lambda inner: tuple(
+                    storage.by_id((inner[i * 9] == 105, struct.unpack("@q", inner[i * 9 + 1: i * 9 + 9])[0]))
+                    for i in range(len(inner) // 9)
+                ),
+            )
+        ),
+    )
+
+
+class rocksdb_lazy_instance:
+    __slots__ = ("storage", "name")
+
+    def __init__(self, storage, name):
+        self.storage = storage
+        self.name = name.decode("utf-8") if isinstance(name, bytes) else name
+
+    def _transform_value(self, value: bytes):
+        if not value:
+            return None
+        return _rocksdb_binary_deserializers()[value[0] - 65](self.storage, value[1:])
+
+    @functools.cache
+    def is_a(self):
+        if self.name.startswith("h|"):
+            return self.name[2:]
+        index_data = self.storage.read(f"{self.name}|_")
+        if not index_data:
+            return None
+        return _rocksdb_entity_name_lookup(self.storage.schema_identifier, struct.unpack("@q", index_data)[0])
+
+    def __getattr__(self, name):
+        attr = _rocksdb_attribute_lookup(self.storage.schema_identifier, self.is_a()).get(name)
+        if isinstance(attr, int):
+            return self[attr]
+        if attr is None:
+            raise AttributeError(name)
+
+        entity_indices, attribute_index = attr
+
+        def inverse_values():
+            for index_in_schema in entity_indices:
+                data = self.storage.read(f"v|{self.name[2:]}|{index_in_schema}|{attribute_index}") or b""
+                yield from map(self.storage.by_id, struct.unpack("<" + "I" * (len(data) // 4), data))
+
+        return list(inverse_values())
+
+    def __getitem__(self, index):
+        return self._transform_value(self.storage.read(f"{self.name}|{index}"))
+
+    @functools.cache
+    def __len__(self):
+        indices = []
+        for key, _ in self.storage.prefix(f"{self.name}|").items():
+            parts = key.split(b"|")
+            if len(parts) > 2 and parts[2].isdigit():
+                indices.append(int(parts[2]))
+        return max(indices, default=-1) + 1
+
+    def __iter__(self):
+        for index in range(len(self)):
+            yield self[index]
+
+    def __repr__(self):
+        prefix = f"#{self.name[2:]}=" if self.name.startswith("i|") else ""
+
+        def value_repr(value):
+            if isinstance(value, rocksdb_lazy_instance):
+                return f"#{value.name[2:]}" if value.name.startswith("i|") else repr(value)
+            if isinstance(value, (tuple, list)):
+                return f"({','.join(map(value_repr, value))})"
+            if value is None:
+                return "$"
+            return repr(value)
+
+        return f"{prefix}{self.is_a()}({','.join(map(value_repr, self))})"
+
+    def id(self):
+        return int(self.name[2:]) if self.name.startswith("i|") else 0
+
+    def __bool__(self):
+        return len(self) > 0
+
+    @property
+    def _comparison_tuple(self):
+        return self.storage.file.file_pointer(), self.name
+
+    def __eq__(self, other):
+        return isinstance(other, rocksdb_lazy_instance) and self._comparison_tuple == other._comparison_tuple
+
+    def __hash__(self):
+        return hash(self._comparison_tuple)
+
+
+class rocksdb_file_storage:
+    def __init__(self, file, prefix=""):
+        self.file = file
+        self._prefix = prefix
+
+    @property
+    def schema_identifier(self):
+        return rocksdb_lazy_instance(self, "h|file_schema")[0][0]
+
+    def read(self, key):
+        return self.file.key_value_store_query(self._prefix + key)
+
+    def items(self):
+        for key in self.file.key_value_store_iter(self._prefix):
+            yield key, self.file.key_value_store_query(key)
+
+    def prefix(self, prefix):
+        return rocksdb_file_storage(self.file, self._prefix + prefix)
+
+    def by_id(self, name):
+        if isinstance(name, tuple):
+            instance = rocksdb_lazy_instance(self, f"{'i' if name[0] else 't'}|{name[1]}")
+        else:
+            instance = rocksdb_lazy_instance(self, f"i|{name}")
+        return instance if instance else None
+
+    def by_type(self, type_name):
+        from ifcopenshell import ifcopenshell_wrapper as _W
+
+        declaration = _W.schema_by_name(self.schema_identifier).declaration_by_name(type_name)
+        if declaration is None:
+            return
+        data = self.read(f"t|{declaration.index_in_schema()}")
+        for offset in range(0, len(data), 8):
+            yield rocksdb_lazy_instance(self, f"i|{struct.unpack('<Q', data[offset: offset + 8])[0]}")
 
 
 _SCRATCH_FILES: dict = {}
@@ -1577,7 +1827,26 @@ def _open_bypass(path, bypass_types):
     return _get_lib().ifcopenshell_file_open_bypass(_enc(str(path)), array_type(*type_names), len(type_names))
 
 
-from ifcopenshell.sql import sqlite  # noqa: E402
+from ifcopenshell.sql import sqlite, sqlite_entity  # noqa: E402
+
+
+def guess_format(path):
+    """Guess the canonical IFC format from a path, matching upstream."""
+    path = Path(path)
+    suffix = path.suffix.lower()
+    if path.is_dir():
+        return "rocksdb"
+    if suffix == ".ifc":
+        return ".ifc"
+    if suffix in (".ifczip", ".zip"):
+        return ".ifcZIP"
+    if suffix in (".ifcxml", ".xml"):
+        return ".ifcXML"
+    if suffix in (".ifcjson", ".json"):
+        return ".ifcJSON"
+    if suffix in (".ifcsqlite", ".sqlite", ".db"):
+        return ".ifcSQLite"
+    return None
 
 
 def open(path, format=None, should_stream=False, readonly=False, bypass_types=None):  # noqa: A001
@@ -1613,3 +1882,6 @@ def open(path, format=None, should_stream=False, readonly=False, bypass_types=No
         msg = err.decode("utf-8") if err else "Unknown error"
         raise RuntimeError(f"Failed to open {path}: {msg}")
     return _wrap_file_ptr(ptr)
+
+
+from ifcopenshell.stream import stream, stream_entity  # noqa: E402

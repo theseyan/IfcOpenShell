@@ -134,7 +134,10 @@ def _bind():
         "ifcopenshell_ifc_inverse_attribute_list_destroy": (None, [Ip]),
         "ifcopenshell_ifc_declaration_list_destroy": (None, [Dp]),
         # schema lookup / file -> schema
+        "ifcopenshell_ifcparse_clear_schemas": (c_bool, []),
+        "ifcopenshell_ifcparse_register_schema": (c_bool, [H]),
         "ifcopenshell_ifcparse_schema_by_name": (c_bool, [cstr, HH]),
+        "ifcopenshell_ifcparse_schema_names": (c_bool, [SLp]),
         # schema
         "ifcopenshell_ifc_schema_name": (c_bool, [H, Sp]),
         "ifcopenshell_ifc_schema_declaration_by_name": (c_bool, [H, cstr, HH]),
@@ -147,6 +150,7 @@ def _bind():
         "ifcopenshell_ifc_declaration_as_select_type": (c_bool, [H, HH]),
         "ifcopenshell_ifc_declaration_as_enumeration_type": (c_bool, [H, HH]),
         "ifcopenshell_ifc_declaration_schema": (c_bool, [H, HH]),
+        "ifcopenshell_ifc_declaration_index_in_schema": (c_bool, [H, POINTER(c_int32)]),
         # entity
         "ifcopenshell_ifc_entity_is_abstract": (c_bool, [H, POINTER(c_bool)]),
         "ifcopenshell_ifc_entity_supertype": (c_bool, [H, HH]),
@@ -626,6 +630,12 @@ class declaration(_Handle):
             return None
         return _opt_handle(out, _bind().ifcopenshell_ifc_schema_destroy, schema_definition)
 
+    def index_in_schema(self) -> int:
+        out = c_int32(-1)
+        if not _bind().ifcopenshell_ifc_declaration_index_in_schema(self._h, byref(out)):
+            return -1
+        return int(out.value)
+
     def __repr__(self) -> str:
         return "<entity %s>" % self.name() if self.as_entity() else "<declaration %s>" % self.name()
 
@@ -885,6 +895,25 @@ def schema_by_name(name: str) -> schema_definition:
             _bind().ifcopenshell_ifc_schema_destroy(out)
         raise RuntimeError("Schema not found: %s" % name)
     return schema_definition(out)
+
+
+def schema_names() -> tuple:
+    lst = ifcopenshell_string_list_t()
+    if not _bind().ifcopenshell_ifcparse_schema_names(byref(lst)):
+        raise RuntimeError(ifcopenshell.get_log() or "Failed to list schemas")
+    return _take_string_list(lst)
+
+
+def register_schema(schema: schema_definition) -> None:
+    if not isinstance(schema, schema_definition):
+        raise TypeError("register_schema() expects an ifcopenshell_wrapper.schema_definition")
+    if not _bind().ifcopenshell_ifcparse_register_schema(schema._h):
+        raise RuntimeError(ifcopenshell.get_log() or "Failed to register schema")
+
+
+def clear_schemas() -> None:
+    if not _bind().ifcopenshell_ifcparse_clear_schemas():
+        raise RuntimeError(ifcopenshell.get_log() or "Failed to clear schemas")
 
 
 class _IfcBaseClassInfo:

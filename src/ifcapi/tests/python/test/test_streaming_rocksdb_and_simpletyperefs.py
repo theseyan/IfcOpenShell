@@ -113,6 +113,13 @@ def test_rocks():
         f = ifcopenshell.open(rfn)
         assert f[139].RelatingPropertyDefinition.is_a("IfcPropertySetDefinitionSet")
         assert {x.id() for x in f[139].RelatingPropertyDefinition[0]} == {136, 138}
+        assert f.storage is not None
+        lazy_rel = f.storage.by_id(139)
+        assert isinstance(lazy_rel, ifcopenshell.rocksdb_lazy_instance)
+        assert lazy_rel.is_a() == "IfcRelDefinesByProperties"
+        assert lazy_rel.RelatingPropertyDefinition.is_a() == "IfcPropertySetDefinitionSet"
+        assert {x.id() for x in lazy_rel.RelatingPropertyDefinition[0]} == {136, 138}
+        assert {x.id() for x in f.storage.by_type("IfcPropertySet")} >= {136, 138}
 
         b = f.wrapped_data.key_value_store_query("i|139|5")[2:]
         iden = struct.unpack("Q", b)[0]

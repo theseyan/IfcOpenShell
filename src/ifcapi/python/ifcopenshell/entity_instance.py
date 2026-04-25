@@ -65,6 +65,17 @@ _attribute_value_lib_configured = False
 _MISSING = object()
 
 
+def register_schema_attributes(schema) -> None:
+    """Validate a registered schema for upstream API parity.
+
+    The native wrapper resolves setter/getter behaviour from schema declarations
+    at the point of use, so it does not maintain SWIG's Python-side setter table.
+    """
+    if schema is None or not hasattr(schema, "declarations"):
+        raise TypeError("register_schema_attributes() expects a schema_definition")
+    tuple(schema.declarations())
+
+
 class _Int32List(ctypes.Structure):
     _fields_ = [("items", ctypes.POINTER(ctypes.c_int32)), ("size", ctypes.c_size_t)]
 
