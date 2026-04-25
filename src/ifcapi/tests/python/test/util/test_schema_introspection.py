@@ -5,6 +5,7 @@ and util.attribute on top of it."""
 
 import pytest
 
+import ifcopenshell
 import ifcopenshell.ifcopenshell_wrapper as W
 import ifcopenshell.util.attribute as subject
 
@@ -21,6 +22,33 @@ class TestSchemaByName:
     def test_missing_schema_raises(self):
         with pytest.raises(Exception):
             W.schema_by_name("BOGUS")
+
+
+class TestSchemaRegistration:
+    def test_native_schema_can_be_registered_through_top_level_api(self):
+        schema = W.schema_by_name("IFC4")
+
+        ifcopenshell.register_schema(schema)
+        ifcopenshell.register_schema_attributes(schema)
+
+        assert ifcopenshell.schema_by_name("IFC4").name() == "IFC4"
+        assert "IFC4" in W.schema_names()
+
+    def test_top_level_register_schema_accepts_schema_class_shape(self):
+        class ParsedSchema:
+            schema = W.schema_by_name("IFC4")
+
+        ifcopenshell.register_schema(ParsedSchema())
+
+        assert ifcopenshell.schema_by_name("IFC4").name() == "IFC4"
+
+    def test_register_schema_rejects_non_native_schema(self):
+        class SwigSchemaShape:
+            class schema:
+                this = object()
+
+        with pytest.raises(TypeError):
+            ifcopenshell.register_schema(SwigSchemaShape())
 
 
 class TestDeclarations:
