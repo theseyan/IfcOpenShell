@@ -128,6 +128,11 @@ def _configure_attribute_value_lib(lib) -> None:
         ctypes.c_void_p,
         ctypes.POINTER(_Int32List),
     ]
+    lib.ifcopenshell_ifcparse_attribute_value_as_int32_list_list.restype = ctypes.c_bool
+    lib.ifcopenshell_ifcparse_attribute_value_as_int32_list_list.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(_Int32ListList),
+    ]
     lib.ifcopenshell_ifcparse_attribute_value_as_double_list.restype = ctypes.c_bool
     lib.ifcopenshell_ifcparse_attribute_value_as_double_list.argtypes = [
         ctypes.c_void_p,
@@ -155,6 +160,8 @@ def _configure_attribute_value_lib(lib) -> None:
     lib.ifcopenshell_ifcparse_instance_list_destroy.argtypes = [ctypes.c_void_p]
     lib.ifcopenshell_int32_list_destroy.restype = None
     lib.ifcopenshell_int32_list_destroy.argtypes = [ctypes.c_void_p]
+    lib.ifcopenshell_int32_list_list_destroy.restype = None
+    lib.ifcopenshell_int32_list_list_destroy.argtypes = [ctypes.POINTER(_Int32ListList)]
     lib.ifcopenshell_double_list_destroy.restype = None
     lib.ifcopenshell_double_list_destroy.argtypes = [ctypes.c_void_p]
     _attribute_value_lib_configured = True
@@ -611,11 +618,14 @@ class entity_instance:
         pt = self._declared_attribute_primitive(name)
         elem_kind = None
         nested_double = False
+        nested_int = False
         nested_entity = False
         if isinstance(pt, tuple) and len(pt) == 2:
             inner = pt[1]
             if isinstance(inner, tuple) and len(inner) == 2 and inner[1] == "float":
                 nested_double = True
+            elif isinstance(inner, tuple) and len(inner) == 2 and inner[1] == "integer":
+                nested_int = True
             elif isinstance(inner, tuple) and len(inner) == 2 and inner[1] == "entity":
                 nested_entity = True
             elif isinstance(inner, str):
@@ -674,6 +684,10 @@ class entity_instance:
             nested = self._get_aggregate_double_list_list(name)
             return nested if nested is not None else tuple()
 
+        if nested_int:
+            nested = self._get_aggregate_int_list_list(name)
+            return nested if nested is not None else tuple()
+
         if nested_entity:
             return self._get_aggregate_ref_list_list(h, attr)
 
@@ -727,6 +741,29 @@ class entity_instance:
                 row.append(entity_instance(self._file, item))
             rows.append(tuple(row))
         return tuple(rows)
+
+    def _get_aggregate_int_list_list(self, name):
+        """Read LIST OF LIST OF INTEGER via autogen attribute_value_as_int32_list_list."""
+        lib = _get_lib()
+        _configure_attribute_value_lib(lib)
+
+        av = ctypes.c_void_p()
+        if not lib.ifcopenshell_ifc_instance_get_argument_by_name(
+                self._handle, _enc(name), ctypes.byref(av)) or not av.value:
+            return None
+        try:
+            out = _Int32ListList()
+            if not lib.ifcopenshell_ifcparse_attribute_value_as_int32_list_list(av, ctypes.byref(out)):
+                return None
+            try:
+                return tuple(
+                    tuple(int(out.items[i].items[j]) for j in range(out.items[i].size))
+                    for i in range(out.size)
+                )
+            finally:
+                lib.ifcopenshell_int32_list_list_destroy(ctypes.byref(out))
+        finally:
+            pass
 
     def _get_aggregate_double_list_list(self, name):
         """Read LIST OF LIST OF REAL via autogen attribute_value_as_double_list_list."""

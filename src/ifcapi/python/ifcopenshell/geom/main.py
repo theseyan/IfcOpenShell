@@ -392,6 +392,20 @@ class Transformation(_OwnedHandle):
         return iter(m)
 
 
+class PlacementTransformation:
+    """SWIG-compatible transformation result for placement create_shape()."""
+
+    def __init__(self, matrix):
+        self.matrix = tuple(float(v) for v in matrix.T.flatten())
+
+    @property
+    def data(self):
+        return self.matrix
+
+    def __iter__(self):
+        return iter(self.matrix)
+
+
 class TaxonomyColour(_OwnedHandle):
     """RGBA colour (3 or 4 doubles)."""
 
@@ -568,7 +582,10 @@ class Triangulation(_OwnedHandle):
 
     @property
     def faces(self):
-        return _as_tuple(self.faces_buffer)
+        faces = _as_tuple(self.faces_buffer)
+        if faces:
+            return faces
+        return self.polyhedral_faces_without_holes() or self.polyhedral_faces_with_holes()
 
     @property
     def normals_buffer(self):
@@ -1056,6 +1073,21 @@ def create_shape(
     """
     if not isinstance(settings_obj, settings):
         raise TypeError("create_shape: settings argument must be ifcopenshell.geom.settings")
+
+    try:
+        is_placement = bool(inst.is_a("IfcObjectPlacement") or inst.is_a("IfcPlacement"))
+    except Exception:
+        is_placement = False
+    if is_placement:
+        from ifcopenshell.util.placement import get_local_placement
+        from ifcopenshell.util.unit import calculate_unit_scale
+
+        matrix = get_local_placement(inst).copy()
+        if not settings_obj.get("convert-back-units"):
+            file_obj = getattr(inst, "_file", None)
+            if file_obj is not None:
+                matrix[0:3, 3] *= calculate_unit_scale(file_obj)
+        return PlacementTransformation(matrix)
 
     inst_h = _instance_handle(inst)
     repr_h = _instance_handle(repr) if repr is not None else None

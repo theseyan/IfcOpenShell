@@ -1055,6 +1055,10 @@ TRIANGULATED = 0
 NATIVE = 1
 SERIALIZED = 2
 
+TRIANGLE_MESH = 0
+POLYHEDRON_WITHOUT_HOLES = 1
+POLYHEDRON_WITH_HOLES = 2
+
 
 def version():
     """Return the ifcopenshell library version string (parity with SWIG)."""

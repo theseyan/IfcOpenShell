@@ -674,6 +674,10 @@ if(BUILD_DOCUMENTATION)
     add_subdirectory(../docs docs)
 endif()
 
+if(BUILD_IFCPYTHON AND WITH_CGAL)
+    add_subdirectory(../src/svgfill svgfill)
+endif()
+
 if(BUILD_IFCPYTHON OR BUILD_IFCCAPI)
     add_subdirectory(../src/ifcwrap ifcwrap)
 endif()
@@ -688,10 +692,6 @@ endif()
 
 if(BUILD_IFCMAX)
     add_subdirectory(../src/ifcmax ifcmax)
-endif()
-
-if(BUILD_IFCPYTHON AND WITH_CGAL)
-    add_subdirectory(../src/svgfill svgfill)
 endif()
 
 if(BUILD_QTVIEWER)
