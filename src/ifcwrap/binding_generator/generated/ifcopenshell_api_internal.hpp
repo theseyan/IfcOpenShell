@@ -54,6 +54,9 @@
 #include "function_item_evaluator.h"
 #include "Serialization/Serialization.h"
 #include "../svgfill/src/svgfill.h"
+#include "guid.h"
+#include "ifcapi/bindings/element.h"
+#include "ifcapi/bindings/entity.h"
 #include "aggregate_of_instance.h"
 #include "IfcEntityInstanceData.h"
 

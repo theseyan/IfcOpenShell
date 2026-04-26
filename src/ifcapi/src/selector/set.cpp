@@ -122,21 +122,11 @@ bool vals_equal(const Val* a, const ifcopenshell_value_t* b) {
 /* Helpers around the existing C ABI ------------------------------------ */
 
 IfcUtil::IfcBaseClass* call_get_type(IfcUtil::IfcBaseClass* e) {
-    if (!e) return nullptr;
-    ScopedHandle sh(e);
-    auto* h = ifcopenshell_element_get_type(sh.get());
-    IfcUtil::IfcBaseClass* r = h ? h->ptr : nullptr;
-    if (h) ifcopenshell_ifc_instance_destroy(h);
-    return r;
+    return ifcapi::bindings::element_get_type(e);
 }
 
 IfcUtil::IfcBaseClass* call_get_material(IfcUtil::IfcBaseClass* e) {
-    if (!e) return nullptr;
-    ScopedHandle sh(e);
-    auto* h = ifcopenshell_element_get_material(sh.get(), true, true);
-    IfcUtil::IfcBaseClass* r = h ? h->ptr : nullptr;
-    if (h) ifcopenshell_ifc_instance_destroy(h);
-    return r;
+    return ifcapi::bindings::element_get_material(e, true, true);
 }
 
 std::vector<IfcUtil::IfcBaseClass*> call_get_materials(IfcUtil::IfcBaseClass* e) {
@@ -191,21 +181,11 @@ std::vector<IfcUtil::IfcBaseClass*> call_get_classification(IfcUtil::IfcBaseClas
 }
 
 IfcUtil::IfcBaseClass* call_get_container(IfcUtil::IfcBaseClass* e, const char* cls) {
-    if (!e) return nullptr;
-    ScopedHandle sh(e);
-    auto* h = ifcopenshell_element_get_container(sh.get(), false, cls);
-    IfcUtil::IfcBaseClass* r = h ? h->ptr : nullptr;
-    if (h) ifcopenshell_ifc_instance_destroy(h);
-    return r;
+    return ifcapi::bindings::element_get_container(e, false, cls);
 }
 
 IfcUtil::IfcBaseClass* call_get_parent(IfcUtil::IfcBaseClass* e) {
-    if (!e) return nullptr;
-    ScopedHandle sh(e);
-    auto* h = ifcopenshell_element_get_parent(sh.get());
-    IfcUtil::IfcBaseClass* r = h ? h->ptr : nullptr;
-    if (h) ifcopenshell_ifc_instance_destroy(h);
-    return r;
+    return ifcapi::bindings::element_get_parent(e);
 }
 
 /* Get all psets (de-duplicated by name) of e — name → property-dict-Val. */

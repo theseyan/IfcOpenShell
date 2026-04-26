@@ -22,38 +22,44 @@ static void test_guid(void) {
     printf("=== GUID tests ===\n");
 
     /* Generate a new GUID */
-    char* guid = ifcopenshell_guid_new();
-    ASSERT(guid != NULL, "guid_new returns non-NULL");
-    ASSERT(strlen(guid) == 22, "GUID is 22 chars");
-    printf("  Generated GUID: %s\n", guid);
+    ifcopenshell_string_t guid = {0};
+    ASSERT(ifcopenshell_ifcapi_guid_new(&guid), "guid_new succeeds");
+    ASSERT(guid.data != NULL, "guid_new returns non-NULL");
+    ASSERT(guid.size == 22, "GUID is 22 chars");
+    printf("  Generated GUID: %s\n", guid.data);
 
     /* Round-trip: compress → expand → compress */
-    char* uuid = ifcopenshell_guid_expand(guid);
-    ASSERT(uuid != NULL, "guid_expand returns non-NULL");
-    ASSERT(strlen(uuid) == 32, "UUID is 32 hex chars");
-    printf("  Expanded UUID:  %s\n", uuid);
+    ifcopenshell_string_t uuid = {0};
+    ASSERT(ifcopenshell_ifcapi_guid_expand(guid.data, &uuid), "guid_expand succeeds");
+    ASSERT(uuid.data != NULL, "guid_expand returns non-NULL");
+    ASSERT(uuid.size == 32, "UUID is 32 hex chars");
+    printf("  Expanded UUID:  %s\n", uuid.data);
 
-    char* guid2 = ifcopenshell_guid_compress(uuid);
-    ASSERT(guid2 != NULL, "guid_compress returns non-NULL");
-    ASSERT(strcmp(guid, guid2) == 0, "round-trip GUID matches");
+    ifcopenshell_string_t guid2 = {0};
+    ASSERT(ifcopenshell_ifcapi_guid_compress(uuid.data, &guid2), "guid_compress succeeds");
+    ASSERT(guid2.data != NULL, "guid_compress returns non-NULL");
+    ASSERT(strcmp(guid.data, guid2.data) == 0, "round-trip GUID matches");
 
-    ifcopenshell_free_string(guid);
-    ifcopenshell_free_string(uuid);
-    ifcopenshell_free_string(guid2);
+    ifcopenshell_string_destroy(&guid);
+    ifcopenshell_string_destroy(&uuid);
+    ifcopenshell_string_destroy(&guid2);
 
     /* Known test vector from IFC spec */
-    char* known = ifcopenshell_guid_compress("5765f8e4d5554a83a81c05af3132e830");
-    ASSERT(known != NULL, "known compress returns non-NULL");
-    printf("  Known vector:   %s (len=%zu)\n", known, strlen(known));
-    ASSERT(strlen(known) == 22, "known GUID is 22 chars");
+    ifcopenshell_string_t known = {0};
+    ASSERT(ifcopenshell_ifcapi_guid_compress("5765f8e4d5554a83a81c05af3132e830", &known),
+           "known compress succeeds");
+    ASSERT(known.data != NULL, "known compress returns non-NULL");
+    printf("  Known vector:   %s (len=%zu)\n", known.data, known.size);
+    ASSERT(known.size == 22, "known GUID is 22 chars");
 
-    char* known_back = ifcopenshell_guid_expand(known);
-    ASSERT(known_back != NULL, "known expand returns non-NULL");
-    ASSERT(strcmp(known_back, "5765f8e4d5554a83a81c05af3132e830") == 0,
+    ifcopenshell_string_t known_back = {0};
+    ASSERT(ifcopenshell_ifcapi_guid_expand(known.data, &known_back), "known expand succeeds");
+    ASSERT(known_back.data != NULL, "known expand returns non-NULL");
+    ASSERT(strcmp(known_back.data, "5765f8e4d5554a83a81c05af3132e830") == 0,
            "known round-trip matches");
 
-    ifcopenshell_free_string(known);
-    ifcopenshell_free_string(known_back);
+    ifcopenshell_string_destroy(&known);
+    ifcopenshell_string_destroy(&known_back);
 
     printf("  GUID tests done.\n\n");
 }
@@ -80,39 +86,61 @@ static void test_file_ops(void) {
     printf("=== File operations tests ===\n");
 
     /* Create IFC4 file */
-    ifcopenshell_ifc_file_t* f = ifcopenshell_file_create("IFC4");
-    ASSERT(f != NULL, "file_create returns non-NULL");
+    ifcopenshell_ifc_file_t* f = NULL;
+    ASSERT(ifcopenshell_ifcparse_new_file("IFC4", 0, "", &f), "new_file succeeds");
+    ASSERT(f != NULL, "new_file returns non-NULL");
     printf("  Created IFC4 file: %p\n", (void*)f);
 
-    const char* schema = ifcopenshell_file_schema(f);
-    ASSERT(schema != NULL, "file_schema returns non-NULL");
-    ASSERT(strcmp(schema, "IFC4") == 0, "schema is IFC4");
-    printf("  Schema: %s\n", schema);
+    ifcopenshell_string_t schema = {0};
+    ASSERT(ifcopenshell_ifc_file_schema_name(f, &schema), "schema_name succeeds");
+    ASSERT(schema.data != NULL, "schema_name returns non-NULL");
+    ASSERT(strcmp(schema.data, "IFC4") == 0, "schema is IFC4");
+    printf("  Schema: %s\n", schema.data);
+    ifcopenshell_string_destroy(&schema);
 
     /* Create entity */
-    ifcopenshell_ifc_instance_t* wall = ifcopenshell_file_create_entity(f, "IfcWall");
+    ifcopenshell_ifc_instance_t* wall = NULL;
+    ASSERT(ifcopenshell_ifc_file_create_entity_by_name(f, "IfcWall", &wall), "create_entity succeeds");
     ASSERT(wall != NULL, "create_entity returns non-NULL");
 
-    /* Entity type */
-    const char* type = ifcopenshell_entity_type(wall);
-    ASSERT(type != NULL, "entity_type returns non-NULL");
-    ASSERT(strcmp(type, "IfcWall") == 0, "entity type is IfcWall");
+    /* Entity declaration/type */
+    ifcopenshell_ifc_declaration_t* decl = NULL;
+    ASSERT(ifcopenshell_ifc_instance_declaration(wall, &decl), "declaration succeeds");
+    ASSERT(decl != NULL, "declaration returns non-NULL");
+    ifcopenshell_string_t type = {0};
+    ASSERT(ifcopenshell_ifc_declaration_name(decl, &type), "declaration_name succeeds");
+    ASSERT(type.data != NULL, "declaration_name returns non-NULL");
+    ASSERT(strcmp(type.data, "IfcWall") == 0, "entity type is IfcWall");
+    ifcopenshell_string_destroy(&type);
+    ifcopenshell_ifc_declaration_destroy(decl);
 
     /* is_a */
-    ASSERT(ifcopenshell_entity_is_a(wall, "IfcWall"), "is_a IfcWall");
-    ASSERT(ifcopenshell_entity_is_a(wall, "IfcRoot"), "is_a IfcRoot");
-    ASSERT(!ifcopenshell_entity_is_a(wall, "IfcDoor"), "not is_a IfcDoor");
+    bool is_type = false;
+    ASSERT(ifcopenshell_ifc_instance_is_a(wall, "IfcWall", &is_type), "is_a IfcWall succeeds");
+    ASSERT(is_type, "is_a IfcWall");
+    ASSERT(ifcopenshell_ifc_instance_is_a(wall, "IfcRoot", &is_type), "is_a IfcRoot succeeds");
+    ASSERT(is_type, "is_a IfcRoot");
+    ASSERT(ifcopenshell_ifc_instance_is_a(wall, "IfcDoor", &is_type), "is_a IfcDoor succeeds");
+    ASSERT(!is_type, "not is_a IfcDoor");
 
     /* Set/get string attribute */
-    ifcopenshell_entity_set_string(wall, "Name", "TestWall");
-    char* name = ifcopenshell_entity_get_string(wall, "Name");
-    ASSERT(name != NULL, "get_string returns non-NULL");
-    ASSERT(strcmp(name, "TestWall") == 0, "Name matches");
-    ifcopenshell_free_string(name);
+    ASSERT(ifcopenshell_ifc_instance_set_argument_string(wall, 2, "TestWall"), "set Name succeeds");
+    ifcopenshell_ifcparse_attribute_value_t* name_value = NULL;
+    ASSERT(ifcopenshell_ifc_instance_get_argument(wall, 2, &name_value), "get Name succeeds");
+    ifcopenshell_string_t name = {0};
+    ASSERT(ifcopenshell_ifcparse_attribute_value_as_string(name_value, &name), "Name is string");
+    ASSERT(name.data != NULL, "Name returns non-NULL");
+    ASSERT(strcmp(name.data, "TestWall") == 0, "Name matches");
+    ifcopenshell_string_destroy(&name);
+    ifcopenshell_ifcparse_attribute_value_destroy(name_value);
 
     /* by_type */
-    int32_t count = ifcopenshell_file_by_type_count(f, "IfcWall");
-    ASSERT(count == 1, "by_type_count is 1");
+    ifcopenshell_ifcparse_instance_list_t* walls = NULL;
+    ASSERT(ifcopenshell_ifc_file_by_type(f, "IfcWall", &walls), "by_type succeeds");
+    size_t count = 0;
+    ASSERT(ifcopenshell_ifcparse_instance_list_size(walls, &count), "by_type size succeeds");
+    ASSERT(count == 1, "by_type count is 1");
+    ifcopenshell_ifcparse_instance_list_destroy(walls);
 
     ifcopenshell_ifc_instance_destroy(wall);
     ifcopenshell_ifc_file_destroy(f);

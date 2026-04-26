@@ -61,16 +61,6 @@ def _get_lib():
     _lib.ifcopenshell_clear_error.restype = None
     _lib.ifcopenshell_clear_error.argtypes = []
 
-    # GUID functions
-    _lib.ifcopenshell_guid_new.restype = ctypes.c_char_p
-    _lib.ifcopenshell_guid_new.argtypes = []
-    _lib.ifcopenshell_guid_compress.restype = ctypes.c_char_p
-    _lib.ifcopenshell_guid_compress.argtypes = [ctypes.c_char_p]
-    _lib.ifcopenshell_guid_expand.restype = ctypes.c_char_p
-    _lib.ifcopenshell_guid_expand.argtypes = [ctypes.c_char_p]
-    _lib.ifcopenshell_free_string.restype = None
-    _lib.ifcopenshell_free_string.argtypes = [ctypes.c_char_p]
-
     # root.create_entity
     _lib.ifcopenshell_root_create_entity.restype = ctypes.c_int32
     _lib.ifcopenshell_root_create_entity.argtypes = [

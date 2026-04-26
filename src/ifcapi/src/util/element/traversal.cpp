@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/element.h"
 
 #include "ifcparse/IfcFile.h"
 #include "ifcparse/IfcSchema.h"
@@ -234,17 +235,17 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_shape_
 
     if (ifcapi::has_attr(e, "Representation")) {
         if (should_inherit) {
-            auto* type_h = ifcopenshell_element_get_type(element);
-            if (type_h) {
+            auto* type_e = ifcapi::bindings::element_get_type(e);
+            if (type_e) {
+                ifcopenshell_ifc_instance_t type_h = {type_e, false};
                 uint32_t inherited_count = 0;
-                auto** inherited = ifcopenshell_util_element_get_shape_aspects(type_h, false, &inherited_count);
+                auto** inherited = ifcopenshell_util_element_get_shape_aspects(&type_h, false, &inherited_count);
                 if (inherited) {
                     for (uint32_t i = 0; i < inherited_count; ++i) {
                         if (inherited[i]) result.push_back(inherited[i]->ptr);
                     }
                     ifcopenshell_free_instance_array(inherited, inherited_count);
                 }
-                ifcopenshell_ifc_instance_destroy(type_h);
             }
         }
         auto* rep = read_ref(e, "Representation");
@@ -405,8 +406,7 @@ IFCAPI_EXPORT bool ifcopenshell_util_element_is_userdefined_type(
     if (!e) return false;
 
     // Try the type element first (matches upstream get_type recursion).
-    auto* type_h = ifcopenshell_element_get_type(element);
-    IfcUtil::IfcBaseClass* type_e = type_h ? type_h->ptr : nullptr;
+    auto* type_e = ifcapi::bindings::element_get_type(e);
     bool result = false;
     bool decided = false;
 
@@ -428,8 +428,6 @@ IFCAPI_EXPORT bool ifcopenshell_util_element_is_userdefined_type(
             result = false; decided = true;
         }
     }
-    if (type_h) ifcopenshell_ifc_instance_destroy(type_h);
-
     if (decided) return result;
 
     std::string pt = ifcapi::get_string_attr(e, "PredefinedType");

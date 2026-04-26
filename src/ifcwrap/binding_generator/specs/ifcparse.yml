@@ -300,7 +300,42 @@ functions:
     implementation:
       kind: inline_cpp
       body: |
-        return new IfcParse::IfcFile(path, IfcParse::FT_AUTODETECT, readonly);
+        {
+            std::ifstream probe(path_cpp.c_str());
+            if (!probe.good()) {
+                throw std::runtime_error(std::string("File does not exist or is not readable: ") + path_cpp);
+            }
+        }
+        auto file = std::make_unique<IfcParse::IfcFile>(path_cpp, IfcParse::FT_AUTODETECT, readonly);
+        if (!file->good()) {
+            throw std::runtime_error(std::string("Failed to open IFC file: ") + path_cpp);
+        }
+        return file.release();
+
+  - kind: adapter_function
+    expose_as: open_bypass
+    returns:
+      kind: handle
+      handle: file
+      ownership: owned
+    params:
+      - name: path
+        type:
+          kind: string
+      - name: type_names
+        type:
+          kind: string_list
+    implementation:
+      kind: inline_cpp
+      body: |
+        auto file = std::make_unique<IfcParse::IfcFile>(IfcParse::uninitialized_tag{});
+        for (const auto& type_name : type_names_cpp) {
+            file->bypass_type(type_name);
+        }
+        if (!file->initialize(path_cpp)) {
+            throw std::runtime_error(std::string("Failed to open IFC file: ") + path_cpp);
+        }
+        return file.release();
 
   - kind: adapter_function
     expose_as: new_file
@@ -334,11 +369,57 @@ functions:
     params:
       - name: data
         type:
-          kind: string
+          kind: opaque_ptr
+          cpp_type: const void*
+      - name: length
+        type:
+          kind: int32
     implementation:
       kind: inline_cpp
       body: |
-        return new IfcParse::IfcFile((void*)data_cpp.data(), static_cast<int>(data_cpp.size()));
+        if (length < 0) {
+            throw std::runtime_error("length is negative");
+        }
+        auto file = std::make_unique<IfcParse::IfcFile>(const_cast<void*>(data_cpp), static_cast<int>(length));
+        if (!file->good()) {
+            throw std::runtime_error("Failed to parse IFC data from string");
+        }
+        return file.release();
+
+  - kind: adapter_function
+    expose_as: stream
+    returns:
+      kind: handle
+      handle: instance_streamer
+      ownership: owned
+    params: []
+    implementation:
+      kind: inline_cpp
+      body: |
+        return new IfcParse::InstanceStreamer();
+
+  - kind: adapter_function
+    expose_as: stream_from_path
+    returns:
+      kind: handle
+      handle: instance_streamer
+      ownership: owned
+    params:
+      - name: path
+        type:
+          kind: string
+      - name: mmap
+        type:
+          kind: bool
+    implementation:
+      kind: inline_cpp
+      body: |
+        #ifdef USE_MMAP
+        return new IfcParse::InstanceStreamer(path_cpp, mmap);
+        #else
+        (void)mmap;
+        return new IfcParse::InstanceStreamer(path_cpp, false);
+        #endif
 
   - kind: adapter_function
     expose_as: stream_from_string
@@ -662,6 +743,90 @@ methods:
             }
             return -1;
         }, self_cpp->storage_);
+
+  - kind: adapter_method
+    receiver: file
+    cpp_name: create_entity_by_name
+    expose_as: create_entity_by_name
+    returns:
+      kind: handle
+      handle: instance
+      ownership: borrowed
+    params:
+      - name: type_name
+        type:
+          kind: string
+    implementation:
+      kind: inline_cpp
+      body: |
+        const auto* schema = self_cpp->schema();
+        const auto* decl = schema->declaration_by_name(type_name_cpp);
+        if (!decl || !decl->as_entity()) {
+            throw std::runtime_error("Type declaration is not an entity");
+        }
+        auto* entity = self_cpp->create(decl);
+        if (!entity) {
+            throw std::runtime_error("Failed to create entity");
+        }
+        return entity;
+
+  - kind: adapter_method
+    receiver: file
+    cpp_name: create_entity_by_name_with_id
+    expose_as: create_entity_by_name_with_id
+    returns:
+      kind: handle
+      handle: instance
+      ownership: borrowed
+    params:
+      - name: type_name
+        type:
+          kind: string
+      - name: id
+        type:
+          kind: uint32
+    implementation:
+      kind: inline_cpp
+      body: |
+        const auto* schema = self_cpp->schema();
+        const auto* decl = schema->declaration_by_name(type_name_cpp);
+        if (!decl || !decl->as_entity()) {
+            throw std::runtime_error("Type declaration is not an entity");
+        }
+        auto* inst = schema->instantiate(
+            decl, in_memory_attribute_storage(decl->as_entity()->attribute_count()));
+        inst->file_ = nullptr;
+        auto* entity = self_cpp->addEntity(inst, static_cast<int>(id));
+        if (!entity) {
+            throw std::runtime_error("Failed to create entity with id");
+        }
+        return entity;
+
+  - kind: adapter_method
+    receiver: file
+    cpp_name: add_entity
+    expose_as: add_entity
+    returns:
+      kind: handle
+      handle: instance
+      ownership: borrowed
+    params:
+      - name: instance
+        type:
+          kind: handle
+          handle: instance
+          ownership: borrowed
+      - name: id
+        type:
+          kind: uint32
+    implementation:
+      kind: inline_cpp
+      body: |
+        auto* added = self_cpp->addEntity(instance_cpp, id == 0 ? -1 : static_cast<int>(id));
+        if (!added) {
+            throw std::runtime_error("Failed to add entity");
+        }
+        return added;
 
   - kind: adapter_method
     receiver: file
@@ -1230,6 +1395,26 @@ methods:
 
   - kind: adapter_method
     receiver: instance
+    cpp_name: get_inverse_attribute_by_name
+    expose_as: get_inverse_attribute_by_name
+    returns:
+      kind: handle
+      handle: instance_list
+      ownership: owned
+    params:
+      - name: name
+        type:
+          kind: string
+    implementation:
+      kind: inline_cpp
+      body: |
+        if (auto* entity = self_cpp->as<IfcUtil::IfcBaseEntity>()) {
+            return entity->get_inverse(name_cpp);
+        }
+        throw IfcParse::IfcException("Only entities with ids are supported for inverse attributes.");
+
+  - kind: adapter_method
+    receiver: instance
     cpp_name: unset_argument
     expose_as: unset_argument
     returns:
@@ -1545,6 +1730,58 @@ methods:
         set_instance_argument(self_cpp, index, EnumerationReference(enumeration_cpp, enumeration_index));
 
   - kind: adapter_method
+    receiver: instance
+    cpp_name: set_argument_enumeration_by_name
+    expose_as: set_argument_enumeration_by_name
+    returns:
+      kind: bool
+    params:
+      - name: index
+        type:
+          kind: size
+      - name: value
+        type:
+          kind: string
+    implementation:
+      kind: inline_cpp
+      body: |
+        auto* entity_decl = self_cpp->declaration().as_entity();
+        if (entity_decl == nullptr) {
+            return false;
+        }
+        const auto attrs = entity_decl->all_attributes();
+        if (index >= attrs.size()) {
+            return false;
+        }
+        const IfcParse::parameter_type* parameter_type = attrs[index]->type_of_attribute();
+        const IfcParse::enumeration_type* enumeration = nullptr;
+        while (parameter_type != nullptr) {
+            auto* named = parameter_type->as_named_type();
+            if (named == nullptr) {
+                break;
+            }
+            auto* declaration = named->declared_type();
+            if ((enumeration = declaration->as_enumeration_type()) != nullptr) {
+                break;
+            }
+            auto* type_declaration = declaration->as_type_declaration();
+            if (type_declaration == nullptr) {
+                break;
+            }
+            parameter_type = type_declaration->declared_type();
+        }
+        if (enumeration == nullptr) {
+            return false;
+        }
+        const auto& items = enumeration->enumeration_items();
+        auto it = std::find(items.begin(), items.end(), value_cpp);
+        if (it == items.end()) {
+            throw IfcParse::IfcException("'" + value_cpp + "' is not a valid value for enumeration " + enumeration->name());
+        }
+        set_instance_argument(self_cpp, index, EnumerationReference(enumeration, static_cast<size_t>(std::distance(items.begin(), it))));
+        return true;
+
+  - kind: adapter_method
     receiver: attribute_value
     cpp_name: is_null
     expose_as: is_null
@@ -1655,6 +1892,36 @@ methods:
       kind: inline_cpp
       body: |
         return static_cast<std::vector<std::vector<int>>>(self_cpp);
+
+  - kind: adapter_method
+    receiver: attribute_value
+    cpp_name: as_instance_id_list_list
+    expose_as: as_instance_id_list_list
+    returns:
+      kind: int32_list_list
+      ownership: copy
+    params: []
+    implementation:
+      kind: inline_cpp
+      body: |
+        if (self_cpp.isNull() || self_cpp.type() != IfcUtil::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE) {
+            throw IfcParse::IfcException("Attribute is not an aggregate of aggregate of entity instance");
+        }
+        auto aggregate = static_cast<aggregate_of_aggregate_of_instance::ptr>(self_cpp);
+        std::vector<std::vector<int>> result;
+        result.reserve(aggregate->size());
+        for (const auto& group : *aggregate) {
+            std::vector<int> row;
+            row.reserve(group.size());
+            for (const auto* instance : group) {
+                if (instance == nullptr) {
+                    throw IfcParse::IfcException("Aggregate contains a null entity instance");
+                }
+                row.push_back(static_cast<int>(instance->id()));
+            }
+            result.push_back(std::move(row));
+        }
+        return result;
 
   - kind: adapter_method
     receiver: attribute_value
@@ -1778,6 +2045,54 @@ methods:
       kind: inline_cpp
       body: |
         return &self_cpp->header();
+
+  - kind: adapter_method
+    receiver: file
+    cpp_name: header_file_description
+    expose_as: header_file_description
+    returns:
+      kind: handle
+      handle: instance
+      ownership: borrowed
+      nullable: true
+    params: []
+    implementation:
+      kind: inline_cpp
+      body: |
+        return const_cast<IfcUtil::IfcBaseClass*>(
+            static_cast<const IfcUtil::IfcBaseClass*>(self_cpp->header().file_description()));
+
+  - kind: adapter_method
+    receiver: file
+    cpp_name: header_file_name
+    expose_as: header_file_name
+    returns:
+      kind: handle
+      handle: instance
+      ownership: borrowed
+      nullable: true
+    params: []
+    implementation:
+      kind: inline_cpp
+      body: |
+        return const_cast<IfcUtil::IfcBaseClass*>(
+            static_cast<const IfcUtil::IfcBaseClass*>(self_cpp->header().file_name()));
+
+  - kind: adapter_method
+    receiver: file
+    cpp_name: header_file_schema
+    expose_as: header_file_schema
+    returns:
+      kind: handle
+      handle: instance
+      ownership: borrowed
+      nullable: true
+    params: []
+    implementation:
+      kind: inline_cpp
+      body: |
+        return const_cast<IfcUtil::IfcBaseClass*>(
+            static_cast<const IfcUtil::IfcBaseClass*>(self_cpp->header().file_schema()));
 
   - kind: adapter_method
     receiver: header

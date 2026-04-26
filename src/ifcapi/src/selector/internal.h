@@ -10,6 +10,7 @@
 #include "ifcapi/value.h"
 #include "ifcapi/selector/ast.h"
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/element.h"
 
 #include "ifcopenshell_api_internal.hpp"
 
@@ -453,10 +454,7 @@ inline std::vector<KeyEntry> extract_keys(const ifcopenshell_selector_node_t* ro
  * ==================================================================== */
 
 inline Val* resolve_predefined_type(IfcUtil::IfcBaseClass* e) {
-    ScopedHandle sh(e);
-    auto* type_h = ifcopenshell_element_get_type(sh.get());
-    IfcUtil::IfcBaseClass* type_e = nullptr;
-    if (type_h) { type_e = type_h->ptr; ifcopenshell_ifc_instance_destroy(type_h); }
+    auto* type_e = ifcapi::bindings::element_get_type(e);
 
     if (type_e) {
         std::string pt = get_string_attr(type_e, "PredefinedType");
@@ -545,10 +543,7 @@ inline Val* resolve_profiles(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e) 
     auto* list = make_list();
     if (!e) return list;
 
-    ScopedHandle sh(e);
-    auto* mat_h = ifcopenshell_element_get_material(sh.get(), true, true);
-    auto* mat = mat_h ? mat_h->ptr : nullptr;
-    if (mat_h) ifcopenshell_ifc_instance_destroy(mat_h);
+    auto* mat = ifcapi::bindings::element_get_material(e, true, true);
     if (mat && entity_is_a(mat, "IfcMaterialProfileSet")) {
         for (auto* mp : get_entity_list(mat, "MaterialProfiles")) {
             auto* profile = get_entity_ref(mp, "Profile");
@@ -559,6 +554,7 @@ inline Val* resolve_profiles(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e) 
 
     if (!file) return list;
     ifcopenshell_ifc_file_t fh{file, false};
+    ScopedHandle sh(e);
     auto* rep_h = ifcopenshell_representation_get_product_representation(
         &fh, sh.get(), nullptr, "Model", "Body", "MODEL_VIEW");
     if (!rep_h) return list;
@@ -817,27 +813,15 @@ inline Val* apply_key(IfcParse::IfcFile* file, const Val* cur, const KeyEntry& k
 
     if (!key.is_regex) {
         if (k == "type") {
-            ScopedHandle sh(e);
-            auto* h = ifcopenshell_element_get_type(sh.get());
-            if (!h) return make_none();
-            Val* r = make_instance(h->ptr);
-            ifcopenshell_ifc_instance_destroy(h);
-            return r;
+            auto* type = ifcapi::bindings::element_get_type(e);
+            return type ? make_instance(type) : make_none();
         }
         if (k == "material" || k == "mat") {
-            ScopedHandle sh(e);
-            auto* h = ifcopenshell_element_get_material(sh.get(), true, true);
-            if (!h) return make_none();
-            Val* r = make_instance(h->ptr);
-            ifcopenshell_ifc_instance_destroy(h);
-            return r;
+            auto* material = ifcapi::bindings::element_get_material(e, true, true);
+            return material ? make_instance(material) : make_none();
         }
         if (k == "materials" || k == "mats") {
-            ScopedHandle sh(e);
-            auto* mh = ifcopenshell_element_get_material(sh.get(), true, true);
-            if (!mh) return make_none();
-            auto* mat = mh->ptr;
-            ifcopenshell_ifc_instance_destroy(mh);
+            auto* mat = ifcapi::bindings::element_get_material(e, true, true);
             if (!mat) return make_none();
             auto* list = make_list();
             if (entity_is_a(mat, "IfcMaterial")) {
@@ -879,52 +863,28 @@ inline Val* apply_key(IfcParse::IfcFile* file, const Val* cur, const KeyEntry& k
             return list;
         }
         if (k == "container") {
-            ScopedHandle sh(e);
-            auto* h = ifcopenshell_element_get_container(sh.get(), false, nullptr);
-            if (!h) return make_none();
-            Val* r = make_instance(h->ptr);
-            ifcopenshell_ifc_instance_destroy(h);
-            return r;
+            auto* container = ifcapi::bindings::element_get_container(e, false, nullptr);
+            return container ? make_instance(container) : make_none();
         }
         if (k == "space") {
-            ScopedHandle sh(e);
-            auto* h = ifcopenshell_element_get_container(sh.get(), false, "IfcSpace");
-            if (!h) return make_none();
-            Val* r = make_instance(h->ptr);
-            ifcopenshell_ifc_instance_destroy(h);
-            return r;
+            auto* space = ifcapi::bindings::element_get_container(e, false, "IfcSpace");
+            return space ? make_instance(space) : make_none();
         }
         if (k == "storey") {
-            ScopedHandle sh(e);
-            auto* h = ifcopenshell_element_get_container(sh.get(), false, "IfcBuildingStorey");
-            if (!h) return make_none();
-            Val* r = make_instance(h->ptr);
-            ifcopenshell_ifc_instance_destroy(h);
-            return r;
+            auto* storey = ifcapi::bindings::element_get_container(e, false, "IfcBuildingStorey");
+            return storey ? make_instance(storey) : make_none();
         }
         if (k == "building") {
-            ScopedHandle sh(e);
-            auto* h = ifcopenshell_element_get_container(sh.get(), false, "IfcBuilding");
-            if (!h) return make_none();
-            Val* r = make_instance(h->ptr);
-            ifcopenshell_ifc_instance_destroy(h);
-            return r;
+            auto* building = ifcapi::bindings::element_get_container(e, false, "IfcBuilding");
+            return building ? make_instance(building) : make_none();
         }
         if (k == "site") {
-            ScopedHandle sh(e);
-            auto* h = ifcopenshell_element_get_container(sh.get(), false, "IfcSite");
-            if (!h) return make_none();
-            Val* r = make_instance(h->ptr);
-            ifcopenshell_ifc_instance_destroy(h);
-            return r;
+            auto* site = ifcapi::bindings::element_get_container(e, false, "IfcSite");
+            return site ? make_instance(site) : make_none();
         }
         if (k == "parent") {
-            ScopedHandle sh(e);
-            auto* h = ifcopenshell_element_get_parent(sh.get());
-            if (!h) return make_none();
-            Val* r = make_instance(h->ptr);
-            ifcopenshell_ifc_instance_destroy(h);
-            return r;
+            auto* parent = ifcapi::bindings::element_get_parent(e);
+            return parent ? make_instance(parent) : make_none();
         }
         if (k == "types" || k == "occurrences") return resolve_occurrences(e);
         if (k == "count")           return make_int(1);

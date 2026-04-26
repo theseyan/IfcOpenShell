@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/element.h"
 
 #include "ifcparse/IfcFile.h"
 #include "ifcparse/IfcSchema.h"
@@ -215,38 +216,72 @@ IfcUtil::IfcBaseClass* resolve_container(
 
 }  // namespace
 
-extern "C" {
+namespace ifcapi {
+namespace bindings {
 
-ifcopenshell_ifc_instance_t* ifcopenshell_element_get_type(const ifcopenshell_ifc_instance_t* instance) {
-    auto* e = instance ? instance->ptr : nullptr;
-    if (!e) return nullptr;
-    return ifcopenshell::capi::wrap_instance(resolve_type(e->file_, e));
+IfcUtil::IfcBaseClass* element_get_type(IfcUtil::IfcBaseClass* instance) {
+    return instance ? resolve_type(instance->file_, instance) : nullptr;
 }
 
-ifcopenshell_ifc_instance_t* ifcopenshell_element_get_aggregate(const ifcopenshell_ifc_instance_t* instance) {
-    auto* e = instance ? instance->ptr : nullptr;
-    if (!e) return nullptr;
-    return ifcopenshell::capi::wrap_instance(resolve_aggregate(e->file_, e));
+IfcUtil::IfcBaseClass* element_get_aggregate(IfcUtil::IfcBaseClass* instance) {
+    return instance ? resolve_aggregate(instance->file_, instance) : nullptr;
 }
 
-ifcopenshell_ifc_instance_t* ifcopenshell_element_get_nest(const ifcopenshell_ifc_instance_t* instance) {
-    auto* e = instance ? instance->ptr : nullptr;
-    if (!e) return nullptr;
-    return ifcopenshell::capi::wrap_instance(resolve_nest(e->file_, e));
+IfcUtil::IfcBaseClass* element_get_nest(IfcUtil::IfcBaseClass* instance) {
+    return instance ? resolve_nest(instance->file_, instance) : nullptr;
 }
 
-ifcopenshell_ifc_instance_t* ifcopenshell_element_get_container(const ifcopenshell_ifc_instance_t* instance, bool direct_only, const char* ifc_class)
+IfcUtil::IfcBaseClass* element_get_container(
+    IfcUtil::IfcBaseClass* instance,
+    bool direct_only,
+    const char* ifc_class)
 {
-    auto* e = instance ? instance->ptr : nullptr;
-    if (!e) return nullptr;
-    return ifcopenshell::capi::wrap_instance(resolve_container(e->file_, e, direct_only, ifc_class));
+    return instance ? resolve_container(instance->file_, instance, direct_only, ifc_class) : nullptr;
 }
 
-ifcopenshell_ifc_instance_t* ifcopenshell_element_get_parent(const ifcopenshell_ifc_instance_t* instance) {
-    auto* e = instance ? instance->ptr : nullptr;
-    if (!e) return nullptr;
-    return ifcopenshell::capi::wrap_instance(resolve_parent(e->file_, e));
+IfcUtil::IfcBaseClass* element_get_parent(IfcUtil::IfcBaseClass* instance) {
+    return instance ? resolve_parent(instance->file_, instance) : nullptr;
 }
+
+IfcUtil::IfcBaseClass* element_get_material(
+    IfcUtil::IfcBaseClass* instance,
+    bool should_skip_usage,
+    bool should_inherit)
+{
+    auto* f = instance ? instance->file_ : nullptr;
+    if (!f || !instance) return nullptr;
+
+    auto has_associations = get_inverse(instance, "HasAssociations");
+    if (has_associations) {
+        for (size_t i = 0; i < has_associations->size(); ++i) {
+            auto* rel = (*has_associations)[i];
+            if (!is_a(rel, "IfcRelAssociatesMaterial")) continue;
+            auto* mat = read_ref(rel, "RelatingMaterial");
+            if (!mat) continue;
+            if (should_skip_usage) {
+                if (is_a(mat, "IfcMaterialLayerSetUsage")) {
+                    return read_ref(mat, "ForLayerSet");
+                }
+                if (is_a(mat, "IfcMaterialProfileSetUsage")) {
+                    return read_ref(mat, "ForProfileSet");
+                }
+            }
+            return mat;
+        }
+    }
+    if (should_inherit) {
+        auto* type_obj = resolve_type(f, instance);
+        if (type_obj && type_obj != instance && get_inverse(type_obj, "HasAssociations")) {
+            return element_get_material(type_obj, should_skip_usage, false);
+        }
+    }
+    return nullptr;
+}
+
+}  // namespace bindings
+}  // namespace ifcapi
+
+extern "C" {
 
 ifcopenshell_ifc_instance_t** ifcopenshell_element_get_decomposition(const ifcopenshell_ifc_instance_t* instance, bool is_recursive, uint32_t* out_count)
 {
@@ -399,45 +434,6 @@ ifcopenshell_ifc_instance_t** ifcopenshell_element_get_pset_ids(const ifcopenshe
     }
 
     return alloc_id_handles(instance ? instance->ptr->file_ : nullptr, result, out_count);
-}
-
-ifcopenshell_ifc_instance_t* ifcopenshell_element_get_material(const ifcopenshell_ifc_instance_t* instance, bool should_skip_usage, bool should_inherit)
-{
-    auto* e = instance ? instance->ptr : nullptr;
-    auto* f = e ? e->file_ : nullptr;
-    if (!f || !e) return nullptr;
-
-    auto has_associations = get_inverse(e, "HasAssociations");
-    if (has_associations) {
-        for (size_t i = 0; i < has_associations->size(); ++i) {
-            auto* rel = (*has_associations)[i];
-            if (!is_a(rel, "IfcRelAssociatesMaterial")) continue;
-            auto* mat = read_ref(rel, "RelatingMaterial");
-            if (!mat) continue;
-            if (should_skip_usage) {
-                if (is_a(mat, "IfcMaterialLayerSetUsage")) {
-                    return ifcopenshell::capi::wrap_instance(read_ref(mat, "ForLayerSet"));
-                }
-                if (is_a(mat, "IfcMaterialProfileSetUsage")) {
-                    return ifcopenshell::capi::wrap_instance(read_ref(mat, "ForProfileSet"));
-                }
-            }
-            return ifcopenshell::capi::wrap_instance(mat);
-        }
-    }
-    if (should_inherit) {
-        auto* type_obj = resolve_type(f, e);
-        if (type_obj && type_obj != e) {
-            auto inv = get_inverse(type_obj, "HasAssociations");
-            if (inv && inv->size() > 0) {
-                auto* type_h = ifcopenshell::capi::wrap_instance(type_obj);
-                auto* result = ifcopenshell_element_get_material(type_h, should_skip_usage, /*should_inherit*/ false);
-                ifcopenshell_ifc_instance_destroy(type_h);
-                return result;
-            }
-        }
-    }
-    return nullptr;
 }
 
 }  // extern "C"

@@ -373,8 +373,8 @@ static void apply_instance_facet(
             }
         }
     } else {
-        auto* h = ifcopenshell_file_by_guid(file_h, guid.c_str());
-        if (!h) return;
+        ifcopenshell_ifc_instance_t* h = nullptr;
+        if (!ifcopenshell_ifc_file_by_guid(file_h, guid.c_str(), &h) || !h) return;
         auto* e = h->ptr;
         ifcopenshell_ifc_instance_destroy(h);
         if (!e) return;
@@ -427,10 +427,7 @@ static void apply_type_facet(
 
     ElemSet result;
     for (auto* e : elements) {
-        ScopedHandle sh(e);
-        auto* type_h = ifcopenshell_element_get_type(sh.get());
-        IfcUtil::IfcBaseClass* type_e = nullptr;
-        if (type_h) { type_e = type_h->ptr; ifcopenshell_ifc_instance_destroy(type_h); }
+        auto* type_e = ifcapi::bindings::element_get_type(e);
 
         bool match;
         if (!type_e) {
@@ -491,11 +488,7 @@ static void apply_material_facet(
 
     ElemSet result;
     for (auto* e : elements) {
-        ScopedHandle sh(e);
-        auto* mat_h = ifcopenshell_element_get_material(sh.get(), true, true);
-        IfcUtil::IfcBaseClass* mat = nullptr;
-        if (mat_h) { mat = mat_h->ptr; ifcopenshell_ifc_instance_destroy(mat_h); }
-
+        auto* mat = ifcapi::bindings::element_get_material(e, true, true);
         auto materials = expand_to_materials(mat);
 
         bool filter_result;
@@ -682,11 +675,7 @@ static std::vector<IfcUtil::IfcBaseClass*> get_container_tree(IfcUtil::IfcBaseCl
     while (container) {
         if (entity_is_a(container, "IfcProject")) break;
         tree.push_back(container);
-        ScopedHandle sh(container);
-        auto* next_h = ifcopenshell_element_get_aggregate(sh.get());
-        IfcUtil::IfcBaseClass* next = nullptr;
-        if (next_h) { next = next_h->ptr; ifcopenshell_ifc_instance_destroy(next_h); }
-        container = next;
+        container = ifcapi::bindings::element_get_aggregate(container);
     }
     return tree;
 }
@@ -708,15 +697,11 @@ static void apply_location_facet(
     ElemSet result;
     for (auto* e : elements) {
         /* Get direct spatial container */
-        ScopedHandle sh(e);
-        auto* cont_h = ifcopenshell_element_get_container(sh.get(), false, nullptr);
-        IfcUtil::IfcBaseClass* container = nullptr;
-        if (cont_h) { container = cont_h->ptr; ifcopenshell_ifc_instance_destroy(cont_h); }
+        auto* container = ifcapi::bindings::element_get_container(e, false, nullptr);
 
         /* Fall back to aggregate parent if no spatial container */
         if (!container) {
-            auto* agg_h = ifcopenshell_element_get_aggregate(sh.get());
-            if (agg_h) { container = agg_h->ptr; ifcopenshell_ifc_instance_destroy(agg_h); }
+            container = ifcapi::bindings::element_get_aggregate(e);
         }
 
         auto containers = get_container_tree(container);

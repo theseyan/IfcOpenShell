@@ -31,10 +31,8 @@ from __future__ import annotations
 import ctypes
 from ctypes import (
     POINTER,
-    Structure,
     byref,
     c_bool,
-    c_char_p,
     c_double,
     c_int32,
     c_size_t,
@@ -43,6 +41,7 @@ from ctypes import (
 from typing import Optional
 
 import ifcopenshell
+from ifcopenshell import _generated_capi
 
 
 # ---------------------------------------------------------------------------
@@ -50,42 +49,15 @@ import ifcopenshell
 # ---------------------------------------------------------------------------
 
 
-class ifcopenshell_string_t(Structure):
-    _fields_ = [("data", c_void_p), ("size", c_size_t), ("owned", c_bool)]
-
-
-class ifcopenshell_string_list_t(Structure):
-    _fields_ = [("items", POINTER(ifcopenshell_string_t)), ("size", c_size_t)]
-
-
-class ifcopenshell_bool_list_t(Structure):
-    _fields_ = [("items", POINTER(c_bool)), ("size", c_size_t)]
-
-
-class _HandleStruct(Structure):
-    """Layout of every ``ifcopenshell_ifc_*_t`` handle in the autogen ABI:
-    ``{ void* ptr; bool owned; }``. We only need to read ``ptr`` from Python."""
-
-    _fields_ = [("ptr", c_void_p), ("owned", c_bool)]
-
-
+ifcopenshell_string_t = _generated_capi.ifcopenshell_string_t
+ifcopenshell_string_list_t = _generated_capi.ifcopenshell_string_list_t
+ifcopenshell_bool_list_t = _generated_capi.ifcopenshell_bool_list_t
+_HandleStruct = _generated_capi._HandleStruct
 _HandleStructP = POINTER(_HandleStruct)
-
-
-def _make_list_t(name):
-    return type(
-        name,
-        (Structure,),
-        {"_fields_": [("items", POINTER(_HandleStructP)), ("size", c_size_t)]},
-    )
-
-
-ifcopenshell_ifc_entity_list_t = _make_list_t("ifcopenshell_ifc_entity_list_t")
-ifcopenshell_ifc_attribute_list_t = _make_list_t("ifcopenshell_ifc_attribute_list_t")
-ifcopenshell_ifc_inverse_attribute_list_t = _make_list_t(
-    "ifcopenshell_ifc_inverse_attribute_list_t"
-)
-ifcopenshell_ifc_declaration_list_t = _make_list_t("ifcopenshell_ifc_declaration_list_t")
+ifcopenshell_ifc_entity_list_t = _generated_capi.ifcopenshell_ifc_entity_list_t
+ifcopenshell_ifc_attribute_list_t = _generated_capi.ifcopenshell_ifc_attribute_list_t
+ifcopenshell_ifc_inverse_attribute_list_t = _generated_capi.ifcopenshell_ifc_inverse_attribute_list_t
+ifcopenshell_ifc_declaration_list_t = _generated_capi.ifcopenshell_ifc_declaration_list_t
 
 
 # ---------------------------------------------------------------------------
@@ -100,106 +72,7 @@ def _bind():
     lib = ifcopenshell._get_lib()
     if _bound:
         return lib
-
-    H = _HandleStructP
-    HH = POINTER(_HandleStructP)
-    cstr = c_char_p
-    Sp = POINTER(ifcopenshell_string_t)
-    SLp = POINTER(ifcopenshell_string_list_t)
-    BLp = POINTER(ifcopenshell_bool_list_t)
-    Ep = POINTER(ifcopenshell_ifc_entity_list_t)
-    Ap = POINTER(ifcopenshell_ifc_attribute_list_t)
-    Ip = POINTER(ifcopenshell_ifc_inverse_attribute_list_t)
-    Dp = POINTER(ifcopenshell_ifc_declaration_list_t)
-
-    sigs = {
-        # destroy
-        "ifcopenshell_string_destroy": (None, [Sp]),
-        "ifcopenshell_string_list_destroy": (None, [SLp]),
-        "ifcopenshell_bool_list_destroy": (None, [BLp]),
-        "ifcopenshell_ifc_entity_destroy": (None, [H]),
-        "ifcopenshell_ifc_attribute_destroy": (None, [H]),
-        "ifcopenshell_ifc_inverse_attribute_destroy": (None, [H]),
-        "ifcopenshell_ifc_declaration_destroy": (None, [H]),
-        "ifcopenshell_ifc_type_declaration_destroy": (None, [H]),
-        "ifcopenshell_ifc_select_type_destroy": (None, [H]),
-        "ifcopenshell_ifc_enumeration_destroy": (None, [H]),
-        "ifcopenshell_ifc_parameter_type_destroy": (None, [H]),
-        "ifcopenshell_ifc_named_type_destroy": (None, [H]),
-        "ifcopenshell_ifc_simple_type_destroy": (None, [H]),
-        "ifcopenshell_ifc_aggregation_type_destroy": (None, [H]),
-        "ifcopenshell_ifc_schema_destroy": (None, [H]),
-        "ifcopenshell_ifc_entity_list_destroy": (None, [Ep]),
-        "ifcopenshell_ifc_attribute_list_destroy": (None, [Ap]),
-        "ifcopenshell_ifc_inverse_attribute_list_destroy": (None, [Ip]),
-        "ifcopenshell_ifc_declaration_list_destroy": (None, [Dp]),
-        # schema lookup / file -> schema
-        "ifcopenshell_ifcparse_clear_schemas": (c_bool, []),
-        "ifcopenshell_ifcparse_register_schema": (c_bool, [H]),
-        "ifcopenshell_ifcparse_schema_by_name": (c_bool, [cstr, HH]),
-        "ifcopenshell_ifcparse_schema_names": (c_bool, [SLp]),
-        # schema
-        "ifcopenshell_ifc_schema_name": (c_bool, [H, Sp]),
-        "ifcopenshell_ifc_schema_declaration_by_name": (c_bool, [H, cstr, HH]),
-        "ifcopenshell_ifc_schema_declarations": (c_bool, [H, Dp]),
-        # declaration
-        "ifcopenshell_ifc_declaration_name": (c_bool, [H, Sp]),
-        "ifcopenshell_ifc_declaration_is_a": (c_bool, [H, cstr, POINTER(c_bool)]),
-        "ifcopenshell_ifc_declaration_as_entity": (c_bool, [H, HH]),
-        "ifcopenshell_ifc_declaration_as_type_declaration": (c_bool, [H, HH]),
-        "ifcopenshell_ifc_declaration_as_select_type": (c_bool, [H, HH]),
-        "ifcopenshell_ifc_declaration_as_enumeration_type": (c_bool, [H, HH]),
-        "ifcopenshell_ifc_declaration_schema": (c_bool, [H, HH]),
-        "ifcopenshell_ifc_declaration_index_in_schema": (c_bool, [H, POINTER(c_int32)]),
-        # entity
-        "ifcopenshell_ifc_entity_is_abstract": (c_bool, [H, POINTER(c_bool)]),
-        "ifcopenshell_ifc_entity_supertype": (c_bool, [H, HH]),
-        "ifcopenshell_ifc_entity_subtypes": (c_bool, [H, Ep]),
-        "ifcopenshell_ifc_entity_attribute_count": (c_bool, [H, POINTER(c_size_t)]),
-        "ifcopenshell_ifc_entity_attribute_by_index": (c_bool, [H, c_size_t, HH]),
-        "ifcopenshell_ifc_entity_attribute_index": (c_bool, [H, cstr, POINTER(c_size_t)]),
-        "ifcopenshell_ifc_entity_attributes": (c_bool, [H, Ap]),
-        "ifcopenshell_ifc_entity_derived": (c_bool, [H, BLp]),
-        "ifcopenshell_ifc_entity_all_attributes": (c_bool, [H, Ap]),
-        "ifcopenshell_ifc_entity_all_inverse_attributes": (c_bool, [H, Ip]),
-        # instance -> declaration (used to look up header-section schema)
-        "ifcopenshell_ifc_instance_declaration": (c_bool, [H, HH]),
-        # logging
-        "ifcopenshell_ifcparse_get_log": (c_bool, [Sp]),
-        "ifcopenshell_ifcparse_set_log_format_json": (c_bool, []),
-        "ifcopenshell_ifcparse_set_log_format_text": (c_bool, []),
-        "ifcopenshell_ifcparse_turn_on_detailed_logging": (c_bool, []),
-        "ifcopenshell_ifcparse_turn_off_detailed_logging": (c_bool, []),
-        # type/select/enum
-        "ifcopenshell_ifc_type_declaration_declared_type": (c_bool, [H, HH]),
-        "ifcopenshell_ifc_select_type_select_list": (c_bool, [H, Dp]),
-        "ifcopenshell_ifc_enumeration_enumeration_items": (c_bool, [H, SLp]),
-        # parameter_type / variants
-        "ifcopenshell_ifc_parameter_type_as_named_type": (c_bool, [H, HH]),
-        "ifcopenshell_ifc_parameter_type_as_simple_type": (c_bool, [H, HH]),
-        "ifcopenshell_ifc_parameter_type_as_aggregation_type": (c_bool, [H, HH]),
-        "ifcopenshell_ifc_named_type_declared_type": (c_bool, [H, HH]),
-        "ifcopenshell_ifc_simple_type_declared_type": (c_bool, [H, POINTER(c_int32)]),
-        "ifcopenshell_ifc_aggregation_type_type_of_aggregation": (c_bool, [H, POINTER(c_int32)]),
-        "ifcopenshell_ifc_aggregation_type_bound1": (c_bool, [H, POINTER(c_int32)]),
-        "ifcopenshell_ifc_aggregation_type_bound2": (c_bool, [H, POINTER(c_int32)]),
-        "ifcopenshell_ifc_aggregation_type_type_of_element": (c_bool, [H, HH]),
-        # attribute
-        "ifcopenshell_ifc_attribute_name": (c_bool, [H, Sp]),
-        "ifcopenshell_ifc_attribute_optional": (c_bool, [H, POINTER(c_bool)]),
-        "ifcopenshell_ifc_attribute_type_of_attribute": (c_bool, [H, HH]),
-        # inverse_attribute
-        "ifcopenshell_ifc_inverse_attribute_name": (c_bool, [H, Sp]),
-        "ifcopenshell_ifc_inverse_attribute_type_of_aggregation": (c_bool, [H, POINTER(c_int32)]),
-        "ifcopenshell_ifc_inverse_attribute_bound1": (c_bool, [H, POINTER(c_int32)]),
-        "ifcopenshell_ifc_inverse_attribute_bound2": (c_bool, [H, POINTER(c_int32)]),
-        "ifcopenshell_ifc_inverse_attribute_entity_reference": (c_bool, [H, HH]),
-        "ifcopenshell_ifc_inverse_attribute_attribute_reference": (c_bool, [H, HH]),
-    }
-    for name, (restype, argtypes) in sigs.items():
-        fn = getattr(lib, name)
-        fn.restype = restype
-        fn.argtypes = argtypes
+    _generated_capi.bind(lib, strict=False)
     _bound = True
     return lib
 
@@ -683,7 +556,7 @@ class entity(declaration):
         return _opt_handle(out, _bind().ifcopenshell_ifc_attribute_destroy, attribute)
 
     def attribute_index(self, name: str) -> int:
-        v = c_size_t(0)
+        v = c_int32(-1)
         if not _bind().ifcopenshell_ifc_entity_attribute_index(
             self._h, name.encode("utf-8"), byref(v)
         ):
