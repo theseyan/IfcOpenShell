@@ -32,13 +32,19 @@ def test_ifcapi_spec_imports_core_handles_without_redefining_them() -> None:
     spec_path = _spec_dir() / "ifcapi.yml"
     raw_spec = yaml.safe_load(spec_path.read_text(encoding="utf-8"))
 
-    assert raw_spec.get("handles", []) == []
+    raw_handle_names = {handle["name"] for handle in raw_spec.get("handles", [])}
+    assert raw_handle_names == {"value"}
+    assert "instance" not in raw_handle_names
     assert raw_spec["imports"] == [{"slice": "ifcparse", "handles": ["instance"]}]
 
     spec = load_authored_spec(spec_path, existing_handles=_core_handles())
     assert spec.slice == "ifcapi"
-    assert spec.public_headers == ("guid.h", "ifcapi/bindings/element.h")
-    assert {call.c_name for call in spec.functions} == {
+    assert "ifcapi/bindings/element.h" in spec.public_headers
+    assert "ifcapi/bindings/entity.h" in spec.public_headers
+    assert "ifcapi/bindings/value.h" in spec.public_headers
+    assert spec.handles["value"].c_type == "ifcopenshell_ifcapi_value_t"
+    assert spec.handles["value"].destructor == "function:ifcapi::bindings::value_free"
+    assert {
         "ifcopenshell_ifcapi_guid_new",
         "ifcopenshell_ifcapi_guid_compress",
         "ifcopenshell_ifcapi_guid_expand",
@@ -48,7 +54,11 @@ def test_ifcapi_spec_imports_core_handles_without_redefining_them() -> None:
         "ifcopenshell_ifcapi_element_get_container",
         "ifcopenshell_ifcapi_element_get_parent",
         "ifcopenshell_ifcapi_element_get_material",
-    }
+        "ifcopenshell_ifcapi_entity_set_typed_value",
+        "ifcopenshell_ifcapi_entity_get_typed_value",
+        "ifcopenshell_ifcapi_compute_derived",
+        "ifcopenshell_ifcapi_value_kind",
+    }.issubset({call.c_name for call in spec.functions})
 
 
 def test_ifcapi_spec_lowers_to_host_binding_metadata() -> None:
@@ -68,6 +78,9 @@ def test_ifcapi_spec_lowers_to_host_binding_metadata() -> None:
     assert '"ifcopenshell_ifcapi_guid_expand": (' in python
     assert '"ifcopenshell_ifcapi_element_get_container": (' in python
     assert '"ifcopenshell_ifcapi_element_get_material": (' in python
+    assert '"ifcopenshell_ifcapi_compute_derived": (' in python
+    assert '"ifcopenshell_ifcapi_value_kind": (' in python
+    assert "def bind(lib, *, strict=True, names=None, prefixes=None):" in python
 
 
 def test_ifcapi_spec_merges_as_third_unified_slice(tmp_path: Path) -> None:

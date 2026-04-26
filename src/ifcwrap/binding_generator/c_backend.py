@@ -756,6 +756,9 @@ def _handle_storage_type(handle: HandleSpec) -> str:
 def _destroy_body(handle: HandleSpec) -> str:
     if handle.name in {"attribute_value", "instance_list"}:
         return "delete handle;"
+    if handle.destructor.startswith("function:"):
+        destructor = handle.destructor[len("function:") :].strip()
+        return f"if (handle->owned && handle->ptr) {{ {destructor}(handle->ptr); }}\n    delete handle;"
     if handle.destructor == "shared_ptr":
         # For shared_ptr handles, the shared_ptr destructor handles the ref count
         return "handle->ptr.reset();\n    delete handle;"
