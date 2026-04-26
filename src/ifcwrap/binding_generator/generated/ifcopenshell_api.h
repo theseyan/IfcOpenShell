@@ -158,6 +158,7 @@ typedef struct ifcopenshell_ifcgeom_taxonomy_boolean_result_t ifcopenshell_ifcge
 typedef struct ifcopenshell_ifcgeom_opaque_number_t ifcopenshell_ifcgeom_opaque_number_t;
 typedef struct ifcopenshell_ifcgeom_svgfill_polygon_t ifcopenshell_ifcgeom_svgfill_polygon_t;
 typedef struct ifcopenshell_ifcgeom_function_item_evaluator_t ifcopenshell_ifcgeom_function_item_evaluator_t;
+typedef struct ifcopenshell_ifcapi_value_t ifcopenshell_ifcapi_value_t;
 
 typedef struct ifcopenshell_ifc_instance_list_t {
     ifcopenshell_ifc_instance_t** items;
@@ -339,6 +340,7 @@ void ifcopenshell_ifcgeom_taxonomy_boolean_result_destroy(ifcopenshell_ifcgeom_t
 void ifcopenshell_ifcgeom_opaque_number_destroy(ifcopenshell_ifcgeom_opaque_number_t* handle);
 void ifcopenshell_ifcgeom_svgfill_polygon_destroy(ifcopenshell_ifcgeom_svgfill_polygon_t* handle);
 void ifcopenshell_ifcgeom_function_item_evaluator_destroy(ifcopenshell_ifcgeom_function_item_evaluator_t* handle);
+void ifcopenshell_ifcapi_value_destroy(ifcopenshell_ifcapi_value_t* handle);
 void ifcopenshell_ifc_instance_list_destroy(ifcopenshell_ifc_instance_list_t* value);
 void ifcopenshell_ifcgeom_conversion_result_shape_list_destroy(ifcopenshell_ifcgeom_conversion_result_shape_list_t* value);
 void ifcopenshell_ifcgeom_svgfill_polygon_list_destroy(ifcopenshell_ifcgeom_svgfill_polygon_list_t* value);
@@ -468,6 +470,18 @@ bool ifcopenshell_ifcapi_entity_set_typed_value(ifcopenshell_ifc_instance_t* ins
 bool ifcopenshell_ifcapi_entity_get_typed_value(ifcopenshell_ifc_instance_t* instance, const char* attr, ifcopenshell_string_list_t* out_result);
 bool ifcopenshell_ifcapi_entity_set_aggregate_typed_value(ifcopenshell_ifc_instance_t* instance, const char* attr, const ifcopenshell_string_list_t* type_names, const ifcopenshell_string_list_t* str_values, bool* out_result);
 bool ifcopenshell_ifcapi_entity_get_aggregate_typed_value(ifcopenshell_ifc_instance_t* instance, const char* attr, ifcopenshell_string_list_t* out_result);
+bool ifcopenshell_ifcapi_value_kind(ifcopenshell_ifcapi_value_t* value, int32_t* out_result);
+bool ifcopenshell_ifcapi_compute_derived(ifcopenshell_ifc_instance_t* instance, const char* attribute_name, ifcopenshell_ifcapi_value_t** out_result);
+bool ifcopenshell_ifcapi_value_as_bool(ifcopenshell_ifcapi_value_t* value, bool* out_result);
+bool ifcopenshell_ifcapi_value_as_int64(ifcopenshell_ifcapi_value_t* value, int64_t* out_result);
+bool ifcopenshell_ifcapi_value_as_double(ifcopenshell_ifcapi_value_t* value, double* out_result);
+bool ifcopenshell_ifcapi_value_as_string(ifcopenshell_ifcapi_value_t* value, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcapi_value_as_instance(ifcopenshell_ifcapi_value_t* value, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_value_list_size(ifcopenshell_ifcapi_value_t* value, size_t* out_result);
+bool ifcopenshell_ifcapi_value_list_at(ifcopenshell_ifcapi_value_t* value, size_t index, ifcopenshell_ifcapi_value_t** out_result);
+bool ifcopenshell_ifcapi_value_dict_size(ifcopenshell_ifcapi_value_t* value, size_t* out_result);
+bool ifcopenshell_ifcapi_value_dict_key_at(ifcopenshell_ifcapi_value_t* value, size_t index, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcapi_value_dict_value_at(ifcopenshell_ifcapi_value_t* value, size_t index, ifcopenshell_ifcapi_value_t** out_result);
 bool ifcopenshell_ifc_file_create(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_declaration_t* decl, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifc_file_get_inverses_by_declaration(ifcopenshell_ifc_file_t* self, int32_t instance_id, ifcopenshell_ifc_declaration_t* type, int32_t attribute_index, ifcopenshell_ifcparse_instance_list_t** out_result);
 bool ifcopenshell_ifc_file_by_type(ifcopenshell_ifc_file_t* self, const char* type, ifcopenshell_ifcparse_instance_list_t** out_result);

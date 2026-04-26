@@ -13,6 +13,8 @@ from __future__ import annotations
 import ctypes
 import sys
 
+from ifcopenshell import _generated_capi
+
 
 # ifcopenshell_value_kind_t constants (must match value.h)
 IFCSEL_VALUE_NONE     = 0
@@ -29,37 +31,34 @@ _value_lib_configured = False
 
 
 def configure_value_lib(lib) -> None:
-    """Bind ctypes signatures for the value accessors.
+    """Bind ctypes signatures for the generated value facade.
 
     Idempotent; subsequent calls are no-ops."""
     global _value_lib_configured
     if _value_lib_configured:
         return
-    lib.ifcopenshell_value_free.restype = None
-    lib.ifcopenshell_value_free.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_value_kind.restype = ctypes.c_int
-    lib.ifcopenshell_value_kind.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_value_as_bool.restype = ctypes.c_bool
-    lib.ifcopenshell_value_as_bool.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_value_as_int64.restype = ctypes.c_int64
-    lib.ifcopenshell_value_as_int64.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_value_as_double.restype = ctypes.c_double
-    lib.ifcopenshell_value_as_double.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_value_as_string.restype = ctypes.c_char_p
-    lib.ifcopenshell_value_as_string.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_value_as_instance.restype = ctypes.c_void_p
-    lib.ifcopenshell_value_as_instance.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_value_list_size.restype = ctypes.c_size_t
-    lib.ifcopenshell_value_list_size.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_value_list_at.restype = ctypes.c_void_p
-    lib.ifcopenshell_value_list_at.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
-    lib.ifcopenshell_value_dict_size.restype = ctypes.c_size_t
-    lib.ifcopenshell_value_dict_size.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_value_dict_key_at.restype = ctypes.c_char_p
-    lib.ifcopenshell_value_dict_key_at.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
-    lib.ifcopenshell_value_dict_value_at.restype = ctypes.c_void_p
-    lib.ifcopenshell_value_dict_value_at.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+    _generated_capi.bind(
+        lib,
+        names=("ifcopenshell_ifcapi_compute_derived",),
+        prefixes=("ifcopenshell_ifcapi_value_",),
+    )
     _value_lib_configured = True
+
+
+def _take_string(lib, fn, *args):
+    from ifcopenshell import ifcopenshell_wrapper as W
+
+    out = W.ifcopenshell_string_t()
+    if not fn(*args, ctypes.byref(out)):
+        return None
+    return W._take_string(out)
+
+
+def _take_scalar(lib, fn, c_type, ptr):
+    out = c_type()
+    if not fn(ptr, ctypes.byref(out)):
+        return None
+    return out.value
 
 
 def value_to_python(lib, ptr, element):
@@ -70,41 +69,58 @@ def value_to_python(lib, ptr, element):
     wrappers."""
     if not ptr:
         return None
-    kind = lib.ifcopenshell_value_kind(ptr)
+    kind = _take_scalar(lib, lib.ifcopenshell_ifcapi_value_kind, ctypes.c_int32, ptr)
     if kind == IFCSEL_VALUE_NONE:
         return None
     if kind == IFCSEL_VALUE_BOOL:
-        return bool(lib.ifcopenshell_value_as_bool(ptr))
+        value = _take_scalar(lib, lib.ifcopenshell_ifcapi_value_as_bool, ctypes.c_bool, ptr)
+        return bool(value)
     if kind == IFCSEL_VALUE_INT:
-        return int(lib.ifcopenshell_value_as_int64(ptr))
+        value = _take_scalar(lib, lib.ifcopenshell_ifcapi_value_as_int64, ctypes.c_int64, ptr)
+        return int(value)
     if kind == IFCSEL_VALUE_DOUBLE:
-        return float(lib.ifcopenshell_value_as_double(ptr))
+        value = _take_scalar(lib, lib.ifcopenshell_ifcapi_value_as_double, ctypes.c_double, ptr)
+        return float(value)
     if kind == IFCSEL_VALUE_STRING:
-        raw = lib.ifcopenshell_value_as_string(ptr)
-        return raw.decode("utf-8", errors="replace") if raw else None
+        return _take_string(lib, lib.ifcopenshell_ifcapi_value_as_string, ptr)
     if kind == IFCSEL_VALUE_INSTANCE:
-        h = lib.ifcopenshell_value_as_instance(ptr)
+        h = ctypes.POINTER(_generated_capi._HandleStruct)()
+        if not lib.ifcopenshell_ifcapi_value_as_instance(ptr, ctypes.byref(h)) or not h:
+            return None
+        h_addr = ctypes.cast(h, ctypes.c_void_p).value
         if not h:
             return None
         # Local import avoids circular dep on entity_instance at module
         # load time.
         from ifcopenshell.entity_instance import entity_instance as _ei
         ifcopenshell_module = sys.modules["ifcopenshell"]
-        file_ptr = ifcopenshell_module._instance_file_ptr(h)
-        return _ei(ifcopenshell_module._borrow_file_ptr(file_ptr, fallback=element.file), h)
+        file_ptr = ifcopenshell_module._instance_file_ptr(h_addr)
+        return _ei(ifcopenshell_module._borrow_file_ptr(file_ptr, fallback=element.file), h_addr)
     if kind == IFCSEL_VALUE_LIST:
-        n = lib.ifcopenshell_value_list_size(ptr)
-        return [
-            value_to_python(lib, lib.ifcopenshell_value_list_at(ptr, i), element)
-            for i in range(n)
-        ]
+        n = _take_scalar(lib, lib.ifcopenshell_ifcapi_value_list_size, ctypes.c_size_t, ptr) or 0
+        result = []
+        for i in range(n):
+            child = ctypes.POINTER(_generated_capi._HandleStruct)()
+            if not lib.ifcopenshell_ifcapi_value_list_at(ptr, i, ctypes.byref(child)) or not child:
+                result.append(None)
+                continue
+            try:
+                result.append(value_to_python(lib, child, element))
+            finally:
+                lib.ifcopenshell_ifcapi_value_destroy(child)
+        return result
     if kind == IFCSEL_VALUE_DICT:
-        n = lib.ifcopenshell_value_dict_size(ptr)
+        n = _take_scalar(lib, lib.ifcopenshell_ifcapi_value_dict_size, ctypes.c_size_t, ptr) or 0
         result = {}
         for i in range(n):
-            key_raw = lib.ifcopenshell_value_dict_key_at(ptr, i)
-            key = key_raw.decode("utf-8", errors="replace") if key_raw else ""
-            val = value_to_python(lib, lib.ifcopenshell_value_dict_value_at(ptr, i), element)
-            result[key] = val
+            key = _take_string(lib, lib.ifcopenshell_ifcapi_value_dict_key_at, ptr, i) or ""
+            child = ctypes.POINTER(_generated_capi._HandleStruct)()
+            if not lib.ifcopenshell_ifcapi_value_dict_value_at(ptr, i, ctypes.byref(child)) or not child:
+                result[key] = None
+                continue
+            try:
+                result[key] = value_to_python(lib, child, element)
+            finally:
+                lib.ifcopenshell_ifcapi_value_destroy(child)
         return result
     return None

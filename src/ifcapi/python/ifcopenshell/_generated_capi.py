@@ -69,6 +69,9 @@ ifcopenshell_ifc_simple_type_t = _HandleStruct
 ifcopenshell_ifc_type_declaration_t = _HandleStruct
 
 
+ifcopenshell_ifcapi_value_t = _HandleStruct
+
+
 ifcopenshell_ifcgeom_brep_element_t = _HandleStruct
 
 
@@ -684,6 +687,7 @@ FUNCTION_SIGNATURES = {
     "ifcopenshell_ifc_type_declaration_argument_types": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_string_list_t)]),
     "ifcopenshell_ifc_type_declaration_as_type_declaration": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifc_type_declaration_declared_type": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_compute_derived": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_element_get_aggregate": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_element_get_container": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_bool, ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_element_get_material": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_bool, ctypes.c_bool, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
@@ -697,6 +701,17 @@ FUNCTION_SIGNATURES = {
     "ifcopenshell_ifcapi_guid_compress": (ctypes.c_bool, [ctypes.c_char_p, ctypes.POINTER(ifcopenshell_string_t)]),
     "ifcopenshell_ifcapi_guid_expand": (ctypes.c_bool, [ctypes.c_char_p, ctypes.POINTER(ifcopenshell_string_t)]),
     "ifcopenshell_ifcapi_guid_new": (ctypes.c_bool, [ctypes.POINTER(ifcopenshell_string_t)]),
+    "ifcopenshell_ifcapi_value_as_bool": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_bool)]),
+    "ifcopenshell_ifcapi_value_as_double": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_double)]),
+    "ifcopenshell_ifcapi_value_as_instance": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_value_as_int64": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_int64)]),
+    "ifcopenshell_ifcapi_value_as_string": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_string_t)]),
+    "ifcopenshell_ifcapi_value_dict_key_at": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_size_t, ctypes.POINTER(ifcopenshell_string_t)]),
+    "ifcopenshell_ifcapi_value_dict_size": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_size_t)]),
+    "ifcopenshell_ifcapi_value_dict_value_at": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_size_t, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_value_kind": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_int32)]),
+    "ifcopenshell_ifcapi_value_list_at": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_size_t, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_value_list_size": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_size_t)]),
     "ifcopenshell_ifcgeom_arrange_polygons": (ctypes.c_bool, [ctypes.POINTER(ifcopenshell_ifcgeom_svgfill_polygon_list_t), ctypes.POINTER(ifcopenshell_ifcgeom_svgfill_polygon_list_t)]),
     "ifcopenshell_ifcgeom_brep_element_calc_surface_area": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_double)]),
     "ifcopenshell_ifcgeom_brep_element_calc_volume": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_double)]),
@@ -1160,6 +1175,7 @@ FUNCTION_SIGNATURES = {
     "ifcopenshell_ifc_type_declaration_destroy": (None, [ctypes.POINTER(_HandleStruct)]),
     "ifcopenshell_ifc_type_declaration_list_destroy": (None, [ctypes.POINTER(ifcopenshell_ifc_type_declaration_list_t)]),
     "ifcopenshell_ifc_type_declaration_list_list_destroy": (None, [ctypes.POINTER(ifcopenshell_ifc_type_declaration_list_list_t)]),
+    "ifcopenshell_ifcapi_value_destroy": (None, [ctypes.POINTER(_HandleStruct)]),
     "ifcopenshell_ifcgeom_brep_element_destroy": (None, [ctypes.POINTER(_HandleStruct)]),
     "ifcopenshell_ifcgeom_brep_representation_destroy": (None, [ctypes.POINTER(_HandleStruct)]),
     "ifcopenshell_ifcgeom_buffer_destroy": (None, [ctypes.POINTER(_HandleStruct)]),
@@ -1235,8 +1251,13 @@ FUNCTION_SIGNATURES = {
 }
 
 
-def bind(lib, *, strict=True):
+def bind(lib, *, strict=True, names=None, prefixes=None):
+    selected_names = set(names or ())
+    selected_prefixes = tuple(prefixes or ())
     for name, (restype, argtypes) in FUNCTION_SIGNATURES.items():
+        if selected_names or selected_prefixes:
+            if name not in selected_names and not any(name.startswith(prefix) for prefix in selected_prefixes):
+                continue
         try:
             fn = getattr(lib, name)
         except AttributeError:

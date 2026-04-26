@@ -2313,8 +2313,8 @@ def load_authored_spec(
             destructor=destructor,
             ptr_type=ptr_type,
         )
-        if handle.destructor not in _ALLOWED_DESTRUCTORS:
-            msg = f"{context}.destructor must be one of {sorted(_ALLOWED_DESTRUCTORS)}"
+        if handle.destructor not in _ALLOWED_DESTRUCTORS and not handle.destructor.startswith("function:"):
+            msg = f"{context}.destructor must be one of {sorted(_ALLOWED_DESTRUCTORS)} or function:<qualified_name>"
             raise ValueError(msg)
         if handle.name in handles:
             msg = f"{context}.name '{handle.name}' is duplicated"

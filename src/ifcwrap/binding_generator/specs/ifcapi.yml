@@ -12,11 +12,18 @@ public_headers:
   - guid.h
   - ifcapi/bindings/element.h
   - ifcapi/bindings/entity.h
+  - ifcapi/bindings/value.h
 
 imports:
   - slice: ifcparse
     handles:
       - instance
+
+handles:
+  - name: value
+    cpp_type: ifcopenshell_value_t
+    c_type: ifcopenshell_ifcapi_value_t
+    destructor: function:ifcapi::bindings::value_free
 
 functions:
   - expose_as: guid_new
@@ -209,3 +216,163 @@ functions:
       - name: attr
         type:
           kind: string
+
+  - expose_as: value_kind
+    cpp_name: ifcapi::bindings::value_kind
+    returns:
+      kind: int32
+    params:
+      - name: value
+        type:
+          kind: handle
+          handle: value
+          ownership: borrowed
+
+  - expose_as: compute_derived
+    cpp_name: ifcapi::bindings::compute_derived
+    returns:
+      kind: handle
+      handle: value
+      ownership: owned
+      nullable: true
+    params:
+      - name: instance
+        type:
+          kind: handle
+          handle: instance
+          ownership: borrowed
+      - name: attribute_name
+        type:
+          kind: string
+
+  - expose_as: value_as_bool
+    cpp_name: ifcapi::bindings::value_as_bool
+    returns:
+      kind: bool
+    params:
+      - name: value
+        type:
+          kind: handle
+          handle: value
+          ownership: borrowed
+
+  - expose_as: value_as_int64
+    cpp_name: ifcapi::bindings::value_as_int64
+    returns:
+      kind: int64
+    params:
+      - name: value
+        type:
+          kind: handle
+          handle: value
+          ownership: borrowed
+
+  - expose_as: value_as_double
+    cpp_name: ifcapi::bindings::value_as_double
+    returns:
+      kind: double
+    params:
+      - name: value
+        type:
+          kind: handle
+          handle: value
+          ownership: borrowed
+
+  - expose_as: value_as_string
+    cpp_name: ifcapi::bindings::value_as_string
+    returns:
+      kind: string
+      ownership: copy
+    params:
+      - name: value
+        type:
+          kind: handle
+          handle: value
+          ownership: borrowed
+
+  - expose_as: value_as_instance
+    cpp_name: ifcapi::bindings::value_as_instance
+    returns:
+      kind: handle
+      handle: instance
+      ownership: borrowed
+      nullable: true
+    params:
+      - name: value
+        type:
+          kind: handle
+          handle: value
+          ownership: borrowed
+
+  - expose_as: value_list_size
+    cpp_name: ifcapi::bindings::value_list_size
+    returns:
+      kind: size
+    params:
+      - name: value
+        type:
+          kind: handle
+          handle: value
+          ownership: borrowed
+
+  - expose_as: value_list_at
+    cpp_name: ifcapi::bindings::value_list_at
+    returns:
+      kind: handle
+      handle: value
+      ownership: borrowed
+      nullable: true
+      cpp_type: const ifcopenshell_value_t*
+    params:
+      - name: value
+        type:
+          kind: handle
+          handle: value
+          ownership: borrowed
+      - name: index
+        type:
+          kind: size
+
+  - expose_as: value_dict_size
+    cpp_name: ifcapi::bindings::value_dict_size
+    returns:
+      kind: size
+    params:
+      - name: value
+        type:
+          kind: handle
+          handle: value
+          ownership: borrowed
+
+  - expose_as: value_dict_key_at
+    cpp_name: ifcapi::bindings::value_dict_key_at
+    returns:
+      kind: string
+      ownership: copy
+    params:
+      - name: value
+        type:
+          kind: handle
+          handle: value
+          ownership: borrowed
+      - name: index
+        type:
+          kind: size
+
+  - expose_as: value_dict_value_at
+    cpp_name: ifcapi::bindings::value_dict_value_at
+    returns:
+      kind: handle
+      handle: value
+      ownership: borrowed
+      nullable: true
+      cpp_type: const ifcopenshell_value_t*
+    params:
+      - name: value
+        type:
+          kind: handle
+          handle: value
+          ownership: borrowed
+      - name: index
+        type:
+          kind: size

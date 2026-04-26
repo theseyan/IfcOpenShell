@@ -57,6 +57,7 @@
 #include "guid.h"
 #include "ifcapi/bindings/element.h"
 #include "ifcapi/bindings/entity.h"
+#include "ifcapi/bindings/value.h"
 #include "aggregate_of_instance.h"
 #include "IfcEntityInstanceData.h"
 
@@ -387,6 +388,11 @@ struct ifcopenshell_ifcgeom_svgfill_polygon_t {
 
 struct ifcopenshell_ifcgeom_function_item_evaluator_t {
     ifcopenshell::geometry::function_item_evaluator* ptr;
+    bool owned;
+};
+
+struct ifcopenshell_ifcapi_value_t {
+    ifcopenshell_value_t* ptr;
     bool owned;
 };
 

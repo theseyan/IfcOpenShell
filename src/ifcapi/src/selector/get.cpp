@@ -1,6 +1,79 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "selector/internal.h"
+#include "ifcapi/express_rules.h"
+
+namespace ifcapi {
+namespace bindings {
+
+void value_free(ifcopenshell_value_t* value) {
+    ifcopenshell_value_free(value);
+}
+
+ifcopenshell_value_t* compute_derived(IfcUtil::IfcBaseClass* instance, const std::string& attribute_name) {
+    if (instance == nullptr) {
+        return nullptr;
+    }
+    ifcopenshell_ifc_instance_t* handle = ifcopenshell::capi::wrap_instance(instance, false);
+    ifcopenshell_value_t* result = ifcopenshell_compute_derived(handle, attribute_name.c_str());
+    delete handle;
+    return result;
+}
+
+int32_t value_kind(const ifcopenshell_value_t* value) {
+    return static_cast<int32_t>(ifcopenshell_value_kind(value));
+}
+
+bool value_as_bool(const ifcopenshell_value_t* value) {
+    return ifcopenshell_value_as_bool(value);
+}
+
+int64_t value_as_int64(const ifcopenshell_value_t* value) {
+    return ifcopenshell_value_as_int64(value);
+}
+
+double value_as_double(const ifcopenshell_value_t* value) {
+    return ifcopenshell_value_as_double(value);
+}
+
+std::string value_as_string(const ifcopenshell_value_t* value) {
+    const char* result = ifcopenshell_value_as_string(value);
+    return result ? std::string(result) : std::string();
+}
+
+IfcUtil::IfcBaseClass* value_as_instance(const ifcopenshell_value_t* value) {
+    ifcopenshell_ifc_instance_t* handle = ifcopenshell_value_as_instance(value);
+    if (handle == nullptr) {
+        return nullptr;
+    }
+    IfcUtil::IfcBaseClass* instance = handle->ptr;
+    delete handle;
+    return instance;
+}
+
+size_t value_list_size(const ifcopenshell_value_t* value) {
+    return ifcopenshell_value_list_size(value);
+}
+
+const ifcopenshell_value_t* value_list_at(const ifcopenshell_value_t* value, size_t index) {
+    return ifcopenshell_value_list_at(value, index);
+}
+
+size_t value_dict_size(const ifcopenshell_value_t* value) {
+    return ifcopenshell_value_dict_size(value);
+}
+
+std::string value_dict_key_at(const ifcopenshell_value_t* value, size_t index) {
+    const char* result = ifcopenshell_value_dict_key_at(value, index);
+    return result ? std::string(result) : std::string();
+}
+
+const ifcopenshell_value_t* value_dict_value_at(const ifcopenshell_value_t* value, size_t index) {
+    return ifcopenshell_value_dict_value_at(value, index);
+}
+
+} // namespace bindings
+} // namespace ifcapi
 
 /* ====================================================================
  *  C ABI — value accessors

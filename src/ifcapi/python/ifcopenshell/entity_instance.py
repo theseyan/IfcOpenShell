@@ -193,13 +193,11 @@ class _DoubleList(ctypes.Structure):
 
 
 def _configure_derived_lib(lib) -> None:
-    """Bind ctypes signatures for the native DERIVE rule dispatcher."""
+    """Bind ctypes signatures for the generated value/DERIVE facade."""
     global _derived_lib_configured
     if _derived_lib_configured:
         return
     configure_value_lib(lib)
-    lib.ifcopenshell_compute_derived.restype = ctypes.c_void_p
-    lib.ifcopenshell_compute_derived.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
     _derived_lib_configured = True
 
 
@@ -720,13 +718,19 @@ class entity_instance:
 
         lib = _get_lib()
         _configure_derived_lib(lib)
-        ptr = lib.ifcopenshell_compute_derived(self._handle, _enc(name))
+        from ifcopenshell import _generated_capi
+
+        ptr = ctypes.POINTER(_generated_capi._HandleStruct)()
+        if not lib.ifcopenshell_ifcapi_compute_derived(
+            _generated_instance_handle_ptr(self._handle), _enc(name), ctypes.byref(ptr)
+        ):
+            return None
         if not ptr:
             return None
         try:
             return value_to_python(lib, ptr, self)
         finally:
-            lib.ifcopenshell_value_free(ptr)
+            lib.ifcopenshell_ifcapi_value_destroy(ptr)
 
     def _get_aggregate(self, h, attr, name):
         """Read an aggregate attribute, returning a Python tuple.

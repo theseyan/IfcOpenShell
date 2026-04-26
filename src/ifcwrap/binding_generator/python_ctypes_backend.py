@@ -173,8 +173,13 @@ FUNCTION_SIGNATURES = {{
 }}
 
 
-def bind(lib, *, strict=True):
+def bind(lib, *, strict=True, names=None, prefixes=None):
+    selected_names = set(names or ())
+    selected_prefixes = tuple(prefixes or ())
     for name, (restype, argtypes) in FUNCTION_SIGNATURES.items():
+        if selected_names or selected_prefixes:
+            if name not in selected_names and not any(name.startswith(prefix) for prefix in selected_prefixes):
+                continue
         try:
             fn = getattr(lib, name)
         except AttributeError:
