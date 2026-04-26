@@ -964,7 +964,7 @@ def _wrap_product_instance(h):
     ``POINTER(_HandleStruct)``) and return an
     :class:`ifcopenshell.entity_instance` rooted in the owning file."""
     from ifcopenshell.entity_instance import entity_instance
-    from ifcopenshell import _get_lib, _borrow_file_ptr
+    from ifcopenshell import _borrow_file_ptr, _instance_file_ptr
 
     if h is None:
         return None
@@ -976,8 +976,7 @@ def _wrap_product_instance(h):
         h = ctypes.cast(h, ctypes.c_void_p).value
     if not h:
         return None
-    lib = _get_lib()
-    file_ptr = lib.ifcopenshell_ifc_instance_file(h)
+    file_ptr = _instance_file_ptr(h)
     f = _borrow_file_ptr(file_ptr) if file_ptr else None
     return entity_instance(f, h)
 

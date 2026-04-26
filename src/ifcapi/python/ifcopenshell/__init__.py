@@ -253,79 +253,17 @@ def _get_lib():
     _lib.ifcopenshell_clear_error.restype = None
     _lib.ifcopenshell_clear_error.argtypes = []
 
-    # -- GUID -----------------------------------------------------------------
-    _lib.ifcopenshell_guid_new.restype = ctypes.c_char_p
-    _lib.ifcopenshell_guid_new.argtypes = []
+    # -- Legacy string/free helpers ------------------------------------------
     _lib.ifcopenshell_free_string.restype = None
     _lib.ifcopenshell_free_string.argtypes = [ctypes.c_char_p]
 
     # -- File operations ------------------------------------------------------
-    _lib.ifcopenshell_file_create.restype = ctypes.c_void_p
-    _lib.ifcopenshell_file_create.argtypes = [ctypes.c_char_p]
-    _lib.ifcopenshell_file_open.restype = ctypes.c_void_p
-    _lib.ifcopenshell_file_open.argtypes = [ctypes.c_char_p]
-    _lib.ifcopenshell_file_open_bypass.restype = ctypes.c_void_p
-    _lib.ifcopenshell_file_open_bypass.argtypes = [
-        ctypes.c_char_p,
-        ctypes.POINTER(ctypes.c_char_p),
-        ctypes.c_size_t,
-    ]
-    _lib.ifcopenshell_file_from_string.restype = ctypes.c_void_p
-    _lib.ifcopenshell_file_from_string.argtypes = [ctypes.c_char_p, ctypes.c_int]
-    _lib.ifcopenshell_file_free.restype = None
-    _lib.ifcopenshell_file_free.argtypes = [ctypes.c_void_p]
-    _lib.ifcopenshell_file_schema.restype = ctypes.c_char_p
-    _lib.ifcopenshell_file_schema.argtypes = [ctypes.c_void_p]
-    _lib.ifcopenshell_file_create_entity.restype = ctypes.c_void_p
-    _lib.ifcopenshell_file_create_entity.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-    _lib.ifcopenshell_file_create_entity_with_id.restype = ctypes.c_void_p
-    _lib.ifcopenshell_file_create_entity_with_id.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_uint32]
-    _lib.ifcopenshell_file_add_entity.restype = ctypes.c_void_p
-    _lib.ifcopenshell_file_add_entity.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint32]
-    _lib.ifcopenshell_file_get_max_id.restype = ctypes.c_uint32
-    _lib.ifcopenshell_file_get_max_id.argtypes = [ctypes.c_void_p]
-    _lib.ifcopenshell_file_by_type_count.restype = ctypes.c_int32
-    _lib.ifcopenshell_file_by_type_count.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-    _lib.ifcopenshell_file_by_type.restype = ctypes.c_int32
-    _lib.ifcopenshell_file_by_type.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p)]
-    _lib.ifcopenshell_file_remove.restype = None
-    _lib.ifcopenshell_file_remove.argtypes = [ctypes.c_void_p]
-    _lib.ifcopenshell_file_by_guid.restype = ctypes.c_void_p
-    _lib.ifcopenshell_file_by_guid.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-    _lib.ifcopenshell_file_entity_count.restype = ctypes.c_uint32
-    _lib.ifcopenshell_file_entity_count.argtypes = [ctypes.c_void_p]
-    _lib.ifcopenshell_file_entity_ids.restype = ctypes.POINTER(ctypes.c_void_p)
-    _lib.ifcopenshell_file_entity_ids.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32)]
-    _lib.ifcopenshell_free_instance_array.restype = None
-    _lib.ifcopenshell_free_instance_array.argtypes = [ctypes.POINTER(ctypes.c_void_p), ctypes.c_uint32]
-    _lib.ifcopenshell_free_instance_array_only.restype = None
-    _lib.ifcopenshell_free_instance_array_only.argtypes = [ctypes.POINTER(ctypes.c_void_p)]
     _lib.ifcopenshell_ifc_instance_destroy.restype = None
     _lib.ifcopenshell_ifc_instance_destroy.argtypes = [ctypes.c_void_p]
     _lib.ifcopenshell_ifc_file_by_id.restype = ctypes.c_bool
     _lib.ifcopenshell_ifc_file_by_id.argtypes = [ctypes.c_void_p, ctypes.c_int32, ctypes.POINTER(ctypes.c_void_p)]
     _lib.ifcopenshell_ifc_instance_id.restype = ctypes.c_bool
     _lib.ifcopenshell_ifc_instance_id.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32)]
-    _lib.ifcopenshell_ifc_instance_file.restype = ctypes.c_void_p
-    _lib.ifcopenshell_ifc_instance_file.argtypes = [ctypes.c_void_p]
-    _lib.ifcopenshell_file_get_inverse.restype = ctypes.POINTER(ctypes.c_void_p)
-    _lib.ifcopenshell_file_get_inverse.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32)]
-    _lib.ifcopenshell_file_get_inverse_indices.restype = ctypes.POINTER(ctypes.c_int32)
-    _lib.ifcopenshell_file_get_inverse_indices.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32)]
-    _lib.ifcopenshell_free_int32_array.restype = None
-    _lib.ifcopenshell_free_int32_array.argtypes = [ctypes.POINTER(ctypes.c_int32)]
-    _lib.ifcopenshell_file_traverse.restype = ctypes.POINTER(ctypes.c_void_p)
-    _lib.ifcopenshell_file_traverse.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_uint32)]
-    _lib.ifcopenshell_file_write.restype = ctypes.c_bool
-    _lib.ifcopenshell_file_write.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-    _lib.ifcopenshell_file_to_string.restype = ctypes.c_char_p
-    _lib.ifcopenshell_file_to_string.argtypes = [ctypes.c_void_p]
-    _lib.ifcopenshell_file_header_file_description.restype = ctypes.c_void_p
-    _lib.ifcopenshell_file_header_file_description.argtypes = [ctypes.c_void_p]
-    _lib.ifcopenshell_file_header_file_name.restype = ctypes.c_void_p
-    _lib.ifcopenshell_file_header_file_name.argtypes = [ctypes.c_void_p]
-    _lib.ifcopenshell_file_header_file_schema.restype = ctypes.c_void_p
-    _lib.ifcopenshell_file_header_file_schema.argtypes = [ctypes.c_void_p]
     _lib.ifcopenshell_ifc_file_storage_mode.restype = ctypes.c_bool
     _lib.ifcopenshell_ifc_file_storage_mode.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int32)]
     _lib.ifcopenshell_ifc_file_key_value_store_query.restype = ctypes.c_bool
@@ -340,21 +278,10 @@ def _get_lib():
         ctypes.c_char_p,
         ctypes.c_void_p,
     ]
-    _lib.ifcopenshell_instance_streamer_create.restype = ctypes.c_void_p
-    _lib.ifcopenshell_instance_streamer_create.argtypes = []
-    _lib.ifcopenshell_instance_streamer_create_from_path.restype = ctypes.c_void_p
-    _lib.ifcopenshell_instance_streamer_create_from_path.argtypes = [ctypes.c_char_p, ctypes.c_bool]
-    _lib.ifcopenshell_ifcparse_stream_from_string.restype = ctypes.c_bool
-    _lib.ifcopenshell_ifcparse_stream_from_string.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p)]
     _lib.ifcopenshell_ifc_instance_streamer_destroy.restype = None
     _lib.ifcopenshell_ifc_instance_streamer_destroy.argtypes = [ctypes.c_void_p]
     _lib.ifcopenshell_ifc_instance_streamer_has_semicolon.restype = ctypes.c_bool
     _lib.ifcopenshell_ifc_instance_streamer_has_semicolon.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_bool)]
-    _lib.ifcopenshell_instance_streamer_semicolon_count.restype = ctypes.c_bool
-    _lib.ifcopenshell_instance_streamer_semicolon_count.argtypes = [
-        ctypes.c_void_p,
-        ctypes.POINTER(ctypes.c_size_t),
-    ]
     _lib.ifcopenshell_ifc_instance_streamer_push_page.restype = ctypes.c_bool
     _lib.ifcopenshell_ifc_instance_streamer_push_page.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
     _lib.ifcopenshell_ifc_instance_streamer_read_instance_py.restype = ctypes.c_bool
@@ -364,103 +291,9 @@ def _get_lib():
         ctypes.c_void_p,
     ]
 
-    # -- Entity operations ----------------------------------------------------
-    _lib.ifcopenshell_entity_type.restype = ctypes.c_char_p
-    _lib.ifcopenshell_entity_type.argtypes = [ctypes.c_void_p]
-    _lib.ifcopenshell_entity_is_a.restype = ctypes.c_bool
-    _lib.ifcopenshell_entity_is_a.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-    _lib.ifcopenshell_entity_has_attr.restype = ctypes.c_bool
-    _lib.ifcopenshell_entity_has_attr.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-    _lib.ifcopenshell_entity_attr_type.restype = ctypes.c_int
-    _lib.ifcopenshell_entity_attr_type.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-    _lib.ifcopenshell_entity_attr_is_null.restype = ctypes.c_bool
-    _lib.ifcopenshell_entity_attr_is_null.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-    _lib.ifcopenshell_entity_attr_count.restype = ctypes.c_uint32
-    _lib.ifcopenshell_entity_attr_count.argtypes = [ctypes.c_void_p]
-    _lib.ifcopenshell_entity_attr_name.restype = ctypes.c_char_p
-    _lib.ifcopenshell_entity_attr_name.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
-    _lib.ifcopenshell_entity_to_string.restype = ctypes.c_char_p
-    _lib.ifcopenshell_entity_to_string.argtypes = [ctypes.c_void_p]
-    _lib.ifcopenshell_entity_to_string_valid_spf.restype = ctypes.c_char_p
-    _lib.ifcopenshell_entity_to_string_valid_spf.argtypes = [ctypes.c_void_p]
-
-    # -- Scalar getters -------------------------------------------------------
-    _lib.ifcopenshell_entity_get_string.restype = ctypes.c_char_p
-    _lib.ifcopenshell_entity_get_string.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-    _lib.ifcopenshell_entity_get_int.restype = ctypes.c_int64
-    _lib.ifcopenshell_entity_get_int.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-    _lib.ifcopenshell_entity_get_double.restype = ctypes.c_double
-    _lib.ifcopenshell_entity_get_double.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-    _lib.ifcopenshell_entity_get_bool.restype = ctypes.c_int
-    _lib.ifcopenshell_entity_get_bool.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-    _lib.ifcopenshell_entity_get_enum.restype = ctypes.c_char_p
-    _lib.ifcopenshell_entity_get_enum.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-    _lib.ifcopenshell_entity_get_reference.restype = ctypes.c_void_p
-    _lib.ifcopenshell_entity_get_reference.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-
-    # -- Scalar setters -------------------------------------------------------
-    _lib.ifcopenshell_entity_set_string.restype = None
-    _lib.ifcopenshell_entity_set_string.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p]
-    _lib.ifcopenshell_entity_set_int.restype = None
-    _lib.ifcopenshell_entity_set_int.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int64]
-    _lib.ifcopenshell_entity_set_double.restype = None
-    _lib.ifcopenshell_entity_set_double.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_double]
-    _lib.ifcopenshell_entity_set_bool.restype = None
-    _lib.ifcopenshell_entity_set_bool.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]
-    _lib.ifcopenshell_entity_set_enum.restype = ctypes.c_bool
-    _lib.ifcopenshell_entity_set_enum.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p]
-    _lib.ifcopenshell_entity_set_reference.restype = None
-    _lib.ifcopenshell_entity_set_reference.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_void_p]
-    _lib.ifcopenshell_entity_set_null.restype = None
-    _lib.ifcopenshell_entity_set_null.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-
-    _lib.ifcopenshell_file_create_type_instance.restype = ctypes.c_void_p
-    _lib.ifcopenshell_file_create_type_instance.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p]
-
-    _lib.ifcopenshell_entity_set_typed_value.restype = ctypes.c_bool
-    _lib.ifcopenshell_entity_set_typed_value.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
-
-    _lib.ifcopenshell_entity_get_typed_value.restype = ctypes.c_char_p
-    _lib.ifcopenshell_entity_get_typed_value.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p)]
-
-    # -- Aggregate getters ----------------------------------------------------
-    _lib.ifcopenshell_entity_get_aggregate_size.restype = ctypes.c_int32
-    _lib.ifcopenshell_entity_get_aggregate_size.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-    _lib.ifcopenshell_entity_get_aggregate_int.restype = ctypes.POINTER(ctypes.c_int64)
-    _lib.ifcopenshell_entity_get_aggregate_int.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_uint32)]
-    _lib.ifcopenshell_entity_get_aggregate_double.restype = ctypes.POINTER(ctypes.c_double)
-    _lib.ifcopenshell_entity_get_aggregate_double.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_uint32)]
-    _lib.ifcopenshell_entity_get_aggregate_string.restype = ctypes.POINTER(ctypes.c_char_p)
-    _lib.ifcopenshell_entity_get_aggregate_string.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_uint32)]
-    _lib.ifcopenshell_entity_get_aggregate_ref.restype = ctypes.POINTER(ctypes.c_void_p)
-    _lib.ifcopenshell_entity_get_aggregate_ref.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_uint32)]
-    _lib.ifcopenshell_entity_get_aggregate_typed_value.restype = ctypes.c_int32
-    _lib.ifcopenshell_entity_get_aggregate_typed_value.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(ctypes.c_char_p)), ctypes.POINTER(ctypes.POINTER(ctypes.c_char_p))]
-
-    # -- Aggregate setters ----------------------------------------------------
-    for name in ("int", "double", "string", "ref"):
-        fn = getattr(_lib, f"ifcopenshell_entity_set_aggregate_{name}")
-        fn.restype = ctypes.c_bool
-    _lib.ifcopenshell_entity_set_aggregate_int.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_int64), ctypes.c_uint32]
-    _lib.ifcopenshell_entity_set_aggregate_double.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_double), ctypes.c_uint32]
-    _lib.ifcopenshell_entity_set_aggregate_string.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_uint32]
-    _lib.ifcopenshell_entity_set_aggregate_ref.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p), ctypes.c_uint32]
-    _lib.ifcopenshell_entity_set_aggregate_typed_value.restype = ctypes.c_bool
-    _lib.ifcopenshell_entity_set_aggregate_typed_value.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.c_char_p), ctypes.c_uint32]
-
     # -- Aggregate memory management ------------------------------------------
-    _lib.ifcopenshell_free_int_array.restype = None
-    _lib.ifcopenshell_free_int_array.argtypes = [ctypes.POINTER(ctypes.c_int64)]
-    _lib.ifcopenshell_free_double_array.restype = None
-    _lib.ifcopenshell_free_double_array.argtypes = [ctypes.POINTER(ctypes.c_double)]
     _lib.ifcopenshell_free_string_array.restype = None
     _lib.ifcopenshell_free_string_array.argtypes = [ctypes.POINTER(ctypes.c_char_p), ctypes.c_uint32]
-
-    # -- Inverse attribute access ---------------------------------------------
-    _lib.ifcopenshell_entity_is_inverse_attr.restype = ctypes.c_bool
-    _lib.ifcopenshell_entity_is_inverse_attr.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-    _lib.ifcopenshell_entity_get_inverse_attr.restype = ctypes.POINTER(ctypes.c_void_p)
-    _lib.ifcopenshell_entity_get_inverse_attr.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_uint32)]
 
     # -- Utility: deep removal ------------------------------------------------
     _lib.ifcopenshell_util_remove_deep2.restype = None
@@ -546,6 +379,98 @@ def _get_lib():
         pass
 
     return _lib
+
+
+def _capi_handle_ptr(ptr):
+    if not ptr:
+        return None
+    from ifcopenshell import ifcopenshell_wrapper as W
+
+    return ctypes.cast(ctypes.c_void_p(ptr), W._HandleStructP)
+
+
+def _ifc_file_handle_ptr(ptr):
+    return _capi_handle_ptr(ptr)
+
+
+def _instance_streamer_handle_ptr(ptr):
+    return _capi_handle_ptr(ptr)
+
+
+def _instance_file_ptr(handle):
+    if not handle:
+        return None
+    lib = _get_lib()
+    from ifcopenshell import ifcopenshell_wrapper as W
+
+    handle_ptr = ctypes.cast(ctypes.c_void_p(handle), W._HandleStructP)
+    result = ctypes.c_size_t()
+    if not lib.ifcopenshell_ifc_instance_file_pointer(handle_ptr, ctypes.byref(result)):
+        return None
+    return result.value or None
+
+
+def _take_capi_string(out) -> str:
+    try:
+        if out.data and out.size:
+            return ctypes.string_at(out.data, out.size).decode("utf-8")
+        return ""
+    finally:
+        _get_lib().ifcopenshell_string_destroy(ctypes.byref(out))
+
+
+def _take_instance_list(file_obj, handle):
+    if not handle:
+        return []
+    from ifcopenshell import ifcopenshell_wrapper as W
+
+    lib = _get_lib()
+    W._bind()
+    size = ctypes.c_size_t(0)
+    try:
+        if not lib.ifcopenshell_ifcparse_instance_list_size(handle, ctypes.byref(size)):
+            return []
+        result = []
+        for i in range(size.value):
+            out = W._HandleStructP()
+            if lib.ifcopenshell_ifcparse_instance_list_get(handle, i, ctypes.byref(out)) and out:
+                result.append(entity_instance(file_obj, ctypes.cast(out, ctypes.c_void_p).value))
+        return result
+    finally:
+        lib.ifcopenshell_ifcparse_instance_list_destroy(handle)
+
+
+def _take_int32_list(out) -> list[int]:
+    try:
+        return [int(out.items[i]) for i in range(out.size)] if out.items else []
+    finally:
+        _get_lib().ifcopenshell_int32_list_destroy(ctypes.byref(out))
+
+
+def _take_uint32_list(out) -> list[int]:
+    try:
+        return [int(out.items[i]) for i in range(out.size)] if out.items else []
+    finally:
+        _get_lib().ifcopenshell_uint32_list_destroy(ctypes.byref(out))
+
+
+def _make_string_list(values):
+    from ifcopenshell import _generated_capi
+
+    encoded = [_enc(str(value)) for value in values]
+    items = (_generated_capi.ifcopenshell_string_t * len(encoded))()
+    buffers = []
+    for i, value in enumerate(encoded):
+        buf = ctypes.create_string_buffer(value)
+        buffers.append(buf)
+        items[i].data = ctypes.cast(buf, ctypes.c_void_p)
+        items[i].size = len(value)
+        items[i].owned = False
+    out = _generated_capi.ifcopenshell_string_list_t()
+    out.items = items
+    out.size = len(encoded)
+    out._keepalive = (items, buffers)  # type: ignore[attr-defined]
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -868,8 +793,15 @@ class file:
             schema = _schema_identifier_from_version(schema_version)
         else:
             schema = self._SCHEMA_ALIASES.get(schema, schema)
+        from ifcopenshell import ifcopenshell_wrapper as W
+
         lib = _get_lib()
-        self._ptr = lib.ifcopenshell_file_create(_enc(schema))
+        W._bind()
+        out = W._HandleStructP()
+        if lib.ifcopenshell_ifcparse_new_file(_enc(schema), 0, b"", ctypes.byref(out)) and out:
+            self._ptr = ctypes.cast(out, ctypes.c_void_p).value
+        else:
+            self._ptr = None
         if not self._ptr:
             err = lib.ifcopenshell_last_error_message()
             msg = err.decode("utf-8") if err else "Unknown error"
@@ -949,16 +881,24 @@ class file:
 
     def __del__(self):
         if getattr(self, "_ptr", None) and getattr(self, "_owns_ptr", True):
+            from ifcopenshell import ifcopenshell_wrapper as W
+
             lib = _get_lib()
-            lib.ifcopenshell_file_free(self._ptr)
+            W._bind()
+            lib.ifcopenshell_ifc_file_destroy(_ifc_file_handle_ptr(self._ptr))
         self._ptr = None
 
     @property
     def schema_identifier(self) -> str:
         """Full IFC schema version: IFC2X3_TC1, IFC4_ADD2, IFC4X3_ADD2, etc."""
+        from ifcopenshell import ifcopenshell_wrapper as W
+
         lib = _get_lib()
-        val = lib.ifcopenshell_file_schema(self._ptr)
-        return val.decode("utf-8") if val else ""
+        W._bind()
+        out = W.ifcopenshell_string_t()
+        if not lib.ifcopenshell_ifc_file_schema_name(_ifc_file_handle_ptr(self._ptr), ctypes.byref(out)):
+            return ""
+        return _take_capi_string(out)
 
     @property
     def schema(self) -> str:
@@ -1007,14 +947,23 @@ class file:
         if _resolve_typed_value_kind(self, type_name)[0] != "unknown":
             val_arg = args[0] if args else kwargs.get("wrappedValue")
             return _typed_value(self, type_name, val_arg)
+        from ifcopenshell import ifcopenshell_wrapper as W
+
+        W._bind()
+        out = W._HandleStructP()
         if eid == -1 or eid is None:
-            h = lib.ifcopenshell_file_create_entity(self._ptr, _enc(type_name))
+            ok = lib.ifcopenshell_ifc_file_create_entity_by_name(
+                _ifc_file_handle_ptr(self._ptr), _enc(type_name), ctypes.byref(out)
+            )
         else:
-            h = lib.ifcopenshell_file_create_entity_with_id(self._ptr, _enc(type_name), int(eid))
-        if not h:
+            ok = lib.ifcopenshell_ifc_file_create_entity_by_name_with_id(
+                _ifc_file_handle_ptr(self._ptr), _enc(type_name), int(eid), ctypes.byref(out)
+            )
+        if not ok or not out:
             err = lib.ifcopenshell_last_error_message()
             msg = err.decode("utf-8") if err else "Unknown error"
             raise RuntimeError(f"Failed to create entity '{type_name}': {msg}")
+        h = ctypes.cast(out, ctypes.c_void_p).value
         entity = entity_instance(self, h)
         # Suspend transaction recording while populating attributes — the
         # creation itself already captures the full attribute payload.
@@ -1034,26 +983,27 @@ class file:
         return entity
 
     def by_type(self, type_name, include_subtypes=True) -> list:
+        from ifcopenshell import ifcopenshell_wrapper as W
+
         lib = _get_lib()
-        count = lib.ifcopenshell_file_by_type_count(self._ptr, _enc(type_name))
-        if count <= 0:
+        W._bind()
+        out = W._HandleStructP()
+        fn = lib.ifcopenshell_ifc_file_by_type if include_subtypes else lib.ifcopenshell_ifc_file_by_type_excl_subtypes
+        if not fn(_ifc_file_handle_ptr(self._ptr), _enc(type_name), ctypes.byref(out)):
             return []
-        handles = (ctypes.c_void_p * count)()
-        lib.ifcopenshell_file_by_type(self._ptr, _enc(type_name), handles)
-        result = [entity_instance(self, handles[i]) for i in range(count)]
-        if not include_subtypes:
-            result = [e for e in result if e.is_a().lower() == type_name.lower()]
-        return result
+        return _take_instance_list(self, out)
 
     def by_id(self, id: int) -> entity_instance:
         if isinstance(id, (str, bytes)):
             return self.by_guid(id.decode("utf-8") if isinstance(id, bytes) else id)
+        from ifcopenshell import ifcopenshell_wrapper as W
+
         lib = _get_lib()
-        out = ctypes.c_void_p(0)
-        ok = lib.ifcopenshell_ifc_file_by_id(self._ptr, id, ctypes.byref(out))
-        if not ok or not out.value:
+        out = W._HandleStructP()
+        ok = lib.ifcopenshell_ifc_file_by_id(_ifc_file_handle_ptr(self._ptr), id, ctypes.byref(out))
+        if not ok or not out:
             raise RuntimeError(f"Entity #{id} not found")
-        return entity_instance(self, out.value)
+        return entity_instance(self, ctypes.cast(out, ctypes.c_void_p).value)
 
     def __getattr__(self, attr):
         if attr.startswith("create"):
@@ -1064,16 +1014,20 @@ class file:
     def by_guid(self, guid: str) -> entity_instance:
         if isinstance(guid, int):
             return self.by_id(guid)
+        from ifcopenshell import ifcopenshell_wrapper as W
+
         lib = _get_lib()
-        h = lib.ifcopenshell_file_by_guid(self._ptr, _enc(guid))
-        if not h:
+        W._bind()
+        out = W._HandleStructP()
+        ok = lib.ifcopenshell_ifc_file_by_guid(_ifc_file_handle_ptr(self._ptr), _enc(guid), ctypes.byref(out))
+        if not ok or not out:
             raise RuntimeError(f"Entity with GUID '{guid}' not found")
-        return entity_instance(self, h)
+        return entity_instance(self, ctypes.cast(out, ctypes.c_void_p).value)
 
     def storage_mode(self) -> int:
         lib = _get_lib()
         out = ctypes.c_int32(-1)
-        if not lib.ifcopenshell_ifc_file_storage_mode(self._ptr, ctypes.byref(out)):
+        if not lib.ifcopenshell_ifc_file_storage_mode(_ifc_file_handle_ptr(self._ptr), ctypes.byref(out)):
             return -1
         return int(out.value)
 
@@ -1086,7 +1040,7 @@ class file:
         lib = _get_lib()
         W._bind()
         out = W.ifcopenshell_string_t()
-        if not lib.ifcopenshell_ifc_file_key_value_store_query(self._ptr, _enc(key), ctypes.byref(out)):
+        if not lib.ifcopenshell_ifc_file_key_value_store_query(_ifc_file_handle_ptr(self._ptr), _enc(key), ctypes.byref(out)):
             return b""
         try:
             if out.data and out.size:
@@ -1101,7 +1055,7 @@ class file:
         lib = _get_lib()
         W._bind()
         out = W.ifcopenshell_string_list_t()
-        if not lib.ifcopenshell_ifc_file_key_value_store_iter(self._ptr, _enc(prefix), ctypes.byref(out)):
+        if not lib.ifcopenshell_ifc_file_key_value_store_iter(_ifc_file_handle_ptr(self._ptr), _enc(prefix), ctypes.byref(out)):
             return ()
         try:
             return tuple(
@@ -1118,18 +1072,30 @@ class file:
         return rocksdb_file_storage(self) if self.storage_mode() == 1 else None
 
     def remove(self, entity) -> None:
+        from ifcopenshell import ifcopenshell_wrapper as W
+
         lib = _get_lib()
+        W._bind()
         if isinstance(entity, int):
             entity = self.by_id(entity)
         if not isinstance(entity, entity_instance):
             raise TypeError(f"Expected entity_instance or int, got {type(entity)}")
         if self.transaction is not None:
             self.transaction.store_delete(entity)
-        lib.ifcopenshell_file_remove(entity._handle)
+        if not lib.ifcopenshell_ifc_file_remove(_ifc_file_handle_ptr(self._ptr), _capi_handle_ptr(entity._handle)):
+            err = lib.ifcopenshell_last_error_message()
+            msg = err.decode("utf-8") if err else "Unknown error"
+            raise RuntimeError(f"Failed to remove entity: {msg}")
 
     def get_max_id(self) -> int:
+        from ifcopenshell import ifcopenshell_wrapper as W
+
         lib = _get_lib()
-        return int(lib.ifcopenshell_file_get_max_id(self._ptr))
+        W._bind()
+        out = ctypes.c_uint32(0)
+        if not lib.ifcopenshell_ifc_file_get_max_id(_ifc_file_handle_ptr(self._ptr), ctypes.byref(out)):
+            return 0
+        return int(out.value)
 
     def add(self, inst, _id=None):
         """Adds an entity (and its forward references) to this file.
@@ -1147,14 +1113,20 @@ class file:
         # equivalent inline value bound to the target file. Mirror that here.
         if isinstance(inst, _typed_value):
             return _typed_value(self, inst._type_name, inst._wrapped)
+        from ifcopenshell import ifcopenshell_wrapper as W
+
         lib = _get_lib()
+        W._bind()
         max_id = self.get_max_id() if self.transaction is not None else 0
-        h = lib.ifcopenshell_file_add_entity(
-            self._ptr, inst._handle, 0 if _id is None else int(_id))
-        if not h:
+        out = W._HandleStructP()
+        ok = lib.ifcopenshell_ifc_file_add_entity(
+            _ifc_file_handle_ptr(self._ptr), _capi_handle_ptr(inst._handle), 0 if _id is None else int(_id), ctypes.byref(out)
+        )
+        if not ok or not out:
             err = lib.ifcopenshell_last_error_message()
             msg = err.decode("utf-8") if err else "Unknown error"
             raise RuntimeError(f"Failed to add entity: {msg}")
+        h = ctypes.cast(out, ctypes.c_void_p).value
         result = entity_instance(self, h)
         if self.transaction is not None:
             added = [e for e in self.traverse(result) if e.id() > max_id]
@@ -1165,51 +1137,60 @@ class file:
     def get_inverse(self, entity, allow_duplicate=False, with_attribute_indices=False):
         if with_attribute_indices and not allow_duplicate:
             raise ValueError("with_attribute_indices requires allow_duplicate to be True")
+        from ifcopenshell import _generated_capi
+        from ifcopenshell import ifcopenshell_wrapper as W
+
         lib = _get_lib()
+        W._bind()
         if not isinstance(entity, entity_instance):
             entity = self.by_id(entity)
-        count = ctypes.c_uint32(0)
-        arr = lib.ifcopenshell_file_get_inverse(entity._handle, ctypes.byref(count))
-        if not arr or count.value == 0:
+        out = W._HandleStructP()
+        if not lib.ifcopenshell_ifc_file_get_inverse(
+            _ifc_file_handle_ptr(self._ptr), _capi_handle_ptr(entity._handle), ctypes.byref(out)
+        ):
             inverses = []
         else:
-            inverses = [entity_instance(self, arr[i]) for i in range(count.value)]
-            lib.ifcopenshell_free_instance_array_only(arr)
+            inverses = _take_instance_list(self, out)
         if allow_duplicate:
             if with_attribute_indices:
-                idx_count = ctypes.c_uint32(0)
-                idx_arr = lib.ifcopenshell_file_get_inverse_indices(entity._handle, ctypes.byref(idx_count))
-                if not idx_arr or idx_count.value == 0:
+                idx_out = _generated_capi.ifcopenshell_int32_list_t()
+                if not lib.ifcopenshell_ifc_file_get_inverse_indices(
+                    _ifc_file_handle_ptr(self._ptr), _capi_handle_ptr(entity._handle), ctypes.byref(idx_out)
+                ):
                     idxs = []
                 else:
-                    idxs = [int(idx_arr[i]) for i in range(idx_count.value)]
-                    lib.ifcopenshell_free_int32_array(idx_arr)
+                    idxs = _take_int32_list(idx_out)
                 return list(zip(inverses, idxs))
             return inverses
         return set(inverses)
 
     def get_total_inverses(self, entity) -> int:
+        from ifcopenshell import ifcopenshell_wrapper as W
+
         lib = _get_lib()
+        W._bind()
         if not isinstance(entity, entity_instance):
             entity = self.by_id(entity)
-        count = ctypes.c_uint32(0)
-        arr = lib.ifcopenshell_file_get_inverse(entity._handle, ctypes.byref(count))
-        if arr:
-            lib.ifcopenshell_free_instance_array(arr, count.value)
-        return count.value
+        count = ctypes.c_int32(0)
+        if not lib.ifcopenshell_ifc_file_get_total_inverses(
+            _ifc_file_handle_ptr(self._ptr), _capi_handle_ptr(entity._handle), ctypes.byref(count)
+        ):
+            return 0
+        return int(count.value)
 
     def traverse(self, entity, max_levels=None, breadth_first=False) -> list:
+        from ifcopenshell import ifcopenshell_wrapper as W
+
         lib = _get_lib()
+        W._bind()
         if not isinstance(entity, entity_instance):
             entity = self.by_id(entity)
-        count = ctypes.c_uint32(0)
-        ml = max_levels if max_levels is not None else 0
-        arr = lib.ifcopenshell_file_traverse(entity._handle, ml, ctypes.byref(count))
-        if not arr or count.value == 0:
+        out = W._HandleStructP()
+        ml = max_levels if max_levels is not None else -1
+        fn = lib.ifcopenshell_ifc_file_traverse_breadth_first if breadth_first else lib.ifcopenshell_ifc_file_traverse
+        if not fn(_ifc_file_handle_ptr(self._ptr), _capi_handle_ptr(entity._handle), ml, ctypes.byref(out)):
             return []
-        result = [entity_instance(self, arr[i]) for i in range(count.value)]
-        lib.ifcopenshell_free_instance_array_only(arr)
-        return result
+        return _take_instance_list(self, out)
 
     def write(self, path, format=None, zipped=False) -> None:
         path = Path(path)
@@ -1220,8 +1201,11 @@ class file:
             raise NotImplementedError("Writing .ifcXML files is not supported")
         if format == ".ifcZIP":
             return self.write(path, ".ifc", zipped=True)
+        from ifcopenshell import ifcopenshell_wrapper as W
+
         lib = _get_lib()
-        if not lib.ifcopenshell_file_write(self._ptr, _enc(str(path))):
+        W._bind()
+        if not lib.ifcopenshell_ifc_file_write(_ifc_file_handle_ptr(self._ptr), _enc(str(path))):
             err = lib.ifcopenshell_last_error_message()
             msg = err.decode("utf-8") if err else "Unknown error"
             raise RuntimeError(f"Failed to write file: {msg}")
@@ -1233,44 +1217,64 @@ class file:
             unzipped_path.unlink()
 
     def to_string(self) -> str:
+        from ifcopenshell import ifcopenshell_wrapper as W
+
         lib = _get_lib()
-        val = lib.ifcopenshell_file_to_string(self._ptr)
-        return val.decode("utf-8") if val else ""
+        W._bind()
+        out = W.ifcopenshell_string_t()
+        if not lib.ifcopenshell_ifc_file_to_string(_ifc_file_handle_ptr(self._ptr), ctypes.byref(out)):
+            return ""
+        return _take_capi_string(out)
 
     def __len__(self) -> int:
+        from ifcopenshell import _generated_capi
+        from ifcopenshell import ifcopenshell_wrapper as W
+
         lib = _get_lib()
-        return lib.ifcopenshell_file_entity_count(self._ptr)
+        W._bind()
+        out = _generated_capi.ifcopenshell_uint32_list_t()
+        if not lib.ifcopenshell_ifc_file_entity_names(_ifc_file_handle_ptr(self._ptr), ctypes.byref(out)):
+            return 0
+        return len(_take_uint32_list(out))
 
     def entity_names(self) -> list:
         return [inst.id() for inst in self]
 
     @classmethod
     def from_string(cls, data) -> "file":
+        from ifcopenshell import ifcopenshell_wrapper as W
+
         lib = _get_lib()
+        W._bind()
         if isinstance(data, str):
             buf = data.encode("utf-8")
         elif isinstance(data, (bytes, bytearray)):
             buf = bytes(data)
         else:
             raise TypeError("from_string expects str or bytes")
-        ptr = lib.ifcopenshell_file_from_string(buf, len(buf))
-        if not ptr:
+        data_buf = ctypes.create_string_buffer(buf)
+        out = W._HandleStructP()
+        if not lib.ifcopenshell_ifcparse_read_memory(
+            ctypes.cast(data_buf, ctypes.c_void_p), len(buf), ctypes.byref(out)
+        ) or not out:
             err = lib.ifcopenshell_last_error_message()
             msg = err.decode("utf-8") if err else "Unknown error"
             raise RuntimeError(f"Failed to parse IFC from string: {msg}")
-        return _wrap_file_ptr(ptr)
+        result = _wrap_file_ptr(ctypes.cast(out, ctypes.c_void_p).value)
+        result._buffer_keepalive = data_buf
+        return result
 
     def __iter__(self):
+        from ifcopenshell import _generated_capi
+        from ifcopenshell import ifcopenshell_wrapper as W
+
         lib = _get_lib()
-        count = ctypes.c_uint32(0)
-        arr = lib.ifcopenshell_file_entity_ids(self._ptr, ctypes.byref(count))
-        if not arr or count.value == 0:
+        W._bind()
+        out = _generated_capi.ifcopenshell_uint32_list_t()
+        if not lib.ifcopenshell_ifc_file_entity_names(_ifc_file_handle_ptr(self._ptr), ctypes.byref(out)):
             return
-        try:
-            for i in range(count.value):
-                yield entity_instance(self, arr[i])
-        finally:
-            lib.ifcopenshell_free_instance_array_only(arr)
+        for entity_id in _take_uint32_list(out):
+            yield self.by_id(entity_id)
 
     def __getitem__(self, key):
         if isinstance(key, int):
@@ -1281,8 +1285,11 @@ class file:
 
     def __contains__(self, entity):
         if isinstance(entity, entity_instance):
-            lib = _get_lib()
-            return bool(lib.ifcopenshell_entity_type(entity._handle))
+            try:
+                entity.declaration()
+            except RuntimeError:
+                return False
+            return True
         return False
 
     def __getattr__(self, name):
@@ -1315,30 +1322,45 @@ class _file_header:
         if self._file is None:
             return _header_file_description()
         lib = _get_lib()
-        h = lib.ifcopenshell_file_header_file_description(self._file._ptr)
-        if not h:
+        from ifcopenshell import ifcopenshell_wrapper as W
+
+        W._bind()
+        out = W._HandleStructP()
+        if not lib.ifcopenshell_ifc_file_header_file_description(
+            _ifc_file_handle_ptr(self._file._ptr), ctypes.byref(out)
+        ) or not out:
             return _header_file_description()
-        return entity_instance(self._file, h)
+        return entity_instance(self._file, ctypes.cast(out, ctypes.c_void_p).value)
 
     @property
     def file_name(self):
         if self._file is None:
             return _header_file_name()
         lib = _get_lib()
-        h = lib.ifcopenshell_file_header_file_name(self._file._ptr)
-        if not h:
+        from ifcopenshell import ifcopenshell_wrapper as W
+
+        W._bind()
+        out = W._HandleStructP()
+        if not lib.ifcopenshell_ifc_file_header_file_name(
+            _ifc_file_handle_ptr(self._file._ptr), ctypes.byref(out)
+        ) or not out:
             return _header_file_name()
-        return entity_instance(self._file, h)
+        return entity_instance(self._file, ctypes.cast(out, ctypes.c_void_p).value)
 
     @property
     def file_schema(self):
         if self._file is None:
             return None
         lib = _get_lib()
-        h = lib.ifcopenshell_file_header_file_schema(self._file._ptr)
-        if not h:
+        from ifcopenshell import ifcopenshell_wrapper as W
+
+        W._bind()
+        out = W._HandleStructP()
+        if not lib.ifcopenshell_ifc_file_header_file_schema(
+            _ifc_file_handle_ptr(self._file._ptr), ctypes.byref(out)
+        ) or not out:
             return None
-        return entity_instance(self._file, h)
+        return entity_instance(self._file, ctypes.cast(out, ctypes.c_void_p).value)
 
 
 class _header_file_name:
@@ -1632,36 +1654,44 @@ class _InstanceStreamer:
 
     @classmethod
     def create(cls):
-        ptr = _get_lib().ifcopenshell_instance_streamer_create()
-        if not ptr:
-            raise RuntimeError("Failed to create InstanceStreamer")
-        return cls(ptr)
+        from ifcopenshell import ifcopenshell_wrapper as W
+
+        out = W._HandleStructP()
+        if not _get_lib().ifcopenshell_ifcparse_stream(ctypes.byref(out)):
+            err = _get_lib().ifcopenshell_last_error_message()
+            msg = err.decode("utf-8") if err else "Unknown error"
+            raise RuntimeError(f"Failed to create InstanceStreamer: {msg}")
+        return cls(ctypes.cast(out, ctypes.c_void_p).value)
 
     @classmethod
     def create_from_path(cls, path, mmap=False):
-        ptr = _get_lib().ifcopenshell_instance_streamer_create_from_path(_enc(str(path)), bool(mmap))
-        if not ptr:
+        from ifcopenshell import ifcopenshell_wrapper as W
+
+        out = W._HandleStructP()
+        if not _get_lib().ifcopenshell_ifcparse_stream_from_path(_enc(str(path)), bool(mmap), ctypes.byref(out)):
             err = _get_lib().ifcopenshell_last_error_message()
             msg = err.decode("utf-8") if err else "Unknown error"
             raise RuntimeError(f"Failed to stream {path}: {msg}")
-        return cls(ptr)
+        return cls(ctypes.cast(out, ctypes.c_void_p).value)
 
     @classmethod
     def from_string(cls, data):
+        from ifcopenshell import ifcopenshell_wrapper as W
+
         if isinstance(data, str):
             data = data.encode("utf-8")
-        out = ctypes.c_void_p()
+        out = W._HandleStructP()
         if not _get_lib().ifcopenshell_ifcparse_stream_from_string(data, ctypes.byref(out)):
             err = _get_lib().ifcopenshell_last_error_message()
             msg = err.decode("utf-8") if err else "Unknown error"
             raise RuntimeError(f"Failed to stream IFC data: {msg}")
-        return cls(out)
+        return cls(ctypes.cast(out, ctypes.c_void_p).value)
 
     def __del__(self):
         ptr = getattr(self, "_ptr", None)
         if ptr:
             try:
-                _get_lib().ifcopenshell_ifc_instance_streamer_destroy(ptr)
+                _get_lib().ifcopenshell_ifc_instance_streamer_destroy(_instance_streamer_handle_ptr(ptr))
             except Exception:
                 pass
             self._ptr = None
@@ -1669,11 +1699,11 @@ class _InstanceStreamer:
     def pushPage(self, data):
         if isinstance(data, str):
             data = data.encode("utf-8")
-        return _get_lib().ifcopenshell_ifc_instance_streamer_push_page(self._ptr, data)
+        return _get_lib().ifcopenshell_ifc_instance_streamer_push_page(_instance_streamer_handle_ptr(self._ptr), data)
 
     def hasSemicolon(self):
         out = ctypes.c_bool(False)
-        if not _get_lib().ifcopenshell_ifc_instance_streamer_has_semicolon(self._ptr, ctypes.byref(out)):
+        if not _get_lib().ifcopenshell_ifc_instance_streamer_has_semicolon(_instance_streamer_handle_ptr(self._ptr), ctypes.byref(out)):
             err = _get_lib().ifcopenshell_last_error_message()
             msg = err.decode("utf-8") if err else "Unknown error"
             raise RuntimeError(f"Failed to query streamed IFC semicolons: {msg}")
@@ -1681,7 +1711,9 @@ class _InstanceStreamer:
 
     def semicolonCount(self):
         out = ctypes.c_size_t(0)
-        if not _get_lib().ifcopenshell_instance_streamer_semicolon_count(self._ptr, ctypes.byref(out)):
+        if not _get_lib().ifcopenshell_ifc_instance_streamer_semicolon_count(
+            _instance_streamer_handle_ptr(self._ptr), ctypes.byref(out)
+        ):
             err = _get_lib().ifcopenshell_last_error_message()
             msg = err.decode("utf-8") if err else "Unknown error"
             raise RuntimeError(f"Failed to count streamed IFC semicolons: {msg}")
@@ -1692,7 +1724,7 @@ class _InstanceStreamer:
 
         out = _W.ifcopenshell_string_t()
         ok = _get_lib().ifcopenshell_ifc_instance_streamer_read_instance_py(
-            self._ptr,
+            _instance_streamer_handle_ptr(self._ptr),
             bool(type_as_declaration_instance),
             ctypes.byref(out),
         )
@@ -1822,9 +1854,15 @@ def stream2_from_string(data):
 
 
 def _open_bypass(path, bypass_types):
-    type_names = tuple(_enc(str(name)) for name in bypass_types)
-    array_type = ctypes.c_char_p * len(type_names)
-    return _get_lib().ifcopenshell_file_open_bypass(_enc(str(path)), array_type(*type_names), len(type_names))
+    from ifcopenshell import ifcopenshell_wrapper as W
+
+    lib = _get_lib()
+    W._bind()
+    type_names = _make_string_list(bypass_types)
+    out = W._HandleStructP()
+    if not lib.ifcopenshell_ifcparse_open_bypass(_enc(str(path)), ctypes.byref(type_names), ctypes.byref(out)) or not out:
+        return None
+    return ctypes.cast(out, ctypes.c_void_p).value
 
 
 from ifcopenshell.sql import sqlite, sqlite_entity  # noqa: E402
@@ -1873,10 +1911,18 @@ def open(path, format=None, should_stream=False, readonly=False, bypass_types=No
 
         return stream(str(path))
 
+    from ifcopenshell import ifcopenshell_wrapper as W
+
     lib = _get_lib()
-    if not hasattr(lib, "ifcopenshell_file_open"):
-        raise NotImplementedError("ifcopenshell_file_open is not exported by the native library")
-    ptr = _open_bypass(path, bypass_types) if bypass_types else lib.ifcopenshell_file_open(_enc(str(path)))
+    W._bind()
+    if bypass_types:
+        ptr = _open_bypass(path, bypass_types)
+    else:
+        out = W._HandleStructP()
+        if lib.ifcopenshell_ifcparse_open(_enc(str(path)), readonly, ctypes.byref(out)) and out:
+            ptr = ctypes.cast(out, ctypes.c_void_p).value
+        else:
+            ptr = None
     if not ptr:
         err = lib.ifcopenshell_last_error_message()
         msg = err.decode("utf-8") if err else "Unknown error"

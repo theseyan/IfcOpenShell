@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/element.h"
 
 #include "ifcparse/IfcFile.h"
 #include "ifcparse/IfcSchema.h"
@@ -105,11 +106,10 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_styles
 
     // 1. Styles from materials' representations.
     {
-        auto* mat_h = ifcopenshell_element_get_material(element, /*should_skip_usage=*/true, /*should_inherit=*/true);
+        auto* mat = ifcapi::bindings::element_get_material(e, /*should_skip_usage=*/true, /*should_inherit=*/true);
         std::vector<IfcUtil::IfcBaseClass*> materials;
-        if (mat_h) {
-            collect_materials(mat_h->ptr, materials);
-            ifcopenshell_ifc_instance_destroy(mat_h);
+        if (mat) {
+            collect_materials(mat, materials);
         }
         for (auto* material : materials) {
             std::vector<IfcUtil::IfcBaseClass*> mdrs = read_ref_list(material, "HasRepresentation");

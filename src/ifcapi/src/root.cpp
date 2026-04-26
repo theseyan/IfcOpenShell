@@ -69,47 +69,6 @@ static bool try_set_enum(
 
 extern "C" {
 
-char* ifcopenshell_guid_new(void) {
-    try {
-        std::string guid = ifcapi::guid_new();
-        char* result = static_cast<char*>(std::malloc(guid.size() + 1));
-        if (!result) return nullptr;
-        std::memcpy(result, guid.c_str(), guid.size() + 1);
-        return result;
-    } catch (const std::exception& e) {
-        set_error(e.what());
-        return nullptr;
-    }
-}
-
-char* ifcopenshell_guid_compress(const char* uuid_hex) {
-    if (!uuid_hex) { set_error("uuid_hex is NULL"); return nullptr; }
-    try {
-        std::string guid = ifcapi::guid_compress(uuid_hex);
-        char* result = static_cast<char*>(std::malloc(guid.size() + 1));
-        if (!result) return nullptr;
-        std::memcpy(result, guid.c_str(), guid.size() + 1);
-        return result;
-    } catch (const std::exception& e) {
-        set_error(e.what());
-        return nullptr;
-    }
-}
-
-char* ifcopenshell_guid_expand(const char* guid) {
-    if (!guid) { set_error("guid is NULL"); return nullptr; }
-    try {
-        std::string uuid = ifcapi::guid_expand(guid);
-        char* result = static_cast<char*>(std::malloc(uuid.size() + 1));
-        if (!result) return nullptr;
-        std::memcpy(result, uuid.c_str(), uuid.size() + 1);
-        return result;
-    } catch (const std::exception& e) {
-        set_error(e.what());
-        return nullptr;
-    }
-}
-
 void ifcopenshell_free_string(char* str) {
     std::free(str);
 }

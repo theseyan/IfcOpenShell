@@ -89,8 +89,9 @@ def value_to_python(lib, ptr, element):
         # Local import avoids circular dep on entity_instance at module
         # load time.
         from ifcopenshell.entity_instance import entity_instance as _ei
-        borrow_file_ptr = sys.modules["ifcopenshell"]._borrow_file_ptr
-        return _ei(borrow_file_ptr(lib.ifcopenshell_ifc_instance_file(h), fallback=element.file), h)
+        ifcopenshell_module = sys.modules["ifcopenshell"]
+        file_ptr = ifcopenshell_module._instance_file_ptr(h)
+        return _ei(ifcopenshell_module._borrow_file_ptr(file_ptr, fallback=element.file), h)
     if kind == IFCSEL_VALUE_LIST:
         n = lib.ifcopenshell_value_list_size(ptr)
         return [

@@ -57,126 +57,23 @@ typedef struct ifcopenshell_ifcgeom_taxonomy_item_t ifcopenshell_ifcgeom_taxonom
 /* read and reset it.                                                 */
 /* ------------------------------------------------------------------ */
 
-/* ------------------------------------------------------------------ */
-/*  GUID utilities                                                     */
-/* ------------------------------------------------------------------ */
-
-IFCAPI_EXPORT char* ifcopenshell_guid_new(void);
-IFCAPI_EXPORT char* ifcopenshell_guid_compress(const char* uuid_hex);
-IFCAPI_EXPORT char* ifcopenshell_guid_expand(const char* guid);
 IFCAPI_EXPORT void ifcopenshell_free_string(char* str);
 
 /* ------------------------------------------------------------------ */
 /*  File operations                                                    */
 /* ------------------------------------------------------------------ */
 
-/// Creates a new empty IFC file for the given schema (e.g. "IFC4", "IFC2X3").
-/// Opens an IFC file from disk.  Returns an opaque IfcFile pointer (free with
-/// ifcopenshell_file_free), or NULL on failure (use ifcopenshell_last_error_message() for details).
-IFCAPI_EXPORT ifcopenshell_ifc_file_t* ifcopenshell_file_open(const char* path);
-IFCAPI_EXPORT ifcopenshell_ifc_file_t* ifcopenshell_file_open_bypass(
-    const char* path, const char** type_names, size_t type_name_count);
-IFCAPI_EXPORT ifcopenshell_ifc_file_t* ifcopenshell_file_from_string(const char* data, int length);
-
-/// Returns an opaque IfcFile pointer. Free with ifcopenshell_file_free().
-IFCAPI_EXPORT ifcopenshell_ifc_file_t* ifcopenshell_file_create(const char* schema_name);
-
-/// Frees a file created by ifcopenshell_file_create().
-IFCAPI_EXPORT void ifcopenshell_file_free(ifcopenshell_ifc_file_t* file);
-
-/// Returns the schema identifier string (e.g. "IFC4"). Do NOT free.
-IFCAPI_EXPORT const char* ifcopenshell_file_schema(const ifcopenshell_ifc_file_t* file);
-
-/// Returns the FILE_DESCRIPTION header section as an instance handle, or NULL.
-/// The wrapper must be freed with ifcopenshell_instance_free; the underlying
-/// C++ entity is owned by the file.
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_file_header_file_description(ifcopenshell_ifc_file_t* file);
-
-/// Returns the FILE_NAME header section as an instance handle, or NULL.
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_file_header_file_name(ifcopenshell_ifc_file_t* file);
-
-/// Returns the FILE_SCHEMA header section as an instance handle, or NULL.
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_file_header_file_schema(ifcopenshell_ifc_file_t* file);
-
-IFCAPI_EXPORT ifcopenshell_ifc_instance_streamer_t* ifcopenshell_instance_streamer_create(void);
-IFCAPI_EXPORT ifcopenshell_ifc_instance_streamer_t* ifcopenshell_instance_streamer_create_from_path(
-    const char* path, bool mmap);
-IFCAPI_EXPORT bool ifcopenshell_instance_streamer_semicolon_count(
-    ifcopenshell_ifc_instance_streamer_t* streamer, size_t* out_count);
 IFCAPI_EXPORT bool ifcopenshell_taxonomy_function_item_start(
     ifcopenshell_ifcgeom_taxonomy_item_t* item, double* out);
 IFCAPI_EXPORT bool ifcopenshell_taxonomy_function_item_end(
     ifcopenshell_ifcgeom_taxonomy_item_t* item, double* out);
 
-/// Creates a blank entity of the given type. Returns its STEP ID, or 0 on error.
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_file_create_entity(ifcopenshell_ifc_file_t* file, const char* type_name);
-
-/// Same as ifcopenshell_file_create_entity, but assigns an explicit STEP ID
-/// (used by the Python transaction system to recreate deleted entities at
-/// their original ID during undo). Returns NULL if the ID is already in use.
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_file_create_entity_with_id(
-    ifcopenshell_ifc_file_t* file, const char* type_name, uint32_t id);
-
-/// Adds an entity (and all of its forward references) into `file`.
-/// `instance` may belong to another file — in that case a deep copy is made
-/// and the copy is registered. Returns the (possibly new) handle owned by
-/// `file`, or NULL on failure. Pass `id == 0` to auto-assign a fresh ID.
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_file_add_entity(
-    ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* instance, uint32_t id);
-
-/// Returns the largest STEP ID currently assigned in `file` (0 if empty).
-IFCAPI_EXPORT uint32_t ifcopenshell_file_get_max_id(const ifcopenshell_ifc_file_t* file);
-
-/// Returns the number of entities of the given type.
-IFCAPI_EXPORT int32_t ifcopenshell_file_by_type_count(const ifcopenshell_ifc_file_t* file, const char* type_name);
-
-/// Fills ids_out with STEP IDs of entities of the given type.
-/// ids_out must have space for at least ifcopenshell_file_by_type_count() elements.
-/// Returns the number of IDs written.
-IFCAPI_EXPORT int32_t ifcopenshell_file_by_type(const ifcopenshell_ifc_file_t* file, const char* type_name, ifcopenshell_ifc_instance_t** ids_out);
-
 /// Frees an array of instance handles returned by ifcapi functions.
 /// Each handle wrapper is destroyed (the underlying entities remain owned by the file).
 IFCAPI_EXPORT void ifcopenshell_free_instance_array(ifcopenshell_ifc_instance_t** arr, uint32_t count);
 
-/// Frees only the array buffer returned by APIs returning ifcopenshell_ifc_instance_t**,
-/// without destroying the contained handles. Use this when ownership of the
-/// individual handles is transferred to caller-side wrappers.
-IFCAPI_EXPORT void ifcopenshell_free_instance_array_only(ifcopenshell_ifc_instance_t** arr);
-
-/// Removes an entity from the file and nullifies all references to it.
-IFCAPI_EXPORT void ifcopenshell_file_remove(ifcopenshell_ifc_instance_t* instance);
-
-/// Returns the STEP ID of the entity with the given GlobalId, or 0 if not found.
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_file_by_guid(const ifcopenshell_ifc_file_t* file, const char* guid);
-
-/// Returns the total number of entities in the file.
-IFCAPI_EXPORT uint32_t ifcopenshell_file_entity_count(const ifcopenshell_ifc_file_t* file);
-
-/// Returns all STEP IDs in the file. Caller must free with ifcopenshell_free_instance_array().
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_file_entity_ids(const ifcopenshell_ifc_file_t* file, uint32_t* count);
-
-/// Returns STEP IDs of entities that reference the given entity.
-/// Caller must free the returned array with ifcopenshell_free_instance_array().
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_file_get_inverse(ifcopenshell_ifc_instance_t* instance, uint32_t* count);
-
-/// Returns the attribute indices (one per inverse pair, parallel to
-/// ifcopenshell_file_get_inverse) of attributes pointing back at the given
-/// entity. Caller must free with ifcopenshell_free_int32_array().
-IFCAPI_EXPORT int32_t* ifcopenshell_file_get_inverse_indices(ifcopenshell_ifc_instance_t* instance, uint32_t* count);
-
 /// Frees an int32_t array returned by the API.
 IFCAPI_EXPORT void ifcopenshell_free_int32_array(int32_t* arr);
-
-/// Recursively traverses all entities referenced by the given entity.
-/// max_levels=0 means unlimited. Caller must free with ifcopenshell_free_instance_array().
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_file_traverse(ifcopenshell_ifc_instance_t* instance, int max_levels, uint32_t* count);
-
-/// Writes the file to disk in IFC-SPF format.
-IFCAPI_EXPORT bool ifcopenshell_file_write(ifcopenshell_ifc_file_t* file, const char* path);
-
-/// Serializes the file to an IFC-SPF string. Caller must free with ifcopenshell_free_string().
-IFCAPI_EXPORT char* ifcopenshell_file_to_string(ifcopenshell_ifc_file_t* file);
 
 /* ------------------------------------------------------------------ */
 /*  Entity attribute type tags                                         */
@@ -199,130 +96,10 @@ typedef enum {
 /*  Entity operations                                                  */
 /* ------------------------------------------------------------------ */
 
-/// Returns the IFC type name of the entity (e.g. "IfcWall"). Do NOT free.
-IFCAPI_EXPORT const char* ifcopenshell_entity_type(const ifcopenshell_ifc_instance_t* instance);
-
-/// Returns a borrowed handle to the file that owns this instance, or NULL if
-/// the instance is detached. Destroy only the returned handle wrapper.
-IFCAPI_EXPORT ifcopenshell_ifc_file_t* ifcopenshell_ifc_instance_file(const ifcopenshell_ifc_instance_t* instance);
-
-/// Returns true if the entity is-a (subtype of) the given type name.
-/// If type_name is NULL, returns false.
-IFCAPI_EXPORT bool ifcopenshell_entity_is_a(const ifcopenshell_ifc_instance_t* instance, const char* type_name);
-
-/// Returns true if the entity has an attribute with the given name.
-IFCAPI_EXPORT bool ifcopenshell_entity_has_attr(const ifcopenshell_ifc_instance_t* instance, const char* attr);
-
-/// Returns the type tag of the attribute's current value.
-IFCAPI_EXPORT ifcopenshell_attr_type ifcopenshell_entity_attr_type(const ifcopenshell_ifc_instance_t* instance, const char* attr);
-
-/// Returns true if the attribute is null/unset.
-IFCAPI_EXPORT bool ifcopenshell_entity_attr_is_null(const ifcopenshell_ifc_instance_t* instance, const char* attr);
-
-/// Returns the number of attributes on the entity.
-IFCAPI_EXPORT uint32_t ifcopenshell_entity_attr_count(const ifcopenshell_ifc_instance_t* instance);
-
-/// Returns the name of the attribute at the given index. Caller must free with ifcopenshell_free_string().
-IFCAPI_EXPORT char* ifcopenshell_entity_attr_name(const ifcopenshell_ifc_instance_t* instance, uint32_t index);
-
-/// Returns the raw string representation of the entity. Caller must free with ifcopenshell_free_string().
-IFCAPI_EXPORT char* ifcopenshell_entity_to_string(const ifcopenshell_ifc_instance_t* instance);
-
-/// Returns the valid IFC-SPF string representation of the entity. Caller must free with ifcopenshell_free_string().
-IFCAPI_EXPORT char* ifcopenshell_entity_to_string_valid_spf(const ifcopenshell_ifc_instance_t* instance);
-
-/* ------------------------------------------------------------------ */
-/*  Entity attribute getters (caller frees char* with free_string)     */
-/* ------------------------------------------------------------------ */
-
-IFCAPI_EXPORT char* ifcopenshell_entity_get_string(const ifcopenshell_ifc_instance_t* instance, const char* attr);
-IFCAPI_EXPORT int64_t ifcopenshell_entity_get_int(const ifcopenshell_ifc_instance_t* instance, const char* attr);
-IFCAPI_EXPORT double ifcopenshell_entity_get_double(const ifcopenshell_ifc_instance_t* instance, const char* attr);
-IFCAPI_EXPORT int ifcopenshell_entity_get_bool(const ifcopenshell_ifc_instance_t* instance, const char* attr);
-IFCAPI_EXPORT char* ifcopenshell_entity_get_enum(const ifcopenshell_ifc_instance_t* instance, const char* attr);
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_entity_get_reference(const ifcopenshell_ifc_instance_t* instance, const char* attr);
-
-/* ------------------------------------------------------------------ */
-/*  Entity attribute setters                                           */
-/* ------------------------------------------------------------------ */
-
-IFCAPI_EXPORT void ifcopenshell_entity_set_string(ifcopenshell_ifc_instance_t* instance, const char* attr, const char* val);
-IFCAPI_EXPORT void ifcopenshell_entity_set_int(ifcopenshell_ifc_instance_t* instance, const char* attr, int64_t val);
-IFCAPI_EXPORT void ifcopenshell_entity_set_double(ifcopenshell_ifc_instance_t* instance, const char* attr, double val);
-IFCAPI_EXPORT void ifcopenshell_entity_set_bool(ifcopenshell_ifc_instance_t* instance, const char* attr, int val);
-/// Returns true if the enum value was valid and set, false otherwise.
-IFCAPI_EXPORT bool ifcopenshell_entity_set_enum(ifcopenshell_ifc_instance_t* instance, const char* attr, const char* val);
-IFCAPI_EXPORT void ifcopenshell_entity_set_reference(ifcopenshell_ifc_instance_t* instance, const char* attr, ifcopenshell_ifc_instance_t* ref);
-IFCAPI_EXPORT void ifcopenshell_entity_set_null(ifcopenshell_ifc_instance_t* instance, const char* attr);
-
-/// Create a simple type instance (e.g. IfcLabel, IfcReal) and return its STEP ID.
-/// The value is parsed from the string representation based on the type.
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_file_create_type_instance(ifcopenshell_ifc_file_t* file, const char* type_name, const char* str_value);
-
-/// Set an attribute to reference a simple type instance (like NominalValue = IfcLabel("test")).
-/// type_name: the IFC type name (e.g. "IfcLabel"). str_value: string representation of the value.
-IFCAPI_EXPORT bool ifcopenshell_entity_set_typed_value(ifcopenshell_ifc_instance_t* instance, const char* attr, const char* type_name, const char* str_value);
-
-/// Read a typed value from an attribute. Returns the IFC type name (e.g. "IfcLabel").
-/// If value_out is non-NULL, writes the string representation of the wrapped value (caller frees).
-/// Returns NULL if the attribute is not a typed value.
-IFCAPI_EXPORT const char* ifcopenshell_entity_get_typed_value(const ifcopenshell_ifc_instance_t* instance, const char* attr, char** value_out);
-
-/* ------------------------------------------------------------------ */
-/*  Entity aggregate (list) attribute getters                          */
-/* ------------------------------------------------------------------ */
-
-/// Returns the number of elements in an aggregate attribute, or -1 on error.
-IFCAPI_EXPORT int32_t ifcopenshell_entity_get_aggregate_size(const ifcopenshell_ifc_instance_t* instance, const char* attr);
-
-/// Returns an array of int values from an aggregate attribute. Caller frees with ifcopenshell_free_int_array().
-IFCAPI_EXPORT int64_t* ifcopenshell_entity_get_aggregate_int(const ifcopenshell_ifc_instance_t* instance, const char* attr, uint32_t* count);
-
-/// Returns an array of double values. Caller frees with ifcopenshell_free_double_array().
-IFCAPI_EXPORT double* ifcopenshell_entity_get_aggregate_double(const ifcopenshell_ifc_instance_t* instance, const char* attr, uint32_t* count);
-
-/// Returns an array of string values. Caller frees each string with ifcopenshell_free_string(), then the array with ifcopenshell_free_string_array().
-IFCAPI_EXPORT char** ifcopenshell_entity_get_aggregate_string(const ifcopenshell_ifc_instance_t* instance, const char* attr, uint32_t* count);
-
-/// Returns an array of STEP IDs (entity references). Caller frees with ifcopenshell_free_instance_array().
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_entity_get_aggregate_ref(const ifcopenshell_ifc_instance_t* instance, const char* attr, uint32_t* count);
-
-/// Returns the outer size of an aggregate-of-aggregate-of-entity attribute, or -1 on error.
-IFCAPI_EXPORT int32_t ifcopenshell_entity_get_aggregate_ref_list_list_size(const ifcopenshell_ifc_instance_t* instance, const char* attr);
-
-/// Returns the inner size at `outer_index` for an aggregate-of-aggregate-of-entity attribute, or -1 on error.
-IFCAPI_EXPORT int32_t ifcopenshell_entity_get_aggregate_ref_list_list_inner_size(const ifcopenshell_ifc_instance_t* instance, const char* attr, uint32_t outer_index);
-
-/// Returns an entity reference at `[outer_index][inner_index]` for an aggregate-of-aggregate-of-entity attribute, or NULL on error.
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_entity_get_aggregate_ref_list_list_item(const ifcopenshell_ifc_instance_t* instance, const char* attr, uint32_t outer_index, uint32_t inner_index);
-
-/// Reads an aggregate of inline typed values (e.g. SET OF IfcValue).
-/// Fills type_names_out and values_out arrays (caller frees each string, then arrays).
-/// Returns number of elements, or -1 on error.
-IFCAPI_EXPORT int32_t ifcopenshell_entity_get_aggregate_typed_value(const ifcopenshell_ifc_instance_t* instance, const char* attr,
-    char*** type_names_out, char*** values_out);
-
-/* ------------------------------------------------------------------ */
-/*  Entity aggregate (list) attribute setters                          */
-/* ------------------------------------------------------------------ */
-
-IFCAPI_EXPORT bool ifcopenshell_entity_set_aggregate_int(ifcopenshell_ifc_instance_t* instance, const char* attr, const int64_t* vals, uint32_t count);
-IFCAPI_EXPORT bool ifcopenshell_entity_set_aggregate_double(ifcopenshell_ifc_instance_t* instance, const char* attr, const double* vals, uint32_t count);
-IFCAPI_EXPORT bool ifcopenshell_entity_set_aggregate_string(ifcopenshell_ifc_instance_t* instance, const char* attr, const char** vals, uint32_t count);
-IFCAPI_EXPORT bool ifcopenshell_entity_set_aggregate_ref(ifcopenshell_ifc_instance_t* instance, const char* attr, ifcopenshell_ifc_instance_t** refs, uint32_t count);
-
-/// Sets an aggregate attribute to a list of typed values.
-/// type_names and str_values must have `count` elements each.
-/// Each pair (type_names[i], str_values[i]) creates an inline typed value like IfcLabel('foo').
-IFCAPI_EXPORT bool ifcopenshell_entity_set_aggregate_typed_value(ifcopenshell_ifc_instance_t* instance, const char* attr,
-    const char** type_names, const char** str_values, uint32_t count);
-
 /* ------------------------------------------------------------------ */
 /*  Aggregate memory management                                        */
 /* ------------------------------------------------------------------ */
 
-IFCAPI_EXPORT void ifcopenshell_free_int_array(int64_t* arr);
-IFCAPI_EXPORT void ifcopenshell_free_double_array(double* arr);
 IFCAPI_EXPORT void ifcopenshell_free_string_array(char** arr, uint32_t count);
 
 /* ------------------------------------------------------------------ */
@@ -330,12 +107,6 @@ IFCAPI_EXPORT void ifcopenshell_free_string_array(char** arr, uint32_t count);
 /* ------------------------------------------------------------------ */
 
 /// Returns true if the given name is an inverse attribute on the entity.
-IFCAPI_EXPORT bool ifcopenshell_entity_is_inverse_attr(const ifcopenshell_ifc_instance_t* instance, const char* attr);
-
-/// Returns entity IDs for a named inverse attribute (e.g. "IsDecomposedBy").
-/// Caller must free with ifcopenshell_free_instance_array().
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_entity_get_inverse_attr(ifcopenshell_ifc_instance_t* instance, const char* attr, uint32_t* count);
-
 /* ------------------------------------------------------------------ */
 /*  Utility: deep removal                                              */
 /* ------------------------------------------------------------------ */
@@ -505,26 +276,6 @@ IFCAPI_EXPORT void ifcopenshell_placement_rotation(
 /*  High-level: element graph utilities                                */
 /* ------------------------------------------------------------------ */
 
-/// Get the construction type of an element (resolves IsTypedBy / IfcRelDefinesByType).
-/// Returns the type STEP ID, or 0 if none.
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_element_get_type(const ifcopenshell_ifc_instance_t* instance);
-
-/// Get the aggregate parent via IfcRelAggregates. Returns 0 if none.
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_element_get_aggregate(const ifcopenshell_ifc_instance_t* instance);
-
-/// Get the nest parent via IfcRelNests (IFC4+) or Decomposes (IFC2X3). Returns 0 if none.
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_element_get_nest(const ifcopenshell_ifc_instance_t* instance);
-
-/// Get the spatial container of an element.
-/// If direct_only is true, only returns the direct IfcRelContainedInSpatialStructure link.
-/// Otherwise walks aggregation chain. Optional ifc_class filter (NULL or empty = any).
-/// Returns 0 if no container matches.
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_element_get_container(const ifcopenshell_ifc_instance_t* instance, bool direct_only, const char* ifc_class);
-
-/// Get the spatial parent of an element. Tries direct container, then aggregate,
-/// then nest, then filled void, then voided element. Returns 0 if none.
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_element_get_parent(const ifcopenshell_ifc_instance_t* instance);
-
 /// Get the full decomposition (recursive if is_recursive is true) of an element.
 /// Traverses ContainsElements, IsDecomposedBy, HasOpenings, HasFillings, IsNestedBy.
 /// Caller must free the returned array with ifcopenshell_free_instance_array(). Returns NULL when empty.
@@ -536,12 +287,6 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_element_get_decompositi
 IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_element_get_pset_ids(const ifcopenshell_ifc_instance_t* instance,
     bool psets_only, bool qtos_only, bool should_inherit,
     uint32_t* out_count);
-
-/// Returns the STEP ID of the material associated with *element*, or 0.
-/// If should_skip_usage is true, layer/profile set usages are unwrapped to
-/// their underlying set. If should_inherit is true, materials inherited from
-/// the element's type are considered.
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_element_get_material(const ifcopenshell_ifc_instance_t* instance, bool should_skip_usage, bool should_inherit);
 
 /* ------------------------------------------------------------------ */
 /*  High-level: representation utilities                               */

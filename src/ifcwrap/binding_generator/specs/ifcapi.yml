@@ -1,0 +1,211 @@
+# High-level IfcOpenShell API binding specification.
+#
+# This spec intentionally imports core handles from ifcparse rather than
+# redefining file/entity ownership. YAML remains policy and facade selection;
+# the stable callable surface lives in src/ifcapi/include/ifcapi/bindings/.
+schema_version: 1
+module: ifcopenshell
+slice: ifcapi
+c_prefix: ifcopenshell_ifcapi
+
+public_headers:
+  - guid.h
+  - ifcapi/bindings/element.h
+  - ifcapi/bindings/entity.h
+
+imports:
+  - slice: ifcparse
+    handles:
+      - instance
+
+functions:
+  - expose_as: guid_new
+    cpp_name: ifcapi::guid_new
+    returns:
+      kind: string
+      ownership: owned
+    params: []
+
+  - expose_as: guid_compress
+    cpp_name: ifcapi::guid_compress
+    returns:
+      kind: string
+      ownership: owned
+    params:
+      - name: uuid_hex
+        type:
+          kind: string
+
+  - expose_as: guid_expand
+    cpp_name: ifcapi::guid_expand
+    returns:
+      kind: string
+      ownership: owned
+    params:
+      - name: guid
+        type:
+          kind: string
+
+  - expose_as: element_get_type
+    cpp_name: ifcapi::bindings::element_get_type
+    returns:
+      kind: handle
+      handle: instance
+      ownership: borrowed
+    params:
+      - name: instance
+        type:
+          kind: handle
+          handle: instance
+          ownership: borrowed
+
+  - expose_as: element_get_aggregate
+    cpp_name: ifcapi::bindings::element_get_aggregate
+    returns:
+      kind: handle
+      handle: instance
+      ownership: borrowed
+    params:
+      - name: instance
+        type:
+          kind: handle
+          handle: instance
+          ownership: borrowed
+
+  - expose_as: element_get_nest
+    cpp_name: ifcapi::bindings::element_get_nest
+    returns:
+      kind: handle
+      handle: instance
+      ownership: borrowed
+    params:
+      - name: instance
+        type:
+          kind: handle
+          handle: instance
+          ownership: borrowed
+
+  - expose_as: element_get_container
+    cpp_name: ifcapi::bindings::element_get_container
+    returns:
+      kind: handle
+      handle: instance
+      ownership: borrowed
+    params:
+      - name: instance
+        type:
+          kind: handle
+          handle: instance
+          ownership: borrowed
+      - name: direct_only
+        type:
+          kind: bool
+      - name: ifc_class
+        type:
+          kind: string
+          nullable: true
+
+  - expose_as: element_get_parent
+    cpp_name: ifcapi::bindings::element_get_parent
+    returns:
+      kind: handle
+      handle: instance
+      ownership: borrowed
+    params:
+      - name: instance
+        type:
+          kind: handle
+          handle: instance
+          ownership: borrowed
+
+  - expose_as: element_get_material
+    cpp_name: ifcapi::bindings::element_get_material
+    returns:
+      kind: handle
+      handle: instance
+      ownership: borrowed
+    params:
+      - name: instance
+        type:
+          kind: handle
+          handle: instance
+          ownership: borrowed
+      - name: should_skip_usage
+        type:
+          kind: bool
+      - name: should_inherit
+        type:
+          kind: bool
+
+  - expose_as: entity_set_typed_value
+    cpp_name: ifcapi::bindings::entity_set_typed_value
+    returns:
+      kind: bool
+    params:
+      - name: instance
+        type:
+          kind: handle
+          handle: instance
+          ownership: borrowed
+      - name: attr
+        type:
+          kind: string
+      - name: type_name
+        type:
+          kind: string
+      - name: str_value
+        type:
+          kind: string
+          nullable: true
+
+  - expose_as: entity_get_typed_value
+    cpp_name: ifcapi::bindings::entity_get_typed_value
+    returns:
+      kind: string_list
+      ownership: copy
+    params:
+      - name: instance
+        type:
+          kind: handle
+          handle: instance
+          ownership: borrowed
+      - name: attr
+        type:
+          kind: string
+
+  - expose_as: entity_set_aggregate_typed_value
+    cpp_name: ifcapi::bindings::entity_set_aggregate_typed_value
+    returns:
+      kind: bool
+    params:
+      - name: instance
+        type:
+          kind: handle
+          handle: instance
+          ownership: borrowed
+      - name: attr
+        type:
+          kind: string
+      - name: type_names
+        type:
+          kind: string_list
+          ownership: copy
+      - name: str_values
+        type:
+          kind: string_list
+          ownership: copy
+
+  - expose_as: entity_get_aggregate_typed_value
+    cpp_name: ifcapi::bindings::entity_get_aggregate_typed_value
+    returns:
+      kind: string_list
+      ownership: copy
+    params:
+      - name: instance
+        type:
+          kind: handle
+          handle: instance
+          ownership: borrowed
+      - name: attr
+        type:
+          kind: string

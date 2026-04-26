@@ -30,6 +30,7 @@ if(BUILD_IFCCAPI)
     set(IFCPARSE_CAPI_GENERATED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/generated")
     set(IFCPARSE_CAPI_SPEC "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/ifcparse.yml")
     set(IFCGEOM_CAPI_SPEC "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/ifcgeom.yml")
+    set(IFCAPI_CAPI_SPEC "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/ifcapi.yml")
     set(IFCPARSE_CAPI_GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/c_backend.py")
     
     # Unified API files
@@ -64,6 +65,7 @@ if(BUILD_IFCCAPI)
                 ${Python_EXECUTABLE} "${IFCPARSE_CAPI_GENERATOR}"
                 --spec "${IFCPARSE_CAPI_SPEC}"
                 --spec "${IFCGEOM_CAPI_SPEC}"
+                --spec "${IFCAPI_CAPI_SPEC}"
                 --header-out "${UNIFIED_CAPI_HEADER}"
                 --cpp-out "${UNIFIED_CAPI_CPP}"
                 --compile-commands "${CMAKE_BINARY_DIR}/compile_commands.json"
@@ -72,6 +74,7 @@ if(BUILD_IFCCAPI)
             DEPENDS
                 "${IFCPARSE_CAPI_SPEC}"
                 "${IFCGEOM_CAPI_SPEC}"
+                "${IFCAPI_CAPI_SPEC}"
                 "${IFCPARSE_CAPI_GENERATOR}"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/authored_spec.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/__init__.py"

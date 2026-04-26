@@ -262,7 +262,9 @@ static void test_core(void) {
     expect_true(ifcopenshell_ifcparse_version(&version), ifcopenshell_last_error_message());
     expect_true(version.data != NULL && version.size > 0, "Version string is empty");
 
-    expect_true(ifcopenshell_ifcparse_read_memory(IFC_FIXTURE, &file), ifcopenshell_last_error_message());
+    expect_true(
+        ifcopenshell_ifcparse_read_memory((void*)IFC_FIXTURE, (int32_t)strlen(IFC_FIXTURE), &file),
+        ifcopenshell_last_error_message());
     expect_true(file != NULL, "File handle is null");
 
     expect_true(ifcopenshell_ifcparse_schema_by_name("IFC4", &schema_lookup), ifcopenshell_last_error_message());
@@ -1095,7 +1097,7 @@ static void test_surface(void) {
 
     snprintf(output_path, sizeof(output_path), "/tmp/ifcopenshell_ifcparse_capi_surface_%ld.ifc", (long)getpid());
 
-    expect_ok(ifcopenshell_ifcparse_read_memory(IFC_FIXTURE, &file));
+    expect_ok(ifcopenshell_ifcparse_read_memory((void*)IFC_FIXTURE, (int32_t)strlen(IFC_FIXTURE), &file));
     expect_ok(ifcopenshell_ifc_file_by_id(file, 1, &point));
     expect_ok(ifcopenshell_ifc_file_by_id(file, 2, &point_two));
     expect_ok(ifcopenshell_ifc_file_by_id(file, 3, &polyline));
