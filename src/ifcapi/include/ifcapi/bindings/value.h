@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace IfcUtil {
 class IfcBaseClass;
@@ -25,6 +26,11 @@ ifcopenshell_value_t* selector_get_element_value(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* element,
     const std::string& query);
+ifcopenshell_value_t* selector_filter_all(IfcParse::IfcFile* file, const std::string& query);
+ifcopenshell_value_t* selector_filter_elements(
+    IfcParse::IfcFile* file,
+    const std::string& query,
+    const std::vector<const IfcUtil::IfcBaseClass*>& elements);
 ifcopenshell_value_t* compute_derived(IfcUtil::IfcBaseClass* instance, const std::string& attribute_name);
 int32_t value_kind(const ifcopenshell_value_t* value);
 bool value_as_bool(const ifcopenshell_value_t* value);
