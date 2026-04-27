@@ -18,6 +18,13 @@ def _spec_dir() -> Path:
 
 def _core_handles() -> dict[str, HandleSpec]:
     return {
+        "file": HandleSpec(
+            name="file",
+            cpp_type="IfcParse::IfcFile",
+            c_type="ifcopenshell_ifc_file_t",
+            destructor="delete",
+            ptr_type="raw",
+        ),
         "instance": HandleSpec(
             name="instance",
             cpp_type="IfcUtil::IfcBaseClass",
@@ -35,7 +42,7 @@ def test_ifcapi_spec_imports_core_handles_without_redefining_them() -> None:
     raw_handle_names = {handle["name"] for handle in raw_spec.get("handles", [])}
     assert raw_handle_names == {"value"}
     assert "instance" not in raw_handle_names
-    assert raw_spec["imports"] == [{"slice": "ifcparse", "handles": ["instance"]}]
+    assert raw_spec["imports"] == [{"slice": "ifcparse", "handles": ["file", "instance"]}]
 
     spec = load_authored_spec(spec_path, existing_handles=_core_handles())
     assert spec.slice == "ifcapi"
@@ -56,6 +63,7 @@ def test_ifcapi_spec_imports_core_handles_without_redefining_them() -> None:
         "ifcopenshell_ifcapi_element_get_material",
         "ifcopenshell_ifcapi_entity_set_typed_value",
         "ifcopenshell_ifcapi_entity_get_typed_value",
+        "ifcopenshell_ifcapi_selector_get_element_value",
         "ifcopenshell_ifcapi_compute_derived",
         "ifcopenshell_ifcapi_value_kind",
     }.issubset({call.c_name for call in spec.functions})

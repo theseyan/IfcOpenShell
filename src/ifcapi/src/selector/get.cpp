@@ -3,11 +3,26 @@
 #include "selector/internal.h"
 #include "ifcapi/express_rules.h"
 
+extern "C" ifcopenshell_value_t* ifcopenshell_selector_get_element_value(
+    ifcopenshell_ifc_file_t* file,
+    ifcopenshell_ifc_instance_t* element,
+    const char* query);
+
 namespace ifcapi {
 namespace bindings {
 
 void value_free(ifcopenshell_value_t* value) {
     ifcopenshell_value_free(value);
+}
+
+ifcopenshell_value_t* selector_get_element_value(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* element,
+    const std::string& query)
+{
+    ifcopenshell_ifc_file_t file_handle{file, false};
+    ifcopenshell_ifc_instance_t element_handle{element, false};
+    return ifcopenshell_selector_get_element_value(file ? &file_handle : nullptr, &element_handle, query.c_str());
 }
 
 ifcopenshell_value_t* compute_derived(IfcUtil::IfcBaseClass* instance, const std::string& attribute_name) {
