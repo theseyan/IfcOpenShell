@@ -17,6 +17,7 @@ public_headers:
 imports:
   - slice: ifcparse
     handles:
+      - file
       - instance
 
 handles:
@@ -227,6 +228,29 @@ functions:
           kind: handle
           handle: value
           ownership: borrowed
+
+  - expose_as: selector_get_element_value
+    cpp_name: ifcapi::bindings::selector_get_element_value
+    returns:
+      kind: handle
+      handle: value
+      ownership: owned
+      nullable: true
+    params:
+      - name: file
+        type:
+          kind: handle
+          handle: file
+          ownership: borrowed
+          nullable: true
+      - name: element
+        type:
+          kind: handle
+          handle: instance
+          ownership: borrowed
+      - name: query
+        type:
+          kind: string
 
   - expose_as: compute_derived
     cpp_name: ifcapi::bindings::compute_derived

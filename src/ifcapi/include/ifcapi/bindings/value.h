@@ -13,10 +13,18 @@ namespace IfcUtil {
 class IfcBaseClass;
 }
 
+namespace IfcParse {
+class IfcFile;
+}
+
 namespace ifcapi {
 namespace bindings {
 
 void value_free(ifcopenshell_value_t* value);
+ifcopenshell_value_t* selector_get_element_value(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* element,
+    const std::string& query);
 ifcopenshell_value_t* compute_derived(IfcUtil::IfcBaseClass* instance, const std::string& attribute_name);
 int32_t value_kind(const ifcopenshell_value_t* value);
 bool value_as_bool(const ifcopenshell_value_t* value);

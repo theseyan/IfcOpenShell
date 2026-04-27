@@ -572,11 +572,6 @@ IFCAPI_EXPORT void ifcopenshell_util_element_remove_deep(
 extern "C" {
 #endif
 
-IFCAPI_EXPORT ifcopenshell_value_t* ifcopenshell_selector_get_element_value(
-    ifcopenshell_ifc_file_t* file,
-    ifcopenshell_ifc_instance_t* element,
-    const char* query);
-
 /* Returns a LIST value containing INSTANCE elements matching the filter query.
    Pass elements/elements_count to constrain the candidate set (or NULL/0 for
    the whole file).  edit_in_place is unused at the C level (Python handles it).
