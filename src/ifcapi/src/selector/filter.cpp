@@ -1015,6 +1015,51 @@ ifcopenshell_value_t* ifcopenshell_selector_filter_elements(
     const char* query,
     ifcopenshell_ifc_instance_t* const* elements,
     size_t elements_count,
+    int edit_in_place);
+
+} // extern "C"
+
+namespace ifcapi {
+namespace bindings {
+
+ifcopenshell_value_t* selector_filter_all(IfcParse::IfcFile* file, const std::string& query)
+{
+    ifcopenshell_ifc_file_t file_handle{file, false};
+    return ifcopenshell_selector_filter_elements(file ? &file_handle : nullptr, query.c_str(), nullptr, 0, 0);
+}
+
+ifcopenshell_value_t* selector_filter_elements(
+    IfcParse::IfcFile* file,
+    const std::string& query,
+    const std::vector<const IfcUtil::IfcBaseClass*>& elements)
+{
+    ifcopenshell_ifc_file_t file_handle{file, false};
+    std::vector<ifcopenshell_ifc_instance_t> handles;
+    std::vector<ifcopenshell_ifc_instance_t*> handle_ptrs;
+    handles.reserve(elements.size());
+    handle_ptrs.reserve(elements.size());
+    for (auto* element : elements) {
+        handles.push_back(ifcopenshell_ifc_instance_t{const_cast<IfcUtil::IfcBaseClass*>(element), false});
+        handle_ptrs.push_back(&handles.back());
+    }
+    return ifcopenshell_selector_filter_elements(
+        file ? &file_handle : nullptr,
+        query.c_str(),
+        handle_ptrs.empty() ? nullptr : handle_ptrs.data(),
+        handle_ptrs.size(),
+        0);
+}
+
+} // namespace bindings
+} // namespace ifcapi
+
+extern "C" {
+
+ifcopenshell_value_t* ifcopenshell_selector_filter_elements(
+    ifcopenshell_ifc_file_t* file,
+    const char* query,
+    ifcopenshell_ifc_instance_t* const* elements,
+    size_t elements_count,
     int /*edit_in_place*/)
 {
     if (!file || !file->ptr || !query) {

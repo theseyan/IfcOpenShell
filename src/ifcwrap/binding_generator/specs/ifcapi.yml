@@ -252,6 +252,46 @@ functions:
         type:
           kind: string
 
+  - expose_as: selector_filter_all
+    cpp_name: ifcapi::bindings::selector_filter_all
+    returns:
+      kind: handle
+      handle: value
+      ownership: owned
+      nullable: true
+    params:
+      - name: file
+        type:
+          kind: handle
+          handle: file
+          ownership: borrowed
+      - name: query
+        type:
+          kind: string
+
+  - expose_as: selector_filter_elements
+    cpp_name: ifcapi::bindings::selector_filter_elements
+    returns:
+      kind: handle
+      handle: value
+      ownership: owned
+      nullable: true
+    params:
+      - name: file
+        type:
+          kind: handle
+          handle: file
+          ownership: borrowed
+      - name: query
+        type:
+          kind: string
+      - name: elements
+        type:
+          kind: handle_list
+          handle: instance
+          ownership: borrowed
+          cpp_type: IfcUtil::IfcBaseClass*
+
   - expose_as: compute_derived
     cpp_name: ifcapi::bindings::compute_derived
     returns:

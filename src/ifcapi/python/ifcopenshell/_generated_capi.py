@@ -701,6 +701,8 @@ FUNCTION_SIGNATURES = {
     "ifcopenshell_ifcapi_guid_compress": (ctypes.c_bool, [ctypes.c_char_p, ctypes.POINTER(ifcopenshell_string_t)]),
     "ifcopenshell_ifcapi_guid_expand": (ctypes.c_bool, [ctypes.c_char_p, ctypes.POINTER(ifcopenshell_string_t)]),
     "ifcopenshell_ifcapi_guid_new": (ctypes.c_bool, [ctypes.POINTER(ifcopenshell_string_t)]),
+    "ifcopenshell_ifcapi_selector_filter_all": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_selector_filter_elements": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(ifcopenshell_ifc_instance_list_t), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_selector_get_element_value": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_value_as_bool": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_bool)]),
     "ifcopenshell_ifcapi_value_as_double": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_double)]),

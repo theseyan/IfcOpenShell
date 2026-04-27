@@ -5254,6 +5254,46 @@ bool ifcopenshell_ifcapi_selector_get_element_value(ifcopenshell_ifc_file_t* fil
     }
 }
 
+bool ifcopenshell_ifcapi_selector_filter_all(ifcopenshell_ifc_file_t* file, const char* query, ifcopenshell_ifcapi_value_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (query == nullptr) { throw std::runtime_error("Parameter \"query\" must not be null"); }
+    std::string query_cpp(query);
+        *out_result = new ifcopenshell_ifcapi_value_t{ifcapi::bindings::selector_filter_all(file_cpp, query_cpp), true};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_selector_filter_elements(ifcopenshell_ifc_file_t* file, const char* query, const ifcopenshell_ifc_instance_list_t* elements, ifcopenshell_ifcapi_value_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (query == nullptr) { throw std::runtime_error("Parameter \"query\" must not be null"); }
+    std::string query_cpp(query);
+    if (elements == nullptr) { throw std::runtime_error("Parameter \"elements\" must not be null"); }
+    auto elements_cpp = to_cpp_ifc_instance_list(elements);
+        *out_result = new ifcopenshell_ifcapi_value_t{ifcapi::bindings::selector_filter_elements(file_cpp, query_cpp, elements_cpp), true};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_compute_derived(ifcopenshell_ifc_instance_t* instance, const char* attribute_name, ifcopenshell_ifcapi_value_t** out_result) {
     try {
         ifcopenshell_clear_error();
