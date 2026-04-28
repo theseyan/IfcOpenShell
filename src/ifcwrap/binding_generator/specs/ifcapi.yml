@@ -252,6 +252,41 @@ functions:
         type:
           kind: string
 
+  - expose_as: selector_set_element_value
+    cpp_name: ifcapi::bindings::selector_set_element_value
+    returns:
+      kind: bool
+    params:
+      - name: file
+        type:
+          kind: handle
+          handle: file
+          ownership: borrowed
+      - name: element
+        type:
+          kind: handle
+          handle: instance
+          ownership: borrowed
+          nullable: true
+      - name: keys
+        type:
+          kind: string_list
+          ownership: copy
+      - name: regex_flags
+        type:
+          kind: bool_list
+          ownership: copy
+      - name: value
+        type:
+          kind: handle
+          handle: value
+          ownership: borrowed
+          nullable: true
+      - name: concat
+        type:
+          kind: string
+          nullable: true
+
   - expose_as: selector_filter_all
     cpp_name: ifcapi::bindings::selector_filter_all
     returns:
@@ -319,6 +354,97 @@ functions:
           kind: handle
           handle: value
           ownership: borrowed
+
+  - expose_as: value_new_none
+    cpp_name: ifcapi::bindings::value_new_none
+    returns:
+      kind: handle
+      handle: value
+      ownership: owned
+    params: []
+
+  - expose_as: value_new_bool
+    cpp_name: ifcapi::bindings::value_new_bool
+    returns:
+      kind: handle
+      handle: value
+      ownership: owned
+    params:
+      - name: value
+        type:
+          kind: bool
+
+  - expose_as: value_new_int
+    cpp_name: ifcapi::bindings::value_new_int
+    returns:
+      kind: handle
+      handle: value
+      ownership: owned
+    params:
+      - name: value
+        type:
+          kind: int64
+
+  - expose_as: value_new_double
+    cpp_name: ifcapi::bindings::value_new_double
+    returns:
+      kind: handle
+      handle: value
+      ownership: owned
+    params:
+      - name: value
+        type:
+          kind: double
+
+  - expose_as: value_new_string
+    cpp_name: ifcapi::bindings::value_new_string
+    returns:
+      kind: handle
+      handle: value
+      ownership: owned
+    params:
+      - name: value
+        type:
+          kind: string
+
+  - expose_as: value_new_instance
+    cpp_name: ifcapi::bindings::value_new_instance
+    returns:
+      kind: handle
+      handle: value
+      ownership: owned
+    params:
+      - name: value
+        type:
+          kind: handle
+          handle: instance
+          ownership: borrowed
+          nullable: true
+
+  - expose_as: value_new_list
+    cpp_name: ifcapi::bindings::value_new_list
+    returns:
+      kind: handle
+      handle: value
+      ownership: owned
+    params: []
+
+  - expose_as: value_list_append
+    cpp_name: ifcapi::bindings::value_list_append
+    returns:
+      kind: bool
+    params:
+      - name: list
+        type:
+          kind: handle
+          handle: value
+          ownership: borrowed
+      - name: item
+        type:
+          kind: handle
+          handle: value
+          ownership: borrowed
+          nullable: true
 
   - expose_as: value_as_int64
     cpp_name: ifcapi::bindings::value_as_int64

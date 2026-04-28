@@ -8,7 +8,7 @@
 
 #include "selector/internal.h"
 
-#include "ifcapi/express_rules.h"
+#include "ifcapi/value.h"
 #include "ifcapi/express/runtime.h"
 #include "ifcapi/express/value.h"
 

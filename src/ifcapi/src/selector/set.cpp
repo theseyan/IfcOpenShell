@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/value.h"
 #include "ifcapi/value.h"
 #include "ifcopenshell_api_internal.hpp"
 #include "selector/internal.h"
@@ -1001,20 +1002,110 @@ int do_set(IfcParse::IfcFile* file,
 
 }  // namespace
 
+namespace ifcapi {
+namespace bindings {
+
+ifcopenshell_value_t* value_new_none() {
+    return make_none();
+}
+
+ifcopenshell_value_t* value_new_bool(bool value) {
+    return make_bool(value);
+}
+
+ifcopenshell_value_t* value_new_int(int64_t value) {
+    return make_int(value);
+}
+
+ifcopenshell_value_t* value_new_double(double value) {
+    return make_double(value);
+}
+
+ifcopenshell_value_t* value_new_string(const std::string& value) {
+    return make_string(value);
+}
+
+ifcopenshell_value_t* value_new_instance(IfcUtil::IfcBaseClass* value) {
+    return make_instance(value);
+}
+
+ifcopenshell_value_t* value_new_list() {
+    return make_list();
+}
+
+bool value_list_append(ifcopenshell_value_t* list, const ifcopenshell_value_t* item) {
+    if (list == nullptr || list->kind != IFCSEL_VALUE_LIST) {
+        return false;
+    }
+    list->list_val.push_back(clone_val(item));
+    return true;
+}
+
+bool selector_set_element_value(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* element,
+    const std::vector<std::string>& keys,
+    const std::vector<bool>& regex_flags,
+    const ifcopenshell_value_t* value,
+    const char* concat)
+{
+    if (file == nullptr) {
+        set_error("ifcapi::bindings::selector_set_element_value: NULL file");
+        return false;
+    }
+    if (keys.size() != regex_flags.size()) {
+        set_error("ifcapi::bindings::selector_set_element_value: keys/regex_flags size mismatch");
+        return false;
+    }
+
+    std::vector<KeyEntry> key_entries;
+    key_entries.reserve(keys.size());
+    for (size_t i = 0; i < keys.size(); ++i) {
+        KeyEntry entry;
+        entry.is_regex = regex_flags[i];
+        entry.text = keys[i];
+        if (entry.is_regex) {
+            try {
+                entry.pattern = std::regex(entry.text);
+            } catch (const std::exception& ex) {
+                set_error(std::string("selector_set_element_value: invalid regex key: ") + ex.what());
+                return false;
+            }
+        }
+        key_entries.push_back(std::move(entry));
+    }
+
+    ifcopenshell_ifc_file_t file_handle{file, false};
+    Cursor cursor = element ? Cursor::instance(element) : Cursor::none();
+    std::string concat_s = concat ? concat : ", ";
+    try {
+        return do_set(file, &file_handle, std::move(cursor), key_entries, 0, value, concat_s) == 0;
+    } catch (const std::exception& ex) {
+        set_error(std::string("selector_set_element_value: ") + ex.what());
+        return false;
+    } catch (...) {
+        set_error("selector_set_element_value: unknown error");
+        return false;
+    }
+}
+
+} // namespace bindings
+} // namespace ifcapi
+
 /* ====================================================================
  *  Public C entry points                                                 */
 
 extern "C" {
 
-IFCAPI_EXPORT ifcopenshell_selector_keylist_t* ifcopenshell_selector_keylist_create(void) {
+ifcopenshell_selector_keylist_t* ifcopenshell_selector_keylist_create(void) {
     return new ifcopenshell_selector_keylist_t();
 }
 
-IFCAPI_EXPORT void ifcopenshell_selector_keylist_destroy(ifcopenshell_selector_keylist_t* h) {
+void ifcopenshell_selector_keylist_destroy(ifcopenshell_selector_keylist_t* h) {
     delete h;
 }
 
-IFCAPI_EXPORT void ifcopenshell_selector_keylist_append_string(
+void ifcopenshell_selector_keylist_append_string(
     ifcopenshell_selector_keylist_t* h, const char* str)
 {
     if (!h) return;
@@ -1024,7 +1115,7 @@ IFCAPI_EXPORT void ifcopenshell_selector_keylist_append_string(
     h->keys.push_back(std::move(ke));
 }
 
-IFCAPI_EXPORT void ifcopenshell_selector_keylist_append_regex(
+void ifcopenshell_selector_keylist_append_regex(
     ifcopenshell_selector_keylist_t* h, const char* pattern)
 {
     if (!h) return;
@@ -1036,7 +1127,7 @@ IFCAPI_EXPORT void ifcopenshell_selector_keylist_append_regex(
     h->keys.push_back(std::move(ke));
 }
 
-IFCAPI_EXPORT int ifcopenshell_util_selector_set_element_value(
+int ifcopenshell_util_selector_set_element_value(
     ifcopenshell_ifc_file_t* file_h,
     ifcopenshell_ifc_instance_t* element_h,
     const ifcopenshell_selector_keylist_t* keys_h,
@@ -1066,18 +1157,18 @@ IFCAPI_EXPORT int ifcopenshell_util_selector_set_element_value(
     }
 }
 
-IFCAPI_EXPORT ifcopenshell_value_t* ifcopenshell_value_new_none(void)         { return make_none(); }
-IFCAPI_EXPORT ifcopenshell_value_t* ifcopenshell_value_new_bool(bool b)       { return make_bool(b); }
-IFCAPI_EXPORT ifcopenshell_value_t* ifcopenshell_value_new_int(int64_t i)     { return make_int(i); }
-IFCAPI_EXPORT ifcopenshell_value_t* ifcopenshell_value_new_double(double d)   { return make_double(d); }
-IFCAPI_EXPORT ifcopenshell_value_t* ifcopenshell_value_new_string(const char* s) {
+ifcopenshell_value_t* ifcopenshell_value_new_none(void)         { return make_none(); }
+ifcopenshell_value_t* ifcopenshell_value_new_bool(bool b)       { return make_bool(b); }
+ifcopenshell_value_t* ifcopenshell_value_new_int(int64_t i)     { return make_int(i); }
+ifcopenshell_value_t* ifcopenshell_value_new_double(double d)   { return make_double(d); }
+ifcopenshell_value_t* ifcopenshell_value_new_string(const char* s) {
     return make_string(s ? std::string(s) : std::string());
 }
-IFCAPI_EXPORT ifcopenshell_value_t* ifcopenshell_value_new_instance(ifcopenshell_ifc_instance_t* h) {
+ifcopenshell_value_t* ifcopenshell_value_new_instance(ifcopenshell_ifc_instance_t* h) {
     return make_instance(h ? h->ptr : nullptr);
 }
-IFCAPI_EXPORT ifcopenshell_value_t* ifcopenshell_value_new_list(void) { return make_list(); }
-IFCAPI_EXPORT void ifcopenshell_value_list_append(ifcopenshell_value_t* list, ifcopenshell_value_t* item) {
+ifcopenshell_value_t* ifcopenshell_value_new_list(void) { return make_list(); }
+void ifcopenshell_value_list_append(ifcopenshell_value_t* list, ifcopenshell_value_t* item) {
     if (!list) { delete item; return; }
     if (list->kind != IFCSEL_VALUE_LIST) { delete item; return; }
     list->list_val.push_back(item ? item : make_none());
