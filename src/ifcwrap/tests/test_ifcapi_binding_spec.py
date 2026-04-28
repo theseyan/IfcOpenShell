@@ -64,8 +64,11 @@ def test_ifcapi_spec_imports_core_handles_without_redefining_them() -> None:
         "ifcopenshell_ifcapi_entity_set_typed_value",
         "ifcopenshell_ifcapi_entity_get_typed_value",
         "ifcopenshell_ifcapi_selector_get_element_value",
+        "ifcopenshell_ifcapi_selector_set_element_value",
         "ifcopenshell_ifcapi_compute_derived",
         "ifcopenshell_ifcapi_value_kind",
+        "ifcopenshell_ifcapi_value_new_string",
+        "ifcopenshell_ifcapi_value_list_append",
     }.issubset({call.c_name for call in spec.functions})
 
 
@@ -88,6 +91,8 @@ def test_ifcapi_spec_lowers_to_host_binding_metadata() -> None:
     assert '"ifcopenshell_ifcapi_element_get_material": (' in python
     assert '"ifcopenshell_ifcapi_compute_derived": (' in python
     assert '"ifcopenshell_ifcapi_value_kind": (' in python
+    assert '"ifcopenshell_ifcapi_selector_set_element_value": (' in python
+    assert '"ifcopenshell_ifcapi_value_new_string": (' in python
     assert "def bind(lib, *, strict=True, names=None, prefixes=None):" in python
 
 

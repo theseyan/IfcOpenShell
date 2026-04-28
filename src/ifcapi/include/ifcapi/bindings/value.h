@@ -22,6 +22,14 @@ namespace ifcapi {
 namespace bindings {
 
 void value_free(ifcopenshell_value_t* value);
+ifcopenshell_value_t* value_new_none();
+ifcopenshell_value_t* value_new_bool(bool value);
+ifcopenshell_value_t* value_new_int(int64_t value);
+ifcopenshell_value_t* value_new_double(double value);
+ifcopenshell_value_t* value_new_string(const std::string& value);
+ifcopenshell_value_t* value_new_instance(IfcUtil::IfcBaseClass* value);
+ifcopenshell_value_t* value_new_list();
+bool value_list_append(ifcopenshell_value_t* list, const ifcopenshell_value_t* item);
 ifcopenshell_value_t* selector_get_element_value(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* element,
@@ -31,6 +39,13 @@ ifcopenshell_value_t* selector_filter_elements(
     IfcParse::IfcFile* file,
     const std::string& query,
     const std::vector<const IfcUtil::IfcBaseClass*>& elements);
+bool selector_set_element_value(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* element,
+    const std::vector<std::string>& keys,
+    const std::vector<bool>& regex_flags,
+    const ifcopenshell_value_t* value,
+    const char* concat);
 ifcopenshell_value_t* compute_derived(IfcUtil::IfcBaseClass* instance, const std::string& attribute_name);
 int32_t value_kind(const ifcopenshell_value_t* value);
 bool value_as_bool(const ifcopenshell_value_t* value);

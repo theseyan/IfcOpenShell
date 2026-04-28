@@ -860,33 +860,6 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_util_schema_reassign_cla
     ifcopenshell_ifc_instance_t* element,
     const char* new_class);
 
-/* ------------------------------------------------------------------ */
-/*  util.selector.set_element_value                                    */
-/* ------------------------------------------------------------------ */
-
-/* Opaque heterogeneous list of selector keys. Each entry is either a plain
-   string key or a regular-expression key (POSIX-ish ECMAScript syntax). */
-typedef struct ifcopenshell_selector_keylist_t ifcopenshell_selector_keylist_t;
-
-IFCAPI_EXPORT ifcopenshell_selector_keylist_t* ifcopenshell_selector_keylist_create(void);
-IFCAPI_EXPORT void ifcopenshell_selector_keylist_destroy(ifcopenshell_selector_keylist_t* h);
-IFCAPI_EXPORT void ifcopenshell_selector_keylist_append_string(
-    ifcopenshell_selector_keylist_t* h, const char* str);
-IFCAPI_EXPORT void ifcopenshell_selector_keylist_append_regex(
-    ifcopenshell_selector_keylist_t* h, const char* pattern);
-
-/* Set the value addressed by `keys` on `element`. The `value` argument uses
-   the existing ifcopenshell_value_t variant (NULL == None). `concat` is the
-   separator used when deserialising property-set enum values from a string
-   (defaults to ", " when NULL). Returns 0 on success, non-zero on error
-   (call ifcopenshell_last_error_message()). */
-IFCAPI_EXPORT int ifcopenshell_util_selector_set_element_value(
-    ifcopenshell_ifc_file_t* file,
-    ifcopenshell_ifc_instance_t* element,
-    const ifcopenshell_selector_keylist_t* keys,
-    const ifcopenshell_value_t* value,
-    const char* concat);
-
 #ifdef __cplusplus
 }
 #endif
