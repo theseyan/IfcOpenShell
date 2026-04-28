@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/shape.h"
 #include "ifcapi/bindings/value.h"
 #include "ifcapi/value.h"
 #include "ifcopenshell_api_internal.hpp"
@@ -782,7 +783,7 @@ int do_set(IfcParse::IfcFile* file,
                             try { newv = std::stod(value->s_val); } catch (...) { newv = 0.0; }
                         } else if (value->kind == IFCSEL_VALUE_BOOL) newv = value->b_val ? 1.0 : 0.0;
                     }
-                    if (ifcopenshell_util_shape_is_x(newv, prev, 0.0)) return 0;
+                    if (ifcapi::bindings::shape_is_x(newv, prev, 0.0)) return 0;
 
                     matrix[(size_t)ci * 4 + 3] = newv;
                     ScopedHandle eh(cur.inst);

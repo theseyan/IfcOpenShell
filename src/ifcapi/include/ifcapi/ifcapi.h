@@ -434,13 +434,6 @@ IFCAPI_EXPORT char** ifcopenshell_util_attribute_get_enum_items(
     const void* attribute, uint32_t* out_count);
 
 /* ------------------------------------------------------------------ */
-/*  util.shape                                                         */
-/* ------------------------------------------------------------------ */
-/* Tolerance comparator. Returns true if abs(x - value) < tolerance.
- * Pass tolerance == 0.0 to use the default (1e-6). */
-IFCAPI_EXPORT bool ifcopenshell_util_shape_is_x(double value, double x, double tolerance);
-
-/* ------------------------------------------------------------------ */
 /*  util.classification                                                */
 /* ------------------------------------------------------------------ */
 /* Returns the IfcClassificationReference instances associated with

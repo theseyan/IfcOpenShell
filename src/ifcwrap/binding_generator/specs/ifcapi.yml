@@ -12,6 +12,7 @@ public_headers:
   - guid.h
   - ifcapi/bindings/element.h
   - ifcapi/bindings/entity.h
+  - ifcapi/bindings/shape.h
   - ifcapi/bindings/value.h
 
 imports:
@@ -217,6 +218,21 @@ functions:
       - name: attr
         type:
           kind: string
+
+  - expose_as: shape_is_x
+    cpp_name: ifcapi::bindings::shape_is_x
+    returns:
+      kind: bool
+    params:
+      - name: value
+        type:
+          kind: double
+      - name: x
+        type:
+          kind: double
+      - name: tolerance
+        type:
+          kind: double
 
   - expose_as: value_kind
     cpp_name: ifcapi::bindings::value_kind
