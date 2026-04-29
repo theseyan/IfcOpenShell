@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/unit.h"
 #include "entity_introspection.hpp"
 #include "placement_helpers.hpp"
 #include "ifcopenshell_api_internal.hpp"
@@ -160,7 +161,7 @@ IfcUtil::IfcBaseClass* edit_placement_impl(
     auto* file = file_h->ptr;
     if (!has_attr(product, "ObjectPlacement")) return nullptr;
 
-    double unit_scale = ifcopenshell_util_unit_calculate_unit_scale(file_h, "LENGTHUNIT");
+    double unit_scale = ifcapi::bindings::unit_calculate_unit_scale(file, "LENGTHUNIT");
     if (unit_scale == 0.0) unit_scale = 1.0;
 
     std::array<double, 16> m = matrix_in;

@@ -233,9 +233,6 @@ def _configure(lib) -> None:
     global _lib_configured
     if _lib_configured:
         return
-    cp = ctypes.c_char_p
-    vp = ctypes.c_void_p
-
     _generated_capi.bind(
         lib,
         names=(
@@ -256,22 +253,17 @@ def _configure(lib) -> None:
             "ifcopenshell_ifcapi_unit_get_full_unit_name",
             "ifcopenshell_ifcapi_unit_get_unit_symbol",
             "ifcopenshell_ifcapi_unit_convert_unit",
+            "ifcopenshell_ifcapi_unit_resolve_property_unit",
+            "ifcopenshell_ifcapi_unit_resolve_property_measure_class",
+            "ifcopenshell_ifcapi_unit_resolve_property_table_defining_unit",
+            "ifcopenshell_ifcapi_unit_resolve_property_table_defining_measure_class",
+            "ifcopenshell_ifcapi_unit_resolve_property_table_defined_unit",
+            "ifcopenshell_ifcapi_unit_resolve_property_table_defined_measure_class",
+            "ifcopenshell_ifcapi_unit_calculate_unit_scale",
             "ifcopenshell_string_destroy",
             "ifcopenshell_int32_list_destroy",
         ),
     )
-    lib.ifcopenshell_util_unit_resolve_property.restype = None
-    lib.ifcopenshell_util_unit_resolve_property.argtypes = [
-        vp, ctypes.POINTER(vp), ctypes.POINTER(vp),
-    ]
-    lib.ifcopenshell_util_unit_resolve_property_table.restype = None
-    lib.ifcopenshell_util_unit_resolve_property_table.argtypes = [
-        vp, ctypes.POINTER(vp), ctypes.POINTER(vp),
-        ctypes.POINTER(vp), ctypes.POINTER(vp),
-    ]
-
-    lib.ifcopenshell_util_unit_calculate_unit_scale.restype = ctypes.c_double
-    lib.ifcopenshell_util_unit_calculate_unit_scale.argtypes = [vp, cp]
 
     _lib_configured = True
 
@@ -282,19 +274,6 @@ def _enc(s):
     if isinstance(s, bytes):
         return s
     return s.encode("utf-8")
-
-
-def _free_str(lib, ptr):
-    if ptr:
-        lib.ifcopenshell_free_string(ctypes.cast(ptr, ctypes.c_char_p))
-
-
-def _take_str(lib, ptr):
-    if not ptr:
-        return None
-    s = ctypes.string_at(ptr).decode("utf-8")
-    _free_str(lib, ptr)
-    return s
 
 
 def _take_generated_str(lib, out):
@@ -548,19 +527,16 @@ def get_property_unit(prop, ifc_file, use_cache: bool = False) -> Union[entity_i
         return None
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    out_unit = ctypes.c_void_p(0)
-    out_mc = ctypes.c_void_p(0)
-    lib.ifcopenshell_util_unit_resolve_property(
-        prop._handle, ctypes.byref(out_unit), ctypes.byref(out_mc),
-    )
     target = ifc_file if ifc_file is not None else prop.file
-    if out_unit.value:
-        if out_mc.value:
-            _free_str(lib, out_mc.value)
-        return entity_instance(target, out_unit.value)
-    if not out_mc.value:
+    prop_handle = _generated_instance_handle_ptr(prop._handle)
+    unit = _call_generated_instance(lib, target, "ifcopenshell_ifcapi_unit_resolve_property_unit", prop_handle)
+    if unit is not None:
+        return unit
+    measure_class = _call_generated_string_args(
+        lib, "ifcopenshell_ifcapi_unit_resolve_property_measure_class", prop_handle
+    )
+    if not measure_class:
         return None
-    measure_class = _take_str(lib, out_mc.value)
     unit_type = get_measure_unit_type(measure_class)
     if not unit_type:
         return None
@@ -572,31 +548,28 @@ def get_property_table_unit(prop, ifc_file, use_cache: bool = False) -> dict:
         return {"DefiningUnit": None, "DefinedUnit": None}
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    defining_h = ctypes.c_void_p(0)
-    defining_mc = ctypes.c_void_p(0)
-    defined_h = ctypes.c_void_p(0)
-    defined_mc = ctypes.c_void_p(0)
-    lib.ifcopenshell_util_unit_resolve_property_table(
-        prop._handle,
-        ctypes.byref(defining_h), ctypes.byref(defining_mc),
-        ctypes.byref(defined_h), ctypes.byref(defined_mc),
-    )
     target = ifc_file if ifc_file is not None else prop.file
+    prop_handle = _generated_instance_handle_ptr(prop._handle)
 
-    def _resolve(unit_handle, mc_handle):
-        if unit_handle.value:
-            if mc_handle.value:
-                _free_str(lib, mc_handle.value)
-            return entity_instance(target, unit_handle.value)
-        if not mc_handle.value:
+    def _resolve(unit_name, measure_class_name):
+        unit = _call_generated_instance(lib, target, unit_name, prop_handle)
+        if unit is not None:
+            return unit
+        mc = _call_generated_string_args(lib, measure_class_name, prop_handle)
+        if not mc:
             return None
-        mc = _take_str(lib, mc_handle.value)
         ut = get_measure_unit_type(mc)
         return get_project_unit(target, ut, use_cache=use_cache) if ut else None
 
     return {
-        "DefiningUnit": _resolve(defining_h, defining_mc),
-        "DefinedUnit": _resolve(defined_h, defined_mc),
+        "DefiningUnit": _resolve(
+            "ifcopenshell_ifcapi_unit_resolve_property_table_defining_unit",
+            "ifcopenshell_ifcapi_unit_resolve_property_table_defining_measure_class",
+        ),
+        "DefinedUnit": _resolve(
+            "ifcopenshell_ifcapi_unit_resolve_property_table_defined_unit",
+            "ifcopenshell_ifcapi_unit_resolve_property_table_defined_measure_class",
+        ),
     }
 
 
@@ -612,7 +585,12 @@ def calculate_unit_scale(ifc_file, unit_type: str = "LENGTHUNIT") -> float:
         raise ValueError(f"Unit type {unit_type!r} does not name a valid type")
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    return lib.ifcopenshell_util_unit_calculate_unit_scale(_file_ptr(ifc_file), _enc(unit_type))
+    out = ctypes.c_double()
+    if not lib.ifcopenshell_ifcapi_unit_calculate_unit_scale(
+        _generated_file_handle(ifc_file), _enc(unit_type) or b"", ctypes.byref(out)
+    ):
+        raise RuntimeError(ifcopenshell.get_log() or "ifcopenshell_ifcapi_unit_calculate_unit_scale")
+    return out.value
 
 
 # ---------------------------------------------------------------------------

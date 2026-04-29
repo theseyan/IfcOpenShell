@@ -5577,6 +5577,120 @@ bool ifcopenshell_ifcapi_unit_convert_unit(double value, ifcopenshell_ifc_instan
     }
 }
 
+bool ifcopenshell_ifcapi_unit_resolve_property_unit(ifcopenshell_ifc_instance_t* prop, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    auto prop_cpp = (prop != nullptr && prop->ptr != nullptr) ? prop->ptr : nullptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::unit_resolve_property_unit(prop_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_unit_resolve_property_measure_class(ifcopenshell_ifc_instance_t* prop, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    auto prop_cpp = (prop != nullptr && prop->ptr != nullptr) ? prop->ptr : nullptr;
+        *out_result = make_string(ifcapi::bindings::unit_resolve_property_measure_class(prop_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_unit_resolve_property_table_defining_unit(ifcopenshell_ifc_instance_t* prop, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    auto prop_cpp = (prop != nullptr && prop->ptr != nullptr) ? prop->ptr : nullptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::unit_resolve_property_table_defining_unit(prop_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_unit_resolve_property_table_defining_measure_class(ifcopenshell_ifc_instance_t* prop, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    auto prop_cpp = (prop != nullptr && prop->ptr != nullptr) ? prop->ptr : nullptr;
+        *out_result = make_string(ifcapi::bindings::unit_resolve_property_table_defining_measure_class(prop_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_unit_resolve_property_table_defined_unit(ifcopenshell_ifc_instance_t* prop, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    auto prop_cpp = (prop != nullptr && prop->ptr != nullptr) ? prop->ptr : nullptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::unit_resolve_property_table_defined_unit(prop_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_unit_resolve_property_table_defined_measure_class(ifcopenshell_ifc_instance_t* prop, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    auto prop_cpp = (prop != nullptr && prop->ptr != nullptr) ? prop->ptr : nullptr;
+        *out_result = make_string(ifcapi::bindings::unit_resolve_property_table_defined_measure_class(prop_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_unit_calculate_unit_scale(ifcopenshell_ifc_file_t* file, const char* unit_type, double* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    auto file_cpp = (file != nullptr && file->ptr != nullptr) ? file->ptr : nullptr;
+    if (unit_type == nullptr) { throw std::runtime_error("Parameter \"unit_type\" must not be null"); }
+    std::string unit_type_cpp(unit_type);
+        *out_result = static_cast<double>(ifcapi::bindings::unit_calculate_unit_scale(file_cpp, unit_type_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_value_kind(ifcopenshell_ifcapi_value_t* value, int32_t* out_result) {
     try {
         ifcopenshell_clear_error();
