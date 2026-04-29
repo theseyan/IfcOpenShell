@@ -445,21 +445,12 @@ std::vector<int> unit_get_named_dimensions(const std::string& name) {
     return result;
 }
 
-} // namespace bindings
-} // namespace ifcapi
-
-extern "C" {
-
-// ---------------------------------------------------------------------------
-// Pure-string helpers.
-// ---------------------------------------------------------------------------
-
-IFCAPI_EXPORT double ifcopenshell_util_unit_convert(
+double unit_convert(
     double value,
-    const char* from_prefix, const char* from_unit,
-    const char* to_prefix, const char* to_unit)
+    const std::string& from_prefix, const std::string& from_unit,
+    const std::string& to_prefix, const std::string& to_unit)
 {
-    if (!from_unit || !to_unit) return value;
+    if (from_unit.empty() || to_unit.empty()) return value;
     std::string fu = from_unit, tu = to_unit;
     std::string fu_low = lower_str(fu);
     std::string tu_low = lower_str(tu);
@@ -467,7 +458,7 @@ IFCAPI_EXPORT double ifcopenshell_util_unit_convert(
     auto fit = sic.find(fu_low);
     if (fit != sic.end()) {
         value *= fit->second;
-    } else if (from_prefix && *from_prefix) {
+    } else if (!from_prefix.empty()) {
         double m = prefix_multiplier(from_prefix);
         value *= m;
         if (fu.find("SQUARE") != std::string::npos) value *= m;
@@ -476,7 +467,7 @@ IFCAPI_EXPORT double ifcopenshell_util_unit_convert(
     auto tit = sic.find(tu_low);
     if (tit != sic.end()) {
         return value * (1.0 / tit->second);
-    } else if (to_prefix && *to_prefix) {
+    } else if (!to_prefix.empty()) {
         double m = prefix_multiplier(to_prefix);
         value *= 1.0 / m;
         if (fu.find("SQUARE") != std::string::npos) value *= 1.0 / m;
@@ -527,14 +518,14 @@ std::string fmt_imperial(int feet, long long num, long long den, int suppress_ze
 
 }  // namespace
 
-IFCAPI_EXPORT char* ifcopenshell_util_unit_format_length(
+std::string unit_format_length(
     double value, double precision, int decimal_places,
-    int suppress_zero_inches, const char* unit_system,
-    const char* input_unit, const char* output_unit)
+    bool suppress_zero_inches, const std::string& unit_system,
+    const std::string& input_unit, const std::string& output_unit)
 {
-    std::string sys = unit_system ? unit_system : "imperial";
-    std::string in_u = input_unit ? input_unit : "foot";
-    std::string out_u = output_unit ? output_unit : "foot";
+    std::string sys = unit_system.empty() ? "imperial" : unit_system;
+    std::string in_u = input_unit.empty() ? "foot" : input_unit;
+    std::string out_u = output_unit.empty() ? "foot" : output_unit;
 
     if (sys == "imperial") {
         int feet;
@@ -549,16 +540,21 @@ IFCAPI_EXPORT char* ifcopenshell_util_unit_format_length(
         long long nearest = (long long)std::llround(inches * precision);
         long long den = (long long)std::llround(precision);
         if (den <= 0) den = 1;
-        return dup_cstr(fmt_imperial(feet, nearest, den, suppress_zero_inches, out_u));
+        return fmt_imperial(feet, nearest, den, suppress_zero_inches, out_u);
     } else if (sys == "metric") {
         double rounded = std::round(value / precision) * precision;
         std::ostringstream os;
         os.precision(decimal_places);
         os << std::fixed << rounded;
-        return dup_cstr(os.str());
+        return os.str();
     }
-    return nullptr;
+    return std::string();
 }
+
+} // namespace bindings
+} // namespace ifcapi
+
+extern "C" {
 
 // ---------------------------------------------------------------------------
 // Entity-based ABI.
@@ -627,10 +623,7 @@ IFCAPI_EXPORT double ifcopenshell_util_unit_convert_unit(
     std::string from_name = ifcapi::get_string_attr(from_u, "Name");
     std::string to_prefix = ifcapi::get_string_attr(to_u, "Prefix");
     std::string to_name = ifcapi::get_string_attr(to_u, "Name");
-    return ifcopenshell_util_unit_convert(
-        value,
-        from_prefix.c_str(), from_name.c_str(),
-        to_prefix.c_str(), to_name.c_str());
+    return ifcapi::bindings::unit_convert(value, from_prefix, from_name, to_prefix, to_name);
 }
 
 namespace {

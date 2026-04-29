@@ -21,6 +21,20 @@ IFCAPI_BINDING std::string unit_get_symbol_measure_class(const std::string& symb
 IFCAPI_BINDING std::string unit_get_symbol_quantity_class(const std::string& symbol);
 IFCAPI_BINDING std::vector<int> unit_get_si_dimensions(const std::string& name);
 IFCAPI_BINDING std::vector<int> unit_get_named_dimensions(const std::string& name);
+IFCAPI_BINDING double unit_convert(
+    double value,
+    const std::string& from_prefix,
+    const std::string& from_unit,
+    const std::string& to_prefix,
+    const std::string& to_unit);
+IFCAPI_BINDING std::string unit_format_length(
+    double value,
+    double precision,
+    int decimal_places,
+    bool suppress_zero_inches,
+    const std::string& unit_system,
+    const std::string& input_unit,
+    const std::string& output_unit);
 
 } // namespace bindings
 } // namespace ifcapi

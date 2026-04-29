@@ -706,6 +706,8 @@ FUNCTION_SIGNATURES = {
     "ifcopenshell_ifcapi_selector_get_element_value": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_selector_set_element_value": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_string_list_t), ctypes.POINTER(ifcopenshell_bool_list_t), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(ctypes.c_bool)]),
     "ifcopenshell_ifcapi_shape_is_x": (ctypes.c_bool, [ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.POINTER(ctypes.c_bool)]),
+    "ifcopenshell_ifcapi_unit_convert": (ctypes.c_bool, [ctypes.c_double, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_double)]),
+    "ifcopenshell_ifcapi_unit_format_length": (ctypes.c_bool, [ctypes.c_double, ctypes.c_double, ctypes.c_int32, ctypes.c_bool, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(ifcopenshell_string_t)]),
     "ifcopenshell_ifcapi_unit_get_measure_class": (ctypes.c_bool, [ctypes.c_char_p, ctypes.POINTER(ifcopenshell_string_t)]),
     "ifcopenshell_ifcapi_unit_get_measure_unit_type": (ctypes.c_bool, [ctypes.c_char_p, ctypes.POINTER(ifcopenshell_string_t)]),
     "ifcopenshell_ifcapi_unit_get_named_dimensions": (ctypes.c_bool, [ctypes.c_char_p, ctypes.POINTER(ifcopenshell_int32_list_t)]),

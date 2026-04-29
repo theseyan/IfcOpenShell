@@ -332,6 +332,55 @@ functions:
         type:
           kind: string
 
+  - expose_as: unit_convert
+    cpp_name: ifcapi::bindings::unit_convert
+    returns:
+      kind: double
+    params:
+      - name: value
+        type:
+          kind: double
+      - name: from_prefix
+        type:
+          kind: string
+      - name: from_unit
+        type:
+          kind: string
+      - name: to_prefix
+        type:
+          kind: string
+      - name: to_unit
+        type:
+          kind: string
+
+  - expose_as: unit_format_length
+    cpp_name: ifcapi::bindings::unit_format_length
+    returns:
+      kind: string
+      ownership: copy
+    params:
+      - name: value
+        type:
+          kind: double
+      - name: precision
+        type:
+          kind: double
+      - name: decimal_places
+        type:
+          kind: int32
+      - name: suppress_zero_inches
+        type:
+          kind: bool
+      - name: unit_system
+        type:
+          kind: string
+      - name: input_unit
+        type:
+          kind: string
+      - name: output_unit
+        type:
+          kind: string
+
   - expose_as: value_kind
     cpp_name: ifcapi::bindings::value_kind
     returns:

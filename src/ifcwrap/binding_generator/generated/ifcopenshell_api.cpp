@@ -5450,6 +5450,50 @@ bool ifcopenshell_ifcapi_unit_get_named_dimensions(const char* name, ifcopenshel
     }
 }
 
+bool ifcopenshell_ifcapi_unit_convert(double value, const char* from_prefix, const char* from_unit, const char* to_prefix, const char* to_unit, double* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (from_prefix == nullptr) { throw std::runtime_error("Parameter \"from_prefix\" must not be null"); }
+    std::string from_prefix_cpp(from_prefix);
+    if (from_unit == nullptr) { throw std::runtime_error("Parameter \"from_unit\" must not be null"); }
+    std::string from_unit_cpp(from_unit);
+    if (to_prefix == nullptr) { throw std::runtime_error("Parameter \"to_prefix\" must not be null"); }
+    std::string to_prefix_cpp(to_prefix);
+    if (to_unit == nullptr) { throw std::runtime_error("Parameter \"to_unit\" must not be null"); }
+    std::string to_unit_cpp(to_unit);
+        *out_result = static_cast<double>(ifcapi::bindings::unit_convert(value, from_prefix_cpp, from_unit_cpp, to_prefix_cpp, to_unit_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_unit_format_length(double value, double precision, int32_t decimal_places, bool suppress_zero_inches, const char* unit_system, const char* input_unit, const char* output_unit, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (unit_system == nullptr) { throw std::runtime_error("Parameter \"unit_system\" must not be null"); }
+    std::string unit_system_cpp(unit_system);
+    if (input_unit == nullptr) { throw std::runtime_error("Parameter \"input_unit\" must not be null"); }
+    std::string input_unit_cpp(input_unit);
+    if (output_unit == nullptr) { throw std::runtime_error("Parameter \"output_unit\" must not be null"); }
+    std::string output_unit_cpp(output_unit);
+        *out_result = make_string(ifcapi::bindings::unit_format_length(value, precision, decimal_places, suppress_zero_inches, unit_system_cpp, input_unit_cpp, output_unit_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_value_kind(ifcopenshell_ifcapi_value_t* value, int32_t* out_result) {
     try {
         ifcopenshell_clear_error();
