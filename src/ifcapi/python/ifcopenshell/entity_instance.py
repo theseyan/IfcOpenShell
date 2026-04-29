@@ -8,6 +8,7 @@ from typing import List, Optional, Set, Tuple
 from ifcopenshell import (
     _get_lib,
     _enc,
+    _generated_capi,
     ATTR_NULL,
     ATTR_STRING,
     ATTR_INT,
@@ -180,16 +181,9 @@ def register_schema_attributes(schema) -> None:
     tuple(schema.declarations())
 
 
-class _Int32List(ctypes.Structure):
-    _fields_ = [("items", ctypes.POINTER(ctypes.c_int32)), ("size", ctypes.c_size_t)]
-
-
-class _Int32ListList(ctypes.Structure):
-    _fields_ = [("items", ctypes.POINTER(_Int32List)), ("size", ctypes.c_size_t)]
-
-
-class _DoubleList(ctypes.Structure):
-    _fields_ = [("items", ctypes.POINTER(ctypes.c_double)), ("size", ctypes.c_size_t)]
+_Int32List = _generated_capi.ifcopenshell_int32_list_t
+_Int32ListList = _generated_capi.ifcopenshell_int32_list_list_t
+_DoubleList = _generated_capi.ifcopenshell_double_list_t
 
 
 def _configure_derived_lib(lib) -> None:
@@ -678,7 +672,6 @@ class entity_instance:
                 try:
                     return tuple(int(out.items[i]) for i in range(out.size))
                 finally:
-                    lib.ifcopenshell_int32_list_destroy.argtypes = [ctypes.c_void_p]
                     lib.ifcopenshell_int32_list_destroy(ctypes.byref(out))
         if primitive == "float" or value_type == "AGGREGATE OF DOUBLE":
             out = _DoubleList()
@@ -686,7 +679,6 @@ class entity_instance:
                 try:
                     return tuple(float(out.items[i]) for i in range(out.size))
                 finally:
-                    lib.ifcopenshell_double_list_destroy.argtypes = [ctypes.c_void_p]
                     lib.ifcopenshell_double_list_destroy(ctypes.byref(out))
         if primitive == "entity" or value_type == "AGGREGATE OF ENTITY INSTANCE":
             out = W._HandleStructP()

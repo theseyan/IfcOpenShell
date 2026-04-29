@@ -457,6 +457,8 @@ bool ifcopenshell_ifcgeom_line_segments_to_polygons(int32_t solver, double eps, 
 bool ifcopenshell_ifcgeom_helmert_curve_point(double A0, double A1, double A2, double s, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_ifcgeom_convert_loop_to_function_item(ifcopenshell_ifcgeom_taxonomy_item_t* loop_item, ifcopenshell_ifcgeom_taxonomy_item_t** out_result);
 bool ifcopenshell_ifcgeom_create_function_item_evaluator(ifcopenshell_ifcgeom_settings_t* settings, ifcopenshell_ifcgeom_taxonomy_item_t* fn_item, ifcopenshell_ifcgeom_function_item_evaluator_t** out_result);
+bool ifcopenshell_ifcgeom_taxonomy_function_item_start(ifcopenshell_ifcgeom_taxonomy_item_t* item, double* out_result);
+bool ifcopenshell_ifcgeom_taxonomy_function_item_end(ifcopenshell_ifcgeom_taxonomy_item_t* item, double* out_result);
 bool ifcopenshell_ifcapi_guid_new(ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcapi_guid_compress(const char* uuid_hex, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcapi_guid_expand(const char* guid, ifcopenshell_string_t* out_result);

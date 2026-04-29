@@ -2575,6 +2575,44 @@ functions:
         }
         return new ifcopenshell::geometry::function_item_evaluator(*settings_cpp, fn);
 
+  - kind: adapter_function
+    expose_as: taxonomy_function_item_start
+    returns:
+      kind: double
+    params:
+      - name: item
+        type:
+          kind: handle
+          handle: taxonomy_item
+          ownership: borrowed
+    implementation:
+      kind: inline_cpp
+      body: |
+        auto fn = ifcopenshell::geometry::taxonomy::dcast<ifcopenshell::geometry::taxonomy::function_item>(item_cpp);
+        if (!fn) {
+            throw std::runtime_error("Input is not a taxonomy function_item");
+        }
+        return fn->start();
+
+  - kind: adapter_function
+    expose_as: taxonomy_function_item_end
+    returns:
+      kind: double
+    params:
+      - name: item
+        type:
+          kind: handle
+          handle: taxonomy_item
+          ownership: borrowed
+    implementation:
+      kind: inline_cpp
+      body: |
+        auto fn = ifcopenshell::geometry::taxonomy::dcast<ifcopenshell::geometry::taxonomy::function_item>(item_cpp);
+        if (!fn) {
+            throw std::runtime_error("Input is not a taxonomy function_item");
+        }
+        return fn->end();
+
 methods:
   - kind: adapter_method
     receiver: settings

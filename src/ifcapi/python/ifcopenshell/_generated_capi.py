@@ -971,6 +971,8 @@ FUNCTION_SIGNATURES = {
     "ifcopenshell_ifcgeom_taxonomy_face_loop_at": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_size_t, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcgeom_taxonomy_face_loop_count": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_size_t)]),
     "ifcopenshell_ifcgeom_taxonomy_face_matrix": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcgeom_taxonomy_function_item_end": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_double)]),
+    "ifcopenshell_ifcgeom_taxonomy_function_item_start": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_double)]),
     "ifcopenshell_ifcgeom_taxonomy_item_hash": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_size_t)]),
     "ifcopenshell_ifcgeom_taxonomy_item_identity": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_uint32)]),
     "ifcopenshell_ifcgeom_taxonomy_item_kind": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_int32)]),
