@@ -4982,6 +4982,54 @@ return new ifcopenshell::geometry::function_item_evaluator(*settings_cpp, fn);
     }
 }
 
+bool ifcopenshell_ifcgeom_taxonomy_function_item_start(ifcopenshell_ifcgeom_taxonomy_item_t* item, double* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (item == nullptr || item->ptr == nullptr) { throw std::runtime_error("Handle parameter \"item\" is invalid"); }
+    auto item_cpp = item->ptr;
+        auto generated_result = [&]() {
+auto fn = ifcopenshell::geometry::taxonomy::dcast<ifcopenshell::geometry::taxonomy::function_item>(item_cpp);
+if (!fn) {
+    throw std::runtime_error("Input is not a taxonomy function_item");
+}
+return fn->start();
+        }();
+        *out_result = static_cast<double>(generated_result);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_taxonomy_function_item_end(ifcopenshell_ifcgeom_taxonomy_item_t* item, double* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (item == nullptr || item->ptr == nullptr) { throw std::runtime_error("Handle parameter \"item\" is invalid"); }
+    auto item_cpp = item->ptr;
+        auto generated_result = [&]() {
+auto fn = ifcopenshell::geometry::taxonomy::dcast<ifcopenshell::geometry::taxonomy::function_item>(item_cpp);
+if (!fn) {
+    throw std::runtime_error("Input is not a taxonomy function_item");
+}
+return fn->end();
+        }();
+        *out_result = static_cast<double>(generated_result);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_guid_new(ifcopenshell_string_t* out_result) {
     try {
         ifcopenshell_clear_error();

@@ -847,18 +847,20 @@ class _FunctionItem:
         self._h = item._h
 
     def _distance(self, fn_name):
-        from ifcopenshell.geom._capi import bind
+        from ifcopenshell import _generated_capi
 
         out = c_double(0.0)
-        if not getattr(bind(), fn_name)(self._h, byref(out)):
+        lib = ifcopenshell._get_lib()
+        _generated_capi.bind(lib, names=(fn_name,))
+        if not getattr(lib, fn_name)(self._h, byref(out)):
             raise RuntimeError(ifcopenshell.get_log() or fn_name)
         return float(out.value)
 
     def start(self):
-        return self._distance("ifcopenshell_taxonomy_function_item_start")
+        return self._distance("ifcopenshell_ifcgeom_taxonomy_function_item_start")
 
     def end(self):
-        return self._distance("ifcopenshell_taxonomy_function_item_end")
+        return self._distance("ifcopenshell_ifcgeom_taxonomy_function_item_end")
 
 
 class function_item_evaluator:

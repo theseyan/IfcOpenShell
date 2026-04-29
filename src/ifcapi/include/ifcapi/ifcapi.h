@@ -63,11 +63,6 @@ IFCAPI_EXPORT void ifcopenshell_free_string(char* str);
 /*  File operations                                                    */
 /* ------------------------------------------------------------------ */
 
-IFCAPI_EXPORT bool ifcopenshell_taxonomy_function_item_start(
-    ifcopenshell_ifcgeom_taxonomy_item_t* item, double* out);
-IFCAPI_EXPORT bool ifcopenshell_taxonomy_function_item_end(
-    ifcopenshell_ifcgeom_taxonomy_item_t* item, double* out);
-
 /// Frees an array of instance handles returned by ifcapi functions.
 /// Each handle wrapper is destroyed (the underlying entities remain owned by the file).
 IFCAPI_EXPORT void ifcopenshell_free_instance_array(ifcopenshell_ifc_instance_t** arr, uint32_t count);

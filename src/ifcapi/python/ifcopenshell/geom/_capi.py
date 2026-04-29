@@ -25,6 +25,7 @@ from ctypes import (
 )
 
 import ifcopenshell
+from ifcopenshell import _generated_capi
 
 
 # ---------------------------------------------------------------------------
@@ -45,20 +46,10 @@ from ifcopenshell.ifcopenshell_wrapper import (  # noqa: E402
 )
 
 
-class ifcopenshell_int32_list_t(Structure):
-    _fields_ = [("items", POINTER(c_int32)), ("size", c_size_t)]
-
-
-class ifcopenshell_int32_list_list_t(Structure):
-    _fields_ = [("items", POINTER(ifcopenshell_int32_list_t)), ("size", c_size_t)]
-
-
-class ifcopenshell_int32_list_list_list_t(Structure):
-    _fields_ = [("items", POINTER(ifcopenshell_int32_list_list_t)), ("size", c_size_t)]
-
-
-class ifcopenshell_double_list_t(Structure):
-    _fields_ = [("items", POINTER(c_double)), ("size", c_size_t)]
+ifcopenshell_int32_list_t = _generated_capi.ifcopenshell_int32_list_t
+ifcopenshell_int32_list_list_t = _generated_capi.ifcopenshell_int32_list_list_t
+ifcopenshell_int32_list_list_list_t = _generated_capi.ifcopenshell_int32_list_list_list_t
+ifcopenshell_double_list_t = _generated_capi.ifcopenshell_double_list_t
 
 
 HandleP = POINTER(_HandleStruct)
@@ -79,9 +70,7 @@ ifcopenshell_ifcgeom_taxonomy_style_list_t = _handle_list_type(
 ifcopenshell_ifcgeom_element_list_t = _handle_list_type(
     "ifcopenshell_ifcgeom_element_list_t"
 )
-ifcopenshell_ifc_instance_list_t = _handle_list_type(
-    "ifcopenshell_ifc_instance_list_t"
-)
+ifcopenshell_ifc_instance_list_t = _generated_capi.ifcopenshell_ifc_instance_list_t
 
 
 # ---------------------------------------------------------------------------
@@ -325,12 +314,6 @@ def bind():
         ),
         "ifcopenshell_ifcgeom_function_item_evaluator_evaluate_at": (
             c_bool, [HandleP, c_double, Dp],
-        ),
-        "ifcopenshell_taxonomy_function_item_start": (
-            c_bool, [HandleP, POINTER(c_double)],
-        ),
-        "ifcopenshell_taxonomy_function_item_end": (
-            c_bool, [HandleP, POINTER(c_double)],
         ),
         "ifcopenshell_ifcgeom_settings_get_type": (c_bool, [HandleP, c_char_p, Sp]),
         "ifcopenshell_ifcgeom_settings_setting_names": (c_bool, [HandleP, SLp]),
