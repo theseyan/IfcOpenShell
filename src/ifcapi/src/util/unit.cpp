@@ -427,6 +427,24 @@ std::string unit_get_symbol_quantity_class(const std::string& symbol) {
     return "IfcQuantityCount";
 }
 
+std::vector<int> unit_get_si_dimensions(const std::string& name) {
+    std::vector<int> result(7);
+    const auto& tbl = si_dimensions_table();
+    auto it = tbl.find(name);
+    if (it == tbl.end()) it = tbl.find("OTHERWISE");
+    for (int i = 0; i < 7; ++i) result[i] = it->second[i];
+    return result;
+}
+
+std::vector<int> unit_get_named_dimensions(const std::string& name) {
+    std::vector<int> result(7);
+    const auto& tbl = named_dimensions_table();
+    auto it = tbl.find(name);
+    if (it == tbl.end()) return result;
+    for (int i = 0; i < 7; ++i) result[i] = it->second[i];
+    return result;
+}
+
 } // namespace bindings
 } // namespace ifcapi
 
@@ -435,25 +453,6 @@ extern "C" {
 // ---------------------------------------------------------------------------
 // Pure-string helpers.
 // ---------------------------------------------------------------------------
-
-IFCAPI_EXPORT void ifcopenshell_util_unit_get_si_dimensions(const char* name, int* out7) {
-    if (!out7) return;
-    const auto& tbl = si_dimensions_table();
-    auto it = tbl.find(name ? name : "");
-    if (it == tbl.end()) it = tbl.find("OTHERWISE");
-    for (int i = 0; i < 7; ++i) out7[i] = it->second[i];
-}
-
-IFCAPI_EXPORT void ifcopenshell_util_unit_get_named_dimensions(const char* name, int* out7) {
-    if (!out7) return;
-    const auto& tbl = named_dimensions_table();
-    auto it = tbl.find(name ? name : "");
-    if (it == tbl.end()) {
-        for (int i = 0; i < 7; ++i) out7[i] = 0;
-        return;
-    }
-    for (int i = 0; i < 7; ++i) out7[i] = it->second[i];
-}
 
 IFCAPI_EXPORT double ifcopenshell_util_unit_convert(
     double value,

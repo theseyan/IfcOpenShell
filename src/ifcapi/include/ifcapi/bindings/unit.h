@@ -6,6 +6,7 @@
 #include "ifcapi/bindings/contract.h"
 
 #include <string>
+#include <vector>
 
 namespace ifcapi {
 namespace bindings {
@@ -18,6 +19,8 @@ IFCAPI_BINDING std::string unit_get_measure_class(const std::string& unit_type);
 IFCAPI_BINDING std::string unit_get_measure_unit_type(const std::string& measure_class);
 IFCAPI_BINDING std::string unit_get_symbol_measure_class(const std::string& symbol);
 IFCAPI_BINDING std::string unit_get_symbol_quantity_class(const std::string& symbol);
+IFCAPI_BINDING std::vector<int> unit_get_si_dimensions(const std::string& name);
+IFCAPI_BINDING std::vector<int> unit_get_named_dimensions(const std::string& name);
 
 } // namespace bindings
 } // namespace ifcapi

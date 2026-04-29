@@ -314,6 +314,24 @@ functions:
         type:
           kind: string
 
+  - expose_as: unit_get_si_dimensions
+    cpp_name: ifcapi::bindings::unit_get_si_dimensions
+    returns:
+      kind: int32_list
+    params:
+      - name: name
+        type:
+          kind: string
+
+  - expose_as: unit_get_named_dimensions
+    cpp_name: ifcapi::bindings::unit_get_named_dimensions
+    returns:
+      kind: int32_list
+    params:
+      - name: name
+        type:
+          kind: string
+
   - expose_as: value_kind
     cpp_name: ifcapi::bindings::value_kind
     returns:

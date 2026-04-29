@@ -764,8 +764,6 @@ IFCAPI_EXPORT double ifcopenshell_util_unit_calculate_unit_scale(
 /* Pure-string helpers. The const char* returns reference static storage and
    must NOT be freed by the caller. char* returns are heap-allocated and must
    be released with ifcopenshell_free_string. */
-IFCAPI_EXPORT void ifcopenshell_util_unit_get_si_dimensions(const char* name, int* out7);
-IFCAPI_EXPORT void ifcopenshell_util_unit_get_named_dimensions(const char* name, int* out7);
 IFCAPI_EXPORT double ifcopenshell_util_unit_convert(
     double value,
     const char* from_prefix, const char* from_unit,
