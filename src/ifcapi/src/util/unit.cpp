@@ -551,44 +551,25 @@ std::string unit_format_length(
     return std::string();
 }
 
-} // namespace bindings
-} // namespace ifcapi
-
-extern "C" {
-
-// ---------------------------------------------------------------------------
-// Entity-based ABI.
-// ---------------------------------------------------------------------------
-
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_util_unit_get_unit_assignment(
-    ifcopenshell_ifc_file_t* file_h)
-{
-    if (!file_h || !file_h->ptr) return nullptr;
-    return ifcopenshell::capi::wrap_instance(unit_assignment_for(file_h->ptr));
+IfcUtil::IfcBaseClass* unit_get_unit_assignment(IfcParse::IfcFile* file) {
+    if (!file) return nullptr;
+    return unit_assignment_for(file);
 }
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_util_unit_get_project_unit(
-    ifcopenshell_ifc_file_t* file_h, const char* unit_type)
-{
-    if (!file_h || !file_h->ptr || !unit_type) return nullptr;
-    return ifcopenshell::capi::wrap_instance(project_unit_for(file_h->ptr, unit_type));
+IfcUtil::IfcBaseClass* unit_get_project_unit(IfcParse::IfcFile* file, const std::string& unit_type) {
+    if (!file || unit_type.empty()) return nullptr;
+    return project_unit_for(file, unit_type);
 }
 
-IFCAPI_EXPORT char* ifcopenshell_util_unit_get_full_unit_name(
-    ifcopenshell_ifc_instance_t* unit_h)
-{
-    auto* unit = ifcopenshell::capi::unwrap_instance(unit_h);
-    if (!unit) return nullptr;
+std::string unit_get_full_unit_name(IfcUtil::IfcBaseClass* unit) {
+    if (!unit) return std::string();
     std::string prefix = ifcapi::get_string_attr(unit, "Prefix");
     std::string name = upper_str(ifcapi::get_string_attr(unit, "Name"));
-    return dup_cstr(prefix + name);
+    return prefix + name;
 }
 
-IFCAPI_EXPORT char* ifcopenshell_util_unit_get_unit_symbol(
-    ifcopenshell_ifc_instance_t* unit_h)
-{
-    auto* unit = ifcopenshell::capi::unwrap_instance(unit_h);
-    if (!unit) return nullptr;
+std::string unit_get_unit_symbol(IfcUtil::IfcBaseClass* unit) {
+    if (!unit) return std::string();
     std::string symbol;
     if (unit->declaration().is("IfcSIUnit")) {
         std::string prefix = ifcapi::get_string_attr(unit, "Prefix");
@@ -608,23 +589,26 @@ IFCAPI_EXPORT char* ifcopenshell_util_unit_get_unit_symbol(
             symbol = ifcapi::get_string_attr(unit, "Name");
         }
     }
-    return dup_cstr(symbol);
+    return symbol;
 }
 
-IFCAPI_EXPORT double ifcopenshell_util_unit_convert_unit(
-    double value,
-    ifcopenshell_ifc_instance_t* from_unit_h,
-    ifcopenshell_ifc_instance_t* to_unit_h)
-{
-    auto* from_u = ifcopenshell::capi::unwrap_instance(from_unit_h);
-    auto* to_u = ifcopenshell::capi::unwrap_instance(to_unit_h);
-    if (!from_u || !to_u) return value;
-    std::string from_prefix = ifcapi::get_string_attr(from_u, "Prefix");
-    std::string from_name = ifcapi::get_string_attr(from_u, "Name");
-    std::string to_prefix = ifcapi::get_string_attr(to_u, "Prefix");
-    std::string to_name = ifcapi::get_string_attr(to_u, "Name");
+double unit_convert_unit(double value, IfcUtil::IfcBaseClass* from_unit, IfcUtil::IfcBaseClass* to_unit) {
+    if (!from_unit || !to_unit) return value;
+    std::string from_prefix = ifcapi::get_string_attr(from_unit, "Prefix");
+    std::string from_name = ifcapi::get_string_attr(from_unit, "Name");
+    std::string to_prefix = ifcapi::get_string_attr(to_unit, "Prefix");
+    std::string to_name = ifcapi::get_string_attr(to_unit, "Name");
     return ifcapi::bindings::unit_convert(value, from_prefix, from_name, to_prefix, to_name);
 }
+
+} // namespace bindings
+} // namespace ifcapi
+
+extern "C" {
+
+// ---------------------------------------------------------------------------
+// Entity-based ABI.
+// ---------------------------------------------------------------------------
 
 namespace {
 

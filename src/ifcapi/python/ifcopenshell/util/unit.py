@@ -10,7 +10,7 @@ from typing import Literal, Optional, Union
 import ifcopenshell
 import ifcopenshell.ifcopenshell_wrapper as ifcopenshell_wrapper
 from ifcopenshell import _generated_capi
-from ifcopenshell.entity_instance import entity_instance
+from ifcopenshell.entity_instance import _generated_instance_handle_ptr, entity_instance
 
 
 prefixes = {
@@ -251,21 +251,15 @@ def _configure(lib) -> None:
             "ifcopenshell_ifcapi_unit_get_named_dimensions",
             "ifcopenshell_ifcapi_unit_convert",
             "ifcopenshell_ifcapi_unit_format_length",
+            "ifcopenshell_ifcapi_unit_get_unit_assignment",
+            "ifcopenshell_ifcapi_unit_get_project_unit",
+            "ifcopenshell_ifcapi_unit_get_full_unit_name",
+            "ifcopenshell_ifcapi_unit_get_unit_symbol",
+            "ifcopenshell_ifcapi_unit_convert_unit",
             "ifcopenshell_string_destroy",
             "ifcopenshell_int32_list_destroy",
         ),
     )
-
-    lib.ifcopenshell_util_unit_get_unit_assignment.restype = vp
-    lib.ifcopenshell_util_unit_get_unit_assignment.argtypes = [vp]
-    lib.ifcopenshell_util_unit_get_project_unit.restype = vp
-    lib.ifcopenshell_util_unit_get_project_unit.argtypes = [vp, cp]
-    lib.ifcopenshell_util_unit_get_full_unit_name.restype = vp
-    lib.ifcopenshell_util_unit_get_full_unit_name.argtypes = [vp]
-    lib.ifcopenshell_util_unit_get_unit_symbol.restype = vp
-    lib.ifcopenshell_util_unit_get_unit_symbol.argtypes = [vp]
-    lib.ifcopenshell_util_unit_convert_unit.restype = ctypes.c_double
-    lib.ifcopenshell_util_unit_convert_unit.argtypes = [ctypes.c_double, vp, vp]
     lib.ifcopenshell_util_unit_resolve_property.restype = None
     lib.ifcopenshell_util_unit_resolve_property.argtypes = [
         vp, ctypes.POINTER(vp), ctypes.POINTER(vp),
@@ -313,8 +307,12 @@ def _take_generated_str(lib, out):
 
 
 def _call_generated_string(lib, name, value):
+    return _call_generated_string_args(lib, name, _enc(value) or b"")
+
+
+def _call_generated_string_args(lib, name, *args):
     out = _generated_capi.ifcopenshell_string_t()
-    if not getattr(lib, name)(_enc(value) or b"", ctypes.byref(out)):
+    if not getattr(lib, name)(*args, ctypes.byref(out)):
         raise RuntimeError(ifcopenshell.get_log() or name)
     return _take_generated_str(lib, out)
 
@@ -329,6 +327,16 @@ def _call_generated_int_tuple(lib, name, value):
         lib.ifcopenshell_int32_list_destroy(ctypes.byref(out))
 
 
+def _call_generated_instance(lib, file_obj, name, *args):
+    out = ctypes.POINTER(_generated_capi.ifcopenshell_ifc_instance_t)()
+    if not getattr(lib, name)(*args, ctypes.byref(out)):
+        raise RuntimeError(ifcopenshell.get_log() or name)
+    if out and not out.contents.ptr:
+        lib.ifcopenshell_ifc_instance_destroy(ctypes.cast(out, ifcopenshell_wrapper._HandleStructP))
+        return None
+    return _take_instance(lib, file_obj, ctypes.cast(out, ctypes.c_void_p).value if out else None)
+
+
 def _take_instance(lib, file_obj, handle):
     if not handle:
         return None
@@ -337,6 +345,11 @@ def _take_instance(lib, file_obj, handle):
 
 def _file_ptr(ifc_file):
     return getattr(ifc_file, "_ptr", None)
+
+
+def _generated_file_handle(ifc_file):
+    ptr = _file_ptr(ifc_file)
+    return ifcopenshell._ifc_file_handle_ptr(ptr) if ptr else None
 
 
 # ---------------------------------------------------------------------------
@@ -456,8 +469,9 @@ def get_unit_assignment(ifc_file) -> Union[entity_instance, None]:
         return None
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    h = lib.ifcopenshell_util_unit_get_unit_assignment(_file_ptr(ifc_file))
-    return _take_instance(lib, ifc_file, h)
+    return _call_generated_instance(
+        lib, ifc_file, "ifcopenshell_ifcapi_unit_get_unit_assignment", _generated_file_handle(ifc_file)
+    )
 
 
 def cache_units(ifc_file) -> None:
@@ -489,8 +503,9 @@ def get_project_unit(ifc_file, unit_type: str, use_cache: bool = False) -> Union
         return units.get(unit_type, None)
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    h = lib.ifcopenshell_util_unit_get_project_unit(_file_ptr(ifc_file), _enc(unit_type))
-    return _take_instance(lib, ifc_file, h)
+    return _call_generated_instance(
+        lib, ifc_file, "ifcopenshell_ifcapi_unit_get_project_unit", _generated_file_handle(ifc_file), _enc(unit_type) or b""
+    )
 
 
 def get_full_unit_name(unit) -> str:
@@ -498,8 +513,9 @@ def get_full_unit_name(unit) -> str:
         return ""
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    p = lib.ifcopenshell_util_unit_get_full_unit_name(unit._handle)
-    return _take_str(lib, p) or ""
+    return _call_generated_string_args(
+        lib, "ifcopenshell_ifcapi_unit_get_full_unit_name", _generated_instance_handle_ptr(unit._handle)
+    ) or ""
 
 
 def get_unit_symbol(unit) -> str:
@@ -507,18 +523,23 @@ def get_unit_symbol(unit) -> str:
         return ""
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    p = lib.ifcopenshell_util_unit_get_unit_symbol(unit._handle)
-    return _take_str(lib, p) or ""
+    return _call_generated_string_args(
+        lib, "ifcopenshell_ifcapi_unit_get_unit_symbol", _generated_instance_handle_ptr(unit._handle)
+    ) or ""
 
 
 def convert_unit(value: float, from_unit, to_unit) -> float:
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    return lib.ifcopenshell_util_unit_convert_unit(
+    out = ctypes.c_double()
+    if not lib.ifcopenshell_ifcapi_unit_convert_unit(
         float(value),
-        from_unit._handle if from_unit is not None else None,
-        to_unit._handle if to_unit is not None else None,
-    )
+        _generated_instance_handle_ptr(from_unit._handle) if from_unit is not None else None,
+        _generated_instance_handle_ptr(to_unit._handle) if to_unit is not None else None,
+        ctypes.byref(out),
+    ):
+        raise RuntimeError(ifcopenshell.get_log() or "ifcopenshell_ifcapi_unit_convert_unit")
+    return out.value
 
 
 def get_property_unit(prop, ifc_file, use_cache: bool = False) -> Union[entity_instance, None]:
