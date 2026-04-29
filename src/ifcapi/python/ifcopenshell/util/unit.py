@@ -243,15 +243,13 @@ def _configure(lib) -> None:
             "ifcopenshell_ifcapi_unit_get_prefix_multiplier",
             "ifcopenshell_ifcapi_unit_get_unit_name",
             "ifcopenshell_ifcapi_unit_get_unit_name_universal",
+            "ifcopenshell_ifcapi_unit_get_measure_class",
+            "ifcopenshell_ifcapi_unit_get_measure_unit_type",
             "ifcopenshell_ifcapi_unit_get_symbol_measure_class",
             "ifcopenshell_ifcapi_unit_get_symbol_quantity_class",
             "ifcopenshell_string_destroy",
         ),
     )
-    lib.ifcopenshell_util_unit_get_measure_class.restype = vp
-    lib.ifcopenshell_util_unit_get_measure_class.argtypes = [cp]
-    lib.ifcopenshell_util_unit_get_measure_unit_type.restype = vp
-    lib.ifcopenshell_util_unit_get_measure_unit_type.argtypes = [cp]
     lib.ifcopenshell_util_unit_get_si_dimensions.restype = None
     lib.ifcopenshell_util_unit_get_si_dimensions.argtypes = [cp, ctypes.POINTER(ctypes.c_int)]
     lib.ifcopenshell_util_unit_get_named_dimensions.restype = None
@@ -396,15 +394,13 @@ def get_named_dimensions(name):
 def get_unit_measure_class(unit_type: str) -> MEASURE_CLASS:
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    p = lib.ifcopenshell_util_unit_get_measure_class(_enc(unit_type))
-    return _take_str(lib, p)
+    return _call_generated_string(lib, "ifcopenshell_ifcapi_unit_get_measure_class", unit_type)
 
 
 def get_measure_unit_type(measure_class: MEASURE_CLASS) -> str:
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    p = lib.ifcopenshell_util_unit_get_measure_unit_type(_enc(measure_class))
-    return _take_str(lib, p)
+    return _call_generated_string(lib, "ifcopenshell_ifcapi_unit_get_measure_unit_type", measure_class)
 
 
 def get_symbol_measure_class(symbol: Optional[str] = None) -> MEASURE_CLASS:

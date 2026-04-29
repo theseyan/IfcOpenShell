@@ -477,6 +477,8 @@ bool ifcopenshell_ifcapi_unit_get_prefix(const char* text, ifcopenshell_string_t
 bool ifcopenshell_ifcapi_unit_get_prefix_multiplier(const char* text, double* out_result);
 bool ifcopenshell_ifcapi_unit_get_unit_name(const char* text, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcapi_unit_get_unit_name_universal(const char* text, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcapi_unit_get_measure_class(const char* unit_type, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcapi_unit_get_measure_unit_type(const char* measure_class, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcapi_unit_get_symbol_measure_class(const char* symbol, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcapi_unit_get_symbol_quantity_class(const char* symbol, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcapi_value_kind(ifcopenshell_ifcapi_value_t* value, int32_t* out_result);
