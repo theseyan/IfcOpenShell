@@ -9,6 +9,7 @@ from typing import Literal, Optional, Union
 
 import ifcopenshell
 import ifcopenshell.ifcopenshell_wrapper as ifcopenshell_wrapper
+from ifcopenshell import _generated_capi
 from ifcopenshell.entity_instance import entity_instance
 
 
@@ -235,22 +236,22 @@ def _configure(lib) -> None:
     cp = ctypes.c_char_p
     vp = ctypes.c_void_p
 
-    lib.ifcopenshell_util_unit_get_prefix.restype = cp
-    lib.ifcopenshell_util_unit_get_prefix.argtypes = [cp]
-    lib.ifcopenshell_util_unit_get_prefix_multiplier.restype = ctypes.c_double
-    lib.ifcopenshell_util_unit_get_prefix_multiplier.argtypes = [cp]
-    lib.ifcopenshell_util_unit_get_unit_name.restype = cp
-    lib.ifcopenshell_util_unit_get_unit_name.argtypes = [cp]
-    lib.ifcopenshell_util_unit_get_unit_name_universal.restype = cp
-    lib.ifcopenshell_util_unit_get_unit_name_universal.argtypes = [cp]
+    _generated_capi.bind(
+        lib,
+        names=(
+            "ifcopenshell_ifcapi_unit_get_prefix",
+            "ifcopenshell_ifcapi_unit_get_prefix_multiplier",
+            "ifcopenshell_ifcapi_unit_get_unit_name",
+            "ifcopenshell_ifcapi_unit_get_unit_name_universal",
+            "ifcopenshell_ifcapi_unit_get_symbol_measure_class",
+            "ifcopenshell_ifcapi_unit_get_symbol_quantity_class",
+            "ifcopenshell_string_destroy",
+        ),
+    )
     lib.ifcopenshell_util_unit_get_measure_class.restype = vp
     lib.ifcopenshell_util_unit_get_measure_class.argtypes = [cp]
     lib.ifcopenshell_util_unit_get_measure_unit_type.restype = vp
     lib.ifcopenshell_util_unit_get_measure_unit_type.argtypes = [cp]
-    lib.ifcopenshell_util_unit_get_symbol_measure_class.restype = cp
-    lib.ifcopenshell_util_unit_get_symbol_measure_class.argtypes = [cp]
-    lib.ifcopenshell_util_unit_get_symbol_quantity_class.restype = cp
-    lib.ifcopenshell_util_unit_get_symbol_quantity_class.argtypes = [cp]
     lib.ifcopenshell_util_unit_get_si_dimensions.restype = None
     lib.ifcopenshell_util_unit_get_si_dimensions.argtypes = [cp, ctypes.POINTER(ctypes.c_int)]
     lib.ifcopenshell_util_unit_get_named_dimensions.restype = None
@@ -312,6 +313,22 @@ def _take_str(lib, ptr):
     return s
 
 
+def _take_generated_str(lib, out):
+    try:
+        if not out.data:
+            return ""
+        return ctypes.string_at(out.data, out.size).decode("utf-8")
+    finally:
+        lib.ifcopenshell_string_destroy(ctypes.byref(out))
+
+
+def _call_generated_string(lib, name, value):
+    out = _generated_capi.ifcopenshell_string_t()
+    if not getattr(lib, name)(_enc(value) or b"", ctypes.byref(out)):
+        raise RuntimeError(ifcopenshell.get_log() or name)
+    return _take_generated_str(lib, out)
+
+
 def _take_instance(lib, file_obj, handle):
     if not handle:
         return None
@@ -331,14 +348,16 @@ def get_prefix(text):
         return None
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    r = lib.ifcopenshell_util_unit_get_prefix(_enc(text))
-    return r.decode("utf-8") if r else None
+    return _call_generated_string(lib, "ifcopenshell_ifcapi_unit_get_prefix", text) or None
 
 
 def get_prefix_multiplier(text):
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    return lib.ifcopenshell_util_unit_get_prefix_multiplier(_enc(text))
+    out = ctypes.c_double()
+    if not lib.ifcopenshell_ifcapi_unit_get_prefix_multiplier(_enc(text) or b"", ctypes.byref(out)):
+        raise RuntimeError(ifcopenshell.get_log() or "ifcopenshell_ifcapi_unit_get_prefix_multiplier")
+    return out.value
 
 
 def get_unit_name(text: str) -> Union[str, None]:
@@ -347,8 +366,7 @@ def get_unit_name(text: str) -> Union[str, None]:
         return None
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    r = lib.ifcopenshell_util_unit_get_unit_name(_enc(text))
-    return r.decode("utf-8") if r else None
+    return _call_generated_string(lib, "ifcopenshell_ifcapi_unit_get_unit_name", text) or None
 
 
 def get_unit_name_universal(text: str) -> Union[str, None]:
@@ -356,8 +374,7 @@ def get_unit_name_universal(text: str) -> Union[str, None]:
         return None
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    r = lib.ifcopenshell_util_unit_get_unit_name_universal(_enc(text))
-    return r.decode("utf-8") if r else None
+    return _call_generated_string(lib, "ifcopenshell_ifcapi_unit_get_unit_name_universal", text) or None
 
 
 def get_si_dimensions(name):
@@ -393,15 +410,13 @@ def get_measure_unit_type(measure_class: MEASURE_CLASS) -> str:
 def get_symbol_measure_class(symbol: Optional[str] = None) -> MEASURE_CLASS:
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    r = lib.ifcopenshell_util_unit_get_symbol_measure_class(_enc(symbol))
-    return r.decode("utf-8") if r else "IfcNumericMeasure"
+    return _call_generated_string(lib, "ifcopenshell_ifcapi_unit_get_symbol_measure_class", symbol or "")
 
 
 def get_symbol_quantity_class(symbol: Optional[str] = None) -> QUANTITY_CLASS:
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    r = lib.ifcopenshell_util_unit_get_symbol_quantity_class(_enc(symbol))
-    return r.decode("utf-8") if r else "IfcQuantityCount"
+    return _call_generated_string(lib, "ifcopenshell_ifcapi_unit_get_symbol_quantity_class", symbol or "")
 
 
 def convert(value: float, from_prefix: Optional[str], from_unit: str,

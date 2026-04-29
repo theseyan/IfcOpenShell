@@ -13,6 +13,7 @@ public_headers:
   - ifcapi/bindings/element.h
   - ifcapi/bindings/entity.h
   - ifcapi/bindings/shape.h
+  - ifcapi/bindings/unit.h
   - ifcapi/bindings/value.h
 
 imports:
@@ -233,6 +234,65 @@ functions:
       - name: tolerance
         type:
           kind: double
+
+  - expose_as: unit_get_prefix
+    cpp_name: ifcapi::bindings::unit_get_prefix
+    returns:
+      kind: string
+      ownership: copy
+    params:
+      - name: text
+        type:
+          kind: string
+
+  - expose_as: unit_get_prefix_multiplier
+    cpp_name: ifcapi::bindings::unit_get_prefix_multiplier
+    returns:
+      kind: double
+    params:
+      - name: text
+        type:
+          kind: string
+
+  - expose_as: unit_get_unit_name
+    cpp_name: ifcapi::bindings::unit_get_unit_name
+    returns:
+      kind: string
+      ownership: copy
+    params:
+      - name: text
+        type:
+          kind: string
+
+  - expose_as: unit_get_unit_name_universal
+    cpp_name: ifcapi::bindings::unit_get_unit_name_universal
+    returns:
+      kind: string
+      ownership: copy
+    params:
+      - name: text
+        type:
+          kind: string
+
+  - expose_as: unit_get_symbol_measure_class
+    cpp_name: ifcapi::bindings::unit_get_symbol_measure_class
+    returns:
+      kind: string
+      ownership: copy
+    params:
+      - name: symbol
+        type:
+          kind: string
+
+  - expose_as: unit_get_symbol_quantity_class
+    cpp_name: ifcapi::bindings::unit_get_symbol_quantity_class
+    returns:
+      kind: string
+      ownership: copy
+    params:
+      - name: symbol
+        type:
+          kind: string
 
   - expose_as: value_kind
     cpp_name: ifcapi::bindings::value_kind

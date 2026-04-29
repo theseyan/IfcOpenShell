@@ -473,6 +473,12 @@ bool ifcopenshell_ifcapi_entity_get_typed_value(ifcopenshell_ifc_instance_t* ins
 bool ifcopenshell_ifcapi_entity_set_aggregate_typed_value(ifcopenshell_ifc_instance_t* instance, const char* attr, const ifcopenshell_string_list_t* type_names, const ifcopenshell_string_list_t* str_values, bool* out_result);
 bool ifcopenshell_ifcapi_entity_get_aggregate_typed_value(ifcopenshell_ifc_instance_t* instance, const char* attr, ifcopenshell_string_list_t* out_result);
 bool ifcopenshell_ifcapi_shape_is_x(double value, double x, double tolerance, bool* out_result);
+bool ifcopenshell_ifcapi_unit_get_prefix(const char* text, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcapi_unit_get_prefix_multiplier(const char* text, double* out_result);
+bool ifcopenshell_ifcapi_unit_get_unit_name(const char* text, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcapi_unit_get_unit_name_universal(const char* text, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcapi_unit_get_symbol_measure_class(const char* symbol, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcapi_unit_get_symbol_quantity_class(const char* symbol, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcapi_value_kind(ifcopenshell_ifcapi_value_t* value, int32_t* out_result);
 bool ifcopenshell_ifcapi_selector_get_element_value(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* element, const char* query, ifcopenshell_ifcapi_value_t** out_result);
 bool ifcopenshell_ifcapi_selector_set_element_value(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* element, const ifcopenshell_string_list_t* keys, const ifcopenshell_bool_list_t* regex_flags, ifcopenshell_ifcapi_value_t* value, const char* concat, bool* out_result);

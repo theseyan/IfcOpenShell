@@ -5280,6 +5280,108 @@ bool ifcopenshell_ifcapi_shape_is_x(double value, double x, double tolerance, bo
     }
 }
 
+bool ifcopenshell_ifcapi_unit_get_prefix(const char* text, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (text == nullptr) { throw std::runtime_error("Parameter \"text\" must not be null"); }
+    std::string text_cpp(text);
+        *out_result = make_string(ifcapi::bindings::unit_get_prefix(text_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_unit_get_prefix_multiplier(const char* text, double* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (text == nullptr) { throw std::runtime_error("Parameter \"text\" must not be null"); }
+    std::string text_cpp(text);
+        *out_result = static_cast<double>(ifcapi::bindings::unit_get_prefix_multiplier(text_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_unit_get_unit_name(const char* text, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (text == nullptr) { throw std::runtime_error("Parameter \"text\" must not be null"); }
+    std::string text_cpp(text);
+        *out_result = make_string(ifcapi::bindings::unit_get_unit_name(text_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_unit_get_unit_name_universal(const char* text, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (text == nullptr) { throw std::runtime_error("Parameter \"text\" must not be null"); }
+    std::string text_cpp(text);
+        *out_result = make_string(ifcapi::bindings::unit_get_unit_name_universal(text_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_unit_get_symbol_measure_class(const char* symbol, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (symbol == nullptr) { throw std::runtime_error("Parameter \"symbol\" must not be null"); }
+    std::string symbol_cpp(symbol);
+        *out_result = make_string(ifcapi::bindings::unit_get_symbol_measure_class(symbol_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_unit_get_symbol_quantity_class(const char* symbol, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (symbol == nullptr) { throw std::runtime_error("Parameter \"symbol\" must not be null"); }
+    std::string symbol_cpp(symbol);
+        *out_result = make_string(ifcapi::bindings::unit_get_symbol_quantity_class(symbol_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_value_kind(ifcopenshell_ifcapi_value_t* value, int32_t* out_result) {
     try {
         ifcopenshell_clear_error();

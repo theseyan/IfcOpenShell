@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/unit.h"
 #include "entity_introspection.hpp"
 #include "ifcopenshell_api_internal.hpp"
 
@@ -348,55 +349,37 @@ IfcUtil::IfcBaseClass* project_unit_for(IfcParse::IfcFile* file, const std::stri
 
 }  // namespace
 
-extern "C" {
+namespace ifcapi {
+namespace bindings {
 
-// ---------------------------------------------------------------------------
-// Pure-string helpers (return owned static-storage const char* or NULL).
-// ---------------------------------------------------------------------------
-
-IFCAPI_EXPORT const char* ifcopenshell_util_unit_get_prefix(const char* text) {
-    if (!text || !*text) return nullptr;
-    return find_prefix_in(upper_str(text));
+std::string unit_get_prefix(const std::string& text) {
+    if (text.empty()) return std::string();
+    const char* result = find_prefix_in(upper_str(text));
+    return result ? std::string(result) : std::string();
 }
 
-IFCAPI_EXPORT double ifcopenshell_util_unit_get_prefix_multiplier(const char* text) {
-    if (!text || !*text) return 1.0;
+double unit_get_prefix_multiplier(const std::string& text) {
+    if (text.empty()) return 1.0;
     const char* p = find_prefix_in(upper_str(text));
     if (!p) return 1.0;
     return prefix_multiplier(p);
 }
 
-IFCAPI_EXPORT const char* ifcopenshell_util_unit_get_unit_name(const char* text) {
-    if (!text) return nullptr;
+std::string unit_get_unit_name(const std::string& text) {
     std::string up = replace_all(upper_str(text), "METER", "METRE");
-    return find_unit_name_in(up);
+    const char* result = find_unit_name_in(up);
+    return result ? std::string(result) : std::string();
 }
 
-IFCAPI_EXPORT const char* ifcopenshell_util_unit_get_unit_name_universal(const char* text) {
-    if (!text) return nullptr;
+std::string unit_get_unit_name_universal(const std::string& text) {
     std::string up = replace_all(upper_str(text), "METER", "METRE");
-    if (const char* n = find_unit_name_in(up)) return n;
-    return find_imperial_in(up);
+    if (const char* n = find_unit_name_in(up)) return std::string(n);
+    const char* result = find_imperial_in(up);
+    return result ? std::string(result) : std::string();
 }
 
-IFCAPI_EXPORT char* ifcopenshell_util_unit_get_measure_class(const char* unit_type) {
-    if (!unit_type) return nullptr;
-    std::string s = unit_type;
-    if (s == "USERDEFINED") return dup_cstr("IfcNumericMeasure");
-    if (s.size() < 4) return nullptr;
-    std::string body = s.substr(0, s.size() - 4);
-    body = lower_str(body);
-    if (!body.empty()) body[0] = std::toupper((unsigned char)body[0]);
-    return dup_cstr("Ifc" + body + "Measure");
-}
-
-IFCAPI_EXPORT char* ifcopenshell_util_unit_get_measure_unit_type(const char* measure_class) {
-    if (!measure_class) return nullptr;
-    return dup_cstr(measure_to_unit_type(measure_class));
-}
-
-IFCAPI_EXPORT const char* ifcopenshell_util_unit_get_symbol_measure_class(const char* symbol) {
-    if (!symbol || !*symbol) return "IfcNumericMeasure";
+std::string unit_get_symbol_measure_class(const std::string& symbol) {
+    if (symbol.empty()) return "IfcNumericMeasure";
     std::string s = lower_str(symbol);
     static const std::vector<std::string> length = {"km", "m", "cm", "mm", "ly", "lf", "lin", "yd", "ft", "in"};
     static const std::vector<std::string> area = {"km2", "m2", "cm2", "mm2", "sqy", "sqft", "sqin"};
@@ -412,8 +395,8 @@ IFCAPI_EXPORT const char* ifcopenshell_util_unit_get_symbol_measure_class(const 
     return "IfcNumericMeasure";
 }
 
-IFCAPI_EXPORT const char* ifcopenshell_util_unit_get_symbol_quantity_class(const char* symbol) {
-    if (!symbol || !*symbol) return "IfcQuantityCount";
+std::string unit_get_symbol_quantity_class(const std::string& symbol) {
+    if (symbol.empty()) return "IfcQuantityCount";
     std::string s = lower_str(symbol);
     static const std::vector<std::string> length = {"km", "m", "cm", "mm", "ly", "lf", "lin", "yd", "ft", "in"};
     static const std::vector<std::string> area = {"km2", "m2", "cm2", "mm2", "sqy", "sqft", "sqin"};
@@ -427,6 +410,31 @@ IFCAPI_EXPORT const char* ifcopenshell_util_unit_get_symbol_quantity_class(const
     if (in(mass)) return "IfcQuantityWeight";
     if (in(tim)) return "IfcQuantityTime";
     return "IfcQuantityCount";
+}
+
+} // namespace bindings
+} // namespace ifcapi
+
+extern "C" {
+
+// ---------------------------------------------------------------------------
+// Pure-string helpers.
+// ---------------------------------------------------------------------------
+
+IFCAPI_EXPORT char* ifcopenshell_util_unit_get_measure_class(const char* unit_type) {
+    if (!unit_type) return nullptr;
+    std::string s = unit_type;
+    if (s == "USERDEFINED") return dup_cstr("IfcNumericMeasure");
+    if (s.size() < 4) return nullptr;
+    std::string body = s.substr(0, s.size() - 4);
+    body = lower_str(body);
+    if (!body.empty()) body[0] = std::toupper((unsigned char)body[0]);
+    return dup_cstr("Ifc" + body + "Measure");
+}
+
+IFCAPI_EXPORT char* ifcopenshell_util_unit_get_measure_unit_type(const char* measure_class) {
+    if (!measure_class) return nullptr;
+    return dup_cstr(measure_to_unit_type(measure_class));
 }
 
 IFCAPI_EXPORT void ifcopenshell_util_unit_get_si_dimensions(const char* name, int* out7) {
