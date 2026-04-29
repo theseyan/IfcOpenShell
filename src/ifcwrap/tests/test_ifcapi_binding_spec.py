@@ -67,6 +67,8 @@ def test_ifcapi_spec_imports_core_handles_without_redefining_them() -> None:
         "ifcopenshell_ifcapi_entity_get_typed_value",
         "ifcopenshell_ifcapi_shape_is_x",
         "ifcopenshell_ifcapi_unit_get_prefix",
+        "ifcopenshell_ifcapi_unit_get_measure_class",
+        "ifcopenshell_ifcapi_unit_get_measure_unit_type",
         "ifcopenshell_ifcapi_unit_get_symbol_measure_class",
         "ifcopenshell_ifcapi_selector_get_element_value",
         "ifcopenshell_ifcapi_selector_set_element_value",
@@ -96,6 +98,7 @@ def test_ifcapi_spec_lowers_to_host_binding_metadata() -> None:
     assert '"ifcopenshell_ifcapi_element_get_material": (' in python
     assert '"ifcopenshell_ifcapi_shape_is_x": (' in python
     assert '"ifcopenshell_ifcapi_unit_get_prefix": (' in python
+    assert '"ifcopenshell_ifcapi_unit_get_measure_class": (' in python
     assert '"ifcopenshell_ifcapi_compute_derived": (' in python
     assert '"ifcopenshell_ifcapi_value_kind": (' in python
     assert '"ifcopenshell_ifcapi_selector_set_element_value": (' in python

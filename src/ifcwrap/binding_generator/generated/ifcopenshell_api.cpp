@@ -5348,6 +5348,40 @@ bool ifcopenshell_ifcapi_unit_get_unit_name_universal(const char* text, ifcopens
     }
 }
 
+bool ifcopenshell_ifcapi_unit_get_measure_class(const char* unit_type, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (unit_type == nullptr) { throw std::runtime_error("Parameter \"unit_type\" must not be null"); }
+    std::string unit_type_cpp(unit_type);
+        *out_result = make_string(ifcapi::bindings::unit_get_measure_class(unit_type_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_unit_get_measure_unit_type(const char* measure_class, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (measure_class == nullptr) { throw std::runtime_error("Parameter \"measure_class\" must not be null"); }
+    std::string measure_class_cpp(measure_class);
+        *out_result = make_string(ifcapi::bindings::unit_get_measure_unit_type(measure_class_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_unit_get_symbol_measure_class(const char* symbol, ifcopenshell_string_t* out_result) {
     try {
         ifcopenshell_clear_error();

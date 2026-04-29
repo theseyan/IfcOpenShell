@@ -378,6 +378,21 @@ std::string unit_get_unit_name_universal(const std::string& text) {
     return result ? std::string(result) : std::string();
 }
 
+std::string unit_get_measure_class(const std::string& unit_type) {
+    if (unit_type.empty()) return std::string();
+    if (unit_type == "USERDEFINED") return "IfcNumericMeasure";
+    if (unit_type.size() < 4) return std::string();
+    std::string body = unit_type.substr(0, unit_type.size() - 4);
+    body = lower_str(body);
+    if (!body.empty()) body[0] = std::toupper((unsigned char)body[0]);
+    return "Ifc" + body + "Measure";
+}
+
+std::string unit_get_measure_unit_type(const std::string& measure_class) {
+    if (measure_class.empty()) return std::string();
+    return measure_to_unit_type(measure_class);
+}
+
 std::string unit_get_symbol_measure_class(const std::string& symbol) {
     if (symbol.empty()) return "IfcNumericMeasure";
     std::string s = lower_str(symbol);
@@ -420,22 +435,6 @@ extern "C" {
 // ---------------------------------------------------------------------------
 // Pure-string helpers.
 // ---------------------------------------------------------------------------
-
-IFCAPI_EXPORT char* ifcopenshell_util_unit_get_measure_class(const char* unit_type) {
-    if (!unit_type) return nullptr;
-    std::string s = unit_type;
-    if (s == "USERDEFINED") return dup_cstr("IfcNumericMeasure");
-    if (s.size() < 4) return nullptr;
-    std::string body = s.substr(0, s.size() - 4);
-    body = lower_str(body);
-    if (!body.empty()) body[0] = std::toupper((unsigned char)body[0]);
-    return dup_cstr("Ifc" + body + "Measure");
-}
-
-IFCAPI_EXPORT char* ifcopenshell_util_unit_get_measure_unit_type(const char* measure_class) {
-    if (!measure_class) return nullptr;
-    return dup_cstr(measure_to_unit_type(measure_class));
-}
 
 IFCAPI_EXPORT void ifcopenshell_util_unit_get_si_dimensions(const char* name, int* out7) {
     if (!out7) return;
