@@ -767,18 +767,6 @@ IFCAPI_EXPORT double ifcopenshell_util_unit_calculate_unit_scale(
 /* Entity-based helpers. Returned ifc_instance handles are caller-owned and
    must be released with ifcopenshell_ifc_instance_destroy. char* returns
    must be released with ifcopenshell_free_string. */
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_util_unit_get_unit_assignment(
-    ifcopenshell_ifc_file_t* file);
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_util_unit_get_project_unit(
-    ifcopenshell_ifc_file_t* file, const char* unit_type);
-IFCAPI_EXPORT char* ifcopenshell_util_unit_get_full_unit_name(
-    ifcopenshell_ifc_instance_t* unit);
-IFCAPI_EXPORT char* ifcopenshell_util_unit_get_unit_symbol(
-    ifcopenshell_ifc_instance_t* unit);
-IFCAPI_EXPORT double ifcopenshell_util_unit_convert_unit(
-    double value,
-    ifcopenshell_ifc_instance_t* from_unit,
-    ifcopenshell_ifc_instance_t* to_unit);
 /* Inspect a property/quantity. Either *out_unit is populated (a directly
    attached Unit), or *out_measure_class is populated with the IFC measure class
    string (e.g. "IfcLengthMeasure") and the caller resolves it via

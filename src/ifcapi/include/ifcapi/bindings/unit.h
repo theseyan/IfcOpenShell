@@ -5,6 +5,9 @@
 
 #include "ifcapi/bindings/contract.h"
 
+#include "ifcparse/IfcBaseClass.h"
+#include "ifcparse/IfcFile.h"
+
 #include <string>
 #include <vector>
 
@@ -35,6 +38,14 @@ IFCAPI_BINDING std::string unit_format_length(
     const std::string& unit_system,
     const std::string& input_unit,
     const std::string& output_unit);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* unit_get_unit_assignment(IfcParse::IfcFile* file);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* unit_get_project_unit(IfcParse::IfcFile* file, const std::string& unit_type);
+IFCAPI_BINDING std::string unit_get_full_unit_name(IfcUtil::IfcBaseClass* unit);
+IFCAPI_BINDING std::string unit_get_unit_symbol(IfcUtil::IfcBaseClass* unit);
+IFCAPI_BINDING double unit_convert_unit(
+    double value,
+    IfcUtil::IfcBaseClass* from_unit,
+    IfcUtil::IfcBaseClass* to_unit);
 
 } // namespace bindings
 } // namespace ifcapi

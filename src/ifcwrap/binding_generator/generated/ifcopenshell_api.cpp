@@ -5494,6 +5494,89 @@ bool ifcopenshell_ifcapi_unit_format_length(double value, double precision, int3
     }
 }
 
+bool ifcopenshell_ifcapi_unit_get_unit_assignment(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    auto file_cpp = (file != nullptr && file->ptr != nullptr) ? file->ptr : nullptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::unit_get_unit_assignment(file_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_unit_get_project_unit(ifcopenshell_ifc_file_t* file, const char* unit_type, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    auto file_cpp = (file != nullptr && file->ptr != nullptr) ? file->ptr : nullptr;
+    if (unit_type == nullptr) { throw std::runtime_error("Parameter \"unit_type\" must not be null"); }
+    std::string unit_type_cpp(unit_type);
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::unit_get_project_unit(file_cpp, unit_type_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_unit_get_full_unit_name(ifcopenshell_ifc_instance_t* unit, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    auto unit_cpp = (unit != nullptr && unit->ptr != nullptr) ? unit->ptr : nullptr;
+        *out_result = make_string(ifcapi::bindings::unit_get_full_unit_name(unit_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_unit_get_unit_symbol(ifcopenshell_ifc_instance_t* unit, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    auto unit_cpp = (unit != nullptr && unit->ptr != nullptr) ? unit->ptr : nullptr;
+        *out_result = make_string(ifcapi::bindings::unit_get_unit_symbol(unit_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_unit_convert_unit(double value, ifcopenshell_ifc_instance_t* from_unit, ifcopenshell_ifc_instance_t* to_unit, double* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    auto from_unit_cpp = (from_unit != nullptr && from_unit->ptr != nullptr) ? from_unit->ptr : nullptr;
+    auto to_unit_cpp = (to_unit != nullptr && to_unit->ptr != nullptr) ? to_unit->ptr : nullptr;
+        *out_result = static_cast<double>(ifcapi::bindings::unit_convert_unit(value, from_unit_cpp, to_unit_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_value_kind(ifcopenshell_ifcapi_value_t* value, int32_t* out_result) {
     try {
         ifcopenshell_clear_error();
