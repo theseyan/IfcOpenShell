@@ -747,42 +747,6 @@ IFCAPI_EXPORT bool ifcopenshell_api_pset_edit_qto(
 /*  util.unit                                                          */
 /* ------------------------------------------------------------------ */
 
-/* Returns the project unit-scale factor (multiplier from project units to
-   SI) for the given unit_type ("LENGTHUNIT", "AREAUNIT", ...). Returns 1.0
-   when the project has no UnitsInContext, when the requested unit is not
-   present, or on any error. The returned value follows the upstream
-   ifcopenshell.util.unit.calculate_unit_scale semantics:
-
-       si_value = project_value * unit_scale
-       project_value = si_value / unit_scale
-
-   Pass NULL or empty string for unit_type to default to "LENGTHUNIT". */
-IFCAPI_EXPORT double ifcopenshell_util_unit_calculate_unit_scale(
-    ifcopenshell_ifc_file_t* file,
-    const char* unit_type);
-
-/* Pure-string helpers. The const char* returns reference static storage and
-   must NOT be freed by the caller. char* returns are heap-allocated and must
-   be released with ifcopenshell_free_string. */
-/* Entity-based helpers. Returned ifc_instance handles are caller-owned and
-   must be released with ifcopenshell_ifc_instance_destroy. char* returns
-   must be released with ifcopenshell_free_string. */
-/* Inspect a property/quantity. Either *out_unit is populated (a directly
-   attached Unit), or *out_measure_class is populated with the IFC measure class
-   string (e.g. "IfcLengthMeasure") and the caller resolves it via
-   get_project_unit. Both out arguments may be NULL on input if not needed. The
-   returned char* must be released with ifcopenshell_free_string. */
-IFCAPI_EXPORT void ifcopenshell_util_unit_resolve_property(
-    ifcopenshell_ifc_instance_t* prop,
-    ifcopenshell_ifc_instance_t** out_unit,
-    char** out_measure_class);
-IFCAPI_EXPORT void ifcopenshell_util_unit_resolve_property_table(
-    ifcopenshell_ifc_instance_t* prop,
-    ifcopenshell_ifc_instance_t** out_defining_unit,
-    char** out_defining_measure_class,
-    ifcopenshell_ifc_instance_t** out_defined_unit,
-    char** out_defined_measure_class);
-
 /* ------------------------------------------------------------------ */
 /*  api.geometry.edit_object_placement                                 */
 /* ------------------------------------------------------------------ */

@@ -604,8 +604,6 @@ double unit_convert_unit(double value, IfcUtil::IfcBaseClass* from_unit, IfcUtil
 } // namespace bindings
 } // namespace ifcapi
 
-extern "C" {
-
 // ---------------------------------------------------------------------------
 // Entity-based ABI.
 // ---------------------------------------------------------------------------
@@ -666,53 +664,58 @@ void resolve_table_side(IfcUtil::IfcBaseClass* prop, const char* unit_attr, cons
 
 }  // namespace
 
-IFCAPI_EXPORT void ifcopenshell_util_unit_resolve_property(
-    ifcopenshell_ifc_instance_t* prop_h,
-    ifcopenshell_ifc_instance_t** out_unit,
-    char** out_measure_class)
-{
-    if (out_unit) *out_unit = nullptr;
-    if (out_measure_class) *out_measure_class = nullptr;
-    auto* prop = ifcopenshell::capi::unwrap_instance(prop_h);
+namespace ifcapi {
+namespace bindings {
+
+IfcUtil::IfcBaseClass* unit_resolve_property_unit(IfcUtil::IfcBaseClass* prop) {
     IfcUtil::IfcBaseClass* unit = nullptr;
     std::string mc;
     resolve_property_unit_or_class(prop, &unit, &mc);
-    if (out_unit) *out_unit = ifcopenshell::capi::wrap_instance(unit);
-    if (out_measure_class && !mc.empty()) *out_measure_class = dup_cstr(mc);
+    return unit;
 }
 
-IFCAPI_EXPORT void ifcopenshell_util_unit_resolve_property_table(
-    ifcopenshell_ifc_instance_t* prop_h,
-    ifcopenshell_ifc_instance_t** out_defining_unit,
-    char** out_defining_measure_class,
-    ifcopenshell_ifc_instance_t** out_defined_unit,
-    char** out_defined_measure_class)
-{
-    if (out_defining_unit) *out_defining_unit = nullptr;
-    if (out_defining_measure_class) *out_defining_measure_class = nullptr;
-    if (out_defined_unit) *out_defined_unit = nullptr;
-    if (out_defined_measure_class) *out_defined_measure_class = nullptr;
-    auto* prop = ifcopenshell::capi::unwrap_instance(prop_h);
-    if (!prop) return;
+std::string unit_resolve_property_measure_class(IfcUtil::IfcBaseClass* prop) {
+    IfcUtil::IfcBaseClass* unit = nullptr;
+    std::string mc;
+    resolve_property_unit_or_class(prop, &unit, &mc);
+    return unit ? std::string() : mc;
+}
+
+IfcUtil::IfcBaseClass* unit_resolve_property_table_defining_unit(IfcUtil::IfcBaseClass* prop) {
     IfcUtil::IfcBaseClass* u = nullptr;
     std::string mc;
     resolve_table_side(prop, "DefiningUnit", "DefiningValues", &u, &mc);
-    if (out_defining_unit) *out_defining_unit = ifcopenshell::capi::wrap_instance(u);
-    if (out_defining_measure_class && !mc.empty()) *out_defining_measure_class = dup_cstr(mc);
-    resolve_table_side(prop, "DefinedUnit", "DefinedValues", &u, &mc);
-    if (out_defined_unit) *out_defined_unit = ifcopenshell::capi::wrap_instance(u);
-    if (out_defined_measure_class && !mc.empty()) *out_defined_measure_class = dup_cstr(mc);
+    return u;
 }
 
-IFCAPI_EXPORT double ifcopenshell_util_unit_calculate_unit_scale(
-    ifcopenshell_ifc_file_t* file_h, const char* unit_type)
-{
-    if (!file_h || !file_h->ptr) return 1.0;
-    auto* file = file_h->ptr;
-    std::string want = (unit_type && *unit_type) ? unit_type : "LENGTHUNIT";
+std::string unit_resolve_property_table_defining_measure_class(IfcUtil::IfcBaseClass* prop) {
+    IfcUtil::IfcBaseClass* u = nullptr;
+    std::string mc;
+    resolve_table_side(prop, "DefiningUnit", "DefiningValues", &u, &mc);
+    return u ? std::string() : mc;
+}
+
+IfcUtil::IfcBaseClass* unit_resolve_property_table_defined_unit(IfcUtil::IfcBaseClass* prop) {
+    IfcUtil::IfcBaseClass* u = nullptr;
+    std::string mc;
+    resolve_table_side(prop, "DefinedUnit", "DefinedValues", &u, &mc);
+    return u;
+}
+
+std::string unit_resolve_property_table_defined_measure_class(IfcUtil::IfcBaseClass* prop) {
+    IfcUtil::IfcBaseClass* u = nullptr;
+    std::string mc;
+    resolve_table_side(prop, "DefinedUnit", "DefinedValues", &u, &mc);
+    return u ? std::string() : mc;
+}
+
+double unit_calculate_unit_scale(IfcParse::IfcFile* file, const std::string& unit_type) {
+    if (!file) return 1.0;
+    std::string want = unit_type.empty() ? "LENGTHUNIT" : unit_type;
     auto* unit = project_unit_for(file, want);
     if (!unit) return 1.0;
     return convert_value_for_unit(1.0, unit, /*to_si=*/true);
 }
 
-}  // extern "C"
+} // namespace bindings
+} // namespace ifcapi

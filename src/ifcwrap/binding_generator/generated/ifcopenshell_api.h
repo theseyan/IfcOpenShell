@@ -490,6 +490,13 @@ bool ifcopenshell_ifcapi_unit_get_project_unit(ifcopenshell_ifc_file_t* file, co
 bool ifcopenshell_ifcapi_unit_get_full_unit_name(ifcopenshell_ifc_instance_t* unit, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcapi_unit_get_unit_symbol(ifcopenshell_ifc_instance_t* unit, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcapi_unit_convert_unit(double value, ifcopenshell_ifc_instance_t* from_unit, ifcopenshell_ifc_instance_t* to_unit, double* out_result);
+bool ifcopenshell_ifcapi_unit_resolve_property_unit(ifcopenshell_ifc_instance_t* prop, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_unit_resolve_property_measure_class(ifcopenshell_ifc_instance_t* prop, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcapi_unit_resolve_property_table_defining_unit(ifcopenshell_ifc_instance_t* prop, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_unit_resolve_property_table_defining_measure_class(ifcopenshell_ifc_instance_t* prop, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcapi_unit_resolve_property_table_defined_unit(ifcopenshell_ifc_instance_t* prop, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_unit_resolve_property_table_defined_measure_class(ifcopenshell_ifc_instance_t* prop, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcapi_unit_calculate_unit_scale(ifcopenshell_ifc_file_t* file, const char* unit_type, double* out_result);
 bool ifcopenshell_ifcapi_value_kind(ifcopenshell_ifcapi_value_t* value, int32_t* out_result);
 bool ifcopenshell_ifcapi_selector_get_element_value(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* element, const char* query, ifcopenshell_ifcapi_value_t** out_result);
 bool ifcopenshell_ifcapi_selector_set_element_value(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* element, const ifcopenshell_string_list_t* keys, const ifcopenshell_bool_list_t* regex_flags, ifcopenshell_ifcapi_value_t* value, const char* concat, bool* out_result);

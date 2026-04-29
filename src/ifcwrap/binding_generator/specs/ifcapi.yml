@@ -461,6 +461,105 @@ functions:
           ownership: borrowed
           nullable: true
 
+  - expose_as: unit_resolve_property_unit
+    cpp_name: ifcapi::bindings::unit_resolve_property_unit
+    returns:
+      kind: handle
+      handle: instance
+      ownership: borrowed
+      nullable: true
+    params:
+      - name: prop
+        type:
+          kind: handle
+          handle: instance
+          ownership: borrowed
+          nullable: true
+
+  - expose_as: unit_resolve_property_measure_class
+    cpp_name: ifcapi::bindings::unit_resolve_property_measure_class
+    returns:
+      kind: string
+      ownership: copy
+    params:
+      - name: prop
+        type:
+          kind: handle
+          handle: instance
+          ownership: borrowed
+          nullable: true
+
+  - expose_as: unit_resolve_property_table_defining_unit
+    cpp_name: ifcapi::bindings::unit_resolve_property_table_defining_unit
+    returns:
+      kind: handle
+      handle: instance
+      ownership: borrowed
+      nullable: true
+    params:
+      - name: prop
+        type:
+          kind: handle
+          handle: instance
+          ownership: borrowed
+          nullable: true
+
+  - expose_as: unit_resolve_property_table_defining_measure_class
+    cpp_name: ifcapi::bindings::unit_resolve_property_table_defining_measure_class
+    returns:
+      kind: string
+      ownership: copy
+    params:
+      - name: prop
+        type:
+          kind: handle
+          handle: instance
+          ownership: borrowed
+          nullable: true
+
+  - expose_as: unit_resolve_property_table_defined_unit
+    cpp_name: ifcapi::bindings::unit_resolve_property_table_defined_unit
+    returns:
+      kind: handle
+      handle: instance
+      ownership: borrowed
+      nullable: true
+    params:
+      - name: prop
+        type:
+          kind: handle
+          handle: instance
+          ownership: borrowed
+          nullable: true
+
+  - expose_as: unit_resolve_property_table_defined_measure_class
+    cpp_name: ifcapi::bindings::unit_resolve_property_table_defined_measure_class
+    returns:
+      kind: string
+      ownership: copy
+    params:
+      - name: prop
+        type:
+          kind: handle
+          handle: instance
+          ownership: borrowed
+          nullable: true
+
+  - expose_as: unit_calculate_unit_scale
+    cpp_name: ifcapi::bindings::unit_calculate_unit_scale
+    returns:
+      kind: double
+    params:
+      - name: file
+        type:
+          kind: handle
+          handle: file
+          ownership: borrowed
+          nullable: true
+      - name: unit_type
+        type:
+          kind: string
+
   - expose_as: value_kind
     cpp_name: ifcapi::bindings::value_kind
     returns:

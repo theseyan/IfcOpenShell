@@ -76,6 +76,9 @@ def test_ifcapi_spec_imports_core_handles_without_redefining_them() -> None:
         "ifcopenshell_ifcapi_unit_get_unit_assignment",
         "ifcopenshell_ifcapi_unit_get_unit_symbol",
         "ifcopenshell_ifcapi_unit_convert_unit",
+        "ifcopenshell_ifcapi_unit_resolve_property_unit",
+        "ifcopenshell_ifcapi_unit_resolve_property_table_defined_measure_class",
+        "ifcopenshell_ifcapi_unit_calculate_unit_scale",
         "ifcopenshell_ifcapi_selector_get_element_value",
         "ifcopenshell_ifcapi_selector_set_element_value",
         "ifcopenshell_ifcapi_compute_derived",
@@ -108,6 +111,7 @@ def test_ifcapi_spec_lowers_to_host_binding_metadata() -> None:
     assert '"ifcopenshell_ifcapi_unit_get_si_dimensions": (' in python
     assert '"ifcopenshell_ifcapi_unit_format_length": (' in python
     assert '"ifcopenshell_ifcapi_unit_get_unit_assignment": (' in python
+    assert '"ifcopenshell_ifcapi_unit_resolve_property_unit": (' in python
     assert '"ifcopenshell_ifcapi_compute_derived": (' in python
     assert '"ifcopenshell_ifcapi_value_kind": (' in python
     assert '"ifcopenshell_ifcapi_selector_set_element_value": (' in python

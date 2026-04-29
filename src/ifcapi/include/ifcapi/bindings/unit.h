@@ -46,6 +46,13 @@ IFCAPI_BINDING double unit_convert_unit(
     double value,
     IfcUtil::IfcBaseClass* from_unit,
     IfcUtil::IfcBaseClass* to_unit);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* unit_resolve_property_unit(IfcUtil::IfcBaseClass* prop);
+IFCAPI_BINDING std::string unit_resolve_property_measure_class(IfcUtil::IfcBaseClass* prop);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* unit_resolve_property_table_defining_unit(IfcUtil::IfcBaseClass* prop);
+IFCAPI_BINDING std::string unit_resolve_property_table_defining_measure_class(IfcUtil::IfcBaseClass* prop);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* unit_resolve_property_table_defined_unit(IfcUtil::IfcBaseClass* prop);
+IFCAPI_BINDING std::string unit_resolve_property_table_defined_measure_class(IfcUtil::IfcBaseClass* prop);
+IFCAPI_BINDING double unit_calculate_unit_scale(IfcParse::IfcFile* file, const std::string& unit_type);
 
 } // namespace bindings
 } // namespace ifcapi
