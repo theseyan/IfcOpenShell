@@ -247,13 +247,12 @@ def _configure(lib) -> None:
             "ifcopenshell_ifcapi_unit_get_measure_unit_type",
             "ifcopenshell_ifcapi_unit_get_symbol_measure_class",
             "ifcopenshell_ifcapi_unit_get_symbol_quantity_class",
+            "ifcopenshell_ifcapi_unit_get_si_dimensions",
+            "ifcopenshell_ifcapi_unit_get_named_dimensions",
             "ifcopenshell_string_destroy",
+            "ifcopenshell_int32_list_destroy",
         ),
     )
-    lib.ifcopenshell_util_unit_get_si_dimensions.restype = None
-    lib.ifcopenshell_util_unit_get_si_dimensions.argtypes = [cp, ctypes.POINTER(ctypes.c_int)]
-    lib.ifcopenshell_util_unit_get_named_dimensions.restype = None
-    lib.ifcopenshell_util_unit_get_named_dimensions.argtypes = [cp, ctypes.POINTER(ctypes.c_int)]
     lib.ifcopenshell_util_unit_convert.restype = ctypes.c_double
     lib.ifcopenshell_util_unit_convert.argtypes = [
         ctypes.c_double, cp, cp, cp, cp,
@@ -327,6 +326,16 @@ def _call_generated_string(lib, name, value):
     return _take_generated_str(lib, out)
 
 
+def _call_generated_int_tuple(lib, name, value):
+    out = _generated_capi.ifcopenshell_int32_list_t()
+    if not getattr(lib, name)(_enc(value) or b"", ctypes.byref(out)):
+        raise RuntimeError(ifcopenshell.get_log() or name)
+    try:
+        return tuple(out.items[i] for i in range(out.length))
+    finally:
+        lib.ifcopenshell_int32_list_destroy(ctypes.byref(out))
+
+
 def _take_instance(lib, file_obj, handle):
     if not handle:
         return None
@@ -378,17 +387,13 @@ def get_unit_name_universal(text: str) -> Union[str, None]:
 def get_si_dimensions(name):
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    out = (ctypes.c_int * 7)()
-    lib.ifcopenshell_util_unit_get_si_dimensions(_enc(name), out)
-    return tuple(out)
+    return _call_generated_int_tuple(lib, "ifcopenshell_ifcapi_unit_get_si_dimensions", name)
 
 
 def get_named_dimensions(name):
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    out = (ctypes.c_int * 7)()
-    lib.ifcopenshell_util_unit_get_named_dimensions(_enc(name), out)
-    return tuple(out)
+    return _call_generated_int_tuple(lib, "ifcopenshell_ifcapi_unit_get_named_dimensions", name)
 
 
 def get_unit_measure_class(unit_type: str) -> MEASURE_CLASS:
