@@ -483,6 +483,8 @@ bool ifcopenshell_ifcapi_unit_get_symbol_measure_class(const char* symbol, ifcop
 bool ifcopenshell_ifcapi_unit_get_symbol_quantity_class(const char* symbol, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcapi_unit_get_si_dimensions(const char* name, ifcopenshell_int32_list_t* out_result);
 bool ifcopenshell_ifcapi_unit_get_named_dimensions(const char* name, ifcopenshell_int32_list_t* out_result);
+bool ifcopenshell_ifcapi_unit_convert(double value, const char* from_prefix, const char* from_unit, const char* to_prefix, const char* to_unit, double* out_result);
+bool ifcopenshell_ifcapi_unit_format_length(double value, double precision, int32_t decimal_places, bool suppress_zero_inches, const char* unit_system, const char* input_unit, const char* output_unit, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcapi_value_kind(ifcopenshell_ifcapi_value_t* value, int32_t* out_result);
 bool ifcopenshell_ifcapi_selector_get_element_value(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* element, const char* query, ifcopenshell_ifcapi_value_t** out_result);
 bool ifcopenshell_ifcapi_selector_set_element_value(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* element, const ifcopenshell_string_list_t* keys, const ifcopenshell_bool_list_t* regex_flags, ifcopenshell_ifcapi_value_t* value, const char* concat, bool* out_result);

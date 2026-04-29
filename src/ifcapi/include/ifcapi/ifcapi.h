@@ -764,15 +764,6 @@ IFCAPI_EXPORT double ifcopenshell_util_unit_calculate_unit_scale(
 /* Pure-string helpers. The const char* returns reference static storage and
    must NOT be freed by the caller. char* returns are heap-allocated and must
    be released with ifcopenshell_free_string. */
-IFCAPI_EXPORT double ifcopenshell_util_unit_convert(
-    double value,
-    const char* from_prefix, const char* from_unit,
-    const char* to_prefix, const char* to_unit);
-IFCAPI_EXPORT char* ifcopenshell_util_unit_format_length(
-    double value, double precision, int decimal_places,
-    int suppress_zero_inches, const char* unit_system,
-    const char* input_unit, const char* output_unit);
-
 /* Entity-based helpers. Returned ifc_instance handles are caller-owned and
    must be released with ifcopenshell_ifc_instance_destroy. char* returns
    must be released with ifcopenshell_free_string. */

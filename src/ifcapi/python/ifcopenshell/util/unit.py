@@ -249,19 +249,12 @@ def _configure(lib) -> None:
             "ifcopenshell_ifcapi_unit_get_symbol_quantity_class",
             "ifcopenshell_ifcapi_unit_get_si_dimensions",
             "ifcopenshell_ifcapi_unit_get_named_dimensions",
+            "ifcopenshell_ifcapi_unit_convert",
+            "ifcopenshell_ifcapi_unit_format_length",
             "ifcopenshell_string_destroy",
             "ifcopenshell_int32_list_destroy",
         ),
     )
-    lib.ifcopenshell_util_unit_convert.restype = ctypes.c_double
-    lib.ifcopenshell_util_unit_convert.argtypes = [
-        ctypes.c_double, cp, cp, cp, cp,
-    ]
-    lib.ifcopenshell_util_unit_format_length.restype = vp
-    lib.ifcopenshell_util_unit_format_length.argtypes = [
-        ctypes.c_double, ctypes.c_double, ctypes.c_int, ctypes.c_int,
-        cp, cp, cp,
-    ]
 
     lib.ifcopenshell_util_unit_get_unit_assignment.restype = vp
     lib.ifcopenshell_util_unit_get_unit_assignment.argtypes = [vp]
@@ -424,10 +417,13 @@ def convert(value: float, from_prefix: Optional[str], from_unit: str,
             to_prefix: Optional[str], to_unit: str) -> float:
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    return lib.ifcopenshell_util_unit_convert(
-        float(value), _enc(from_prefix), _enc(from_unit),
-        _enc(to_prefix), _enc(to_unit),
-    )
+    out = ctypes.c_double()
+    if not lib.ifcopenshell_ifcapi_unit_convert(
+        float(value), _enc(from_prefix) or b"", _enc(from_unit) or b"",
+        _enc(to_prefix) or b"", _enc(to_unit) or b"", ctypes.byref(out),
+    ):
+        raise RuntimeError(ifcopenshell.get_log() or "ifcopenshell_ifcapi_unit_convert")
+    return out.value
 
 
 def format_length(
@@ -441,12 +437,14 @@ def format_length(
 ) -> str:
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    p = lib.ifcopenshell_util_unit_format_length(
-        float(value), float(precision), int(decimal_places),
-        1 if suppress_zero_inches else 0,
-        _enc(unit_system), _enc(input_unit), _enc(output_unit),
-    )
-    return _take_str(lib, p)
+    out = _generated_capi.ifcopenshell_string_t()
+    if not lib.ifcopenshell_ifcapi_unit_format_length(
+        float(value), float(precision), int(decimal_places), bool(suppress_zero_inches),
+        _enc(unit_system) or b"", _enc(input_unit) or b"", _enc(output_unit) or b"", ctypes.byref(out),
+    ):
+        raise RuntimeError(ifcopenshell.get_log() or "ifcopenshell_ifcapi_unit_format_length")
+    result = _take_generated_str(lib, out)
+    return result or None
 
 
 # ---------------------------------------------------------------------------
