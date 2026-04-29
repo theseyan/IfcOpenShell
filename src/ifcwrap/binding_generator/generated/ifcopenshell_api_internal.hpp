@@ -58,6 +58,7 @@
 #include "ifcapi/bindings/element.h"
 #include "ifcapi/bindings/entity.h"
 #include "ifcapi/bindings/shape.h"
+#include "ifcapi/bindings/unit.h"
 #include "ifcapi/bindings/value.h"
 #include "aggregate_of_instance.h"
 #include "IfcEntityInstanceData.h"
