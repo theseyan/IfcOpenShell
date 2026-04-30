@@ -26,9 +26,131 @@ discover:
   include_dir: ../../../ifcapi/src
   functions:
     - namespace: ifcapi::bindings
-      translation_unit: util/shape.cpp
+      translation_unit: element.cpp
       include:
+        - compute_derived
+        - element_get_aggregate
+        - element_get_container
+        - element_get_material
+        - element_get_nest
+        - element_get_parent
+        - element_get_type
+        - entity_get_aggregate_typed_value
+        - entity_get_typed_value
+        - entity_set_aggregate_typed_value
+        - entity_set_typed_value
+        - selector_filter_all
+        - selector_filter_elements
+        - selector_get_element_value
+        - selector_set_element_value
         - shape_is_x
+        - unit_calculate_unit_scale
+        - unit_convert
+        - unit_convert_unit
+        - unit_format_length
+        - unit_get_full_unit_name
+        - unit_get_measure_class
+        - unit_get_measure_unit_type
+        - unit_get_named_dimensions
+        - unit_get_prefix
+        - unit_get_prefix_multiplier
+        - unit_get_project_unit
+        - unit_get_si_dimensions
+        - unit_get_symbol_measure_class
+        - unit_get_symbol_quantity_class
+        - unit_get_unit_assignment
+        - unit_get_unit_name
+        - unit_get_unit_name_universal
+        - unit_get_unit_symbol
+        - unit_resolve_property_measure_class
+        - unit_resolve_property_table_defined_measure_class
+        - unit_resolve_property_table_defined_unit
+        - unit_resolve_property_table_defining_measure_class
+        - unit_resolve_property_table_defining_unit
+        - unit_resolve_property_unit
+        - value_as_bool
+        - value_as_double
+        - value_as_instance
+        - value_as_int64
+        - value_as_string
+        - value_dict_key_at
+        - value_dict_size
+        - value_dict_value_at
+        - value_kind
+        - value_list_append
+        - value_list_at
+        - value_list_size
+        - value_new_bool
+        - value_new_double
+        - value_new_instance
+        - value_new_int
+        - value_new_list
+        - value_new_none
+        - value_new_string
+      type_overrides:
+        compute_derived:
+          returns:
+            ownership: owned
+            nullable: true
+        element_get_container:
+          params:
+            ifc_class:
+              nullable: true
+        entity_set_typed_value:
+          params:
+            str_value:
+              nullable: true
+        selector_filter_all:
+          returns:
+            ownership: owned
+            nullable: true
+        selector_filter_elements:
+          returns:
+            ownership: owned
+            nullable: true
+        selector_get_element_value:
+          returns:
+            ownership: owned
+            nullable: true
+          params:
+            file:
+              nullable: true
+        selector_set_element_value:
+          params:
+            element:
+              nullable: true
+            value:
+              nullable: true
+            concat:
+              nullable: true
+        value_list_append:
+          params:
+            item:
+              nullable: true
+        value_new_bool:
+          returns:
+            ownership: owned
+        value_new_double:
+          returns:
+            ownership: owned
+        value_new_instance:
+          returns:
+            ownership: owned
+          params:
+            value:
+              nullable: true
+        value_new_int:
+          returns:
+            ownership: owned
+        value_new_list:
+          returns:
+            ownership: owned
+        value_new_none:
+          returns:
+            ownership: owned
+        value_new_string:
+          returns:
+            ownership: owned
 
 handles:
   - name: value
@@ -63,841 +185,3 @@ functions:
       - name: guid
         type:
           kind: string
-
-  - expose_as: element_get_type
-    cpp_name: ifcapi::bindings::element_get_type
-    returns:
-      kind: handle
-      handle: instance
-      ownership: borrowed
-    params:
-      - name: instance
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-
-  - expose_as: element_get_aggregate
-    cpp_name: ifcapi::bindings::element_get_aggregate
-    returns:
-      kind: handle
-      handle: instance
-      ownership: borrowed
-    params:
-      - name: instance
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-
-  - expose_as: element_get_nest
-    cpp_name: ifcapi::bindings::element_get_nest
-    returns:
-      kind: handle
-      handle: instance
-      ownership: borrowed
-    params:
-      - name: instance
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-
-  - expose_as: element_get_container
-    cpp_name: ifcapi::bindings::element_get_container
-    returns:
-      kind: handle
-      handle: instance
-      ownership: borrowed
-    params:
-      - name: instance
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-      - name: direct_only
-        type:
-          kind: bool
-      - name: ifc_class
-        type:
-          kind: string
-          nullable: true
-
-  - expose_as: element_get_parent
-    cpp_name: ifcapi::bindings::element_get_parent
-    returns:
-      kind: handle
-      handle: instance
-      ownership: borrowed
-    params:
-      - name: instance
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-
-  - expose_as: element_get_material
-    cpp_name: ifcapi::bindings::element_get_material
-    returns:
-      kind: handle
-      handle: instance
-      ownership: borrowed
-    params:
-      - name: instance
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-      - name: should_skip_usage
-        type:
-          kind: bool
-      - name: should_inherit
-        type:
-          kind: bool
-
-  - expose_as: entity_set_typed_value
-    cpp_name: ifcapi::bindings::entity_set_typed_value
-    returns:
-      kind: bool
-    params:
-      - name: instance
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-      - name: attr
-        type:
-          kind: string
-      - name: type_name
-        type:
-          kind: string
-      - name: str_value
-        type:
-          kind: string
-          nullable: true
-
-  - expose_as: entity_get_typed_value
-    cpp_name: ifcapi::bindings::entity_get_typed_value
-    returns:
-      kind: string_list
-      ownership: copy
-    params:
-      - name: instance
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-      - name: attr
-        type:
-          kind: string
-
-  - expose_as: entity_set_aggregate_typed_value
-    cpp_name: ifcapi::bindings::entity_set_aggregate_typed_value
-    returns:
-      kind: bool
-    params:
-      - name: instance
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-      - name: attr
-        type:
-          kind: string
-      - name: type_names
-        type:
-          kind: string_list
-          ownership: copy
-      - name: str_values
-        type:
-          kind: string_list
-          ownership: copy
-
-  - expose_as: entity_get_aggregate_typed_value
-    cpp_name: ifcapi::bindings::entity_get_aggregate_typed_value
-    returns:
-      kind: string_list
-      ownership: copy
-    params:
-      - name: instance
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-      - name: attr
-        type:
-          kind: string
-
-  - expose_as: unit_get_prefix
-    cpp_name: ifcapi::bindings::unit_get_prefix
-    returns:
-      kind: string
-      ownership: copy
-    params:
-      - name: text
-        type:
-          kind: string
-
-  - expose_as: unit_get_prefix_multiplier
-    cpp_name: ifcapi::bindings::unit_get_prefix_multiplier
-    returns:
-      kind: double
-    params:
-      - name: text
-        type:
-          kind: string
-
-  - expose_as: unit_get_unit_name
-    cpp_name: ifcapi::bindings::unit_get_unit_name
-    returns:
-      kind: string
-      ownership: copy
-    params:
-      - name: text
-        type:
-          kind: string
-
-  - expose_as: unit_get_unit_name_universal
-    cpp_name: ifcapi::bindings::unit_get_unit_name_universal
-    returns:
-      kind: string
-      ownership: copy
-    params:
-      - name: text
-        type:
-          kind: string
-
-  - expose_as: unit_get_measure_class
-    cpp_name: ifcapi::bindings::unit_get_measure_class
-    returns:
-      kind: string
-      ownership: copy
-    params:
-      - name: unit_type
-        type:
-          kind: string
-
-  - expose_as: unit_get_measure_unit_type
-    cpp_name: ifcapi::bindings::unit_get_measure_unit_type
-    returns:
-      kind: string
-      ownership: copy
-    params:
-      - name: measure_class
-        type:
-          kind: string
-
-  - expose_as: unit_get_symbol_measure_class
-    cpp_name: ifcapi::bindings::unit_get_symbol_measure_class
-    returns:
-      kind: string
-      ownership: copy
-    params:
-      - name: symbol
-        type:
-          kind: string
-
-  - expose_as: unit_get_symbol_quantity_class
-    cpp_name: ifcapi::bindings::unit_get_symbol_quantity_class
-    returns:
-      kind: string
-      ownership: copy
-    params:
-      - name: symbol
-        type:
-          kind: string
-
-  - expose_as: unit_get_si_dimensions
-    cpp_name: ifcapi::bindings::unit_get_si_dimensions
-    returns:
-      kind: int32_list
-    params:
-      - name: name
-        type:
-          kind: string
-
-  - expose_as: unit_get_named_dimensions
-    cpp_name: ifcapi::bindings::unit_get_named_dimensions
-    returns:
-      kind: int32_list
-    params:
-      - name: name
-        type:
-          kind: string
-
-  - expose_as: unit_convert
-    cpp_name: ifcapi::bindings::unit_convert
-    returns:
-      kind: double
-    params:
-      - name: value
-        type:
-          kind: double
-      - name: from_prefix
-        type:
-          kind: string
-      - name: from_unit
-        type:
-          kind: string
-      - name: to_prefix
-        type:
-          kind: string
-      - name: to_unit
-        type:
-          kind: string
-
-  - expose_as: unit_format_length
-    cpp_name: ifcapi::bindings::unit_format_length
-    returns:
-      kind: string
-      ownership: copy
-    params:
-      - name: value
-        type:
-          kind: double
-      - name: precision
-        type:
-          kind: double
-      - name: decimal_places
-        type:
-          kind: int32
-      - name: suppress_zero_inches
-        type:
-          kind: bool
-      - name: unit_system
-        type:
-          kind: string
-      - name: input_unit
-        type:
-          kind: string
-      - name: output_unit
-        type:
-          kind: string
-
-  - expose_as: unit_get_unit_assignment
-    cpp_name: ifcapi::bindings::unit_get_unit_assignment
-    returns:
-      kind: handle
-      handle: instance
-      ownership: borrowed
-      nullable: true
-    params:
-      - name: file
-        type:
-          kind: handle
-          handle: file
-          ownership: borrowed
-          nullable: true
-
-  - expose_as: unit_get_project_unit
-    cpp_name: ifcapi::bindings::unit_get_project_unit
-    returns:
-      kind: handle
-      handle: instance
-      ownership: borrowed
-      nullable: true
-    params:
-      - name: file
-        type:
-          kind: handle
-          handle: file
-          ownership: borrowed
-          nullable: true
-      - name: unit_type
-        type:
-          kind: string
-
-  - expose_as: unit_get_full_unit_name
-    cpp_name: ifcapi::bindings::unit_get_full_unit_name
-    returns:
-      kind: string
-      ownership: copy
-    params:
-      - name: unit
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-          nullable: true
-
-  - expose_as: unit_get_unit_symbol
-    cpp_name: ifcapi::bindings::unit_get_unit_symbol
-    returns:
-      kind: string
-      ownership: copy
-    params:
-      - name: unit
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-          nullable: true
-
-  - expose_as: unit_convert_unit
-    cpp_name: ifcapi::bindings::unit_convert_unit
-    returns:
-      kind: double
-    params:
-      - name: value
-        type:
-          kind: double
-      - name: from_unit
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-          nullable: true
-      - name: to_unit
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-          nullable: true
-
-  - expose_as: unit_resolve_property_unit
-    cpp_name: ifcapi::bindings::unit_resolve_property_unit
-    returns:
-      kind: handle
-      handle: instance
-      ownership: borrowed
-      nullable: true
-    params:
-      - name: prop
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-          nullable: true
-
-  - expose_as: unit_resolve_property_measure_class
-    cpp_name: ifcapi::bindings::unit_resolve_property_measure_class
-    returns:
-      kind: string
-      ownership: copy
-    params:
-      - name: prop
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-          nullable: true
-
-  - expose_as: unit_resolve_property_table_defining_unit
-    cpp_name: ifcapi::bindings::unit_resolve_property_table_defining_unit
-    returns:
-      kind: handle
-      handle: instance
-      ownership: borrowed
-      nullable: true
-    params:
-      - name: prop
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-          nullable: true
-
-  - expose_as: unit_resolve_property_table_defining_measure_class
-    cpp_name: ifcapi::bindings::unit_resolve_property_table_defining_measure_class
-    returns:
-      kind: string
-      ownership: copy
-    params:
-      - name: prop
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-          nullable: true
-
-  - expose_as: unit_resolve_property_table_defined_unit
-    cpp_name: ifcapi::bindings::unit_resolve_property_table_defined_unit
-    returns:
-      kind: handle
-      handle: instance
-      ownership: borrowed
-      nullable: true
-    params:
-      - name: prop
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-          nullable: true
-
-  - expose_as: unit_resolve_property_table_defined_measure_class
-    cpp_name: ifcapi::bindings::unit_resolve_property_table_defined_measure_class
-    returns:
-      kind: string
-      ownership: copy
-    params:
-      - name: prop
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-          nullable: true
-
-  - expose_as: unit_calculate_unit_scale
-    cpp_name: ifcapi::bindings::unit_calculate_unit_scale
-    returns:
-      kind: double
-    params:
-      - name: file
-        type:
-          kind: handle
-          handle: file
-          ownership: borrowed
-          nullable: true
-      - name: unit_type
-        type:
-          kind: string
-
-  - expose_as: value_kind
-    cpp_name: ifcapi::bindings::value_kind
-    returns:
-      kind: int32
-    params:
-      - name: value
-        type:
-          kind: handle
-          handle: value
-          ownership: borrowed
-
-  - expose_as: selector_get_element_value
-    cpp_name: ifcapi::bindings::selector_get_element_value
-    returns:
-      kind: handle
-      handle: value
-      ownership: owned
-      nullable: true
-    params:
-      - name: file
-        type:
-          kind: handle
-          handle: file
-          ownership: borrowed
-          nullable: true
-      - name: element
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-      - name: query
-        type:
-          kind: string
-
-  - expose_as: selector_set_element_value
-    cpp_name: ifcapi::bindings::selector_set_element_value
-    returns:
-      kind: bool
-    params:
-      - name: file
-        type:
-          kind: handle
-          handle: file
-          ownership: borrowed
-      - name: element
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-          nullable: true
-      - name: keys
-        type:
-          kind: string_list
-          ownership: copy
-      - name: regex_flags
-        type:
-          kind: bool_list
-          ownership: copy
-      - name: value
-        type:
-          kind: handle
-          handle: value
-          ownership: borrowed
-          nullable: true
-      - name: concat
-        type:
-          kind: string
-          nullable: true
-
-  - expose_as: selector_filter_all
-    cpp_name: ifcapi::bindings::selector_filter_all
-    returns:
-      kind: handle
-      handle: value
-      ownership: owned
-      nullable: true
-    params:
-      - name: file
-        type:
-          kind: handle
-          handle: file
-          ownership: borrowed
-      - name: query
-        type:
-          kind: string
-
-  - expose_as: selector_filter_elements
-    cpp_name: ifcapi::bindings::selector_filter_elements
-    returns:
-      kind: handle
-      handle: value
-      ownership: owned
-      nullable: true
-    params:
-      - name: file
-        type:
-          kind: handle
-          handle: file
-          ownership: borrowed
-      - name: query
-        type:
-          kind: string
-      - name: elements
-        type:
-          kind: handle_list
-          handle: instance
-          ownership: borrowed
-          cpp_type: IfcUtil::IfcBaseClass*
-
-  - expose_as: compute_derived
-    cpp_name: ifcapi::bindings::compute_derived
-    returns:
-      kind: handle
-      handle: value
-      ownership: owned
-      nullable: true
-    params:
-      - name: instance
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-      - name: attribute_name
-        type:
-          kind: string
-
-  - expose_as: value_as_bool
-    cpp_name: ifcapi::bindings::value_as_bool
-    returns:
-      kind: bool
-    params:
-      - name: value
-        type:
-          kind: handle
-          handle: value
-          ownership: borrowed
-
-  - expose_as: value_new_none
-    cpp_name: ifcapi::bindings::value_new_none
-    returns:
-      kind: handle
-      handle: value
-      ownership: owned
-    params: []
-
-  - expose_as: value_new_bool
-    cpp_name: ifcapi::bindings::value_new_bool
-    returns:
-      kind: handle
-      handle: value
-      ownership: owned
-    params:
-      - name: value
-        type:
-          kind: bool
-
-  - expose_as: value_new_int
-    cpp_name: ifcapi::bindings::value_new_int
-    returns:
-      kind: handle
-      handle: value
-      ownership: owned
-    params:
-      - name: value
-        type:
-          kind: int64
-
-  - expose_as: value_new_double
-    cpp_name: ifcapi::bindings::value_new_double
-    returns:
-      kind: handle
-      handle: value
-      ownership: owned
-    params:
-      - name: value
-        type:
-          kind: double
-
-  - expose_as: value_new_string
-    cpp_name: ifcapi::bindings::value_new_string
-    returns:
-      kind: handle
-      handle: value
-      ownership: owned
-    params:
-      - name: value
-        type:
-          kind: string
-
-  - expose_as: value_new_instance
-    cpp_name: ifcapi::bindings::value_new_instance
-    returns:
-      kind: handle
-      handle: value
-      ownership: owned
-    params:
-      - name: value
-        type:
-          kind: handle
-          handle: instance
-          ownership: borrowed
-          nullable: true
-
-  - expose_as: value_new_list
-    cpp_name: ifcapi::bindings::value_new_list
-    returns:
-      kind: handle
-      handle: value
-      ownership: owned
-    params: []
-
-  - expose_as: value_list_append
-    cpp_name: ifcapi::bindings::value_list_append
-    returns:
-      kind: bool
-    params:
-      - name: list
-        type:
-          kind: handle
-          handle: value
-          ownership: borrowed
-      - name: item
-        type:
-          kind: handle
-          handle: value
-          ownership: borrowed
-          nullable: true
-
-  - expose_as: value_as_int64
-    cpp_name: ifcapi::bindings::value_as_int64
-    returns:
-      kind: int64
-    params:
-      - name: value
-        type:
-          kind: handle
-          handle: value
-          ownership: borrowed
-
-  - expose_as: value_as_double
-    cpp_name: ifcapi::bindings::value_as_double
-    returns:
-      kind: double
-    params:
-      - name: value
-        type:
-          kind: handle
-          handle: value
-          ownership: borrowed
-
-  - expose_as: value_as_string
-    cpp_name: ifcapi::bindings::value_as_string
-    returns:
-      kind: string
-      ownership: copy
-    params:
-      - name: value
-        type:
-          kind: handle
-          handle: value
-          ownership: borrowed
-
-  - expose_as: value_as_instance
-    cpp_name: ifcapi::bindings::value_as_instance
-    returns:
-      kind: handle
-      handle: instance
-      ownership: borrowed
-      nullable: true
-    params:
-      - name: value
-        type:
-          kind: handle
-          handle: value
-          ownership: borrowed
-
-  - expose_as: value_list_size
-    cpp_name: ifcapi::bindings::value_list_size
-    returns:
-      kind: size
-    params:
-      - name: value
-        type:
-          kind: handle
-          handle: value
-          ownership: borrowed
-
-  - expose_as: value_list_at
-    cpp_name: ifcapi::bindings::value_list_at
-    returns:
-      kind: handle
-      handle: value
-      ownership: borrowed
-      nullable: true
-      cpp_type: const ifcopenshell_value_t*
-    params:
-      - name: value
-        type:
-          kind: handle
-          handle: value
-          ownership: borrowed
-      - name: index
-        type:
-          kind: size
-
-  - expose_as: value_dict_size
-    cpp_name: ifcapi::bindings::value_dict_size
-    returns:
-      kind: size
-    params:
-      - name: value
-        type:
-          kind: handle
-          handle: value
-          ownership: borrowed
-
-  - expose_as: value_dict_key_at
-    cpp_name: ifcapi::bindings::value_dict_key_at
-    returns:
-      kind: string
-      ownership: copy
-    params:
-      - name: value
-        type:
-          kind: handle
-          handle: value
-          ownership: borrowed
-      - name: index
-        type:
-          kind: size
-
-  - expose_as: value_dict_value_at
-    cpp_name: ifcapi::bindings::value_dict_value_at
-    returns:
-      kind: handle
-      handle: value
-      ownership: borrowed
-      nullable: true
-      cpp_type: const ifcopenshell_value_t*
-    params:
-      - name: value
-        type:
-          kind: handle
-          handle: value
-          ownership: borrowed
-      - name: index
-        type:
-          kind: size
