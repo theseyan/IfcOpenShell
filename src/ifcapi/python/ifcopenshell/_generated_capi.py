@@ -1290,6 +1290,107 @@ FUNCTION_SIGNATURES = {
 }
 
 
+_CLEAR_ERROR_NAME = "ifcopenshell_clear_error"
+_LAST_ERROR_NAME = "ifcopenshell_last_error_message"
+_STRING_DESTROY_NAME = "ifcopenshell_string_destroy"
+_STRING_LIST_DESTROY_NAME = "ifcopenshell_string_list_destroy"
+_INT32_LIST_DESTROY_NAME = "ifcopenshell_int32_list_destroy"
+_UINT32_LIST_DESTROY_NAME = "ifcopenshell_uint32_list_destroy"
+_DOUBLE_LIST_DESTROY_NAME = "ifcopenshell_double_list_destroy"
+
+
+def encode_string(value):
+    if value is None:
+        return None
+    if isinstance(value, bytes):
+        return value
+    return str(value).encode("utf-8")
+
+
+def make_string(value):
+    data = encode_string(value) or b""
+    buffer = ctypes.create_string_buffer(data)
+    result = ifcopenshell_string_t()
+    result.data = ctypes.cast(buffer, ctypes.c_void_p)
+    result.size = len(data)
+    result.owned = False
+    result._keepalive = buffer  # type: ignore[attr-defined]
+    return result
+
+
+def make_string_list(values):
+    encoded = [encode_string(value) or b"" for value in values]
+    buffers = [ctypes.create_string_buffer(value) for value in encoded]
+    items = (ifcopenshell_string_t * len(buffers))()
+    for index, buffer in enumerate(buffers):
+        items[index].data = ctypes.cast(buffer, ctypes.c_void_p)
+        items[index].size = len(buffer.value)
+        items[index].owned = False
+    result = ifcopenshell_string_list_t()
+    result.items = items
+    result.size = len(buffers)
+    result._keepalive = (items, buffers)  # type: ignore[attr-defined]
+    return result
+
+
+def last_error(lib, default="Unknown error"):
+    fn = getattr(lib, _LAST_ERROR_NAME, None)
+    if fn is None:
+        return default
+    raw = fn()
+    if not raw:
+        return default
+    return raw.decode("utf-8", errors="replace")
+
+
+def status_or_raise(lib, status, fallback):
+    if status:
+        return True
+    raise RuntimeError(last_error(lib, fallback))
+
+
+def take_string(lib, value):
+    try:
+        if value.data and value.size:
+            return ctypes.string_at(value.data, value.size).decode("utf-8")
+        return ""
+    finally:
+        getattr(lib, _STRING_DESTROY_NAME)(ctypes.byref(value))
+
+
+def take_string_list(lib, value, *, decode=True):
+    try:
+        result = []
+        for index in range(value.size):
+            item = value.items[index]
+            raw = ctypes.string_at(item.data, item.size) if item.data and item.size else b""
+            result.append(raw.decode("utf-8") if decode else raw)
+        return tuple(result)
+    finally:
+        getattr(lib, _STRING_LIST_DESTROY_NAME)(ctypes.byref(value))
+
+
+def take_int32_list(lib, value):
+    try:
+        return tuple(int(value.items[index]) for index in range(value.size)) if value.items else tuple()
+    finally:
+        getattr(lib, _INT32_LIST_DESTROY_NAME)(ctypes.byref(value))
+
+
+def take_uint32_list(lib, value):
+    try:
+        return tuple(int(value.items[index]) for index in range(value.size)) if value.items else tuple()
+    finally:
+        getattr(lib, _UINT32_LIST_DESTROY_NAME)(ctypes.byref(value))
+
+
+def take_double_list(lib, value):
+    try:
+        return tuple(float(value.items[index]) for index in range(value.size)) if value.items else tuple()
+    finally:
+        getattr(lib, _DOUBLE_LIST_DESTROY_NAME)(ctypes.byref(value))
+
+
 def bind(lib, *, strict=True, names=None, prefixes=None):
     selected_names = set(names or ())
     selected_prefixes = tuple(prefixes or ())

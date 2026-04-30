@@ -269,20 +269,7 @@ def _configure(lib) -> None:
 
 
 def _enc(s):
-    if s is None:
-        return None
-    if isinstance(s, bytes):
-        return s
-    return s.encode("utf-8")
-
-
-def _take_generated_str(lib, out):
-    try:
-        if not out.data:
-            return ""
-        return ctypes.string_at(out.data, out.size).decode("utf-8")
-    finally:
-        lib.ifcopenshell_string_destroy(ctypes.byref(out))
+    return _generated_capi.encode_string(s)
 
 
 def _call_generated_string(lib, name, value):
@@ -291,25 +278,19 @@ def _call_generated_string(lib, name, value):
 
 def _call_generated_string_args(lib, name, *args):
     out = _generated_capi.ifcopenshell_string_t()
-    if not getattr(lib, name)(*args, ctypes.byref(out)):
-        raise RuntimeError(ifcopenshell.get_log() or name)
-    return _take_generated_str(lib, out)
+    _generated_capi.status_or_raise(lib, getattr(lib, name)(*args, ctypes.byref(out)), ifcopenshell.get_log() or name)
+    return _generated_capi.take_string(lib, out)
 
 
 def _call_generated_int_tuple(lib, name, value):
     out = _generated_capi.ifcopenshell_int32_list_t()
-    if not getattr(lib, name)(_enc(value) or b"", ctypes.byref(out)):
-        raise RuntimeError(ifcopenshell.get_log() or name)
-    try:
-        return tuple(out.items[i] for i in range(out.length))
-    finally:
-        lib.ifcopenshell_int32_list_destroy(ctypes.byref(out))
+    _generated_capi.status_or_raise(lib, getattr(lib, name)(_enc(value) or b"", ctypes.byref(out)), ifcopenshell.get_log() or name)
+    return _generated_capi.take_int32_list(lib, out)
 
 
 def _call_generated_instance(lib, file_obj, name, *args):
     out = ctypes.POINTER(_generated_capi.ifcopenshell_ifc_instance_t)()
-    if not getattr(lib, name)(*args, ctypes.byref(out)):
-        raise RuntimeError(ifcopenshell.get_log() or name)
+    _generated_capi.status_or_raise(lib, getattr(lib, name)(*args, ctypes.byref(out)), ifcopenshell.get_log() or name)
     if out and not out.contents.ptr:
         lib.ifcopenshell_ifc_instance_destroy(ctypes.cast(out, ifcopenshell_wrapper._HandleStructP))
         return None
@@ -435,7 +416,7 @@ def format_length(
         _enc(unit_system) or b"", _enc(input_unit) or b"", _enc(output_unit) or b"", ctypes.byref(out),
     ):
         raise RuntimeError(ifcopenshell.get_log() or "ifcopenshell_ifcapi_unit_format_length")
-    result = _take_generated_str(lib, out)
+    result = _generated_capi.take_string(lib, out)
     return result or None
 
 
