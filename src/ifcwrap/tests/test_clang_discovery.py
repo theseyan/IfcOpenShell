@@ -90,6 +90,60 @@ void hop(const std::string& guid);
     assert len(functions["hop"]) == 2
 
 
+def test_discover_namespace_functions_with_nested_qualified_namespace(tmp_path: Path) -> None:
+    compiler = shutil.which("clang++")
+    if compiler is None:
+        pytest.skip("clang++ is not available")
+
+    header = tmp_path / "bindings.h"
+    source = tmp_path / "bindings.cpp"
+    compile_commands = tmp_path / "compile_commands.json"
+
+    header.write_text(
+        """
+#include <string>
+
+namespace ifcapi {
+namespace bindings {
+int nested_count(const std::string& name);
+}
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text(
+        """
+#include "bindings.h"
+
+namespace ifcapi::bindings {
+double qualified_scale(double value) { return value; }
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    compile_commands.write_text(
+        json.dumps(
+            [
+                {
+                    "directory": str(tmp_path),
+                    "command": f"{compiler} -std=c++17 -I {tmp_path} -c {source}",
+                    "file": str(source),
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    functions = discover_namespace_functions_with_compile_commands(compile_commands, source, "ifcapi::bindings")
+
+    assert set(functions) == {"nested_count", "qualified_scale"}
+    assert functions["nested_count"][0].return_cpp_type == "int"
+    assert functions["nested_count"][0].params[0].cpp_type == "const std::string &"
+    assert functions["qualified_scale"][0].return_cpp_type == "double"
+
+
 def test_discover_public_fields_with_inheritance(tmp_path: Path) -> None:
     compiler = shutil.which("clang++")
     if compiler is None:

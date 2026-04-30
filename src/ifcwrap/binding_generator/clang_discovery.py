@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import shlex
 import subprocess
+from typing import Iterable
 
 try:
     from .debug import debug_log, debug_path
@@ -264,17 +265,21 @@ class TranslationUnitIndex:
         if cached is not None:
             return cached
 
-        objects = self.ast_objects(namespace_name)
         functions: dict[str, list[DiscoveredFunction]] = defaultdict(list)
-        for obj in objects:
-            for func_name, overloads in _extract_namespace_functions(obj, namespace_name, self).items():
-                functions[func_name].extend(overloads)
+        ast_filters = [namespace_name]
+        if "::" in namespace_name:
+            ast_filters.append(_simple_name(namespace_name))
+        for ast_filter in ast_filters:
+            objects = self.ast_objects(ast_filter)
+            for obj in objects:
+                for func_name, overloads in _extract_namespace_functions(obj, namespace_name, self).items():
+                    functions[func_name].extend(overloads)
 
         if not functions:
             msg = f"Namespace '{namespace_name}' not found in AST for '{self.command.file}'"
             raise ValueError(msg)
 
-        result = {func_name: tuple(overloads) for func_name, overloads in functions.items()}
+        result = {func_name: _dedupe_discovered_functions(overloads) for func_name, overloads in functions.items()}
         self._namespace_function_cache[namespace_name] = result
         return result
 
@@ -585,7 +590,7 @@ def _extract_namespace_functions(
     if kind == "NamespaceDecl":
         next_namespace = _qualified_name(current_namespace, name)
 
-    if kind == "FunctionDecl" and current_namespace == namespace_name:
+    if kind == "FunctionDecl" and _namespace_matches(current_namespace, namespace_name):
         params = tuple(
             DiscoveredParam(
                 name=param.get("name") or f"arg_{param_index}",
@@ -610,6 +615,28 @@ def _extract_namespace_functions(
             functions[func_name].extend(overloads)
 
     return {func_name: tuple(overloads) for func_name, overloads in functions.items()}
+
+
+def _namespace_matches(current_namespace: str, target_namespace: str) -> bool:
+    if current_namespace == target_namespace:
+        return True
+    return "::" in target_namespace and current_namespace == _simple_name(target_namespace)
+
+
+def _dedupe_discovered_functions(functions: Iterable[DiscoveredFunction]) -> tuple[DiscoveredFunction, ...]:
+    result: list[DiscoveredFunction] = []
+    seen: set[tuple[str, str, tuple[str, ...]]] = set()
+    for function in functions:
+        key = (
+            function.cpp_name,
+            function.return_cpp_type,
+            tuple(param.cpp_type for param in function.params),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(function)
+    return tuple(result)
 
 
 def discover_public_methods_with_compile_commands(

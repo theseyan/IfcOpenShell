@@ -822,6 +822,83 @@ def test_autodiscovery_supports_nested_vectors(tmp_path: Path) -> None:
     assert "*out_result = make_double_list_list(self_cpp->uvs());" in generated_cpp
 
 
+def test_autodiscovery_supports_nested_namespace_functions(tmp_path: Path) -> None:
+    header = tmp_path / "bindings.h"
+    source = tmp_path / "bindings.cpp"
+    spec_path = tmp_path / "bindings.yml"
+
+    header.write_text(
+        dedent(
+            """
+            #include <string>
+
+            namespace ifcapi {
+            namespace bindings {
+            int nested_count(const std::string& name);
+            }
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text(
+        dedent(
+            """
+            #include "bindings.h"
+
+            int ifcapi::bindings::nested_count(const std::string& name) { return static_cast<int>(name.size()); }
+
+            namespace ifcapi::bindings {
+            double qualified_scale(double value) { return value; }
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    compile_commands = _write_compile_commands(tmp_path, source)
+
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - bindings.h
+            discover:
+              include_dir: .
+              functions:
+                - namespace: ifcapi::bindings
+                  translation_unit: bindings.cpp
+                  include:
+                    - nested_count
+                    - qualified_scale
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    calls = {call.c_name: call for call in spec.functions}
+
+    assert calls["ifcopenshell_demo_nested_count"].policy_operation.cpp_name == "ifcapi::bindings::nested_count"
+    assert calls["ifcopenshell_demo_nested_count"].params[0].type.kind == "string"
+    assert calls["ifcopenshell_demo_qualified_scale"].policy_operation.cpp_name == "ifcapi::bindings::qualified_scale"
+    assert calls["ifcopenshell_demo_qualified_scale"].returns.kind == "double"
+
+    header_out = tmp_path / "bindings_api.h"
+    cpp_out = tmp_path / "bindings_api.cpp"
+    generate(spec_path, header_out, cpp_out, compile_commands_path=compile_commands)
+
+    generated_cpp = cpp_out.read_text(encoding="utf-8")
+    assert "ifcapi::bindings::nested_count(name_cpp)" in generated_cpp
+    assert "ifcapi::bindings::qualified_scale(value_cpp)" in generated_cpp
+
+
 def test_autodiscovery_supports_shared_ptr_handle_vectors(tmp_path: Path) -> None:
     header = tmp_path / "shared_ptr_vectors.h"
     source = tmp_path / "shared_ptr_vectors.cpp"
