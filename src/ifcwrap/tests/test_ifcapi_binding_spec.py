@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
+import pytest
 
 from src.ifcwrap.binding_generator.authored_spec import HandleSpec, load_authored_spec, load_merged_specs
 from src.ifcwrap.binding_generator.binding_ir import DirectCallOp, lower_binding_spec
@@ -14,6 +15,13 @@ from src.ifcwrap.binding_generator.python_ctypes_backend import render_python_ct
 
 def _spec_dir() -> Path:
     return Path(__file__).resolve().parents[1] / "binding_generator" / "specs"
+
+
+def _compile_commands() -> Path:
+    path = Path("build-capi-stable/compile_commands.json")
+    if not path.exists():
+        pytest.skip("build-capi-stable/compile_commands.json is required for ifcapi discovery tests")
+    return path
 
 
 def _core_handles() -> dict[str, HandleSpec]:
@@ -44,7 +52,7 @@ def test_ifcapi_spec_imports_core_handles_without_redefining_them() -> None:
     assert "instance" not in raw_handle_names
     assert raw_spec["imports"] == [{"slice": "ifcparse", "handles": ["file", "instance"]}]
 
-    spec = load_authored_spec(spec_path, existing_handles=_core_handles())
+    spec = load_authored_spec(spec_path, existing_handles=_core_handles(), compile_commands_path=_compile_commands())
     assert spec.slice == "ifcapi"
     assert "ifcapi/bindings/element.h" in spec.public_headers
     assert "ifcapi/bindings/entity.h" in spec.public_headers
@@ -90,7 +98,9 @@ def test_ifcapi_spec_imports_core_handles_without_redefining_them() -> None:
 
 def test_ifcapi_spec_lowers_to_host_binding_metadata() -> None:
     spec_path = _spec_dir() / "ifcapi.yml"
-    ir = lower_binding_spec(load_authored_spec(spec_path, existing_handles=_core_handles()))
+    ir = lower_binding_spec(
+        load_authored_spec(spec_path, existing_handles=_core_handles(), compile_commands_path=_compile_commands())
+    )
     calls = {call.c_name: call for call in ir.functions}
 
     get_container = calls["ifcopenshell_ifcapi_element_get_container"]
@@ -186,6 +196,7 @@ functions:
         [core_spec, geom_spec, _spec_dir() / "ifcapi.yml"],
         module="ifcopenshell",
         c_prefix="ifcopenshell",
+        compile_commands_path=_compile_commands(),
     )
     ir = lower_binding_spec(merged)
     calls = {call.c_name: call for call in (*ir.functions, *ir.methods)}

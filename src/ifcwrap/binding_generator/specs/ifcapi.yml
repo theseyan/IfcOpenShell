@@ -22,6 +22,14 @@ imports:
       - file
       - instance
 
+discover:
+  include_dir: ../../../ifcapi/src
+  functions:
+    - namespace: ifcapi::bindings
+      translation_unit: util/shape.cpp
+      include:
+        - shape_is_x
+
 handles:
   - name: value
     cpp_type: ifcopenshell_value_t
@@ -219,21 +227,6 @@ functions:
       - name: attr
         type:
           kind: string
-
-  - expose_as: shape_is_x
-    cpp_name: ifcapi::bindings::shape_is_x
-    returns:
-      kind: bool
-    params:
-      - name: value
-        type:
-          kind: double
-      - name: x
-        type:
-          kind: double
-      - name: tolerance
-        type:
-          kind: double
 
   - expose_as: unit_get_prefix
     cpp_name: ifcapi::bindings::unit_get_prefix

@@ -5030,6 +5030,24 @@ return fn->end();
     }
 }
 
+bool ifcopenshell_ifcapi_shape_is_x(double value, double x, double tolerance, bool* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    auto value_cpp = static_cast<double>(value);
+    auto x_cpp = static_cast<double>(x);
+    auto tolerance_cpp = static_cast<double>(tolerance);
+        *out_result = ifcapi::bindings::shape_is_x(value_cpp, x_cpp, tolerance_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_guid_new(ifcopenshell_string_t* out_result) {
     try {
         ifcopenshell_clear_error();
@@ -5255,21 +5273,6 @@ bool ifcopenshell_ifcapi_entity_get_aggregate_typed_value(ifcopenshell_ifc_insta
     if (attr == nullptr) { throw std::runtime_error("Parameter \"attr\" must not be null"); }
     std::string attr_cpp(attr);
         *out_result = make_string_list(ifcapi::bindings::entity_get_aggregate_typed_value(instance_cpp, attr_cpp));
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcapi_shape_is_x(double value, double x, double tolerance, bool* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        *out_result = ifcapi::bindings::shape_is_x(value, x, tolerance);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
