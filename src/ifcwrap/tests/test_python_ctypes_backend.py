@@ -77,6 +77,8 @@ def test_render_python_ctypes_emits_structs_and_signatures(tmp_path: Path) -> No
     assert '("data", ctypes.c_void_p)' in text
     assert '"ifcopenshell_demo_create_file": (ctypes.c_bool, [ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(ifcopenshell_demo_file_t))])' in text
     assert '"ifcopenshell_demo_file_schema_name": (ctypes.c_bool, [ctypes.POINTER(ifcopenshell_demo_file_t), ctypes.POINTER(ifcopenshell_string_t)])' in text
+    assert "def status_or_raise(lib, status, fallback):" in text
+    assert "def take_string(lib, value):" in text
 
     generic_generated = tmp_path / "demo_ctypes_generic.py"
     generate_python_ctypes(ir, generic_generated, generic_handles=True)
@@ -176,7 +178,8 @@ def test_generated_python_ctypes_binds_and_calls_tiny_c_fixture(tmp_path: Path) 
 
     value = module.ifcopenshell_string_t()
     assert lib.ifcopenshell_demo_file_schema_name(file_handle, ctypes.byref(value))
-    assert ctypes.string_at(value.data, value.size) == b"IFC4"
+    assert module.take_string(lib, value) == "IFC4"
 
-    lib.ifcopenshell_string_destroy(ctypes.byref(value))
+    with pytest.raises(RuntimeError, match="invalid arguments"):
+        module.status_or_raise(lib, lib.ifcopenshell_demo_create_file(None, ctypes.byref(file_handle)), "fallback")
     lib.ifcopenshell_demo_file_destroy(file_handle)
