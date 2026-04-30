@@ -51,6 +51,10 @@ def test_ifcapi_spec_imports_core_handles_without_redefining_them() -> None:
     assert raw_handle_names == {"value"}
     assert "instance" not in raw_handle_names
     assert raw_spec["imports"] == [{"slice": "ifcparse", "handles": ["file", "instance"]}]
+    assert not any(
+        str(function.get("cpp_name", "")).startswith("ifcapi::bindings::")
+        for function in raw_spec.get("functions", [])
+    )
 
     spec = load_authored_spec(spec_path, existing_handles=_core_handles(), compile_commands_path=_compile_commands())
     assert spec.slice == "ifcapi"
@@ -94,6 +98,9 @@ def test_ifcapi_spec_imports_core_handles_without_redefining_them() -> None:
         "ifcopenshell_ifcapi_value_new_string",
         "ifcopenshell_ifcapi_value_list_append",
     }.issubset({call.c_name for call in spec.functions})
+    calls = {call.c_name: call for call in spec.functions}
+    assert calls["ifcopenshell_ifcapi_value_new_string"].returns.ownership == "owned"
+    assert calls["ifcopenshell_ifcapi_entity_set_typed_value"].params[3].type.nullable is True
 
 
 def test_ifcapi_spec_lowers_to_host_binding_metadata() -> None:
@@ -139,6 +146,10 @@ slice: ifcparse
 c_prefix: ifcopenshell_ifcparse
 public_headers: []
 handles:
+  - name: file
+    cpp_type: IfcParse::IfcFile
+    c_type: ifcopenshell_ifc_file_t
+    destructor: delete
   - name: instance
     cpp_type: IfcUtil::IfcBaseClass
     c_type: ifcopenshell_ifc_instance_t

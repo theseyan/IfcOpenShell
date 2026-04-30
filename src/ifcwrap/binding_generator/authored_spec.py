@@ -388,6 +388,54 @@ def _parse_type(raw: Any, *, context: str, known_handles: set[str]) -> TypeSpec:
     )
 
 
+def _parse_type_override(raw: Any, *, context: str, known_handles: set[str]) -> TypeSpec:
+    mapping = _expect_mapping(raw, context)
+    kind_raw = mapping.get("kind")
+    kind = ""
+    handle_sequence_depth = None
+    scalar_sequence_depth = None
+    if kind_raw is not None:
+        kind = _expect_str(kind_raw, f"{context}.kind")
+        if kind not in _ALLOWED_TYPE_KINDS and not _is_sequence_kind(kind):
+            msg = f"{context}.kind must be one of {sorted(_ALLOWED_TYPE_KINDS)} or a supported '*_list' sequence kind"
+            raise ValueError(msg)
+        handle_sequence_depth = _handle_sequence_depth(kind)
+        scalar_sequence_depth = _scalar_sequence_depth(kind) if handle_sequence_depth is None else None
+
+    handle = mapping.get("handle")
+    if handle is not None:
+        handle = _expect_str(handle, f"{context}.handle")
+        if handle not in known_handles:
+            msg = f"{context}.handle refers to unknown handle '{handle}'"
+            raise ValueError(msg)
+
+    ownership = mapping.get("ownership")
+    if ownership is not None:
+        ownership = _expect_str(ownership, f"{context}.ownership")
+        if ownership not in _ALLOWED_OWNERSHIP:
+            msg = f"{context}.ownership must be one of {sorted(_ALLOWED_OWNERSHIP)}"
+            raise ValueError(msg)
+
+    nullable = mapping.get("nullable", False)
+    if not isinstance(nullable, bool):
+        msg = f"{context}.nullable must be a boolean"
+        raise ValueError(msg)
+
+    cpp_type = mapping.get("cpp_type")
+    if cpp_type is not None:
+        cpp_type = _expect_str(cpp_type, f"{context}.cpp_type")
+
+    normalized_kind = "handle" if handle_sequence_depth is not None else (_normalized_scalar_kind(kind) if kind else "")
+    return TypeSpec(
+        kind=normalized_kind,
+        handle=handle,
+        ownership=ownership,
+        nullable=nullable,
+        cpp_type=cpp_type,
+        sequence_depth=handle_sequence_depth if handle_sequence_depth is not None else (scalar_sequence_depth or 0),
+    )
+
+
 def _parse_params(raw: Any, *, context: str, known_handles: set[str]) -> tuple[ParamSpec, ...]:
     params: list[ParamSpec] = []
     seen_names: set[str] = set()
@@ -774,14 +822,14 @@ def _parse_discovery(raw: Any, *, context: str, known_handles: set[str]) -> Disc
             returns_raw = override_mapping.get("returns")
             returns = None
             if returns_raw is not None:
-                returns = _parse_type(returns_raw, context=f"{override_context}.returns", known_handles=known_handles)
+                returns = _parse_type_override(returns_raw, context=f"{override_context}.returns", known_handles=known_handles)
             params_raw = _expect_mapping(override_mapping.get("params", {}), f"{override_context}.params")
             params: dict[str, TypeSpec] = {}
             for param_name, param_type_raw in params_raw.items():
                 if not isinstance(param_name, str) or not param_name:
                     msg = f"{override_context}.params keys must be non-empty strings"
                     raise ValueError(msg)
-                params[param_name] = _parse_type(
+                params[param_name] = _parse_type_override(
                     param_type_raw,
                     context=f"{override_context}.params[{param_name}]",
                     known_handles=known_handles,
@@ -864,14 +912,14 @@ def _parse_discovery(raw: Any, *, context: str, known_handles: set[str]) -> Disc
             override_mapping = _expect_mapping(override_raw, override_context)
             returns = None
             if "returns" in override_mapping:
-                returns = _parse_type(override_mapping["returns"], context=f"{override_context}.returns", known_handles=known_handles)
+                returns = _parse_type_override(override_mapping["returns"], context=f"{override_context}.returns", known_handles=known_handles)
             params_raw = _expect_mapping(override_mapping.get("params", {}), f"{override_context}.params")
             params: dict[str, TypeSpec] = {}
             for param_name, param_raw in params_raw.items():
                 if not isinstance(param_name, str) or not param_name:
                     msg = f"{override_context}.params keys must be non-empty strings"
                     raise ValueError(msg)
-                params[param_name] = _parse_type(param_raw, context=f"{override_context}.params[{param_name}]", known_handles=known_handles)
+                params[param_name] = _parse_type_override(param_raw, context=f"{override_context}.params[{param_name}]", known_handles=known_handles)
             type_overrides[function_name] = DiscoveryTypeOverrideSpec(returns=returns, params=params)
         if not include_all and not include and not overloads:
             msg = f"{item_context} must specify include_all: true or a non-empty include list"
@@ -1018,6 +1066,7 @@ def _type_spec_from_record_semantic(
     *,
     handles: dict[str, HandleSpec],
     ownership: str,
+    nullable: bool,
 ) -> TypeSpec | None:
     for match_name in semantic_record_match_names(semantic):
         handle_name = _find_handle_for_cpp_type(match_name, handles)
@@ -1027,7 +1076,7 @@ def _type_spec_from_record_semantic(
                 kind="handle",
                 handle=handle_name,
                 ownership=resolved_ownership,
-                nullable=_normalize_cpp_type(semantic.cpp_type).endswith("*"),
+                nullable=nullable,
                 cpp_type=semantic.cpp_type,
             )
     return None
@@ -1055,7 +1104,7 @@ def _lower_generic_sequence_type(
     depth = semantic_sequence_depth(semantic)
 
     if isinstance(leaf, RecordSemanticType):
-        record_spec = _type_spec_from_record_semantic(leaf, handles=handles, ownership=ownership)
+        record_spec = _type_spec_from_record_semantic(leaf, handles=handles, ownership=ownership, nullable=False)
         if record_spec is None:
             return None
         return TypeSpec(
@@ -1075,7 +1124,13 @@ def _lower_generic_sequence_type(
     return None
 
 
-def _infer_type(cpp_type: str | DiscoveredCppType, handles: dict[str, HandleSpec], *, ownership: str) -> TypeSpec:
+def _infer_type(
+    cpp_type: str | DiscoveredCppType,
+    handles: dict[str, HandleSpec],
+    *,
+    ownership: str,
+    nullable_pointers: bool,
+) -> TypeSpec:
     semantic = analyze_cpp_type(cpp_type)
     if isinstance(semantic, VoidSemanticType):
         return TypeSpec(kind="void", cpp_type=_cpp_type_storage(cpp_type))
@@ -1095,7 +1150,12 @@ def _infer_type(cpp_type: str | DiscoveredCppType, handles: dict[str, HandleSpec
         if scalar_kind is not None:
             return TypeSpec(kind=scalar_kind, cpp_type=_cpp_type_storage(cpp_type))
     if isinstance(semantic, RecordSemanticType):
-        record_spec = _type_spec_from_record_semantic(semantic, handles=handles, ownership=ownership)
+        record_spec = _type_spec_from_record_semantic(
+            semantic,
+            handles=handles,
+            ownership=ownership,
+            nullable=nullable_pointers and _normalize_cpp_type(semantic.cpp_type).endswith("*"),
+        )
         if record_spec is not None:
             return record_spec
     if isinstance(semantic, SequenceSemanticType):
@@ -1109,7 +1169,7 @@ def _infer_type(cpp_type: str | DiscoveredCppType, handles: dict[str, HandleSpec
 
 def _infer_return_type(cpp_type: str | DiscoveredCppType, handles: dict[str, HandleSpec]) -> TypeSpec:
     try:
-        return _infer_type(cpp_type, handles, ownership="borrowed")
+        return _infer_type(cpp_type, handles, ownership="borrowed", nullable_pointers=True)
     except ValueError as exc:
         msg = str(exc).replace("Unsupported discovered type", "Unsupported discovered return type")
         raise ValueError(msg) from exc
@@ -1117,7 +1177,7 @@ def _infer_return_type(cpp_type: str | DiscoveredCppType, handles: dict[str, Han
 
 def _infer_param_type(cpp_type: str | DiscoveredCppType, handles: dict[str, HandleSpec]) -> TypeSpec:
     try:
-        return _infer_type(cpp_type, handles, ownership="borrowed")
+        return _infer_type(cpp_type, handles, ownership="borrowed", nullable_pointers=False)
     except ValueError as exc:
         msg = str(exc).replace("Unsupported discovered type", "Unsupported discovered parameter type")
         raise ValueError(msg) from exc
