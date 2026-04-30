@@ -876,6 +876,10 @@ def test_autodiscovery_supports_nested_namespace_functions(tmp_path: Path) -> No
                   include:
                     - nested_count
                     - qualified_scale
+                  type_overrides:
+                    qualified_scale:
+                      returns:
+                        kind: double
             """
         ).strip()
         + "\n",

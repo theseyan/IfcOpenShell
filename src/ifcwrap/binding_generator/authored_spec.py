@@ -220,6 +220,7 @@ class DiscoveryFunctionSpec:
     exclude: tuple[str, ...]
     rename: dict[str, str]
     overloads: tuple["DiscoveryOverloadSpec", ...]
+    type_overrides: dict[str, DiscoveryTypeOverrideSpec]
 
 
 @dataclass(frozen=True)
@@ -853,6 +854,25 @@ def _parse_discovery(raw: Any, *, context: str, known_handles: set[str]) -> Disc
                 raise ValueError(msg)
             rename[cpp_name] = _expect_str(expose_as, f"{item_context}.rename[{cpp_name}]")
         overloads = parse_overloads(item_mapping.get("overloads", []), f"{item_context}.overloads")
+        type_overrides_raw = _expect_mapping(item_mapping.get("type_overrides", {}), f"{item_context}.type_overrides")
+        type_overrides: dict[str, DiscoveryTypeOverrideSpec] = {}
+        for function_name, override_raw in type_overrides_raw.items():
+            if not isinstance(function_name, str) or not function_name:
+                msg = f"{item_context}.type_overrides keys must be non-empty strings"
+                raise ValueError(msg)
+            override_context = f"{item_context}.type_overrides[{function_name}]"
+            override_mapping = _expect_mapping(override_raw, override_context)
+            returns = None
+            if "returns" in override_mapping:
+                returns = _parse_type(override_mapping["returns"], context=f"{override_context}.returns", known_handles=known_handles)
+            params_raw = _expect_mapping(override_mapping.get("params", {}), f"{override_context}.params")
+            params: dict[str, TypeSpec] = {}
+            for param_name, param_raw in params_raw.items():
+                if not isinstance(param_name, str) or not param_name:
+                    msg = f"{override_context}.params keys must be non-empty strings"
+                    raise ValueError(msg)
+                params[param_name] = _parse_type(param_raw, context=f"{override_context}.params[{param_name}]", known_handles=known_handles)
+            type_overrides[function_name] = DiscoveryTypeOverrideSpec(returns=returns, params=params)
         if not include_all and not include and not overloads:
             msg = f"{item_context} must specify include_all: true or a non-empty include list"
             raise ValueError(msg)
@@ -865,6 +885,7 @@ def _parse_discovery(raw: Any, *, context: str, known_handles: set[str]) -> Disc
                 exclude=exclude,
                 rename=rename,
                 overloads=overloads,
+                type_overrides=type_overrides,
             )
         )
 
@@ -1116,6 +1137,31 @@ def _apply_method_type_override(
     unknown = set(override.params) - param_names
     if unknown:
         msg = f"type override for '{discovered.cpp_name}' references unknown params {sorted(unknown)}"
+        raise ValueError(msg)
+    params = tuple(
+        ParamSpec(
+            name=param.name,
+            type=_merge_type_override(inferred_param.type, override.params.get(param.name)),
+        )
+        for param, inferred_param in zip(discovered.params, inferred_params, strict=True)
+    )
+    return returns, params
+
+
+def _apply_function_type_override(
+    discovered: DiscoveredFunction,
+    *,
+    override: DiscoveryTypeOverrideSpec | None,
+    inferred_returns: TypeSpec,
+    inferred_params: tuple[ParamSpec, ...],
+) -> tuple[TypeSpec, tuple[ParamSpec, ...]]:
+    if override is None:
+        return inferred_returns, inferred_params
+    returns = _merge_type_override(inferred_returns, override.returns)
+    param_names = {param.name for param in discovered.params}
+    unknown = set(override.params) - param_names
+    if unknown:
+        msg = f"type override for function '{discovered.cpp_name}' references unknown params {sorted(unknown)}"
         raise ValueError(msg)
     params = tuple(
         ParamSpec(
@@ -2167,10 +2213,16 @@ def _discover_function_calls(
                 msg = f"Unable to discover function '{overload_spec.cpp_name}' in namespace '{item.namespace}'"
                 raise ValueError(msg)
             discovered = _select_overload(overloads, overload_spec)
-            returns = _infer_return_type(discovered.return_type_ref, handles)
-            params = tuple(
+            inferred_returns = _infer_return_type(discovered.return_type_ref, handles)
+            inferred_params = tuple(
                 ParamSpec(name=param.name, type=_infer_param_type(param.cpp_type_ref, handles))
                 for param in discovered.params
+            )
+            returns, params = _apply_function_type_override(
+                discovered,
+                override=item.type_overrides.get(overload_spec.cpp_name),
+                inferred_returns=inferred_returns,
+                inferred_params=inferred_params,
             )
             call = CallSpec(
                 expose_as=overload_spec.expose_as,
@@ -2216,10 +2268,16 @@ def _discover_function_calls(
 
             discovered = overloads[0]
             try:
-                returns = _infer_return_type(discovered.return_type_ref, handles)
-                params = tuple(
+                inferred_returns = _infer_return_type(discovered.return_type_ref, handles)
+                inferred_params = tuple(
                     ParamSpec(name=param.name, type=_infer_param_type(param.cpp_type_ref, handles))
                     for param in discovered.params
+                )
+                returns, params = _apply_function_type_override(
+                    discovered,
+                    override=item.type_overrides.get(cpp_name),
+                    inferred_returns=inferred_returns,
+                    inferred_params=inferred_params,
                 )
             except ValueError as exc:
                 if item.include_all and not is_explicit:

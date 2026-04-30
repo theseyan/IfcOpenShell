@@ -459,6 +459,7 @@ bool ifcopenshell_ifcgeom_convert_loop_to_function_item(ifcopenshell_ifcgeom_tax
 bool ifcopenshell_ifcgeom_create_function_item_evaluator(ifcopenshell_ifcgeom_settings_t* settings, ifcopenshell_ifcgeom_taxonomy_item_t* fn_item, ifcopenshell_ifcgeom_function_item_evaluator_t** out_result);
 bool ifcopenshell_ifcgeom_taxonomy_function_item_start(ifcopenshell_ifcgeom_taxonomy_item_t* item, double* out_result);
 bool ifcopenshell_ifcgeom_taxonomy_function_item_end(ifcopenshell_ifcgeom_taxonomy_item_t* item, double* out_result);
+bool ifcopenshell_ifcapi_shape_is_x(double value, double x, double tolerance, bool* out_result);
 bool ifcopenshell_ifcapi_guid_new(ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcapi_guid_compress(const char* uuid_hex, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcapi_guid_expand(const char* guid, ifcopenshell_string_t* out_result);
@@ -472,7 +473,6 @@ bool ifcopenshell_ifcapi_entity_set_typed_value(ifcopenshell_ifc_instance_t* ins
 bool ifcopenshell_ifcapi_entity_get_typed_value(ifcopenshell_ifc_instance_t* instance, const char* attr, ifcopenshell_string_list_t* out_result);
 bool ifcopenshell_ifcapi_entity_set_aggregate_typed_value(ifcopenshell_ifc_instance_t* instance, const char* attr, const ifcopenshell_string_list_t* type_names, const ifcopenshell_string_list_t* str_values, bool* out_result);
 bool ifcopenshell_ifcapi_entity_get_aggregate_typed_value(ifcopenshell_ifc_instance_t* instance, const char* attr, ifcopenshell_string_list_t* out_result);
-bool ifcopenshell_ifcapi_shape_is_x(double value, double x, double tolerance, bool* out_result);
 bool ifcopenshell_ifcapi_unit_get_prefix(const char* text, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcapi_unit_get_prefix_multiplier(const char* text, double* out_result);
 bool ifcopenshell_ifcapi_unit_get_unit_name(const char* text, ifcopenshell_string_t* out_result);
