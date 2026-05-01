@@ -832,13 +832,10 @@ static void apply_parent_facet(
     /* Get all children of matched parents */
     ElemSet children;
     for (auto* parent : parents) {
-        ScopedHandle sh(parent);
-        uint32_t cnt = 0;
-        auto** arr = ifcopenshell_element_get_decomposition(sh.get(), true, &cnt);
-        if (arr) {
-            for (uint32_t i = 0; i < cnt; ++i)
-                if (arr[i] && arr[i]->ptr) children.insert(arr[i]->ptr);
-            ifcopenshell_free_instance_array(arr, cnt);
+        auto decomposed = ifcapi::bindings::element_get_decomposition(parent, true);
+        if (decomposed) {
+            for (auto& child : *decomposed)
+                if (child) children.insert(child);
         }
     }
 
@@ -1004,28 +1001,12 @@ static ElemSet filter_elements_impl(
 
 } /* anonymous namespace */
 
-/* ====================================================================
- *  C ABI
- * ==================================================================== */
-
-extern "C" {
-
-ifcopenshell_value_t* ifcopenshell_selector_filter_elements(
-    ifcopenshell_ifc_file_t* file,
-    const char* query,
-    ifcopenshell_ifc_instance_t* const* elements,
-    size_t elements_count,
-    int edit_in_place);
-
-} // extern "C"
-
 namespace ifcapi {
 namespace bindings {
 
 ifcopenshell_value_t* selector_filter_all(IfcParse::IfcFile* file, const std::string& query)
 {
-    ifcopenshell_ifc_file_t file_handle{file, false};
-    return ifcopenshell_selector_filter_elements(file ? &file_handle : nullptr, query.c_str(), nullptr, 0, 0);
+    return selector_filter_elements(file, query, {});
 }
 
 ifcopenshell_value_t* selector_filter_elements(
@@ -1033,79 +1014,47 @@ ifcopenshell_value_t* selector_filter_elements(
     const std::string& query,
     const std::vector<const IfcUtil::IfcBaseClass*>& elements)
 {
-    ifcopenshell_ifc_file_t file_handle{file, false};
-    std::vector<ifcopenshell_ifc_instance_t> handles;
-    std::vector<ifcopenshell_ifc_instance_t*> handle_ptrs;
-    handles.reserve(elements.size());
-    handle_ptrs.reserve(elements.size());
-    for (auto* element : elements) {
-        handles.push_back(ifcopenshell_ifc_instance_t{const_cast<IfcUtil::IfcBaseClass*>(element), false});
-        handle_ptrs.push_back(&handles.back());
-    }
-    return ifcopenshell_selector_filter_elements(
-        file ? &file_handle : nullptr,
-        query.c_str(),
-        handle_ptrs.empty() ? nullptr : handle_ptrs.data(),
-        handle_ptrs.size(),
-        0);
-}
-
-} // namespace bindings
-} // namespace ifcapi
-
-extern "C" {
-
-ifcopenshell_value_t* ifcopenshell_selector_filter_elements(
-    ifcopenshell_ifc_file_t* file,
-    const char* query,
-    ifcopenshell_ifc_instance_t* const* elements,
-    size_t elements_count,
-    int /*edit_in_place*/)
-{
-    if (!file || !file->ptr || !query) {
+    if (!file) {
         ifcopenshell::capi::set_last_error("filter_elements: null argument");
         return nullptr;
     }
-    if (!query[0]) {
+    if (query.empty()) {
         /* Empty query: return provided elements or empty list */
         auto* result = make_list();
-        if (elements) {
-            for (size_t i = 0; i < elements_count; ++i)
-                if (elements[i] && elements[i]->ptr)
-                    result->list_val.push_back(make_instance(elements[i]->ptr));
-        }
+        for (auto* element : elements)
+            if (element)
+                result->list_val.push_back(make_instance(const_cast<IfcUtil::IfcBaseClass*>(element)));
         return result;
     }
 
-    IfcParse::IfcFile* ifc_file = file->ptr;
-
-    ifcopenshell_selector_node_t* ast = ifcopenshell_selector_parse_filter(query);
+    ifcopenshell_selector_node_t* ast = selector_parse_filter(query);
     if (!ast) return nullptr;
 
     /* Build base set from supplied elements array (or nullptr for whole-file) */
     ElemSet base_set;
     const ElemSet* base_ptr = nullptr;
-    if (elements && elements_count > 0) {
-        for (size_t i = 0; i < elements_count; ++i)
-            if (elements[i] && elements[i]->ptr)
-                base_set.insert(elements[i]->ptr);
+    if (!elements.empty()) {
+        for (auto* element : elements)
+            if (element)
+                base_set.insert(const_cast<IfcUtil::IfcBaseClass*>(element));
         base_ptr = &base_set;
     }
 
     ElemSet result_set;
+    ifcopenshell_ifc_file_t file_handle{file, false};
     try {
-        result_set = filter_elements_impl(ifc_file, file, base_ptr, ast);
+        result_set = filter_elements_impl(file, &file_handle, base_ptr, ast);
     } catch (const std::exception& ex) {
-        ifcopenshell_selector_node_free(ast);
+        selector_node_free(ast);
         ifcopenshell::capi::set_last_error(ex.what());
         return nullptr;
     } catch (...) {
-        ifcopenshell_selector_node_free(ast);
+        selector_node_free(ast);
         ifcopenshell::capi::set_last_error("filter_elements: unknown exception");
         return nullptr;
     }
 
-    ifcopenshell_selector_node_free(ast);
+    selector_node_free(ast);
 
     auto* out = make_list();
     for (auto* e : result_set)
@@ -1113,4 +1062,5 @@ ifcopenshell_value_t* ifcopenshell_selector_filter_elements(
     return out;
 }
 
-} /* extern "C" */
+} // namespace bindings
+} // namespace ifcapi

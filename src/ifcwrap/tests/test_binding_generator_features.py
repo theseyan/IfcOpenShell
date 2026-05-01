@@ -310,6 +310,7 @@ def test_generate_synthetic_autodiscovery_features(tmp_path: Path) -> None:
             #include <cstdint>
             #include <cstddef>
             #include <memory>
+            #include <set>
             #include <string>
             #include <vector>
 
@@ -358,7 +359,16 @@ def test_generate_synthetic_autodiscovery_features(tmp_path: Path) -> None:
 
             struct Settings {
             public:
-                using value_variant_t = boost::variant<bool, int64_t, Mode, double, std::string>;
+                using value_variant_t = boost::variant<
+                    bool,
+                    int64_t,
+                    Mode,
+                    double,
+                    std::string,
+                    std::set<int>,
+                    std::set<std::string>,
+                    std::vector<double>
+                >;
 
                 value_variant_t value = false;
 
@@ -447,6 +457,9 @@ def test_generate_synthetic_autodiscovery_features(tmp_path: Path) -> None:
                           - "Demo::Mode"
                       double: "double"
                       string: "std::string"
+                      int_set: "std::set<int>"
+                      string_set: "std::set<std::string>"
+                      double_list: "std::vector<double>"
                 - handle: point3
                   translation_unit: sample.cpp
                   include_all: false
@@ -484,11 +497,17 @@ def test_generate_synthetic_autodiscovery_features(tmp_path: Path) -> None:
         "ifcopenshell_demo_settings_get_bool",
         "ifcopenshell_demo_settings_get_double",
         "ifcopenshell_demo_settings_get_int",
+        "ifcopenshell_demo_settings_get_int_set",
+        "ifcopenshell_demo_settings_get_double_list",
         "ifcopenshell_demo_settings_get_string",
+        "ifcopenshell_demo_settings_get_string_set",
         "ifcopenshell_demo_settings_set_bool",
         "ifcopenshell_demo_settings_set_double",
+        "ifcopenshell_demo_settings_set_double_list",
         "ifcopenshell_demo_settings_set_int",
+        "ifcopenshell_demo_settings_set_int_set",
         "ifcopenshell_demo_settings_set_string",
+        "ifcopenshell_demo_settings_set_string_set",
     }
     assert expected_calls.issubset(calls)
     assert isinstance(calls["ifcopenshell_demo_derived_inherited"].policy_operation, DirectFieldPolicyOp)
@@ -511,6 +530,8 @@ def test_generate_synthetic_autodiscovery_features(tmp_path: Path) -> None:
     assert "bool ifcopenshell_demo_settings_get_string(" in generated_header
     assert "bool ifcopenshell_demo_settings_get_int(ifcopenshell_demo_settings_t* self, const char* name, int64_t* out_result);" in generated_header
     assert "bool ifcopenshell_demo_settings_set_int(ifcopenshell_demo_settings_t* self, const char* name, int64_t value);" in generated_header
+    assert "bool ifcopenshell_demo_settings_get_int_set(ifcopenshell_demo_settings_t* self, const char* name, ifcopenshell_int32_list_t* out_result);" in generated_header
+    assert "bool ifcopenshell_demo_settings_set_int_set(ifcopenshell_demo_settings_t* self, const char* name, const ifcopenshell_int32_list_t* value);" in generated_header
     assert "bool ifcopenshell_demo_point3_get_data(ifcopenshell_demo_point3_t* self, ifcopenshell_double_list_t* out_result);" in generated_header
 
     assert "self_cpp->axis = value_cpp;" in generated_cpp
@@ -520,6 +541,8 @@ def test_generate_synthetic_autodiscovery_features(tmp_path: Path) -> None:
     assert "if (auto* p = boost::get<bool>(&val))" in generated_cpp
     assert "if (auto* p = boost::get<int64_t>(&val))" in generated_cpp
     assert "if (auto* p = boost::get<Demo::Mode>(&val))" in generated_cpp
+    assert "if (auto* p = boost::get<std::set<int>>(&val))" in generated_cpp
+    assert "std::set<int> value_cpp(value_vec.begin(), value_vec.end());" in generated_cpp
     assert "self_cpp->set(name_cpp, Demo::Settings::value_variant_t(static_cast<int64_t>(value)));" in generated_cpp
     assert "self_cpp->set(name_cpp, Demo::Settings::value_variant_t(value_cpp));" in generated_cpp
     assert "const auto& v = self_cpp->ccomponents();" in generated_cpp

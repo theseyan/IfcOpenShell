@@ -86,6 +86,7 @@ _SEQUENCE_LEAF_C_TYPE = {
     "string": "ifcopenshell_string_t",
     "bool": "bool",
     "int32": "int32_t",
+    "int64": "int64_t",
     "uint8": "uint8_t",
     "uint32": "uint32_t",
     "double": "double",

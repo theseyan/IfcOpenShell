@@ -12,7 +12,10 @@
 
 #include <cctype>
 #include <cstdlib>
+#include <iomanip>
 #include <iterator>
+#include <limits>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -188,13 +191,18 @@ static IfcUtil::IfcBaseClass* create_type_value(IfcParse::IfcFile* file, const c
     return inst;
 }
 
-static std::string typed_value_to_string(const AttributeValue& inner) {
-    if (inner.isNull()) return "";
+static std::optional<std::string> typed_value_to_string(const AttributeValue& inner) {
+    auto format_double = [](double value) {
+        std::ostringstream ss;
+        ss << std::setprecision(std::numeric_limits<double>::max_digits10) << value;
+        return ss.str();
+    };
+    if (inner.isNull()) return std::string();
     switch (inner.type()) {
         case IfcUtil::Argument_STRING:
             return static_cast<std::string>(inner);
         case IfcUtil::Argument_DOUBLE:
-            return std::to_string(static_cast<double>(inner));
+            return format_double(static_cast<double>(inner));
         case IfcUtil::Argument_INT:
             return std::to_string(static_cast<int>(inner));
         case IfcUtil::Argument_BOOL:
@@ -204,7 +212,7 @@ static std::string typed_value_to_string(const AttributeValue& inner) {
             std::string result = "(";
             for (size_t i = 0; i < vec.size(); ++i) {
                 if (i) result += ",";
-                result += std::to_string(vec[i]);
+                result += format_double(vec[i]);
             }
             result += ")";
             return result;
@@ -230,7 +238,7 @@ static std::string typed_value_to_string(const AttributeValue& inner) {
             return result;
         }
         default:
-            return "?";
+            return std::nullopt;
     }
 }
 
@@ -273,7 +281,9 @@ std::vector<std::string> entity_get_typed_value(IfcUtil::IfcBaseClass* instance,
         if (!ref) return {};
         auto* type_decl = ref->declaration().as_type_declaration();
         if (!type_decl) return {};
-        return {type_decl->name(), typed_value_to_string(ref->get_attribute_value(0))};
+        auto value = typed_value_to_string(ref->get_attribute_value(0));
+        if (!value) return {};
+        return {type_decl->name(), *value};
     } catch (...) {
         return {};
     }
@@ -323,8 +333,10 @@ std::vector<std::string> entity_get_aggregate_typed_value(IfcUtil::IfcBaseClass*
             auto* typed_value = *it;
             auto* type_decl = typed_value ? typed_value->declaration().as_type_declaration() : nullptr;
             if (!type_decl) continue;
+            auto value = typed_value_to_string(typed_value->get_attribute_value(0));
+            if (!value) return {};
             result.push_back(type_decl->name());
-            result.push_back(typed_value_to_string(typed_value->get_attribute_value(0)));
+            result.push_back(*value);
         }
         return result;
     } catch (...) {
@@ -332,51 +344,31 @@ std::vector<std::string> entity_get_aggregate_typed_value(IfcUtil::IfcBaseClass*
     }
 }
 
-} // namespace bindings
-} // namespace ifcapi
-
-extern "C" {
-
-/* --- Aggregate memory management --- */
-
-void ifcopenshell_free_string_array(char** arr, uint32_t count) {
-    if (!arr) return;
-    for (uint32_t i = 0; i < count; ++i) std::free(arr[i]);
-    std::free(arr);
-}
-
-/* --- Utility: deep removal --- */
-
-void ifcopenshell_util_remove_deep2(ifcopenshell_ifc_instance_t* instance) {
-    if (!instance || !instance->ptr) return;
-    auto* entity = instance->ptr;
-    auto* file = entity->file_;
+void entity_remove_deep2(IfcUtil::IfcBaseClass* instance) {
+    if (!instance) return;
+    auto* file = instance->file_;
     if (!file) return;
     try {
         // Collect all entities referenced by this entity (traverse 1 level).
         std::vector<IfcUtil::IfcBaseClass*> referenced;
-        auto traversed = file->traverse(entity, 1);
+        auto traversed = file->traverse(instance, 1);
         if (traversed) {
             for (auto& ref : *traversed) {
-                if (ref != entity) {
+                if (ref != instance) {
                     referenced.push_back(ref);
                 }
             }
         }
 
-        // Remove the entity itself.
-        file->removeEntity(entity);
+        file->removeEntity(instance);
 
-        // Recursively remove referenced entities that are now orphaned.
         for (auto* ref : referenced) {
             try {
                 auto* check = file->instance_by_id(ref->id());
                 if (!check) continue;
                 auto inverses = file->getInverse(ref->id(), nullptr, -1);
                 if (!inverses || inverses->size() == 0) {
-                    auto* h = ifcopenshell::capi::wrap_instance(ref);
-                    ifcopenshell_util_remove_deep2(h);
-                    ifcopenshell_ifc_instance_destroy(h);
+                    entity_remove_deep2(ref);
                 }
             } catch (...) {
                 // Entity was already removed or inaccessible — skip.
@@ -385,4 +377,5 @@ void ifcopenshell_util_remove_deep2(ifcopenshell_ifc_instance_t* instance) {
     } catch (...) {}
 }
 
-} // extern "C"
+} // namespace bindings
+} // namespace ifcapi

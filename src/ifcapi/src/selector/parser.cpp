@@ -4,7 +4,7 @@
 // (filter_elements, get_element, format). Produces an opaque C AST consumed
 // through the C ABI declared in ifcapi/selector_ast.h.
 
-#include "ifcapi/selector/ast.h"
+#include "ifcapi/bindings/selector.h"
 #include "ifcopenshell_api_internal.hpp"
 
 #include <cctype>
@@ -1205,19 +1205,11 @@ static Node* parse_fmt_function(PS& ps) {
 
 } // anonymous namespace
 
-// ============================================================
-//  Public C ABI
-// ============================================================
+namespace ifcapi {
+namespace bindings {
 
-extern "C" {
-
-ifcopenshell_selector_node_t*
-ifcopenshell_selector_parse_filter(const char* query) {
-    if (!query) {
-        ifcopenshell::capi::set_last_error("selector: null input");
-        return nullptr;
-    }
-    PS ps(query);
+ifcopenshell_selector_node_t* selector_parse_filter(const std::string& query) {
+    PS ps(query.c_str());
     ps.skip_ws();
     if (ps.at_end()) {
         ifcopenshell::capi::set_last_error("selector: empty filter query");
@@ -1241,13 +1233,8 @@ ifcopenshell_selector_parse_filter(const char* query) {
     return reinterpret_cast<ifcopenshell_selector_node_t*>(root);
 }
 
-ifcopenshell_selector_node_t*
-ifcopenshell_selector_parse_get_element(const char* query) {
-    if (!query) {
-        ifcopenshell::capi::set_last_error("selector: null input");
-        return nullptr;
-    }
-    PS ps(query);
+ifcopenshell_selector_node_t* selector_parse_get_element(const std::string& query) {
+    PS ps(query.c_str());
     ps.skip_ws();
     if (ps.at_end()) {
         ifcopenshell::capi::set_last_error("selector: empty get_element query");
@@ -1271,13 +1258,8 @@ ifcopenshell_selector_parse_get_element(const char* query) {
     return reinterpret_cast<ifcopenshell_selector_node_t*>(root);
 }
 
-ifcopenshell_selector_node_t*
-ifcopenshell_selector_parse_format(const char* query) {
-    if (!query) {
-        ifcopenshell::capi::set_last_error("selector: null input");
-        return nullptr;
-    }
-    PS ps(query);
+ifcopenshell_selector_node_t* selector_parse_format(const std::string& query) {
+    PS ps(query.c_str());
     ps.skip_ws();
     if (ps.at_end()) {
         ifcopenshell::capi::set_last_error("selector: empty format query");
@@ -1301,37 +1283,33 @@ ifcopenshell_selector_parse_format(const char* query) {
     return reinterpret_cast<ifcopenshell_selector_node_t*>(root);
 }
 
-ifcsel_node_kind
-ifcopenshell_selector_node_kind(const ifcopenshell_selector_node_t* node) {
-    if (!node) return IFCSEL_TOKEN_ANON;
-    return reinterpret_cast<const Node*>(node)->kind;
+int32_t selector_node_kind(const ifcopenshell_selector_node_t* node) {
+    if (!node) return static_cast<int32_t>(IFCSEL_TOKEN_ANON);
+    return static_cast<int32_t>(reinterpret_cast<const Node*>(node)->kind);
 }
 
-size_t
-ifcopenshell_selector_node_child_count(const ifcopenshell_selector_node_t* node) {
+size_t selector_node_child_count(const ifcopenshell_selector_node_t* node) {
     if (!node) return 0;
     return reinterpret_cast<const Node*>(node)->children.size();
 }
 
-ifcopenshell_selector_node_t*
-ifcopenshell_selector_node_child(const ifcopenshell_selector_node_t* node, size_t index) {
+ifcopenshell_selector_node_t* selector_node_child(const ifcopenshell_selector_node_t* node, size_t index) {
     if (!node) return nullptr;
     const auto* n = reinterpret_cast<const Node*>(node);
     if (index >= n->children.size()) return nullptr;
     return reinterpret_cast<ifcopenshell_selector_node_t*>(n->children[index]);
 }
 
-const char*
-ifcopenshell_selector_node_text(const ifcopenshell_selector_node_t* node) {
-    if (!node) return nullptr;
+std::string selector_node_text(const ifcopenshell_selector_node_t* node) {
+    if (!node) return std::string();
     const auto* n = reinterpret_cast<const Node*>(node);
-    if (!n->is_token()) return nullptr;
-    return n->text.c_str();
+    if (!n->is_token()) return std::string();
+    return n->text;
 }
 
-void
-ifcopenshell_selector_node_free(ifcopenshell_selector_node_t* root) {
+void selector_node_free(ifcopenshell_selector_node_t* root) {
     node_free_impl(reinterpret_cast<Node*>(root));
 }
 
-} // extern "C"
+} // namespace bindings
+} // namespace ifcapi

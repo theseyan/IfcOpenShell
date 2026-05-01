@@ -135,7 +135,7 @@ _ALLOWED_PTR_TYPES = {"raw", "shared_ptr"}
 _FUNCTION_CALL_KINDS = {"function", "adapter_function", "constructor"}
 _METHOD_CALL_KINDS = {"method", "adapter_method"}
 _ALLOWED_IMPLEMENTATION_KINDS = {"inline_cpp"}
-_SCALAR_SEQUENCE_FAMILIES = frozenset({"bool", "string", "int32", "uint8", "uint32", "double"})
+_SCALAR_SEQUENCE_FAMILIES = frozenset({"bool", "string", "int32", "int64", "uint8", "uint32", "double"})
 
 
 @dataclass(frozen=True)
@@ -1260,6 +1260,10 @@ def _merge_type_override(inferred: TypeSpec, override: TypeSpec | None) -> TypeS
     )
 
 
+def _override_supplies_kind(override: TypeSpec | None) -> bool:
+    return override is not None and bool(override.kind)
+
+
 def _infer_method_signature(
     discovered: DiscoveredMethod,
     *,
@@ -1267,7 +1271,7 @@ def _infer_method_signature(
     enum_types_as_int32: frozenset[str],
     override: DiscoveryTypeOverrideSpec | None,
 ) -> tuple[TypeSpec, tuple[ParamSpec, ...]]:
-    if override is not None and override.returns is not None:
+    if override is not None and _override_supplies_kind(override.returns):
         returns = _merge_type_override(
             TypeSpec(kind=override.returns.kind, cpp_type=_cpp_type_storage(discovered.return_type_ref)),
             override.returns,
@@ -1283,8 +1287,9 @@ def _infer_method_signature(
     override_params = override.params if override is not None else {}
     for param in discovered.params:
         param_type = override_params.get(param.name)
-        if param_type is None:
-            param_type = _infer_param_type(param.cpp_type_ref, handles)
+        if not _override_supplies_kind(param_type):
+            inferred_type = _infer_param_type(param.cpp_type_ref, handles)
+            param_type = _merge_type_override(inferred_type, param_type)
         else:
             param_type = _merge_type_override(
                 TypeSpec(kind=param_type.kind, cpp_type=_cpp_type_storage(param.cpp_type_ref)),
@@ -1298,8 +1303,6 @@ def _infer_method_signature(
         inferred_returns=returns,
         inferred_params=tuple(params_list),
     )
-
-
 def _make_c_name(handle: HandleSpec, expose_as: str) -> str:
     receiver = handle.c_type.removeprefix("ifcopenshell_").removesuffix("_t")
     return f"ifcopenshell_{receiver}_{expose_as}"
@@ -1649,6 +1652,9 @@ def _emit_variant_accessor_calls(
         "std::int64_t": "int64",
         "double": "double",
         "std::string": "string",
+        "std::set<int>": "int32_list",
+        "std::set<std::string>": "string_list",
+        "std::vector<double>": "double_list",
     }
     for suffix, type_spec in va.types.items():
         cpp_type = type_spec.cpp_type
@@ -1662,12 +1668,21 @@ def _emit_variant_accessor_calls(
                 message=f"Skipped variant accessor '{suffix}' because type '{cpp_type}' is not supported",
             )
             continue
+        return_type = _simple_type_spec(ret_kind)
+        return_type = TypeSpec(
+            kind=return_type.kind,
+            handle=return_type.handle,
+            ownership=return_type.ownership,
+            nullable=return_type.nullable,
+            cpp_type=cpp_type if return_type.sequence_depth > 0 else None,
+            sequence_depth=return_type.sequence_depth,
+        )
 
         get_expose = f"get_{suffix}"
         get_call = PolicyCallSpec(
             expose_as=get_expose,
             receiver=item.handle,
-            returns=TypeSpec(kind=ret_kind),
+            returns=return_type,
             params=(ParamSpec(name="name", type=TypeSpec(kind="string")),),
             operation=VariantGetPolicyOp(method_name=va.get_method, cpp_type=cpp_type, getter_types=type_spec.getter_types),
         )
@@ -1689,7 +1704,7 @@ def _emit_variant_accessor_calls(
             returns=TypeSpec(kind="void"),
             params=(
                 ParamSpec(name="name", type=TypeSpec(kind="string")),
-                ParamSpec(name="value", type=TypeSpec(kind=ret_kind)),
+                ParamSpec(name="value", type=return_type),
             ),
             operation=VariantSetPolicyOp(method_name=va.set_method, variant_type=va.variant_type, cpp_type=cpp_type),
         )
@@ -2328,14 +2343,31 @@ def _discover_function_calls(
 
             discovered = overloads[0]
             try:
-                inferred_returns = _infer_return_type(discovered.return_type_ref, handles)
-                inferred_params = tuple(
-                    ParamSpec(name=param.name, type=_infer_param_type(param.cpp_type_ref, handles))
-                    for param in discovered.params
-                )
+                override = item.type_overrides.get(cpp_name)
+                if override is not None and _override_supplies_kind(override.returns):
+                    inferred_returns = _merge_type_override(
+                        TypeSpec(kind=override.returns.kind, cpp_type=_cpp_type_storage(discovered.return_type_ref)),
+                        override.returns,
+                    )
+                else:
+                    inferred_returns = _infer_return_type(discovered.return_type_ref, handles)
+                override_params = override.params if override is not None else {}
+                inferred_params_list: list[ParamSpec] = []
+                for param in discovered.params:
+                    param_type = override_params.get(param.name)
+                    if not _override_supplies_kind(param_type):
+                        inferred_type = _infer_param_type(param.cpp_type_ref, handles)
+                        param_type = _merge_type_override(inferred_type, param_type)
+                    else:
+                        param_type = _merge_type_override(
+                            TypeSpec(kind=param_type.kind, cpp_type=_cpp_type_storage(param.cpp_type_ref)),
+                            param_type,
+                        )
+                    inferred_params_list.append(ParamSpec(name=param.name, type=param_type))
+                inferred_params = tuple(inferred_params_list)
                 returns, params = _apply_function_type_override(
                     discovered,
-                    override=item.type_overrides.get(cpp_name),
+                    override=override,
                     inferred_returns=inferred_returns,
                     inferred_params=inferred_params,
                 )

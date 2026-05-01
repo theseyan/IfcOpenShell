@@ -16,9 +16,42 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
+import ctypes
 from typing import Optional
 
+import ifcopenshell
+from ifcopenshell import _generated_capi
+from ifcopenshell.entity_instance import _generated_instance_handle_ptr
 import ifcopenshell.util.element
+
+_classification_lib_configured = False
+
+
+def _configure_classification_lib(lib) -> None:
+    global _classification_lib_configured
+    if _classification_lib_configured:
+        return
+    _generated_capi.bind(
+        lib,
+        names=(
+            "ifcopenshell_ifcapi_classification_get_references",
+            "ifcopenshell_ifcparse_instance_list_destroy",
+            "ifcopenshell_ifcparse_instance_list_get",
+            "ifcopenshell_ifcparse_instance_list_size",
+        ),
+    )
+    _classification_lib_configured = True
+
+
+def _call_classification_instance_list(
+    element: ifcopenshell.entity_instance, name: str, *args
+) -> list[ifcopenshell.entity_instance]:
+    lib = ifcopenshell._get_lib()
+    _configure_classification_lib(lib)
+    out = ctypes.POINTER(_generated_capi.ifcopenshell_ifcparse_instance_list_t)()
+    if not getattr(lib, name)(_generated_instance_handle_ptr(element._handle), *args, ctypes.byref(out)):
+        return []
+    return ifcopenshell._take_instance_list(element.file, out)
 
 
 def get_references(element: ifcopenshell.entity_instance, should_inherit=True) -> set[ifcopenshell.entity_instance]:
@@ -28,34 +61,11 @@ def get_references(element: ifcopenshell.entity_instance, should_inherit=True) -
         from the type. Classifications can be overriden per system.
     :return: A set of IfcClassificationReference
     """
-    results = set()
-    if not element.is_a("IfcRoot"):
-        if (references := getattr(element, "HasExternalReferences", None)) is not None or (
-            references := getattr(element, "HasExternalReference", None)
-        ) is not None:
-            return {r.RelatingReference for r in references}
-    if should_inherit and element.is_a("IfcObject"):
-        element_type = ifcopenshell.util.element.get_type(element)
-        if element_type and element_type != element:
-            results = get_references(element_type)
-    occurrence_results = {
-        r.RelatingClassification
-        for r in getattr(element, "HasAssociations", [])
-        if r.is_a("IfcRelAssociatesClassification")
-    }
-    if results:
-        type_references_per_system = {}
-        occurrence_references_per_system = {}
-        for result in results:
-            type_references_per_system.setdefault(get_classification(result), []).append(result)
-        for result in occurrence_results:
-            occurrence_references_per_system.setdefault(get_classification(result), []).append(result)
-        type_references_per_system.update(occurrence_references_per_system)
-        results = set()
-        for values in type_references_per_system.values():
-            [results.add(v) for v in values]
-        return results
-    return occurrence_results
+    return set(
+        _call_classification_instance_list(
+            element, "ifcopenshell_ifcapi_classification_get_references", bool(should_inherit)
+        )
+    )
 
 
 def get_classification(reference: ifcopenshell.entity_instance) -> ifcopenshell.entity_instance:

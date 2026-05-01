@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/schema.h"
 
 #include "ifcparse/IfcFile.h"
 #include "ifcparse/IfcSchema.h"
@@ -171,23 +172,17 @@ bool apply_stashed(IfcUtil::IfcBaseClass* e, size_t idx, const IfcParse::attribu
 
 }  // namespace
 
-extern "C" {
-
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_util_schema_reassign_class(
-    ifcopenshell_ifc_file_t* file_h,
-    ifcopenshell_ifc_instance_t* element_h,
-    const char* new_class)
+IfcUtil::IfcBaseClass* reassign_class_impl(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* element,
+    const std::string& new_class)
 {
-    ifcopenshell_clear_error();
-    if (!element_h || !element_h->ptr) { set_error("element is NULL"); return nullptr; }
-    if (!new_class) { set_error("new_class is NULL"); return nullptr; }
-
-    auto* element = element_h->ptr;
-    auto* file = file_h ? file_h->ptr : element->file_;
+    if (!element) { set_error("element is NULL"); return nullptr; }
+    file = file ? file : element->file_;
     if (!file) { set_error("file is NULL"); return nullptr; }
 
     if (element->declaration().name() == new_class) {
-        return ifcopenshell::capi::wrap_instance(element);
+        return element;
     }
 
     const auto* schema = file->schema();
@@ -287,7 +282,19 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_util_schema_reassign_cla
         }
     }
 
-    return ifcopenshell::capi::wrap_instance(new_inst);
+    return new_inst;
 }
 
-}  // extern "C"
+namespace ifcapi {
+namespace bindings {
+
+IfcUtil::IfcBaseClass* schema_reassign_class(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* element,
+    const std::string& new_class)
+{
+    return reassign_class_impl(file, element, new_class);
+}
+
+} // namespace bindings
+} // namespace ifcapi

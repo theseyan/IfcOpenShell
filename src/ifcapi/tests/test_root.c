@@ -71,8 +71,10 @@ static void test_error_handling(void) {
     ASSERT(strlen(ifcopenshell_last_error_message()) == 0, "error starts empty");
 
     /* NULL file should fail gracefully */
-    ifcopenshell_ifc_instance_t* inst = ifcopenshell_root_create_entity(NULL, "IfcWall", NULL, NULL, 0);
-    ASSERT(inst == NULL, "NULL file returns NULL");
+    ifcopenshell_ifc_instance_t* inst = NULL;
+    ASSERT(!ifcopenshell_ifcapi_root_create_entity(NULL, "IfcWall", NULL, NULL, NULL, &inst),
+           "NULL file returns false");
+    ASSERT(inst == NULL, "NULL file leaves output NULL");
     ASSERT(strlen(ifcopenshell_last_error_message()) > 0, "error message set");
     printf("  Error msg: %s\n", ifcopenshell_last_error_message());
 

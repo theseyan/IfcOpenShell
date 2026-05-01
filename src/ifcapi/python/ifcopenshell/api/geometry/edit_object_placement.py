@@ -10,7 +10,8 @@ import numpy as np
 
 import ifcopenshell
 import ifcopenshell.api.owner
-from ifcopenshell import _get_lib
+from ifcopenshell import _generated_capi
+from ifcopenshell.entity_instance import _generated_instance_handle_ptr
 
 
 _BOUND = False
@@ -18,17 +19,13 @@ _BOUND = False
 
 def _bind() -> ctypes.CDLL:
     global _BOUND
-    lib = _get_lib()
+    lib = ifcopenshell._get_lib()
     if _BOUND:
         return lib
-    lib.ifcopenshell_api_geometry_edit_object_placement.restype = ctypes.c_void_p
-    lib.ifcopenshell_api_geometry_edit_object_placement.argtypes = [
-        ctypes.c_void_p,
-        ctypes.c_void_p,
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.c_bool,
-        ctypes.c_bool,
-    ]
+    _generated_capi.bind(
+        lib,
+        names=("ifcopenshell_ifcapi_geometry_edit_object_placement", "ifcopenshell_ifc_instance_destroy"),
+    )
     _BOUND = True
     return lib
 
@@ -48,17 +45,21 @@ def edit_object_placement(file, product=None, matrix=None, is_si=True, should_tr
     lib = _bind()
 
     if matrix is None:
-        matrix_ptr = _IDENTITY
+        matrix_values = _generated_capi.make_double_list(_IDENTITY)
     else:
         arr = np.ascontiguousarray(np.asarray(matrix, dtype=np.float64).reshape(4, 4))
-        matrix_ptr = arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
+        matrix_values = _generated_capi.make_double_list(arr.reshape(16))
 
-    handle = lib.ifcopenshell_api_geometry_edit_object_placement(
-        file._ptr,
-        product._handle,
-        matrix_ptr,
+    file_handle = ctypes.cast(ctypes.c_void_p(file._ptr), ctypes.POINTER(_generated_capi._HandleStruct))
+    handle = _generated_capi.call_handle(
+        lib,
+        lib.ifcopenshell_ifcapi_geometry_edit_object_placement,
+        file_handle,
+        _generated_instance_handle_ptr(product._handle),
+        ctypes.byref(matrix_values),
         bool(is_si),
         bool(should_transform_children),
+        destroy=lib.ifcopenshell_ifc_instance_destroy,
     )
     if not handle:
         return None

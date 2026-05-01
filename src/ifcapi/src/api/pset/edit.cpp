@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/pset.h"
+#include "ifcapi/bindings/pset_template.h"
 #include "ifcopenshell_api_internal.hpp"
 #include "api/pset/props.hpp"
 
@@ -499,140 +501,142 @@ IfcUtil::IfcBaseClass* fetch_pset_template(IfcParse::IfcFile* file, IfcUtil::Ifc
     if (explicit_template) return explicit_template;
     std::string name = read_string_attr(pset, "Name");
     if (name.empty()) return nullptr;
-    auto* cache = ifcopenshell_util_pset_get_template(file->schema()->name().c_str());
-    if (!cache) return nullptr;
-    auto* h = ifcopenshell_util_pset_template_get_by_name(cache, name.c_str());
-    if (!h) return nullptr;
-    auto* base = h->ptr;
-    delete h;
-    return base;
+    std::vector<std::string> schemas = {file->schema()->name()};
+    if (schemas.front().rfind("IFC2X3", 0) == 0) {
+        schemas.push_back("IFC4");
+        schemas.push_back("IFC4X3");
+    }
+    for (const auto& schema : schemas) {
+        auto* cache = ifcapi::bindings::pset_template_get_template(schema);
+        if (!cache) continue;
+        if (auto* tmpl = ifcapi::bindings::pset_template_get_by_name(cache, name)) return tmpl;
+    }
+    return nullptr;
 }
 
 }  // namespace
 
-extern "C" {
+namespace ifcapi {
+namespace bindings {
 
 /* ---- Properties builder ---- */
 
-IFCAPI_EXPORT ifcopenshell_pset_props_t* ifcopenshell_pset_props_new(void) {
+ifcopenshell_pset_props_t* pset_props_new() {
     return new ifcopenshell_pset_props_t();
 }
 
-IFCAPI_EXPORT void ifcopenshell_pset_props_free(ifcopenshell_pset_props_t* p) {
+void pset_props_free(ifcopenshell_pset_props_t* p) {
     delete p;
 }
 
-static Entry& append_entry(ifcopenshell_pset_props_t* p, const char* key) {
+static Entry& append_entry(ifcopenshell_pset_props_t* p, const std::string& key) {
     p->entries.emplace_back();
-    p->entries.back().key = key ? key : "";
+    p->entries.back().key = key;
     return p->entries.back();
 }
 
-IFCAPI_EXPORT void ifcopenshell_pset_props_set_null(ifcopenshell_pset_props_t* p, const char* key) {
+void pset_props_set_null(ifcopenshell_pset_props_t* p, const std::string& key) {
     if (!p) return;
     auto& e = append_entry(p, key);
     e.kind = Kind::NONE;
 }
 
-IFCAPI_EXPORT void ifcopenshell_pset_props_set_bool(ifcopenshell_pset_props_t* p, const char* key, bool v) {
+void pset_props_set_bool(ifcopenshell_pset_props_t* p, const std::string& key, bool v) {
     if (!p) return;
     auto& e = append_entry(p, key);
     e.kind = Kind::BOOL;
     e.b_val = v;
 }
 
-IFCAPI_EXPORT void ifcopenshell_pset_props_set_int(ifcopenshell_pset_props_t* p, const char* key, int64_t v) {
+void pset_props_set_int(ifcopenshell_pset_props_t* p, const std::string& key, int64_t v) {
     if (!p) return;
     auto& e = append_entry(p, key);
     e.kind = Kind::INT;
     e.i_val = v;
 }
 
-IFCAPI_EXPORT void ifcopenshell_pset_props_set_double(ifcopenshell_pset_props_t* p, const char* key, double v) {
+void pset_props_set_double(ifcopenshell_pset_props_t* p, const std::string& key, double v) {
     if (!p) return;
     auto& e = append_entry(p, key);
     e.kind = Kind::DOUBLE;
     e.d_val = v;
 }
 
-IFCAPI_EXPORT void ifcopenshell_pset_props_set_string(ifcopenshell_pset_props_t* p, const char* key, const char* v) {
+void pset_props_set_string(ifcopenshell_pset_props_t* p, const std::string& key, const std::string& v) {
     if (!p) return;
     auto& e = append_entry(p, key);
     e.kind = Kind::STRING;
-    e.s_val = v ? v : "";
+    e.s_val = v;
 }
 
-IFCAPI_EXPORT void ifcopenshell_pset_props_set_instance(
-    ifcopenshell_pset_props_t* p, const char* key, ifcopenshell_ifc_instance_t* v) {
+void pset_props_set_instance(ifcopenshell_pset_props_t* p, const std::string& key, IfcUtil::IfcBaseClass* v) {
     if (!p) return;
     auto& e = append_entry(p, key);
     e.kind = Kind::INSTANCE;
-    e.inst = v ? v->ptr : nullptr;
+    e.inst = v;
 }
 
-IFCAPI_EXPORT void ifcopenshell_pset_props_set_typed_string(
-    ifcopenshell_pset_props_t* p, const char* key, const char* v, const char* ifc_type) {
+void pset_props_set_typed_string(
+    ifcopenshell_pset_props_t* p, const std::string& key, const std::string& v, const std::string& ifc_type) {
     if (!p) return;
     auto& e = append_entry(p, key);
     e.kind = Kind::TYPED_STRING;
-    e.s_val = v ? v : "";
-    e.ifc_type = ifc_type ? ifc_type : "";
+    e.s_val = v;
+    e.ifc_type = ifc_type;
 }
 
-IFCAPI_EXPORT void ifcopenshell_pset_props_set_typed_double(
-    ifcopenshell_pset_props_t* p, const char* key, double v, const char* ifc_type) {
+void pset_props_set_typed_double(
+    ifcopenshell_pset_props_t* p, const std::string& key, double v, const std::string& ifc_type) {
     if (!p) return;
     auto& e = append_entry(p, key);
     e.kind = Kind::TYPED_DOUBLE;
     e.d_val = v;
-    e.ifc_type = ifc_type ? ifc_type : "";
+    e.ifc_type = ifc_type;
 }
 
-IFCAPI_EXPORT void ifcopenshell_pset_props_set_typed_int(
-    ifcopenshell_pset_props_t* p, const char* key, int64_t v, const char* ifc_type) {
+void pset_props_set_typed_int(
+    ifcopenshell_pset_props_t* p, const std::string& key, int64_t v, const std::string& ifc_type) {
     if (!p) return;
     auto& e = append_entry(p, key);
     e.kind = Kind::TYPED_INT;
     e.i_val = v;
-    e.ifc_type = ifc_type ? ifc_type : "";
+    e.ifc_type = ifc_type;
 }
 
-IFCAPI_EXPORT void ifcopenshell_pset_props_set_typed_bool(
-    ifcopenshell_pset_props_t* p, const char* key, bool v, const char* ifc_type) {
+void pset_props_set_typed_bool(
+    ifcopenshell_pset_props_t* p, const std::string& key, bool v, const std::string& ifc_type) {
     if (!p) return;
     auto& e = append_entry(p, key);
     e.kind = Kind::TYPED_BOOL;
     e.b_val = v;
-    e.ifc_type = ifc_type ? ifc_type : "";
+    e.ifc_type = ifc_type;
 }
 
-IFCAPI_EXPORT void ifcopenshell_pset_props_set_string_list(
-    ifcopenshell_pset_props_t* p, const char* key, const char** vals, uint32_t count) {
+void pset_props_set_string_list(
+    ifcopenshell_pset_props_t* p, const std::string& key, const std::vector<std::string>& vals) {
     if (!p) return;
     auto& e = append_entry(p, key);
     e.kind = Kind::STRING_LIST;
-    e.str_list.reserve(count);
-    for (uint32_t i = 0; i < count; ++i) e.str_list.emplace_back(vals && vals[i] ? vals[i] : "");
+    e.str_list = vals;
 }
 
-IFCAPI_EXPORT void ifcopenshell_pset_props_set_double_list(
-    ifcopenshell_pset_props_t* p, const char* key, const double* vals, uint32_t count) {
+void pset_props_set_double_list(
+    ifcopenshell_pset_props_t* p, const std::string& key, const std::vector<double>& vals) {
     if (!p) return;
     auto& e = append_entry(p, key);
     e.kind = Kind::DOUBLE_LIST;
-    e.dbl_list.assign(vals, vals + count);
+    e.dbl_list = vals;
 }
 
-IFCAPI_EXPORT void ifcopenshell_pset_props_set_int_list(
-    ifcopenshell_pset_props_t* p, const char* key, const int64_t* vals, uint32_t count) {
+void pset_props_set_int_list(
+    ifcopenshell_pset_props_t* p, const std::string& key, const std::vector<int64_t>& vals) {
     if (!p) return;
     auto& e = append_entry(p, key);
     e.kind = Kind::INT_LIST;
-    e.int_list.assign(vals, vals + count);
+    e.int_list = vals;
 }
 
-IFCAPI_EXPORT void ifcopenshell_pset_props_set_dict(
-    ifcopenshell_pset_props_t* outer, const char* key, ifcopenshell_pset_props_t* inner) {
+void pset_props_set_dict(ifcopenshell_pset_props_t* outer, const std::string& key, ifcopenshell_pset_props_t* inner) {
     if (!outer) {
         delete inner;
         return;
@@ -645,30 +649,23 @@ IFCAPI_EXPORT void ifcopenshell_pset_props_set_dict(
 // Attach an IfcUnit to the most recently added entry (mirrors upstream's
 // ``unpack_unit_value`` shape ``{NominalValue, Unit}``). The unit becomes the
 // ``Unit`` attribute on the resulting IfcPropertySingleValue.
-IFCAPI_EXPORT void ifcopenshell_pset_props_set_unit_for_last(
-    ifcopenshell_pset_props_t* p, ifcopenshell_ifc_instance_t* unit) {
+void pset_props_set_unit_for_last(ifcopenshell_pset_props_t* p, IfcUtil::IfcBaseClass* unit) {
     if (!p || p->entries.empty()) return;
-    p->entries.back().unit = unit ? unit->ptr : nullptr;
+    p->entries.back().unit = unit;
 }
 
 /* ---- edit_pset ---- */
 
-IFCAPI_EXPORT bool ifcopenshell_api_pset_edit_pset(
-    ifcopenshell_ifc_file_t* file_h,
-    ifcopenshell_ifc_instance_t* pset_h,
+bool pset_edit_pset(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* pset,
     const char* name,
     ifcopenshell_pset_props_t* properties,
-    ifcopenshell_ifc_instance_t* pset_template_h,
+    IfcUtil::IfcBaseClass* pset_template,
     bool should_purge)
 {
-    if (!file_h || !pset_h) {
-        set_error("ifcopenshell_api_pset_edit_pset: missing required argument");
-        return false;
-    }
-    auto* file = file_h->ptr;
-    auto* pset = pset_h->ptr;
     if (!file || !pset) {
-        set_error("ifcopenshell_api_pset_edit_pset: NULL underlying pointer");
+        set_error("pset_edit_pset: missing required argument");
         return false;
     }
     try {
@@ -685,7 +682,6 @@ IFCAPI_EXPORT bool ifcopenshell_api_pset_edit_pset(
             }
         }
 
-        IfcUtil::IfcBaseClass* pset_template = pset_template_h ? pset_template_h->ptr : nullptr;
         pset_template = fetch_pset_template(file, pset, pset_template);
 
         const char* attr_name = properties_attr_name(pset);
@@ -741,7 +737,7 @@ IFCAPI_EXPORT bool ifcopenshell_api_pset_edit_pset(
         write_ref_aggregate(pset, attr_name, kept);
         return true;
     } catch (const std::exception& ex) {
-        set_error(std::string("ifcopenshell_api_pset_edit_pset: ") + ex.what());
+        set_error(std::string("pset_edit_pset: ") + ex.what());
         return false;
     }
 }
@@ -889,21 +885,15 @@ int64_t entry_to_int(const Entry& e) {
 
 }  // namespace
 
-IFCAPI_EXPORT bool ifcopenshell_api_pset_edit_qto(
-    ifcopenshell_ifc_file_t* file_h,
-    ifcopenshell_ifc_instance_t* qto_h,
+bool pset_edit_qto(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* qto,
     const char* name,
     ifcopenshell_pset_props_t* properties,
-    ifcopenshell_ifc_instance_t* qto_template_h)
+    IfcUtil::IfcBaseClass* qto_template)
 {
-    if (!file_h || !qto_h) {
-        set_error("ifcopenshell_api_pset_edit_qto: missing required argument");
-        return false;
-    }
-    auto* file = file_h->ptr;
-    auto* qto = qto_h->ptr;
     if (!file || !qto) {
-        set_error("ifcopenshell_api_pset_edit_qto: NULL underlying pointer");
+        set_error("pset_edit_qto: missing required argument");
         return false;
     }
     try {
@@ -920,14 +910,12 @@ IFCAPI_EXPORT bool ifcopenshell_api_pset_edit_qto(
             }
         }
 
-        IfcUtil::IfcBaseClass* qto_template = qto_template_h ? qto_template_h->ptr : nullptr;
         if (!qto_template) {
             std::string qname = read_string_attr(qto, "Name");
             if (!qname.empty()) {
-                auto* cache = ifcopenshell_util_pset_get_template(file->schema()->name().c_str());
+                auto* cache = ifcapi::bindings::pset_template_get_template(file->schema()->name());
                 if (cache) {
-                    auto* h = ifcopenshell_util_pset_template_get_by_name(cache, qname.c_str());
-                    if (h) { qto_template = h->ptr; delete h; }
+                    qto_template = ifcapi::bindings::pset_template_get_by_name(cache, qname);
                 }
             }
         }
@@ -962,9 +950,7 @@ IFCAPI_EXPORT bool ifcopenshell_api_pset_edit_qto(
                         }
                     }
                     if (has_discrim) write_string_attr(prop, "Discrimination", discrim);
-                    ifcopenshell_ifc_file_t fh{file, false};
-                    ifcopenshell_ifc_instance_t ih{prop, false};
-                    ifcopenshell_api_pset_edit_qto(&fh, &ih, nullptr, &sub, nullptr);
+                    pset_edit_qto(file, prop, nullptr, &sub, nullptr);
                 }
                 kept.push_back(prop);
                 remaining.erase(it);
@@ -1011,9 +997,7 @@ IFCAPI_EXPORT bool ifcopenshell_api_pset_edit_qto(
                 auto* cq = file->create(cq_decl);
                 write_string_attr(cq, "Name", key);
                 write_string_attr(cq, "Discrimination", discrim);
-                ifcopenshell_ifc_file_t fh{file, false};
-                ifcopenshell_ifc_instance_t ih{cq, false};
-                ifcopenshell_api_pset_edit_qto(&fh, &ih, nullptr, &sub, nullptr);
+                pset_edit_qto(file, cq, nullptr, &sub, nullptr);
                 kept.push_back(cq);
                 continue;
             }
@@ -1043,9 +1027,10 @@ IFCAPI_EXPORT bool ifcopenshell_api_pset_edit_qto(
         write_ref_aggregate(qto, attr_name, kept);
         return true;
     } catch (const std::exception& ex) {
-        set_error(std::string("ifcopenshell_api_pset_edit_qto: ") + ex.what());
+        set_error(std::string("pset_edit_qto: ") + ex.what());
         return false;
     }
 }
 
-}  // extern "C"
+} // namespace bindings
+} // namespace ifcapi

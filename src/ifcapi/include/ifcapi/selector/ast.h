@@ -5,22 +5,6 @@
 #ifndef IFCAPI_SELECTOR_AST_H
 #define IFCAPI_SELECTOR_AST_H
 
-#include <stddef.h>
-
-#ifdef _WIN32
-#  ifdef IFCAPI_BUILD
-#    define IFCAPI_EXPORT __declspec(dllexport)
-#  else
-#    define IFCAPI_EXPORT __declspec(dllimport)
-#  endif
-#else
-#  define IFCAPI_EXPORT __attribute__((visibility("default")))
-#endif
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* ------------------------------------------------------------------ */
 /*  Opaque node handle                                                 */
 /* ------------------------------------------------------------------ */
@@ -112,54 +96,5 @@ typedef enum {
     IFCSEL_TOKEN_FALSE              = 105,
     IFCSEL_TOKEN_ANON               = 106   /* anonymous terminal (inline regex) */
 } ifcsel_node_kind;
-
-/* ------------------------------------------------------------------ */
-/*  Parse entry points                                                 */
-/*                                                                     */
-/*  Each returns a root node on success, or NULL on failure. On        */
-/*  failure the error is stored via set_last_error so it is readable   */
-/*  through ifcopenshell_last_error_message().                         */
-/*  The caller is responsible for exactly one call to                  */
-/*  ifcopenshell_selector_node_free() on the returned root.            */
-/* ------------------------------------------------------------------ */
-
-IFCAPI_EXPORT ifcopenshell_selector_node_t*
-ifcopenshell_selector_parse_filter(const char* query);
-
-IFCAPI_EXPORT ifcopenshell_selector_node_t*
-ifcopenshell_selector_parse_get_element(const char* query);
-
-IFCAPI_EXPORT ifcopenshell_selector_node_t*
-ifcopenshell_selector_parse_format(const char* query);
-
-/* ------------------------------------------------------------------ */
-/*  AST accessors                                                      */
-/* ------------------------------------------------------------------ */
-
-/* Returns the kind of this node. */
-IFCAPI_EXPORT ifcsel_node_kind
-ifcopenshell_selector_node_kind(const ifcopenshell_selector_node_t* node);
-
-/* Returns the number of children. Token nodes always return 0. */
-IFCAPI_EXPORT size_t
-ifcopenshell_selector_node_child_count(const ifcopenshell_selector_node_t* node);
-
-/* Returns the i-th child, or NULL if out of range. */
-IFCAPI_EXPORT ifcopenshell_selector_node_t*
-ifcopenshell_selector_node_child(const ifcopenshell_selector_node_t* node, size_t index);
-
-/* Returns the text value of a token node, or NULL for rule nodes.
-   The returned pointer is valid until ifcopenshell_selector_node_free() is called. */
-IFCAPI_EXPORT const char*
-ifcopenshell_selector_node_text(const ifcopenshell_selector_node_t* node);
-
-/* Recursively frees the tree. Only call on the root node returned by a parse
-   entry point. */
-IFCAPI_EXPORT void
-ifcopenshell_selector_node_free(ifcopenshell_selector_node_t* root);
-
-#ifdef __cplusplus
-} /* extern "C" */
-#endif
 
 #endif /* IFCAPI_SELECTOR_AST_H */

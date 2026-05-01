@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/root.h"
 #include "guid.h"
 #include "ifcopenshell_api_internal.hpp"
 
@@ -67,26 +68,22 @@ static bool try_set_enum(
     return true;
 }
 
-extern "C" {
+namespace ifcapi {
+namespace bindings {
 
-void ifcopenshell_free_string(char* str) {
-    std::free(str);
-}
-
-ifcopenshell_ifc_instance_t* ifcopenshell_root_create_entity(
-    ifcopenshell_ifc_file_t* file_ptr,
-    const char* ifc_class,
+IfcUtil::IfcBaseClass* root_create_entity(
+    IfcParse::IfcFile* file,
+    const std::string& ifc_class,
     const char* predefined_type,
     const char* name,
-    ifcopenshell_ifc_instance_t* owner_history)
+    IfcUtil::IfcBaseClass* owner_history)
 {
     ifcopenshell_clear_error();
 
-    if (!file_ptr) { set_error("file is NULL"); return 0; }
-    if (!ifc_class) { set_error("ifc_class is NULL"); return 0; }
+    if (!file) { set_error("file is NULL"); return 0; }
+    if (ifc_class.empty()) { set_error("ifc_class is empty"); return 0; }
 
     try {
-        auto* file = file_ptr->ptr;
         const auto* schema = file->schema();
         const std::string schema_name = schema->name();
 
@@ -157,13 +154,10 @@ ifcopenshell_ifc_instance_t* ifcopenshell_root_create_entity(
         }
 
         // 2. Set OwnerHistory
-        if (owner_history && owner_history->ptr) {
+        if (owner_history) {
             int oh = attr_index("OwnerHistory");
             if (oh >= 0) {
-                auto* oh_entity = (owner_history ? owner_history->ptr : nullptr);
-                if (oh_entity) {
-                    entity->set_attribute_value(static_cast<size_t>(oh), oh_entity);
-                }
+                entity->set_attribute_value(static_cast<size_t>(oh), owner_history);
             }
         }
 
@@ -237,7 +231,7 @@ ifcopenshell_ifc_instance_t* ifcopenshell_root_create_entity(
             }
         }
 
-        return ifcopenshell::capi::wrap_instance(entity);
+        return entity;
 
     } catch (const IfcParse::IfcException& e) {
         set_error(e.what());
@@ -251,4 +245,5 @@ ifcopenshell_ifc_instance_t* ifcopenshell_root_create_entity(
     }
 }
 
-} // extern "C"
+} // namespace bindings
+} // namespace ifcapi

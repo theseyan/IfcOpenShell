@@ -1,15 +1,8 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-#include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/attribute.h"
 
 #include "ifcparse/IfcSchema.h"
-
-#include <cstdlib>
-#include <cstring>
-#include <string>
-#include <vector>
-
-#include "ifcopenshell_api_internal.hpp"
 
 namespace {
 
@@ -69,37 +62,24 @@ const IfcParse::enumeration_type* enum_type_for(const IfcParse::attribute* attr)
 
 }  // namespace
 
-extern "C" {
+namespace ifcapi {
+namespace bindings {
 
-IFCAPI_EXPORT const char* ifcopenshell_util_attribute_get_primitive_type(const void* attribute) {
-    auto* attr = reinterpret_cast<const IfcParse::attribute*>(attribute);
-    if (!attr) return "unknown";
-    return primitive_type_for(attr->type_of_attribute());
+const char* attribute_get_primitive_type(const IfcParse::attribute* attribute) {
+    if (!attribute) return "unknown";
+    return primitive_type_for(attribute->type_of_attribute());
 }
 
-IFCAPI_EXPORT char** ifcopenshell_util_attribute_get_enum_items(const void* attribute, uint32_t* out_count) {
-    if (out_count) *out_count = 0;
-    auto* attr = reinterpret_cast<const IfcParse::attribute*>(attribute);
-    auto* en = enum_type_for(attr);
-    if (!en) return nullptr;
+std::vector<std::string> attribute_get_enum_items(const IfcParse::attribute* attribute) {
+    std::vector<std::string> result;
+    auto* en = enum_type_for(attribute);
+    if (!en) return result;
     const auto& items = en->enumeration_items();
-    if (items.empty()) return nullptr;
-    auto** buf = static_cast<char**>(std::malloc(items.size() * sizeof(char*)));
-    if (!buf) return nullptr;
-    for (size_t i = 0; i < items.size(); ++i) {
-        const auto& s = items[i];
-        char* dup = static_cast<char*>(std::malloc(s.size() + 1));
-        if (!dup) {
-            for (size_t j = 0; j < i; ++j) std::free(buf[j]);
-            std::free(buf);
-            return nullptr;
-        }
-        std::memcpy(dup, s.data(), s.size());
-        dup[s.size()] = '\0';
-        buf[i] = dup;
-    }
-    if (out_count) *out_count = static_cast<uint32_t>(items.size());
-    return buf;
+    result.reserve(items.size());
+    for (const auto& item : items) result.push_back(item);
+    return result;
 }
 
-}  // extern "C"
+} // namespace bindings
+} // namespace ifcapi
+

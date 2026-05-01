@@ -61,8 +61,35 @@ def _typed_value_str(tv):
     return str(w)
 
 
+_TYPED_VALUE_IS_A_CACHE = {}
+
+
+def _typed_value_is_a(file_obj, type_name: str, query: str) -> bool:
+    if not type_name or not query:
+        return False
+    schema_name = getattr(file_obj, "schema_identifier", None) or getattr(file_obj, "schema", None)
+    cache_key = (schema_name or "", type_name, query)
+    cached = _TYPED_VALUE_IS_A_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    result = type_name.lower() == query.lower()
+    if schema_name:
+        try:
+            from ifcopenshell import ifcopenshell_wrapper as W
+
+            schema = W.schema_by_name(schema_name)
+            decl = schema.declaration_by_name(type_name)
+            result = bool(decl and decl._is(query))
+        except Exception:
+            pass
+    _TYPED_VALUE_IS_A_CACHE[cache_key] = result
+    return result
+
+
 _derived_lib_configured = False
 _attribute_value_lib_configured = False
+_entity_string_helpers_configured = False
 _MISSING = object()
 
 _ATTRIBUTE_VALUE_TYPES = {
@@ -95,12 +122,37 @@ def _instance_handle_ptr(handle):
     return ctypes.cast(ctypes.c_void_p(handle), W._HandleStructP)
 
 
+def _empty_handle_ptr():
+    from . import ifcopenshell_wrapper as W
+
+    return W._HandleStructP()
+
+
 def _generated_instance_handle_ptr(handle):
     if not handle:
         return None
     from ifcopenshell import _generated_capi
 
     return ctypes.cast(ctypes.c_void_p(handle), ctypes.POINTER(_generated_capi._HandleStruct))
+
+
+def _configure_entity_string_helpers(lib) -> None:
+    global _entity_string_helpers_configured
+    if _entity_string_helpers_configured:
+        return
+    _generated_capi.bind(
+        lib,
+        names=(
+            "ifcopenshell_string_destroy",
+            "ifcopenshell_string_list_destroy",
+            "ifcopenshell_ifc_instance_to_string",
+            "ifcopenshell_ifc_instance_get_attribute_names",
+            "ifcopenshell_ifc_instance_get_inverse_attribute_names",
+            "ifcopenshell_ifcapi_entity_get_typed_value",
+            "ifcopenshell_ifcapi_entity_get_aggregate_typed_value",
+        ),
+    )
+    _entity_string_helpers_configured = True
 
 
 def _instance_type_name(handle) -> str:
@@ -110,45 +162,32 @@ def _instance_type_name(handle) -> str:
 
 
 def _instance_to_string(handle, valid_spf: bool) -> str:
-    from . import ifcopenshell_wrapper as W
-
     lib = _get_lib()
-    W._bind()
-    out = W.ifcopenshell_string_t()
-    if not lib.ifcopenshell_ifc_instance_to_string(_instance_handle_ptr(handle), valid_spf, ctypes.byref(out)):
-        return ""
-    return W._take_string(out)
+    _configure_entity_string_helpers(lib)
+    return _generated_capi.call_string(
+        lib, lib.ifcopenshell_ifc_instance_to_string, _instance_handle_ptr(handle), valid_spf
+    ) or ""
 
 
 def _instance_attribute_names(handle) -> tuple[str, ...]:
-    from . import ifcopenshell_wrapper as W
-
     lib = _get_lib()
-    W._bind()
-    out = W.ifcopenshell_string_list_t()
-    if not lib.ifcopenshell_ifc_instance_get_attribute_names(_instance_handle_ptr(handle), ctypes.byref(out)):
-        return ()
-    return W._take_string_list(out)
+    _configure_entity_string_helpers(lib)
+    return _generated_capi.call_string_list(
+        lib, lib.ifcopenshell_ifc_instance_get_attribute_names, _instance_handle_ptr(handle)
+    ) or ()
 
 
 def _instance_inverse_attribute_names(handle) -> tuple[str, ...]:
-    from . import ifcopenshell_wrapper as W
-
     lib = _get_lib()
-    W._bind()
-    out = W.ifcopenshell_string_list_t()
-    if not lib.ifcopenshell_ifc_instance_get_inverse_attribute_names(_instance_handle_ptr(handle), ctypes.byref(out)):
-        return ()
-    return W._take_string_list(out)
+    _configure_entity_string_helpers(lib)
+    return _generated_capi.call_string_list(
+        lib, lib.ifcopenshell_ifc_instance_get_inverse_attribute_names, _instance_handle_ptr(handle)
+    ) or ()
 
 
 def _take_attribute_value_type(lib, attribute_value) -> str:
-    from . import ifcopenshell_wrapper as W
-
-    out = W.ifcopenshell_string_t()
-    if not lib.ifcopenshell_ifcparse_attribute_value_type(attribute_value, ctypes.byref(out)):
-        return ""
-    return W._take_string(out)
+    _configure_entity_string_helpers(lib)
+    return _generated_capi.call_string(lib, lib.ifcopenshell_ifcparse_attribute_value_type, attribute_value) or ""
 
 
 def _attribute_type_from_value(lib, attribute_value) -> int:
@@ -159,15 +198,8 @@ def _attribute_type_from_value(lib, attribute_value) -> int:
 
 
 def _make_string_list(values):
-    from . import ifcopenshell_wrapper as W
-
-    buffers = [ctypes.create_string_buffer(_enc(str(value))) for value in values]
-    items = (W.ifcopenshell_string_t * len(buffers))()
-    for i, buffer in enumerate(buffers):
-        items[i].data = ctypes.cast(buffer, ctypes.c_void_p).value
-        items[i].size = len(buffer.value)
-        items[i].owned = False
-    return W.ifcopenshell_string_list_t(items, len(buffers)), buffers
+    out = _generated_capi.make_string_list(values)
+    return out, out._keepalive  # type: ignore[attr-defined]
 
 
 def register_schema_attributes(schema) -> None:
@@ -184,6 +216,7 @@ def register_schema_attributes(schema) -> None:
 _Int32List = _generated_capi.ifcopenshell_int32_list_t
 _Int32ListList = _generated_capi.ifcopenshell_int32_list_list_t
 _DoubleList = _generated_capi.ifcopenshell_double_list_t
+_DoubleListList = _generated_capi.ifcopenshell_double_list_list_t
 
 
 def _configure_derived_lib(lib) -> None:
@@ -200,83 +233,40 @@ def _configure_attribute_value_lib(lib) -> None:
     global _attribute_value_lib_configured
     if _attribute_value_lib_configured:
         return
-    from . import ifcopenshell_wrapper as W
-
-    W._bind()
-    lib.ifcopenshell_ifc_instance_get_argument.restype = ctypes.c_bool
-    lib.ifcopenshell_ifc_instance_get_argument.argtypes = [
-        ctypes.c_void_p,
-        ctypes.c_size_t,
-        ctypes.POINTER(ctypes.c_void_p),
-    ]
-    lib.ifcopenshell_ifcparse_attribute_value_destroy.restype = None
-    lib.ifcopenshell_ifcparse_attribute_value_destroy.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_ifcparse_attribute_value_is_null.restype = ctypes.c_bool
-    lib.ifcopenshell_ifcparse_attribute_value_is_null.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_bool)]
-    lib.ifcopenshell_ifcparse_attribute_value_type.restype = ctypes.c_bool
-    lib.ifcopenshell_ifcparse_attribute_value_type.argtypes = [ctypes.c_void_p, ctypes.POINTER(W.ifcopenshell_string_t)]
-    lib.ifcopenshell_ifcparse_attribute_value_as_int32.restype = ctypes.c_bool
-    lib.ifcopenshell_ifcparse_attribute_value_as_int32.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int32)]
-    lib.ifcopenshell_ifcparse_attribute_value_as_bool.restype = ctypes.c_bool
-    lib.ifcopenshell_ifcparse_attribute_value_as_bool.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_bool)]
-    lib.ifcopenshell_ifcparse_attribute_value_as_double.restype = ctypes.c_bool
-    lib.ifcopenshell_ifcparse_attribute_value_as_double.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
-    lib.ifcopenshell_ifcparse_attribute_value_as_string.restype = ctypes.c_bool
-    lib.ifcopenshell_ifcparse_attribute_value_as_string.argtypes = [
-        ctypes.c_void_p,
-        ctypes.POINTER(W.ifcopenshell_string_t),
-    ]
-    lib.ifcopenshell_ifcparse_attribute_value_as_enumeration_value.restype = ctypes.c_bool
-    lib.ifcopenshell_ifcparse_attribute_value_as_enumeration_value.argtypes = [
-        ctypes.c_void_p,
-        ctypes.POINTER(W.ifcopenshell_string_t),
-    ]
-    lib.ifcopenshell_ifcparse_attribute_value_as_int32_list.restype = ctypes.c_bool
-    lib.ifcopenshell_ifcparse_attribute_value_as_int32_list.argtypes = [
-        ctypes.c_void_p,
-        ctypes.POINTER(_Int32List),
-    ]
-    lib.ifcopenshell_ifcparse_attribute_value_as_int32_list_list.restype = ctypes.c_bool
-    lib.ifcopenshell_ifcparse_attribute_value_as_int32_list_list.argtypes = [
-        ctypes.c_void_p,
-        ctypes.POINTER(_Int32ListList),
-    ]
-    lib.ifcopenshell_ifcparse_attribute_value_as_double_list.restype = ctypes.c_bool
-    lib.ifcopenshell_ifcparse_attribute_value_as_double_list.argtypes = [
-        ctypes.c_void_p,
-        ctypes.POINTER(_DoubleList),
-    ]
-    lib.ifcopenshell_ifcparse_attribute_value_as_string_list.restype = ctypes.c_bool
-    lib.ifcopenshell_ifcparse_attribute_value_as_string_list.argtypes = [
-        ctypes.c_void_p,
-        ctypes.POINTER(W.ifcopenshell_string_list_t),
-    ]
-    lib.ifcopenshell_ifcparse_attribute_value_as_instance_list.restype = ctypes.c_bool
-    lib.ifcopenshell_ifcparse_attribute_value_as_instance_list.argtypes = [
-        ctypes.c_void_p,
-        ctypes.POINTER(W._HandleStructP),
-    ]
-    lib.ifcopenshell_ifcparse_attribute_value_as_instance.restype = ctypes.c_bool
-    lib.ifcopenshell_ifcparse_attribute_value_as_instance.argtypes = [
-        ctypes.c_void_p,
-        ctypes.POINTER(W._HandleStructP),
-    ]
-    lib.ifcopenshell_ifcparse_instance_list_size.restype = ctypes.c_bool
-    lib.ifcopenshell_ifcparse_instance_list_size.argtypes = [W._HandleStructP, ctypes.POINTER(ctypes.c_size_t)]
-    lib.ifcopenshell_ifcparse_instance_list_get.restype = ctypes.c_bool
-    lib.ifcopenshell_ifcparse_instance_list_get.argtypes = [
-        W._HandleStructP,
-        ctypes.c_size_t,
-        ctypes.POINTER(W._HandleStructP),
-    ]
-    lib.ifcopenshell_ifcparse_instance_list_destroy.restype = None
-    lib.ifcopenshell_ifcparse_instance_list_destroy.argtypes = [W._HandleStructP]
-    lib.ifcopenshell_int32_list_destroy.restype = None
-    lib.ifcopenshell_int32_list_destroy.argtypes = [ctypes.c_void_p]
-    lib.ifcopenshell_int32_list_list_destroy.restype = None
-    lib.ifcopenshell_int32_list_list_destroy.argtypes = [ctypes.POINTER(_Int32ListList)]
-    lib.ifcopenshell_double_list_destroy.restype = None
-    lib.ifcopenshell_double_list_destroy.argtypes = [ctypes.c_void_p]
+    _generated_capi.bind(
+        lib,
+        names=(
+            "ifcopenshell_double_list_destroy",
+            "ifcopenshell_double_list_list_destroy",
+            "ifcopenshell_ifc_instance_get_argument",
+            "ifcopenshell_ifc_instance_set_argument_as_aggregate_of_aggregate_of_entity_instance",
+            "ifcopenshell_ifc_instance_set_argument_double_list",
+            "ifcopenshell_ifc_instance_set_argument_double_list_list",
+            "ifcopenshell_ifc_instance_set_argument_int32_list",
+            "ifcopenshell_ifc_instance_set_argument_int32_list_list",
+            "ifcopenshell_ifc_instance_set_argument_string_list",
+            "ifcopenshell_ifcparse_attribute_value_as_bool",
+            "ifcopenshell_ifcparse_attribute_value_as_double",
+            "ifcopenshell_ifcparse_attribute_value_as_double_list",
+            "ifcopenshell_ifcparse_attribute_value_as_double_list_list",
+            "ifcopenshell_ifcparse_attribute_value_as_enumeration_value",
+            "ifcopenshell_ifcparse_attribute_value_as_instance",
+            "ifcopenshell_ifcparse_attribute_value_as_instance_list",
+            "ifcopenshell_ifcparse_attribute_value_as_int32",
+            "ifcopenshell_ifcparse_attribute_value_as_int32_list",
+            "ifcopenshell_ifcparse_attribute_value_as_int32_list_list",
+            "ifcopenshell_ifcparse_attribute_value_as_string",
+            "ifcopenshell_ifcparse_attribute_value_as_string_list",
+            "ifcopenshell_ifcparse_attribute_value_destroy",
+            "ifcopenshell_ifcparse_attribute_value_is_null",
+            "ifcopenshell_ifcparse_attribute_value_type",
+            "ifcopenshell_ifcparse_instance_list_destroy",
+            "ifcopenshell_ifcparse_instance_list_get",
+            "ifcopenshell_ifcparse_instance_list_size",
+            "ifcopenshell_int32_list_destroy",
+            "ifcopenshell_int32_list_list_destroy",
+        ),
+    )
     _attribute_value_lib_configured = True
 
 
@@ -366,7 +356,7 @@ class entity_instance:
             if isinstance(type_name, bool) and type_name:
                 schema = getattr(self._file, "schema", "")
                 return f"{schema}.{tn}" if schema else tn
-            return tn.lower() == type_name.lower()
+            return _typed_value_is_a(self._file, tn, type_name)
         lib = _get_lib()
         if type_name is None:
             return _instance_type_name(self._handle)
@@ -406,10 +396,10 @@ class entity_instance:
         if isinstance(attr, int):
             attr = self.attribute_name(attr)
         _configure_attribute_value_lib(lib)
-        av = ctypes.c_void_p()
+        av = _empty_handle_ptr()
         atype = ATTR_UNKNOWN
         idx = self._attr_index(attr)
-        if idx >= 0 and lib.ifcopenshell_ifc_instance_get_argument(self._handle, idx, ctypes.byref(av)) and av.value:
+        if idx >= 0 and lib.ifcopenshell_ifc_instance_get_argument(_instance_handle_ptr(self._handle), idx, ctypes.byref(av)) and av:
             try:
                 atype = _attribute_type_from_value(lib, av)
             finally:
@@ -525,10 +515,10 @@ class entity_instance:
         # Try direct attribute first.
         if name in _instance_attribute_names(h):
             _configure_attribute_value_lib(lib)
-            av = ctypes.c_void_p()
+            av = _empty_handle_ptr()
             atype = ATTR_UNKNOWN
             idx = self._attr_index(name)
-            if lib.ifcopenshell_ifc_instance_get_argument(h, idx, ctypes.byref(av)) and av.value:
+            if lib.ifcopenshell_ifc_instance_get_argument(_instance_handle_ptr(h), idx, ctypes.byref(av)) and av:
                 try:
                     atype = _attribute_type_from_value(lib, av)
                     if atype == ATTR_NULL:
@@ -603,8 +593,8 @@ class entity_instance:
 
         lib = _get_lib()
         _configure_attribute_value_lib(lib)
-        av = ctypes.c_void_p()
-        if not lib.ifcopenshell_ifc_instance_get_argument(self._handle, 0, ctypes.byref(av)) or not av.value:
+        av = _empty_handle_ptr()
+        if not lib.ifcopenshell_ifc_instance_get_argument(_instance_handle_ptr(self._handle), 0, ctypes.byref(av)) or not av:
             return _MISSING
         try:
             wrapped = self._attribute_value_to_python(lib, av, primitive)
@@ -669,17 +659,11 @@ class entity_instance:
         if primitive == "integer" or value_type == "AGGREGATE OF INT":
             out = _Int32List()
             if lib.ifcopenshell_ifcparse_attribute_value_as_int32_list(av, ctypes.byref(out)):
-                try:
-                    return tuple(int(out.items[i]) for i in range(out.size))
-                finally:
-                    lib.ifcopenshell_int32_list_destroy(ctypes.byref(out))
+                return _generated_capi.take_int32_list(lib, out)
         if primitive == "float" or value_type == "AGGREGATE OF DOUBLE":
             out = _DoubleList()
             if lib.ifcopenshell_ifcparse_attribute_value_as_double_list(av, ctypes.byref(out)):
-                try:
-                    return tuple(float(out.items[i]) for i in range(out.size))
-                finally:
-                    lib.ifcopenshell_double_list_destroy(ctypes.byref(out))
+                return _generated_capi.take_double_list(lib, out)
         if primitive == "entity" or value_type == "AGGREGATE OF ENTITY INSTANCE":
             out = W._HandleStructP()
             if lib.ifcopenshell_ifcparse_attribute_value_as_instance_list(av, ctypes.byref(out)) and out:
@@ -696,9 +680,9 @@ class entity_instance:
                 finally:
                     lib.ifcopenshell_ifcparse_instance_list_destroy(out)
         if primitive in ("string", "binary", "enum") or value_type in ("AGGREGATE OF STRING", "AGGREGATE OF BINARY"):
-            out = W.ifcopenshell_string_list_t()
-            if lib.ifcopenshell_ifcparse_attribute_value_as_string_list(av, ctypes.byref(out)):
-                return W._take_string_list(out)
+            result = _generated_capi.call_string_list(lib, lib.ifcopenshell_ifcparse_attribute_value_as_string_list, av)
+            if result is not None:
+                return result
         return _MISSING
 
     def _get_derived(self, name):
@@ -756,9 +740,9 @@ class entity_instance:
 
         def read_generated_list(primitive):
             _configure_attribute_value_lib(lib)
-            av = ctypes.c_void_p()
+            av = _empty_handle_ptr()
             idx = self._attr_index(name)
-            if idx < 0 or not lib.ifcopenshell_ifc_instance_get_argument(h, idx, ctypes.byref(av)) or not av.value:
+            if idx < 0 or not lib.ifcopenshell_ifc_instance_get_argument(_instance_handle_ptr(h), idx, ctypes.byref(av)) or not av:
                 return _MISSING
             try:
                 return self._attribute_value_list_to_python(lib, av, primitive, _take_attribute_value_type(lib, av))
@@ -810,111 +794,114 @@ class entity_instance:
         lib = _get_lib()
         _configure_attribute_value_lib(lib)
 
-        av = ctypes.c_void_p()
+        av = _empty_handle_ptr()
         idx = self._attr_index(name)
-        if idx < 0 or not lib.ifcopenshell_ifc_instance_get_argument(self._handle, idx, ctypes.byref(av)) or not av.value:
+        if idx < 0 or not lib.ifcopenshell_ifc_instance_get_argument(_instance_handle_ptr(self._handle), idx, ctypes.byref(av)) or not av:
             return None
         try:
             out = _Int32ListList()
             if not lib.ifcopenshell_ifcparse_attribute_value_as_instance_id_list_list(av, ctypes.byref(out)):
                 return None
-            try:
-                return tuple(
-                    tuple(self._file.by_id(int(out.items[i].items[j])) for j in range(out.items[i].size))
-                    for i in range(out.size)
-                )
-            finally:
-                lib.ifcopenshell_int32_list_list_destroy(ctypes.byref(out))
+            return tuple(tuple(self._file.by_id(entity_id) for entity_id in row) for row in _generated_capi.take_int32_list_list(lib, out))
         finally:
             lib.ifcopenshell_ifcparse_attribute_value_destroy(av)
 
     def _get_typed_value(self, name):
-        from . import ifcopenshell_wrapper as W
-
         lib = _get_lib()
-        W._bind()
-        out = W.ifcopenshell_string_list_t()
-        if not lib.ifcopenshell_ifcapi_entity_get_typed_value(
-            _instance_handle_ptr(self._handle), _enc(name), ctypes.byref(out)
-        ):
+        _configure_attribute_value_lib(lib)
+        idx = self._attr_index(name)
+        if idx < 0:
             return None
-        values = W._take_string_list(out)
-        if len(values) < 2:
+        av = _empty_handle_ptr()
+        if not lib.ifcopenshell_ifc_instance_get_argument(_instance_handle_ptr(self._handle), idx, ctypes.byref(av)) or not av:
             return None
-        return _tv_class()(self._file, values[0], values[1] if values[1] != "" else None)
+        try:
+            typed_handle = _empty_handle_ptr()
+            if not lib.ifcopenshell_ifcparse_attribute_value_as_instance(av, ctypes.byref(typed_handle)) or not typed_handle:
+                return None
+            try:
+                type_name = _instance_type_name(ctypes.cast(typed_handle, ctypes.c_void_p).value)
+                if not type_name:
+                    return None
+                try:
+                    from ifcopenshell import _resolve_typed_value_kind
+
+                    typed_value_kind = _resolve_typed_value_kind(self._file, type_name)
+                except Exception:
+                    typed_value_kind = ("unknown",)
+                if typed_value_kind[0] == "unknown":
+                    return None
+                wrapped_av = _empty_handle_ptr()
+                if not lib.ifcopenshell_ifc_instance_get_argument(typed_handle, 0, ctypes.byref(wrapped_av)) or not wrapped_av:
+                    return _tv_class()(self._file, type_name, None)
+                try:
+                    primitive = ""
+                    if typed_value_kind[0] == "aggregate":
+                        if typed_value_kind[1] == "unknown":
+                            return None
+                        element_primitive = {
+                            "real": "float",
+                            "number": "float",
+                            "integer": "integer",
+                            "string": "string",
+                            "boolean": "boolean",
+                            "logical": "boolean",
+                        }.get(typed_value_kind[1], typed_value_kind[1])
+                        primitive = ("list", element_primitive)
+                    value = self._attribute_value_to_python(lib, wrapped_av, primitive)
+                    if value is _MISSING:
+                        value = None
+                    return _tv_class()(self._file, type_name, value)
+                finally:
+                    lib.ifcopenshell_ifcparse_attribute_value_destroy(wrapped_av)
+            finally:
+                lib.ifcopenshell_ifc_instance_destroy(typed_handle)
+        finally:
+            lib.ifcopenshell_ifcparse_attribute_value_destroy(av)
 
     def _get_aggregate_int_list_list(self, name):
         """Read LIST OF LIST OF INTEGER via autogen attribute_value_as_int32_list_list."""
         lib = _get_lib()
         _configure_attribute_value_lib(lib)
 
-        av = ctypes.c_void_p()
+        av = _empty_handle_ptr()
         idx = self._attr_index(name)
-        if idx < 0 or not lib.ifcopenshell_ifc_instance_get_argument(self._handle, idx, ctypes.byref(av)) or not av.value:
+        if idx < 0 or not lib.ifcopenshell_ifc_instance_get_argument(_instance_handle_ptr(self._handle), idx, ctypes.byref(av)) or not av:
             return None
         try:
             out = _Int32ListList()
             if not lib.ifcopenshell_ifcparse_attribute_value_as_int32_list_list(av, ctypes.byref(out)):
                 return None
-            try:
-                return tuple(
-                    tuple(int(out.items[i].items[j]) for j in range(out.items[i].size))
-                    for i in range(out.size)
-                )
-            finally:
-                lib.ifcopenshell_int32_list_list_destroy(ctypes.byref(out))
+            return _generated_capi.take_int32_list_list(lib, out)
         finally:
             lib.ifcopenshell_ifcparse_attribute_value_destroy(av)
 
     def _get_aggregate_double_list_list(self, name):
         """Read LIST OF LIST OF REAL via autogen attribute_value_as_double_list_list."""
         lib = _get_lib()
-
-        class _DL(ctypes.Structure):
-            _fields_ = [("items", ctypes.POINTER(ctypes.c_double)), ("size", ctypes.c_size_t)]
-
-        class _DLL(ctypes.Structure):
-            _fields_ = [("items", ctypes.POINTER(_DL)), ("size", ctypes.c_size_t)]
-
         _configure_attribute_value_lib(lib)
-        lib.ifcopenshell_ifcparse_attribute_value_as_double_list_list.restype = ctypes.c_bool
-        lib.ifcopenshell_ifcparse_attribute_value_as_double_list_list.argtypes = [
-            ctypes.c_void_p, ctypes.POINTER(_DLL),
-        ]
-        lib.ifcopenshell_double_list_list_destroy.restype = None
-        lib.ifcopenshell_double_list_list_destroy.argtypes = [ctypes.POINTER(_DLL)]
 
-        av = ctypes.c_void_p()
+        av = _empty_handle_ptr()
         idx = self._attr_index(name)
-        if idx < 0 or not lib.ifcopenshell_ifc_instance_get_argument(self._handle, idx, ctypes.byref(av)) or not av.value:
+        if idx < 0 or not lib.ifcopenshell_ifc_instance_get_argument(_instance_handle_ptr(self._handle), idx, ctypes.byref(av)) or not av:
             return None
         try:
-            out = _DLL()
+            out = _DoubleListList()
             if not lib.ifcopenshell_ifcparse_attribute_value_as_double_list_list(av, ctypes.byref(out)):
                 return None
-            try:
-                result = tuple(
-                    tuple(out.items[i].items[j] for j in range(out.items[i].size))
-                    for i in range(out.size)
-                )
-                return result
-            finally:
-                lib.ifcopenshell_double_list_list_destroy(ctypes.byref(out))
+            return _generated_capi.take_double_list_list(lib, out)
         finally:
             lib.ifcopenshell_ifcparse_attribute_value_destroy(av)
 
     def _get_aggregate_typed_value(self, h, attr):
         """Try reading an aggregate of inline typed values."""
-        from . import ifcopenshell_wrapper as W
-
         lib = _get_lib()
-        W._bind()
-        out = W.ifcopenshell_string_list_t()
-        if not lib.ifcopenshell_ifcapi_entity_get_aggregate_typed_value(
-            _instance_handle_ptr(h), attr, ctypes.byref(out)
-        ):
+        _configure_entity_string_helpers(lib)
+        values = _generated_capi.call_string_list(
+            lib, lib.ifcopenshell_ifcapi_entity_get_aggregate_typed_value, _instance_handle_ptr(h), attr
+        )
+        if values is None:
             return None
-        values = W._take_string_list(out)
         if len(values) < 2:
             return None
         result = [
@@ -1151,31 +1138,13 @@ class entity_instance:
             idx = self._attr_index(name)
             if idx < 0:
                 raise TypeError(f"Unknown attribute '{name}'")
-            c_elem = ctypes.c_double if nested_double else ctypes.c_int32
-            py_cast = float if nested_double else int
-            class _L(ctypes.Structure):
-                _fields_ = [("items", ctypes.POINTER(c_elem)), ("size", ctypes.c_size_t)]
-            class _LL(ctypes.Structure):
-                _fields_ = [("items", ctypes.POINTER(_L)), ("size", ctypes.c_size_t)]
-            inner_arrays = []
-            l_items = (_L * len(items))()
-            for i, row in enumerate(items):
-                row_vals = [py_cast(v) for v in row]
-                buf = (c_elem * len(row_vals))(*row_vals)
-                inner_arrays.append(buf)
-                l_items[i].items = ctypes.cast(buf, ctypes.POINTER(c_elem))
-                l_items[i].size = len(row_vals)
-            ll = _LL()
-            ll.items = l_items
-            ll.size = len(items)
+            ll = _generated_capi.make_double_list_list(items) if nested_double else _generated_capi.make_int32_list_list(items)
             sym = (
                 lib.ifcopenshell_ifc_instance_set_argument_double_list_list
                 if nested_double
                 else lib.ifcopenshell_ifc_instance_set_argument_int32_list_list
             )
-            sym.restype = ctypes.c_bool
-            sym.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(_LL)]
-            ok = sym(h, idx, ctypes.byref(ll))
+            ok = sym(_instance_handle_ptr(h), idx, ctypes.byref(ll))
             if not ok:
                 raise RuntimeError(f"Failed to set nested aggregate '{name}'")
             return
@@ -1184,29 +1153,17 @@ class entity_instance:
             idx = self._attr_index(name)
             if idx < 0:
                 raise TypeError(f"Unknown attribute '{name}'")
-            inner_arrays = []
-            l_items = (_Int32List * len(items))()
-            for i, row in enumerate(items):
+            id_rows = []
+            for row in items:
                 ids = []
                 for v in row:
                     if not isinstance(v, entity_instance):
                         raise TypeError(f"Cannot set nested aggregate '{name}' with {type(v)}")
                     ids.append(v.id())
-                buf = (ctypes.c_int32 * len(ids))(*ids)
-                inner_arrays.append(buf)
-                l_items[i].items = ctypes.cast(buf, ctypes.POINTER(ctypes.c_int32))
-                l_items[i].size = len(ids)
-            ll = _Int32ListList()
-            ll.items = l_items
-            ll.size = len(items)
-            lib.ifcopenshell_ifc_instance_set_argument_as_aggregate_of_aggregate_of_entity_instance.restype = ctypes.c_bool
-            lib.ifcopenshell_ifc_instance_set_argument_as_aggregate_of_aggregate_of_entity_instance.argtypes = [
-                ctypes.c_void_p,
-                ctypes.c_size_t,
-                ctypes.POINTER(_Int32ListList),
-            ]
+                id_rows.append(ids)
+            ll = _generated_capi.make_int32_list_list(id_rows)
             ok = lib.ifcopenshell_ifc_instance_set_argument_as_aggregate_of_aggregate_of_entity_instance(
-                h, idx, ctypes.byref(ll)
+                _instance_handle_ptr(h), idx, ctypes.byref(ll)
             )
             if not ok:
                 err = lib.ifcopenshell_last_error_message()
@@ -1241,36 +1198,19 @@ class entity_instance:
         if elem_kind == "entity":
             set_generated_instance_list(items)
         elif elem_kind == "float":
-            arr = (ctypes.c_double * len(items))(*[float(v) for v in items])
-            from ifcopenshell import _generated_capi
-
-            values = _generated_capi.ifcopenshell_double_list_t(arr, len(items))
+            values = _generated_capi.make_double_list(items)
             if not lib.ifcopenshell_ifc_instance_set_argument_double_list(handle, idx, ctypes.byref(values)):
                 raise RuntimeError(f"Failed to set aggregate '{name}'")
         elif elem_kind == "integer":
-            arr = (ctypes.c_int32 * len(items))(*[int(v) for v in items])
-            from ifcopenshell import _generated_capi
-
-            values = _generated_capi.ifcopenshell_int32_list_t(arr, len(items))
+            values = _generated_capi.make_int32_list(items)
             if not lib.ifcopenshell_ifc_instance_set_argument_int32_list(handle, idx, ctypes.byref(values)):
                 raise RuntimeError(f"Failed to set aggregate '{name}'")
         elif elem_kind == "boolean":
-            arr = (ctypes.c_int32 * len(items))(*[int(bool(v)) for v in items])
-            from ifcopenshell import _generated_capi
-
-            values = _generated_capi.ifcopenshell_int32_list_t(arr, len(items))
+            values = _generated_capi.make_int32_list(int(bool(v)) for v in items)
             if not lib.ifcopenshell_ifc_instance_set_argument_int32_list(handle, idx, ctypes.byref(values)):
                 raise RuntimeError(f"Failed to set aggregate '{name}'")
         elif elem_kind in ("string", "enum", "binary"):
-            from . import ifcopenshell_wrapper as W
-
-            keepalive = [ctypes.create_string_buffer(_enc(str(s))) for s in items]
-            arr = (W.ifcopenshell_string_t * len(items))()
-            for i, buffer in enumerate(keepalive):
-                arr[i].data = ctypes.cast(buffer, ctypes.c_void_p).value
-                arr[i].size = len(buffer.value)
-                arr[i].owned = False
-            values = W.ifcopenshell_string_list_t(arr, len(items))
+            values, keepalive = _make_string_list(items)
             if not lib.ifcopenshell_ifc_instance_set_argument_string_list(handle, idx, ctypes.byref(values)):
                 raise RuntimeError(f"Failed to set aggregate '{name}'")
         else:

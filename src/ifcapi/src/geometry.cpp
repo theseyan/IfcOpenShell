@@ -4,17 +4,18 @@
 // `ifcopenshell.api.geometry` and parts of `ifcopenshell.util.element`.
 //
 // Functions implemented:
-//   - ifcopenshell_geometry_map_representation
-//   - ifcopenshell_geometry_assign_representation
-//   - ifcopenshell_geometry_unassign_representation
-//   - ifcopenshell_geometry_copy_representation
+//   - geometry_map_representation
+//   - geometry_assign_representation
+//   - geometry_unassign_representation
+//   - geometry_copy_representation
 //   - (file-local) deep_copy_entity, get_representation_for_product
 //
-// These are used internally by ifcopenshell_type_assign_type to propagate
-// IfcRepresentationMaps onto related occurrences when a typed object is
-// assigned.
+// These are used internally by type assignment to propagate IfcRepresentationMaps
+// onto related occurrences when a typed object is assigned.
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/geometry.h"
+#include "ifcapi/bindings/type.h"
 #include "guid.h"
 
 #include "ifcparse/IfcFile.h"
@@ -556,41 +557,39 @@ void assign_representation_impl(IfcParse::IfcFile* file,
 
 }  // namespace
 
-extern "C" {
+namespace ifcapi {
+namespace bindings {
 
-ifcopenshell_ifc_instance_t* ifcopenshell_geometry_map_representation(
-    ifcopenshell_ifc_file_t* file_h,
-    ifcopenshell_ifc_instance_t* representation_h)
+IfcUtil::IfcBaseClass* geometry_map_representation(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* representation)
 {
     ifcopenshell_clear_error();
-    if (!file_h || !representation_h || !representation_h->ptr) {
+    if (!file || !representation) {
         set_error("Invalid arguments");
         return nullptr;
     }
     try {
-        auto* sr = map_representation_impl(file_h->ptr, representation_h->ptr);
-        return ifcopenshell::capi::wrap_instance(sr);
+        return map_representation_impl(file, representation);
     } catch (const std::exception& e) {
         set_error(e.what());
         return nullptr;
     }
 }
 
-ifcopenshell_ifc_instance_t* ifcopenshell_geometry_assign_representation(
-    ifcopenshell_ifc_file_t* file_h,
-    ifcopenshell_ifc_instance_t* product_h,
-    ifcopenshell_ifc_instance_t* representation_h)
+IfcUtil::IfcBaseClass* geometry_assign_representation(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* product,
+    IfcUtil::IfcBaseClass* representation)
 {
     ifcopenshell_clear_error();
-    if (!file_h || !product_h || !product_h->ptr ||
-        !representation_h || !representation_h->ptr) {
+    if (!file || !product || !representation) {
         set_error("Invalid arguments");
         return nullptr;
     }
     try {
-        IfcUtil::IfcBaseClass* product = product_h->ptr;
-        assign_representation_impl(file_h->ptr, product, representation_h->ptr);
-        return ifcopenshell::capi::wrap_instance(product);
+        assign_representation_impl(file, product, representation);
+        return product;
     } catch (const std::exception& e) {
         set_error(e.what());
         return nullptr;
@@ -599,7 +598,8 @@ ifcopenshell_ifc_instance_t* ifcopenshell_geometry_assign_representation(
 
 // ---- IfcTypeProduct unassignment ---------------------------------------
 
-}  // extern "C" (helpers below have C++ linkage)
+} // namespace bindings
+} // namespace ifcapi
 
 namespace {
 
@@ -861,85 +861,75 @@ bool profile_extents(IfcParse::IfcFile* file,
 
 }  // namespace
 
-extern "C" {
+namespace ifcapi {
+namespace bindings {
 
-void ifcopenshell_geometry_unassign_representation(
-    ifcopenshell_ifc_file_t* file_h,
-    ifcopenshell_ifc_instance_t* product_h,
-    ifcopenshell_ifc_instance_t* representation_h)
+void geometry_unassign_representation(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* product,
+    IfcUtil::IfcBaseClass* representation)
 {
-    if (!file_h || !product_h || !product_h->ptr ||
-        !representation_h || !representation_h->ptr) return;
+    if (!file || !product || !representation) return;
     try {
-        if (is_a(product_h->ptr, "IfcProduct")) {
-            unassign_product_representation(file_h->ptr, product_h->ptr,
-                                            representation_h->ptr);
-        } else if (is_a(product_h->ptr, "IfcTypeProduct")) {
-            unassign_type_representation(file_h->ptr, product_h->ptr,
-                                         representation_h->ptr);
+        if (is_a(product, "IfcProduct")) {
+            unassign_product_representation(file, product, representation);
+        } else if (is_a(product, "IfcTypeProduct")) {
+            unassign_type_representation(file, product, representation);
         }
     } catch (const std::exception& e) {
         set_error(e.what());
     } catch (...) {
-        set_error("ifcopenshell_geometry_unassign_representation: unknown exception");
+        set_error("geometry_unassign_representation: unknown exception");
     }
 }
 
-ifcopenshell_ifc_instance_t* ifcopenshell_geometry_copy_representation(
-    ifcopenshell_ifc_file_t* file_h,
-    ifcopenshell_ifc_instance_t* source_h,
-    ifcopenshell_ifc_instance_t* target_h,
+IfcUtil::IfcBaseClass* geometry_copy_representation(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* source,
+    IfcUtil::IfcBaseClass* target,
     const char* context_identifier)
 {
     ifcopenshell_clear_error();
-    if (!file_h || !source_h || !source_h->ptr ||
-        !target_h || !target_h->ptr) {
+    if (!file || !source || !target) {
         set_error("Invalid arguments");
         return nullptr;
     }
     try {
-        auto* file = file_h->ptr;
         std::string ctx = context_identifier ? context_identifier : "Body";
-        auto* source_rep = get_representation_for_product(source_h->ptr, ctx);
+        auto* source_rep = get_representation_for_product(source, ctx);
         if (!source_rep) return nullptr;
 
         std::unordered_map<unsigned, IfcUtil::IfcBaseClass*> memo;
         auto* new_rep = deep_copy_entity(file, source_rep,
                                          {"IfcGeometricRepresentationContext"}, memo);
 
-        auto* existing = get_representation_for_product(target_h->ptr, ctx);
+        auto* existing = get_representation_for_product(target, ctx);
         if (existing) {
-            if (is_a(target_h->ptr, "IfcProduct")) {
-                unassign_product_representation(file, target_h->ptr, existing);
+            if (is_a(target, "IfcProduct")) {
+                unassign_product_representation(file, target, existing);
             }
             remove_representation_simple(file, existing);
         }
 
-        IfcUtil::IfcBaseClass* tgt = target_h->ptr;
-        assign_representation_impl(file, tgt, new_rep);
-        return ifcopenshell::capi::wrap_instance(new_rep);
+        assign_representation_impl(file, target, new_rep);
+        return new_rep;
     } catch (const std::exception& e) {
         set_error(e.what());
         return nullptr;
     }
 }
 
-bool ifcopenshell_type_map_type_representations(
-    ifcopenshell_ifc_file_t* file_h,
-    ifcopenshell_ifc_instance_t* related_object_h,
-    ifcopenshell_ifc_instance_t* relating_type_h)
+bool type_map_type_representations(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* related_object,
+    IfcUtil::IfcBaseClass* relating_type)
 {
     ifcopenshell_clear_error();
-    if (!file_h || !related_object_h || !related_object_h->ptr ||
-        !relating_type_h || !relating_type_h->ptr) {
+    if (!file || !related_object || !relating_type) {
         set_error("Invalid arguments");
         return false;
     }
     try {
-        auto* file = file_h->ptr;
-        auto* related_object = related_object_h->ptr;
-        auto* relating_type  = relating_type_h->ptr;
-
         auto maps = read_ref_list(relating_type, "RepresentationMaps");
         if (maps.empty()) return true;
 
@@ -965,23 +955,27 @@ bool ifcopenshell_type_map_type_representations(
     }
 }
 
-bool ifcopenshell_geometry_profile_extents(
-    ifcopenshell_ifc_file_t* file_h,
-    ifcopenshell_ifc_instance_t* profile_h,
-    double* x_out,
-    double* y_out)
+std::vector<double> geometry_profile_extents(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* profile)
 {
     ifcopenshell_clear_error();
-    if (!file_h || !profile_h || !profile_h->ptr || !x_out || !y_out) {
+    if (!file || !profile) {
         set_error("Invalid arguments");
-        return false;
+        return {};
     }
     try {
-        return profile_extents(file_h->ptr, profile_h->ptr, x_out, y_out);
+        double x = 0.0;
+        double y = 0.0;
+        if (!profile_extents(file, profile, &x, &y)) {
+            return {};
+        }
+        return {x, y};
     } catch (const std::exception& e) {
         set_error(e.what());
-        return false;
+        return {};
     }
 }
 
-}  // extern "C"
+} // namespace bindings
+} // namespace ifcapi

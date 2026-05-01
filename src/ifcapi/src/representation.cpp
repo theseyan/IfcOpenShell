@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/representation.h"
 
 #include "ifcparse/IfcFile.h"
 #include "ifcparse/IfcSchema.h"
@@ -31,7 +32,7 @@ IfcUtil::IfcBaseClass* get_entity(const ifcopenshell_ifc_instance_t* instance) {
 }
 
 IfcParse::IfcFile* as_file(const ifcopenshell_ifc_file_t* file) {
-    return file->ptr;
+    return file ? file->ptr : nullptr;
 }
 
 bool is_a(IfcUtil::IfcBaseClass* e, const char* name) {
@@ -114,19 +115,13 @@ bool str_eq_opt(const std::string& s, const char* want) {
     return s == want;
 }
 
-ifcopenshell_ifc_instance_t** alloc_id_handles(IfcParse::IfcFile* f, const std::vector<int32_t>& ids, uint32_t* out_count) {
-    if (out_count) *out_count = static_cast<uint32_t>(ids.size());
-    if (ids.empty()) return nullptr;
-    auto* buf = static_cast<ifcopenshell_ifc_instance_t**>(std::malloc(ids.size() * sizeof(ifcopenshell_ifc_instance_t*)));
-    if (!buf) {
-        if (out_count) *out_count = 0;
-        return nullptr;
+aggregate_of_instance::ptr make_instance_list(IfcParse::IfcFile* f, const std::vector<int32_t>& ids) {
+    aggregate_of_instance::ptr result(new aggregate_of_instance);
+    if (!f) return result;
+    for (int32_t id : ids) {
+        if (auto* e = f->instance_by_id(id)) result->push(e);
     }
-    for (size_t i = 0; i < ids.size(); ++i) {
-        auto* e = f ? f->instance_by_id(ids[i]) : nullptr;
-        buf[i] = ifcopenshell::capi::wrap_instance(e);
-    }
-    return buf;
+    return result;
 }
 
 void collect_base_items(IfcUtil::IfcBaseClass* rep, std::vector<int32_t>& out, int depth = 0) {
@@ -157,16 +152,17 @@ void collect_base_items(IfcUtil::IfcBaseClass* rep, std::vector<int32_t>& out, i
 
 }  // namespace
 
-extern "C" {
+namespace ifcapi {
+namespace bindings {
 
-ifcopenshell_ifc_instance_t* ifcopenshell_representation_get_context(
-    const ifcopenshell_ifc_file_t* file,
+IfcUtil::IfcBaseClass* representation_get_context(
+    IfcParse::IfcFile* file,
     const char* context_type,
     const char* subcontext,
     const char* target_view)
 {
-    auto* f = as_file(file);
-    if (!f) return 0;
+    auto* f = file;
+    if (!f) return nullptr;
 
     bool use_sub = (subcontext && *subcontext) || (target_view && *target_view);
     auto insts = f->instances_by_type(
@@ -188,13 +184,13 @@ ifcopenshell_ifc_instance_t* ifcopenshell_representation_get_context(
         if (target_view && *target_view) {
             if (read_string(e, "TargetView") != target_view) continue;
         }
-        return ifcopenshell::capi::wrap_instance(e);
+        return e;
     }
     return nullptr;
 }
 
-ifcopenshell_ifc_instance_t* ifcopenshell_representation_resolve(const ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* rep) {
-    auto* e = rep ? rep->ptr : nullptr;
+IfcUtil::IfcBaseClass* representation_resolve(IfcUtil::IfcBaseClass* rep) {
+    auto* e = rep;
     if (!e) return nullptr;
 
     // Tekla 2023 workaround: a representation with a single IfcMappedItem whose
@@ -208,18 +204,17 @@ ifcopenshell_ifc_instance_t* ifcopenshell_representation_resolve(const ifcopensh
         if (!mapped) break;
         e = mapped;
     }
-    return ifcopenshell::capi::wrap_instance(e);
+    return e;
 }
 
-ifcopenshell_ifc_instance_t* ifcopenshell_representation_get_product_representation(
-    const ifcopenshell_ifc_file_t* file,
-    ifcopenshell_ifc_instance_t* element,
-    ifcopenshell_ifc_instance_t* context,              // 0 = match by string attrs instead
+IfcUtil::IfcBaseClass* representation_get_product_representation(
+    IfcUtil::IfcBaseClass* element,
+    IfcUtil::IfcBaseClass* context,
     const char* context_type,
     const char* subcontext,
     const char* target_view)
 {
-    auto* e = element ? element->ptr : nullptr;
+    auto* e = element;
     if (!e) return nullptr;
 
     std::vector<IfcUtil::IfcBaseClass*> reps;
@@ -236,13 +231,13 @@ ifcopenshell_ifc_instance_t* ifcopenshell_representation_get_product_representat
         }
     }
 
-    auto* context_e = context ? context->ptr : nullptr;
+    auto* context_e = context;
     for (auto* r : reps) {
         auto* ctx = read_ref(r, "ContextOfItems");
         if (!ctx) continue;
 
         if (context_e != nullptr) {
-            if (ctx == context_e) return ifcopenshell::capi::wrap_instance(r);
+            if (ctx == context_e) return r;
             continue;
         }
         if (target_view && *target_view) {
@@ -250,37 +245,33 @@ ifcopenshell_ifc_instance_t* ifcopenshell_representation_get_product_representat
             if (read_string(ctx, "TargetView") != target_view) continue;
             if (read_string(ctx, "ContextIdentifier") != (subcontext ? subcontext : "")) continue;
             if (read_string(ctx, "ContextType") != (context_type ? context_type : "")) continue;
-            return ifcopenshell::capi::wrap_instance(r);
+            return r;
         }
         if (subcontext && *subcontext) {
             if (!is_a(ctx, "IfcGeometricRepresentationSubContext")) continue;
             if (read_string(ctx, "ContextIdentifier") != subcontext) continue;
             if (!str_eq_opt(read_string(ctx, "ContextType"), context_type)) continue;
-            return ifcopenshell::capi::wrap_instance(r);
+            return r;
         }
         if (!str_eq_opt(read_string(ctx, "ContextType"), context_type)) continue;
-        return ifcopenshell::capi::wrap_instance(r);
+        return r;
     }
     return nullptr;
 }
 
-ifcopenshell_ifc_instance_t** ifcopenshell_representation_resolve_base_items(
-    const ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* rep, uint32_t* out_count)
+aggregate_of_instance::ptr representation_resolve_base_items(IfcUtil::IfcBaseClass* representation)
 {
-    if (out_count) *out_count = 0;
-    auto* e = rep ? rep->ptr : nullptr;
-    if (!e) return nullptr;
+    auto* e = representation;
+    if (!e) return aggregate_of_instance::ptr(new aggregate_of_instance);
     std::vector<int32_t> result;
     collect_base_items(e, result);
-    return alloc_id_handles(as_file(file), result, out_count);
+    return make_instance_list(e->file_, result);
 }
 
-ifcopenshell_ifc_instance_t** ifcopenshell_representation_get_prioritised_contexts(
-    const ifcopenshell_ifc_file_t* file, uint32_t* out_count)
+aggregate_of_instance::ptr representation_get_prioritised_contexts(IfcParse::IfcFile* file)
 {
-    if (out_count) *out_count = 0;
-    auto* f = as_file(file);
-    if (!f) return nullptr;
+    auto* f = file;
+    if (!f) return aggregate_of_instance::ptr(new aggregate_of_instance);
 
     static const std::vector<std::string> TYPE_PRIORITY = {"Model", "Plan", "Annotation"};
     static const std::vector<std::string> IDENTIFIER_PRIORITY = {
@@ -338,7 +329,8 @@ ifcopenshell_ifc_instance_t** ifcopenshell_representation_get_prioritised_contex
     std::vector<int32_t> ids;
     ids.reserve(entries.size());
     for (auto& e : entries) ids.push_back(e.id);
-    return alloc_id_handles(as_file(file), ids, out_count);
+    return make_instance_list(f, ids);
 }
 
-}  // extern "C"
+} // namespace bindings
+} // namespace ifcapi

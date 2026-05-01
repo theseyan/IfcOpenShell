@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/entity.h"
+#include "ifcapi/bindings/type.h"
 #include "guid.h"
 
 #include "ifcparse/IfcFile.h"
@@ -101,7 +103,7 @@ static IfcUtil::IfcBaseClass* find_element_type_rel(IfcParse::IfcFile* file, Ifc
     return nullptr;
 }
 
-static void remove_with_history(ifcopenshell_ifc_file_t* file, IfcUtil::IfcBaseClass* entity) {
+static void remove_with_history(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* entity) {
     auto* decl = entity->declaration().as_entity();
     int oh_idx = decl ? find_attr_index(decl, "OwnerHistory") : -1;
     IfcUtil::IfcBaseClass* history = nullptr;
@@ -113,19 +115,11 @@ static void remove_with_history(ifcopenshell_ifc_file_t* file, IfcUtil::IfcBaseC
             }
         } catch (...) {}
     }
-    file->ptr->removeEntity(entity);
+    file->removeEntity(entity);
     if (history) {
-        { auto* _h = ifcopenshell::capi::wrap_instance(history); ifcopenshell_util_remove_deep2(_h); ifcopenshell_ifc_instance_destroy(_h); }
+        ifcapi::bindings::entity_remove_deep2(history);
     }
 }
-
-extern "C" {
-
-// Forward declarations of geometry helpers used during type assignment.
-bool ifcopenshell_type_map_type_representations(
-    ifcopenshell_ifc_file_t* file_h,
-    ifcopenshell_ifc_instance_t* related_object_h,
-    ifcopenshell_ifc_instance_t* relating_type_h);
 
 namespace {
 // Strip ObjectType / PredefinedType from related objects when the relating
@@ -165,68 +159,31 @@ void clear_predefined_type_on_objects(
     }
 }
 
-// Core implementation shared by ifcopenshell_type_assign_type and
-// ifcopenshell_type_assign_type_ex. When should_map_representations is
-// true we additionally propagate the relating type's IfcRepresentationMaps
-// onto each newly-assigned related object and clear any redundant
-// ObjectType / PredefinedType.
-ifcopenshell_ifc_instance_t* assign_type_core(
-    ifcopenshell_ifc_file_t* file_ptr,
-    ifcopenshell_ifc_instance_t** objects,
-    uint32_t object_count,
-    ifcopenshell_ifc_instance_t* relating_type,
-    bool should_map_representations);
-}
-
-ifcopenshell_ifc_instance_t* ifcopenshell_type_assign_type(
-    ifcopenshell_ifc_file_t* file_ptr,
-    ifcopenshell_ifc_instance_t** objects,
-    uint32_t object_count,
-    ifcopenshell_ifc_instance_t* relating_type)
-{
-    return assign_type_core(file_ptr, objects, object_count, relating_type, true);
-}
-
-ifcopenshell_ifc_instance_t* ifcopenshell_type_assign_type_ex(
-    ifcopenshell_ifc_file_t* file_ptr,
-    ifcopenshell_ifc_instance_t** objects,
-    uint32_t object_count,
-    ifcopenshell_ifc_instance_t* relating_type,
-    bool should_map_representations)
-{
-    return assign_type_core(file_ptr, objects, object_count, relating_type,
-                            should_map_representations);
-}
-
-namespace {
-ifcopenshell_ifc_instance_t* assign_type_core(
-    ifcopenshell_ifc_file_t* file_ptr,
-    ifcopenshell_ifc_instance_t** objects,
-    uint32_t object_count,
-    ifcopenshell_ifc_instance_t* relating_type,
+IfcUtil::IfcBaseClass* assign_type_core(
+    IfcParse::IfcFile* file,
+    const std::vector<const IfcUtil::IfcBaseClass*>& objects,
+    IfcUtil::IfcBaseClass* relating_type,
     bool should_map_representations)
 {
     ifcopenshell_clear_error();
-    if (!file_ptr || !objects || object_count == 0 || false) {
+    if (!file || objects.empty()) {
         set_error("Invalid arguments");
-        return 0;
+        return nullptr;
     }
 
     try {
-        auto* file = file_ptr->ptr;
-
-        auto* relating_type_e = relating_type ? relating_type->ptr : nullptr;
+        auto* relating_type_e = relating_type;
         if (!relating_type_e) {
             set_error("Relating type not found");
-            return 0;
+            return nullptr;
         }
 
         std::set<IfcUtil::IfcBaseClass*> objects_set;
-        for (uint32_t i = 0; i < object_count; ++i) {
-            auto* obj = (objects[i] ? objects[i]->ptr : nullptr);
+        for (auto* object : objects) {
+            auto* obj = const_cast<IfcUtil::IfcBaseClass*>(object);
             if (obj) objects_set.insert(obj);
         }
-        if (objects_set.empty()) return 0;
+        if (objects_set.empty()) return nullptr;
 
         auto* existing_rel = find_types_rel(relating_type_e);
 
@@ -248,7 +205,7 @@ ifcopenshell_ifc_instance_t* assign_type_core(
         }
 
         if (objects_to_change.empty()) {
-            return ifcopenshell::capi::wrap_instance(existing_rel);
+            return existing_rel;
         }
 
         // Remove from previous type relationships.
@@ -261,7 +218,7 @@ ifcopenshell_ifc_instance_t* assign_type_core(
                 }
             }
             if (remaining.empty()) {
-                remove_with_history(file_ptr, prev_rel);
+                remove_with_history(file, prev_rel);
             } else {
                 set_ref_aggregate(prev_rel, related_idx, remaining);
             }
@@ -281,7 +238,7 @@ ifcopenshell_ifc_instance_t* assign_type_core(
             auto* rel = file->create(rdt_decl);
             if (!rel) {
                 set_error("Failed to create IfcRelDefinesByType");
-                return 0;
+                return nullptr;
             }
             int gi_idx = find_attr_index(rdt_entity_decl, "GlobalId");
             if (gi_idx >= 0) {
@@ -312,44 +269,57 @@ ifcopenshell_ifc_instance_t* assign_type_core(
                     } catch (...) {}
                 }
                 if (has_maps) {
-                    auto* rt_h = ifcopenshell::capi::wrap_instance(relating_type_e);
                     for (auto* obj : objects_to_change) {
-                        auto* obj_h = ifcopenshell::capi::wrap_instance(obj);
-                        ifcopenshell_type_map_type_representations(file_ptr, obj_h, rt_h);
-                        ifcopenshell_ifc_instance_destroy(obj_h);
+                        ifcapi::bindings::type_map_type_representations(file, obj, relating_type_e);
                     }
-                    ifcopenshell_ifc_instance_destroy(rt_h);
                 }
             }
 
             clear_predefined_type_on_objects(objects_set, relating_type_e);
         }
 
-        return ifcopenshell::capi::wrap_instance(result_rel);
+        return result_rel;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return 0;
+        return nullptr;
     }
 }
 }  // namespace
 
-void ifcopenshell_type_unassign_type(
-    ifcopenshell_ifc_file_t* file_ptr,
-    ifcopenshell_ifc_instance_t** objects,
-    uint32_t object_count)
+namespace ifcapi {
+namespace bindings {
+
+IfcUtil::IfcBaseClass* type_assign_type(
+    IfcParse::IfcFile* file,
+    const std::vector<const IfcUtil::IfcBaseClass*>& objects,
+    IfcUtil::IfcBaseClass* relating_type)
 {
-    if (!file_ptr || !objects || object_count == 0) return;
+    return assign_type_core(file, objects, relating_type, true);
+}
+
+IfcUtil::IfcBaseClass* type_assign_type_ex(
+    IfcParse::IfcFile* file,
+    const std::vector<const IfcUtil::IfcBaseClass*>& objects,
+    IfcUtil::IfcBaseClass* relating_type,
+    bool should_map_representations)
+{
+    return assign_type_core(file, objects, relating_type, should_map_representations);
+}
+
+void type_unassign_type(
+    IfcParse::IfcFile* file,
+    const std::vector<const IfcUtil::IfcBaseClass*>& objects)
+{
+    if (!file || objects.empty()) return;
 
     try {
-        auto* file = file_ptr->ptr;
-
         const auto* rdt_decl = file->schema()->declaration_by_name("IfcRelDefinesByType");
         auto* rdt_entity_decl = rdt_decl->as_entity();
         int related_idx = find_attr_index(rdt_entity_decl, "RelatedObjects");
 
         std::set<IfcUtil::IfcBaseClass*> objects_set;
-        for (uint32_t i = 0; i < object_count; ++i) {
-            auto* obj = (objects[i] ? objects[i]->ptr : nullptr);
+        for (auto* object : objects) {
+            auto* obj = const_cast<IfcUtil::IfcBaseClass*>(object);
             if (obj) objects_set.insert(obj);
         }
 
@@ -368,7 +338,7 @@ void ifcopenshell_type_unassign_type(
                 }
             }
             if (remaining.empty()) {
-                remove_with_history(file_ptr, rel);
+                remove_with_history(file, rel);
             } else {
                 set_ref_aggregate(rel, related_idx, remaining);
             }
@@ -376,4 +346,5 @@ void ifcopenshell_type_unassign_type(
     } catch (...) {}
 }
 
-} // extern "C"
+} // namespace bindings
+} // namespace ifcapi

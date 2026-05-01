@@ -2,6 +2,7 @@
 
 #include "ifcapi/ifcapi.h"
 #include "ifcapi/bindings/element.h"
+#include "ifcapi/bindings/representation.h"
 
 #include "ifcparse/IfcFile.h"
 #include "ifcparse/IfcSchema.h"
@@ -93,20 +94,18 @@ void collect_materials(IfcUtil::IfcBaseClass* mat, std::vector<IfcUtil::IfcBaseC
 
 }  // namespace
 
-extern "C" {
+namespace ifcapi {
+namespace bindings {
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_styles(
-    ifcopenshell_ifc_instance_t* element, uint32_t* out_count)
-{
-    if (out_count) *out_count = 0;
-    auto* e = element ? element->ptr : nullptr;
-    if (!e) return nullptr;
+aggregate_of_instance::ptr element_get_styles(IfcUtil::IfcBaseClass* element) {
+    aggregate_of_instance::ptr result(new aggregate_of_instance);
+    if (!element) return result;
 
     std::vector<IfcUtil::IfcBaseClass*> styles;
 
     // 1. Styles from materials' representations.
     {
-        auto* mat = ifcapi::bindings::element_get_material(e, /*should_skip_usage=*/true, /*should_inherit=*/true);
+        auto* mat = ifcapi::bindings::element_get_material(element, /*should_skip_usage=*/true, /*should_inherit=*/true);
         std::vector<IfcUtil::IfcBaseClass*> materials;
         if (mat) {
             collect_materials(mat, materials);
@@ -131,10 +130,9 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_styles
     }
 
     // 2. Styles from the body representation, recursing through MappedItem and BooleanResult.
-    auto* body_h = ifcopenshell_representation_get_product_representation(
-        nullptr, element, nullptr, "Model", "Body", "MODEL_VIEW");
-    if (body_h) {
-        auto* body = body_h->ptr;
+    auto* body = ifcapi::bindings::representation_get_product_representation(
+        element, nullptr, "Model", "Body", "MODEL_VIEW");
+    if (body) {
         std::deque<IfcUtil::IfcBaseClass*> queue;
         for (auto* item : read_ref_list(body, "Items")) queue.push_back(item);
         while (!queue.empty()) {
@@ -161,19 +159,13 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_styles
                 }
             }
         }
-        ifcopenshell_ifc_instance_destroy(body_h);
     }
 
-    if (styles.empty()) return nullptr;
-
-    auto** buf = static_cast<ifcopenshell_ifc_instance_t**>(
-        std::malloc(styles.size() * sizeof(ifcopenshell_ifc_instance_t*)));
-    if (!buf) return nullptr;
-    for (size_t i = 0; i < styles.size(); ++i) {
-        buf[i] = ifcopenshell::capi::wrap_instance(styles[i]);
+    for (auto* style : styles) {
+        if (style) result->push(style);
     }
-    if (out_count) *out_count = static_cast<uint32_t>(styles.size());
-    return buf;
+    return result;
 }
 
-}  // extern "C"
+} // namespace bindings
+} // namespace ifcapi

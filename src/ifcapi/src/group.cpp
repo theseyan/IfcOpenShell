@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/entity.h"
+#include "ifcapi/bindings/group.h"
 #include "guid.h"
 
 #include "ifcparse/IfcFile.h"
@@ -56,7 +58,7 @@ static void set_ref_aggregate(IfcUtil::IfcBaseClass* entity, int attr_idx,
     entity->set_attribute_value(static_cast<size_t>(attr_idx), agg);
 }
 
-static void remove_with_history(ifcopenshell_ifc_file_t* file, IfcUtil::IfcBaseClass* entity) {
+static void remove_with_history(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* entity) {
     auto* decl = entity->declaration().as_entity();
     int oh_idx = decl ? find_attr_index(decl, "OwnerHistory") : -1;
     IfcUtil::IfcBaseClass* history = nullptr;
@@ -68,9 +70,9 @@ static void remove_with_history(ifcopenshell_ifc_file_t* file, IfcUtil::IfcBaseC
             }
         } catch (...) {}
     }
-    file->ptr->removeEntity(entity);
+    file->removeEntity(entity);
     if (history) {
-        { auto* _h = ifcopenshell::capi::wrap_instance(history); ifcopenshell_util_remove_deep2(_h); ifcopenshell_ifc_instance_destroy(_h); }
+        ifcapi::bindings::entity_remove_deep2(history);
     }
 }
 
@@ -85,35 +87,32 @@ static IfcUtil::IfcBaseClass* find_is_grouped_by(IfcUtil::IfcBaseClass* group) {
     return nullptr;
 }
 
-extern "C" {
+namespace ifcapi {
+namespace bindings {
 
-ifcopenshell_ifc_instance_t* ifcopenshell_group_assign_group(
-    ifcopenshell_ifc_file_t* file_ptr,
-    ifcopenshell_ifc_instance_t** products,
-    uint32_t product_count,
-    ifcopenshell_ifc_instance_t* group)
+IfcUtil::IfcBaseClass* group_assign_group(
+    IfcParse::IfcFile* file,
+    const std::vector<const IfcUtil::IfcBaseClass*>& products,
+    IfcUtil::IfcBaseClass* group)
 {
     ifcopenshell_clear_error();
-    if (!file_ptr || !products || product_count == 0 || false) {
+    if (!file || products.empty()) {
         set_error("Invalid arguments");
-        return 0;
+        return nullptr;
     }
 
     try {
-        auto* file = file_ptr->ptr;
-
-        auto* group_e = group ? group->ptr : nullptr;
+        auto* group_e = group;
         if (!group_e) {
             set_error("Group not found");
-            return 0;
+            return nullptr;
         }
 
         std::vector<IfcUtil::IfcBaseClass*> products_vec;
-        for (uint32_t i = 0; i < product_count; ++i) {
-            auto* obj = (products[i] ? products[i]->ptr : nullptr);
-            if (obj) products_vec.push_back(obj);
+        for (auto* obj : products) {
+            if (obj) products_vec.push_back(const_cast<IfcUtil::IfcBaseClass*>(obj));
         }
-        if (products_vec.empty()) return 0;
+        if (products_vec.empty()) return nullptr;
 
         auto* existing_rel = find_is_grouped_by(group_e);
 
@@ -123,7 +122,7 @@ ifcopenshell_ifc_instance_t* ifcopenshell_group_assign_group(
 
         if (!existing_rel) {
             auto* rel = file->create(rel_decl);
-            if (!rel) return 0;
+            if (!rel) return nullptr;
             int gi_idx = find_attr_index(rel_entity_decl, "GlobalId");
             if (gi_idx >= 0) {
                 rel->set_attribute_value(static_cast<size_t>(gi_idx), ifcapi::guid_new());
@@ -133,7 +132,7 @@ ifcopenshell_ifc_instance_t* ifcopenshell_group_assign_group(
                 rel->set_attribute_value(static_cast<size_t>(rg_idx), group_e);
             }
             set_ref_aggregate(rel, related_idx, products_vec);
-            return ifcopenshell::capi::wrap_instance(rel);
+            return rel;
         }
 
         // Merge into existing relationship
@@ -149,7 +148,7 @@ ifcopenshell_ifc_instance_t* ifcopenshell_group_assign_group(
             }
         }
         if (all_present) {
-            return ifcopenshell::capi::wrap_instance(existing_rel);
+            return existing_rel;
         }
 
         for (auto* p : products_vec) {
@@ -158,25 +157,22 @@ ifcopenshell_ifc_instance_t* ifcopenshell_group_assign_group(
             }
         }
         set_ref_aggregate(existing_rel, related_idx, current);
-        return ifcopenshell::capi::wrap_instance(existing_rel);
+        return existing_rel;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return 0;
+        return nullptr;
     }
 }
 
-void ifcopenshell_group_unassign_group(
-    ifcopenshell_ifc_file_t* file_ptr,
-    ifcopenshell_ifc_instance_t** products,
-    uint32_t product_count,
-    ifcopenshell_ifc_instance_t* group)
+void group_unassign_group(
+    IfcParse::IfcFile* file,
+    const std::vector<const IfcUtil::IfcBaseClass*>& products,
+    IfcUtil::IfcBaseClass* group)
 {
-    if (!file_ptr || !products || product_count == 0 || !group) return;
+    if (!file || products.empty() || !group) return;
 
     try {
-        auto* file = file_ptr->ptr;
-
-        auto* group_e = group ? group->ptr : nullptr;
+        auto* group_e = group;
         if (!group_e) return;
 
         auto* rel = find_is_grouped_by(group_e);
@@ -186,9 +182,8 @@ void ifcopenshell_group_unassign_group(
         int related_idx = find_attr_index(rel_entity_decl, "RelatedObjects");
 
         std::set<IfcUtil::IfcBaseClass*> products_set;
-        for (uint32_t i = 0; i < product_count; ++i) {
-            auto* obj = (products[i] ? products[i]->ptr : nullptr);
-            if (obj) products_set.insert(obj);
+        for (auto* obj : products) {
+            if (obj) products_set.insert(const_cast<IfcUtil::IfcBaseClass*>(obj));
         }
 
         auto related = get_ref_aggregate(rel, related_idx);
@@ -200,11 +195,12 @@ void ifcopenshell_group_unassign_group(
         }
 
         if (remaining.empty()) {
-            remove_with_history(file_ptr, rel);
+            remove_with_history(file, rel);
         } else {
             set_ref_aggregate(rel, related_idx, remaining);
         }
     } catch (...) {}
 }
 
-} // extern "C"
+} // namespace bindings
+} // namespace ifcapi

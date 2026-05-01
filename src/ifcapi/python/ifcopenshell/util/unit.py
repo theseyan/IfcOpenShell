@@ -277,24 +277,25 @@ def _call_generated_string(lib, name, value):
 
 
 def _call_generated_string_args(lib, name, *args):
-    out = _generated_capi.ifcopenshell_string_t()
-    _generated_capi.status_or_raise(lib, getattr(lib, name)(*args, ctypes.byref(out)), ifcopenshell.get_log() or name)
-    return _generated_capi.take_string(lib, out)
+    return _generated_capi.call_string_or_raise(lib, getattr(lib, name), ifcopenshell.get_log() or name, *args)
 
 
 def _call_generated_int_tuple(lib, name, value):
-    out = _generated_capi.ifcopenshell_int32_list_t()
-    _generated_capi.status_or_raise(lib, getattr(lib, name)(_enc(value) or b"", ctypes.byref(out)), ifcopenshell.get_log() or name)
-    return _generated_capi.take_int32_list(lib, out)
+    return _generated_capi.call_int32_list_or_raise(
+        lib, getattr(lib, name), ifcopenshell.get_log() or name, _enc(value) or b""
+    )
 
 
 def _call_generated_instance(lib, file_obj, name, *args):
-    out = ctypes.POINTER(_generated_capi.ifcopenshell_ifc_instance_t)()
-    _generated_capi.status_or_raise(lib, getattr(lib, name)(*args, ctypes.byref(out)), ifcopenshell.get_log() or name)
-    if out and not out.contents.ptr:
-        lib.ifcopenshell_ifc_instance_destroy(ctypes.cast(out, ifcopenshell_wrapper._HandleStructP))
-        return None
-    return _take_instance(lib, file_obj, ctypes.cast(out, ctypes.c_void_p).value if out else None)
+    handle = _generated_capi.call_handle_or_raise(
+        lib,
+        getattr(lib, name),
+        ifcopenshell.get_log() or name,
+        *args,
+        destroy=lib.ifcopenshell_ifc_instance_destroy,
+        handle_pointer_type=ctypes.POINTER(_generated_capi.ifcopenshell_ifc_instance_t),
+    )
+    return _take_instance(lib, file_obj, handle)
 
 
 def _take_instance(lib, file_obj, handle):
@@ -327,10 +328,13 @@ def get_prefix(text):
 def get_prefix_multiplier(text):
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    out = ctypes.c_double()
-    if not lib.ifcopenshell_ifcapi_unit_get_prefix_multiplier(_enc(text) or b"", ctypes.byref(out)):
-        raise RuntimeError(ifcopenshell.get_log() or "ifcopenshell_ifcapi_unit_get_prefix_multiplier")
-    return out.value
+    return _generated_capi.call_scalar_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_unit_get_prefix_multiplier,
+        ctypes.c_double,
+        ifcopenshell.get_log() or "ifcopenshell_ifcapi_unit_get_prefix_multiplier",
+        _enc(text) or b"",
+    )
 
 
 def get_unit_name(text: str) -> Union[str, None]:
@@ -390,13 +394,17 @@ def convert(value: float, from_prefix: Optional[str], from_unit: str,
             to_prefix: Optional[str], to_unit: str) -> float:
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    out = ctypes.c_double()
-    if not lib.ifcopenshell_ifcapi_unit_convert(
-        float(value), _enc(from_prefix) or b"", _enc(from_unit) or b"",
-        _enc(to_prefix) or b"", _enc(to_unit) or b"", ctypes.byref(out),
-    ):
-        raise RuntimeError(ifcopenshell.get_log() or "ifcopenshell_ifcapi_unit_convert")
-    return out.value
+    return _generated_capi.call_scalar_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_unit_convert,
+        ctypes.c_double,
+        ifcopenshell.get_log() or "ifcopenshell_ifcapi_unit_convert",
+        float(value),
+        _enc(from_prefix) or b"",
+        _enc(from_unit) or b"",
+        _enc(to_prefix) or b"",
+        _enc(to_unit) or b"",
+    )
 
 
 def format_length(
@@ -410,13 +418,18 @@ def format_length(
 ) -> str:
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    out = _generated_capi.ifcopenshell_string_t()
-    if not lib.ifcopenshell_ifcapi_unit_format_length(
-        float(value), float(precision), int(decimal_places), bool(suppress_zero_inches),
-        _enc(unit_system) or b"", _enc(input_unit) or b"", _enc(output_unit) or b"", ctypes.byref(out),
-    ):
-        raise RuntimeError(ifcopenshell.get_log() or "ifcopenshell_ifcapi_unit_format_length")
-    result = _generated_capi.take_string(lib, out)
+    result = _generated_capi.call_string_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_unit_format_length,
+        ifcopenshell.get_log() or "ifcopenshell_ifcapi_unit_format_length",
+        float(value),
+        float(precision),
+        int(decimal_places),
+        bool(suppress_zero_inches),
+        _enc(unit_system) or b"",
+        _enc(input_unit) or b"",
+        _enc(output_unit) or b"",
+    )
     return result or None
 
 
@@ -491,15 +504,15 @@ def get_unit_symbol(unit) -> str:
 def convert_unit(value: float, from_unit, to_unit) -> float:
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    out = ctypes.c_double()
-    if not lib.ifcopenshell_ifcapi_unit_convert_unit(
+    return _generated_capi.call_scalar_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_unit_convert_unit,
+        ctypes.c_double,
+        ifcopenshell.get_log() or "ifcopenshell_ifcapi_unit_convert_unit",
         float(value),
         _generated_instance_handle_ptr(from_unit._handle) if from_unit is not None else None,
         _generated_instance_handle_ptr(to_unit._handle) if to_unit is not None else None,
-        ctypes.byref(out),
-    ):
-        raise RuntimeError(ifcopenshell.get_log() or "ifcopenshell_ifcapi_unit_convert_unit")
-    return out.value
+    )
 
 
 def get_property_unit(prop, ifc_file, use_cache: bool = False) -> Union[entity_instance, None]:
@@ -566,12 +579,14 @@ def calculate_unit_scale(ifc_file, unit_type: str = "LENGTHUNIT") -> float:
         raise ValueError(f"Unit type {unit_type!r} does not name a valid type")
     lib = ifcopenshell._get_lib()
     _configure(lib)
-    out = ctypes.c_double()
-    if not lib.ifcopenshell_ifcapi_unit_calculate_unit_scale(
-        _generated_file_handle(ifc_file), _enc(unit_type) or b"", ctypes.byref(out)
-    ):
-        raise RuntimeError(ifcopenshell.get_log() or "ifcopenshell_ifcapi_unit_calculate_unit_scale")
-    return out.value
+    return _generated_capi.call_scalar_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_unit_calculate_unit_scale,
+        ctypes.c_double,
+        ifcopenshell.get_log() or "ifcopenshell_ifcapi_unit_calculate_unit_scale",
+        _generated_file_handle(ifc_file),
+        _enc(unit_type) or b"",
+    )
 
 
 # ---------------------------------------------------------------------------

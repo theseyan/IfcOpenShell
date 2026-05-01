@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/aggregate.h"
+#include "ifcapi/bindings/entity.h"
+#include "ifcapi/bindings/spatial.h"
 #include "guid.h"
 
 #include "ifcparse/IfcFile.h"
@@ -120,7 +123,7 @@ static void set_ref_aggregate(IfcUtil::IfcBaseClass* entity, int attr_idx,
 }
 
 // Helper: remove an entity and its OwnerHistory if orphaned.
-static void remove_with_history(ifcopenshell_ifc_file_t* file, IfcUtil::IfcBaseClass* entity) {
+static void remove_with_history(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* entity) {
     auto* decl = entity->declaration().as_entity();
     int oh_idx = decl ? find_attr_index(decl, "OwnerHistory") : -1;
     IfcUtil::IfcBaseClass* history = nullptr;
@@ -132,42 +135,39 @@ static void remove_with_history(ifcopenshell_ifc_file_t* file, IfcUtil::IfcBaseC
             }
         } catch (...) {}
     }
-    file->ptr->removeEntity(entity);
+    file->removeEntity(entity);
     if (history) {
-        { auto* _h = ifcopenshell::capi::wrap_instance(history); ifcopenshell_util_remove_deep2(_h); ifcopenshell_ifc_instance_destroy(_h); }
+        ifcapi::bindings::entity_remove_deep2(history);
     }
 }
 
-extern "C" {
+namespace ifcapi {
+namespace bindings {
 
-ifcopenshell_ifc_instance_t* ifcopenshell_aggregate_assign_object(
-    ifcopenshell_ifc_file_t* file_ptr,
-    ifcopenshell_ifc_instance_t** products,
-    uint32_t product_count,
-    ifcopenshell_ifc_instance_t* relating_object)
+IfcUtil::IfcBaseClass* aggregate_assign_object(
+    IfcParse::IfcFile* file,
+    const std::vector<const IfcUtil::IfcBaseClass*>& products,
+    IfcUtil::IfcBaseClass* relating_object)
 {
     ifcopenshell_clear_error();
-    if (!file_ptr || !products || product_count == 0 || false) {
+    if (!file || products.empty()) {
         set_error("Invalid arguments");
-        return 0;
+        return nullptr;
     }
 
     try {
-        auto* file = file_ptr->ptr;
-
-        auto* relating = (relating_object ? relating_object->ptr : nullptr);
+        auto* relating = relating_object;
         if (!relating) {
             set_error("Relating object not found");
-            return 0;
+            return nullptr;
         }
 
         // Collect product entities.
         std::set<IfcUtil::IfcBaseClass*> products_set;
-        for (uint32_t i = 0; i < product_count; ++i) {
-            auto* p = (products[i] ? products[i]->ptr : nullptr);
-            if (p) products_set.insert(p);
+        for (auto* product : products) {
+            if (product) products_set.insert(const_cast<IfcUtil::IfcBaseClass*>(product));
         }
-        if (products_set.empty()) return 0;
+        if (products_set.empty()) return nullptr;
 
         // Find existing IfcRelAggregates on the relating object.
         auto* existing_rel = find_is_decomposed_by(file, relating);
@@ -192,7 +192,7 @@ ifcopenshell_ifc_instance_t* ifcopenshell_aggregate_assign_object(
         }
 
         if (products_to_change.empty()) {
-            return ifcopenshell::capi::wrap_instance(existing_rel);
+            return existing_rel;
         }
 
         // Unassign from spatial containers (products that aren't already aggregated).
@@ -209,7 +209,7 @@ ifcopenshell_ifc_instance_t* ifcopenshell_aggregate_assign_object(
                 }
             }
             if (remaining.empty()) {
-                remove_with_history(file_ptr, container_rel);
+                remove_with_history(file, container_rel);
             } else {
                 set_ref_aggregate(container_rel, re_idx, remaining);
             }
@@ -225,7 +225,7 @@ ifcopenshell_ifc_instance_t* ifcopenshell_aggregate_assign_object(
                 }
             }
             if (remaining.empty()) {
-                remove_with_history(file_ptr, prev_rel);
+                remove_with_history(file, prev_rel);
             } else {
                 set_ref_aggregate(prev_rel, related_idx, remaining);
             }
@@ -238,13 +238,13 @@ ifcopenshell_ifc_instance_t* ifcopenshell_aggregate_assign_object(
             for (auto* p : products_set) current_set.insert(p);
             std::vector<IfcUtil::IfcBaseClass*> merged(current_set.begin(), current_set.end());
             set_ref_aggregate(existing_rel, related_idx, merged);
-            return ifcopenshell::capi::wrap_instance(existing_rel);
+            return existing_rel;
         } else {
             // Create new IfcRelAggregates.
             auto* rel = file->create(rel_agg_decl);
             if (!rel) {
                 set_error("Failed to create IfcRelAggregates");
-                return 0;
+                return nullptr;
             }
             int gi_idx = find_attr_index(rel_entity_decl, "GlobalId");
             if (gi_idx >= 0) {
@@ -256,31 +256,28 @@ ifcopenshell_ifc_instance_t* ifcopenshell_aggregate_assign_object(
             }
             std::vector<IfcUtil::IfcBaseClass*> prods(products_set.begin(), products_set.end());
             set_ref_aggregate(rel, related_idx, prods);
-            return ifcopenshell::capi::wrap_instance(rel);
+            return rel;
         }
     } catch (const std::exception& e) {
         set_error(e.what());
-        return 0;
+        return nullptr;
     }
 }
 
-void ifcopenshell_aggregate_unassign_object(
-    ifcopenshell_ifc_file_t* file_ptr,
-    ifcopenshell_ifc_instance_t** products,
-    uint32_t product_count)
+void aggregate_unassign_object(
+    IfcParse::IfcFile* file,
+    const std::vector<const IfcUtil::IfcBaseClass*>& products)
 {
-    if (!file_ptr || !products || product_count == 0) return;
+    if (!file || products.empty()) return;
 
     try {
-        auto* file = file_ptr->ptr;
         const auto* rel_agg_decl = file->schema()->declaration_by_name("IfcRelAggregates");
         auto* rel_entity_decl = rel_agg_decl->as_entity();
         int related_idx = find_attr_index(rel_entity_decl, "RelatedObjects");
 
         std::set<IfcUtil::IfcBaseClass*> products_set;
-        for (uint32_t i = 0; i < product_count; ++i) {
-            auto* p = (products[i] ? products[i]->ptr : nullptr);
-            if (p) products_set.insert(p);
+        for (auto* product : products) {
+            if (product) products_set.insert(const_cast<IfcUtil::IfcBaseClass*>(product));
         }
 
         // Collect all affected rels.
@@ -299,7 +296,7 @@ void ifcopenshell_aggregate_unassign_object(
                 }
             }
             if (remaining.empty()) {
-                remove_with_history(file_ptr, rel);
+                remove_with_history(file, rel);
             } else {
                 set_ref_aggregate(rel, related_idx, remaining);
             }
@@ -307,33 +304,29 @@ void ifcopenshell_aggregate_unassign_object(
     } catch (...) {}
 }
 
-ifcopenshell_ifc_instance_t* ifcopenshell_spatial_assign_container(
-    ifcopenshell_ifc_file_t* file_ptr,
-    ifcopenshell_ifc_instance_t** products,
-    uint32_t product_count,
-    ifcopenshell_ifc_instance_t* relating_structure)
+IfcUtil::IfcBaseClass* spatial_assign_container(
+    IfcParse::IfcFile* file,
+    const std::vector<const IfcUtil::IfcBaseClass*>& products,
+    IfcUtil::IfcBaseClass* relating_structure)
 {
     ifcopenshell_clear_error();
-    if (!file_ptr || !products || product_count == 0 || false) {
+    if (!file || products.empty()) {
         set_error("Invalid arguments");
-        return 0;
+        return nullptr;
     }
 
     try {
-        auto* file = file_ptr->ptr;
-
-        auto* structure = (relating_structure ? relating_structure->ptr : nullptr);
+        auto* structure = relating_structure;
         if (!structure) {
             set_error("Relating structure not found");
-            return 0;
+            return nullptr;
         }
 
         std::set<IfcUtil::IfcBaseClass*> products_set;
-        for (uint32_t i = 0; i < product_count; ++i) {
-            auto* p = (products[i] ? products[i]->ptr : nullptr);
-            if (p) products_set.insert(p);
+        for (auto* product : products) {
+            if (product) products_set.insert(const_cast<IfcUtil::IfcBaseClass*>(product));
         }
-        if (products_set.empty()) return 0;
+        if (products_set.empty()) return nullptr;
 
         // Find existing container relationship on the structure.
         auto* existing_rel = find_contains_elements(file, structure);
@@ -357,7 +350,7 @@ ifcopenshell_ifc_instance_t* ifcopenshell_spatial_assign_container(
         }
 
         if (products_to_change.empty()) {
-            return ifcopenshell::capi::wrap_instance(existing_rel);
+            return existing_rel;
         }
 
         // Unassign from aggregates (products can't be both aggregated and contained).
@@ -375,7 +368,7 @@ ifcopenshell_ifc_instance_t* ifcopenshell_spatial_assign_container(
                 }
             }
             if (remaining.empty()) {
-                remove_with_history(file_ptr, agg_rel);
+                remove_with_history(file, agg_rel);
             } else {
                 set_ref_aggregate(agg_rel, agg_re_idx, remaining);
             }
@@ -391,7 +384,7 @@ ifcopenshell_ifc_instance_t* ifcopenshell_spatial_assign_container(
                 }
             }
             if (remaining.empty()) {
-                remove_with_history(file_ptr, prev_rel);
+                remove_with_history(file, prev_rel);
             } else {
                 set_ref_aggregate(prev_rel, related_idx, remaining);
             }
@@ -404,12 +397,12 @@ ifcopenshell_ifc_instance_t* ifcopenshell_spatial_assign_container(
             for (auto* p : products_set) current_set.insert(p);
             std::vector<IfcUtil::IfcBaseClass*> merged(current_set.begin(), current_set.end());
             set_ref_aggregate(existing_rel, related_idx, merged);
-            return ifcopenshell::capi::wrap_instance(existing_rel);
+            return existing_rel;
         } else {
             auto* rel = file->create(rel_decl);
             if (!rel) {
                 set_error("Failed to create IfcRelContainedInSpatialStructure");
-                return 0;
+                return nullptr;
             }
             int gi_idx = find_attr_index(rel_entity_decl, "GlobalId");
             if (gi_idx >= 0) {
@@ -421,31 +414,28 @@ ifcopenshell_ifc_instance_t* ifcopenshell_spatial_assign_container(
             }
             std::vector<IfcUtil::IfcBaseClass*> prods(products_set.begin(), products_set.end());
             set_ref_aggregate(rel, related_idx, prods);
-            return ifcopenshell::capi::wrap_instance(rel);
+            return rel;
         }
     } catch (const std::exception& e) {
         set_error(e.what());
-        return 0;
+        return nullptr;
     }
 }
 
-void ifcopenshell_spatial_unassign_container(
-    ifcopenshell_ifc_file_t* file_ptr,
-    ifcopenshell_ifc_instance_t** products,
-    uint32_t product_count)
+void spatial_unassign_container(
+    IfcParse::IfcFile* file,
+    const std::vector<const IfcUtil::IfcBaseClass*>& products)
 {
-    if (!file_ptr || !products || product_count == 0) return;
+    if (!file || products.empty()) return;
 
     try {
-        auto* file = file_ptr->ptr;
         const auto* rel_decl = file->schema()->declaration_by_name("IfcRelContainedInSpatialStructure");
         auto* rel_entity_decl = rel_decl->as_entity();
         int related_idx = find_attr_index(rel_entity_decl, "RelatedElements");
 
         std::set<IfcUtil::IfcBaseClass*> products_set;
-        for (uint32_t i = 0; i < product_count; ++i) {
-            auto* p = (products[i] ? products[i]->ptr : nullptr);
-            if (p) products_set.insert(p);
+        for (auto* product : products) {
+            if (product) products_set.insert(const_cast<IfcUtil::IfcBaseClass*>(product));
         }
 
         std::set<IfcUtil::IfcBaseClass*> rels;
@@ -463,7 +453,7 @@ void ifcopenshell_spatial_unassign_container(
                 }
             }
             if (remaining.empty()) {
-                remove_with_history(file_ptr, rel);
+                remove_with_history(file, rel);
             } else {
                 set_ref_aggregate(rel, related_idx, remaining);
             }
@@ -471,4 +461,5 @@ void ifcopenshell_spatial_unassign_container(
     } catch (...) {}
 }
 
-} // extern "C"
+} // namespace bindings
+} // namespace ifcapi

@@ -40,6 +40,13 @@ def _core_handles() -> dict[str, HandleSpec]:
             destructor="delete",
             ptr_type="raw",
         ),
+        "instance_list": HandleSpec(
+            name="instance_list",
+            cpp_type="aggregate_of_instance",
+            c_type="ifcopenshell_ifcparse_instance_list_t",
+            destructor="delete",
+            ptr_type="shared_ptr",
+        ),
     }
 
 
@@ -50,7 +57,8 @@ def test_ifcapi_spec_imports_core_handles_without_redefining_them() -> None:
     raw_handle_names = {handle["name"] for handle in raw_spec.get("handles", [])}
     assert raw_handle_names == {"value"}
     assert "instance" not in raw_handle_names
-    assert raw_spec["imports"] == [{"slice": "ifcparse", "handles": ["file", "instance"]}]
+    assert "instance_list" not in raw_handle_names
+    assert raw_spec["imports"] == [{"slice": "ifcparse", "handles": ["file", "instance", "instance_list"]}]
     assert not any(
         str(function.get("cpp_name", "")).startswith("ifcapi::bindings::")
         for function in raw_spec.get("functions", [])
@@ -154,6 +162,11 @@ handles:
     cpp_type: IfcUtil::IfcBaseClass
     c_type: ifcopenshell_ifc_instance_t
     destructor: delete
+  - name: instance_list
+    cpp_type: aggregate_of_instance
+    c_type: ifcopenshell_ifcparse_instance_list_t
+    destructor: delete
+    ptr_type: shared_ptr
 functions:
   - expose_as: instance_identity
     implementation:

@@ -19,9 +19,12 @@
 import json
 import os
 import time
+import ctypes
 from typing import Any, Literal, Union
 
 import ifcopenshell
+from ifcopenshell import _generated_capi
+from ifcopenshell.entity_instance import _generated_instance_handle_ptr
 import ifcopenshell.ifcopenshell_wrapper as ifcopenshell_wrapper
 import ifcopenshell.util.attribute
 
@@ -29,6 +32,22 @@ import ifcopenshell.util.attribute
 
 cwd = os.path.dirname(os.path.realpath(__file__))
 IFC_SCHEMA = Literal["IFC2X3", "IFC4", "IFC4X3"]
+_schema_lib_configured = False
+
+
+def _configure_schema_lib(lib) -> None:
+    global _schema_lib_configured
+    if _schema_lib_configured:
+        return
+    _generated_capi.bind(lib, names=("ifcopenshell_ifcapi_schema_reassign_class", "ifcopenshell_ifc_instance_destroy"))
+    _schema_lib_configured = True
+
+
+def _generated_file_handle(file):
+    ptr = getattr(file, "_ptr", None)
+    if not ptr:
+        return None
+    return ctypes.cast(ctypes.c_void_p(ptr), ctypes.POINTER(_generated_capi._HandleStruct))
 
 
 def get_fallback_schema(version: str) -> IFC_SCHEMA:
@@ -173,47 +192,28 @@ def reassign_class(
     if not ifc_file:
         ifc_file = element.file
 
-    schema = ifcopenshell_wrapper.schema_by_name(ifc_file.schema_identifier)
+    lib = ifcopenshell._get_lib()
+    _configure_schema_lib(lib)
     try:
-        declaration = schema.declaration_by_name(new_class)
-    except RuntimeError:
+        handle = _generated_capi.call_handle_or_raise(
+            lib,
+            lib.ifcopenshell_ifcapi_schema_reassign_class,
+            "",
+            _generated_file_handle(ifc_file),
+            _generated_instance_handle_ptr(element._handle),
+            _generated_capi.encode_string(new_class),
+            destroy=lib.ifcopenshell_ifc_instance_destroy,
+        )
+    except RuntimeError as e:
+        message = str(e)
+        if "class does not exist" not in message and "Class could not be changed" not in message:
+            raise
         raise ValueError(
             f"Class of {element} could not be changed to {new_class} as the class does not exist in schema {ifc_file.schema_identifier}."
-        )
-
-    info = element.get_info()
-
-    new_attributes = {}
-    for attribute in declaration.all_attributes():
-        name = attribute.name()
-        old_attribute = info.get(name, None)
-        if old_attribute:
-            if ifcopenshell.util.attribute.get_primitive_type(attribute) == "enum":
-                if old_attribute in ifcopenshell.util.attribute.get_enum_items(attribute):
-                    new_attributes[name] = old_attribute
-            else:
-                new_attributes[name] = old_attribute
-
-    inverse_pairs = ifc_file.get_inverse(element, allow_duplicate=True, with_attribute_indices=True)
-    ifc_file.remove(element)
-
-    try:
-        new_element = ifc_file.create_entity(new_class, id=info["id"], **new_attributes)
-    except:
-        print(f"Class of {element} could not be changed to {new_class}")
-        old_class = info.pop("type")
-        return ifc_file.create_entity(old_class, **info)
-
-    for inverse_pair in inverse_pairs:
-        inverse, index = inverse_pair
-        if inverse[index] is None:
-            inverse[index] = new_element
-        elif isinstance(inverse[index], tuple):
-            item = list(inverse[index])
-            item.append(new_element)
-            inverse[index] = item
-
-    return new_element
+        ) from e
+    if not handle:
+        raise RuntimeError(f"Class of {element} could not be changed to {new_class}.")
+    return ifcopenshell.entity_instance(ifc_file, handle)
 
 
 class BatchReassignClass:

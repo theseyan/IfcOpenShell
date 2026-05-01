@@ -743,6 +743,9 @@ discover:
               - "ifcopenshell::geometry::settings::TriangulationMethod"
           double: "double"
           string: "std::string"
+          int_set: "std::set<int>"
+          string_set: "std::set<std::string>"
+          double_list: "std::vector<double>"
 
     - handle: serializer_settings
       translation_unit: ../serializers/WavefrontObjSerializer.cpp
@@ -761,6 +764,7 @@ discover:
           int: "int"
           double: "double"
           string: "std::string"
+          int_set: "std::set<int>"
 
     - handle: buffer
       translation_unit: ../serializers/WavefrontObjSerializer.cpp
@@ -2614,154 +2618,6 @@ functions:
         return fn->end();
 
 methods:
-  - kind: adapter_method
-    receiver: settings
-    expose_as: get_int_set
-    returns:
-      kind: int32_list
-      ownership: copy
-    params:
-      - name: name
-        type:
-          kind: string
-    implementation:
-      kind: inline_cpp
-      body: |
-        auto value = self_cpp->get(name_cpp);
-        if (auto* set_value = boost::get<std::set<int>>(&value)) {
-            return std::vector<int>(set_value->begin(), set_value->end());
-        }
-        throw std::runtime_error("Expected setting '" + name_cpp + "' to have type std::set<int>");
-
-  - kind: adapter_method
-    receiver: settings
-    expose_as: set_int_set
-    returns:
-      kind: void
-    params:
-      - name: name
-        type:
-          kind: string
-      - name: value
-        type:
-          kind: int32_list
-          ownership: copy
-    implementation:
-      kind: inline_cpp
-      body: |
-        self_cpp->set(name_cpp, std::set<int>(value_cpp.begin(), value_cpp.end()));
-
-  - kind: adapter_method
-    receiver: settings
-    expose_as: get_string_set
-    returns:
-      kind: string_list
-      ownership: copy
-    params:
-      - name: name
-        type:
-          kind: string
-    implementation:
-      kind: inline_cpp
-      body: |
-        auto value = self_cpp->get(name_cpp);
-        if (auto* set_value = boost::get<std::set<std::string>>(&value)) {
-            return std::vector<std::string>(set_value->begin(), set_value->end());
-        }
-        throw std::runtime_error("Expected setting '" + name_cpp + "' to have type std::set<std::string>");
-
-  - kind: adapter_method
-    receiver: settings
-    expose_as: set_string_set
-    returns:
-      kind: void
-    params:
-      - name: name
-        type:
-          kind: string
-      - name: value
-        type:
-          kind: string_list
-          ownership: copy
-    implementation:
-      kind: inline_cpp
-      body: |
-        self_cpp->set(name_cpp, std::set<std::string>(value_cpp.begin(), value_cpp.end()));
-
-  - kind: adapter_method
-    receiver: settings
-    expose_as: get_double_list
-    returns:
-      kind: double_list
-      ownership: copy
-    params:
-      - name: name
-        type:
-          kind: string
-    implementation:
-      kind: inline_cpp
-      body: |
-        auto value = self_cpp->get(name_cpp);
-        if (auto* list_value = boost::get<std::vector<double>>(&value)) {
-            return *list_value;
-        }
-        throw std::runtime_error("Expected setting '" + name_cpp + "' to have type std::vector<double>");
-
-  - kind: adapter_method
-    receiver: settings
-    expose_as: set_double_list
-    returns:
-      kind: void
-    params:
-      - name: name
-        type:
-          kind: string
-      - name: value
-        type:
-          kind: double_list
-          ownership: copy
-    implementation:
-      kind: inline_cpp
-      body: |
-        self_cpp->set(name_cpp, value_cpp);
-
-  - kind: adapter_method
-    receiver: serializer_settings
-    expose_as: get_int_set
-    returns:
-      kind: int32_list
-      ownership: copy
-    params:
-      - name: name
-        type:
-          kind: string
-    implementation:
-      kind: inline_cpp
-      body: |
-        auto value = self_cpp->get(name_cpp);
-        if (auto* set_value = boost::get<std::set<int>>(&value)) {
-            return std::vector<int>(set_value->begin(), set_value->end());
-        }
-        throw std::runtime_error("Expected setting '" + name_cpp + "' to have type std::set<int>");
-
-  - kind: adapter_method
-    receiver: serializer_settings
-    expose_as: set_int_set
-    returns:
-      kind: void
-    params:
-      - name: name
-        type:
-          kind: string
-      - name: value
-        type:
-          kind: int32_list
-          ownership: copy
-    implementation:
-      kind: inline_cpp
-      body: |
-        self_cpp->set(name_cpp, std::set<int>(value_cpp.begin(), value_cpp.end()));
-
   # Tree methods
   - kind: adapter_method
     receiver: tree

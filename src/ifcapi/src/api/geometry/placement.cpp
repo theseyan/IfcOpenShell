@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/entity.h"
+#include "ifcapi/bindings/geometry.h"
 #include "ifcapi/bindings/unit.h"
 #include "entity_introspection.hpp"
 #include "placement_helpers.hpp"
@@ -10,6 +12,7 @@
 #include "ifcparse/IfcSchema.h"
 #include "ifcparse/IfcBaseClass.h"
 
+#include <algorithm>
 #include <array>
 #include <cstring>
 #include <string>
@@ -152,13 +155,12 @@ std::vector<ChildJob> get_children_settings(
 }
 
 IfcUtil::IfcBaseClass* edit_placement_impl(
-    ifcopenshell_ifc_file_t* file_h,
+    IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* product,
     const std::array<double, 16>& matrix_in,
     bool is_si,
     bool should_transform_children)
 {
-    auto* file = file_h->ptr;
     if (!has_attr(product, "ObjectPlacement")) return nullptr;
 
     double unit_scale = ifcapi::bindings::unit_calculate_unit_scale(file, "LENGTHUNIT");
@@ -228,9 +230,7 @@ IfcUtil::IfcBaseClass* edit_placement_impl(
         if (total_inverses(file, old_placement) == 1) {
             set_entity_ref(product, "ObjectPlacement", nullptr);
             set_entity_ref(old_placement, "PlacementRelTo", nullptr);
-            auto* h = ifcopenshell::capi::wrap_instance(old_placement);
-            ifcopenshell_util_remove_deep2(h);
-            ifcopenshell_ifc_instance_destroy(h);
+            ifcapi::bindings::entity_remove_deep2(old_placement);
         }
     }
 
@@ -238,7 +238,7 @@ IfcUtil::IfcBaseClass* edit_placement_impl(
     set_entity_ref(product, "ObjectPlacement", new_placement);
 
     for (auto& cj : children) {
-        edit_placement_impl(file_h, cj.product, cj.matrix, false, true);
+        edit_placement_impl(file, cj.product, cj.matrix, false, true);
     }
 
     return new_placement;
@@ -246,32 +246,30 @@ IfcUtil::IfcBaseClass* edit_placement_impl(
 
 }  // namespace
 
-extern "C" {
+namespace ifcapi {
+namespace bindings {
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_api_geometry_edit_object_placement(
-    ifcopenshell_ifc_file_t* file_h,
-    ifcopenshell_ifc_instance_t* product_h,
-    const double* matrix,
+IfcUtil::IfcBaseClass* geometry_edit_object_placement(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* product,
+    const std::vector<double>& matrix,
     bool is_si,
     bool should_transform_children)
 {
-    if (!file_h || !file_h->ptr || !product_h || !product_h->ptr) {
-        set_error("ifcopenshell_api_geometry_edit_object_placement: missing argument");
+    if (!file || !product) {
+        set_error("geometry_edit_object_placement: missing argument");
         return nullptr;
     }
-    auto* product = product_h->ptr;
     if (!has_attr(product, "ObjectPlacement")) return nullptr;
 
     std::array<double, 16> m;
-    if (matrix) {
-        std::memcpy(m.data(), matrix, 16 * sizeof(double));
+    if (matrix.size() == m.size()) {
+        std::copy(matrix.begin(), matrix.end(), m.begin());
     } else {
         identity4(m.data());
     }
     try {
-        auto* result = edit_placement_impl(file_h, product, m, is_si, should_transform_children);
-        if (!result) return nullptr;
-        return ifcopenshell::capi::wrap_instance(result);
+        return edit_placement_impl(file, product, m, is_si, should_transform_children);
     } catch (const std::exception& ex) {
         set_error(std::string("edit_object_placement: ") + ex.what());
         return nullptr;
@@ -281,4 +279,5 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_api_geometry_edit_object
     }
 }
 
-}  // extern "C"
+} // namespace bindings
+} // namespace ifcapi

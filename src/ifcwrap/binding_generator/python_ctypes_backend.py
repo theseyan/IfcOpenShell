@@ -177,9 +177,13 @@ _CLEAR_ERROR_NAME = "{clear_error}"
 _LAST_ERROR_NAME = "{last_error}"
 _STRING_DESTROY_NAME = "ifcopenshell_string_destroy"
 _STRING_LIST_DESTROY_NAME = "ifcopenshell_string_list_destroy"
+_BOOL_LIST_DESTROY_NAME = "ifcopenshell_bool_list_destroy"
 _INT32_LIST_DESTROY_NAME = "ifcopenshell_int32_list_destroy"
 _UINT32_LIST_DESTROY_NAME = "ifcopenshell_uint32_list_destroy"
 _DOUBLE_LIST_DESTROY_NAME = "ifcopenshell_double_list_destroy"
+_INT32_LIST_LIST_DESTROY_NAME = "ifcopenshell_int32_list_list_destroy"
+_INT32_LIST_LIST_LIST_DESTROY_NAME = "ifcopenshell_int32_list_list_list_destroy"
+_DOUBLE_LIST_LIST_DESTROY_NAME = "ifcopenshell_double_list_list_destroy"
 
 
 def encode_string(value):
@@ -216,6 +220,84 @@ def make_string_list(values):
     return result
 
 
+def make_bool_list(values):
+    values = list(values)
+    items = (ctypes.c_bool * len(values))(*[bool(value) for value in values])
+    result = ifcopenshell_bool_list_t()
+    result.items = items
+    result.size = len(items)
+    result._keepalive = items  # type: ignore[attr-defined]
+    return result
+
+
+def make_int32_list(values):
+    values = list(values)
+    items = (ctypes.c_int32 * len(values))(*[int(value) for value in values])
+    result = ifcopenshell_int32_list_t()
+    result.items = items
+    result.size = len(items)
+    result._keepalive = items  # type: ignore[attr-defined]
+    return result
+
+
+def make_int64_list(values):
+    values = list(values)
+    items = (ctypes.c_int64 * len(values))(*[int(value) for value in values])
+    result = ifcopenshell_int64_list_t()
+    result.items = items
+    result.size = len(items)
+    result._keepalive = items  # type: ignore[attr-defined]
+    return result
+
+
+def make_uint32_list(values):
+    values = list(values)
+    items = (ctypes.c_uint32 * len(values))(*[int(value) for value in values])
+    result = ifcopenshell_uint32_list_t()
+    result.items = items
+    result.size = len(items)
+    result._keepalive = items  # type: ignore[attr-defined]
+    return result
+
+
+def make_double_list(values):
+    values = list(values)
+    items = (ctypes.c_double * len(values))(*[float(value) for value in values])
+    result = ifcopenshell_double_list_t()
+    result.items = items
+    result.size = len(items)
+    result._keepalive = items  # type: ignore[attr-defined]
+    return result
+
+
+def make_int32_list_list(values):
+    rows = [list(row) for row in values]
+    row_buffers = [(ctypes.c_int32 * len(row))(*[int(value) for value in row]) for row in rows]
+    items = (ifcopenshell_int32_list_t * len(row_buffers))()
+    for index, buffer in enumerate(row_buffers):
+        items[index].items = buffer
+        items[index].size = len(buffer)
+    result = ifcopenshell_int32_list_list_t()
+    result.items = items
+    result.size = len(items)
+    result._keepalive = (items, row_buffers)  # type: ignore[attr-defined]
+    return result
+
+
+def make_double_list_list(values):
+    rows = [list(row) for row in values]
+    row_buffers = [(ctypes.c_double * len(row))(*[float(value) for value in row]) for row in rows]
+    items = (ifcopenshell_double_list_t * len(row_buffers))()
+    for index, buffer in enumerate(row_buffers):
+        items[index].items = buffer
+        items[index].size = len(buffer)
+    result = ifcopenshell_double_list_list_t()
+    result.items = items
+    result.size = len(items)
+    result._keepalive = (items, row_buffers)  # type: ignore[attr-defined]
+    return result
+
+
 def last_error(lib, default="Unknown error"):
     fn = getattr(lib, _LAST_ERROR_NAME, None)
     if fn is None:
@@ -232,11 +314,128 @@ def status_or_raise(lib, status, fallback):
     raise RuntimeError(last_error(lib, fallback))
 
 
-def take_string(lib, value):
+def call_string(lib, fn, *args, decode=True, value_type=None):
+    if value_type is None:
+        value_type = ifcopenshell_string_t
+    value = value_type()
+    if not fn(*args, ctypes.byref(value)):
+        return None
+    return take_string(lib, value, decode=decode)
+
+
+def call_string_list(lib, fn, *args, decode=True, value_type=None):
+    if value_type is None:
+        value_type = ifcopenshell_string_list_t
+    value = value_type()
+    if not fn(*args, ctypes.byref(value)):
+        return None
+    return take_string_list(lib, value, decode=decode)
+
+
+def call_int32_list(lib, fn, *args):
+    value = ifcopenshell_int32_list_t()
+    if not fn(*args, ctypes.byref(value)):
+        return None
+    return take_int32_list(lib, value)
+
+
+def call_uint32_list(lib, fn, *args):
+    value = ifcopenshell_uint32_list_t()
+    if not fn(*args, ctypes.byref(value)):
+        return None
+    return take_uint32_list(lib, value)
+
+
+def call_double_list(lib, fn, *args):
+    value = ifcopenshell_double_list_t()
+    if not fn(*args, ctypes.byref(value)):
+        return None
+    return take_double_list(lib, value)
+
+
+def call_string_or_raise(lib, fn, fallback, *args, decode=True, value_type=None):
+    result = call_string(lib, fn, *args, decode=decode, value_type=value_type)
+    if result is None:
+        status_or_raise(lib, False, fallback)
+    return result
+
+
+def call_string_list_or_raise(lib, fn, fallback, *args, decode=True, value_type=None):
+    result = call_string_list(lib, fn, *args, decode=decode, value_type=value_type)
+    if result is None:
+        status_or_raise(lib, False, fallback)
+    return result
+
+
+def call_int32_list_or_raise(lib, fn, fallback, *args):
+    result = call_int32_list(lib, fn, *args)
+    if result is None:
+        status_or_raise(lib, False, fallback)
+    return result
+
+
+def call_uint32_list_or_raise(lib, fn, fallback, *args):
+    result = call_uint32_list(lib, fn, *args)
+    if result is None:
+        status_or_raise(lib, False, fallback)
+    return result
+
+
+def call_double_list_or_raise(lib, fn, fallback, *args):
+    result = call_double_list(lib, fn, *args)
+    if result is None:
+        status_or_raise(lib, False, fallback)
+    return result
+
+
+def call_scalar(fn, c_type, *args):
+    value = c_type()
+    if not fn(*args, ctypes.byref(value)):
+        return None
+    return value.value
+
+
+def call_scalar_or_raise(lib, fn, c_type, fallback, *args):
+    result = call_scalar(fn, c_type, *args)
+    if result is None:
+        status_or_raise(lib, False, fallback)
+    return result
+
+
+def take_nullable_handle(lib, value, *, destroy=None):
+    if not value:
+        return None
+    if not value.contents.ptr:
+        if destroy is not None:
+            destroy_fn = getattr(lib, destroy) if isinstance(destroy, str) else destroy
+            destroy_fn(value)
+        return None
+    return ctypes.cast(value, ctypes.c_void_p).value
+
+
+def call_handle(lib, fn, *args, destroy=None, handle_pointer_type=None):
+    if handle_pointer_type is None:
+        handle_pointer_type = ctypes.POINTER(_HandleStruct)
+    out = handle_pointer_type()
+    if not fn(*args, ctypes.byref(out)):
+        return None
+    return take_nullable_handle(lib, out, destroy=destroy)
+
+
+def call_handle_or_raise(lib, fn, fallback, *args, destroy=None, handle_pointer_type=None):
+    if handle_pointer_type is None:
+        handle_pointer_type = ctypes.POINTER(_HandleStruct)
+    out = handle_pointer_type()
+    status_or_raise(lib, fn(*args, ctypes.byref(out)), fallback)
+    return take_nullable_handle(lib, out, destroy=destroy)
+
+
+def take_string(lib, value, *, decode=True):
     try:
         if value.data and value.size:
-            return ctypes.string_at(value.data, value.size).decode("utf-8")
-        return ""
+            raw = ctypes.string_at(value.data, value.size)
+            return raw.decode("utf-8") if decode else raw
+        return "" if decode else b""
     finally:
         getattr(lib, _STRING_DESTROY_NAME)(ctypes.byref(value))
 
@@ -251,6 +450,13 @@ def take_string_list(lib, value, *, decode=True):
         return tuple(result)
     finally:
         getattr(lib, _STRING_LIST_DESTROY_NAME)(ctypes.byref(value))
+
+
+def take_bool_list(lib, value):
+    try:
+        return tuple(bool(value.items[index]) for index in range(value.size)) if value.items else tuple()
+    finally:
+        getattr(lib, _BOOL_LIST_DESTROY_NAME)(ctypes.byref(value))
 
 
 def take_int32_list(lib, value):
@@ -272,6 +478,59 @@ def take_double_list(lib, value):
         return tuple(float(value.items[index]) for index in range(value.size)) if value.items else tuple()
     finally:
         getattr(lib, _DOUBLE_LIST_DESTROY_NAME)(ctypes.byref(value))
+
+
+def take_int32_list_list(lib, value):
+    try:
+        return (
+            tuple(tuple(int(value.items[i].items[j]) for j in range(value.items[i].size)) for i in range(value.size))
+            if value.items
+            else tuple()
+        )
+    finally:
+        getattr(lib, _INT32_LIST_LIST_DESTROY_NAME)(ctypes.byref(value))
+
+
+def take_int32_list_list_list(lib, value):
+    try:
+        return (
+            tuple(
+                tuple(tuple(int(value.items[i].items[j].items[k]) for k in range(value.items[i].items[j].size)) for j in range(value.items[i].size))
+                for i in range(value.size)
+            )
+            if value.items
+            else tuple()
+        )
+    finally:
+        getattr(lib, _INT32_LIST_LIST_LIST_DESTROY_NAME)(ctypes.byref(value))
+
+
+def take_double_list_list(lib, value):
+    try:
+        return (
+            tuple(tuple(float(value.items[i].items[j]) for j in range(value.items[i].size)) for i in range(value.size))
+            if value.items
+            else tuple()
+        )
+    finally:
+        getattr(lib, _DOUBLE_LIST_LIST_DESTROY_NAME)(ctypes.byref(value))
+
+
+def move_handle_list(lib, value, destroy, handle_pointer_type):
+    destroy_fn = getattr(lib, destroy) if isinstance(destroy, str) else destroy
+    try:
+        moved_addrs = []
+        null = handle_pointer_type()
+        for index in range(value.size):
+            slot = value.items[index]
+            moved_addrs.append(ctypes.addressof(slot.contents) if slot else 0)
+            value.items[index] = null
+        return tuple(
+            ctypes.cast(ctypes.c_void_p(addr), handle_pointer_type) if addr else handle_pointer_type()
+            for addr in moved_addrs
+        )
+    finally:
+        destroy_fn(ctypes.byref(value))
 
 
 def bind(lib, *, strict=True, names=None, prefixes=None):

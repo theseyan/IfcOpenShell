@@ -106,10 +106,53 @@ def test_build_inventory_reports_generated_highlevel_and_duplicate_concepts(tmp_
     inventory = build_inventory(tmp_path)
 
     assert inventory["generated_c"]["symbol_count"] == 3
+    assert inventory["generated_highlevel_c"]["symbol_count"] == 0
     assert inventory["handwritten_highlevel_c"]["symbol_count"] == 1
     assert inventory["generated_python_ctypes"]["symbol_count"] == 1
+    assert inventory["generated_python_ctypes"]["missing_generated_c_symbols"] == [
+        "ifcopenshell_ifc_file_by_type",
+        "ifcopenshell_string_destroy",
+    ]
     assert inventory["manual_python_ctypes"]["symbol_count"] == 2
+    assert inventory["manual_python_ctypes"]["unexpected_generated_c_redeclarations"] == [
+        {"name": "ifcopenshell_ifc_file_by_type", "source": "src/ifcapi/python/ifcopenshell/ifcopenshell_wrapper.py"}
+    ]
     assert inventory["duplication"]["potential_core_highlevel_count"] == 1
     duplicate = inventory["duplication"]["potential_core_highlevel"][0]
     assert duplicate["highlevel"] == "ifcopenshell_file_by_type"
     assert duplicate["exact_core_matches"] == ["ifcopenshell_ifc_file_by_type"]
+
+
+def test_generated_python_ctypes_cover_generated_c_api() -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    inventory = build_inventory(repo_root)
+
+    assert inventory["generated_python_ctypes"]["missing_from_c_headers"] == []
+    assert inventory["generated_python_ctypes"]["missing_generated_c_symbols"] == []
+
+
+def test_manual_ctypes_generated_c_redeclarations_are_classified() -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    inventory = build_inventory(repo_root)
+
+    assert inventory["manual_python_ctypes"]["unexpected_generated_c_redeclarations"] == []
+    assert inventory["manual_python_ctypes"]["allowed_generated_c_redeclarations"] == []
+
+
+def test_no_unknown_manual_ctypes_or_duplicate_c_exports() -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    inventory = build_inventory(repo_root)
+
+    assert inventory["manual_python_ctypes"]["missing_from_c_headers"] == []
+    assert inventory["duplication"]["exact_symbol_collisions"] == []
+    assert inventory["duplication"]["potential_core_highlevel"] == []
+
+
+def test_generated_highlevel_c_symbols_are_reported_separately() -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    inventory = build_inventory(repo_root)
+
+    generated_highlevel = inventory["generated_highlevel_c"]["symbols"]
+    assert inventory["generated_highlevel_c"]["symbol_count"] == len(generated_highlevel)
+    assert "ifcopenshell_ifcapi_unit_convert" in generated_highlevel
+    assert "ifcopenshell_ifcapi_value_kind" in generated_highlevel
