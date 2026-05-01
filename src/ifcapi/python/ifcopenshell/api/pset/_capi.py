@@ -8,7 +8,7 @@ import ctypes
 import datetime
 
 import ifcopenshell
-from ifcopenshell import _generated_capi, _get_lib, _typed_value
+from ifcopenshell import _generated_capi, _get_lib
 from ifcopenshell.entity_instance import _generated_instance_handle_ptr
 
 
@@ -91,30 +91,6 @@ def _add_entry(lib, props, key, value):
             raise
         return
 
-    # _typed_value (now a subclass of entity_instance for SWIG parity) must be
-    # checked before the generic entity_instance branch — otherwise inline
-    # values would be mis-routed through the entity-handle path.
-    if isinstance(value, _typed_value):
-        ifc_type = value.is_a()
-        py_val = value.wrappedValue
-        ifc_type_arg = _generated_capi.encode_string(ifc_type)
-        if isinstance(py_val, bool):
-            _call(lib, lib.ifcopenshell_ifcapi_pset_props_set_typed_bool, props, k, bool(py_val), ifc_type_arg)
-        elif isinstance(py_val, int):
-            _call(lib, lib.ifcopenshell_ifcapi_pset_props_set_typed_int, props, k, int(py_val), ifc_type_arg)
-        elif isinstance(py_val, float):
-            _call(lib, lib.ifcopenshell_ifcapi_pset_props_set_typed_double, props, k, float(py_val), ifc_type_arg)
-        else:
-            _call(
-                lib,
-                lib.ifcopenshell_ifcapi_pset_props_set_typed_string,
-                props,
-                k,
-                _generated_capi.encode_string(str(py_val)),
-                ifc_type_arg,
-            )
-        return
-
     # entity_instance — could be IfcProperty, IfcValue/typed value, or arbitrary entity.
     if isinstance(value, ifcopenshell.entity_instance):
         _call(lib, lib.ifcopenshell_ifcapi_pset_props_set_instance, props, k, _generated_instance_handle_ptr(value._handle))
@@ -134,7 +110,12 @@ def _add_entry(lib, props, key, value):
             _call(lib, lib.ifcopenshell_ifcapi_pset_props_set_double_list, props, k, ctypes.byref(list_value))
         else:
             list_value = _generated_capi.make_string_list(
-                [str(v.wrappedValue) if isinstance(v, _typed_value) else str(v) for v in value]
+                [
+                    str(v.wrappedValue)
+                    if isinstance(v, ifcopenshell.entity_instance) and v.id() == 0 and v._is_wrapped_value_instance()
+                    else str(v)
+                    for v in value
+                ]
             )
             _call(lib, lib.ifcopenshell_ifcapi_pset_props_set_string_list, props, k, ctypes.byref(list_value))
         return

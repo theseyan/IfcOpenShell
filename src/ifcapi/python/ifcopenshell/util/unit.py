@@ -648,13 +648,13 @@ def iter_element_and_attributes_per_type(ifc_file, attr_type_name: str) -> Gener
             if val is None:
                 continue
 
-            if isinstance(val, (ifcopenshell.entity_instance, ifcopenshell._typed_value)) and not val.is_a(attr_type_name):
+            if isinstance(val, ifcopenshell.entity_instance) and not val.is_a(attr_type_name):
                 continue
             elif isinstance(val, tuple):
                 if not val:
                     continue
                 val_ = val[0]
-                if isinstance(val_, (ifcopenshell.entity_instance, ifcopenshell._typed_value)):
+                if isinstance(val_, ifcopenshell.entity_instance):
                     for val_ in val:
                         if not val_.is_a(attr_type_name):
                             continue
@@ -694,13 +694,9 @@ def convert_file_length_units(ifc_file, target_units: str = "METER"):
         return tuple(convert_value(v) for v in value)
 
     def _convert_typed(c):
-        if isinstance(c, ifcopenshell._typed_value):
-            if c.is_a("IfcLengthMeasure"):
-                return ifcopenshell._typed_value(file_patched, c.is_a(), str(convert_value(c.wrappedValue)))
-            return c
         if isinstance(c, ifcopenshell.entity_instance):
             if c.is_a("IfcLengthMeasure"):
-                return ifcopenshell._typed_value(file_patched, c.is_a(), str(convert_value(c.wrappedValue)))
+                return file_patched.create_entity(c.is_a(), convert_value(c.wrappedValue))
             return c
         if isinstance(c, (list, tuple)):
             return type(c)(_convert_typed(x) for x in c)
