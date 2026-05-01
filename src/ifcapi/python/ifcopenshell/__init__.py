@@ -394,7 +394,7 @@ def _enc(s):
 
 
 # ---------------------------------------------------------------------------
-# _typed_value — lightweight wrapper for inline IFC simple types
+# Native typed-value helpers
 # ---------------------------------------------------------------------------
 
 # Cache: (schema_name, type_name) -> resolver kind tuple
@@ -493,153 +493,11 @@ def _resolve_typed_value_kind(file_obj, type_name: str):
     return kind
 
 
-def _convert_scalar(prim: str, raw):
-    if raw is None:
-        return None
-    if not isinstance(raw, str):
-        return raw
-    if prim == "integer":
-        try:
-            return int(raw)
-        except (ValueError, TypeError):
-            return raw
-    if prim == "real":
-        try:
-            if not any(marker in raw.lower() for marker in (".", "e")):
-                return int(raw)
-            return float(raw)
-        except (ValueError, TypeError):
-            return raw
-    if prim in ("boolean", "logical"):
-        return raw.lower() in ("true", "1", ".t.")
-    return raw
-
-
-def _parse_aggregate_literal(raw, elem_prim: str):
-    if raw is None:
-        return None
-    if isinstance(raw, (list, tuple)):
-        return tuple(_convert_scalar(elem_prim, v) for v in raw)
-    if not isinstance(raw, str):
-        return raw
-    s = raw.strip()
-    if s.startswith("(") and s.endswith(")"):
-        inner = s[1:-1].strip()
-        if not inner:
-            return ()
-        parts = [p.strip() for p in inner.split(",")]
-        return tuple(_convert_scalar(elem_prim, p) for p in parts)
-    return raw
-
-
 # ---------------------------------------------------------------------------
 # entity_instance
 # ---------------------------------------------------------------------------
 
-from ifcopenshell.entity_instance import entity_instance, register_schema_attributes, _typed_value_is_a  # noqa: E402
-
-
-class _typed_value(entity_instance):
-    """Represents an inline IFC type instance like ``IfcLabel('Hello')``.
-
-    Inherits from :class:`entity_instance` so that ``isinstance`` checks and
-    unbound-method calls (e.g. ``entity_instance.is_a(tv)``) behave the same
-    as SWIG, where inline values are returned as ``entity_instance`` objects
-    with ``id() == 0``. The handle is set to ``0`` and the typed-value
-    payload is stored in ``_type_name`` / ``_wrapped``; base methods on
-    ``entity_instance`` detect this inline mode and dispatch on the payload.
-    """
-
-    def __init__(self, file_obj, type_name: str, value):
-        # Bypass entity_instance.__init__'s handle bookkeeping; inline values
-        # never own a native handle. Setting attributes directly via
-        # object.__setattr__ avoids tripping any future descriptor logic.
-        object.__setattr__(self, "_file", file_obj)
-        object.__setattr__(self, "_handle", 0)
-        object.__setattr__(self, "_type_name", type_name)
-        kind = _resolve_typed_value_kind(file_obj, type_name)
-        if kind[0] == "aggregate":
-            wrapped = _parse_aggregate_literal(value, kind[1])
-        elif kind[0] == "scalar":
-            wrapped = _convert_scalar(kind[1], value)
-        elif value is None or not isinstance(value, str):
-            wrapped = value
-        else:
-            try:
-                wrapped = float(value)
-            except (ValueError, TypeError):
-                wrapped = value
-        object.__setattr__(self, "_wrapped", wrapped)
-
-    def is_a(self, ifc_class=None):
-        if ifc_class is None:
-            return self._type_name
-        if isinstance(ifc_class, bool) and ifc_class:
-            schema = getattr(self._file, "schema", "")
-            return f"{schema}.{self._type_name}" if schema else self._type_name
-        return _typed_value_is_a(self._file, self._type_name, ifc_class)
-
-    @property
-    def wrappedValue(self):
-        return self._wrapped
-
-    @wrappedValue.setter
-    def wrappedValue(self, value):
-        object.__setattr__(self, "_wrapped", value)
-
-    def id(self) -> int:
-        return 0
-
-    def __repr__(self):
-        return f"{self._type_name}({self._wrapped!r})"
-
-    def __eq__(self, other):
-        if isinstance(other, _typed_value):
-            return self._type_name == other._type_name and self._wrapped == other._wrapped
-        return NotImplemented
-
-    def __hash__(self):
-        return hash((self._type_name, self._wrapped))
-
-    def __getitem__(self, index):
-        # Mirrors entity_instance: index 0 returns the only positional
-        # attribute (the wrapped value); other indices raise IndexError.
-        if index == 0:
-            return self._wrapped
-        raise IndexError(index)
-
-    def __len__(self):
-        # Mirrors entity_instance: number of positional attributes. Inline
-        # typed values always have exactly one (the wrapped value).
-        return 1
-
-    def __iter__(self):
-        # Inline typed values have a single positional slot (the wrapped
-        # value). Iteration should always yield exactly one item — the full
-        # wrapped payload — so ``enumerate(tv)`` matches SWIG's behaviour
-        # (one attribute named ``wrappedValue``).
-        return iter((self._wrapped,))
-
-    def __setitem__(self, index, value):
-        # Inline typed values have a single positional slot (the wrapped
-        # value). copy_deep / similar utilities assign to ``[0]`` after
-        # creating the value via ``create_entity``.
-        if index == 0:
-            object.__setattr__(self, "_wrapped", value)
-            return
-        raise IndexError(index)
-
-    def __setattr__(self, name, value):
-        # Bypass entity_instance.__setattr__ — inline values have no handle,
-        # so the native attribute path would crash. Property setters (e.g.
-        # ``wrappedValue``) are still honoured because ``object.__setattr__``
-        # respects data descriptors defined on the class.
-        object.__setattr__(self, name, value)
-
-    def __del__(self):
-        # Inline values never own a native handle; suppress entity_instance's
-        # destroy call entirely.
-        pass
+from ifcopenshell.entity_instance import entity_instance, register_schema_attributes  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # file
@@ -836,15 +694,6 @@ class file:
             raise TypeError("create_entity() requires a type name")
         eid = kwargs.pop("id", -1)
         lib = _get_lib()
-        # Probe the schema to see whether this name is a type declaration
-        # (IfcLabel, IfcLineIndex, ...) rather than an entity. Type
-        # declarations are not creatable via the C entity API and must be
-        # returned as inline ``_typed_value`` instances (mirrors SWIG, where
-        # ``create_entity('IfcLabel', 'foo')`` yields an ``entity_instance``
-        # with ``id() == 0``).
-        if _resolve_typed_value_kind(self, type_name)[0] != "unknown":
-            val_arg = args[0] if args else kwargs.get("wrappedValue")
-            return _typed_value(self, type_name, val_arg)
         from ifcopenshell import ifcopenshell_wrapper as W
 
         W._bind()
@@ -1007,11 +856,8 @@ class file:
         """
         if not isinstance(inst, entity_instance):
             raise TypeError(f"Expected entity_instance, got {type(inst)}")
-        # Inline typed values (``_typed_value`` subclass with ``_handle == 0``)
-        # have no STEP identity; SWIG's wrapped_data.add() returns an
-        # equivalent inline value bound to the target file. Mirror that here.
-        if isinstance(inst, _typed_value):
-            return _typed_value(self, inst._type_name, inst._wrapped)
+        if inst.id() == 0 and inst._is_wrapped_value_instance():
+            return self.create_entity(inst.is_a(), inst.wrappedValue)
         from ifcopenshell import ifcopenshell_wrapper as W
 
         lib = _get_lib()

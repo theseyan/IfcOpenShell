@@ -10373,8 +10373,8 @@ bool ifcopenshell_ifc_file_create_entity_by_name(ifcopenshell_ifc_file_t* self, 
         auto generated_result = [&]() {
 const auto* schema = self_cpp->schema();
 const auto* decl = schema->declaration_by_name(type_name_cpp);
-if (!decl || !decl->as_entity()) {
-    throw std::runtime_error("Type declaration is not an entity");
+if (!decl || (!decl->as_entity() && !decl->as_type_declaration() && !decl->as_enumeration_type())) {
+    throw std::runtime_error("Declaration is not creatable");
 }
 auto* entity = self_cpp->create(decl);
 if (!entity) {

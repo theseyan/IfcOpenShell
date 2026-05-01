@@ -23,70 +23,6 @@ from ifcopenshell import (
 from ifcopenshell._value_api import configure_value_lib, value_to_python
 
 
-def _tv_class():
-    """Lazily resolve ``ifcopenshell._typed_value`` to avoid the circular
-    import at module load time (``_typed_value`` inherits from
-    :class:`entity_instance` and is therefore defined *after* this module
-    finishes loading)."""
-    from ifcopenshell import _typed_value
-    return _typed_value
-
-
-def _typed_value_str(tv):
-    """Serialise a ``_typed_value``'s wrapped payload into the canonical
-    SPF representation expected by the C ``create_type_value`` helper.
-
-    For aggregate payloads (``IfcLineIndex((1,2,3,4,1))`` etc.) we emit a
-    parenthesised, comma-separated literal with no whitespace so that the
-    C-side parser can dispatch unambiguously on the declared element type.
-    Strings are kept bare; the C side strips a single layer of quotes.
-    """
-    w = tv._wrapped
-    if w is None:
-        return ""
-    if isinstance(w, (list, tuple)):
-        parts = []
-        for item in w:
-            if isinstance(item, bool):
-                parts.append("true" if item else "false")
-            elif isinstance(item, (int, float)):
-                parts.append(repr(item))
-            elif isinstance(item, str):
-                parts.append("'" + item.replace("'", "''") + "'")
-            else:
-                parts.append(str(item))
-        return "(" + ",".join(parts) + ")"
-    if isinstance(w, bool):
-        return "true" if w else "false"
-    return str(w)
-
-
-_TYPED_VALUE_IS_A_CACHE = {}
-
-
-def _typed_value_is_a(file_obj, type_name: str, query: str) -> bool:
-    if not type_name or not query:
-        return False
-    schema_name = getattr(file_obj, "schema_identifier", None) or getattr(file_obj, "schema", None)
-    cache_key = (schema_name or "", type_name, query)
-    cached = _TYPED_VALUE_IS_A_CACHE.get(cache_key)
-    if cached is not None:
-        return cached
-
-    result = type_name.lower() == query.lower()
-    if schema_name:
-        try:
-            from ifcopenshell import ifcopenshell_wrapper as W
-
-            schema = W.schema_by_name(schema_name)
-            decl = schema.declaration_by_name(type_name)
-            result = bool(decl and decl._is(query))
-        except Exception:
-            pass
-    _TYPED_VALUE_IS_A_CACHE[cache_key] = result
-    return result
-
-
 _derived_lib_configured = False
 _attribute_value_lib_configured = False
 _entity_string_helpers_configured = False
@@ -343,20 +279,6 @@ class entity_instance:
         return (id(self._file), self.id(), self.is_a())
 
     def is_a(self, type_name=None):
-        # Inline typed values (``_typed_value`` subclass with ``_handle == 0``)
-        # carry their declared type in ``_type_name``. ``entity_instance.is_a``
-        # is sometimes called as an unbound function on these objects (mirrors
-        # SWIG's ``entity_instance`` behaviour where inline values have
-        # ``id() == 0``); Python 3 does not dispatch through the subclass for
-        # such calls, so the fallback must live here.
-        if not getattr(self, "_handle", 0) and hasattr(self, "_type_name"):
-            tn = self._type_name
-            if type_name is None:
-                return tn
-            if isinstance(type_name, bool) and type_name:
-                schema = getattr(self._file, "schema", "")
-                return f"{schema}.{tn}" if schema else tn
-            return _typed_value_is_a(self._file, tn, type_name)
         lib = _get_lib()
         if type_name is None:
             return _instance_type_name(self._handle)
@@ -480,6 +402,9 @@ class entity_instance:
     def __setitem__(self, index: int, value):
         name = self.attribute_name(index)
         if not name:
+            if index == 0 and self._is_wrapped_value_instance():
+                self._set_wrapped_value(value)
+                return
             raise IndexError(f"Attribute index {index} out of range")
         setattr(self, name, value)
 
@@ -601,6 +526,66 @@ class entity_instance:
             return None if wrapped is _MISSING else wrapped
         finally:
             lib.ifcopenshell_ifcparse_attribute_value_destroy(av)
+
+    def _set_wrapped_value(self, value):
+        """Set the sole payload of a native type-declaration instance."""
+        if not self._handle:
+            raise AttributeError("wrappedValue")
+        lib = _get_lib()
+        _configure_attribute_value_lib(lib)
+        handle = _instance_handle_ptr(self._handle)
+        idx = 0
+        if value is None:
+            if not lib.ifcopenshell_ifc_instance_unset_argument(handle, idx):
+                raise RuntimeError("Failed to unset wrappedValue")
+            return
+        if isinstance(value, bool):
+            if not lib.ifcopenshell_ifc_instance_set_argument_bool(handle, idx, value):
+                raise RuntimeError("Failed to set wrappedValue")
+            return
+        if isinstance(value, int):
+            if not lib.ifcopenshell_ifc_instance_set_argument_int32(handle, idx, value):
+                raise RuntimeError("Failed to set wrappedValue")
+            return
+        if isinstance(value, float):
+            if not lib.ifcopenshell_ifc_instance_set_argument_double(handle, idx, value):
+                raise RuntimeError("Failed to set wrappedValue")
+            return
+        if isinstance(value, str):
+            if not lib.ifcopenshell_ifc_instance_set_argument_string(handle, idx, _enc(value)):
+                raise RuntimeError("Failed to set wrappedValue")
+            return
+        if isinstance(value, (list, tuple)):
+            try:
+                from ifcopenshell import _resolve_typed_value_kind
+
+                kind = _resolve_typed_value_kind(self._file, self.is_a())
+            except Exception:
+                kind = ("unknown",)
+            if kind[0] != "aggregate":
+                raise TypeError(f"Cannot set wrappedValue to {type(value)}")
+            elem_kind = kind[1]
+            if elem_kind in ("real", "number"):
+                values = _generated_capi.make_double_list(value)
+                if not lib.ifcopenshell_ifc_instance_set_argument_double_list(handle, idx, ctypes.byref(values)):
+                    raise RuntimeError("Failed to set wrappedValue")
+                return
+            if elem_kind == "integer":
+                values = _generated_capi.make_int32_list(value)
+                if not lib.ifcopenshell_ifc_instance_set_argument_int32_list(handle, idx, ctypes.byref(values)):
+                    raise RuntimeError("Failed to set wrappedValue")
+                return
+            if elem_kind == "boolean":
+                values = _generated_capi.make_int32_list(int(bool(v)) for v in value)
+                if not lib.ifcopenshell_ifc_instance_set_argument_int32_list(handle, idx, ctypes.byref(values)):
+                    raise RuntimeError("Failed to set wrappedValue")
+                return
+            if elem_kind in ("string", "binary"):
+                values, keepalive = _make_string_list(value)
+                if not lib.ifcopenshell_ifc_instance_set_argument_string_list(handle, idx, ctypes.byref(values)):
+                    raise RuntimeError("Failed to set wrappedValue")
+                return
+        raise TypeError(f"Cannot set wrappedValue to {type(value)}")
 
     def _attribute_value_to_python(self, lib, av, primitive):
         from . import ifcopenshell_wrapper as W
@@ -780,13 +765,10 @@ class entity_instance:
             return nested if nested is not None else tuple()
 
         if elem_kind == "select":
-            tv_result = self._get_aggregate_typed_value(h, attr)
-            if tv_result is not None and len(tv_result) > 0:
-                return tv_result
             entity_result = read_generated_list("entity")
             if entity_result is not _MISSING:
                 return entity_result
-            return tv_result if tv_result is not None else tuple()
+            return tuple()
 
         raise TypeError(f"Unsupported aggregate element type for '{name}': {pt!r}")
 
@@ -819,43 +801,20 @@ class entity_instance:
             typed_handle = _empty_handle_ptr()
             if not lib.ifcopenshell_ifcparse_attribute_value_as_instance(av, ctypes.byref(typed_handle)) or not typed_handle:
                 return None
-            try:
-                type_name = _instance_type_name(ctypes.cast(typed_handle, ctypes.c_void_p).value)
-                if not type_name:
-                    return None
-                try:
-                    from ifcopenshell import _resolve_typed_value_kind
-
-                    typed_value_kind = _resolve_typed_value_kind(self._file, type_name)
-                except Exception:
-                    typed_value_kind = ("unknown",)
-                if typed_value_kind[0] == "unknown":
-                    return None
-                wrapped_av = _empty_handle_ptr()
-                if not lib.ifcopenshell_ifc_instance_get_argument(typed_handle, 0, ctypes.byref(wrapped_av)) or not wrapped_av:
-                    return _tv_class()(self._file, type_name, None)
-                try:
-                    primitive = ""
-                    if typed_value_kind[0] == "aggregate":
-                        if typed_value_kind[1] == "unknown":
-                            return None
-                        element_primitive = {
-                            "real": "float",
-                            "number": "float",
-                            "integer": "integer",
-                            "string": "string",
-                            "boolean": "boolean",
-                            "logical": "boolean",
-                        }.get(typed_value_kind[1], typed_value_kind[1])
-                        primitive = ("list", element_primitive)
-                    value = self._attribute_value_to_python(lib, wrapped_av, primitive)
-                    if value is _MISSING:
-                        value = None
-                    return _tv_class()(self._file, type_name, value)
-                finally:
-                    lib.ifcopenshell_ifcparse_attribute_value_destroy(wrapped_av)
-            finally:
+            type_name = _instance_type_name(ctypes.cast(typed_handle, ctypes.c_void_p).value)
+            if not type_name:
                 lib.ifcopenshell_ifc_instance_destroy(typed_handle)
+                return None
+            try:
+                from ifcopenshell import _resolve_typed_value_kind
+
+                typed_value_kind = _resolve_typed_value_kind(self._file, type_name)
+            except Exception:
+                typed_value_kind = ("unknown",)
+            if typed_value_kind[0] == "unknown":
+                lib.ifcopenshell_ifc_instance_destroy(typed_handle)
+                return None
+            return entity_instance(self._file, ctypes.cast(typed_handle, ctypes.c_void_p).value)
         finally:
             lib.ifcopenshell_ifcparse_attribute_value_destroy(av)
 
@@ -893,26 +852,12 @@ class entity_instance:
         finally:
             lib.ifcopenshell_ifcparse_attribute_value_destroy(av)
 
-    def _get_aggregate_typed_value(self, h, attr):
-        """Try reading an aggregate of inline typed values."""
-        lib = _get_lib()
-        _configure_entity_string_helpers(lib)
-        values = _generated_capi.call_string_list(
-            lib, lib.ifcopenshell_ifcapi_entity_get_aggregate_typed_value, _instance_handle_ptr(h), attr
-        )
-        if values is None:
-            return None
-        if len(values) < 2:
-            return None
-        result = [
-            _tv_class()(self._file, values[i], values[i + 1] if values[i + 1] != "" else None)
-            for i in range(0, len(values) - 1, 2)
-        ]
-        return tuple(result)
-
     def __setattr__(self, name, value):
         if name.startswith("_"):
             super().__setattr__(name, value)
+            return
+        if name == "wrappedValue" and self._is_wrapped_value_instance():
+            self._set_wrapped_value(value)
             return
         lib = _get_lib()
         h = self._handle
@@ -946,20 +891,6 @@ class entity_instance:
             lib.ifcopenshell_ifc_instance_set_argument_int32(handle, idx, value)
         elif isinstance(value, float):
             lib.ifcopenshell_ifc_instance_set_argument_double(handle, idx, value)
-        elif isinstance(value, _tv_class()):
-            ok = ctypes.c_bool(False)
-            if (
-                not lib.ifcopenshell_ifcapi_entity_set_typed_value(
-                handle,
-                attr,
-                _enc(value._type_name),
-                _enc(_typed_value_str(value)) if value._wrapped is not None else None,
-                    ctypes.byref(ok),
-                )
-                or not ok.value
-            ):
-                err = lib.ifcopenshell_last_error_message()
-                raise RuntimeError(err.decode("utf-8", errors="replace") if err else f"Failed to set typed value '{name}'")
         elif isinstance(value, entity_instance):
             lib.ifcopenshell_ifc_instance_set_argument_instance(handle, idx, _instance_handle_ptr(value._handle))
         elif isinstance(value, str):
@@ -1170,24 +1101,6 @@ class entity_instance:
                 raise RuntimeError(err.decode("utf-8", errors="replace") if err else f"Failed to set nested aggregate '{name}'")
             return
 
-        if isinstance(first, _tv_class()):
-            from . import ifcopenshell_wrapper as W
-
-            W._bind()
-            type_names, type_keepalive = _make_string_list(v._type_name for v in items)
-            str_vals, str_keepalive = _make_string_list(
-                _typed_value_str(v) if v._wrapped is not None else "" for v in items
-            )
-            ok = ctypes.c_bool(False)
-            if (
-                not lib.ifcopenshell_ifcapi_entity_set_aggregate_typed_value(
-                    _instance_handle_ptr(h), attr, ctypes.byref(type_names), ctypes.byref(str_vals), ctypes.byref(ok)
-                )
-                or not ok.value
-            ):
-                err = lib.ifcopenshell_last_error_message()
-                raise RuntimeError(err.decode("utf-8", errors="replace") if err else f"Failed to set aggregate '{name}'")
-            return
         if isinstance(first, entity_instance):
             set_generated_instance_list(items)
             return
