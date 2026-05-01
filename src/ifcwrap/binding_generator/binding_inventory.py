@@ -151,6 +151,68 @@ def _function_map(functions: list[CFunction]) -> dict[str, dict[str, str]]:
     }
 
 
+def _is_allowed_manual_generated_overlap(source: str, name: str) -> bool:
+    """Classify intentional manual ctypes declarations for generated C symbols."""
+    if source == "src/ifcapi/python/ifcopenshell/geom/_capi.py":
+        return name.startswith("ifcopenshell_ifcgeom_") or name in {
+            "ifcopenshell_double_list_destroy",
+            "ifcopenshell_ifcparse_instance_list_create_from_handles",
+            "ifcopenshell_ifcparse_instance_list_destroy",
+            "ifcopenshell_ifcparse_instance_list_get",
+            "ifcopenshell_ifcparse_instance_list_size",
+            "ifcopenshell_int32_list_destroy",
+            "ifcopenshell_int32_list_list_destroy",
+            "ifcopenshell_int32_list_list_list_destroy",
+            "ifcopenshell_string_destroy",
+            "ifcopenshell_string_list_destroy",
+        }
+    if source == "src/ifcapi/python/ifcopenshell/geom/main.py":
+        return name == "ifcopenshell_ifcparse_instance_list_create_from_handles"
+    if source == "src/ifcapi/python/ifcopenshell/__init__.py":
+        return name in {
+            "ifcopenshell_clear_error",
+            "ifcopenshell_ifc_file_by_id",
+            "ifcopenshell_ifc_file_key_value_store_iter",
+            "ifcopenshell_ifc_file_key_value_store_query",
+            "ifcopenshell_ifc_file_storage_mode",
+            "ifcopenshell_ifc_instance_destroy",
+            "ifcopenshell_ifc_instance_id",
+            "ifcopenshell_ifc_instance_streamer_destroy",
+            "ifcopenshell_ifc_instance_streamer_has_semicolon",
+            "ifcopenshell_ifc_instance_streamer_push_page",
+            "ifcopenshell_ifc_instance_streamer_read_instance_py",
+            "ifcopenshell_last_error_message",
+        }
+    if source == "src/ifcapi/python/ifcopenshell/entity_instance.py":
+        return name in {
+            "ifcopenshell_double_list_destroy",
+            "ifcopenshell_double_list_list_destroy",
+            "ifcopenshell_ifc_instance_get_argument",
+            "ifcopenshell_ifc_instance_set_argument_as_aggregate_of_aggregate_of_entity_instance",
+            "ifcopenshell_ifcparse_attribute_value_as_bool",
+            "ifcopenshell_ifcparse_attribute_value_as_double",
+            "ifcopenshell_ifcparse_attribute_value_as_double_list",
+            "ifcopenshell_ifcparse_attribute_value_as_double_list_list",
+            "ifcopenshell_ifcparse_attribute_value_as_enumeration_value",
+            "ifcopenshell_ifcparse_attribute_value_as_instance",
+            "ifcopenshell_ifcparse_attribute_value_as_instance_list",
+            "ifcopenshell_ifcparse_attribute_value_as_int32",
+            "ifcopenshell_ifcparse_attribute_value_as_int32_list",
+            "ifcopenshell_ifcparse_attribute_value_as_int32_list_list",
+            "ifcopenshell_ifcparse_attribute_value_as_string",
+            "ifcopenshell_ifcparse_attribute_value_as_string_list",
+            "ifcopenshell_ifcparse_attribute_value_destroy",
+            "ifcopenshell_ifcparse_attribute_value_is_null",
+            "ifcopenshell_ifcparse_attribute_value_type",
+            "ifcopenshell_ifcparse_instance_list_destroy",
+            "ifcopenshell_ifcparse_instance_list_get",
+            "ifcopenshell_ifcparse_instance_list_size",
+            "ifcopenshell_int32_list_destroy",
+            "ifcopenshell_int32_list_list_destroy",
+        }
+    return False
+
+
 def _collect_highlevel_headers(repo_root: Path) -> list[Path]:
     include_dir = repo_root / "src" / "ifcapi" / "include" / "ifcapi"
     if not include_dir.exists():
@@ -198,10 +260,21 @@ def build_inventory(repo_root: Path) -> dict[str, Any]:
     generated_ctypes_symbols = {name: sorted(set(paths)) for name, paths in sorted(generated_ctypes_symbols.items())}
 
     generated_names = {function.name for function in generated}
+    generated_highlevel_names = {function.name for function in generated if _generated_slice(function.name) == "ifcapi"}
     highlevel_names = {function.name for function in highlevel}
     exported_names = generated_names | highlevel_names
     manual_ctypes_names = set(manual_ctypes_symbols)
     generated_ctypes_names = set(generated_ctypes_symbols)
+
+    allowed_manual_generated_overlap: list[dict[str, str]] = []
+    unexpected_manual_generated_overlap: list[dict[str, str]] = []
+    for name in sorted(manual_ctypes_names & generated_names):
+        for source in manual_ctypes_symbols[name]:
+            item = {"name": name, "source": source}
+            if _is_allowed_manual_generated_overlap(source, name):
+                allowed_manual_generated_overlap.append(item)
+            else:
+                unexpected_manual_generated_overlap.append(item)
 
     generated_by_concept: dict[str, list[str]] = {}
     for name in generated_names:
@@ -239,6 +312,14 @@ def build_inventory(repo_root: Path) -> dict[str, Any]:
             },
             "symbols": _function_map(generated),
         },
+        "generated_highlevel_c": {
+            "symbol_count": len(generated_highlevel_names),
+            "symbols": {
+                name: data
+                for name, data in _function_map(generated).items()
+                if name in generated_highlevel_names
+            },
+        },
         "handwritten_highlevel_c": {
             "header_count": len(_collect_highlevel_headers(repo_root)),
             "symbol_count": len(highlevel_names),
@@ -249,6 +330,7 @@ def build_inventory(repo_root: Path) -> dict[str, Any]:
             "symbol_count": len(generated_ctypes_names),
             "symbols": generated_ctypes_symbols,
             "missing_from_c_headers": sorted(generated_ctypes_names - exported_names),
+            "missing_generated_c_symbols": sorted(generated_names - generated_ctypes_names),
             "declared_in_c_headers": sorted(generated_ctypes_names & exported_names),
         },
         "manual_python_ctypes": {
@@ -257,6 +339,8 @@ def build_inventory(repo_root: Path) -> dict[str, Any]:
             "symbols": manual_ctypes_symbols,
             "missing_from_c_headers": sorted(manual_ctypes_names - exported_names),
             "declared_in_c_headers": sorted(manual_ctypes_names & exported_names),
+            "allowed_generated_c_redeclarations": allowed_manual_generated_overlap,
+            "unexpected_generated_c_redeclarations": unexpected_manual_generated_overlap,
         },
         "duplication": {
             "potential_core_highlevel": potential_duplicates,

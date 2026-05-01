@@ -65,6 +65,15 @@ def test_host_metadata_derives_ctypes_relevant_layouts_and_signatures(tmp_path: 
                   - name: values
                     type:
                       kind: double_list
+              - receiver: item
+                expose_as: set_counts
+                cpp_name: set_counts
+                returns:
+                  kind: void
+                params:
+                  - name: values
+                    type:
+                      kind: int64_list
             """
         ).strip()
         + "\n",
@@ -84,6 +93,7 @@ def test_host_metadata_derives_ctypes_relevant_layouts_and_signatures(tmp_path: 
     assert metadata.value_types["string"].fields[0].name == "data"
     assert metadata.value_types["string_list"].destroy_function == "ifcopenshell_string_list_destroy"
     assert metadata.value_types["double_list"].fields[0].c_type == "double*"
+    assert metadata.value_types["int64_list"].fields[0].c_type == "int64_t*"
     assert metadata.value_types["demo_item_list"].fields[0].c_type == "ifcopenshell_demo_item_t**"
     assert metadata.value_types["demo_item_list_list"].fields[0].c_type == "ifcopenshell_demo_item_list_t*"
 
@@ -105,4 +115,10 @@ def test_host_metadata_derives_ctypes_relevant_layouts_and_signatures(tmp_path: 
     assert [param.c_type for param in set_values.params] == [
         "ifcopenshell_demo_item_t*",
         "const ifcopenshell_double_list_t*",
+    ]
+
+    set_counts = metadata.functions["ifcopenshell_demo_item_set_counts"]
+    assert [param.c_type for param in set_counts.params] == [
+        "ifcopenshell_demo_item_t*",
+        "const ifcopenshell_int64_list_t*",
     ]

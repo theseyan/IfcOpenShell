@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/classification.h"
 
 #include "ifcparse/IfcFile.h"
 #include "ifcparse/IfcSchema.h"
@@ -196,27 +197,20 @@ void collect_inherited(IfcUtil::IfcBaseClass* element, bool should_inherit,
 
 }  // namespace
 
-extern "C" {
+namespace ifcapi {
+namespace bindings {
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_classification_get_references(
-    ifcopenshell_ifc_instance_t* element, bool should_inherit, uint32_t* out_count)
-{
-    if (out_count) *out_count = 0;
-    auto* e = get_entity(element);
-    if (!e) return nullptr;
+aggregate_of_instance::ptr classification_get_references(IfcUtil::IfcBaseClass* element, bool should_inherit) {
+    aggregate_of_instance::ptr result(new aggregate_of_instance);
+    if (!element) return result;
 
-    std::vector<IfcUtil::IfcBaseClass*> result;
-    collect_for_element(e, should_inherit, result);
-    if (result.empty()) return nullptr;
-
-    auto** buf = static_cast<ifcopenshell_ifc_instance_t**>(
-        std::malloc(result.size() * sizeof(ifcopenshell_ifc_instance_t*)));
-    if (!buf) return nullptr;
-    for (size_t i = 0; i < result.size(); ++i) {
-        buf[i] = ifcopenshell::capi::wrap_instance(result[i]);
+    std::vector<IfcUtil::IfcBaseClass*> items;
+    collect_for_element(element, should_inherit, items);
+    for (auto* item : items) {
+        if (item) result->push(item);
     }
-    if (out_count) *out_count = static_cast<uint32_t>(result.size());
-    return buf;
+    return result;
 }
 
-}  // extern "C"
+} // namespace bindings
+} // namespace ifcapi

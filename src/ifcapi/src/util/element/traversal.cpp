@@ -91,6 +91,25 @@ ifcopenshell_ifc_instance_t** alloc_handles_unique(
     return alloc_handles(unique, out_count);
 }
 
+aggregate_of_instance::ptr make_instance_list(const std::vector<IfcUtil::IfcBaseClass*>& items) {
+    aggregate_of_instance::ptr result(new aggregate_of_instance);
+    for (auto* item : items) {
+        if (item) result->push(item);
+    }
+    return result;
+}
+
+aggregate_of_instance::ptr make_unique_instance_list(const std::vector<IfcUtil::IfcBaseClass*>& items) {
+    std::vector<IfcUtil::IfcBaseClass*> unique;
+    std::unordered_set<int32_t> seen;
+    for (auto* item : items) {
+        if (!item) continue;
+        int32_t id = static_cast<int32_t>(item->id());
+        if (id == 0 || seen.insert(id).second) unique.push_back(item);
+    }
+    return make_instance_list(unique);
+}
+
 // Forward declaration for mutual recursion.
 void collect_elements_by_material(IfcParse::IfcFile* f, IfcUtil::IfcBaseClass* mat,
                                   std::unordered_set<int32_t>& seen,
@@ -208,69 +227,56 @@ bool is_userdefined_predefined_type(IfcUtil::IfcBaseClass* e) {
 
 }  // namespace
 
-extern "C" {
+namespace ifcapi {
+namespace bindings {
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_types(
-    ifcopenshell_ifc_instance_t* type_element, uint32_t* out_count)
-{
-    if (out_count) *out_count = 0;
-    auto* e = get_entity(type_element);
-    if (!e) return nullptr;
-    auto* f = e->file_;
+aggregate_of_instance::ptr element_get_types(IfcUtil::IfcBaseClass* type_element) {
+    if (!type_element) return aggregate_of_instance::ptr(new aggregate_of_instance);
+    auto* f = type_element->file_;
     const char* attr = is_ifc2x3(f) ? "ObjectTypeOf" : "Types";
-    auto inv = inverse_attr(e, attr);
-    if (!inv || inv->size() == 0) return nullptr;
-    return alloc_handles(read_ref_list((*inv)[0], "RelatedObjects"), out_count);
+    auto inv = inverse_attr(type_element, attr);
+    if (!inv || inv->size() == 0) return aggregate_of_instance::ptr(new aggregate_of_instance);
+    return make_instance_list(read_ref_list((*inv)[0], "RelatedObjects"));
 }
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_shape_aspects(
-    ifcopenshell_ifc_instance_t* element, bool should_inherit, uint32_t* out_count)
+aggregate_of_instance::ptr element_get_shape_aspects(
+    IfcUtil::IfcBaseClass* element,
+    bool should_inherit)
 {
-    if (out_count) *out_count = 0;
-    auto* e = get_entity(element);
-    if (!e) return nullptr;
-    auto* f = e->file_;
+    if (!element) return aggregate_of_instance::ptr(new aggregate_of_instance);
+    auto* f = element->file_;
 
     std::vector<IfcUtil::IfcBaseClass*> result;
 
-    if (ifcapi::has_attr(e, "Representation")) {
+    if (ifcapi::has_attr(element, "Representation")) {
         if (should_inherit) {
-            auto* type_e = ifcapi::bindings::element_get_type(e);
+            auto* type_e = element_get_type(element);
             if (type_e) {
-                ifcopenshell_ifc_instance_t type_h = {type_e, false};
-                uint32_t inherited_count = 0;
-                auto** inherited = ifcopenshell_util_element_get_shape_aspects(&type_h, false, &inherited_count);
+                auto inherited = element_get_shape_aspects(type_e, false);
                 if (inherited) {
-                    for (uint32_t i = 0; i < inherited_count; ++i) {
-                        if (inherited[i]) result.push_back(inherited[i]->ptr);
-                    }
-                    ifcopenshell_free_instance_array(inherited, inherited_count);
+                    for (size_t i = 0; i < inherited->size(); ++i) result.push_back((*inherited)[i]);
                 }
             }
         }
-        auto* rep = read_ref(e, "Representation");
+        auto* rep = read_ref(element, "Representation");
         if (rep) {
             for (auto* sa : read_any_list(rep, "HasShapeAspects")) result.push_back(sa);
         }
-        return alloc_handles(result, out_count);
+        return make_instance_list(result);
     }
 
-    if (is_ifc2x3(f)) return nullptr;
+    if (is_ifc2x3(f)) return aggregate_of_instance::ptr(new aggregate_of_instance);
 
-    for (auto* rmap : read_ref_list(e, "RepresentationMaps")) {
+    for (auto* rmap : read_ref_list(element, "RepresentationMaps")) {
         for (auto* sa : read_any_list(rmap, "HasShapeAspects")) result.push_back(sa);
     }
-    return alloc_handles(result, out_count);
+    return make_instance_list(result);
 }
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_groups(
-    ifcopenshell_ifc_instance_t* element, uint32_t* out_count)
-{
-    if (out_count) *out_count = 0;
-    auto* e = get_entity(element);
-    if (!e) return nullptr;
-    auto inv = inverse_attr(e, "HasAssignments");
-    if (!inv) return nullptr;
+aggregate_of_instance::ptr element_get_groups(IfcUtil::IfcBaseClass* element) {
+    if (!element) return aggregate_of_instance::ptr(new aggregate_of_instance);
+    auto inv = inverse_attr(element, "HasAssignments");
+    if (!inv) return aggregate_of_instance::ptr(new aggregate_of_instance);
     std::vector<IfcUtil::IfcBaseClass*> result;
     for (size_t i = 0; i < inv->size(); ++i) {
         auto* rel = (*inv)[i];
@@ -278,17 +284,13 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_groups
             if (auto* g = read_ref(rel, "RelatingGroup")) result.push_back(g);
         }
     }
-    return alloc_handles(result, out_count);
+    return make_instance_list(result);
 }
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_controls(
-    ifcopenshell_ifc_instance_t* element, uint32_t* out_count)
-{
-    if (out_count) *out_count = 0;
-    auto* e = get_entity(element);
-    if (!e) return nullptr;
-    auto inv = inverse_attr(e, "HasAssignments");
-    if (!inv) return nullptr;
+aggregate_of_instance::ptr element_get_controls(IfcUtil::IfcBaseClass* element) {
+    if (!element) return aggregate_of_instance::ptr(new aggregate_of_instance);
+    auto inv = inverse_attr(element, "HasAssignments");
+    if (!inv) return aggregate_of_instance::ptr(new aggregate_of_instance);
     std::vector<IfcUtil::IfcBaseClass*> result;
     for (size_t i = 0; i < inv->size(); ++i) {
         auto* rel = (*inv)[i];
@@ -296,18 +298,14 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_contro
             if (auto* c = read_ref(rel, "RelatingControl")) result.push_back(c);
         }
     }
-    return alloc_handles(result, out_count);
+    return make_instance_list(result);
 }
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_parts(
-    ifcopenshell_ifc_instance_t* element, uint32_t* out_count)
-{
-    if (out_count) *out_count = 0;
-    auto* e = get_entity(element);
-    if (!e) return nullptr;
-    bool not2x3 = !is_ifc2x3(e->file_);
-    auto inv = inverse_attr(e, "IsDecomposedBy");
-    if (!inv) return nullptr;
+aggregate_of_instance::ptr element_get_parts(IfcUtil::IfcBaseClass* element) {
+    if (!element) return aggregate_of_instance::ptr(new aggregate_of_instance);
+    bool not2x3 = !is_ifc2x3(element->file_);
+    auto inv = inverse_attr(element, "IsDecomposedBy");
+    if (!inv) return aggregate_of_instance::ptr(new aggregate_of_instance);
     std::vector<IfcUtil::IfcBaseClass*> result;
     for (size_t i = 0; i < inv->size(); ++i) {
         auto* rel = (*inv)[i];
@@ -315,48 +313,36 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_parts(
             for (auto* o : read_ref_list(rel, "RelatedObjects")) result.push_back(o);
         }
     }
-    return alloc_handles(result, out_count);
+    return make_instance_list(result);
 }
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_contained(
-    ifcopenshell_ifc_instance_t* element, uint32_t* out_count)
-{
-    if (out_count) *out_count = 0;
-    auto* e = get_entity(element);
-    if (!e) return nullptr;
-    auto inv = inverse_attr(e, "ContainsElements");
-    if (!inv) return nullptr;
+aggregate_of_instance::ptr element_get_contained(IfcUtil::IfcBaseClass* element) {
+    if (!element) return aggregate_of_instance::ptr(new aggregate_of_instance);
+    auto inv = inverse_attr(element, "ContainsElements");
+    if (!inv) return aggregate_of_instance::ptr(new aggregate_of_instance);
     std::vector<IfcUtil::IfcBaseClass*> result;
     for (size_t i = 0; i < inv->size(); ++i) {
         auto* rel = (*inv)[i];
         for (auto* o : read_ref_list(rel, "RelatedElements")) result.push_back(o);
     }
-    return alloc_handles(result, out_count);
+    return make_instance_list(result);
 }
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_referenced_structures(
-    ifcopenshell_ifc_instance_t* element, uint32_t* out_count)
-{
-    if (out_count) *out_count = 0;
-    auto* e = get_entity(element);
-    if (!e) return nullptr;
-    auto inv = inverse_attr(e, "ReferencedInStructures");
-    if (!inv) return nullptr;
+aggregate_of_instance::ptr element_get_referenced_structures(IfcUtil::IfcBaseClass* element) {
+    if (!element) return aggregate_of_instance::ptr(new aggregate_of_instance);
+    auto inv = inverse_attr(element, "ReferencedInStructures");
+    if (!inv) return aggregate_of_instance::ptr(new aggregate_of_instance);
     std::vector<IfcUtil::IfcBaseClass*> result;
     for (size_t i = 0; i < inv->size(); ++i) {
         if (auto* s = read_ref((*inv)[i], "RelatingStructure")) result.push_back(s);
     }
-    return alloc_handles(result, out_count);
+    return make_instance_list(result);
 }
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_structure_referenced_elements(
-    ifcopenshell_ifc_instance_t* structure, uint32_t* out_count)
-{
-    if (out_count) *out_count = 0;
-    auto* e = get_entity(structure);
-    if (!e) return nullptr;
-    auto inv = inverse_attr(e, "ReferencesElements");
-    if (!inv) return nullptr;
+aggregate_of_instance::ptr element_get_structure_referenced_elements(IfcUtil::IfcBaseClass* structure) {
+    if (!structure) return aggregate_of_instance::ptr(new aggregate_of_instance);
+    auto inv = inverse_attr(structure, "ReferencesElements");
+    if (!inv) return aggregate_of_instance::ptr(new aggregate_of_instance);
     std::vector<IfcUtil::IfcBaseClass*> result;
     std::unordered_set<int32_t> seen;
     for (size_t i = 0; i < inv->size(); ++i) {
@@ -364,49 +350,35 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_struct
             add_unique(el, seen, result);
         }
     }
-    return alloc_handles(result, out_count);
+    return make_instance_list(result);
 }
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_openings(
-    ifcopenshell_ifc_instance_t* element, uint32_t* out_count)
-{
-    if (out_count) *out_count = 0;
-    auto* e = get_entity(element);
-    if (!e) return nullptr;
+aggregate_of_instance::ptr element_get_openings(IfcUtil::IfcBaseClass* element) {
+    if (!element) return aggregate_of_instance::ptr(new aggregate_of_instance);
     std::vector<IfcUtil::IfcBaseClass*> result;
     std::unordered_set<int32_t> seen;
-    collect_openings(e, seen, result, e->file_);
-    return alloc_handles(result, out_count);
+    collect_openings(element, seen, result, element->file_);
+    return make_instance_list(result);
 }
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_util_element_get_filled_void(
-    ifcopenshell_ifc_instance_t* element)
-{
-    auto* e = get_entity(element);
-    if (!e) return nullptr;
-    auto inv = inverse_attr(e, "FillsVoids");
+IfcUtil::IfcBaseClass* element_get_filled_void(IfcUtil::IfcBaseClass* element) {
+    if (!element) return nullptr;
+    auto inv = inverse_attr(element, "FillsVoids");
     if (!inv || inv->size() == 0) return nullptr;
-    return ifcopenshell::capi::wrap_instance(read_ref((*inv)[0], "RelatingOpeningElement"));
+    return read_ref((*inv)[0], "RelatingOpeningElement");
 }
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_util_element_get_voided_element(
-    ifcopenshell_ifc_instance_t* element)
-{
-    auto* e = get_entity(element);
-    if (!e) return nullptr;
-    auto inv = inverse_attr(e, "VoidsElements");
+IfcUtil::IfcBaseClass* element_get_voided_element(IfcUtil::IfcBaseClass* element) {
+    if (!element) return nullptr;
+    auto inv = inverse_attr(element, "VoidsElements");
     if (!inv || inv->size() == 0) return nullptr;
-    return ifcopenshell::capi::wrap_instance(read_ref((*inv)[0], "RelatingBuildingElement"));
+    return read_ref((*inv)[0], "RelatingBuildingElement");
 }
 
-IFCAPI_EXPORT bool ifcopenshell_util_element_is_userdefined_type(
-    ifcopenshell_ifc_instance_t* element)
-{
-    auto* e = get_entity(element);
-    if (!e) return false;
+bool element_is_userdefined_type(IfcUtil::IfcBaseClass* element) {
+    if (!element) return false;
 
-    // Try the type element first (matches upstream get_type recursion).
-    auto* type_e = ifcapi::bindings::element_get_type(e);
+    auto* type_e = element_get_type(element);
     bool result = false;
     bool decided = false;
 
@@ -430,22 +402,18 @@ IFCAPI_EXPORT bool ifcopenshell_util_element_is_userdefined_type(
     }
     if (decided) return result;
 
-    std::string pt = ifcapi::get_string_attr(e, "PredefinedType");
+    std::string pt = ifcapi::get_string_attr(element, "PredefinedType");
     if (pt == "USERDEFINED") return true;
     if (pt.empty()) {
-        return !ifcapi::get_string_attr(e, "ObjectType").empty();
+        return !ifcapi::get_string_attr(element, "ObjectType").empty();
     }
     return false;
 }
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_referenced_elements(
-    ifcopenshell_ifc_instance_t* reference, uint32_t* out_count)
-{
-    if (out_count) *out_count = 0;
-    auto* ref = get_entity(reference);
-    if (!ref) return nullptr;
-    auto* f = ref->file_;
-    if (!f) return nullptr;
+aggregate_of_instance::ptr element_get_referenced_elements(IfcUtil::IfcBaseClass* reference) {
+    if (!reference) return make_instance_list({});
+    auto* f = reference->file_;
+    if (!f) return make_instance_list({});
 
     struct RefData { const char* inverse_attr; const char* rel_class; const char* relating_attr; };
     auto lookup = [](const std::string& cls) -> RefData {
@@ -466,8 +434,7 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_refere
 
     std::vector<IfcUtil::IfcBaseClass*> result;
     std::unordered_set<int32_t> seen;
-    std::string cls = ref->declaration().name();
-    auto rd = lookup(cls);
+    auto rd = lookup(reference->declaration().name());
 
     if (is_ifc2x3(f)) {
         if (rd.rel_class) {
@@ -475,7 +442,7 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_refere
                 auto insts = f->instances_by_type(std::string(rd.rel_class));
                 if (insts) {
                     for (auto& it : *insts) {
-                        if (read_ref(it, rd.relating_attr) == ref) {
+                        if (read_ref(it, rd.relating_attr) == reference) {
                             for (auto* obj : read_ref_list(it, "RelatedObjects")) {
                                 add_unique(obj, seen, result);
                             }
@@ -485,62 +452,48 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_refere
             } catch (...) {}
         }
     } else {
-        if (is_a(ref, "IfcExternalReference")) {
-            for (auto* erel : read_any_list(ref, "ExternalReferenceForResources")) {
+        if (is_a(reference, "IfcExternalReference")) {
+            for (auto* erel : read_any_list(reference, "ExternalReferenceForResources")) {
                 for (auto* obj : read_any_list(erel, "RelatedResourceObjects")) {
                     add_unique(obj, seen, result);
                 }
             }
         }
         if (rd.inverse_attr) {
-            for (auto* rel : read_any_list(ref, rd.inverse_attr)) {
+            for (auto* rel : read_any_list(reference, rd.inverse_attr)) {
                 for (auto* obj : read_ref_list(rel, "RelatedObjects")) {
                     add_unique(obj, seen, result);
                 }
             }
         }
     }
-    return alloc_handles(result, out_count);
+    return make_instance_list(result);
 }
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_elements_by_material(
-    ifcopenshell_ifc_instance_t* material, uint32_t* out_count)
-{
-    if (out_count) *out_count = 0;
-    auto* m = get_entity(material);
-    if (!m) return nullptr;
-    auto* f = m->file_;
+aggregate_of_instance::ptr element_get_elements_by_material(IfcUtil::IfcBaseClass* material) {
+    if (!material) return make_instance_list({});
     std::vector<IfcUtil::IfcBaseClass*> result;
     std::unordered_set<int32_t> seen;
-    collect_elements_by_material(f, m, seen, result);
-    return alloc_handles(result, out_count);
+    collect_elements_by_material(material->file_, material, seen, result);
+    return make_instance_list(result);
 }
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_elements_by_representation(
-    ifcopenshell_ifc_instance_t* representation, uint32_t* out_count)
-{
-    if (out_count) *out_count = 0;
-    auto* r = get_entity(representation);
-    if (!r) return nullptr;
-    auto* f = r->file_;
+aggregate_of_instance::ptr element_get_elements_by_representation(IfcUtil::IfcBaseClass* representation) {
+    if (!representation) return make_instance_list({});
     std::vector<IfcUtil::IfcBaseClass*> result;
     std::unordered_set<int32_t> seen;
-    collect_elements_by_representation(f, r, seen, result);
-    return alloc_handles(result, out_count);
+    collect_elements_by_representation(representation->file_, representation, seen, result);
+    return make_instance_list(result);
 }
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_elements_by_style(
-    ifcopenshell_ifc_instance_t* style, uint32_t* out_count)
-{
-    if (out_count) *out_count = 0;
-    auto* s = get_entity(style);
-    if (!s) return nullptr;
-    auto* f = s->file_;
+aggregate_of_instance::ptr element_get_elements_by_style(IfcUtil::IfcBaseClass* style) {
+    if (!style) return make_instance_list({});
+    auto* f = style->file_;
 
     std::vector<IfcUtil::IfcBaseClass*> result;
     std::unordered_set<int32_t> seen;
 
-    std::vector<IfcUtil::IfcBaseClass*> queue = ifcapi::get_all_inverses(f, s);
+    std::vector<IfcUtil::IfcBaseClass*> queue = ifcapi::get_all_inverses(f, style);
     while (!queue.empty()) {
         auto* inv = queue.back();
         queue.pop_back();
@@ -574,18 +527,14 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_elemen
             }
         }
     }
-    return alloc_handles(result, out_count);
+    return make_instance_list(result);
 }
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_elements_by_profile(
-    ifcopenshell_ifc_instance_t* profile, uint32_t* out_count)
-{
-    if (out_count) *out_count = 0;
-    auto* p = get_entity(profile);
-    if (!p) return nullptr;
-    auto* f = p->file_;
+aggregate_of_instance::ptr element_get_elements_by_profile(IfcUtil::IfcBaseClass* profile) {
+    if (!profile) return make_instance_list({});
+    auto* f = profile->file_;
 
-    std::vector<IfcUtil::IfcBaseClass*> queue = ifcapi::get_all_inverses(f, p);
+    std::vector<IfcUtil::IfcBaseClass*> queue = ifcapi::get_all_inverses(f, profile);
     std::unordered_set<int32_t> processed;
     std::vector<IfcUtil::IfcBaseClass*> reps;
     std::unordered_set<int32_t> rep_seen;
@@ -609,20 +558,16 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_elemen
     std::vector<IfcUtil::IfcBaseClass*> result;
     std::unordered_set<int32_t> seen;
     for (auto* rep : reps) collect_elements_by_representation(f, rep, seen, result);
-    return alloc_handles(result, out_count);
+    return make_instance_list(result);
 }
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_elements_by_layer(
-    ifcopenshell_ifc_instance_t* layer, uint32_t* out_count)
-{
-    if (out_count) *out_count = 0;
-    auto* l = get_entity(layer);
-    if (!l) return nullptr;
-    auto* f = l->file_;
+aggregate_of_instance::ptr element_get_elements_by_layer(IfcUtil::IfcBaseClass* layer) {
+    if (!layer) return make_instance_list({});
+    auto* f = layer->file_;
 
     std::vector<IfcUtil::IfcBaseClass*> result;
     std::unordered_set<int32_t> seen;
-    for (auto* item : read_ref_list(l, "AssignedItems")) {
+    for (auto* item : read_ref_list(layer, "AssignedItems")) {
         if (is_a(item, "IfcShapeRepresentation")) {
             collect_elements_by_representation(f, item, seen, result);
         } else if (is_a(item, "IfcRepresentationItem")) {
@@ -633,23 +578,19 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_elemen
             }
         }
     }
-    return alloc_handles(result, out_count);
+    return make_instance_list(result);
 }
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_layers(
-    ifcopenshell_ifc_instance_t* element, uint32_t* out_count)
-{
-    if (out_count) *out_count = 0;
-    auto* e = get_entity(element);
-    if (!e) return nullptr;
-    auto* f = e->file_;
+aggregate_of_instance::ptr element_get_layers(IfcUtil::IfcBaseClass* element) {
+    if (!element) return make_instance_list({});
+    auto* f = element->file_;
     bool ifc2x3 = is_ifc2x3(f);
 
     std::vector<IfcUtil::IfcBaseClass*> representations;
-    if (auto* rep = read_ref(e, "Representation")) {
+    if (auto* rep = read_ref(element, "Representation")) {
         representations.push_back(rep);
     } else {
-        for (auto* rm : read_ref_list(e, "RepresentationMaps")) representations.push_back(rm);
+        for (auto* rm : read_ref_list(element, "RepresentationMaps")) representations.push_back(rm);
     }
 
     std::vector<IfcUtil::IfcBaseClass*> result;
@@ -666,20 +607,15 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_element_get_layers
             }
         }
     }
-    return alloc_handles_unique(result, out_count);
+    return make_unique_instance_list(result);
 }
 
-IFCAPI_EXPORT void ifcopenshell_util_element_replace_element(
-    ifcopenshell_ifc_instance_t* old_element,
-    ifcopenshell_ifc_instance_t* new_element)
-{
-    auto* old_e = get_entity(old_element);
-    auto* new_e = get_entity(new_element);
-    if (!old_e || !new_e) return;
-    auto* f = old_e->file_;
+void element_replace_element(IfcUtil::IfcBaseClass* old_element, IfcUtil::IfcBaseClass* new_element) {
+    if (!old_element || !new_element) return;
+    auto* f = old_element->file_;
     if (!f) return;
     aggregate_of_instance::ptr inverses;
-    try { inverses = f->getInverse(old_e->id(), nullptr, -1); } catch (...) { return; }
+    try { inverses = f->getInverse(old_element->id(), nullptr, -1); } catch (...) { return; }
     if (!inverses) return;
     // Materialize the list first so structural mutation doesn't invalidate it.
     std::vector<IfcUtil::IfcBaseClass*> list;
@@ -695,8 +631,8 @@ IFCAPI_EXPORT void ifcopenshell_util_element_replace_element(
                 auto v = inv->get_attribute_value(i);
                 if (v.isNull()) continue;
                 if (v.type() == IfcUtil::Argument_ENTITY_INSTANCE) {
-                    if ((IfcUtil::IfcBaseClass*)v == old_e) {
-                        inv->set_attribute_value(i, new_e);
+                    if ((IfcUtil::IfcBaseClass*)v == old_element) {
+                        inv->set_attribute_value(i, new_element);
                     }
                 } else if (v.type() == IfcUtil::Argument_AGGREGATE_OF_ENTITY_INSTANCE) {
                     auto agg = (aggregate_of_instance::ptr)v;
@@ -704,7 +640,7 @@ IFCAPI_EXPORT void ifcopenshell_util_element_replace_element(
                     bool changed = false;
                     auto repl = aggregate_of_instance::ptr(new aggregate_of_instance);
                     for (auto& it : *agg) {
-                        if (it == old_e) { repl->push(new_e); changed = true; }
+                        if (it == old_element) { repl->push(new_element); changed = true; }
                         else { repl->push(it); }
                     }
                     if (changed) {
@@ -716,16 +652,13 @@ IFCAPI_EXPORT void ifcopenshell_util_element_replace_element(
     }
 }
 
-IFCAPI_EXPORT void ifcopenshell_util_element_remove_deep(
-    ifcopenshell_ifc_instance_t* element)
-{
-    auto* e = get_entity(element);
-    if (!e) return;
-    auto* f = e->file_;
+void element_remove_deep(IfcUtil::IfcBaseClass* element) {
+    if (!element) return;
+    auto* f = element->file_;
     if (!f) return;
 
     aggregate_of_instance::ptr traversed;
-    try { traversed = f->traverse(e, -1); } catch (...) { return; }
+    try { traversed = f->traverse(element, -1); } catch (...) { return; }
     if (!traversed) return;
     std::vector<IfcUtil::IfcBaseClass*> subgraph;
     std::unordered_set<int32_t> subgraph_set;
@@ -754,4 +687,5 @@ IFCAPI_EXPORT void ifcopenshell_util_element_remove_deep(
     }
 }
 
-}  // extern "C"
+}  // namespace bindings
+}  // namespace ifcapi

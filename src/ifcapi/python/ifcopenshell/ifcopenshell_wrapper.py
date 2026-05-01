@@ -101,58 +101,28 @@ _INV_AGG_NAMES = {0: "bag", 1: "set", 2: ""}
 
 
 def _take_string(s: ifcopenshell_string_t) -> str:
-    """Decode and free an ``ifcopenshell_string_t`` produced by the C ABI."""
-    try:
-        if s.data and s.size:
-            return ctypes.string_at(s.data, s.size).decode("utf-8")
-        return ""
-    finally:
-        _bind().ifcopenshell_string_destroy(byref(s))
+    return _generated_capi.take_string(_bind(), s)
 
 
 def _take_string_list(lst: ifcopenshell_string_list_t) -> tuple:
-    try:
-        out = []
-        for i in range(lst.size):
-            item = lst.items[i]
-            if item.data and item.size:
-                out.append(ctypes.string_at(item.data, item.size).decode("utf-8"))
-            else:
-                out.append("")
-        return tuple(out)
-    finally:
-        _bind().ifcopenshell_string_list_destroy(byref(lst))
+    return _generated_capi.take_string_list(_bind(), lst)
+
+
+def _call_string(fn, *args):
+    return _generated_capi.call_string(_bind(), fn, *args, value_type=ifcopenshell_string_t)
+
+
+def _call_string_list(fn, *args):
+    return _generated_capi.call_string_list(_bind(), fn, *args, value_type=ifcopenshell_string_list_t)
 
 
 def _take_bool_list(lst: ifcopenshell_bool_list_t) -> tuple:
-    try:
-        return tuple(bool(lst.items[i]) for i in range(lst.size))
-    finally:
-        _bind().ifcopenshell_bool_list_destroy(byref(lst))
+    return _generated_capi.take_bool_list(_bind(), lst)
 
 
 def _move_handle_list(lst, destroy_list_fn, wrap):
-    """Take ownership of items in ``lst``, returning a tuple of wrapped handles.
-
-    ctypes returns *live* references when subscripting an array, so we must
-    capture each item's address as a Python ``int`` before nullifying the
-    slot - otherwise the variable still aliases the (now-NULL) array entry
-    and segfaults on dereference.
-    """
-    try:
-        moved_addrs = []
-        null = _HandleStructP()
-        for i in range(lst.size):
-            slot = lst.items[i]
-            addr = ctypes.addressof(slot.contents) if slot else 0
-            moved_addrs.append(addr)
-            lst.items[i] = null
-        return tuple(
-            wrap(ctypes.cast(c_void_p(a), _HandleStructP) if a else _HandleStructP())
-            for a in moved_addrs
-        )
-    finally:
-        destroy_list_fn(byref(lst))
+    """Take ownership of items in ``lst``, returning a tuple of wrapped handles."""
+    return tuple(wrap(handle) for handle in _generated_capi.move_handle_list(_bind(), lst, destroy_list_fn, _HandleStructP))
 
 
 # ---------------------------------------------------------------------------
@@ -223,11 +193,8 @@ class _Handle:
 
 def _opt_handle(out, destroy_fn, ctor):
     """Wrap an out-handle if it has a non-null inner pointer; else free it."""
-    if out and out.contents.ptr:
-        return ctor(out)
-    if out:
-        destroy_fn(out)
-    return None
+    handle = _generated_capi.take_nullable_handle(_bind(), out, destroy=destroy_fn)
+    return ctor(handle) if handle else None
 
 
 # ---------------------------------------------------------------------------
@@ -452,10 +419,7 @@ class declaration(_Handle):
     _destroy_fn_name = "ifcopenshell_ifc_declaration_destroy"
 
     def name(self) -> str:
-        s = ifcopenshell_string_t()
-        if not _bind().ifcopenshell_ifc_declaration_name(self._h, byref(s)):
-            return ""
-        return _take_string(s)
+        return _call_string(_bind().ifcopenshell_ifc_declaration_name, self._h) or ""
 
     def is_(self, name: str) -> bool:
         v = c_bool(False)
@@ -609,10 +573,7 @@ class enumeration_type(declaration):
     _destroy_fn_name = "ifcopenshell_ifc_enumeration_destroy"
 
     def enumeration_items(self) -> tuple:
-        lst = ifcopenshell_string_list_t()
-        if not _bind().ifcopenshell_ifc_enumeration_enumeration_items(self._h, byref(lst)):
-            return ()
-        return _take_string_list(lst)
+        return _call_string_list(_bind().ifcopenshell_ifc_enumeration_enumeration_items, self._h) or ()
 
     def __repr__(self) -> str:
         return "<enumeration %s: (%s)>" % (self.name(), ", ".join(self.enumeration_items()))
@@ -637,10 +598,7 @@ class attribute(_Handle):
     _destroy_fn_name = "ifcopenshell_ifc_attribute_destroy"
 
     def name(self) -> str:
-        s = ifcopenshell_string_t()
-        if not _bind().ifcopenshell_ifc_attribute_name(self._h, byref(s)):
-            return ""
-        return _take_string(s)
+        return _call_string(_bind().ifcopenshell_ifc_attribute_name, self._h) or ""
 
     def optional(self) -> bool:
         v = c_bool(False)
@@ -666,10 +624,7 @@ class inverse_attribute(_Handle):
     _destroy_fn_name = "ifcopenshell_ifc_inverse_attribute_destroy"
 
     def name(self) -> str:
-        s = ifcopenshell_string_t()
-        if not _bind().ifcopenshell_ifc_inverse_attribute_name(self._h, byref(s)):
-            return ""
-        return _take_string(s)
+        return _call_string(_bind().ifcopenshell_ifc_inverse_attribute_name, self._h) or ""
 
     def type_of_aggregation(self) -> int:
         v = c_int32(-1)
@@ -719,10 +674,7 @@ class schema_definition(_Handle):
     _destroy_fn_name = "ifcopenshell_ifc_schema_destroy"
 
     def name(self) -> str:
-        s = ifcopenshell_string_t()
-        if not _bind().ifcopenshell_ifc_schema_name(self._h, byref(s)):
-            return ""
-        return _take_string(s)
+        return _call_string(_bind().ifcopenshell_ifc_schema_name, self._h) or ""
 
     def declaration_by_name(self, name) -> Optional[declaration]:
         if isinstance(name, int):
@@ -771,10 +723,10 @@ def schema_by_name(name: str) -> schema_definition:
 
 
 def schema_names() -> tuple:
-    lst = ifcopenshell_string_list_t()
-    if not _bind().ifcopenshell_ifcparse_schema_names(byref(lst)):
+    result = _call_string_list(_bind().ifcopenshell_ifcparse_schema_names)
+    if result is None:
         raise RuntimeError(ifcopenshell.get_log() or "Failed to list schemas")
-    return _take_string_list(lst)
+    return result
 
 
 def register_schema(schema: schema_definition) -> None:
@@ -1033,10 +985,7 @@ def _split_json_objects(s: str) -> str:
 def get_log() -> str:
     """Return the accumulated parser/validator log and clear it (parity with SWIG)."""
     global _LOG_BUFFER
-    out = ifcopenshell_string_t()
-    if not _bind().ifcopenshell_ifcparse_get_log(byref(out)):
-        return ""
-    cpp_log = _take_string(out)
+    cpp_log = _call_string(_bind().ifcopenshell_ifcparse_get_log) or ""
     if _LOG_FORMAT == "json":
         cpp_log = _split_json_objects(cpp_log)
     if _LOG_BUFFER:

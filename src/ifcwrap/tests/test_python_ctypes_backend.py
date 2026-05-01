@@ -78,7 +78,32 @@ def test_render_python_ctypes_emits_structs_and_signatures(tmp_path: Path) -> No
     assert '"ifcopenshell_demo_create_file": (ctypes.c_bool, [ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(ifcopenshell_demo_file_t))])' in text
     assert '"ifcopenshell_demo_file_schema_name": (ctypes.c_bool, [ctypes.POINTER(ifcopenshell_demo_file_t), ctypes.POINTER(ifcopenshell_string_t)])' in text
     assert "def status_or_raise(lib, status, fallback):" in text
-    assert "def take_string(lib, value):" in text
+    assert "def call_string(lib, fn, *args, decode=True, value_type=None):" in text
+    assert "def call_string_list(lib, fn, *args, decode=True, value_type=None):" in text
+    assert "def call_int32_list(lib, fn, *args):" in text
+    assert "def call_uint32_list(lib, fn, *args):" in text
+    assert "def call_double_list(lib, fn, *args):" in text
+    assert "def call_string_or_raise(lib, fn, fallback, *args, decode=True, value_type=None):" in text
+    assert "def call_string_list_or_raise(lib, fn, fallback, *args, decode=True, value_type=None):" in text
+    assert "def call_int32_list_or_raise(lib, fn, fallback, *args):" in text
+    assert "def call_uint32_list_or_raise(lib, fn, fallback, *args):" in text
+    assert "def call_double_list_or_raise(lib, fn, fallback, *args):" in text
+    assert "def call_scalar(fn, c_type, *args):" in text
+    assert "def call_scalar_or_raise(lib, fn, c_type, fallback, *args):" in text
+    assert "def take_nullable_handle(lib, value, *, destroy=None):" in text
+    assert "def call_handle(lib, fn, *args, destroy=None, handle_pointer_type=None):" in text
+    assert "def call_handle_or_raise(lib, fn, fallback, *args, destroy=None, handle_pointer_type=None):" in text
+    assert "def take_string(lib, value, *, decode=True):" in text
+    assert 'return "" if decode else b""' in text
+    assert "def take_bool_list(lib, value):" in text
+    assert "def make_int32_list(values):" in text
+    assert "def make_int64_list(values):" in text
+    assert "def make_double_list(values):" in text
+    assert "def take_int32_list_list(lib, value):" in text
+    assert "def take_double_list_list(lib, value):" in text
+    assert "def make_int32_list_list(values):" in text
+    assert "def make_double_list_list(values):" in text
+    assert "def move_handle_list(lib, value, destroy, handle_pointer_type):" in text
 
     generic_generated = tmp_path / "demo_ctypes_generic.py"
     generate_python_ctypes(ir, generic_generated, generic_handles=True)

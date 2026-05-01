@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // This file was generated with the assistance of an AI coding tool.
 //
-// Implementation of `ifcopenshell_compute_derived` — the C ABI that the
-// Python wrapper calls to evaluate a DERIVE attribute using the native
-// rule dispatch table populated by the generated per-schema translation
-// units.
+// Native DERIVE evaluator used by the generated high-level binding facade.
 
 #include "selector/internal.h"
 
+#include "ifcapi/bindings/value.h"
 #include "ifcapi/value.h"
 #include "ifcapi/express/runtime.h"
 #include "ifcapi/express/value.h"
@@ -62,19 +60,18 @@ ifcopenshell_value_t* convert(const Value& v) {
 
 }  // namespace
 
-extern "C" {
+namespace ifcapi {
+namespace bindings {
 
-IFCAPI_EXPORT ifcopenshell_value_t*
-ifcopenshell_compute_derived(ifcopenshell_ifc_instance_t* instance,
-                             const char* attr_name) {
-    if (!instance || !instance->ptr || !attr_name) return nullptr;
-    auto* e = instance->ptr;
+ifcopenshell_value_t* compute_derived(IfcUtil::IfcBaseClass* instance, const std::string& attr_name) {
+    if (!instance) return nullptr;
+    auto* e = instance;
     auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(e);
     if (!be) return nullptr;
     const auto* decl = be->declaration().as_entity();
     if (!decl) return nullptr;
 
-    auto fn = ifcapi::express::lookup_derived(decl, attr_name);
+    auto fn = ifcapi::express::lookup_derived(decl, attr_name.c_str());
     if (!fn) return nullptr;
 
     ifcapi::express::EntityRef self_ref;
@@ -89,4 +86,5 @@ ifcopenshell_compute_derived(ifcopenshell_ifc_instance_t* instance,
     return convert(result);
 }
 
-}  // extern "C"
+} // namespace bindings
+} // namespace ifcapi

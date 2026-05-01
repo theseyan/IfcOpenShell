@@ -9,10 +9,24 @@ slice: ifcapi
 c_prefix: ifcopenshell_ifcapi
 
 public_headers:
+  - ifcapi/bindings/aggregate.h
   - guid.h
+  - ifcapi/bindings/classification.h
   - ifcapi/bindings/element.h
   - ifcapi/bindings/entity.h
+  - ifcapi/bindings/geometry.h
+  - ifcapi/bindings/group.h
+  - ifcapi/bindings/nest.h
+  - ifcapi/bindings/placement.h
+  - ifcapi/bindings/pset.h
+  - ifcapi/bindings/pset_template.h
+  - ifcapi/bindings/representation.h
+  - ifcapi/bindings/root.h
+  - ifcapi/bindings/schema.h
+  - ifcapi/bindings/selector.h
   - ifcapi/bindings/shape.h
+  - ifcapi/bindings/spatial.h
+  - ifcapi/bindings/type.h
   - ifcapi/bindings/unit.h
   - ifcapi/bindings/value.h
 
@@ -21,6 +35,7 @@ imports:
     handles:
       - file
       - instance
+      - instance_list
 
 discover:
   include_dir: ../../../ifcapi/src
@@ -31,12 +46,37 @@ discover:
         - compute_derived
         - element_get_aggregate
         - element_get_container
+        - element_get_contained
+        - element_get_controls
+        - element_get_elements_by_layer
+        - element_get_elements_by_material
+        - element_get_elements_by_profile
+        - element_get_elements_by_representation
+        - element_get_elements_by_style
+        - element_get_filled_void
+        - element_get_groups
+        - element_get_layers
         - element_get_material
         - element_get_nest
+        - element_get_openings
         - element_get_parent
+        - element_get_parts
+        - element_get_pset_ids
+        - element_get_referenced_elements
+        - element_get_referenced_structures
+        - element_get_shape_aspects
+        - element_get_structure_referenced_elements
+        - element_get_styles
         - element_get_type
+        - element_get_types
+        - element_get_voided_element
+        - element_get_decomposition
+        - element_remove_deep
+        - element_replace_element
+        - element_is_userdefined_type
         - entity_get_aggregate_typed_value
         - entity_get_typed_value
+        - entity_remove_deep2
         - entity_set_aggregate_typed_value
         - entity_set_typed_value
         - selector_filter_all
@@ -96,6 +136,63 @@ discover:
           params:
             ifc_class:
               nullable: true
+        element_get_contained:
+          returns:
+            ownership: owned
+        element_get_controls:
+          returns:
+            ownership: owned
+        element_get_elements_by_layer:
+          returns:
+            ownership: owned
+        element_get_elements_by_material:
+          returns:
+            ownership: owned
+        element_get_elements_by_profile:
+          returns:
+            ownership: owned
+        element_get_elements_by_representation:
+          returns:
+            ownership: owned
+        element_get_elements_by_style:
+          returns:
+            ownership: owned
+        element_get_groups:
+          returns:
+            ownership: owned
+        element_get_layers:
+          returns:
+            ownership: owned
+        element_get_openings:
+          returns:
+            ownership: owned
+        element_get_parts:
+          returns:
+            ownership: owned
+        element_get_pset_ids:
+          returns:
+            ownership: owned
+        element_get_referenced_elements:
+          returns:
+            ownership: owned
+        element_get_referenced_structures:
+          returns:
+            ownership: owned
+        element_get_shape_aspects:
+          returns:
+            ownership: owned
+        element_get_structure_referenced_elements:
+          returns:
+            ownership: owned
+        element_get_styles:
+          returns:
+            ownership: owned
+        element_get_types:
+          returns:
+            ownership: owned
+        element_get_decomposition:
+          returns:
+            ownership: owned
         entity_set_typed_value:
           params:
             str_value:
@@ -151,6 +248,512 @@ discover:
         value_new_string:
           returns:
             ownership: owned
+    - namespace: ifcapi::bindings
+      translation_unit: util/classification.cpp
+      include:
+        - classification_get_references
+      type_overrides:
+        classification_get_references:
+          returns:
+            ownership: owned
+    - namespace: ifcapi::bindings
+      translation_unit: representation.cpp
+      include:
+        - representation_get_context
+        - representation_get_prioritised_contexts
+        - representation_get_product_representation
+        - representation_resolve
+        - representation_resolve_base_items
+      type_overrides:
+        representation_get_context:
+          returns:
+            nullable: true
+          params:
+            context_type:
+              nullable: true
+            subcontext:
+              nullable: true
+            target_view:
+              nullable: true
+        representation_get_prioritised_contexts:
+          returns:
+            ownership: owned
+        representation_get_product_representation:
+          returns:
+            nullable: true
+          params:
+            context:
+              nullable: true
+            context_type:
+              nullable: true
+            subcontext:
+              nullable: true
+            target_view:
+              nullable: true
+        representation_resolve:
+          returns:
+            nullable: true
+        representation_resolve_base_items:
+          returns:
+            ownership: owned
+    - namespace: ifcapi::bindings
+      translation_unit: placement.cpp
+      include:
+        - placement_a2p
+        - placement_get_axis2placement
+        - placement_get_cartesian_xform_3d
+        - placement_get_local_placement
+        - placement_get_mappeditem_xform
+        - placement_get_storey_elevation
+        - placement_rotation
+      type_overrides:
+        placement_a2p:
+          returns:
+            ownership: copy
+        placement_get_axis2placement:
+          returns:
+            ownership: copy
+        placement_get_cartesian_xform_3d:
+          returns:
+            ownership: copy
+        placement_get_local_placement:
+          returns:
+            ownership: copy
+          params:
+            instance:
+              nullable: true
+        placement_get_mappeditem_xform:
+          returns:
+            ownership: copy
+        placement_rotation:
+          returns:
+            ownership: copy
+    - namespace: ifcapi::bindings
+      translation_unit: aggregate_spatial.cpp
+      include:
+        - aggregate_assign_object
+        - aggregate_unassign_object
+        - spatial_assign_container
+        - spatial_unassign_container
+      type_overrides:
+        aggregate_assign_object:
+          returns:
+            nullable: true
+        spatial_assign_container:
+          returns:
+            nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: nest.cpp
+      include:
+        - nest_assign_object
+        - nest_unassign_object
+      type_overrides:
+        nest_assign_object:
+          returns:
+            nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: type.cpp
+      include:
+        - type_assign_type
+        - type_assign_type_ex
+        - type_unassign_type
+      type_overrides:
+        type_assign_type:
+          returns:
+            nullable: true
+        type_assign_type_ex:
+          returns:
+            nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: geometry.cpp
+      include:
+        - geometry_assign_representation
+        - geometry_copy_representation
+        - geometry_map_representation
+        - geometry_profile_extents
+        - geometry_unassign_representation
+        - type_map_type_representations
+      type_overrides:
+        geometry_assign_representation:
+          returns:
+            nullable: true
+        geometry_copy_representation:
+          returns:
+            nullable: true
+          params:
+            context_identifier:
+              nullable: true
+        geometry_map_representation:
+          returns:
+            nullable: true
+        geometry_profile_extents:
+          returns:
+            ownership: copy
+    - namespace: ifcapi::bindings
+      translation_unit: api/geometry/placement.cpp
+      include:
+        - geometry_edit_object_placement
+      type_overrides:
+        geometry_edit_object_placement:
+          returns:
+            nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: api/pset/add.cpp
+      include:
+        - pset_add_pset
+        - pset_add_qto
+      type_overrides:
+        pset_add_pset:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+            ifc2x3_subclass:
+              nullable: true
+        pset_add_qto:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: api/pset/edit.cpp
+      include:
+        - pset_props_free
+        - pset_props_new
+        - pset_props_set_bool
+        - pset_props_set_dict
+        - pset_props_set_double
+        - pset_props_set_double_list
+        - pset_props_set_instance
+        - pset_props_set_int
+        - pset_props_set_int_list
+        - pset_props_set_null
+        - pset_props_set_string
+        - pset_props_set_string_list
+        - pset_props_set_typed_bool
+        - pset_props_set_typed_double
+        - pset_props_set_typed_int
+        - pset_props_set_typed_string
+        - pset_props_set_unit_for_last
+        - pset_edit_pset
+        - pset_edit_qto
+      type_overrides:
+        pset_props_new:
+          returns:
+            kind: opaque_ptr
+            cpp_type: ifcopenshell_pset_props_t*
+        pset_props_free:
+          params:
+            props:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+        pset_props_set_bool:
+          params:
+            props:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+        pset_props_set_dict:
+          params:
+            outer:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+            inner:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+        pset_props_set_double:
+          params:
+            props:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+        pset_props_set_double_list:
+          params:
+            props:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+        pset_props_set_instance:
+          params:
+            props:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+            value:
+              nullable: true
+        pset_props_set_int:
+          params:
+            props:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+        pset_props_set_int_list:
+          params:
+            props:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+            values:
+              kind: int64_list
+        pset_props_set_null:
+          params:
+            props:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+        pset_props_set_string:
+          params:
+            props:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+        pset_props_set_string_list:
+          params:
+            props:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+        pset_props_set_typed_bool:
+          params:
+            props:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+        pset_props_set_typed_double:
+          params:
+            props:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+        pset_props_set_typed_int:
+          params:
+            props:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+        pset_props_set_typed_string:
+          params:
+            props:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+        pset_props_set_unit_for_last:
+          params:
+            props:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+            unit:
+              nullable: true
+        pset_edit_pset:
+          params:
+            name:
+              nullable: true
+            properties:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+            pset_template:
+              nullable: true
+        pset_edit_qto:
+          params:
+            name:
+              nullable: true
+            properties:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+            qto_template:
+              nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: util/pset/template.cpp
+      include:
+        - pset_template_get_applicable
+        - pset_template_get_applicable_names
+        - pset_template_get_by_name
+        - pset_template_get_template
+        - pset_template_is_templated
+        - pset_template_pset_type
+        - pset_template_set_template_dir
+      type_overrides:
+        pset_template_get_applicable:
+          returns:
+            ownership: copy
+          params:
+            pqt:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_template_t*
+            ifc_class:
+              nullable: true
+            predefined_type:
+              nullable: true
+            schema_name:
+              nullable: true
+        pset_template_get_applicable_names:
+          returns:
+            ownership: copy
+          params:
+            pqt:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_template_t*
+            ifc_class:
+              nullable: true
+            predefined_type:
+              nullable: true
+            schema_name:
+              nullable: true
+        pset_template_get_by_name:
+          returns:
+            nullable: true
+          params:
+            pqt:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_template_t*
+        pset_template_get_template:
+          returns:
+            kind: opaque_ptr
+            cpp_type: ifcopenshell_pset_template_t*
+        pset_template_is_templated:
+          params:
+            pqt:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_template_t*
+        pset_template_pset_type:
+          returns:
+            ownership: copy
+    - namespace: ifcapi::bindings
+      translation_unit: selector/parser.cpp
+      include:
+        - selector_node_child
+        - selector_node_child_count
+        - selector_node_free
+        - selector_node_kind
+        - selector_node_text
+        - selector_parse_filter
+        - selector_parse_format
+        - selector_parse_get_element
+      type_overrides:
+        selector_node_child:
+          returns:
+            kind: opaque_ptr
+            cpp_type: ifcopenshell_selector_node_t*
+            nullable: true
+          params:
+            node:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_selector_node_t*
+              nullable: true
+        selector_node_child_count:
+          params:
+            node:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_selector_node_t*
+              nullable: true
+        selector_node_free:
+          params:
+            root:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_selector_node_t*
+              nullable: true
+        selector_node_kind:
+          params:
+            node:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_selector_node_t*
+              nullable: true
+        selector_node_text:
+          returns:
+            ownership: copy
+          params:
+            node:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_selector_node_t*
+              nullable: true
+        selector_parse_filter:
+          returns:
+            kind: opaque_ptr
+            cpp_type: ifcopenshell_selector_node_t*
+            nullable: true
+        selector_parse_format:
+          returns:
+            kind: opaque_ptr
+            cpp_type: ifcopenshell_selector_node_t*
+            nullable: true
+        selector_parse_get_element:
+          returns:
+            kind: opaque_ptr
+            cpp_type: ifcopenshell_selector_node_t*
+            nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: selector/format.cpp
+      include:
+        - selector_format
+        - selector_keys_count
+        - selector_keys_free
+        - selector_keys_get
+        - selector_keys_is_regex
+        - selector_parse_keys
+      type_overrides:
+        selector_format:
+          returns:
+            ownership: copy
+          params:
+            file:
+              nullable: true
+            instance:
+              nullable: true
+        selector_keys_count:
+          params:
+            keys:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_selector_keys_t*
+              nullable: true
+        selector_keys_free:
+          params:
+            keys:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_selector_keys_t*
+              nullable: true
+        selector_keys_get:
+          returns:
+            ownership: copy
+          params:
+            keys:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_selector_keys_t*
+              nullable: true
+        selector_keys_is_regex:
+          params:
+            keys:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_selector_keys_t*
+              nullable: true
+        selector_parse_keys:
+          returns:
+            kind: opaque_ptr
+            cpp_type: ifcopenshell_selector_keys_t*
+            nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: root.cpp
+      include:
+        - root_create_entity
+      type_overrides:
+        root_create_entity:
+          returns:
+            nullable: true
+          params:
+            predefined_type:
+              nullable: true
+            name:
+              nullable: true
+            owner_history:
+              nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: group.cpp
+      include:
+        - group_assign_group
+        - group_unassign_group
+      type_overrides:
+        group_assign_group:
+          returns:
+            nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: util/schema.cpp
+      include:
+        - schema_reassign_class
+      type_overrides:
+        schema_reassign_class:
+          returns:
+            nullable: true
+          params:
+            file:
+              nullable: true
 
 handles:
   - name: value

@@ -701,64 +701,40 @@ struct KeysHandle {
 
 } /* anonymous namespace */
 
-/* ====================================================================
- *  C ABI
- * ==================================================================== */
-
 struct ifcopenshell_selector_keys_t : public KeysHandle {};
 
-extern "C" {
+namespace ifcapi {
+namespace bindings {
 
-char* ifcopenshell_selector_format(
-    ifcopenshell_ifc_file_t* file,
-    ifcopenshell_ifc_instance_t* instance,
-    const char* query)
+std::string selector_format(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* instance, const std::string& query)
 {
-    if (!query) {
-        ifcopenshell::capi::set_last_error("format: null query");
-        return nullptr;
-    }
-    ifcopenshell_selector_node_t* ast = ifcopenshell_selector_parse_format(query);
-    if (!ast) return nullptr;
-
-    IfcParse::IfcFile* ifc_file = file ? file->ptr : nullptr;
-    IfcUtil::IfcBaseClass* element = (instance && instance->ptr) ? instance->ptr : nullptr;
+    ifcopenshell_selector_node_t* ast = selector_parse_format(query);
+    if (!ast) return std::string();
 
     std::string out;
     bool has_value = false;
     try {
-        FormatEvaluator ev(ifc_file, element);
+        FormatEvaluator ev(file, instance);
         has_value = ev.to_output(ast, out);
     } catch (const std::exception& ex) {
         ifcopenshell_selector_node_free(ast);
         ifcopenshell::capi::set_last_error(ex.what());
-        return nullptr;
+        return std::string();
     } catch (...) {
         ifcopenshell_selector_node_free(ast);
         ifcopenshell::capi::set_last_error("format: unknown exception");
-        return nullptr;
+        return std::string();
     }
     ifcopenshell_selector_node_free(ast);
 
     if (!has_value) {
-        return nullptr;
+        return std::string();
     }
-    char* buf = static_cast<char*>(std::malloc(out.size() + 1));
-    if (!buf) {
-        ifcopenshell::capi::set_last_error("format: out of memory");
-        return nullptr;
-    }
-    std::memcpy(buf, out.data(), out.size());
-    buf[out.size()] = '\0';
-    return buf;
+    return out;
 }
 
-ifcopenshell_selector_keys_t* ifcopenshell_selector_parse_keys(const char* query) {
-    if (!query) {
-        ifcopenshell::capi::set_last_error("parse_keys: null query");
-        return nullptr;
-    }
-    ifcopenshell_selector_node_t* ast = ifcopenshell_selector_parse_get_element(query);
+ifcopenshell_selector_keys_t* selector_parse_keys(const std::string& query) {
+    ifcopenshell_selector_node_t* ast = selector_parse_get_element(query);
     if (!ast) return nullptr;
     auto* h = new ifcopenshell_selector_keys_t();
     h->entries = extract_keys(ast);
@@ -766,22 +742,23 @@ ifcopenshell_selector_keys_t* ifcopenshell_selector_parse_keys(const char* query
     return h;
 }
 
-uint32_t ifcopenshell_selector_keys_count(ifcopenshell_selector_keys_t* h) {
-    return h ? static_cast<uint32_t>(h->entries.size()) : 0;
+size_t selector_keys_count(ifcopenshell_selector_keys_t* h) {
+    return h ? h->entries.size() : 0;
 }
 
-const char* ifcopenshell_selector_keys_get(ifcopenshell_selector_keys_t* h, uint32_t i) {
-    if (!h || i >= h->entries.size()) return nullptr;
-    return h->entries[i].text.c_str();
+std::string selector_keys_get(ifcopenshell_selector_keys_t* h, size_t i) {
+    if (!h || i >= h->entries.size()) return std::string();
+    return h->entries[i].text;
 }
 
-bool ifcopenshell_selector_keys_is_regex(ifcopenshell_selector_keys_t* h, uint32_t i) {
+bool selector_keys_is_regex(ifcopenshell_selector_keys_t* h, size_t i) {
     if (!h || i >= h->entries.size()) return false;
     return h->entries[i].is_regex;
 }
 
-void ifcopenshell_selector_keys_free(ifcopenshell_selector_keys_t* h) {
+void selector_keys_free(ifcopenshell_selector_keys_t* h) {
     delete h;
 }
 
-} /* extern "C" */
+} // namespace bindings
+} // namespace ifcapi

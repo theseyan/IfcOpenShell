@@ -18,12 +18,15 @@
 
 from collections import namedtuple
 from collections.abc import Callable, Generator, Sequence
+import ctypes
 from typing import Any, Literal, Optional, Union, overload
 
 import ifcopenshell
 import ifcopenshell.guid
 import ifcopenshell.util.element
 import ifcopenshell.util.representation
+from ifcopenshell import _generated_capi
+from ifcopenshell.entity_instance import _generated_instance_handle_ptr
 
 MATERIAL_TYPE = Literal[
     "IfcMaterial",
@@ -37,6 +40,81 @@ MATERIAL_TYPE = Literal[
 
 PrioritisedLayer = namedtuple("PrioritisedLayer", "priority material thickness")
 PrioritisedProfile = namedtuple("PrioritisedProfile", "priority material profile")
+
+_element_lib_configured = False
+
+
+def _configure_element_lib(lib) -> None:
+    global _element_lib_configured
+    if _element_lib_configured:
+        return
+    _generated_capi.bind(
+        lib,
+        names=(
+            "ifcopenshell_ifcapi_element_get_type",
+            "ifcopenshell_ifcapi_element_get_aggregate",
+            "ifcopenshell_ifcapi_element_get_nest",
+            "ifcopenshell_ifcapi_element_get_container",
+            "ifcopenshell_ifcapi_element_get_parent",
+            "ifcopenshell_ifcapi_element_get_material",
+            "ifcopenshell_ifcapi_element_get_types",
+            "ifcopenshell_ifcapi_element_get_shape_aspects",
+            "ifcopenshell_ifcapi_element_get_groups",
+            "ifcopenshell_ifcapi_element_get_controls",
+            "ifcopenshell_ifcapi_element_get_parts",
+            "ifcopenshell_ifcapi_element_get_contained",
+            "ifcopenshell_ifcapi_element_get_referenced_structures",
+            "ifcopenshell_ifcapi_element_get_structure_referenced_elements",
+            "ifcopenshell_ifcapi_element_get_openings",
+            "ifcopenshell_ifcapi_element_get_filled_void",
+            "ifcopenshell_ifcapi_element_get_voided_element",
+            "ifcopenshell_ifcapi_element_is_userdefined_type",
+            "ifcopenshell_ifcapi_element_get_referenced_elements",
+            "ifcopenshell_ifcapi_element_get_elements_by_material",
+            "ifcopenshell_ifcapi_element_get_elements_by_style",
+            "ifcopenshell_ifcapi_element_get_elements_by_representation",
+            "ifcopenshell_ifcapi_element_get_elements_by_profile",
+            "ifcopenshell_ifcapi_element_get_elements_by_layer",
+            "ifcopenshell_ifcapi_element_get_layers",
+            "ifcopenshell_ifcapi_element_get_styles",
+            "ifcopenshell_ifcapi_element_get_decomposition",
+            "ifcopenshell_ifcparse_instance_list_destroy",
+            "ifcopenshell_ifcparse_instance_list_get",
+            "ifcopenshell_ifcparse_instance_list_size",
+            "ifcopenshell_ifc_instance_destroy",
+        ),
+    )
+    _element_lib_configured = True
+
+
+def _call_element_instance(element: ifcopenshell.entity_instance, name: str, *args):
+    lib = ifcopenshell._get_lib()
+    _configure_element_lib(lib)
+    handle = _generated_capi.call_handle(
+        lib,
+        getattr(lib, name),
+        _generated_instance_handle_ptr(element._handle),
+        *args,
+        destroy=lib.ifcopenshell_ifc_instance_destroy,
+        handle_pointer_type=ctypes.POINTER(_generated_capi.ifcopenshell_ifc_instance_t),
+    )
+    return ifcopenshell.entity_instance(element.file, handle) if handle else None
+
+
+def _call_element_instance_list(element: ifcopenshell.entity_instance, name: str, *args) -> list[ifcopenshell.entity_instance]:
+    lib = ifcopenshell._get_lib()
+    _configure_element_lib(lib)
+    out = ctypes.POINTER(_generated_capi.ifcopenshell_ifcparse_instance_list_t)()
+    if not getattr(lib, name)(_generated_instance_handle_ptr(element._handle), *args, ctypes.byref(out)):
+        return []
+    return ifcopenshell._take_instance_list(element.file, out)
+
+
+def _call_element_bool(element: ifcopenshell.entity_instance, name: str) -> bool:
+    lib = ifcopenshell._get_lib()
+    _configure_element_lib(lib)
+    result = _generated_capi.call_scalar(getattr(lib, name), ctypes.c_bool, _generated_instance_handle_ptr(element._handle))
+    return bool(result)
 
 
 def get_pset(
@@ -590,25 +668,7 @@ def is_userdefined_type(element: ifcopenshell.entity_instance) -> bool:
         element = ifcopenshell.by_type("IfcWall")[0]
         is_userdefined_type = ifcopenshell.util.element.is_userdefined_type(element)
     """
-    if element_type := get_type(element):
-        predefined_type = getattr(element_type, "PredefinedType", None)
-        if predefined_type == "USERDEFINED":
-            return True
-        elif not predefined_type:
-            predefined_type = getattr(element_type, "ElementType", ...)
-            if predefined_type == ...:
-                predefined_type = getattr(element_type, "ProcessType", None)
-            if predefined_type:
-                return True
-        if predefined_type and predefined_type != "NOTDEFINED":
-            return False
-
-    predefined_type = getattr(element, "PredefinedType", None)
-    if predefined_type == "USERDEFINED":
-        return True
-    elif not predefined_type:
-        return bool(getattr(element, "ObjectType", None))
-    return False
+    return _call_element_bool(element, "ifcopenshell_ifcapi_element_is_userdefined_type")
 
 
 def get_type(element: ifcopenshell.entity_instance) -> Union[ifcopenshell.entity_instance, None]:
@@ -626,19 +686,7 @@ def get_type(element: ifcopenshell.entity_instance) -> Union[ifcopenshell.entity
         element = ifcopenshell.by_type("IfcWall")[0]
         element_type = ifcopenshell.util.element.get_type(element)
     """
-    if element.is_a("IfcTypeObject"):
-        return element
-
-    schema = element.file.schema
-    if schema != "IFC2X3":
-        if is_typed_by := getattr(element, "IsTypedBy", ()):
-            return is_typed_by[0].RelatingType
-        return
-
-    if is_defined_by := getattr(element, "IsDefinedBy", ()):  # IFC2X3
-        for relationship in is_defined_by:
-            if relationship.is_a("IfcRelDefinesByType"):
-                return relationship.RelatingType
+    return _call_element_instance(element, "ifcopenshell_ifcapi_element_get_type")
 
 
 def get_types(type: ifcopenshell.entity_instance) -> list[ifcopenshell.entity_instance]:
@@ -654,13 +702,8 @@ def get_types(type: ifcopenshell.entity_instance) -> list[ifcopenshell.entity_in
         element_type = ifcopenshell.by_type("IfcWallType")[0]
         walls = ifcopenshell.util.element.get_types(element_type)
     """
-    if type.file.schema == "IFC2X3":
-        if object_type_of := getattr(type, "ObjectTypeOf", ()):
-            return object_type_of[0].RelatedObjects
-    else:
-        if types := getattr(type, "Types", ()):
-            return types[0].RelatedObjects
-    return []
+    types = _call_element_instance_list(type, "ifcopenshell_ifcapi_element_get_types")
+    return tuple(types) if types else []
 
 
 def get_shape_aspects(
@@ -683,22 +726,9 @@ def get_shape_aspects(
         shape_aspect = ifcopenshell.util.element.get_shape_aspects(element)
     """
 
-    # IfcProduct
-    if (representation := getattr(element, "Representation", ...)) != ...:
-        shape_aspects: list[ifcopenshell.entity_instance] = []
-        if should_inherit and (element_type := get_type(element)):
-            shape_aspects.extend(get_shape_aspects(element_type))
-        shape_aspects.extend(representation.HasShapeAspects)
-        return shape_aspects
-
-    if element.file.schema == "IFC2X3":
-        return []
-
-    # IfcTypeProduct
-    shape_aspects = []
-    for representation_map in element.RepresentationMaps or []:
-        shape_aspects += representation_map.HasShapeAspects
-    return shape_aspects
+    return _call_element_instance_list(
+        element, "ifcopenshell_ifcapi_element_get_shape_aspects", bool(should_inherit)
+    )
 
 
 def get_material(
@@ -725,20 +755,12 @@ def get_material(
         element = ifcopenshell.by_type("IfcWall")[0]
         material = ifcopenshell.util.element.get_material(element)
     """
-    if (has_associations := getattr(element, "HasAssociations", None)) is not None and has_associations:
-        for relationship in has_associations:
-            if relationship.is_a("IfcRelAssociatesMaterial"):
-                if should_skip_usage:
-                    relating_material = relationship.RelatingMaterial
-                    if relating_material.is_a("IfcMaterialLayerSetUsage"):
-                        return relating_material.ForLayerSet
-                    elif relating_material.is_a("IfcMaterialProfileSetUsage"):
-                        return relating_material.ForProfileSet
-                return relationship.RelatingMaterial
-    if should_inherit:
-        relating_type = get_type(element)
-        if relating_type != element and (has_associations := getattr(relating_type, "HasAssociations", None)):
-            return get_material(relating_type, should_skip_usage)
+    return _call_element_instance(
+        element,
+        "ifcopenshell_ifcapi_element_get_material",
+        bool(should_skip_usage),
+        bool(should_inherit),
+    )
 
 
 def get_materials(
@@ -793,31 +815,7 @@ def get_styles(element: ifcopenshell.entity_instance) -> list[ifcopenshell.entit
         wall = file.by_type("IfcWall")[0]
         styles = ifcopenshell.util.element.get_styles(wall)
     """
-    styles = []
-
-    materials = ifcopenshell.util.element.get_materials(element)
-    for material in materials:
-        for material_definition_representation in material.HasRepresentation or []:
-            for representation in material_definition_representation.Representations:
-                for item in representation.Items:
-                    styles.extend([s for s in item.Styles if s.is_a("IfcSurfaceStyle")])
-
-    body = ifcopenshell.util.representation.get_representation(element, "Model", "Body", "MODEL_VIEW")
-    if not body:
-        return styles
-
-    for representation in [body]:
-        queue = list(representation.Items)
-        while queue:
-            item = queue.pop()
-            if item.is_a("IfcMappedItem"):
-                queue.extend(item.MappingSource.MappedRepresentation.Items)
-            if item.is_a("IfcBooleanResult"):
-                queue.append(item.FirstOperand)
-                queue.append(item.SecondOperand)
-            if item.StyledByItem:
-                styles.extend([s for s in item.StyledByItem[0].Styles if s.is_a("IfcSurfaceStyle")])
-    return styles
+    return _call_element_instance_list(element, "ifcopenshell_ifcapi_element_get_styles")
 
 
 # TODO: ifc_file argument is unnecessary for some methods now
@@ -843,26 +841,7 @@ def get_elements_by_material(
     """
     if not ifc_file:
         ifc_file = material.file
-    results = set()
-    for inverse in ifc_file.get_inverse(material):
-        if inverse.is_a("IfcRelAssociatesMaterial"):
-            results.update(inverse.RelatedObjects or [])  # See Revit bug #675
-        elif inverse.is_a("IfcMaterialLayer"):
-            for material_set in inverse.ToMaterialLayerSet:
-                results.update(get_elements_by_material(ifc_file, material_set))
-        elif inverse.is_a("IfcMaterialProfile"):
-            for material_set in inverse.ToMaterialProfileSet:
-                results.update(get_elements_by_material(ifc_file, material_set))
-        elif inverse.is_a("IfcMaterialConstituent"):
-            for material_set in inverse.ToMaterialConstituentSet:
-                results.update(get_elements_by_material(ifc_file, material_set))
-        elif inverse.is_a("IfcMaterialLayerSetUsage"):
-            results.update(get_elements_by_material(ifc_file, inverse))
-        elif inverse.is_a("IfcMaterialProfileSetUsage"):
-            results.update(get_elements_by_material(ifc_file, inverse))
-        elif inverse.is_a("IfcMaterialList"):
-            results.update(get_elements_by_material(ifc_file, inverse))
-    return results
+    return set(_call_element_instance_list(material, "ifcopenshell_ifcapi_element_get_elements_by_material"))
 
 
 def get_elements_by_style(
@@ -883,36 +862,7 @@ def get_elements_by_style(
     """
     if not ifc_file:
         ifc_file = style.file
-    results = set()
-    inverses = list(ifc_file.get_inverse(style))
-    while inverses:
-        inverse = inverses.pop()
-        inverse_class = inverse.is_a()
-        # IfcPresentationStyleAssignment for < IFC4X3.
-        # IfcFillAreaStyleHatching->IfcFillAreaStyle only for IfcCurveStyle.
-        # IfcFillAreaStyleTiles->IfcFillAreaStyle is not restricted to IfcCurveStyle.
-        if inverse_class in (
-            "IfcPresentationStyleAssignment",
-            "IfcFillAreaStyleHatching",
-            "IfcFillAreaStyle",
-            "IfcFillAreaStyleTiles",
-        ):
-            inverses.extend(ifc_file.get_inverse(inverse))
-            continue
-        if not inverse.is_a("IfcStyledItem"):
-            continue
-        if geometry_item := inverse.Item:
-            for inverse_ in ifc_file.get_inverse(geometry_item):
-                if inverse_.is_a("IfcShapeRepresentation"):
-                    results.update(get_elements_by_representation(ifc_file, inverse_))
-            # IfcFillAreaStyleTiles requires .Item to be set.
-            inverses.extend(ifc_file.get_inverse(inverse))
-        else:
-            styled_reps = [i for i in ifc_file.get_inverse(inverse) if i.is_a("IfcStyledRepresentation")]
-            for styled_rep in styled_reps:
-                for material_def_rep in styled_rep.OfProductRepresentation:
-                    results.update(get_elements_by_material(ifc_file, material_def_rep.RepresentedMaterial))
-    return results
+    return set(_call_element_instance_list(style, "ifcopenshell_ifcapi_element_get_elements_by_style"))
 
 
 def get_elements_by_representation(
@@ -933,19 +883,7 @@ def get_elements_by_representation(
     """
     if not ifc_file:
         ifc_file = representation.file
-    results = set()
-    [results.update(pr.ShapeOfProduct) for pr in representation.OfProductRepresentation]
-    for rep_map in representation.RepresentationMap:
-        for inverse in ifc_file.get_inverse(rep_map):
-            if inverse.is_a("IfcTypeProduct"):
-                results.add(inverse)
-            elif inverse.is_a("IfcMappedItem"):
-                [
-                    results.update(get_elements_by_representation(ifc_file, rep))
-                    for rep in ifc_file.get_inverse(inverse)
-                    if rep.is_a("IfcShapeRepresentation")
-                ]
-    return results
+    return set(_call_element_instance_list(representation, "ifcopenshell_ifcapi_element_get_elements_by_representation"))
 
 
 def get_elements_by_profile(profile: ifcopenshell.entity_instance) -> set[ifcopenshell.entity_instance]:
@@ -957,24 +895,7 @@ def get_elements_by_profile(profile: ifcopenshell.entity_instance) -> set[ifcope
     :param profile: IfcProfileDef:
     :return: The elements using the profile.
     """
-    ifc_file = profile.file
-    queue = ifc_file.get_inverse(profile)
-    processed: set[ifcopenshell.entity_instance] = set()
-    representations: set[ifcopenshell.entity_instance] = set()
-    while queue:
-        item = queue.pop()
-        if item.is_a("IfcRepresentationItem"):
-            queue.update(i for i in ifc_file.get_inverse(item) if i not in processed)
-        elif item.is_a("IfcShapeRepresentation"):
-            representations.add(item)
-        else:
-            pass
-        processed.add(item)
-
-    elements = set()
-    for representation in representations:
-        elements.update(get_elements_by_representation(ifc_file, representation))
-    return elements
+    return set(_call_element_instance_list(profile, "ifcopenshell_ifcapi_element_get_elements_by_profile"))
 
 
 def get_elements_by_layer(
@@ -988,15 +909,7 @@ def get_elements_by_layer(
     """
     if not ifc_file:
         ifc_file = layer.file
-    results = set()
-    for item in layer.AssignedItems or []:
-        if item.is_a("IfcShapeRepresentation"):
-            results.update(get_elements_by_representation(ifc_file, item))
-        elif item.is_a("IfcRepresentationItem"):
-            for inverse in ifc_file.get_inverse(item):
-                if inverse.is_a("IfcShapeRepresentation"):
-                    results.update(get_elements_by_representation(ifc_file, inverse))
-    return results
+    return set(_call_element_instance_list(layer, "ifcopenshell_ifcapi_element_get_elements_by_layer"))
 
 
 def get_layers(
@@ -1020,22 +933,7 @@ def get_layers(
     """
     if not ifc_file:
         ifc_file = element.file
-    layers = []
-    representations = []
-    if representation := getattr(element, "Representation", None):
-        representations = [representation]
-    elif representation_maps := getattr(element, "RepresentationMaps", None):
-        representations = representation_maps
-    for representation in representations:
-        for subelement in ifc_file.traverse(representation):
-            if subelement.is_a("IfcShapeRepresentation"):
-                layers.extend(subelement.LayerAssignments or [])
-            elif subelement.is_a("IfcGeometricRepresentationItem"):
-                if ifc_file.schema == "IFC2X3":
-                    layers.extend(subelement.LayerAssignments or [])
-                else:
-                    layers.extend(subelement.LayerAssignment or [])
-    return layers
+    return _call_element_instance_list(element, "ifcopenshell_ifcapi_element_get_layers")
 
 
 def get_container(
@@ -1061,25 +959,12 @@ def get_container(
         element = file.by_type("IfcWall")[0]
         container = ifcopenshell.util.element.get_container(element)
     """
-    if should_get_direct:
-        if (
-            contained_in_structure := getattr(element, "ContainedInStructure", None)
-        ) is not None and contained_in_structure:
-            container = contained_in_structure[0].RelatingStructure
-            if not ifc_class:
-                return container
-            if container.is_a(ifc_class):
-                return container
-    elif contained_in_structure := getattr(element, "ContainedInStructure", None):
-        container = contained_in_structure[0].RelatingStructure
-        if not ifc_class:
-            return container
-        while container:
-            if container.is_a(ifc_class):
-                return container
-            container = get_aggregate(container)
-    elif parent := get_parent(element):
-        return get_container(parent, should_get_direct, ifc_class)
+    return _call_element_instance(
+        element,
+        "ifcopenshell_ifcapi_element_get_container",
+        bool(should_get_direct),
+        _generated_capi.encode_string(ifc_class) if ifc_class else None,
+    )
 
 
 def get_referenced_structures(element: ifcopenshell.entity_instance) -> list[ifcopenshell.entity_instance]:
@@ -1099,7 +984,7 @@ def get_referenced_structures(element: ifcopenshell.entity_instance) -> list[ifc
         element = file.by_type("IfcWall")[0]
         print(ifcopenshell.util.element.get_referenced_structures(element))
     """
-    return [r.RelatingStructure for r in getattr(element, "ReferencedInStructures", [])]
+    return _call_element_instance_list(element, "ifcopenshell_ifcapi_element_get_referenced_structures")
 
 
 def get_structure_referenced_elements(structure: ifcopenshell.entity_instance) -> set[ifcopenshell.entity_instance]:
@@ -1115,10 +1000,7 @@ def get_structure_referenced_elements(structure: ifcopenshell.entity_instance) -
         element = file.by_type("IfcBuildingStorey")[0]
         print(ifcopenshell.util.element.get_structure_referenced_elements(element))
     """
-    referenced = set()
-    for rel in structure.ReferencesElements:
-        referenced.update(rel.RelatedElements)
-    return referenced
+    return set(_call_element_instance_list(structure, "ifcopenshell_ifcapi_element_get_structure_referenced_elements"))
 
 
 def get_decomposition(element: ifcopenshell.entity_instance, is_recursive=True) -> set[ifcopenshell.entity_instance]:
@@ -1137,33 +1019,11 @@ def get_decomposition(element: ifcopenshell.entity_instance, is_recursive=True) 
         element = file.by_type("IfcProject")[0]
         decomposition = ifcopenshell.util.element.get_decomposition(element)
     """
-    queue = [element]
-    results = set()
-    while queue:
-        element = queue.pop()
-        for rel in getattr(element, "ContainsElements", []):
-            related = rel.RelatedElements
-            queue.extend(related)
-            results.update(related)
-        for rel in getattr(element, "IsDecomposedBy", []):
-            related = rel.RelatedObjects
-            queue.extend(related)
-            results.update(related)
-        for rel in getattr(element, "HasOpenings", []):
-            related = rel.RelatedOpeningElement
-            queue.append(related)
-            results.add(related)
-        for rel in getattr(element, "HasFillings", []):
-            related = rel.RelatedBuildingElement
-            queue.append(related)
-            results.add(related)
-        for rel in getattr(element, "IsNestedBy", []):
-            related = rel.RelatedObjects
-            queue.extend(related)
-            results.update(related)
-        if not is_recursive:
-            break
-    return results
+    return set(
+        _call_element_instance_list(
+            element, "ifcopenshell_ifcapi_element_get_decomposition", bool(is_recursive)
+        )
+    )
 
 
 def get_grouped_by(
@@ -1208,11 +1068,7 @@ def get_groups(element: ifcopenshell.entity_instance) -> list[ifcopenshell.entit
         wall = file.by_type("IfcWall")[0]
         group = ifcopenshell.util.element.get_groups(element)[0]
     """
-    groups = []
-    for rel in element.HasAssignments:
-        if rel.is_a("IfcRelAssignsToGroup"):
-            groups.append(rel.RelatingGroup)
-    return groups
+    return _call_element_instance_list(element, "ifcopenshell_ifcapi_element_get_groups")
 
 
 def get_controls(element: ifcopenshell.entity_instance) -> Generator[ifcopenshell.entity_instance]:
@@ -1229,9 +1085,7 @@ def get_controls(element: ifcopenshell.entity_instance) -> Generator[ifcopenshel
         task = file.by_type("IfcTask")[0]
         control = ifcopenshell.util.element.get_controls(task)[0]
     """
-    for rel in element.HasAssignments:
-        if rel.is_a("IfcRelAssignsToControl"):
-            yield rel.RelatingControl
+    yield from _call_element_instance_list(element, "ifcopenshell_ifcapi_element_get_controls")
 
 
 def get_parent(
@@ -1264,13 +1118,7 @@ def get_parent(
         element = file.by_type("IfcWall")[0]
         parent = ifcopenshell.util.element.get_parent(element)
     """
-    parent = (
-        get_container(element, should_get_direct=True)
-        or get_aggregate(element)
-        or get_nest(element)
-        or get_filled_void(element)
-        or get_voided_element(element)
-    )
+    parent = _call_element_instance(element, "ifcopenshell_ifcapi_element_get_parent")
 
     if not ifc_class:
         return parent
@@ -1298,8 +1146,7 @@ def get_filled_void(element: ifcopenshell.entity_instance) -> Union[ifcopenshell
         window = file.by_type("IfcWindow")[0]
         opening = ifcopenshell.util.element.get_filled_void(window)
     """
-    if rel := getattr(element, "FillsVoids", None):
-        return rel[0].RelatingOpeningElement
+    return _call_element_instance(element, "ifcopenshell_ifcapi_element_get_filled_void")
 
 
 def get_voided_element(element: ifcopenshell.entity_instance) -> Union[ifcopenshell.entity_instance, None]:
@@ -1317,8 +1164,7 @@ def get_voided_element(element: ifcopenshell.entity_instance) -> Union[ifcopensh
         opening = file.by_type("IfcOpeningElement")[0]
         element = ifcopenshell.util.element.get_voided_element(opening)
     """
-    if rel := getattr(element, "VoidsElements", None):
-        return rel[0].RelatingBuildingElement
+    return _call_element_instance(element, "ifcopenshell_ifcapi_element_get_voided_element")
 
 
 def get_aggregate(element: ifcopenshell.entity_instance) -> Union[ifcopenshell.entity_instance, None]:
@@ -1335,15 +1181,7 @@ def get_aggregate(element: ifcopenshell.entity_instance) -> Union[ifcopenshell.e
         element = file.by_type("IfcBeam")[0]
         aggregate = ifcopenshell.util.element.get_aggregate(element)
     """
-    if not (decomposes := getattr(element, "Decomposes", None)):
-        return
-    is_ifc2x3 = element.file.schema == "IFC2X3"
-    rel: ifcopenshell.entity_instance = decomposes[0]
-    if is_ifc2x3 and not rel.is_a("IfcRelAggregates"):
-        # In IFCF2X3 Decomposes is used for both aggregates and nests,
-        # but only for 1 at the time.
-        return
-    return rel.RelatingObject
+    return _call_element_instance(element, "ifcopenshell_ifcapi_element_get_aggregate")
 
 
 def get_nest(element: ifcopenshell.entity_instance) -> Union[ifcopenshell.entity_instance, None]:
@@ -1360,15 +1198,7 @@ def get_nest(element: ifcopenshell.entity_instance) -> Union[ifcopenshell.entity
         element = file.by_type("IfcBeam")[0]
         aggregate = ifcopenshell.util.element.get_nest(element)
     """
-    is_ifc2x3 = element.file.schema == "IFC2X3"
-    if is_ifc2x3:
-        if not (decomposes := getattr(element, "Decomposes", None)):
-            return
-        if decomposes[0].is_a("IfcRelNests"):
-            return decomposes[0].RelatingObject
-    else:
-        if nests := getattr(element, "Nests", None):
-            return nests[0].RelatingObject
+    return _call_element_instance(element, "ifcopenshell_ifcapi_element_get_nest")
 
 
 def get_parts(element: ifcopenshell.entity_instance) -> list[ifcopenshell.entity_instance]:
@@ -1385,13 +1215,7 @@ def get_parts(element: ifcopenshell.entity_instance) -> list[ifcopenshell.entity
         element = file.by_type("IfcElementAssembly")[0]
         parts = ifcopenshell.util.element.get_parts(element)
     """
-    objects: list[ifcopenshell.entity_instance] = []
-    is_not_ifc2x3 = element.file.schema != "IFC2X3"
-    if is_decomposed_by := getattr(element, "IsDecomposedBy", ()):
-        for rel in is_decomposed_by:
-            if is_not_ifc2x3 or rel.is_a("IfcRelAggregates"):
-                objects.extend(rel.RelatedObjects)
-    return objects
+    return _call_element_instance_list(element, "ifcopenshell_ifcapi_element_get_parts")
 
 
 def get_contained(element: ifcopenshell.entity_instance) -> list[ifcopenshell.entity_instance]:
@@ -1408,11 +1232,7 @@ def get_contained(element: ifcopenshell.entity_instance) -> list[ifcopenshell.en
         element = file.by_type("IfcBuildingStorey")[0]
         elements = ifcopenshell.util.element.get_contained(element)
     """
-    objects: list[ifcopenshell.entity_instance] = []
-    if contains_elements := getattr(element, "ContainsElements", ()):
-        for rel in contains_elements:
-            objects.extend(rel.RelatedElements)
-    return objects
+    return _call_element_instance_list(element, "ifcopenshell_ifcapi_element_get_contained")
 
 
 def get_components(
@@ -1489,29 +1309,7 @@ def get_referenced_elements(reference: ifcopenshell.entity_instance) -> set[ifco
         elements = ifcopenshell.util.element.get_referenced_elements(reference)
     """
 
-    related_objects: set[ifcopenshell.entity_instance] = set()
-    ifc_file = reference.file
-    ifc_class = reference.is_a()
-
-    if ifc_file.schema == "IFC2X3":
-        reference_data = REFERENCE_TYPES.get(ifc_class)
-        if reference_data:
-            for rel in ifc_file.by_type(reference_data.rel_class):
-                if getattr(rel, reference_data.relating_element_attribute) == reference:
-                    related_objects.update(rel.RelatedObjects)
-
-    else:
-        if reference.is_a("IfcExternalReference"):
-            # IfcExternalReference
-            for external_rel in reference.ExternalReferenceForResources:
-                related_objects.update(external_rel.RelatedResourceObjects)
-
-        reference_data = REFERENCE_TYPES.get(ifc_class)
-        if reference_data:
-            for rel in getattr(reference, reference_data.inverse_attribute):
-                related_objects.update(rel.RelatedObjects)
-
-    return related_objects
+    return set(_call_element_instance_list(reference, "ifcopenshell_ifcapi_element_get_referenced_elements"))
 
 
 def replace_element(element: ifcopenshell.entity_instance, replacement: ifcopenshell.entity_instance) -> None:
@@ -1848,11 +1646,7 @@ def get_openings(element: ifcopenshell.entity_instance) -> Generator[ifcopenshel
     :param element: IfcElement.
     :return: Generator of IfcRelVoidsElements.
     """
-    for element_rel in getattr(element, "HasOpenings", ()):
-        yield element_rel
-
-    if aggregate := get_aggregate(element):
-        yield from get_openings(aggregate)
+    yield from _call_element_instance_list(element, "ifcopenshell_ifcapi_element_get_openings")
 
 
 def has_openings(element: ifcopenshell.entity_instance) -> bool:

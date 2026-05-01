@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/attribute.h"
+#include "ifcapi/bindings/classification.h"
+#include "ifcapi/bindings/geometry.h"
+#include "ifcapi/bindings/placement.h"
+#include "ifcapi/bindings/pset.h"
+#include "ifcapi/bindings/pset_template.h"
+#include "ifcapi/bindings/schema.h"
 #include "ifcapi/bindings/shape.h"
 #include "ifcapi/bindings/value.h"
 #include "ifcapi/value.h"
@@ -161,24 +168,18 @@ std::vector<IfcUtil::IfcBaseClass*> call_get_materials(IfcUtil::IfcBaseClass* e)
 std::vector<IfcUtil::IfcBaseClass*> call_get_styles(IfcUtil::IfcBaseClass* e) {
     std::vector<IfcUtil::IfcBaseClass*> out;
     if (!e) return out;
-    ScopedHandle sh(e);
-    uint32_t n = 0;
-    auto** arr = ifcopenshell_util_element_get_styles(sh.get(), &n);
-    if (!arr) return out;
-    for (uint32_t i = 0; i < n; ++i) if (arr[i] && arr[i]->ptr) out.push_back(arr[i]->ptr);
-    ifcopenshell_free_instance_array(arr, n);
+    auto styles = ifcapi::bindings::element_get_styles(e);
+    if (!styles) return out;
+    for (auto& style : *styles) if (style) out.push_back(style);
     return out;
 }
 
 std::vector<IfcUtil::IfcBaseClass*> call_get_classification(IfcUtil::IfcBaseClass* e) {
     std::vector<IfcUtil::IfcBaseClass*> out;
     if (!e) return out;
-    ScopedHandle sh(e);
-    uint32_t n = 0;
-    auto** arr = ifcopenshell_util_classification_get_references(sh.get(), true, &n);
-    if (!arr) return out;
-    for (uint32_t i = 0; i < n; ++i) if (arr[i] && arr[i]->ptr) out.push_back(arr[i]->ptr);
-    ifcopenshell_free_instance_array(arr, n);
+    auto refs = ifcapi::bindings::classification_get_references(e, true);
+    if (!refs) return out;
+    for (auto& ref : *refs) if (ref) out.push_back(ref);
     return out;
 }
 
@@ -199,18 +200,14 @@ std::vector<std::pair<std::string, Val*>> all_psets(IfcUtil::IfcBaseClass* e) {
    Name on element. Returns nullptr if none. */
 IfcUtil::IfcBaseClass* find_pset_instance(IfcUtil::IfcBaseClass* e, const std::string& name) {
     if (!e) return nullptr;
-    ScopedHandle sh(e);
-    uint32_t n = 0;
-    auto** arr = ifcopenshell_element_get_pset_ids(sh.get(), false, false, true, &n);
+    auto psets = ifcapi::bindings::element_get_pset_ids(e, false, false, true);
     IfcUtil::IfcBaseClass* result = nullptr;
-    if (arr) {
-        for (uint32_t i = 0; i < n; ++i) {
-            auto* h = arr[i];
-            if (!result && h && h->ptr && get_string_attr(h->ptr, "Name") == name) {
-                result = h->ptr;
+    if (psets) {
+        for (auto& pset : *psets) {
+            if (!result && pset && get_string_attr(pset, "Name") == name) {
+                result = pset;
             }
         }
-        ifcopenshell_free_instance_array(arr, n);
     }
     return result;
 }
@@ -230,20 +227,18 @@ void props_set_one(ifcopenshell_pset_props_t* props, const char* key,
                 try { d = std::stod(v->s_val); } catch (...) { d = 0.0; }
             } else if (v->kind == IFCSEL_VALUE_BOOL) d = v->b_val ? 1.0 : 0.0;
         }
-        ifcopenshell_pset_props_set_double(props, key, d);
+        ifcapi::bindings::pset_props_set_double(props, key, d);
         return;
     }
-    if (val_is_none(v)) { ifcopenshell_pset_props_set_null(props, key); return; }
+    if (val_is_none(v)) { ifcapi::bindings::pset_props_set_null(props, key); return; }
     switch (v->kind) {
-        case IFCSEL_VALUE_BOOL:   ifcopenshell_pset_props_set_bool(props, key, v->b_val); break;
-        case IFCSEL_VALUE_INT:    ifcopenshell_pset_props_set_int(props, key, v->i_val); break;
-        case IFCSEL_VALUE_DOUBLE: ifcopenshell_pset_props_set_double(props, key, v->d_val); break;
-        case IFCSEL_VALUE_STRING: ifcopenshell_pset_props_set_string(props, key, v->s_val.c_str()); break;
-        case IFCSEL_VALUE_INSTANCE: {
-            ScopedHandle sh(v->inst_val);
-            ifcopenshell_pset_props_set_instance(props, key, sh.get());
+        case IFCSEL_VALUE_BOOL:   ifcapi::bindings::pset_props_set_bool(props, key, v->b_val); break;
+        case IFCSEL_VALUE_INT:    ifcapi::bindings::pset_props_set_int(props, key, v->i_val); break;
+        case IFCSEL_VALUE_DOUBLE: ifcapi::bindings::pset_props_set_double(props, key, v->d_val); break;
+        case IFCSEL_VALUE_STRING: ifcapi::bindings::pset_props_set_string(props, key, v->s_val); break;
+        case IFCSEL_VALUE_INSTANCE:
+            ifcapi::bindings::pset_props_set_instance(props, key, v->inst_val);
             break;
-        }
         case IFCSEL_VALUE_LIST: {
             // Distinguish string-list / int-list / double-list.
             bool all_str = true, all_int = true, all_dbl = true;
@@ -253,52 +248,46 @@ void props_set_one(ifcopenshell_pset_props_t* props, const char* key,
                 if (!it || (it->kind != IFCSEL_VALUE_DOUBLE && it->kind != IFCSEL_VALUE_INT)) all_dbl = false;
             }
             if (all_str) {
-                std::vector<const char*> ptrs;
                 std::vector<std::string> hold;
                 hold.reserve(v->list_val.size());
                 for (auto* it : v->list_val) hold.push_back(it->s_val);
-                for (auto& s : hold) ptrs.push_back(s.c_str());
-                ifcopenshell_pset_props_set_string_list(props, key, ptrs.data(), (uint32_t)ptrs.size());
+                ifcapi::bindings::pset_props_set_string_list(props, key, hold);
             } else if (all_int) {
                 std::vector<int64_t> vs;
                 for (auto* it : v->list_val) vs.push_back(it->i_val);
-                ifcopenshell_pset_props_set_int_list(props, key, vs.data(), (uint32_t)vs.size());
+                ifcapi::bindings::pset_props_set_int_list(props, key, vs);
             } else if (all_dbl) {
                 std::vector<double> vs;
                 for (auto* it : v->list_val) vs.push_back(it->kind == IFCSEL_VALUE_INT ? (double)it->i_val : it->d_val);
-                ifcopenshell_pset_props_set_double_list(props, key, vs.data(), (uint32_t)vs.size());
+                ifcapi::bindings::pset_props_set_double_list(props, key, vs);
             } else {
-                std::vector<const char*> ptrs;
                 std::vector<std::string> hold;
                 hold.reserve(v->list_val.size());
                 for (auto* it : v->list_val) hold.push_back(it ? it->s_val : "");
-                for (auto& s : hold) ptrs.push_back(s.c_str());
-                ifcopenshell_pset_props_set_string_list(props, key, ptrs.data(), (uint32_t)ptrs.size());
+                ifcapi::bindings::pset_props_set_string_list(props, key, hold);
             }
             break;
         }
         default:
-            ifcopenshell_pset_props_set_null(props, key);
+            ifcapi::bindings::pset_props_set_null(props, key);
             break;
     }
 }
 
 void edit_pset_one(ifcopenshell_ifc_file_t* fh, IfcUtil::IfcBaseClass* pset,
                    const char* key, const ifcopenshell_value_t* v) {
-    auto* props = ifcopenshell_pset_props_new();
+    auto* props = ifcapi::bindings::pset_props_new();
     props_set_one(props, key, v, false);
-    ScopedHandle sh(pset);
-    ifcopenshell_api_pset_edit_pset(fh, sh.get(), nullptr, props, nullptr, false);
-    ifcopenshell_pset_props_free(props);
+    ifcapi::bindings::pset_edit_pset(fh ? fh->ptr : nullptr, pset, nullptr, props, nullptr, false);
+    ifcapi::bindings::pset_props_free(props);
 }
 
 void edit_qto_one(ifcopenshell_ifc_file_t* fh, IfcUtil::IfcBaseClass* qto,
                   const char* key, const ifcopenshell_value_t* v, bool force_double = true) {
-    auto* props = ifcopenshell_pset_props_new();
+    auto* props = ifcapi::bindings::pset_props_new();
     props_set_one(props, key, v, force_double);
-    ScopedHandle sh(qto);
-    ifcopenshell_api_pset_edit_qto(fh, sh.get(), nullptr, props, nullptr);
-    ifcopenshell_pset_props_free(props);
+    ifcapi::bindings::pset_edit_qto(fh ? fh->ptr : nullptr, qto, nullptr, props, nullptr);
+    ifcapi::bindings::pset_props_free(props);
 }
 
 /* ---------- regex match helper (anchored start, like re.match) */
@@ -322,14 +311,7 @@ void apply_set_predefined_type(IfcParse::IfcFile* /*file*/, IfcUtil::IfcBaseClas
     if ((size_t)idx >= attrs.size()) return;
     const IfcParse::attribute* attr = attrs[(size_t)idx];
 
-    uint32_t enum_n = 0;
-    char** enum_arr = ifcopenshell_util_attribute_get_enum_items(
-        reinterpret_cast<const void*>(attr), &enum_n);
-    std::vector<std::string> enum_items;
-    if (enum_arr) {
-        for (uint32_t i = 0; i < enum_n; ++i) enum_items.emplace_back(enum_arr[i] ? enum_arr[i] : "");
-        ifcopenshell_free_string_array(enum_arr, enum_n);
-    }
+    std::vector<std::string> enum_items = ifcapi::bindings::attribute_get_enum_items(attr);
 
     std::string current_pt = get_string_attr(element, "PredefinedType");
     const char* type_attr_name = is_type ? "ElementType" : "ObjectType";
@@ -411,12 +393,11 @@ PsetPVResult process_pset_prop_value(
         }
     }
 
-    auto* tmpl = ifcopenshell_util_pset_get_template(file->schema()->name().c_str());
+    auto* tmpl = ifcapi::bindings::pset_template_get_template(file->schema()->name());
     if (!tmpl) return PV_USE_VALUE;
     std::string pset_name = get_string_attr(pset, "Name");
-    auto* psh = ifcopenshell_util_pset_template_get_by_name(tmpl, pset_name.c_str());
-    if (!psh) return PV_USE_VALUE;
-    auto* pset_template = psh->ptr;
+    auto* pset_template = ifcapi::bindings::pset_template_get_by_name(tmpl, pset_name);
+    if (!pset_template) return PV_USE_VALUE;
     IfcUtil::IfcBaseClass* prop_template = nullptr;
     for (auto* pt : get_entity_list(pset_template, "HasPropertyTemplates")) {
         if (!pt) continue;
@@ -428,7 +409,6 @@ PsetPVResult process_pset_prop_value(
         if (pname == prop) { prop_template = pt; break; }
     }
     if (!prop_template) {
-        ifcopenshell_ifc_instance_destroy(psh);
         return PV_USE_VALUE;
     }
 
@@ -439,7 +419,6 @@ PsetPVResult process_pset_prop_value(
     } catch (...) {}
 
     if (template_type != "P_ENUMERATEDVALUE") {
-        ifcopenshell_ifc_instance_destroy(psh);
         return PV_USE_VALUE;
     }
 
@@ -451,7 +430,6 @@ PsetPVResult process_pset_prop_value(
     } catch (...) {}
 
     if (!enumeration) {
-        ifcopenshell_ifc_instance_destroy(psh);
         out_list = { vs };
         return PV_USE_LIST;
     }
@@ -470,8 +448,6 @@ PsetPVResult process_pset_prop_value(
             }
         }
     } catch (...) {}
-
-    ifcopenshell_ifc_instance_destroy(psh);
 
     if (std::find(available.begin(), available.end(), vs) != available.end()) {
         out_list = { vs };
@@ -586,8 +562,7 @@ void setattr_with_cast(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e,
     const auto& attrs = decl->all_attributes();
     if ((size_t)idx >= attrs.size()) return;
     const IfcParse::attribute* attr = attrs[(size_t)idx];
-    const char* dt = ifcopenshell_util_attribute_get_primitive_type(
-        reinterpret_cast<const void*>(attr));
+    const char* dt = ifcapi::bindings::attribute_get_primitive_type(attr);
     std::string dts = dt ? dt : "";
 
     auto try_set_none = [&]() {
@@ -733,10 +708,7 @@ int do_set(IfcParse::IfcFile* file,
                     std::string cur_cls = cur.inst->declaration().name();
                     std::string val_str = val_to_string(value);
                     if (lower(cur_cls) == lower(val_str)) return 0;
-                    ScopedHandle eh(cur.inst);
-                    auto* fh_local = file_h;
-                    auto* h = ifcopenshell_util_schema_reassign_class(fh_local, eh.get(), val_str.c_str());
-                    if (h) ifcopenshell_ifc_instance_destroy(h);
+                    ifcapi::bindings::schema_reassign_class(file_h ? file_h->ptr : nullptr, cur.inst, val_str);
                     return 0;
                 }
                 if (k == "id") return 0;
@@ -768,8 +740,10 @@ int do_set(IfcParse::IfcFile* file,
                     if (!placement_e) {
                         ifcapi::identity4(matrix.data());
                     } else {
-                        ScopedHandle ph(placement_e);
-                        if (!ifcopenshell_placement_get_local_placement(ph.get(), matrix.data())) {
+                        auto placement_matrix = ifcapi::bindings::placement_get_local_placement(placement_e);
+                        if (placement_matrix.size() == matrix.size()) {
+                            std::copy(placement_matrix.begin(), placement_matrix.end(), matrix.begin());
+                        } else {
                             ifcapi::identity4(matrix.data());
                         }
                     }
@@ -786,10 +760,8 @@ int do_set(IfcParse::IfcFile* file,
                     if (ifcapi::bindings::shape_is_x(newv, prev, 0.0)) return 0;
 
                     matrix[(size_t)ci * 4 + 3] = newv;
-                    ScopedHandle eh(cur.inst);
-                    auto* h = ifcopenshell_api_geometry_edit_object_placement(
-                        file_h, eh.get(), matrix.data(), false, true);
-                    if (h) ifcopenshell_ifc_instance_destroy(h);
+                    std::vector<double> matrix_values(matrix.begin(), matrix.end());
+                    ifcapi::bindings::geometry_edit_object_placement(file_h->ptr, cur.inst, matrix_values, false, true);
                     return 0;
                 }
             }
@@ -876,16 +848,12 @@ int do_set(IfcParse::IfcFile* file,
                 /* Auto-create when value is truthy and next key is the prop name. */
                 if (val_truthy(value) && (i + 2 == keys.size())) {
                     bool is_qto = icontains(k, "qto") || icontains(k, "quantity") || icontains(k, "quantities");
-                    ScopedHandle eh(cur.inst);
-                    ifcopenshell_ifc_instance_t* h = nullptr;
                     if (is_qto) {
-                        h = ifcopenshell_api_pset_add_qto(file_h, eh.get(), k.c_str(), nullptr);
+                        pset_inst = ifcapi::bindings::pset_add_qto(file, cur.inst, k, nullptr);
                     } else {
-                        h = ifcopenshell_api_pset_add_pset(file_h, eh.get(), k.c_str(), nullptr, nullptr);
+                        pset_inst = ifcapi::bindings::pset_add_pset(file, cur.inst, k, nullptr, nullptr);
                     }
-                    if (h) {
-                        pset_inst = h->ptr;
-                        ifcopenshell_ifc_instance_destroy(h);
+                    if (pset_inst) {
                         pset_dict = make_dict();  /* empty */
                     }
                 }
@@ -935,13 +903,10 @@ int do_set(IfcParse::IfcFile* file,
                 if (pr == PV_ERROR) return -1;
                 if (pr == PV_SKIP) return 0;
                 if (pr == PV_USE_LIST) {
-                    auto* props = ifcopenshell_pset_props_new();
-                    std::vector<const char*> ptrs;
-                    for (auto& s : out_list) ptrs.push_back(s.c_str());
-                    ifcopenshell_pset_props_set_string_list(props, k.c_str(), ptrs.data(), (uint32_t)ptrs.size());
-                    ScopedHandle ph(pset);
-                    ifcopenshell_api_pset_edit_pset(file_h, ph.get(), nullptr, props, nullptr, false);
-                    ifcopenshell_pset_props_free(props);
+                    auto* props = ifcapi::bindings::pset_props_new();
+                    ifcapi::bindings::pset_props_set_string_list(props, k, out_list);
+                    ifcapi::bindings::pset_edit_pset(file_h ? file_h->ptr : nullptr, pset, nullptr, props, nullptr, false);
+                    ifcapi::bindings::pset_props_free(props);
                     return 0;
                 }
                 edit_pset_one(file_h, pset, k.c_str(), value);
@@ -1092,87 +1057,3 @@ bool selector_set_element_value(
 
 } // namespace bindings
 } // namespace ifcapi
-
-/* ====================================================================
- *  Public C entry points                                                 */
-
-extern "C" {
-
-ifcopenshell_selector_keylist_t* ifcopenshell_selector_keylist_create(void) {
-    return new ifcopenshell_selector_keylist_t();
-}
-
-void ifcopenshell_selector_keylist_destroy(ifcopenshell_selector_keylist_t* h) {
-    delete h;
-}
-
-void ifcopenshell_selector_keylist_append_string(
-    ifcopenshell_selector_keylist_t* h, const char* str)
-{
-    if (!h) return;
-    KeyEntry ke;
-    ke.is_regex = false;
-    ke.text = str ? str : "";
-    h->keys.push_back(std::move(ke));
-}
-
-void ifcopenshell_selector_keylist_append_regex(
-    ifcopenshell_selector_keylist_t* h, const char* pattern)
-{
-    if (!h) return;
-    KeyEntry ke;
-    ke.is_regex = true;
-    ke.text = pattern ? pattern : "";
-    try { ke.pattern = std::regex(ke.text); }
-    catch (...) { ke.pattern = std::regex(""); }
-    h->keys.push_back(std::move(ke));
-}
-
-int ifcopenshell_util_selector_set_element_value(
-    ifcopenshell_ifc_file_t* file_h,
-    ifcopenshell_ifc_instance_t* element_h,
-    const ifcopenshell_selector_keylist_t* keys_h,
-    const ifcopenshell_value_t* value,
-    const char* concat)
-{
-    if (!file_h || !file_h->ptr) {
-        set_error("ifcopenshell_util_selector_set_element_value: NULL file");
-        return -1;
-    }
-    if (!keys_h) {
-        set_error("ifcopenshell_util_selector_set_element_value: NULL keys");
-        return -1;
-    }
-    IfcParse::IfcFile* file = file_h->ptr;
-    IfcUtil::IfcBaseClass* element = element_h ? element_h->ptr : nullptr;
-    Cursor c = element ? Cursor::instance(element) : Cursor::none();
-    std::string concat_s = concat ? concat : ", ";
-    try {
-        return do_set(file, file_h, std::move(c), keys_h->keys, 0, value, concat_s);
-    } catch (const std::exception& ex) {
-        set_error(std::string("set_element_value: ") + ex.what());
-        return -1;
-    } catch (...) {
-        set_error("set_element_value: unknown error");
-        return -1;
-    }
-}
-
-ifcopenshell_value_t* ifcopenshell_value_new_none(void)         { return make_none(); }
-ifcopenshell_value_t* ifcopenshell_value_new_bool(bool b)       { return make_bool(b); }
-ifcopenshell_value_t* ifcopenshell_value_new_int(int64_t i)     { return make_int(i); }
-ifcopenshell_value_t* ifcopenshell_value_new_double(double d)   { return make_double(d); }
-ifcopenshell_value_t* ifcopenshell_value_new_string(const char* s) {
-    return make_string(s ? std::string(s) : std::string());
-}
-ifcopenshell_value_t* ifcopenshell_value_new_instance(ifcopenshell_ifc_instance_t* h) {
-    return make_instance(h ? h->ptr : nullptr);
-}
-ifcopenshell_value_t* ifcopenshell_value_new_list(void) { return make_list(); }
-void ifcopenshell_value_list_append(ifcopenshell_value_t* list, ifcopenshell_value_t* item) {
-    if (!list) { delete item; return; }
-    if (list->kind != IFCSEL_VALUE_LIST) { delete item; return; }
-    list->list_val.push_back(item ? item : make_none());
-}
-
-}  // extern "C"

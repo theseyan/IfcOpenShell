@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/placement.h"
 #include "entity_introspection.hpp"
 #include "placement_helpers.hpp"
 
@@ -13,6 +14,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -75,6 +77,25 @@ bool compute_cart_xform_3d(IfcUtil::IfcBaseClass* e, double* out) {
     out[0] *= s1; out[4] *= s1; out[8] *= s1;
     out[1] *= s2; out[5] *= s2; out[9] *= s2;
     out[2] *= s3; out[6] *= s3; out[10] *= s3;
+    return true;
+}
+
+bool compute_mappeditem_xform(IfcUtil::IfcBaseClass* e, double* out) {
+    if (!e || !is_a(e, "IfcMappedItem")) return false;
+    auto* src = read_ref(e, "MappingSource");
+    auto* tgt = read_ref(e, "MappingTarget");
+    if (!src || !tgt) return false;
+    auto* origin = read_ref(src, "MappingOrigin");
+    if (!origin) return false;
+    double source_m[16];
+    if (!compute_axis2placement(origin, source_m)) return false;
+    if (!is_a(tgt, "IfcCartesianTransformationOperator3D")) {
+        std::memcpy(out, source_m, 16 * sizeof(double));
+        return false;
+    }
+    double target_m[16];
+    if (!compute_cart_xform_3d(tgt, target_m)) return false;
+    matmul4(target_m, source_m, out);
     return true;
 }
 
@@ -154,98 +175,104 @@ bool compute_axis2placement(IfcUtil::IfcBaseClass* e, double* out) {
 
 }  // namespace ifcapi
 
-extern "C" {
+namespace {
 
-void ifcopenshell_placement_a2p(const double* o, const double* z, const double* x, double* out) {
-    if (!o || !z || !x || !out) return;
-    a2p(o, z, x, out);
+std::vector<double> matrix_to_vector(const double* matrix) {
+    return std::vector<double>(matrix, matrix + 16);
 }
 
-bool ifcopenshell_placement_get_axis2placement(const ifcopenshell_ifc_instance_t* instance, double* out) {
-    if (!out) return false;
-    identity4(out);
-    auto* e = instance ? instance->ptr : nullptr;
-    if (!e) return false;
-    return compute_axis2placement(e, out);
-}
-
-bool ifcopenshell_placement_get_local_placement(const ifcopenshell_ifc_instance_t* instance, double* out) {
-    if (!out) return false;
-    identity4(out);
-    if (!instance) return true;  // NULL placement -> identity
-    auto* e = instance ? instance->ptr : nullptr;
-    if (!e) return false;
-    return compute_local_placement(e, out);
-}
-
-bool ifcopenshell_placement_get_cartesian_xform_3d(const ifcopenshell_ifc_instance_t* instance, double* out) {
-    if (!out) return false;
-    identity4(out);
-    auto* e = instance ? instance->ptr : nullptr;
-    if (!e) return false;
-    return compute_cart_xform_3d(e, out);
-}
-
-bool ifcopenshell_placement_get_mappeditem_xform(const ifcopenshell_ifc_instance_t* instance, double* out) {
-    if (!out) return false;
-    identity4(out);
-    auto* e = instance ? instance->ptr : nullptr;
-    if (!e || !is_a(e, "IfcMappedItem")) return false;
-    auto* src = read_ref(e, "MappingSource");
-    auto* tgt = read_ref(e, "MappingTarget");
-    if (!src || !tgt) return false;
-    auto* origin = read_ref(src, "MappingOrigin");
-    if (!origin) return false;
-    double source_m[16];
-    if (!compute_axis2placement(origin, source_m)) return false;
-    if (!is_a(tgt, "IfcCartesianTransformationOperator3D")) {
-        // 2D case not supported here; return source only.
-        std::memcpy(out, source_m, 16 * sizeof(double));
-        return false;
+void vector_to_vec3(const std::vector<double>& values, const char* name, double out[3]) {
+    if (values.size() != 3) {
+        throw std::invalid_argument(std::string(name) + " must contain exactly 3 values");
     }
-    double target_m[16];
-    if (!compute_cart_xform_3d(tgt, target_m)) return false;
-    matmul4(target_m, source_m, out);
-    return true;
+    out[0] = values[0];
+    out[1] = values[1];
+    out[2] = values[2];
 }
 
-bool ifcopenshell_placement_get_storey_elevation(const ifcopenshell_ifc_instance_t* instance, double* out) {
-    if (!out) return false;
-    *out = 0.0;
-    auto* e = instance ? instance->ptr : nullptr;
-    if (!e) return false;
+std::vector<double> matrix_result(bool ok, const double* matrix) {
+    return ok ? matrix_to_vector(matrix) : std::vector<double>();
+}
+
+} // namespace
+
+namespace ifcapi {
+namespace bindings {
+
+std::vector<double> placement_a2p(
+    const std::vector<double>& origin,
+    const std::vector<double>& z_axis,
+    const std::vector<double>& x_axis)
+{
+    double o[3], z[3], x[3], out[16];
+    vector_to_vec3(origin, "origin", o);
+    vector_to_vec3(z_axis, "z_axis", z);
+    vector_to_vec3(x_axis, "x_axis", x);
+    a2p(o, z, x, out);
+    return matrix_to_vector(out);
+}
+
+std::vector<double> placement_get_axis2placement(IfcUtil::IfcBaseClass* instance) {
+    double out[16];
+    identity4(out);
+    return matrix_result(compute_axis2placement(instance, out), out);
+}
+
+std::vector<double> placement_get_local_placement(IfcUtil::IfcBaseClass* instance) {
+    double out[16];
+    identity4(out);
+    if (!instance) return matrix_to_vector(out);
+    return matrix_result(compute_local_placement(instance, out), out);
+}
+
+std::vector<double> placement_get_cartesian_xform_3d(IfcUtil::IfcBaseClass* instance) {
+    double out[16];
+    identity4(out);
+    return matrix_result(compute_cart_xform_3d(instance, out), out);
+}
+
+std::vector<double> placement_get_mappeditem_xform(IfcUtil::IfcBaseClass* instance) {
+    double out[16];
+    identity4(out);
+    return matrix_result(compute_mappeditem_xform(instance, out), out);
+}
+
+double placement_get_storey_elevation(IfcUtil::IfcBaseClass* instance) {
+    double out = 0.0;
+    auto* e = instance;
+    if (!e) return out;
     auto* placement = read_ref(e, "ObjectPlacement");
     if (placement) {
         double m[16];
         if (compute_local_placement(placement, m)) {
-            // Z translation is at m[11] (row 2, col 3 in row-major 4x4).
-            *out = m[11];
-            return true;
+            return m[11];
         }
     }
     double elev;
     if (read_double_attr(e, "Elevation", &elev)) {
-        *out = elev;
-        return true;
+        return elev;
     }
-    return true;
+    return out;
 }
 
-void ifcopenshell_placement_rotation(double angle_rad, char axis, double* out) {
-    if (!out) return;
+std::vector<double> placement_rotation(double angle_rad, const std::string& axis) {
+    double out[16];
     identity4(out);
+    const char axis_char = !axis.empty() ? axis[0] : '\0';
     double c = std::cos(angle_rad);
     double s = std::sin(angle_rad);
-    if (axis == 'X' || axis == 'x') {
+    if (axis_char == 'X' || axis_char == 'x') {
         out[5] = c;  out[6] = -s;
         out[9] = s;  out[10] = c;
-    } else if (axis == 'Y' || axis == 'y') {
+    } else if (axis_char == 'Y' || axis_char == 'y') {
         out[0] = c;   out[2] = s;
         out[8] = -s;  out[10] = c;
-    } else if (axis == 'Z' || axis == 'z') {
+    } else if (axis_char == 'Z' || axis_char == 'z') {
         out[0] = c;  out[1] = -s;
         out[4] = s;  out[5] = c;
     }
+    return matrix_to_vector(out);
 }
 
-}  // extern "C"
+} // namespace bindings
+} // namespace ifcapi

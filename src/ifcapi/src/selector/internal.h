@@ -11,6 +11,9 @@
 #include "ifcapi/selector/ast.h"
 #include "ifcapi/ifcapi.h"
 #include "ifcapi/bindings/element.h"
+#include "ifcapi/bindings/placement.h"
+#include "ifcapi/bindings/representation.h"
+#include "ifcapi/bindings/selector.h"
 
 #include "ifcopenshell_api_internal.hpp"
 
@@ -52,6 +55,42 @@ struct ifcopenshell_value_t {
 /* ---- Type alias ---- */
 using Val = ifcopenshell_value_t;
 
+inline ifcopenshell_selector_node_t* ifcopenshell_selector_parse_filter(const char* query) {
+    return ifcapi::bindings::selector_parse_filter(query ? std::string(query) : std::string());
+}
+
+inline ifcopenshell_selector_node_t* ifcopenshell_selector_parse_get_element(const char* query) {
+    return ifcapi::bindings::selector_parse_get_element(query ? std::string(query) : std::string());
+}
+
+inline ifcopenshell_selector_node_t* ifcopenshell_selector_parse_format(const char* query) {
+    return ifcapi::bindings::selector_parse_format(query ? std::string(query) : std::string());
+}
+
+inline ifcsel_node_kind ifcopenshell_selector_node_kind(const ifcopenshell_selector_node_t* node) {
+    return static_cast<ifcsel_node_kind>(ifcapi::bindings::selector_node_kind(node));
+}
+
+inline size_t ifcopenshell_selector_node_child_count(const ifcopenshell_selector_node_t* node) {
+    return ifcapi::bindings::selector_node_child_count(node);
+}
+
+inline ifcopenshell_selector_node_t* ifcopenshell_selector_node_child(
+    const ifcopenshell_selector_node_t* node, size_t index)
+{
+    return ifcapi::bindings::selector_node_child(node, index);
+}
+
+inline const char* ifcopenshell_selector_node_text(const ifcopenshell_selector_node_t* node) {
+    static thread_local std::string text;
+    text = ifcapi::bindings::selector_node_text(node);
+    return text.empty() ? nullptr : text.c_str();
+}
+
+inline void ifcopenshell_selector_node_free(ifcopenshell_selector_node_t* root) {
+    ifcapi::bindings::selector_node_free(root);
+}
+
 /* ====================================================================
  *  Value factories
  * ==================================================================== */
@@ -79,6 +118,12 @@ inline Val* make_list() {
 }
 inline Val* make_dict() {
     auto* v = new Val(); v->kind = IFCSEL_VALUE_DICT; return v;
+}
+
+inline bool placement_matrix_to_array(const std::vector<double>& values, double out[16]) {
+    if (values.size() != 16) return false;
+    std::copy(values.begin(), values.end(), out);
+    return true;
 }
 
 inline Val* clone_val(const Val* v) {
@@ -350,17 +395,13 @@ inline Val* extract_pset_props(IfcUtil::IfcBaseClass* defn) {
 inline std::vector<std::pair<std::string, Val*>>
 get_all_psets(IfcUtil::IfcBaseClass* entity) {
     std::vector<std::pair<std::string, Val*>> result;
-    ScopedHandle sh(entity);
-    uint32_t count = 0;
-    ifcopenshell_ifc_instance_t** handles =
-        ifcopenshell_element_get_pset_ids(sh.get(), false, false, true, &count);
-    if (!handles || count == 0) return result;
+    auto psets = ifcapi::bindings::element_get_pset_ids(entity, false, false, true);
+    if (!psets || psets->size() == 0) return result;
 
-    for (uint32_t i = 0; i < count; ++i) {
-        auto* h = handles[i];
-        if (!h || !h->ptr) continue;
-        std::string nm = get_string_attr(h->ptr, "Name");
-        Val* props = extract_pset_props(h->ptr);
+    for (auto& pset : *psets) {
+        if (!pset) continue;
+        std::string nm = get_string_attr(pset, "Name");
+        Val* props = extract_pset_props(pset);
 
         bool found = false;
         for (auto& kv : result) {
@@ -375,7 +416,6 @@ get_all_psets(IfcUtil::IfcBaseClass* entity) {
         }
         if (!found) result.push_back({nm, props});
     }
-    ifcopenshell_free_instance_array(handles, count);
     return result;
 }
 
@@ -513,14 +553,11 @@ inline Val* resolve_occurrences(IfcUtil::IfcBaseClass* e) {
 inline Val* resolve_styles(IfcUtil::IfcBaseClass* e) {
     auto* list = make_list();
     if (!e) return list;
-    ScopedHandle sh(e);
-    uint32_t n = 0;
-    auto** arr = ifcopenshell_util_element_get_styles(sh.get(), &n);
-    if (!arr) return list;
-    for (uint32_t i = 0; i < n; ++i) {
-        if (arr[i] && arr[i]->ptr) list->list_val.push_back(make_instance(arr[i]->ptr));
+    auto styles = ifcapi::bindings::element_get_styles(e);
+    if (!styles) return list;
+    for (auto& style : *styles) {
+        if (style) list->list_val.push_back(make_instance(style));
     }
-    ifcopenshell_free_instance_array(arr, n);
     return list;
 }
 
@@ -553,23 +590,17 @@ inline Val* resolve_profiles(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e) 
     }
 
     if (!file) return list;
-    ifcopenshell_ifc_file_t fh{file, false};
-    ScopedHandle sh(e);
-    auto* rep_h = ifcopenshell_representation_get_product_representation(
-        &fh, sh.get(), nullptr, "Model", "Body", "MODEL_VIEW");
-    if (!rep_h) return list;
+    auto* rep = ifcapi::bindings::representation_get_product_representation(
+        e, nullptr, "Model", "Body", "MODEL_VIEW");
+    if (!rep) return list;
 
-    uint32_t n = 0;
-    auto** items = ifcopenshell_representation_resolve_base_items(&fh, rep_h, &n);
-    ifcopenshell_ifc_instance_destroy(rep_h);
+    auto items = ifcapi::bindings::representation_resolve_base_items(rep);
     if (!items) return list;
-    for (uint32_t i = 0; i < n; ++i) {
-        auto* item = items[i] ? items[i]->ptr : nullptr;
+    for (auto& item : *items) {
         if (!item || !entity_is_a(item, "IfcExtrudedAreaSolid")) continue;
         auto* swept = get_entity_ref(item, "SweptArea");
         if (swept) list->list_val.push_back(make_instance(swept));
     }
-    ifcopenshell_free_instance_array(items, n);
     return list;
 }
 
@@ -577,8 +608,7 @@ inline Val* resolve_xyz(IfcUtil::IfcBaseClass* e, const std::string& k) {
     auto* placement_e = get_entity_ref(e, "ObjectPlacement");
     if (!placement_e) return make_none();
     double matrix[16];
-    ScopedHandle sh(placement_e);
-    if (!ifcopenshell_placement_get_local_placement(sh.get(), matrix)) return make_none();
+    if (!placement_matrix_to_array(ifcapi::bindings::placement_get_local_placement(placement_e), matrix)) return make_none();
     int ci = (k == "x") ? 0 : (k == "y") ? 1 : 2;
     return make_double(matrix[ci * 4 + 3]);
 }
@@ -652,9 +682,8 @@ inline bool apply_wcs_inverse(IfcParse::IfcFile* file, double& x, double& y, dou
     if (!chosen) return false;
     auto* wcs = get_entity_ref(chosen, "WorldCoordinateSystem");
     if (!wcs) return false;
-    ScopedHandle sh(wcs);
     double m[16];
-    if (!ifcopenshell_placement_get_axis2placement(sh.get(), m)) return false;
+    if (!placement_matrix_to_array(ifcapi::bindings::placement_get_axis2placement(wcs), m)) return false;
     double inv[16];
     if (!invert_rigid4(m, inv)) return false;
     transform_point4(inv, x, y, z);
@@ -710,8 +739,7 @@ inline Val* resolve_map_coordinate(IfcParse::IfcFile* file, IfcUtil::IfcBaseClas
     auto* placement_e = get_entity_ref(e, "ObjectPlacement");
     if (!placement_e) return make_none();
     double matrix[16];
-    ScopedHandle sh(placement_e);
-    if (!ifcopenshell_placement_get_local_placement(sh.get(), matrix)) return make_none();
+    if (!placement_matrix_to_array(ifcapi::bindings::placement_get_local_placement(placement_e), matrix)) return make_none();
     double x = matrix[3];
     double y = matrix[7];
     double z = matrix[11];

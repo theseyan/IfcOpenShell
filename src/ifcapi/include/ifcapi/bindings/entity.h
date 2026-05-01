@@ -29,6 +29,7 @@ IFCAPI_BINDING bool entity_set_aggregate_typed_value(
 IFCAPI_BINDING std::vector<std::string> entity_get_aggregate_typed_value(
     IfcUtil::IfcBaseClass* instance,
     const std::string& attr);
+IFCAPI_BINDING void entity_remove_deep2(IfcUtil::IfcBaseClass* instance);
 
 } // namespace bindings
 } // namespace ifcapi

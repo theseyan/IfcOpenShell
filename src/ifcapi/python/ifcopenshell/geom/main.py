@@ -15,6 +15,7 @@ from ctypes import POINTER, byref, c_bool, c_char_p, c_double, c_int32, c_size_t
 from typing import Any, Literal, Optional, Union
 
 import ifcopenshell
+from ifcopenshell import _generated_capi
 
 from . import _capi
 from ._capi import (
@@ -31,8 +32,6 @@ from ._capi import (
     ifcopenshell_string_t,
     take_double_list,
     take_int_list,
-    take_string,
-    take_string_list,
     to_double_list,
     to_int_list,
     to_string_list,
@@ -118,16 +117,23 @@ class settings_mixin:
         return getattr(bind(), f"ifcopenshell_ifcgeom_{self._settings_kind}_{suffix}")
 
     def get_type(self, name: str) -> str:
-        out = ifcopenshell_string_t()
-        if not self._fn("get_type")(self._h, self.name(name).encode("utf-8"), byref(out)):
+        result = _generated_capi.call_string(
+            bind(),
+            self._fn("get_type"),
+            self._h,
+            self.name(name).encode("utf-8"),
+            value_type=ifcopenshell_string_t,
+        )
+        if result is None:
             raise RuntimeError(f"Unknown setting: {name}")
-        return take_string(out)
+        return result
 
     def setting_names(self) -> tuple[str, ...]:
-        out = ifcopenshell_string_list_t()
-        if not self._fn("setting_names")(self._h, byref(out)):
+        names = _generated_capi.call_string_list(
+            bind(), self._fn("setting_names"), self._h, value_type=ifcopenshell_string_list_t
+        )
+        if names is None:
             raise RuntimeError("Failed to enumerate setting names")
-        names = take_string_list(out)
         if isinstance(self, settings) and "use-python-opencascade" not in names:
             names = names + ("use-python-opencascade",)
         return names
@@ -137,46 +143,44 @@ class settings_mixin:
         nm = self.name(name).encode("utf-8")
         h = self._h
         if ty == "bool":
-            v = c_bool()
-            if self._fn("get_bool")(h, nm, byref(v)):
-                return bool(v.value)
-            return None
+            result = _generated_capi.call_scalar(self._fn("get_bool"), c_bool, h, nm)
+            return bool(result) if result is not None else None
         if ty == "int":
-            v = c_int32()
-            if self._fn("get_int")(h, nm, byref(v)):
-                return int(v.value)
-            return None
+            result = _generated_capi.call_scalar(self._fn("get_int"), c_int32, h, nm)
+            return int(result) if result is not None else None
         if ty == "double":
-            v = c_double()
-            if self._fn("get_double")(h, nm, byref(v)):
-                return float(v.value)
-            return None
+            result = _generated_capi.call_scalar(self._fn("get_double"), c_double, h, nm)
+            return float(result) if result is not None else None
         if ty == "std::string":
-            s = ifcopenshell_string_t()
-            if self._fn("get_string")(h, nm, byref(s)):
-                return take_string(s)
-            return ""
+            return (
+                _generated_capi.call_string(
+                    bind(), self._fn("get_string"), h, nm, value_type=ifcopenshell_string_t
+                )
+                or ""
+            )
         if ty.startswith("std::set<int"):
             lst = ifcopenshell_int32_list_t()
             if self._fn("get_int_set")(h, nm, byref(lst)):
                 return take_int_list(lst)
             return []
         if ty == "std::set<std::string>":
-            lst = ifcopenshell_string_list_t()
-            if self._fn("get_string_set")(h, nm, byref(lst)):
-                return list(take_string_list(lst))
-            return []
+            result = _generated_capi.call_string_list(
+                bind(), self._fn("get_string_set"), h, nm, value_type=ifcopenshell_string_list_t
+            )
+            return list(result) if result is not None else []
         if ty == "std::vector<double>":
             lst = ifcopenshell_double_list_t()
             if self._fn("get_double_list")(h, nm, byref(lst)):
                 return take_double_list(lst)
             return []
-        v = c_int32()
-        if self._fn("get_int")(h, nm, byref(v)):
-            return int(v.value)
-        s = ifcopenshell_string_t()
-        if self._fn("get_string")(h, nm, byref(s)):
-            return take_string(s)
+        result = _generated_capi.call_scalar(self._fn("get_int"), c_int32, h, nm)
+        if result is not None:
+            return int(result)
+        result = _generated_capi.call_string(
+            bind(), self._fn("get_string"), h, nm, value_type=ifcopenshell_string_t
+        )
+        if result is not None:
+            return result
         raise RuntimeError(f"Unsupported setting type for {name!r}: {ty}")
 
     def _set_typed(self, name: str, value: Any) -> None:
@@ -333,36 +337,22 @@ class serializer_settings(settings_mixin, _OwnedHandle):
 
 
 def _string_attr(handle: HandleP, fn_name: str) -> str:
-    out = ifcopenshell_string_t()
-    if not getattr(bind(), fn_name)(handle, byref(out)):
-        return ""
-    return take_string(out)
+    return (
+        _generated_capi.call_string(
+            bind(), getattr(bind(), fn_name), handle, value_type=ifcopenshell_string_t
+        )
+        or ""
+    )
 
 
 def _int_attr(handle: HandleP, fn_name: str) -> int:
-    out = c_int32()
-    if not getattr(bind(), fn_name)(handle, byref(out)):
-        return 0
-    return int(out.value)
+    result = _generated_capi.call_scalar(getattr(bind(), fn_name), c_int32, handle)
+    return int(result) if result is not None else 0
 
 
 def _take_handle_list(lst, destroy_fn_name: str, wrap_cls):
-    """Move-construct Python wrappers from a heap handle-list, transferring
-    ownership of each item. Mirrors the pattern used in
-    ``ifcopenshell_wrapper._move_handle_list``."""
-    try:
-        addrs = []
-        null = HandleP()
-        for i in range(lst.size):
-            slot = lst.items[i]
-            addrs.append(ctypes.addressof(slot.contents) if slot else 0)
-            lst.items[i] = null
-        return [
-            wrap_cls(ctypes.cast(ctypes.c_void_p(a), HandleP)) if a else wrap_cls(None)
-            for a in addrs
-        ]
-    finally:
-        getattr(bind(), destroy_fn_name)(byref(lst))
+    """Move-construct Python wrappers from a heap handle-list."""
+    return [wrap_cls(handle) if handle else wrap_cls(None) for handle in _generated_capi.move_handle_list(bind(), lst, destroy_fn_name, HandleP)]
 
 
 class Transformation(_OwnedHandle):
@@ -698,14 +688,7 @@ class Triangulation(_OwnedHandle):
             self._h, byref(out)
         ):
             return []
-        try:
-            result = []
-            for i in range(out.size):
-                row = out.items[i]
-                result.append([int(row.items[j]) for j in range(row.size)])
-            return result
-        finally:
-            bind().ifcopenshell_int32_list_list_destroy(byref(out))
+        return [list(row) for row in _generated_capi.take_int32_list_list(bind(), out)]
 
     def polyhedral_faces_with_holes(self) -> list[list[list[int]]]:
         out = ifcopenshell_int32_list_list_list_t()
@@ -713,18 +696,10 @@ class Triangulation(_OwnedHandle):
             self._h, byref(out)
         ):
             return []
-        try:
-            result = []
-            for i in range(out.size):
-                outer = out.items[i]
-                bundle = []
-                for j in range(outer.size):
-                    inner = outer.items[j]
-                    bundle.append([int(inner.items[k]) for k in range(inner.size)])
-                result.append(bundle)
-            return result
-        finally:
-            bind().ifcopenshell_int32_list_list_list_destroy(byref(out))
+        return [
+            [list(inner) for inner in outer]
+            for outer in _generated_capi.take_int32_list_list_list(bind(), out)
+        ]
 
 
 class BRepRepresentation(_OwnedHandle):
@@ -1029,7 +1004,9 @@ map_shape = None  # type: ignore[assignment]
 
 
 def _instance_handle(inst):
-    """Return a raw ``c_void_p``-compatible handle for an entity_instance."""
+    """Return a generated C-API handle pointer for an entity_instance."""
+    from ifcopenshell.geom._capi import HandleP
+
     if inst is None:
         return None
     h = getattr(inst, "_handle", None)
@@ -1037,9 +1014,11 @@ def _instance_handle(inst):
         h = getattr(getattr(inst, "wrapped_data", None), "_handle", None)
     if h is None:
         raise TypeError(f"create_shape: expected entity_instance, got {type(inst).__name__}")
+    if isinstance(h, HandleP):
+        return h
     if isinstance(h, ctypes.c_void_p):
-        return h.value
-    return h
+        return ctypes.cast(h, HandleP) if h.value else HandleP()
+    return ctypes.cast(ctypes.c_void_p(h), HandleP) if h else HandleP()
 
 
 def _result_geometry_type(settings_obj):
@@ -1152,13 +1131,14 @@ tesselate = None  # type: ignore[assignment]
 
 
 def _file_native_ptr(file_or_filename):
-    """Resolve ``file_or_filename`` to a raw ``ifcopenshell_ifc_file_t*``
-    (``ctypes.c_void_p`` value) and return ``(ptr, owning_file)``.
+    """Resolve ``file_or_filename`` to a generated file handle pointer and
+    return ``(ptr, owning_file)``.
 
     The owning file is returned so callers can keep it alive for the
     lifetime of the iterator (the C iterator borrows from the file).
     """
     import ifcopenshell as _io
+    from ifcopenshell.geom._capi import HandleP
 
     if isinstance(file_or_filename, str):
         f = _io.open(file_or_filename)
@@ -1171,9 +1151,11 @@ def _file_native_ptr(file_or_filename):
         raise TypeError(
             f"iterate: expected ifcopenshell.file or path, got {type(file_or_filename).__name__}"
         )
+    if isinstance(ptr, HandleP):
+        return ptr, f
     if isinstance(ptr, ctypes.c_void_p):
-        ptr = ptr.value
-    return ptr, f
+        return (ctypes.cast(ptr, HandleP) if ptr.value else HandleP()), f
+    return (ctypes.cast(ctypes.c_void_p(ptr), HandleP) if ptr else HandleP()), f
 
 
 class iterator:
@@ -1208,7 +1190,7 @@ class iterator:
 
         if include is None and exclude is None:
             ok = lib.ifcopenshell_ifcgeom_create_iterator(
-                gl, settings_obj._h, ctypes.c_void_p(file_ptr),
+                gl, settings_obj._h, file_ptr,
                 c_int32(int(num_threads)), byref(out),
             )
         else:
@@ -1226,7 +1208,7 @@ class iterator:
                 ids.items = arr
                 ids.size = len(spec_list)
                 ok = lib.ifcopenshell_ifcgeom_create_iterator_with_include_exclude_id(
-                    gl, settings_obj._h, ctypes.c_void_p(file_ptr),
+                    gl, settings_obj._h, file_ptr,
                     byref(ids), c_bool(include_flag),
                     c_int32(int(num_threads)), byref(out),
                 )
@@ -1237,7 +1219,7 @@ class iterator:
                 # memory. Lifetime is extended via str_list._keep until ``ok``
                 # returns; the C side only borrows the strings.
                 ok = lib.ifcopenshell_ifcgeom_create_iterator_with_include_exclude(
-                    gl, settings_obj._h, ctypes.c_void_p(file_ptr),
+                    gl, settings_obj._h, file_ptr,
                     byref(str_list), c_bool(include_flag),
                     c_int32(int(num_threads)), byref(out),
                 )
@@ -1285,14 +1267,20 @@ class iterator:
         return float(v.value)
 
     def unit_name(self) -> str:
-        s = ifcopenshell_string_t()
-        bind().ifcopenshell_ifcgeom_iterator_unit_name(self._h, byref(s))
-        return take_string(s)
+        return (
+            _generated_capi.call_string(
+                bind(), bind().ifcopenshell_ifcgeom_iterator_unit_name, self._h, value_type=ifcopenshell_string_t
+            )
+            or ""
+        )
 
     def get_log(self) -> str:
-        s = ifcopenshell_string_t()
-        bind().ifcopenshell_ifcgeom_iterator_get_log(self._h, byref(s))
-        return take_string(s)
+        return (
+            _generated_capi.call_string(
+                bind(), bind().ifcopenshell_ifcgeom_iterator_get_log, self._h, value_type=ifcopenshell_string_t
+            )
+            or ""
+        )
 
     def had_error_processing_elements(self) -> bool:
         v = c_bool(False)
@@ -1422,20 +1410,12 @@ def _instance_list_from(items) -> "ctypes.c_void_p":
     ``ifcopenshell_ifcparse_instance_list_destroy``."""
     lib = bind()
     items = list(items)
-    create = getattr(
-        lib, "ifcopenshell_ifcparse_instance_list_create_from_handles", None,
-    )
-    if create is None:
-        raise RuntimeError(
-            "C ABI is missing ifcopenshell_ifcparse_instance_list_create_from_handles; "
-            "rebuild ifcopenshell_capi"
-        )
-    arr = (ctypes.c_void_p * len(items))(*[ctypes.c_void_p(x._handle) for x in items])
+    arr = (HandleP * len(items))(*[_instance_handle(x) for x in items])
     handle_list = _capi.ifcopenshell_ifc_instance_list_t()
-    handle_list.items = ctypes.cast(arr, POINTER(HandleP))
+    handle_list.items = arr
     handle_list.size = len(items)
     out = HandleP()
-    if not create(byref(handle_list), byref(out)) or not out:
+    if not lib.ifcopenshell_ifcparse_instance_list_create_from_handles(byref(handle_list), byref(out)) or not out:
         raise RuntimeError(_last_error("Failed to build instance list"))
     return out
 
@@ -1558,11 +1538,11 @@ class tree:
             file_ptr, self._file_anchor = _file_native_ptr(file)
             if settings_obj is None:
                 ok = lib.ifcopenshell_ifcgeom_create_tree_from_file(
-                    ctypes.c_void_p(file_ptr), byref(out)
+                    file_ptr, byref(out)
                 )
             else:
                 ok = lib.ifcopenshell_ifcgeom_create_tree_from_file_with_settings(
-                    ctypes.c_void_p(file_ptr), settings_obj._h, byref(out)
+                    file_ptr, settings_obj._h, byref(out)
                 )
         if not ok or not out:
             raise RuntimeError(_last_error("Failed to create tree"))
@@ -1588,7 +1568,7 @@ class tree:
         file_ptr, anchor = _file_native_ptr(file)
         self._file_anchor = anchor
         if not bind().ifcopenshell_ifcgeom_tree_add_file(
-            self._h, ctypes.c_void_p(file_ptr), settings_obj._h
+            self._h, file_ptr, settings_obj._h
         ):
             raise RuntimeError(_last_error("tree.add_file failed"))
 
@@ -1644,7 +1624,7 @@ class tree:
             )
         elif isinstance(value, entity_instance):
             ok = lib.ifcopenshell_ifcgeom_tree_select_element(
-                self._h, ctypes.c_void_p(value._handle),
+                self._h, _instance_handle(value),
                 c_bool(bool(completely_within)), c_double(extend), byref(out),
             )
         else:
@@ -1668,7 +1648,7 @@ class tree:
             )
         elif isinstance(value, entity_instance):
             ok = lib.ifcopenshell_ifcgeom_tree_select_box_element(
-                self._h, ctypes.c_void_p(value._handle),
+                self._h, _instance_handle(value),
                 c_bool(bool(completely_within)),
                 c_double(-1.0e-5 if extend is None else extend), byref(out),
             )
@@ -1851,12 +1831,14 @@ class buffer(_OwnedHandle):
         super().__init__(out)
 
     def get_value(self) -> str:
-        from ifcopenshell.geom._capi import bind, take_string, ifcopenshell_string_t
-        from ctypes import byref
-        out = ifcopenshell_string_t()
-        if not bind().ifcopenshell_ifcgeom_buffer_get_value(self._h, byref(out)):
+        from ifcopenshell.geom._capi import bind, ifcopenshell_string_t
+
+        result = _generated_capi.call_string(
+            bind(), bind().ifcopenshell_ifcgeom_buffer_get_value, self._h, value_type=ifcopenshell_string_t
+        )
+        if result is None:
             raise RuntimeError(_last_error("buffer.get_value failed"))
-        return take_string(out)
+        return result
 
     def is_ready(self) -> bool:
         from ifcopenshell.geom._capi import bind
@@ -1927,7 +1909,7 @@ class _SerializerBase(_OwnedHandle):
 
     def setFile(self, f) -> None:
         ptr, owner = _file_native_ptr(f)
-        self._call("set_file", ctypes.c_void_p(ptr))
+        self._call("set_file", ptr)
         self._keep = (self._keep, owner)
 
     set_file = setFile
@@ -2030,7 +2012,7 @@ def _make_file_serializer(create_fn_name, file_or_filename, output_filename):
     out = HandleP()
     fn = getattr(bind(), create_fn_name)
     if not fn(
-        ctypes.c_void_p(ptr),
+        ptr,
         str(output_filename).encode("utf-8"),
         byref(out),
     ):

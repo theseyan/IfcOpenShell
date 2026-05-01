@@ -12,6 +12,8 @@ import ctypes.util
 import os
 import sys
 
+from ifcopenshell import _generated_capi
+
 _lib = None
 
 
@@ -61,15 +63,7 @@ def _get_lib():
     _lib.ifcopenshell_clear_error.restype = None
     _lib.ifcopenshell_clear_error.argtypes = []
 
-    # root.create_entity
-    _lib.ifcopenshell_root_create_entity.restype = ctypes.c_int32
-    _lib.ifcopenshell_root_create_entity.argtypes = [
-        ctypes.c_void_p,   # file_ptr
-        ctypes.c_char_p,   # ifc_class
-        ctypes.c_char_p,   # predefined_type (nullable)
-        ctypes.c_char_p,   # name (nullable)
-        ctypes.c_int32,    # owner_history_id
-    ]
+    _generated_capi.bind(_lib, names=("ifcopenshell_ifcapi_root_create_entity",))
 
     return _lib
 

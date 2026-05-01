@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/pset_template.h"
 
 #include "ifcparse/IfcFile.h"
 #include "ifcparse/IfcSchema.h"
 #include "ifcparse/IfcBaseClass.h"
 #include "ifcparse/IfcEntityInstanceData.h"
 
-#include <cstdlib>
 #include <cstring>
 #include <map>
 #include <memory>
@@ -217,39 +217,37 @@ bool template_passes_filters(IfcUtil::IfcBaseClass* prop_set, bool pset_only, bo
 
 }  // namespace
 
-extern "C" {
+namespace ifcapi {
+namespace bindings {
 
-IFCAPI_EXPORT void ifcopenshell_util_pset_set_template_dir(const char* dir) {
-    if (!dir) return;
+void pset_template_set_template_dir(const std::string& dir) {
     std::lock_guard<std::mutex> lk(g_template_mutex);
     g_template_dir = dir;
 }
 
-IFCAPI_EXPORT ifcopenshell_pset_template_t* ifcopenshell_util_pset_get_template(const char* schema_identifier) {
-    if (!schema_identifier) { set_error("schema_identifier is NULL"); return nullptr; }
+ifcopenshell_pset_template_t* pset_template_get_template(const std::string& schema_identifier) {
+    if (schema_identifier.empty()) { set_error("schema_identifier is empty"); return nullptr; }
     std::lock_guard<std::mutex> lk(g_template_mutex);
     return get_or_load_locked(schema_identifier);
 }
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_util_pset_template_get_by_name(
-    ifcopenshell_pset_template_t* pqt, const char* name)
+IfcUtil::IfcBaseClass* pset_template_get_by_name(ifcopenshell_pset_template_t* pqt, const std::string& name)
 {
-    if (!pqt || !name) return nullptr;
+    if (!pqt || name.empty()) return nullptr;
     std::lock_guard<std::mutex> lk(g_template_mutex);
     auto* f = pqt->templates_file.get();
     if (!f) return nullptr;
     auto entities = f->instances_by_type("IfcPropertySetTemplate");
     if (!entities) return nullptr;
     for (auto it = entities->begin(); it != entities->end(); ++it) {
-        if (read_string(*it, "Name") == name) return ifcopenshell::capi::wrap_instance(*it);
+        if (read_string(*it, "Name") == name) return *it;
     }
     return nullptr;
 }
 
-IFCAPI_EXPORT bool ifcopenshell_util_pset_template_is_templated(
-    ifcopenshell_pset_template_t* pqt, const char* name)
+bool pset_template_is_templated(ifcopenshell_pset_template_t* pqt, const std::string& name)
 {
-    if (!pqt || !name) return false;
+    if (!pqt || name.empty()) return false;
     std::lock_guard<std::mutex> lk(g_template_mutex);
     auto* f = pqt->templates_file.get();
     if (!f) return false;
@@ -261,24 +259,21 @@ IFCAPI_EXPORT bool ifcopenshell_util_pset_template_is_templated(
     return false;
 }
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_pset_template_get_applicable(
+std::vector<IfcUtil::IfcBaseClass*> pset_template_get_applicable(
     ifcopenshell_pset_template_t* pqt,
     const char* ifc_class,
     const char* predefined_type,
     bool pset_only,
     bool qto_only,
-    const char* schema_name,
-    uint32_t* out_count)
+    const char* schema_name)
 {
-    if (out_count) *out_count = 0;
-    if (!pqt) return nullptr;
+    if (!pqt) return {};
     std::lock_guard<std::mutex> lk(g_template_mutex);
     auto* f = pqt->templates_file.get();
-    if (!f) return nullptr;
+    if (!f) return {};
 
     std::string ifc_class_s = ifc_class ? ifc_class : "";
     std::string predefined_s = predefined_type ? predefined_type : "";
-    std::string schema_s = schema_name ? schema_name : "IFC4";
 
     bool any_class = ifc_class_s.empty();
 
@@ -291,7 +286,7 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_pset_template_get_
         } catch (...) { effective_schema = nullptr; }
         if (!effective_schema) {
             set_error("Cannot resolve schema for ifc_class lookup");
-            return nullptr;
+            return {};
         }
         try {
             auto* decl = effective_schema->declaration_by_name(ifc_class_s);
@@ -299,12 +294,12 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_pset_template_get_
         } catch (...) { entity_decl = nullptr; }
         if (!entity_decl) {
             set_error("ifc_class not an entity: " + ifc_class_s);
-            return nullptr;
+            return {};
         }
     }
 
     auto entities = f->instances_by_type("IfcPropertySetTemplate");
-    if (!entities) return nullptr;
+    if (!entities) return {};
     std::vector<IfcUtil::IfcBaseClass*> result;
     for (auto it = entities->begin(); it != entities->end(); ++it) {
         std::string template_type;
@@ -319,57 +314,29 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t** ifcopenshell_util_pset_template_get_
             }
         }
     }
-    if (result.empty()) return nullptr;
-    auto** buf = static_cast<ifcopenshell_ifc_instance_t**>(
-        std::malloc(result.size() * sizeof(ifcopenshell_ifc_instance_t*)));
-    if (!buf) return nullptr;
-    for (size_t i = 0; i < result.size(); ++i) buf[i] = ifcopenshell::capi::wrap_instance(result[i]);
-    if (out_count) *out_count = static_cast<uint32_t>(result.size());
-    (void)schema_s;
-    return buf;
+    (void)schema_name;
+    return result;
 }
 
-IFCAPI_EXPORT char** ifcopenshell_util_pset_template_get_applicable_names(
+std::vector<std::string> pset_template_get_applicable_names(
     ifcopenshell_pset_template_t* pqt,
     const char* ifc_class,
     const char* predefined_type,
     bool pset_only,
     bool qto_only,
-    const char* schema_name,
-    uint32_t* out_count)
+    const char* schema_name)
 {
-    if (out_count) *out_count = 0;
-    uint32_t n = 0;
-    auto** arr = ifcopenshell_util_pset_template_get_applicable(
-        pqt, ifc_class, predefined_type, pset_only, qto_only, schema_name, &n);
-    if (!arr || n == 0) {
-        if (arr) {
-            for (uint32_t i = 0; i < n; ++i) delete arr[i];
-            std::free(arr);
-        }
-        return nullptr;
+    auto applicable = pset_template_get_applicable(pqt, ifc_class, predefined_type, pset_only, qto_only, schema_name);
+    std::vector<std::string> names;
+    names.reserve(applicable.size());
+    for (auto* item : applicable) {
+        names.push_back(read_string(item, "Name"));
     }
-    auto** out = static_cast<char**>(std::malloc(n * sizeof(char*)));
-    if (!out) {
-        for (uint32_t i = 0; i < n; ++i) delete arr[i];
-        std::free(arr);
-        return nullptr;
-    }
-    for (uint32_t i = 0; i < n; ++i) {
-        std::string name = read_string(arr[i] ? arr[i]->ptr : nullptr, "Name");
-        out[i] = static_cast<char*>(std::malloc(name.size() + 1));
-        std::memcpy(out[i], name.data(), name.size());
-        out[i][name.size()] = '\0';
-        delete arr[i];
-    }
-    std::free(arr);
-    if (out_count) *out_count = n;
-    return out;
+    return names;
 }
 
-IFCAPI_EXPORT const char* ifcopenshell_util_pset_template_pset_type(ifcopenshell_ifc_instance_t* pset_template) {
-    if (!pset_template || !pset_template->ptr) return nullptr;
-    auto* e = pset_template->ptr;
+std::string pset_template_pset_type(IfcUtil::IfcBaseClass* e) {
+    if (!e) return "";
     std::string template_type = read_string(e, "TemplateType");
     if (!template_type.empty()) {
         if (startswith(template_type, "PSET_")) return "PSET";
@@ -391,11 +358,12 @@ IFCAPI_EXPORT const char* ifcopenshell_util_pset_template_pset_type(ifcopenshell
             else seen_qto = true;
         }
     } catch (...) {
-        return nullptr;
+        return "";
     }
     if (seen_pset && !seen_qto) return "PSET";
     if (seen_qto && !seen_pset) return "QTO";
-    return nullptr;
+    return "";
 }
 
-}  // extern "C"
+} // namespace bindings
+} // namespace ifcapi

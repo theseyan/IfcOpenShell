@@ -7,11 +7,14 @@ import chain (e.g. :mod:`ifcopenshell.entity_instance`) can reuse the
 value marshalling helpers without triggering the larger selector module
 import graph, which would cause a circular import.
 
-Only depends on :mod:`ctypes` and the standard library."""
+Only depends on the generated C API module and lightweight standard-library
+helpers."""
 from __future__ import annotations
 
 import ctypes
 import sys
+from collections.abc import Iterable
+from decimal import Decimal
 
 from ifcopenshell import _generated_capi
 
@@ -39,26 +42,73 @@ def configure_value_lib(lib) -> None:
         return
     _generated_capi.bind(
         lib,
-        names=("ifcopenshell_ifcapi_compute_derived",),
+        names=("ifcopenshell_ifcapi_compute_derived", "ifcopenshell_string_destroy"),
         prefixes=("ifcopenshell_ifcapi_value_",),
     )
     _value_lib_configured = True
 
 
 def _take_string(lib, fn, *args):
-    from ifcopenshell import ifcopenshell_wrapper as W
-
-    out = W.ifcopenshell_string_t()
-    if not fn(*args, ctypes.byref(out)):
-        return None
-    return W._take_string(out)
+    return _generated_capi.call_string(lib, fn, *args)
 
 
 def _take_scalar(lib, fn, c_type, ptr):
-    out = c_type()
-    if not fn(ptr, ctypes.byref(out)):
-        return None
-    return out.value
+    return _generated_capi.call_scalar(fn, c_type, ptr)
+
+
+def _new_value(lib, fn, *args):
+    ptr = ctypes.POINTER(_generated_capi.ifcopenshell_ifcapi_value_t)()
+    if not fn(*args, ctypes.byref(ptr)) or not ptr:
+        _generated_capi.status_or_raise(False)
+    return ptr
+
+
+def python_to_value(lib, value):
+    """Recursively convert a Python value to an owned ``ifcopenshell_value_t*``.
+
+    The caller owns the returned pointer and must destroy it with
+    ``ifcopenshell_ifcapi_value_destroy``.
+    """
+    if value is None:
+        return _new_value(lib, lib.ifcopenshell_ifcapi_value_new_none)
+    if isinstance(value, bool):
+        return _new_value(lib, lib.ifcopenshell_ifcapi_value_new_bool, value)
+    if isinstance(value, int):
+        return _new_value(lib, lib.ifcopenshell_ifcapi_value_new_int, value)
+    if isinstance(value, float):
+        return _new_value(lib, lib.ifcopenshell_ifcapi_value_new_double, value)
+    if isinstance(value, Decimal):
+        return _new_value(lib, lib.ifcopenshell_ifcapi_value_new_double, float(value))
+    if isinstance(value, str):
+        return _new_value(lib, lib.ifcopenshell_ifcapi_value_new_string, _generated_capi.encode_string(value))
+    from ifcopenshell.entity_instance import _generated_instance_handle_ptr, entity_instance
+
+    if isinstance(value, entity_instance):
+        return _new_value(
+            lib,
+            lib.ifcopenshell_ifcapi_value_new_instance,
+            _generated_instance_handle_ptr(value._handle),
+        )
+    if isinstance(value, dict):
+        raise TypeError("ifcopenshell_value_t dict construction is not exposed by the generated C API.")
+    if isinstance(value, Iterable):
+        result = _new_value(lib, lib.ifcopenshell_ifcapi_value_new_list)
+        try:
+            for item in value:
+                child = python_to_value(lib, item)
+                appended = ctypes.c_bool()
+                try:
+                    if not lib.ifcopenshell_ifcapi_value_list_append(result, child, ctypes.byref(appended)):
+                        _generated_capi.status_or_raise(False)
+                    if not appended.value:
+                        raise RuntimeError(f"Failed to append selector value item '{item}'.")
+                finally:
+                    lib.ifcopenshell_ifcapi_value_destroy(child)
+        except Exception:
+            lib.ifcopenshell_ifcapi_value_destroy(result)
+            raise
+        return result
+    return _new_value(lib, lib.ifcopenshell_ifcapi_value_new_string, _generated_capi.encode_string(str(value)))
 
 
 def value_to_python(lib, ptr, element):

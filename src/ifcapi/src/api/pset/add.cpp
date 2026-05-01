@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/pset.h"
 #include "guid.h"
 #include "ifcopenshell_api_internal.hpp"
 
@@ -188,24 +189,18 @@ IfcUtil::IfcBaseClass* create_named_definition(IfcParse::IfcFile* file, const ch
 
 }  // namespace
 
-extern "C" {
+namespace ifcapi {
+namespace bindings {
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_api_pset_add_pset(
-    ifcopenshell_ifc_file_t* file_h,
-    ifcopenshell_ifc_instance_t* product_h,
-    const char* name,
-    ifcopenshell_ifc_instance_t* owner_history_h,
+IfcUtil::IfcBaseClass* pset_add_pset(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* product,
+    const std::string& name,
+    IfcUtil::IfcBaseClass* owner_history,
     const char* ifc2x3_subclass)
 {
-    if (!file_h || !product_h || !name) {
-        set_error("ifcopenshell_api_pset_add_pset: missing required argument");
-        return nullptr;
-    }
-    auto* file = file_h->ptr;
-    auto* product = product_h->ptr;
-    auto* owner_history = owner_history_h ? owner_history_h->ptr : nullptr;
     if (!file || !product) {
-        set_error("ifcopenshell_api_pset_add_pset: NULL underlying pointer");
+        set_error("pset_add_pset: missing required argument");
         return nullptr;
     }
     try {
@@ -213,20 +208,20 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_api_pset_add_pset(
 
         if (entity_is_a(product, "IfcObject") || entity_is_a(product, "IfcContext")) {
             if (auto* existing = find_existing_pset_on_object(product, nm)) {
-                return ifcopenshell::capi::wrap_instance(existing);
+                return existing;
             }
             auto* pset = create_named_definition(file, "IfcPropertySet", nm, owner_history);
             assign_pset_to_object(file, product, pset, owner_history);
-            return ifcopenshell::capi::wrap_instance(pset);
+            return pset;
         }
 
         if (entity_is_a(product, "IfcTypeObject")) {
             if (auto* existing = find_existing_pset_on_type(product, nm)) {
-                return ifcopenshell::capi::wrap_instance(existing);
+                return existing;
             }
             auto* pset = create_named_definition(file, "IfcPropertySet", nm, owner_history);
             append_to_type_pset_list(product, pset);
-            return ifcopenshell::capi::wrap_instance(pset);
+            return pset;
         }
 
         // Material / Profile paths.
@@ -263,7 +258,7 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_api_pset_add_pset(
             }
             for (auto* d : defs) {
                 if (read_string_attr(d, "Name") == nm) {
-                    return ifcopenshell::capi::wrap_instance(d);
+                    return d;
                 }
             }
 
@@ -274,14 +269,14 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_api_pset_add_pset(
             if (mi >= 0) def->set_attribute_value(static_cast<size_t>(mi), product);
             int ni = find_attr_index(entity_decl, "Name");
             if (ni >= 0) def->set_attribute_value(static_cast<size_t>(ni), nm);
-            return ifcopenshell::capi::wrap_instance(def);
+            return def;
         }
 
         if (entity_is_a(product, "IfcProfileDef")) {
             if (!is_ifc2x3) {
                 for (auto* d : get_inverse(product, "HasProperties")) {
                     if (read_string_attr(d, "Name") == nm) {
-                        return ifcopenshell::capi::wrap_instance(d);
+                        return d;
                     }
                 }
             }
@@ -302,32 +297,25 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_api_pset_add_pset(
                 int ni = find_attr_index(entity_decl, "Name");
                 if (ni >= 0) def->set_attribute_value(static_cast<size_t>(ni), nm);
             }
-            return ifcopenshell::capi::wrap_instance(def);
+            return def;
         }
 
         set_error(std::string("Class '") + product->declaration().name() + "' doesn't support adding a property set.");
         return nullptr;
     } catch (const std::exception& e) {
-        set_error(std::string("ifcopenshell_api_pset_add_pset: ") + e.what());
+        set_error(std::string("pset_add_pset: ") + e.what());
         return nullptr;
     }
 }
 
-IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_api_pset_add_qto(
-    ifcopenshell_ifc_file_t* file_h,
-    ifcopenshell_ifc_instance_t* product_h,
-    const char* name,
-    ifcopenshell_ifc_instance_t* owner_history_h)
+IfcUtil::IfcBaseClass* pset_add_qto(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* product,
+    const std::string& name,
+    IfcUtil::IfcBaseClass* owner_history)
 {
-    if (!file_h || !product_h || !name) {
-        set_error("ifcopenshell_api_pset_add_qto: missing required argument");
-        return nullptr;
-    }
-    auto* file = file_h->ptr;
-    auto* product = product_h->ptr;
-    auto* owner_history = owner_history_h ? owner_history_h->ptr : nullptr;
-    if (!file || !product) {
-        set_error("ifcopenshell_api_pset_add_qto: NULL underlying pointer");
+    if (!file || !product || name.empty()) {
+        set_error("pset_add_qto: missing required argument");
         return nullptr;
     }
     try {
@@ -340,7 +328,7 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_api_pset_add_qto(
 
         if (entity_is_a(product, "IfcObject") || entity_is_a(product, "IfcContext")) {
             if (auto* existing = find_existing_pset_on_object(product, nm)) {
-                return ifcopenshell::capi::wrap_instance(existing);
+                return existing;
             }
             auto* qto = create_named_definition(file, "IfcElementQuantity", nm, owner_history, mom);
 
@@ -358,24 +346,25 @@ IFCAPI_EXPORT ifcopenshell_ifc_instance_t* ifcopenshell_api_pset_add_qto(
             set_ref_aggregate(rel, ro, {product});
             int rp = find_attr_index(rel_entity_decl, "RelatingPropertyDefinition");
             if (rp >= 0) rel->set_attribute_value(static_cast<size_t>(rp), qto);
-            return ifcopenshell::capi::wrap_instance(qto);
+            return qto;
         }
 
         if (entity_is_a(product, "IfcTypeObject")) {
             if (auto* existing = find_existing_pset_on_type(product, nm)) {
-                return ifcopenshell::capi::wrap_instance(existing);
+                return existing;
             }
             auto* qto = create_named_definition(file, "IfcElementQuantity", nm, owner_history, mom);
             append_to_type_pset_list(product, qto);
-            return ifcopenshell::capi::wrap_instance(qto);
+            return qto;
         }
 
         set_error(std::string("Class '") + product->declaration().name() + "' doesn't support adding a quantity set.");
         return nullptr;
     } catch (const std::exception& e) {
-        set_error(std::string("ifcopenshell_api_pset_add_qto: ") + e.what());
+        set_error(std::string("pset_add_qto: ") + e.what());
         return nullptr;
     }
 }
 
-}  // extern "C"
+} // namespace bindings
+} // namespace ifcapi

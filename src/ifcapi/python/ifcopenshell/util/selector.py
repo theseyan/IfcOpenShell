@@ -16,10 +16,11 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
+import ctypes
 import re
 from collections.abc import Iterable
 from decimal import Decimal
-from types import EllipsisType
+from types import EllipsisType, SimpleNamespace
 from typing import Any, Optional, Union
 
 import lark
@@ -38,6 +39,9 @@ import ifcopenshell.util.schema
 import ifcopenshell.util.shape
 import ifcopenshell.util.system
 import ifcopenshell.util.unit
+from ifcopenshell import _generated_capi
+from ifcopenshell._value_api import configure_value_lib, python_to_value, value_to_python
+from ifcopenshell.entity_instance import _generated_instance_handle_ptr
 
 filter_elements_grammar = lark.Lark("""start: filter_group
     filter_group: facet_list ("+" facet_list)*
@@ -111,6 +115,77 @@ filter_elements_grammar = lark.Lark("""start: filter_group
 
     %ignore WS // Disregard spaces in text
 """)
+
+_selector_lib_configured = False
+
+
+def _generated_file_handle(file):
+    ptr = getattr(file, "_ptr", None)
+    if not ptr:
+        return None
+    return ctypes.cast(ctypes.c_void_p(ptr), ctypes.POINTER(_generated_capi._HandleStruct))
+
+
+def _configure_selector_lib(lib) -> None:
+    global _selector_lib_configured
+    if _selector_lib_configured:
+        return
+    _generated_capi.bind(
+        lib,
+        names=(
+            "ifcopenshell_ifcapi_selector_filter_all",
+            "ifcopenshell_ifcapi_selector_filter_elements",
+            "ifcopenshell_ifcapi_selector_get_element_value",
+            "ifcopenshell_ifcapi_selector_set_element_value",
+            "ifcopenshell_ifcapi_value_destroy",
+        ),
+    )
+    configure_value_lib(lib)
+    _selector_lib_configured = True
+
+
+def _make_instance_list(elements):
+    handles = [_generated_instance_handle_ptr(element._handle) for element in elements]
+    items = (ctypes.POINTER(_generated_capi._HandleStruct) * len(handles))(*handles)
+    return _generated_capi.ifcopenshell_ifc_instance_list_t(items, len(handles)), items
+
+
+def _canonical_file_entities(ifc_file, values):
+    return {
+        ifc_file.by_id(value.id()) if isinstance(value, ifcopenshell.entity_instance) else value
+        for value in values
+    }
+
+
+def _set_element_value_native(ifc_file, element, keys, value, concat):
+    lib = ifcopenshell._get_lib()
+    _configure_selector_lib(lib)
+    key_values = [key.pattern if isinstance(key, re.Pattern) else str(key) for key in keys]
+    regex_flags = [isinstance(key, re.Pattern) for key in keys]
+    key_list = _generated_capi.make_string_list(key_values)
+    regex_list = _generated_capi.make_bool_list(regex_flags)
+    value_ptr = python_to_value(lib, value)
+    try:
+        success = ctypes.c_bool()
+        ok = lib.ifcopenshell_ifcapi_selector_set_element_value(
+            _generated_file_handle(ifc_file),
+            _generated_instance_handle_ptr(element._handle),
+            ctypes.byref(key_list),
+            ctypes.byref(regex_list),
+            value_ptr,
+            _generated_capi.encode_string(concat),
+            ctypes.byref(success),
+        )
+        if not ok:
+            _generated_capi.status_or_raise(False)
+        if not success.value:
+            raise SetElementValueException(
+                f"Failed to set value '{value}' for element '{element}' with query '{key_values}' "
+                "(invalid or unsupported query)."
+            )
+    finally:
+        lib.ifcopenshell_ifcapi_value_destroy(value_ptr)
+
 
 get_element_grammar = lark.Lark("""start: keys
 
@@ -411,8 +486,22 @@ def format(query: str, element: Optional[ifcopenshell.entity_instance] = None) -
 
 
 def get_element_value(element: ifcopenshell.entity_instance, query: str) -> Any:
-    keys: list[str] = GetElementTransformer().transform(get_element_grammar.parse(query))
-    return _get_element_value(element, keys)
+    get_element_grammar.parse(query)
+    lib = ifcopenshell._get_lib()
+    _configure_selector_lib(lib)
+    ptr = ctypes.POINTER(_generated_capi.ifcopenshell_ifcapi_value_t)()
+    ok = lib.ifcopenshell_ifcapi_selector_get_element_value(
+        _generated_file_handle(element.file),
+        _generated_instance_handle_ptr(element._handle),
+        _generated_capi.encode_string(query),
+        ctypes.byref(ptr),
+    )
+    if not ok or not ptr:
+        return None
+    try:
+        return value_to_python(lib, ptr, element)
+    finally:
+        lib.ifcopenshell_ifcapi_value_destroy(ptr)
 
 
 def _get_element_value(element: ifcopenshell.entity_instance, keys: list[str]) -> Any:
@@ -580,11 +669,36 @@ def filter_elements(
     """
     if not query:
         return elements or set()
-    if elements and not edit_in_place:
-        elements = elements.copy()
-    transformer = FacetTransformer(ifc_file, elements)
-    transformer.transform(filter_elements_grammar.parse(query))
-    return transformer.get_results()
+    filter_elements_grammar.parse(query)
+    lib = ifcopenshell._get_lib()
+    _configure_selector_lib(lib)
+    ptr = ctypes.POINTER(_generated_capi.ifcopenshell_ifcapi_value_t)()
+    if elements is None:
+        ok = lib.ifcopenshell_ifcapi_selector_filter_all(
+            _generated_file_handle(ifc_file),
+            _generated_capi.encode_string(query),
+            ctypes.byref(ptr),
+        )
+    else:
+        base_elements = elements if edit_in_place else elements.copy()
+        element_list, _items = _make_instance_list(base_elements)
+        ok = lib.ifcopenshell_ifcapi_selector_filter_elements(
+            _generated_file_handle(ifc_file),
+            _generated_capi.encode_string(query),
+            ctypes.byref(element_list),
+            ctypes.byref(ptr),
+        )
+    result = set()
+    if ok and ptr:
+        try:
+            result = _canonical_file_entities(ifc_file, value_to_python(lib, ptr, SimpleNamespace(file=ifc_file)) or [])
+        finally:
+            lib.ifcopenshell_ifcapi_value_destroy(ptr)
+    if elements is not None and edit_in_place:
+        elements.clear()
+        elements.update(result)
+        return elements
+    return result
 
 
 class SetElementValueException(Exception): ...
@@ -616,6 +730,16 @@ def set_element_value(
         keys = query
     else:
         keys = GetElementTransformer().transform(get_element_grammar.parse(query))
+
+    if element is None:
+        return
+    if isinstance(element, (list, tuple, set)):
+        for item in element:
+            set_element_value(ifc_file, item, keys, value, concat=concat)
+        return
+    if isinstance(element, ifcopenshell.entity_instance):
+        _set_element_value_native(ifc_file, element, keys, value, concat)
+        return
 
     for i, key in enumerate(keys):
         if element is None:

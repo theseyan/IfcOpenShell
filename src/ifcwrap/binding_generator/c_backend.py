@@ -65,6 +65,7 @@ _SEQUENCE_LEAF_CPP_TYPE: dict[str, str] = {
     "string": "std::string",
     "bool": "bool",
     "int32": "int",
+    "int64": "int64_t",
     "uint8": "uint8_t",
     "uint32": "unsigned int",
     "double": "double",
@@ -74,6 +75,7 @@ _SEQUENCE_LEAF_C_TYPE: dict[str, str] = {
     "string": "ifcopenshell_string_t",
     "bool": "bool",
     "int32": "int32_t",
+    "int64": "int64_t",
     "uint8": "uint8_t",
     "uint32": "uint32_t",
     "double": "double",
@@ -1116,7 +1118,10 @@ def _render_call_impl(call: CallIR, spec: BindingIR) -> str:
         getter_lines.append('        if (!matched) { throw std::runtime_error("Setting is not of expected type"); }')
         body_line = "\n".join(getter_lines)
     elif isinstance(op, VariantSetOp):
-        if op.cpp_type == "int64_t":
+        value_param = call.params[1].type if len(call.params) > 1 else None
+        if value_param is not None and _type_spec_sequence_kind(value_param) is not None:
+            value_expr = f"{op.variant_type}(value_cpp)"
+        elif op.cpp_type == "int64_t":
             value_expr = f"{op.variant_type}(static_cast<int64_t>(value))"
         elif op.cpp_type == "double":
             value_expr = f"{op.variant_type}(value)"
@@ -1745,10 +1750,7 @@ void set_instance_argument(IfcUtil::IfcBaseClass* instance, size_t index, const 
 }}
 
 void unset_instance_argument(IfcUtil::IfcBaseClass* instance, size_t index) {{
-    instance->unset_attribute_value(index);
-    if (auto* entity = instance->as<IfcUtil::IfcBaseEntity>()) {{
-        entity->populate_derived();
-    }}
+    set_instance_argument(instance, index, Blank{{}});
 }}
 
 void set_instance_attribute_from_attribute_value(IfcUtil::IfcBaseClass* instance, size_t index, const AttributeValue& value) {{

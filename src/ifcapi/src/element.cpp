@@ -107,6 +107,15 @@ ifcopenshell_ifc_instance_t** alloc_id_handles(IfcParse::IfcFile* f, const std::
     return buf;
 }
 
+aggregate_of_instance::ptr make_instance_list(IfcParse::IfcFile* f, const std::vector<int32_t>& ids) {
+    aggregate_of_instance::ptr result(new aggregate_of_instance);
+    if (!f) return result;
+    for (int32_t id : ids) {
+        if (auto* e = f->instance_by_id(id)) result->push(e);
+    }
+    return result;
+}
+
 // Forward decls
 IfcUtil::IfcBaseClass* resolve_aggregate(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e);
 IfcUtil::IfcBaseClass* resolve_nest(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e);
@@ -278,21 +287,14 @@ IfcUtil::IfcBaseClass* element_get_material(
     return nullptr;
 }
 
-}  // namespace bindings
-}  // namespace ifcapi
-
-extern "C" {
-
-ifcopenshell_ifc_instance_t** ifcopenshell_element_get_decomposition(const ifcopenshell_ifc_instance_t* instance, bool is_recursive, uint32_t* out_count)
-{
-    if (out_count) *out_count = 0;
-    auto* e = instance ? instance->ptr : nullptr;
-    if (!e) return nullptr;
+aggregate_of_instance::ptr element_get_decomposition(IfcUtil::IfcBaseClass* instance, bool is_recursive) {
+    auto* f = instance ? instance->file_ : nullptr;
+    if (!f || !instance) return aggregate_of_instance::ptr(new aggregate_of_instance);
 
     std::set<int32_t> seen;
     std::vector<int32_t> result;
     std::deque<IfcUtil::IfcBaseClass*> queue;
-    queue.push_back(e);
+    queue.push_back(instance);
 
     auto push_all = [&](const std::vector<IfcUtil::IfcBaseClass*>& refs) {
         for (auto* r : refs) {
@@ -308,19 +310,16 @@ ifcopenshell_ifc_instance_t** ifcopenshell_element_get_decomposition(const ifcop
         auto* cur = queue.front();
         queue.pop_front();
 
-        // ContainsElements: list of IfcRelContainedInSpatialStructure
         if (auto inv = get_inverse(cur, "ContainsElements")) {
             for (size_t i = 0; i < inv->size(); ++i) {
                 push_all(read_ref_list((*inv)[i], "RelatedElements"));
             }
         }
-        // IsDecomposedBy: list of IfcRelAggregates
         if (auto inv = get_inverse(cur, "IsDecomposedBy")) {
             for (size_t i = 0; i < inv->size(); ++i) {
                 push_all(read_ref_list((*inv)[i], "RelatedObjects"));
             }
         }
-        // HasOpenings: list of IfcRelVoidsElement
         if (auto inv = get_inverse(cur, "HasOpenings")) {
             for (size_t i = 0; i < inv->size(); ++i) {
                 auto* opening = read_ref((*inv)[i], "RelatedOpeningElement");
@@ -331,7 +330,6 @@ ifcopenshell_ifc_instance_t** ifcopenshell_element_get_decomposition(const ifcop
                 }
             }
         }
-        // HasFillings: list of IfcRelFillsElement
         if (auto inv = get_inverse(cur, "HasFillings")) {
             for (size_t i = 0; i < inv->size(); ++i) {
                 auto* filler = read_ref((*inv)[i], "RelatedBuildingElement");
@@ -342,30 +340,25 @@ ifcopenshell_ifc_instance_t** ifcopenshell_element_get_decomposition(const ifcop
                 }
             }
         }
-        // IsNestedBy: list of IfcRelNests (IFC4+), recursive-only per upstream
-        if (is_recursive) {
-            if (auto inv = get_inverse(cur, "IsNestedBy")) {
-                for (size_t i = 0; i < inv->size(); ++i) {
-                    push_all(read_ref_list((*inv)[i], "RelatedObjects"));
-                }
+        if (auto inv = get_inverse(cur, "IsNestedBy")) {
+            for (size_t i = 0; i < inv->size(); ++i) {
+                push_all(read_ref_list((*inv)[i], "RelatedObjects"));
             }
-            // (loop continues)
-        } else {
-            break;
         }
+        if (!is_recursive) break;
     }
 
-    return alloc_id_handles(instance ? instance->ptr->file_ : nullptr, result, out_count);
+    return make_instance_list(f, result);
 }
 
-ifcopenshell_ifc_instance_t** ifcopenshell_element_get_pset_ids(const ifcopenshell_ifc_instance_t* instance,
-    bool psets_only, bool qtos_only, bool should_inherit,
-    uint32_t* out_count)
+aggregate_of_instance::ptr element_get_pset_ids(
+    IfcUtil::IfcBaseClass* element,
+    bool psets_only,
+    bool qtos_only,
+    bool should_inherit)
 {
-    if (out_count) *out_count = 0;
-    auto* e_tmp = instance ? instance->ptr : nullptr; auto* f = e_tmp ? e_tmp->file_ : nullptr;
-    auto* e = instance ? instance->ptr : nullptr;
-    if (!f || !e) return nullptr;
+    auto* f = element ? element->file_ : nullptr;
+    if (!f || !element) return aggregate_of_instance::ptr(new aggregate_of_instance);
 
     bool is_ifc2x3 = f->schema() && f->schema()->name() == "IFC2X3";
     std::vector<int32_t> result;
@@ -379,51 +372,39 @@ ifcopenshell_ifc_instance_t** ifcopenshell_element_get_pset_ids(const ifcopenshe
         if (did && seen.insert(did).second) result.push_back(did);
     };
 
-    // Case 1: IfcTypeObject -> HasPropertySets (forward aggregate).
-    if (is_a(e, "IfcTypeObject")) {
-        for (auto* d : read_ref_list(e, "HasPropertySets")) push_def(d);
-        return alloc_id_handles(instance ? instance->ptr->file_ : nullptr, result, out_count);
+    if (is_a(element, "IfcTypeObject")) {
+        for (auto* d : read_ref_list(element, "HasPropertySets")) push_def(d);
+        return make_instance_list(f, result);
     }
 
-    // Case 2: Material/profile property containers.
-    if ((is_ifc2x3 && is_a(e, "IfcMaterial")) ||
-        is_a(e, "IfcMaterialDefinition") || is_a(e, "IfcProfileDef")) {
-        if (qtos_only) return alloc_id_handles(instance ? instance->ptr->file_ : nullptr, result, out_count);
-        if (is_ifc2x3 && is_a(e, "IfcMaterial")) {
+    if ((is_ifc2x3 && is_a(element, "IfcMaterial")) ||
+        is_a(element, "IfcMaterialDefinition") || is_a(element, "IfcProfileDef")) {
+        if (qtos_only) return make_instance_list(f, result);
+        if (is_ifc2x3 && is_a(element, "IfcMaterial")) {
             auto insts = f->instances_by_type(std::string("IfcExtendedMaterialProperties"));
             if (insts) {
                 for (auto& inst : *insts) {
                     auto* mat = read_ref(inst, "Material");
-                    if (mat == e) push_def(inst);
+                    if (mat == element) push_def(inst);
                 }
             }
         } else if (!is_ifc2x3) {
-            // HasProperties is an INVERSE attribute on IfcMaterial/IfcProfileDef.
-            if (auto inv = get_inverse(e, "HasProperties")) {
+            if (auto inv = get_inverse(element, "HasProperties")) {
                 for (size_t i = 0; i < inv->size(); ++i) push_def((*inv)[i]);
             }
         }
-        return alloc_id_handles(instance ? instance->ptr->file_ : nullptr, result, out_count);
+        return make_instance_list(f, result);
     }
 
-    // Case 3: Standard objects via IsDefinedBy. Inherited psets first so that
-    // own psets with the same name override them in the caller's dict merge.
-    auto is_defined_by = get_inverse(e, "IsDefinedBy");
+    auto is_defined_by = get_inverse(element, "IsDefinedBy");
     if (is_defined_by) {
         if (should_inherit) {
-            auto* type_obj = resolve_type(f, e);
+            auto* type_obj = resolve_type(f, element);
             if (type_obj) {
-                uint32_t inherited_count = 0;
-                auto* type_h = ifcopenshell::capi::wrap_instance(type_obj);
-                ifcopenshell_ifc_instance_t** inherited = ifcopenshell_element_get_pset_ids(
-                    type_h, psets_only, qtos_only, false, &inherited_count);
+                auto inherited = element_get_pset_ids(type_obj, psets_only, qtos_only, false);
                 if (inherited) {
-                    for (uint32_t i = 0; i < inherited_count; ++i) {
-                        push_def(inherited[i] ? inherited[i]->ptr : nullptr);
-                    }
-                    ifcopenshell_free_instance_array(inherited, inherited_count);
+                    for (auto& item : *inherited) push_def(item);
                 }
-                ifcopenshell_ifc_instance_destroy(type_h);
             }
         }
         for (size_t i = 0; i < is_defined_by->size(); ++i) {
@@ -433,7 +414,8 @@ ifcopenshell_ifc_instance_t** ifcopenshell_element_get_pset_ids(const ifcopenshe
         }
     }
 
-    return alloc_id_handles(instance ? instance->ptr->file_ : nullptr, result, out_count);
+    return make_instance_list(f, result);
 }
 
-}  // extern "C"
+}  // namespace bindings
+}  // namespace ifcapi
