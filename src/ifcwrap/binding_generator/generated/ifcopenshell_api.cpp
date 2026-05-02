@@ -1917,163 +1917,6 @@ void ifcopenshell_ifcparse_instance_list_destroy(ifcopenshell_ifcparse_instance_
     delete handle;
 }
 
-void ifcopenshell_ifcgeom_iterator_destroy(ifcopenshell_ifcgeom_iterator_t* handle) {
-    if (handle == nullptr) {
-        return;
-    }
-    if (handle->owned && handle->ptr) { delete handle->ptr; }
-    delete handle;
-}
-
-void ifcopenshell_ifcgeom_settings_destroy(ifcopenshell_ifcgeom_settings_t* handle) {
-    if (handle == nullptr) {
-        return;
-    }
-    if (handle->owned && handle->ptr) { delete handle->ptr; }
-    delete handle;
-}
-
-void ifcopenshell_ifcgeom_serializer_settings_destroy(ifcopenshell_ifcgeom_serializer_settings_t* handle) {
-    if (handle == nullptr) {
-        return;
-    }
-    if (handle->owned && handle->ptr) { delete handle->ptr; }
-    delete handle;
-}
-
-void ifcopenshell_ifcgeom_geometry_serializer_destroy(ifcopenshell_ifcgeom_geometry_serializer_t* handle) {
-    if (handle == nullptr) {
-        return;
-    }
-    if (handle->owned && handle->ptr) { delete handle->ptr; }
-    delete handle;
-}
-
-void ifcopenshell_ifcgeom_serializer_destroy(ifcopenshell_ifcgeom_serializer_t* handle) {
-    if (handle == nullptr) {
-        return;
-    }
-    if (handle->owned && handle->ptr) { delete handle->ptr; }
-    delete handle;
-}
-
-void ifcopenshell_ifcgeom_buffer_destroy(ifcopenshell_ifcgeom_buffer_t* handle) {
-    if (handle == nullptr) {
-        return;
-    }
-    if (handle->owned && handle->ptr) { delete handle->ptr; }
-    delete handle;
-}
-
-void ifcopenshell_ifcgeom_tree_destroy(ifcopenshell_ifcgeom_tree_t* handle) {
-    if (handle == nullptr) {
-        return;
-    }
-    if (handle->owned && handle->ptr) { delete handle->ptr; }
-    delete handle;
-}
-
-void ifcopenshell_ifcgeom_tree_clash_list_destroy(ifcopenshell_ifcgeom_tree_clash_list_t* handle) {
-    if (handle == nullptr) {
-        return;
-    }
-    if (handle->owned && handle->ptr) { delete handle->ptr; }
-    delete handle;
-}
-
-void ifcopenshell_ifcgeom_tree_clash_destroy(ifcopenshell_ifcgeom_tree_clash_t* handle) {
-    if (handle == nullptr) {
-        return;
-    }
-    if (handle->owned && handle->ptr) { delete handle->ptr; }
-    delete handle;
-}
-
-void ifcopenshell_ifcgeom_tree_ray_intersection_list_destroy(ifcopenshell_ifcgeom_tree_ray_intersection_list_t* handle) {
-    if (handle == nullptr) {
-        return;
-    }
-    if (handle->owned && handle->ptr) { delete handle->ptr; }
-    delete handle;
-}
-
-void ifcopenshell_ifcgeom_tree_ray_intersection_destroy(ifcopenshell_ifcgeom_tree_ray_intersection_t* handle) {
-    if (handle == nullptr) {
-        return;
-    }
-    if (handle->owned && handle->ptr) { delete handle->ptr; }
-    delete handle;
-}
-
-void ifcopenshell_ifcgeom_transformation_destroy(ifcopenshell_ifcgeom_transformation_t* handle) {
-    if (handle == nullptr) {
-        return;
-    }
-    if (handle->owned && handle->ptr) { delete handle->ptr; }
-    delete handle;
-}
-
-void ifcopenshell_ifcgeom_element_destroy(ifcopenshell_ifcgeom_element_t* handle) {
-    if (handle == nullptr) {
-        return;
-    }
-    if (handle->owned && handle->ptr) { delete handle->ptr; }
-    delete handle;
-}
-
-void ifcopenshell_ifcgeom_brep_element_destroy(ifcopenshell_ifcgeom_brep_element_t* handle) {
-    if (handle == nullptr) {
-        return;
-    }
-    if (handle->owned && handle->ptr) { delete handle->ptr; }
-    delete handle;
-}
-
-void ifcopenshell_ifcgeom_triangulation_element_destroy(ifcopenshell_ifcgeom_triangulation_element_t* handle) {
-    if (handle == nullptr) {
-        return;
-    }
-    if (handle->owned && handle->ptr) { delete handle->ptr; }
-    delete handle;
-}
-
-void ifcopenshell_ifcgeom_serialized_element_destroy(ifcopenshell_ifcgeom_serialized_element_t* handle) {
-    if (handle == nullptr) {
-        return;
-    }
-    if (handle->owned && handle->ptr) { delete handle->ptr; }
-    delete handle;
-}
-
-void ifcopenshell_ifcgeom_triangulation_destroy(ifcopenshell_ifcgeom_triangulation_t* handle) {
-    if (handle == nullptr) {
-        return;
-    }
-    delete handle;
-}
-
-void ifcopenshell_ifcgeom_brep_representation_destroy(ifcopenshell_ifcgeom_brep_representation_t* handle) {
-    if (handle == nullptr) {
-        return;
-    }
-    delete handle;
-}
-
-void ifcopenshell_ifcgeom_serialization_destroy(ifcopenshell_ifcgeom_serialization_t* handle) {
-    if (handle == nullptr) {
-        return;
-    }
-    delete handle;
-}
-
-void ifcopenshell_ifcgeom_conversion_result_shape_destroy(ifcopenshell_ifcgeom_conversion_result_shape_t* handle) {
-    if (handle == nullptr) {
-        return;
-    }
-    if (handle->owned && handle->ptr) { delete handle->ptr; }
-    delete handle;
-}
-
 void ifcopenshell_ifcgeom_taxonomy_item_destroy(ifcopenshell_ifcgeom_taxonomy_item_t* handle) {
     if (handle == nullptr) {
         return;
@@ -2295,6 +2138,163 @@ void ifcopenshell_ifcgeom_taxonomy_boolean_result_destroy(ifcopenshell_ifcgeom_t
         return;
     }
     handle->ptr.reset();
+    delete handle;
+}
+
+void ifcopenshell_ifcgeom_iterator_destroy(ifcopenshell_ifcgeom_iterator_t* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    if (handle->owned && handle->ptr) { delete handle->ptr; }
+    delete handle;
+}
+
+void ifcopenshell_ifcgeom_settings_destroy(ifcopenshell_ifcgeom_settings_t* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    if (handle->owned && handle->ptr) { delete handle->ptr; }
+    delete handle;
+}
+
+void ifcopenshell_ifcgeom_serializer_settings_destroy(ifcopenshell_ifcgeom_serializer_settings_t* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    if (handle->owned && handle->ptr) { delete handle->ptr; }
+    delete handle;
+}
+
+void ifcopenshell_ifcgeom_geometry_serializer_destroy(ifcopenshell_ifcgeom_geometry_serializer_t* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    if (handle->owned && handle->ptr) { delete handle->ptr; }
+    delete handle;
+}
+
+void ifcopenshell_ifcgeom_serializer_destroy(ifcopenshell_ifcgeom_serializer_t* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    if (handle->owned && handle->ptr) { delete handle->ptr; }
+    delete handle;
+}
+
+void ifcopenshell_ifcgeom_buffer_destroy(ifcopenshell_ifcgeom_buffer_t* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    if (handle->owned && handle->ptr) { delete handle->ptr; }
+    delete handle;
+}
+
+void ifcopenshell_ifcgeom_tree_destroy(ifcopenshell_ifcgeom_tree_t* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    if (handle->owned && handle->ptr) { delete handle->ptr; }
+    delete handle;
+}
+
+void ifcopenshell_ifcgeom_tree_clash_list_destroy(ifcopenshell_ifcgeom_tree_clash_list_t* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    if (handle->owned && handle->ptr) { delete handle->ptr; }
+    delete handle;
+}
+
+void ifcopenshell_ifcgeom_tree_clash_destroy(ifcopenshell_ifcgeom_tree_clash_t* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    if (handle->owned && handle->ptr) { delete handle->ptr; }
+    delete handle;
+}
+
+void ifcopenshell_ifcgeom_tree_ray_intersection_list_destroy(ifcopenshell_ifcgeom_tree_ray_intersection_list_t* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    if (handle->owned && handle->ptr) { delete handle->ptr; }
+    delete handle;
+}
+
+void ifcopenshell_ifcgeom_tree_ray_intersection_destroy(ifcopenshell_ifcgeom_tree_ray_intersection_t* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    if (handle->owned && handle->ptr) { delete handle->ptr; }
+    delete handle;
+}
+
+void ifcopenshell_ifcgeom_transformation_destroy(ifcopenshell_ifcgeom_transformation_t* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    if (handle->owned && handle->ptr) { delete handle->ptr; }
+    delete handle;
+}
+
+void ifcopenshell_ifcgeom_element_destroy(ifcopenshell_ifcgeom_element_t* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    if (handle->owned && handle->ptr) { delete handle->ptr; }
+    delete handle;
+}
+
+void ifcopenshell_ifcgeom_brep_element_destroy(ifcopenshell_ifcgeom_brep_element_t* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    if (handle->owned && handle->ptr) { delete handle->ptr; }
+    delete handle;
+}
+
+void ifcopenshell_ifcgeom_triangulation_element_destroy(ifcopenshell_ifcgeom_triangulation_element_t* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    if (handle->owned && handle->ptr) { delete handle->ptr; }
+    delete handle;
+}
+
+void ifcopenshell_ifcgeom_serialized_element_destroy(ifcopenshell_ifcgeom_serialized_element_t* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    if (handle->owned && handle->ptr) { delete handle->ptr; }
+    delete handle;
+}
+
+void ifcopenshell_ifcgeom_triangulation_destroy(ifcopenshell_ifcgeom_triangulation_t* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    delete handle;
+}
+
+void ifcopenshell_ifcgeom_brep_representation_destroy(ifcopenshell_ifcgeom_brep_representation_t* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    delete handle;
+}
+
+void ifcopenshell_ifcgeom_serialization_destroy(ifcopenshell_ifcgeom_serialization_t* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    delete handle;
+}
+
+void ifcopenshell_ifcgeom_conversion_result_shape_destroy(ifcopenshell_ifcgeom_conversion_result_shape_t* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    if (handle->owned && handle->ptr) { delete handle->ptr; }
     delete handle;
 }
 

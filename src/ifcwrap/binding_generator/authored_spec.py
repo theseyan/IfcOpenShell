@@ -238,6 +238,16 @@ class ImportedHandle:
 
 
 @dataclass(frozen=True)
+class HandleFamilySpec:
+    namespace: str
+    prefix: str
+    c_prefix: str
+    destructor: str
+    ptr_type: str
+    types: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class AuthoredBindingSpec:
     schema_version: int
     module: str
@@ -464,6 +474,58 @@ def _parse_implementation(raw: Any, *, context: str) -> ImplementationSpec:
         raise ValueError(msg)
     body = _expect_str(mapping.get("body"), f"{context}.body")
     return ImplementationSpec(kind=kind, body=body)
+
+
+def _parse_ptr_type(raw: Any, *, context: str) -> str:
+    ptr_type = raw if raw is not None else "raw"
+    if not isinstance(ptr_type, str):
+        msg = f"{context} must be a string"
+        raise ValueError(msg)
+    if ptr_type not in _ALLOWED_PTR_TYPES:
+        msg = f"{context} must be one of {sorted(_ALLOWED_PTR_TYPES)}"
+        raise ValueError(msg)
+    return ptr_type
+
+
+def _validate_destructor(destructor: str, *, context: str) -> None:
+    if destructor not in _ALLOWED_DESTRUCTORS and not destructor.startswith("function:"):
+        msg = f"{context} must be one of {sorted(_ALLOWED_DESTRUCTORS)} or function:<qualified_name>"
+        raise ValueError(msg)
+
+
+def _parse_handle_family(raw: Any, *, context: str, default_c_prefix: str) -> HandleFamilySpec:
+    mapping = _expect_mapping(raw, context)
+    namespace = _expect_str(mapping.get("namespace"), f"{context}.namespace")
+    prefix = _expect_str(mapping.get("prefix"), f"{context}.prefix")
+    c_prefix = _expect_str(mapping.get("c_prefix", f"{default_c_prefix}_{prefix}"), f"{context}.c_prefix")
+    destructor = _expect_str(mapping.get("destructor"), f"{context}.destructor")
+    _validate_destructor(destructor, context=f"{context}.destructor")
+    ptr_type = _parse_ptr_type(mapping.get("ptr_type", "raw"), context=f"{context}.ptr_type")
+    types = tuple(
+        _expect_str(type_name, f"{context}.types[{type_index}]")
+        for type_index, type_name in enumerate(_expect_list(mapping.get("types", []), f"{context}.types"))
+    )
+    if not types:
+        msg = f"{context}.types must not be empty"
+        raise ValueError(msg)
+    return HandleFamilySpec(
+        namespace=namespace,
+        prefix=prefix,
+        c_prefix=c_prefix,
+        destructor=destructor,
+        ptr_type=ptr_type,
+        types=types,
+    )
+
+
+def _handle_from_family(family: HandleFamilySpec, type_name: str) -> HandleSpec:
+    return HandleSpec(
+        name=f"{family.prefix}_{type_name}",
+        cpp_type=f"{family.namespace}::{type_name}",
+        c_type=f"{family.c_prefix}_{type_name}_t",
+        destructor=family.destructor,
+        ptr_type=family.ptr_type,
+    )
 
 
 def _parse_call(
@@ -2452,22 +2514,29 @@ def load_authored_spec(
         for index, header in enumerate(_expect_list(root.get("public_headers", []), "public_headers"))
     )
 
-    raw_handles = _expect_list(root.get("handles", []), "handles")
     handles: dict[str, HandleSpec] = {}
     # Start with existing handles if provided
     if existing_handles:
         handles.update(existing_handles)
+
+    raw_handle_families = _expect_list(root.get("handle_families", []), "handle_families")
+    for family_index, raw_family in enumerate(raw_handle_families):
+        family_context = f"handle_families[{family_index}]"
+        family = _parse_handle_family(raw_family, context=family_context, default_c_prefix=c_prefix)
+        for type_name in family.types:
+            handle = _handle_from_family(family, type_name)
+            if handle.name in handles:
+                msg = f"{family_context}.types contains duplicate handle '{handle.name}'"
+                raise ValueError(msg)
+            handles[handle.name] = handle
+
+    raw_handles = _expect_list(root.get("handles", []), "handles")
     for index, item in enumerate(raw_handles):
         context = f"handles[{index}]"
         mapping = _expect_mapping(item, context)
         destructor = _expect_str(mapping.get("destructor"), f"{context}.destructor")
-        ptr_type = mapping.get("ptr_type", "raw")
-        if not isinstance(ptr_type, str):
-            msg = f"{context}.ptr_type must be a string"
-            raise ValueError(msg)
-        if ptr_type not in _ALLOWED_PTR_TYPES:
-            msg = f"{context}.ptr_type must be one of {sorted(_ALLOWED_PTR_TYPES)}"
-            raise ValueError(msg)
+        _validate_destructor(destructor, context=f"{context}.destructor")
+        ptr_type = _parse_ptr_type(mapping.get("ptr_type", "raw"), context=f"{context}.ptr_type")
         handle = HandleSpec(
             name=_expect_str(mapping.get("name"), f"{context}.name"),
             cpp_type=_expect_str(mapping.get("cpp_type"), f"{context}.cpp_type"),
@@ -2475,9 +2544,6 @@ def load_authored_spec(
             destructor=destructor,
             ptr_type=ptr_type,
         )
-        if handle.destructor not in _ALLOWED_DESTRUCTORS and not handle.destructor.startswith("function:"):
-            msg = f"{context}.destructor must be one of {sorted(_ALLOWED_DESTRUCTORS)} or function:<qualified_name>"
-            raise ValueError(msg)
         if handle.name in handles:
             msg = f"{context}.name '{handle.name}' is duplicated"
             raise ValueError(msg)

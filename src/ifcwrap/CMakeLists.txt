@@ -36,6 +36,7 @@ if(BUILD_IFCCAPI)
     # Unified API files
     set(UNIFIED_CAPI_HEADER "${IFCPARSE_CAPI_GENERATED_DIR}/ifcopenshell_api.h")
     set(UNIFIED_CAPI_CPP "${IFCPARSE_CAPI_GENERATED_DIR}/ifcopenshell_api.cpp")
+    set(UNIFIED_CAPI_INTERNAL_HEADER "${IFCPARSE_CAPI_GENERATED_DIR}/ifcopenshell_api_internal.hpp")
 
     if(IFCCAPI_REGENERATE_BINDINGS)
         if(NOT ${PYTHON_EXECUTABLE} STREQUAL "")
@@ -65,6 +66,7 @@ if(BUILD_IFCCAPI)
             OUTPUT
                 "${UNIFIED_CAPI_HEADER}"
                 "${UNIFIED_CAPI_CPP}"
+                "${UNIFIED_CAPI_INTERNAL_HEADER}"
             COMMAND
                 ${Python_EXECUTABLE} "${IFCPARSE_CAPI_GENERATOR}"
                 --spec "${IFCPARSE_CAPI_SPEC}"
@@ -95,6 +97,7 @@ if(BUILD_IFCCAPI)
             DEPENDS
                 "${UNIFIED_CAPI_HEADER}"
                 "${UNIFIED_CAPI_CPP}"
+                "${UNIFIED_CAPI_INTERNAL_HEADER}"
         )
     endif()
 
