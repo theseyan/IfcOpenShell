@@ -5593,95 +5593,12 @@ bool ifcopenshell_ifcapi_element_replace_element(ifcopenshell_ifc_instance_t* ol
     }
 }
 
-bool ifcopenshell_ifcapi_entity_get_aggregate_typed_value(ifcopenshell_ifc_instance_t* instance, const char* attr, ifcopenshell_string_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (instance == nullptr || instance->ptr == nullptr) { throw std::runtime_error("Handle parameter \"instance\" is invalid"); }
-    auto instance_cpp = instance->ptr;
-    if (attr == nullptr) { throw std::runtime_error("Parameter \"attr\" must not be null"); }
-    std::string attr_cpp(attr);
-        *out_result = make_string_list(ifcapi::bindings::entity_get_aggregate_typed_value(instance_cpp, attr_cpp));
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcapi_entity_get_typed_value(ifcopenshell_ifc_instance_t* instance, const char* attr, ifcopenshell_string_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (instance == nullptr || instance->ptr == nullptr) { throw std::runtime_error("Handle parameter \"instance\" is invalid"); }
-    auto instance_cpp = instance->ptr;
-    if (attr == nullptr) { throw std::runtime_error("Parameter \"attr\" must not be null"); }
-    std::string attr_cpp(attr);
-        *out_result = make_string_list(ifcapi::bindings::entity_get_typed_value(instance_cpp, attr_cpp));
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
 bool ifcopenshell_ifcapi_entity_remove_deep2(ifcopenshell_ifc_instance_t* instance) {
     try {
         ifcopenshell_clear_error();
     if (instance == nullptr || instance->ptr == nullptr) { throw std::runtime_error("Handle parameter \"instance\" is invalid"); }
     auto instance_cpp = instance->ptr;
         ifcapi::bindings::entity_remove_deep2(instance_cpp);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcapi_entity_set_aggregate_typed_value(ifcopenshell_ifc_instance_t* instance, const char* attr, const ifcopenshell_string_list_t* type_names, const ifcopenshell_string_list_t* str_values, bool* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (instance == nullptr || instance->ptr == nullptr) { throw std::runtime_error("Handle parameter \"instance\" is invalid"); }
-    auto instance_cpp = instance->ptr;
-    if (attr == nullptr) { throw std::runtime_error("Parameter \"attr\" must not be null"); }
-    std::string attr_cpp(attr);
-    if (type_names == nullptr) { throw std::runtime_error("Parameter \"type_names\" must not be null"); }
-    auto type_names_cpp = to_cpp_string_list(type_names);
-    if (str_values == nullptr) { throw std::runtime_error("Parameter \"str_values\" must not be null"); }
-    auto str_values_cpp = to_cpp_string_list(str_values);
-        *out_result = ifcapi::bindings::entity_set_aggregate_typed_value(instance_cpp, attr_cpp, type_names_cpp, str_values_cpp);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcapi_entity_set_typed_value(ifcopenshell_ifc_instance_t* instance, const char* attr, const char* type_name, const char* str_value, bool* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (instance == nullptr || instance->ptr == nullptr) { throw std::runtime_error("Handle parameter \"instance\" is invalid"); }
-    auto instance_cpp = instance->ptr;
-    if (attr == nullptr) { throw std::runtime_error("Parameter \"attr\" must not be null"); }
-    std::string attr_cpp(attr);
-    if (type_name == nullptr) { throw std::runtime_error("Parameter \"type_name\" must not be null"); }
-    std::string type_name_cpp(type_name);
-    const char* str_value_str = str_value;
-        *out_result = ifcapi::bindings::entity_set_typed_value(instance_cpp, attr_cpp, type_name_cpp, str_value);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

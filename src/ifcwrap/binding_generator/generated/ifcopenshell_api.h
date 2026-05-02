@@ -497,11 +497,7 @@ bool ifcopenshell_ifcapi_element_get_voided_element(ifcopenshell_ifc_instance_t*
 bool ifcopenshell_ifcapi_element_is_userdefined_type(ifcopenshell_ifc_instance_t* element, bool* out_result);
 bool ifcopenshell_ifcapi_element_remove_deep(ifcopenshell_ifc_instance_t* element);
 bool ifcopenshell_ifcapi_element_replace_element(ifcopenshell_ifc_instance_t* old_element, ifcopenshell_ifc_instance_t* new_element);
-bool ifcopenshell_ifcapi_entity_get_aggregate_typed_value(ifcopenshell_ifc_instance_t* instance, const char* attr, ifcopenshell_string_list_t* out_result);
-bool ifcopenshell_ifcapi_entity_get_typed_value(ifcopenshell_ifc_instance_t* instance, const char* attr, ifcopenshell_string_list_t* out_result);
 bool ifcopenshell_ifcapi_entity_remove_deep2(ifcopenshell_ifc_instance_t* instance);
-bool ifcopenshell_ifcapi_entity_set_aggregate_typed_value(ifcopenshell_ifc_instance_t* instance, const char* attr, const ifcopenshell_string_list_t* type_names, const ifcopenshell_string_list_t* str_values, bool* out_result);
-bool ifcopenshell_ifcapi_entity_set_typed_value(ifcopenshell_ifc_instance_t* instance, const char* attr, const char* type_name, const char* str_value, bool* out_result);
 bool ifcopenshell_ifcapi_selector_filter_all(ifcopenshell_ifc_file_t* file, const char* query, ifcopenshell_ifcapi_value_t** out_result);
 bool ifcopenshell_ifcapi_selector_filter_elements(ifcopenshell_ifc_file_t* file, const char* query, const ifcopenshell_ifc_instance_list_t* elements, ifcopenshell_ifcapi_value_t** out_result);
 bool ifcopenshell_ifcapi_selector_get_element_value(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* element, const char* query, ifcopenshell_ifcapi_value_t** out_result);
