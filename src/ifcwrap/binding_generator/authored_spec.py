@@ -8,9 +8,27 @@ from typing import Any
 import yaml
 
 try:
-    from .binding_model import CallSpec, DiscoveryDiagnostic, HandleSpec, ImplementationSpec, ParamSpec, TypeSpec
+    from .binding_model import (
+        CallSpec,
+        DiscoveryDiagnostic,
+        HandleSpec,
+        ImplementationSpec,
+        ParamSpec,
+        ResultStructFieldSpec,
+        ResultStructSpec,
+        TypeSpec,
+    )
 except ImportError:  # pragma: no cover - script execution fallback
-    from binding_model import CallSpec, DiscoveryDiagnostic, HandleSpec, ImplementationSpec, ParamSpec, TypeSpec
+    from binding_model import (
+        CallSpec,
+        DiscoveryDiagnostic,
+        HandleSpec,
+        ImplementationSpec,
+        ParamSpec,
+        ResultStructFieldSpec,
+        ResultStructSpec,
+        TypeSpec,
+    )
 
 try:
     from .debug import debug_log, debug_path
@@ -127,7 +145,9 @@ _ALLOWED_TYPE_KINDS = {
     "handle",
     "handle_list",
     "handle_list_list",
+    "instance_list",
     "opaque_ptr",  # Raw pointer to an external type (passed through as void*)
+    "struct",
 }
 _ALLOWED_OWNERSHIP = {"owned", "borrowed", "static", "copy"}
 _ALLOWED_DESTRUCTORS = {"delete", "none", "shared_ptr"}
@@ -255,6 +275,7 @@ class AuthoredBindingSpec:
     c_prefix: str
     public_headers: tuple[str, ...]
     handles: dict[str, HandleSpec]
+    result_structs: dict[str, ResultStructSpec]
     imports: tuple[ImportedHandle, ...]  # Handles imported from other slices
     depends_on_common: str | None  # If set, skip emitting common type implementations
     discovery: DiscoverySpec | None
@@ -270,6 +291,7 @@ class MergedBindingSpec:
     c_prefix: str  # Common C prefix (e.g., "ifcopenshell")
     public_headers: tuple[str, ...]  # Merged public headers
     handles: dict[str, HandleSpec]  # All handles from all modules
+    result_structs: dict[str, ResultStructSpec]
     functions: tuple[CallSpec, ...]  # All functions from all modules
     methods: tuple[CallSpec, ...]  # All methods from all modules
     discovery_diagnostics: tuple[DiscoveryDiagnostic, ...] = ()
@@ -339,6 +361,8 @@ def _normalized_scalar_kind(kind: str) -> str:
 def _handle_sequence_depth(kind: str) -> int | None:
     if kind == "handle":
         return 0
+    if kind == "instance_list":
+        return 1
     if kind == "handle_list":
         return 1
     if kind == "handle_list_list":
@@ -346,7 +370,14 @@ def _handle_sequence_depth(kind: str) -> int | None:
     return None
 
 
-def _parse_type(raw: Any, *, context: str, known_handles: set[str]) -> TypeSpec:
+def _parse_type(
+    raw: Any,
+    *,
+    context: str,
+    known_handles: set[str],
+    known_result_structs: set[str] | None = None,
+) -> TypeSpec:
+    known_result_structs = known_result_structs or set()
     mapping = _expect_mapping(raw, context)
     kind = _expect_str(mapping.get("kind"), f"{context}.kind")
     if kind not in _ALLOWED_TYPE_KINDS and not _is_sequence_kind(kind):
@@ -355,7 +386,19 @@ def _parse_type(raw: Any, *, context: str, known_handles: set[str]) -> TypeSpec:
     handle_sequence_depth = _handle_sequence_depth(kind)
     scalar_sequence_depth = _scalar_sequence_depth(kind) if handle_sequence_depth is None else None
 
+    struct = mapping.get("struct")
+    if kind == "struct":
+        struct = _expect_str(struct, f"{context}.struct")
+        if struct not in known_result_structs:
+            msg = f"{context}.struct refers to unknown result struct '{struct}'"
+            raise ValueError(msg)
+    elif struct is not None:
+        msg = f"{context}.struct is only valid for kind=struct"
+        raise ValueError(msg)
+
     handle = mapping.get("handle")
+    if kind == "instance_list" and handle is None:
+        handle = "instance"
     if handle_sequence_depth is not None:
         handle = _expect_str(handle, f"{context}.handle")
         if handle not in known_handles:
@@ -391,6 +434,7 @@ def _parse_type(raw: Any, *, context: str, known_handles: set[str]) -> TypeSpec:
     return TypeSpec(
         kind=normalized_kind,
         handle=handle,
+        struct=struct,
         ownership=ownership,
         nullable=nullable,
         cpp_type=cpp_type,
@@ -398,7 +442,14 @@ def _parse_type(raw: Any, *, context: str, known_handles: set[str]) -> TypeSpec:
     )
 
 
-def _parse_type_override(raw: Any, *, context: str, known_handles: set[str]) -> TypeSpec:
+def _parse_type_override(
+    raw: Any,
+    *,
+    context: str,
+    known_handles: set[str],
+    known_result_structs: set[str] | None = None,
+) -> TypeSpec:
+    known_result_structs = known_result_structs or set()
     mapping = _expect_mapping(raw, context)
     kind_raw = mapping.get("kind")
     kind = ""
@@ -412,7 +463,19 @@ def _parse_type_override(raw: Any, *, context: str, known_handles: set[str]) -> 
         handle_sequence_depth = _handle_sequence_depth(kind)
         scalar_sequence_depth = _scalar_sequence_depth(kind) if handle_sequence_depth is None else None
 
+    struct = mapping.get("struct")
+    if kind == "struct":
+        struct = _expect_str(struct, f"{context}.struct")
+        if struct not in known_result_structs:
+            msg = f"{context}.struct refers to unknown result struct '{struct}'"
+            raise ValueError(msg)
+    elif struct is not None:
+        msg = f"{context}.struct is only valid for kind=struct"
+        raise ValueError(msg)
+
     handle = mapping.get("handle")
+    if kind == "instance_list" and handle is None:
+        handle = "instance"
     if handle is not None:
         handle = _expect_str(handle, f"{context}.handle")
         if handle not in known_handles:
@@ -439,6 +502,7 @@ def _parse_type_override(raw: Any, *, context: str, known_handles: set[str]) -> 
     return TypeSpec(
         kind=normalized_kind,
         handle=handle,
+        struct=struct,
         ownership=ownership,
         nullable=nullable,
         cpp_type=cpp_type,
@@ -446,7 +510,13 @@ def _parse_type_override(raw: Any, *, context: str, known_handles: set[str]) -> 
     )
 
 
-def _parse_params(raw: Any, *, context: str, known_handles: set[str]) -> tuple[ParamSpec, ...]:
+def _parse_params(
+    raw: Any,
+    *,
+    context: str,
+    known_handles: set[str],
+    known_result_structs: set[str] | None = None,
+) -> tuple[ParamSpec, ...]:
     params: list[ParamSpec] = []
     seen_names: set[str] = set()
     for index, item in enumerate(_expect_list(raw, context)):
@@ -460,10 +530,59 @@ def _parse_params(raw: Any, *, context: str, known_handles: set[str]) -> tuple[P
         params.append(
             ParamSpec(
                 name=name,
-                type=_parse_type(mapping.get("type"), context=f"{item_context}.type", known_handles=known_handles),
+                type=_parse_type(
+                    mapping.get("type"),
+                    context=f"{item_context}.type",
+                    known_handles=known_handles,
+                    known_result_structs=known_result_structs,
+                ),
             )
         )
     return tuple(params)
+
+
+def _parse_result_structs(
+    raw: Any,
+    *,
+    context: str,
+    known_handles: set[str],
+) -> dict[str, ResultStructSpec]:
+    structs: dict[str, ResultStructSpec] = {}
+    for index, item in enumerate(_expect_list(raw, context)):
+        item_context = f"{context}[{index}]"
+        mapping = _expect_mapping(item, item_context)
+        name = _expect_str(mapping.get("name"), f"{item_context}.name")
+        if name in structs:
+            msg = f"{item_context}.name '{name}' is duplicated"
+            raise ValueError(msg)
+        fields: list[ResultStructFieldSpec] = []
+        for field_index, field_raw in enumerate(_expect_list(mapping.get("fields", []), f"{item_context}.fields")):
+            field_context = f"{item_context}.fields[{field_index}]"
+            field_mapping = _expect_mapping(field_raw, field_context)
+            field_name = _expect_str(field_mapping.get("name"), f"{field_context}.name")
+            fields.append(
+                ResultStructFieldSpec(
+                    name=field_name,
+                    type=_parse_type(
+                        field_mapping.get("type"),
+                        context=f"{field_context}.type",
+                        known_handles=known_handles,
+                        known_result_structs=set(structs),
+                    ),
+                    cpp_field=(
+                        _expect_str(field_mapping.get("cpp_field"), f"{field_context}.cpp_field")
+                        if field_mapping.get("cpp_field") is not None
+                        else None
+                    ),
+                )
+            )
+        structs[name] = ResultStructSpec(
+            name=name,
+            cpp_type=_expect_str(mapping.get("cpp_type"), f"{item_context}.cpp_type"),
+            c_type=_expect_str(mapping.get("c_type"), f"{item_context}.c_type"),
+            fields=tuple(fields),
+        )
+    return structs
 
 
 def _parse_implementation(raw: Any, *, context: str) -> ImplementationSpec:
@@ -535,8 +654,10 @@ def _parse_call(
     c_prefix: str,
     handles: dict[str, HandleSpec],
     known_handles: set[str],
+    known_result_structs: set[str] | None = None,
     expect_receiver: bool,
 ) -> CallSpec:
+    known_result_structs = known_result_structs or set()
     mapping = _expect_mapping(raw, context)
     raw_kind = mapping.get("kind")
     if raw_kind is not None:
@@ -588,7 +709,12 @@ def _parse_call(
                 raise ValueError(msg)
             returns = TypeSpec(kind="handle", handle=handle_name, ownership="owned")
         elif "returns" in mapping:
-            returns = _parse_type(mapping.get("returns"), context=f"{context}.returns", known_handles=known_handles)
+            returns = _parse_type(
+                mapping.get("returns"),
+                context=f"{context}.returns",
+                known_handles=known_handles,
+                known_result_structs=known_result_structs,
+            )
         else:
             msg = f"{context}: constructor requires either 'handle' or 'returns'"
             raise ValueError(msg)
@@ -596,8 +722,18 @@ def _parse_call(
         if "handle" in mapping:
             msg = f"{context}.handle is only valid for constructors"
             raise ValueError(msg)
-        returns = _parse_type(mapping.get("returns"), context=f"{context}.returns", known_handles=known_handles)
-    params = _parse_params(mapping.get("params", []), context=f"{context}.params", known_handles=known_handles)
+        returns = _parse_type(
+            mapping.get("returns"),
+            context=f"{context}.returns",
+            known_handles=known_handles,
+            known_result_structs=known_result_structs,
+        )
+    params = _parse_params(
+        mapping.get("params", []),
+        context=f"{context}.params",
+        known_handles=known_handles,
+        known_result_structs=known_result_structs,
+    )
 
     implementation = None
     if kind.startswith("adapter_"):
@@ -658,7 +794,14 @@ def _parse_call(
     )
 
 
-def _parse_discovery(raw: Any, *, context: str, known_handles: set[str]) -> DiscoverySpec | None:
+def _parse_discovery(
+    raw: Any,
+    *,
+    context: str,
+    known_handles: set[str],
+    known_result_structs: set[str] | None = None,
+) -> DiscoverySpec | None:
+    known_result_structs = known_result_structs or set()
     if raw is None:
         return None
 
@@ -883,7 +1026,12 @@ def _parse_discovery(raw: Any, *, context: str, known_handles: set[str]) -> Disc
             returns_raw = override_mapping.get("returns")
             returns = None
             if returns_raw is not None:
-                returns = _parse_type_override(returns_raw, context=f"{override_context}.returns", known_handles=known_handles)
+                returns = _parse_type_override(
+                    returns_raw,
+                    context=f"{override_context}.returns",
+                    known_handles=known_handles,
+                    known_result_structs=known_result_structs,
+                )
             params_raw = _expect_mapping(override_mapping.get("params", {}), f"{override_context}.params")
             params: dict[str, TypeSpec] = {}
             for param_name, param_type_raw in params_raw.items():
@@ -894,6 +1042,7 @@ def _parse_discovery(raw: Any, *, context: str, known_handles: set[str]) -> Disc
                     param_type_raw,
                     context=f"{override_context}.params[{param_name}]",
                     known_handles=known_handles,
+                    known_result_structs=known_result_structs,
                 )
             type_overrides[member_name] = DiscoveryTypeOverrideSpec(returns=returns, params=params)
 
@@ -973,14 +1122,24 @@ def _parse_discovery(raw: Any, *, context: str, known_handles: set[str]) -> Disc
             override_mapping = _expect_mapping(override_raw, override_context)
             returns = None
             if "returns" in override_mapping:
-                returns = _parse_type_override(override_mapping["returns"], context=f"{override_context}.returns", known_handles=known_handles)
+                returns = _parse_type_override(
+                    override_mapping["returns"],
+                    context=f"{override_context}.returns",
+                    known_handles=known_handles,
+                    known_result_structs=known_result_structs,
+                )
             params_raw = _expect_mapping(override_mapping.get("params", {}), f"{override_context}.params")
             params: dict[str, TypeSpec] = {}
             for param_name, param_raw in params_raw.items():
                 if not isinstance(param_name, str) or not param_name:
                     msg = f"{override_context}.params keys must be non-empty strings"
                     raise ValueError(msg)
-                params[param_name] = _parse_type_override(param_raw, context=f"{override_context}.params[{param_name}]", known_handles=known_handles)
+                params[param_name] = _parse_type_override(
+                    param_raw,
+                    context=f"{override_context}.params[{param_name}]",
+                    known_handles=known_handles,
+                    known_result_structs=known_result_structs,
+                )
             type_overrides[function_name] = DiscoveryTypeOverrideSpec(returns=returns, params=params)
         if not include_all and not include and not overloads:
             msg = f"{item_context} must specify include_all: true or a non-empty include list"
@@ -1314,6 +1473,7 @@ def _merge_type_override(inferred: TypeSpec, override: TypeSpec | None) -> TypeS
     return TypeSpec(
         kind=override.kind or inferred.kind,
         handle=override.handle if override.handle is not None else inferred.handle,
+        struct=override.struct if override.struct is not None else inferred.struct,
         ownership=override.ownership if override.ownership is not None else inferred.ownership,
         nullable=override.nullable,
         cpp_type=override.cpp_type if override.cpp_type is not None else inferred.cpp_type,
@@ -2565,7 +2725,18 @@ def load_authored_spec(
     known_handles = set(handles)
     for imp in imports:
         known_handles.add(imp.handle)
-    discovery = _parse_discovery(root.get("discover"), context="discover", known_handles=known_handles)
+    result_structs = _parse_result_structs(
+        root.get("result_structs", []),
+        context="result_structs",
+        known_handles=known_handles,
+    )
+    known_result_structs = set(result_structs)
+    discovery = _parse_discovery(
+        root.get("discover"),
+        context="discover",
+        known_handles=known_handles,
+        known_result_structs=known_result_structs,
+    )
     if discovery is not None and compile_commands_path is None:
         msg = "compile_commands.json is required for AST-backed discovery"
         raise ValueError(msg)
@@ -2577,6 +2748,7 @@ def load_authored_spec(
             c_prefix=c_prefix,
             handles=handles,
             known_handles=known_handles,
+            known_result_structs=known_result_structs,
             expect_receiver=False,
         )
         for index, item in enumerate(_expect_list(root.get("functions", []), "functions"))
@@ -2588,6 +2760,7 @@ def load_authored_spec(
             c_prefix=c_prefix,
             handles=handles,
             known_handles=known_handles,
+            known_result_structs=known_result_structs,
             expect_receiver=True,
         )
         for index, item in enumerate(_expect_list(root.get("methods", []), "methods"))
@@ -2619,6 +2792,7 @@ def load_authored_spec(
         c_prefix=c_prefix,
         public_headers=public_headers,
         handles=handles,
+        result_structs=result_structs,
         imports=tuple(imports),
         depends_on_common=depends_on_common,
         discovery=discovery,
@@ -2650,6 +2824,7 @@ def load_merged_specs(
     )
     all_handles: dict[str, HandleSpec] = {}
     all_headers: list[str] = []
+    all_result_structs: dict[str, ResultStructSpec] = {}
     all_functions: list[CallSpec] = []
     all_methods: list[CallSpec] = []
     all_diagnostics: list[DiscoveryDiagnostic] = []
@@ -2679,6 +2854,12 @@ def load_merged_specs(
         for header in spec.public_headers:
             if header not in all_headers:
                 all_headers.append(header)
+
+        for struct_name, struct_spec in spec.result_structs.items():
+            if struct_name in all_result_structs and all_result_structs[struct_name] != struct_spec:
+                msg = f"Result struct collision: '{struct_name}' defined differently in multiple specs"
+                raise ValueError(msg)
+            all_result_structs[struct_name] = struct_spec
         
         # Merge functions and methods
         all_functions.extend(spec.functions)
@@ -2690,6 +2871,7 @@ def load_merged_specs(
         c_prefix=c_prefix,
         public_headers=tuple(all_headers),
         handles=all_handles,
+        result_structs=all_result_structs,
         functions=tuple(all_functions),
         methods=tuple(all_methods),
         discovery_diagnostics=tuple(all_diagnostics),

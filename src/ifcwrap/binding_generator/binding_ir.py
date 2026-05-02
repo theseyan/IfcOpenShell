@@ -8,7 +8,7 @@ from typing import Union
 
 try:
     from .authored_spec import AuthoredBindingSpec, MergedBindingSpec
-    from .binding_model import CallSpec, HandleSpec, ImplementationSpec, ParamSpec, TypeSpec
+    from .binding_model import CallSpec, HandleSpec, ImplementationSpec, ParamSpec, ResultStructSpec, TypeSpec
     from .policy_ir import (
         ArrayElementFieldPolicyOp,
         AsItemCastPolicyOp,
@@ -33,7 +33,7 @@ try:
     from .debug import debug_log
 except ImportError:  # pragma: no cover - script execution fallback
     from authored_spec import AuthoredBindingSpec, MergedBindingSpec
-    from binding_model import CallSpec, HandleSpec, ImplementationSpec, ParamSpec, TypeSpec
+    from binding_model import CallSpec, HandleSpec, ImplementationSpec, ParamSpec, ResultStructSpec, TypeSpec
     from policy_ir import (
         ArrayElementFieldPolicyOp,
         AsItemCastPolicyOp,
@@ -198,6 +198,7 @@ class BindingIR:
     c_prefix: str
     public_headers: tuple[str, ...]
     handles: dict[str, HandleSpec]
+    result_structs: dict[str, ResultStructSpec]
     functions: tuple[CallIR, ...]
     methods: tuple[CallIR, ...]
     depends_on_common: str | None = None
@@ -291,6 +292,7 @@ def lower_binding_spec(spec: SourceBindingSpec) -> BindingIR:
         c_prefix=spec.c_prefix,
         public_headers=spec.public_headers,
         handles=spec.handles,
+        result_structs=getattr(spec, "result_structs", {}),
         functions=tuple(lower_call(call) for call in spec.functions),
         methods=tuple(lower_call(call) for call in spec.methods),
         depends_on_common=getattr(spec, "depends_on_common", None),

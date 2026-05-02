@@ -19,19 +19,20 @@
 from __future__ import annotations
 
 import collections.abc
+import ctypes
 from collections.abc import Sequence
 from itertools import chain
-from math import atan, cos, degrees, pi, radians, sin, sqrt, tan
+from math import cos, pi, radians
 from typing import TYPE_CHECKING, Any, Literal, Optional, Union
 
 import numpy as np
 import numpy.typing as npt
 
 import ifcopenshell
-import ifcopenshell.util.element
+from ifcopenshell import _generated_capi
+from ifcopenshell.entity_instance import _generated_instance_handle_ptr
 import ifcopenshell.util.placement
 import ifcopenshell.util.representation
-import ifcopenshell.util.unit
 
 PRECISION = 1.0e-5
 
@@ -49,6 +50,118 @@ else:
     VectorType = Any
 
 SequenceOfVectors = Union[Sequence[VectorType], np.ndarray]
+
+_SHAPE_BUILDER_SYMBOLS = (
+    "ifcopenshell_ifc_instance_destroy",
+    "ifcopenshell_ifcapi_shape_builder_axis2_placement_2d",
+    "ifcopenshell_ifcapi_shape_builder_axis2_placement_3d",
+    "ifcopenshell_ifcapi_shape_builder_block",
+    "ifcopenshell_ifcapi_shape_builder_circle",
+    "ifcopenshell_ifcapi_shape_builder_curve_between_two_points",
+    "ifcopenshell_ifcapi_shape_builder_deep_copy",
+    "ifcopenshell_ifcapi_shape_builder_edge",
+    "ifcopenshell_ifcapi_shape_builder_ellipse_curve",
+    "ifcopenshell_ifcapi_shape_builder_extrude",
+    "ifcopenshell_ifcapi_shape_builder_faceted_brep",
+    "ifcopenshell_ifcapi_shape_builder_face",
+    "ifcopenshell_ifcapi_shape_builder_get_polyline_coords",
+    "ifcopenshell_ifcapi_shape_builder_half_space_solid",
+    "ifcopenshell_ifcapi_shape_builder_indexed_polycurve_2d",
+    "ifcopenshell_ifcapi_shape_builder_mesh",
+    "ifcopenshell_ifcapi_shape_builder_plane",
+    "ifcopenshell_ifcapi_shape_builder_polyline",
+    "ifcopenshell_ifcapi_shape_builder_polygonal_face_set",
+    "ifcopenshell_ifcapi_shape_builder_profile",
+    "ifcopenshell_ifcapi_shape_builder_representation",
+    "ifcopenshell_ifcapi_shape_builder_rotate",
+    "ifcopenshell_ifcapi_shape_builder_sphere",
+    "ifcopenshell_ifcapi_shape_builder_swept_disk_solid",
+    "ifcopenshell_ifcapi_shape_builder_set_polyline_coords",
+    "ifcopenshell_ifcapi_shape_builder_translate",
+    "ifcopenshell_ifcapi_shape_builder_triangulated_face_set",
+    "ifcopenshell_ifcapi_shape_builder_vertex",
+    "ifcopenshell_ifcapi_shape_builder_mirror",
+    "ifcopenshell_ifcapi_shape_builder_mep_transition_calculate",
+    "ifcopenshell_ifcapi_shape_builder_mep_transition_length",
+    "ifcopenshell_ifcapi_shape_builder_mep_transition_shape",
+    "ifcopenshell_ifcapi_shape_builder_mep_bend_shape",
+)
+_shape_builder_lib_configured = False
+
+
+def _shape_builder_lib():
+    global _shape_builder_lib_configured
+    lib = ifcopenshell._get_lib()
+    if not _shape_builder_lib_configured:
+        _generated_capi.bind(lib, names=_SHAPE_BUILDER_SYMBOLS)
+        _shape_builder_lib_configured = True
+    return lib
+
+
+def _native_entity(file: ifcopenshell.file, symbol: str, *args) -> ifcopenshell.entity_instance:
+    lib = _shape_builder_lib()
+    handle = _generated_capi.call_handle_or_raise(
+        lib,
+        getattr(lib, symbol),
+        symbol,
+        _generated_instance_handle_ptr(file._ptr),
+        *args,
+        handle_pointer_type=ctypes.POINTER(_generated_capi.ifcopenshell_ifc_instance_t),
+    )
+    if handle is None:
+        raise RuntimeError(f"{symbol} returned a null Ifc instance handle")
+    return ifcopenshell.entity_instance(file, handle)
+
+
+def _native_entity_from_struct_handle(
+    file: ifcopenshell.file, handle, symbol: str
+) -> ifcopenshell.entity_instance:
+    lib = _shape_builder_lib()
+    handle_value = _generated_capi.take_nullable_handle(
+        lib, handle, destroy=lib.ifcopenshell_ifc_instance_destroy
+    )
+    if handle_value is None:
+        raise RuntimeError(f"{symbol} returned a null Ifc instance handle")
+    return ifcopenshell.entity_instance(file, handle_value)
+
+
+def _native_points(points: SequenceOfVectors) -> _generated_capi.ifcopenshell_double_list_list_t:
+    return _generated_capi.make_double_list_list(ifc_safe_vector_type(points))
+
+
+def _native_vector(vector: VectorType) -> _generated_capi.ifcopenshell_double_list_t:
+    return _generated_capi.make_double_list(ifc_safe_vector_type(vector))
+
+
+def _native_instance_list(values: Sequence[ifcopenshell.entity_instance]) -> _generated_capi.ifcopenshell_ifc_instance_list_t:
+    handles = [_generated_instance_handle_ptr(value._handle) for value in values]
+    items = (ctypes.POINTER(_generated_capi._HandleStruct) * len(handles))(*handles)
+    result = _generated_capi.ifcopenshell_ifc_instance_list_t()
+    result.items = items
+    result.size = len(items)
+    result._keepalive = (items, handles)  # type: ignore[attr-defined]
+    return result
+
+
+def _native_faces(faces: Sequence[Sequence[int]]) -> _generated_capi.ifcopenshell_int32_list_list_t:
+    return _generated_capi.make_int32_list_list(faces)
+
+
+def _native_polygonal_faces(
+    faces: Sequence[Union[Sequence[int], Sequence[Sequence[int]]]]
+) -> _generated_capi.ifcopenshell_int32_list_list_list_t:
+    def is_sequence_of_ints(x):
+        return isinstance(x, Sequence) and not isinstance(x, (str, bytes)) and all(isinstance(el, int) for el in x)
+
+    def is_sequence_of_sequence_of_ints(x):
+        return isinstance(x, Sequence) and not isinstance(x, (str, bytes)) and all(is_sequence_of_ints(el) for el in x)
+
+    if not all(is_sequence_of_ints(f) or is_sequence_of_sequence_of_ints(f) for f in faces):
+        raise ValueError("Expected a sequence of int or sequence of sequence of int for each face")
+
+    return _generated_capi.make_int32_list_list_list(
+        [[face] if is_sequence_of_ints(face) else face for face in faces]  # type: ignore[list-item]
+    )
 
 
 def V(*args: Union[float, int, VectorType, SequenceOfVectors]) -> npt.NDArray[np.float64]:
@@ -337,74 +450,15 @@ class ShapeBuilder:
             curved_polyline = builder.polyline(points, closed=False, position_offset=position, arc_points=arc_points)
         """
 
-        if arc_points and self.file.schema == "IFC2X3":
-            raise Exception("Arcs are not supported for IFC2X3.")
-
-        points: np.ndarray
-        points = np.array(points)
-        if position_offset is not None:
-            points = points + position_offset
-
-        if self.file.schema == "IFC2X3":
-            ifc_points = [self.file.create_entity("IfcCartesianPoint", p) for p in points.tolist()]
-            if closed:
-                ifc_points.append(ifc_points[0])
-            ifc_curve = self.file.createIfcPolyline(Points=ifc_points)
-            return ifc_curve
-
-        dimensions = len(points[0])
-        if dimensions == 2:
-            ifc_points = self.file.create_entity("IfcCartesianPointList2D", points.tolist())
-        elif dimensions == 3:
-            ifc_points = self.file.create_entity("IfcCartesianPointList3D", points.tolist())
-        else:
-            raise Exception(f"Point has unexpected number of dimensions - {dimensions}.")
-
-        if not closed and not arc_points:
-            ifc_curve = self.file.createIfcIndexedPolyCurve(Points=ifc_points)
-            return ifc_curve
-
-        # if curve is closed or we have arc points
-        # then we do need to create segments
-        segments = []
-        cur_i = 0
-        closed_by_arc = False
-        while cur_i < len(points) - 1:
-            cur_i_ifc = cur_i + 1
-            if cur_i + 1 in arc_points:
-                if cur_i_ifc + 1 < len(points):
-                    segments.append((cur_i_ifc, cur_i_ifc + 1, cur_i_ifc + 2))
-                else:
-                    segments.append((cur_i_ifc, cur_i_ifc + 1, 1))
-                    closed_by_arc = True
-                cur_i += 2
-            else:
-                segments.append((cur_i_ifc, cur_i_ifc + 1))
-                cur_i += 1
-
-        if closed and not closed_by_arc:
-            segments.append((len(points), 1))
-
-        ifc_segments = []
-        # because IfcLineIndex support 2+ points
-        # we merge neighbor line segments into one
-        current_line_segment = []
-        last_segment = len(segments) - 1
-        for seg_i, segment in enumerate(segments):
-            if len(segment) == 2:
-                # check if `current_line_segment` is empty to avoid duplicated indices like `IfcLineIndex((1,2,2,3,3,4,4,1))`
-                current_line_segment += segment if not current_line_segment else segment[1:]
-
-            if current_line_segment and (len(segment) == 3 or seg_i == last_segment):
-                ifc_segments.append(self.file.createIfcLineIndex(current_line_segment))
-                current_line_segment = []
-
-            if len(segment) == 3:
-                ifc_segments.append(self.file.createIfcArcIndex(segment))
-
-        # NOTE: IfcIndexPolyCurve support only consecutive segments
-        ifc_curve = self.file.createIfcIndexedPolyCurve(Points=ifc_points, Segments=ifc_segments)
-        return ifc_curve
+        return _native_entity(
+            self.file,
+            "ifcopenshell_ifcapi_shape_builder_polyline",
+            _native_points(points),
+            bool(closed),
+            _native_vector(position_offset if position_offset is not None else ()),
+            position_offset is not None,
+            _generated_capi.make_int32_list(arc_points),
+        )
 
     @staticmethod
     def get_rectangle_coords(size: VectorType = (1.0, 1.0), position: Optional[VectorType] = None) -> np.ndarray:
@@ -458,9 +512,12 @@ class ShapeBuilder:
         :param radius: radius of the circle
         :return: IfcCircle
         """
-        ifc_center = self.create_axis2_placement_2d(center)
-        ifc_curve = self.file.create_entity("IfcCircle", ifc_center, radius)
-        return ifc_curve
+        return _native_entity(
+            self.file,
+            "ifcopenshell_ifcapi_shape_builder_circle",
+            _native_vector(center),
+            float(radius),
+        )
 
     def plane(
         self, location: VectorType = (0.0, 0.0, 0.0), normal: VectorType = (0.0, 0.0, 1.0)
@@ -473,13 +530,12 @@ class ShapeBuilder:
         :return: IfcPlane
         """
 
-        if np.allclose(np.round(normal, 2), (0.0, 0.0, 1.0)):
-            arbitrary_vector = (0.0, 1.0, 0.0)
-        else:
-            arbitrary_vector = (0.0, 0.0, 1.0)
-        x_axis = np_normalized(np.cross(normal, arbitrary_vector))
-        axis_placement = self.create_axis2_placement_3d(location, normal, x_axis)
-        return self.file.createIfcPlane(axis_placement)
+        return _native_entity(
+            self.file,
+            "ifcopenshell_ifcapi_shape_builder_plane",
+            _native_vector(location),
+            _native_vector(normal),
+        )
 
     # TODO: explain points order for the curve_between_two_points
     # because the order is important and defines the center of the curve
@@ -491,24 +547,11 @@ class ShapeBuilder:
         :param points: tuple of 2 points.
         :return: IfcIndexePolyCurve
         """
-        diff = np.subtract(points[1], points[0])
-        max_diff_i = np.argmax(np.abs(diff))
-        diff_sign = np.zeros_like(diff)
-        diff_sign[max_diff_i] = np.sign(diff[max_diff_i])
-
-        # diff should be applied only to one axis
-        # if it's applied to two (like in a case of circle) it will create
-        # a straight line instead of a curve
-        diff = (0.01, 0.01) * diff_sign
-        middle_point = points[0] + diff
-
-        points: list[VectorType]
-        points = [points[0], middle_point, points[1]]
-        points = [ifc_safe_vector_type(p) for p in points]
-        seg = self.file.createIfcArcIndex((1, 2, 3))
-        ifc_points = self.file.createIfcCartesianPointList2D(points)
-        curve = self.file.createIfcIndexedPolyCurve(Points=ifc_points, Segments=[seg])
-        return curve
+        return _native_entity(
+            self.file,
+            "ifcopenshell_ifcapi_shape_builder_curve_between_two_points",
+            _native_points(points),
+        )
 
     def get_trim_points_from_mask(
         self,
@@ -571,25 +614,16 @@ class ShapeBuilder:
             See :meth:`get_trim_points_from_mask` for index definitions.
         :return: IfcEllipse (untrimmed) or IfcTrimmedCurve (trimmed).
         """
-        ifc_position = self.create_axis2_placement_2d(position, ref_x_direction)
-        ifc_ellipse = self.file.createIfcEllipse(
-            Position=ifc_position, SemiAxis1=x_axis_radius, SemiAxis2=y_axis_radius
+        return _native_entity(
+            self.file,
+            "ifcopenshell_ifcapi_shape_builder_ellipse_curve",
+            x_axis_radius,
+            y_axis_radius,
+            _native_vector(position),
+            _native_points(trim_points),
+            _native_vector(ref_x_direction),
+            _generated_capi.make_int32_list(trim_points_mask),
         )
-
-        if not trim_points:
-            if not trim_points_mask:
-                return ifc_ellipse
-            trim_points = self.get_trim_points_from_mask(
-                x_axis_radius, y_axis_radius, trim_points_mask, position_offset=position
-            )
-
-        trim1 = [self.file.create_entity("IfcCartesianPoint", ifc_safe_vector_type(trim_points[0]))]
-        trim2 = [self.file.create_entity("IfcCartesianPoint", ifc_safe_vector_type(trim_points[1]))]
-
-        trim_ellipse = self.file.createIfcTrimmedCurve(
-            BasisCurve=ifc_ellipse, Trim1=trim1, Trim2=trim2, SenseAgreement=True, MasterRepresentation="CARTESIAN"
-        )
-        return trim_ellipse
 
     def profile(
         self,
@@ -616,26 +650,24 @@ class ShapeBuilder:
                 "Ref: https://ifc43-docs.standards.buildingsmart.org/IFC/RELEASE/IFC4x3/HTML/lexical/IfcArbitraryClosedProfileDef.htm#8.15.3.1.4-Formal-propositions"
             )
 
-        kwargs = {
-            "ProfileName": name,
-            "ProfileType": profile_type,
-            "OuterCurve": outer_curve,
-        }
-
         if inner_curves:
             if not isinstance(inner_curves, collections.abc.Iterable):
                 inner_curves = [inner_curves]
-                if any(curve.Dim != 2 for curve in inner_curves):
-                    raise Exception(
-                        "WARNING. InnerCurve for IfcIfcArbitraryProfileDefWithVoid sould be 2D to be valid, "
-                        "currently on one of the inner curves is using different amount of dimensions.\n"
-                        "Ref: https://ifc43-docs.standards.buildingsmart.org/IFC/RELEASE/IFC4x3/HTML/lexical/IfcArbitraryClosedProfileDef.htm#8.15.3.1.4-Formal-propositions"
-                    )
+            if any(curve.Dim != 2 for curve in inner_curves):
+                raise Exception(
+                    "WARNING. InnerCurve for IfcIfcArbitraryProfileDefWithVoid sould be 2D to be valid, "
+                    "currently on one of the inner curves is using different amount of dimensions.\n"
+                    "Ref: https://ifc43-docs.standards.buildingsmart.org/IFC/RELEASE/IFC4x3/HTML/lexical/IfcArbitraryClosedProfileDef.htm#8.15.3.1.4-Formal-propositions"
+                )
 
-            profile = self.file.create_entity("IfcArbitraryProfileDefWithVoids", InnerCurves=inner_curves, **kwargs)
-        else:
-            profile = self.file.create_entity("IfcArbitraryClosedProfileDef", **kwargs)
-        return profile
+        return _native_entity(
+            self.file,
+            "ifcopenshell_ifcapi_shape_builder_profile",
+            _generated_instance_handle_ptr(outer_curve._handle),
+            _generated_capi.encode_string(name) if name is not None else None,
+            _native_instance_list(inner_curves),
+            _generated_capi.encode_string(profile_type) if profile_type is not None else None,
+        )
 
     def translate(
         self,
@@ -658,38 +690,15 @@ class ShapeBuilder:
 
         processed_objects: list[ifcopenshell.entity_instance] = []
         for c in curve_or_item:
-            if create_copy:
-                c = ifcopenshell.util.element.copy_deep(self.file, c)
-
-            if c.is_a() in ("IfcIndexedPolyCurve", "IfcPolyline"):
-                coords = self.get_polyline_coords(c)
-                coords += translation
-                self.set_polyline_coords(c, coords)
-
-            elif c.is_a("IfcCircle") or c.is_a("IfcExtrudedAreaSolid") or c.is_a("IfcEllipse"):
-                base_position = np.array(c.Position.Location.Coordinates)
-                c.Position.Location.Coordinates = ifc_safe_vector_type(base_position + translation)
-
-            elif c.is_a("IfcTessellatedFaceSet"):
-                c.Coordinates.CoordList = ifc_safe_vector_type(np.array(c.Coordinates.CoordList) + translation)
-
-            elif c.is_a("IfcShapeRepresentation"):
-                for item in c.Items:
-                    self.translate(item, translation)
-
-            elif c.is_a("IfcTrimmedCurve"):
-                base_position = np.array(c.Trim1[0].Coordinates)
-                c.Trim1[0].Coordinates = ifc_safe_vector_type(base_position + translation)
-
-                base_position = np.array(c.Trim2[0].Coordinates)
-                c.Trim2[0].Coordinates = ifc_safe_vector_type(base_position + translation)
-
-                self.translate(c.BasisCurve, translation)
-
-            else:
-                raise Exception(f"{c} is not supported for translate() method.")
-
-            processed_objects.append(c)
+            processed_objects.append(
+                _native_entity(
+                    self.file,
+                    "ifcopenshell_ifcapi_shape_builder_translate",
+                    _generated_instance_handle_ptr(c._handle),
+                    _native_vector(translation),
+                    bool(create_copy),
+                )
+            )
 
         return processed_objects if multiple_objects else processed_objects[0]
 
@@ -738,34 +747,17 @@ class ShapeBuilder:
 
         processed_objects: list[ifcopenshell.entity_instance] = []
         for c in curve_or_item:
-            if create_copy:
-                c = ifcopenshell.util.element.copy_deep(self.file, c)
-
-            if c.is_a() in ("IfcIndexedPolyCurve", "IfcPolyline"):
-                original_coords = self.get_polyline_coords(c)
-                coords = [self.rotate_2d_point(co, angle, pivot_point, counter_clockwise) for co in original_coords]
-                self.set_polyline_coords(c, coords)
-
-            elif c.is_a("IfcCircle"):
-                base_position = c.Position.Location.Coordinates
-                new_position = self.rotate_2d_point(base_position, angle, pivot_point, counter_clockwise)
-                c.Position.Location.Coordinates = ifc_safe_vector_type(new_position)
-
-            elif c.is_a("IfcExtrudedAreaSolid"):
-                # TODO: add support for Z-axis too
-                base_position = c.Position.Location.Coordinates
-                new_position = self.rotate_2d_point(base_position[:2], angle, pivot_point, counter_clockwise)
-                new_position = np_to_3d(new_position)
-                new_position[2] = base_position[2]
-                c.Position.Location.Coordinates = ifc_safe_vector_type(new_position)
-
-                # TODO: add inner axis too and test it
-                self.rotate(c.SweptArea.OuterCurve, angle, pivot_point, counter_clockwise)
-
-            else:
-                raise Exception(f"{c} is not supported for rotate() method.")
-
-            processed_objects.append(c)
+            processed_objects.append(
+                _native_entity(
+                    self.file,
+                    "ifcopenshell_ifcapi_shape_builder_rotate",
+                    _generated_instance_handle_ptr(c._handle),
+                    float(angle),
+                    _native_vector(pivot_point),
+                    bool(counter_clockwise),
+                    bool(create_copy),
+                )
+            )
 
         return processed_objects if multiple_objects else processed_objects[0]
 
@@ -806,11 +798,12 @@ class ShapeBuilder:
         :param x_axis: local X axis direction (RefDirection).
         :return: IfcAxis2Placement3D
         """
-        return self.file.create_entity(
-            "IfcAxis2Placement3D",
-            self.file.create_entity("IfcCartesianPoint", ifc_safe_vector_type(position)),
-            Axis=self.file.create_entity("IfcDirection", ifc_safe_vector_type(z_axis)),
-            RefDirection=self.file.create_entity("IfcDirection", ifc_safe_vector_type(x_axis)),
+        return _native_entity(
+            self.file,
+            "ifcopenshell_ifcapi_shape_builder_axis2_placement_3d",
+            _native_vector(position),
+            _native_vector(z_axis),
+            _native_vector(x_axis),
         )
 
     def create_axis2_placement_3d_from_matrix(
@@ -837,13 +830,12 @@ class ShapeBuilder:
             the global X axis ``(1, 0)``.
         :return: IfcAxis2Placement2D
         """
-        ref_direction = (
-            self.file.create_entity("IfcDirection", ifc_safe_vector_type(x_direction)) if x_direction else None
-        )
-        return self.file.create_entity(
-            "IfcAxis2Placement2D",
-            Location=self.file.create_entity("IfcCartesianPoint", ifc_safe_vector_type(position)),
-            RefDirection=ref_direction,
+        return _native_entity(
+            self.file,
+            "ifcopenshell_ifcapi_shape_builder_axis2_placement_2d",
+            _native_vector(position),
+            _native_vector(x_direction if x_direction else ()),
+            x_direction is not None,
         )
 
     def vertex(self, position: VectorType = (0.0, 0.0, 0.0)) -> ifcopenshell.entity_instance:
@@ -854,8 +846,10 @@ class ShapeBuilder:
         :param position: The 3D coordinate of the vertex
         :return: IfcVertexPoint
         """
-        return self.file.create_entity(
-            "IfcVertexPoint", self.file.create_entity("IfcCartesianPoint", ifc_safe_vector_type(position))
+        return _native_entity(
+            self.file,
+            "ifcopenshell_ifcapi_shape_builder_vertex",
+            _native_vector(position),
         )
 
     def edge(
@@ -867,7 +861,12 @@ class ShapeBuilder:
         :param end: The end coordinates of the vertex.
         :return: IfcEdge
         """
-        return self.file.create_entity("IfcEdge", self.vertex(start), self.vertex(end))
+        return _native_entity(
+            self.file,
+            "ifcopenshell_ifcapi_shape_builder_edge",
+            _native_vector(start),
+            _native_vector(end),
+        )
 
     def face(self, points: SequenceOfVectors) -> ifcopenshell.entity_instance:
         """Create a single topological face
@@ -878,8 +877,11 @@ class ShapeBuilder:
         :param points: ordered list of 3d coordinates representing the outer boundary
         :return: IfcFace
         """
-        verts = [self.file.createIfcCartesianPoint(p) for p in ifc_safe_vector_type(points)]
-        return self.file.createIfcFace([self.file.createIfcFaceOuterBound(self.file.createIfcPolyLoop(verts), True)])
+        return _native_entity(
+            self.file,
+            "ifcopenshell_ifcapi_shape_builder_face",
+            _native_points(points),
+        )
 
     def mirror(
         self,
@@ -904,11 +906,6 @@ class ShapeBuilder:
         :return: Mirrored curve/item/representation or a sequence of them.
         """
 
-        # TODO: need to add placement_matrix for other types besides polycurve?
-
-        np_XY = slice(2)
-        np_X, np_Y, np_Z = 0, 1, 2
-
         multiple_objects = isinstance(curve_or_item, collections.abc.Iterable)
         curve_or_item = [curve_or_item] if not multiple_objects else curve_or_item
         multiple_transformations = not isinstance(mirror_axes[0], (float, int))
@@ -917,91 +914,21 @@ class ShapeBuilder:
         processed_objects: list[ifcopenshell.entity_instance] = []
         for curve_or_item_el in curve_or_item:
             for mirror_axes in mirror_axes_data:
-                c = (
-                    ifcopenshell.util.element.copy_deep(self.file, curve_or_item_el)
-                    if create_copy
-                    else curve_or_item_el
+                processed_objects.append(
+                    _native_entity(
+                        self.file,
+                        "ifcopenshell_ifcapi_shape_builder_mirror",
+                        _generated_instance_handle_ptr(curve_or_item_el._handle),
+                        _native_vector(mirror_axes),
+                        _native_vector(mirror_point),
+                        bool(create_copy),
+                        _native_vector(
+                            []
+                            if placement_matrix is None
+                            else np.array(placement_matrix, dtype="d")[:3, :3].reshape(9).tolist()
+                        ),
+                    )
                 )
-
-                if c.is_a() in ("IfcIndexedPolyCurve", "IfcPolyline"):
-                    original_coords = self.get_polyline_coords(c)
-                    inverted_placement_matrix = (
-                        np.linalg.inv(placement_matrix) if placement_matrix is not None else None
-                    )
-                    coords = []
-                    for co in original_coords:
-                        co_base = co.copy()
-                        if placement_matrix is not None:
-                            # TODO: add support for Z-axis too
-                            co_base = placement_matrix @ np_to_3d(co_base)
-                            co = self.mirror_2d_point(co_base[np_XY], mirror_axes, mirror_point)
-                            co = np_to_3d(co, z=co_base[2])
-                            co = (inverted_placement_matrix @ co)[np_XY]
-                        else:
-                            co = self.mirror_2d_point(co_base, mirror_axes, mirror_point)
-
-                        coords.append(co)
-
-                    self.set_polyline_coords(c, coords)
-
-                elif c.is_a("IfcCircle") or c.is_a("IfcEllipse"):
-                    base_position = c.Position.Location.Coordinates
-                    new_position = self.mirror_2d_point(base_position, mirror_axes, mirror_point)
-                    c.Position.Location.Coordinates = ifc_safe_vector_type(new_position)
-
-                elif c.is_a("IfcExtrudedAreaSolid"):
-                    placement_matrix_ = ifcopenshell.util.placement.get_axis2placement(c.Position)[:3, :3]
-                    base_position = c.Position.Location.Coordinates
-                    # TODO: add support for Z-axis too
-                    new_position = self.mirror_2d_point(base_position[np_XY], mirror_axes, mirror_point)
-                    new_position = np_to_3d(new_position, base_position[np_Z])
-                    c.Position.Location.Coordinates = ifc_safe_vector_type(new_position)
-
-                    # TODO: add support for Z-axis too
-                    self.translate(c.SweptArea.OuterCurve, base_position[np_XY])
-                    self.mirror(c.SweptArea.OuterCurve, mirror_axes, mirror_point, placement_matrix=placement_matrix_)
-                    self.translate(c.SweptArea.OuterCurve, -new_position[np_XY])
-
-                    if hasattr(c.SweptArea, "InnerCurves"):
-                        for inner_curve in c.SweptArea.InnerCurves:
-                            self.translate(inner_curve, base_position[np_XY])
-                            self.mirror(inner_curve, mirror_axes, mirror_point, placement_matrix=placement_matrix_)
-                            self.translate(inner_curve, -new_position[np_XY])
-
-                    # extrusion converted to world space
-                    base_extruded_direction = c.ExtrudedDirection.DirectionRatios
-                    extruded_direction = placement_matrix_ @ base_extruded_direction
-
-                    # TODO: add support for Z-axis too
-                    # mirror point is ignored for extrusion direction
-                    new_direction = self.mirror_2d_point(
-                        extruded_direction[np_XY], mirror_axes, mirror_point=(0.0, 0.0)
-                    )
-                    new_direction = np_to_3d(new_direction, extruded_direction[np_Z])
-
-                    # extrusion direction converted back to placement space
-                    new_direction = np.linalg.inv(placement_matrix_) @ (new_direction)
-                    c.ExtrudedDirection.DirectionRatios = ifc_safe_vector_type(new_direction)
-
-                elif c.is_a("IfcTrimmedCurve"):
-                    trim_coords = [c.Trim1[0].Coordinates, c.Trim2[0].Coordinates]
-                    trim_coords = [
-                        self.mirror_2d_point(base_position, mirror_axes, mirror_point) for base_position in trim_coords
-                    ]
-
-                    # if mirror only by 1 axis we need to preserve the counter-clockwise order
-                    # for the trim points
-                    if 0 in mirror_axes:
-                        trim_coords = [trim_coords[1], trim_coords[0]]
-
-                    trim_coords = ifc_safe_vector_type(np.array(trim_coords))
-                    c.Trim1[0].Coordinates, c.Trim2[0].Coordinates = trim_coords
-
-                    self.mirror(c.BasisCurve, mirror_axes, mirror_point)
-                else:
-                    raise Exception(f"{c} is not supported for mirror() method.")
-
-                processed_objects.append(c)
 
         return processed_objects if (multiple_objects or multiple_transformations) else processed_objects[0]
 
@@ -1013,8 +940,12 @@ class ShapeBuilder:
         :return: IfcSphere
         """
 
-        ifc_position = self.create_axis2_placement_3d(position=center)
-        return self.file.createIfcSphere(Radius=radius, Position=ifc_position)
+        return _native_entity(
+            self.file,
+            "ifcopenshell_ifcapi_shape_builder_sphere",
+            float(radius),
+            _native_vector(center),
+        )
 
     def block(
         self,
@@ -1031,7 +962,14 @@ class ShapeBuilder:
 
         :return: IfcBlock
         """
-        return self.file.createIfcBlock(self.create_axis2_placement_3d(position), x_length, y_length, z_length)
+        return _native_entity(
+            self.file,
+            "ifcopenshell_ifcapi_shape_builder_block",
+            _native_vector(position),
+            float(x_length),
+            float(y_length),
+            float(z_length),
+        )
 
     def half_space_solid(
         self, plane: ifcopenshell.entity_instance, agreement_flag: bool = False
@@ -1041,7 +979,12 @@ class ShapeBuilder:
         :param agreement_flag: If False (default), the plane normal points toward the **removed** material (the void). The kept region is on the opposite side from the normal.
         :return: IfcHalfSpaceSolid
         """
-        return self.file.createIfcHalfSpaceSolid(plane, AgreementFlag=agreement_flag)
+        return _native_entity(
+            self.file,
+            "ifcopenshell_ifcapi_shape_builder_half_space_solid",
+            _generated_instance_handle_ptr(plane._handle),
+            bool(agreement_flag),
+        )
 
     def extrude(
         self,
@@ -1069,24 +1012,18 @@ class ShapeBuilder:
         :return: IfcExtrudedAreaSolid
         """
 
-        if not magnitude:
-            raise Exception(
-                "Extrusion magnitude must be greater than 0 to be valid.\n"
-                "Ref: https://ifc43-docs.standards.buildingsmart.org/IFC/RELEASE/IFC4x3/HTML/lexical/IfcPositiveLengthMeasure.htm#8.11.2.71.3-Formal-representation"
-            )
-
-        if not profile_or_curve.is_a("IfcProfileDef"):
-            profile_or_curve = self.profile(profile_or_curve)
-
-        if position_y_axis:
-            position_z_axis = np.cross(position_x_axis, position_y_axis)
-
-        ifc_position = self.create_axis2_placement_3d(position, position_z_axis, position_x_axis)
-        ifc_direction = self.file.create_entity("IfcDirection", ifc_safe_vector_type(extrusion_vector))
-        extruded_area = self.file.createIfcExtrudedAreaSolid(
-            SweptArea=profile_or_curve, Position=ifc_position, ExtrudedDirection=ifc_direction, Depth=magnitude
+        return _native_entity(
+            self.file,
+            "ifcopenshell_ifcapi_shape_builder_extrude",
+            _generated_instance_handle_ptr(profile_or_curve._handle),
+            float(magnitude),
+            _native_vector(position),
+            _native_vector(extrusion_vector),
+            _native_vector(position_z_axis),
+            _native_vector(position_x_axis),
+            _native_vector(position_y_axis if position_y_axis is not None else ()),
+            position_y_axis is not None,
         )
-        return extruded_area
 
     def create_swept_disk_solid(
         self, path_curve: ifcopenshell.entity_instance, radius: float
@@ -1105,8 +1042,12 @@ class ShapeBuilder:
                 "Ref: https://ifc43-docs.standards.buildingsmart.org/IFC/RELEASE/IFC4x3/HTML/lexical/IfcSweptDiskSolid.htm#8.8.3.42.4-Formal-propositions"
             )
 
-        disk_solid = self.file.createIfcSweptDiskSolid(Directrix=path_curve, Radius=radius)
-        return disk_solid
+        return _native_entity(
+            self.file,
+            "ifcopenshell_ifcapi_shape_builder_swept_disk_solid",
+            _generated_instance_handle_ptr(path_curve._handle),
+            float(radius),
+        )
 
     def get_representation(
         self,
@@ -1140,16 +1081,12 @@ class ShapeBuilder:
         if not representation_type:
             representation_type = ifcopenshell.util.representation.guess_type(items)
 
-        return self.file.create_entity(
-            (
-                "IfcTopologyRepresentation"
-                if representation_type in ("Vertex", "Edge", "Path", "Face", "Shell")
-                else "IfcShapeRepresentation"
-            ),
-            ContextOfItems=context,
-            RepresentationIdentifier=context.ContextIdentifier,
-            RepresentationType=representation_type,
-            Items=items,
+        return _native_entity(
+            self.file,
+            "ifcopenshell_ifcapi_shape_builder_representation",
+            _generated_instance_handle_ptr(context._handle),
+            _native_instance_list(items),
+            _generated_capi.encode_string(representation_type) if representation_type is not None else None,
         )
 
     def deep_copy(self, element: ifcopenshell.entity_instance) -> ifcopenshell.entity_instance:
@@ -1158,7 +1095,11 @@ class ShapeBuilder:
         :param element: The IFC entity to copy.
         :return: A new independent copy of the element.
         """
-        return ifcopenshell.util.element.copy_deep(self.file, element)
+        return _native_entity(
+            self.file,
+            "ifcopenshell_ifcapi_shape_builder_deep_copy",
+            _generated_instance_handle_ptr(element._handle),
+        )
 
     # UTILITIES
     def extrude_kwargs(self, axis: Literal["Y", "X", "Z"]) -> dict[str, tuple[float, float, float]]:
@@ -1219,14 +1160,14 @@ class ShapeBuilder:
         :param polyline: An ``IfcIndexedPolyCurve`` or ``IfcPolyline`` entity.
         :return: Numpy array of the polyline's point coordinates.
         """
-        coords = None
-        if polyline.is_a("IfcIndexedPolyCurve"):
-            coords = np.array(polyline.Points.CoordList)
-        elif polyline.is_a("IfcPolyline"):
-            coords = np.array(tuple(p.Coordinates for p in polyline.Points))
-        else:
-            raise Exception(f"Unsupported polyline type: {polyline.is_a()}")
-        return coords
+        lib = _shape_builder_lib()
+        coords = _generated_capi.call_double_list_list_or_raise(
+            lib,
+            lib.ifcopenshell_ifcapi_shape_builder_get_polyline_coords,
+            f"Unsupported polyline type: {polyline.is_a()}",
+            _generated_instance_handle_ptr(polyline._handle),
+        )
+        return np.array(coords)
 
     def set_polyline_coords(self, polyline: ifcopenshell.entity_instance, coords: SequenceOfVectors) -> None:
         """Update the coordinates of a polyline entity in-place.
@@ -1235,15 +1176,12 @@ class ShapeBuilder:
         :param coords: New sequence of point coordinates. Must contain the same number of
             points as the original polyline.
         """
-        if polyline.is_a("IfcIndexedPolyCurve"):
-            polyline.Points.CoordList = ifc_safe_vector_type(coords)
-        elif polyline.is_a("IfcPolyline"):
-            ifc_points: list[ifcopenshell.entity_instance] = polyline.Points
-            assert len(ifc_points) == len(coords)
-            for point, co in zip(ifc_points, ifc_safe_vector_type(coords)):
-                point.Coordinates = co
-        else:
-            raise Exception(f"Unsupported polyline type: {polyline.is_a()}")
+        _native_entity(
+            self.file,
+            "ifcopenshell_ifcapi_shape_builder_set_polyline_coords",
+            _generated_instance_handle_ptr(polyline._handle),
+            _native_points(coords),
+        )
 
     def get_simple_2dcurve_data(
         self,
@@ -1352,16 +1290,12 @@ class ShapeBuilder:
         points, segments = remove_redundant_points(points, segments)
         ifc_curve = None
         if create_ifc_curve:
-            ifc_points = self.file.createIfcCartesianPointList2D(ifc_safe_vector_type(points))
-            ifc_segments = []
-            for segment in segments:
-                segment = [i + 1 for i in segment]
-                if len(segment) == 2:
-                    ifc_segments.append(self.file.createIfcLineIndex(segment))
-                elif len(segment) == 3:
-                    ifc_segments.append(self.file.createIfcArcIndex(segment))
-
-            ifc_curve = self.file.createIfcIndexedPolyCurve(Points=ifc_points, Segments=ifc_segments)
+            ifc_curve = _native_entity(
+                self.file,
+                "ifcopenshell_ifcapi_shape_builder_indexed_polycurve_2d",
+                _native_points(points),
+                _native_faces([[i + 1 for i in segment] for segment in segments]),
+            )
         return (points, segments, ifc_curve)
 
     def create_z_profile_lips_curve(
@@ -1474,9 +1408,12 @@ class ShapeBuilder:
         :param faces: List of faces, each face a sequence of zero-based point indices.
         :return: IfcFacetedBrep (IFC2X3) or IfcPolygonalFaceSet (IFC4+).
         """
-        if self.file.schema == "IFC2X3":
-            return self.faceted_brep(points, faces)
-        return self.polygonal_face_set(points, faces)
+        return _native_entity(
+            self.file,
+            "ifcopenshell_ifcapi_shape_builder_mesh",
+            _native_points(points),
+            _native_faces(faces),
+        )
 
     def faceted_brep(self, points: SequenceOfVectors, faces: Sequence[Sequence[int]]) -> ifcopenshell.entity_instance:
         """Generate an IfcFacetedBrep with a closed shell
@@ -1487,14 +1424,12 @@ class ShapeBuilder:
         :param faces: list of faces consisted of point indices (points indices starting from 0)
         :return: IfcFacetedBrep
         """
-        verts = [self.file.createIfcCartesianPoint(p) for p in ifc_safe_vector_type(points)]
-        faces: list[ifcopenshell.entity_instance] = [
-            self.file.createIfcFace(
-                [self.file.createIfcFaceOuterBound(self.file.createIfcPolyLoop([verts[v] for v in f]), True)]
-            )
-            for f in faces
-        ]
-        return self.file.createIfcFacetedBrep(self.file.createIfcClosedShell(faces))
+        return _native_entity(
+            self.file,
+            "ifcopenshell_ifcapi_shape_builder_faceted_brep",
+            _native_points(points),
+            _native_faces(faces),
+        )
 
     def triangulated_face_set(
         self, points: SequenceOfVectors, faces: Sequence[Sequence[int]]
@@ -1508,9 +1443,12 @@ class ShapeBuilder:
         :param faces: list of triangles consisted of point indices (points indices starting from 0)
         :return: IfcTriangulatedFaceSet
         """
-        ifc_points = self.file.createIfcCartesianPointList3D(ifc_safe_vector_type(points))
-        ifc_faces = [[i + 1 for i in face][:3] for face in faces]
-        return self.file.createIfcTriangulatedFaceSet(Coordinates=ifc_points, CoordIndex=ifc_faces)
+        return _native_entity(
+            self.file,
+            "ifcopenshell_ifcapi_shape_builder_triangulated_face_set",
+            _native_points(points),
+            _native_faces(faces),
+        )
 
     def polygonal_face_set(
         self, points: SequenceOfVectors, faces: Sequence[Union[Sequence[int], Sequence[Sequence[int]]]]
@@ -1525,31 +1463,12 @@ class ShapeBuilder:
                       in case of multiple sequences per face, the subsequent ones are inner voids
         :return: IfcPolygonalFaceSet
         """
-
-        def is_sequence_of_ints(x):
-            return isinstance(x, Sequence) and not isinstance(x, (str, bytes)) and all(isinstance(el, int) for el in x)
-
-        def is_sequence_of_sequence_of_ints(x):
-            return (
-                isinstance(x, Sequence) and not isinstance(x, (str, bytes)) and all(is_sequence_of_ints(el) for el in x)
-            )
-
-        def incr(face):
-            return [i + 1 for i in face]
-
-        if not all(is_sequence_of_ints(f) or is_sequence_of_sequence_of_ints(f) for f in faces):
-            raise ValueError("Expected a sequence of int or sequence of sequence of int for each face")
-
-        ifc_points = self.file.createIfcCartesianPointList3D(ifc_safe_vector_type(points))
-        ifc_faces = [
-            (
-                self.file.createIfcIndexedPolygonalFace(incr(face))
-                if is_sequence_of_ints(face)
-                else self.file.createIfcIndexedPolygonalFaceWithVoids(incr(face[0]), list(map(incr, face[1:])))
-            )
-            for face in faces
-        ]
-        return self.file.createIfcPolygonalFaceSet(Coordinates=ifc_points, Faces=ifc_faces)
+        return _native_entity(
+            self.file,
+            "ifcopenshell_ifcapi_shape_builder_polygonal_face_set",
+            _native_points(points),
+            _native_polygonal_faces(faces),
+        )
 
     def extrude_face_set(
         self,
@@ -1622,201 +1541,34 @@ class ShapeBuilder:
         :return: A tuple of Model/Body/MODEL_VIEW IfcRepresentation and dictionary of transition shape data.
             Or (None, None) if there was an error in the process.
         """
-
-        # TODO: get rid of reliance on profiles
-        def get_profile(element: ifcopenshell.entity_instance) -> Union[ifcopenshell.entity_instance, None]:
-            material = ifcopenshell.util.element.get_material(element, should_skip_usage=True)
-            if material and material.is_a("IfcMaterialProfileSet") and len(material.MaterialProfiles) == 1:
-                return material.MaterialProfiles[0].Profile
-
-        def get_circle_points(radius: float, segments: int = 16) -> np.ndarray:
-            """starting from (R,0), going counter-clockwise"""
-            angles = np.linspace(0, 2 * np.pi, segments, endpoint=False)
-            verts = np.column_stack((np.cos(angles), np.sin(angles), np.zeros(segments))) * radius
-            return verts
-
-        def get_rectangle_points(dim: np.ndarray) -> np.ndarray:
-            """Starting from (+X/2, +Y/2) going counter-clockwise"""
-            dim = dim / 2
-            offsets = np.array([[1, 1, 0], [-1, 1, 0], [-1, -1, 0], [1, -1, 0]])
-            return dim * offsets
-
-        # TODO: support more profiles
-        def get_dim(profile: ifcopenshell.entity_instance, depth: float) -> Union[np.ndarray, None]:
-            if profile.is_a("IfcRectangleProfileDef"):
-                return np.array([profile.XDim / 2, profile.YDim / 2, depth])
-            elif profile.is_a("IfcCircleProfileDef"):
-                return np.array([profile.Radius, profile.Radius, depth])
-            return None
-
-        start_profile = get_profile(start_segment)
-        end_profile = get_profile(end_segment)
-        if start_profile is None or end_profile is None:
+        lib = _shape_builder_lib()
+        value = _generated_capi.call_struct_or_raise(
+            lib,
+            lib.ifcopenshell_ifcapi_shape_builder_mep_transition_shape,
+            _generated_capi.ifcopenshell_shape_builder_mep_transition_shape_result_t,
+            "shape_builder_mep_transition_shape failed",
+            _generated_instance_handle_ptr(self.file._ptr),
+            _generated_instance_handle_ptr(start_segment._handle),
+            _generated_instance_handle_ptr(end_segment._handle),
+            float(start_length),
+            float(end_length),
+            float(angle),
+            _native_vector(profile_offset),
+        )
+        if not value.has_result:
             return None, None
-
-        start_half_dim = get_dim(start_profile, start_length)
-        end_half_dim = get_dim(end_profile, end_length)
-
-        # if profile types are not supported
-        if start_half_dim is None or end_half_dim is None:
-            return None, None
-
-        transition_items = []
-        start_offset = np.array([0, 0, start_length])
-        end_extrusion_offset = start_offset.copy()
-
-        transition_length = self.mep_transition_length(start_half_dim, end_half_dim, angle, profile_offset)
-        if transition_length is None:
-            return None, None
-
-        faces: list[Sequence[int]] = []
-        end_extrusion_offset[2] += transition_length
-        end_extrusion_offset[:2] += profile_offset
-
-        if start_profile.is_a("IfcRectangleProfileDef") and end_profile.is_a("IfcRectangleProfileDef"):
-            # no transitions for exactly the same profiles
-            if transition_length == 0:
-                return None, None
-
-            faces += [(3, 4, 7, 0), (11, 8, 15, 12), (3, 11, 12, 4), (7, 15, 8, 0)]
-
-            # NOTE: clockwise order for correct face orientation
-            faces += [
-                # start extrusion
-                (0, 1, 2, 3),
-                (8, 11, 10, 9),
-                (0, 8, 9, 1),
-                (1, 9, 10, 2),
-                (2, 10, 11, 3),
-                # end extrusion
-                (4, 5, 6, 7),
-                (12, 15, 14, 13),
-                (4, 12, 13, 5),
-                (5, 13, 14, 6),
-                (6, 14, 15, 7),
-            ]
-            points = [
-                start_half_dim * (-1, -1, 1),
-                start_half_dim * (-1, -1, 0),
-                start_half_dim * (1, -1, 0),
-                start_half_dim * (1, -1, 1),
-                end_half_dim * (1, -1, 0) + end_extrusion_offset,
-                end_half_dim * (1, -1, 1) + end_extrusion_offset,
-                end_half_dim * (-1, -1, 1) + end_extrusion_offset,
-                end_half_dim * (-1, -1, 0) + end_extrusion_offset,
-                start_half_dim * (-1, 1, 1),
-                start_half_dim * (-1, 1, 0),
-                start_half_dim * (1, 1, 0),
-                start_half_dim * (1, 1, 1),
-                end_half_dim * (1, 1, 0) + end_extrusion_offset,
-                end_half_dim * (1, 1, 1) + end_extrusion_offset,
-                end_half_dim * (-1, 1, 1) + end_extrusion_offset,
-                end_half_dim * (-1, 1, 0) + end_extrusion_offset,
-            ]
-        elif start_profile.is_a("IfcCircleProfileDef") and end_profile.is_a("IfcCircleProfileDef"):
-            # no transitions for exactly the same profiles
-            if transition_length == 0:
-                return None, None
-
-            n_segments = 16
-            first_profile_points = get_circle_points(start_profile.Radius, n_segments)
-            second_profile_points = get_circle_points(end_profile.Radius, n_segments)
-
-            faces = []
-            for i in range(n_segments):
-                # For wrapping around the circle
-                next_i = (i + 1) % n_segments
-                face = [i, next_i, next_i + n_segments, i + n_segments]
-                faces.append(face)
-
-            transition_items.append(self.extrude_face_set(first_profile_points, start_length, end_cap=False))
-            transition_items.append(
-                self.extrude_face_set(second_profile_points, end_length, offset=end_extrusion_offset, start_cap=False)
-            )
-
-            first_profile_points += start_offset
-            second_profile_points += end_extrusion_offset
-            points = np.vstack((first_profile_points, second_profile_points))
-
-        else:  # one is circular, another one is rectangular
-            # support transition from rectangle to circle of the same dimensions
-            if transition_length == 0:
-                transition_length = (start_length + end_length) / 2
-                end_extrusion_offset[2] += transition_length
-
-            starting_with_circle = start_profile.is_a("IfcCircleProfileDef")
-            if starting_with_circle:
-                circle_profile, rect_profile = start_profile, end_profile
-            else:
-                circle_profile, rect_profile = end_profile, start_profile
-
-            circle_points = get_circle_points(circle_profile.Radius)
-            rect_points = get_rectangle_points(np.array([rect_profile.XDim, rect_profile.YDim, 0]))
-
-            if starting_with_circle:
-                start_points, end_points = circle_points, rect_points
-            else:
-                start_points, end_points = rect_points, circle_points
-
-            transition_items.append(self.extrude_face_set(start_points, start_length, end_cap=False))
-            transition_items.append(
-                self.extrude_face_set(end_points, end_length, offset=end_extrusion_offset, start_cap=False)
-            )
-
-            # offset verts
-            if starting_with_circle:
-                circle_points += start_offset
-                rect_points += end_extrusion_offset
-            else:
-                rect_points += start_offset
-                circle_points += end_extrusion_offset
-
-            # circle verts are 0-15, rect verts are 16-19
-            points = np.concatenate((circle_points, rect_points))
-            transition_faces = [
-                (0, 19, 16),  # base
-                (0, 16, 1),
-                (1, 16, 2),
-                (2, 16, 3),
-                (3, 16, 4),
-                (4, 16, 17),  # base
-                (4, 17, 5),
-                (5, 17, 6),
-                (6, 17, 7),
-                (7, 17, 8),
-                (8, 17, 18),  # base
-                (8, 18, 9),
-                (9, 18, 10),
-                (10, 18, 11),
-                (11, 18, 12),
-                (12, 18, 19),  # base
-                (12, 19, 13),
-                (13, 19, 14),
-                (14, 19, 15),
-                (15, 19, 0),
-            ]
-            # revert them in case it's starting with circle profile to keep the face orientation
-            if starting_with_circle:
-                transition_faces = [f[::-1] for f in transition_faces]
-            faces += transition_faces
-
-        face_set = self.polygonal_face_set(points, faces)
-        transition_items.append(face_set)
-
-        body = ifcopenshell.util.representation.get_context(self.file, "Model", "Body", "MODEL_VIEW")
-        assert body
-        representation = self.get_representation(body, transition_items, "Tesselation")
-
-        transition_data = {
-            "start_length": start_length,
-            "end_length": end_length,
-            "angle": angle,
-            "profile_offset": profile_offset,
-            "transition_length": transition_length,
-            "full_transition_length": start_length + transition_length + end_length,
+        representation = _native_entity_from_struct_handle(
+            self.file, value.representation, "shape_builder_mep_transition_shape"
+        )
+        native_profile_offset = _generated_capi.take_double_list(lib, value.profile_offset)
+        return representation, {
+            "start_length": value.start_length,
+            "end_length": value.end_length,
+            "angle": value.angle,
+            "profile_offset": native_profile_offset,
+            "transition_length": value.transition_length,
+            "full_transition_length": value.full_transition_length,
         }
-
-        return representation, transition_data
 
     # TODO: move to separate shape_builder method
     # so we could check transition length without creating representation
@@ -1842,53 +1594,18 @@ class ShapeBuilder:
         :return: Transition length in project length units, or ``None`` if no valid length exists
             for the given angle and offset.
         """
-        print = lambda *args, **kwargs: __builtins__["print"](*args, **kwargs) if verbose else None
-        np_X, np_Y = 0, 1
-        np_XY = slice(2)
-
-        # vectors tend to have bunch of float point garbage
-        # that can result in errors when we're calculating value for square root below
-        offset = np_round_to_precision(np.array(profile_offset), 1)
-        diff = start_half_dim[np_XY] - end_half_dim[np_XY]
-        diff = np.abs(diff)
-
-        print(f"offset = {profile_offset} / {offset}")
-        print(f"diff = {diff}")
-
-        calculation_arguments = {
-            "start_half_dim": start_half_dim,
-            "end_half_dim": end_half_dim,
-            "diff": diff,
-            "offset": offset,
-            "verbose": verbose,
-        }
-
-        def check_transition(end_profile: bool = False) -> Union[float, None]:
-            length = self.mep_transition_calculate(**calculation_arguments, angle=angle, end_profile=end_profile)
-            if length is None:
-                return
-
-            other_side_angle = self.mep_transition_calculate(
-                **calculation_arguments, length=length, end_profile=not end_profile
-            )
-            if other_side_angle is None:
-                return None
-
-            # NOTE: for now we just hardcode the good value for that case
-            same_dimension = is_x(diff[np_Y] if not end_profile else diff[np_X], 0)
-            if same_dimension and is_x(offset[np_Y] if not end_profile else offset[np_X], 0):
-                requested_angle = 90.0
-            else:
-                requested_angle = angle
-
-            print(f"other_side_angle = {other_side_angle}, requested_angle = {requested_angle}")
-            # need to make sure that the worst angle (maximum angle)
-            # for this transition angle is `requested_angle`
-            if other_side_angle < requested_angle or is_x(other_side_angle, requested_angle):
-                print(f"final length = {length}, angle = {requested_angle}, other side angle = {other_side_angle}")
-                return length
-
-        return check_transition() or check_transition(True)
+        lib = _shape_builder_lib()
+        result = _generated_capi.call_scalar_or_raise(
+            lib,
+            lib.ifcopenshell_ifcapi_shape_builder_mep_transition_length,
+            ctypes.c_double,
+            "shape_builder_mep_transition_length failed",
+            _native_vector(start_half_dim),
+            _native_vector(end_half_dim),
+            float(angle),
+            _native_vector(profile_offset),
+        )
+        return None if np.isnan(result) else result
 
     def mep_transition_calculate(
         self,
@@ -1918,106 +1635,24 @@ class ShapeBuilder:
         :return: Transition length (if ``angle`` was given) or transition angle in degrees
             (if ``length`` was given), or ``None`` if the geometry is not feasible.
         """
-
-        print = lambda *args, **kwargs: __builtins__["print"](*args, **kwargs) if verbose else None
-
-        if diff is None:
-            diff = start_half_dim[:2] - end_half_dim[:2]
-            diff = np.abs(diff)
-
-        np_X, np_Y = 0, 1
-        np_YX = [1, 0]
-
-        if end_profile:
-            diff, offset = diff[np_YX], offset[np_YX]
-
-        same_dimension = is_x(diff[0], 0)
-        a = diff[np_X] + offset[np_X]
-        b = diff[np_X] - offset[np_X]
-        if length is None:
-            if not same_dimension:
-                assert angle is not None
-                t = tan(radians(angle))
-                h0 = a**2 + 4 * a * b * t**2 + 2 * a * b + b**2
-                # TODO: we might need to specify the exact failing cases in the future
-                if h0 < 0:
-                    print(
-                        f"B. Coulndn't calculate transition length for angle = {angle}, offset = {offset}, diff = {diff}"
-                    )
-                    return None
-
-                h = (a + b + sqrt(h0)) / (2 * t)
-                length_squared = h**2 - offset[np_Y] ** 2
-                if length_squared <= 0:
-                    print(f"B. angle = {angle} requires h = {h} which is not possible with y offset = {offset[np_Y]}")
-                    return None
-                length = sqrt(length_squared)
-
-                if verbose:
-                    A = (end_half_dim if end_profile else start_half_dim) * (1, 0, 0)
-                    end_profile_offset = np_to_3d(offset, length)
-                    D = (start_half_dim if end_profile else end_half_dim) * (1, 0, 0)
-                    B, C = -A, -D
-                    C += end_profile_offset
-                    D += end_profile_offset
-                    tested_angle = degrees(np_angle(A - D, B - C))
-                    print(f"A. length = {length}, requested angle = {angle}, tested angle = {tested_angle}")
-            else:
-                if is_x(offset[np_X], 0):
-                    angle = 90  # NOTE: for now we just hardcode the good value for that case
-                    h = start_half_dim[np_X] / tan(radians(angle / 2))
-                    length_squared = h**2 - offset[np_Y] ** 2
-                    if length_squared <= 0:
-                        print(
-                            f"B. angle = {angle} requires h = {h} which is not possible with y offset = {offset[np_Y]}"
-                        )
-                        return None
-                    length = sqrt(length_squared)
-
-                    if verbose:
-                        O = np.zeros(3)
-                        A = (-start_half_dim[np_X], 0, length) + np_to_3d(offset)
-                        B = A * (-1, 1, 1)
-                        tested_angle = degrees(np_angle(A - O, B - O))
-                        print(f"B. length = {length}, requested angle = {angle}, tested angle = {tested_angle}")
-                else:
-                    assert angle is not None
-                    h = offset[np_X] / tan(radians(angle))
-                    length_squared = h**2 - offset[np_Y] ** 2
-                    if length_squared <= 0:
-                        print(
-                            f"C. angle = {angle} requires h = {h} which is not possible with y offset = {offset[np_Y]}"
-                        )
-                        return None
-                    length = sqrt(length_squared)
-
-                    if verbose:
-                        A = np.array((-start_half_dim[np_X], 0, 0))
-                        H = A + (0, 0, length)
-                        H[np_Y] += offset[np_Y]
-                        D = H.copy()
-                        D[np_X] += offset[np_X]
-                        tested_angle = degrees(np_angle(H - A, D - A))
-                        print(f"C. length = {length}, requested angle = {angle}, tested angle = {tested_angle}")
-
-            return length
-
-        elif angle is None:
-            if not same_dimension:
-                if length == 0:
-                    return 0
-
-                h = sqrt(length**2 + offset[np_Y] ** 2)
-                t = -h * (a + b) / (a * b - h**2)
-                angle = degrees(atan(t))
-
-            else:
-                h = sqrt(length**2 + offset[np_Y] ** 2)
-                if is_x(offset[np_X], 0):
-                    angle = degrees(2 * atan(start_half_dim[np_X] / h))
-                else:
-                    angle = degrees(atan(offset[np_X] / h))
-            return angle
+        lib = _shape_builder_lib()
+        result = _generated_capi.call_scalar_or_raise(
+            lib,
+            lib.ifcopenshell_ifcapi_shape_builder_mep_transition_calculate,
+            ctypes.c_double,
+            "shape_builder_mep_transition_calculate failed",
+            _native_vector(start_half_dim),
+            _native_vector(end_half_dim),
+            _native_vector(offset),
+            _native_vector(diff if diff is not None else ()),
+            diff is not None,
+            bool(end_profile),
+            0.0 if length is None else float(length),
+            length is not None,
+            0.0 if angle is None else float(angle),
+            angle is not None,
+        )
+        return None if np.isnan(result) else result
 
     def mep_bend_shape(
         self,
@@ -2043,135 +1678,31 @@ class ShapeBuilder:
             there is an option to flip it if bend is going by start segment Z- axis.
         :return: tuple of Model/Body/MODEL_VIEW IfcRepresentation and dictionary of transition shape data
         """
-
-        def get_profile(element: ifcopenshell.entity_instance) -> Union[ifcopenshell.entity_instance, None]:
-            material = ifcopenshell.util.element.get_material(element, should_skip_usage=True)
-            if material and material.is_a("IfcMaterialProfileSet") and len(material.MaterialProfiles) == 1:
-                return material.MaterialProfiles[0].Profile
-
-        def get_dim(profile: ifcopenshell.entity_instance, depth: float) -> Union[np.ndarray, None]:
-            if profile.is_a("IfcRectangleProfileDef"):
-                return np.array([profile.XDim / 2, profile.YDim / 2, depth])
-            elif profile.is_a("IfcCircleProfileDef"):
-                return np.array([profile.Radius, profile.Radius, depth])
-            return None
-
-        np_Z = 2
-
-        si_conversion = ifcopenshell.util.unit.calculate_unit_scale(self.file)
-        profile = get_profile(segment)
-        assert profile
-        is_circular_profile = profile.is_a("IfcCircleProfileDef")
-        profile_dim = get_dim(profile, start_length)
-        assert profile_dim is not None
-
-        rounded_bend_vector = np_round_to_precision(bend_vector, si_conversion)
-        lateral_axis = next(i for i in range(2) if not is_x(rounded_bend_vector[i], 0))
-        non_lateral_axis = 1 if lateral_axis == 0 else 0
-        lateral_sign = np.sign(bend_vector[lateral_axis])
-        z_sign = -1 if flip_z_axis else 1
-
-        rep_items: list[ifcopenshell.entity_instance] = []
-
-        # bend circle center
-        O = np.zeros(3)
-        O[lateral_axis] = (radius + profile_dim[lateral_axis]) * lateral_sign
-        theta = angle
-
-        def get_circle_points(angles: np.ndarray, radius: float) -> np.ndarray:
-            """
-            :param angles: Angles, in radians.
-            """
-            angles = angles - pi / 2
-            points = np.zeros((len(angles), 3))
-            # fmt: off
-            points[:, np_Z]         = z_sign * np.cos(angles) * radius
-            points[:, lateral_axis] = lateral_sign * np.sin(angles) * radius
-            # fmt: on
-            return points
-
-        def get_circle_tangent(angle: float) -> np.ndarray:
-            """
-            :param angle: Angle, in radians.
-            :return: Tangent vector.
-            """
-            tangent = np.zeros(3)
-            tangent[np_Z] = cos(angle) * z_sign
-            tangent[lateral_axis] = sin(angle) * lateral_sign
-            return tangent
-
-        def get_bend_representation_item() -> ifcopenshell.entity_instance:
-            r = radius
-            theta_segments = np.array([0.0, theta / 2, theta])
-            points: np.ndarray
-            if is_circular_profile:
-                r += profile_dim[lateral_axis]
-                points = get_circle_points(theta_segments, r)
-                arc_points = (1,)
-            else:
-                outer_r = r + 2 * profile_dim[lateral_axis]
-                outer_points = get_circle_points(theta_segments[::-1], outer_r)
-                if is_x(r, 0):
-                    points = get_circle_points(np.full(1, theta), r)
-                    points = np.vstack((points, outer_points))
-                    arc_points = (2,)
-                else:
-                    inner_points = get_circle_points(theta_segments, r)
-                    points = np.vstack((inner_points, outer_points))
-                    arc_points = (1, 4)
-
-            points += O
-            offset = np.zeros(3)
-            offset[np_Z] = z_sign * start_length
-
-            if is_circular_profile:
-                bend_path = self.polyline(points, closed=False, arc_points=arc_points, position_offset=offset)
-                bend = self.create_swept_disk_solid(bend_path, profile_dim[lateral_axis])
-            else:
-                offset[non_lateral_axis] = -profile_dim[non_lateral_axis]
-                extrusion_kwargs = self.extrude_kwargs("XY"[non_lateral_axis])
-                polyline_points = points[:, [lateral_axis, np_Z]]
-                profile_curve = self.polyline(polyline_points, arc_points=arc_points, closed=True)
-                bend = self.extrude(
-                    self.profile(profile_curve), profile_dim[non_lateral_axis] * 2, position=offset, **extrusion_kwargs
-                )
-            return bend
-
-        rep_items.append(get_bend_representation_item())
-        if start_length:
-            rep_items.append(self.extrude(profile, start_length, extrusion_vector=(0, 0, z_sign)))
-        if end_length:
-            end_position = O + get_circle_points(np.full(1, theta), radius + profile_dim[lateral_axis])[0]
-            end_position[np_Z] += start_length * z_sign
-
-            # define extrusion space for the segment after the bend
-            z_axis = get_circle_tangent(theta)
-            extrude_kwargs = {
-                "position_z_axis": z_axis,
-                "extrusion_vector": (0, 0, 1),
-            }
-            # since we are sure that tangent involves only two axis
-            # it's safe to assume that non lateral axis is untouched
-            if lateral_axis == 0:
-                x_axis = np.cross(z_axis, (0, 1, 0))
-            else:
-                x_axis = (1, 0, 0)
-            extrude_kwargs["position_x_axis"] = x_axis
-
-            rep_items.append(self.extrude(profile, end_length, end_position, **extrude_kwargs))
-
-        body = ifcopenshell.util.representation.get_context(self.file, "Model", "Body", "MODEL_VIEW")
-        assert body
-        rep = self.get_representation(body, rep_items)
-
-        bend_data = {
-            "start_length": start_length,
-            "end_length": end_length,
-            "radius": radius,
-            "angle": degrees(theta),
-            "lateral_axis": lateral_axis,
-            "lateral_sign": lateral_sign,
-            "z_axis_sign": -1 if flip_z_axis else 1,
-            "main_profile_dimension": profile_dim[lateral_axis],
+        lib = _shape_builder_lib()
+        value = _generated_capi.call_struct_or_raise(
+            lib,
+            lib.ifcopenshell_ifcapi_shape_builder_mep_bend_shape,
+            _generated_capi.ifcopenshell_shape_builder_mep_bend_shape_result_t,
+            "shape_builder_mep_bend_shape failed",
+            _generated_instance_handle_ptr(self.file._ptr),
+            _generated_instance_handle_ptr(segment._handle),
+            float(start_length),
+            float(end_length),
+            float(angle),
+            float(radius),
+            _native_vector(bend_vector),
+            bool(flip_z_axis),
+        )
+        representation = _native_entity_from_struct_handle(
+            self.file, value.representation, "shape_builder_mep_bend_shape"
+        )
+        return representation, {
+            "start_length": value.start_length,
+            "end_length": value.end_length,
+            "radius": value.radius,
+            "angle": value.angle,
+            "lateral_axis": value.lateral_axis,
+            "lateral_sign": value.lateral_sign,
+            "z_axis_sign": value.z_axis_sign,
+            "main_profile_dimension": value.main_profile_dimension,
         }
-        return rep, bend_data

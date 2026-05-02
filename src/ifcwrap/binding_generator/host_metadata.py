@@ -178,6 +178,9 @@ def _used_scalar_sequence_kinds(ir: BindingIR) -> tuple[str, ...]:
         add_type(call.returns)
         for param in call.params:
             add_type(param.type)
+    for struct in ir.result_structs.values():
+        for field in struct.fields:
+            add_type(field.type)
     return tuple(ordered)
 
 
@@ -197,6 +200,9 @@ def _used_handle_list_handles(ir: BindingIR) -> tuple[HandleSpec, ...]:
         add(call.returns)
         for param in call.params:
             add(param.type)
+    for struct in ir.result_structs.values():
+        for field in struct.fields:
+            add(field.type)
     return tuple(handles)
 
 
@@ -221,6 +227,10 @@ def _param_c_type(type_spec: TypeSpec, ir: BindingIR) -> str:
         return f"{handle.c_type}*"
     if type_spec.kind == "opaque_ptr":
         return "void*"
+    if type_spec.kind == "struct":
+        if type_spec.struct is None:
+            raise ValueError("struct type is missing struct name")
+        return ir.result_structs[type_spec.struct].c_type
     raise ValueError(f"Unsupported parameter kind: {type_spec.kind}")
 
 
@@ -245,7 +255,33 @@ def _out_c_type(type_spec: TypeSpec, ir: BindingIR) -> str:
         return f"{handle.c_type}**"
     if type_spec.kind == "opaque_ptr":
         return "void**"
+    if type_spec.kind == "struct":
+        if type_spec.struct is None:
+            raise ValueError("struct type is missing struct name")
+        return f"{ir.result_structs[type_spec.struct].c_type}*"
     raise ValueError(f"Unsupported return kind: {type_spec.kind}")
+
+
+def _field_c_type(type_spec: TypeSpec, ir: BindingIR) -> str:
+    sequence_kind = _type_spec_sequence_kind(type_spec)
+    if sequence_kind is not None:
+        return _sequence_c_type(sequence_kind)
+    if type_spec.kind in _SCALAR_PARAM_TYPES:
+        return _SCALAR_PARAM_TYPES[type_spec.kind]
+    if type_spec.kind == "string":
+        return "ifcopenshell_string_t"
+    if type_spec.kind == "handle":
+        if type_spec.handle is None:
+            raise ValueError("handle type is missing handle name")
+        handle = ir.handles[type_spec.handle]
+        if type_spec.sequence_depth == 1:
+            return _handle_list_c_type(handle)
+        if type_spec.sequence_depth == 2:
+            return _handle_list_list_c_type(handle)
+        return f"{handle.c_type}*"
+    if type_spec.kind == "opaque_ptr":
+        return "void*"
+    raise ValueError(f"Unsupported result struct field kind: {type_spec.kind}")
 
 
 def _host_structs_for_handles(ir: BindingIR) -> dict[str, HostStructMetadata]:
@@ -308,6 +344,17 @@ def _host_value_structs(ir: BindingIR) -> dict[str, HostStructMetadata]:
             destroy_function=_handle_list_list_destroy_name(handle),
             element_type=list_type,
             sequence_depth=2,
+        )
+    for struct in ir.result_structs.values():
+        result[struct.name] = HostStructMetadata(
+            c_type=struct.c_type,
+            kind="result_struct",
+            fields=tuple(
+                HostStructField(field.name, _field_c_type(field.type, ir))
+                for field in struct.fields
+            ),
+            destroy_function=None,
+            element_type=struct.cpp_type,
         )
     return result
 

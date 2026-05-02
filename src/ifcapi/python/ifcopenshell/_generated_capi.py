@@ -491,6 +491,33 @@ class ifcopenshell_int32_list_list_list_t(ctypes.Structure):
     ]
 
 
+class ifcopenshell_shape_builder_mep_bend_shape_result_t(ctypes.Structure):
+    _fields_ = [
+        ("representation", ctypes.POINTER(_HandleStruct)),
+        ("start_length", ctypes.c_double),
+        ("end_length", ctypes.c_double),
+        ("radius", ctypes.c_double),
+        ("angle", ctypes.c_double),
+        ("lateral_axis", ctypes.c_int32),
+        ("lateral_sign", ctypes.c_double),
+        ("z_axis_sign", ctypes.c_int32),
+        ("main_profile_dimension", ctypes.c_double),
+    ]
+
+
+class ifcopenshell_shape_builder_mep_transition_shape_result_t(ctypes.Structure):
+    _fields_ = [
+        ("representation", ctypes.POINTER(_HandleStruct)),
+        ("has_result", ctypes.c_bool),
+        ("start_length", ctypes.c_double),
+        ("end_length", ctypes.c_double),
+        ("angle", ctypes.c_double),
+        ("profile_offset", ifcopenshell_double_list_t),
+        ("transition_length", ctypes.c_double),
+        ("full_transition_length", ctypes.c_double),
+    ]
+
+
 
 FUNCTION_SIGNATURES = {
     "ifcopenshell_ifc_aggregation_type_as_aggregation_type": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
@@ -802,6 +829,38 @@ FUNCTION_SIGNATURES = {
     "ifcopenshell_ifcapi_selector_parse_get_element": (ctypes.c_bool, [ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p)]),
     "ifcopenshell_ifcapi_selector_parse_keys": (ctypes.c_bool, [ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p)]),
     "ifcopenshell_ifcapi_selector_set_element_value": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_string_list_t), ctypes.POINTER(ifcopenshell_bool_list_t), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(ctypes.c_bool)]),
+    "ifcopenshell_ifcapi_shape_builder_axis2_placement_2d": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.c_bool, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_axis2_placement_3d": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_block": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_circle": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.c_double, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_curve_between_two_points": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_double_list_list_t), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_deep_copy": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_edge": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_ellipse_curve": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_double, ctypes.c_double, ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ifcopenshell_double_list_list_t), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ifcopenshell_int32_list_t), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_extrude": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_double, ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.c_bool, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_face": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_double_list_list_t), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_faceted_brep": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_double_list_list_t), ctypes.POINTER(ifcopenshell_int32_list_list_t), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_get_polyline_coords": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_double_list_list_t)]),
+    "ifcopenshell_ifcapi_shape_builder_half_space_solid": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_bool, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_indexed_polycurve_2d": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_double_list_list_t), ctypes.POINTER(ifcopenshell_int32_list_list_t), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_mep_bend_shape": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.POINTER(ifcopenshell_double_list_t), ctypes.c_bool, ctypes.POINTER(ifcopenshell_shape_builder_mep_bend_shape_result_t)]),
+    "ifcopenshell_ifcapi_shape_builder_mep_transition_calculate": (ctypes.c_bool, [ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.c_bool, ctypes.c_bool, ctypes.c_double, ctypes.c_bool, ctypes.c_double, ctypes.c_bool, ctypes.POINTER(ctypes.c_double)]),
+    "ifcopenshell_ifcapi_shape_builder_mep_transition_length": (ctypes.c_bool, [ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.c_double, ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ctypes.c_double)]),
+    "ifcopenshell_ifcapi_shape_builder_mep_transition_shape": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ifcopenshell_shape_builder_mep_transition_shape_result_t)]),
+    "ifcopenshell_ifcapi_shape_builder_mesh": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_double_list_list_t), ctypes.POINTER(ifcopenshell_int32_list_list_t), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_mirror": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.c_bool, ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_plane": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_polygonal_face_set": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_double_list_list_t), ctypes.POINTER(ifcopenshell_int32_list_list_list_t), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_polyline": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_double_list_list_t), ctypes.c_bool, ctypes.POINTER(ifcopenshell_double_list_t), ctypes.c_bool, ctypes.POINTER(ifcopenshell_int32_list_t), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_profile": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(ifcopenshell_ifc_instance_list_t), ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_representation": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_ifc_instance_list_t), ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_rotate": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_double, ctypes.POINTER(ifcopenshell_double_list_t), ctypes.c_bool, ctypes.c_bool, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_set_polyline_coords": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_double_list_list_t), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_sphere": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_double, ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_swept_disk_solid": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_double, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_translate": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.c_bool, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_triangulated_face_set": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_double_list_list_t), ctypes.POINTER(ifcopenshell_int32_list_list_t), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_shape_builder_vertex": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_shape_is_x": (ctypes.c_bool, [ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.POINTER(ctypes.c_bool)]),
     "ifcopenshell_ifcapi_spatial_assign_container": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_ifc_instance_list_t), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_spatial_unassign_container": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_ifc_instance_list_t)]),
@@ -1505,6 +1564,28 @@ def make_int32_list_list(values):
     return result
 
 
+def make_int32_list_list_list(values):
+    faces = [[list(loop) for loop in face] for face in values]
+    loop_buffers = [
+        [(ctypes.c_int32 * len(loop))(*[int(value) for value in loop]) for loop in face] for face in faces
+    ]
+    face_items = (ifcopenshell_int32_list_list_t * len(loop_buffers))()
+    loop_items = []
+    for face_index, loops in enumerate(loop_buffers):
+        loops_array = (ifcopenshell_int32_list_t * len(loops))()
+        for loop_index, buffer in enumerate(loops):
+            loops_array[loop_index].items = buffer
+            loops_array[loop_index].size = len(buffer)
+        face_items[face_index].items = loops_array
+        face_items[face_index].size = len(loops_array)
+        loop_items.append(loops_array)
+    result = ifcopenshell_int32_list_list_list_t()
+    result.items = face_items
+    result.size = len(face_items)
+    result._keepalive = (face_items, loop_items, loop_buffers)  # type: ignore[attr-defined]
+    return result
+
+
 def make_double_list_list(values):
     rows = [list(row) for row in values]
     row_buffers = [(ctypes.c_double * len(row))(*[float(value) for value in row]) for row in rows]
@@ -1574,6 +1655,13 @@ def call_double_list(lib, fn, *args):
     return take_double_list(lib, value)
 
 
+def call_double_list_list(lib, fn, *args):
+    value = ifcopenshell_double_list_list_t()
+    if not fn(*args, ctypes.byref(value)):
+        return None
+    return take_double_list_list(lib, value)
+
+
 def call_string_or_raise(lib, fn, fallback, *args, decode=True, value_type=None):
     result = call_string(lib, fn, *args, decode=decode, value_type=value_type)
     if result is None:
@@ -1607,6 +1695,19 @@ def call_double_list_or_raise(lib, fn, fallback, *args):
     if result is None:
         status_or_raise(lib, False, fallback)
     return result
+
+
+def call_double_list_list_or_raise(lib, fn, fallback, *args):
+    result = call_double_list_list(lib, fn, *args)
+    if result is None:
+        status_or_raise(lib, False, fallback)
+    return result
+
+
+def call_struct_or_raise(lib, fn, value_type, fallback, *args):
+    value = value_type()
+    status_or_raise(lib, fn(*args, ctypes.byref(value)), fallback)
+    return value
 
 
 def call_scalar(fn, c_type, *args):

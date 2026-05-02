@@ -39,6 +39,21 @@ typedef struct ifcopenshell_bool_list_t {
     size_t size;
 } ifcopenshell_bool_list_t;
 
+typedef struct ifcopenshell_double_list_list_t {
+    ifcopenshell_double_list_t* items;
+    size_t size;
+} ifcopenshell_double_list_list_t;
+
+typedef struct ifcopenshell_int32_list_list_t {
+    ifcopenshell_int32_list_t* items;
+    size_t size;
+} ifcopenshell_int32_list_list_t;
+
+typedef struct ifcopenshell_int32_list_list_list_t {
+    ifcopenshell_int32_list_list_t* items;
+    size_t size;
+} ifcopenshell_int32_list_list_list_t;
+
 typedef struct ifcopenshell_int64_list_t {
     int64_t* items;
     size_t size;
@@ -48,21 +63,6 @@ typedef struct ifcopenshell_uint32_list_t {
     uint32_t* items;
     size_t size;
 } ifcopenshell_uint32_list_t;
-
-typedef struct ifcopenshell_int32_list_list_t {
-    ifcopenshell_int32_list_t* items;
-    size_t size;
-} ifcopenshell_int32_list_list_t;
-
-typedef struct ifcopenshell_double_list_list_t {
-    ifcopenshell_double_list_t* items;
-    size_t size;
-} ifcopenshell_double_list_list_t;
-
-typedef struct ifcopenshell_int32_list_list_list_t {
-    ifcopenshell_int32_list_list_t* items;
-    size_t size;
-} ifcopenshell_int32_list_list_list_t;
 
 typedef struct ifcopenshell_uint8_list_t {
     uint8_t* items;
@@ -79,15 +79,15 @@ void ifcopenshell_double_list_destroy(ifcopenshell_double_list_t* value);
 
 void ifcopenshell_bool_list_destroy(ifcopenshell_bool_list_t* value);
 
-void ifcopenshell_int64_list_destroy(ifcopenshell_int64_list_t* value);
-
-void ifcopenshell_uint32_list_destroy(ifcopenshell_uint32_list_t* value);
+void ifcopenshell_double_list_list_destroy(ifcopenshell_double_list_list_t* value);
 
 void ifcopenshell_int32_list_list_destroy(ifcopenshell_int32_list_list_t* value);
 
-void ifcopenshell_double_list_list_destroy(ifcopenshell_double_list_list_t* value);
-
 void ifcopenshell_int32_list_list_list_destroy(ifcopenshell_int32_list_list_list_t* value);
+
+void ifcopenshell_int64_list_destroy(ifcopenshell_int64_list_t* value);
+
+void ifcopenshell_uint32_list_destroy(ifcopenshell_uint32_list_t* value);
 
 void ifcopenshell_uint8_list_destroy(ifcopenshell_uint8_list_t* value);
 
@@ -271,6 +271,29 @@ typedef struct ifcopenshell_ifcgeom_element_list_list_t {
     ifcopenshell_ifcgeom_element_list_t* items;
     size_t size;
 } ifcopenshell_ifcgeom_element_list_list_t;
+
+typedef struct ifcopenshell_shape_builder_mep_transition_shape_result_t {
+    ifcopenshell_ifc_instance_t* representation;
+    bool has_result;
+    double start_length;
+    double end_length;
+    double angle;
+    ifcopenshell_double_list_t profile_offset;
+    double transition_length;
+    double full_transition_length;
+} ifcopenshell_shape_builder_mep_transition_shape_result_t;
+
+typedef struct ifcopenshell_shape_builder_mep_bend_shape_result_t {
+    ifcopenshell_ifc_instance_t* representation;
+    double start_length;
+    double end_length;
+    double radius;
+    double angle;
+    int32_t lateral_axis;
+    double lateral_sign;
+    int32_t z_axis_sign;
+    double main_profile_dimension;
+} ifcopenshell_shape_builder_mep_bend_shape_result_t;
 
 void ifcopenshell_clear_error(void);
 const char* ifcopenshell_last_error_message(void);
@@ -575,6 +598,38 @@ bool ifcopenshell_ifcapi_geometry_profile_extents(ifcopenshell_ifc_file_t* file,
 bool ifcopenshell_ifcapi_geometry_unassign_representation(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* product, ifcopenshell_ifc_instance_t* representation);
 bool ifcopenshell_ifcapi_type_map_type_representations(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* related_object, ifcopenshell_ifc_instance_t* relating_type, bool* out_result);
 bool ifcopenshell_ifcapi_geometry_edit_object_placement(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* product, const ifcopenshell_double_list_t* matrix, bool is_si, bool should_transform_children, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_axis2_placement_2d(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_t* position, const ifcopenshell_double_list_t* x_direction, bool has_x_direction, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_axis2_placement_3d(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_t* position, const ifcopenshell_double_list_t* z_axis, const ifcopenshell_double_list_t* x_axis, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_block(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_t* position, double x_length, double y_length, double z_length, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_circle(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_t* center, double radius, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_curve_between_two_points(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_list_t* points, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_deep_copy(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* element, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_edge(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_t* start, const ifcopenshell_double_list_t* end, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_ellipse_curve(ifcopenshell_ifc_file_t* file, double x_axis_radius, double y_axis_radius, const ifcopenshell_double_list_t* position, const ifcopenshell_double_list_list_t* trim_points, const ifcopenshell_double_list_t* ref_x_direction, const ifcopenshell_int32_list_t* trim_points_mask, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_extrude(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* profile_or_curve, double magnitude, const ifcopenshell_double_list_t* position, const ifcopenshell_double_list_t* extrusion_vector, const ifcopenshell_double_list_t* position_z_axis, const ifcopenshell_double_list_t* position_x_axis, const ifcopenshell_double_list_t* position_y_axis, bool has_position_y_axis, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_face(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_list_t* points, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_faceted_brep(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_list_t* points, const ifcopenshell_int32_list_list_t* faces, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_get_polyline_coords(ifcopenshell_ifc_instance_t* polyline, ifcopenshell_double_list_list_t* out_result);
+bool ifcopenshell_ifcapi_shape_builder_half_space_solid(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* plane, bool agreement_flag, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_indexed_polycurve_2d(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_list_t* points, const ifcopenshell_int32_list_list_t* segments, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_mep_bend_shape(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* segment, double start_length, double end_length, double angle, double radius, const ifcopenshell_double_list_t* bend_vector, bool flip_z_axis, ifcopenshell_shape_builder_mep_bend_shape_result_t* out_result);
+bool ifcopenshell_ifcapi_shape_builder_mep_transition_calculate(const ifcopenshell_double_list_t* start_half_dim, const ifcopenshell_double_list_t* end_half_dim, const ifcopenshell_double_list_t* offset, const ifcopenshell_double_list_t* diff, bool has_diff, bool end_profile, double length, bool has_length, double angle, bool has_angle, double* out_result);
+bool ifcopenshell_ifcapi_shape_builder_mep_transition_length(const ifcopenshell_double_list_t* start_half_dim, const ifcopenshell_double_list_t* end_half_dim, double angle, const ifcopenshell_double_list_t* profile_offset, double* out_result);
+bool ifcopenshell_ifcapi_shape_builder_mep_transition_shape(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* start_segment, ifcopenshell_ifc_instance_t* end_segment, double start_length, double end_length, double angle, const ifcopenshell_double_list_t* profile_offset, ifcopenshell_shape_builder_mep_transition_shape_result_t* out_result);
+bool ifcopenshell_ifcapi_shape_builder_mesh(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_list_t* points, const ifcopenshell_int32_list_list_t* faces, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_mirror(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* item, const ifcopenshell_double_list_t* mirror_axes, const ifcopenshell_double_list_t* mirror_point, bool create_copy, const ifcopenshell_double_list_t* placement_matrix, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_plane(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_t* location, const ifcopenshell_double_list_t* normal, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_polygonal_face_set(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_list_t* points, const ifcopenshell_int32_list_list_list_t* faces, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_polyline(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_list_t* points, bool closed, const ifcopenshell_double_list_t* position_offset, bool has_position_offset, const ifcopenshell_int32_list_t* arc_points, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_profile(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* outer_curve, const char* name, const ifcopenshell_ifc_instance_list_t* inner_curves, const char* profile_type, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_representation(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* context, const ifcopenshell_ifc_instance_list_t* items, const char* representation_type, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_rotate(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* item, double angle, const ifcopenshell_double_list_t* pivot_point, bool counter_clockwise, bool create_copy, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_set_polyline_coords(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* polyline, const ifcopenshell_double_list_list_t* coords, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_sphere(ifcopenshell_ifc_file_t* file, double radius, const ifcopenshell_double_list_t* center, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_swept_disk_solid(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* path_curve, double radius, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_translate(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* item, const ifcopenshell_double_list_t* translation, bool create_copy, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_triangulated_face_set(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_list_t* points, const ifcopenshell_int32_list_list_t* faces, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_shape_builder_vertex(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_t* position, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_pset_add_pset(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* product, const char* name, ifcopenshell_ifc_instance_t* owner_history, const char* ifc2x3_subclass, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_pset_add_qto(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* product, const char* name, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_pset_edit_pset(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* pset, const char* name, void* properties, ifcopenshell_ifc_instance_t* pset_template, bool should_purge, bool* out_result);
