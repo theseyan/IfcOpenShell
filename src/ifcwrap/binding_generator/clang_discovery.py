@@ -17,7 +17,16 @@ except ImportError:  # pragma: no cover - script execution fallback
 
 _RECORD_KINDS = {"CXXRecordDecl", "ClassTemplateSpecializationDecl"}
 _TYPE_PREFIXES = ("class ", "struct ", "union ", "enum ")
-_EXTERNAL_NAMESPACE_PREFIXES = ("std::", "boost::")
+_EXTERNAL_NAMESPACE_PREFIXES = ("std::", "boost::", "Eigen::", "po::")
+_SKIP_QUALIFIED_ROOTS = frozenset({"Eigen", "boost", "ifcopenshell", "po", "std"})
+_SKIP_RESOLUTION_TYPES = frozenset(
+    {
+        "IfcParse::IfcFile",
+        "IfcUtil::IfcBaseClass",
+        "aggregate_of_instance",
+        "aggregate_of_instance::ptr",
+    }
+)
 _BUILTIN_TYPE_NAMES = {
     "bool",
     "char",
@@ -65,6 +74,27 @@ def _is_low_signal_unqualified_lookup(text: str) -> bool:
 def _is_external_qualified_type(text: str) -> bool:
     normalized = text.strip()
     return normalized.startswith(_EXTERNAL_NAMESPACE_PREFIXES)
+
+
+def _should_skip_clang_type_resolution(text: str) -> bool:
+    normalized = text.strip()
+    if re.fullmatch(r"ifcopenshell_[A-Za-z0-9_]+_t", normalized):
+        return True
+    return normalized in _SKIP_RESOLUTION_TYPES
+
+
+def _has_skipped_qualified_root(text: str) -> bool:
+    if "::" not in text:
+        return False
+    return text.split("::", 1)[0] in _SKIP_QUALIFIED_ROOTS
+
+
+def _selected_key(selected_names: Iterable[str] | None) -> tuple[str, ...] | None:
+    return tuple(sorted(set(selected_names))) if selected_names is not None else None
+
+
+def _selected_set(selected_names: Iterable[str] | None) -> set[str] | None:
+    return set(selected_names) if selected_names is not None else None
 
 
 @dataclass(frozen=True)
@@ -146,11 +176,17 @@ class IndexedEnum:
 class TranslationUnitIndex:
     command: CompileCommand
     _loaded_ast_filters: set[str] = field(default_factory=set)
+    _ast_objects_by_filter: dict[str, tuple[dict, ...]] = field(default_factory=dict)
     _records_by_qualified: dict[str, IndexedRecord] = field(default_factory=dict)
     _record_names_by_simple: dict[str, list[str]] = field(default_factory=lambda: defaultdict(list))
     _enums_by_qualified: dict[str, IndexedEnum] = field(default_factory=dict)
     _enum_names_by_simple: dict[str, list[str]] = field(default_factory=lambda: defaultdict(list))
-    _namespace_function_cache: dict[str, dict[str, tuple[DiscoveredFunction, ...]]] = field(default_factory=dict)
+    _namespace_function_cache: dict[
+        tuple[str, tuple[str, ...] | None],
+        dict[str, tuple[DiscoveredFunction, ...]],
+    ] = field(default_factory=dict)
+    _record_miss_filters: set[str] = field(default_factory=set)
+    _enum_miss_filters: set[str] = field(default_factory=set)
 
     def _run_ast_dump(self, ast_filter: str) -> tuple[dict, ...]:
         debug_log("clang.ast_dump.start", f"tu={debug_path(self.command.file)} filter={ast_filter}")
@@ -172,13 +208,21 @@ class TranslationUnitIndex:
     def ensure_ast_filter_loaded(self, ast_filter: str) -> None:
         if ast_filter in self._loaded_ast_filters:
             return
-        objects = self._run_ast_dump(ast_filter)
+        objects = self._load_ast_objects(ast_filter)
         self._loaded_ast_filters.add(ast_filter)
         self._index_records(objects)
 
     def ast_objects(self, ast_filter: str) -> tuple[dict, ...]:
-        objects = self._run_ast_dump(ast_filter)
+        objects = self._load_ast_objects(ast_filter)
         self._index_records(objects)
+        return objects
+
+    def _load_ast_objects(self, ast_filter: str) -> tuple[dict, ...]:
+        cached = self._ast_objects_by_filter.get(ast_filter)
+        if cached is not None:
+            return cached
+        objects = self._run_ast_dump(ast_filter)
+        self._ast_objects_by_filter[ast_filter] = objects
         return objects
 
     def resolve_record(self, class_name: str, current_scope: str = "") -> IndexedRecord | None:
@@ -187,6 +231,9 @@ class TranslationUnitIndex:
             return None
 
         for candidate in _scoped_lookup_candidates(lookup_name, current_scope):
+            record = self._records_by_qualified.get(candidate)
+            if record is not None:
+                return record
             if (
                 current_scope
                 and "::" not in lookup_name
@@ -196,6 +243,8 @@ class TranslationUnitIndex:
             ):
                 continue
             if "::" not in candidate and _is_low_signal_unqualified_lookup(candidate):
+                continue
+            if candidate in self._record_miss_filters:
                 continue
             self.ensure_ast_filter_loaded(candidate)
 
@@ -214,6 +263,7 @@ class TranslationUnitIndex:
                         simple_name=resolved.simple_name,
                         node=resolved.node,
                     )
+            self._record_miss_filters.add(candidate)
 
         return self._resolve_scoped_decl(
             lookup_name,
@@ -228,6 +278,9 @@ class TranslationUnitIndex:
             return None
 
         for candidate in _scoped_lookup_candidates(lookup_name, current_scope):
+            enum = self._enums_by_qualified.get(candidate)
+            if enum is not None:
+                return enum
             if (
                 current_scope
                 and "::" not in lookup_name
@@ -237,6 +290,8 @@ class TranslationUnitIndex:
             ):
                 continue
             if "::" not in candidate and _is_low_signal_unqualified_lookup(candidate):
+                continue
+            if candidate in self._enum_miss_filters:
                 continue
             self.ensure_ast_filter_loaded(candidate)
             enum = self._enums_by_qualified.get(candidate)
@@ -253,6 +308,7 @@ class TranslationUnitIndex:
                             simple_name=resolved.simple_name,
                             node=resolved.node,
                         )
+            self._enum_miss_filters.add(candidate)
         return self._resolve_scoped_decl(
             lookup_name,
             current_scope=current_scope,
@@ -260,8 +316,14 @@ class TranslationUnitIndex:
             simple=self._enum_names_by_simple,
         )
 
-    def discover_namespace_functions(self, namespace_name: str) -> dict[str, tuple[DiscoveredFunction, ...]]:
-        cached = self._namespace_function_cache.get(namespace_name)
+    def discover_namespace_functions(
+        self,
+        namespace_name: str,
+        selected_names: Iterable[str] | None = None,
+    ) -> dict[str, tuple[DiscoveredFunction, ...]]:
+        selected_key = _selected_key(selected_names)
+        selected_set = _selected_set(selected_key)
+        cached = self._namespace_function_cache.get((namespace_name, selected_key))
         if cached is not None:
             return cached
 
@@ -272,15 +334,19 @@ class TranslationUnitIndex:
         for ast_filter in ast_filters:
             objects = self.ast_objects(ast_filter)
             for obj in objects:
-                for func_name, overloads in _extract_namespace_functions(obj, namespace_name, self).items():
+                for func_name, overloads in _extract_namespace_functions(
+                    obj, namespace_name, self, selected_names=selected_set
+                ).items():
                     functions[func_name].extend(overloads)
+            if functions:
+                break
 
         if not functions:
             msg = f"Namespace '{namespace_name}' not found in AST for '{self.command.file}'"
             raise ValueError(msg)
 
         result = {func_name: _dedupe_discovered_functions(overloads) for func_name, overloads in functions.items()}
-        self._namespace_function_cache[namespace_name] = result
+        self._namespace_function_cache[(namespace_name, selected_key)] = result
         return result
 
     def _index_records(self, nodes: tuple[dict, ...]) -> None:
@@ -442,7 +508,12 @@ def _default_access(record: dict) -> str:
     return "public" if record.get("tagUsed") == "struct" else "private"
 
 
-def _extract_public_methods(record: dict, index: TranslationUnitIndex, current_scope: str) -> dict[str, tuple[DiscoveredMethod, ...]]:
+def _extract_public_methods(
+    record: dict,
+    index: TranslationUnitIndex,
+    current_scope: str,
+    selected_names: set[str] | None = None,
+) -> dict[str, tuple[DiscoveredMethod, ...]]:
     methods: dict[str, list[DiscoveredMethod]] = defaultdict(list)
     access = _default_access(record)
     for child in record.get("inner", []):
@@ -454,6 +525,8 @@ def _extract_public_methods(record: dict, index: TranslationUnitIndex, current_s
         if child.get("kind") != "CXXMethodDecl":
             continue
         if child.get("name") in {"operator=", "operator[]"}:
+            continue
+        if selected_names is not None and child.get("name") not in selected_names:
             continue
 
         params = tuple(
@@ -581,6 +654,7 @@ def _extract_namespace_functions(
     namespace_name: str,
     index: TranslationUnitIndex,
     current_namespace: str = "",
+    selected_names: set[str] | None = None,
 ) -> dict[str, tuple[DiscoveredFunction, ...]]:
     functions: dict[str, list[DiscoveredFunction]] = defaultdict(list)
 
@@ -590,7 +664,11 @@ def _extract_namespace_functions(
     if kind == "NamespaceDecl":
         next_namespace = _qualified_name(current_namespace, name)
 
-    if kind == "FunctionDecl" and _namespace_matches(current_namespace, namespace_name):
+    if (
+        kind == "FunctionDecl"
+        and _namespace_matches(current_namespace, namespace_name)
+        and (selected_names is None or name in selected_names)
+    ):
         params = tuple(
             DiscoveredParam(
                 name=param.get("name") or f"arg_{param_index}",
@@ -611,7 +689,9 @@ def _extract_namespace_functions(
         )
 
     for child in node.get("inner", []):
-        for func_name, overloads in _extract_namespace_functions(child, namespace_name, index, next_namespace).items():
+        for func_name, overloads in _extract_namespace_functions(
+            child, namespace_name, index, next_namespace, selected_names=selected_names
+        ).items():
             functions[func_name].extend(overloads)
 
     return {func_name: tuple(overloads) for func_name, overloads in functions.items()}
@@ -644,6 +724,7 @@ def discover_public_methods_with_compile_commands(
     translation_unit: Path,
     class_name: str,
     include_inherited: bool = False,
+    selected_names: Iterable[str] | None = None,
 ) -> dict[str, tuple[DiscoveredMethod, ...]]:
     index = _translation_unit_index(compile_commands_path, translation_unit)
     record = index.resolve_record(class_name)
@@ -651,7 +732,8 @@ def discover_public_methods_with_compile_commands(
         msg = f"Class '{class_name}' not found in AST for '{translation_unit}'"
         raise ValueError(msg)
 
-    methods = _extract_public_methods(record.node, index, record.qualified_name)
+    selected_set = set(selected_names) if selected_names is not None else None
+    methods = _extract_public_methods(record.node, index, record.qualified_name, selected_names=selected_set)
 
     if include_inherited:
         visited: set[str] = {record.qualified_name}
@@ -662,7 +744,7 @@ def discover_public_methods_with_compile_commands(
             if base_record is None or base_record.qualified_name in visited:
                 continue
             visited.add(base_record.qualified_name)
-            base_methods = _extract_public_methods(base_record.node, index, base_record.qualified_name)
+            base_methods = _extract_public_methods(base_record.node, index, base_record.qualified_name, selected_names=selected_set)
             for method_name, overloads in base_methods.items():
                 if method_name not in methods:
                     methods[method_name] = overloads
@@ -707,9 +789,10 @@ def discover_namespace_functions_with_compile_commands(
     compile_commands_path: Path,
     translation_unit: Path,
     namespace_name: str,
+    selected_names: Iterable[str] | None = None,
 ) -> dict[str, tuple[DiscoveredFunction, ...]]:
     index = _translation_unit_index(compile_commands_path, translation_unit)
-    return index.discover_namespace_functions(namespace_name)
+    return index.discover_namespace_functions(namespace_name, selected_names=selected_names)
 
 
 def _normalize_cpp_type_text(text: str) -> str:
@@ -819,6 +902,12 @@ def _qualified_type_core(text: str, *, index: TranslationUnitIndex | None = None
     if _is_external_qualified_type(text):
         return text
 
+    if _should_skip_clang_type_resolution(text):
+        return text
+
+    if _has_skipped_qualified_root(text):
+        return text
+
     if index is not None:
         if _looks_like_named_type(text):
             record = index.resolve_record(text, current_scope=current_scope)
@@ -882,7 +971,13 @@ def _qualified_type_core(text: str, *, index: TranslationUnitIndex | None = None
 
 
 def _resolved_enum(index: TranslationUnitIndex | None, text: str, current_scope: str) -> IndexedEnum | None:
-    if index is None or not _looks_like_named_type(text) or _is_external_qualified_type(text):
+    if (
+        index is None
+        or not _looks_like_named_type(text)
+        or _is_external_qualified_type(text)
+        or _should_skip_clang_type_resolution(text)
+        or _has_skipped_qualified_root(text)
+    ):
         return None
     enum = index._resolve_scoped_decl(  # noqa: SLF001
         text,
