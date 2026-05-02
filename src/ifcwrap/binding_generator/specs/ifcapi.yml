@@ -74,11 +74,7 @@ discover:
         - element_remove_deep
         - element_replace_element
         - element_is_userdefined_type
-        - entity_get_aggregate_typed_value
-        - entity_get_typed_value
         - entity_remove_deep2
-        - entity_set_aggregate_typed_value
-        - entity_set_typed_value
         - selector_filter_all
         - selector_filter_elements
         - selector_get_element_value
@@ -193,10 +189,6 @@ discover:
         element_get_decomposition:
           returns:
             ownership: owned
-        entity_set_typed_value:
-          params:
-            str_value:
-              nullable: true
         selector_filter_all:
           returns:
             ownership: owned

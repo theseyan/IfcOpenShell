@@ -83,8 +83,6 @@ def test_ifcapi_spec_imports_core_handles_without_redefining_them() -> None:
         "ifcopenshell_ifcapi_element_get_container",
         "ifcopenshell_ifcapi_element_get_parent",
         "ifcopenshell_ifcapi_element_get_material",
-        "ifcopenshell_ifcapi_entity_set_typed_value",
-        "ifcopenshell_ifcapi_entity_get_typed_value",
         "ifcopenshell_ifcapi_shape_is_x",
         "ifcopenshell_ifcapi_unit_get_prefix",
         "ifcopenshell_ifcapi_unit_get_measure_class",
@@ -108,7 +106,6 @@ def test_ifcapi_spec_imports_core_handles_without_redefining_them() -> None:
     }.issubset({call.c_name for call in spec.functions})
     calls = {call.c_name: call for call in spec.functions}
     assert calls["ifcopenshell_ifcapi_value_new_string"].returns.ownership == "owned"
-    assert calls["ifcopenshell_ifcapi_entity_set_typed_value"].params[3].type.nullable is True
 
 
 def test_ifcapi_spec_lowers_to_host_binding_metadata() -> None:

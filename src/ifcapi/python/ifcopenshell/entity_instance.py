@@ -84,8 +84,6 @@ def _configure_entity_string_helpers(lib) -> None:
             "ifcopenshell_ifc_instance_to_string",
             "ifcopenshell_ifc_instance_get_attribute_names",
             "ifcopenshell_ifc_instance_get_inverse_attribute_names",
-            "ifcopenshell_ifcapi_entity_get_typed_value",
-            "ifcopenshell_ifcapi_entity_get_aggregate_typed_value",
         ),
     )
     _entity_string_helpers_configured = True
@@ -1050,20 +1048,7 @@ class entity_instance:
 
         first = items[0] if items else None
         if first is None and isinstance(pt, tuple) and len(pt) == 2 and isinstance(pt[1], tuple) and pt[1][0] == "select":
-            from . import ifcopenshell_wrapper as W
-
-            W._bind()
-            type_names, _type_keepalive = _make_string_list(())
-            str_vals, _str_keepalive = _make_string_list(())
-            ok = ctypes.c_bool(False)
-            if (
-                not lib.ifcopenshell_ifcapi_entity_set_aggregate_typed_value(
-                    _instance_handle_ptr(h), attr, ctypes.byref(type_names), ctypes.byref(str_vals), ctypes.byref(ok)
-                )
-                or not ok.value
-            ):
-                err = lib.ifcopenshell_last_error_message()
-                raise RuntimeError(err.decode("utf-8", errors="replace") if err else f"Failed to set aggregate '{name}'")
+            set_generated_instance_list(items)
             return
         if nested_double or nested_int:
             idx = self._attr_index(name)
