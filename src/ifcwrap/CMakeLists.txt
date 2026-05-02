@@ -58,9 +58,13 @@ if(BUILD_IFCCAPI)
             )
         endif()
 
-        # Unified C API code generation target - generates single header/source from all specs
-        add_custom_target(
-            ifcopenshell_capi_codegen
+        # Unified C API code generation target - generates single header/source from all specs.
+        # Use real outputs so normal builds do not rerun the expensive Clang-backed discovery
+        # unless the specs or generator inputs changed.
+        add_custom_command(
+            OUTPUT
+                "${UNIFIED_CAPI_HEADER}"
+                "${UNIFIED_CAPI_CPP}"
             COMMAND
                 ${Python_EXECUTABLE} "${IFCPARSE_CAPI_GENERATOR}"
                 --spec "${IFCPARSE_CAPI_SPEC}"
@@ -78,7 +82,19 @@ if(BUILD_IFCCAPI)
                 "${IFCPARSE_CAPI_GENERATOR}"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/authored_spec.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/__init__.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/binding_ir.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/binding_model.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/clang_discovery.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/debug.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/policy_ir.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/semantic_types.py"
             VERBATIM
+        )
+        add_custom_target(
+            ifcopenshell_capi_codegen
+            DEPENDS
+                "${UNIFIED_CAPI_HEADER}"
+                "${UNIFIED_CAPI_CPP}"
         )
     endif()
 

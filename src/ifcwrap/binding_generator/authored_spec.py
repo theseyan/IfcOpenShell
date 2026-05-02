@@ -604,7 +604,6 @@ def _parse_discovery(raw: Any, *, context: str, known_handles: set[str]) -> Disc
     include_dir = Path(_expect_str(mapping.get("include_dir"), f"{context}.include_dir"))
     class_defaults = _expect_mapping(mapping.get("class_defaults", {}), f"{context}.class_defaults")
     function_defaults = _expect_mapping(mapping.get("function_defaults", {}), f"{context}.function_defaults")
-
     def default_include_all(defaults: dict[str, Any], default_context: str) -> bool:
         include_all = defaults.get("include_all", False)
         if not isinstance(include_all, bool):
@@ -1466,6 +1465,16 @@ def _function_signature_debug(function: DiscoveredFunction) -> str:
     return f"{_cpp_type_debug(function.return_type_ref)} {function.cpp_name}({params})"
 
 
+def _selected_discovery_names(
+    include_all: bool,
+    include: tuple[str, ...],
+    overloads: tuple[OverloadSpec, ...],
+) -> frozenset[str] | None:
+    if include_all:
+        return None
+    return frozenset(include) | frozenset(overload.cpp_name for overload in overloads)
+
+
 def _emit_optional_field_calls(
     item: DiscoveryClassSpec,
     handle: HandleSpec,
@@ -1728,7 +1737,7 @@ def _discover_method_calls(
     authored_c_names: frozenset[str] = frozenset(),
 ) -> tuple[tuple[CallSpec, ...], tuple[DiscoveryDiagnostic, ...]]:
     include_dir = (spec_path.parent / discovery.include_dir).resolve()
-    class_cache: dict[tuple[str, str], dict[str, tuple[DiscoveredMethod, ...]]] = {}
+    class_cache: dict[tuple[str, str, bool, frozenset[str] | None], dict[str, tuple[DiscoveredMethod, ...]]] = {}
     calls: list[CallSpec] = []
     calls_by_c_name: dict[str, CallSpec] = {}
     reserved_c_names: set[str] = set(authored_c_names)
@@ -1751,13 +1760,15 @@ def _discover_method_calls(
         needs_method_discovery = item.include_all or item.include or item.overloads
         methods_by_name: dict[str, tuple[DiscoveredMethod, ...]] = {}
         if needs_method_discovery:
-            cache_key = (handle.cpp_type, item.translation_unit, item.include_inherited_methods)
+            selected_method_names = _selected_discovery_names(item.include_all, item.include, item.overloads)
+            cache_key = (handle.cpp_type, item.translation_unit, item.include_inherited_methods, selected_method_names)
             cached = class_cache.get(cache_key)
             if cached is None:
                 translation_unit = (include_dir / item.translation_unit).resolve()
                 cached = discover_public_methods_with_compile_commands(
                     compile_commands_path, translation_unit, handle.cpp_type,
                     include_inherited=item.include_inherited_methods,
+                    selected_names=selected_method_names,
                 )
                 class_cache[cache_key] = cached
             methods_by_name = cached
@@ -2258,7 +2269,7 @@ def _discover_function_calls(
     compile_commands_path: Path,
 ) -> tuple[tuple[CallSpec, ...], tuple[DiscoveryDiagnostic, ...]]:
     include_dir = (spec_path.parent / discovery.include_dir).resolve()
-    namespace_cache: dict[tuple[str, str], dict[str, tuple[DiscoveredFunction, ...]]] = {}
+    namespace_cache: dict[tuple[str, str, frozenset[str] | None], dict[str, tuple[DiscoveredFunction, ...]]] = {}
     calls: list[CallSpec] = []
     calls_by_c_name: dict[str, CallSpec] = {}
     diagnostics: list[DiscoveryDiagnostic] = []
@@ -2273,12 +2284,13 @@ def _discover_function_calls(
             "spec.discover_functions.namespace",
             f"{item_index}/{len(discovery.functions)} namespace={item.namespace} tu={item.translation_unit}",
         )
-        cache_key = (item.namespace, item.translation_unit)
+        selected_function_names = _selected_discovery_names(item.include_all, item.include, item.overloads)
+        cache_key = (item.namespace, item.translation_unit, selected_function_names)
         functions_by_name = namespace_cache.get(cache_key)
         if functions_by_name is None:
             translation_unit = (include_dir / item.translation_unit).resolve()
             functions_by_name = discover_namespace_functions_with_compile_commands(
-                compile_commands_path, translation_unit, item.namespace
+                compile_commands_path, translation_unit, item.namespace, selected_names=selected_function_names
             )
             namespace_cache[cache_key] = functions_by_name
 

@@ -7,6 +7,7 @@ import shutil
 import pytest
 
 from src.ifcwrap.binding_generator.clang_discovery import (
+    CompileCommand,
     TranslationUnitIndex,
     discover_namespace_functions_with_compile_commands,
     discover_public_fields_with_compile_commands,
@@ -142,6 +143,149 @@ double qualified_scale(double value) { return value; }
     assert functions["nested_count"][0].return_cpp_type == "int"
     assert functions["nested_count"][0].params[0].cpp_type == "const std::string &"
     assert functions["qualified_scale"][0].return_cpp_type == "double"
+
+
+def test_namespace_discovery_uses_simple_fallback_lazily(tmp_path: Path) -> None:
+    index = TranslationUnitIndex(
+        CompileCommand(directory=tmp_path, file=tmp_path / "bindings.cpp", arguments=("clang++", "-c", "bindings.cpp"))
+    )
+    ast_filters: list[str] = []
+
+    def fake_ast_dump(ast_filter: str) -> tuple[dict, ...]:
+        ast_filters.append(ast_filter)
+        if ast_filter == "ifcapi::bindings":
+            return (
+                {
+                    "kind": "NamespaceDecl",
+                    "name": "ifcapi",
+                    "inner": [
+                        {
+                            "kind": "NamespaceDecl",
+                            "name": "bindings",
+                            "inner": [
+                                {
+                                    "kind": "FunctionDecl",
+                                    "name": "count",
+                                    "type": {"qualType": "int ()"},
+                                }
+                            ],
+                        }
+                    ],
+                },
+            )
+        raise AssertionError(f"Unexpected fallback AST filter: {ast_filter}")
+
+    index._run_ast_dump = fake_ast_dump  # type: ignore[method-assign]
+
+    functions = index.discover_namespace_functions("ifcapi::bindings")
+
+    assert set(functions) == {"count"}
+    assert ast_filters == ["ifcapi::bindings"]
+
+
+def test_record_lookup_misses_are_cached(tmp_path: Path) -> None:
+    index = TranslationUnitIndex(
+        CompileCommand(directory=tmp_path, file=tmp_path / "bindings.cpp", arguments=("clang++", "-c", "bindings.cpp"))
+    )
+    ast_filters: list[str] = []
+
+    def fake_ast_dump(ast_filter: str) -> tuple[dict, ...]:
+        ast_filters.append(ast_filter)
+        return ()
+
+    index._run_ast_dump = fake_ast_dump  # type: ignore[method-assign]
+
+    assert index.resolve_record("MissingType") is None
+    assert index.resolve_record("MissingType") is None
+    assert ast_filters == ["MissingType"]
+
+
+def test_ast_objects_are_cached_per_filter(tmp_path: Path) -> None:
+    index = TranslationUnitIndex(
+        CompileCommand(directory=tmp_path, file=tmp_path / "bindings.cpp", arguments=("clang++", "-c", "bindings.cpp"))
+    )
+    ast_filters: list[str] = []
+
+    def fake_ast_dump(ast_filter: str) -> tuple[dict, ...]:
+        ast_filters.append(ast_filter)
+        return ()
+
+    index._run_ast_dump = fake_ast_dump  # type: ignore[method-assign]
+
+    assert index.ast_objects("Demo") == ()
+    assert index.ast_objects("Demo") == ()
+    index.ensure_ast_filter_loaded("Demo")
+
+    assert ast_filters == ["Demo"]
+
+
+def test_namespace_discovery_skips_unselected_signatures(tmp_path: Path) -> None:
+    index = TranslationUnitIndex(
+        CompileCommand(directory=tmp_path, file=tmp_path / "bindings.cpp", arguments=("clang++", "-c", "bindings.cpp"))
+    )
+    ast_filters: list[str] = []
+
+    def fake_ast_dump(ast_filter: str) -> tuple[dict, ...]:
+        ast_filters.append(ast_filter)
+        if ast_filter == "MissingType":
+            raise AssertionError("Unselected function signature should not be resolved")
+        return (
+            {
+                "kind": "NamespaceDecl",
+                "name": "Demo",
+                "inner": [
+                    {
+                        "kind": "FunctionDecl",
+                        "name": "wanted",
+                        "type": {"qualType": "int ()"},
+                    },
+                    {
+                        "kind": "FunctionDecl",
+                        "name": "skipped",
+                        "type": {"qualType": "MissingType ()"},
+                    },
+                ],
+            },
+        )
+
+    index._run_ast_dump = fake_ast_dump  # type: ignore[method-assign]
+
+    functions = index.discover_namespace_functions("Demo", selected_names={"wanted"})
+
+    assert set(functions) == {"wanted"}
+    assert ast_filters == ["Demo"]
+
+
+def test_discovery_skips_known_namespace_roots_before_clang_lookup(tmp_path: Path) -> None:
+    index = TranslationUnitIndex(
+        CompileCommand(directory=tmp_path, file=tmp_path / "bindings.cpp", arguments=("clang++", "-c", "bindings.cpp"))
+    )
+    ast_filters: list[str] = []
+
+    def fake_ast_dump(ast_filter: str) -> tuple[dict, ...]:
+        ast_filters.append(ast_filter)
+        if ast_filter.startswith("ifcopenshell"):
+            raise AssertionError("Known namespace roots should not trigger record/enum AST filters")
+        return (
+            {
+                "kind": "NamespaceDecl",
+                "name": "Demo",
+                "inner": [
+                    {
+                        "kind": "FunctionDecl",
+                        "name": "make_item",
+                        "type": {"qualType": "ifcopenshell::geometry::taxonomy::item *()"},
+                    },
+                ],
+            },
+        )
+
+    index._run_ast_dump = fake_ast_dump  # type: ignore[method-assign]
+
+    functions = index.discover_namespace_functions("Demo", selected_names={"make_item"})
+
+    assert functions["make_item"][0].return_type_ref.storage_spelling == "ifcopenshell::geometry::taxonomy::item*"
+    assert ast_filters == ["Demo"]
 
 
 def test_discover_public_fields_with_inheritance(tmp_path: Path) -> None:
