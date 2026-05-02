@@ -186,6 +186,72 @@ def test_load_authored_spec_infers_simple_call_kinds(tmp_path: Path) -> None:
     assert isinstance(spec.methods[1].policy_operation, InlineAdapterPolicyOp)
 
 
+def test_load_authored_spec_expands_handle_families(tmp_path: Path) -> None:
+    spec_path = tmp_path / "families.yml"
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - demo.h
+            handle_families:
+              - namespace: Demo::Taxonomy
+                prefix: taxonomy
+                destructor: shared_ptr
+                ptr_type: shared_ptr
+                types:
+                  - item
+                  - curve
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    spec = load_authored_spec(spec_path)
+
+    assert spec.handles["taxonomy_item"].cpp_type == "Demo::Taxonomy::item"
+    assert spec.handles["taxonomy_item"].c_type == "ifcopenshell_demo_taxonomy_item_t"
+    assert spec.handles["taxonomy_item"].destructor == "shared_ptr"
+    assert spec.handles["taxonomy_item"].ptr_type == "shared_ptr"
+    assert spec.handles["taxonomy_curve"].cpp_type == "Demo::Taxonomy::curve"
+
+
+def test_load_authored_spec_rejects_handle_family_collisions(tmp_path: Path) -> None:
+    spec_path = tmp_path / "family_collision.yml"
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - demo.h
+            handle_families:
+              - namespace: Demo
+                prefix: thing
+                destructor: delete
+                types:
+                  - item
+            handles:
+              - name: thing_item
+                cpp_type: Demo::Other
+                c_type: ifcopenshell_demo_other_t
+                destructor: delete
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="handles\\[0\\]\\.name 'thing_item' is duplicated"):
+        load_authored_spec(spec_path)
+
+
 def test_load_authored_spec_rejects_removed_legacy_call_kinds(tmp_path: Path) -> None:
     spec_path = tmp_path / "legacy.yml"
     spec_path.write_text(

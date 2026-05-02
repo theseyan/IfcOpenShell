@@ -141,175 +141,6 @@ handles:
     c_type: ifcopenshell_ifcgeom_conversion_result_shape_t
     destructor: delete
 
-  # === Taxonomy Types (shared_ptr-based) ===
-  - name: taxonomy_item
-    cpp_type: ifcopenshell::geometry::taxonomy::item
-    c_type: ifcopenshell_ifcgeom_taxonomy_item_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_matrix4
-    cpp_type: ifcopenshell::geometry::taxonomy::matrix4
-    c_type: ifcopenshell_ifcgeom_taxonomy_matrix4_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_point3
-    cpp_type: ifcopenshell::geometry::taxonomy::point3
-    c_type: ifcopenshell_ifcgeom_taxonomy_point3_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_direction3
-    cpp_type: ifcopenshell::geometry::taxonomy::direction3
-    c_type: ifcopenshell_ifcgeom_taxonomy_direction3_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_style
-    cpp_type: ifcopenshell::geometry::taxonomy::style
-    c_type: ifcopenshell_ifcgeom_taxonomy_style_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_colour
-    cpp_type: ifcopenshell::geometry::taxonomy::colour
-    c_type: ifcopenshell_ifcgeom_taxonomy_colour_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_line
-    cpp_type: ifcopenshell::geometry::taxonomy::line
-    c_type: ifcopenshell_ifcgeom_taxonomy_line_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_circle
-    cpp_type: ifcopenshell::geometry::taxonomy::circle
-    c_type: ifcopenshell_ifcgeom_taxonomy_circle_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_ellipse
-    cpp_type: ifcopenshell::geometry::taxonomy::ellipse
-    c_type: ifcopenshell_ifcgeom_taxonomy_ellipse_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_bspline_curve
-    cpp_type: ifcopenshell::geometry::taxonomy::bspline_curve
-    c_type: ifcopenshell_ifcgeom_taxonomy_bspline_curve_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_offset_curve
-    cpp_type: ifcopenshell::geometry::taxonomy::offset_curve
-    c_type: ifcopenshell_ifcgeom_taxonomy_offset_curve_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_edge
-    cpp_type: ifcopenshell::geometry::taxonomy::edge
-    c_type: ifcopenshell_ifcgeom_taxonomy_edge_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_loop
-    cpp_type: ifcopenshell::geometry::taxonomy::loop
-    c_type: ifcopenshell_ifcgeom_taxonomy_loop_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_face
-    cpp_type: ifcopenshell::geometry::taxonomy::face
-    c_type: ifcopenshell_ifcgeom_taxonomy_face_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_shell
-    cpp_type: ifcopenshell::geometry::taxonomy::shell
-    c_type: ifcopenshell_ifcgeom_taxonomy_shell_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_solid
-    cpp_type: ifcopenshell::geometry::taxonomy::solid
-    c_type: ifcopenshell_ifcgeom_taxonomy_solid_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_plane
-    cpp_type: ifcopenshell::geometry::taxonomy::plane
-    c_type: ifcopenshell_ifcgeom_taxonomy_plane_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_cylinder
-    cpp_type: ifcopenshell::geometry::taxonomy::cylinder
-    c_type: ifcopenshell_ifcgeom_taxonomy_cylinder_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_sphere
-    cpp_type: ifcopenshell::geometry::taxonomy::sphere
-    c_type: ifcopenshell_ifcgeom_taxonomy_sphere_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_torus
-    cpp_type: ifcopenshell::geometry::taxonomy::torus
-    c_type: ifcopenshell_ifcgeom_taxonomy_torus_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_bspline_surface
-    cpp_type: ifcopenshell::geometry::taxonomy::bspline_surface
-    c_type: ifcopenshell_ifcgeom_taxonomy_bspline_surface_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_collection
-    cpp_type: ifcopenshell::geometry::taxonomy::collection
-    c_type: ifcopenshell_ifcgeom_taxonomy_collection_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_loft
-    cpp_type: ifcopenshell::geometry::taxonomy::loft
-    c_type: ifcopenshell_ifcgeom_taxonomy_loft_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_extrusion
-    cpp_type: ifcopenshell::geometry::taxonomy::extrusion
-    c_type: ifcopenshell_ifcgeom_taxonomy_extrusion_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_revolve
-    cpp_type: ifcopenshell::geometry::taxonomy::revolve
-    c_type: ifcopenshell_ifcgeom_taxonomy_revolve_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_sweep_along_curve
-    cpp_type: ifcopenshell::geometry::taxonomy::sweep_along_curve
-    c_type: ifcopenshell_ifcgeom_taxonomy_sweep_along_curve_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_node
-    cpp_type: ifcopenshell::geometry::taxonomy::node
-    c_type: ifcopenshell_ifcgeom_taxonomy_node_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
-  - name: taxonomy_boolean_result
-    cpp_type: ifcopenshell::geometry::taxonomy::boolean_result
-    c_type: ifcopenshell_ifcgeom_taxonomy_boolean_result_t
-    destructor: shared_ptr
-    ptr_type: shared_ptr
-
   # === CGAL Exact Numbers ===
   - name: opaque_number
     cpp_type: IfcGeom::OpaqueNumber
@@ -327,6 +158,43 @@ handles:
     cpp_type: ifcopenshell::geometry::function_item_evaluator
     c_type: ifcopenshell_ifcgeom_function_item_evaluator_t
     destructor: delete
+
+handle_families:
+  # === Taxonomy Types (shared_ptr-based) ===
+  - namespace: ifcopenshell::geometry::taxonomy
+    prefix: taxonomy
+    c_prefix: ifcopenshell_ifcgeom_taxonomy
+    destructor: shared_ptr
+    ptr_type: shared_ptr
+    types:
+      - item
+      - matrix4
+      - point3
+      - direction3
+      - style
+      - colour
+      - line
+      - circle
+      - ellipse
+      - bspline_curve
+      - offset_curve
+      - edge
+      - loop
+      - face
+      - shell
+      - solid
+      - plane
+      - cylinder
+      - sphere
+      - torus
+      - bspline_surface
+      - collection
+      - loft
+      - extrusion
+      - revolve
+      - sweep_along_curve
+      - node
+      - boolean_result
 
 discover:
   include_dir: ../../../ifcgeom

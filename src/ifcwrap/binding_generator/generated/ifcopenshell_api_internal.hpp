@@ -180,106 +180,6 @@ struct ifcopenshell_ifcparse_instance_list_t {
     aggregate_of_instance::ptr value;
 };
 
-struct ifcopenshell_ifcgeom_iterator_t {
-    IfcGeom::Iterator* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_settings_t {
-    ifcopenshell::geometry::Settings* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_serializer_settings_t {
-    ifcopenshell::geometry::SerializerSettings* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_geometry_serializer_t {
-    GeometrySerializer* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_serializer_t {
-    Serializer* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_buffer_t {
-    stream_or_filename* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_tree_t {
-    IfcGeom::tree* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_tree_clash_list_t {
-    std::vector<IfcGeom::clash>* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_tree_clash_t {
-    IfcGeom::clash* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_tree_ray_intersection_list_t {
-    std::vector<IfcGeom::ray_intersection_result>* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_tree_ray_intersection_t {
-    IfcGeom::ray_intersection_result* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_transformation_t {
-    IfcGeom::Transformation* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_element_t {
-    IfcGeom::Element* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_brep_element_t {
-    IfcGeom::BRepElement* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_triangulation_element_t {
-    IfcGeom::TriangulationElement* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_serialized_element_t {
-    IfcGeom::SerializedElement* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_triangulation_t {
-    IfcGeom::Representation::Triangulation* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_brep_representation_t {
-    IfcGeom::Representation::BRep* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_serialization_t {
-    IfcGeom::Representation::Serialization* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcgeom_conversion_result_shape_t {
-    IfcGeom::ConversionResultShape* ptr;
-    bool owned;
-};
-
 struct ifcopenshell_ifcgeom_taxonomy_item_t {
     std::shared_ptr<ifcopenshell::geometry::taxonomy::item> ptr;
 };
@@ -390,6 +290,106 @@ struct ifcopenshell_ifcgeom_taxonomy_node_t {
 
 struct ifcopenshell_ifcgeom_taxonomy_boolean_result_t {
     std::shared_ptr<ifcopenshell::geometry::taxonomy::boolean_result> ptr;
+};
+
+struct ifcopenshell_ifcgeom_iterator_t {
+    IfcGeom::Iterator* ptr;
+    bool owned;
+};
+
+struct ifcopenshell_ifcgeom_settings_t {
+    ifcopenshell::geometry::Settings* ptr;
+    bool owned;
+};
+
+struct ifcopenshell_ifcgeom_serializer_settings_t {
+    ifcopenshell::geometry::SerializerSettings* ptr;
+    bool owned;
+};
+
+struct ifcopenshell_ifcgeom_geometry_serializer_t {
+    GeometrySerializer* ptr;
+    bool owned;
+};
+
+struct ifcopenshell_ifcgeom_serializer_t {
+    Serializer* ptr;
+    bool owned;
+};
+
+struct ifcopenshell_ifcgeom_buffer_t {
+    stream_or_filename* ptr;
+    bool owned;
+};
+
+struct ifcopenshell_ifcgeom_tree_t {
+    IfcGeom::tree* ptr;
+    bool owned;
+};
+
+struct ifcopenshell_ifcgeom_tree_clash_list_t {
+    std::vector<IfcGeom::clash>* ptr;
+    bool owned;
+};
+
+struct ifcopenshell_ifcgeom_tree_clash_t {
+    IfcGeom::clash* ptr;
+    bool owned;
+};
+
+struct ifcopenshell_ifcgeom_tree_ray_intersection_list_t {
+    std::vector<IfcGeom::ray_intersection_result>* ptr;
+    bool owned;
+};
+
+struct ifcopenshell_ifcgeom_tree_ray_intersection_t {
+    IfcGeom::ray_intersection_result* ptr;
+    bool owned;
+};
+
+struct ifcopenshell_ifcgeom_transformation_t {
+    IfcGeom::Transformation* ptr;
+    bool owned;
+};
+
+struct ifcopenshell_ifcgeom_element_t {
+    IfcGeom::Element* ptr;
+    bool owned;
+};
+
+struct ifcopenshell_ifcgeom_brep_element_t {
+    IfcGeom::BRepElement* ptr;
+    bool owned;
+};
+
+struct ifcopenshell_ifcgeom_triangulation_element_t {
+    IfcGeom::TriangulationElement* ptr;
+    bool owned;
+};
+
+struct ifcopenshell_ifcgeom_serialized_element_t {
+    IfcGeom::SerializedElement* ptr;
+    bool owned;
+};
+
+struct ifcopenshell_ifcgeom_triangulation_t {
+    IfcGeom::Representation::Triangulation* ptr;
+    bool owned;
+};
+
+struct ifcopenshell_ifcgeom_brep_representation_t {
+    IfcGeom::Representation::BRep* ptr;
+    bool owned;
+};
+
+struct ifcopenshell_ifcgeom_serialization_t {
+    IfcGeom::Representation::Serialization* ptr;
+    bool owned;
+};
+
+struct ifcopenshell_ifcgeom_conversion_result_shape_t {
+    IfcGeom::ConversionResultShape* ptr;
+    bool owned;
 };
 
 struct ifcopenshell_ifcgeom_opaque_number_t {
