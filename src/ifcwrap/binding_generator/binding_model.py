@@ -9,6 +9,7 @@ from dataclasses import dataclass
 class TypeSpec:
     kind: str
     handle: str | None = None
+    struct: str | None = None
     ownership: str | None = None
     nullable: bool = False
     cpp_type: str | None = None
@@ -28,6 +29,21 @@ class HandleSpec:
     c_type: str
     destructor: str
     ptr_type: str = "raw"
+
+
+@dataclass(frozen=True)
+class ResultStructFieldSpec:
+    name: str
+    type: TypeSpec
+    cpp_field: str | None = None
+
+
+@dataclass(frozen=True)
+class ResultStructSpec:
+    name: str
+    cpp_type: str
+    c_type: str
+    fields: tuple[ResultStructFieldSpec, ...]
 
 
 @dataclass(frozen=True)

@@ -31,6 +31,7 @@ try:
         lower_binding_spec,
     )
     from .debug import debug_log, debug_path
+    from .python_ctypes_backend import generate_python_ctypes
 except ImportError:  # pragma: no cover - script execution fallback
     from authored_spec import AuthoredBindingSpec, HandleSpec, MergedBindingSpec, ParamSpec, TypeSpec, load_authored_spec, load_merged_specs
     from binding_ir import (
@@ -57,6 +58,7 @@ except ImportError:  # pragma: no cover - script execution fallback
         lower_binding_spec,
     )
     from debug import debug_log, debug_path
+    from python_ctypes_backend import generate_python_ctypes
 
 # Type alias for spec types
 SourceBindingSpec = Union[AuthoredBindingSpec, MergedBindingSpec]
@@ -614,6 +616,10 @@ def _cpp_param_type(param: ParamSpec, spec: BindingIR) -> str:
         return f"{spec.handles[param.type.handle].c_type}*"
     if kind == "opaque_ptr":
         return "void*"
+    if kind == "struct":
+        if type_spec.struct is None:
+            raise ValueError("struct parameter is missing struct name")
+        return spec.result_structs[type_spec.struct].c_type
     msg = f"Unsupported parameter kind: {kind}"
     raise ValueError(msg)
 
@@ -640,8 +646,39 @@ def _out_param_type(type_spec: TypeSpec, spec: BindingIR) -> str:
         return f"{spec.handles[type_spec.handle].c_type}**"
     if kind == "opaque_ptr":
         return "void**"
+    if kind == "struct":
+        if type_spec.struct is None:
+            raise ValueError("struct return is missing struct name")
+        return f"{spec.result_structs[type_spec.struct].c_type}*"
     msg = f"Unsupported return kind: {kind}"
     raise ValueError(msg)
+
+
+def _result_struct_field_c_type(type_spec: TypeSpec, spec: BindingIR) -> str:
+    sequence_kind = _type_spec_sequence_kind(type_spec)
+    if sequence_kind is not None:
+        return _sequence_c_type(sequence_kind)
+    if type_spec.kind in _SCALAR_TYPE_MAP:
+        return _SCALAR_TYPE_MAP[type_spec.kind][0]
+    if type_spec.kind == "string":
+        return "ifcopenshell_string_t"
+    if type_spec.kind == "handle":
+        if type_spec.sequence_depth == 1:
+            return _handle_list_c_type(spec.handles[type_spec.handle])
+        if type_spec.sequence_depth == 2:
+            return _handle_list_list_c_type(spec.handles[type_spec.handle])
+        return f"{spec.handles[type_spec.handle].c_type}*"
+    if type_spec.kind == "opaque_ptr":
+        return "void*"
+    raise ValueError(f"Unsupported result struct field kind: {type_spec.kind}")
+
+
+def _render_result_struct_decl(struct: object, spec: BindingIR) -> str:
+    fields = "\n".join(
+        f"    {_result_struct_field_c_type(field.type, spec)} {field.name};"
+        for field in struct.fields
+    )
+    return f"typedef struct {struct.c_type} {{\n{fields}\n}} {struct.c_type};"
 
 
 def _render_call_decl(call: CallIR, spec: BindingIR) -> str:
@@ -695,6 +732,10 @@ def _render_header(spec: BindingIR) -> str:
         f"}} {_handle_list_list_c_type(handle)};"
         for handle in handle_list_types
     )
+    result_struct_decls = "\n\n".join(
+        _render_result_struct_decl(struct, spec)
+        for struct in spec.result_structs.values()
+    )
     destroy_decls = "\n".join(_render_handle_destroy_decl(handle) for handle in spec.handles.values())
     handle_list_destroy_decls = "\n".join(_render_handle_list_destroy_decl(handle) for handle in handle_list_types)
     handle_list_list_destroy_decls = "\n".join(_render_handle_list_list_destroy_decl(handle) for handle in handle_list_types)
@@ -725,6 +766,8 @@ extern "C" {{
 
 {handle_list_forwards}
 {handle_list_list_forwards}
+
+{result_struct_decls}
 
 void {spec.c_prefix}_clear_error(void);
 const char* {spec.c_prefix}_last_error_message(void);
@@ -829,6 +872,36 @@ def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
         return f"*out_result = {_wrap_handle_expr(type_spec, expr, spec)};"
     if kind == "opaque_ptr":
         return f"*out_result = static_cast<void*>({expr});"
+    if kind == "struct":
+        if type_spec.struct is None:
+            raise ValueError(f"{call.c_name} struct return is missing struct name")
+        struct = spec.result_structs[type_spec.struct]
+        lines = [f"auto result_value = {expr};"]
+        for field in struct.fields:
+            cpp_field = field.cpp_field or field.name
+            field_expr = f"result_value.{cpp_field}"
+            field_type = field.type
+            field_sequence_kind = _type_spec_sequence_kind(field_type)
+            if field_sequence_kind is not None:
+                assignment = f"{_sequence_make_helper(field_sequence_kind)}({field_expr})"
+            elif field_type.kind in _SCALAR_TYPE_MAP:
+                assignment = f"static_cast<{_SCALAR_TYPE_MAP[field_type.kind][0]}>({field_expr})"
+            elif field_type.kind == "string":
+                helper = "make_static_string" if field_type.ownership == "static" else "make_string"
+                assignment = f"{helper}({field_expr})"
+            elif field_type.kind == "handle":
+                if field_type.sequence_depth == 1:
+                    assignment = f"{_handle_list_helper_name(spec.handles[field_type.handle])}({field_expr})"
+                elif field_type.sequence_depth == 2:
+                    assignment = f"{_handle_list_list_helper_name(spec.handles[field_type.handle])}({field_expr})"
+                else:
+                    assignment = _wrap_handle_expr(field_type, field_expr, spec)
+            elif field_type.kind == "opaque_ptr":
+                assignment = f"static_cast<void*>({field_expr})"
+            else:
+                raise ValueError(f"Unsupported result struct field kind: {field_type.kind}")
+            lines.append(f"out_result->{field.name} = {assignment};")
+        return "\n        ".join(lines)
     msg = f"Unsupported return kind: {kind}"
     raise ValueError(msg)
 
@@ -1795,7 +1868,14 @@ const char* {spec.c_prefix}_last_error_message(void) {{
     return rendered
 
 
-def generate(spec_path: Path, header_out: Path, cpp_out: Path, compile_commands_path: Path | None = None, internal_header_out: Path | None = None) -> None:
+def generate(
+    spec_path: Path,
+    header_out: Path,
+    cpp_out: Path,
+    compile_commands_path: Path | None = None,
+    internal_header_out: Path | None = None,
+    python_out: Path | None = None,
+) -> None:
     debug_log(
         "c_backend.generate.start",
         f"spec={debug_path(spec_path)} header_out={debug_path(header_out)} cpp_out={debug_path(cpp_out)} internal_header_out={debug_path(internal_header_out)} compile_commands={debug_path(compile_commands_path)}",
@@ -1809,6 +1889,9 @@ def generate(spec_path: Path, header_out: Path, cpp_out: Path, compile_commands_
         internal_header_out = cpp_out.with_name(header_out.stem + "_internal.hpp")
     internal_header_out.parent.mkdir(parents=True, exist_ok=True)
     internal_header_out.write_text(_render_internal_header(spec, header_out.name), encoding="utf-8")
+    if python_out is not None:
+        python_out.parent.mkdir(parents=True, exist_ok=True)
+        generate_python_ctypes(spec, python_out, generic_handles=True)
     debug_log("c_backend.generate.done", f"spec={debug_path(spec_path)}")
 
 
@@ -1820,6 +1903,7 @@ def generate_merged(
     cpp_out: Path,
     compile_commands_path: Path | None = None,
     internal_header_out: Path | None = None,
+    python_out: Path | None = None,
 ) -> None:
     """Generate bindings from multiple specs merged together."""
     debug_log(
@@ -1835,6 +1919,9 @@ def generate_merged(
         internal_header_out = cpp_out.with_name(header_out.stem + "_internal.hpp")
     internal_header_out.parent.mkdir(parents=True, exist_ok=True)
     internal_header_out.write_text(_render_internal_header(spec, header_out.name), encoding="utf-8")
+    if python_out is not None:
+        python_out.parent.mkdir(parents=True, exist_ok=True)
+        generate_python_ctypes(spec, python_out, generic_handles=True)
     debug_log("c_backend.generate_merged.done", f"module={module}")
 
 
@@ -1849,6 +1936,12 @@ def _build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="Optional output path for the internal C++ header that exposes handle struct definitions and error helpers. Defaults to <cpp-out-dir>/<header-stem>_internal.hpp.",
+    )
+    parser.add_argument(
+        "--python-out",
+        type=Path,
+        default=None,
+        help="Optional output path for generated Python ctypes glue.",
     )
     parser.add_argument(
         "--compile-commands",
@@ -1875,7 +1968,14 @@ def main() -> int:
     args = _build_parser().parse_args()
     if len(args.spec) == 1:
         # Single spec - use original behavior
-        generate(args.spec[0], args.header_out, args.cpp_out, compile_commands_path=args.compile_commands, internal_header_out=args.internal_header_out)
+        generate(
+            args.spec[0],
+            args.header_out,
+            args.cpp_out,
+            compile_commands_path=args.compile_commands,
+            internal_header_out=args.internal_header_out,
+            python_out=args.python_out,
+        )
     else:
         # Multiple specs - merge them
         generate_merged(
@@ -1886,6 +1986,7 @@ def main() -> int:
             args.cpp_out,
             compile_commands_path=args.compile_commands,
             internal_header_out=args.internal_header_out,
+            python_out=args.python_out,
         )
     return 0
 

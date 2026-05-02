@@ -70,6 +70,7 @@
 #include "ifcapi/bindings/schema.h"
 #include "ifcapi/bindings/selector.h"
 #include "ifcapi/bindings/shape.h"
+#include "ifcapi/bindings/shape_builder.h"
 #include "ifcapi/bindings/spatial.h"
 #include "ifcapi/bindings/type.h"
 #include "ifcapi/bindings/unit.h"

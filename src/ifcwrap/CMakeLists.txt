@@ -37,6 +37,7 @@ if(BUILD_IFCCAPI)
     set(UNIFIED_CAPI_HEADER "${IFCPARSE_CAPI_GENERATED_DIR}/ifcopenshell_api.h")
     set(UNIFIED_CAPI_CPP "${IFCPARSE_CAPI_GENERATED_DIR}/ifcopenshell_api.cpp")
     set(UNIFIED_CAPI_INTERNAL_HEADER "${IFCPARSE_CAPI_GENERATED_DIR}/ifcopenshell_api_internal.hpp")
+    set(UNIFIED_CAPI_PYTHON_CTYPES "${CMAKE_CURRENT_SOURCE_DIR}/../ifcapi/python/ifcopenshell/_generated_capi.py")
 
     if(IFCCAPI_REGENERATE_BINDINGS)
         if(NOT ${PYTHON_EXECUTABLE} STREQUAL "")
@@ -67,6 +68,7 @@ if(BUILD_IFCCAPI)
                 "${UNIFIED_CAPI_HEADER}"
                 "${UNIFIED_CAPI_CPP}"
                 "${UNIFIED_CAPI_INTERNAL_HEADER}"
+                "${UNIFIED_CAPI_PYTHON_CTYPES}"
             COMMAND
                 ${Python_EXECUTABLE} "${IFCPARSE_CAPI_GENERATOR}"
                 --spec "${IFCPARSE_CAPI_SPEC}"
@@ -74,6 +76,7 @@ if(BUILD_IFCCAPI)
                 --spec "${IFCAPI_CAPI_SPEC}"
                 --header-out "${UNIFIED_CAPI_HEADER}"
                 --cpp-out "${UNIFIED_CAPI_CPP}"
+                --python-out "${UNIFIED_CAPI_PYTHON_CTYPES}"
                 --compile-commands "${CMAKE_BINARY_DIR}/compile_commands.json"
                 --module ifcopenshell
                 --c-prefix ifcopenshell
@@ -88,7 +91,9 @@ if(BUILD_IFCCAPI)
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/binding_model.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/clang_discovery.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/debug.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/host_metadata.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/policy_ir.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/python_ctypes_backend.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/semantic_types.py"
             VERBATIM
         )
@@ -98,6 +103,7 @@ if(BUILD_IFCCAPI)
                 "${UNIFIED_CAPI_HEADER}"
                 "${UNIFIED_CAPI_CPP}"
                 "${UNIFIED_CAPI_INTERNAL_HEADER}"
+                "${UNIFIED_CAPI_PYTHON_CTYPES}"
         )
     endif()
 

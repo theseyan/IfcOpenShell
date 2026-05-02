@@ -25,10 +25,55 @@ public_headers:
   - ifcapi/bindings/schema.h
   - ifcapi/bindings/selector.h
   - ifcapi/bindings/shape.h
+  - ifcapi/bindings/shape_builder.h
   - ifcapi/bindings/spatial.h
   - ifcapi/bindings/type.h
   - ifcapi/bindings/unit.h
   - ifcapi/bindings/value.h
+
+result_structs:
+  - name: shape_builder_mep_transition_shape_result
+    cpp_type: ifcapi::bindings::ShapeBuilderMepTransitionShapeResult
+    c_type: ifcopenshell_shape_builder_mep_transition_shape_result_t
+    fields:
+      - name: representation
+        type: {kind: handle, handle: instance, ownership: borrowed, nullable: true}
+      - name: has_result
+        type: {kind: bool}
+      - name: start_length
+        type: {kind: double}
+      - name: end_length
+        type: {kind: double}
+      - name: angle
+        type: {kind: double}
+      - name: profile_offset
+        type: {kind: double_list}
+      - name: transition_length
+        type: {kind: double}
+      - name: full_transition_length
+        type: {kind: double}
+  - name: shape_builder_mep_bend_shape_result
+    cpp_type: ifcapi::bindings::ShapeBuilderMepBendShapeResult
+    c_type: ifcopenshell_shape_builder_mep_bend_shape_result_t
+    fields:
+      - name: representation
+        type: {kind: handle, handle: instance, ownership: borrowed}
+      - name: start_length
+        type: {kind: double}
+      - name: end_length
+        type: {kind: double}
+      - name: radius
+        type: {kind: double}
+      - name: angle
+        type: {kind: double}
+      - name: lateral_axis
+        type: {kind: int32}
+      - name: lateral_sign
+        type: {kind: double}
+      - name: z_axis_sign
+        type: {kind: int32}
+      - name: main_profile_dimension
+        type: {kind: double}
 
 imports:
   - slice: ifcparse
@@ -389,6 +434,277 @@ discover:
         geometry_edit_object_placement:
           returns:
             nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: api/geometry/shape_builder.cpp
+      include:
+        - shape_builder_axis2_placement_2d
+        - shape_builder_axis2_placement_3d
+        - shape_builder_block
+        - shape_builder_circle
+        - shape_builder_curve_between_two_points
+        - shape_builder_deep_copy
+        - shape_builder_edge
+        - shape_builder_ellipse_curve
+        - shape_builder_extrude
+        - shape_builder_faceted_brep
+        - shape_builder_face
+        - shape_builder_half_space_solid
+        - shape_builder_get_polyline_coords
+        - shape_builder_indexed_polycurve_2d
+        - shape_builder_mep_transition_calculate
+        - shape_builder_mep_transition_length
+        - shape_builder_mep_transition_shape
+        - shape_builder_mep_bend_shape
+        - shape_builder_mesh
+        - shape_builder_plane
+        - shape_builder_polyline
+        - shape_builder_polygonal_face_set
+        - shape_builder_profile
+        - shape_builder_representation
+        - shape_builder_rotate
+        - shape_builder_sphere
+        - shape_builder_swept_disk_solid
+        - shape_builder_set_polyline_coords
+        - shape_builder_translate
+        - shape_builder_triangulated_face_set
+        - shape_builder_vertex
+        - shape_builder_mirror
+      type_overrides:
+        shape_builder_axis2_placement_2d:
+          returns:
+            nullable: true
+          params:
+            position:
+              kind: double_list
+            x_direction:
+              kind: double_list
+        shape_builder_axis2_placement_3d:
+          returns:
+            nullable: true
+          params:
+            position:
+              kind: double_list
+            z_axis:
+              kind: double_list
+            x_axis:
+              kind: double_list
+        shape_builder_block:
+          returns:
+            nullable: true
+          params:
+            position:
+              kind: double_list
+        shape_builder_circle:
+          returns:
+            nullable: true
+          params:
+            center:
+              kind: double_list
+        shape_builder_deep_copy:
+          returns:
+            nullable: true
+        shape_builder_curve_between_two_points:
+          returns:
+            nullable: true
+          params:
+            points:
+              kind: double_list_list
+        shape_builder_edge:
+          returns:
+            nullable: true
+          params:
+            start:
+              kind: double_list
+            end:
+              kind: double_list
+        shape_builder_ellipse_curve:
+          returns:
+            nullable: true
+          params:
+            position:
+              kind: double_list
+            trim_points:
+              kind: double_list_list
+            ref_x_direction:
+              kind: double_list
+            trim_points_mask:
+              kind: int32_list
+        shape_builder_extrude:
+          returns:
+            nullable: true
+          params:
+            position:
+              kind: double_list
+            extrusion_vector:
+              kind: double_list
+            position_z_axis:
+              kind: double_list
+            position_x_axis:
+              kind: double_list
+            position_y_axis:
+              kind: double_list
+        shape_builder_faceted_brep:
+          returns:
+            nullable: true
+          params:
+            points:
+              kind: double_list_list
+            faces:
+              kind: int32_list_list
+        shape_builder_face:
+          returns:
+            nullable: true
+          params:
+            points:
+              kind: double_list_list
+        shape_builder_half_space_solid:
+          returns:
+            nullable: true
+        shape_builder_get_polyline_coords:
+          params: {}
+        shape_builder_indexed_polycurve_2d:
+          returns:
+            nullable: true
+          params:
+            points:
+              kind: double_list_list
+            segments:
+              kind: int32_list_list
+        shape_builder_mep_transition_calculate:
+          params:
+            start_half_dim:
+              kind: double_list
+            end_half_dim:
+              kind: double_list
+            offset:
+              kind: double_list
+            diff:
+              kind: double_list
+        shape_builder_mep_transition_length:
+          params:
+            start_half_dim:
+              kind: double_list
+            end_half_dim:
+              kind: double_list
+            profile_offset:
+              kind: double_list
+        shape_builder_mep_transition_shape:
+          returns:
+            kind: struct
+            struct: shape_builder_mep_transition_shape_result
+          params:
+            profile_offset:
+              kind: double_list
+        shape_builder_mep_bend_shape:
+          returns:
+            kind: struct
+            struct: shape_builder_mep_bend_shape_result
+          params:
+            bend_vector:
+              kind: double_list
+        shape_builder_mesh:
+          returns:
+            nullable: true
+          params:
+            points:
+              kind: double_list_list
+            faces:
+              kind: int32_list_list
+        shape_builder_plane:
+          returns:
+            nullable: true
+          params:
+            location:
+              kind: double_list
+            normal:
+              kind: double_list
+        shape_builder_polyline:
+          returns:
+            nullable: true
+          params:
+            points:
+              kind: double_list_list
+            position_offset:
+              kind: double_list
+            arc_points:
+              kind: int32_list
+        shape_builder_vertex:
+          returns:
+            nullable: true
+          params:
+            position:
+              kind: double_list
+        shape_builder_polygonal_face_set:
+          returns:
+            nullable: true
+          params:
+            points:
+              kind: double_list_list
+            faces:
+              kind: int32_list_list_list
+        shape_builder_profile:
+          returns:
+            nullable: true
+          params:
+            name:
+              nullable: true
+            inner_curves:
+              kind: instance_list
+            profile_type:
+              nullable: true
+        shape_builder_representation:
+          returns:
+            nullable: true
+          params:
+            items:
+              kind: instance_list
+            representation_type:
+              nullable: true
+        shape_builder_rotate:
+          returns:
+            nullable: true
+          params:
+            pivot_point:
+              kind: double_list
+        shape_builder_sphere:
+          returns:
+            nullable: true
+          params:
+            center:
+              kind: double_list
+        shape_builder_swept_disk_solid:
+          returns:
+            nullable: true
+        shape_builder_set_polyline_coords:
+          returns:
+            nullable: true
+          params:
+            coords:
+              kind: double_list_list
+        shape_builder_translate:
+          returns:
+            nullable: true
+          params:
+            translation:
+              kind: double_list
+        shape_builder_triangulated_face_set:
+          returns:
+            nullable: true
+          params:
+            points:
+              kind: double_list_list
+            faces:
+              kind: int32_list_list
+        shape_builder_mirror:
+          returns:
+            nullable: true
+          params:
+            mirror_axes:
+              kind: double_list
+            mirror_point:
+              kind: double_list
+            placement_matrix:
+              kind: double_list
     - namespace: ifcapi::bindings
       translation_unit: api/pset/add.cpp
       include:

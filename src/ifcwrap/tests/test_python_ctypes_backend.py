@@ -28,6 +28,13 @@ def _write_fixture_spec(tmp_path: Path) -> Path:
             c_prefix: ifcopenshell_demo
             public_headers:
               - demo.h
+            result_structs:
+              - name: shape_result
+                cpp_type: Demo::ShapeResult
+                c_type: ifcopenshell_demo_shape_result_t
+                fields:
+                  - name: offsets
+                    type: {kind: double_list}
             handles:
               - name: file
                 cpp_type: Demo::File
@@ -46,6 +53,13 @@ def _write_fixture_spec(tmp_path: Path) -> Path:
                 cpp_name: schema_name
                 returns:
                   kind: string
+                params: []
+              - receiver: file
+                expose_as: shape
+                cpp_name: shape
+                returns:
+                  kind: struct
+                  struct: shape_result
                 params: []
             """
         ).strip()
@@ -73,6 +87,10 @@ def test_render_python_ctypes_emits_structs_and_signatures(tmp_path: Path) -> No
     text = generated.read_text(encoding="utf-8")
 
     assert "class ifcopenshell_demo_file_t(ctypes.Structure):" in text
+    assert text.index("class ifcopenshell_double_list_t(ctypes.Structure):") < text.index(
+        "class ifcopenshell_demo_shape_result_t(ctypes.Structure):"
+    )
+    assert '("offsets", ifcopenshell_double_list_t)' in text
     assert '("ptr", ctypes.c_void_p)' in text
     assert '("data", ctypes.c_void_p)' in text
     assert '"ifcopenshell_demo_create_file": (ctypes.c_bool, [ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(ifcopenshell_demo_file_t))])' in text
@@ -144,6 +162,15 @@ def test_generated_python_ctypes_binds_and_calls_tiny_c_fixture(tmp_path: Path) 
                 bool owned;
             } ifcopenshell_demo_file_t;
 
+            typedef struct ifcopenshell_double_list_t {
+                double* items;
+                size_t size;
+            } ifcopenshell_double_list_t;
+
+            typedef struct ifcopenshell_demo_shape_result_t {
+                ifcopenshell_double_list_t offsets;
+            } ifcopenshell_demo_shape_result_t;
+
             static const char* last_error = "";
 
             void ifcopenshell_demo_clear_error(void) { last_error = ""; }
@@ -174,6 +201,16 @@ def test_generated_python_ctypes_binds_and_calls_tiny_c_fixture(tmp_path: Path) 
                 return true;
             }
 
+            bool ifcopenshell_demo_file_shape(ifcopenshell_demo_file_t* self, ifcopenshell_demo_shape_result_t* out_result) {
+                if (!self || !out_result) {
+                    last_error = "invalid arguments";
+                    return false;
+                }
+                out_result->offsets.items = NULL;
+                out_result->offsets.size = 0;
+                return true;
+            }
+
             void ifcopenshell_demo_file_destroy(ifcopenshell_demo_file_t* handle) { free(handle); }
             void ifcopenshell_string_destroy(ifcopenshell_string_t* value) {
                 if (value && value->owned) {
@@ -183,6 +220,13 @@ def test_generated_python_ctypes_binds_and_calls_tiny_c_fixture(tmp_path: Path) 
                     value->data = NULL;
                     value->size = 0;
                     value->owned = false;
+                }
+            }
+            void ifcopenshell_double_list_destroy(ifcopenshell_double_list_t* value) {
+                if (value) {
+                    free(value->items);
+                    value->items = NULL;
+                    value->size = 0;
                 }
             }
             """

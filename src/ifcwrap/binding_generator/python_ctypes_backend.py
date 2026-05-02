@@ -119,6 +119,8 @@ def _requires_generic_handle_alias(metadata: HostBindingMetadata) -> bool:
 def _struct_sort_key(struct: HostStructMetadata) -> tuple[int, int, str]:
     if struct.kind == "handle":
         return (0, 0, struct.c_type)
+    if struct.kind == "result_struct":
+        return (3, 0, struct.c_type)
     if struct.sequence_depth == 0:
         return (1, 0, struct.c_type)
     return (2, struct.sequence_depth, struct.c_type)
@@ -284,6 +286,28 @@ def make_int32_list_list(values):
     return result
 
 
+def make_int32_list_list_list(values):
+    faces = [[list(loop) for loop in face] for face in values]
+    loop_buffers = [
+        [(ctypes.c_int32 * len(loop))(*[int(value) for value in loop]) for loop in face] for face in faces
+    ]
+    face_items = (ifcopenshell_int32_list_list_t * len(loop_buffers))()
+    loop_items = []
+    for face_index, loops in enumerate(loop_buffers):
+        loops_array = (ifcopenshell_int32_list_t * len(loops))()
+        for loop_index, buffer in enumerate(loops):
+            loops_array[loop_index].items = buffer
+            loops_array[loop_index].size = len(buffer)
+        face_items[face_index].items = loops_array
+        face_items[face_index].size = len(loops_array)
+        loop_items.append(loops_array)
+    result = ifcopenshell_int32_list_list_list_t()
+    result.items = face_items
+    result.size = len(face_items)
+    result._keepalive = (face_items, loop_items, loop_buffers)  # type: ignore[attr-defined]
+    return result
+
+
 def make_double_list_list(values):
     rows = [list(row) for row in values]
     row_buffers = [(ctypes.c_double * len(row))(*[float(value) for value in row]) for row in rows]
@@ -353,6 +377,13 @@ def call_double_list(lib, fn, *args):
     return take_double_list(lib, value)
 
 
+def call_double_list_list(lib, fn, *args):
+    value = ifcopenshell_double_list_list_t()
+    if not fn(*args, ctypes.byref(value)):
+        return None
+    return take_double_list_list(lib, value)
+
+
 def call_string_or_raise(lib, fn, fallback, *args, decode=True, value_type=None):
     result = call_string(lib, fn, *args, decode=decode, value_type=value_type)
     if result is None:
@@ -386,6 +417,19 @@ def call_double_list_or_raise(lib, fn, fallback, *args):
     if result is None:
         status_or_raise(lib, False, fallback)
     return result
+
+
+def call_double_list_list_or_raise(lib, fn, fallback, *args):
+    result = call_double_list_list(lib, fn, *args)
+    if result is None:
+        status_or_raise(lib, False, fallback)
+    return result
+
+
+def call_struct_or_raise(lib, fn, value_type, fallback, *args):
+    value = value_type()
+    status_or_raise(lib, fn(*args, ctypes.byref(value)), fallback)
+    return value
 
 
 def call_scalar(fn, c_type, *args):
