@@ -14,6 +14,7 @@
 // onto related occurrences when a typed object is assigned.
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/entity.h"
 #include "ifcapi/bindings/geometry.h"
 #include "ifcapi/bindings/type.h"
 #include "guid.h"
@@ -36,7 +37,6 @@
 namespace {
 
 inline void set_error(const char* msg) { ifcopenshell::capi::set_last_error(msg); }
-inline void set_error(const std::string& msg) { ifcopenshell::capi::set_last_error(msg); }
 
 inline IfcUtil::IfcBaseEntity* as_entity(IfcUtil::IfcBaseClass* e) {
     return dynamic_cast<IfcUtil::IfcBaseEntity*>(e);
@@ -369,40 +369,37 @@ void remove_representation_simple(IfcParse::IfcFile* file,
         candidates.push_back(s);
     }
 
-    // Track ids we plan to delete so we can ignore inverse references coming
-    // from them when checking whether an entity has external references left.
-    std::set<unsigned> planned;
-    for (auto* c : candidates) planned.insert(c->id());
+    std::set<unsigned> deletable;
+    for (auto* c : candidates) {
+        if (c->id() != 0) deletable.insert(c->id());
+    }
 
-    // Iterate to a fixed point: delete entities whose only inverses are from
-    // entities also in the planned-deletion set.
-    bool progress = true;
-    while (progress) {
-        progress = false;
-        for (auto it = candidates.begin(); it != candidates.end();) {
-            auto* e = *it;
+    // Only delete a node if every inverse is also deleted. If a candidate is
+    // retained because of an external inverse, anything it references must be
+    // retained too.
+    bool changed = true;
+    while (changed) {
+        changed = false;
+        for (auto* e : candidates) {
             unsigned id = e->id();
-            if (id == 0) { it = candidates.erase(it); continue; }
+            if (id == 0 || deletable.find(id) == deletable.end()) continue;
             auto invs = file->getInverse(id, nullptr, -1);
-            bool has_external = false;
-            if (invs) {
-                for (auto& inv : *invs) {
-                    if (!inv) continue;
-                    if (planned.find(inv->id()) == planned.end()) {
-                        has_external = true;
-                        break;
-                    }
+            if (!invs) continue;
+            for (auto& inv : *invs) {
+                if (!inv) continue;
+                if (deletable.find(inv->id()) == deletable.end()) {
+                    deletable.erase(id);
+                    changed = true;
+                    break;
                 }
             }
-            if (!has_external) {
-                file->removeEntity(e);
-                planned.erase(id);
-                it = candidates.erase(it);
-                progress = true;
-            } else {
-                ++it;
-            }
         }
+    }
+
+    for (auto* e : candidates) {
+        unsigned id = e->id();
+        if (id == 0 || deletable.find(id) == deletable.end()) continue;
+        if (file->instance_by_id(id)) file->removeEntity(e);
     }
 }
 
@@ -416,6 +413,26 @@ void unassign_product_representation(IfcParse::IfcFile* file,
     if (found == reps.end()) return;
     reps.erase(found);
     if (reps.empty()) {
+        if (auto* be = as_entity(def)) {
+            try {
+                auto aspects = be->get_inverse("HasShapeAspects");
+                std::vector<IfcUtil::IfcBaseClass*> shape_aspects;
+                if (aspects) {
+                    for (auto& aspect : *aspects) {
+                        if (aspect) shape_aspects.push_back(aspect);
+                    }
+                }
+                for (auto* aspect : shape_aspects) {
+                    auto shape_reps = read_ref_list(aspect, "ShapeRepresentations");
+                    file->removeEntity(aspect);
+                    for (auto* shape_rep : shape_reps) {
+                        remove_representation_simple(file, shape_rep);
+                    }
+                }
+            } catch (const std::exception& e) {
+                throw std::runtime_error(std::string("Failed to process shape aspects: ") + e.what());
+            }
+        }
         write_ref(product, "Representation", nullptr);
         file->removeEntity(def);
     } else {
@@ -603,54 +620,6 @@ IfcUtil::IfcBaseClass* geometry_assign_representation(
 
 namespace {
 
-// Fixed-point inverse-purge starting at `root`. Deletes `root` and any
-// transitively reachable entity whose only remaining inverses are also in
-// the to-be-deleted set.
-void remove_subgraph(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* root) {
-    if (!root) return;
-    auto subs = file->traverse(root, -1);
-    if (!subs) { file->removeEntity(root); return; }
-
-    std::vector<IfcUtil::IfcBaseClass*> candidates;
-    candidates.reserve(subs->size());
-    for (auto& s : *subs) {
-        if (!s) continue;
-        if (is_a(s, "IfcGeometricRepresentationContext")) continue;
-        candidates.push_back(s);
-    }
-
-    std::set<unsigned> planned;
-    for (auto* c : candidates) planned.insert(c->id());
-
-    bool progress = true;
-    while (progress) {
-        progress = false;
-        for (auto it = candidates.begin(); it != candidates.end();) {
-            auto* e = *it;
-            unsigned id = e->id();
-            if (id == 0) { it = candidates.erase(it); continue; }
-            auto invs = file->getInverse(id, nullptr, -1);
-            bool has_external = false;
-            if (invs) {
-                for (auto& inv : *invs) {
-                    if (!inv) continue;
-                    if (planned.find(inv->id()) == planned.end()) {
-                        has_external = true; break;
-                    }
-                }
-            }
-            if (!has_external) {
-                file->removeEntity(e);
-                planned.erase(id);
-                it = candidates.erase(it);
-                progress = true;
-            } else {
-                ++it;
-            }
-        }
-    }
-}
-
 void process_shape_aspects_for_rep_map(IfcParse::IfcFile* file,
                                        IfcUtil::IfcBaseClass* rep_map) {
     std::vector<IfcUtil::IfcBaseClass*> shape_aspects;
@@ -700,7 +669,7 @@ void unassign_products_using_mapped_representation(IfcParse::IfcFile* file,
     if (!map_usages) return;
     for (auto& mu : *map_usages) {
         if (!mu) continue;
-        auto invs = file->getInverse(mu->id(), nullptr, 1);
+        auto invs = file->getInverse(mu->id(), nullptr, -1);
         if (!invs) continue;
         for (auto& inv : *invs) {
             if (!inv || !is_a(inv, "IfcShapeRepresentation")) continue;
@@ -762,7 +731,7 @@ void unassign_type_representation(IfcParse::IfcFile* file,
     auto* placeholder = file->create(sr_decl);
     write_ref(matching, "MappedRepresentation", placeholder);
 
-    remove_subgraph(file, matching);
+    ifcapi::bindings::entity_remove_deep2(matching);
 }
 
 // ---- profile extents (axis-aligned 2D bbox of an IfcProfileDef) ---------

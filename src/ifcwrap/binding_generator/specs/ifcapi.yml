@@ -1137,9 +1137,33 @@ discover:
     - namespace: ifcapi::bindings
       translation_unit: api/group/relationship.cpp
       include:
+        - group_add_group
+        - group_update_group_products
         - group_assign_group
         - group_unassign_group
       type_overrides:
+        group_add_group:
+          returns:
+            nullable: true
+          params:
+            description:
+              nullable: true
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        group_update_group_products:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
         group_assign_group:
           returns:
             nullable: true

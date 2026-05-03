@@ -17,9 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.guid
-import ifcopenshell.util.element
+from ifcopenshell.api import _relationship_capi
 
 
 def update_group_products(
@@ -42,28 +40,16 @@ def update_group_products(
         ifcopenshell.api.group.update_group_products(model,
             products=model.by_type("IfcFurniture"), group=group)
     """
-    if not group.IsGroupedBy:
-        return file.create_entity(
-            "IfcRelAssignsToGroup",
-            **{
-                "GlobalId": ifcopenshell.guid.new(),
-                "OwnerHistory": ifcopenshell.api.owner.create_owner_history(file),
-                "RelatedObjects": products,
-                "RelatingGroup": group,
-            }
-        )
-    else:
-        rels = group.IsGroupedBy
-        objects = set(products)
-        for rel in rels:
-            objects.update([g for g in rel.RelatedObjects if g.is_a("IfcGroup")])
-        to_purge = rels[1:]
-
-        for rel in to_purge:
-            history = rel.OwnerHistory
-            file.remove(rel)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
-
-        rels[0].RelatedObjects = list(objects)
-        return rels[0]
+    lib = _relationship_capi.get_lib()
+    owner_history, user, application = _relationship_capi.owner_context(file)
+    product_list = _relationship_capi.instance_list(products)
+    return _relationship_capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_group_update_group_products,
+        _relationship_capi.file_handle(file),
+        _relationship_capi.instance_handle(group),
+        _relationship_capi.instance_list_ptr(product_list),
+        _relationship_capi.instance_handle(owner_history),
+        _relationship_capi.instance_handle(user),
+        _relationship_capi.instance_handle(application),
+    )

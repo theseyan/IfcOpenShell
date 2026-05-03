@@ -20,6 +20,8 @@ _BIND_NAMES = (
     "ifcopenshell_ifcapi_spatial_unassign_container",
     "ifcopenshell_ifcapi_nest_assign_object",
     "ifcopenshell_ifcapi_nest_unassign_object",
+    "ifcopenshell_ifcapi_group_add_group",
+    "ifcopenshell_ifcapi_group_update_group_products",
     "ifcopenshell_ifcapi_group_assign_group",
     "ifcopenshell_ifcapi_group_unassign_group",
     "ifcopenshell_ifcapi_type_assign_type",
