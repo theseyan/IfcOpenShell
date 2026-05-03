@@ -420,12 +420,14 @@ namespace capi {
 // Thread-local storage for the most recent error string. Populated by
 // set_last_error() and read via the public ifcopenshell_last_error_message().
 extern thread_local std::string g_last_error;
+extern thread_local int g_last_error_kind;
 
 // Set the global error message that will be returned by
 // ifcopenshell_last_error_message(). Use this from external translation
 // units (e.g. high-level handwritten functions) to participate in the same
 // error reporting channel as the autogen API.
 void set_last_error(const std::string& message);
+void set_last_error(int kind, const std::string& message);
 
 // ------------------------------------------------------------------
 // Handle wrap/unwrap helpers

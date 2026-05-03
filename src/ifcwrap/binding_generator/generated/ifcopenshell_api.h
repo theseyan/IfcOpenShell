@@ -295,8 +295,18 @@ typedef struct ifcopenshell_shape_builder_mep_bend_shape_result_t {
     double main_profile_dimension;
 } ifcopenshell_shape_builder_mep_bend_shape_result_t;
 
+typedef enum {
+    IFCOPENSHELL_ERROR_NONE = 0,
+    IFCOPENSHELL_ERROR_RUNTIME = 1,
+    IFCOPENSHELL_ERROR_VALUE = 2,
+    IFCOPENSHELL_ERROR_TYPE = 3,
+    IFCOPENSHELL_ERROR_NOT_IMPLEMENTED = 4,
+    IFCOPENSHELL_ERROR_KEY = 5
+} ifcopenshell_error_kind_t;
+
 void ifcopenshell_clear_error(void);
 const char* ifcopenshell_last_error_message(void);
+int ifcopenshell_last_error_kind(void);
 
 void ifcopenshell_ifc_file_destroy(ifcopenshell_ifc_file_t* handle);
 void ifcopenshell_ifc_instance_streamer_destroy(ifcopenshell_ifc_instance_streamer_t* handle);
@@ -630,8 +640,8 @@ bool ifcopenshell_ifcapi_shape_builder_swept_disk_solid(ifcopenshell_ifc_file_t*
 bool ifcopenshell_ifcapi_shape_builder_translate(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* item, const ifcopenshell_double_list_t* translation, bool create_copy, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_shape_builder_triangulated_face_set(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_list_t* points, const ifcopenshell_int32_list_list_t* faces, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_shape_builder_vertex(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_t* position, ifcopenshell_ifc_instance_t** out_result);
-bool ifcopenshell_ifcapi_pset_add_pset(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* product, const char* name, ifcopenshell_ifc_instance_t* owner_history, const char* ifc2x3_subclass, ifcopenshell_ifc_instance_t** out_result);
-bool ifcopenshell_ifcapi_pset_add_qto(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* product, const char* name, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_pset_add_pset(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* product, const char* name, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, const char* ifc2x3_subclass, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_pset_add_qto(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* product, const char* name, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_pset_edit_pset(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* pset, const char* name, void* properties, ifcopenshell_ifc_instance_t* pset_template, bool should_purge, bool* out_result);
 bool ifcopenshell_ifcapi_pset_edit_qto(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* qto, const char* name, void* properties, ifcopenshell_ifc_instance_t* qto_template, bool* out_result);
 bool ifcopenshell_ifcapi_pset_props_free(void* props);

@@ -849,9 +849,9 @@ int do_set(IfcParse::IfcFile* file,
                 if (val_truthy(value) && (i + 2 == keys.size())) {
                     bool is_qto = icontains(k, "qto") || icontains(k, "quantity") || icontains(k, "quantities");
                     if (is_qto) {
-                        pset_inst = ifcapi::bindings::pset_add_qto(file, cur.inst, k, nullptr);
+                        pset_inst = ifcapi::bindings::pset_add_qto(file, cur.inst, k, nullptr, nullptr, nullptr);
                     } else {
-                        pset_inst = ifcapi::bindings::pset_add_pset(file, cur.inst, k, nullptr, nullptr);
+                        pset_inst = ifcapi::bindings::pset_add_pset(file, cur.inst, k, nullptr, nullptr, nullptr, nullptr);
                     }
                     if (pset_inst) {
                         pset_dict = make_dict();  /* empty */

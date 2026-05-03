@@ -6,70 +6,12 @@
 
 #include "ifcapi/bindings/entity.h"
 #include "ifcapi/bindings/owner.h"
+#include "ifcapi/detail/attribute.h"
 
-#include "ifcparse/IfcBaseClass.h"
 #include "ifcparse/IfcFile.h"
-#include "ifcparse/IfcSchema.h"
-
-#include <vector>
 
 namespace ifcapi {
 namespace detail {
-
-inline int find_attr_index(const IfcParse::entity* decl, const char* name) {
-    if (!decl) {
-        return -1;
-    }
-    auto attrs = decl->all_attributes();
-    for (size_t i = 0; i < attrs.size(); ++i) {
-        if (attrs[i]->name() == name) {
-            return static_cast<int>(i);
-        }
-    }
-    return -1;
-}
-
-inline std::vector<IfcUtil::IfcBaseClass*> get_ref_aggregate(IfcUtil::IfcBaseClass* entity, int attr_idx) {
-    std::vector<IfcUtil::IfcBaseClass*> result;
-    if (!entity || attr_idx < 0) {
-        return result;
-    }
-    try {
-        auto val = entity->get_attribute_value(static_cast<size_t>(attr_idx));
-        if (val.isNull()) {
-            return result;
-        }
-        auto agg = (aggregate_of_instance::ptr)val;
-        if (agg) {
-            for (auto& item : *agg) {
-                result.push_back(item);
-            }
-        }
-    } catch (...) {
-    }
-    return result;
-}
-
-inline void set_ref_aggregate(
-    IfcUtil::IfcBaseClass* entity,
-    int attr_idx,
-    const std::vector<IfcUtil::IfcBaseClass*>& refs)
-{
-    if (!entity || attr_idx < 0) {
-        return;
-    }
-    auto agg = aggregate_of_instance::ptr(new aggregate_of_instance());
-    for (auto* ref : refs) {
-        agg->push(ref);
-    }
-    entity->set_attribute_value(static_cast<size_t>(attr_idx), agg);
-}
-
-inline void set_ref(IfcUtil::IfcBaseClass* entity, int attr_idx, IfcUtil::IfcBaseClass* ref) {
-    if (entity && attr_idx >= 0 && ref) {
-        entity->set_attribute_value(static_cast<size_t>(attr_idx), ref);
-    }
-}
 
 inline IfcUtil::IfcBaseClass* ensure_owner_history(
     IfcParse::IfcFile* file,

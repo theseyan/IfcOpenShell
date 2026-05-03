@@ -2,6 +2,7 @@
 
 #include "ifcapi/ifcapi.h"
 #include "ifcapi/bindings/schema.h"
+#include "ifcapi/detail/error.h"
 
 #include "ifcparse/IfcFile.h"
 #include "ifcparse/IfcSchema.h"
@@ -24,7 +25,8 @@
 
 namespace {
 
-inline void set_error(const std::string& msg) { ifcopenshell::capi::set_last_error(msg); }
+inline void set_error(const std::string& msg) { ifcapi::detail::set_error(msg); }
+inline void set_value_error(const std::string& msg) { ifcapi::detail::set_error(ifcapi::detail::ERROR_VALUE, msg); }
 
 const IfcParse::parameter_type* leaf_pt(const IfcParse::parameter_type* pt) {
     while (pt) {
@@ -189,8 +191,8 @@ IfcUtil::IfcBaseClass* reassign_class_impl(
     const IfcParse::declaration* new_decl_any = nullptr;
     try { new_decl_any = schema->declaration_by_name(new_class); }
     catch (...) {
-        set_error(std::string("Class could not be changed to ") + new_class +
-                  " as the class does not exist in schema " + (schema ? schema->name() : ""));
+        set_value_error(std::string("Class could not be changed to ") + new_class +
+                        " as the class does not exist in schema " + (schema ? schema->name() : ""));
         return nullptr;
     }
     const auto* new_entity_decl = new_decl_any ? new_decl_any->as_entity() : nullptr;

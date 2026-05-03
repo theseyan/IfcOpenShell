@@ -23,6 +23,7 @@ import ifcopenshell.api.pset
 import ifcopenshell.api.root
 import ifcopenshell.guid
 import ifcopenshell.util.element
+import pytest
 import test.bootstrap
 
 
@@ -315,6 +316,76 @@ class TestEditPsetIFC4(test.bootstrap.IFC4, TestEditPsetIFC2X3):
         ifcopenshell.api.pset.edit_pset(self.file, pset=pset, properties={"Status": []}, should_purge=True)
         pset = element.IsDefinedBy[0].RelatingPropertyDefinition
         assert len(pset.HasProperties) == 0
+
+    def test_copying_an_existing_enumerated_property_value(self):
+        element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        pset = ifcopenshell.api.pset.add_pset(self.file, product=element, name="Pset_WallCommon")
+        ifcopenshell.api.pset.edit_pset(self.file, pset=pset, properties={"Status": ["NEW"]})
+
+        replacement_reference = self.file.create_entity(
+            "IfcPropertyEnumeration",
+            Name="CustomStatus",
+            EnumerationValues=[self.file.create_entity("IfcLabel", "OLD")],
+        )
+        replacement = self.file.create_entity(
+            "IfcPropertyEnumeratedValue",
+            Name="Status",
+            EnumerationValues=[self.file.create_entity("IfcLabel", "OLD")],
+            EnumerationReference=replacement_reference,
+        )
+        ifcopenshell.api.pset.edit_pset(self.file, pset=pset, properties={"Status": replacement})
+
+        prop = pset.HasProperties[0]
+        assert prop.EnumerationValues[0].wrappedValue == "OLD"
+        assert prop.EnumerationReference.Name == "CustomStatus"
+        assert prop.EnumerationReference.EnumerationValues[0].wrappedValue == "OLD"
+
+    def test_rejecting_invalid_enum_property_values(self):
+        element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        pset = ifcopenshell.api.pset.add_pset(self.file, product=element, name="Pset_WallCommon")
+        ifcopenshell.api.pset.edit_pset(self.file, pset=pset, properties={"Status": ["NEW"]})
+
+        with pytest.raises(ValueError, match="not a valid value for enum property Status"):
+            ifcopenshell.api.pset.edit_pset(self.file, pset=pset, properties={"Status": "INVALID"})
+
+    def test_rejecting_arbitrary_entities_as_property_values(self):
+        element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        pset = ifcopenshell.api.pset.add_pset(self.file, product=element, name="Foo_Bar")
+
+        with pytest.raises(ValueError, match="cannot be assigned to the property set"):
+            ifcopenshell.api.pset.edit_pset(self.file, pset=pset, properties={"Invalid": element})
+
+    def test_rejecting_list_values_without_a_matching_template(self):
+        element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        pset = ifcopenshell.api.pset.add_pset(self.file, product=element, name="Foo_Bar")
+
+        with pytest.raises(NotImplementedError, match="No template found for property 'Unsupported'"):
+            ifcopenshell.api.pset.edit_pset(self.file, pset=pset, properties={"Unsupported": ["One"]})
+
+    def test_rejecting_unsupported_list_value_template_types(self):
+        template = self.file.create_entity(
+            "IfcPropertySetTemplate",
+            GlobalId=ifcopenshell.guid.new(),
+            Name="Foo_Bar",
+            TemplateType="PSET_TYPEDRIVENOVERRIDE",
+            ApplicableEntity="IfcWall",
+            HasPropertyTemplates=[
+                self.file.create_entity(
+                    "IfcSimplePropertyTemplate",
+                    GlobalId=ifcopenshell.guid.new(),
+                    Name="Unsupported",
+                    TemplateType="P_TABLEVALUE",
+                    PrimaryMeasureType="IfcLabel",
+                )
+            ],
+        )
+        element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        pset = ifcopenshell.api.pset.add_pset(self.file, product=element, name="Foo_Bar")
+
+        with pytest.raises(NotImplementedError, match="Template type 'P_TABLEVALUE' is not supported yet"):
+            ifcopenshell.api.pset.edit_pset(
+                self.file, pset=pset, pset_template=template, properties={"Unsupported": ["One"]}
+            )
 
     def test_editing_list_valued_properties(self):
         cable = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcDistributionPort", predefined_type="CABLE")

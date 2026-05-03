@@ -18,10 +18,17 @@
 
 import ifcopenshell.api.project
 import ifcopenshell.util.schema as subject
+import pytest
 import test.bootstrap
 
 
 class TestMigrator(test.bootstrap.IFC4):
+    def test_reassigning_to_a_missing_class_raises_value_error(self):
+        element = self.file.create_entity("IfcWall")
+
+        with pytest.raises(ValueError, match="class does not exist in schema IFC4"):
+            subject.reassign_class(self.file, element, "IfcImaginary")
+
     def test_migrate_element_using_attribute_mapping_ifc4_ifc4x3(self):
         ifc4_file = ifcopenshell.api.project.create_file()
         original_element = ifc4_file.createIfcWorkTime(Start="2024-01-01", Finish="2024-01-01")

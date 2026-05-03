@@ -112,7 +112,7 @@ def _generated_slice(name: str) -> str:
         return "ifcparse"
     if name.startswith("ifcopenshell_ifc_"):
         return "ifcparse_handle"
-    if name in {"ifcopenshell_clear_error", "ifcopenshell_last_error_message"}:
+    if name in {"ifcopenshell_clear_error", "ifcopenshell_last_error_message", "ifcopenshell_last_error_kind"}:
         return "common_error"
     if name.startswith(("ifcopenshell_string", "ifcopenshell_bool_list", "ifcopenshell_int", "ifcopenshell_uint", "ifcopenshell_double")):
         return "common_value"
@@ -171,6 +171,7 @@ def _is_allowed_manual_generated_overlap(source: str, name: str) -> bool:
     if source == "src/ifcapi/python/ifcopenshell/__init__.py":
         return name in {
             "ifcopenshell_clear_error",
+            "ifcopenshell_last_error_kind",
             "ifcopenshell_ifc_file_by_id",
             "ifcopenshell_ifc_file_key_value_store_iter",
             "ifcopenshell_ifc_file_key_value_store_query",

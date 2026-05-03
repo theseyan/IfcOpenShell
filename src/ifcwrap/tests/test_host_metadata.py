@@ -85,6 +85,7 @@ def test_host_metadata_derives_ctypes_relevant_layouts_and_signatures(tmp_path: 
     assert metadata.error_functions == {
         "clear_error": "ifcopenshell_demo_clear_error",
         "last_error_message": "ifcopenshell_demo_last_error_message",
+        "last_error_kind": "ifcopenshell_demo_last_error_kind",
     }
     assert metadata.handles["file"].layout == "ptr_owned"
     assert metadata.handles["file"].fields[0].c_type == "void*"

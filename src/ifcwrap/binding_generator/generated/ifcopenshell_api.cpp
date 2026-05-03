@@ -24,8 +24,15 @@
 namespace ifcopenshell {
 namespace capi {
 thread_local std::string g_last_error;
+thread_local int g_last_error_kind = 0;
 
 void set_last_error(const std::string& message) {
+    g_last_error_kind = 1;
+    g_last_error = message;
+}
+
+void set_last_error(int kind, const std::string& message) {
+    g_last_error_kind = kind;
     g_last_error = message;
 }
 } // namespace capi
@@ -1761,10 +1768,15 @@ static std::vector<uint8_t> to_cpp_uint8_list(const ifcopenshell_uint8_list_t* v
 
 void ifcopenshell_clear_error(void) {
     ifcopenshell::capi::g_last_error.clear();
+    ifcopenshell::capi::g_last_error_kind = 0;
 }
 
 const char* ifcopenshell_last_error_message(void) {
     return ifcopenshell::capi::g_last_error.c_str();
+}
+
+int ifcopenshell_last_error_kind(void) {
+    return ifcopenshell::capi::g_last_error_kind;
 }
 
 void ifcopenshell_ifc_file_destroy(ifcopenshell_ifc_file_t* handle) {
@@ -7767,7 +7779,7 @@ bool ifcopenshell_ifcapi_shape_builder_vertex(ifcopenshell_ifc_file_t* file, con
     }
 }
 
-bool ifcopenshell_ifcapi_pset_add_pset(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* product, const char* name, ifcopenshell_ifc_instance_t* owner_history, const char* ifc2x3_subclass, ifcopenshell_ifc_instance_t** out_result) {
+bool ifcopenshell_ifcapi_pset_add_pset(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* product, const char* name, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, const char* ifc2x3_subclass, ifcopenshell_ifc_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -7778,8 +7790,10 @@ bool ifcopenshell_ifcapi_pset_add_pset(ifcopenshell_ifc_file_t* file, ifcopenshe
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
     auto owner_history_cpp = (owner_history != nullptr && owner_history->ptr != nullptr) ? owner_history->ptr : nullptr;
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
     const char* ifc2x3_subclass_str = ifc2x3_subclass;
-        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::pset_add_pset(file_cpp, product_cpp, name_cpp, owner_history_cpp, ifc2x3_subclass), false};
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::pset_add_pset(file_cpp, product_cpp, name_cpp, owner_history_cpp, user_cpp, application_cpp, ifc2x3_subclass), false};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -7790,7 +7804,7 @@ bool ifcopenshell_ifcapi_pset_add_pset(ifcopenshell_ifc_file_t* file, ifcopenshe
     }
 }
 
-bool ifcopenshell_ifcapi_pset_add_qto(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* product, const char* name, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t** out_result) {
+bool ifcopenshell_ifcapi_pset_add_qto(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* product, const char* name, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -7801,7 +7815,9 @@ bool ifcopenshell_ifcapi_pset_add_qto(ifcopenshell_ifc_file_t* file, ifcopenshel
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
     auto owner_history_cpp = (owner_history != nullptr && owner_history->ptr != nullptr) ? owner_history->ptr : nullptr;
-        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::pset_add_qto(file_cpp, product_cpp, name_cpp, owner_history_cpp), false};
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::pset_add_qto(file_cpp, product_cpp, name_cpp, owner_history_cpp, user_cpp, application_cpp), false};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

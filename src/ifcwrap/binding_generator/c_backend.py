@@ -769,8 +769,18 @@ extern "C" {{
 
 {result_struct_decls}
 
+typedef enum {{
+    IFCOPENSHELL_ERROR_NONE = 0,
+    IFCOPENSHELL_ERROR_RUNTIME = 1,
+    IFCOPENSHELL_ERROR_VALUE = 2,
+    IFCOPENSHELL_ERROR_TYPE = 3,
+    IFCOPENSHELL_ERROR_NOT_IMPLEMENTED = 4,
+    IFCOPENSHELL_ERROR_KEY = 5
+}} ifcopenshell_error_kind_t;
+
 void {spec.c_prefix}_clear_error(void);
 const char* {spec.c_prefix}_last_error_message(void);
+int {spec.c_prefix}_last_error_kind(void);
 
 {destroy_decls}
 {handle_list_destroy_decls}
@@ -1296,12 +1306,14 @@ namespace capi {{
 // Thread-local storage for the most recent error string. Populated by
 // set_last_error() and read via the public {spec.c_prefix}_last_error_message().
 extern thread_local std::string g_last_error;
+extern thread_local int g_last_error_kind;
 
 // Set the global error message that will be returned by
 // {spec.c_prefix}_last_error_message(). Use this from external translation
 // units (e.g. high-level handwritten functions) to participate in the same
 // error reporting channel as the autogen API.
 void set_last_error(const std::string& message);
+void set_last_error(int kind, const std::string& message);
 
 // ------------------------------------------------------------------
 // Handle wrap/unwrap helpers
@@ -1469,8 +1481,15 @@ def _render_cpp(spec: BindingIR, header_name: str) -> str:
 namespace ifcopenshell {{
 namespace capi {{
 thread_local std::string g_last_error;
+thread_local int g_last_error_kind = 0;
 
 void set_last_error(const std::string& message) {{
+    g_last_error_kind = 1;
+    g_last_error = message;
+}}
+
+void set_last_error(int kind, const std::string& message) {{
+    g_last_error_kind = kind;
     g_last_error = message;
 }}
 }} // namespace capi
@@ -1852,10 +1871,15 @@ void set_instance_attribute_from_attribute_value(IfcUtil::IfcBaseClass* instance
 
 void {spec.c_prefix}_clear_error(void) {{
     ifcopenshell::capi::g_last_error.clear();
+    ifcopenshell::capi::g_last_error_kind = 0;
 }}
 
 const char* {spec.c_prefix}_last_error_message(void) {{
     return ifcopenshell::capi::g_last_error.c_str();
+}}
+
+int {spec.c_prefix}_last_error_kind(void) {{
+    return ifcopenshell::capi::g_last_error_kind;
 }}
 
 {destroy_impls_block}
