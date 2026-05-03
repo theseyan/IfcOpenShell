@@ -18,16 +18,101 @@
 
 import pathlib
 import re
+import ctypes
 from functools import lru_cache
 from typing import Literal, NamedTuple, Optional, Union
 
 import ifcopenshell
 import ifcopenshell.ifcopenshell_wrapper as W
+from ifcopenshell import _generated_capi
 import ifcopenshell.util.schema
 import ifcopenshell.util.type
 from ifcopenshell.entity_instance import entity_instance
 
 templates: dict[ifcopenshell.util.schema.IFC_SCHEMA, "PsetQto"] = {}
+_BOUND = False
+
+
+def _get_lib() -> ctypes.CDLL:
+    global _BOUND
+    lib = ifcopenshell._get_lib()
+    if not _BOUND:
+        _generated_capi.bind(
+            lib,
+            names=(
+                "ifcopenshell_ifcapi_pset_template_get_applicable",
+                "ifcopenshell_ifcapi_pset_template_get_applicable_names",
+                "ifcopenshell_ifcapi_pset_template_get_by_name",
+                "ifcopenshell_ifcapi_pset_template_create_from_files",
+                "ifcopenshell_ifcapi_pset_template_free",
+                "ifcopenshell_ifcapi_pset_template_get_template",
+                "ifcopenshell_ifcapi_pset_template_is_templated",
+                "ifcopenshell_ifcapi_pset_template_pset_type",
+                "ifcopenshell_ifc_file_list_destroy",
+                "ifcopenshell_ifc_instance_destroy",
+                "ifcopenshell_ifc_instance_file_pointer",
+                "ifcopenshell_ifc_instance_list_destroy",
+                "ifcopenshell_string_list_destroy",
+                "ifcopenshell_last_error_kind",
+                "ifcopenshell_last_error_message",
+            ),
+        )
+        _BOUND = True
+    return lib
+
+
+def _encode_optional(value: str | None):
+    return _generated_capi.encode_string(value) if value else None
+
+
+def _template_file_for_handle(
+    handle: int, template_files_by_ptr: dict[int, ifcopenshell.file] | None = None
+) -> ifcopenshell.file:
+    ptr = ifcopenshell._instance_file_ptr(handle)
+    if template_files_by_ptr and ptr in template_files_by_ptr:
+        return template_files_by_ptr[ptr]
+    return ifcopenshell._borrow_file_ptr(ptr)
+
+
+def _wrap_template_instance(
+    handle: int | None, template_files_by_ptr: dict[int, ifcopenshell.file] | None = None
+) -> Optional[entity_instance]:
+    if not handle:
+        return None
+    return entity_instance(_template_file_for_handle(handle, template_files_by_ptr), handle)
+
+
+def _file_list_arg(files: list[ifcopenshell.file]) -> _generated_capi.ifcopenshell_ifc_file_list_t:
+    handles = [
+        ctypes.cast(ctypes.c_void_p(file._ptr), ctypes.POINTER(_generated_capi._HandleStruct))
+        for file in files
+    ]
+    items = (ctypes.POINTER(_generated_capi._HandleStruct) * len(handles))(*handles)
+    result = _generated_capi.ifcopenshell_ifc_file_list_t()
+    result.items = items
+    result.size = len(items)
+    result._keepalive = (items, handles)  # type: ignore[attr-defined]
+    return result
+
+
+def _take_template_instances(
+    value: _generated_capi.ifcopenshell_ifc_instance_list_t,
+    template_files_by_ptr: dict[int, ifcopenshell.file] | None = None,
+) -> list[entity_instance]:
+    lib = _get_lib()
+    handles = _generated_capi.move_handle_list(
+        lib,
+        value,
+        lib.ifcopenshell_ifc_instance_list_destroy,
+        ctypes.POINTER(_generated_capi.ifcopenshell_ifc_instance_t),
+    )
+    result = []
+    for handle in handles:
+        if not handle:
+            continue
+        handle_value = ctypes.cast(handle, ctypes.c_void_p).value
+        result.append(entity_instance(_template_file_for_handle(handle_value, template_files_by_ptr), handle_value))
+    return result
 
 
 def get_template(schema_identiier: str) -> "PsetQto":
@@ -57,18 +142,49 @@ class PsetQto:
         templates: Optional[list[ifcopenshell.file]] = None,
     ) -> None:
         self.schema = ifcopenshell.schema_by_name(schema)
+        self._native_ptr: ctypes.c_void_p | None = None
+        self._owns_native_ptr = False
+        self._template_keepalive: tuple[ifcopenshell.file, ...] = ()
+        self._template_files_by_ptr: dict[int, ifcopenshell.file] = {}
         if not templates:
-            folder_path = pathlib.Path(__file__).parent.absolute()
-            path = str(folder_path.joinpath("schema", self.templates_path[schema]))
-            ifc_file: ifcopenshell.file = ifcopenshell.open(path)
-            templates = [ifc_file]
-            # See bug 3583. We backport this change from IFC4X3 because it just makes sense.
-            # Users aren't forced to use it.
-            if schema == "IFC4":
-                for element in templates[0].by_type("IfcPropertySetTemplate"):
-                    if element.TemplateType == "QTO_OCCURRENCEDRIVEN":
-                        element.TemplateType = "QTO_TYPEDRIVENOVERRIDE"
-        self.templates = templates
+            lib = _get_lib()
+            native_ptr = ctypes.c_void_p()
+            _generated_capi.status_or_raise(
+                lib,
+                lib.ifcopenshell_ifcapi_pset_template_get_template(
+                    _generated_capi.encode_string(schema),
+                    ctypes.byref(native_ptr),
+                ),
+                ifcopenshell.get_log() or "ifcopenshell_ifcapi_pset_template_get_template",
+            )
+            self._native_ptr = native_ptr
+            self.templates = []
+        else:
+            lib = _get_lib()
+            native_ptr = ctypes.c_void_p()
+            template_files = _file_list_arg(templates)
+            _generated_capi.status_or_raise(
+                lib,
+                lib.ifcopenshell_ifcapi_pset_template_create_from_files(
+                    _generated_capi.encode_string(schema),
+                    ctypes.byref(template_files),
+                    ctypes.byref(native_ptr),
+                ),
+                ifcopenshell.get_log() or "ifcopenshell_ifcapi_pset_template_create_from_files",
+            )
+            self._native_ptr = native_ptr
+            self._owns_native_ptr = True
+            self._template_keepalive = tuple(templates)
+            self.templates = templates
+            self._template_files_by_ptr = {template.file_pointer(): template for template in self._template_keepalive}
+
+    def __del__(self) -> None:
+        if self._native_ptr is None or not self._owns_native_ptr:
+            return
+        try:
+            _get_lib().ifcopenshell_ifcapi_pset_template_free(self._native_ptr)
+        except Exception:
+            pass
 
     @lru_cache
     def get_applicable(
@@ -80,6 +196,24 @@ class PsetQto:
         schema: ifcopenshell.util.schema.IFC_SCHEMA = "IFC4",
     ) -> list[entity_instance]:
         """Get applicable property set templates."""
+        if self._native_ptr is not None:
+            lib = _get_lib()
+            out = _generated_capi.ifcopenshell_ifc_instance_list_t()
+            _generated_capi.status_or_raise(
+                lib,
+                lib.ifcopenshell_ifcapi_pset_template_get_applicable(
+                    self._native_ptr,
+                    _encode_optional(ifc_class),
+                    _encode_optional(predefined_type),
+                    bool(pset_only),
+                    bool(qto_only),
+                    _encode_optional(schema),
+                    ctypes.byref(out),
+                ),
+                ifcopenshell.get_log() or "ifcopenshell_ifcapi_pset_template_get_applicable",
+            )
+            return _take_template_instances(out, self._template_files_by_ptr)
+
         any_class = not ifc_class
         entity = None
         if not any_class:
@@ -113,6 +247,21 @@ class PsetQto:
         schema: ifcopenshell.util.schema.IFC_SCHEMA = "IFC4",
     ) -> list[str]:
         """Return names instead of objects for other use eg. enum"""
+        if self._native_ptr is not None:
+            lib = _get_lib()
+            return list(
+                _generated_capi.call_string_list_or_raise(
+                    lib,
+                    lib.ifcopenshell_ifcapi_pset_template_get_applicable_names,
+                    ifcopenshell.get_log() or "ifcopenshell_ifcapi_pset_template_get_applicable_names",
+                    self._native_ptr,
+                    _encode_optional(ifc_class),
+                    _encode_optional(predefined_type),
+                    bool(pset_only),
+                    bool(qto_only),
+                    _encode_optional(schema),
+                )
+            )
         return [
             prop_set.Name for prop_set in self.get_applicable(ifc_class, predefined_type, pset_only, qto_only, schema)
         ]
@@ -180,6 +329,18 @@ class PsetQto:
 
     @lru_cache
     def get_by_name(self, name: str) -> Optional[entity_instance]:
+        if self._native_ptr is not None:
+            lib = _get_lib()
+            handle = _generated_capi.call_handle_or_raise(
+                lib,
+                lib.ifcopenshell_ifcapi_pset_template_get_by_name,
+                ifcopenshell.get_log() or "ifcopenshell_ifcapi_pset_template_get_by_name",
+                self._native_ptr,
+                _generated_capi.encode_string(name),
+                destroy=lib.ifcopenshell_ifc_instance_destroy,
+                handle_pointer_type=ctypes.POINTER(_generated_capi.ifcopenshell_ifc_instance_t),
+            )
+            return _wrap_template_instance(handle, self._template_files_by_ptr)
         for template in self.templates:
             for prop_set in template.by_type("IfcPropertySetTemplate"):
                 if prop_set.Name == name:
@@ -187,12 +348,36 @@ class PsetQto:
         return None
 
     def is_templated(self, name: str) -> bool:
+        if self._native_ptr is not None:
+            lib = _get_lib()
+            return bool(
+                _generated_capi.call_scalar_or_raise(
+                    lib,
+                    lib.ifcopenshell_ifcapi_pset_template_is_templated,
+                    ctypes.c_bool,
+                    ifcopenshell.get_log() or "ifcopenshell_ifcapi_pset_template_is_templated",
+                    self._native_ptr,
+                    _generated_capi.encode_string(name),
+                )
+            )
         return bool(self.get_by_name(name))
 
 
 def get_pset_template_type(pset_template: entity_instance) -> Literal["PSET", "QTO", None]:
     """Get the type of the pset template.
     If type is mixed or not defined, return None."""
+    lib = _get_lib()
+    pset_type = _generated_capi.call_string_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_pset_template_pset_type,
+        ifcopenshell.get_log() or "ifcopenshell_ifcapi_pset_template_pset_type",
+        ctypes.cast(
+            ctypes.c_void_p(pset_template._handle),
+            ctypes.POINTER(_generated_capi.ifcopenshell_ifc_instance_t),
+        ),
+    )
+    if pset_type:
+        return pset_type  # type: ignore[return-value]
 
     # Try to identify whether it's pset or qto from the template type.
     template_type = pset_template.TemplateType

@@ -78,10 +78,14 @@ def _configure_element_lib(lib) -> None:
             "ifcopenshell_ifcapi_element_get_layers",
             "ifcopenshell_ifcapi_element_get_styles",
             "ifcopenshell_ifcapi_element_get_decomposition",
+            "ifcopenshell_ifcapi_element_replace_element",
+            "ifcopenshell_ifcapi_entity_remove_deep2_ex",
             "ifcopenshell_ifcparse_instance_list_destroy",
             "ifcopenshell_ifcparse_instance_list_get",
             "ifcopenshell_ifcparse_instance_list_size",
             "ifcopenshell_ifc_instance_destroy",
+            "ifcopenshell_last_error_kind",
+            "ifcopenshell_last_error_message",
         ),
     )
     _element_lib_configured = True
@@ -101,7 +105,9 @@ def _call_element_instance(element: ifcopenshell.entity_instance, name: str, *ar
     return ifcopenshell.entity_instance(element.file, handle) if handle else None
 
 
-def _call_element_instance_list(element: ifcopenshell.entity_instance, name: str, *args) -> list[ifcopenshell.entity_instance]:
+def _call_element_instance_list(
+    element: ifcopenshell.entity_instance, name: str, *args
+) -> list[ifcopenshell.entity_instance]:
     lib = ifcopenshell._get_lib()
     _configure_element_lib(lib)
     out = ctypes.POINTER(_generated_capi.ifcopenshell_ifcparse_instance_list_t)()
@@ -113,8 +119,24 @@ def _call_element_instance_list(element: ifcopenshell.entity_instance, name: str
 def _call_element_bool(element: ifcopenshell.entity_instance, name: str) -> bool:
     lib = ifcopenshell._get_lib()
     _configure_element_lib(lib)
-    result = _generated_capi.call_scalar(getattr(lib, name), ctypes.c_bool, _generated_instance_handle_ptr(element._handle))
+    result = _generated_capi.call_scalar(
+        getattr(lib, name),
+        ctypes.c_bool,
+        _generated_instance_handle_ptr(element._handle),
+    )
     return bool(result)
+
+
+def _instance_list_arg(
+    entities: Sequence[ifcopenshell.entity_instance],
+) -> _generated_capi.ifcopenshell_ifc_instance_list_t:
+    handles = [_generated_instance_handle_ptr(entity._handle) for entity in entities]
+    items = (ctypes.POINTER(_generated_capi._HandleStruct) * len(handles))(*handles)
+    result = _generated_capi.ifcopenshell_ifc_instance_list_t()
+    result.items = items
+    result.size = len(items)
+    result._keepalive = (items, handles)  # type: ignore[attr-defined]
+    return result
 
 
 def get_pset(
@@ -883,7 +905,9 @@ def get_elements_by_representation(
     """
     if not ifc_file:
         ifc_file = representation.file
-    return set(_call_element_instance_list(representation, "ifcopenshell_ifcapi_element_get_elements_by_representation"))
+    return set(
+        _call_element_instance_list(representation, "ifcopenshell_ifcapi_element_get_elements_by_representation")
+    )
 
 
 def get_elements_by_profile(profile: ifcopenshell.entity_instance) -> set[ifcopenshell.entity_instance]:
@@ -1313,8 +1337,16 @@ def get_referenced_elements(reference: ifcopenshell.entity_instance) -> set[ifco
 
 
 def replace_element(element: ifcopenshell.entity_instance, replacement: ifcopenshell.entity_instance) -> None:
-    for inverse in element.file.get_inverse(element):
-        replace_attribute(inverse, element, replacement)
+    lib = ifcopenshell._get_lib()
+    _configure_element_lib(lib)
+    _generated_capi.status_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_element_replace_element(
+            _generated_instance_handle_ptr(element._handle),
+            _generated_instance_handle_ptr(replacement._handle),
+        ),
+        ifcopenshell.get_log() or "ifcopenshell_ifcapi_element_replace_element",
+    )
 
 
 def replace_attribute(element: ifcopenshell.entity_instance, old: Any, new: Any) -> None:
@@ -1449,74 +1481,68 @@ def remove_deep2(
     :param do_not_delete: elements to protect from deletion
     :param element: The starting element that defines the subgraph
     """
-    # ifc_file.batch()
     if not ifc_file:
         ifc_file = element.file
-    total_inverses = ifc_file.get_total_inverses(element)
-    if total_inverses > 0:
-
-        def are_inverses_contained() -> bool:
-            also_considered_inverses = 0
-
-            for considered_element in also_consider:
-                traverse = ifc_file.traverse(considered_element, max_levels=1)
-                if element in traverse:
-                    also_considered_inverses += 1
-                    if total_inverses == also_considered_inverses:
-                        return True
-            return False
-
-        if not are_inverses_contained():
-            return
-
-    to_delete: set[ifcopenshell.entity_instance] = set()
-    subgraph = list(ifc_file.traverse(element, breadth_first=True))
-    subgraph.extend(also_consider)
-    subgraph_set = set(subgraph)
-    subelement_queue = [element]
-
-    # Cache already processed entities to avoid traversing them multiple time.
-    # E.g. lots of IFCINDEXEDPOLYCURVES may reference the same IFCCARTESIANPOINTLIST2D.
-    processed_ids: set[int] = set()
-
-    while subelement_queue:
-        subelement = subelement_queue.pop(0)
-        subelement_id = subelement.id()
-        if (
-            subelement_id
-            and subelement_id not in processed_ids
-            and subelement not in do_not_delete
-            and (
-                # 0 or 1 inverses guarantees that the subelement only exists in this subgraph
-                ifc_file.get_total_inverses(subelement) < 2
-                # Alternatively, let's ensure all inverses are within the subgraph
-                or len(set(ifc_file.get_inverse(subelement)) - subgraph_set) == 0
-            )
-        ):
-            to_delete.add(subelement)
-            subelement_queue.extend(ifc_file.traverse(subelement, max_levels=1)[1:])
-            # See #3052. IfcOpenShell is extremely slow in removing elements if
-            # the element has an inverse, and that inverse references that
-            # element in a big list. The most common example is an
-            # IfcPolygonalFaceSet with a Faces attribute of tens of thousands
-            # of IfcIndexedPolygonalFace. In this situation, removing a
-            # IfcIndexedPolygonalFace will take very, very long. If we are
-            # going to delete an element (i.e. added to the to_delete set), we
-            # clear any large lists (10 is an arbitrary threshold) to prevent
-            # this issue.
-            for i, attribute in enumerate(subelement):
-                if isinstance(attribute, tuple) and len(attribute) > 10:
-                    subelement[i] = []
-        processed_ids.add(subelement_id)
 
     if ifc_file.to_delete is not None:
+        total_inverses = ifc_file.get_total_inverses(element)
+        if total_inverses > 0:
+
+            def are_inverses_contained() -> bool:
+                also_considered_inverses = 0
+
+                for considered_element in also_consider:
+                    traverse = ifc_file.traverse(considered_element, max_levels=1)
+                    if element in traverse:
+                        also_considered_inverses += 1
+                        if total_inverses == also_considered_inverses:
+                            return True
+                return False
+
+            if not are_inverses_contained():
+                return
+
+        to_delete: set[ifcopenshell.entity_instance] = set()
+        subgraph = list(ifc_file.traverse(element, breadth_first=True))
+        subgraph.extend(also_consider)
+        subgraph_set = set(subgraph)
+        subelement_queue = [element]
+
+        processed_ids: set[int] = set()
+        while subelement_queue:
+            subelement = subelement_queue.pop(0)
+            subelement_id = subelement.id()
+            if (
+                subelement_id
+                and subelement_id not in processed_ids
+                and subelement not in do_not_delete
+                and (
+                    ifc_file.get_total_inverses(subelement) < 2
+                    or len(set(ifc_file.get_inverse(subelement)) - subgraph_set) == 0
+                )
+            ):
+                to_delete.add(subelement)
+                subelement_queue.extend(ifc_file.traverse(subelement, max_levels=1)[1:])
+                for i, attribute in enumerate(subelement):
+                    if isinstance(attribute, tuple) and len(attribute) > 10:
+                        subelement[i] = []
+            processed_ids.add(subelement_id)
         ifc_file.to_delete.update(to_delete)
         return
 
-    # We delete elements from subgraph in reverse order to allow batching to work
-    for subelement in filter(lambda e: e in to_delete, subgraph[::-1]):
-        ifc_file.remove(subelement)
-    # ifc_file.unbatch()
+    lib = ifcopenshell._get_lib()
+    _configure_element_lib(lib)
+    also_consider_list = _instance_list_arg(also_consider)
+    do_not_delete_list = _instance_list_arg(tuple(do_not_delete))
+    _generated_capi.status_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_entity_remove_deep2_ex(
+            _generated_instance_handle_ptr(element._handle),
+            ctypes.byref(also_consider_list),
+            ctypes.byref(do_not_delete_list),
+        ),
+        ifcopenshell.get_log() or "ifcopenshell_ifcapi_entity_remove_deep2_ex",
+    )
 
 
 def copy(

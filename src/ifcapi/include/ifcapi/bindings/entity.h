@@ -7,10 +7,16 @@
 
 #include "ifcparse/IfcBaseClass.h"
 
+#include <vector>
+
 namespace ifcapi {
 namespace bindings {
 
 IFCAPI_BINDING void entity_remove_deep2(IfcUtil::IfcBaseClass* instance);
+IFCAPI_BINDING void entity_remove_deep2_ex(
+    IfcUtil::IfcBaseClass* instance,
+    const std::vector<const IfcUtil::IfcBaseClass*>& also_consider,
+    const std::vector<const IfcUtil::IfcBaseClass*>& do_not_delete);
 
 } // namespace bindings
 } // namespace ifcapi

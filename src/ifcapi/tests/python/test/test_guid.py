@@ -91,6 +91,16 @@ def test_expand_compress_SIMPLE_CASE(
     check.assertEqual(uuid, uuid_orig, "compression then expansion should recover the original UUID")  # fmt: skip
 
 
+def test_compress_accepts_brace_wrapped_uuid(
+    # fixtures
+    check: TestCase,
+):
+    uuid_orig = "12345678123412341234123456789abc"
+    uuid_wrapped = "{12345678-1234-1234-1234-123456789abc}"
+
+    check.assertEqual(compress(uuid_wrapped), compress(uuid_orig))
+
+
 @mark.parametrize(
     ("uuid_orig",),
     [(f"{n:0x}" * 32,) for n in range(16)],

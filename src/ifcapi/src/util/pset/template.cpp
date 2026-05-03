@@ -22,6 +22,7 @@ struct ifcopenshell_pset_template_t {
     std::string normalized_schema;
     const IfcParse::schema_definition* schema = nullptr;
     std::unique_ptr<IfcParse::IfcFile> templates_file;
+    std::vector<const IfcParse::IfcFile*> template_files;
 };
 
 namespace {
@@ -138,6 +139,7 @@ ifcopenshell_pset_template_t* get_or_load_locked(const std::string& schema_id) {
         cache->schema = nullptr;
     }
     cache->templates_file = std::move(tf);
+    cache->template_files.push_back(cache->templates_file.get());
 
     auto* raw = cache.get();
     g_templates.emplace(normalized, std::move(cache));
@@ -231,16 +233,53 @@ ifcopenshell_pset_template_t* pset_template_get_template(const std::string& sche
     return get_or_load_locked(schema_identifier);
 }
 
+ifcopenshell_pset_template_t* pset_template_create_from_files(
+    const std::string& schema_identifier,
+    const std::vector<const IfcParse::IfcFile*>& template_files)
+{
+    if (schema_identifier.empty()) { set_error("schema_identifier is empty"); return nullptr; }
+    if (template_files.empty()) { set_error("template_files is empty"); return nullptr; }
+
+    std::string normalized = normalize_schema(schema_identifier);
+    if (normalized.empty()) {
+        set_error("Unexpected schema version: " + schema_identifier);
+        return nullptr;
+    }
+
+    auto cache = std::make_unique<ifcopenshell_pset_template_t>();
+    cache->normalized_schema = normalized;
+    try {
+        cache->schema = IfcParse::schema_by_name(normalized);
+    } catch (...) {
+        cache->schema = nullptr;
+    }
+    for (const auto* file : template_files) {
+        if (file) cache->template_files.push_back(file);
+    }
+    if (cache->template_files.empty()) {
+        set_error("template_files contains no valid files");
+        return nullptr;
+    }
+    return cache.release();
+}
+
+void pset_template_free(ifcopenshell_pset_template_t* pqt)
+{
+    delete pqt;
+}
+
 IfcUtil::IfcBaseClass* pset_template_get_by_name(ifcopenshell_pset_template_t* pqt, const std::string& name)
 {
     if (!pqt || name.empty()) return nullptr;
     std::lock_guard<std::mutex> lk(g_template_mutex);
-    auto* f = pqt->templates_file.get();
-    if (!f) return nullptr;
-    auto entities = f->instances_by_type("IfcPropertySetTemplate");
-    if (!entities) return nullptr;
-    for (auto it = entities->begin(); it != entities->end(); ++it) {
-        if (read_string(*it, "Name") == name) return *it;
+    for (const auto* f_const : pqt->template_files) {
+        auto* f = const_cast<IfcParse::IfcFile*>(f_const);
+        if (!f) continue;
+        auto entities = f->instances_by_type("IfcPropertySetTemplate");
+        if (!entities) continue;
+        for (auto it = entities->begin(); it != entities->end(); ++it) {
+            if (read_string(*it, "Name") == name) return *it;
+        }
     }
     return nullptr;
 }
@@ -249,12 +288,14 @@ bool pset_template_is_templated(ifcopenshell_pset_template_t* pqt, const std::st
 {
     if (!pqt || name.empty()) return false;
     std::lock_guard<std::mutex> lk(g_template_mutex);
-    auto* f = pqt->templates_file.get();
-    if (!f) return false;
-    auto entities = f->instances_by_type("IfcPropertySetTemplate");
-    if (!entities) return false;
-    for (auto it = entities->begin(); it != entities->end(); ++it) {
-        if (read_string(*it, "Name") == name) return true;
+    for (const auto* f_const : pqt->template_files) {
+        auto* f = const_cast<IfcParse::IfcFile*>(f_const);
+        if (!f) continue;
+        auto entities = f->instances_by_type("IfcPropertySetTemplate");
+        if (!entities) continue;
+        for (auto it = entities->begin(); it != entities->end(); ++it) {
+            if (read_string(*it, "Name") == name) return true;
+        }
     }
     return false;
 }
@@ -269,8 +310,6 @@ std::vector<IfcUtil::IfcBaseClass*> pset_template_get_applicable(
 {
     if (!pqt) return {};
     std::lock_guard<std::mutex> lk(g_template_mutex);
-    auto* f = pqt->templates_file.get();
-    if (!f) return {};
 
     std::string ifc_class_s = ifc_class ? ifc_class : "";
     std::string predefined_s = predefined_type ? predefined_type : "";
@@ -298,19 +337,23 @@ std::vector<IfcUtil::IfcBaseClass*> pset_template_get_applicable(
         }
     }
 
-    auto entities = f->instances_by_type("IfcPropertySetTemplate");
-    if (!entities) return {};
     std::vector<IfcUtil::IfcBaseClass*> result;
-    for (auto it = entities->begin(); it != entities->end(); ++it) {
-        std::string template_type;
-        if (!template_passes_filters(*it, pset_only, qto_only, template_type)) continue;
-        if (any_class) {
-            result.push_back(*it);
-        } else {
-            std::string applicables = read_string(*it, "ApplicableEntity");
-            if (applicables.empty()) applicables = "IfcRoot";
-            if (is_applicable(effective_schema, entity_decl, applicables, predefined_s, template_type)) {
+    for (const auto* f_const : pqt->template_files) {
+        auto* f = const_cast<IfcParse::IfcFile*>(f_const);
+        if (!f) continue;
+        auto entities = f->instances_by_type("IfcPropertySetTemplate");
+        if (!entities) continue;
+        for (auto it = entities->begin(); it != entities->end(); ++it) {
+            std::string template_type;
+            if (!template_passes_filters(*it, pset_only, qto_only, template_type)) continue;
+            if (any_class) {
                 result.push_back(*it);
+            } else {
+                std::string applicables = read_string(*it, "ApplicableEntity");
+                if (applicables.empty()) applicables = "IfcRoot";
+                if (is_applicable(effective_schema, entity_decl, applicables, predefined_s, template_type)) {
+                    result.push_back(*it);
+                }
             }
         }
     }

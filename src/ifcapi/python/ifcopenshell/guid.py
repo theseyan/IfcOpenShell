@@ -47,10 +47,10 @@ cf. <https://technical.buildingsmart.org/resources/ifcimplementationguidance/ifc
 # IMPORTS
 # ----------------------------------------------------------------
 
-import re
-import string
-from base64 import b64decode, b64encode
-from uuid import uuid4
+import ctypes
+
+import ifcopenshell
+from ifcopenshell import _generated_capi
 
 # ----------------------------------------------------------------
 # EXPORTS
@@ -63,19 +63,26 @@ __all__ = [
     "split",
 ]
 
-# ----------------------------------------------------------------
-# LOCAL CONSTANTS
-# ----------------------------------------------------------------
+_BOUND = False
 
-# standard convention
-_CHARS64_STD = string.ascii_uppercase + string.ascii_lowercase + string.digits + "+/"
 
-# ifc convention
-_CHARS64_IFC = string.digits + string.ascii_uppercase + string.ascii_lowercase + "_$"
-
-# translators
-_TRANS_IFC_TO_STD = str.maketrans(_CHARS64_IFC, _CHARS64_STD)
-_TRANS_STD_TO_IFC = str.maketrans(_CHARS64_STD, _CHARS64_IFC)
+def _get_lib() -> ctypes.CDLL:
+    global _BOUND
+    lib = ifcopenshell._get_lib()
+    if not _BOUND:
+        _generated_capi.bind(
+            lib,
+            names=(
+                "ifcopenshell_ifcapi_guid_compress",
+                "ifcopenshell_ifcapi_guid_expand",
+                "ifcopenshell_ifcapi_guid_new",
+                "ifcopenshell_string_destroy",
+                "ifcopenshell_last_error_kind",
+                "ifcopenshell_last_error_message",
+            ),
+        )
+        _BOUND = True
+    return lib
 
 # ----------------------------------------------------------------
 # METHODS
@@ -88,24 +95,13 @@ def compress(uuid: str, /) -> str:
 
     See <https://technical.buildingsmart.org/resources/ifcimplementationguidance/ifc-guid>
     """
-    # remove possible separators
-    uuid = uuid.lower()
-    uuid = re.sub(pattern=r"\W", repl="", string=uuid)
-
-    # pad with hex "zeroes"
-    uuid = "0000" + uuid
-
-    # convert to standard base 64
-    uuid_bytes = bytes.fromhex(uuid)
-    guid = b64encode(uuid_bytes).decode()
-
-    # remove result of padding
-    guid = guid[2:]
-
-    # translate from standard-convention to ifc-convention
-    guid = guid.translate(_TRANS_STD_TO_IFC)
-
-    return guid
+    lib = _get_lib()
+    return _generated_capi.call_string_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_guid_compress,
+        ifcopenshell.get_log() or "ifcopenshell_ifcapi_guid_compress",
+        _generated_capi.encode_string(uuid),
+    )
 
 
 def expand(guid: str, /) -> str:
@@ -114,19 +110,13 @@ def expand(guid: str, /) -> str:
 
     See <https://technical.buildingsmart.org/resources/ifcimplementationguidance/ifc-guid>
     """
-    # translate from ifc-convention to standard-convention
-    guid = guid.translate(_TRANS_IFC_TO_STD)
-
-    # pad with base64 "zeroes"
-    guid = "AA" + guid
-
-    # convert to hex
-    uuid = b64decode(guid).hex()
-
-    # remove result of padding
-    uuid = uuid[4:]
-
-    return uuid
+    lib = _get_lib()
+    return _generated_capi.call_string_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_guid_expand,
+        ifcopenshell.get_log() or "ifcopenshell_ifcapi_guid_expand",
+        _generated_capi.encode_string(guid),
+    )
 
 
 def split(uuid: str, /) -> str:
@@ -151,6 +141,9 @@ def new() -> str:
     """
     Generates a random UUID and compresses it to a Base 64 IFC GUID.
     """
-    uuid = uuid4().hex
-    guid = compress(uuid)
-    return guid
+    lib = _get_lib()
+    return _generated_capi.call_string_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_guid_new,
+        ifcopenshell.get_log() or "ifcopenshell_ifcapi_guid_new",
+    )

@@ -4,10 +4,13 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstring>
+#include <stdexcept>
 #include <random>
 #include <sstream>
 #include <iomanip>
+#include <vector>
 
 namespace ifcapi {
 
@@ -29,11 +32,34 @@ static uint8_t hex_val(char c) {
     if (c >= '0' && c <= '9') return static_cast<uint8_t>(c - '0');
     if (c >= 'a' && c <= 'f') return static_cast<uint8_t>(c - 'a' + 10);
     if (c >= 'A' && c <= 'F') return static_cast<uint8_t>(c - 'A' + 10);
-    return 0;
+    throw std::invalid_argument("UUID contains a non-hexadecimal character");
 }
 
 static char hex_char(uint8_t v) {
     return "0123456789abcdef"[v & 0xF];
+}
+
+static bool is_hex_char(char c) {
+    return (c >= '0' && c <= '9') ||
+           (c >= 'a' && c <= 'f') ||
+           (c >= 'A' && c <= 'F');
+}
+
+static std::string normalize_uuid_hex(const std::string& uuid) {
+    std::string clean;
+    clean.reserve(32);
+    for (char c : uuid) {
+        unsigned char uc = static_cast<unsigned char>(c);
+        if (is_hex_char(c)) {
+            clean.push_back(static_cast<char>(std::tolower(uc)));
+        } else if (std::isalnum(uc) || c == '_') {
+            throw std::invalid_argument("UUID contains a non-hexadecimal character");
+        }
+    }
+    if (clean.size() != 32) {
+        throw std::invalid_argument("UUID must contain 32 hexadecimal characters");
+    }
+    return clean;
 }
 
 // Build translation table: std_b64[i] -> ifc_b64[i]
@@ -117,13 +143,7 @@ std::string uuid4_hex() {
 }
 
 std::string guid_compress(const std::string& uuid_hex) {
-    // Strip dashes and lowercase
-    std::string clean;
-    clean.reserve(32);
-    for (char c : uuid_hex) {
-        if (c != '-')
-            clean.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
-    }
+    std::string clean = normalize_uuid_hex(uuid_hex);
 
     // Pad with "0000" prefix (2 extra bytes) to get 18 bytes
     std::string padded = "0000" + clean;

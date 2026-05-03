@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+import ctypes
 from math import cos, radians
 from typing import TYPE_CHECKING, Literal, Optional, Union
 
@@ -26,6 +27,8 @@ import numpy.typing as npt
 import shapely
 import shapely.ops
 
+import ifcopenshell
+from ifcopenshell import _generated_capi
 import ifcopenshell.util.element
 import ifcopenshell.util.placement
 import ifcopenshell.util.representation
@@ -46,6 +49,25 @@ MatrixType = npt.NDArray[np.float64]
 
 tol = 1e-6
 
+_BOUND = False
+
+
+def _get_lib() -> ctypes.CDLL:
+    global _BOUND
+    lib = ifcopenshell._get_lib()
+    if not _BOUND:
+        _generated_capi.bind(
+            lib,
+            names=(
+                "ifcopenshell_ifcapi_shape_is_x",
+                "ifcopenshell_last_error_kind",
+                "ifcopenshell_last_error_message",
+            ),
+        )
+        _BOUND = True
+    return lib
+
+
 # NOTE: See IfcGeomRepresentation.h for W.Triangulation buffer types.
 
 # NOTE: For functions that return a single scalar ensure to use .item() to
@@ -65,7 +87,18 @@ def is_x(value: float, x: float, tolerance: Optional[float] = None) -> bool:
     """
     if tolerance is None:
         tolerance = tol
-    return abs(x - value) < tolerance
+    lib = _get_lib()
+    return bool(
+        _generated_capi.call_scalar_or_raise(
+            lib,
+            lib.ifcopenshell_ifcapi_shape_is_x,
+            ctypes.c_bool,
+            ifcopenshell.get_log() or "ifcopenshell_ifcapi_shape_is_x",
+            value,
+            x,
+            tolerance,
+        )
+    )
 
 
 def get_volume(geometry: W.Triangulation) -> float:
@@ -77,7 +110,8 @@ def get_volume(geometry: W.Triangulation) -> float:
     :return: The volume in m3
     """
 
-    # https://stackoverflow.com/questions/1406029/how-to-calculate-the-volume-of-a-3d-mesh-object-the-surface-of-which-is-made-up
+    # https://stackoverflow.com/questions/1406029/
+    # how-to-calculate-the-volume-of-a-3d-mesh-object-the-surface-of-which-is-made-up
     def signed_triangle_volume(p1, p2, p3):
         v321 = p3[0] * p2[1] * p1[2]
         v231 = p2[0] * p3[1] * p1[2]

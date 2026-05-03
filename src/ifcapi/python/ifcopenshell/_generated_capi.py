@@ -289,6 +289,13 @@ class ifcopenshell_ifc_enumeration_list_t(ctypes.Structure):
     ]
 
 
+class ifcopenshell_ifc_file_list_t(ctypes.Structure):
+    _fields_ = [
+        ("items", ctypes.POINTER(ctypes.POINTER(_HandleStruct))),
+        ("size", ctypes.c_size_t),
+    ]
+
+
 class ifcopenshell_ifc_instance_list_t(ctypes.Structure):
     _fields_ = [
         ("items", ctypes.POINTER(ctypes.POINTER(_HandleStruct))),
@@ -418,6 +425,13 @@ class ifcopenshell_ifc_entity_list_list_t(ctypes.Structure):
 class ifcopenshell_ifc_enumeration_list_list_t(ctypes.Structure):
     _fields_ = [
         ("items", ctypes.POINTER(ifcopenshell_ifc_enumeration_list_t)),
+        ("size", ctypes.c_size_t),
+    ]
+
+
+class ifcopenshell_ifc_file_list_list_t(ctypes.Structure):
+    _fields_ = [
+        ("items", ctypes.POINTER(ifcopenshell_ifc_file_list_t)),
         ("size", ctypes.c_size_t),
     ]
 
@@ -764,6 +778,7 @@ FUNCTION_SIGNATURES = {
     "ifcopenshell_ifcapi_element_remove_deep": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct)]),
     "ifcopenshell_ifcapi_element_replace_element": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct)]),
     "ifcopenshell_ifcapi_entity_remove_deep2": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct)]),
+    "ifcopenshell_ifcapi_entity_remove_deep2_ex": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_ifc_instance_list_t), ctypes.POINTER(ifcopenshell_ifc_instance_list_t)]),
     "ifcopenshell_ifcapi_geometry_assign_representation": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_geometry_copy_representation": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_geometry_edit_object_placement": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_double_list_t), ctypes.c_bool, ctypes.c_bool, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
@@ -809,6 +824,8 @@ FUNCTION_SIGNATURES = {
     "ifcopenshell_ifcapi_pset_props_set_typed_int": (ctypes.c_bool, [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int64, ctypes.c_char_p]),
     "ifcopenshell_ifcapi_pset_props_set_typed_string": (ctypes.c_bool, [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]),
     "ifcopenshell_ifcapi_pset_props_set_unit_for_last": (ctypes.c_bool, [ctypes.c_void_p, ctypes.POINTER(_HandleStruct)]),
+    "ifcopenshell_ifcapi_pset_template_create_from_files": (ctypes.c_bool, [ctypes.c_char_p, ctypes.POINTER(ifcopenshell_ifc_file_list_t), ctypes.POINTER(ctypes.c_void_p)]),
+    "ifcopenshell_ifcapi_pset_template_free": (ctypes.c_bool, [ctypes.c_void_p]),
     "ifcopenshell_ifcapi_pset_template_get_applicable": (ctypes.c_bool, [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_bool, ctypes.c_bool, ctypes.c_char_p, ctypes.POINTER(ifcopenshell_ifc_instance_list_t)]),
     "ifcopenshell_ifcapi_pset_template_get_applicable_names": (ctypes.c_bool, [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_bool, ctypes.c_bool, ctypes.c_char_p, ctypes.POINTER(ifcopenshell_string_list_t)]),
     "ifcopenshell_ifcapi_pset_template_get_by_name": (ctypes.c_bool, [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
@@ -1368,6 +1385,8 @@ FUNCTION_SIGNATURES = {
     "ifcopenshell_ifc_enumeration_list_list_destroy": (None, [ctypes.POINTER(ifcopenshell_ifc_enumeration_list_list_t)]),
     "ifcopenshell_ifc_file_description_destroy": (None, [ctypes.POINTER(_HandleStruct)]),
     "ifcopenshell_ifc_file_destroy": (None, [ctypes.POINTER(_HandleStruct)]),
+    "ifcopenshell_ifc_file_list_destroy": (None, [ctypes.POINTER(ifcopenshell_ifc_file_list_t)]),
+    "ifcopenshell_ifc_file_list_list_destroy": (None, [ctypes.POINTER(ifcopenshell_ifc_file_list_list_t)]),
     "ifcopenshell_ifc_file_name_destroy": (None, [ctypes.POINTER(_HandleStruct)]),
     "ifcopenshell_ifc_file_schema_destroy": (None, [ctypes.POINTER(_HandleStruct)]),
     "ifcopenshell_ifc_header_destroy": (None, [ctypes.POINTER(_HandleStruct)]),
