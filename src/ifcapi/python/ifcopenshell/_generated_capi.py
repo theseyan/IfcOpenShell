@@ -5,6 +5,14 @@ from __future__ import annotations
 import ctypes
 
 
+IFCOPENSHELL_ERROR_NONE = 0
+IFCOPENSHELL_ERROR_RUNTIME = 1
+IFCOPENSHELL_ERROR_VALUE = 2
+IFCOPENSHELL_ERROR_TYPE = 3
+IFCOPENSHELL_ERROR_NOT_IMPLEMENTED = 4
+IFCOPENSHELL_ERROR_KEY = 5
+
+
 class _HandleStruct(ctypes.Structure):
     _fields_ = [
         ("ptr", ctypes.c_void_p),
@@ -778,8 +786,8 @@ FUNCTION_SIGNATURES = {
     "ifcopenshell_ifcapi_placement_get_mappeditem_xform": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_double_list_t)]),
     "ifcopenshell_ifcapi_placement_get_storey_elevation": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_double)]),
     "ifcopenshell_ifcapi_placement_rotation": (ctypes.c_bool, [ctypes.c_double, ctypes.c_char_p, ctypes.POINTER(ifcopenshell_double_list_t)]),
-    "ifcopenshell_ifcapi_pset_add_pset": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
-    "ifcopenshell_ifcapi_pset_add_qto": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_pset_add_pset": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_pset_add_qto": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_pset_edit_pset": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.c_void_p, ctypes.POINTER(_HandleStruct), ctypes.c_bool, ctypes.POINTER(ctypes.c_bool)]),
     "ifcopenshell_ifcapi_pset_edit_qto": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.c_void_p, ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_bool)]),
     "ifcopenshell_ifcapi_pset_props_free": (ctypes.c_bool, [ctypes.c_void_p]),
@@ -1452,11 +1460,13 @@ FUNCTION_SIGNATURES = {
     "ifcopenshell_uint8_list_destroy": (None, [ctypes.POINTER(ifcopenshell_uint8_list_t)]),
     "ifcopenshell_clear_error": (None, []),
     "ifcopenshell_last_error_message": (ctypes.c_char_p, []),
+    "ifcopenshell_last_error_kind": (ctypes.c_int, []),
 }
 
 
 _CLEAR_ERROR_NAME = "ifcopenshell_clear_error"
 _LAST_ERROR_NAME = "ifcopenshell_last_error_message"
+_LAST_ERROR_KIND_NAME = "ifcopenshell_last_error_kind"
 _STRING_DESTROY_NAME = "ifcopenshell_string_destroy"
 _STRING_LIST_DESTROY_NAME = "ifcopenshell_string_list_destroy"
 _BOOL_LIST_DESTROY_NAME = "ifcopenshell_bool_list_destroy"
@@ -1615,7 +1625,25 @@ def last_error(lib, default="Unknown error"):
 def status_or_raise(lib, status, fallback):
     if status:
         return True
-    raise RuntimeError(last_error(lib, fallback))
+    raise_last_error(lib, fallback)
+
+
+def last_error_kind(lib):
+    return getattr(lib, _LAST_ERROR_KIND_NAME)()
+
+
+def exception_for_error_kind(kind):
+    return {
+        IFCOPENSHELL_ERROR_VALUE: ValueError,
+        IFCOPENSHELL_ERROR_TYPE: TypeError,
+        IFCOPENSHELL_ERROR_NOT_IMPLEMENTED: NotImplementedError,
+        IFCOPENSHELL_ERROR_KEY: KeyError,
+    }.get(kind, RuntimeError)
+
+
+def raise_last_error(lib, fallback):
+    message = last_error(lib, fallback)
+    raise exception_for_error_kind(last_error_kind(lib))(message)
 
 
 def call_string(lib, fn, *args, decode=True, value_type=None):

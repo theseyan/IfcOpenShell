@@ -172,9 +172,11 @@ def test_generated_python_ctypes_binds_and_calls_tiny_c_fixture(tmp_path: Path) 
             } ifcopenshell_demo_shape_result_t;
 
             static const char* last_error = "";
+            static int last_error_kind = 0;
 
-            void ifcopenshell_demo_clear_error(void) { last_error = ""; }
+            void ifcopenshell_demo_clear_error(void) { last_error = ""; last_error_kind = 0; }
             const char* ifcopenshell_demo_last_error_message(void) { return last_error; }
+            int ifcopenshell_demo_last_error_kind(void) { return last_error_kind; }
 
             bool ifcopenshell_demo_create_file(const char* schema, ifcopenshell_demo_file_t** out_result) {
                 if (!schema || !out_result) {

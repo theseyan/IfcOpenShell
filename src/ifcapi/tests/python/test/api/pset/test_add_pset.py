@@ -21,6 +21,7 @@ import ifcopenshell.api.profile
 import ifcopenshell.api.pset
 import ifcopenshell.api.root
 import ifcopenshell.util.element
+import pytest
 import test.bootstrap
 
 
@@ -64,8 +65,21 @@ class TestAddPset(test.bootstrap.IFC4):
         assert pset.is_a("IfcPropertySet")
         assert "Custom_Pset" in ifcopenshell.util.element.get_psets(element)
 
+    def test_rejecting_unsupported_products(self):
+        person = self.file.create_entity("IfcPerson")
+        with pytest.raises(TypeError, match="doesn't support adding a property set"):
+            ifcopenshell.api.pset.add_pset(self.file, product=person, name="Custom_Pset")
+
 
 class TestAddPsetIFC2X3(test.bootstrap.IFC2X3, TestAddPset):
+    def test_reusing_an_existing_pset_does_not_create_orphan_owner_history(self):
+        element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        pset = ifcopenshell.api.pset.add_pset(self.file, product=element, name="Pset_WallCommon")
+        owner_history_count = len(self.file.by_type("IfcOwnerHistory"))
+
+        assert ifcopenshell.api.pset.add_pset(self.file, product=element, name="Pset_WallCommon") == pset
+        assert len(self.file.by_type("IfcOwnerHistory")) == owner_history_count
+
     def test_adding_a_pset_to_a_project(self):
         element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
         pset = ifcopenshell.api.pset.add_pset(self.file, product=element, name="Custom_Pset")

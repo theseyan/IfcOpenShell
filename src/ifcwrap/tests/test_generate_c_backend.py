@@ -123,6 +123,7 @@ def test_generate_ifcparse_c_backend(tmp_path: Path) -> None:
     assert "bool ifcopenshell_ifcparse_instance_list_size(ifcopenshell_ifcparse_instance_list_t* self, size_t* out_result);" in header
     assert "bool ifcopenshell_ifcparse_instance_list_get(ifcopenshell_ifcparse_instance_list_t* self, size_t index, ifcopenshell_ifc_instance_t** out_result);" in header
     assert "const char* ifcopenshell_ifcparse_last_error_message(void);" in header
+    assert "int ifcopenshell_ifcparse_last_error_kind(void);" in header
     assert "void ifcopenshell_ifc_file_destroy(ifcopenshell_ifc_file_t* handle);" in header
     assert "void ifcopenshell_ifc_declaration_list_destroy(ifcopenshell_ifc_declaration_list_t* value);" in header
     assert "void ifcopenshell_int32_list_destroy(ifcopenshell_int32_list_t* value);" in header
@@ -132,6 +133,7 @@ def test_generate_ifcparse_c_backend(tmp_path: Path) -> None:
     assert "void ifcopenshell_double_list_list_destroy(ifcopenshell_double_list_list_t* value);" in header
 
     assert 'thread_local std::string g_last_error;' in cpp
+    assert 'thread_local int g_last_error_kind = 0;' in cpp
     assert "bool ifcopenshell_ifcparse_open(const char* path, bool readonly, ifcopenshell_ifc_file_t** out_result)" in cpp
     assert "bool ifcopenshell_ifcparse_new_file(const char* schema_identifier, int32_t file_type, const char* path, ifcopenshell_ifc_file_t** out_result)" in cpp
     assert "bool ifcopenshell_ifcparse_schema_by_name(const char* arg_0, ifcopenshell_ifc_schema_t** out_result)" in cpp

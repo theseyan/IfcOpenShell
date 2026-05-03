@@ -777,6 +777,10 @@ discover:
           params:
             owner_history:
               nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
             ifc2x3_subclass:
               nullable: true
         pset_add_qto:
@@ -784,6 +788,10 @@ discover:
             nullable: true
           params:
             owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
               nullable: true
     - namespace: ifcapi::bindings
       translation_unit: api/pset/edit.cpp

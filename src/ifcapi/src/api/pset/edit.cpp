@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/entity.h"
 #include "ifcapi/bindings/pset.h"
 #include "ifcapi/bindings/pset_template.h"
+#include "ifcapi/detail/attribute.h"
+#include "ifcapi/detail/error.h"
 #include "ifcopenshell_api_internal.hpp"
 #include "api/pset/props.hpp"
 
@@ -16,6 +19,7 @@
 #include <cctype>
 #include <cstdint>
 #include <cstring>
+#include <stdexcept>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -25,89 +29,40 @@ namespace {
 
 using ifcapi_pset::Entry;
 using ifcapi_pset::Kind;
+using ifcapi::detail::attr_index_of;
+using ifcapi::detail::entity_has_attr;
+using ifcapi::detail::find_attr_index;
+using ifcapi::detail::is_attr_null;
+using ifcapi::detail::read_ref_aggregate;
+using ifcapi::detail::read_ref_attr;
+using ifcapi::detail::read_string_attr;
+using ifcapi::detail::write_blank_attr;
+using ifcapi::detail::write_ref_aggregate;
+using ifcapi::detail::write_ref_attr;
+using ifcapi::detail::write_string_attr;
 
-inline void set_error(const std::string& msg) { ifcopenshell::capi::set_last_error(msg); }
+using ifcapi::detail::set_error;
 
-int find_attr_index(const IfcParse::entity* decl, const char* name) {
-    if (!decl) return -1;
-    auto attrs = decl->all_attributes();
-    for (size_t i = 0; i < attrs.size(); ++i) {
-        if (attrs[i]->name() == name) return static_cast<int>(i);
-    }
-    return -1;
+struct ApiError : std::runtime_error {
+    ApiError(ifcapi::detail::ErrorKind kind, const std::string& message) : std::runtime_error(message), kind(kind) {}
+    ifcapi::detail::ErrorKind kind;
+};
+
+ApiError value_error(const std::string& message) {
+    return ApiError(ifcapi::detail::ERROR_VALUE, message);
+}
+
+ApiError not_implemented_error(const std::string& message) {
+    return ApiError(ifcapi::detail::ERROR_NOT_IMPLEMENTED, message);
+}
+
+ApiError key_error(const std::string& key) {
+    return ApiError(ifcapi::detail::ERROR_KEY, key);
 }
 
 bool entity_is_a(IfcUtil::IfcBaseClass* e, const char* name) {
     if (!e) return false;
     return e->declaration().is(name);
-}
-
-bool entity_has_attr(IfcUtil::IfcBaseClass* e, const char* attr) {
-    if (!e) return false;
-    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(e);
-    if (!be) return false;
-    return find_attr_index(be->declaration().as_entity(), attr) >= 0;
-}
-
-int attr_index_of(IfcUtil::IfcBaseClass* e, const char* attr) {
-    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(e);
-    if (!be) return -1;
-    return find_attr_index(be->declaration().as_entity(), attr);
-}
-
-std::string read_string_attr(IfcUtil::IfcBaseClass* e, const char* attr) {
-    int idx = attr_index_of(e, attr);
-    if (idx < 0) return std::string();
-    try {
-        auto val = e->get_attribute_value(static_cast<size_t>(idx));
-        if (val.isNull()) return std::string();
-        return (std::string)val;
-    } catch (...) {
-        return std::string();
-    }
-}
-
-IfcUtil::IfcBaseClass* read_ref_attr(IfcUtil::IfcBaseClass* e, const char* attr) {
-    int idx = attr_index_of(e, attr);
-    if (idx < 0) return nullptr;
-    try {
-        auto val = e->get_attribute_value(static_cast<size_t>(idx));
-        if (val.isNull()) return nullptr;
-        return (IfcUtil::IfcBaseClass*)val;
-    } catch (...) {
-        return nullptr;
-    }
-}
-
-std::vector<IfcUtil::IfcBaseClass*> read_ref_aggregate(IfcUtil::IfcBaseClass* e, const char* attr) {
-    std::vector<IfcUtil::IfcBaseClass*> result;
-    int idx = attr_index_of(e, attr);
-    if (idx < 0) return result;
-    try {
-        auto val = e->get_attribute_value(static_cast<size_t>(idx));
-        if (val.isNull()) return result;
-        auto agg = (aggregate_of_instance::ptr)val;
-        if (agg) {
-            for (auto& it : *agg) result.push_back(it);
-        }
-    } catch (...) {}
-    return result;
-}
-
-bool write_ref_aggregate(IfcUtil::IfcBaseClass* e, const char* attr,
-                         const std::vector<IfcUtil::IfcBaseClass*>& items) {
-    int idx = attr_index_of(e, attr);
-    if (idx < 0) return false;
-    auto agg = aggregate_of_instance::ptr(new aggregate_of_instance());
-    for (auto* p : items) agg->push(p);
-    e->set_attribute_value(static_cast<size_t>(idx), agg);
-    return true;
-}
-
-void write_string_attr(IfcUtil::IfcBaseClass* e, const char* attr, const std::string& v) {
-    int idx = attr_index_of(e, attr);
-    if (idx < 0) return;
-    e->set_attribute_value(static_cast<size_t>(idx), v);
 }
 
 // Walk a parameter_type chain to its underlying simple_type.
@@ -320,6 +275,21 @@ uint32_t total_inverses(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e) {
     }
 }
 
+IfcUtil::IfcBaseClass* copy_property_enumeration(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* source) {
+    if (!file || !source) return nullptr;
+    auto* result = file->create(&source->declaration());
+    if (!result) return nullptr;
+
+    write_string_attr(result, "Name", read_string_attr(source, "Name"));
+    if (is_attr_null(source, "EnumerationValues")) {
+        write_blank_attr(result, "EnumerationValues");
+    } else {
+        write_ref_aggregate(result, "EnumerationValues", read_ref_aggregate(source, "EnumerationValues"));
+    }
+    write_ref_attr(result, "Unit", read_ref_attr(source, "Unit"));
+    return result;
+}
+
 bool process_existing_single_value(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* prop,
                                    IfcUtil::IfcBaseClass* pset_template,
                                    const Entry& entry, bool should_purge,
@@ -344,6 +314,10 @@ bool process_existing_single_value(IfcParse::IfcFile* file, IfcUtil::IfcBaseClas
         if (entity_is_a(entry.inst, "IfcValue") || entry.inst->declaration().as_type_declaration()) {
             int idx = attr_index_of(prop, "NominalValue");
             if (idx >= 0) prop->set_attribute_value(static_cast<size_t>(idx), entry.inst);
+        } else {
+            throw value_error(
+                entry.inst->declaration().name() + " cannot be assigned to the property set '"
+                + read_string_attr(prop, "Name") + "'");
         }
         if (entry.unit) {
             int u_idx = attr_index_of(prop, "Unit");
@@ -369,8 +343,42 @@ bool process_existing_single_value(IfcParse::IfcFile* file, IfcUtil::IfcBaseClas
 bool process_existing_enumerated(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* prop,
                                  const Entry& entry, bool should_purge, bool& removed) {
     removed = false;
-    if (entry.kind != Kind::STRING_LIST && entry.kind != Kind::DOUBLE_LIST && entry.kind != Kind::INT_LIST) {
+    if (entry.kind == Kind::INSTANCE && entry.inst && entity_is_a(entry.inst, "IfcPropertyEnumeratedValue")) {
+        if (is_attr_null(entry.inst, "EnumerationValues")) {
+            if (should_purge) {
+                file->removeEntity(prop);
+                removed = true;
+                return true;
+            }
+            write_blank_attr(prop, "EnumerationValues");
+        } else {
+            write_ref_aggregate(prop, "EnumerationValues", read_ref_aggregate(entry.inst, "EnumerationValues"));
+        }
+
+        auto* value_reference = read_ref_attr(entry.inst, "EnumerationReference");
+        auto* prop_reference = read_ref_attr(prop, "EnumerationReference");
+        if (!value_reference) {
+            if (prop_reference) ifcapi::bindings::entity_remove_deep2(prop_reference);
+            write_blank_attr(prop, "EnumerationReference");
+        } else if (!prop_reference) {
+            write_ref_attr(prop, "EnumerationReference", copy_property_enumeration(file, value_reference));
+        } else {
+            write_string_attr(prop_reference, "Name", read_string_attr(value_reference, "Name"));
+            if (is_attr_null(value_reference, "EnumerationValues")) {
+                write_blank_attr(prop_reference, "EnumerationValues");
+            } else {
+                write_ref_aggregate(
+                    prop_reference, "EnumerationValues", read_ref_aggregate(value_reference, "EnumerationValues"));
+            }
+            write_ref_attr(prop_reference, "Unit", read_ref_attr(value_reference, "Unit"));
+        }
+        if (entry.unit) write_ref_attr(prop, "Unit", entry.unit);
         return true;
+    }
+
+    if (entry.kind != Kind::STRING_LIST && entry.kind != Kind::DOUBLE_LIST && entry.kind != Kind::INT_LIST) {
+        throw value_error(
+            "Value is not a valid value for enum property " + read_string_attr(prop, "Name"));
     }
     bool empty_list = (entry.kind == Kind::STRING_LIST && entry.str_list.empty())
         || (entry.kind == Kind::DOUBLE_LIST && entry.dbl_list.empty())
@@ -416,7 +424,10 @@ IfcUtil::IfcBaseClass* build_new_property(IfcParse::IfcFile* file, IfcUtil::IfcB
         if (entity_is_a(entry.inst, "IfcProperty")) {
             return entry.inst;
         }
-        // Treat as an inline typed value to wrap in IfcPropertySingleValue.
+        if (!entry.inst->declaration().as_type_declaration() && !entity_is_a(entry.inst, "IfcValue")) {
+            throw value_error(
+                entry.inst->declaration().name() + " cannot be assigned to the property set '" + name + "'");
+        }
         const auto* sv_decl = file->schema()->declaration_by_name("IfcPropertySingleValue");
         auto* sv = file->create(sv_decl);
         write_string_attr(sv, "Name", name);
@@ -433,13 +444,17 @@ IfcUtil::IfcBaseClass* build_new_property(IfcParse::IfcFile* file, IfcUtil::IfcB
         size_t n = (entry.kind == Kind::STRING_LIST) ? entry.str_list.size()
             : (entry.kind == Kind::DOUBLE_LIST) ? entry.dbl_list.size() : entry.int_list.size();
         if (n == 0) return nullptr;
-        if (!pset_template) return nullptr;
+        if (!pset_template) {
+            throw not_implemented_error("No template found for property '" + name + "'");
+        }
         for (auto* pt : read_ref_aggregate(pset_template, "HasPropertyTemplates")) {
             if (read_string_attr(pt, "Name") != name) continue;
             std::string tt = read_string_attr(pt, "TemplateType");
             std::string pmt = read_string_attr(pt, "PrimaryMeasureType");
             if (tt == "P_LISTVALUE") {
-                if (pmt.empty()) return nullptr;
+                if (pmt.empty()) {
+                    throw value_error("pset template '" + name + "' is missing PrimaryMeasureType");
+                }
                 std::vector<IfcUtil::IfcBaseClass*> items;
                 for (size_t i = 0; i < n; ++i) {
                     if (auto* tv = create_typed_value(file, pmt, entry, true, i)) items.push_back(tv);
@@ -473,9 +488,9 @@ IfcUtil::IfcBaseClass* build_new_property(IfcParse::IfcFile* file, IfcUtil::IfcB
                 if (er_idx >= 0) pev->set_attribute_value(static_cast<size_t>(er_idx), pe);
                 return pev;
             }
-            break;
+            throw not_implemented_error("Template type '" + tt + "' is not supported yet");
         }
-        return nullptr;
+        throw not_implemented_error("No template found for property '" + name + "'");
     }
 
     // Scalar single value path.
@@ -716,9 +731,8 @@ bool pset_edit_pset(
                     continue;
                 }
             } else {
-                kept.push_back(prop);
-                remaining.erase(it);
-                continue;
+                throw not_implemented_error(
+                    "Updating '" + prop->declaration().name() + "' properties is not supported yet");
             }
             if (!removed) kept.push_back(prop);
             remaining.erase(it);
@@ -736,6 +750,9 @@ bool pset_edit_pset(
 
         write_ref_aggregate(pset, attr_name, kept);
         return true;
+    } catch (const ApiError& ex) {
+        set_error(ex.kind, ex.what());
+        return false;
     } catch (const std::exception& ex) {
         set_error(std::string("pset_edit_pset: ") + ex.what());
         return false;
@@ -845,12 +862,20 @@ double entry_to_double(const Entry& e) {
                     }
                 } catch (...) {}
             }
-            return 0.0;
+            throw std::runtime_error(e.inst ? "Unsupported quantity value type: " + e.inst->declaration().name()
+                                            : "Unsupported quantity value type");
         case Kind::STRING:
         case Kind::TYPED_STRING:
-            try { return std::stod(e.s_val); } catch (...) { return 0.0; }
+            try {
+                size_t parsed = 0;
+                double value = std::stod(e.s_val, &parsed);
+                if (parsed != e.s_val.size()) throw std::invalid_argument("trailing characters");
+                return value;
+            } catch (...) {
+                throw value_error("Invalid numeric quantity value: " + e.s_val);
+            }
         default:
-            return 0.0;
+            throw std::runtime_error("Unsupported quantity value type");
     }
 }
 
@@ -874,12 +899,20 @@ int64_t entry_to_int(const Entry& e) {
                     }
                 } catch (...) {}
             }
-            return 0;
+            throw std::runtime_error(e.inst ? "Unsupported quantity value type: " + e.inst->declaration().name()
+                                            : "Unsupported quantity value type");
         case Kind::STRING:
         case Kind::TYPED_STRING:
-            try { return std::stoll(e.s_val); } catch (...) { return 0; }
+            try {
+                size_t parsed = 0;
+                int64_t value = std::stoll(e.s_val, &parsed);
+                if (parsed != e.s_val.size()) throw std::invalid_argument("trailing characters");
+                return value;
+            } catch (...) {
+                throw value_error("Invalid integer quantity value: " + e.s_val);
+            }
         default:
-            return 0;
+            throw std::runtime_error("Unsupported quantity value type");
     }
 }
 
@@ -983,13 +1016,19 @@ bool pset_edit_qto(
             if (e->kind == Kind::DICT && e->nested) {
                 ifcopenshell_pset_props_t sub;
                 std::string discrim;
+                bool has_discrim = false;
+                bool has_quantities = false;
                 for (const auto& se : e->nested->entries) {
                     if (se.key == "Discrimination" && se.kind == Kind::STRING) {
                         discrim = se.s_val;
+                        has_discrim = true;
                     } else {
                         sub.entries.push_back(se);
+                        has_quantities = true;
                     }
                 }
+                if (!has_discrim) throw key_error("Discrimination");
+                if (!has_quantities) throw key_error("HasQuantities");
                 const IfcParse::declaration* cq_decl = nullptr;
                 try { cq_decl = file->schema()->declaration_by_name("IfcPhysicalComplexQuantity"); }
                 catch (...) { cq_decl = nullptr; }
@@ -1005,10 +1044,10 @@ bool pset_edit_qto(
             std::string canonical = qto_canonical_type(key, *e, qto_template);
             std::string ifc_class = "IfcQuantity" + canonical;
             const char* value_attr = qto_value_attr_for_class(ifc_class);
-            if (!value_attr) continue;
+            if (!value_attr) throw std::runtime_error("Unsupported quantity type: " + ifc_class);
             const IfcParse::declaration* decl = nullptr;
             try { decl = file->schema()->declaration_by_name(ifc_class); } catch (...) { decl = nullptr; }
-            if (!decl) continue;
+            if (!decl) throw std::runtime_error("Unsupported quantity type: " + ifc_class);
             auto* nq = file->create(decl);
             write_string_attr(nq, "Name", key);
             int va = attr_index_of(nq, value_attr);
@@ -1026,6 +1065,9 @@ bool pset_edit_qto(
 
         write_ref_aggregate(qto, attr_name, kept);
         return true;
+    } catch (const ApiError& ex) {
+        set_error(ex.kind, ex.what());
+        return false;
     } catch (const std::exception& ex) {
         set_error(std::string("pset_edit_qto: ") + ex.what());
         return false;

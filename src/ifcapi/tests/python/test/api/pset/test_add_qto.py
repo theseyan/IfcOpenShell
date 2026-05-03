@@ -41,8 +41,20 @@ class TestAddQto(test.bootstrap.IFC4):
         assert qto.is_a("IfcElementQuantity")
         assert "Custom_Qto" in ifcopenshell.util.element.get_psets(element)
 
+    def test_returning_none_for_unsupported_products(self):
+        material = self.file.create_entity("IfcMaterial")
+        assert ifcopenshell.api.pset.add_qto(self.file, product=material, name="Custom_Qto") is None
+
 
 class TestAddQtoIFC2X3(test.bootstrap.IFC2X3):
+    def test_reusing_an_existing_qto_does_not_create_orphan_owner_history(self):
+        element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        qto = ifcopenshell.api.pset.add_qto(self.file, product=element, name="Qto_WallBaseQuantities")
+        owner_history_count = len(self.file.by_type("IfcOwnerHistory"))
+
+        assert ifcopenshell.api.pset.add_qto(self.file, product=element, name="Qto_WallBaseQuantities") == qto
+        assert len(self.file.by_type("IfcOwnerHistory")) == owner_history_count
+
     def test_adding_a_qto_to_a_project(self):
         element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
         qto = ifcopenshell.api.pset.add_qto(self.file, product=element, name="Custom_Qto")

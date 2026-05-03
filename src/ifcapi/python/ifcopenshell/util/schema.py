@@ -39,7 +39,15 @@ def _configure_schema_lib(lib) -> None:
     global _schema_lib_configured
     if _schema_lib_configured:
         return
-    _generated_capi.bind(lib, names=("ifcopenshell_ifcapi_schema_reassign_class", "ifcopenshell_ifc_instance_destroy"))
+    _generated_capi.bind(
+        lib,
+        names=(
+            "ifcopenshell_ifcapi_schema_reassign_class",
+            "ifcopenshell_ifc_instance_destroy",
+            "ifcopenshell_last_error_kind",
+            "ifcopenshell_last_error_message",
+        ),
+    )
     _schema_lib_configured = True
 
 
@@ -204,14 +212,19 @@ def reassign_class(
             _generated_capi.encode_string(new_class),
             destroy=lib.ifcopenshell_ifc_instance_destroy,
         )
-    except RuntimeError as e:
-        message = str(e)
-        if "class does not exist" not in message and "Class could not be changed" not in message:
-            raise
+    except ValueError as e:
         raise ValueError(
             f"Class of {element} could not be changed to {new_class} as the class does not exist in schema {ifc_file.schema_identifier}."
         ) from e
     if not handle:
+        error_kind = _generated_capi.last_error_kind(lib)
+        if error_kind == _generated_capi.IFCOPENSHELL_ERROR_VALUE:
+            raise ValueError(
+                f"Class of {element} could not be changed to {new_class} as the class does not exist in schema {ifc_file.schema_identifier}."
+            )
+        if error_kind != _generated_capi.IFCOPENSHELL_ERROR_NONE:
+            exc = _generated_capi.exception_for_error_kind(error_kind)
+            raise exc(_generated_capi.last_error(lib, f"Class of {element} could not be changed to {new_class}."))
         raise RuntimeError(f"Class of {element} could not be changed to {new_class}.")
     return ifcopenshell.entity_instance(ifc_file, handle)
 

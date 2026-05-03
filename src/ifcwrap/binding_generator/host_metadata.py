@@ -416,5 +416,6 @@ def build_host_metadata(ir: BindingIR) -> HostBindingMetadata:
         error_functions={
             "clear_error": f"{ir.c_prefix}_clear_error",
             "last_error_message": f"{ir.c_prefix}_last_error_message",
+            "last_error_kind": f"{ir.c_prefix}_last_error_kind",
         },
     )

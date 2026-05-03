@@ -8,6 +8,7 @@ import ctypes
 import datetime
 
 import ifcopenshell
+import ifcopenshell.api.owner.settings
 from ifcopenshell import _generated_capi, _get_lib
 from ifcopenshell.entity_instance import _generated_instance_handle_ptr
 
@@ -31,6 +32,8 @@ _BIND_NAMES = (
     "ifcopenshell_ifcapi_pset_props_set_int_list",
     "ifcopenshell_ifcapi_pset_props_set_dict",
     "ifcopenshell_ifcapi_pset_props_set_unit_for_last",
+    "ifcopenshell_last_error_kind",
+    "ifcopenshell_last_error_message",
 )
 
 
@@ -75,16 +78,17 @@ def _add_entry(lib, props, key, value):
             return
         inner = _new_props(lib)
         try:
-            discrim = value.get("Discrimination", "")
-            _call(
-                lib,
-                lib.ifcopenshell_ifcapi_pset_props_set_string,
-                inner,
-                _generated_capi.encode_string("Discrimination"),
-                _generated_capi.encode_string(str(discrim)),
-            )
-            for k2, v2 in (value.get("HasQuantities") or {}).items():
-                _add_entry(lib, inner, k2, v2)
+            if "Discrimination" in value:
+                _call(
+                    lib,
+                    lib.ifcopenshell_ifcapi_pset_props_set_string,
+                    inner,
+                    _generated_capi.encode_string("Discrimination"),
+                    _generated_capi.encode_string(str(value["Discrimination"])),
+                )
+            if "HasQuantities" in value:
+                for k2, v2 in (value["HasQuantities"] or {}).items():
+                    _add_entry(lib, inner, k2, v2)
             _call(lib, lib.ifcopenshell_ifcapi_pset_props_set_dict, props, k, inner)
         except Exception:
             free_props(inner)
@@ -178,8 +182,25 @@ def get_lib():
     return _bind()
 
 
+def instance_handle(entity):
+    return _generated_instance_handle_ptr(entity._handle) if entity is not None else None
+
+
+def owner_context(file):
+    user = ifcopenshell.api.owner.settings.get_user(file)
+    application = ifcopenshell.api.owner.settings.get_application(file)
+    return None, user, application
+
+
 def raise_last_error(default_msg):
+    _generated_capi.raise_last_error(_bind(), default_msg)
+
+
+def last_error_kind():
+    return _generated_capi.last_error_kind(_bind())
+
+
+def last_error_message(default_msg=""):
     lib = _bind()
     err = lib.ifcopenshell_last_error_message()
-    msg = err.decode("utf-8") if err else default_msg
-    raise RuntimeError(msg)
+    return err.decode("utf-8") if err else default_msg

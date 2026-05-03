@@ -2,6 +2,8 @@
 
 #include "ifcapi/ifcapi.h"
 #include "ifcapi/bindings/pset.h"
+#include "ifcapi/detail/error.h"
+#include "ifcapi/detail/relationship.h"
 #include "guid.h"
 #include "ifcopenshell_api_internal.hpp"
 
@@ -18,16 +20,12 @@
 
 namespace {
 
-inline void set_error(const std::string& msg) { ifcopenshell::capi::set_last_error(msg); }
+using ifcapi::detail::set_error;
 
-int find_attr_index(const IfcParse::entity* decl, const char* name) {
-    if (!decl) return -1;
-    auto attrs = decl->all_attributes();
-    for (size_t i = 0; i < attrs.size(); ++i) {
-        if (attrs[i]->name() == name) return static_cast<int>(i);
-    }
-    return -1;
-}
+using ifcapi::detail::find_attr_index;
+using ifcapi::detail::get_ref_aggregate;
+using ifcapi::detail::read_string_attr;
+using ifcapi::detail::set_ref_aggregate;
 
 bool entity_is_a(IfcUtil::IfcBaseClass* e, const char* name) {
     if (!e) return false;
@@ -45,43 +43,6 @@ std::vector<IfcUtil::IfcBaseClass*> get_inverse(IfcUtil::IfcBaseClass* e, const 
         }
     } catch (...) {}
     return result;
-}
-
-std::vector<IfcUtil::IfcBaseClass*> get_ref_aggregate(IfcUtil::IfcBaseClass* e, int attr_idx) {
-    std::vector<IfcUtil::IfcBaseClass*> result;
-    if (!e || attr_idx < 0) return result;
-    try {
-        auto val = e->get_attribute_value(static_cast<size_t>(attr_idx));
-        if (val.isNull()) return result;
-        auto agg = (aggregate_of_instance::ptr)val;
-        if (agg) {
-            for (auto& it : *agg) result.push_back(it);
-        }
-    } catch (...) {}
-    return result;
-}
-
-void set_ref_aggregate(IfcUtil::IfcBaseClass* e, int attr_idx,
-                       const std::vector<IfcUtil::IfcBaseClass*>& items) {
-    if (!e || attr_idx < 0) return;
-    auto agg = aggregate_of_instance::ptr(new aggregate_of_instance());
-    for (auto* p : items) agg->push(p);
-    e->set_attribute_value(static_cast<size_t>(attr_idx), agg);
-}
-
-std::string read_string_attr(IfcUtil::IfcBaseClass* e, const char* attr) {
-    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(e);
-    if (!be) return std::string();
-    auto* decl = be->declaration().as_entity();
-    int idx = find_attr_index(decl, attr);
-    if (idx < 0) return std::string();
-    try {
-        auto val = e->get_attribute_value(static_cast<size_t>(idx));
-        if (val.isNull()) return std::string();
-        return (std::string)val;
-    } catch (...) {
-        return std::string();
-    }
 }
 
 // Find an existing pset by name on `product`.
@@ -119,7 +80,10 @@ IfcUtil::IfcBaseClass* find_existing_pset_on_type(IfcUtil::IfcBaseClass* product
 
 // Wire `pset` to `product` (occurrence) — find or create IfcRelDefinesByProperties.
 void assign_pset_to_object(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* product,
-                           IfcUtil::IfcBaseClass* pset, IfcUtil::IfcBaseClass* owner_history) {
+                           IfcUtil::IfcBaseClass* pset,
+                           IfcUtil::IfcBaseClass* owner_history,
+                           IfcUtil::IfcBaseClass* user,
+                           IfcUtil::IfcBaseClass* application) {
     bool is_ifc2x3 = (std::string(file->schema()->name()) == "IFC2X3");
     const char* inv_name = is_ifc2x3 ? "PropertyDefinitionOf" : "DefinesOccurrence";
     auto rels = get_inverse(pset, inv_name);
@@ -143,10 +107,9 @@ void assign_pset_to_object(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* produ
     auto* rel_entity_decl = rel_decl_p->as_entity();
     int gi = find_attr_index(rel_entity_decl, "GlobalId");
     if (gi >= 0) new_rel->set_attribute_value(static_cast<size_t>(gi), ifcapi::guid_new());
-    if (owner_history) {
-        int oh = find_attr_index(rel_entity_decl, "OwnerHistory");
-        if (oh >= 0) new_rel->set_attribute_value(static_cast<size_t>(oh), owner_history);
-    }
+    int oh = find_attr_index(rel_entity_decl, "OwnerHistory");
+    ifcapi::detail::set_ref(
+        new_rel, oh, ifcapi::detail::ensure_owner_history(file, owner_history, user, application));
     int ro = find_attr_index(rel_entity_decl, "RelatedObjects");
     set_ref_aggregate(new_rel, ro, {product});
     int rp = find_attr_index(rel_entity_decl, "RelatingPropertyDefinition");
@@ -166,18 +129,18 @@ void append_to_type_pset_list(IfcUtil::IfcBaseClass* product, IfcUtil::IfcBaseCl
 
 // Generic "create a definition entity with name/owner/guid attributes".
 IfcUtil::IfcBaseClass* create_named_definition(IfcParse::IfcFile* file, const char* ifc_class,
-                                               const std::string& name,
-                                               IfcUtil::IfcBaseClass* owner_history,
-                                               const char* method_of_measurement = nullptr) {
+                                                const std::string& name,
+                                                IfcUtil::IfcBaseClass* owner_history,
+                                                IfcUtil::IfcBaseClass* user,
+                                                IfcUtil::IfcBaseClass* application,
+                                                const char* method_of_measurement = nullptr) {
     const auto* decl = file->schema()->declaration_by_name(ifc_class);
     auto* def = file->create(decl);
     auto* entity_decl = decl->as_entity();
     int gi = find_attr_index(entity_decl, "GlobalId");
     if (gi >= 0) def->set_attribute_value(static_cast<size_t>(gi), ifcapi::guid_new());
-    if (owner_history) {
-        int oh = find_attr_index(entity_decl, "OwnerHistory");
-        if (oh >= 0) def->set_attribute_value(static_cast<size_t>(oh), owner_history);
-    }
+    int oh = find_attr_index(entity_decl, "OwnerHistory");
+    ifcapi::detail::set_ref(def, oh, ifcapi::detail::ensure_owner_history(file, owner_history, user, application));
     int ni = find_attr_index(entity_decl, "Name");
     if (ni >= 0) def->set_attribute_value(static_cast<size_t>(ni), name);
     if (method_of_measurement) {
@@ -197,6 +160,8 @@ IfcUtil::IfcBaseClass* pset_add_pset(
     IfcUtil::IfcBaseClass* product,
     const std::string& name,
     IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application,
     const char* ifc2x3_subclass)
 {
     if (!file || !product) {
@@ -210,8 +175,8 @@ IfcUtil::IfcBaseClass* pset_add_pset(
             if (auto* existing = find_existing_pset_on_object(product, nm)) {
                 return existing;
             }
-            auto* pset = create_named_definition(file, "IfcPropertySet", nm, owner_history);
-            assign_pset_to_object(file, product, pset, owner_history);
+            auto* pset = create_named_definition(file, "IfcPropertySet", nm, owner_history, user, application);
+            assign_pset_to_object(file, product, pset, owner_history, user, application);
             return pset;
         }
 
@@ -219,7 +184,7 @@ IfcUtil::IfcBaseClass* pset_add_pset(
             if (auto* existing = find_existing_pset_on_type(product, nm)) {
                 return existing;
             }
-            auto* pset = create_named_definition(file, "IfcPropertySet", nm, owner_history);
+            auto* pset = create_named_definition(file, "IfcPropertySet", nm, owner_history, user, application);
             append_to_type_pset_list(product, pset);
             return pset;
         }
@@ -300,7 +265,9 @@ IfcUtil::IfcBaseClass* pset_add_pset(
             return def;
         }
 
-        set_error(std::string("Class '") + product->declaration().name() + "' doesn't support adding a property set.");
+        set_error(
+            ifcapi::detail::ERROR_TYPE,
+            std::string("Class '") + product->declaration().name() + "' doesn't support adding a property set.");
         return nullptr;
     } catch (const std::exception& e) {
         set_error(std::string("pset_add_pset: ") + e.what());
@@ -312,7 +279,9 @@ IfcUtil::IfcBaseClass* pset_add_qto(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* product,
     const std::string& name,
-    IfcUtil::IfcBaseClass* owner_history)
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
 {
     if (!file || !product || name.empty()) {
         set_error("pset_add_qto: missing required argument");
@@ -330,7 +299,7 @@ IfcUtil::IfcBaseClass* pset_add_qto(
             if (auto* existing = find_existing_pset_on_object(product, nm)) {
                 return existing;
             }
-            auto* qto = create_named_definition(file, "IfcElementQuantity", nm, owner_history, mom);
+            auto* qto = create_named_definition(file, "IfcElementQuantity", nm, owner_history, user, application, mom);
 
             // Always create a fresh IfcRelDefinesByProperties for quantities.
             const auto* rel_decl = file->schema()->declaration_by_name("IfcRelDefinesByProperties");
@@ -338,10 +307,9 @@ IfcUtil::IfcBaseClass* pset_add_qto(
             auto* rel_entity_decl = rel_decl->as_entity();
             int gi = find_attr_index(rel_entity_decl, "GlobalId");
             if (gi >= 0) rel->set_attribute_value(static_cast<size_t>(gi), ifcapi::guid_new());
-            if (owner_history) {
-                int oh = find_attr_index(rel_entity_decl, "OwnerHistory");
-                if (oh >= 0) rel->set_attribute_value(static_cast<size_t>(oh), owner_history);
-            }
+            int oh = find_attr_index(rel_entity_decl, "OwnerHistory");
+            ifcapi::detail::set_ref(
+                rel, oh, ifcapi::detail::ensure_owner_history(file, owner_history, user, application));
             int ro = find_attr_index(rel_entity_decl, "RelatedObjects");
             set_ref_aggregate(rel, ro, {product});
             int rp = find_attr_index(rel_entity_decl, "RelatingPropertyDefinition");
@@ -353,12 +321,11 @@ IfcUtil::IfcBaseClass* pset_add_qto(
             if (auto* existing = find_existing_pset_on_type(product, nm)) {
                 return existing;
             }
-            auto* qto = create_named_definition(file, "IfcElementQuantity", nm, owner_history, mom);
+            auto* qto = create_named_definition(file, "IfcElementQuantity", nm, owner_history, user, application, mom);
             append_to_type_pset_list(product, qto);
             return qto;
         }
 
-        set_error(std::string("Class '") + product->declaration().name() + "' doesn't support adding a quantity set.");
         return nullptr;
     } catch (const std::exception& e) {
         set_error(std::string("pset_add_qto: ") + e.what());

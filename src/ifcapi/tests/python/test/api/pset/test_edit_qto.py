@@ -18,6 +18,7 @@
 
 import ifcopenshell.api.pset
 import ifcopenshell.api.root
+import pytest
 import test.bootstrap
 
 
@@ -150,3 +151,36 @@ class TestEditQto(test.bootstrap.IFC4):
         qto = element.IsDefinedBy[0].RelatingPropertyDefinition
         assert qto.Quantities[0].Name == "MyLength"
         assert qto.Quantities[0].LengthValue == 34
+
+    def test_rejecting_invalid_existing_quantity_values(self):
+        element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        qto = ifcopenshell.api.pset.add_qto(self.file, product=element, name="Foo_Bar")
+        ifcopenshell.api.pset.edit_qto(self.file, qto=qto, properties={"MyLength": 12})
+
+        with pytest.raises(ValueError, match="Invalid numeric quantity value"):
+            ifcopenshell.api.pset.edit_qto(self.file, qto=qto, properties={"MyLength": "invalid"})
+
+    def test_rejecting_complex_quantities_without_discrimination(self):
+        element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        qto = ifcopenshell.api.pset.add_qto(self.file, product=element, name="Foo_Bar")
+
+        with pytest.raises(KeyError, match="Discrimination"):
+            ifcopenshell.api.pset.edit_qto(
+                self.file, qto=qto, properties={"Complex": {"HasQuantities": {"Length": 1}}}
+            )
+
+    def test_rejecting_complex_quantities_without_nested_quantities(self):
+        element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        qto = ifcopenshell.api.pset.add_qto(self.file, product=element, name="Foo_Bar")
+
+        with pytest.raises(KeyError, match="HasQuantities"):
+            ifcopenshell.api.pset.edit_qto(
+                self.file, qto=qto, properties={"Complex": {"Discrimination": "By storey"}}
+            )
+
+    def test_rejecting_arbitrary_entities_as_quantity_values(self):
+        element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        qto = ifcopenshell.api.pset.add_qto(self.file, product=element, name="Foo_Bar")
+
+        with pytest.raises(RuntimeError, match="Unsupported quantity type"):
+            ifcopenshell.api.pset.edit_qto(self.file, qto=qto, properties={"Invalid": element})

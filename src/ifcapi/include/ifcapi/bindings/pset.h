@@ -51,12 +51,16 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* pset_add_pset(
     IfcUtil::IfcBaseClass* product,
     const std::string& name,
     IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application,
     const char* ifc2x3_subclass);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* pset_add_qto(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* product,
     const std::string& name,
-    IfcUtil::IfcBaseClass* owner_history);
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING bool pset_edit_pset(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* pset,
