@@ -1,8 +1,9 @@
+// This file was generated with the assistance of an AI coding tool.
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
-#include "ifcapi/bindings/entity.h"
 #include "ifcapi/bindings/type.h"
+#include "ifcapi/detail/relationship.h"
 #include "guid.h"
 
 #include "ifcparse/IfcFile.h"
@@ -24,40 +25,6 @@
 namespace {
 inline void set_error(const char* msg) { ifcopenshell::capi::set_last_error(msg); }
 inline void set_error(const std::string& msg) { ifcopenshell::capi::set_last_error(msg); }
-}
-
-static int find_attr_index(const IfcParse::entity* decl, const char* name) {
-    auto attrs = decl->all_attributes();
-    for (size_t i = 0; i < attrs.size(); ++i) {
-        if (attrs[i]->name() == name) return static_cast<int>(i);
-    }
-    return -1;
-}
-
-static std::vector<IfcUtil::IfcBaseClass*> get_ref_aggregate(IfcUtil::IfcBaseClass* entity, int attr_idx) {
-    std::vector<IfcUtil::IfcBaseClass*> result;
-    if (attr_idx < 0) return result;
-    try {
-        auto val = entity->get_attribute_value(static_cast<size_t>(attr_idx));
-        if (val.isNull()) return result;
-        auto agg = (aggregate_of_instance::ptr)val;
-        if (agg) {
-            for (auto& item : *agg) {
-                result.push_back(item);
-            }
-        }
-    } catch (...) {}
-    return result;
-}
-
-static void set_ref_aggregate(IfcUtil::IfcBaseClass* entity, int attr_idx,
-                              const std::vector<IfcUtil::IfcBaseClass*>& refs) {
-    if (attr_idx < 0) return;
-    auto agg = aggregate_of_instance::ptr(new aggregate_of_instance());
-    for (auto* ref : refs) {
-        agg->push(ref);
-    }
-    entity->set_attribute_value(static_cast<size_t>(attr_idx), agg);
 }
 
 // Find the IfcRelDefinesByType that the given type is the RelatingType of.
@@ -103,25 +70,9 @@ static IfcUtil::IfcBaseClass* find_element_type_rel(IfcParse::IfcFile* file, Ifc
     return nullptr;
 }
 
-static void remove_with_history(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* entity) {
-    auto* decl = entity->declaration().as_entity();
-    int oh_idx = decl ? find_attr_index(decl, "OwnerHistory") : -1;
-    IfcUtil::IfcBaseClass* history = nullptr;
-    if (oh_idx >= 0) {
-        try {
-            auto val = entity->get_attribute_value(static_cast<size_t>(oh_idx));
-            if (!val.isNull()) {
-                history = (IfcUtil::IfcBaseClass*)val;
-            }
-        } catch (...) {}
-    }
-    file->removeEntity(entity);
-    if (history) {
-        ifcapi::bindings::entity_remove_deep2(history);
-    }
-}
-
 namespace {
+using namespace ifcapi::detail;
+
 // Strip ObjectType / PredefinedType from related objects when the relating
 // type already declares a non-NOTDEFINED PredefinedType (avoids "double
 // typing"; see ifcopenshell issue 7006).
@@ -163,7 +114,10 @@ IfcUtil::IfcBaseClass* assign_type_core(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& objects,
     IfcUtil::IfcBaseClass* relating_type,
-    bool should_map_representations)
+    bool should_map_representations,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
 {
     ifcopenshell_clear_error();
     if (!file || objects.empty()) {
@@ -221,6 +175,7 @@ IfcUtil::IfcBaseClass* assign_type_core(
                 remove_with_history(file, prev_rel);
             } else {
                 set_ref_aggregate(prev_rel, related_idx, remaining);
+                update_owner_history(file, prev_rel, user, application);
             }
         }
 
@@ -233,6 +188,7 @@ IfcUtil::IfcBaseClass* assign_type_core(
             for (auto* o : objects_set) current_set.insert(o);
             std::vector<IfcUtil::IfcBaseClass*> merged(current_set.begin(), current_set.end());
             set_ref_aggregate(existing_rel, related_idx, merged);
+            update_owner_history(file, existing_rel, user, application);
             result_rel = existing_rel;
         } else {
             auto* rel = file->create(rdt_decl);
@@ -245,9 +201,9 @@ IfcUtil::IfcBaseClass* assign_type_core(
                 rel->set_attribute_value(static_cast<size_t>(gi_idx), ifcapi::guid_new());
             }
             int rt_idx = find_attr_index(rdt_entity_decl, "RelatingType");
-            if (rt_idx >= 0) {
-                rel->set_attribute_value(static_cast<size_t>(rt_idx), relating_type_e);
-            }
+            set_ref(rel, rt_idx, relating_type_e);
+            int oh_idx = find_attr_index(rdt_entity_decl, "OwnerHistory");
+            set_ref(rel, oh_idx, ensure_owner_history(file, owner_history, user, application));
             std::vector<IfcUtil::IfcBaseClass*> objs(objects_set.begin(), objects_set.end());
             set_ref_aggregate(rel, related_idx, objs);
             result_rel = rel;
@@ -292,23 +248,31 @@ namespace bindings {
 IfcUtil::IfcBaseClass* type_assign_type(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& objects,
-    IfcUtil::IfcBaseClass* relating_type)
+    IfcUtil::IfcBaseClass* relating_type,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
 {
-    return assign_type_core(file, objects, relating_type, true);
+    return assign_type_core(file, objects, relating_type, true, owner_history, user, application);
 }
 
 IfcUtil::IfcBaseClass* type_assign_type_ex(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& objects,
     IfcUtil::IfcBaseClass* relating_type,
-    bool should_map_representations)
+    bool should_map_representations,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
 {
-    return assign_type_core(file, objects, relating_type, should_map_representations);
+    return assign_type_core(file, objects, relating_type, should_map_representations, owner_history, user, application);
 }
 
 void type_unassign_type(
     IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& objects)
+    const std::vector<const IfcUtil::IfcBaseClass*>& objects,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
 {
     if (!file || objects.empty()) return;
 
@@ -341,6 +305,7 @@ void type_unassign_type(
                 remove_with_history(file, rel);
             } else {
                 set_ref_aggregate(rel, related_idx, remaining);
+                update_owner_history(file, rel, user, application);
             }
         }
     } catch (...) {}

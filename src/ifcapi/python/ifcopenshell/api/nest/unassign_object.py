@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.util.element
+from ifcopenshell.api import _relationship_capi
 
 
 def unassign_object(file: ifcopenshell.file, related_objects: list[ifcopenshell.entity_instance]) -> None:
@@ -48,25 +47,13 @@ def unassign_object(file: ifcopenshell.file, related_objects: list[ifcopenshell.
         ifcopenshell.api.nest.unassign_object(model, related_objects=[subtask2])
     """
 
-    # NOTE: maintain .RelatedObjects order as it has meaning in IFC
-    related_objects_set = set(related_objects)
-    ifc2x3 = file.schema == "IFC2X3"
-    if ifc2x3:
-        rels = set(
-            rel
-            for object in related_objects_set
-            if (rel := next((rel for rel in object.Decomposes if rel.is_a("IfcRelNests")), None))
-        )
-    else:
-        rels = set(rel for object in related_objects if (rel := next((rel for rel in object.Nests), None)))
-
-    for rel in rels:
-        cur_related_objects = [o for o in rel.RelatedObjects if o not in related_objects_set]
-        if cur_related_objects:
-            rel.RelatedObjects = cur_related_objects
-            ifcopenshell.api.owner.update_owner_history(file, element=rel)
-        else:
-            history = rel.OwnerHistory
-            file.remove(rel)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
+    object_list = _relationship_capi.instance_list(related_objects)
+    user, application = _relationship_capi.owner_user_application(file)
+    lib = _relationship_capi.get_lib()
+    _relationship_capi.call_status(
+        lib.ifcopenshell_ifcapi_nest_unassign_object,
+        _relationship_capi.file_handle(file),
+        _relationship_capi.instance_list_ptr(object_list),
+        _relationship_capi.instance_handle(user),
+        _relationship_capi.instance_handle(application),
+    )

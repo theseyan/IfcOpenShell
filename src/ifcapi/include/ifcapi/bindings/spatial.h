@@ -16,10 +16,15 @@ namespace bindings {
 IFCAPI_BINDING IfcUtil::IfcBaseClass* spatial_assign_container(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& products,
-    IfcUtil::IfcBaseClass* relating_structure);
+    IfcUtil::IfcBaseClass* relating_structure,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING void spatial_unassign_container(
     IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& products);
+    const std::vector<const IfcUtil::IfcBaseClass*>& products,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application);
 
 } // namespace bindings
 } // namespace ifcapi

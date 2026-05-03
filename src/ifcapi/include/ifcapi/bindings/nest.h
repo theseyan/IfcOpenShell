@@ -16,10 +16,15 @@ namespace bindings {
 IFCAPI_BINDING IfcUtil::IfcBaseClass* nest_assign_object(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& objects,
-    IfcUtil::IfcBaseClass* relating_object);
+    IfcUtil::IfcBaseClass* relating_object,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING void nest_unassign_object(
     IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& objects);
+    const std::vector<const IfcUtil::IfcBaseClass*>& objects,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application);
 
 } // namespace bindings
 } // namespace ifcapi

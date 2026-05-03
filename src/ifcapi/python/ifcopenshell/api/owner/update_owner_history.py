@@ -16,12 +16,27 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import time
 from typing import Union
 
 import ifcopenshell
 import ifcopenshell.api.owner.settings
-import ifcopenshell.util.element
+from ifcopenshell import _generated_capi
+from ifcopenshell.entity_instance import _generated_instance_handle_ptr
+
+
+_BOUND = False
+
+
+def _bind():
+    global _BOUND
+    lib = ifcopenshell._get_lib()
+    if not _BOUND:
+        _generated_capi.bind(
+            lib,
+            names=("ifcopenshell_ifcapi_owner_update_owner_history", "ifcopenshell_ifc_instance_destroy"),
+        )
+        _BOUND = True
+    return lib
 
 
 def update_owner_history(
@@ -66,23 +81,14 @@ def update_owner_history(
     if not application:
         return
 
-    # 1 IfcRoot IfcOwnerHistory
-    owner_history = element[1]
-    if not owner_history:
-        owner_history = ifcopenshell.api.owner.create_owner_history(file)
-        element[1] = owner_history
-        return owner_history
-
-    if file.get_total_inverses(owner_history) > 1:
-        owner_history = ifcopenshell.util.element.copy(file, owner_history)
-        element[1] = owner_history
-
-    # 3 IfcOwnerHistory ChangeAction
-    owner_history[3] = "MODIFIED"
-    # 4 IfcOwnerHistory LastModifiedDate
-    owner_history[4] = int(time.time())
-    # 5 IfcOwnerHistory LastModifyingUser
-    owner_history[5] = user
-    # 6 IfcOwnerHistory LastModifyingApplication
-    owner_history[6] = application
-    return owner_history
+    lib = _bind()
+    handle = _generated_capi.call_handle(
+        lib,
+        lib.ifcopenshell_ifcapi_owner_update_owner_history,
+        _generated_instance_handle_ptr(file._ptr),
+        _generated_instance_handle_ptr(element._handle),
+        _generated_instance_handle_ptr(user._handle),
+        _generated_instance_handle_ptr(application._handle),
+        destroy=lib.ifcopenshell_ifc_instance_destroy,
+    )
+    return ifcopenshell.entity_instance(file, handle) if handle else None

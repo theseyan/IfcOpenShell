@@ -17,6 +17,7 @@ public_headers:
   - ifcapi/bindings/geometry.h
   - ifcapi/bindings/group.h
   - ifcapi/bindings/nest.h
+  - ifcapi/bindings/owner.h
   - ifcapi/bindings/placement.h
   - ifcapi/bindings/pset.h
   - ifcapi/bindings/pset_template.h
@@ -366,7 +367,7 @@ discover:
           returns:
             ownership: copy
     - namespace: ifcapi::bindings
-      translation_unit: aggregate_spatial.cpp
+      translation_unit: api/aggregate/relationship.cpp
       include:
         - aggregate_assign_object
         - aggregate_unassign_object
@@ -376,11 +377,37 @@ discover:
         aggregate_assign_object:
           returns:
             nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        aggregate_unassign_object:
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
         spatial_assign_container:
           returns:
             nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        spatial_unassign_container:
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
     - namespace: ifcapi::bindings
-      translation_unit: nest.cpp
+      translation_unit: api/nest/relationship.cpp
       include:
         - nest_assign_object
         - nest_unassign_object
@@ -388,8 +415,21 @@ discover:
         nest_assign_object:
           returns:
             nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        nest_unassign_object:
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
     - namespace: ifcapi::bindings
-      translation_unit: type.cpp
+      translation_unit: api/type/relationship.cpp
       include:
         - type_assign_type
         - type_assign_type_ex
@@ -398,9 +438,29 @@ discover:
         type_assign_type:
           returns:
             nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
         type_assign_type_ex:
           returns:
             nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        type_unassign_type:
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
     - namespace: ifcapi::bindings
       translation_unit: geometry.cpp
       include:
@@ -1043,7 +1103,31 @@ discover:
             owner_history:
               nullable: true
     - namespace: ifcapi::bindings
-      translation_unit: group.cpp
+      translation_unit: owner.cpp
+      include:
+        - owner_create_owner_history
+        - owner_update_owner_history
+      type_overrides:
+        owner_create_owner_history:
+          returns:
+            nullable: true
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
+        owner_update_owner_history:
+          returns:
+            nullable: true
+          params:
+            element:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: api/group/relationship.cpp
       include:
         - group_assign_group
         - group_unassign_group
@@ -1051,6 +1135,19 @@ discover:
         group_assign_group:
           returns:
             nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        group_unassign_group:
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
     - namespace: ifcapi::bindings
       translation_unit: util/schema.cpp
       include:

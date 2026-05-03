@@ -473,23 +473,49 @@ bool is_a(IfcUtil::IfcBaseClass* entity, const char* name) {
     return entity && entity->declaration().is(name);
 }
 
-std::string guess_representation_type(const std::vector<IfcUtil::IfcBaseClass*>& items) {
-    if (items.empty() || items.front() == nullptr) {
-        return "";
+template <typename Predicate>
+bool all_items_are(const std::vector<IfcUtil::IfcBaseClass*>& items, Predicate predicate) {
+    return !items.empty() && std::all_of(items.begin(), items.end(), [&](auto* item) {
+        return item != nullptr && predicate(item);
+    });
+}
+
+int read_dim(IfcUtil::IfcBaseClass* entity) {
+    auto* decl = entity ? entity->declaration().as_entity() : nullptr;
+    if (!decl) {
+        return 0;
     }
-    auto* item = items.front();
-    if (is_a(item, "IfcVertexPoint")) return "Vertex";
-    if (is_a(item, "IfcEdge")) return "Edge";
-    if (is_a(item, "IfcPath")) return "Path";
-    if (is_a(item, "IfcFace")) return "Face";
-    if (is_a(item, "IfcShell")) return "Shell";
-    if (is_a(item, "IfcMappedItem")) return "MappedRepresentation";
-    if (is_a(item, "IfcSweptDiskSolid")) return "AdvancedSweptSolid";
-    if (is_a(item, "IfcExtrudedAreaSolid") || is_a(item, "IfcRevolvedAreaSolid")) return "SweptSolid";
-    if (is_a(item, "IfcTessellatedFaceSet")) return "Tessellation";
-    if (is_a(item, "IfcBooleanResult")) return "CSG";
-    if (is_a(item, "IfcCsgPrimitive3D") || is_a(item, "IfcBlock") || is_a(item, "IfcSphere")) return "CSG";
-    if (is_a(item, "IfcCurve")) return "Curve2D";
+    int dim_idx = decl->attribute_index("Dim");
+    if (dim_idx < 0) {
+        return 0;
+    }
+    try {
+        auto value = entity->get_attribute_value(static_cast<size_t>(dim_idx));
+        return value.isNull() ? 0 : static_cast<int>(value);
+    } catch (...) {
+        return 0;
+    }
+}
+
+std::string guess_representation_type(const std::vector<IfcUtil::IfcBaseClass*>& items) {
+    if (all_items_are(items, [](auto* item) { return is_a(item, "IfcVertexPoint"); })) return "Vertex";
+    if (all_items_are(items, [](auto* item) { return is_a(item, "IfcEdge"); })) return "Edge";
+    if (all_items_are(items, [](auto* item) { return is_a(item, "IfcPath"); })) return "Path";
+    if (all_items_are(items, [](auto* item) { return is_a(item, "IfcFace"); })) return "Face";
+    if (all_items_are(items, [](auto* item) { return is_a(item, "IfcShell"); })) return "Shell";
+    if (all_items_are(items, [](auto* item) { return is_a(item, "IfcMappedItem"); })) return "MappedRepresentation";
+    if (all_items_are(items, [](auto* item) { return is_a(item, "IfcExtrudedAreaSolid") || is_a(item, "IfcRevolvedAreaSolid"); })) return "SweptSolid";
+    if (all_items_are(items, [](auto* item) {
+            return is_a(item, "IfcSweptAreaSolid") || is_a(item, "IfcSweptDiskSolid") ||
+                is_a(item, "IfcSectionedSolidHorizontal");
+        })) return "AdvancedSweptSolid";
+    if (all_items_are(items, [](auto* item) { return is_a(item, "IfcTessellatedItem"); })) return "Tessellation";
+    if (all_items_are(items, [](auto* item) {
+            return is_a(item, "IfcBooleanResult") || is_a(item, "IfcCsgPrimitive3D") || is_a(item, "IfcCsgSolid");
+        })) return "CSG";
+    if (all_items_are(items, [](auto* item) { return is_a(item, "IfcCurve") && read_dim(item) == 2; })) return "Curve2D";
+    if (all_items_are(items, [](auto* item) { return is_a(item, "IfcCurve") && read_dim(item) == 3; })) return "Curve3D";
+    if (all_items_are(items, [](auto* item) { return is_a(item, "IfcCurve"); })) return "Curve";
     return "";
 }
 

@@ -62,6 +62,7 @@
 #include "ifcapi/bindings/geometry.h"
 #include "ifcapi/bindings/group.h"
 #include "ifcapi/bindings/nest.h"
+#include "ifcapi/bindings/owner.h"
 #include "ifcapi/bindings/placement.h"
 #include "ifcapi/bindings/pset.h"
 #include "ifcapi/bindings/pset_template.h"

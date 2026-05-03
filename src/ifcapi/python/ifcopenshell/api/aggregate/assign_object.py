@@ -20,10 +20,7 @@ from typing import Union
 
 import ifcopenshell
 import ifcopenshell.api.geometry
-import ifcopenshell.api.owner
-import ifcopenshell.api.spatial
-import ifcopenshell.guid
-import ifcopenshell.util.element
+from ifcopenshell.api import _relationship_capi
 import ifcopenshell.util.placement
 
 
@@ -114,37 +111,19 @@ def assign_object(
     if not products_to_change:
         return is_decomposed_by
 
-    # can be either only aggregated or only contained at the same time
-    # some product might not be able to have a container
-    possibly_contained_products = [p for p in products_without_aggregates if hasattr(p, "ContainedInStructure")]
-    ifcopenshell.api.spatial.unassign_container(file, products=possibly_contained_products)
-
-    # unassign elements from previous aggregates
-    for decomposes in previous_aggregates_rels:
-        related_objects = set(decomposes.RelatedObjects) - products_set
-        if related_objects:
-            decomposes.RelatedObjects = list(related_objects)
-            ifcopenshell.api.owner.update_owner_history(file, element=decomposes)
-        else:
-            history = decomposes.OwnerHistory
-            file.remove(decomposes)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
-
-    # assign elements to a new aggregate
-    if is_decomposed_by:
-        is_decomposed_by.RelatedObjects = list(set(is_decomposed_by.RelatedObjects) | products_set)
-        ifcopenshell.api.owner.update_owner_history(file, element=is_decomposed_by)
-    else:
-        is_decomposed_by = file.create_entity(
-            "IfcRelAggregates",
-            **{
-                "GlobalId": ifcopenshell.guid.new(),
-                "OwnerHistory": ifcopenshell.api.owner.create_owner_history(file),
-                "RelatedObjects": list(products_set),
-                "RelatingObject": relating_object,
-            }
-        )
+    lib = _relationship_capi.get_lib()
+    owner_history, user, application = _relationship_capi.owner_context(file)
+    product_list = _relationship_capi.instance_list(products)
+    is_decomposed_by = _relationship_capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_aggregate_assign_object,
+        _relationship_capi.file_handle(file),
+        _relationship_capi.instance_list_ptr(product_list),
+        _relationship_capi.instance_handle(relating_object),
+        _relationship_capi.instance_handle(owner_history),
+        _relationship_capi.instance_handle(user),
+        _relationship_capi.instance_handle(application),
+    )
 
     # localize placement relative to a new aggregate for affected products
     for product in products_to_change:

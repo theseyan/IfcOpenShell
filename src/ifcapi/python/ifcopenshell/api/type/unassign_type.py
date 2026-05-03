@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.util.element
+from ifcopenshell.api import _relationship_capi
 
 
 def unassign_type(file: ifcopenshell.file, related_objects: list[ifcopenshell.entity_instance]) -> None:
@@ -48,24 +47,13 @@ def unassign_type(file: ifcopenshell.file, related_objects: list[ifcopenshell.en
         # Change our mind. Maybe it's a different type?
         ifcopenshell.api.type.unassign_type(model, related_objects=[furniture])
     """
-    related_objects_set = set(related_objects)
-
-    if file.schema == "IFC2X3":
-        rels = set(
-            rel
-            for object in related_objects_set
-            if (rel := next((rel for rel in object.IsDefinedBy if rel.is_a("IfcRelDefinesByType")), None))
-        )
-    else:
-        rels = set(rel for object in related_objects_set if (rel := next((rel for rel in object.IsTypedBy), None)))
-
-    for rel in rels:
-        related_objects_set = set(rel.RelatedObjects) - related_objects_set
-        if related_objects_set:
-            rel.RelatedObjects = list(related_objects_set)
-            ifcopenshell.api.owner.update_owner_history(file, element=rel)
-        else:
-            history = rel.OwnerHistory
-            file.remove(rel)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
+    object_list = _relationship_capi.instance_list(related_objects)
+    user, application = _relationship_capi.owner_user_application(file)
+    lib = _relationship_capi.get_lib()
+    _relationship_capi.call_status(
+        lib.ifcopenshell_ifcapi_type_unassign_type,
+        _relationship_capi.file_handle(file),
+        _relationship_capi.instance_list_ptr(object_list),
+        _relationship_capi.instance_handle(user),
+        _relationship_capi.instance_handle(application),
+    )

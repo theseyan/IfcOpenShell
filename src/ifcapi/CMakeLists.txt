@@ -33,12 +33,13 @@ endif()
 set(IFCAPI_SOURCES
     src/guid.cpp
     src/root.cpp
+    src/owner.cpp
     src/file.cpp
     src/entity.cpp
-    src/aggregate_spatial.cpp
-    src/type.cpp
-    src/nest.cpp
-    src/group.cpp
+    src/api/aggregate/relationship.cpp
+    src/api/group/relationship.cpp
+    src/api/nest/relationship.cpp
+    src/api/type/relationship.cpp
     src/placement.cpp
     src/element.cpp
     src/representation.cpp

@@ -19,8 +19,7 @@
 from typing import Union
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.guid
+from ifcopenshell.api import _relationship_capi
 
 
 def assign_group(
@@ -47,22 +46,16 @@ def assign_group(
     if not products:
         return
 
-    is_grouped_by: tuple[ifcopenshell.entity_instance, ...]
-    if not (is_grouped_by := group.IsGroupedBy):
-        return file.create_entity(
-            "IfcRelAssignsToGroup",
-            **{
-                "GlobalId": ifcopenshell.guid.new(),
-                "OwnerHistory": ifcopenshell.api.owner.create_owner_history(file),
-                "RelatedObjects": products,
-                "RelatingGroup": group,
-            },
-        )
-    rel = is_grouped_by[0]
-    related_objects = set(rel.RelatedObjects) or set()
-    products_set = set(products)
-    if products_set.issubset(related_objects):
-        return rel
-    rel.RelatedObjects = list(related_objects | products_set)
-    ifcopenshell.api.owner.update_owner_history(file, element=rel)
-    return rel
+    lib = _relationship_capi.get_lib()
+    owner_history, user, application = _relationship_capi.owner_context(file)
+    product_list = _relationship_capi.instance_list(products)
+    return _relationship_capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_group_assign_group,
+        _relationship_capi.file_handle(file),
+        _relationship_capi.instance_list_ptr(product_list),
+        _relationship_capi.instance_handle(group),
+        _relationship_capi.instance_handle(owner_history),
+        _relationship_capi.instance_handle(user),
+        _relationship_capi.instance_handle(application),
+    )

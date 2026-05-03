@@ -16,11 +16,27 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import time
 from typing import Union
 
 import ifcopenshell
 import ifcopenshell.api.owner.settings
+from ifcopenshell import _generated_capi
+from ifcopenshell.entity_instance import _generated_instance_handle_ptr
+
+
+_BOUND = False
+
+
+def _bind():
+    global _BOUND
+    lib = ifcopenshell._get_lib()
+    if not _BOUND:
+        _generated_capi.bind(
+            lib,
+            names=("ifcopenshell_ifcapi_owner_create_owner_history", "ifcopenshell_ifc_instance_destroy"),
+        )
+        _BOUND = True
+    return lib
 
 
 def create_owner_history(file: ifcopenshell.file) -> Union[ifcopenshell.entity_instance, None]:
@@ -104,14 +120,13 @@ def create_owner_history(file: ifcopenshell.file) -> Union[ifcopenshell.entity_i
     application = ifcopenshell.api.owner.settings.get_application(file)
     if file.schema != "IFC2X3" and not application:
         return
-    return file.create_entity(
-        "IfcOwnerHistory",
-        OwningUser=user,
-        OwningApplication=application,
-        State="READWRITE",
-        ChangeAction="ADDED",
-        LastModifiedDate=int(time.time()),
-        LastModifyingUser=user,
-        LastModifyingApplication=application,
-        CreationDate=int(time.time()),
+    lib = _bind()
+    handle = _generated_capi.call_handle(
+        lib,
+        lib.ifcopenshell_ifcapi_owner_create_owner_history,
+        _generated_instance_handle_ptr(file._ptr),
+        _generated_instance_handle_ptr(user._handle) if user is not None else None,
+        _generated_instance_handle_ptr(application._handle) if application is not None else None,
+        destroy=lib.ifcopenshell_ifc_instance_destroy,
     )
+    return ifcopenshell.entity_instance(file, handle) if handle else None
