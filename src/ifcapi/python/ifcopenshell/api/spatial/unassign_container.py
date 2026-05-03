@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.util.element
+from ifcopenshell.api import _relationship_capi
 
 
 def unassign_container(file: ifcopenshell.file, products: list[ifcopenshell.entity_instance]) -> None:
@@ -52,16 +51,13 @@ def unassign_container(file: ifcopenshell.file, products: list[ifcopenshell.enti
         # Not anymore!
         ifcopenshell.api.spatial.unassign_container(model, products=[wall])
     """
-    products_set = set(products)
-    rels = set(rel for product in products_set if (rel := next(iter(product.ContainedInStructure), None)))
-
-    for rel in rels:
-        related_elements = set(rel.RelatedElements) - products_set
-        if related_elements:
-            rel.RelatedElements = list(related_elements)
-            ifcopenshell.api.owner.update_owner_history(file, element=rel)
-        else:
-            history = rel.OwnerHistory
-            file.remove(rel)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
+    product_list = _relationship_capi.instance_list(products)
+    user, application = _relationship_capi.owner_user_application(file)
+    lib = _relationship_capi.get_lib()
+    _relationship_capi.call_status(
+        lib.ifcopenshell_ifcapi_spatial_unassign_container,
+        _relationship_capi.file_handle(file),
+        _relationship_capi.instance_list_ptr(product_list),
+        _relationship_capi.instance_handle(user),
+        _relationship_capi.instance_handle(application),
+    )

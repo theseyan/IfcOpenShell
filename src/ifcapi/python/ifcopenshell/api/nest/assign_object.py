@@ -19,11 +19,7 @@
 from typing import Union
 
 import ifcopenshell
-import ifcopenshell.api.aggregate
-import ifcopenshell.api.owner
-import ifcopenshell.api.spatial
-import ifcopenshell.guid
-import ifcopenshell.util.element
+from ifcopenshell.api import _relationship_capi
 
 
 def assign_object(
@@ -98,9 +94,7 @@ def assign_object(
             ifc_class="IfcValve", predefined_type="FAUCET")
         ifcopenshell.api.nest.assign_object(model, related_objects=[faucet], relating_object=sink)
     """
-    settings = {"related_objects": related_objects, "relating_object": relating_object}
-
-    if not settings["related_objects"]:
+    if not related_objects:
         return
 
     ifc2x3 = file.schema == "IFC2X3"
@@ -139,41 +133,19 @@ def assign_object(
     if not objects_to_change:
         return is_nested_by
 
-    # Can be either only nested, aggregated, or contained at the same time.
-    possibly_contained = [o for o in objects_without_nests if hasattr(o, "ContainedInStructure")]
-    ifcopenshell.api.spatial.unassign_container(file, products=possibly_contained)
-    ifcopenshell.api.aggregate.unassign_object(file, products=objects_without_nests)
-
-    # unassign elements from previous nests
-    for nests in previous_nests_rels:
-        cur_related_objects = [o for o in nests.RelatedObjects if o not in related_objects_set]
-        if cur_related_objects:
-            nests.RelatedObjects = list(cur_related_objects)
-            ifcopenshell.api.owner.update_owner_history(file, element=nests)
-        else:
-            history = nests.OwnerHistory
-            file.remove(nests)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
-
-    # assign elements to a new nesting
-    if is_nested_by:
-        cur_related_objects = list(is_nested_by.RelatedObjects)
-        cur_related_objects_set = set(cur_related_objects)
-        is_nested_by.RelatedObjects = cur_related_objects + [
-            o for o in related_objects if o not in cur_related_objects_set
-        ]
-        ifcopenshell.api.owner.update_owner_history(file, element=is_nested_by)
-    else:
-        is_nested_by = file.create_entity(
-            "IfcRelNests",
-            **{
-                "GlobalId": ifcopenshell.guid.new(),
-                "OwnerHistory": ifcopenshell.api.owner.create_owner_history(file),
-                "RelatedObjects": related_objects,
-                "RelatingObject": relating_object,
-            }
-        )
+    lib = _relationship_capi.get_lib()
+    owner_history, user, application = _relationship_capi.owner_context(file)
+    object_list = _relationship_capi.instance_list(related_objects)
+    is_nested_by = _relationship_capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_nest_assign_object,
+        _relationship_capi.file_handle(file),
+        _relationship_capi.instance_list_ptr(object_list),
+        _relationship_capi.instance_handle(relating_object),
+        _relationship_capi.instance_handle(owner_history),
+        _relationship_capi.instance_handle(user),
+        _relationship_capi.instance_handle(application),
+    )
 
     # NOTE: Creating a nesting relationship doesn't localize the object's placement,
     # unlike assigning it to an aggregate or a container.

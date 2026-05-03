@@ -19,11 +19,8 @@
 from typing import Union
 
 import ifcopenshell
-import ifcopenshell.api.aggregate
 import ifcopenshell.api.geometry
-import ifcopenshell.api.owner
-import ifcopenshell.guid
-import ifcopenshell.util.element
+from ifcopenshell.api import _relationship_capi
 import ifcopenshell.util.placement
 
 
@@ -132,35 +129,19 @@ def assign_container(
     if not products_to_change:
         return structure_rel
 
-    # can be either only aggregated or only contained at the same time
-    ifcopenshell.api.aggregate.unassign_object(file, products=products_without_containers)
-
-    # unassign elements from previous containers
-    for rel in previous_containers_rels:
-        related_elements = set(rel.RelatedElements) - products_set
-        if related_elements:
-            rel.RelatedElements = list(related_elements)
-            ifcopenshell.api.owner.update_owner_history(file, element=rel)
-        else:
-            history = rel.OwnerHistory
-            file.remove(rel)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
-
-    # assign elements to a new container
-    if structure_rel:
-        structure_rel.RelatedElements = list(set(structure_rel.RelatedElements) | products_set)
-        ifcopenshell.api.owner.update_owner_history(file, element=structure_rel)
-    else:
-        structure_rel = file.create_entity(
-            "IfcRelContainedInSpatialStructure",
-            **{
-                "GlobalId": ifcopenshell.guid.new(),
-                "OwnerHistory": ifcopenshell.api.owner.create_owner_history(file),
-                "RelatedElements": list(products_set),
-                "RelatingStructure": relating_structure,
-            }
-        )
+    lib = _relationship_capi.get_lib()
+    owner_history, user, application = _relationship_capi.owner_context(file)
+    product_list = _relationship_capi.instance_list(products)
+    structure_rel = _relationship_capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_spatial_assign_container,
+        _relationship_capi.file_handle(file),
+        _relationship_capi.instance_list_ptr(product_list),
+        _relationship_capi.instance_handle(relating_structure),
+        _relationship_capi.instance_handle(owner_history),
+        _relationship_capi.instance_handle(user),
+        _relationship_capi.instance_handle(application),
+    )
 
     # localize placement relative to a new container for affected products
     for product in products_to_change:

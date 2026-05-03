@@ -20,9 +20,7 @@ from typing import Union
 
 import ifcopenshell
 import ifcopenshell.api.material
-import ifcopenshell.api.owner
-import ifcopenshell.api.type
-import ifcopenshell.guid
+from ifcopenshell.api import _relationship_capi
 import ifcopenshell.util.element
 
 
@@ -221,48 +219,23 @@ class Usecase:
         if not objects_to_change:
             return types
 
-        # unassign from previous types
-        for is_typed_by in previous_types_rels:
-            cur_related_objects = set(is_typed_by.RelatedObjects) - related_objects_set
-            if cur_related_objects:
-                is_typed_by.RelatedObjects = list(cur_related_objects)
-                ifcopenshell.api.owner.update_owner_history(self.file, element=is_typed_by)
-            else:
-                history = is_typed_by.OwnerHistory
-                self.file.remove(is_typed_by)
-                if history:
-                    ifcopenshell.util.element.remove_deep2(self.file, history)
-
-        # assign objects to a new type
-        if types:
-            types.RelatedObjects = list(set(types.RelatedObjects) | related_objects_set)
-            ifcopenshell.api.owner.update_owner_history(self.file, element=types)
-        else:
-            types = self.file.create_entity(
-                "IfcRelDefinesByType",
-                GlobalId=ifcopenshell.guid.new(),
-                OwnerHistory=ifcopenshell.api.owner.create_owner_history(self.file),
-                RelatedObjects=list(related_objects_set),
-                RelatingType=relating_type,
-            )
+        lib = _relationship_capi.get_lib()
+        owner_history, user, application = _relationship_capi.owner_context(self.file)
+        object_list = _relationship_capi.instance_list(related_objects)
+        types = _relationship_capi.call_handle(
+            self.file,
+            lib.ifcopenshell_ifcapi_type_assign_type_ex,
+            _relationship_capi.file_handle(self.file),
+            _relationship_capi.instance_list_ptr(object_list),
+            _relationship_capi.instance_handle(relating_type),
+            bool(should_map_representations),
+            _relationship_capi.instance_handle(owner_history),
+            _relationship_capi.instance_handle(user),
+            _relationship_capi.instance_handle(application),
+        )
 
         if should_map_representations:
-            if getattr(relating_type, "RepresentationMaps", None):
-                for related_object in objects_to_change:
-                    ifcopenshell.api.type.map_type_representations(
-                        self.file,
-                        related_object=related_object,
-                        relating_type=relating_type,
-                    )
             self.map_material_usages(objects_to_change, relating_type)
-
-        # Remove PredefinedType  / ObjectType if existing to forbid double typing(See #7006)
-        predefined_type = ifcopenshell.util.element.get_predefined_type(relating_type)
-        if predefined_type != "NOTDEFINED" and predefined_type is not None:
-            for obj in related_objects_set:
-                obj.ObjectType = None
-                if hasattr(obj, "PredefinedType"):
-                    obj.PredefinedType = None
         return types
 
     def map_material_usages(

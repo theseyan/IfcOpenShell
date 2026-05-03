@@ -1,10 +1,11 @@
+// This file was generated with the assistance of an AI coding tool.
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
 #include "ifcapi/bindings/aggregate.h"
-#include "ifcapi/bindings/entity.h"
 #include "ifcapi/bindings/nest.h"
 #include "ifcapi/bindings/spatial.h"
+#include "ifcapi/detail/relationship.h"
 #include "guid.h"
 
 #include "ifcparse/IfcFile.h"
@@ -25,58 +26,6 @@
 namespace {
 inline void set_error(const char* msg) { ifcopenshell::capi::set_last_error(msg); }
 inline void set_error(const std::string& msg) { ifcopenshell::capi::set_last_error(msg); }
-}
-
-static int find_attr_index(const IfcParse::entity* decl, const char* name) {
-    auto attrs = decl->all_attributes();
-    for (size_t i = 0; i < attrs.size(); ++i) {
-        if (attrs[i]->name() == name) return static_cast<int>(i);
-    }
-    return -1;
-}
-
-static std::vector<IfcUtil::IfcBaseClass*> get_ref_aggregate(IfcUtil::IfcBaseClass* entity, int attr_idx) {
-    std::vector<IfcUtil::IfcBaseClass*> result;
-    if (attr_idx < 0) return result;
-    try {
-        auto val = entity->get_attribute_value(static_cast<size_t>(attr_idx));
-        if (val.isNull()) return result;
-        auto agg = (aggregate_of_instance::ptr)val;
-        if (agg) {
-            for (auto& item : *agg) {
-                result.push_back(item);
-            }
-        }
-    } catch (...) {}
-    return result;
-}
-
-static void set_ref_aggregate(IfcUtil::IfcBaseClass* entity, int attr_idx,
-                              const std::vector<IfcUtil::IfcBaseClass*>& refs) {
-    if (attr_idx < 0) return;
-    auto agg = aggregate_of_instance::ptr(new aggregate_of_instance());
-    for (auto* ref : refs) {
-        agg->push(ref);
-    }
-    entity->set_attribute_value(static_cast<size_t>(attr_idx), agg);
-}
-
-static void remove_with_history(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* entity) {
-    auto* decl = entity->declaration().as_entity();
-    int oh_idx = decl ? find_attr_index(decl, "OwnerHistory") : -1;
-    IfcUtil::IfcBaseClass* history = nullptr;
-    if (oh_idx >= 0) {
-        try {
-            auto val = entity->get_attribute_value(static_cast<size_t>(oh_idx));
-            if (!val.isNull()) {
-                history = (IfcUtil::IfcBaseClass*)val;
-            }
-        } catch (...) {}
-    }
-    file->removeEntity(entity);
-    if (history) {
-        ifcapi::bindings::entity_remove_deep2(history);
-    }
 }
 
 // Find IfcRelNests where this entity is the RelatingObject (the whole).
@@ -131,11 +80,15 @@ static IfcUtil::IfcBaseClass* find_nests(IfcParse::IfcFile* file, IfcUtil::IfcBa
 
 namespace ifcapi {
 namespace bindings {
+using namespace ifcapi::detail;
 
 IfcUtil::IfcBaseClass* nest_assign_object(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& objects,
-    IfcUtil::IfcBaseClass* relating_object)
+    IfcUtil::IfcBaseClass* relating_object,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
 {
     ifcopenshell_clear_error();
     if (!file || objects.empty()) {
@@ -198,7 +151,7 @@ IfcUtil::IfcBaseClass* nest_assign_object(
                 } catch (...) {}
             }
             if (!contained_objects.empty()) {
-                spatial_unassign_container(file, contained_objects);
+                spatial_unassign_container(file, contained_objects, user, application);
             }
         }
 
@@ -206,7 +159,7 @@ IfcUtil::IfcBaseClass* nest_assign_object(
         {
             std::vector<const IfcUtil::IfcBaseClass*> aggregate_objects(
                 objects_to_change.begin(), objects_to_change.end());
-            aggregate_unassign_object(file, aggregate_objects);
+            aggregate_unassign_object(file, aggregate_objects, user, application);
         }
 
         // Remove from previous nest rels (preserving order).
@@ -222,6 +175,7 @@ IfcUtil::IfcBaseClass* nest_assign_object(
                 remove_with_history(file, prev_rel);
             } else {
                 set_ref_aggregate(prev_rel, related_idx, remaining);
+                update_owner_history(file, prev_rel, user, application);
             }
         }
 
@@ -235,6 +189,7 @@ IfcUtil::IfcBaseClass* nest_assign_object(
                 }
             }
             set_ref_aggregate(existing_rel, related_idx, current);
+            update_owner_history(file, existing_rel, user, application);
             return existing_rel;
         } else {
             auto* rel = file->create(nests_decl);
@@ -247,9 +202,9 @@ IfcUtil::IfcBaseClass* nest_assign_object(
                 rel->set_attribute_value(static_cast<size_t>(gi_idx), ifcapi::guid_new());
             }
             int ro_idx = find_attr_index(nests_entity_decl, "RelatingObject");
-            if (ro_idx >= 0) {
-                rel->set_attribute_value(static_cast<size_t>(ro_idx), relating);
-            }
+            set_ref(rel, ro_idx, relating);
+            int oh_idx = find_attr_index(nests_entity_decl, "OwnerHistory");
+            set_ref(rel, oh_idx, ensure_owner_history(file, owner_history, user, application));
             set_ref_aggregate(rel, related_idx, objects_vec);
             return rel;
         }
@@ -261,7 +216,9 @@ IfcUtil::IfcBaseClass* nest_assign_object(
 
 void nest_unassign_object(
     IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& objects)
+    const std::vector<const IfcUtil::IfcBaseClass*>& objects,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
 {
     if (!file || objects.empty()) return;
 
@@ -295,6 +252,7 @@ void nest_unassign_object(
                 remove_with_history(file, rel);
             } else {
                 set_ref_aggregate(rel, related_idx, remaining);
+                update_owner_history(file, rel, user, application);
             }
         }
     } catch (...) {}

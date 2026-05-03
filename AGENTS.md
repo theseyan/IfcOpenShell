@@ -129,6 +129,48 @@ on CI to catch formatting issues.
   within each package under `src/`.
 - Run the existing test suite for the package you modified before submitting.
 
+## Native High-Level API Porting
+
+When porting high-level Python APIs to the native C API under `src/ifcapi`,
+prioritise exact upstream behaviour and clean shared implementation over quick
+wrapper substitutions.
+
+- Put native module implementations in the correct segregated module directory
+  under `src/ifcapi/src/api/` (for example `src/api/geometry/`,
+  `src/api/pset/`, or `src/api/<module>/`) instead of adding more flat
+  top-level source files.
+- Always read the upstream implementation first, usually in
+  `src/ifcopenshell-python/ifcopenshell/api/` or
+  `src/ifcopenshell-python/ifcopenshell/util/`. The native implementation must
+  preserve 100% feature and behaviour parity, including edge cases, error
+  handling, ordering, nullability, ownership semantics, and schema-specific
+  branches.
+- Do not modify generated C/C++ or Python binding output directly. Fix the
+  native source, binding facade, generator, or YAML policy, then regenerate.
+  YAML should remain minimal policy/selection metadata, not a second
+  hand-written implementation inventory.
+- Avoid workarounds and hacky fixes. When a test fails, trace the real source
+  of the issue and fix that source precisely instead of patching around symptoms
+  or emulating expected output in a wrapper.
+- Avoid duplication and redundancy. Search for existing helpers before adding
+  new logic. If code is needed across files, extract it to a common internal
+  helper (for example under `src/ifcapi/include/ifcapi/detail/`) and reuse it
+  rather than copying functions into each module.
+- Keep Python wrappers thin. After a native port, Python should mainly handle
+  compatibility glue such as Python callback settings, public return-shape
+  quirks, and object wrapping. Business logic that should be available to other
+  bindings belongs in the native implementation.
+- Batch source/spec/wrapper changes before regeneration. Binding regeneration
+  and CMake rebuilds are expensive; complete a coherent batch first, then run
+  `cmake --build build-capi-stable --target ifcopenshell_capi --parallel 10`.
+- After porting a module and linking it through the C-API-backed
+  `ifcopenshell-python`, run that module's focused tests from the repository
+  root. If the existing tests do not cover the full upstream behaviour, add
+  targeted tests for the missing facets before considering the port complete.
+- For relationship or ownership-aware APIs, preserve `OwnerHistory`,
+  inverse-maintenance, removal/deep-removal, and shared-history copy semantics
+  exactly. These are part of API parity, not incidental metadata.
+
 ## Architecture Quick Reference
 
 ### Directory Structure

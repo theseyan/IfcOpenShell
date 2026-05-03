@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.util.element
+from ifcopenshell.api import _relationship_capi
 
 
 def unassign_object(file: ifcopenshell.file, products: list[ifcopenshell.entity_instance]) -> None:
@@ -54,22 +53,13 @@ def unassign_object(file: ifcopenshell.file, products: list[ifcopenshell.entity_
         # nothing is returned, relationship is removed
         ifcopenshell.api.aggregate.unassign_object(model, products=[subelement2])
     """
-    settings = {"products": products}
-
-    products = set(settings["products"])
-    rels = set(
-        rel
-        for product in products
-        if (rel := next((rel for rel in product.Decomposes if rel.is_a("IfcRelAggregates")), None))
+    product_list = _relationship_capi.instance_list(products)
+    user, application = _relationship_capi.owner_user_application(file)
+    lib = _relationship_capi.get_lib()
+    _relationship_capi.call_status(
+        lib.ifcopenshell_ifcapi_aggregate_unassign_object,
+        _relationship_capi.file_handle(file),
+        _relationship_capi.instance_list_ptr(product_list),
+        _relationship_capi.instance_handle(user),
+        _relationship_capi.instance_handle(application),
     )
-
-    for rel in rels:
-        related_objects = set(rel.RelatedObjects) - products
-        if related_objects:
-            rel.RelatedObjects = list(related_objects)
-            ifcopenshell.api.owner.update_owner_history(file, element=rel)
-        else:
-            history = rel.OwnerHistory
-            file.remove(rel)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
