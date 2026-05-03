@@ -19,8 +19,8 @@
 from typing import Optional
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.guid
+from ifcopenshell import _generated_capi
+from ifcopenshell.api import _relationship_capi
 
 
 def add_group(
@@ -47,10 +47,15 @@ def add_group(
         ifcopenshell.api.group.add_group(model, name="Unit 1A")
     """
 
-    return file.create_entity(
-        "IfcGroup",
-        GlobalId=ifcopenshell.guid.new(),
-        OwnerHistory=ifcopenshell.api.owner.create_owner_history(file),
-        Name=name,
-        Description=description,
+    lib = _relationship_capi.get_lib()
+    owner_history, user, application = _relationship_capi.owner_context(file)
+    return _relationship_capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_group_add_group,
+        _relationship_capi.file_handle(file),
+        _generated_capi.encode_string(name),
+        _generated_capi.encode_string(description) if description is not None else None,
+        _relationship_capi.instance_handle(owner_history),
+        _relationship_capi.instance_handle(user),
+        _relationship_capi.instance_handle(application),
     )

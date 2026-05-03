@@ -8,11 +8,26 @@
 #include "ifcparse/IfcBaseClass.h"
 #include "ifcparse/IfcFile.h"
 
+#include <string>
 #include <vector>
 
 namespace ifcapi {
 namespace bindings {
 
+IFCAPI_BINDING IfcUtil::IfcBaseClass* group_add_group(
+    IfcParse::IfcFile* file,
+    const std::string& name,
+    const char* description,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* group_update_group_products(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* group,
+    const std::vector<const IfcUtil::IfcBaseClass*>& products,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* group_assign_group(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& products,

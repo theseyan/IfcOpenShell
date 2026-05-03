@@ -8636,6 +8636,29 @@ bool ifcopenshell_ifcapi_owner_update_owner_history(ifcopenshell_ifc_file_t* fil
     }
 }
 
+bool ifcopenshell_ifcapi_group_add_group(ifcopenshell_ifc_file_t* file, const char* name, const char* description, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
+    std::string name_cpp(name);
+    const char* description_str = description;
+    auto owner_history_cpp = (owner_history != nullptr && owner_history->ptr != nullptr) ? owner_history->ptr : nullptr;
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::group_add_group(file_cpp, name_cpp, description, owner_history_cpp, user_cpp, application_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_group_assign_group(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* products, ifcopenshell_ifc_instance_t* group, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
@@ -8672,6 +8695,30 @@ bool ifcopenshell_ifcapi_group_unassign_group(ifcopenshell_ifc_file_t* file, con
     auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
     auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
         ifcapi::bindings::group_unassign_group(file_cpp, products_cpp, group_cpp, user_cpp, application_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_group_update_group_products(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* group, const ifcopenshell_ifc_instance_list_t* products, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (group == nullptr || group->ptr == nullptr) { throw std::runtime_error("Handle parameter \"group\" is invalid"); }
+    auto group_cpp = group->ptr;
+    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
+    auto products_cpp = to_cpp_ifc_instance_list(products);
+    auto owner_history_cpp = (owner_history != nullptr && owner_history->ptr != nullptr) ? owner_history->ptr : nullptr;
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::group_update_group_products(file_cpp, group_cpp, products_cpp, owner_history_cpp, user_cpp, application_cpp), false};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

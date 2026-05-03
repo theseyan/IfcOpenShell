@@ -36,9 +36,136 @@ static IfcUtil::IfcBaseClass* find_is_grouped_by(IfcUtil::IfcBaseClass* group) {
     return nullptr;
 }
 
+static std::vector<IfcUtil::IfcBaseClass*> get_group_rels(IfcUtil::IfcBaseClass* group) {
+    std::vector<IfcUtil::IfcBaseClass*> result;
+    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(group);
+    if (!be) return result;
+    try {
+        auto rels = be->get_inverse("IsGroupedBy");
+        if (rels) {
+            for (size_t i = 0; i < rels->size(); ++i) {
+                if ((*rels)[i]) result.push_back((*rels)[i]);
+            }
+        }
+    } catch (...) {}
+    return result;
+}
+
+static IfcUtil::IfcBaseClass* create_group_rel(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* group,
+    const std::vector<IfcUtil::IfcBaseClass*>& products,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    const auto* rel_decl = file->schema()->declaration_by_name("IfcRelAssignsToGroup");
+    auto* rel = file->create(rel_decl);
+    auto* rel_entity_decl = rel_decl->as_entity();
+    int gi_idx = ifcapi::detail::find_attr_index(rel_entity_decl, "GlobalId");
+    if (gi_idx >= 0) rel->set_attribute_value(static_cast<size_t>(gi_idx), ifcapi::guid_new());
+    int rg_idx = ifcapi::detail::find_attr_index(rel_entity_decl, "RelatingGroup");
+    ifcapi::detail::set_ref(rel, rg_idx, group);
+    int oh_idx = ifcapi::detail::find_attr_index(rel_entity_decl, "OwnerHistory");
+    ifcapi::detail::set_ref(rel, oh_idx, ifcapi::detail::ensure_owner_history(file, owner_history, user, application));
+    int related_idx = ifcapi::detail::find_attr_index(rel_entity_decl, "RelatedObjects");
+    ifcapi::detail::set_ref_aggregate(rel, related_idx, products);
+    return rel;
+}
+
 namespace ifcapi {
 namespace bindings {
 using namespace ifcapi::detail;
+
+IfcUtil::IfcBaseClass* group_add_group(
+    IfcParse::IfcFile* file,
+    const std::string& name,
+    const char* description,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    ifcopenshell_clear_error();
+    if (!file) {
+        set_error("Invalid arguments");
+        return nullptr;
+    }
+
+    try {
+        const auto* group_decl = file->schema()->declaration_by_name("IfcGroup");
+        auto* group = file->create(group_decl);
+        auto* group_entity_decl = group_decl->as_entity();
+        int gi_idx = find_attr_index(group_entity_decl, "GlobalId");
+        if (gi_idx >= 0) group->set_attribute_value(static_cast<size_t>(gi_idx), ifcapi::guid_new());
+        int oh_idx = find_attr_index(group_entity_decl, "OwnerHistory");
+        set_ref(group, oh_idx, ensure_owner_history(file, owner_history, user, application));
+        int name_idx = find_attr_index(group_entity_decl, "Name");
+        if (name_idx >= 0) group->set_attribute_value(static_cast<size_t>(name_idx), name);
+        if (description) {
+            int desc_idx = find_attr_index(group_entity_decl, "Description");
+            if (desc_idx >= 0) group->set_attribute_value(static_cast<size_t>(desc_idx), std::string(description));
+        }
+        return group;
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
+IfcUtil::IfcBaseClass* group_update_group_products(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* group,
+    const std::vector<const IfcUtil::IfcBaseClass*>& products,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    ifcopenshell_clear_error();
+    if (!file || !group) {
+        set_error("Invalid arguments");
+        return nullptr;
+    }
+
+    try {
+        std::vector<IfcUtil::IfcBaseClass*> product_vec;
+        for (auto* product : products) {
+            if (product) product_vec.push_back(const_cast<IfcUtil::IfcBaseClass*>(product));
+        }
+
+        auto rels = get_group_rels(group);
+        if (rels.empty()) {
+            return create_group_rel(file, group, product_vec, owner_history, user, application);
+        }
+
+        std::vector<IfcUtil::IfcBaseClass*> related;
+        std::set<IfcUtil::IfcBaseClass*> seen;
+        for (auto* product : product_vec) {
+            if (seen.insert(product).second) related.push_back(product);
+        }
+
+        for (auto* rel : rels) {
+            int related_idx = find_attr_index(rel->declaration().as_entity(), "RelatedObjects");
+            for (auto* item : get_ref_aggregate(rel, related_idx)) {
+                if (item && item->declaration().is("IfcGroup") && seen.insert(item).second) {
+                    related.push_back(item);
+                }
+            }
+        }
+
+        for (size_t i = 1; i < rels.size(); ++i) {
+            remove_with_history(file, rels[i]);
+        }
+
+        auto* rel = rels.front();
+        int related_idx = find_attr_index(rel->declaration().as_entity(), "RelatedObjects");
+        set_ref_aggregate(rel, related_idx, related);
+        update_owner_history(file, rel, user, application);
+        return rel;
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
 
 IfcUtil::IfcBaseClass* group_assign_group(
     IfcParse::IfcFile* file,
@@ -74,18 +201,7 @@ IfcUtil::IfcBaseClass* group_assign_group(
         int related_idx = find_attr_index(rel_entity_decl, "RelatedObjects");
 
         if (!existing_rel) {
-            auto* rel = file->create(rel_decl);
-            if (!rel) return nullptr;
-            int gi_idx = find_attr_index(rel_entity_decl, "GlobalId");
-            if (gi_idx >= 0) {
-                rel->set_attribute_value(static_cast<size_t>(gi_idx), ifcapi::guid_new());
-            }
-            int rg_idx = find_attr_index(rel_entity_decl, "RelatingGroup");
-            set_ref(rel, rg_idx, group_e);
-            int oh_idx = find_attr_index(rel_entity_decl, "OwnerHistory");
-            set_ref(rel, oh_idx, ensure_owner_history(file, owner_history, user, application));
-            set_ref_aggregate(rel, related_idx, products_vec);
-            return rel;
+            return create_group_rel(file, group_e, products_vec, owner_history, user, application);
         }
 
         // Merge into existing relationship
