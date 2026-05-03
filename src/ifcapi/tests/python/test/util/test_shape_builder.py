@@ -316,6 +316,24 @@ class TestRotate(test.bootstrap.IFC4):
         assert np.allclose(rotated.Points.CoordList, ((0.0, 0.0), (0.0, -1.0), (2.0, -1.0), (2.0, 0.0)))
 
 
+class TestDeepCopy(test.bootstrap.IFC4):
+    def test_deep_copy_preserves_nested_entity_lists(self):
+        builder = ShapeBuilder(self.file)
+        surface = self.file.create_entity("IfcBSplineSurfaceWithKnots")
+        points = [self.file.create_entity("IfcCartesianPoint", (float(i), 0.0, 0.0)) for i in range(4)]
+        surface.ControlPointsList = (points[:2], points[2:])
+
+        copied = builder.deep_copy(surface)
+
+        assert copied != surface
+        assert copied.ControlPointsList != surface.ControlPointsList
+        assert [[point.Coordinates for point in row] for row in copied.ControlPointsList] == [
+            [(0.0, 0.0, 0.0), (1.0, 0.0, 0.0)],
+            [(2.0, 0.0, 0.0), (3.0, 0.0, 0.0)],
+        ]
+        assert copied.ControlPointsList[0][0] != surface.ControlPointsList[0][0]
+
+
 class TestVertex(test.bootstrap.IFC4):
     def test_run(self):
         builder = ShapeBuilder(self.file)

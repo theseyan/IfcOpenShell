@@ -123,6 +123,25 @@ class TestAssignContainer(test.bootstrap.IFC4):
         ifcopenshell.api.spatial.assign_container(self.file, products=[subelement], relating_structure=element)
         assert not ifcopenshell.util.element.get_aggregate(subelement)
 
+    def test_moving_an_existing_container_does_not_remove_invalid_aggregation(self):
+        element1 = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcBuildingStorey")
+        element2 = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcBuildingStorey")
+        aggregate = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcElementAssembly")
+        subelement = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        ifcopenshell.api.spatial.assign_container(self.file, products=[subelement], relating_structure=element1)
+        aggregate_rel = self.file.create_entity(
+            "IfcRelAggregates",
+            GlobalId="0",
+            RelatedObjects=[subelement],
+            RelatingObject=aggregate,
+        )
+
+        ifcopenshell.api.spatial.assign_container(self.file, products=[subelement], relating_structure=element2)
+
+        assert ifcopenshell.util.element.get_container(subelement, should_get_direct=True) == element2
+        assert ifcopenshell.util.element.get_aggregate(subelement) == aggregate
+        assert self.file.by_id(aggregate_rel.id()) == aggregate_rel
+
 
 class TestAssignContainerIFC2X3(test.bootstrap.IFC2X3, TestAssignContainer):
     pass

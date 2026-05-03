@@ -127,11 +127,13 @@ IfcUtil::IfcBaseClass* aggregate_assign_object(
 
         // Determine which products need to change.
         std::set<IfcUtil::IfcBaseClass*> previous_rels;
+        std::vector<IfcUtil::IfcBaseClass*> products_without_aggregates;
         std::vector<IfcUtil::IfcBaseClass*> products_to_change;
 
         for (auto* product : products_set) {
             auto* cur_rel = find_decomposes(file, product);
             if (cur_rel == nullptr) {
+                products_without_aggregates.push_back(product);
                 products_to_change.push_back(product);
             } else if (cur_rel != existing_rel) {
                 previous_rels.insert(cur_rel);
@@ -145,7 +147,9 @@ IfcUtil::IfcBaseClass* aggregate_assign_object(
         }
 
         // Unassign from spatial containers (products that aren't already aggregated).
-        for (auto* product : products_to_change) {
+        std::set<IfcUtil::IfcBaseClass*> products_without_aggregates_set(
+            products_without_aggregates.begin(), products_without_aggregates.end());
+        for (auto* product : products_without_aggregates) {
             auto* container_rel = find_contained_in_structure(file, product);
             if (!container_rel) continue;
             auto* container_decl = container_rel->declaration().as_entity();
@@ -153,7 +157,7 @@ IfcUtil::IfcBaseClass* aggregate_assign_object(
             auto elems = get_ref_aggregate(container_rel, re_idx);
             std::vector<IfcUtil::IfcBaseClass*> remaining;
             for (auto* e : elems) {
-                if (products_set.find(e) == products_set.end()) {
+                if (products_without_aggregates_set.find(e) == products_without_aggregates_set.end()) {
                     remaining.push_back(e);
                 }
             }
@@ -295,11 +299,13 @@ IfcUtil::IfcBaseClass* spatial_assign_container(
 
         // Determine which products need to change.
         std::set<IfcUtil::IfcBaseClass*> previous_rels;
+        std::vector<IfcUtil::IfcBaseClass*> products_without_containers;
         std::vector<IfcUtil::IfcBaseClass*> products_to_change;
 
         for (auto* product : products_set) {
             auto* cur_rel = find_contained_in_structure(file, product);
             if (cur_rel == nullptr) {
+                products_without_containers.push_back(product);
                 products_to_change.push_back(product);
             } else if (cur_rel != existing_rel) {
                 previous_rels.insert(cur_rel);
@@ -312,7 +318,9 @@ IfcUtil::IfcBaseClass* spatial_assign_container(
         }
 
         // Unassign from aggregates (products can't be both aggregated and contained).
-        for (auto* product : products_to_change) {
+        std::set<IfcUtil::IfcBaseClass*> products_without_containers_set(
+            products_without_containers.begin(), products_without_containers.end());
+        for (auto* product : products_without_containers) {
             auto* agg_rel = find_decomposes(file, product);
             if (!agg_rel) continue;
             const auto* agg_decl = file->schema()->declaration_by_name("IfcRelAggregates");
@@ -321,7 +329,7 @@ IfcUtil::IfcBaseClass* spatial_assign_container(
             auto objs = get_ref_aggregate(agg_rel, agg_re_idx);
             std::vector<IfcUtil::IfcBaseClass*> remaining;
             for (auto* e : objs) {
-                if (products_set.find(e) == products_set.end()) {
+                if (products_without_containers_set.find(e) == products_without_containers_set.end()) {
                     remaining.push_back(e);
                 }
             }

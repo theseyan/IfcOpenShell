@@ -1096,6 +1096,22 @@ IfcUtil::IfcBaseClass* deep_copy_entity(
                     result->set_attribute_value(i, static_cast<std::vector<std::vector<int>>>(value)); break;
                 case IfcUtil::Argument_AGGREGATE_OF_AGGREGATE_OF_DOUBLE:
                     result->set_attribute_value(i, static_cast<std::vector<std::vector<double>>>(value)); break;
+                case IfcUtil::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE: {
+                    auto aggregate = static_cast<aggregate_of_aggregate_of_instance::ptr>(value);
+                    auto copied = aggregate_of_aggregate_of_instance::ptr(new aggregate_of_aggregate_of_instance());
+                    if (aggregate) {
+                        for (const auto& row : *aggregate) {
+                            std::vector<IfcUtil::IfcBaseClass*> copied_row;
+                            copied_row.reserve(row.size());
+                            for (auto* item : row) {
+                                copied_row.push_back(deep_copy_entity(file, item, memo));
+                            }
+                            copied->push(copied_row);
+                        }
+                    }
+                    result->set_attribute_value(i, copied);
+                    break;
+                }
                 default:
                     break;
             }
