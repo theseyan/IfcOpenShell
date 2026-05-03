@@ -1272,6 +1272,24 @@ class TestRemoveDeep2IFC4(test.bootstrap.IFC4):
         assert self.file.by_id(1)
         assert self.file.by_guid("id1")
 
+    def test_removing_an_element_when_inverses_are_also_considered(self):
+        owner = self.file.createIfcOwnerHistory()
+        owner_id = owner.id()
+        element = self.file.createIfcWall(GlobalId="id1", OwnerHistory=owner)
+        subject.remove_deep2(self.file, owner, also_consider=[element])
+        with pytest.raises(RuntimeError):
+            self.file.by_id(owner_id)
+        assert self.file.by_guid("id1")
+
+    def test_not_removing_explicitly_protected_subelements(self):
+        owner = self.file.createIfcOwnerHistory()
+        owner_id = owner.id()
+        element = self.file.createIfcWall(GlobalId="id1", OwnerHistory=owner)
+        subject.remove_deep2(self.file, element, do_not_delete={owner})
+        with pytest.raises(RuntimeError):
+            self.file.by_guid("id1")
+        assert self.file.by_id(owner_id)
+
 
 class TestBatchRemoveDeep2IFC4(test.bootstrap.IFC4):
     def test_run(self):

@@ -121,6 +121,7 @@ discover:
         - element_replace_element
         - element_is_userdefined_type
         - entity_remove_deep2
+        - entity_remove_deep2_ex
         - selector_filter_all
         - selector_filter_elements
         - selector_get_element_value
@@ -933,6 +934,8 @@ discover:
         - pset_template_get_applicable
         - pset_template_get_applicable_names
         - pset_template_get_by_name
+        - pset_template_create_from_files
+        - pset_template_free
         - pset_template_get_template
         - pset_template_is_templated
         - pset_template_pset_type
@@ -967,6 +970,19 @@ discover:
         pset_template_get_by_name:
           returns:
             nullable: true
+          params:
+            pqt:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_template_t*
+        pset_template_create_from_files:
+          returns:
+            kind: opaque_ptr
+            cpp_type: ifcopenshell_pset_template_t*
+          params:
+            template_files:
+              kind: handle_list
+              handle: file
+        pset_template_free:
           params:
             pqt:
               kind: opaque_ptr

@@ -11,12 +11,19 @@
 #include <vector>
 
 struct ifcopenshell_pset_template_t;
+namespace IfcParse {
+class IfcFile;
+}
 
 namespace ifcapi {
 namespace bindings {
 
 IFCAPI_BINDING void pset_template_set_template_dir(const std::string& dir);
 IFCAPI_BINDING ifcopenshell_pset_template_t* pset_template_get_template(const std::string& schema_identifier);
+IFCAPI_BINDING ifcopenshell_pset_template_t* pset_template_create_from_files(
+    const std::string& schema_identifier,
+    const std::vector<const IfcParse::IfcFile*>& template_files);
+IFCAPI_BINDING void pset_template_free(ifcopenshell_pset_template_t* pqt);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* pset_template_get_by_name(
     ifcopenshell_pset_template_t* pqt,
     const std::string& name);

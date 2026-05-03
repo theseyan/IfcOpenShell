@@ -179,6 +179,10 @@ typedef struct ifcopenshell_ifcgeom_svgfill_polygon_list_t {
     ifcopenshell_ifcgeom_svgfill_polygon_t** items;
     size_t size;
 } ifcopenshell_ifcgeom_svgfill_polygon_list_t;
+typedef struct ifcopenshell_ifc_file_list_t {
+    ifcopenshell_ifc_file_t** items;
+    size_t size;
+} ifcopenshell_ifc_file_list_t;
 typedef struct ifcopenshell_ifc_declaration_list_t {
     ifcopenshell_ifc_declaration_t** items;
     size_t size;
@@ -231,6 +235,10 @@ typedef struct ifcopenshell_ifcgeom_svgfill_polygon_list_list_t {
     ifcopenshell_ifcgeom_svgfill_polygon_list_t* items;
     size_t size;
 } ifcopenshell_ifcgeom_svgfill_polygon_list_list_t;
+typedef struct ifcopenshell_ifc_file_list_list_t {
+    ifcopenshell_ifc_file_list_t* items;
+    size_t size;
+} ifcopenshell_ifc_file_list_list_t;
 typedef struct ifcopenshell_ifc_declaration_list_list_t {
     ifcopenshell_ifc_declaration_list_t* items;
     size_t size;
@@ -384,6 +392,7 @@ void ifcopenshell_ifcapi_value_destroy(ifcopenshell_ifcapi_value_t* handle);
 void ifcopenshell_ifc_instance_list_destroy(ifcopenshell_ifc_instance_list_t* value);
 void ifcopenshell_ifcgeom_conversion_result_shape_list_destroy(ifcopenshell_ifcgeom_conversion_result_shape_list_t* value);
 void ifcopenshell_ifcgeom_svgfill_polygon_list_destroy(ifcopenshell_ifcgeom_svgfill_polygon_list_t* value);
+void ifcopenshell_ifc_file_list_destroy(ifcopenshell_ifc_file_list_t* value);
 void ifcopenshell_ifc_declaration_list_destroy(ifcopenshell_ifc_declaration_list_t* value);
 void ifcopenshell_ifc_entity_list_destroy(ifcopenshell_ifc_entity_list_t* value);
 void ifcopenshell_ifc_enumeration_list_destroy(ifcopenshell_ifc_enumeration_list_t* value);
@@ -397,6 +406,7 @@ void ifcopenshell_ifcgeom_element_list_destroy(ifcopenshell_ifcgeom_element_list
 void ifcopenshell_ifc_instance_list_list_destroy(ifcopenshell_ifc_instance_list_list_t* value);
 void ifcopenshell_ifcgeom_conversion_result_shape_list_list_destroy(ifcopenshell_ifcgeom_conversion_result_shape_list_list_t* value);
 void ifcopenshell_ifcgeom_svgfill_polygon_list_list_destroy(ifcopenshell_ifcgeom_svgfill_polygon_list_list_t* value);
+void ifcopenshell_ifc_file_list_list_destroy(ifcopenshell_ifc_file_list_list_t* value);
 void ifcopenshell_ifc_declaration_list_list_destroy(ifcopenshell_ifc_declaration_list_list_t* value);
 void ifcopenshell_ifc_entity_list_list_destroy(ifcopenshell_ifc_entity_list_list_t* value);
 void ifcopenshell_ifc_enumeration_list_list_destroy(ifcopenshell_ifc_enumeration_list_list_t* value);
@@ -531,6 +541,7 @@ bool ifcopenshell_ifcapi_element_is_userdefined_type(ifcopenshell_ifc_instance_t
 bool ifcopenshell_ifcapi_element_remove_deep(ifcopenshell_ifc_instance_t* element);
 bool ifcopenshell_ifcapi_element_replace_element(ifcopenshell_ifc_instance_t* old_element, ifcopenshell_ifc_instance_t* new_element);
 bool ifcopenshell_ifcapi_entity_remove_deep2(ifcopenshell_ifc_instance_t* instance);
+bool ifcopenshell_ifcapi_entity_remove_deep2_ex(ifcopenshell_ifc_instance_t* instance, const ifcopenshell_ifc_instance_list_t* also_consider, const ifcopenshell_ifc_instance_list_t* do_not_delete);
 bool ifcopenshell_ifcapi_selector_filter_all(ifcopenshell_ifc_file_t* file, const char* query, ifcopenshell_ifcapi_value_t** out_result);
 bool ifcopenshell_ifcapi_selector_filter_elements(ifcopenshell_ifc_file_t* file, const char* query, const ifcopenshell_ifc_instance_list_t* elements, ifcopenshell_ifcapi_value_t** out_result);
 bool ifcopenshell_ifcapi_selector_get_element_value(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* element, const char* query, ifcopenshell_ifcapi_value_t** out_result);
@@ -661,6 +672,8 @@ bool ifcopenshell_ifcapi_pset_props_set_typed_double(void* props, const char* ke
 bool ifcopenshell_ifcapi_pset_props_set_typed_int(void* props, const char* key, int64_t value, const char* ifc_type);
 bool ifcopenshell_ifcapi_pset_props_set_typed_string(void* props, const char* key, const char* value, const char* ifc_type);
 bool ifcopenshell_ifcapi_pset_props_set_unit_for_last(void* props, ifcopenshell_ifc_instance_t* unit);
+bool ifcopenshell_ifcapi_pset_template_create_from_files(const char* schema_identifier, const ifcopenshell_ifc_file_list_t* template_files, void** out_result);
+bool ifcopenshell_ifcapi_pset_template_free(void* pqt);
 bool ifcopenshell_ifcapi_pset_template_get_applicable(void* pqt, const char* ifc_class, const char* predefined_type, bool pset_only, bool qto_only, const char* schema_name, ifcopenshell_ifc_instance_list_t* out_result);
 bool ifcopenshell_ifcapi_pset_template_get_applicable_names(void* pqt, const char* ifc_class, const char* predefined_type, bool pset_only, bool qto_only, const char* schema_name, ifcopenshell_string_list_t* out_result);
 bool ifcopenshell_ifcapi_pset_template_get_by_name(void* pqt, const char* name, ifcopenshell_ifc_instance_t** out_result);

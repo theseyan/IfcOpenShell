@@ -17,10 +17,36 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 from typing import Optional
+import ctypes
 
 import ifcopenshell
 import ifcopenshell.api.owner
-import ifcopenshell.guid
+from ifcopenshell import _generated_capi
+from ifcopenshell.entity_instance import _generated_instance_handle_ptr
+
+
+_BOUND = False
+
+
+def _bind() -> ctypes.CDLL:
+    global _BOUND
+    lib = ifcopenshell._get_lib()
+    if not _BOUND:
+        _generated_capi.bind(
+            lib,
+            names=(
+                "ifcopenshell_ifcapi_root_create_entity",
+                "ifcopenshell_ifc_instance_destroy",
+                "ifcopenshell_last_error_kind",
+                "ifcopenshell_last_error_message",
+            ),
+        )
+        _BOUND = True
+    return lib
+
+
+def _encode_optional(value: str | None):
+    return _generated_capi.encode_string(value) if value else None
 
 
 def create_entity(
@@ -66,75 +92,20 @@ def create_entity(
         # We have a wall type.
         ifcopenshell.api.root.create_entity(model, ifc_class="IfcWallType")
     """
-    usecase = Usecase()
-    usecase.file = file
-    return usecase.execute(ifc_class, predefined_type, name)
-
-
-class Usecase:
-    file: ifcopenshell.file
-
-    def execute(
-        self, ifc_class: str, predefined_type: Optional[str] = None, name: Optional[str] = None
-    ) -> ifcopenshell.entity_instance:
-        element = self.file.create_entity(
-            ifc_class,
-            **{
-                "GlobalId": ifcopenshell.guid.new(),
-                "OwnerHistory": ifcopenshell.api.owner.create_owner_history(self.file),
-            }
-        )
-        element.Name = name or None
-        if predefined_type:
-            if hasattr(element, "PredefinedType"):
-                try:
-                    element.PredefinedType = predefined_type
-                except:
-                    element.PredefinedType = "USERDEFINED"
-                    if hasattr(element, "ObjectType"):
-                        element.ObjectType = predefined_type
-                    elif hasattr(element, "ElementType"):
-                        element.ElementType = predefined_type
-                    elif hasattr(element, "ProcessType"):
-                        element.ProcessType = predefined_type
-            elif hasattr(element, "ObjectType"):
-                element.ObjectType = predefined_type
-        if self.file.schema == "IFC2X3":
-            self.handle_2x3_defaults(element)
-        else:
-            self.handle_4_defaults(element)
-        return element
-
-    def handle_2x3_defaults(self, element: ifcopenshell.entity_instance) -> None:
-        if element.is_a("IfcElementType"):
-            if hasattr(element, "PredefinedType") and not element.PredefinedType:
-                element.PredefinedType = "NOTDEFINED"
-
-        if element.is_a("IfcSpatialStructureElement"):
-            element.CompositionType = "ELEMENT"
-        elif element.is_a("IfcRoof"):
-            element.ShapeType = "NOTDEFINED"
-        elif element.is_a("IfcFurnitureType"):
-            element.AssemblyPlace = "NOTDEFINED"
-        elif element.is_a("IfcDoorStyle") or element.is_a("IfcWindowStyle"):
-            element.OperationType = "NOTDEFINED"
-            element.ConstructionType = "NOTDEFINED"
-            element.ParameterTakesPrecedence = False
-            element.Sizeable = False
-
-    def handle_4_defaults(self, element: ifcopenshell.entity_instance) -> None:
-        if element.is_a("IfcElementType"):
-            if hasattr(element, "PredefinedType") and not element.PredefinedType:
-                element.PredefinedType = "NOTDEFINED"
-
-        if element.file.schema == "IFC4" and (element.is_a("IfcDoorStyle") or element.is_a("IfcWindowStyle")):
-            element.OperationType = "NOTDEFINED"
-            element.ConstructionType = "NOTDEFINED"
-            element.ParameterTakesPrecedence = False
-            element.Sizeable = False
-        elif element.is_a("IfcDoorType"):
-            element.OperationType = "NOTDEFINED"
-        elif element.is_a("IfcWindowType"):
-            element.PartitioningType = "NOTDEFINED"
-        elif element.is_a("IfcFurnitureType"):
-            element.AssemblyPlace = "NOTDEFINED"
+    lib = _bind()
+    owner_history = ifcopenshell.api.owner.create_owner_history(file)
+    handle = _generated_capi.call_handle_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_root_create_entity,
+        ifcopenshell.get_log() or "ifcopenshell_ifcapi_root_create_entity",
+        ifcopenshell._ifc_file_handle_ptr(file._ptr),
+        _generated_capi.encode_string(ifc_class),
+        _encode_optional(predefined_type),
+        _encode_optional(name),
+        _generated_instance_handle_ptr(owner_history._handle) if owner_history is not None else None,
+        destroy=lib.ifcopenshell_ifc_instance_destroy,
+        handle_pointer_type=ctypes.POINTER(_generated_capi.ifcopenshell_ifc_instance_t),
+    )
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    _generated_capi.raise_last_error(lib, "Failed to create entity")

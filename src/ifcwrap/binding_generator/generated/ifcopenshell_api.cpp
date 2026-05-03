@@ -591,6 +591,68 @@ static std::vector<const svgfill::polygon_2*> to_cpp_ifcgeom_svgfill_polygon_lis
     return result;
 }
 
+static ifcopenshell_ifc_file_list_t make_ifc_file_list(const std::vector<IfcParse::IfcFile*>& values) {
+    auto** items = values.empty() ? nullptr : new ifcopenshell_ifc_file_t*[values.size()];
+    size_t initialized = 0;
+    try {
+        for (size_t i = 0; i < values.size(); ++i) {
+            items[i] = new ifcopenshell_ifc_file_t{values[i], false};
+            ++initialized;
+        }
+    } catch (...) {
+        for (size_t j = 0; j < initialized; ++j) { delete items[j]; }
+        delete[] items;
+        throw;
+    }
+    return ifcopenshell_ifc_file_list_t{items, values.size()};
+}
+
+static ifcopenshell_ifc_file_list_t make_ifc_file_list(const std::vector<const IfcParse::IfcFile*>& values) {
+    auto** items = values.empty() ? nullptr : new ifcopenshell_ifc_file_t*[values.size()];
+    size_t initialized = 0;
+    try {
+        for (size_t i = 0; i < values.size(); ++i) {
+            items[i] = new ifcopenshell_ifc_file_t{const_cast<IfcParse::IfcFile*>(values[i]), false};
+            ++initialized;
+        }
+    } catch (...) {
+        for (size_t j = 0; j < initialized; ++j) { delete items[j]; }
+        delete[] items;
+        throw;
+    }
+    return ifcopenshell_ifc_file_list_t{items, values.size()};
+}
+
+static ifcopenshell_ifc_file_list_t make_ifc_file_list(std::vector<std::unique_ptr<IfcParse::IfcFile>> values) {
+    auto** items = values.empty() ? nullptr : new ifcopenshell_ifc_file_t*[values.size()];
+    size_t initialized = 0;
+    try {
+        for (size_t i = 0; i < values.size(); ++i) {
+            items[i] = new ifcopenshell_ifc_file_t{values[i].release(), true};
+            ++initialized;
+        }
+    } catch (...) {
+        for (size_t j = 0; j < initialized; ++j) { delete items[j]; }
+        delete[] items;
+        throw;
+    }
+    return ifcopenshell_ifc_file_list_t{items, values.size()};
+}
+
+static std::vector<const IfcParse::IfcFile*> to_cpp_ifc_file_list(const ifcopenshell_ifc_file_list_t* values) {
+    validate_list_items("ifc_file_list", values->items, values->size);
+    std::vector<const IfcParse::IfcFile*> result;
+    result.reserve(values->size);
+    for (size_t i = 0; i < values->size; ++i) {
+        auto* item = values->items[i];
+        if (item == nullptr || item->ptr == nullptr) {
+            throw std::runtime_error("handle_list contains an invalid handle");
+        }
+        result.push_back(item->ptr);
+    }
+    return result;
+}
+
 static ifcopenshell_ifc_declaration_list_t make_ifc_declaration_list(const std::vector<IfcParse::declaration*>& values) {
     auto** items = values.empty() ? nullptr : new ifcopenshell_ifc_declaration_t*[values.size()];
     size_t initialized = 0;
@@ -1220,6 +1282,32 @@ static std::vector<std::vector<const svgfill::polygon_2*>> to_cpp_ifcgeom_svgfil
     result.reserve(values->size);
     for (size_t i = 0; i < values->size; ++i) {
         result.push_back(to_cpp_ifcgeom_svgfill_polygon_list(&values->items[i]));
+    }
+    return result;
+}
+
+static ifcopenshell_ifc_file_list_list_t make_ifc_file_list_list(const std::vector<std::vector<IfcParse::IfcFile*>>& values) {
+    auto* items = values.empty() ? nullptr : new ifcopenshell_ifc_file_list_t[values.size()];
+    for (size_t i = 0; i < values.size(); ++i) {
+        items[i] = make_ifc_file_list(values[i]);
+    }
+    return ifcopenshell_ifc_file_list_list_t{items, values.size()};
+}
+
+static ifcopenshell_ifc_file_list_list_t make_ifc_file_list_list(const std::vector<std::vector<const IfcParse::IfcFile*>>& values) {
+    auto* items = values.empty() ? nullptr : new ifcopenshell_ifc_file_list_t[values.size()];
+    for (size_t i = 0; i < values.size(); ++i) {
+        items[i] = make_ifc_file_list(values[i]);
+    }
+    return ifcopenshell_ifc_file_list_list_t{items, values.size()};
+}
+
+static std::vector<std::vector<const IfcParse::IfcFile*>> to_cpp_ifc_file_list_list(const ifcopenshell_ifc_file_list_list_t* values) {
+    validate_list_items("ifc_file_list_list", values->items, values->size);
+    std::vector<std::vector<const IfcParse::IfcFile*>> result;
+    result.reserve(values->size);
+    for (size_t i = 0; i < values->size; ++i) {
+        result.push_back(to_cpp_ifc_file_list(&values->items[i]));
     }
     return result;
 }
@@ -2383,6 +2471,20 @@ void ifcopenshell_ifcgeom_svgfill_polygon_list_destroy(ifcopenshell_ifcgeom_svgf
     value->size = 0;
 }
 
+void ifcopenshell_ifc_file_list_destroy(ifcopenshell_ifc_file_list_t* value) {
+    if (value == nullptr || value->items == nullptr) {
+        return;
+    }
+    for (size_t i = 0; i < value->size; ++i) {
+        if (value->items[i] != nullptr) {
+            ifcopenshell_ifc_file_destroy(value->items[i]);
+        }
+    }
+    delete[] value->items;
+    value->items = nullptr;
+    value->size = 0;
+}
+
 void ifcopenshell_ifc_declaration_list_destroy(ifcopenshell_ifc_declaration_list_t* value) {
     if (value == nullptr || value->items == nullptr) {
         return;
@@ -2552,6 +2654,18 @@ void ifcopenshell_ifcgeom_svgfill_polygon_list_list_destroy(ifcopenshell_ifcgeom
     }
     for (size_t i = 0; i < value->size; ++i) {
         ifcopenshell_ifcgeom_svgfill_polygon_list_destroy(&value->items[i]);
+    }
+    delete[] value->items;
+    value->items = nullptr;
+    value->size = 0;
+}
+
+void ifcopenshell_ifc_file_list_list_destroy(ifcopenshell_ifc_file_list_list_t* value) {
+    if (value == nullptr || value->items == nullptr) {
+        return;
+    }
+    for (size_t i = 0; i < value->size; ++i) {
+        ifcopenshell_ifc_file_list_destroy(&value->items[i]);
     }
     delete[] value->items;
     value->items = nullptr;
@@ -5621,6 +5735,26 @@ bool ifcopenshell_ifcapi_entity_remove_deep2(ifcopenshell_ifc_instance_t* instan
     }
 }
 
+bool ifcopenshell_ifcapi_entity_remove_deep2_ex(ifcopenshell_ifc_instance_t* instance, const ifcopenshell_ifc_instance_list_t* also_consider, const ifcopenshell_ifc_instance_list_t* do_not_delete) {
+    try {
+        ifcopenshell_clear_error();
+    if (instance == nullptr || instance->ptr == nullptr) { throw std::runtime_error("Handle parameter \"instance\" is invalid"); }
+    auto instance_cpp = instance->ptr;
+    if (also_consider == nullptr) { throw std::runtime_error("Parameter \"also_consider\" must not be null"); }
+    auto also_consider_cpp = to_cpp_ifc_instance_list(also_consider);
+    if (do_not_delete == nullptr) { throw std::runtime_error("Parameter \"do_not_delete\" must not be null"); }
+    auto do_not_delete_cpp = to_cpp_ifc_instance_list(do_not_delete);
+        ifcapi::bindings::entity_remove_deep2_ex(instance_cpp, also_consider_cpp, do_not_delete_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_selector_filter_all(ifcopenshell_ifc_file_t* file, const char* query, ifcopenshell_ifcapi_value_t** out_result) {
     try {
         ifcopenshell_clear_error();
@@ -8192,6 +8326,41 @@ bool ifcopenshell_ifcapi_pset_props_set_unit_for_last(void* props, ifcopenshell_
     auto props_cpp = static_cast<ifcopenshell_pset_props_t*>(props);
     auto unit_cpp = (unit != nullptr && unit->ptr != nullptr) ? unit->ptr : nullptr;
         ifcapi::bindings::pset_props_set_unit_for_last(props_cpp, unit_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_pset_template_create_from_files(const char* schema_identifier, const ifcopenshell_ifc_file_list_t* template_files, void** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (schema_identifier == nullptr) { throw std::runtime_error("Parameter \"schema_identifier\" must not be null"); }
+    std::string schema_identifier_cpp(schema_identifier);
+    if (template_files == nullptr) { throw std::runtime_error("Parameter \"template_files\" must not be null"); }
+    auto template_files_cpp = to_cpp_ifc_file_list(template_files);
+        *out_result = static_cast<void*>(ifcapi::bindings::pset_template_create_from_files(schema_identifier_cpp, template_files_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_pset_template_free(void* pqt) {
+    try {
+        ifcopenshell_clear_error();
+    if (pqt == nullptr) { throw std::runtime_error("Parameter \"pqt\" must not be null"); }
+    auto pqt_cpp = static_cast<ifcopenshell_pset_template_t*>(pqt);
+        ifcapi::bindings::pset_template_free(pqt_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

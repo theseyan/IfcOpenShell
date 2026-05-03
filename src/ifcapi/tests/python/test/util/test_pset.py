@@ -18,6 +18,7 @@
 
 """Run this test from src/ifcopenshell-python folder: pytest --durations=0 ifcopenshell/util/test_pset.py"""
 
+import ifcopenshell
 from ifcopenshell.util import pset
 from ifcopenshell.util.pset import ApplicableEntity
 
@@ -67,6 +68,22 @@ class TestPsetQto:
         assert "Pset_MaterialConcrete" not in names
         names = self.pset_qto.get_applicable_names("IfcMaterial", "concrete")
         assert "Pset_MaterialConcrete" in names
+
+    def test_getting_applicables_from_custom_template_files(self):
+        template_file = ifcopenshell.file(schema="IFC4")
+        template = template_file.create_entity(
+            "IfcPropertySetTemplate",
+            GlobalId=ifcopenshell.guid.new(),
+            Name="Foo_Bar",
+            TemplateType="PSET_TYPEDRIVENOVERRIDE",
+            ApplicableEntity="IfcWall",
+        )
+        template_cache = pset.PsetQto("IFC4", templates=[template_file])
+
+        assert template_cache.get_by_name("Foo_Bar") == template
+        assert template_cache.is_templated("Foo_Bar")
+        assert template_cache.get_applicable_names("IfcWall") == ["Foo_Bar"]
+        assert template_cache.get_applicable("IfcWall") == [template]
 
 
 class TestParseApplicableEntity:
