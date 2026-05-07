@@ -78,6 +78,8 @@ def _configure_element_lib(lib) -> None:
             "ifcopenshell_ifcapi_element_get_layers",
             "ifcopenshell_ifcapi_element_get_styles",
             "ifcopenshell_ifcapi_element_get_decomposition",
+            "ifcopenshell_ifcapi_element_get_pset_ids",
+            "ifcopenshell_ifcapi_element_remove_deep",
             "ifcopenshell_ifcapi_element_replace_element",
             "ifcopenshell_ifcapi_entity_remove_deep2_ex",
             "ifcopenshell_ifcparse_instance_list_destroy",
@@ -127,6 +129,21 @@ def _call_element_bool(element: ifcopenshell.entity_instance, name: str) -> bool
     return bool(result)
 
 
+def _get_pset_definitions(
+    element: ifcopenshell.entity_instance,
+    psets_only: bool = False,
+    qtos_only: bool = False,
+    should_inherit: bool = False,
+) -> list[ifcopenshell.entity_instance]:
+    return _call_element_instance_list(
+        element,
+        "ifcopenshell_ifcapi_element_get_pset_ids",
+        bool(psets_only),
+        bool(qtos_only),
+        bool(should_inherit),
+    )
+
+
 def _instance_list_arg(
     entities: Sequence[ifcopenshell.entity_instance],
 ) -> _generated_capi.ifcopenshell_ifc_instance_list_t:
@@ -172,88 +189,25 @@ def get_pset(
         element = ifc_file.by_type("IfcWall")[0]
         psets_and_qtos = ifcopenshell.util.element.get_pset(element, "Pset_WallCommon")
     """
-    pset = None
-    type_pset = None
-    ifc_file = element.file
-    is_ifc2x3 = ifc_file.schema == "IFC2X3"
-    is_profile = False
-
-    if element.is_a("IfcTypeObject"):
-        for definition in element.HasPropertySets or []:
-            if definition.Name == name:
-                pset = definition
-                break
-    elif (
-        (is_ifc2x3_material := (is_ifc2x3 and element.is_a("IfcMaterial")))
-        or element.is_a("IfcMaterialDefinition")
-        or (is_profile := element.is_a("IfcProfileDef"))
-    ):
-        if is_ifc2x3_material:
-            # Support extended props as they do have a name.
-            for definition in ifc_file.by_type("IfcExtendedMaterialProperties"):
-                if definition.Material == element and definition.Name == name:
-                    pset = definition
-                    break
-        elif is_ifc2x3 and is_profile:
-            # Don't support them as they don't have a name.
-            pass
-        else:
-            # IfcProfileDef or IfcMaterialDefinition, IFC4+.
-            for definition in element.HasProperties or []:
-                if definition.Name == name:
-                    pset = definition
-                    break
-    elif (is_defined_by := getattr(element, "IsDefinedBy", None)) is not None:
-        # other IfcObjectDefinition
-        if should_inherit:
-            element_type = ifcopenshell.util.element.get_type(element)
-            if element_type:
-                type_pset = get_pset(element_type, name, prop, should_inherit=False, verbose=verbose)
-        for relationship in is_defined_by:
-            if relationship.is_a("IfcRelDefinesByProperties"):
-                definition = relationship.RelatingPropertyDefinition
-                if definition.Name == name:
-                    pset = definition
-                    break
-
-    if pset:
-        if (
-            psets_only
-            and not pset.is_a("IfcPropertySet")
-            and not pset.is_a("IfcPreDefinedPropertySet")
-            and not (is_ifc2x3 and pset.is_a("IfcExtendedMaterialProperties"))
-        ):
-            pset = None
-        elif qtos_only and not pset.is_a("IfcElementQuantity"):
-            pset = None
-
-    if type_pset is not None and not prop:
-        if psets_only or qtos_only:
-            type_pset_element = element.file.by_id(type_pset["id"])
-            if (
-                psets_only
-                and not type_pset_element.is_a("IfcPropertySet")
-                and not type_pset_element.is_a("IfcPreDefinedPropertySet")
-            ):
-                type_pset = None
-            elif qtos_only and not type_pset_element.is_a("IfcElementQuantity"):
-                type_pset = None
-
-    if pset is None and type_pset is None:
+    definitions = [
+        definition
+        for definition in _get_pset_definitions(element, psets_only, qtos_only, should_inherit)
+        if definition.Name == name
+    ]
+    if not definitions:
         return
 
     if not prop:
-        if type_pset:
-            occurrence_pset = get_property_definition(pset, verbose=verbose)
-            if occurrence_pset:
-                type_pset.update(occurrence_pset)
-            return type_pset
-        return get_property_definition(pset, verbose=verbose)
+        result: dict[str, Any] = {}
+        for definition in definitions:
+            result.update(get_property_definition(definition, verbose=verbose))
+        return result
 
-    value = get_property_definition(pset, prop=prop, verbose=verbose)
-    if value is None and type_pset is not None:
-        return type_pset
-    return value
+    for definition in reversed(definitions):
+        value = get_property_definition(definition, prop=prop, verbose=verbose)
+        if value is not None:
+            return value
+    return None
 
 
 def get_psets(
@@ -280,56 +234,9 @@ def get_psets(
         qsets = ifcopenshell.util.element.get_psets(element, qtos_only=True)
         psets_and_qtos = ifcopenshell.util.element.get_psets(element)
     """
-    ifc_file = element.file
-    is_ifc2x3 = ifc_file.schema == "IFC2X3"
     psets = {}
-    if element.is_a("IfcTypeObject"):
-        for definition in element.HasPropertySets or []:
-            if psets_only and not definition.is_a("IfcPropertySet") and not definition.is_a("IfcPreDefinedPropertySet"):
-                continue
-            if qtos_only and not definition.is_a("IfcElementQuantity"):
-                continue
-            psets.setdefault(definition.Name, {}).update(get_property_definition(definition, verbose=verbose))
-    # NOTE: doesn't account for IFC2X3 missing HasProperties
-    elif (
-        (is_ifc2x3_material := (is_ifc2x3 and element.is_a("IfcMaterial")))
-        or element.is_a("IfcMaterialDefinition")
-        or element.is_a("IfcProfileDef")
-    ):
-        definitions: list[ifcopenshell.entity_instance]
-        if is_ifc2x3:
-            if is_ifc2x3_material:
-                # Only extended props have a name.
-                definitions = [d for d in ifc_file.by_type("IfcExtendedMaterialProperties") if d.Material == element]
-            else:
-                # Ignoring profiles as they don't have names.
-                definitions = []
-        else:
-            definitions = getattr(element, "HasProperties", None) or []
-        for definition in definitions:
-            if qtos_only:
-                continue
-            psets.setdefault(definition.Name, {}).update(get_property_definition(definition, verbose=verbose))
-    elif (is_defined_by := getattr(element, "IsDefinedBy", None)) is not None:
-        # other IfcObjectDefinition
-        if should_inherit:
-            element_type = ifcopenshell.util.element.get_type(element)
-            if element_type:
-                psets = get_psets(
-                    element_type, psets_only=psets_only, qtos_only=qtos_only, should_inherit=False, verbose=verbose
-                )
-        for relationship in is_defined_by:
-            if relationship.is_a("IfcRelDefinesByProperties"):
-                definition = relationship.RelatingPropertyDefinition
-                if (
-                    psets_only
-                    and not definition.is_a("IfcPropertySet")
-                    and not definition.is_a("IfcPreDefinedPropertySet")
-                ):
-                    continue
-                if qtos_only and not definition.is_a("IfcElementQuantity"):
-                    continue
-                psets.setdefault(definition.Name, {}).update(get_property_definition(definition, verbose=verbose))
+    for definition in _get_pset_definitions(element, psets_only, qtos_only, should_inherit):
+        psets.setdefault(definition.Name, {}).update(get_property_definition(definition, verbose=verbose))
     return psets
 
 
@@ -1373,12 +1280,16 @@ def remove_deep(ifc_file: Union[ifcopenshell.file, None], element: ifcopenshell.
     if not ifc_file:
         ifc_file = element.file
     ifc_file.batch()
-    subgraph = list(ifc_file.traverse(element, breadth_first=True))
-    subgraph_set = set(subgraph)
-    for ref in subgraph[::-1]:
-        if ref.id() and len(set(ifc_file.get_inverse(ref)) - subgraph_set) == 0:
-            ifc_file.remove(ref)
-    ifc_file.unbatch()
+    try:
+        lib = ifcopenshell._get_lib()
+        _configure_element_lib(lib)
+        _generated_capi.status_or_raise(
+            lib,
+            lib.ifcopenshell_ifcapi_element_remove_deep(_generated_instance_handle_ptr(element._handle)),
+            ifcopenshell.get_log() or "ifcopenshell_ifcapi_element_remove_deep",
+        )
+    finally:
+        ifc_file.unbatch()
 
 
 def batch_remove_deep2(ifc_file: ifcopenshell.file) -> None:

@@ -98,6 +98,12 @@ class SequenceSemanticType:
 
 
 @dataclass(frozen=True)
+class OptionalSemanticType:
+    cpp_type: str
+    element: "SemanticCppType"
+
+
+@dataclass(frozen=True)
 class UnsupportedSemanticType:
     cpp_type: str
     reason: str
@@ -110,6 +116,7 @@ SemanticCppType = (
     | EnumSemanticType
     | RecordSemanticType
     | SequenceSemanticType
+    | OptionalSemanticType
     | UnsupportedSemanticType
 )
 
@@ -150,6 +157,12 @@ def _from_discovered(cpp_type: DiscoveredCppType) -> SemanticCppType:
             element=analyze_cpp_type(cpp_type.template_args[0]),
         )
 
+    if cpp_type.template_name in {"std::optional", "boost::optional"} and cpp_type.template_args:
+        return OptionalSemanticType(
+            cpp_type=cpp_text,
+            element=analyze_cpp_type(cpp_type.template_args[0]),
+        )
+
     if cpp_type.template_name in {"std::shared_ptr", "boost::shared_ptr", "std::unique_ptr"} and cpp_type.template_args:
         pointee = analyze_cpp_type(cpp_type.template_args[0])
         return RecordSemanticType(
@@ -185,6 +198,14 @@ def _from_string(cpp_type: str) -> SemanticCppType:
             return SequenceSemanticType(
                 cpp_type=normalized,
                 container_kind=template_name,
+                element=analyze_cpp_type(args[0]),
+            )
+
+    for template_name in ("std::optional", "boost::optional"):
+        args = _template_match(normalized, template_name)
+        if args:
+            return OptionalSemanticType(
+                cpp_type=normalized,
                 element=analyze_cpp_type(args[0]),
             )
 

@@ -657,32 +657,31 @@ void element_remove_deep(IfcUtil::IfcBaseClass* element) {
     auto* f = element->file_;
     if (!f) return;
 
-    aggregate_of_instance::ptr traversed;
-    try { traversed = f->traverse(element, -1); } catch (...) { return; }
+    auto traversed = f->traverse_breadth_first(element, -1);
     if (!traversed) return;
     std::vector<IfcUtil::IfcBaseClass*> subgraph;
     std::unordered_set<int32_t> subgraph_set;
     for (auto& it : *traversed) {
+        if (!it) continue;
         subgraph.push_back(it);
         subgraph_set.insert(static_cast<int32_t>(it->id()));
     }
     for (auto rit = subgraph.rbegin(); rit != subgraph.rend(); ++rit) {
         auto* ref = *rit;
+        if (!ref) continue;
         if (!ref->id()) continue;
         bool can_remove = true;
-        try {
-            auto invs = f->getInverse(ref->id(), nullptr, -1);
-            if (invs) {
-                for (auto& inv : *invs) {
-                    if (subgraph_set.find(static_cast<int32_t>(inv->id())) == subgraph_set.end()) {
-                        can_remove = false;
-                        break;
-                    }
+        auto invs = f->getInverse(ref->id(), nullptr, -1);
+        if (invs) {
+            for (auto& inv : *invs) {
+                if (!inv || subgraph_set.find(static_cast<int32_t>(inv->id())) == subgraph_set.end()) {
+                    can_remove = false;
+                    break;
                 }
             }
-        } catch (...) { continue; }
+        }
         if (can_remove) {
-            try { f->removeEntity(ref); } catch (...) {}
+            f->removeEntity(ref);
         }
     }
 }

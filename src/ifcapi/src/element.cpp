@@ -366,7 +366,12 @@ aggregate_of_instance::ptr element_get_pset_ids(
 
     auto push_def = [&](IfcUtil::IfcBaseClass* d) {
         if (!d) return;
-        if (psets_only && !is_a(d, "IfcPropertySet") && !is_a(d, "IfcPreDefinedPropertySet")) return;
+        if (psets_only &&
+            !is_a(d, "IfcPropertySet") &&
+            !is_a(d, "IfcPreDefinedPropertySet") &&
+            !(is_ifc2x3 && is_a(d, "IfcExtendedMaterialProperties"))) {
+            return;
+        }
         if (qtos_only && !is_a(d, "IfcElementQuantity")) return;
         int32_t did = id_of(d);
         if (did && seen.insert(did).second) result.push_back(did);

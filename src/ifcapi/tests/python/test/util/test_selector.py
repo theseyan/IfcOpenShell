@@ -80,6 +80,7 @@ class TestFormat(test.bootstrap.IFC4):
 
     def test_variable_formatting(self):
         assert subject.format("{{undefined}}") is None
+        assert subject.format('concat("", "")') == ""
         assert subject.format("upper({{undefined}})") == "NONE"
         assert subject.format("int({{undefined}})") == "0"
         element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")

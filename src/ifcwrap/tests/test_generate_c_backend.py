@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
+from src.ifcwrap.binding_generator.binding_model import TypeSpec
+from src.ifcwrap.binding_generator.binding_ir import BindingIR
+from src.ifcwrap.binding_generator.c_backend import _render_result_assignment
 from src.ifcwrap.binding_generator.c_backend import generate
 from src.ifcwrap.tests._binding_generator_test_utils import find_repo_compile_commands, require_repo_compile_commands
 
@@ -209,6 +213,7 @@ def test_generate_ifcparse_c_backend(tmp_path: Path) -> None:
     assert "bool ifcopenshell_ifcparse_instance_list_get(ifcopenshell_ifcparse_instance_list_t* self, size_t index, ifcopenshell_ifc_instance_t** out_result)" in cpp
     assert "*out_result = new ifcopenshell_ifc_file_t{generated_result, true};" in cpp
     assert "*out_result = make_string_list(IfcParse::schema_names());" in cpp
+
     assert "*out_result = make_int32_list(generated_result);" in cpp
     assert "*out_result = make_uint32_list(generated_result);" in cpp
     assert "*out_result = make_int32_list_list(generated_result);" in cpp
@@ -229,6 +234,28 @@ def test_generate_ifcparse_c_backend(tmp_path: Path) -> None:
     assert "data_cpp.size()" in cpp
     assert "set_instance_argument(self_cpp, index, value_cpp);" in cpp
     assert "unset_instance_argument(self_cpp, index);" in cpp
+
+
+def test_nullable_string_result_returns_successful_null_string_without_allocating() -> None:
+    generated = _render_result_assignment(
+        SimpleNamespace(returns=TypeSpec(kind="string", ownership="copy", nullable=True)),
+        BindingIR(
+            module="fixture",
+            c_prefix="ifcopenshell_fixture",
+            public_headers=(),
+            handles={},
+            result_structs={},
+            functions=(),
+            methods=(),
+        ),
+        "example::maybe_name()",
+    )
+
+    assert "auto result_value = example::maybe_name();" in generated
+    assert "if (!result_value)" in generated
+    assert "if (!g_last_error.empty()) { return false; }" in generated
+    assert "*out_result = ifcopenshell_string_t{nullptr, 0, false};" in generated
+    assert "*out_result = make_string(*result_value);" in generated
 
 
 def test_generate_ifcparse_c_backend_with_compile_commands_when_available(tmp_path: Path) -> None:

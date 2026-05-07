@@ -112,6 +112,8 @@ def test_render_python_ctypes_emits_structs_and_signatures(tmp_path: Path) -> No
     assert "def call_handle(lib, fn, *args, destroy=None, handle_pointer_type=None):" in text
     assert "def call_handle_or_raise(lib, fn, fallback, *args, destroy=None, handle_pointer_type=None):" in text
     assert "def take_string(lib, value, *, decode=True):" in text
+    assert "if not value.data:" in text
+    assert "return None" in text
     assert 'return "" if decode else b""' in text
     assert "def take_bool_list(lib, value):" in text
     assert "def make_int32_list(values):" in text

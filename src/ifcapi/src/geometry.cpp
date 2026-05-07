@@ -17,6 +17,7 @@
 #include "ifcapi/bindings/entity.h"
 #include "ifcapi/bindings/geometry.h"
 #include "ifcapi/bindings/type.h"
+#include "ifcapi/bindings/unit.h"
 #include "guid.h"
 
 #include "ifcparse/IfcFile.h"
@@ -27,6 +28,8 @@
 
 #include <algorithm>
 #include <cstring>
+#include <limits>
+#include <memory>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -739,7 +742,6 @@ void unassign_type_representation(IfcParse::IfcFile* file,
 bool profile_extents(IfcParse::IfcFile* file,
                      IfcUtil::IfcBaseClass* profile,
                      double* x_out, double* y_out) {
-    (void)file;
     if (!profile || !x_out || !y_out) return false;
 
     auto try_attr = [&](const char* name) -> double {
@@ -783,49 +785,60 @@ bool profile_extents(IfcParse::IfcFile* file,
         *x_out = (try_attr("FlangeWidth") * 2) - try_attr("WebThickness");
         *y_out = try_attr("Depth"); return true;
     }
-    if (is_a(profile, "IfcArbitraryClosedProfileDef") ||
-        is_a(profile, "IfcArbitraryProfileDefWithVoids")) {
-        auto* curve = read_ref(profile, "OuterCurve");
-        if (!curve) return false;
-        std::vector<std::pair<double,double>> pts;
-        if (is_a(curve, "IfcIndexedPolyCurve")) {
-            auto* points = read_ref(curve, "Points");
-            if (!points) return false;
-            int idx = attr_index_of(points, "CoordList");
-            if (idx < 0) return false;
-            try {
-                auto v = points->get_attribute_value(idx);
-                std::vector<std::vector<double>> coords = v;
-                for (auto& c : coords) {
-                    if (c.size() >= 2) pts.emplace_back(c[0], c[1]);
-                }
-            } catch (...) { return false; }
-        } else if (is_a(curve, "IfcPolyline")) {
-            auto cps = read_ref_list(curve, "Points");
-            for (auto* cp : cps) {
-                int idx = attr_index_of(cp, "Coordinates");
-                if (idx < 0) continue;
-                try {
-                    auto v = cp->get_attribute_value(idx);
-                    std::vector<double> coords = v;
-                    if (coords.size() >= 2) pts.emplace_back(coords[0], coords[1]);
-                } catch (...) {}
-            }
-        } else {
-            return false;
-        }
-        if (pts.empty()) return false;
-        double xmin = pts[0].first, xmax = pts[0].first;
-        double ymin = pts[0].second, ymax = pts[0].second;
-        for (auto& p : pts) {
-            xmin = std::min(xmin, p.first);  xmax = std::max(xmax, p.first);
-            ymin = std::min(ymin, p.second); ymax = std::max(ymax, p.second);
-        }
-        *x_out = xmax - xmin;
-        *y_out = ymax - ymin;
-        return true;
+    auto* entity = profile->as<IfcUtil::IfcBaseEntity>();
+    if (!file || !entity) return false;
+
+    ifcopenshell::geometry::Settings settings;
+    settings.get<ifcopenshell::geometry::settings::OutputDimensionality>().value =
+        ifcopenshell::geometry::settings::CURVES_SURFACES_AND_SOLIDS;
+    settings.get<ifcopenshell::geometry::settings::IteratorOutput>().value =
+        ifcopenshell::geometry::settings::TRIANGULATED;
+
+    ifcopenshell::geometry::Converter kernel(
+        ifcopenshell::geometry::kernels::construct(file, "opencascade", settings),
+        file,
+        settings);
+
+    IfcGeom::ConversionResults shapes = kernel.convert(profile);
+    if (shapes.empty()) return false;
+
+    auto brep = boost::shared_ptr<IfcGeom::Representation::BRep>(
+        new IfcGeom::Representation::BRep(
+            kernel.settings(),
+            entity->declaration().name(),
+            std::to_string(entity->id()),
+            shapes));
+    auto identity = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::matrix4>();
+    IfcGeom::BRepElement brep_element(
+        entity->id(),
+        -1,
+        entity->declaration().name(),
+        entity->declaration().name(),
+        std::string(),
+        std::string(),
+        identity,
+        brep,
+        nullptr);
+    IfcGeom::TriangulationElement triangulated(brep_element);
+    const auto& verts = triangulated.geometry().verts();
+    if (verts.size() < 3) return false;
+
+    double xmin = std::numeric_limits<double>::infinity();
+    double xmax = -std::numeric_limits<double>::infinity();
+    double ymin = std::numeric_limits<double>::infinity();
+    double ymax = -std::numeric_limits<double>::infinity();
+    for (size_t i = 0; i + 2 < verts.size(); i += 3) {
+        xmin = std::min(xmin, verts[i]);
+        xmax = std::max(xmax, verts[i]);
+        ymin = std::min(ymin, verts[i + 1]);
+        ymax = std::max(ymax, verts[i + 1]);
     }
-    return false;
+
+    double unit_scale = ifcapi::bindings::unit_calculate_unit_scale(file, "LENGTHUNIT");
+    if (unit_scale == 0.0) unit_scale = 1.0;
+    *x_out = (xmax - xmin) / unit_scale;
+    *y_out = (ymax - ymin) / unit_scale;
+    return true;
 }
 
 }  // namespace
