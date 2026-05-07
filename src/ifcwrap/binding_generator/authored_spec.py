@@ -106,6 +106,7 @@ except ImportError:  # pragma: no cover - script execution fallback
 try:
     from .semantic_types import (
         EnumSemanticType,
+        OptionalSemanticType,
         RecordSemanticType,
         ScalarSemanticType,
         SequenceSemanticType,
@@ -119,6 +120,7 @@ try:
 except ImportError:  # pragma: no cover - script execution fallback
     from semantic_types import (
         EnumSemanticType,
+        OptionalSemanticType,
         RecordSemanticType,
         ScalarSemanticType,
         SequenceSemanticType,
@@ -1358,6 +1360,17 @@ def _infer_type(
         return TypeSpec(kind="int32", cpp_type=_cpp_type_storage(cpp_type))
     if isinstance(semantic, StringSemanticType):
         return TypeSpec(kind="string", ownership="copy", cpp_type=_cpp_type_storage(cpp_type))
+    if isinstance(semantic, OptionalSemanticType):
+        inner = _infer_type(semantic.element.cpp_type, handles, ownership=ownership, nullable_pointers=True)
+        return TypeSpec(
+            kind=inner.kind,
+            handle=inner.handle,
+            struct=inner.struct,
+            ownership=inner.ownership,
+            nullable=True,
+            cpp_type=_cpp_type_storage(cpp_type),
+            sequence_depth=inner.sequence_depth,
+        )
     if isinstance(semantic, ScalarSemanticType):
         scalar_kind = {
             "bool": "bool",

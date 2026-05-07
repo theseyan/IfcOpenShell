@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <numeric>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -706,29 +707,29 @@ struct ifcopenshell_selector_keys_t : public KeysHandle {};
 namespace ifcapi {
 namespace bindings {
 
-std::string selector_format(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* instance, const std::string& query)
+std::optional<std::string> selector_format(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* instance,
+    const std::string& query)
 {
     ifcopenshell_selector_node_t* ast = selector_parse_format(query);
-    if (!ast) return std::string();
+    if (!ast) {
+        return std::nullopt;
+    }
 
     std::string out;
     bool has_value = false;
     try {
         FormatEvaluator ev(file, instance);
         has_value = ev.to_output(ast, out);
-    } catch (const std::exception& ex) {
-        ifcopenshell_selector_node_free(ast);
-        ifcopenshell::capi::set_last_error(ex.what());
-        return std::string();
     } catch (...) {
         ifcopenshell_selector_node_free(ast);
-        ifcopenshell::capi::set_last_error("format: unknown exception");
-        return std::string();
+        throw;
     }
     ifcopenshell_selector_node_free(ast);
 
     if (!has_value) {
-        return std::string();
+        return std::nullopt;
     }
     return out;
 }

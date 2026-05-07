@@ -10,6 +10,7 @@ import pytest
 
 from src.ifcwrap.binding_generator.clang_discovery import discover_public_fields_with_compile_commands
 from src.ifcwrap.binding_generator.semantic_types import (
+    OptionalSemanticType,
     RecordSemanticType,
     ScalarSemanticType,
     SequenceSemanticType,
@@ -38,6 +39,13 @@ def test_analyze_cpp_type_rejects_void_pointers() -> None:
     semantic = analyze_cpp_type("void*")
     assert isinstance(semantic, UnsupportedSemanticType)
     assert semantic.reason == "opaque void pointer/reference"
+
+
+def test_analyze_cpp_type_parses_optional_string() -> None:
+    semantic = analyze_cpp_type("std::optional<std::string>")
+
+    assert isinstance(semantic, OptionalSemanticType)
+    assert isinstance(semantic.element, StringSemanticType)
 
 
 def test_analyze_cpp_type_parses_shared_ptr_aliases_from_discovery(tmp_path: Path) -> None:

@@ -135,6 +135,7 @@ def _configure_selector_lib(lib) -> None:
         names=(
             "ifcopenshell_ifcapi_selector_filter_all",
             "ifcopenshell_ifcapi_selector_filter_elements",
+            "ifcopenshell_ifcapi_selector_format",
             "ifcopenshell_ifcapi_selector_get_element_value",
             "ifcopenshell_ifcapi_selector_set_element_value",
             "ifcopenshell_ifcapi_value_destroy",
@@ -482,7 +483,17 @@ def format(query: str, element: Optional[ifcopenshell.entity_instance] = None) -
         format("{{z}} / 2", element)  # Substitutes element's z value
         format("imperial_length({{z}} / 2, 4)", element)  # Uses z in calculation
     """
-    return FormatTransformer(element).transform(format_grammar.parse(query))
+    format_grammar.parse(query)
+    lib = ifcopenshell._get_lib()
+    _configure_selector_lib(lib)
+    instance = _generated_instance_handle_ptr(element._handle) if element is not None else None
+    return _generated_capi.call_string(
+        lib,
+        lib.ifcopenshell_ifcapi_selector_format,
+        _generated_file_handle(element.file) if element is not None else None,
+        instance,
+        _generated_capi.encode_string(query),
+    )
 
 
 def get_element_value(element: ifcopenshell.entity_instance, query: str) -> Any:

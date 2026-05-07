@@ -1805,6 +1805,8 @@ def call_handle_or_raise(lib, fn, fallback, *args, destroy=None, handle_pointer_
 
 def take_string(lib, value, *, decode=True):
     try:
+        if not value.data:
+            return None
         if value.data and value.size:
             raw = ctypes.string_at(value.data, value.size)
             return raw.decode("utf-8") if decode else raw

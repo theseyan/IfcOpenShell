@@ -864,6 +864,16 @@ def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
         return _SCALAR_TYPE_MAP[kind][2].format(expr=expr)
     if kind == "string":
         helper = "make_static_string" if type_spec.ownership == "static" else "make_string"
+        if type_spec.nullable:
+            return (
+                f"auto result_value = {expr};\n"
+                f"        if (!result_value) {{\n"
+                f"            if (!g_last_error.empty()) {{ return false; }}\n"
+                f"            *out_result = ifcopenshell_string_t{{nullptr, 0, false}};\n"
+                f"        }} else {{\n"
+                f"            *out_result = {helper}(*result_value);\n"
+                f"        }}"
+            )
         return f"*out_result = {helper}({expr});"
     if kind in _BUFFER_TYPE_MAP:
         return f"*out_result = ({expr}).data();"

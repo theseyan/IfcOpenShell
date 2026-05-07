@@ -11,6 +11,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 
 struct ifcopenshell_selector_keys_t;
@@ -18,7 +19,10 @@ struct ifcopenshell_selector_keys_t;
 namespace ifcapi {
 namespace bindings {
 
-std::string selector_format(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* instance, const std::string& query);
+std::optional<std::string> selector_format(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* instance,
+    const std::string& query);
 
 ifcopenshell_selector_keys_t* selector_parse_keys(const std::string& query);
 size_t selector_keys_count(ifcopenshell_selector_keys_t* keys);

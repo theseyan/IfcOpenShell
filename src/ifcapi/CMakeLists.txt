@@ -94,4 +94,12 @@ if(BUILD_TESTING)
         "${CMAKE_CURRENT_SOURCE_DIR}/../ifcwrap/binding_generator/generated"
     )
     add_test(NAME ifcapi_test_root COMMAND ifcapi_test_root)
+
+    add_executable(ifcapi_test_selector tests/test_selector.c)
+    target_link_libraries(ifcapi_test_selector PRIVATE ifcopenshell_capi)
+    target_include_directories(ifcapi_test_selector PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../ifcwrap/binding_generator/generated"
+    )
+    add_test(NAME ifcapi_test_selector COMMAND ifcapi_test_selector)
 endif()

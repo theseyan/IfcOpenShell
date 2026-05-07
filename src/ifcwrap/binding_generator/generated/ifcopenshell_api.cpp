@@ -8647,7 +8647,13 @@ bool ifcopenshell_ifcapi_selector_format(ifcopenshell_ifc_file_t* file, ifcopens
     auto instance_cpp = (instance != nullptr && instance->ptr != nullptr) ? instance->ptr : nullptr;
     if (query == nullptr) { throw std::runtime_error("Parameter \"query\" must not be null"); }
     std::string query_cpp(query);
-        *out_result = make_string(ifcapi::bindings::selector_format(file_cpp, instance_cpp, query_cpp));
+        auto result_value = ifcapi::bindings::selector_format(file_cpp, instance_cpp, query_cpp);
+        if (!result_value) {
+            if (!g_last_error.empty()) { return false; }
+            *out_result = ifcopenshell_string_t{nullptr, 0, false};
+        } else {
+            *out_result = make_string(*result_value);
+        }
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

@@ -18,10 +18,10 @@
 
 from typing import Any, Literal, Optional, Union, get_args
 
-import ifcopenshell.geom
 import ifcopenshell.util.element
-import ifcopenshell.util.shape
 import ifcopenshell.util.unit
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.geometry import _capi
 from ifcopenshell.util.data import Clipping
 
 VECTOR_3D = tuple[float, float, float]
@@ -103,6 +103,7 @@ class Usecase:
         self.depth = depth
         self.placement_zx_axes = placement_zx_axes
         self.unit_scale = ifcopenshell.util.unit.calculate_unit_scale(self.file)
+        self.profile_extents = self.get_profile_extents()
         return self.file.create_entity(
             "IfcShapeRepresentation",
             context,
@@ -146,79 +147,35 @@ class Usecase:
     def get_point(self) -> ifcopenshell.entity_instance:
         if not self.cardinal_point:
             return self.file.createIfcCartesianPoint((0.0, 0.0, 0.0))
-        elif self.cardinal_point == "bottom left":
-            return self.file.createIfcCartesianPoint((-self.get_x() / 2, self.get_y() / 2, 0.0))
+        x, y = self.profile_extents
+        if self.cardinal_point == "bottom left":
+            return self.file.createIfcCartesianPoint((-x / 2, y / 2, 0.0))
         elif self.cardinal_point == "bottom centre":
-            return self.file.createIfcCartesianPoint((0.0, self.get_y() / 2, 0.0))
+            return self.file.createIfcCartesianPoint((0.0, y / 2, 0.0))
         elif self.cardinal_point == "bottom right":
-            return self.file.createIfcCartesianPoint((self.get_x() / 2, self.get_y() / 2, 0.0))
+            return self.file.createIfcCartesianPoint((x / 2, y / 2, 0.0))
         elif self.cardinal_point == "mid-depth left":
-            return self.file.createIfcCartesianPoint((-self.get_x() / 2, 0.0, 0.0))
+            return self.file.createIfcCartesianPoint((-x / 2, 0.0, 0.0))
         elif self.cardinal_point == "mid-depth centre":
             return self.file.createIfcCartesianPoint((0.0, 0.0, 0.0))
         elif self.cardinal_point == "mid-depth right":
-            return self.file.createIfcCartesianPoint((self.get_x() / 2, 0.0, 0.0))
+            return self.file.createIfcCartesianPoint((x / 2, 0.0, 0.0))
         elif self.cardinal_point == "top left":
-            return self.file.createIfcCartesianPoint((-self.get_x() / 2, -self.get_y() / 2, 0.0))
+            return self.file.createIfcCartesianPoint((-x / 2, -y / 2, 0.0))
         elif self.cardinal_point == "top centre":
-            return self.file.createIfcCartesianPoint((0.0, -self.get_y() / 2, 0.0))
+            return self.file.createIfcCartesianPoint((0.0, -y / 2, 0.0))
         elif self.cardinal_point == "top right":
-            return self.file.createIfcCartesianPoint((self.get_x() / 2, -self.get_y() / 2, 0.0))
+            return self.file.createIfcCartesianPoint((x / 2, -y / 2, 0.0))
         # TODO other cardinal points
         return self.file.createIfcCartesianPoint((0.0, 0.0, 0.0))
 
-    def get_x(self) -> float:
-        if self.profile.is_a("IfcAsymmetricIShapeProfileDef"):
-            return self.profile.OverallWidth
-        elif self.profile.is_a("IfcCShapeProfileDef"):
-            return self.profile.Width
-        elif self.profile.is_a("IfcCircleProfileDef"):
-            return self.profile.Radius * 2
-        elif self.profile.is_a("IfcEllipseProfileDef"):
-            return self.profile.SemiAxis1 * 2
-        elif self.profile.is_a("IfcIShapeProfileDef"):
-            return self.profile.OverallWidth
-        elif self.profile.is_a("IfcLShapeProfileDef"):
-            return self.profile.Width
-        elif self.profile.is_a("IfcRectangleProfileDef"):
-            return self.profile.XDim
-        elif self.profile.is_a("IfcTShapeProfileDef"):
-            return self.profile.FlangeWidth
-        elif self.profile.is_a("IfcUShapeProfileDef"):
-            return self.profile.FlangeWidth
-        elif self.profile.is_a("IfcZShapeProfileDef"):
-            return (self.profile.FlangeWidth * 2) - self.profile.WebThickness
-        else:
-            settings = ifcopenshell.geom.settings()
-            settings.set("dimensionality", ifcopenshell.ifcopenshell_wrapper.CURVES_SURFACES_AND_SOLIDS)
-            shape = ifcopenshell.geom.create_shape(settings, self.profile)
-            return self.convert_si_to_unit(ifcopenshell.util.shape.get_x(shape))
-        return 0.0
-
-    def get_y(self) -> float:
-        if self.profile.is_a("IfcAsymmetricIShapeProfileDef"):
-            return self.profile.OverallDepth
-        elif self.profile.is_a("IfcCShapeProfileDef"):
-            return self.profile.Depth
-        elif self.profile.is_a("IfcCircleProfileDef"):
-            return self.profile.Radius * 2
-        elif self.profile.is_a("IfcEllipseProfileDef"):
-            return self.profile.SemiAxis2 * 2
-        elif self.profile.is_a("IfcIShapeProfileDef"):
-            return self.profile.OverallDepth
-        elif self.profile.is_a("IfcLShapeProfileDef"):
-            return self.profile.Depth
-        elif self.profile.is_a("IfcRectangleProfileDef"):
-            return self.profile.YDim
-        elif self.profile.is_a("IfcTShapeProfileDef"):
-            return self.profile.Depth
-        elif self.profile.is_a("IfcUShapeProfileDef"):
-            return self.profile.Depth
-        elif self.profile.is_a("IfcZShapeProfileDef"):
-            return self.profile.Depth
-        else:
-            settings = ifcopenshell.geom.settings()
-            settings.set("dimensionality", ifcopenshell.ifcopenshell_wrapper.CURVES_SURFACES_AND_SOLIDS)
-            shape = ifcopenshell.geom.create_shape(settings, self.profile)
-            return self.convert_si_to_unit(ifcopenshell.util.shape.get_y(shape))
-        return 0.0
+    def get_profile_extents(self) -> tuple[float, float]:
+        lib = _capi.get_lib()
+        extents = _generated_capi.call_double_list_or_raise(
+            lib,
+            lib.ifcopenshell_ifcapi_geometry_profile_extents,
+            ifcopenshell.get_log() or "ifcopenshell_ifcapi_geometry_profile_extents",
+            _capi.file_handle(self.file),
+            _capi.instance_handle(self.profile),
+        )
+        return extents[0], extents[1]
