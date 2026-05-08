@@ -963,14 +963,16 @@ def _wrap_product_instance(h):
 
 def _detect_occ() -> bool:
     try:
-        import OCC.Core  # noqa: F401  # pyright: ignore[reportMissingImports]
+        import OCC.Core.BRepTools  # noqa: F401  # pyright: ignore[reportMissingImports]
         return True
     except ImportError:
-        try:
-            import OCC  # noqa: F401  # pyright: ignore[reportMissingImports]
-            return True
-        except ImportError:
-            return False
+        pass
+    try:
+        import OCC.BRepTools  # noqa: F401  # pyright: ignore[reportMissingImports]
+        return True
+    except ImportError:
+        pass
+    return False
 
 
 has_occ = _detect_occ()

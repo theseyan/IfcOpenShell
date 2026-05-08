@@ -14,10 +14,7 @@ from .main import has_occ  # noqa: F401  - established before re-export
 
 
 if has_occ:
-    try:
-        from . import occ_utils as utils  # type: ignore[import-not-found]  # noqa: F401
-    except Exception:  # pragma: no cover - OCC bridge wired in y6g
-        pass
+    from . import occ_utils as utils  # type: ignore[import-not-found]  # noqa: F401
 
 
 from .main import *  # noqa: F401,F403,E402
