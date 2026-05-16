@@ -37,9 +37,13 @@ set(IFCAPI_SOURCES
     src/file.cpp
     src/entity.cpp
     src/api/aggregate/relationship.cpp
+    src/api/boundary/boundary.cpp
     src/api/constraint/constraint.cpp
+    src/api/context/context.cpp
     src/api/document/document.cpp
+    src/api/feature/feature.cpp
     src/api/group/relationship.cpp
+    src/api/grid/grid.cpp
     src/api/layer/layer.cpp
     src/api/library/library.cpp
     src/api/material/material.cpp

@@ -1,7 +1,16 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/boundary.h"
+#include "ifcapi/bindings/entity.h"
+#include "ifcapi/bindings/feature.h"
+#include "ifcapi/bindings/geometry.h"
+#include "ifcapi/bindings/grid.h"
+#include "ifcapi/bindings/material.h"
+#include "ifcapi/bindings/pset.h"
 #include "ifcapi/bindings/root.h"
+#include "ifcapi/bindings/type.h"
+#include "ifcapi/detail/attribute.h"
 #include "guid.h"
 #include "ifcopenshell_api_internal.hpp"
 
@@ -15,6 +24,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <vector>
 
 // Error-reporting helpers route through the autogen layer's named namespace
 // (declared in ifcopenshell_api_internal.hpp) so the high-level and low-level
@@ -23,6 +33,224 @@
 namespace {
 inline void set_error(const char* msg) { ifcopenshell::capi::set_last_error(msg); }
 inline void set_error(const std::string& msg) { ifcopenshell::capi::set_last_error(msg); }
+
+inline bool is_instance(IfcUtil::IfcBaseClass* entity, const char* ifc_class) {
+    return entity && entity->declaration().is(ifc_class);
+}
+
+std::vector<IfcUtil::IfcBaseClass*> inverse_entities(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* entity) {
+    std::vector<IfcUtil::IfcBaseClass*> result;
+    if (!file || !entity || !entity->id()) return result;
+    auto inverses = file->getInverse(entity->id(), nullptr, -1);
+    if (!inverses) return result;
+    for (auto* inverse : *inverses) {
+        if (inverse) result.push_back(inverse);
+    }
+    return result;
+}
+
+bool exists_in_file(IfcParse::IfcFile* file, int id) {
+    if (!file || id <= 0) return false;
+    try {
+        return file->instance_by_id(static_cast<unsigned>(id)) != nullptr;
+    } catch (...) {
+        return false;
+    }
+}
+
+IfcUtil::IfcBaseClass* entity_by_id(IfcParse::IfcFile* file, int id) {
+    return exists_in_file(file, id) ? file->instance_by_id(static_cast<unsigned>(id)) : nullptr;
+}
+
+void remove_with_history(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* relationship) {
+    if (!file || !relationship) return;
+    auto* history = ifcapi::detail::read_ref_attr(relationship, "OwnerHistory");
+    file->removeEntity(relationship);
+    if (history) ifcapi::bindings::entity_remove_deep2(history);
+}
+
+std::vector<const IfcUtil::IfcBaseClass*> single_const(IfcUtil::IfcBaseClass* entity) {
+    return entity ? std::vector<const IfcUtil::IfcBaseClass*>{entity} : std::vector<const IfcUtil::IfcBaseClass*>{};
+}
+
+void root_remove_product_impl(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* product,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application);
+
+void root_remove_product_impl(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* product,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    if (!file || !product) return;
+    const int product_id = static_cast<int>(product->id());
+    std::vector<IfcUtil::IfcBaseClass*> representations;
+
+    if (is_instance(product, "IfcProduct")) {
+        auto* product_representation = ifcapi::detail::read_ref_attr(product, "Representation");
+        if (product_representation) {
+            representations = ifcapi::detail::read_ref_aggregate(product_representation, "Representations");
+        }
+        auto* object_placement = ifcapi::detail::read_ref_attr(product, "ObjectPlacement");
+        if (object_placement && file->getTotalInverses(object_placement->id()) == 1) {
+            ifcapi::detail::write_ref_attr(product, "ObjectPlacement", nullptr);
+            ifcapi::bindings::entity_remove_deep2(object_placement);
+        }
+    } else if (is_instance(product, "IfcTypeProduct")) {
+        for (auto* representation_map : ifcapi::detail::read_ref_aggregate(product, "RepresentationMaps")) {
+            if (auto* mapped = ifcapi::detail::read_ref_attr(representation_map, "MappedRepresentation")) {
+                representations.push_back(mapped);
+            }
+        }
+        auto psets = ifcapi::detail::read_ref_aggregate(product, "HasPropertySets");
+        for (auto* pset : psets) {
+            if (pset && file->getTotalInverses(pset->id()) == 1) {
+                ifcapi::bindings::pset_remove_pset(file, product, pset);
+            }
+        }
+    }
+
+    for (auto* representation : representations) {
+        ifcapi::bindings::geometry_unassign_representation(file, product, representation);
+        ifcapi::bindings::geometry_remove_representation(file, representation, true);
+    }
+
+    auto openings = ifcapi::detail::read_inverse_aggregate(product, "HasOpenings");
+    for (auto* rel : openings) {
+        if (auto* opening = ifcapi::detail::read_ref_attr(rel, "RelatedOpeningElement")) {
+            ifcapi::bindings::feature_remove_feature(file, opening, user, application);
+        }
+    }
+
+    if (is_instance(product, "IfcGrid")) {
+        std::vector<IfcUtil::IfcBaseClass*> axes = ifcapi::detail::read_ref_aggregate(product, "UAxes");
+        ifcapi::detail::append_unique(axes, ifcapi::detail::read_ref_aggregate(product, "VAxes"));
+        ifcapi::detail::append_unique(axes, ifcapi::detail::read_ref_aggregate(product, "WAxes"));
+        for (auto* axis : axes) {
+            ifcapi::bindings::grid_remove_grid_axis(file, axis);
+        }
+    }
+
+    std::vector<int> inverse_ids;
+    for (auto* inverse : inverse_entities(file, product)) {
+        inverse_ids.push_back(static_cast<int>(inverse->id()));
+    }
+
+    for (int inverse_id : inverse_ids) {
+        auto* inverse = entity_by_id(file, inverse_id);
+        if (!inverse) continue;
+
+        if (is_instance(inverse, "IfcRelDefinesByProperties")) {
+            ifcapi::bindings::pset_remove_pset(
+                file,
+                product,
+                ifcapi::detail::read_ref_attr(inverse, "RelatingPropertyDefinition"));
+        } else if (is_instance(inverse, "IfcRelAssociatesMaterial")) {
+            ifcapi::bindings::material_unassign_material(file, single_const(product), user, application);
+        } else if (is_instance(inverse, "IfcRelDefinesByType")) {
+            if (ifcapi::detail::read_ref_attr(inverse, "RelatingType") == product) {
+                ifcapi::bindings::type_unassign_type(
+                    file,
+                    ifcapi::detail::to_const_refs(ifcapi::detail::read_ref_aggregate(inverse, "RelatedObjects")),
+                    user,
+                    application);
+            } else {
+                ifcapi::bindings::type_unassign_type(file, single_const(product), user, application);
+            }
+        } else if (is_instance(inverse, "IfcRelSpaceBoundary")) {
+            ifcapi::bindings::boundary_remove_boundary(file, inverse);
+        } else if (
+            is_instance(inverse, "IfcRelFillsElement") ||
+            is_instance(inverse, "IfcRelVoidsElement") ||
+            is_instance(inverse, "IfcRelServicesBuildings")) {
+            remove_with_history(file, inverse);
+        } else if (is_instance(inverse, "IfcRelNests")) {
+            if (ifcapi::detail::read_ref_attr(inverse, "RelatingObject") == product) {
+                auto related = ifcapi::detail::read_ref_aggregate(inverse, "RelatedObjects");
+                for (auto* subelement : related) {
+                    if (is_instance(subelement, "IfcDistributionPort")) {
+                        root_remove_product_impl(file, subelement, user, application);
+                    }
+                }
+                inverse = entity_by_id(file, inverse_id);
+                if (inverse) remove_with_history(file, inverse);
+            } else {
+                auto related = ifcapi::detail::read_ref_aggregate(inverse, "RelatedObjects");
+                if (related.size() == 1 && related.front() == product) {
+                    remove_with_history(file, inverse);
+                }
+            }
+        } else if (is_instance(inverse, "IfcRelAggregates")) {
+            auto related = ifcapi::detail::read_ref_aggregate(inverse, "RelatedObjects");
+            if (ifcapi::detail::read_ref_attr(inverse, "RelatingObject") == product || related.size() == 1) {
+                remove_with_history(file, inverse);
+            }
+        } else if (is_instance(inverse, "IfcRelContainedInSpatialStructure")) {
+            auto related = ifcapi::detail::read_ref_aggregate(inverse, "RelatedElements");
+            if (ifcapi::detail::read_ref_attr(inverse, "RelatingStructure") == product || related.size() == 1) {
+                remove_with_history(file, inverse);
+            }
+        } else if (is_instance(inverse, "IfcRelConnectsElements")) {
+            if (is_instance(inverse, "IfcRelConnectsWithRealizingElements")) {
+                auto* relating = ifcapi::detail::read_ref_attr(inverse, "RelatingElement");
+                auto* related = ifcapi::detail::read_ref_attr(inverse, "RelatedElement");
+                auto realizing = ifcapi::detail::read_ref_aggregate(inverse, "RealizingElements");
+                bool has_other_realizing = false;
+                for (auto* element : realizing) {
+                    if (element != product) {
+                        has_other_realizing = true;
+                        break;
+                    }
+                }
+                if (product != relating && product != related && has_other_realizing) {
+                    continue;
+                }
+            }
+            remove_with_history(file, inverse);
+        } else if (is_instance(inverse, "IfcRelConnectsPortToElement")) {
+            if (ifcapi::detail::read_ref_attr(inverse, "RelatedElement") == product) {
+                if (auto* port = ifcapi::detail::read_ref_attr(inverse, "RelatingPort")) {
+                    root_remove_product_impl(file, port, user, application);
+                }
+                inverse = entity_by_id(file, inverse_id);
+                if (inverse) remove_with_history(file, inverse);
+            } else if (ifcapi::detail::read_ref_attr(inverse, "RelatingPort") == product) {
+                remove_with_history(file, inverse);
+            }
+        } else if (is_instance(inverse, "IfcRelConnectsPorts")) {
+            if (product != ifcapi::detail::read_ref_attr(inverse, "RelatingPort") &&
+                product != ifcapi::detail::read_ref_attr(inverse, "RelatedPort")) {
+                continue;
+            }
+            remove_with_history(file, inverse);
+        } else if (is_instance(inverse, "IfcRelAssignsToGroup")) {
+            if (ifcapi::detail::read_ref_aggregate(inverse, "RelatedObjects").size() == 1) {
+                remove_with_history(file, inverse);
+            }
+        } else if (is_instance(inverse, "IfcRelAssignsToProduct")) {
+            auto related = ifcapi::detail::read_ref_aggregate(inverse, "RelatedObjects");
+            if (ifcapi::detail::read_ref_attr(inverse, "RelatingProduct") == product ||
+                (related.size() == 1 && related.front() == product)) {
+                remove_with_history(file, inverse);
+            }
+        } else if (is_instance(inverse, "IfcRelFlowControlElements")) {
+            auto related = ifcapi::detail::read_ref_aggregate(inverse, "RelatedControlElements");
+            if (ifcapi::detail::read_ref_attr(inverse, "RelatingFlowElement") == product ||
+                (related.size() == 1 && related.front() == product)) {
+                remove_with_history(file, inverse);
+            }
+        }
+    }
+
+    auto* live_product = entity_by_id(file, product_id);
+    if (!live_product) return;
+    auto* history = ifcapi::detail::read_ref_attr(live_product, "OwnerHistory");
+    file->removeEntity(live_product);
+    if (history) ifcapi::bindings::entity_remove_deep2(history);
+}
 }
 
 // Resolve the enumeration_type for an entity attribute at the given index.
@@ -242,6 +470,22 @@ IfcUtil::IfcBaseClass* root_create_entity(
     } catch (...) {
         set_error("Unknown C++ exception in ifcopenshell_root_create_entity");
         return 0;
+    }
+}
+
+void root_remove_product(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* product,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    ifcopenshell_clear_error();
+    try {
+        root_remove_product_impl(file, product, user, application);
+    } catch (const std::exception& e) {
+        set_error(e.what());
+    } catch (...) {
+        set_error("Unknown C++ exception in ifcopenshell_root_remove_product");
     }
 }
 

@@ -19,6 +19,11 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* root_create_entity(
     const char* predefined_type,
     const char* name,
     IfcUtil::IfcBaseClass* owner_history);
+IFCAPI_BINDING void root_remove_product(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* product,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application);
 
 } // namespace bindings
 } // namespace ifcapi

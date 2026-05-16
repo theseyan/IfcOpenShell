@@ -17,12 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.aggregate
-import ifcopenshell.api.geometry
-import ifcopenshell.api.owner
-import ifcopenshell.guid
-import ifcopenshell.util.element
-import ifcopenshell.util.placement
+import ifcopenshell.api.owner.settings
+from ifcopenshell.api.feature import _capi
 
 
 def add_feature(
@@ -105,45 +101,16 @@ def add_feature(
         # The opening will now void the wall.
         ifcopenshell.api.feature.add_feature(model, feature=opening, element=wall)
     """
-    if feature.is_a("IfcFeatureElementSubtraction"):
-        rels = feature.VoidsElements
-        ifc_class = "IfcRelVoidsElement"
-    elif feature.is_a("IfcFeatureElementAddition"):
-        rels = feature.ProjectsElements
-        ifc_class = "IfcRelProjectsElement"
-    elif feature.is_a("IfcSurfaceFeature"):
-        if file.schema == "IFC4":
-            return ifcopenshell.api.aggregate.assign_object(file, [feature], element)
-        rels = feature.AdheresToElement
-        ifc_class = "IfcRelAdheresToElement"
-
-    if rels:
-        if rels[0][4] == element:
-            return rels[0]
-        elif ifc_class == "IfcRelAdheresToElement" and len(rels[0].RelatedSurfaceFeatures) != 1:
-            rels[0].RelatedSurfaceFeatures = list(set(rels[0].RelatedSurfaceFeatures) - {feature})
-        else:
-            history = rels[0].OwnerHistory
-            file.remove(rels[0])
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
-
-    rel = file.create_entity(
-        ifc_class,
-        ifcopenshell.guid.new(),
-        ifcopenshell.api.owner.create_owner_history(file),
-        None,
-        None,
-        element,
-        [feature] if ifc_class == "IfcRelAdheresToElement" else feature,
+    lib = _capi.get_lib()
+    user = ifcopenshell.api.owner.settings.get_user(file)
+    application = ifcopenshell.api.owner.settings.get_application(file)
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_feature_add_feature,
+        "Failed to add feature",
+        _capi.file_handle(file),
+        _capi.instance_handle(feature),
+        _capi.instance_handle(element),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
     )
-
-    if (placement := feature.ObjectPlacement) and placement.is_a("IfcLocalPlacement"):
-        ifcopenshell.api.geometry.edit_object_placement(
-            file,
-            product=feature,
-            matrix=ifcopenshell.util.placement.get_local_placement(placement),
-            is_si=False,
-        )
-
-    return rel

@@ -16,7 +16,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ifcopenshell.util.element
+import ifcopenshell
+from ifcopenshell.api.geometry import _capi
 
 
 def remove_representation(
@@ -37,56 +38,10 @@ def remove_representation(
     :param should_keep_named_profiles: If true, named profile defs will not be
         removed as they are assumed to be significant.
     """
-    is_ifc2x3 = file.schema == "IFC2X3"
-    styled_items = set()
-    presentation_layer_assignments_items: set[ifcopenshell.entity_instance] = set()
-    presentation_layer_assignments_reps: set[ifcopenshell.entity_instance] = set()
-    textures: set[ifcopenshell.entity_instance] = set()
-    colours: set[ifcopenshell.entity_instance] = set()
-    named_profiles: set[ifcopenshell.entity_instance] = set()
-    for subelement in file.traverse(representation):
-        if subelement.is_a("IfcRepresentationItem"):
-            [styled_items.add(s) for s in subelement.StyledByItem or []]
-            # IFC2X3 is using LayerAssignments
-            for s in subelement.LayerAssignment if not is_ifc2x3 else subelement.LayerAssignments:
-                presentation_layer_assignments_items.add(s)
-            # IfcTessellatedFaceSet inverses
-            if subelement.is_a("IfcTessellatedFaceSet"):
-                textures.update(subelement.HasTextures)
-                colours.update(subelement.HasColours)
-        elif subelement.is_a("IfcRepresentation"):
-            for layer in subelement.LayerAssignments:
-                presentation_layer_assignments_reps.add(layer)
-        elif subelement.is_a("IfcProfileDef") and subelement.ProfileName:
-            named_profiles.add(subelement)
-
-    do_not_delete = file.by_type("IfcGeometricRepresentationContext")
-    if should_keep_named_profiles:
-        do_not_delete += named_profiles
-
-    # Order matters - layer assignments may reference representation directly.
-    also_consider = list(presentation_layer_assignments_reps)
-    also_consider.extend(presentation_layer_assignments_items - presentation_layer_assignments_reps)
-    also_consider.extend(styled_items)
-    also_consider.extend(textures)
-    ifcopenshell.util.element.remove_deep2(
-        file,
-        representation,
-        also_consider=also_consider,
-        do_not_delete=set(do_not_delete),
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_geometry_remove_representation,
+        _capi.file_handle(file),
+        _capi.instance_handle(representation),
+        should_keep_named_profiles,
     )
-
-    for texture in textures:
-        ifcopenshell.util.element.remove_deep2(file, texture)
-    for colour in colours:
-        ifcopenshell.util.element.remove_deep2(file, colour)
-
-    to_delete = file.to_delete or set()
-    for element in styled_items:
-        item = element.Item
-        if not item or item in to_delete:
-            file.remove(element)
-    presentation_layer_assignments = presentation_layer_assignments_reps | presentation_layer_assignments_items
-    for element in presentation_layer_assignments:
-        if all(item in to_delete for item in element.AssignedItems):
-            file.remove(element)

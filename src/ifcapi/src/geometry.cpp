@@ -18,6 +18,7 @@
 #include "ifcapi/bindings/geometry.h"
 #include "ifcapi/bindings/type.h"
 #include "ifcapi/bindings/unit.h"
+#include "ifcapi/detail/attribute.h"
 #include "guid.h"
 
 #include "ifcparse/IfcFile.h"
@@ -862,6 +863,102 @@ void geometry_unassign_representation(
         set_error(e.what());
     } catch (...) {
         set_error("geometry_unassign_representation: unknown exception");
+    }
+}
+
+void geometry_remove_representation(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* representation,
+    bool should_keep_named_profiles)
+{
+    if (!file || !representation) return;
+    bool is_ifc2x3 = file->schema() && file->schema()->name() == "IFC2X3";
+    std::vector<IfcUtil::IfcBaseClass*> styled_items;
+    std::vector<IfcUtil::IfcBaseClass*> presentation_layer_assignments_items;
+    std::vector<IfcUtil::IfcBaseClass*> presentation_layer_assignments_reps;
+    std::vector<IfcUtil::IfcBaseClass*> textures;
+    std::vector<IfcUtil::IfcBaseClass*> colours;
+    std::vector<IfcUtil::IfcBaseClass*> named_profiles;
+
+    auto traversed = file->traverse(representation, -1);
+    if (traversed) {
+        for (auto* subelement : *traversed) {
+            if (is_a(subelement, "IfcRepresentationItem")) {
+                ifcapi::detail::append_unique(
+                    styled_items,
+                    ifcapi::detail::read_inverse_aggregate(subelement, "StyledByItem"));
+                ifcapi::detail::append_unique(
+                    presentation_layer_assignments_items,
+                    ifcapi::detail::read_inverse_aggregate(
+                        subelement,
+                        is_ifc2x3 ? "LayerAssignments" : "LayerAssignment"));
+                if (is_a(subelement, "IfcTessellatedFaceSet")) {
+                    ifcapi::detail::append_unique(
+                        textures,
+                        ifcapi::detail::read_inverse_aggregate(subelement, "HasTextures"));
+                    ifcapi::detail::append_unique(
+                        colours,
+                        ifcapi::detail::read_inverse_aggregate(subelement, "HasColours"));
+                }
+            } else if (is_a(subelement, "IfcRepresentation")) {
+                ifcapi::detail::append_unique(
+                    presentation_layer_assignments_reps,
+                    ifcapi::detail::read_inverse_aggregate(subelement, "LayerAssignments"));
+            } else if (is_a(subelement, "IfcProfileDef") && !read_string(subelement, "ProfileName").empty()) {
+                ifcapi::detail::append_unique(named_profiles, subelement);
+            }
+        }
+    }
+
+    auto do_not_delete = ifcapi::detail::instances_by_type(file, "IfcGeometricRepresentationContext");
+    if (should_keep_named_profiles) {
+        ifcapi::detail::append_unique(do_not_delete, named_profiles);
+    }
+
+    std::vector<IfcUtil::IfcBaseClass*> also_consider = presentation_layer_assignments_reps;
+    for (auto* layer : presentation_layer_assignments_items) {
+        if (!ifcapi::detail::contains_ref(presentation_layer_assignments_reps, layer)) {
+            also_consider.push_back(layer);
+        }
+    }
+    ifcapi::detail::append_unique(also_consider, styled_items);
+    ifcapi::detail::append_unique(also_consider, textures);
+
+    entity_remove_deep2_ex(
+        representation,
+        ifcapi::detail::to_const_refs(also_consider),
+        ifcapi::detail::to_const_refs(do_not_delete));
+
+    for (auto* texture : textures) {
+        entity_remove_deep2(texture);
+    }
+    for (auto* colour : colours) {
+        entity_remove_deep2(colour);
+    }
+
+    for (auto* styled_item : styled_items) {
+        if (!ifcapi::detail::exists_in_file(file, styled_item)) continue;
+        auto* item = read_ref(styled_item, "Item");
+        if (!item || !ifcapi::detail::exists_in_file(file, item)) {
+            file->removeEntity(styled_item);
+        }
+    }
+
+    std::vector<IfcUtil::IfcBaseClass*> presentation_layer_assignments = presentation_layer_assignments_reps;
+    ifcapi::detail::append_unique(presentation_layer_assignments, presentation_layer_assignments_items);
+    for (auto* layer : presentation_layer_assignments) {
+        if (!ifcapi::detail::exists_in_file(file, layer)) continue;
+        auto assigned_items = read_ref_list(layer, "AssignedItems");
+        bool all_deleted = true;
+        for (auto* item : assigned_items) {
+            if (ifcapi::detail::exists_in_file(file, item)) {
+                all_deleted = false;
+                break;
+            }
+        }
+        if (all_deleted) {
+            file->removeEntity(layer);
+        }
     }
 }
 

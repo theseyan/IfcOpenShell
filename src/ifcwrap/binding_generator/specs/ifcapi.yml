@@ -10,14 +10,18 @@ c_prefix: ifcopenshell_ifcapi
 
 public_headers:
   - ifcapi/bindings/aggregate.h
+  - ifcapi/bindings/boundary.h
   - guid.h
   - ifcapi/bindings/classification.h
   - ifcapi/bindings/constraint.h
+  - ifcapi/bindings/context.h
   - ifcapi/bindings/document.h
   - ifcapi/bindings/element.h
   - ifcapi/bindings/entity.h
+  - ifcapi/bindings/feature.h
   - ifcapi/bindings/geometry.h
   - ifcapi/bindings/group.h
+  - ifcapi/bindings/grid.h
   - ifcapi/bindings/layer.h
   - ifcapi/bindings/library.h
   - ifcapi/bindings/material.h
@@ -478,6 +482,7 @@ discover:
         - geometry_copy_representation
         - geometry_map_representation
         - geometry_profile_extents
+        - geometry_remove_representation
         - geometry_unassign_representation
         - type_map_type_representations
       type_overrides:
@@ -496,6 +501,24 @@ discover:
         geometry_profile_extents:
           returns:
             ownership: copy
+    - namespace: ifcapi::bindings
+      translation_unit: api/context/context.cpp
+      include:
+        - context_add_context
+        - context_remove_context
+      type_overrides:
+        context_add_context:
+          returns:
+            nullable: true
+          params:
+            context_type:
+              nullable: true
+            context_identifier:
+              nullable: true
+            target_view:
+              nullable: true
+            parent:
+              nullable: true
     - namespace: ifcapi::bindings
       translation_unit: api/geometry/placement.cpp
       include:
@@ -1336,6 +1359,7 @@ discover:
       translation_unit: root.cpp
       include:
         - root_create_entity
+        - root_remove_product
       type_overrides:
         root_create_entity:
           returns:
@@ -1347,6 +1371,55 @@ discover:
               nullable: true
             owner_history:
               nullable: true
+        root_remove_product:
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: api/boundary/boundary.cpp
+      include:
+        - boundary_copy_boundary
+        - boundary_remove_boundary
+      type_overrides:
+        boundary_copy_boundary:
+          returns:
+            nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: api/feature/feature.cpp
+      include:
+        - feature_add_feature
+        - feature_add_filling
+        - feature_remove_feature
+        - feature_remove_filling
+      type_overrides:
+        feature_add_feature:
+          returns:
+            nullable: true
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
+        feature_add_filling:
+          returns:
+            nullable: true
+        feature_remove_feature:
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: api/grid/grid.cpp
+      include:
+        - grid_create_grid_axis
+        - grid_remove_grid_axis
+      type_overrides:
+        grid_create_grid_axis:
+          returns:
+            nullable: true
     - namespace: ifcapi::bindings
       translation_unit: owner.cpp
       include:

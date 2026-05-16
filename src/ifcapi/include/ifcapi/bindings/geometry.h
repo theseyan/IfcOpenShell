@@ -24,6 +24,10 @@ IFCAPI_BINDING void geometry_unassign_representation(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* product,
     IfcUtil::IfcBaseClass* representation);
+IFCAPI_BINDING void geometry_remove_representation(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* representation,
+    bool should_keep_named_profiles);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* geometry_copy_representation(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* source,

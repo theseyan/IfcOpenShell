@@ -17,6 +17,7 @@ _BIND_NAMES = (
     "ifcopenshell_ifcapi_geometry_edit_object_placement",
     "ifcopenshell_ifcapi_geometry_map_representation",
     "ifcopenshell_ifcapi_geometry_profile_extents",
+    "ifcopenshell_ifcapi_geometry_remove_representation",
     "ifcopenshell_ifcapi_geometry_unassign_representation",
     "ifcopenshell_ifcapi_type_map_type_representations",
     "ifcopenshell_ifc_instance_destroy",

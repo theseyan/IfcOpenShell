@@ -17,9 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.context
-import ifcopenshell.api.geometry
-import ifcopenshell.util.element
+from ifcopenshell.api.context import _capi
 
 
 def remove_context(file: ifcopenshell.file, context: ifcopenshell.entity_instance) -> None:
@@ -44,24 +42,10 @@ def remove_context(file: ifcopenshell.file, context: ifcopenshell.entity_instanc
         # Let's just get rid of it completely
         ifcopenshell.api.context.remove_context(model, context=body)
     """
-    for subcontext in context.HasSubContexts:
-        ifcopenshell.api.context.remove_context(file, context=subcontext)
-
-    if getattr(context, "ParentContext", None):
-        new = context.ParentContext
-        for inverse in file.get_inverse(context):
-            if inverse.is_a("IfcCoordinateOperation"):
-                # Trick to make sure the coordinate operation is not referenced
-                # by a context so we can delete it safely
-                inverse.SourceCRS = inverse.TargetCRS
-                ifcopenshell.util.element.remove_deep2(file, inverse)
-            else:
-                ifcopenshell.util.element.replace_attribute(inverse, context, new)
-        file.remove(context)
-    else:
-        representations_in_context = context.RepresentationsInContext
-        file.remove(context)
-        for rep in representations_in_context:
-            for element in ifcopenshell.util.element.get_elements_by_representation(file, rep):
-                ifcopenshell.api.geometry.unassign_representation(file, product=element, representation=rep)
-            ifcopenshell.api.geometry.remove_representation(file, representation=rep)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_context_remove_context,
+        "Failed to remove context",
+        _capi.file_handle(file),
+        _capi.instance_handle(context),
+    )

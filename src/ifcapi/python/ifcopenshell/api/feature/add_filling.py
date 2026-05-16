@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.guid
-import ifcopenshell.util.element
+from ifcopenshell.api.feature import _capi
 
 
 def add_filling(
@@ -99,19 +98,12 @@ def add_filling(
         # The door will now fill the opening.
         ifcopenshell.api.feature.add_filling(model, opening=opening, element=door)
     """
-    fills_voids = element.FillsVoids
-
-    if fills_voids:
-        if fills_voids[0].RelatingOpeningElement == opening:
-            return fills_voids[0]
-        history = fills_voids[0].OwnerHistory
-        file.remove(fills_voids[0])
-        if history:
-            ifcopenshell.util.element.remove_deep2(file, history)
-
-    return file.create_entity(
-        "IfcRelFillsElement",
-        GlobalId=ifcopenshell.guid.new(),
-        RelatingOpeningElement=opening,
-        RelatedBuildingElement=element,
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_feature_add_filling,
+        "Failed to add filling",
+        _capi.file_handle(file),
+        _capi.instance_handle(opening),
+        _capi.instance_handle(element),
     )

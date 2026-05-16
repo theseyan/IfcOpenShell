@@ -36,6 +36,7 @@ def _bind() -> ctypes.CDLL:
             lib,
             names=(
                 "ifcopenshell_ifcapi_root_create_entity",
+                "ifcopenshell_ifcapi_root_remove_product",
                 "ifcopenshell_ifc_instance_destroy",
                 "ifcopenshell_last_error_kind",
                 "ifcopenshell_last_error_message",
