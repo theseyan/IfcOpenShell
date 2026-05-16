@@ -16,7 +16,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 import ifcopenshell
-import ifcopenshell.util.element
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.constraint import _capi
 
 
 def remove_metric(file: ifcopenshell.file, metric: ifcopenshell.entity_instance) -> None:
@@ -38,31 +39,12 @@ def remove_metric(file: ifcopenshell.file, metric: ifcopenshell.entity_instance)
         ifcopenshell.api.constraint.remove_metric(model,
             metric=metric)
     """
-    usecase = Usecase()
-    usecase.file = file
-    return usecase.execute(metric)
-
-
-class Usecase:
-    file: ifcopenshell.file
-
-    def execute(self, metric: ifcopenshell.entity_instance) -> None:
-        reference = getattr(metric, "ReferencePath", None)
-        if reference:
-            self.delete_reference(reference)
-
-        self.file.remove(metric)
-        for rel in self.file.by_type("IfcRelAssociatesConstraint"):
-            if not rel.RelatingConstraint:
-                history = rel.OwnerHistory
-                self.file.remove(rel)
-                if history:
-                    ifcopenshell.util.element.remove_deep2(self.file, history)
-        for resource_rel in self.file.by_type("IfcResourceConstraintRelationship"):
-            if not resource_rel.RelatingConstraint:
-                self.file.remove(resource_rel)
-
-    def delete_reference(self, reference: ifcopenshell.entity_instance) -> None:
-        if reference.InnerReference:
-            self.delete_reference(reference.InnerReference)
-        self.file.remove(reference)
+    lib = _capi.get_lib()
+    _generated_capi.status_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_constraint_remove_metric(
+            _capi.file_handle(file),
+            _capi.instance_handle(metric),
+        ),
+        "Failed to remove metric",
+    )

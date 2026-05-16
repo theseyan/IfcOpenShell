@@ -17,8 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.util.element
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.constraint import _capi
 
 
 def unassign_constraint(
@@ -35,45 +35,17 @@ def unassign_constraint(
     :param constraint: The IfcObjective constraint
     :return: None
     """
-    usecase = Usecase()
-    usecase.file = file
-    return usecase.execute(products, constraint)
-
-
-class Usecase:
-    file: ifcopenshell.file
-
-    def execute(self, products_: list[ifcopenshell.entity_instance], constraint: ifcopenshell.entity_instance):
-        if not products_:
-            return
-        products_set = set(products_)
-
-        rels = self.get_constraint_rels(constraint)
-        related_objects = set()
-        for rel in rels:
-            related_objects.update(rel.RelatedObjects)
-
-        if not related_objects.intersection(products_set):
-            return
-
-        for rel in rels:
-            related_objects = set(rel.RelatedObjects)
-            if not related_objects.intersection(products_set):
-                continue
-            related_objects -= products_set
-            if related_objects:
-                rel.RelatedObjects = list(related_objects)
-                ifcopenshell.api.owner.update_owner_history(self.file, element=rel)
-                continue
-
-            history = rel.OwnerHistory
-            self.file.remove(rel)
-            if history:
-                ifcopenshell.util.element.remove_deep2(self.file, history)
-
-    def get_constraint_rels(self, cosntraint: ifcopenshell.entity_instance) -> list[ifcopenshell.entity_instance]:
-        rels = []
-        for rel in self.file.get_inverse(cosntraint):
-            if rel.is_a("IfcRelAssociatesConstraint"):
-                rels.append(rel)
-        return rels
+    lib = _capi.get_lib()
+    _, user, application = _capi.owner_context(file)
+    product_list = _capi.instance_list(products)
+    _generated_capi.status_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_constraint_unassign_constraint(
+            _capi.file_handle(file),
+            product_list,
+            _capi.instance_handle(constraint),
+            _capi.instance_handle(user),
+            _capi.instance_handle(application),
+        ),
+        "Failed to unassign constraint",
+    )

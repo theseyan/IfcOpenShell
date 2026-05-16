@@ -17,7 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.util.element
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.constraint import _capi
 
 
 def remove_constraint(file: ifcopenshell.file, constraint: ifcopenshell.entity_instance) -> None:
@@ -39,10 +40,12 @@ def remove_constraint(file: ifcopenshell.file, constraint: ifcopenshell.entity_i
         ifcopenshell.api.constraint.remove_constraint(model,
             constraint=objective)
     """
-    file.remove(constraint)
-    for rel in file.by_type("IfcRelAssociatesConstraint"):
-        if not rel.RelatingConstraint:
-            history = rel.OwnerHistory
-            file.remove(rel)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
+    lib = _capi.get_lib()
+    _generated_capi.status_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_constraint_remove_constraint(
+            _capi.file_handle(file),
+            _capi.instance_handle(constraint),
+        ),
+        "Failed to remove constraint",
+    )
