@@ -15,9 +15,8 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
-from typing import Any
-
 import ifcopenshell
+from ifcopenshell.api.style import _capi
 
 
 def unassign_representation_styles(
@@ -50,48 +49,13 @@ def unassign_representation_styles(
         ifcopenshell.api.style.unassign_representation_styles(model,
             shape_representation=representation, styles=[style])
     """
-    usecase = Usecase()
-    usecase.file = file
-    usecase.settings = {
-        "shape_representation": shape_representation,
-        "styles": styles or [],
-        "should_use_presentation_style_assignment": should_use_presentation_style_assignment,
-    }
-    return usecase.execute()
-
-
-class Usecase:
-    file: ifcopenshell.file
-    settings: dict[str, Any]
-
-    def execute(self):
-        if not self.settings["styles"]:
-            return []
-        self.results = []
-        use_style_assignment = self.file.schema == "IFC2X3" or self.settings["should_use_presentation_style_assignment"]
-
-        for element in self.file.traverse(self.settings["shape_representation"]):
-            if not element.is_a("IfcShapeRepresentation"):
-                continue
-            for item in element.Items:
-                if not item.is_a("IfcGeometricRepresentationItem"):
-                    continue
-
-                if not item.StyledByItem:
-                    continue
-
-                item = item.StyledByItem[0]
-                if use_style_assignment:
-                    for style_ in item.Styles:
-                        if style_.is_a("IfcPresentationStyleAssignment"):
-                            self.remove_styles(style_)
-                self.remove_styles(item)
-
-    def remove_styles(self, item):
-        """Removes styles from a styled item or a style assignment
-        and purges item if doesn't have any styles after"""
-        styles = [s for s in item.Styles if s not in self.settings["styles"]]
-        if not styles:
-            self.file.remove(item)
-        elif len(styles) != len(item.Styles):
-            item.Styles = styles
+    lib = _capi.get_lib()
+    style_list = _capi.instance_list(styles or [])
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_style_unassign_representation_styles,
+        "Failed to unassign representation styles",
+        _capi.file_handle(file),
+        _capi.instance_handle(shape_representation),
+        style_list,
+        should_use_presentation_style_assignment,
+    )

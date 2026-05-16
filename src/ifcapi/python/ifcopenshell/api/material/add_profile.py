@@ -18,6 +18,8 @@
 from typing import Optional
 
 import ifcopenshell
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.material import _capi
 
 
 def add_profile(
@@ -90,12 +92,14 @@ def add_profile(
         # Great! Let's assign our material set to our beam type.
         ifcopenshell.api.material.assign_material(model, products=[beam_type], material=material_set)
     """
-    profiles = list(profile_set.MaterialProfiles or [])
-    mat_profile = file.create_entity("IfcMaterialProfile", Name=name)
-    if material:
-        mat_profile.Material = material
-    if profile:
-        mat_profile.Profile = profile
-    profiles.append(mat_profile)
-    profile_set.MaterialProfiles = profiles
-    return mat_profile
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_material_add_profile,
+        "Failed to add material profile",
+        _capi.file_handle(file),
+        _capi.instance_handle(profile_set),
+        _capi.instance_handle(material),
+        _capi.instance_handle(profile),
+        _generated_capi.encode_string(name) if name is not None else None,
+    )

@@ -18,6 +18,8 @@
 from typing import Optional
 
 import ifcopenshell
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.material import _capi
 
 
 def add_constituent(
@@ -85,8 +87,13 @@ def add_constituent(
         # aluminium and glass.
         ifcopenshell.api.material.assign_material(model, products=[window_type], material=material_set)
     """
-    constituents = list(constituent_set.MaterialConstituents or [])
-    constituent = file.create_entity("IfcMaterialConstituent", Material=material, Name=name)
-    constituents.append(constituent)
-    constituent_set.MaterialConstituents = constituents
-    return constituent
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_material_add_constituent,
+        "Failed to add material constituent",
+        _capi.file_handle(file),
+        _capi.instance_handle(constituent_set),
+        _capi.instance_handle(material),
+        _generated_capi.encode_string(name) if name is not None else None,
+    )

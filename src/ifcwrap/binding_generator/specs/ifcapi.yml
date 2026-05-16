@@ -20,6 +20,7 @@ public_headers:
   - ifcapi/bindings/group.h
   - ifcapi/bindings/layer.h
   - ifcapi/bindings/library.h
+  - ifcapi/bindings/material.h
   - ifcapi/bindings/nest.h
   - ifcapi/bindings/owner.h
   - ifcapi/bindings/placement.h
@@ -34,6 +35,7 @@ public_headers:
   - ifcapi/bindings/shape.h
   - ifcapi/bindings/shape_builder.h
   - ifcapi/bindings/spatial.h
+  - ifcapi/bindings/style.h
   - ifcapi/bindings/system.h
   - ifcapi/bindings/type.h
   - ifcapi/bindings/unit.h
@@ -1420,6 +1422,89 @@ discover:
             user:
               nullable: true
             application:
+              nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: api/material/material.cpp
+      include:
+        - material_add_constituent
+        - material_add_layer
+        - material_add_list_item
+        - material_add_material
+        - material_add_material_set
+        - material_add_profile
+        - material_assign_material
+        - material_assign_profile
+        - material_remove_constituent
+        - material_remove_layer
+        - material_remove_list_item
+        - material_remove_material
+        - material_remove_material_set
+        - material_remove_profile
+        - material_reorder_set_item
+        - material_unassign_material
+      type_overrides:
+        material_add_constituent:
+          params:
+            name:
+              nullable: true
+        material_add_layer:
+          params:
+            name:
+              nullable: true
+        material_add_material:
+          params:
+            name:
+              nullable: true
+            category:
+              nullable: true
+            description:
+              nullable: true
+        material_add_profile:
+          params:
+            material:
+              nullable: true
+            profile:
+              nullable: true
+            name:
+              nullable: true
+        material_assign_material:
+          params:
+            material:
+              nullable: true
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        material_unassign_material:
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: api/style/style.cpp
+      include:
+        - style_add_style
+        - style_assign_item_style
+        - style_assign_material_style
+        - style_assign_representation_styles
+        - style_remove_style
+        - style_remove_styled_representation
+        - style_remove_surface_style
+        - style_unassign_material_style
+        - style_unassign_representation_styles
+      type_overrides:
+        style_add_style:
+          params:
+            name:
+              nullable: true
+        style_assign_item_style:
+          returns:
+            nullable: true
+          params:
+            style:
               nullable: true
     - namespace: ifcapi::bindings
       translation_unit: api/system/system.cpp

@@ -18,8 +18,7 @@
 
 
 import ifcopenshell
-import ifcopenshell.api.style
-import ifcopenshell.util.element
+from ifcopenshell.api.style import _capi
 
 
 def unassign_material_style(
@@ -46,56 +45,12 @@ def unassign_material_style(
 
         ifcopenshell.api.style.unassign_material_style(model, material=concrete, style=style, context=body)
     """
-    settings = {
-        "material": material,
-        "style": style,
-        "context": context,
-    }
-
-    for definition in settings["material"].HasRepresentation:
-        for representation in definition.Representations:
-            if not representation.is_a("IfcStyledRepresentation"):
-                continue
-            if representation.ContextOfItems != settings["context"]:
-                continue
-            for item in representation.Items:
-                if not item.is_a("IfcStyledItem"):
-                    continue
-                styles = []
-                for s in item.Styles:
-                    if s == settings["style"]:
-                        continue
-                    if s.is_a("IfcPresentationStyleAssignment"):
-                        if s.Styles == (settings["style"],):
-                            continue
-                    styles.append(s)
-                if not styles:
-                    file.remove(item)
-                elif len(styles) != len(item.Styles):
-                    item.Styles = styles
-            if not representation.Items:
-                file.remove(representation)
-        if not definition.Representations:
-            file.remove(definition)
-
-    # handle material constituents and shape aspects
-    material_constituents_names = []
-    for inverse in file.get_inverse(settings["material"]):
-        if inverse.is_a("IfcMaterialConstituent") and inverse.Name:
-            material_constituents_names.append(inverse.Name)
-    if not material_constituents_names:
-        return
-
-    elements = ifcopenshell.util.element.get_elements_by_material(file, settings["material"])
-    shape_aspects = []
-    for element in elements:
-        shape_aspects += ifcopenshell.util.element.get_shape_aspects(element)
-
-    for shape_aspect in shape_aspects:
-        if shape_aspect.Name not in material_constituents_names:
-            continue
-
-        for rep in shape_aspect.ShapeRepresentations:
-            ifcopenshell.api.style.unassign_representation_styles(
-                file, shape_representation=rep, styles=[settings["style"]]
-            )
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_style_unassign_material_style,
+        "Failed to unassign material style",
+        _capi.file_handle(file),
+        _capi.instance_handle(material),
+        _capi.instance_handle(style),
+        _capi.instance_handle(context),
+    )

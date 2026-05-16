@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 import ifcopenshell
-import ifcopenshell.util.element
+from ifcopenshell.api.material import _capi
 
 
 def remove_constituent(
@@ -52,7 +52,11 @@ def remove_constituent(
         # invalid.
         ifcopenshell.api.material.remove_constituent(model, constituent=glazing)
     """
-    material = constituent.Material
-    file.remove(constituent)
-    if material and should_remove_material:
-        ifcopenshell.util.element.remove_deep2(file, material)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_material_remove_constituent,
+        "Failed to remove material constituent",
+        _capi.file_handle(file),
+        _capi.instance_handle(constituent),
+        should_remove_material,
+    )

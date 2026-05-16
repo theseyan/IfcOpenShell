@@ -15,7 +15,8 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
-import ifcopenshell.util.element
+import ifcopenshell
+from ifcopenshell.api.material import _capi
 
 
 def remove_layer(
@@ -54,7 +55,11 @@ def remove_layer(
         # one one side such as to line a services riser.
         ifcopenshell.api.material.remove_layer(model, layer=layer3)
     """
-    material = layer.Material
-    file.remove(layer)
-    if material and should_remove_material:
-        ifcopenshell.util.element.remove_deep2(file, material)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_material_remove_layer,
+        "Failed to remove material layer",
+        _capi.file_handle(file),
+        _capi.instance_handle(layer),
+        should_remove_material,
+    )

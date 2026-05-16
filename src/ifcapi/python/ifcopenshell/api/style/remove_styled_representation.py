@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 import ifcopenshell
+from ifcopenshell.api.style import _capi
 
 
 def remove_styled_representation(file: ifcopenshell.file, representation: ifcopenshell.entity_instance) -> None:
@@ -34,15 +35,10 @@ def remove_styled_representation(file: ifcopenshell.file, representation: ifcope
         # Remove a styled representation
         ifcopenshell.api.style.remove_styled_representation(model, representation=representation)
     """
-    for inverse in file.get_inverse(representation):
-        if inverse.is_a("IfcMaterialDefinitionRepresentation") and len(inverse.Representations) == 1:
-            file.remove(inverse)
-
-    for item in representation.Items:
-        if item.is_a("IfcStyledItem") and file.get_total_inverses(item) == 1:
-            for style in item.Styles:
-                if style.is_a("IfcPresentationStyleAssignment"):
-                    file.remove(style)
-            file.remove(item)
-
-    file.remove(representation)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_style_remove_styled_representation,
+        "Failed to remove styled representation",
+        _capi.file_handle(file),
+        _capi.instance_handle(representation),
+    )

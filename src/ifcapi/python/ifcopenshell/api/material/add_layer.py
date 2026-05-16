@@ -18,7 +18,8 @@
 from typing import Optional
 
 import ifcopenshell
-import ifcopenshell.util.unit
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.material import _capi
 
 
 def add_layer(
@@ -84,12 +85,13 @@ def add_layer(
         # Great! Let's assign our material set to our wall type.
         ifcopenshell.api.material.assign_material(model, products=[wall_type], material=material_set)
     """
-    unit_scale = ifcopenshell.util.unit.calculate_unit_scale(file)
-    layers = list(layer_set.MaterialLayers or [])
-    if file.schema == "IFC2X3":
-        layer = file.create_entity("IfcMaterialLayer", Material=material, LayerThickness=0.1 / unit_scale)
-    else:
-        layer = file.create_entity("IfcMaterialLayer", Material=material, LayerThickness=0.1 / unit_scale, Name=name)
-    layers.append(layer)
-    layer_set.MaterialLayers = layers
-    return layer
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_material_add_layer,
+        "Failed to add material layer",
+        _capi.file_handle(file),
+        _capi.instance_handle(layer_set),
+        _capi.instance_handle(material),
+        _generated_capi.encode_string(name) if name is not None else None,
+    )

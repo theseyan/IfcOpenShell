@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.material
-import ifcopenshell.util.element
+from ifcopenshell.api.material import _capi
 
 
 def remove_material_set(file: ifcopenshell.file, material: ifcopenshell.entity_instance) -> None:
@@ -56,39 +55,10 @@ def remove_material_set(file: ifcopenshell.file, material: ifcopenshell.entity_i
         ifcopenshell.api.material.remove_material_set(model, material=material_set)
     """
 
-    # Remove all usages for sets.
-    has_usages = material.is_a("IfcMaterialLayerSet") or material.is_a("IfcMaterialProfileSet")
-    if has_usages:
-        # Usage is invalid if it is not associated with some element,
-        # so we can remove usages through unassignment.
-        elements = ifcopenshell.util.element.get_elements_by_material(file, material)
-        if elements:
-            ifcopenshell.api.material.unassign_material(file, products=list(elements))
-
-    if material.is_a("IfcMaterialLayerSet"):
-        set_items = material.MaterialLayers or []
-    elif material.is_a("IfcMaterialProfileSet"):
-        set_items = material.MaterialProfiles or []
-    elif material.is_a("IfcMaterialConstituentSet"):
-        set_items = material.MaterialConstituents or []
-    elif material.is_a("IfcMaterialList"):
-        set_items = []
-    else:
-        raise ValueError(f"Unknown material set type: {material.is_a()}")
-    for set_item in set_items:
-        file.remove(set_item)
-
-    inverse_elements = file.get_inverse(material)
-    file.remove(material)
-
-    for inverse in inverse_elements:
-        if inverse.is_a("IfcRelAssociatesMaterial"):
-            # NOTE: for has_usages already handled by unassign_material.
-            history = inverse.OwnerHistory
-            file.remove(inverse)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
-        elif inverse.is_a("IfcMaterialProperties"):
-            for prop in inverse.Properties or []:
-                file.remove(prop)
-            file.remove(inverse)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_material_remove_material_set,
+        "Failed to remove material set",
+        _capi.file_handle(file),
+        _capi.instance_handle(material),
+    )
