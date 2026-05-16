@@ -18,9 +18,10 @@
 
 from typing import Union
 
+import ctypes
 import ifcopenshell
-import ifcopenshell.api.group
 import ifcopenshell.util.system
+from ifcopenshell.api.system import _capi
 
 
 def assign_system(
@@ -54,4 +55,16 @@ def assign_system(
     if not all(ifcopenshell.util.system.is_assignable(failed_product := product, system) for product in products):
         raise TypeError(f"You cannot assign an {failed_product.is_a()} to an {system.is_a()}")
 
-    return ifcopenshell.api.group.assign_group(file, products=products, group=system)
+    lib = _capi.get_lib()
+    owner_history, user, application = _capi.owner_context(file)
+    product_list = _capi.instance_list(products)
+    return _capi.call_nullable_handle(
+        file,
+        lib.ifcopenshell_ifcapi_system_assign_system,
+        _capi.file_handle(file),
+        ctypes.byref(product_list),
+        _capi.instance_handle(system),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+    )

@@ -7,6 +7,7 @@
 #include "ifcparse/IfcBaseClass.h"
 #include "ifcparse/IfcSchema.h"
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -140,6 +141,59 @@ inline void write_string_attr(IfcUtil::IfcBaseClass* entity, const char* attr, c
     if (idx >= 0) {
         entity->set_attribute_value(static_cast<size_t>(idx), value);
     }
+}
+
+inline const IfcParse::enumeration_type* resolve_enum_type(IfcUtil::IfcBaseClass* entity, int attr_idx) {
+    auto* base = dynamic_cast<IfcUtil::IfcBaseEntity*>(entity);
+    if (!base || attr_idx < 0) {
+        return nullptr;
+    }
+    auto* entity_decl = base->declaration().as_entity();
+    if (!entity_decl) {
+        return nullptr;
+    }
+    auto attrs = entity_decl->all_attributes();
+    if (static_cast<size_t>(attr_idx) >= attrs.size()) {
+        return nullptr;
+    }
+    const IfcParse::parameter_type* pt = attrs[static_cast<size_t>(attr_idx)]->type_of_attribute();
+    while (pt) {
+        auto* named = pt->as_named_type();
+        if (!named) {
+            break;
+        }
+        auto* decl = named->declared_type();
+        if (auto* enum_type = decl->as_enumeration_type()) {
+            return enum_type;
+        }
+        if (auto* type_decl = decl->as_type_declaration()) {
+            pt = type_decl->declared_type();
+        } else {
+            break;
+        }
+    }
+    return nullptr;
+}
+
+inline bool write_enum_attr(IfcUtil::IfcBaseClass* entity, const char* attr, const std::string& value) {
+    int idx = attr_index_of(entity, attr);
+    if (idx < 0) {
+        return false;
+    }
+    auto* enum_type = resolve_enum_type(entity, idx);
+    if (!enum_type) {
+        entity->set_attribute_value(static_cast<size_t>(idx), value);
+        return true;
+    }
+    const auto& items = enum_type->enumeration_items();
+    auto it = std::find(items.begin(), items.end(), value);
+    if (it == items.end()) {
+        return false;
+    }
+    entity->set_attribute_value(
+        static_cast<size_t>(idx),
+        EnumerationReference(enum_type, static_cast<size_t>(std::distance(items.begin(), it))));
+    return true;
 }
 
 inline void write_blank_attr(IfcUtil::IfcBaseClass* entity, const char* attr) {

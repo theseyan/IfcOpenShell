@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.util.element
+from ifcopenshell.api.system import _capi
 
 
 def unassign_flow_control(
@@ -49,19 +48,14 @@ def unassign_flow_control(
             relating_control=flow_control, related_object=flow_element
         )
     """
-
-    if not related_flow_control.AssignedToFlowElement:
-        return
-    assignment = related_flow_control.AssignedToFlowElement[0]
-    if assignment.RelatingFlowElement != relating_flow_element:
-        return
-    if len(assignment.RelatedControlElements) == 1:
-        history = assignment.OwnerHistory
-        file.remove(assignment)
-        if history:
-            ifcopenshell.util.element.remove_deep2(file, history)
-        return
-    related_flow_controls = list(assignment.RelatedControlElements)
-    related_flow_controls.remove(related_flow_control)
-    assignment.RelatedControlElements = related_flow_controls
-    ifcopenshell.api.owner.update_owner_history(file, element=assignment)
+    lib = _capi.get_lib()
+    _, user, application = _capi.owner_context(file)
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_system_unassign_flow_control,
+        "Failed to unassign flow control",
+        _capi.file_handle(file),
+        _capi.instance_handle(relating_flow_element),
+        _capi.instance_handle(related_flow_control),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+    )

@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.util.element
+from ifcopenshell.api.system import _capi
 
 
 def unassign_port(
@@ -49,38 +48,14 @@ def unassign_port(
         # Unassign one port for some weird reason.
         ifcopenshell.api.system.unassign_port(model, element=duct, port=port1)
     """
-    usecase = Usecase()
-    usecase.file = file
-    return usecase.execute(element, port)
-
-
-class Usecase:
-    file: ifcopenshell.file
-
-    def execute(self, element: ifcopenshell.entity_instance, port: ifcopenshell.entity_instance) -> None:
-        if self.file.schema == "IFC2X3":
-            self.element = element
-            self.port = port
-            return self.execute_ifc2x3()
-
-        for rel in element.IsNestedBy or []:
-            if port in rel.RelatedObjects:
-                if len(rel.RelatedObjects) == 1:
-                    history = rel.OwnerHistory
-                    self.file.remove(rel)
-                    if history:
-                        ifcopenshell.util.element.remove_deep2(self.file, history)
-                    return
-                related_objects = set(rel.RelatedObjects) or set()
-                related_objects.remove(port)
-                rel.RelatedObjects = list(related_objects)
-                ifcopenshell.api.owner.update_owner_history(self.file, element=rel)
-
-    def execute_ifc2x3(self) -> None:
-        for rel in self.element.HasPorts or []:
-            if rel.RelatingPort == self.port:
-                history = rel.OwnerHistory
-                self.file.remove(rel)
-                if history:
-                    ifcopenshell.util.element.remove_deep2(self.file, history)
-                return
+    lib = _capi.get_lib()
+    _, user, application = _capi.owner_context(file)
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_system_unassign_port,
+        "Failed to unassign port",
+        _capi.file_handle(file),
+        _capi.instance_handle(element),
+        _capi.instance_handle(port),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+    )

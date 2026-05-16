@@ -16,12 +16,11 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Any, Optional
+from typing import Optional
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.guid
-import ifcopenshell.util.element
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.system import _capi
 
 
 def connect_port(
@@ -95,124 +94,17 @@ def connect_port(
         # NOTDEFINED.
         ifcopenshell.api.system.connect_port(model, port1=duct_port2, port2=fitting_port1)
     """
-    usecase = Usecase()
-    usecase.file = file
-    usecase.settings = {
-        "port1": port1,
-        "port2": port2,
-        "direction": direction,
-        "element": element,
-    }
-    return usecase.execute()
-
-
-class Usecase:
-    file: ifcopenshell.file
-    settings: dict[str, Any]
-
-    def execute(self):
-        # Note: there are a number of ambiguities with port connectivity. We
-        # assume system topology is represented by a directed graph. In other
-        # words, SOURCEANDSINK and NOTDEFINED implies a two way connection, with
-        # two IfcRelConnectsPorts. SOURCE or SINK by itself implies a one way
-        # connection. NOTDEFINED semantically implies that although you may
-        # traverse the graph either direction, the direction has not been
-        # determined yet by the engineer. None is not allowed as a direction as
-        # we assume None means that no connection is made.
-
-        if self.settings["port1"] == self.settings["port2"]:
-            return
-
-        self.purge_existing_connections_to_other_ports()
-
-        if self.settings["direction"] == "SOURCE":
-            self.settings["port1"].FlowDirection = "SOURCE"
-            self.settings["port2"].FlowDirection = "SINK"
-        elif self.settings["direction"] == "SINK":
-            self.settings["port1"].FlowDirection = "SINK"
-            self.settings["port2"].FlowDirection = "SOURCE"
-        else:
-            self.settings["port1"].FlowDirection = self.settings["direction"]
-            self.settings["port2"].FlowDirection = self.settings["direction"]
-
-        if self.settings["direction"] in ["SOURCE", "SOURCEANDSINK", "NOTDEFINED"]:
-            self.set_connected_to()
-        else:
-            self.purge_connected_to()
-
-        if self.settings["direction"] in ["SINK", "SOURCEANDSINK", "NOTDEFINED"]:
-            self.set_connected_from()
-        else:
-            self.purge_connected_from()
-
-        self.set_realising_element()
-
-    def purge_existing_connections_to_other_ports(self):
-        for rel in self.settings["port1"].ConnectedTo or []:
-            if rel.RelatedPort != self.settings["port2"]:
-                history = rel.OwnerHistory
-                self.file.remove(rel)
-                if history:
-                    ifcopenshell.util.element.remove_deep2(self.file, history)
-        for rel in self.settings["port1"].ConnectedFrom or []:
-            if rel.RelatingPort != self.settings["port2"]:
-                history = rel.OwnerHistory
-                self.file.remove(rel)
-                if history:
-                    ifcopenshell.util.element.remove_deep2(self.file, history)
-        for rel in self.settings["port2"].ConnectedTo or []:
-            if rel.RelatedPort != self.settings["port1"]:
-                history = rel.OwnerHistory
-                self.file.remove(rel)
-                if history:
-                    ifcopenshell.util.element.remove_deep2(self.file, history)
-        for rel in self.settings["port2"].ConnectedFrom or []:
-            if rel.RelatingPort != self.settings["port1"]:
-                history = rel.OwnerHistory
-                self.file.remove(rel)
-                if history:
-                    ifcopenshell.util.element.remove_deep2(self.file, history)
-
-    def set_connected_to(self):
-        if self.settings["port1"].ConnectedTo:
-            return
-
-        self.file.create_entity(
-            "IfcRelConnectsPorts",
-            GlobalId=ifcopenshell.guid.new(),
-            OwnerHistory=ifcopenshell.api.owner.create_owner_history(self.file),
-            RelatingPort=self.settings["port1"],
-            RelatedPort=self.settings["port2"],
-        )
-
-    def set_connected_from(self):
-        if self.settings["port1"].ConnectedFrom:
-            return
-
-        self.file.create_entity(
-            "IfcRelConnectsPorts",
-            GlobalId=ifcopenshell.guid.new(),
-            OwnerHistory=ifcopenshell.api.owner.create_owner_history(self.file),
-            RelatingPort=self.settings["port2"],
-            RelatedPort=self.settings["port1"],
-        )
-
-    def purge_connected_to(self):
-        for rel in self.settings["port1"].ConnectedTo or []:
-            history = rel.OwnerHistory
-            self.file.remove(rel)
-            if history:
-                ifcopenshell.util.element.remove_deep2(self.file, history)
-
-    def purge_connected_from(self):
-        for rel in self.settings["port1"].ConnectedFrom or []:
-            history = rel.OwnerHistory
-            self.file.remove(rel)
-            if history:
-                ifcopenshell.util.element.remove_deep2(self.file, history)
-
-    def set_realising_element(self):
-        for rel in self.settings["port1"].ConnectedTo or []:
-            rel.RealizingElement = self.settings["element"]
-        for rel in self.settings["port1"].ConnectedFrom or []:
-            rel.RealizingElement = self.settings["element"]
+    lib = _capi.get_lib()
+    owner_history, user, application = _capi.owner_context(file)
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_system_connect_port,
+        "Failed to connect port",
+        _capi.file_handle(file),
+        _capi.instance_handle(port1),
+        _capi.instance_handle(port2),
+        _generated_capi.encode_string(direction),
+        _capi.instance_handle(element),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+    )

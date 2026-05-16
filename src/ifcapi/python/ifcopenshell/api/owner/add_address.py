@@ -18,6 +18,8 @@
 from typing import Literal
 
 import ifcopenshell
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.owner import _capi
 
 ADDRESS_TYPE = Literal["IfcPostalAddress", "IfcTelecomAddress"]
 
@@ -64,8 +66,12 @@ def add_address(
             "ElectronicMailAddresses": ["bobthebuilder@example.com"],
             "WWWHomePageURL": "https://thinkmoult.com"})
     """
-    address = file.create_entity(ifc_class, "OFFICE")
-    addresses = list(assigned_object.Addresses) if assigned_object.Addresses else []
-    addresses.append(address)
-    assigned_object.Addresses = addresses
-    return address
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_owner_add_address,
+        "Failed to add address",
+        _capi.file_handle(file),
+        _capi.instance_handle(assigned_object),
+        _generated_capi.encode_string(ifc_class),
+    )

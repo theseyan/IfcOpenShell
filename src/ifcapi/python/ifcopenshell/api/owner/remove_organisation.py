@@ -16,8 +16,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ifcopenshell.api.owner
-import ifcopenshell.api.root
+import ifcopenshell
+from ifcopenshell.api.owner import _capi
 
 
 def remove_organisation(file: ifcopenshell.file, organisation: ifcopenshell.entity_instance) -> None:
@@ -37,29 +37,10 @@ def remove_organisation(file: ifcopenshell.file, organisation: ifcopenshell.enti
             identification="AWB", name="Architects Without Ballpens")
         ifcopenshell.api.owner.remove_organisation(model, organisation=organisation)
     """
-    for role in organisation.Roles or []:
-        if (file.get_total_inverses(role)) == 1:
-            ifcopenshell.api.owner.remove_role(file, role=role)
-    for address in organisation.Addresses or []:
-        if (file.get_total_inverses(address)) == 1:
-            ifcopenshell.api.owner.remove_address(file, address=address)
-    for inverse in file.get_inverse(organisation):
-        if inverse.is_a("IfcOrganizationRelationship"):
-            if inverse.RelatingOrganization == organisation:
-                file.remove(inverse)
-            elif inverse.RelatedOrganizations == (organisation,):
-                file.remove(inverse)
-        elif inverse.is_a("IfcDocumentInformation"):
-            if inverse.Editors == (organisation,):
-                inverse.Editors = None
-        elif inverse.is_a("IfcPersonAndOrganization"):
-            ifcopenshell.api.owner.remove_person_and_organisation(file, person_and_organisation=inverse)
-        elif inverse.is_a("IfcActor"):
-            ifcopenshell.api.root.remove_product(file, product=inverse)
-        elif inverse.is_a("IfcResourceLevelRelationship") and not inverse.is_a("IfcOrganizationRelationship"):
-            if inverse.RelatedResourceObjects == (organisation,):
-                file.remove(inverse)
-        elif inverse.is_a("IfcApplication"):
-            ifcopenshell.api.owner.remove_application(file, application=inverse)
-
-    file.remove(organisation)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_owner_remove_organisation,
+        "Failed to remove organisation",
+        _capi.file_handle(file),
+        _capi.instance_handle(organisation),
+    )

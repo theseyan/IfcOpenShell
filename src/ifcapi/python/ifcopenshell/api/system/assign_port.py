@@ -18,10 +18,7 @@
 
 
 import ifcopenshell
-import ifcopenshell.api.geometry
-import ifcopenshell.api.owner
-import ifcopenshell.guid
-import ifcopenshell.util.placement
+from ifcopenshell.api.system import _capi
 
 
 def assign_port(
@@ -56,67 +53,16 @@ def assign_port(
         # Reassign it back
         ifcopenshell.api.system.assign_port(model, element=duct, port=port1)
     """
-    usecase = Usecase()
-    usecase.file = file
-    return usecase.execute(element, port)
-
-
-class Usecase:
-    file: ifcopenshell.file
-
-    def execute(
-        self, element: ifcopenshell.entity_instance, port: ifcopenshell.entity_instance
-    ) -> ifcopenshell.entity_instance:
-        self.element = element
-        self.port = port
-        if self.file.schema == "IFC2X3":
-            return self.execute_ifc2x3()
-
-        rels = self.element.IsNestedBy or []
-
-        for rel in rels:
-            if self.port in rel.RelatedObjects:
-                return rel
-
-        if rels:
-            rel = rels[0]
-            related_objects = set(rel.RelatedObjects) or set()
-            related_objects.add(self.port)
-            rel.RelatedObjects = list(related_objects)
-            ifcopenshell.api.owner.update_owner_history(self.file, element=rel)
-        else:
-            rel = self.file.create_entity(
-                "IfcRelNests",
-                GlobalId=ifcopenshell.guid.new(),
-                OwnerHistory=ifcopenshell.api.owner.create_owner_history(self.file),
-                RelatedObjects=[self.port],
-                RelatingObject=self.element,
-            )
-
-        self.update_port_placement()
-
-        return rel
-
-    def execute_ifc2x3(self) -> ifcopenshell.entity_instance:
-        for rel in self.element.HasPorts or []:
-            if rel.RelatingPort == self.port:
-                return rel
-        rel = self.file.create_entity(
-            "IfcRelConnectsPortToElement",
-            GlobalId=ifcopenshell.guid.new(),
-            OwnerHistory=ifcopenshell.api.owner.create_owner_history(self.file),
-            RelatingPort=self.port,
-            RelatedElement=self.element,
-        )
-        self.update_port_placement()
-        return rel
-
-    def update_port_placement(self) -> None:
-        placement = getattr(self.port, "ObjectPlacement", None)
-        if placement and placement.is_a("IfcLocalPlacement"):
-            ifcopenshell.api.geometry.edit_object_placement(
-                self.file,
-                product=self.port,
-                matrix=ifcopenshell.util.placement.get_local_placement(self.port.ObjectPlacement),
-                is_si=False,
-            )
+    lib = _capi.get_lib()
+    owner_history, user, application = _capi.owner_context(file)
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_system_assign_port,
+        "Failed to assign port",
+        _capi.file_handle(file),
+        _capi.instance_handle(element),
+        _capi.instance_handle(port),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+    )

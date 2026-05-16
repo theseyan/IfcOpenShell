@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.pset
-import ifcopenshell.util.element
+from ifcopenshell.api.system import _capi
 
 
 def remove_system(file: ifcopenshell.file, system: ifcopenshell.entity_instance) -> None:
@@ -39,29 +38,10 @@ def remove_system(file: ifcopenshell.file, system: ifcopenshell.entity_instance)
         # Delete it.
         ifcopenshell.api.system.remove_system(model, system=system)
     """
-    for inverse_id in [i.id() for i in file.get_inverse(system)]:
-        try:
-            inverse = file.by_id(inverse_id)
-        except:
-            continue
-        if inverse.is_a("IfcRelDefinesByProperties"):
-            ifcopenshell.api.pset.remove_pset(
-                file,
-                product=system,
-                pset=inverse.RelatingPropertyDefinition,
-            )
-        elif inverse.is_a("IfcRelAssignsToGroup"):
-            if inverse.RelatingGroup == system:
-                history = inverse.OwnerHistory
-                file.remove(inverse)
-                if history:
-                    ifcopenshell.util.element.remove_deep2(file, history)
-            elif len(inverse.RelatedObjects) == 1:
-                history = inverse.OwnerHistory
-                file.remove(inverse)
-                if history:
-                    ifcopenshell.util.element.remove_deep2(file, history)
-    history = system.OwnerHistory
-    file.remove(system)
-    if history:
-        ifcopenshell.util.element.remove_deep2(file, history)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_system_remove_system,
+        "Failed to remove system",
+        _capi.file_handle(file),
+        _capi.instance_handle(system),
+    )

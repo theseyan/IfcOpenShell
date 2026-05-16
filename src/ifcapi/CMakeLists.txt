@@ -43,6 +43,7 @@ set(IFCAPI_SOURCES
     src/api/layer/layer.cpp
     src/api/library/library.cpp
     src/api/nest/relationship.cpp
+    src/api/owner/owner.cpp
     src/api/type/relationship.cpp
     src/placement.cpp
     src/element.cpp
@@ -67,6 +68,7 @@ set(IFCAPI_SOURCES
     src/api/pset_template/template.cpp
     src/api/profile/profile.cpp
     src/api/project/project.cpp
+    src/api/system/system.cpp
     src/api/unit/unit.cpp
     src/api/geometry/placement.cpp
     src/api/geometry/shape_builder.cpp

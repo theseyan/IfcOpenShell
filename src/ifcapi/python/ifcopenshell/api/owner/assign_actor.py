@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.guid
+from ifcopenshell.api.owner import _capi
 
 
 def assign_actor(
@@ -71,29 +70,16 @@ def assign_actor(
         ifcopenshell.api.owner.assign_actor(model,
             relating_actor=manufacturer, related_object=pump_type)
     """
-    if related_object.HasAssignments:
-        for rel in related_object.HasAssignments:
-            if rel.is_a("IfcRelAssignsToActor") and rel.RelatingActor == relating_actor:
-                return rel
-
-    rel = None
-
-    if relating_actor.IsActingUpon:
-        rel = relating_actor.IsActingUpon[0]
-
-    if rel:
-        related_objects = list(rel.RelatedObjects)
-        related_objects.append(related_object)
-        rel.RelatedObjects = related_objects
-        ifcopenshell.api.owner.update_owner_history(file, element=rel)
-    else:
-        rel = file.create_entity(
-            "IfcRelAssignsToActor",
-            **{
-                "GlobalId": ifcopenshell.guid.new(),
-                "OwnerHistory": ifcopenshell.api.owner.create_owner_history(file),
-                "RelatedObjects": [related_object],
-                "RelatingActor": relating_actor,
-            }
-        )
-    return rel
+    lib = _capi.get_lib()
+    owner_history, user, application = _capi.owner_context(file)
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_owner_assign_actor,
+        "Failed to assign actor",
+        _capi.file_handle(file),
+        _capi.instance_handle(relating_actor),
+        _capi.instance_handle(related_object),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+    )
