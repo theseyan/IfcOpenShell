@@ -17,8 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.pset
-import ifcopenshell.util.element
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.profile import _capi
 
 
 def remove_profile(file: ifcopenshell.file, profile: ifcopenshell.entity_instance) -> None:
@@ -35,26 +35,9 @@ def remove_profile(file: ifcopenshell.file, profile: ifcopenshell.entity_instanc
         circle = 1.
         ifcopenshell.api.profile.remove_profile(model, profile=circle)
     """
-    is_ifc2x3 = file.schema == "IFC2X3"
-
-    subelements = set()
-    for attribute in profile:
-        if isinstance(attribute, ifcopenshell.entity_instance):
-            subelements.add(attribute)
-
-    # Clean up profile proprty sets.
-    profile_psets = []
-    if is_ifc2x3:
-        for pset in file.by_type("IfcProfileProperties"):
-            if pset.ProfileDefinition != profile:
-                continue
-            profile_psets.append(pset)
-    else:
-        profile_psets = profile.HasProperties
-
-    for pset in profile_psets:
-        ifcopenshell.api.pset.remove_pset(file, product=profile, pset=pset)
-
-    file.remove(profile)
-    for subelement in subelements:
-        ifcopenshell.util.element.remove_deep2(file, subelement)
+    lib = _capi.get_lib()
+    _generated_capi.status_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_profile_remove_profile(_capi.file_handle(file), _capi.instance_handle(profile)),
+        "Failed to remove profile",
+    )

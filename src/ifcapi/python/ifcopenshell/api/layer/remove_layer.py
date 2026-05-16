@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 import ifcopenshell
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.layer import _capi
 
 
 def remove_layer(file: ifcopenshell.file, layer: ifcopenshell.entity_instance) -> None:
@@ -34,4 +36,9 @@ def remove_layer(file: ifcopenshell.file, layer: ifcopenshell.entity_instance) -
         layer = ifcopenshell.api.layer.add_layer(model, name="AI-WALL")
         ifcopenshell.api.layer.remove_layer(model, layer=layer)
     """
-    file.remove(layer)
+    lib = _capi.get_lib()
+    _generated_capi.status_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_layer_remove_layer(_capi.file_handle(file), _capi.instance_handle(layer)),
+        "Failed to remove layer",
+    )

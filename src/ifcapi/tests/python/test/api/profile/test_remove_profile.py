@@ -36,4 +36,17 @@ class TestRemoveProfileIFC2X3(test.bootstrap.IFC2X3):
 
 
 class TestRemoveProfileIFC4(test.bootstrap.IFC4, TestRemoveProfileIFC2X3):
-    pass
+    def test_not_removing_aggregate_subelements(self):
+        outer = self.file.createIfcIndexedPolyCurve(
+            self.file.createIfcCartesianPointList2D(((0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 0.0)))
+        )
+        inner = self.file.createIfcIndexedPolyCurve(
+            self.file.createIfcCartesianPointList2D(((0.25, 0.25), (0.5, 0.25), (0.25, 0.5), (0.25, 0.25)))
+        )
+        profile = self.file.createIfcArbitraryProfileDefWithVoids("AREA", None, outer, [inner])
+
+        ifcopenshell.api.profile.remove_profile(self.file, profile=profile)
+
+        assert len(self.file.by_type("IfcArbitraryProfileDefWithVoids")) == 0
+        assert len(self.file.by_type("IfcIndexedPolyCurve")) == 1
+        assert self.file.by_type("IfcIndexedPolyCurve")[0] == inner

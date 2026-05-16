@@ -17,7 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.util.element
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.profile import _capi
 
 
 def copy_profile(file: ifcopenshell.file, profile: ifcopenshell.entity_instance) -> ifcopenshell.entity_instance:
@@ -38,10 +39,13 @@ def copy_profile(file: ifcopenshell.file, profile: ifcopenshell.entity_instance)
         # Let's duplicate the rectangle profile
         profile_copy = ifcopenshell.api.profile.copy_profile(model, profile=profile)
     """
-    new_profile = ifcopenshell.util.element.copy_deep(file, profile)
-    inverses = file.get_inverse(profile)
-    psets = [i for i in inverses if i.is_a("IfcProfileProperties")]
-    for pset in psets:
-        new_pset = ifcopenshell.util.element.copy(file, pset)
-        new_pset.ProfileDefinition = new_profile
-    return new_profile
+    lib = _capi.get_lib()
+    handle = _generated_capi.call_handle_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_profile_copy_profile,
+        "Failed to copy profile",
+        _capi.file_handle(file),
+        _capi.instance_handle(profile),
+        destroy=lib.ifcopenshell_ifc_instance_destroy,
+    )
+    return _capi.wrap_handle(file, handle)

@@ -32,6 +32,12 @@ _BIND_NAMES = (
     "ifcopenshell_ifcapi_pset_props_set_int_list",
     "ifcopenshell_ifcapi_pset_props_set_dict",
     "ifcopenshell_ifcapi_pset_props_set_unit_for_last",
+    "ifcopenshell_ifcapi_pset_assign_pset",
+    "ifcopenshell_ifcapi_pset_unassign_pset",
+    "ifcopenshell_ifcapi_pset_remove_pset",
+    "ifcopenshell_ifcapi_pset_unshare_pset",
+    "ifcopenshell_ifcparse_instance_list_destroy",
+    "ifcopenshell_ifc_instance_destroy",
     "ifcopenshell_last_error_kind",
     "ifcopenshell_last_error_message",
 )
@@ -184,6 +190,20 @@ def get_lib():
 
 def instance_handle(entity):
     return _generated_instance_handle_ptr(entity._handle) if entity is not None else None
+
+
+def file_handle(file):
+    return _generated_instance_handle_ptr(file._ptr)
+
+
+def instance_list(entities):
+    handles = [instance_handle(entity) for entity in entities]
+    items = (ctypes.POINTER(_generated_capi._HandleStruct) * len(handles))(*handles)
+    result = _generated_capi.ifcopenshell_ifc_instance_list_t()
+    result.items = items
+    result.size = len(items)
+    result._keepalive = (items, handles)  # type: ignore[attr-defined]
+    return result
 
 
 def owner_context(file):

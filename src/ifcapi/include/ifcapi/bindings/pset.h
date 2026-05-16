@@ -74,6 +74,28 @@ IFCAPI_BINDING bool pset_edit_qto(
     const char* name,
     ifcopenshell_pset_props_t* properties,
     IfcUtil::IfcBaseClass* qto_template);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* pset_assign_pset(
+    IfcParse::IfcFile* file,
+    const std::vector<const IfcUtil::IfcBaseClass*>& products,
+    IfcUtil::IfcBaseClass* pset,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application);
+IFCAPI_BINDING void pset_unassign_pset(
+    IfcParse::IfcFile* file,
+    const std::vector<const IfcUtil::IfcBaseClass*>& products,
+    IfcUtil::IfcBaseClass* pset);
+IFCAPI_BINDING void pset_remove_pset(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* product,
+    IfcUtil::IfcBaseClass* pset);
+IFCAPI_BINDING std::vector<IfcUtil::IfcBaseClass*> pset_unshare_pset(
+    IfcParse::IfcFile* file,
+    const std::vector<const IfcUtil::IfcBaseClass*>& products,
+    IfcUtil::IfcBaseClass* pset,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application);
 
 } // namespace bindings
 } // namespace ifcapi

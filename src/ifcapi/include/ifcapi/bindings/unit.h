@@ -8,6 +8,7 @@
 #include "ifcparse/IfcBaseClass.h"
 #include "ifcparse/IfcFile.h"
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -53,6 +54,30 @@ IFCAPI_BINDING std::string unit_resolve_property_table_defining_measure_class(If
 IFCAPI_BINDING IfcUtil::IfcBaseClass* unit_resolve_property_table_defined_unit(IfcUtil::IfcBaseClass* prop);
 IFCAPI_BINDING std::string unit_resolve_property_table_defined_measure_class(IfcUtil::IfcBaseClass* prop);
 IFCAPI_BINDING double unit_calculate_unit_scale(IfcParse::IfcFile* file, const std::string& unit_type);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* unit_add_si_unit(
+    IfcParse::IfcFile* file,
+    const std::string& unit_type,
+    const char* prefix);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* unit_add_monetary_unit(
+    IfcParse::IfcFile* file,
+    const std::string& currency);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* unit_add_context_dependent_unit(
+    IfcParse::IfcFile* file,
+    const std::string& unit_type,
+    const std::string& name,
+    const std::vector<int64_t>& dimensions);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* unit_add_derived_unit(
+    IfcParse::IfcFile* file,
+    const std::string& unit_type,
+    const char* userdefinedtype,
+    const std::vector<const IfcUtil::IfcBaseClass*>& units,
+    const std::vector<int64_t>& exponents);
+IFCAPI_BINDING void unit_unassign_unit(
+    IfcParse::IfcFile* file,
+    const std::vector<const IfcUtil::IfcBaseClass*>& units);
+IFCAPI_BINDING void unit_remove_unit(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* unit);
 
 } // namespace bindings
 } // namespace ifcapi

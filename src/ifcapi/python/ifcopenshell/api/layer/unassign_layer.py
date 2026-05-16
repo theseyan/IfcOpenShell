@@ -16,7 +16,11 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
+import ctypes
+
 import ifcopenshell
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.layer import _capi
 
 
 def unassign_layer(
@@ -60,14 +64,14 @@ def unassign_layer(
         # Let's undo it!
         ifcopenshell.api.layer.unassign_layer(model, items=[representation.Items[0]], layer=layer)
     """
-    assigned_items = set(layer.AssignedItems) or set()
-    items_set = set(items)
-    if not items_set.issubset(assigned_items):
-        return
-    assigned_items = list(assigned_items - items_set)
-
-    # keep IFC valid in case if there are no items left
-    if assigned_items:
-        layer.AssignedItems = assigned_items
-    else:
-        file.remove(layer)
+    lib = _capi.get_lib()
+    item_list = _capi.instance_list(items)
+    _generated_capi.status_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_layer_unassign_layer(
+            _capi.file_handle(file),
+            ctypes.byref(item_list),
+            _capi.instance_handle(layer),
+        ),
+        "Failed to unassign layer",
+    )

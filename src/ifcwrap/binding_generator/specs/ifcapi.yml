@@ -16,9 +16,11 @@ public_headers:
   - ifcapi/bindings/entity.h
   - ifcapi/bindings/geometry.h
   - ifcapi/bindings/group.h
+  - ifcapi/bindings/layer.h
   - ifcapi/bindings/nest.h
   - ifcapi/bindings/owner.h
   - ifcapi/bindings/placement.h
+  - ifcapi/bindings/profile.h
   - ifcapi/bindings/pset.h
   - ifcapi/bindings/pset_template.h
   - ifcapi/bindings/representation.h
@@ -795,6 +797,32 @@ discover:
             application:
               nullable: true
     - namespace: ifcapi::bindings
+      translation_unit: api/pset/relationship.cpp
+      include:
+        - pset_assign_pset
+        - pset_unassign_pset
+        - pset_remove_pset
+        - pset_unshare_pset
+      type_overrides:
+        pset_assign_pset:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        pset_unshare_pset:
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+    - namespace: ifcapi::bindings
       translation_unit: api/pset/edit.cpp
       include:
         - pset_props_free
@@ -1000,6 +1028,69 @@ discover:
           returns:
             ownership: copy
     - namespace: ifcapi::bindings
+      translation_unit: api/pset_template/template.cpp
+      include:
+        - pset_template_add_pset_template
+        - pset_template_add_prop_template
+        - pset_template_remove_pset_template
+        - pset_template_remove_prop_template
+      type_overrides:
+        pset_template_add_prop_template:
+          params:
+            description:
+              nullable: true
+            template_type:
+              nullable: true
+            primary_measure_type:
+              nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: api/layer/layer.cpp
+      include:
+        - layer_add_layer
+        - layer_add_layer_with_style
+        - layer_assign_layer
+        - layer_remove_layer
+        - layer_unassign_layer
+      type_overrides:
+        layer_add_layer_with_style:
+          params:
+            "on":
+              kind: logical
+            "frozen":
+              kind: logical
+            "blocked":
+              kind: logical
+    - namespace: ifcapi::bindings
+      translation_unit: api/profile/profile.cpp
+      include:
+        - profile_add_parameterized_profile
+        - profile_copy_profile
+        - profile_remove_profile
+    - namespace: ifcapi::bindings
+      translation_unit: api/unit/unit.cpp
+      include:
+        - unit_add_context_dependent_unit
+        - unit_add_derived_unit
+        - unit_add_monetary_unit
+        - unit_add_si_unit
+        - unit_remove_unit
+        - unit_unassign_unit
+      type_overrides:
+        unit_add_si_unit:
+          params:
+            prefix:
+              nullable: true
+        unit_add_context_dependent_unit:
+          params:
+            dimensions:
+              kind: int64_list
+        unit_add_derived_unit:
+          params:
+            userdefinedtype:
+              nullable: true
+            exponents:
+              kind: int64_list
+    - namespace: ifcapi::bindings
       translation_unit: selector/parser.cpp
       include:
         - selector_node_child
@@ -1158,6 +1249,7 @@ discover:
         - group_update_group_products
         - group_assign_group
         - group_unassign_group
+        - group_remove_group
       type_overrides:
         group_add_group:
           returns:

@@ -142,7 +142,7 @@ static void test_selector_nodes(void) {
     printf("  Selector node parser C ABI tests done.\n\n");
 }
 
-int main(void) {
+int ifcapi_run_selector_smoke_tests(void) {
     printf("ifcapi selector C ABI smoke tests\n\n");
 
     test_selector_format_nullable_string();

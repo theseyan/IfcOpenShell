@@ -17,7 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.util.element
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.pset import _capi
 
 
 def unassign_pset(
@@ -46,33 +47,10 @@ def unassign_pset(
         assert ifcopenshell.util.element.get_elements_by_pset(pset) == {element1}
 
     """
-    is_ifc2x3 = file.schema == "IFC2X3"
-
-    products_occurrences: set[ifcopenshell.entity_instance] = set()
-    products_types: set[ifcopenshell.entity_instance] = set()
-    for product in products:
-        if product.is_a("IfcTypeProduct"):
-            products_types.add(product)
-        else:
-            products_occurrences.add(product)
-
-    # Check occurrences using pset.
-    if products_occurrences:
-        rels = pset.PropertyDefinitionOf if is_ifc2x3 else pset.DefinesOccurrence
-        for rel in rels:
-            objs = set(rel.RelatedObjects)
-            if not any(p in objs for p in products_occurrences):
-                continue
-            objs.difference_update(products_occurrences)
-            if objs:
-                rel.RelatedObjects = list(objs)
-            else:
-                history = rel.OwnerHistory
-                file.remove(rel)
-                if history:
-                    ifcopenshell.util.element.remove_deep2(file, history)
-
-    for product in products_types:
-        psets = list(product.HasPropertySets)
-        psets.remove(pset)
-        product.HasPropertySets = psets or None
+    lib = _capi.get_lib()
+    product_list = _capi.instance_list(products)
+    _generated_capi.status_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_pset_unassign_pset(_capi.file_handle(file), product_list, _capi.instance_handle(pset)),
+        "Failed to unassign property set",
+    )

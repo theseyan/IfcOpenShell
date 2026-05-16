@@ -3,6 +3,7 @@
 
 #include "ifcapi/ifcapi.h"
 #include "ifcapi/bindings/group.h"
+#include "ifcapi/bindings/pset.h"
 #include "ifcapi/detail/relationship.h"
 #include "guid.h"
 
@@ -273,6 +274,41 @@ void group_unassign_group(
             update_owner_history(file, rel, user, application);
         }
     } catch (...) {}
+}
+
+void group_remove_group(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* group)
+{
+    if (!file || !group) return;
+
+    std::vector<int> inverse_ids;
+    try {
+        auto inverses = file->getInverse(group->id(), nullptr, -1);
+        if (inverses) {
+            for (auto* inverse : *inverses) {
+                if (inverse && inverse->id() > 0) inverse_ids.push_back(inverse->id());
+            }
+        }
+    } catch (...) {
+    }
+
+    for (int inverse_id : inverse_ids) {
+        auto* inverse = file->instance_by_id(inverse_id);
+        if (!inverse) continue;
+        if (inverse->declaration().is("IfcRelDefinesByProperties")) {
+            auto* pset = read_ref_attr(inverse, "RelatingPropertyDefinition");
+            if (pset) pset_remove_pset(file, group, pset);
+        } else if (inverse->declaration().is("IfcRelAssignsToGroup")) {
+            auto* relating_group = read_ref_attr(inverse, "RelatingGroup");
+            auto related = read_ref_aggregate(inverse, "RelatedObjects");
+            if (relating_group == group || related.size() == 1) {
+                remove_with_history(file, inverse);
+            }
+        }
+    }
+
+    remove_with_history(file, group);
 }
 
 } // namespace bindings

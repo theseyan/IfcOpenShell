@@ -61,6 +61,7 @@ class HostBindingMetadata:
 
 _SCALAR_PARAM_TYPES = {
     "bool": "bool",
+    "logical": "ifcopenshell_logical_t",
     "int32": "int32_t",
     "int64": "int64_t",
     "double": "double",
@@ -70,6 +71,7 @@ _SCALAR_PARAM_TYPES = {
 
 _SCALAR_OUT_TYPES = {
     "bool": "bool*",
+    "logical": "ifcopenshell_logical_t*",
     "int32": "int32_t*",
     "int64": "int64_t*",
     "double": "double*",

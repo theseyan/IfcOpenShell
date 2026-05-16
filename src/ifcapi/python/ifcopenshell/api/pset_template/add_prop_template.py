@@ -19,8 +19,8 @@
 from typing import Optional
 
 import ifcopenshell
-import ifcopenshell.guid
-import ifcopenshell.util.pset
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.pset_template import _capi
 
 
 def add_prop_template(
@@ -85,32 +85,17 @@ def add_prop_template(
             name="ChemicalType", description="The class of chemical spillage.",
             primary_measure_type="IfcLabel")
     """
-    assumed_pset_type = ifcopenshell.util.pset.get_pset_template_type(pset_template) or "PSET"
-
-    if template_type is None:
-        template_type = "Q_LENGTH" if assumed_pset_type == "QTO" else "P_SINGLEVALUE"
-
-    if assumed_pset_type == "PSET":
-        if primary_measure_type is None:
-            primary_measure_type = "IfcLabel"
-    else:
-        # QTO props doesn't need a primary measure type.
-        primary_measure_type = None
-
-    prop_template = file.create_entity(
-        "IfcSimplePropertyTemplate",
-        **{
-            "GlobalId": ifcopenshell.guid.new(),
-            "Name": name,
-            "Description": description,
-            "PrimaryMeasureType": primary_measure_type,
-            "TemplateType": template_type,
-            "AccessState": "READWRITE",
-            "Enumerators": None,
-        },
+    lib = _capi.get_lib()
+    handle = _generated_capi.call_handle_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_pset_template_add_prop_template,
+        "Failed to add property template",
+        _capi.file_handle(file),
+        _capi.instance_handle(pset_template),
+        _generated_capi.encode_string(name),
+        _capi.optional_string(description),
+        _capi.optional_string(template_type),
+        _capi.optional_string(primary_measure_type),
+        destroy=lib.ifcopenshell_ifc_instance_destroy,
     )
-    has_property_templates = list(pset_template.HasPropertyTemplates or [])
-    has_property_templates.append(prop_template)
-    has_property_templates.sort(key=lambda pt: pt.Name)
-    pset_template.HasPropertyTemplates = has_property_templates
-    return prop_template
+    return _capi.wrap_handle(file, handle)

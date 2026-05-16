@@ -17,7 +17,11 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 from typing import Optional
 
+import ctypes
+
 import ifcopenshell
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.unit import _capi
 
 
 def unassign_unit(file: ifcopenshell.file, units: Optional[list[ifcopenshell.entity_instance]] = None) -> None:
@@ -43,13 +47,10 @@ def unassign_unit(file: ifcopenshell.file, units: Optional[list[ifcopenshell.ent
         # Actually, we don't need areas.
         ifcopenshell.api.unit.unassign_unit(model, units=[area])
     """
-    unit_assignments = file.by_type("IfcUnitAssignment")
-    if not unit_assignments:
-        return
-    unit_assignment = unit_assignments[0]
-    units_set = set(unit_assignment.Units or [])
-    units_set = units_set - set(units or [])
-    if units_set:
-        unit_assignment.Units = list(units_set)
-        return
-    file.remove(unit_assignment)
+    lib = _capi.get_lib()
+    unit_list = _capi.instance_list(units or [])
+    _generated_capi.status_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_unit_unassign_unit(_capi.file_handle(file), ctypes.byref(unit_list)),
+        "Failed to unassign units",
+    )

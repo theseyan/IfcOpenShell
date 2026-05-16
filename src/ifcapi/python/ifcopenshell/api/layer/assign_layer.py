@@ -16,7 +16,11 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
+import ctypes
+
 import ifcopenshell
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.layer import _capi
 
 
 def assign_layer(
@@ -62,10 +66,14 @@ def assign_layer(
         # only one item) to the layer.
         ifcopenshell.api.layer.assign_layer(model, items=[representation.Items[0]], layer=layer)
     """
-    # support AssignedItems == None since layer might just got created
-    assigned_items: set[ifcopenshell.entity_instance]
-    assigned_items = set(layer.AssignedItems or [])
-    items_set = set(items)
-    if items_set.issubset(assigned_items):
-        return
-    layer.AssignedItems = list(assigned_items | items_set)
+    lib = _capi.get_lib()
+    item_list = _capi.instance_list(items)
+    _generated_capi.status_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_layer_assign_layer(
+            _capi.file_handle(file),
+            ctypes.byref(item_list),
+            _capi.instance_handle(layer),
+        ),
+        "Failed to assign layer",
+    )

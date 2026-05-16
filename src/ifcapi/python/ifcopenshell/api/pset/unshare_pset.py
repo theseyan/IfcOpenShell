@@ -17,8 +17,9 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.pset
-import ifcopenshell.util.element
+import ctypes
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.pset import _capi
 
 
 def unshare_pset(
@@ -56,38 +57,27 @@ def unshare_pset(
         assert ifcopenshell.util.element.get_elements_by_pset(new_pset) == {element2}
     """
 
-    if not products:
-        raise Exception("No products provided.")
-
-    # If pset has no other elements besides the provided products,
-    # then we skip the first product, so it won't get additional pset copy
-    # leaving the original pset orphaned.
-    pset_elements = ifcopenshell.util.element.get_elements_by_pset(pset)
-    products_original = products
-
-    if set(products) == pset_elements:
-        products = products[1:]
-
-    if not products:
-        raise Exception(f"Provided product is the only element to which pset is assigned: {products_original[0]}.")
-
-    products_occurrences: set[ifcopenshell.entity_instance] = set()
-    products_types: set[ifcopenshell.entity_instance] = set()
-    for product in products:
-        if product.is_a("IfcTypeProduct"):
-            products_types.add(product)
-        else:
-            products_occurrences.add(product)
-
-    ifcopenshell.api.pset.unassign_pset(file, products, pset)
-
-    pset_copies: list[ifcopenshell.entity_instance] = []
-    for product in products:
-        # No need to consider about profile/material properties since
-        # they are assigned to 1 element directly and therefore cannot be shared.
-        # Don't copy_deep to keep it light - edit_pset supports unsharing shared props.
-        pset_copy = ifcopenshell.util.element.copy(file, pset)
-        pset_copies.append(pset_copy)
-        ifcopenshell.api.pset.assign_pset(file, [product], pset_copy)
-
-    return pset_copies
+    lib = _capi.get_lib()
+    owner_history, user, application = _capi.owner_context(file)
+    product_list = _capi.instance_list(products)
+    out = _generated_capi.ifcopenshell_ifc_instance_list_t()
+    _generated_capi.status_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_pset_unshare_pset(
+            _capi.file_handle(file),
+            product_list,
+            _capi.instance_handle(pset),
+            _capi.instance_handle(owner_history),
+            _capi.instance_handle(user),
+            _capi.instance_handle(application),
+            ctypes.byref(out),
+        ),
+        "Failed to unshare property set",
+    )
+    handles = _generated_capi.move_handle_list(
+        lib,
+        out,
+        lib.ifcopenshell_ifc_instance_list_destroy,
+        ctypes.POINTER(_generated_capi.ifcopenshell_ifc_instance_t),
+    )
+    return [ifcopenshell.entity_instance(file, ctypes.cast(handle, ctypes.c_void_p).value) for handle in handles if handle]

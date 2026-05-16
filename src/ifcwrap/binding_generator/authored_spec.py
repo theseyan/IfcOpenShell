@@ -136,6 +136,7 @@ except ImportError:  # pragma: no cover - script execution fallback
 _ALLOWED_TYPE_KINDS = {
     "void",
     "bool",
+    "logical",
     "int32",
     "int64",
     "double",

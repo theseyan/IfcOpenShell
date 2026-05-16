@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 import ifcopenshell
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.unit import _capi
 
 
 def add_monetary_unit(file: ifcopenshell.file, currency: str = "DOLLARYDOO") -> ifcopenshell.entity_instance:
@@ -39,4 +41,13 @@ def add_monetary_unit(file: ifcopenshell.file, currency: str = "DOLLARYDOO") -> 
         # Make it our default currency
         ifcopenshell.api.unit.assign_unit(model, units=[zwl])
     """
-    return file.create_entity("IfcMonetaryUnit", currency)
+    lib = _capi.get_lib()
+    handle = _generated_capi.call_handle_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_unit_add_monetary_unit,
+        "Failed to add monetary unit",
+        _capi.file_handle(file),
+        _generated_capi.encode_string(currency),
+        destroy=lib.ifcopenshell_ifc_instance_destroy,
+    )
+    return _capi.wrap_handle(file, handle)

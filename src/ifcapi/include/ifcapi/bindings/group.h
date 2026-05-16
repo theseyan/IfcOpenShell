@@ -41,6 +41,9 @@ IFCAPI_BINDING void group_unassign_group(
     IfcUtil::IfcBaseClass* group,
     IfcUtil::IfcBaseClass* user,
     IfcUtil::IfcBaseClass* application);
+IFCAPI_BINDING void group_remove_group(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* group);
 
 } // namespace bindings
 } // namespace ifcapi

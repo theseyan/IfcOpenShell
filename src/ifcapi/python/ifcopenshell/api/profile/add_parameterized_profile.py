@@ -18,6 +18,8 @@
 from typing import Literal
 
 import ifcopenshell
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.profile import _capi
 
 ProfileType = Literal["AREA", "CURVE"]
 
@@ -47,4 +49,14 @@ def add_parameterized_profile(
             ifc_class="IfcCircleProfileDef")
         circle.Radius = 1.
     """
-    return file.create_entity(ifc_class, ProfileType=profile_type)
+    lib = _capi.get_lib()
+    handle = _generated_capi.call_handle_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_profile_add_parameterized_profile,
+        "Failed to add parameterized profile",
+        _capi.file_handle(file),
+        _generated_capi.encode_string(ifc_class),
+        _generated_capi.encode_string(profile_type),
+        destroy=lib.ifcopenshell_ifc_instance_destroy,
+    )
+    return _capi.wrap_handle(file, handle)

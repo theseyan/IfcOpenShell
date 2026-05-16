@@ -144,6 +144,12 @@ def _render_common_type_decls(sequence_kinds: tuple[str, ...]) -> str:
     size_t size;
     bool owned;
 } ifcopenshell_string_t;"""
+        ,
+        """typedef enum ifcopenshell_logical_t {
+    IFCOPENSHELL_LOGICAL_UNKNOWN = -1,
+    IFCOPENSHELL_LOGICAL_FALSE = 0,
+    IFCOPENSHELL_LOGICAL_TRUE = 1
+} ifcopenshell_logical_t;"""
     ]
     for kind in sequence_kinds:
         typedefs.append(
@@ -550,6 +556,7 @@ def _qualify_handle_cpp_fragment(cpp_fragment: str, handle_cpp_type: str) -> str
 # Entries with None require handle-specific logic handled separately.
 _SCALAR_TYPE_MAP: dict[str, tuple[str, str, str]] = {
     "bool":            ("bool",     "bool*",     "*out_result = {expr};"),
+    "logical":         ("ifcopenshell_logical_t", "ifcopenshell_logical_t*", "*out_result = static_cast<ifcopenshell_logical_t>({expr});"),
     "int32":           ("int32_t",  "int32_t*",  "*out_result = static_cast<int32_t>({expr});"),
     "int64":           ("int64_t",  "int64_t*",  "*out_result = static_cast<int64_t>({expr});"),
     "double":          ("double",   "double*",   "*out_result = static_cast<double>({expr});"),
@@ -946,6 +953,19 @@ def _render_param_prelude(param: ParamSpec, spec: BindingIR) -> str:
         return (
             f'{_null_check(param.name, "Parameter")}\n'
             f"    auto {param.name}_cpp = {to_cpp}({param.name});"
+        )
+    if kind == "logical":
+        return (
+            f"    boost::logic::tribool {param.name}_cpp;\n"
+            f"    if ({param.name} == IFCOPENSHELL_LOGICAL_FALSE) {{\n"
+            f"        {param.name}_cpp = false;\n"
+            f"    }} else if ({param.name} == IFCOPENSHELL_LOGICAL_TRUE) {{\n"
+            f"        {param.name}_cpp = true;\n"
+            f"    }} else if ({param.name} == IFCOPENSHELL_LOGICAL_UNKNOWN) {{\n"
+            f"        {param.name}_cpp = boost::logic::indeterminate;\n"
+            f"    }} else {{\n"
+            f"        throw std::runtime_error(\"Logical parameter \\\"{param.name}\\\" must be -1, 0, or 1\");\n"
+            f"    }}"
         )
     if kind in _SCALAR_TYPE_MAP and type_spec.cpp_type is not None:
         return f"    auto {param.name}_cpp = static_cast<{type_spec.cpp_type}>({param.name});"
