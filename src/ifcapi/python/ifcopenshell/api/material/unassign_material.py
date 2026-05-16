@@ -18,8 +18,7 @@
 
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.util.element
+from ifcopenshell.api.material import _capi
 
 
 def unassign_material(file: ifcopenshell.file, products: list[ifcopenshell.entity_instance]) -> None:
@@ -53,83 +52,14 @@ def unassign_material(file: ifcopenshell.file, products: list[ifcopenshell.entit
         # out of concrete now.
         ifcopenshell.api.material.unassign_material(model, products=[bench_type])
     """
-    usecase = Usecase()
-    usecase.file = file
-    return usecase.execute(products)
-
-
-class Usecase:
-    file: ifcopenshell.file
-
-    def execute(self, products: list[ifcopenshell.entity_instance]) -> None:
-        if not products:
-            return
-        self.products = set(products)
-
-        self.remove_material_usages_from_types()
-        self.unassign_materials()
-
-    def remove_material_usages_from_types(self) -> None:
-        # remove material usages from types
-        for product in self.products:
-            if not product.is_a("IfcTypeObject"):
-                continue
-            material = ifcopenshell.util.element.get_material(product)
-            if not material:
-                continue
-            if material.is_a() in ["IfcMaterialLayerSet", "IfcMaterialProfileSet"]:
-                # Remove set usages
-                # TODO: be more considerate and remove only usages
-                # associated with the set + product type, not all usages?
-                for inverse in self.file.get_inverse(material):
-                    if self.file.schema == "IFC2X3":
-                        if not inverse.is_a("IfcMaterialLayerSetUsage"):
-                            continue
-                        # in IFC2X3 there is no .AssociatedTo
-                        for inverse2 in self.file.get_inverse(inverse):
-                            if inverse2.is_a("IfcRelAssociatesMaterial"):
-                                history = inverse2.OwnerHistory
-                                self.file.remove(inverse2)
-                                if history:
-                                    ifcopenshell.util.element.remove_deep2(self.file, history)
-                    else:
-                        if not inverse.is_a("IfcMaterialUsageDefinition"):
-                            continue
-                        for rel in inverse.AssociatedTo:
-                            history = rel.OwnerHistory
-                            self.file.remove(rel)
-                            if history:
-                                ifcopenshell.util.element.remove_deep2(self.file, history)
-                    self.file.remove(inverse)
-
-    def unassign_materials(self) -> None:
-        associations: set[ifcopenshell.entity_instance] = set()
-        for product in self.products:
-            associations.update(product.HasAssociations)
-
-        # we ensure that `associations` won't have removed elements
-        # to avoid crash during `material_inverses.issubset(associations)`
-        while associations:
-            rel = next(iter(associations))
-
-            if not rel.is_a("IfcRelAssociatesMaterial"):
-                associations.remove(rel)
-            else:
-                material = rel.RelatingMaterial
-                related_objects = set(rel.RelatedObjects) - self.products
-
-                if material.is_a() in ["IfcMaterialLayerSetUsage", "IfcMaterialProfileSetUsage"]:
-                    # Warning: this may leave the model in a non-compliant state.
-                    material_inverses = set(self.file.get_inverse(material))
-                    if material_inverses.issubset(associations) and not related_objects:
-                        self.file.remove(material)
-                associations.remove(rel)
-
-                if not related_objects:
-                    history = rel.OwnerHistory
-                    self.file.remove(rel)
-                    if history:
-                        ifcopenshell.util.element.remove_deep2(self.file, history)
-                    continue
-                rel.RelatedObjects = list(related_objects)
-                ifcopenshell.api.owner.update_owner_history(self.file, element=rel)
+    lib = _capi.get_lib()
+    _, user, application = _capi.owner_context(file)
+    product_list = _capi.instance_list(products)
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_material_unassign_material,
+        "Failed to unassign material",
+        _capi.file_handle(file),
+        product_list,
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+    )

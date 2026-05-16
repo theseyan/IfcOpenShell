@@ -17,6 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
+from ifcopenshell.api.material import _capi
 
 
 def remove_list_item(
@@ -51,6 +52,11 @@ def remove_list_item(
         # Let's remove the glass
         ifcopenshell.api.material.remove_list_item(model, material_list=material_set, material_index=1)
     """
-    materials = list(material_list.Materials)
-    materials.pop(material_index)
-    material_list.Materials = materials
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_material_remove_list_item,
+        "Failed to remove material list item",
+        _capi.file_handle(file),
+        _capi.instance_handle(material_list),
+        material_index,
+    )

@@ -17,7 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.util.element
+from ifcopenshell.api.material import _capi
 
 
 def remove_material(file: ifcopenshell.file, material: ifcopenshell.entity_instance) -> None:
@@ -41,35 +41,10 @@ def remove_material(file: ifcopenshell.file, material: ifcopenshell.entity_insta
         # ... and remove it
         ifcopenshell.api.material.remove_material(model, material=aluminium)
     """
-    inverse_elements = file.get_inverse(material)
-    file.remove(material)
-    # TODO: Right now, we we choose only to delete set items (e.g. a layer) but not the material set
-    # This can lead to invalid material sets, but we assume the user will deal with it
-    for inverse in inverse_elements:
-        if inverse.is_a("IfcMaterialConstituent"):
-            file.remove(inverse)
-        elif inverse.is_a("IfcMaterialLayer"):
-            file.remove(inverse)
-        elif inverse.is_a("IfcMaterialProfile"):
-            file.remove(inverse)
-        elif inverse.is_a("IfcRelAssociatesMaterial"):
-            history = inverse.OwnerHistory
-            file.remove(inverse)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
-        elif inverse.is_a("IfcMaterialProperties"):
-            if file.schema != "IFC2X3":
-                props = inverse.Properties
-            else:
-                # only IfcExtendedMaterialProperties have properties in IFC2X3
-                props = getattr(inverse, "ExtendedProperties", None)
-            props = props or []
-            for prop in props:
-                file.remove(prop)
-            file.remove(inverse)
-        elif inverse.is_a("IfcMaterialDefinitionRepresentation"):
-            for representation in inverse.Representations:
-                for item in representation.Items:
-                    file.remove(item)
-                file.remove(representation)
-            file.remove(inverse)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_material_remove_material,
+        "Failed to remove material",
+        _capi.file_handle(file),
+        _capi.instance_handle(material),
+    )

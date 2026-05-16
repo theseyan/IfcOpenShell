@@ -18,6 +18,8 @@
 from typing import Literal
 
 import ifcopenshell
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.material import _capi
 
 MATERIAL_SET_TYPE = Literal[
     "IfcMaterialLayerSet",
@@ -110,8 +112,12 @@ def add_material_set(
         # Great! Let's assign our material set to our wall type.
         ifcopenshell.api.material.assign_material(model, products=[wall_type], material=material_set)
     """
-    if set_type == "IfcMaterialLayerSet":
-        return file.create_entity("IfcMaterialLayerSet", LayerSetName=name or "Unnamed")
-    elif set_type == "IfcMaterialList":
-        return file.create_entity("IfcMaterialList")
-    return file.create_entity(set_type, Name=name or "Unnamed")
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_material_add_material_set,
+        "Failed to add material set",
+        _capi.file_handle(file),
+        _generated_capi.encode_string(name),
+        _generated_capi.encode_string(set_type),
+    )

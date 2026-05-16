@@ -17,7 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import ifcopenshell.util.representation
+import ifcopenshell
+from ifcopenshell.api.material import _capi
 
 
 def assign_profile(
@@ -87,41 +88,11 @@ def assign_profile(
         )
         ifcopenshell.api.material.assign_profile(model, material_profile=profile_item, profile=hea200)
     """
-    usecase = Usecase()
-    usecase.file = file
-    return usecase.execute(material_profile, profile)
-
-
-class Usecase:
-    file: ifcopenshell.file
-
-    def execute(self, material_profile: ifcopenshell.entity_instance, profile: ifcopenshell.entity_instance) -> None:
-        # TODO: handle composite profiles
-        old_profile = material_profile.Profile
-        material_profile.Profile = profile
-        for profile_set in material_profile.ToMaterialProfileSet:
-            for inverse in self.file.get_inverse(profile_set):
-                if not inverse.is_a("IfcMaterialProfileSetUsage"):
-                    continue
-                if self.file.schema == "IFC2X3":
-                    for rel in self.file.get_inverse(inverse):
-                        if not rel.is_a("IfcRelAssociatesMaterial"):
-                            continue
-                        for element in rel.RelatedObjects:
-                            self.change_profile(element, profile)
-                else:
-                    for rel in inverse.AssociatedTo:
-                        for element in rel.RelatedObjects:
-                            self.change_profile(element, profile)
-
-        if old_profile and self.file.get_total_inverses(old_profile) == 0:
-            # TODO: check remove deep
-            self.file.remove(old_profile)
-
-    def change_profile(self, element: ifcopenshell.entity_instance, profile: ifcopenshell.entity_instance) -> None:
-        representation = ifcopenshell.util.representation.get_representation(element, "Model", "Body", "MODEL_VIEW")
-        if not representation:
-            return
-        for subelement in self.file.traverse(representation):
-            if subelement.is_a("IfcSweptAreaSolid"):
-                subelement.SweptArea = profile
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_material_assign_profile,
+        "Failed to assign material profile",
+        _capi.file_handle(file),
+        _capi.instance_handle(material_profile),
+        _capi.instance_handle(profile),
+    )

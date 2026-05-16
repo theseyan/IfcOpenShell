@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 import ifcopenshell
+from ifcopenshell.api.material import _capi
 
 
 def reorder_set_item(
@@ -53,17 +54,12 @@ def reorder_set_item(
         ifcopenshell.api.material.reorder_set_item(model,
             material_set=material_set, old_index=0, new_index=1)
     """
-    if material_set.is_a("IfcMaterialConstituentSet"):
-        set_name = "MaterialConstituents"
-    elif material_set.is_a("IfcMaterialLayerSet"):
-        set_name = "MaterialLayers"
-    elif material_set.is_a("IfcMaterialProfileSet"):
-        set_name = "MaterialProfiles"
-    elif material_set.is_a("IfcMaterialList"):
-        set_name = "Materials"
-    else:
-        raise ValueError(f"Unexpected material set type: '{material_set.is_a()}'.")
-
-    items = list(getattr(material_set, set_name) or [])
-    items.insert(new_index, items.pop(old_index))
-    setattr(material_set, set_name, items)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_material_reorder_set_item,
+        "Failed to reorder material set item",
+        _capi.file_handle(file),
+        _capi.instance_handle(material_set),
+        old_index,
+        new_index,
+    )

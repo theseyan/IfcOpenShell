@@ -17,7 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import ifcopenshell.util.element
+import ifcopenshell
+from ifcopenshell.api.material import _capi
 
 
 def remove_profile(
@@ -67,14 +68,12 @@ def remove_profile(
         ifcopenshell.api.material.remove_profile(model, profile=weld_profile)
     """
 
-    subelements = set()
-    for attribute in profile:
-        if isinstance(attribute, ifcopenshell.entity_instance):
-            subelements.add(attribute)
-    file.remove(profile)
-    for subelement in subelements:
-        if subelement.is_a("IfcMaterial") and not should_remove_material:
-            continue
-        elif subelement.is_a("IfcProfileDef") and not should_remove_profile_def:
-            continue
-        ifcopenshell.util.element.remove_deep2(file, subelement)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_material_remove_profile,
+        "Failed to remove material profile",
+        _capi.file_handle(file),
+        _capi.instance_handle(profile),
+        should_remove_profile_def,
+        should_remove_material,
+    )

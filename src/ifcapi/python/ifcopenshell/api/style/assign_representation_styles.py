@@ -15,9 +15,8 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
-from typing import Any
-
 import ifcopenshell
+from ifcopenshell.api.style import _capi
 
 
 def assign_representation_styles(
@@ -102,103 +101,15 @@ def assign_representation_styles(
         ifcopenshell.api.style.assign_representation_styles(model,
             shape_representation=representation, styles=[style])
     """
-    usecase = Usecase()
-    usecase.file = file
-    usecase.settings = {
-        "shape_representation": shape_representation,
-        "styles": styles or [],
-        "replace_previous_same_type_style": replace_previous_same_type_style,
-        "should_use_presentation_style_assignment": should_use_presentation_style_assignment,
-    }
-    return usecase.execute()
-
-
-class Usecase:
-    file: ifcopenshell.file
-    settings: dict[str, Any]
-    results: list[ifcopenshell.entity_instance]
-
-    def execute(self):
-        if not self.settings["styles"]:
-            return []
-        self.settings["styles"] = self.settings["styles"].copy()
-        self.results = []
-        use_style_assignment = self.file.schema == "IFC2X3" or self.settings["should_use_presentation_style_assignment"]
-        replace_previous_same_type_style = self.settings["replace_previous_same_type_style"]
-
-        for element in self.file.traverse(self.settings["shape_representation"]):
-            if not element.is_a("IfcShapeModel"):
-                continue
-            for item in element.Items:
-                if not item.is_a("IfcGeometricRepresentationItem") and not item.is_a(
-                    "IfcTopologicalRepresentationItem"
-                ):
-                    continue
-                if self.settings["styles"]:
-                    # If there are more items than styles, fallback to using the last style
-                    style = self.settings["styles"].pop(0)
-                name = style.Name
-                current_style_type = style.is_a()
-
-                # item may had previous styled item
-                prev_styled_item = next((i for i in item.StyledByItem), None)
-                style_assignment = None  # try to find some style assignment to reuse
-
-                if prev_styled_item is None:
-                    if use_style_assignment:
-                        style_assignment = self.file.createIfcPresentationStyleAssignment([style])
-                        self.results.append(self.file.createIfcStyledItem(item, [style_assignment], name))
-                    else:
-                        self.results.append(self.file.createIfcStyledItem(item, [style], name))
-                    continue
-
-                if replace_previous_same_type_style:
-                    self.remove_same_type_styles(prev_styled_item, current_style_type, remove_item=False)
-                    for style_ in prev_styled_item.Styles:
-                        if style_.is_a("IfcPresentationStyleAssignment"):
-                            if use_style_assignment and style_assignment is None:
-                                style_assignment = style_
-                                self.remove_same_type_styles(style_assignment, current_style_type, remove_item=False)
-                            else:
-                                self.remove_same_type_styles(style_assignment, current_style_type, remove_item=True)
-
-                    if use_style_assignment:
-                        if style_assignment:
-                            style_assignment.Styles = style_assignment.Styles + (style,)
-                        else:
-                            style_assignment = self.file.createIfcPresentationStyleAssignment([style])
-                            prev_styled_item.Styles = prev_styled_item.Styles + (style_assignment,)
-                    else:
-                        prev_styled_item.Styles = prev_styled_item.Styles + (style,)
-                    continue
-
-                # collect previously assigned styles
-                assigned_styles = []
-                for style_ in prev_styled_item.Styles:
-                    if style_.is_a("IfcPresentationStyleAssignment"):
-                        if style_assignment is None:
-                            style_assignment = style_
-                        assigned_styles.extend(style_.Styles)
-                    else:  # IfcPresentationStyle
-                        assigned_styles.append(style_)
-
-                if style in assigned_styles:
-                    continue
-
-                if use_style_assignment:
-                    if style_assignment is not None:
-                        style_assignment.Styles = style_assignment.Styles + (style,)
-                    else:
-                        style_assignment = self.file.createIfcPresentationStyleAssignment([style])
-                        prev_styled_item.Styles = prev_styled_item.Styles + (style_assignment,)
-                else:
-                    prev_styled_item.Styles = prev_styled_item.Styles + (style,)
-
-        return self.results
-
-    def remove_same_type_styles(self, style_item, current_style_type: str, remove_item: bool) -> None:
-        styles = [s for s in style_item.Styles if s.is_a() != current_style_type]
-        if remove_item and not styles:
-            self.file.remove(style_item)
-        else:
-            style_item.Styles = styles
+    lib = _capi.get_lib()
+    style_list = _capi.instance_list(styles or [])
+    return _capi.call_handle_list(
+        file,
+        lib.ifcopenshell_ifcapi_style_assign_representation_styles,
+        "Failed to assign representation styles",
+        _capi.file_handle(file),
+        _capi.instance_handle(shape_representation),
+        style_list,
+        should_use_presentation_style_assignment,
+        replace_previous_same_type_style,
+    )

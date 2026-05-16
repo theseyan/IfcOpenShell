@@ -18,6 +18,7 @@
 from typing import Optional, Union
 
 import ifcopenshell
+from ifcopenshell.api.style import _capi
 
 
 def assign_item_style(
@@ -86,48 +87,13 @@ def assign_item_style(
         ifcopenshell.api.style.assign_item_style(model,
             style=style, item=representation.Items[0])
     """
-    if not (styled_item := next(iter(item.StyledByItem), None)):
-        if style is None:
-            return
-        if file.schema == "IFC2X3" or should_use_presentation_style_assignment:
-            style = file.create_entity("IfcPresentationStyleAssignment", (style,))
-        return file.create_entity("IfcStyledItem", item, (style,))
-
-    styled_item_styles = styled_item.Styles
-    if style and styled_item_styles == (style,):
-        return styled_item
-
-    if file.schema == "IFC4X3":
-        if style is None:
-            file.remove(styled_item)
-            return
-        styled_item.Styles = (style,)
-        return styled_item
-
-    # < IFC4X3
-    # Can't just remove a styled item or assign a style
-    # since we need to remove/change the possible style assignments.
-    assignment = None
-    for style_ in styled_item_styles:
-        if not style_.is_a("IfcPresentationStyleAssignment"):
-            continue
-        # Remove second assignment.
-        if style is None or assignment:
-            file.remove(style_)
-        else:
-            assignment = style_
-            if assignment.Styles != (style,):
-                assignment.Styles = (style,)
-
-    if style is None:
-        file.remove(styled_item)
-        return
-
-    if assignment:
-        if styled_item_styles == (assignment,):
-            return styled_item
-        styled_item.Styles = (assignment,)
-        return styled_item
-
-    styled_item.Styles = (style,)
-    return styled_item
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_style_assign_item_style,
+        "Failed to assign item style",
+        _capi.file_handle(file),
+        _capi.instance_handle(item),
+        _capi.instance_handle(style),
+        should_use_presentation_style_assignment,
+    )

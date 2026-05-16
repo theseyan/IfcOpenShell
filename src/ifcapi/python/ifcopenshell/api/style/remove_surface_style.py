@@ -17,7 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.util.element
+from ifcopenshell.api.style import _capi
 
 
 def remove_surface_style(file: ifcopenshell.file, style: ifcopenshell.entity_instance) -> None:
@@ -44,24 +44,10 @@ def remove_surface_style(file: ifcopenshell.file, style: ifcopenshell.entity_ins
         ifcopenshell.api.style.remove_surface_style(model, style=shading)
     """
 
-    to_delete = set()
-    if style.is_a("IfcSurfaceStyleWithTextures"):
-        textures = style.Textures
-        if file.schema == "IFC2X3":
-            to_delete.update(textures)
-        else:
-            for texture in textures:
-                if coords := texture.IsMappedBy:
-                    for coordinate in coords:
-                        to_delete.add(coordinate)
-                else:
-                    to_delete.add(texture)
-
-    for attribute in style:
-        if isinstance(attribute, ifcopenshell.entity_instance) and attribute.id():
-            to_delete.add(attribute)
-
-    file.remove(style)
-
-    for element in to_delete:
-        ifcopenshell.util.element.remove_deep2(file, element)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_style_remove_surface_style,
+        "Failed to remove surface style",
+        _capi.file_handle(file),
+        _capi.instance_handle(style),
+    )

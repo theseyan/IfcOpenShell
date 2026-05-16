@@ -17,6 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
+from ifcopenshell.api.material import _capi
 
 
 def add_list_item(
@@ -77,6 +78,11 @@ def add_list_item(
         # aluminium and glass.
         ifcopenshell.api.material.assign_material(model, products=[window_type], material=material_set)
     """
-    materials = list(material_list.Materials or [])
-    materials.append(material)
-    material_list.Materials = materials
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_material_add_list_item,
+        "Failed to add material list item",
+        _capi.file_handle(file),
+        _capi.instance_handle(material_list),
+        _capi.instance_handle(material),
+    )

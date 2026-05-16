@@ -18,6 +18,8 @@
 from typing import Optional
 
 import ifcopenshell
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.style import _capi
 
 
 def add_style(
@@ -57,9 +59,12 @@ def add_style(
         style = ifcopenshell.api.style.add_style(model)
     """
 
-    kwargs = {"Name": name}
-    if ifc_class == "IfcSurfaceStyle":
-        # Name is filled out because Revit treats this incorrectly as the material name
-        kwargs["Side"] = "BOTH"
-
-    return file.create_entity(ifc_class, **kwargs)
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_style_add_style,
+        "Failed to add style",
+        _capi.file_handle(file),
+        _generated_capi.encode_string(name) if name is not None else None,
+        _generated_capi.encode_string(ifc_class),
+    )
