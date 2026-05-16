@@ -37,8 +37,10 @@ set(IFCAPI_SOURCES
     src/file.cpp
     src/entity.cpp
     src/api/aggregate/relationship.cpp
+    src/api/document/document.cpp
     src/api/group/relationship.cpp
     src/api/layer/layer.cpp
+    src/api/library/library.cpp
     src/api/nest/relationship.cpp
     src/api/type/relationship.cpp
     src/placement.cpp

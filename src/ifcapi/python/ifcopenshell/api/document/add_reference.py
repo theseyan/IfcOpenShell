@@ -17,6 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.document import _capi
 
 
 def add_reference(file: ifcopenshell.file, information: ifcopenshell.entity_instance) -> ifcopenshell.entity_instance:
@@ -61,11 +63,13 @@ def add_reference(file: ifcopenshell.file, information: ifcopenshell.entity_inst
         ifcopenshell.api.document.edit_reference(model,
             reference=reference2, attributes={"Identification": "2.1.15"})
     """
-    if file.schema == "IFC2X3":
-        reference = file.create_entity("IfcDocumentReference", ItemReference="X")
-        if information:
-            references = list(information.DocumentReferences or [])
-            references.append(reference)
-            information.DocumentReferences = references
-        return reference
-    return file.create_entity("IfcDocumentReference", ReferencedDocument=information, Identification="X")
+    lib = _capi.get_lib()
+    handle = _generated_capi.call_handle_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_document_add_reference,
+        "Failed to add document reference",
+        _capi.file_handle(file),
+        _capi.instance_handle(information),
+        destroy=lib.ifcopenshell_ifc_instance_destroy,
+    )
+    return _capi.wrap_handle(file, handle)

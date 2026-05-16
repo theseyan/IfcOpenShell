@@ -19,9 +19,8 @@
 from typing import Union
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.guid
-import ifcopenshell.util.element
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.document import _capi
 
 
 def assign_document(
@@ -64,40 +63,19 @@ def assign_document(
         ifcopenshell.api.document.assign_document(model, products=[storey], document=reference)
     """
 
-    # TODO: do we need to support non-ifcroot elements like we do in classification.add_reference?
-    # NOTE: reuses code from `library.assign_reference`
-
-    referenced_elements = ifcopenshell.util.element.get_referenced_elements(document)
-    products_set: set[ifcopenshell.entity_instance] = set(products)
-    products_set = products_set - referenced_elements
-
-    if not products_set:
-        return
-
-    if file.schema == "IFC2X3":
-        rel = next(
-            (r for r in file.by_type("IfcRelAssociatesDocument") if r.RelatingDocument == document),
-            None,
-        )
-    else:
-        ifc_class = document.is_a()
-        if ifc_class == "IfcDocumentReference":
-            rel = next(iter(document.DocumentRefForObjects), None)
-        elif ifc_class == "IfcDocumentInformation":
-            rel = next(iter(document.DocumentInfoForObjects), None)
-        else:
-            assert False, f"Unexpected document type: {ifc_class}"
-
-    if not rel:
-        return file.create_entity(
-            "IfcRelAssociatesDocument",
-            GlobalId=ifcopenshell.guid.new(),
-            OwnerHistory=ifcopenshell.api.owner.create_owner_history(file),
-            RelatedObjects=list(products_set),
-            RelatingDocument=document,
-        )
-
-    related_objects = set(rel.RelatedObjects) | products_set
-    rel.RelatedObjects = list(related_objects)
-    ifcopenshell.api.owner.update_owner_history(file, element=rel)
-    return rel
+    lib = _capi.get_lib()
+    owner_history, user, application = _capi.owner_context(file)
+    product_list = _capi.instance_list(products)
+    handle = _generated_capi.call_handle_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_document_assign_document,
+        "Failed to assign document",
+        _capi.file_handle(file),
+        product_list,
+        _capi.instance_handle(document),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+        destroy=lib.ifcopenshell_ifc_instance_destroy,
+    )
+    return _capi.wrap_handle(file, handle)

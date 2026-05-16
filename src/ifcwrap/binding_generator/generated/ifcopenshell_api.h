@@ -700,6 +700,18 @@ bool ifcopenshell_ifcapi_layer_add_layer_with_style(ifcopenshell_ifc_file_t* fil
 bool ifcopenshell_ifcapi_layer_assign_layer(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* items, ifcopenshell_ifc_instance_t* layer);
 bool ifcopenshell_ifcapi_layer_remove_layer(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* layer);
 bool ifcopenshell_ifcapi_layer_unassign_layer(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* items, ifcopenshell_ifc_instance_t* layer);
+bool ifcopenshell_ifcapi_document_add_information(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* parent, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_document_add_reference(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* information, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_document_assign_document(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* products, ifcopenshell_ifc_instance_t* document, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_document_remove_information(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* information);
+bool ifcopenshell_ifcapi_document_remove_reference(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* reference);
+bool ifcopenshell_ifcapi_document_unassign_document(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* products, ifcopenshell_ifc_instance_t* document, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
+bool ifcopenshell_ifcapi_library_add_library(ifcopenshell_ifc_file_t* file, const char* name, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_library_add_reference(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* library, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_library_assign_reference(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* products, ifcopenshell_ifc_instance_t* reference, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_library_remove_library(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* library);
+bool ifcopenshell_ifcapi_library_remove_reference(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* reference);
+bool ifcopenshell_ifcapi_library_unassign_reference(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* reference, const ifcopenshell_ifc_instance_list_t* products, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
 bool ifcopenshell_ifcapi_profile_add_parameterized_profile(ifcopenshell_ifc_file_t* file, const char* ifc_class, const char* profile_type, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_profile_copy_profile(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* profile, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_profile_remove_profile(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* profile);

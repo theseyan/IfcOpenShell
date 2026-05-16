@@ -19,8 +19,8 @@
 from typing import Optional
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.guid
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.document import _capi
 
 
 def add_information(
@@ -56,28 +56,17 @@ def add_information(
             attributes={"Identification": "A-GA-6100", "Name": "Overall Plan",
             "Location": "A-GA-6100 - Overall Plan.pdf"})
     """
-    id_attribute = "DocumentId" if file.schema == "IFC2X3" else "Identification"
-    information = file.create_entity("IfcDocumentInformation", **{id_attribute: "X", "Name": "Unnamed"})
-
-    if not parent and not (parent := next(iter(file.by_type("IfcProject")), None)):
-        raise Exception("IfcProject is not found.")
-
-    if parent.is_a("IfcProject") or parent.is_a("IfcContext"):
-        file.create_entity(
-            "IfcRelAssociatesDocument",
-            GlobalId=ifcopenshell.guid.new(),
-            OwnerHistory=ifcopenshell.api.owner.create_owner_history(file),
-            RelatingDocument=information,
-            RelatedObjects=[parent],
-        )
-    elif parent.is_a("IfcDocumentInformation"):
-        if parent.IsPointer:
-            rel = parent.IsPointer[0]
-            documents = set(rel.RelatedDocuments)
-            documents.add(information)
-            rel.RelatedDocuments = list(documents)
-        else:
-            file.create_entity(
-                "IfcDocumentInformationRelationship", RelatingDocument=parent, RelatedDocuments=[information]
-            )
-    return information
+    lib = _capi.get_lib()
+    owner_history, user, application = _capi.owner_context(file)
+    handle = _generated_capi.call_handle_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_document_add_information,
+        "Failed to add document information",
+        _capi.file_handle(file),
+        _capi.instance_handle(parent),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+        destroy=lib.ifcopenshell_ifc_instance_destroy,
+    )
+    return _capi.wrap_handle(file, handle)
