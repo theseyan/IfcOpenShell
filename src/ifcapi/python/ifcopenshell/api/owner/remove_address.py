@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 import ifcopenshell
+from ifcopenshell.api.owner import _capi
 
 
 def remove_address(file: ifcopenshell.file, address: ifcopenshell.entity_instance) -> None:
@@ -38,8 +39,10 @@ def remove_address(file: ifcopenshell.file, address: ifcopenshell.entity_instanc
         # Change our mind and delete it
         ifcopenshell.api.owner.remove_address(model, address=address)
     """
-    for inverse in file.get_inverse(address):
-        if inverse.is_a() in ("IfcOrganization", "IfcPerson"):
-            if inverse.Addresses == (address,):
-                inverse.Addresses = None
-    file.remove(address)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_owner_remove_address,
+        "Failed to remove address",
+        _capi.file_handle(file),
+        _capi.instance_handle(address),
+    )

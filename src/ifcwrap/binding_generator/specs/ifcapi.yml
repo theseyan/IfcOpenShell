@@ -34,6 +34,7 @@ public_headers:
   - ifcapi/bindings/shape.h
   - ifcapi/bindings/shape_builder.h
   - ifcapi/bindings/spatial.h
+  - ifcapi/bindings/system.h
   - ifcapi/bindings/type.h
   - ifcapi/bindings/unit.h
   - ifcapi/bindings/value.h
@@ -1364,6 +1365,143 @@ discover:
           params:
             element:
               nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: api/owner/owner.cpp
+      include:
+        - owner_add_actor
+        - owner_add_address
+        - owner_add_application
+        - owner_add_organisation
+        - owner_add_person
+        - owner_add_person_and_organisation
+        - owner_add_role
+        - owner_assign_actor
+        - owner_remove_actor
+        - owner_remove_address
+        - owner_remove_application
+        - owner_remove_organisation
+        - owner_remove_person
+        - owner_remove_person_and_organisation
+        - owner_remove_role
+        - owner_unassign_actor
+      type_overrides:
+        owner_add_actor:
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        owner_add_application:
+          params:
+            application_developer:
+              nullable: true
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        owner_assign_actor:
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        owner_unassign_actor:
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: api/system/system.cpp
+      include:
+        - system_add_port
+        - system_add_system
+        - system_assign_flow_control
+        - system_assign_port
+        - system_assign_system
+        - system_connect_port
+        - system_disconnect_port
+        - system_remove_system
+        - system_unassign_flow_control
+        - system_unassign_port
+        - system_unassign_system
+      type_overrides:
+        system_add_port:
+          params:
+            element:
+              nullable: true
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        system_add_system:
+          params:
+            owner_history:
+              nullable: true
+        system_assign_flow_control:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        system_assign_port:
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        system_assign_system:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        system_connect_port:
+          params:
+            element:
+              nullable: true
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        system_unassign_flow_control:
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
+        system_unassign_port:
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
+        system_unassign_system:
+          params:
             user:
               nullable: true
             application:

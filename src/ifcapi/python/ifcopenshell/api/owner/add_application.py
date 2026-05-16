@@ -16,11 +16,11 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Optional, Union
+from typing import Optional
 
-import ifcopenshell.api
-import ifcopenshell.api.owner
-import ifcopenshell.api.pset
+import ifcopenshell
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.owner import _capi
 
 
 def add_application(
@@ -54,71 +54,17 @@ def add_application(
 
         application = ifcopenshell.api.owner.add_application(model)
     """
-    usecase = Usecase()
-    usecase.file = file
-    return usecase.execute(
-        application_developer,
-        version or ifcopenshell.version,
-        application_full_name,
-        application_identifier,
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_owner_add_application,
+        "Failed to add application",
+        _capi.file_handle(file),
+        _capi.instance_handle(application_developer),
+        _generated_capi.encode_string(version or ifcopenshell.version),
+        _generated_capi.encode_string(application_full_name),
+        _generated_capi.encode_string(application_identifier),
+        None,
+        None,
+        None,
     )
-
-
-class Usecase:
-    file: ifcopenshell.file
-
-    def execute(
-        self,
-        application_developer: Union[ifcopenshell.entity_instance, None],
-        version: str,
-        application_full_name: str,
-        application_identifier: str,
-    ) -> ifcopenshell.entity_instance:
-        if not application_developer:
-            application_developer = self.create_application_organisation()
-        return self.file.create_entity(
-            "IfcApplication",
-            ApplicationDeveloper=application_developer,
-            Version=version,
-            ApplicationFullName=application_full_name,
-            ApplicationIdentifier=application_identifier,
-        )
-
-    def create_application_organisation(self) -> ifcopenshell.entity_instance:
-        result = self.file.create_entity(
-            "IfcOrganization",
-            **{
-                "Name": "IfcOpenShell",
-                "Description": "IfcOpenShell is an open source software library that helps users and software developers to work with IFC data.",
-                "Roles": [
-                    self.file.create_entity("IfcActorRole", **{"Role": "USERDEFINED", "UserDefinedRole": "CONTRIBUTOR"})
-                ],
-            },
-        )
-        # 0 IfcOrganization.Identification / Id (IFC2X3).
-        result[0] = "IfcOpenShell"
-
-        # 4 IfcOrganization.Addresses
-        if self.file.schema == "IFC4X3":
-            # IfcTelecomAddress is deprecated in IFC4X3.
-            actor = ifcopenshell.api.owner.add_actor(self.file, result)
-            pset = ifcopenshell.api.pset.add_pset(self.file, actor, "PEnum_AddressType")
-            ifcopenshell.api.pset.edit_pset(
-                self.file,
-                pset,
-                properties={
-                    "Purpose": "OTHER",
-                    "UserDefinedPurpose": "WEBPAGE",
-                    "WWWHomePageURL": "https://ifcopenshell.org",
-                },
-            )
-        else:
-            result[4] = [
-                self.file.create_entity(
-                    "IfcTelecomAddress",
-                    Purpose="USERDEFINED",
-                    UserDefinedPurpose="WEBPAGE",
-                    WWWHomePageURL="https://ifcopenshell.org",
-                ),
-            ]
-        return result

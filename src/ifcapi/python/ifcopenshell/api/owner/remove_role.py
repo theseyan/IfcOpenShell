@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 import ifcopenshell
+from ifcopenshell.api.owner import _capi
 
 
 def remove_role(file: ifcopenshell.file, role: ifcopenshell.entity_instance) -> None:
@@ -38,12 +39,10 @@ def remove_role(file: ifcopenshell.file, role: ifcopenshell.entity_instance) -> 
         # After running this, the organisation will have no role again
         ifcopenshell.api.owner.remove_role(model, role=role)
     """
-    for inverse in file.get_inverse(role):
-        if inverse.is_a() in ("IfcOrganization", "IfcPerson", "IfcPersonAndOrganization"):
-            if inverse.Roles == (role,):
-                inverse.Roles = None
-        elif inverse.is_a("IfcResourceLevelRelationship"):
-            # IfcResourceConstraintRelationship or other rels with IfcResourceObjectSelect.
-            if inverse.RelatedResourceObjects == (role,):
-                file.remove(inverse)
-    file.remove(role)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_owner_remove_role,
+        "Failed to remove role",
+        _capi.file_handle(file),
+        _capi.instance_handle(role),
+    )

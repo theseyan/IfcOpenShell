@@ -17,7 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.util.element
+from ifcopenshell.api.owner import _capi
 
 
 def remove_actor(file: ifcopenshell.file, actor: ifcopenshell.entity_instance) -> None:
@@ -42,7 +42,10 @@ def remove_actor(file: ifcopenshell.file, actor: ifcopenshell.entity_instance) -
         # Actually we need ballpens on this project
         ifcopenshell.api.owner.remove_actor(model, actor=actor)
     """
-    history = actor.OwnerHistory
-    file.remove(actor)
-    if history:
-        ifcopenshell.util.element.remove_deep2(file, history)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_owner_remove_actor,
+        "Failed to remove actor",
+        _capi.file_handle(file),
+        _capi.instance_handle(actor),
+    )

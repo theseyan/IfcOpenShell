@@ -17,7 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.util.element
+from ifcopenshell.api.system import _capi
 
 
 def disconnect_port(file: ifcopenshell.file, port: ifcopenshell.entity_instance) -> None:
@@ -61,13 +61,10 @@ def disconnect_port(file: ifcopenshell.file, port: ifcopenshell.entity_instance)
         # fitting_port1 instead of duct_port2
         ifcopenshell.api.system.disconnect_port(model, port=duct_port2)
     """
-    rels = port.ConnectedTo or ()
-    rels += port.ConnectedFrom or ()
-
-    for rel in rels:
-        rel.RelatingPort.FlowDirection = None
-        rel.RelatedPort.FlowDirection = None
-        history = rel.OwnerHistory
-        file.remove(rel)
-        if history:
-            ifcopenshell.util.element.remove_deep2(file, history)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_system_disconnect_port,
+        "Failed to disconnect port",
+        _capi.file_handle(file),
+        _capi.instance_handle(port),
+    )

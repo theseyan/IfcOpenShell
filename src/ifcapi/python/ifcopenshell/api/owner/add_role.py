@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 import ifcopenshell
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.owner import _capi
 
 
 def add_role(
@@ -45,14 +47,12 @@ def add_role(
             identification="AWB", name="Architects Without Ballpens")
         ifcopenshell.api.owner.add_role(model, assigned_object=organisation, role="ARCHITECT")
     """
-    element = file.create_entity("IfcActorRole", Role="ARCHITECT")
-    if role:
-        try:
-            element.Role = role
-        except:
-            element.Role = "USERDEFINED"
-            element.UserDefinedRole = role
-    roles = list(assigned_object.Roles) if assigned_object.Roles else []
-    roles.append(element)
-    assigned_object.Roles = roles
-    return element
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_owner_add_role,
+        "Failed to add role",
+        _capi.file_handle(file),
+        _capi.instance_handle(assigned_object),
+        _generated_capi.encode_string(role),
+    )

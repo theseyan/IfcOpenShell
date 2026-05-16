@@ -16,7 +16,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ifcopenshell.api.root
+import ifcopenshell
+from ifcopenshell.api.owner import _capi
 
 
 def remove_person_and_organisation(
@@ -44,15 +45,10 @@ def remove_person_and_organisation(
 
         ifcopenshell.api.owner.remove_person_and_organisation(model, person_and_organisation=user)
     """
-    for inverse in file.get_inverse(person_and_organisation):
-        if inverse.is_a("IfcDocumentInformation"):
-            if inverse.Editors == (person_and_organisation,):
-                inverse.Editors = None
-        elif inverse.is_a("IfcActor"):
-            ifcopenshell.api.root.remove_product(file, product=inverse)
-        elif inverse.is_a("IfcResourceLevelRelationship"):
-            if inverse.RelatedResourceObjects == (person_and_organisation,):
-                file.remove(inverse)
-        elif inverse.is_a("IfcOwnerHistory"):
-            file.remove(inverse)
-    file.remove(person_and_organisation)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_owner_remove_person_and_organisation,
+        "Failed to remove person and organisation",
+        _capi.file_handle(file),
+        _capi.instance_handle(person_and_organisation),
+    )

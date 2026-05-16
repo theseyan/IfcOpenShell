@@ -20,7 +20,8 @@
 from typing import Literal
 
 import ifcopenshell
-import ifcopenshell.api.root
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.owner import _capi
 
 ACTOR_TYPE = Literal["IfcActor", "IfcOccupant"]
 
@@ -64,7 +65,16 @@ def add_actor(
         # Assign that organisation to a newly created actor
         actor = ifcopenshell.api.owner.add_actor(model, actor=organisation)
     """
-    ifc_class = ifc_class or "IfcActor"
-    actor_ = ifcopenshell.api.root.create_entity(file, ifc_class=ifc_class)
-    actor_.TheActor = actor
-    return actor_
+    lib = _capi.get_lib()
+    owner_history, user, application = _capi.owner_context(file)
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_owner_add_actor,
+        "Failed to add actor",
+        _capi.file_handle(file),
+        _capi.instance_handle(actor),
+        _generated_capi.encode_string(ifc_class or "IfcActor"),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+    )

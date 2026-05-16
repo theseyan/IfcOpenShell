@@ -19,8 +19,7 @@
 from typing import Union
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.guid
+from ifcopenshell.api.system import _capi
 
 
 def assign_flow_control(
@@ -49,32 +48,15 @@ def assign_flow_control(
             model, related_flow_control=flow_control, relating_flow_element=flow_element
         )
     """
-    if related_flow_control.AssignedToFlowElement:
-        # only 1 control per 1 flow element is possible
-        assignment = related_flow_control.AssignedToFlowElement[0]
-        if assignment.RelatingFlowElement == relating_flow_element:
-            return assignment
-        # return None if this control is already assigned to another flow element
-        return
-
-    if relating_flow_element.HasControlElements:
-        assignment = relating_flow_element.HasControlElements[0]
-        if related_flow_control in assignment.RelatedControlElements:
-            return assignment
-
-        related_flow_controls = set(assignment.RelatedControlElements)
-        related_flow_controls.add(related_flow_control)
-        assignment.RelatedControlElements = list(related_flow_controls)
-        ifcopenshell.api.owner.update_owner_history(file, element=assignment)
-        return assignment
-
-    assignment = file.create_entity(
-        "IfcRelFlowControlElements",
-        **{
-            "GlobalId": ifcopenshell.guid.new(),
-            "OwnerHistory": ifcopenshell.api.owner.create_owner_history(file),
-            "RelatedControlElements": [related_flow_control],
-            "RelatingFlowElement": relating_flow_element,
-        },
+    lib = _capi.get_lib()
+    owner_history, user, application = _capi.owner_context(file)
+    return _capi.call_nullable_handle(
+        file,
+        lib.ifcopenshell_ifcapi_system_assign_flow_control,
+        _capi.file_handle(file),
+        _capi.instance_handle(relating_flow_element),
+        _capi.instance_handle(related_flow_control),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
     )
-    return assignment

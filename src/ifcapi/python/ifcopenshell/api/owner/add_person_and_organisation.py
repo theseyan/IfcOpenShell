@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 import ifcopenshell
+from ifcopenshell.api.owner import _capi
 
 
 def add_person_and_organisation(
@@ -45,4 +46,12 @@ def add_person_and_organisation(
         ifcopenshell.api.owner.add_person_and_organisation(model,
             person=person, organisation=organisation)
     """
-    return file.create_entity("IfcPersonAndOrganization", person, organisation)
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_owner_add_person_and_organisation,
+        "Failed to add person and organisation",
+        _capi.file_handle(file),
+        _capi.instance_handle(person),
+        _capi.instance_handle(organisation),
+    )

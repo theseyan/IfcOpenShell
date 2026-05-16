@@ -19,8 +19,7 @@
 from typing import Optional
 
 import ifcopenshell
-import ifcopenshell.api.root
-import ifcopenshell.api.system
+from ifcopenshell.api.system import _capi
 
 
 def add_port(
@@ -53,7 +52,15 @@ def add_port(
         port1 = ifcopenshell.api.system.add_port(model, element=duct)
         port2 = ifcopenshell.api.system.add_port(model, element=duct)
     """
-    port = ifcopenshell.api.root.create_entity(file, ifc_class="IfcDistributionPort")
-    if element:
-        ifcopenshell.api.system.assign_port(file, element=element, port=port)
-    return port
+    lib = _capi.get_lib()
+    owner_history, user, application = _capi.owner_context(file)
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_system_add_port,
+        "Failed to add port",
+        _capi.file_handle(file),
+        _capi.instance_handle(element),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+    )
