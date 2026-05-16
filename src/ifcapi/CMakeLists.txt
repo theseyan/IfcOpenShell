@@ -39,9 +39,12 @@ set(IFCAPI_SOURCES
     src/api/aggregate/relationship.cpp
     src/api/boundary/boundary.cpp
     src/api/constraint/constraint.cpp
+    src/api/control/control.cpp
     src/api/context/context.cpp
     src/api/document/document.cpp
+    src/api/drawing/drawing.cpp
     src/api/feature/feature.cpp
+    src/api/georeference/georeference.cpp
     src/api/group/relationship.cpp
     src/api/grid/grid.cpp
     src/api/layer/layer.cpp

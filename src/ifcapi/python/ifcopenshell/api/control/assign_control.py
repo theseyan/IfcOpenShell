@@ -19,8 +19,7 @@
 from typing import Union
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.guid
+from ifcopenshell.api import _relationship_capi
 
 
 def assign_control(
@@ -70,40 +69,16 @@ def assign_control(
         ifcopenshell.api.control.assign_control(model,
             relating_control=cost_item, related_objects=[wall])
     """
-    # Filter out already assigned objects.
-    related_objects_set = set(related_objects)
-    objects_to_assign: set[ifcopenshell.entity_instance] = set()
-
-    control_assignments = set(relating_control.Controls)
-    if control_assignments:
-        for obj in related_objects_set:
-            existing_assignment = next((a for a in obj.HasAssignments if a in control_assignments), None)
-            # Skip objects already assigned to this control.
-            if existing_assignment:
-                continue
-            objects_to_assign.add(obj)
-    else:
-        objects_to_assign = related_objects_set
-
-    if not objects_to_assign:
-        return None
-
-    controls: Union[ifcopenshell.entity_instance, None]
-    controls = next(iter(relating_control.Controls), None)
-
-    if controls:
-        related_objects_new: list[ifcopenshell.entity_instance] = list(controls.RelatedObjects)
-        related_objects_new.extend(objects_to_assign)
-        controls.RelatedObjects = list(related_objects_new)
-        ifcopenshell.api.owner.update_owner_history(file, element=controls)
-    else:
-        controls = file.create_entity(
-            "IfcRelAssignsToControl",
-            **{
-                "GlobalId": ifcopenshell.guid.new(),
-                "OwnerHistory": ifcopenshell.api.owner.create_owner_history(file),
-                "RelatedObjects": list(objects_to_assign),
-                "RelatingControl": relating_control,
-            },
-        )
-    return controls
+    lib = _relationship_capi.get_lib()
+    owner_history, user, application = _relationship_capi.owner_context(file)
+    object_list = _relationship_capi.instance_list(related_objects)
+    return _relationship_capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_control_assign_control,
+        _relationship_capi.file_handle(file),
+        _relationship_capi.instance_handle(relating_control),
+        _relationship_capi.instance_list_ptr(object_list),
+        _relationship_capi.instance_handle(owner_history),
+        _relationship_capi.instance_handle(user),
+        _relationship_capi.instance_handle(application),
+    )

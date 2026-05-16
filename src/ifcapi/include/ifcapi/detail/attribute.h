@@ -9,11 +9,17 @@
 #include "ifcparse/IfcSchema.h"
 
 #include <algorithm>
+#include <set>
 #include <string>
 #include <vector>
 
 namespace ifcapi {
 namespace detail {
+
+struct OptionalString {
+    bool has_value = false;
+    std::string value;
+};
 
 inline int find_attr_index(const IfcParse::entity* decl, const char* name) {
     if (!decl) {
@@ -66,6 +72,35 @@ inline std::string read_string_attr(IfcUtil::IfcBaseClass* entity, const char* a
     } catch (...) {
         return std::string();
     }
+}
+
+inline OptionalString read_optional_string_attr(IfcUtil::IfcBaseClass* entity, const char* attr) {
+    OptionalString result;
+    int idx = attr_index_of(entity, attr);
+    if (idx < 0) {
+        return result;
+    }
+    try {
+        auto val = entity->get_attribute_value(static_cast<size_t>(idx));
+        if (!val.isNull()) {
+            result.has_value = true;
+            result.value = static_cast<std::string>(val);
+        }
+    } catch (...) {
+    }
+    return result;
+}
+
+inline bool optional_string_attr_equals(
+    IfcUtil::IfcBaseClass* entity,
+    const char* attr,
+    const OptionalString& expected)
+{
+    auto actual = read_optional_string_attr(entity, attr);
+    if (actual.has_value != expected.has_value) {
+        return false;
+    }
+    return !expected.has_value || actual.value == expected.value;
 }
 
 inline IfcUtil::IfcBaseClass* read_ref_attr(IfcUtil::IfcBaseClass* entity, const char* attr) {
@@ -165,6 +200,16 @@ inline void write_string_attr(IfcUtil::IfcBaseClass* entity, const char* attr, c
     int idx = attr_index_of(entity, attr);
     if (idx >= 0) {
         entity->set_attribute_value(static_cast<size_t>(idx), value);
+    }
+}
+
+inline void write_optional_string_attr(
+    IfcUtil::IfcBaseClass* entity,
+    const char* attr,
+    const OptionalString& value)
+{
+    if (value.has_value) {
+        write_string_attr(entity, attr, value.value);
     }
 }
 
@@ -306,6 +351,27 @@ inline std::vector<const IfcUtil::IfcBaseClass*> to_const_refs(
         }
     }
     return result;
+}
+
+inline std::vector<IfcUtil::IfcBaseClass*> to_mutable_refs(
+    const std::vector<const IfcUtil::IfcBaseClass*>& values)
+{
+    std::vector<IfcUtil::IfcBaseClass*> result;
+    result.reserve(values.size());
+    for (auto* value : values) {
+        if (value) {
+            result.push_back(const_cast<IfcUtil::IfcBaseClass*>(value));
+        }
+    }
+    return result;
+}
+
+inline std::set<IfcUtil::IfcBaseClass*> to_ref_set(const std::vector<IfcUtil::IfcBaseClass*>& values) {
+    return std::set<IfcUtil::IfcBaseClass*>(values.begin(), values.end());
+}
+
+inline std::vector<IfcUtil::IfcBaseClass*> to_ref_vector(const std::set<IfcUtil::IfcBaseClass*>& values) {
+    return std::vector<IfcUtil::IfcBaseClass*>(values.begin(), values.end());
 }
 
 inline std::vector<IfcUtil::IfcBaseClass*> instances_by_type(IfcParse::IfcFile* file, const char* ifc_class) {

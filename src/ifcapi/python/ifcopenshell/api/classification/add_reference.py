@@ -20,6 +20,7 @@ from typing import Any, Optional, Union
 
 import ifcopenshell
 import ifcopenshell.api.owner
+from ifcopenshell.api import _relationship_capi
 import ifcopenshell.guid
 import ifcopenshell.util.element
 import ifcopenshell.util.schema
@@ -116,6 +117,9 @@ def add_reference(
             products=[wall_type], classification=classification,
             reference=reference)
     """
+    if reference is None:
+        return _native_add_reference(file, products, None, identification, name, classification)
+
     usecase = Usecase()
     usecase.file = file
     usecase.settings = {
@@ -127,6 +131,34 @@ def add_reference(
         "is_lightweight": is_lightweight,
     }
     return usecase.execute()
+
+
+def _native_add_reference(
+    file: ifcopenshell.file,
+    products: list[ifcopenshell.entity_instance],
+    reference: Union[ifcopenshell.entity_instance, None],
+    identification: Union[str, None],
+    name: Union[str, None],
+    classification: Union[ifcopenshell.entity_instance, None],
+) -> Union[ifcopenshell.entity_instance, None]:
+    lib = _relationship_capi.get_lib()
+    owner_history, user, application = _relationship_capi.owner_context(file)
+    product_list = _relationship_capi.instance_list(products)
+    return _relationship_capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_classification_add_reference,
+        _relationship_capi.file_handle(file),
+        _relationship_capi.instance_list_ptr(product_list),
+        _relationship_capi.instance_handle(reference),
+        _relationship_capi.string(identification or ""),
+        identification is not None,
+        _relationship_capi.string(name or ""),
+        name is not None,
+        _relationship_capi.instance_handle(classification),
+        _relationship_capi.instance_handle(owner_history),
+        _relationship_capi.instance_handle(user),
+        _relationship_capi.instance_handle(application),
+    )
 
 
 class Usecase:
@@ -169,8 +201,14 @@ class Usecase:
             else:
                 reference.Identification = self.settings["identification"]
 
-        self.update_relationships(reference)
-        return reference
+        return _native_add_reference(
+            self.file,
+            self.settings["products"],
+            reference,
+            identification,
+            self.settings["name"],
+            self.settings["classification"],
+        )
 
     def add_from_library(self) -> ifcopenshell.entity_instance:
         if hasattr(self.settings["reference"], "ItemReference"):

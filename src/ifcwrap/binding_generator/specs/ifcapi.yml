@@ -14,11 +14,14 @@ public_headers:
   - guid.h
   - ifcapi/bindings/classification.h
   - ifcapi/bindings/constraint.h
+  - ifcapi/bindings/control.h
   - ifcapi/bindings/context.h
   - ifcapi/bindings/document.h
+  - ifcapi/bindings/drawing.h
   - ifcapi/bindings/element.h
   - ifcapi/bindings/entity.h
   - ifcapi/bindings/feature.h
+  - ifcapi/bindings/georeference.h
   - ifcapi/bindings/geometry.h
   - ifcapi/bindings/group.h
   - ifcapi/bindings/grid.h
@@ -304,10 +307,37 @@ discover:
       translation_unit: util/classification.cpp
       include:
         - classification_get_references
+        - classification_add_classification
+        - classification_add_reference
+        - classification_remove_reference
+        - classification_remove_classification
       type_overrides:
         classification_get_references:
           returns:
             ownership: owned
+        classification_add_classification:
+          returns:
+            nullable: true
+        classification_add_reference:
+          returns:
+            nullable: true
+          params:
+            reference:
+              nullable: true
+            classification:
+              nullable: true
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        classification_remove_reference:
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
     - namespace: ifcapi::bindings
       translation_unit: representation.cpp
       include:
@@ -1420,6 +1450,55 @@ discover:
         grid_create_grid_axis:
           returns:
             nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: api/control/control.cpp
+      include:
+        - control_assign_control
+        - control_unassign_control
+      type_overrides:
+        control_assign_control:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        control_unassign_control:
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: api/drawing/drawing.cpp
+      include:
+        - drawing_assign_product
+        - drawing_unassign_product
+      type_overrides:
+        drawing_assign_product:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        drawing_unassign_product:
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: api/georeference/georeference.cpp
+      include:
+        - georeference_edit_true_north
+        - georeference_edit_wcs
     - namespace: ifcapi::bindings
       translation_unit: owner.cpp
       include:

@@ -19,7 +19,7 @@
 from typing import Optional, Union
 
 import ifcopenshell
-import ifcopenshell.util.element
+from ifcopenshell.api import _relationship_capi
 import ifcopenshell.util.geolocation
 
 
@@ -57,17 +57,11 @@ def edit_true_north(file: ifcopenshell.file, true_north: Optional[Union[tuple[fl
     elif true_north is not None:
         x, y = true_north
 
-    for context in file.by_type("IfcGeometricRepresentationContext", include_subtypes=False):
-        if context.TrueNorth and true_north is None:
-            old_true_north = context.TrueNorth
-            context.TrueNorth = None
-            if not file.get_total_inverses(old_true_north):
-                ifcopenshell.util.element.remove_deep2(file, old_true_north)
-            continue
-
-        if context.TrueNorth:
-            if file.get_total_inverses(context.TrueNorth) != 1:
-                context.TrueNorth = file.create_entity("IfcDirection")
-        else:
-            context.TrueNorth = file.create_entity("IfcDirection")
-        context.TrueNorth.DirectionRatios = (x, y)
+    lib = _relationship_capi.get_lib()
+    _relationship_capi.call_status(
+        lib.ifcopenshell_ifcapi_georeference_edit_true_north,
+        _relationship_capi.file_handle(file),
+        true_north is not None,
+        x if true_north is not None else 0.0,
+        y if true_north is not None else 0.0,
+    )

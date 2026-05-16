@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.util.element
+from ifcopenshell.api import _relationship_capi
 
 
 def unassign_control(
@@ -49,17 +48,14 @@ def unassign_control(
         ifcopenshell.api.control.unassign_control(model,
             relating_control=cost_item, related_objects=[wall])
     """
-    related_objects_set = set(related_objects)
-    control_assignments = set(relating_control.Controls)
-    rels = set(rel for obj in related_objects_set for rel in obj.HasAssignments if rel in control_assignments)
-
-    for rel in rels:
-        related_objects_new = set(rel.RelatedObjects) - related_objects_set
-        if related_objects_new:
-            rel.RelatedObjects = list(related_objects_new)
-            ifcopenshell.api.owner.update_owner_history(file, element=rel)
-        else:
-            history = rel.OwnerHistory
-            file.remove(rel)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
+    object_list = _relationship_capi.instance_list(related_objects)
+    user, application = _relationship_capi.owner_user_application(file)
+    lib = _relationship_capi.get_lib()
+    _relationship_capi.call_status(
+        lib.ifcopenshell_ifcapi_control_unassign_control,
+        _relationship_capi.file_handle(file),
+        _relationship_capi.instance_handle(relating_control),
+        _relationship_capi.instance_list_ptr(object_list),
+        _relationship_capi.instance_handle(user),
+        _relationship_capi.instance_handle(application),
+    )

@@ -6606,6 +6606,55 @@ bool ifcopenshell_ifcapi_value_new_string(const char* value, ifcopenshell_ifcapi
     }
 }
 
+bool ifcopenshell_ifcapi_classification_add_classification(ifcopenshell_ifc_file_t* file, const char* name, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
+    std::string name_cpp(name);
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::classification_add_classification(file_cpp, name_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_classification_add_reference(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* products, ifcopenshell_ifc_instance_t* reference, const char* identification, bool has_identification, const char* name, bool has_name, ifcopenshell_ifc_instance_t* classification, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
+    auto products_cpp = to_cpp_ifc_instance_list(products);
+    auto reference_cpp = (reference != nullptr && reference->ptr != nullptr) ? reference->ptr : nullptr;
+    if (identification == nullptr) { throw std::runtime_error("Parameter \"identification\" must not be null"); }
+    std::string identification_cpp(identification);
+    auto has_identification_cpp = static_cast<bool>(has_identification);
+    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
+    std::string name_cpp(name);
+    auto has_name_cpp = static_cast<bool>(has_name);
+    auto classification_cpp = (classification != nullptr && classification->ptr != nullptr) ? classification->ptr : nullptr;
+    auto owner_history_cpp = (owner_history != nullptr && owner_history->ptr != nullptr) ? owner_history->ptr : nullptr;
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::classification_add_reference(file_cpp, products_cpp, reference_cpp, identification_cpp, has_identification_cpp, name_cpp, has_name_cpp, classification_cpp, owner_history_cpp, user_cpp, application_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_classification_get_references(ifcopenshell_ifc_instance_t* element, bool should_inherit, ifcopenshell_ifcparse_instance_list_t** out_result) {
     try {
         ifcopenshell_clear_error();
@@ -6614,6 +6663,46 @@ bool ifcopenshell_ifcapi_classification_get_references(ifcopenshell_ifc_instance
     auto element_cpp = element->ptr;
     auto should_inherit_cpp = static_cast<bool>(should_inherit);
         *out_result = new ifcopenshell_ifcparse_instance_list_t{ifcapi::bindings::classification_get_references(element_cpp, should_inherit_cpp)};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_classification_remove_classification(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* classification) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (classification == nullptr || classification->ptr == nullptr) { throw std::runtime_error("Handle parameter \"classification\" is invalid"); }
+    auto classification_cpp = classification->ptr;
+        ifcapi::bindings::classification_remove_classification(file_cpp, classification_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_classification_remove_reference(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* reference, const ifcopenshell_ifc_instance_list_t* products, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (reference == nullptr || reference->ptr == nullptr) { throw std::runtime_error("Handle parameter \"reference\" is invalid"); }
+    auto reference_cpp = reference->ptr;
+    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
+    auto products_cpp = to_cpp_ifc_instance_list(products);
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        ifcapi::bindings::classification_remove_reference(file_cpp, reference_cpp, products_cpp, user_cpp, application_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -9905,6 +9994,138 @@ bool ifcopenshell_ifcapi_grid_remove_grid_axis(ifcopenshell_ifc_file_t* file, if
     if (axis == nullptr || axis->ptr == nullptr) { throw std::runtime_error("Handle parameter \"axis\" is invalid"); }
     auto axis_cpp = axis->ptr;
         ifcapi::bindings::grid_remove_grid_axis(file_cpp, axis_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_control_assign_control(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relating_control, const ifcopenshell_ifc_instance_list_t* related_objects, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (relating_control == nullptr || relating_control->ptr == nullptr) { throw std::runtime_error("Handle parameter \"relating_control\" is invalid"); }
+    auto relating_control_cpp = relating_control->ptr;
+    if (related_objects == nullptr) { throw std::runtime_error("Parameter \"related_objects\" must not be null"); }
+    auto related_objects_cpp = to_cpp_ifc_instance_list(related_objects);
+    auto owner_history_cpp = (owner_history != nullptr && owner_history->ptr != nullptr) ? owner_history->ptr : nullptr;
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::control_assign_control(file_cpp, relating_control_cpp, related_objects_cpp, owner_history_cpp, user_cpp, application_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_control_unassign_control(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relating_control, const ifcopenshell_ifc_instance_list_t* related_objects, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (relating_control == nullptr || relating_control->ptr == nullptr) { throw std::runtime_error("Handle parameter \"relating_control\" is invalid"); }
+    auto relating_control_cpp = relating_control->ptr;
+    if (related_objects == nullptr) { throw std::runtime_error("Parameter \"related_objects\" must not be null"); }
+    auto related_objects_cpp = to_cpp_ifc_instance_list(related_objects);
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        ifcapi::bindings::control_unassign_control(file_cpp, relating_control_cpp, related_objects_cpp, user_cpp, application_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_drawing_assign_product(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relating_product, ifcopenshell_ifc_instance_t* related_object, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (relating_product == nullptr || relating_product->ptr == nullptr) { throw std::runtime_error("Handle parameter \"relating_product\" is invalid"); }
+    auto relating_product_cpp = relating_product->ptr;
+    if (related_object == nullptr || related_object->ptr == nullptr) { throw std::runtime_error("Handle parameter \"related_object\" is invalid"); }
+    auto related_object_cpp = related_object->ptr;
+    auto owner_history_cpp = (owner_history != nullptr && owner_history->ptr != nullptr) ? owner_history->ptr : nullptr;
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::drawing_assign_product(file_cpp, relating_product_cpp, related_object_cpp, owner_history_cpp, user_cpp, application_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_drawing_unassign_product(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relating_product, ifcopenshell_ifc_instance_t* related_object, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (relating_product == nullptr || relating_product->ptr == nullptr) { throw std::runtime_error("Handle parameter \"relating_product\" is invalid"); }
+    auto relating_product_cpp = relating_product->ptr;
+    if (related_object == nullptr || related_object->ptr == nullptr) { throw std::runtime_error("Handle parameter \"related_object\" is invalid"); }
+    auto related_object_cpp = related_object->ptr;
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        ifcapi::bindings::drawing_unassign_product(file_cpp, relating_product_cpp, related_object_cpp, user_cpp, application_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_georeference_edit_true_north(ifcopenshell_ifc_file_t* file, bool has_true_north, double x, double y) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    auto has_true_north_cpp = static_cast<bool>(has_true_north);
+    auto x_cpp = static_cast<double>(x);
+    auto y_cpp = static_cast<double>(y);
+        ifcapi::bindings::georeference_edit_true_north(file_cpp, has_true_north_cpp, x_cpp, y_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_georeference_edit_wcs(ifcopenshell_ifc_file_t* file, double x, double y, double z, double rotation, bool is_si) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    auto x_cpp = static_cast<double>(x);
+    auto y_cpp = static_cast<double>(y);
+    auto z_cpp = static_cast<double>(z);
+    auto rotation_cpp = static_cast<double>(rotation);
+    auto is_si_cpp = static_cast<bool>(is_si);
+        ifcapi::bindings::georeference_edit_wcs(file_cpp, x_cpp, y_cpp, z_cpp, rotation_cpp, is_si_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
