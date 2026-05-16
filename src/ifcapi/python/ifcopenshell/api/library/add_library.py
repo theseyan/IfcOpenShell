@@ -17,6 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.library import _capi
 
 
 def add_library(file: ifcopenshell.file, name: str) -> ifcopenshell.entity_instance:
@@ -56,4 +58,13 @@ def add_library(file: ifcopenshell.file, name: str) -> ifcopenshell.entity_insta
 
         ifcopenshell.api.library.add_library(model, name="Brickschema")
     """
-    return file.create_entity("IfcLibraryInformation", Name=name)
+    lib = _capi.get_lib()
+    handle = _generated_capi.call_handle_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_library_add_library,
+        "Failed to add library",
+        _capi.file_handle(file),
+        _generated_capi.encode_string(name),
+        destroy=lib.ifcopenshell_ifc_instance_destroy,
+    )
+    return _capi.wrap_handle(file, handle)

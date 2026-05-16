@@ -18,8 +18,8 @@
 
 
 import ifcopenshell
-import ifcopenshell.api.document
-import ifcopenshell.util.element
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.document import _capi
 
 
 def remove_information(file: ifcopenshell.file, information: ifcopenshell.entity_instance) -> None:
@@ -40,31 +40,12 @@ def remove_information(file: ifcopenshell.file, information: ifcopenshell.entity
         ifcopenshell.api.document.remove_information(model, information=document)
     """
 
-    if file.schema == "IFC2X3":
-        references = information.DocumentReferences or []
-    else:
-        references = information.HasDocumentReferences
-
-    for reference in references:
-        ifcopenshell.api.document.remove_reference(file, reference=reference)
-
-    for rel in information.IsPointer or []:
-        for info in rel.RelatedDocuments:
-            ifcopenshell.api.document.remove_information(file, information=info)
-
-    for rel in information.IsPointedTo or []:
-        if rel.RelatedDocuments == (information,):
-            # This relationship is non-rooted
-            file.remove(rel)
-
-    if file.schema == "IFC2X3":
-        rels = [r for r in file.by_type("IfcRelAssociatesDocument") if r.RelatingDocument == information]
-    else:
-        rels = information.DocumentInfoForObjects
-
-    for rel in rels:
-        history = rel.OwnerHistory
-        file.remove(rel)
-        if history:
-            ifcopenshell.util.element.remove_deep2(file, history)
-    file.remove(information)
+    lib = _capi.get_lib()
+    _generated_capi.status_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_document_remove_information(
+            _capi.file_handle(file),
+            _capi.instance_handle(information),
+        ),
+        "Failed to remove document information",
+    )

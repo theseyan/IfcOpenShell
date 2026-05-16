@@ -17,7 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.util.element
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.library import _capi
 
 
 def remove_library(file: ifcopenshell.file, library: ifcopenshell.entity_instance) -> None:
@@ -37,22 +38,12 @@ def remove_library(file: ifcopenshell.file, library: ifcopenshell.entity_instanc
         ifcopenshell.api.library.remove_library(model, library=library)
     """
 
-    if file.schema != "IFC2X3":
-        rels = []
-        for reference in set(library.HasLibraryReferences):
-            rels.extend(reference.LibraryRefForObjects)
-            file.remove(reference)
-        rels.extend(library.LibraryInfoForObjects)
-        file.remove(library)
-    else:
-        for reference in set(library.LibraryReference or []):
-            file.remove(reference)
-        file.remove(library)
-        # RelatingLibrary could either be library itself or library reference we removed
-        rels = [rel for rel in file.by_type("IfcRelAssociatesLibrary") if rel.RelatingLibrary is None]
-
-    for rel in rels:
-        history = rel.OwnerHistory
-        file.remove(rel)
-        if history:
-            ifcopenshell.util.element.remove_deep2(file, history)
+    lib = _capi.get_lib()
+    _generated_capi.status_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_library_remove_library(
+            _capi.file_handle(file),
+            _capi.instance_handle(library),
+        ),
+        "Failed to remove library",
+    )

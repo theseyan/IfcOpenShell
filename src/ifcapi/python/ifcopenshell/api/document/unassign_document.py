@@ -17,8 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.util.element
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.document import _capi
 
 
 def unassign_document(
@@ -52,25 +52,17 @@ def unassign_document(
         ifcopenshell.api.document.unassign_document(model, products=[storey], document=reference)
     """
 
-    # TODO: do we need to support non-ifcroot elements like we do in classification.add_reference?
-    # NOTE: reuses code from `library.un assign_reference`
-
-    reference_rels: set[ifcopenshell.entity_instance] = set()
-    products_set = set(products)
-    for product in products_set:
-        reference_rels.update(product.HasAssociations)
-
-    reference_rels = {
-        rel for rel in reference_rels if rel.is_a("IfcRelAssociatesDocument") and rel.RelatingDocument == document
-    }
-
-    for rel in reference_rels:
-        related_objects = set(rel.RelatedObjects) - products_set
-        if related_objects:
-            rel.RelatedObjects = list(related_objects)
-            ifcopenshell.api.owner.update_owner_history(file, element=rel)
-        else:
-            history = rel.OwnerHistory
-            file.remove(rel)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
+    lib = _capi.get_lib()
+    _, user, application = _capi.owner_context(file)
+    product_list = _capi.instance_list(products)
+    _generated_capi.status_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_document_unassign_document(
+            _capi.file_handle(file),
+            product_list,
+            _capi.instance_handle(document),
+            _capi.instance_handle(user),
+            _capi.instance_handle(application),
+        ),
+        "Failed to unassign document",
+    )

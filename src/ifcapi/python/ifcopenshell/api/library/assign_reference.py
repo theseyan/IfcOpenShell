@@ -19,9 +19,8 @@
 from typing import Union
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.guid
-import ifcopenshell.util.element
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.library import _capi
 
 
 def assign_reference(
@@ -58,33 +57,19 @@ def assign_reference(
         # And now assign the IFC model's AHU with its Brickschema counterpart
         ifcopenshell.api.library.assign_reference(model, reference=reference, products=[ahu])
     """
-    # TODO: do we need to support non-ifcroot elements like we do in classification.add_reference?
-
-    referenced_elements = ifcopenshell.util.element.get_referenced_elements(reference)
-    products_set: set[ifcopenshell.entity_instance] = set(products)
-    products_set = products_set - referenced_elements
-
-    if not products_set:
-        return
-
-    if file.schema == "IFC2X3":
-        rel = next(
-            (r for r in file.by_type("IfcRelAssociatesLibrary") if r.RelatingLibrary == reference),
-            None,
-        )
-    else:
-        rel = next(iter(reference.LibraryRefForObjects), None)
-
-    if not rel:
-        return file.create_entity(
-            "IfcRelAssociatesLibrary",
-            GlobalId=ifcopenshell.guid.new(),
-            OwnerHistory=ifcopenshell.api.owner.create_owner_history(file),
-            RelatedObjects=list(products_set),
-            RelatingLibrary=reference,
-        )
-
-    related_objects = set(rel.RelatedObjects) | products_set
-    rel.RelatedObjects = list(related_objects)
-    ifcopenshell.api.owner.update_owner_history(file, element=rel)
-    return rel
+    lib = _capi.get_lib()
+    owner_history, user, application = _capi.owner_context(file)
+    product_list = _capi.instance_list(products)
+    handle = _generated_capi.call_handle_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_library_assign_reference,
+        "Failed to assign library reference",
+        _capi.file_handle(file),
+        product_list,
+        _capi.instance_handle(reference),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+        destroy=lib.ifcopenshell_ifc_instance_destroy,
+    )
+    return _capi.wrap_handle(file, handle)

@@ -12,11 +12,13 @@ public_headers:
   - ifcapi/bindings/aggregate.h
   - guid.h
   - ifcapi/bindings/classification.h
+  - ifcapi/bindings/document.h
   - ifcapi/bindings/element.h
   - ifcapi/bindings/entity.h
   - ifcapi/bindings/geometry.h
   - ifcapi/bindings/group.h
   - ifcapi/bindings/layer.h
+  - ifcapi/bindings/library.h
   - ifcapi/bindings/nest.h
   - ifcapi/bindings/owner.h
   - ifcapi/bindings/placement.h
@@ -1060,6 +1062,72 @@ discover:
               kind: logical
             "blocked":
               kind: logical
+    - namespace: ifcapi::bindings
+      translation_unit: api/document/document.cpp
+      include:
+        - document_add_information
+        - document_add_reference
+        - document_assign_document
+        - document_unassign_document
+        - document_remove_reference
+        - document_remove_information
+      type_overrides:
+        document_add_information:
+          params:
+            parent:
+              nullable: true
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        document_add_reference:
+          params:
+            information:
+              nullable: true
+        document_assign_document:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        document_unassign_document:
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: api/library/library.cpp
+      include:
+        - library_add_library
+        - library_add_reference
+        - library_assign_reference
+        - library_unassign_reference
+        - library_remove_reference
+        - library_remove_library
+      type_overrides:
+        library_assign_reference:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        library_unassign_reference:
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
     - namespace: ifcapi::bindings
       translation_unit: api/profile/profile.cpp
       include:

@@ -17,7 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.util.element
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.library import _capi
 
 
 def remove_reference(file: ifcopenshell.file, reference: ifcopenshell.entity_instance) -> None:
@@ -38,14 +39,12 @@ def remove_reference(file: ifcopenshell.file, reference: ifcopenshell.entity_ins
         # Let's change our mind and remove it.
         ifcopenshell.api.library.remove_reference(model, reference=reference)
     """
-    if file.schema != "IFC2X3":
-        rels = reference.LibraryRefForObjects
-    else:
-        rels = [rel for rel in file.by_type("IfcRelAssociatesLibrary") if rel.RelatingLibrary == reference]
-
-    for rel in rels:
-        history = rel.OwnerHistory
-        file.remove(rel)
-        if history:
-            ifcopenshell.util.element.remove_deep2(file, history)
-    file.remove(reference)
+    lib = _capi.get_lib()
+    _generated_capi.status_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_library_remove_reference(
+            _capi.file_handle(file),
+            _capi.instance_handle(reference),
+        ),
+        "Failed to remove library reference",
+    )

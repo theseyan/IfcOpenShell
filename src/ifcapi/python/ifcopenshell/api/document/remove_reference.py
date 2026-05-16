@@ -17,7 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.util.element
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.document import _capi
 
 
 def remove_reference(file: ifcopenshell.file, reference: ifcopenshell.entity_instance) -> None:
@@ -37,14 +38,12 @@ def remove_reference(file: ifcopenshell.file, reference: ifcopenshell.entity_ins
         ifcopenshell.api.document.remove_reference(model, reference=reference)
     """
 
-    if file.schema == "IFC2X3":
-        rels = [r for r in file.get_inverse(reference) if r.is_a("IfcRelAssociatesDocument")]
-    else:
-        rels = reference.DocumentRefForObjects
-
-    for rel in rels:
-        history = rel.OwnerHistory
-        file.remove(rel)
-        if history:
-            ifcopenshell.util.element.remove_deep2(file, history)
-    file.remove(reference)
+    lib = _capi.get_lib()
+    _generated_capi.status_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_document_remove_reference(
+            _capi.file_handle(file),
+            _capi.instance_handle(reference),
+        ),
+        "Failed to remove document reference",
+    )

@@ -17,8 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.util.element
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.library import _capi
 
 
 def unassign_reference(
@@ -55,24 +55,17 @@ def unassign_reference(
         # Let's change our mind and unassign it.
         ifcopenshell.api.library.unassign_reference(model, reference=reference, products=[ahu])
     """
-    # TODO: do we need to support non-ifcroot elements like we do in classification.add_reference?
-
-    reference_rels: set[ifcopenshell.entity_instance] = set()
-    products_set = set(products)
-    for product in products_set:
-        reference_rels.update(product.HasAssociations)
-
-    reference_rels = {
-        rel for rel in reference_rels if rel.is_a("IfcRelAssociatesLibrary") and rel.RelatingLibrary == reference
-    }
-
-    for rel in reference_rels:
-        related_objects = set(rel.RelatedObjects) - products_set
-        if related_objects:
-            rel.RelatedObjects = list(related_objects)
-            ifcopenshell.api.owner.update_owner_history(file, element=rel)
-        else:
-            history = rel.OwnerHistory
-            file.remove(rel)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
+    lib = _capi.get_lib()
+    _, user, application = _capi.owner_context(file)
+    product_list = _capi.instance_list(products)
+    _generated_capi.status_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_library_unassign_reference(
+            _capi.file_handle(file),
+            _capi.instance_handle(reference),
+            product_list,
+            _capi.instance_handle(user),
+            _capi.instance_handle(application),
+        ),
+        "Failed to unassign library reference",
+    )

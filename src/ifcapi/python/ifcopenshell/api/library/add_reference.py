@@ -17,6 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.library import _capi
 
 
 def add_reference(file: ifcopenshell.file, library: ifcopenshell.entity_instance) -> ifcopenshell.entity_instance:
@@ -48,10 +50,13 @@ def add_reference(file: ifcopenshell.file, library: ifcopenshell.entity_instance
         ifcopenshell.api.library.edit_reference(model,
             reference=reference, attributes={"Identification": "http://example.org/digitaltwin#AHU01"})
     """
-    if file.schema == "IFC2X3":
-        reference = file.createIfcLibraryReference()
-        references = list(library.LibraryReference or [])
-        references.append(reference)
-        library.LibraryReference = references
-        return reference
-    return file.createIfcLibraryReference(ReferencedLibrary=library)
+    lib = _capi.get_lib()
+    handle = _generated_capi.call_handle_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_library_add_reference,
+        "Failed to add library reference",
+        _capi.file_handle(file),
+        _capi.instance_handle(library),
+        destroy=lib.ifcopenshell_ifc_instance_destroy,
+    )
+    return _capi.wrap_handle(file, handle)
