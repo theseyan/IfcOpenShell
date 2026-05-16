@@ -17,7 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.guid
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.pset_template import _capi
 
 
 def add_pset_template(
@@ -95,10 +96,15 @@ def add_pset_template(
             name="HighVoltage", description="Whether there is a risk of high voltage.",
             primary_measure_type="IfcBoolean")
     """
-    return file.create_entity(
-        "IfcPropertySetTemplate",
-        GlobalId=ifcopenshell.guid.new(),
-        Name=name,
-        TemplateType=template_type,
-        ApplicableEntity=applicable_entity,
+    lib = _capi.get_lib()
+    handle = _generated_capi.call_handle_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_pset_template_add_pset_template,
+        "Failed to add property set template",
+        _capi.file_handle(file),
+        _generated_capi.encode_string(name),
+        _generated_capi.encode_string(template_type),
+        _generated_capi.encode_string(applicable_entity),
+        destroy=lib.ifcopenshell_ifc_instance_destroy,
     )
+    return _capi.wrap_handle(file, handle)

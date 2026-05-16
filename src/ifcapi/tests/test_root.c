@@ -149,8 +149,8 @@ static void test_file_ops(void) {
     printf("  File operations tests done.\n\n");
 }
 
-int main(void) {
-    printf("ifcapi smoke tests\n\n");
+int ifcapi_run_root_smoke_tests(void) {
+    printf("ifcapi root smoke tests\n\n");
 
     test_guid();
     test_error_handling();

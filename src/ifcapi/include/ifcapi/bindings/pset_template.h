@@ -43,6 +43,23 @@ IFCAPI_BINDING std::vector<std::string> pset_template_get_applicable_names(
     bool qto_only,
     const char* schema_name);
 IFCAPI_BINDING std::string pset_template_pset_type(IfcUtil::IfcBaseClass* pset_template);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* pset_template_add_pset_template(
+    IfcParse::IfcFile* file,
+    const std::string& name,
+    const std::string& template_type,
+    const std::string& applicable_entity);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* pset_template_add_prop_template(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* pset_template,
+    const std::string& name,
+    const char* description,
+    const char* template_type,
+    const char* primary_measure_type);
+IFCAPI_BINDING void pset_template_remove_pset_template(
+    IfcUtil::IfcBaseClass* pset_template);
+IFCAPI_BINDING void pset_template_remove_prop_template(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* prop_template);
 
 } // namespace bindings
 } // namespace ifcapi

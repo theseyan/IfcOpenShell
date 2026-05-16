@@ -19,8 +19,8 @@
 from typing import Union
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.guid
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.pset import _capi
 
 
 def assign_pset(
@@ -58,37 +58,19 @@ def assign_pset(
         # Pset is now assigned to the type.
         assert ifcopenshell.util.element.get_elements_by_pset(type_pset) == {element_type}
     """
-    is_ifc2x3 = file.schema == "IFC2X3"
-
-    products_occurrences: set[ifcopenshell.entity_instance] = set()
-    products_types: set[ifcopenshell.entity_instance] = set()
-    for product in products:
-        if product.is_a("IfcTypeProduct"):
-            products_types.add(product)
-        else:
-            products_occurrences.add(product)
-
-    rel = None
-    # Check occurrences using pset.
-    if products_occurrences:
-        rels = pset.PropertyDefinitionOf if is_ifc2x3 else pset.DefinesOccurrence
-        rel = next(iter(rels), None)
-        if rel is not None:
-            objs = set(rel.RelatedObjects) | products_occurrences
-            rel.RelatedObjects = list(objs)
-        else:
-            rel = file.create_entity(
-                "IfcRelDefinesByProperties",
-                **{
-                    "GlobalId": ifcopenshell.guid.new(),
-                    "OwnerHistory": ifcopenshell.api.owner.create_owner_history(file),
-                    "RelatedObjects": list(products_occurrences),
-                    "RelatingPropertyDefinition": pset,
-                },
-            )
-
-    for product in products_types:
-        psets = list(product.HasPropertySets or [])
-        product.HasPropertySets = psets + [pset]
-
-    return rel
+    lib = _capi.get_lib()
+    owner_history, user, application = _capi.owner_context(file)
+    product_list = _capi.instance_list(products)
+    handle = _generated_capi.call_handle_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_pset_assign_pset,
+        "Failed to assign property set",
+        _capi.file_handle(file),
+        product_list,
+        _capi.instance_handle(pset),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+        destroy=lib.ifcopenshell_ifc_instance_destroy,
+    )
+    return ifcopenshell.entity_instance(file, handle) if handle else None

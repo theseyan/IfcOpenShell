@@ -38,6 +38,7 @@ set(IFCAPI_SOURCES
     src/entity.cpp
     src/api/aggregate/relationship.cpp
     src/api/group/relationship.cpp
+    src/api/layer/layer.cpp
     src/api/nest/relationship.cpp
     src/api/type/relationship.cpp
     src/placement.cpp
@@ -59,6 +60,10 @@ set(IFCAPI_SOURCES
     src/util/unit.cpp
     src/api/pset/add.cpp
     src/api/pset/edit.cpp
+    src/api/pset/relationship.cpp
+    src/api/pset_template/template.cpp
+    src/api/profile/profile.cpp
+    src/api/unit/unit.cpp
     src/api/geometry/placement.cpp
     src/api/geometry/shape_builder.cpp
     src/express/runtime.cpp
@@ -87,19 +92,17 @@ target_compile_definitions(ifcopenshell_capi
 
 # Smoke test executable for the high-level layer.
 if(BUILD_TESTING)
-    add_executable(ifcapi_test_root tests/test_root.c)
-    target_link_libraries(ifcapi_test_root PRIVATE ifcopenshell_capi)
-    target_include_directories(ifcapi_test_root PRIVATE
+    add_executable(ifcapi_c_smoke_test
+        tests/c_smoke_test.c
+        tests/test_root.c
+        tests/test_selector.c
+        tests/test_pset.c
+        tests/test_unit.c
+    )
+    target_link_libraries(ifcapi_c_smoke_test PRIVATE ifcopenshell_capi)
+    target_include_directories(ifcapi_c_smoke_test PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/include"
         "${CMAKE_CURRENT_SOURCE_DIR}/../ifcwrap/binding_generator/generated"
     )
-    add_test(NAME ifcapi_test_root COMMAND ifcapi_test_root)
-
-    add_executable(ifcapi_test_selector tests/test_selector.c)
-    target_link_libraries(ifcapi_test_selector PRIVATE ifcopenshell_capi)
-    target_include_directories(ifcapi_test_selector PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/include"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../ifcwrap/binding_generator/generated"
-    )
-    add_test(NAME ifcapi_test_selector COMMAND ifcapi_test_selector)
+    add_test(NAME ifcapi_c_smoke_test COMMAND ifcapi_c_smoke_test)
 endif()

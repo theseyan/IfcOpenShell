@@ -12,6 +12,12 @@ IFCOPENSHELL_ERROR_TYPE = 3
 IFCOPENSHELL_ERROR_NOT_IMPLEMENTED = 4
 IFCOPENSHELL_ERROR_KEY = 5
 
+IFCOPENSHELL_LOGICAL_UNKNOWN = -1
+IFCOPENSHELL_LOGICAL_FALSE = 0
+IFCOPENSHELL_LOGICAL_TRUE = 1
+
+ifcopenshell_logical_t = ctypes.c_int
+
 
 class _HandleStruct(ctypes.Structure):
     _fields_ = [
@@ -787,11 +793,17 @@ FUNCTION_SIGNATURES = {
     "ifcopenshell_ifcapi_geometry_unassign_representation": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct)]),
     "ifcopenshell_ifcapi_group_add_group": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_group_assign_group": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_ifc_instance_list_t), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_group_remove_group": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct)]),
     "ifcopenshell_ifcapi_group_unassign_group": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_ifc_instance_list_t), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct)]),
     "ifcopenshell_ifcapi_group_update_group_products": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_ifc_instance_list_t), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_guid_compress": (ctypes.c_bool, [ctypes.c_char_p, ctypes.POINTER(ifcopenshell_string_t)]),
     "ifcopenshell_ifcapi_guid_expand": (ctypes.c_bool, [ctypes.c_char_p, ctypes.POINTER(ifcopenshell_string_t)]),
     "ifcopenshell_ifcapi_guid_new": (ctypes.c_bool, [ctypes.POINTER(ifcopenshell_string_t)]),
+    "ifcopenshell_ifcapi_layer_add_layer": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_layer_add_layer_with_style": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.POINTER(ifcopenshell_ifc_instance_list_t), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_layer_assign_layer": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_ifc_instance_list_t), ctypes.POINTER(_HandleStruct)]),
+    "ifcopenshell_ifcapi_layer_remove_layer": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct)]),
+    "ifcopenshell_ifcapi_layer_unassign_layer": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_ifc_instance_list_t), ctypes.POINTER(_HandleStruct)]),
     "ifcopenshell_ifcapi_nest_assign_object": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_ifc_instance_list_t), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_nest_unassign_object": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_ifc_instance_list_t), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct)]),
     "ifcopenshell_ifcapi_owner_create_owner_history": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
@@ -803,8 +815,12 @@ FUNCTION_SIGNATURES = {
     "ifcopenshell_ifcapi_placement_get_mappeditem_xform": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_double_list_t)]),
     "ifcopenshell_ifcapi_placement_get_storey_elevation": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_double)]),
     "ifcopenshell_ifcapi_placement_rotation": (ctypes.c_bool, [ctypes.c_double, ctypes.c_char_p, ctypes.POINTER(ifcopenshell_double_list_t)]),
+    "ifcopenshell_ifcapi_profile_add_parameterized_profile": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_profile_copy_profile": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_profile_remove_profile": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct)]),
     "ifcopenshell_ifcapi_pset_add_pset": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_pset_add_qto": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_pset_assign_pset": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_ifc_instance_list_t), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_pset_edit_pset": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.c_void_p, ctypes.POINTER(_HandleStruct), ctypes.c_bool, ctypes.POINTER(ctypes.c_bool)]),
     "ifcopenshell_ifcapi_pset_edit_qto": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.c_void_p, ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_bool)]),
     "ifcopenshell_ifcapi_pset_props_free": (ctypes.c_bool, [ctypes.c_void_p]),
@@ -824,6 +840,9 @@ FUNCTION_SIGNATURES = {
     "ifcopenshell_ifcapi_pset_props_set_typed_int": (ctypes.c_bool, [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int64, ctypes.c_char_p]),
     "ifcopenshell_ifcapi_pset_props_set_typed_string": (ctypes.c_bool, [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]),
     "ifcopenshell_ifcapi_pset_props_set_unit_for_last": (ctypes.c_bool, [ctypes.c_void_p, ctypes.POINTER(_HandleStruct)]),
+    "ifcopenshell_ifcapi_pset_remove_pset": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct)]),
+    "ifcopenshell_ifcapi_pset_template_add_prop_template": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_pset_template_add_pset_template": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_pset_template_create_from_files": (ctypes.c_bool, [ctypes.c_char_p, ctypes.POINTER(ifcopenshell_ifc_file_list_t), ctypes.POINTER(ctypes.c_void_p)]),
     "ifcopenshell_ifcapi_pset_template_free": (ctypes.c_bool, [ctypes.c_void_p]),
     "ifcopenshell_ifcapi_pset_template_get_applicable": (ctypes.c_bool, [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_bool, ctypes.c_bool, ctypes.c_char_p, ctypes.POINTER(ifcopenshell_ifc_instance_list_t)]),
@@ -832,7 +851,11 @@ FUNCTION_SIGNATURES = {
     "ifcopenshell_ifcapi_pset_template_get_template": (ctypes.c_bool, [ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p)]),
     "ifcopenshell_ifcapi_pset_template_is_templated": (ctypes.c_bool, [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_bool)]),
     "ifcopenshell_ifcapi_pset_template_pset_type": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_string_t)]),
+    "ifcopenshell_ifcapi_pset_template_remove_prop_template": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct)]),
+    "ifcopenshell_ifcapi_pset_template_remove_pset_template": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct)]),
     "ifcopenshell_ifcapi_pset_template_set_template_dir": (ctypes.c_bool, [ctypes.c_char_p]),
+    "ifcopenshell_ifcapi_pset_unassign_pset": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_ifc_instance_list_t), ctypes.POINTER(_HandleStruct)]),
+    "ifcopenshell_ifcapi_pset_unshare_pset": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_ifc_instance_list_t), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_ifc_instance_list_t)]),
     "ifcopenshell_ifcapi_representation_get_context": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_representation_get_prioritised_contexts": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_representation_get_product_representation": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
@@ -897,6 +920,10 @@ FUNCTION_SIGNATURES = {
     "ifcopenshell_ifcapi_type_assign_type_ex": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_ifc_instance_list_t), ctypes.POINTER(_HandleStruct), ctypes.c_bool, ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_type_map_type_representations": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_bool)]),
     "ifcopenshell_ifcapi_type_unassign_type": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_ifc_instance_list_t), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct)]),
+    "ifcopenshell_ifcapi_unit_add_context_dependent_unit": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(ifcopenshell_int64_list_t), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_unit_add_derived_unit": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(ifcopenshell_ifc_instance_list_t), ctypes.POINTER(ifcopenshell_int64_list_t), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_unit_add_monetary_unit": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_unit_add_si_unit": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_unit_calculate_unit_scale": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(ctypes.c_double)]),
     "ifcopenshell_ifcapi_unit_convert": (ctypes.c_bool, [ctypes.c_double, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_double)]),
     "ifcopenshell_ifcapi_unit_convert_unit": (ctypes.c_bool, [ctypes.c_double, ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_double)]),
@@ -915,12 +942,14 @@ FUNCTION_SIGNATURES = {
     "ifcopenshell_ifcapi_unit_get_unit_name": (ctypes.c_bool, [ctypes.c_char_p, ctypes.POINTER(ifcopenshell_string_t)]),
     "ifcopenshell_ifcapi_unit_get_unit_name_universal": (ctypes.c_bool, [ctypes.c_char_p, ctypes.POINTER(ifcopenshell_string_t)]),
     "ifcopenshell_ifcapi_unit_get_unit_symbol": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_string_t)]),
+    "ifcopenshell_ifcapi_unit_remove_unit": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct)]),
     "ifcopenshell_ifcapi_unit_resolve_property_measure_class": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_string_t)]),
     "ifcopenshell_ifcapi_unit_resolve_property_table_defined_measure_class": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_string_t)]),
     "ifcopenshell_ifcapi_unit_resolve_property_table_defined_unit": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_unit_resolve_property_table_defining_measure_class": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_string_t)]),
     "ifcopenshell_ifcapi_unit_resolve_property_table_defining_unit": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_unit_resolve_property_unit": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_unit_unassign_unit": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_ifc_instance_list_t)]),
     "ifcopenshell_ifcapi_value_as_bool": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_bool)]),
     "ifcopenshell_ifcapi_value_as_double": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_double)]),
     "ifcopenshell_ifcapi_value_as_instance": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),

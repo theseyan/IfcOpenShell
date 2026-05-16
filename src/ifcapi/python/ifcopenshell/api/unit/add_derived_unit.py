@@ -15,9 +15,11 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
+import ctypes
 
-
-import ifcopenshell.util.unit
+import ifcopenshell
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.unit import _capi
 
 
 def add_derived_unit(
@@ -65,13 +67,19 @@ def add_derived_unit(
         #12=IfcDerivedUnit((#10,#11),.LINEARVELOCITY.,$)
 
     """
-    derive_unit_elements = []
-
-    for named_unit in attributes:
-        derive_unit_elements.append(
-            file.create_entity("IfcDerivedUnitElement", Unit=named_unit, Exponent=attributes[named_unit])
-        )
-
-    return file.create_entity(
-        "IfcDerivedUnit", Elements=derive_unit_elements, UnitType=unit_type, UserDefinedType=userdefinedtype
+    lib = _capi.get_lib()
+    named_units = list(attributes)
+    units = _capi.instance_list(named_units)
+    exponents = _generated_capi.make_int64_list(attributes[named_unit] for named_unit in named_units)
+    handle = _generated_capi.call_handle_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_unit_add_derived_unit,
+        "Failed to add derived unit",
+        _capi.file_handle(file),
+        _generated_capi.encode_string(unit_type),
+        _capi.optional_string(userdefinedtype),
+        ctypes.byref(units),
+        ctypes.byref(exponents),
+        destroy=lib.ifcopenshell_ifc_instance_destroy,
     )
+    return _capi.wrap_handle(file, handle)

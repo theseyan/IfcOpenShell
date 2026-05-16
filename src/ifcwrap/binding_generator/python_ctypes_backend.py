@@ -18,6 +18,7 @@ _SCALAR_CTYPES = {
     "char*": "ctypes.c_char_p",
     "const char*": "ctypes.c_char_p",
     "double": "ctypes.c_double",
+    "ifcopenshell_logical_t": "ctypes.c_int",
     "int32_t": "ctypes.c_int32",
     "int64_t": "ctypes.c_int64",
     "size_t": "ctypes.c_size_t",
@@ -169,6 +170,12 @@ IFCOPENSHELL_ERROR_VALUE = 2
 IFCOPENSHELL_ERROR_TYPE = 3
 IFCOPENSHELL_ERROR_NOT_IMPLEMENTED = 4
 IFCOPENSHELL_ERROR_KEY = 5
+
+IFCOPENSHELL_LOGICAL_UNKNOWN = -1
+IFCOPENSHELL_LOGICAL_FALSE = 0
+IFCOPENSHELL_LOGICAL_TRUE = 1
+
+ifcopenshell_logical_t = ctypes.c_int
 
 
 {handle_base}

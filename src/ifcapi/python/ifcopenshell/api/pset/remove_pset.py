@@ -17,7 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.util.element
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.pset import _capi
 
 
 def remove_pset(
@@ -42,40 +43,11 @@ def remove_pset(
         # Remove it!
         ifcopenshell.api.pset.remove_pset(model, product=wall_type, pset=pset)
     """
-    to_purge = []
-    should_remove_pset = True
-    for inverse in file.get_inverse(pset):
-        if inverse.is_a("IfcRelDefinesByProperties"):
-            if not inverse.RelatedObjects or len(inverse.RelatedObjects) == 1:
-                to_purge.append(inverse)
-            else:
-                related_objects = list(inverse.RelatedObjects)
-                related_objects.remove(product)
-                inverse.RelatedObjects = related_objects
-                should_remove_pset = False
-    if should_remove_pset:
-        properties = []  # Predefined psets have no properties
-        if pset.is_a("IfcPropertySet"):
-            properties = pset.HasProperties or []
-        elif pset.is_a("IfcQuantitySet"):
-            properties = pset.Quantities or []
-        elif pset.is_a() in ("IfcMaterialProperties", "IfcProfileProperties"):
-            properties = pset.Properties or []
-        for prop in properties:
-            if file.get_total_inverses(prop) != 1:
-                continue
-            if prop.is_a("IfcPropertyEnumeratedValue"):
-                enumeration = prop.EnumerationReference
-                if enumeration and file.get_total_inverses(enumeration) == 1:
-                    file.remove(enumeration)
-            file.remove(prop)
-        # IfcMaterialProperties and IfcProfileProperties don't have OwnerHistory
-        history = getattr(pset, "OwnerHistory", None)
-        file.remove(pset)
-        if history:
-            ifcopenshell.util.element.remove_deep2(file, history)
-    for element in to_purge:
-        history = getattr(element, "OwnerHistory", None)
-        file.remove(element)
-        if history:
-            ifcopenshell.util.element.remove_deep2(file, history)
+    lib = _capi.get_lib()
+    _generated_capi.status_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_pset_remove_pset(
+            _capi.file_handle(file), _capi.instance_handle(product), _capi.instance_handle(pset)
+        ),
+        "Failed to remove property set",
+    )
