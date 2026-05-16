@@ -19,6 +19,7 @@
 from typing import Union
 
 import ifcopenshell
+from ifcopenshell.api import _relationship_capi
 import ifcopenshell.guid
 import ifcopenshell.util.date
 import ifcopenshell.util.schema
@@ -89,9 +90,13 @@ class Usecase:
     def execute(self, classification: Union[str, ifcopenshell.entity_instance]) -> ifcopenshell.entity_instance:
         self.classification = classification
         if isinstance(self.classification, str):
-            classification = self.file.create_entity("IfcClassification", Name=self.classification)
-            self.relate_to_project(classification)
-            return classification
+            lib = _relationship_capi.get_lib()
+            return _relationship_capi.call_handle(
+                self.file,
+                lib.ifcopenshell_ifcapi_classification_add_classification,
+                _relationship_capi.file_handle(self.file),
+                _relationship_capi.string(self.classification),
+            )
         return self.add_from_library()
 
     def add_from_library(self) -> ifcopenshell.entity_instance:

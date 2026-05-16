@@ -17,7 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.util.element
+from ifcopenshell.api import _relationship_capi
 
 
 def remove_classification(file: ifcopenshell.file, classification: ifcopenshell.entity_instance) -> None:
@@ -38,39 +38,9 @@ def remove_classification(file: ifcopenshell.file, classification: ifcopenshell.
         ifcopenshell.api.classification.remove_classification(model,
             classification=classification)
     """
-    usecase = Usecase()
-    usecase.file = file
-    return usecase.execute(classification)
-
-
-class Usecase:
-    file: ifcopenshell.file
-
-    def execute(self, classification: ifcopenshell.entity_instance) -> None:
-        references = self.get_references(classification)
-        for reference in references:
-            self.file.remove(reference)
-        self.file.remove(classification)
-        for rel in self.file.by_type("IfcRelAssociatesClassification"):
-            if not rel.RelatingClassification:
-                history = rel.OwnerHistory
-                self.file.remove(rel)
-                if history:
-                    ifcopenshell.util.element.remove_deep2(self.file, history)
-
-        if self.file.schema != "IFC2X3":
-            for rel in self.file.by_type("IfcExternalReferenceRelationship"):
-                if not rel.RelatingReference:
-                    self.file.remove(rel)
-
-    def get_references(self, classification: ifcopenshell.entity_instance) -> list[ifcopenshell.entity_instance]:
-        results = []
-        if self.file.schema == "IFC2X3":
-            for reference in self.file.by_type("IfcClassificationReference"):
-                if reference.ReferencedSource == classification:
-                    results.append(reference)
-        else:
-            for reference in classification.HasReferences:
-                results.append(reference)
-                results.extend(self.get_references(reference))
-        return results
+    lib = _relationship_capi.get_lib()
+    _relationship_capi.call_status(
+        lib.ifcopenshell_ifcapi_classification_remove_classification,
+        _relationship_capi.file_handle(file),
+        _relationship_capi.instance_handle(classification),
+    )

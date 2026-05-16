@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.util.element
+from ifcopenshell.api import _relationship_capi
 
 
 def remove_reference(
@@ -53,65 +52,14 @@ def remove_reference(
         ifcopenshell.api.classification.remove_reference(model,
             reference=reference, products=[wall_type])
     """
-    is_ifc2x3 = file.schema == "IFC2X3"
-    products_set = set(products)
-    referenced = ifcopenshell.util.element.get_referenced_elements(reference)
-    products_set -= products_set.difference(referenced)
-
-    # all products are already unassigned from a reference
-    if not products_set:
-        return
-
-    rooted_products: set[ifcopenshell.entity_instance] = set()
-    non_rooted_products: set[ifcopenshell.entity_instance] = set()
-    for product in products:
-        if product.is_a("IfcRoot"):
-            rooted_products.add(product)
-        else:
-            non_rooted_products.add(product)
-
-    if non_rooted_products and is_ifc2x3:
-        raise TypeError(f"Cannot add reference to non-IfcRoot element in IFC2X3: {non_rooted_products}.")
-
-    if rooted_products:
-        reference_rels: set[ifcopenshell.entity_instance] = set()
-        for product in rooted_products:
-            reference_rels.update(product.HasAssociations)
-
-        reference_rels = {
-            rel
-            for rel in reference_rels
-            if rel.is_a("IfcRelAssociatesClassification") and rel.RelatingClassification == reference
-        }
-
-        for rel in reference_rels:
-            related_objects = set(rel.RelatedObjects) - rooted_products
-            if related_objects:
-                rel.RelatedObjects = list(related_objects)
-                ifcopenshell.api.owner.update_owner_history(file, element=rel)
-            else:
-                history = rel.OwnerHistory
-                file.remove(rel)
-                if history:
-                    ifcopenshell.util.element.remove_deep2(file, history)
-
-    if non_rooted_products:
-        reference_rels: set[ifcopenshell.entity_instance] = set()
-        for product in non_rooted_products:
-            rels = getattr(product, "HasExternalReferences", None)
-            if rels is None:
-                rels = getattr(product, "HasExternalReference", [])
-            reference_rels.update(rels)
-
-        reference_rels = {rel for rel in reference_rels if rel.RelatingReference == reference}
-        for rel in reference_rels:
-            related_objects = set(rel.RelatedResourceObjects) - non_rooted_products
-            if related_objects:
-                rel.RelatedResourceObjects = list(related_objects)
-            else:
-                file.remove(rel)
-
-    # TODO: we only handle lightweight classifications here
-    referenced_elements = ifcopenshell.util.element.get_referenced_elements(reference)
-    if not referenced_elements:
-        file.remove(reference)
+    product_list = _relationship_capi.instance_list(products)
+    user, application = _relationship_capi.owner_user_application(file)
+    lib = _relationship_capi.get_lib()
+    _relationship_capi.call_status(
+        lib.ifcopenshell_ifcapi_classification_remove_reference,
+        _relationship_capi.file_handle(file),
+        _relationship_capi.instance_handle(reference),
+        _relationship_capi.instance_list_ptr(product_list),
+        _relationship_capi.instance_handle(user),
+        _relationship_capi.instance_handle(application),
+    )

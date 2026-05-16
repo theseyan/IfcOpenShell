@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.util.element
+from ifcopenshell.api import _relationship_capi
 
 
 def unassign_product(
@@ -51,24 +50,13 @@ def unassign_product(
         ifcopenshell.api.drawing.unassign_product(model,
             relating_product=furniture, related_object=annotation)
     """
-    if relating_product.is_a("IfcGridAxis"):
-        grid = None
-        for attribute in ("PartOfW", "PartOfV", "PartOfU"):
-            if getattr(relating_product, attribute, None):
-                grid = getattr(relating_product, attribute)[0]
-                break
-        relating_product = grid
-
-    for rel in related_object.HasAssignments or []:
-        if not rel.is_a("IfcRelAssignsToProduct") or rel.RelatingProduct != relating_product:
-            continue
-        if len(rel.RelatedObjects) == 1:
-            history = rel.OwnerHistory
-            file.remove(rel)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
-            return
-        related_objects = list(rel.RelatedObjects)
-        related_objects.remove(related_object)
-        rel.RelatedObjects = related_objects
-        ifcopenshell.api.owner.update_owner_history(file, element=rel)
+    user, application = _relationship_capi.owner_user_application(file)
+    lib = _relationship_capi.get_lib()
+    _relationship_capi.call_status(
+        lib.ifcopenshell_ifcapi_drawing_unassign_product,
+        _relationship_capi.file_handle(file),
+        _relationship_capi.instance_handle(relating_product),
+        _relationship_capi.instance_handle(related_object),
+        _relationship_capi.instance_handle(user),
+        _relationship_capi.instance_handle(application),
+    )
