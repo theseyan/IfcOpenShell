@@ -16,9 +16,9 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ifcopenshell.api.aggregate
-import ifcopenshell.api.root
-import ifcopenshell.util.element
+import ifcopenshell
+import ifcopenshell.api.owner.settings
+from ifcopenshell.api.feature import _capi
 
 
 def remove_feature(file: ifcopenshell.file, feature: ifcopenshell.entity_instance) -> None:
@@ -44,25 +44,14 @@ def remove_feature(file: ifcopenshell.file, feature: ifcopenshell.entity_instanc
         # Remove it. This brings us back to a valid model.
         ifcopenshell.api.feature.remove_feature(model, feature=feature)
     """
-    if feature.is_a("IfcFeatureElementSubtraction"):
-        rels = feature.VoidsElements
-    elif feature.is_a("IfcFeatureElementAddition"):
-        rels = feature.ProjectsElements
-    elif feature.is_a("IfcSurfaceFeature"):
-        if file.schema == "IFC4":
-            ifcopenshell.api.aggregate.unassign_object(file, products=[feature])
-            rels = []
-        else:
-            rels = feature.ProjectsElements
-    for rel in rels:
-        history = rel.OwnerHistory
-        file.remove(rel)
-        if history:
-            ifcopenshell.util.element.remove_deep2(file, history)
-    if feature.is_a("IfcOpeningElement"):
-        for rel in feature.HasFillings:
-            history = rel.OwnerHistory
-            file.remove(rel)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
-    ifcopenshell.api.root.remove_product(file, product=feature)
+    lib = _capi.get_lib()
+    user = ifcopenshell.api.owner.settings.get_user(file)
+    application = ifcopenshell.api.owner.settings.get_application(file)
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_feature_remove_feature,
+        "Failed to remove feature",
+        _capi.file_handle(file),
+        _capi.instance_handle(feature),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+    )

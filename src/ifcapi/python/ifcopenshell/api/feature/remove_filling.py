@@ -17,7 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.util.element
+from ifcopenshell.api.feature import _capi
 
 
 def remove_filling(file: ifcopenshell.file, element: ifcopenshell.entity_instance) -> None:
@@ -50,10 +50,10 @@ def remove_filling(file: ifcopenshell.file, element: ifcopenshell.entity_instanc
         # Not anymore!
         ifcopenshell.api.feature.remove_filling(model, element=door)
     """
-    for rel in file.by_type("IfcRelFillsElement"):
-        if rel.RelatedBuildingElement == element:
-            history = rel.OwnerHistory
-            file.remove(rel)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
-            break
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_feature_remove_filling,
+        "Failed to remove filling",
+        _capi.file_handle(file),
+        _capi.instance_handle(element),
+    )

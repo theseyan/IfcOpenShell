@@ -16,7 +16,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ifcopenshell.util.element
+import ifcopenshell
+from ifcopenshell.api.boundary import _capi
 
 
 def copy_boundary(file: ifcopenshell.file, boundary: ifcopenshell.entity_instance) -> ifcopenshell.entity_instance:
@@ -34,7 +35,11 @@ def copy_boundary(file: ifcopenshell.file, boundary: ifcopenshell.entity_instanc
         # And now we have two
         boundary_copy = ifcopenshell.api.boundary.copy_boundary(model, boundary=boundary)
     """
-    result = ifcopenshell.util.element.copy(file, boundary)
-    if result.ConnectionGeometry:
-        result.ConnectionGeometry = ifcopenshell.util.element.copy_deep(file, result.ConnectionGeometry)
-    return result
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_boundary_copy_boundary,
+        "Failed to copy boundary",
+        _capi.file_handle(file),
+        _capi.instance_handle(boundary),
+    )

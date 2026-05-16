@@ -16,7 +16,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ifcopenshell.util.element
+import ifcopenshell
+from ifcopenshell.api.grid import _capi
 
 
 def remove_grid_axis(file: ifcopenshell.file, axis: ifcopenshell.entity_instance) -> None:
@@ -41,6 +42,10 @@ def remove_grid_axis(file: ifcopenshell.file, axis: ifcopenshell.entity_instance
         # Let's remove it!
         ifcopenshell.api.grid.remove_grid_axis(model, axis=axis_2)
     """
-    axis_curve = axis.AxisCurve
-    file.remove(axis)
-    ifcopenshell.util.element.remove_deep2(file, axis_curve)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_grid_remove_grid_axis,
+        "Failed to remove grid axis",
+        _capi.file_handle(file),
+        _capi.instance_handle(axis),
+    )

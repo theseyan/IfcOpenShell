@@ -18,6 +18,7 @@
 from typing import Literal
 
 import ifcopenshell
+from ifcopenshell.api.grid import _capi
 
 
 def create_grid_axis(
@@ -71,8 +72,14 @@ def create_grid_axis(
             axis_tag="1", uvw_axes="VAxes", grid=grid)
     """
 
-    element = file.create_entity("IfcGridAxis", **{"AxisTag": axis_tag, "SameSense": same_sense})
-    axes = list(getattr(grid, uvw_axes) or [])
-    axes.append(element)
-    setattr(grid, uvw_axes, axes)
-    return element
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_grid_create_grid_axis,
+        "Failed to create grid axis",
+        _capi.file_handle(file),
+        _capi.instance_handle(grid),
+        _capi.string(axis_tag),
+        same_sense,
+        _capi.string(uvw_axes),
+    )

@@ -52,3 +52,15 @@ class TestRemoveFeature(test.bootstrap.IFC4):
 
 class TestRemoveFeatureIFC2X3(test.bootstrap.IFC2X3, TestRemoveFeature):
     pass
+
+
+class TestRemoveFeatureIFC4X3(test.bootstrap.IFC4X3):
+    def test_removing_a_surface_feature(self):
+        wall = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        feature = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcSurfaceFeature")
+        ifcopenshell.api.feature.add_feature(self.file, feature=feature, element=wall)
+        ifcopenshell.api.feature.remove_feature(self.file, feature=feature)
+        assert len(self.file.by_type("IfcSurfaceFeature")) == 0
+        rel = self.file.by_type("IfcRelAdheresToElement")[0]
+        assert rel.RelatingElement == wall
+        assert rel.RelatedSurfaceFeatures == ()

@@ -33,6 +33,14 @@ class TestAddFeature(test.bootstrap.IFC4X3):
         ifcopenshell.api.feature.add_feature(self.file, feature=feature, element=wall)
         assert wall.HasSurfaceFeatures[0].RelatedSurfaceFeatures == (feature,)
 
+    def test_adding_a_surface_feature_twice(self):
+        wall = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        feature = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcSurfaceFeature")
+        ifcopenshell.api.feature.add_feature(self.file, feature=feature, element=wall)
+        ifcopenshell.api.feature.add_feature(self.file, feature=feature, element=wall)
+        assert len(wall.HasSurfaceFeatures) == 1
+        assert wall.HasSurfaceFeatures[0].RelatedSurfaceFeatures == (feature,)
+
 
 class TestAddFeature(test.bootstrap.IFC4):
     def test_adding_an_opening(self):
