@@ -17,6 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.constraint import _capi
 
 
 def add_metric(file: ifcopenshell.file, objective: ifcopenshell.entity_instance) -> ifcopenshell.entity_instance:
@@ -38,17 +40,13 @@ def add_metric(file: ifcopenshell.file, objective: ifcopenshell.entity_instance)
         metric = ifcopenshell.api.constraint.add_metric(model,
             objective=objective)
     """
-    metric = file.create_entity(
-        "IfcMetric",
-        **{
-            "Name": "Unnamed",
-            "ConstraintGrade": "NOTDEFINED",
-            "Benchmark": "EQUALTO",
-        },
+    lib = _capi.get_lib()
+    handle = _generated_capi.call_handle_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_constraint_add_metric,
+        "Failed to add metric",
+        _capi.file_handle(file),
+        _capi.instance_handle(objective),
+        destroy=lib.ifcopenshell_ifc_instance_destroy,
     )
-    if objective:
-        benchmark_values: list[ifcopenshell.entity_instance]
-        benchmark_values = list(objective.BenchmarkValues or [])
-        benchmark_values.append(metric)
-        objective.BenchmarkValues = benchmark_values
-    return metric
+    return _capi.wrap_handle(file, handle)

@@ -37,6 +37,7 @@ set(IFCAPI_SOURCES
     src/file.cpp
     src/entity.cpp
     src/api/aggregate/relationship.cpp
+    src/api/constraint/constraint.cpp
     src/api/document/document.cpp
     src/api/group/relationship.cpp
     src/api/layer/layer.cpp
@@ -65,6 +66,7 @@ set(IFCAPI_SOURCES
     src/api/pset/relationship.cpp
     src/api/pset_template/template.cpp
     src/api/profile/profile.cpp
+    src/api/project/project.cpp
     src/api/unit/unit.cpp
     src/api/geometry/placement.cpp
     src/api/geometry/shape_builder.cpp

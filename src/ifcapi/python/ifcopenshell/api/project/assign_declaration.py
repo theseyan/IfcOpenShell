@@ -19,9 +19,8 @@
 from typing import Union
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.guid
-import ifcopenshell.util.element
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.project import _capi
 
 
 def assign_declaration(
@@ -86,57 +85,19 @@ def assign_declaration(
         library.write("/path/to/my-library.ifc")
     """
 
-    all_declares = relating_context.Declares
-    definitions_set = set(definitions)
-
-    previous_declares_rels: set[ifcopenshell.entity_instance] = set()
-    objects_without_contexts: list[ifcopenshell.entity_instance] = []
-    objects_with_contexts: list[ifcopenshell.entity_instance] = []
-
-    # check if there is anything to change
-    for definition in definitions_set:
-        has_context = getattr(definition, "HasContext", None)
-        if has_context is None:
-            continue
-
-        object_rel = next(iter(has_context), None)
-        if object_rel is None:
-            objects_without_contexts.append(definition)
-            continue
-
-        # either rel doesn't exist or product is part of different rel
-        if object_rel not in all_declares:
-            previous_declares_rels.add(object_rel)
-            objects_with_contexts.append(definition)
-
-    objects_to_change = objects_without_contexts + objects_with_contexts
-    # nothing to change
-    if not objects_to_change:
-        return None
-
-    for has_context in previous_declares_rels:
-        related_definitions = set(has_context.RelatedDefinitions) - set(objects_with_contexts)
-        if related_definitions:
-            has_context.RelatedDefinitions = list(related_definitions)
-            ifcopenshell.api.owner.update_owner_history(file, element=has_context)
-        else:
-            history = has_context.OwnerHistory
-            file.remove(has_context)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
-
-    declares = next(iter(all_declares), None)
-    if declares:
-        declares.RelatedDefinitions = list(set(declares.RelatedDefinitions) | set(objects_to_change))
-        ifcopenshell.api.owner.update_owner_history(file, element=declares)
-    else:
-        declares = file.create_entity(
-            "IfcRelDeclares",
-            **{
-                "GlobalId": ifcopenshell.guid.new(),
-                "OwnerHistory": ifcopenshell.api.owner.create_owner_history(file),
-                "RelatedDefinitions": list(objects_to_change),
-                "RelatingContext": relating_context,
-            },
-        )
-    return declares
+    lib = _capi.get_lib()
+    owner_history, user, application = _capi.owner_context(file)
+    definition_list = _capi.instance_list(definitions)
+    handle = _generated_capi.call_handle_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_project_assign_declaration,
+        "Failed to assign declaration",
+        _capi.file_handle(file),
+        definition_list,
+        _capi.instance_handle(relating_context),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+        destroy=lib.ifcopenshell_ifc_instance_destroy,
+    )
+    return _capi.wrap_handle(file, handle)

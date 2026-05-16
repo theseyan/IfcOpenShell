@@ -19,8 +19,8 @@
 from typing import Union
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.guid
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.constraint import _capi
 
 
 def assign_constraint(
@@ -44,49 +44,19 @@ def assign_constraint(
     :return: The new or updated IfcRelAssociatesConstraint relationship
         or `None` if `products` was an empty list.
     """
-    usecase = Usecase()
-    usecase.file = file
-    return usecase.execute(products, constraint)
-
-
-class Usecase:
-    file: ifcopenshell.file
-
-    def execute(self, products: list[ifcopenshell.entity_instance], constraint: ifcopenshell.entity_instance):
-        if not products:
-            return
-        products_set = set(products)
-
-        rels = self.get_constraint_rels(constraint)
-        related_objects = set()
-        for rel in rels:
-            related_objects.update(rel.RelatedObjects)
-
-        products_to_assign = products_set - related_objects
-        if not products_to_assign:
-            return rels[0]
-
-        rel = next(iter(rels), None)
-
-        if rel:
-            related_objects = set(rel.RelatedObjects) | products_to_assign
-            rel.RelatedObjects = list(related_objects)
-            ifcopenshell.api.owner.update_owner_history(self.file, element=rel)
-            return rel
-
-        return self.file.create_entity(
-            "IfcRelAssociatesConstraint",
-            **{
-                "GlobalId": ifcopenshell.guid.new(),
-                "OwnerHistory": ifcopenshell.api.owner.create_owner_history(self.file),
-                "RelatingConstraint": constraint,
-                "RelatedObjects": list(products_to_assign),
-            }
-        )
-
-    def get_constraint_rels(self, constraint: ifcopenshell.entity_instance) -> list[ifcopenshell.entity_instance]:
-        rels = []
-        for rel in self.file.get_inverse(constraint):
-            if rel.is_a("IfcRelAssociatesConstraint"):
-                rels.append(rel)
-        return rels
+    lib = _capi.get_lib()
+    owner_history, user, application = _capi.owner_context(file)
+    product_list = _capi.instance_list(products)
+    handle = _generated_capi.call_handle_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_constraint_assign_constraint,
+        "Failed to assign constraint",
+        _capi.file_handle(file),
+        product_list,
+        _capi.instance_handle(constraint),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+        destroy=lib.ifcopenshell_ifc_instance_destroy,
+    )
+    return _capi.wrap_handle(file, handle)

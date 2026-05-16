@@ -12,6 +12,7 @@ public_headers:
   - ifcapi/bindings/aggregate.h
   - guid.h
   - ifcapi/bindings/classification.h
+  - ifcapi/bindings/constraint.h
   - ifcapi/bindings/document.h
   - ifcapi/bindings/element.h
   - ifcapi/bindings/entity.h
@@ -23,6 +24,7 @@ public_headers:
   - ifcapi/bindings/owner.h
   - ifcapi/bindings/placement.h
   - ifcapi/bindings/profile.h
+  - ifcapi/bindings/project.h
   - ifcapi/bindings/pset.h
   - ifcapi/bindings/pset_template.h
   - ifcapi/bindings/representation.h
@@ -1123,6 +1125,62 @@ discover:
             application:
               nullable: true
         library_unassign_reference:
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: api/constraint/constraint.cpp
+      include:
+        - constraint_add_objective
+        - constraint_add_metric
+        - constraint_add_metric_reference
+        - constraint_assign_constraint
+        - constraint_unassign_constraint
+        - constraint_remove_constraint
+        - constraint_remove_metric
+      type_overrides:
+        constraint_add_metric:
+          params:
+            objective:
+              nullable: true
+        constraint_add_metric_reference:
+          returns:
+            ownership: owned
+        constraint_assign_constraint:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        constraint_unassign_constraint:
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: api/project/project.cpp
+      include:
+        - project_assign_declaration
+        - project_unassign_declaration
+      type_overrides:
+        project_assign_declaration:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        project_unassign_declaration:
           params:
             user:
               nullable: true
