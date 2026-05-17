@@ -17,7 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.root
+from ifcopenshell.api.structural import _capi
 
 
 def add_structural_member_connection(
@@ -34,10 +34,13 @@ def add_structural_member_connection(
     :return: The IfcRelConnectsStructuralMember relationship
     """
 
-    for connection in related_structural_connection.ConnectsStructuralMembers or []:
-        if connection.RelatingStructuralMember == relating_structural_member:
-            return connection
-    rel = ifcopenshell.api.root.create_entity(file, ifc_class="IfcRelConnectsStructuralMember")
-    rel.RelatingStructuralMember = relating_structural_member
-    rel.RelatedStructuralConnection = related_structural_connection
-    return rel
+    lib = _capi.get_lib()
+    owner_history = _capi.owner_history(file)
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_structural_add_structural_member_connection,
+        _capi.file_handle(file),
+        _capi.instance_handle(relating_structural_member),
+        _capi.instance_handle(related_structural_connection),
+        _capi.instance_handle(owner_history),
+    )

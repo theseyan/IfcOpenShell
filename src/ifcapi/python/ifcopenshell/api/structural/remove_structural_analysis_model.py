@@ -17,7 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.util.element
+from ifcopenshell.api.structural import _capi
 
 
 def remove_structural_analysis_model(
@@ -31,12 +31,9 @@ def remove_structural_analysis_model(
         remove.
     :return: None
     """
-    for rel in structural_analysis_model.IsGroupedBy or []:
-        history = rel.OwnerHistory
-        file.remove(rel)
-        if history:
-            ifcopenshell.util.element.remove_deep2(file, history)
-    history = structural_analysis_model.OwnerHistory
-    file.remove(structural_analysis_model)
-    if history:
-        ifcopenshell.util.element.remove_deep2(file, history)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_structural_remove_structural_analysis_model,
+        _capi.file_handle(file),
+        _capi.instance_handle(structural_analysis_model),
+    )

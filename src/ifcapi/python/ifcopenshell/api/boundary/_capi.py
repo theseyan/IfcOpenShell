@@ -13,6 +13,7 @@ from ifcopenshell.entity_instance import _generated_instance_handle_ptr
 _BOUND = False
 _BIND_NAMES = (
     "ifcopenshell_ifcapi_boundary_copy_boundary",
+    "ifcopenshell_ifcapi_boundary_edit_attributes",
     "ifcopenshell_ifcapi_boundary_remove_boundary",
     "ifcopenshell_ifc_instance_destroy",
     "ifcopenshell_last_error_kind",
@@ -35,6 +36,10 @@ def file_handle(file: ifcopenshell.file):
 
 def instance_handle(entity: ifcopenshell.entity_instance | None):
     return _generated_instance_handle_ptr(entity._handle) if entity is not None else None
+
+
+def string(value: str) -> bytes:
+    return _generated_capi.encode_string(value)
 
 
 def call_status(fn, message: str, *args) -> None:

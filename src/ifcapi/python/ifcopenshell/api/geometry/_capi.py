@@ -13,11 +13,22 @@ from ifcopenshell.entity_instance import _generated_instance_handle_ptr
 _BOUND = False
 _BIND_NAMES = (
     "ifcopenshell_ifcapi_geometry_add_boolean",
+    "ifcopenshell_ifcapi_geometry_add_axis_representation",
+    "ifcopenshell_ifcapi_geometry_add_footprint_representation",
+    "ifcopenshell_ifcapi_geometry_add_mesh_representation",
     "ifcopenshell_ifcapi_geometry_add_shape_aspect",
+    "ifcopenshell_ifcapi_geometry_add_slab_representation",
+    "ifcopenshell_ifcapi_geometry_add_topology_representation",
+    "ifcopenshell_ifcapi_geometry_add_wall_representation",
+    "ifcopenshell_ifcapi_geometry_add_window_representation",
     "ifcopenshell_ifcapi_geometry_assign_representation",
+    "ifcopenshell_ifcapi_geometry_clip_solid",
+    "ifcopenshell_ifcapi_geometry_clip_solid_bounded",
     "ifcopenshell_ifcapi_geometry_connect_element",
     "ifcopenshell_ifcapi_geometry_connect_path",
+    "ifcopenshell_ifcapi_geometry_connect_wall",
     "ifcopenshell_ifcapi_geometry_copy_representation",
+    "ifcopenshell_ifcapi_geometry_create_2pt_wall",
     "ifcopenshell_ifcapi_geometry_disconnect_element",
     "ifcopenshell_ifcapi_geometry_disconnect_path",
     "ifcopenshell_ifcapi_geometry_edit_object_placement",
@@ -26,6 +37,7 @@ _BIND_NAMES = (
     "ifcopenshell_ifcapi_geometry_remove_boolean",
     "ifcopenshell_ifcapi_geometry_remove_representation",
     "ifcopenshell_ifcapi_geometry_unassign_representation",
+    "ifcopenshell_ifcapi_geometry_validate_type",
     "ifcopenshell_ifcapi_type_map_type_representations",
     "ifcopenshell_ifc_instance_destroy",
     "ifcopenshell_ifc_instance_list_destroy",
@@ -65,6 +77,35 @@ def string(value: str) -> bytes:
     return _generated_capi.encode_string(value)
 
 
+def double_list(values):
+    return _generated_capi.make_double_list(values)
+
+
+def int32_list(values):
+    return _generated_capi.make_int32_list(values)
+
+
+def int32_list_list(values):
+    return _generated_capi.make_int32_list_list(values)
+
+
+def double_list_list(values):
+    return _generated_capi.make_double_list_list(values)
+
+
+def bool_result(fn, *args) -> bool:
+    lib = get_lib()
+    return bool(_generated_capi.call_scalar_or_raise(lib, fn, ctypes.c_bool, f"{fn.__name__} failed", *args))
+
+
+def double_list_list_list(values):
+    return _generated_capi.make_double_list_list_list(values)
+
+
+def int32_list_list_list_list(values):
+    return _generated_capi.make_int32_list_list_list_list(values)
+
+
 def owner_user_application(file: ifcopenshell.file):
     import ifcopenshell.api.owner
 
@@ -72,6 +113,11 @@ def owner_user_application(file: ifcopenshell.file):
         ifcopenshell.api.owner.settings.get_user(file),
         ifcopenshell.api.owner.settings.get_application(file),
     )
+
+
+def owner_context(file: ifcopenshell.file):
+    user, application = owner_user_application(file)
+    return None, user, application
 
 
 def call_handle(file: ifcopenshell.file, fn, *args, nullable: bool = False):

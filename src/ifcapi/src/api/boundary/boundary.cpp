@@ -47,5 +47,35 @@ void boundary_remove_boundary(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* bo
     }
 }
 
+void boundary_edit_attributes(
+    IfcUtil::IfcBaseClass* entity,
+    IfcUtil::IfcBaseClass* relating_space,
+    IfcUtil::IfcBaseClass* related_building_element,
+    IfcUtil::IfcBaseClass* parent_boundary,
+    IfcUtil::IfcBaseClass* corresponding_boundary,
+    const std::string& physical_or_virtual,
+    const std::string& internal_or_external)
+{
+    ifcopenshell_clear_error();
+    if (!entity) {
+        set_error("Invalid arguments");
+        return;
+    }
+    try {
+        ifcapi::detail::write_ref_attr(entity, "RelatingSpace", relating_space);
+        ifcapi::detail::write_ref_attr(entity, "RelatedBuildingElement", related_building_element);
+        if (ifcapi::detail::entity_has_attr(entity, "ParentBoundary")) {
+            ifcapi::detail::write_ref_attr(entity, "ParentBoundary", parent_boundary);
+        }
+        if (ifcapi::detail::entity_has_attr(entity, "CorrespondingBoundary")) {
+            ifcapi::detail::write_ref_attr(entity, "CorrespondingBoundary", corresponding_boundary);
+        }
+        ifcapi::detail::write_enum_attr(entity, "PhysicalOrVirtualBoundary", physical_or_virtual);
+        ifcapi::detail::write_enum_attr(entity, "InternalOrExternalBoundary", internal_or_external);
+    } catch (const std::exception& e) {
+        set_error(e.what());
+    }
+}
+
 } // namespace bindings
 } // namespace ifcapi

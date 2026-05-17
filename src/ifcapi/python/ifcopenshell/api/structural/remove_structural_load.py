@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 import ifcopenshell
+from ifcopenshell.api.structural import _capi
 
 
 def remove_structural_load(file: ifcopenshell.file, structural_load: ifcopenshell.entity_instance) -> None:
@@ -24,4 +25,9 @@ def remove_structural_load(file: ifcopenshell.file, structural_load: ifcopenshel
     :param structural_load: The IfcStructuralLoad to remove.
     :return: None
     """
-    file.remove(structural_load)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_structural_remove_structural_load,
+        _capi.file_handle(file),
+        _capi.instance_handle(structural_load),
+    )

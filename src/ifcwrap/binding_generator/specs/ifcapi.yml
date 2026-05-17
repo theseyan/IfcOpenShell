@@ -529,11 +529,21 @@ discover:
       translation_unit: geometry.cpp
       include:
         - geometry_add_boolean
+        - geometry_add_axis_representation
+        - geometry_add_footprint_representation
+        - geometry_add_mesh_representation
         - geometry_add_shape_aspect
+        - geometry_add_slab_representation
+        - geometry_add_topology_representation
+        - geometry_add_wall_representation
         - geometry_assign_representation
+        - geometry_clip_solid
+        - geometry_clip_solid_bounded
         - geometry_connect_element
         - geometry_connect_path
+        - geometry_connect_wall
         - geometry_copy_representation
+        - geometry_create_2pt_wall
         - geometry_disconnect_element
         - geometry_disconnect_path
         - geometry_map_representation
@@ -541,16 +551,103 @@ discover:
         - geometry_remove_boolean
         - geometry_remove_representation
         - geometry_unassign_representation
+        - geometry_validate_type
         - type_map_type_representations
       type_overrides:
         geometry_add_boolean:
           returns:
             ownership: owned
+        geometry_add_axis_representation:
+          returns:
+            nullable: true
+        geometry_add_footprint_representation:
+          returns:
+            nullable: true
+        geometry_add_mesh_representation:
+          returns:
+            nullable: true
+          params:
+            vertices:
+              kind: double_list_list_list
+            faces:
+              kind: int32_list_list_list_list
         geometry_add_shape_aspect:
           returns:
             nullable: true
           params:
             description:
+              nullable: true
+        geometry_add_slab_representation:
+          returns:
+            nullable: true
+          params:
+            clipping_kinds:
+              kind: int32_list
+            clipping_locations:
+              kind: double_list_list
+            clipping_normals:
+              kind: double_list_list
+            clipping_entities:
+              kind: instance_list
+            polyline:
+              kind: double_list_list
+        geometry_add_topology_representation:
+          returns:
+            nullable: true
+          params:
+            representation_identifier:
+              nullable: true
+            representation_type:
+              nullable: true
+        geometry_add_wall_representation:
+          returns:
+            nullable: true
+          params:
+            clipping_kinds:
+              kind: int32_list
+            clipping_locations:
+              kind: double_list_list
+            clipping_normals:
+              kind: double_list_list
+            clipping_entities:
+              kind: instance_list
+            booleans:
+              kind: instance_list
+        geometry_clip_solid:
+          returns:
+            nullable: true
+          params:
+            location:
+              kind: double_list
+            normal:
+              kind: double_list
+            element:
+              nullable: true
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        geometry_clip_solid_bounded:
+          returns:
+            nullable: true
+          params:
+            location:
+              kind: double_list
+            normal:
+              kind: double_list
+            boundary_points:
+              kind: double_list_list
+            boundary_position:
+              kind: double_list
+            element:
+              nullable: true
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
               nullable: true
         geometry_assign_representation:
           returns:
@@ -581,6 +678,16 @@ discover:
               nullable: true
             application:
               nullable: true
+        geometry_connect_wall:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
         geometry_disconnect_path:
           params:
             element:
@@ -597,12 +704,24 @@ discover:
           params:
             context_identifier:
               nullable: true
+        geometry_create_2pt_wall:
+          returns:
+            nullable: true
+          params:
+            p1:
+              kind: double_list
+            p2:
+              kind: double_list
         geometry_map_representation:
           returns:
             nullable: true
         geometry_profile_extents:
           returns:
             ownership: copy
+        geometry_validate_type:
+          params:
+            preferred_item:
+              nullable: true
     - namespace: ifcapi::bindings
       translation_unit: api/context/context.cpp
       include:
@@ -629,6 +748,23 @@ discover:
         geometry_edit_object_placement:
           returns:
             nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: api/geometry/window.cpp
+      include:
+        - geometry_add_window_representation
+      type_overrides:
+        geometry_add_window_representation:
+          returns:
+            nullable: true
+          params:
+            panel_schema:
+              kind: int32_list_list
+            lining_properties:
+              kind: double_list
+            panel_properties:
+              kind: double_list_list
+            part_of_product:
+              nullable: true
     - namespace: ifcapi::bindings
       translation_unit: api/geometry/shape_builder.cpp
       include:
@@ -1336,9 +1472,24 @@ discover:
     - namespace: ifcapi::bindings
       translation_unit: api/profile/profile.cpp
       include:
+        - profile_add_arbitrary_profile
+        - profile_add_arbitrary_profile_with_voids
         - profile_add_parameterized_profile
         - profile_copy_profile
         - profile_remove_profile
+      type_overrides:
+        profile_add_arbitrary_profile:
+          returns:
+            nullable: true
+          params:
+            name:
+              nullable: true
+        profile_add_arbitrary_profile_with_voids:
+          returns:
+            nullable: true
+          params:
+            name:
+              nullable: true
     - namespace: ifcapi::bindings
       translation_unit: api/unit/unit.cpp
       include:
@@ -1502,8 +1653,15 @@ discover:
       translation_unit: api/boundary/boundary.cpp
       include:
         - boundary_copy_boundary
+        - boundary_edit_attributes
         - boundary_remove_boundary
       type_overrides:
+        boundary_edit_attributes:
+          params:
+            parent_boundary:
+              nullable: true
+            corresponding_boundary:
+              nullable: true
         boundary_copy_boundary:
           returns:
             nullable: true
@@ -1588,8 +1746,19 @@ discover:
     - namespace: ifcapi::bindings
       translation_unit: api/georeference/georeference.cpp
       include:
+        - georeference_add_georeferencing
         - georeference_edit_true_north
         - georeference_edit_wcs
+        - georeference_remove_georeferencing
+      type_overrides:
+        georeference_add_georeferencing:
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
     - namespace: ifcapi::bindings
       translation_unit: owner.cpp
       include:
@@ -1754,8 +1923,17 @@ discover:
       include:
         - structural_add_structural_activity
         - structural_add_structural_analysis_model
+        - structural_add_structural_load
+        - structural_add_structural_load_case
+        - structural_add_structural_load_group
+        - structural_add_structural_member_connection
+        - structural_assign_to_building
         - structural_assign_product
         - structural_assign_structural_analysis_model
+        - structural_remove_structural_analysis_model
+        - structural_remove_structural_load
+        - structural_remove_structural_load_case
+        - structural_remove_structural_load_group
         - structural_unassign_structural_analysis_model
       type_overrides:
         structural_add_structural_activity:
@@ -1767,6 +1945,36 @@ discover:
             relationship_owner_history:
               nullable: true
         structural_add_structural_analysis_model:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+        structural_add_structural_load:
+          returns:
+            nullable: true
+          params:
+            name:
+              nullable: true
+        structural_add_structural_load_case:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+        structural_add_structural_load_group:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+        structural_add_structural_member_connection:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+        structural_assign_to_building:
           returns:
             nullable: true
           params:

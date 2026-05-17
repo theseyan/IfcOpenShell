@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.pset
-import ifcopenshell.util.element
+from ifcopenshell.api import _relationship_capi
 
 
 def remove_georeferencing(file: ifcopenshell.file) -> None:
@@ -36,16 +35,9 @@ def remove_georeferencing(file: ifcopenshell.file) -> None:
         ifcopenshell.api.georeference.remove_georeferencing(model)
     """
     if file.schema == "IFC2X3":
-        project = file.by_type("IfcProject")[0]
-        if pset := ifcopenshell.util.element.get_pset(project, "ePSet_ProjectedCRS"):
-            ifcopenshell.api.pset.remove_pset(file, project, file.by_id(pset["id"]))
-        if pset := ifcopenshell.util.element.get_pset(project, "ePSet_MapConversion"):
-            ifcopenshell.api.pset.remove_pset(file, project, file.by_id(pset["id"]))
-        return
-    for projected_crs in file.by_type("IfcProjectedCRS"):
-        if (unit := projected_crs.MapUnit) and file.get_total_inverses(unit) == 1:
-            projected_crs.MapUnit = None
-            ifcopenshell.util.element.remove_deep2(file, unit)
-        file.remove(projected_crs)
-    for coordinate_operation in file.by_type("IfcCoordinateOperation"):
-        file.remove(coordinate_operation)
+        file.by_type("IfcProject")[0]
+    lib = _relationship_capi.get_lib()
+    _relationship_capi.call_status(
+        lib.ifcopenshell_ifcapi_georeference_remove_georeferencing,
+        _relationship_capi.file_handle(file),
+    )

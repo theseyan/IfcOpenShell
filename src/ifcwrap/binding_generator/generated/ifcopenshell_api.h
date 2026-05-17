@@ -50,6 +50,11 @@ typedef struct ifcopenshell_double_list_list_t {
     size_t size;
 } ifcopenshell_double_list_list_t;
 
+typedef struct ifcopenshell_double_list_list_list_t {
+    ifcopenshell_double_list_list_t* items;
+    size_t size;
+} ifcopenshell_double_list_list_list_t;
+
 typedef struct ifcopenshell_int32_list_list_t {
     ifcopenshell_int32_list_t* items;
     size_t size;
@@ -59,6 +64,11 @@ typedef struct ifcopenshell_int32_list_list_list_t {
     ifcopenshell_int32_list_list_t* items;
     size_t size;
 } ifcopenshell_int32_list_list_list_t;
+
+typedef struct ifcopenshell_int32_list_list_list_list_t {
+    ifcopenshell_int32_list_list_list_t* items;
+    size_t size;
+} ifcopenshell_int32_list_list_list_list_t;
 
 typedef struct ifcopenshell_int64_list_t {
     int64_t* items;
@@ -87,9 +97,13 @@ void ifcopenshell_bool_list_destroy(ifcopenshell_bool_list_t* value);
 
 void ifcopenshell_double_list_list_destroy(ifcopenshell_double_list_list_t* value);
 
+void ifcopenshell_double_list_list_list_destroy(ifcopenshell_double_list_list_list_t* value);
+
 void ifcopenshell_int32_list_list_destroy(ifcopenshell_int32_list_list_t* value);
 
 void ifcopenshell_int32_list_list_list_destroy(ifcopenshell_int32_list_list_list_t* value);
+
+void ifcopenshell_int32_list_list_list_list_destroy(ifcopenshell_int32_list_list_list_list_t* value);
 
 void ifcopenshell_int64_list_destroy(ifcopenshell_int64_list_t* value);
 
@@ -624,12 +638,22 @@ bool ifcopenshell_ifcapi_nest_unassign_object(ifcopenshell_ifc_file_t* file, con
 bool ifcopenshell_ifcapi_type_assign_type(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* objects, ifcopenshell_ifc_instance_t* relating_type, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_type_assign_type_ex(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* objects, ifcopenshell_ifc_instance_t* relating_type, bool should_map_representations, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_type_unassign_type(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* objects, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
+bool ifcopenshell_ifcapi_geometry_add_axis_representation(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* context, const ifcopenshell_double_list_list_t* axis, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_geometry_add_boolean(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* first_item, const ifcopenshell_ifc_instance_list_t* second_items, const char* operator_type, ifcopenshell_ifc_instance_list_t* out_result);
+bool ifcopenshell_ifcapi_geometry_add_footprint_representation(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* context, const ifcopenshell_ifc_instance_list_t* curves, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_geometry_add_mesh_representation(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* context, const ifcopenshell_double_list_list_list_t* vertices, const ifcopenshell_int32_list_list_list_list_t* faces, bool force_faceted_brep, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_geometry_add_shape_aspect(ifcopenshell_ifc_file_t* file, const char* name, const ifcopenshell_ifc_instance_list_t* items, ifcopenshell_ifc_instance_t* representation, ifcopenshell_ifc_instance_t* part_of_product, const char* description, bool has_description, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_geometry_add_slab_representation(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* context, double depth, const char* direction_sense, double offset, double x_angle, const ifcopenshell_int32_list_t* clipping_kinds, const ifcopenshell_double_list_list_t* clipping_locations, const ifcopenshell_double_list_list_t* clipping_normals, const ifcopenshell_ifc_instance_list_t* clipping_entities, const ifcopenshell_double_list_list_t* polyline, bool has_polyline, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_geometry_add_topology_representation(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* context, ifcopenshell_ifc_instance_t* item, const char* representation_identifier, bool has_representation_identifier, const char* representation_type, bool has_representation_type, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_geometry_add_wall_representation(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* context, double length, double height, const char* direction_sense, double offset, double thickness, double x_angle, const ifcopenshell_int32_list_t* clipping_kinds, const ifcopenshell_double_list_list_t* clipping_locations, const ifcopenshell_double_list_list_t* clipping_normals, const ifcopenshell_ifc_instance_list_t* clipping_entities, const ifcopenshell_ifc_instance_list_t* booleans, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_geometry_assign_representation(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* product, ifcopenshell_ifc_instance_t* representation, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_geometry_clip_solid(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* item, const ifcopenshell_double_list_t* location, const ifcopenshell_double_list_t* normal, ifcopenshell_ifc_instance_t* element, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_geometry_clip_solid_bounded(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* item, const ifcopenshell_double_list_t* location, const ifcopenshell_double_list_t* normal, const ifcopenshell_double_list_list_t* boundary_points, const ifcopenshell_double_list_t* boundary_position, ifcopenshell_ifc_instance_t* element, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_geometry_connect_element(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relating_element, ifcopenshell_ifc_instance_t* related_element, const char* description, bool has_description, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_geometry_connect_path(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relating_element, ifcopenshell_ifc_instance_t* related_element, const char* relating_connection, const char* related_connection, const char* description, bool has_description, ifcopenshell_ifc_instance_t* connection_geometry, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_geometry_connect_wall(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* wall1, ifcopenshell_ifc_instance_t* wall2, bool is_atpath, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_geometry_copy_representation(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* source, ifcopenshell_ifc_instance_t* target, const char* context_identifier, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_geometry_create_2pt_wall(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* element, ifcopenshell_ifc_instance_t* context, const ifcopenshell_double_list_t* p1, const ifcopenshell_double_list_t* p2, double elevation, double height, double thickness, bool is_si, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_geometry_disconnect_element(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relating_element, ifcopenshell_ifc_instance_t* related_element);
 bool ifcopenshell_ifcapi_geometry_disconnect_path(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* element, const char* connection_type, bool has_connection_type, ifcopenshell_ifc_instance_t* relating_element, ifcopenshell_ifc_instance_t* related_element);
 bool ifcopenshell_ifcapi_geometry_map_representation(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* representation, ifcopenshell_ifc_instance_t** out_result);
@@ -637,10 +661,12 @@ bool ifcopenshell_ifcapi_geometry_profile_extents(ifcopenshell_ifc_file_t* file,
 bool ifcopenshell_ifcapi_geometry_remove_boolean(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* item);
 bool ifcopenshell_ifcapi_geometry_remove_representation(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* representation, bool should_keep_named_profiles);
 bool ifcopenshell_ifcapi_geometry_unassign_representation(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* product, ifcopenshell_ifc_instance_t* representation);
+bool ifcopenshell_ifcapi_geometry_validate_type(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* representation, ifcopenshell_ifc_instance_t* preferred_item, bool* out_result);
 bool ifcopenshell_ifcapi_type_map_type_representations(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* related_object, ifcopenshell_ifc_instance_t* relating_type, bool* out_result);
 bool ifcopenshell_ifcapi_context_add_context(ifcopenshell_ifc_file_t* file, const char* context_type, const char* context_identifier, const char* target_view, bool has_target_scale, double target_scale, ifcopenshell_ifc_instance_t* parent, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_context_remove_context(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* context);
 bool ifcopenshell_ifcapi_geometry_edit_object_placement(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* product, const ifcopenshell_double_list_t* matrix, bool is_si, bool should_transform_children, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_geometry_add_window_representation(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* context, double overall_height, double overall_width, const ifcopenshell_int32_list_list_t* panel_schema, const ifcopenshell_double_list_t* lining_properties, const ifcopenshell_double_list_list_t* panel_properties, ifcopenshell_ifc_instance_t* part_of_product, double glass_thickness, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_shape_builder_axis2_placement_2d(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_t* position, const ifcopenshell_double_list_t* x_direction, bool has_x_direction, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_shape_builder_axis2_placement_3d(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_t* position, const ifcopenshell_double_list_t* z_axis, const ifcopenshell_double_list_t* x_axis, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_shape_builder_block(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_t* position, double x_length, double y_length, double z_length, ifcopenshell_ifc_instance_t** out_result);
@@ -740,6 +766,8 @@ bool ifcopenshell_ifcapi_constraint_remove_metric(ifcopenshell_ifc_file_t* file,
 bool ifcopenshell_ifcapi_constraint_unassign_constraint(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* products, ifcopenshell_ifc_instance_t* constraint, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
 bool ifcopenshell_ifcapi_project_assign_declaration(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* definitions, ifcopenshell_ifc_instance_t* relating_context, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_project_unassign_declaration(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* definitions, ifcopenshell_ifc_instance_t* relating_context, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
+bool ifcopenshell_ifcapi_profile_add_arbitrary_profile(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_list_t* profile, const char* name, bool has_name, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_profile_add_arbitrary_profile_with_voids(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_list_t* outer_profile, const ifcopenshell_double_list_list_list_t* inner_profiles, const char* name, bool has_name, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_profile_add_parameterized_profile(ifcopenshell_ifc_file_t* file, const char* ifc_class, const char* profile_type, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_profile_copy_profile(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* profile, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_profile_remove_profile(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* profile);
@@ -766,6 +794,7 @@ bool ifcopenshell_ifcapi_selector_parse_keys(const char* query, void** out_resul
 bool ifcopenshell_ifcapi_root_create_entity(ifcopenshell_ifc_file_t* file, const char* ifc_class, const char* predefined_type, const char* name, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_root_remove_product(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* product, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
 bool ifcopenshell_ifcapi_boundary_copy_boundary(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* boundary, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_boundary_edit_attributes(ifcopenshell_ifc_instance_t* entity, ifcopenshell_ifc_instance_t* relating_space, ifcopenshell_ifc_instance_t* related_building_element, ifcopenshell_ifc_instance_t* parent_boundary, ifcopenshell_ifc_instance_t* corresponding_boundary, const char* physical_or_virtual, const char* internal_or_external);
 bool ifcopenshell_ifcapi_boundary_remove_boundary(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* boundary);
 bool ifcopenshell_ifcapi_feature_add_feature(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* feature, ifcopenshell_ifc_instance_t* element, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_feature_add_filling(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* opening, ifcopenshell_ifc_instance_t* element, ifcopenshell_ifc_instance_t** out_result);
@@ -777,8 +806,10 @@ bool ifcopenshell_ifcapi_control_assign_control(ifcopenshell_ifc_file_t* file, i
 bool ifcopenshell_ifcapi_control_unassign_control(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relating_control, const ifcopenshell_ifc_instance_list_t* related_objects, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
 bool ifcopenshell_ifcapi_drawing_assign_product(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relating_product, ifcopenshell_ifc_instance_t* related_object, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_drawing_unassign_product(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relating_product, ifcopenshell_ifc_instance_t* related_object, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
+bool ifcopenshell_ifcapi_georeference_add_georeferencing(ifcopenshell_ifc_file_t* file, const char* ifc_class, const char* name, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
 bool ifcopenshell_ifcapi_georeference_edit_true_north(ifcopenshell_ifc_file_t* file, bool has_true_north, double x, double y);
 bool ifcopenshell_ifcapi_georeference_edit_wcs(ifcopenshell_ifc_file_t* file, double x, double y, double z, double rotation, bool is_si);
+bool ifcopenshell_ifcapi_georeference_remove_georeferencing(ifcopenshell_ifc_file_t* file);
 bool ifcopenshell_ifcapi_owner_create_owner_history(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_owner_update_owner_history(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* element, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_owner_add_actor(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* actor, const char* ifc_class, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
@@ -824,8 +855,17 @@ bool ifcopenshell_ifcapi_style_unassign_material_style(ifcopenshell_ifc_file_t* 
 bool ifcopenshell_ifcapi_style_unassign_representation_styles(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* shape_representation, const ifcopenshell_ifc_instance_list_t* styles, bool should_use_presentation_style_assignment);
 bool ifcopenshell_ifcapi_structural_add_structural_activity(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* applied_load, ifcopenshell_ifc_instance_t* structural_member, const char* ifc_class, const char* predefined_type, const char* global_or_local, ifcopenshell_ifc_instance_t* activity_owner_history, ifcopenshell_ifc_instance_t* relationship_owner_history, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_structural_add_structural_analysis_model(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_structural_add_structural_load(ifcopenshell_ifc_file_t* file, const char* ifc_class, const char* name, bool has_name, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_structural_add_structural_load_case(ifcopenshell_ifc_file_t* file, const char* name, const char* action_type, const char* action_source, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_structural_add_structural_load_group(ifcopenshell_ifc_file_t* file, const char* name, const char* action_type, const char* action_source, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_structural_add_structural_member_connection(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relating_structural_member, ifcopenshell_ifc_instance_t* related_structural_connection, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_structural_assign_product(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relating_product, ifcopenshell_ifc_instance_t* related_object, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_structural_assign_structural_analysis_model(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* products, ifcopenshell_ifc_instance_t* structural_analysis_model, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_structural_assign_to_building(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* structural_analysis_model, ifcopenshell_ifc_instance_t* building, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_structural_remove_structural_analysis_model(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* structural_analysis_model);
+bool ifcopenshell_ifcapi_structural_remove_structural_load(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* structural_load);
+bool ifcopenshell_ifcapi_structural_remove_structural_load_case(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* structural_load_case);
+bool ifcopenshell_ifcapi_structural_remove_structural_load_group(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* structural_load_group);
 bool ifcopenshell_ifcapi_structural_unassign_structural_analysis_model(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* products, ifcopenshell_ifc_instance_t* structural_analysis_model, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
 bool ifcopenshell_ifcapi_system_add_port(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* element, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_system_add_system(ifcopenshell_ifc_file_t* file, const char* ifc_class, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t** out_result);

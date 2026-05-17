@@ -23,6 +23,8 @@ import ifcopenshell.util.element
 import ifcopenshell.util.unit
 from ifcopenshell.util.data import Clipping
 
+from . import _capi
+
 
 def add_wall_representation(
     file: ifcopenshell.file,
@@ -53,20 +55,43 @@ def add_wall_representation(
     :param booleans: List of any existing IfcBooleanResults.
     :return: IfcShapeRepresentation.
     """
-    usecase = Usecase()
-    usecase.file = file
-    usecase.settings = {
-        "context": context,
-        "length": length,
-        "height": height,
-        "direction_sense": direction_sense,
-        "offset": offset,
-        "thickness": thickness,
-        "x_angle": x_angle,
-        "clippings": clippings if clippings is not None else [],
-        "booleans": booleans if booleans is not None else [],
-    }
-    return usecase.execute()
+    clipping_kinds: list[int] = []
+    clipping_locations: list[tuple[float, float, float]] = []
+    clipping_normals: list[tuple[float, float, float]] = []
+    clipping_entities: list[ifcopenshell.entity_instance] = []
+    for clipping in (clippings if clippings is not None else []):
+        parsed = Clipping.parse(clipping)
+        if isinstance(parsed, ifcopenshell.entity_instance):
+            clipping_kinds.append(1)
+            clipping_entities.append(parsed)
+        else:
+            clipping_kinds.append(0)
+            clipping_locations.append(parsed.location)
+            clipping_normals.append(parsed.normal)
+
+    boolean_items: list[ifcopenshell.entity_instance] = []
+    if booleans is not None:
+        while booleans:
+            boolean_items.append(booleans.pop(0))
+
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_geometry_add_wall_representation,
+        _capi.file_handle(file),
+        _capi.instance_handle(context),
+        length,
+        height,
+        _capi.string(direction_sense),
+        offset,
+        thickness,
+        x_angle,
+        _capi.int32_list(clipping_kinds),
+        _capi.double_list_list(clipping_locations),
+        _capi.double_list_list(clipping_normals),
+        _capi.instance_list(clipping_entities),
+        _capi.instance_list(boolean_items),
+    )
 
 
 class Usecase:

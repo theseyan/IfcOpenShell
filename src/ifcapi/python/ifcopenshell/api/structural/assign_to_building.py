@@ -18,8 +18,7 @@
 # This file was generated with the assistance of an AI coding tool.
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.guid
+from ifcopenshell.api.structural import _capi
 
 
 def assign_to_building(
@@ -49,16 +48,13 @@ def assign_to_building(
         ifcopenshell.api.structural.assign_to_building(model,
             structural_analysis_model=model_, building=building)
     """
-    for rel in structural_analysis_model.ServicesBuildings or []:
-        if building in rel.RelatedBuildings:
-            return rel
-        rel.RelatedBuildings = list(rel.RelatedBuildings) + [building]
-        return rel
-
-    return file.create_entity(
-        "IfcRelServicesBuildings",
-        ifcopenshell.guid.new(),
-        OwnerHistory=ifcopenshell.api.owner.create_owner_history(file),
-        RelatingSystem=structural_analysis_model,
-        RelatedBuildings=[building],
+    lib = _capi.get_lib()
+    owner_history = _capi.owner_history(file)
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_structural_assign_to_building,
+        _capi.file_handle(file),
+        _capi.instance_handle(structural_analysis_model),
+        _capi.instance_handle(building),
+        _capi.instance_handle(owner_history),
     )

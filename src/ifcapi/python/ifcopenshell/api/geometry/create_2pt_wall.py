@@ -18,10 +18,9 @@
 
 from typing import Any
 
-import numpy as np
+import ifcopenshell
 
-import ifcopenshell.api.geometry
-import ifcopenshell.util.unit
+from . import _capi
 
 
 def create_2pt_wall(
@@ -51,41 +50,20 @@ def create_2pt_wall(
         If False, values are converted from project units to SI.
     :return: IfcShapeRepresentation.
     """
-    si_conversion = ifcopenshell.util.unit.calculate_unit_scale(file)
-
-    p1_ = np.array(p1).astype(float)
-    p2_ = np.array(p2).astype(float)
-
-    length = float(np.linalg.norm(p2_ - p1_))
-
-    if not is_si:
-        length = convert_unit_to_si(length, si_conversion)
-        height = convert_unit_to_si(height, si_conversion)
-        thickness = convert_unit_to_si(thickness, si_conversion)
-        # No need to convert p2 as length is already calculated.
-        p1_ = convert_unit_to_si(p1_, si_conversion)
-        elevation = convert_unit_to_si(elevation, si_conversion)
-
-    representation = ifcopenshell.api.geometry.add_wall_representation(
+    lib = _capi.get_lib()
+    return _capi.call_handle(
         file,
-        context=context,
-        length=length,
-        height=height,
-        thickness=thickness,
+        lib.ifcopenshell_ifcapi_geometry_create_2pt_wall,
+        _capi.file_handle(file),
+        _capi.instance_handle(element),
+        _capi.instance_handle(context),
+        _capi.double_list(p1),
+        _capi.double_list(p2),
+        elevation,
+        height,
+        thickness,
+        is_si,
     )
-
-    v = p2_ - p1_
-    v /= float(np.linalg.norm(v))
-    matrix = np.array(
-        [
-            [v[0], -v[1], 0, p1_[0]],
-            [v[1], v[0], 0, p1_[1]],
-            [0, 0, 1, elevation],
-            [0, 0, 0, 1],
-        ]
-    )
-    ifcopenshell.api.geometry.edit_object_placement(file, product=element, matrix=matrix)
-    return representation
 
 
 def convert_unit_to_si(co: Any, si_conversion: float) -> Any:

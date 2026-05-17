@@ -7,6 +7,7 @@
 #include "ifcapi/bindings/group.h"
 #include "ifcapi/bindings/root.h"
 #include "ifcapi/detail/attribute.h"
+#include "ifcapi/detail/relationship.h"
 
 #include <stdexcept>
 
@@ -130,6 +131,164 @@ IfcUtil::IfcBaseClass* structural_add_structural_activity(
         set_error(e.what());
         return nullptr;
     }
+}
+
+IfcUtil::IfcBaseClass* structural_add_structural_load(
+    IfcParse::IfcFile* file,
+    const std::string& ifc_class,
+    const char* name,
+    bool has_name)
+{
+    ifcopenshell_clear_error();
+    if (!file) {
+        set_error("Invalid arguments");
+        return nullptr;
+    }
+    try {
+        auto* load = file->create(file->schema()->declaration_by_name(ifc_class));
+        if (has_name) {
+            ifcapi::detail::write_string_attr(load, "Name", name ? name : "");
+        }
+        return load;
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
+IfcUtil::IfcBaseClass* structural_add_structural_load_case(
+    IfcParse::IfcFile* file,
+    const std::string& name,
+    const std::string& action_type,
+    const std::string& action_source,
+    IfcUtil::IfcBaseClass* owner_history)
+{
+    ifcopenshell_clear_error();
+    auto* load_case = root_create_entity(file, "IfcStructuralLoadCase", "LOAD_CASE", name.c_str(), owner_history);
+    if (load_case) {
+        ifcapi::detail::write_enum_attr(load_case, "ActionType", action_type);
+        ifcapi::detail::write_enum_attr(load_case, "ActionSource", action_source);
+    }
+    return load_case;
+}
+
+IfcUtil::IfcBaseClass* structural_add_structural_load_group(
+    IfcParse::IfcFile* file,
+    const std::string& name,
+    const std::string& action_type,
+    const std::string& action_source,
+    IfcUtil::IfcBaseClass* owner_history)
+{
+    ifcopenshell_clear_error();
+    auto* load_group = root_create_entity(file, "IfcStructuralLoadGroup", "LOAD_GROUP", name.c_str(), owner_history);
+    if (load_group) {
+        ifcapi::detail::write_enum_attr(load_group, "ActionType", action_type);
+        ifcapi::detail::write_enum_attr(load_group, "ActionSource", action_source);
+    }
+    return load_group;
+}
+
+IfcUtil::IfcBaseClass* structural_add_structural_member_connection(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* relating_structural_member,
+    IfcUtil::IfcBaseClass* related_structural_connection,
+    IfcUtil::IfcBaseClass* owner_history)
+{
+    ifcopenshell_clear_error();
+    if (!file || !relating_structural_member || !related_structural_connection) {
+        set_error("Invalid arguments");
+        return nullptr;
+    }
+    for (auto* rel : ifcapi::detail::read_inverse_aggregate(
+             related_structural_connection,
+             "ConnectsStructuralMembers")) {
+        if (ifcapi::detail::read_ref_attr(rel, "RelatingStructuralMember") == relating_structural_member) {
+            return rel;
+        }
+    }
+    auto* rel = root_create_entity(file, "IfcRelConnectsStructuralMember", nullptr, nullptr, owner_history);
+    if (!rel) {
+        return nullptr;
+    }
+    ifcapi::detail::write_ref_attr(rel, "RelatingStructuralMember", relating_structural_member);
+    ifcapi::detail::write_ref_attr(rel, "RelatedStructuralConnection", related_structural_connection);
+    return rel;
+}
+
+IfcUtil::IfcBaseClass* structural_assign_to_building(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* structural_analysis_model,
+    IfcUtil::IfcBaseClass* building,
+    IfcUtil::IfcBaseClass* owner_history)
+{
+    ifcopenshell_clear_error();
+    if (!file || !structural_analysis_model || !building) {
+        set_error("Invalid arguments");
+        return nullptr;
+    }
+    for (auto* rel : ifcapi::detail::read_inverse_aggregate(structural_analysis_model, "ServicesBuildings")) {
+        auto buildings = ifcapi::detail::read_ref_aggregate(rel, "RelatedBuildings");
+        if (ifcapi::detail::contains_ref(buildings, building)) {
+            return rel;
+        }
+        buildings.push_back(building);
+        ifcapi::detail::write_ref_aggregate(rel, "RelatedBuildings", buildings);
+        return rel;
+    }
+    auto* rel = root_create_entity(file, "IfcRelServicesBuildings", nullptr, nullptr, owner_history);
+    if (!rel) {
+        return nullptr;
+    }
+    ifcapi::detail::write_ref_attr(rel, "RelatingSystem", structural_analysis_model);
+    ifcapi::detail::write_ref_aggregate(rel, "RelatedBuildings", {building});
+    return rel;
+}
+
+void structural_remove_structural_analysis_model(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* structural_analysis_model)
+{
+    ifcopenshell_clear_error();
+    if (!file || !structural_analysis_model) return;
+    for (auto* rel : ifcapi::detail::read_inverse_aggregate(structural_analysis_model, "IsGroupedBy")) {
+        ifcapi::detail::remove_with_history(file, rel);
+    }
+    ifcapi::detail::remove_with_history(file, structural_analysis_model);
+}
+
+void structural_remove_structural_load(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* structural_load) {
+    ifcopenshell_clear_error();
+    if (file && structural_load) {
+        file->removeEntity(structural_load);
+    }
+}
+
+void structural_remove_structural_load_case(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* structural_load_case) {
+    ifcopenshell_clear_error();
+    if (!file || !structural_load_case) return;
+    for (auto* rel : ifcapi::detail::read_inverse_aggregate(structural_load_case, "IsGroupedBy")) {
+        ifcapi::detail::remove_with_history(file, rel);
+    }
+    ifcapi::detail::remove_with_history(file, structural_load_case);
+}
+
+void structural_remove_structural_load_group(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* structural_load_group) {
+    ifcopenshell_clear_error();
+    if (!file || !structural_load_group) return;
+    auto inverses = file->getInverse(structural_load_group->id(), nullptr, -1);
+    if (inverses) {
+        std::vector<IfcUtil::IfcBaseClass*> rels;
+        for (auto* inverse : *inverses) {
+            if (inverse && inverse->declaration().is("IfcRelAssignsToGroup")
+                && ifcapi::detail::read_ref_aggregate(inverse, "RelatedObjects").size() == 1) {
+                rels.push_back(inverse);
+            }
+        }
+        for (auto* rel : rels) {
+            ifcapi::detail::remove_with_history(file, rel);
+        }
+    }
+    ifcapi::detail::remove_with_history(file, structural_load_group);
 }
 
 } // namespace bindings

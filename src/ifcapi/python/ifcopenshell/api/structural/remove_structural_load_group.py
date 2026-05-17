@@ -17,7 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.util.element
+from ifcopenshell.api.structural import _capi
 
 
 def remove_structural_load_group(file: ifcopenshell.file, load_group: ifcopenshell.entity_instance) -> None:
@@ -26,14 +26,9 @@ def remove_structural_load_group(file: ifcopenshell.file, load_group: ifcopenshe
     :param load_group: The IfcStructuralLoadGroup to remove.
     :return: None
     """
-    # TODO: do a deep purge
-    for inverse in file.get_inverse(load_group):
-        if inverse.is_a("IfcRelAssignsToGroup") and len(inverse.RelatedObjects) == 1:
-            history = inverse.OwnerHistory
-            file.remove(inverse)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
-    history = load_group.OwnerHistory
-    file.remove(load_group)
-    if history:
-        ifcopenshell.util.element.remove_deep2(file, history)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_structural_remove_structural_load_group,
+        _capi.file_handle(file),
+        _capi.instance_handle(load_group),
+    )

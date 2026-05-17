@@ -20,6 +20,7 @@ import ifcopenshell.api.context
 import ifcopenshell.api.georeference
 import ifcopenshell.api.root
 import ifcopenshell.util.element
+import pytest
 import test.bootstrap
 
 
@@ -32,6 +33,28 @@ class TestRemoveGeoreferencing(test.bootstrap.IFC4):
         assert len(self.file.by_type("IfcMapConversion")) == 0
         assert len(self.file.by_type("IfcProjectedCRS")) == 0
 
+    def test_removing_unshared_map_unit(self):
+        ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
+        ifcopenshell.api.context.add_context(self.file, "Model")
+        ifcopenshell.api.georeference.add_georeferencing(self.file)
+        unit = self.file.createIfcSIUnit(UnitType="LENGTHUNIT", Name="METRE")
+        self.file.by_type("IfcProjectedCRS")[0].MapUnit = unit
+        ifcopenshell.api.georeference.remove_georeferencing(self.file)
+        assert len(self.file.by_type("IfcProjectedCRS")) == 0
+        assert unit.id() not in [u.id() for u in self.file.by_type("IfcSIUnit")]
+
+    def test_not_removing_shared_map_unit(self):
+        project = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
+        ifcopenshell.api.context.add_context(self.file, "Model")
+        ifcopenshell.api.georeference.add_georeferencing(self.file)
+        unit = self.file.createIfcSIUnit(UnitType="LENGTHUNIT", Name="METRE")
+        self.file.by_type("IfcProjectedCRS")[0].MapUnit = unit
+        project.UnitsInContext = self.file.createIfcUnitAssignment([unit])
+        unit_id = unit.id()
+        ifcopenshell.api.georeference.remove_georeferencing(self.file)
+        assert len(self.file.by_type("IfcProjectedCRS")) == 0
+        assert unit_id in [u.id() for u in self.file.by_type("IfcSIUnit")]
+
 
 class TestAddGeoreferencingIFC2X3(test.bootstrap.IFC2X3):
     def test_adding_georeferencing(self):
@@ -42,3 +65,7 @@ class TestAddGeoreferencingIFC2X3(test.bootstrap.IFC2X3):
         crs = ifcopenshell.util.element.get_pset(project, "ePSet_ProjectedCRS", verbose=True)
         assert not conversion
         assert not crs
+
+    def test_removing_georeferencing_without_project_raises_index_error(self):
+        with pytest.raises(IndexError):
+            ifcopenshell.api.georeference.remove_georeferencing(self.file)

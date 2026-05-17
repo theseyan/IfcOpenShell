@@ -12,6 +12,8 @@ from ifcopenshell.entity_instance import _generated_instance_handle_ptr
 
 _BOUND = False
 _BIND_NAMES = (
+    "ifcopenshell_ifcapi_profile_add_arbitrary_profile",
+    "ifcopenshell_ifcapi_profile_add_arbitrary_profile_with_voids",
     "ifcopenshell_ifcapi_profile_add_parameterized_profile",
     "ifcopenshell_ifcapi_profile_copy_profile",
     "ifcopenshell_ifcapi_profile_remove_profile",
@@ -40,3 +42,15 @@ def instance_handle(entity: ifcopenshell.entity_instance):
 
 def wrap_handle(file: ifcopenshell.file, handle):
     return ifcopenshell.entity_instance(file, handle) if handle else None
+
+
+def string(value: str) -> bytes:
+    return _generated_capi.encode_string(value)
+
+
+def double_list_list(values):
+    return _generated_capi.make_double_list_list(values)
+
+
+def double_list_list_list(values):
+    return _generated_capi.make_double_list_list_list(values)

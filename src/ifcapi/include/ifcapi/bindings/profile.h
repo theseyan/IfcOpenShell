@@ -10,6 +10,7 @@
 #include "ifcparse/IfcFile.h"
 
 #include <string>
+#include <vector>
 
 namespace ifcapi {
 namespace bindings {
@@ -18,6 +19,17 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* profile_add_parameterized_profile(
     IfcParse::IfcFile* file,
     const std::string& ifc_class,
     const std::string& profile_type);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* profile_add_arbitrary_profile(
+    IfcParse::IfcFile* file,
+    const std::vector<std::vector<double>>& profile,
+    const char* name,
+    bool has_name);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* profile_add_arbitrary_profile_with_voids(
+    IfcParse::IfcFile* file,
+    const std::vector<std::vector<double>>& outer_profile,
+    const std::vector<std::vector<std::vector<double>>>& inner_profiles,
+    const char* name,
+    bool has_name);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* profile_copy_profile(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* profile);

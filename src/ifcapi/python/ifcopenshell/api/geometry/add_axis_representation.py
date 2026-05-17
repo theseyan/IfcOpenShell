@@ -16,9 +16,10 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Any, Union
+from typing import Union
 
-import ifcopenshell.util.unit
+import ifcopenshell
+from ifcopenshell.api.geometry import _capi
 
 COORD = Union[tuple[float, float], tuple[float, float, float]]
 
@@ -70,42 +71,12 @@ def add_axis_representation(
         axis = ifcopenshell.api.geometry.add_axis_representation(model,
             context=context, axis=[(0.0, 0.0), (1.0, 0.0)])
     """
-    usecase = Usecase()
-    usecase.file = file
-    usecase.settings = {
-        "context": context,
-        "axis": axis or [],
-    }
-    return usecase.execute()
-
-
-class Usecase:
-    file: ifcopenshell.file
-    settings: dict[str, Any]
-
-    def execute(self):
-        self.settings["unit_scale"] = ifcopenshell.util.unit.calculate_unit_scale(self.file)
-        is_2d = len(self.settings["axis"][0]) == 2
-        points = [self.convert_si_to_unit(p) for p in self.settings["axis"]]
-        if self.file.schema == "IFC2X3":
-            curve = self.file.createIfcPolyline([self.file.createIfcCartesianPoint(p) for p in points])
-        else:
-            if is_2d:
-                curve = self.file.createIfcIndexedPolyCurve(
-                    self.file.createIfcCartesianPointList2D(points), None, False
-                )
-            else:
-                curve = self.file.createIfcIndexedPolyCurve(
-                    self.file.createIfcCartesianPointList3D(points), None, False
-                )
-        return self.file.createIfcShapeRepresentation(
-            self.settings["context"],
-            self.settings["context"].ContextIdentifier,
-            "Curve2D" if is_2d else "Curve3D",
-            [curve],
-        )
-
-    def convert_si_to_unit(self, co):
-        if isinstance(co, (tuple, list)):
-            return [self.convert_si_to_unit(o) for o in co]
-        return co / self.settings["unit_scale"]
+    lib = _capi.get_lib()
+    axis_list = _capi.double_list_list(axis or [])
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_geometry_add_axis_representation,
+        _capi.file_handle(file),
+        _capi.instance_handle(context),
+        axis_list,
+    )

@@ -23,6 +23,8 @@ import ifcopenshell.util.element
 import ifcopenshell.util.unit
 from ifcopenshell.util.data import Clipping
 
+from . import _capi
+
 
 def add_slab_representation(
     file: ifcopenshell.file,
@@ -55,16 +57,39 @@ def add_slab_representation(
         representation = ifcopenshell.api.geometry.add_slab_representation(ifc_file, context, depth=0.2, clippings=clippings)
         ifcopenshell.api.geometry.assign_representation(ifc_file, product=element, representation=representation)
     """
-    usecase = Usecase()
-    usecase.file = file
-    return usecase.execute(
-        context,
+    clipping_kinds: list[int] = []
+    clipping_locations: list[tuple[float, float, float]] = []
+    clipping_normals: list[tuple[float, float, float]] = []
+    clipping_entities: list[ifcopenshell.entity_instance] = []
+    clipping_items = clippings if clippings is not None else []
+    drained_clippings = []
+    while clipping_items:
+        drained_clippings.append(clipping_items.pop(0))
+    for clipping in drained_clippings:
+        if isinstance(clipping, ifcopenshell.entity_instance):
+            clipping_kinds.append(1)
+            clipping_entities.append(clipping)
+        else:
+            clipping_kinds.append(0)
+            clipping_locations.append(clipping.location)
+            clipping_normals.append(clipping.normal)
+
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_geometry_add_slab_representation,
+        _capi.file_handle(file),
+        _capi.instance_handle(context),
         depth,
-        direction_sense,
+        _capi.string(direction_sense),
         offset,
         x_angle,
-        clippings if clippings is not None else [],
-        polyline,
+        _capi.int32_list(clipping_kinds),
+        _capi.double_list_list(clipping_locations),
+        _capi.double_list_list(clipping_normals),
+        _capi.instance_list(clipping_entities),
+        _capi.double_list_list(polyline or []),
+        polyline is not None,
     )
 
 

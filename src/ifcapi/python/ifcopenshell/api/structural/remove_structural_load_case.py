@@ -17,7 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.util.element
+from ifcopenshell.api.structural import _capi
 
 
 def remove_structural_load_case(file: ifcopenshell.file, load_case: ifcopenshell.entity_instance) -> None:
@@ -26,13 +26,9 @@ def remove_structural_load_case(file: ifcopenshell.file, load_case: ifcopenshell
     :param load_case: The IfcStructuralLoadCase to remove.
     :return: None
     """
-    # TODO: do a deep purge
-    for rel in load_case.IsGroupedBy or []:
-        history = rel.OwnerHistory
-        file.remove(rel)
-        if history:
-            ifcopenshell.util.element.remove_deep2(file, history)
-    history = load_case.OwnerHistory
-    file.remove(load_case)
-    if history:
-        ifcopenshell.util.element.remove_deep2(file, history)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_structural_remove_structural_load_case,
+        _capi.file_handle(file),
+        _capi.instance_handle(load_case),
+    )

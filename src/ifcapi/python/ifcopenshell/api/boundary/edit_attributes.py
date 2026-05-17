@@ -18,6 +18,7 @@
 from typing import Optional
 
 import ifcopenshell
+from ifcopenshell.api.boundary import _capi
 
 
 def edit_attributes(
@@ -50,11 +51,15 @@ def edit_attributes(
         "EXTERNAL_FIRE", or "NOTDEFINED".
     :return: None
     """
-    entity.RelatingSpace = relating_space
-    entity.RelatedBuildingElement = related_building_element
-    if hasattr(entity, "ParentBoundary"):
-        entity.ParentBoundary = parent_boundary
-    if hasattr(entity, "CorrespondingBoundary"):
-        entity.CorrespondingBoundary = corresponding_boundary
-    entity.PhysicalOrVirtualBoundary = physical_or_virtual
-    entity.InternalOrExternalBoundary = internal_or_external
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_boundary_edit_attributes,
+        "Failed to edit boundary attributes",
+        _capi.instance_handle(entity),
+        _capi.instance_handle(relating_space),
+        _capi.instance_handle(related_building_element),
+        _capi.instance_handle(parent_boundary),
+        _capi.instance_handle(corresponding_boundary),
+        _capi.string(physical_or_virtual),
+        _capi.string(internal_or_external),
+    )

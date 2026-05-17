@@ -7,10 +7,12 @@
 #include "ifcapi/bindings/shape_builder.h"
 #include "ifcapi/detail/attribute.h"
 #include "ifcapi/detail/copy.h"
+#include "ifcapi/detail/geometry.h"
 
 #include "ifcparse/IfcFile.h"
 #include "ifcparse/IfcSchema.h"
 
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -61,6 +63,18 @@ std::vector<IfcUtil::IfcBaseClass*> profile_psets(IfcParse::IfcFile* file, IfcUt
     return result;
 }
 
+IfcUtil::IfcBaseClass* create_arbitrary_profile_curve(
+    IfcParse::IfcFile* file,
+    const std::vector<std::vector<double>>& points,
+    bool force_3d_point_list = false)
+{
+    size_t dimensions = force_3d_point_list ? 3 : points.at(0).size();
+    if (!force_3d_point_list && dimensions != 2 && dimensions != 3) {
+        throw std::runtime_error("Invalid dimensions: " + std::to_string(dimensions) + ".");
+    }
+    return ifcapi::detail::create_polyline_or_indexed_polycurve(file, points, dimensions, false);
+}
+
 } // namespace
 
 namespace ifcapi {
@@ -74,6 +88,47 @@ IfcUtil::IfcBaseClass* profile_add_parameterized_profile(
     const auto* declaration = file->schema()->declaration_by_name(ifc_class);
     auto* result = file->create(declaration);
     ifcapi::detail::write_string_attr(result, "ProfileType", profile_type);
+    return result;
+}
+
+IfcUtil::IfcBaseClass* profile_add_arbitrary_profile(
+    IfcParse::IfcFile* file,
+    const std::vector<std::vector<double>>& profile,
+    const char* name,
+    bool has_name)
+{
+    auto points = ifcapi::detail::convert_si_to_project_units(file, profile);
+    auto* curve = create_arbitrary_profile_curve(file, points);
+    auto* result = file->create(file->schema()->declaration_by_name("IfcArbitraryClosedProfileDef"));
+    ifcapi::detail::write_string_attr(result, "ProfileType", "AREA");
+    if (has_name) {
+        ifcapi::detail::write_string_attr(result, "ProfileName", name ? name : "");
+    }
+    ifcapi::detail::write_ref_attr(result, "OuterCurve", curve);
+    return result;
+}
+
+IfcUtil::IfcBaseClass* profile_add_arbitrary_profile_with_voids(
+    IfcParse::IfcFile* file,
+    const std::vector<std::vector<double>>& outer_profile,
+    const std::vector<std::vector<std::vector<double>>>& inner_profiles,
+    const char* name,
+    bool has_name)
+{
+    auto outer_points = ifcapi::detail::convert_si_to_project_units(file, outer_profile);
+    auto* outer_curve = create_arbitrary_profile_curve(file, outer_points, !is_ifc2x3(file));
+    std::vector<IfcUtil::IfcBaseClass*> inner_curves;
+    for (const auto& inner_profile : inner_profiles) {
+        auto inner_points = ifcapi::detail::convert_si_to_project_units(file, inner_profile);
+        inner_curves.push_back(create_arbitrary_profile_curve(file, inner_points));
+    }
+    auto* result = file->create(file->schema()->declaration_by_name("IfcArbitraryProfileDefWithVoids"));
+    ifcapi::detail::write_string_attr(result, "ProfileType", "AREA");
+    if (has_name) {
+        ifcapi::detail::write_string_attr(result, "ProfileName", name ? name : "");
+    }
+    ifcapi::detail::write_ref_attr(result, "OuterCurve", outer_curve);
+    ifcapi::detail::write_ref_aggregate(result, "InnerCurves", inner_curves);
     return result;
 }
 
