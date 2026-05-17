@@ -95,6 +95,13 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* geometry_connect_wall(
     IfcUtil::IfcBaseClass* owner_history,
     IfcUtil::IfcBaseClass* user,
     IfcUtil::IfcBaseClass* application);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* geometry_regenerate_wall_representation(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* wall,
+    double length,
+    double height,
+    double angle,
+    bool has_angle);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* geometry_add_window_representation(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* context,

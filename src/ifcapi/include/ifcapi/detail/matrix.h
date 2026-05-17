@@ -50,6 +50,14 @@ inline std::vector<double> transform_point_2d(const std::vector<double>& matrix,
     };
 }
 
+inline std::vector<double> transform_vector_3d(const std::vector<double>& matrix, const std::vector<double>& vector) {
+    return {
+        matrix[0] * vector[0] + matrix[1] * vector[1] + matrix[2] * vector[2],
+        matrix[4] * vector[0] + matrix[5] * vector[1] + matrix[6] * vector[2],
+        matrix[8] * vector[0] + matrix[9] * vector[1] + matrix[10] * vector[2],
+    };
+}
+
 } // namespace detail
 } // namespace ifcapi
 

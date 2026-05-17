@@ -548,6 +548,7 @@ discover:
         - geometry_disconnect_path
         - geometry_map_representation
         - geometry_profile_extents
+        - geometry_regenerate_wall_representation
         - geometry_remove_boolean
         - geometry_remove_representation
         - geometry_unassign_representation
@@ -698,6 +699,9 @@ discover:
               nullable: true
             related_element:
               nullable: true
+        geometry_regenerate_wall_representation:
+          returns:
+            nullable: true
         geometry_copy_representation:
           returns:
             nullable: true
@@ -1953,10 +1957,15 @@ discover:
         - structural_add_structural_load_case
         - structural_add_structural_load_group
         - structural_add_structural_member_connection
+        - structural_add_structural_boundary_condition
+        - structural_edit_structural_connection_cs
+        - structural_edit_structural_item_axis
         - structural_assign_to_building
         - structural_assign_product
         - structural_assign_structural_analysis_model
         - structural_remove_structural_analysis_model
+        - structural_remove_structural_boundary_condition
+        - structural_remove_structural_connection_condition
         - structural_remove_structural_load
         - structural_remove_structural_load_case
         - structural_remove_structural_load_group
@@ -2000,6 +2009,24 @@ discover:
           params:
             owner_history:
               nullable: true
+        structural_add_structural_boundary_condition:
+          returns:
+            nullable: true
+          params:
+            name:
+              nullable: true
+            connection:
+              nullable: true
+        structural_edit_structural_connection_cs:
+          params:
+            axis:
+              kind: double_list
+            ref_direction:
+              kind: double_list
+        structural_edit_structural_item_axis:
+          params:
+            axis:
+              kind: double_list
         structural_assign_to_building:
           returns:
             nullable: true
@@ -2027,6 +2054,12 @@ discover:
             user:
               nullable: true
             application:
+              nullable: true
+        structural_remove_structural_boundary_condition:
+          params:
+            connection:
+              nullable: true
+            boundary_condition:
               nullable: true
     - namespace: ifcapi::bindings
       translation_unit: api/system/system.cpp

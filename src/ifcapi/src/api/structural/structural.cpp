@@ -4,6 +4,7 @@
 #include "ifcapi/bindings/structural.h"
 
 #include "ifcopenshell_api_internal.hpp"
+#include "ifcapi/bindings/entity.h"
 #include "ifcapi/bindings/group.h"
 #include "ifcapi/bindings/root.h"
 #include "ifcapi/detail/attribute.h"
@@ -17,6 +18,29 @@ namespace {
 
 void set_error(const std::string& message) {
     ifcopenshell::capi::set_last_error(message);
+}
+
+size_t total_inverses(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* entity) {
+    if (!file || !entity || !entity->id()) return 0;
+    auto inverses = file->getInverse(entity->id(), nullptr, -1);
+    return inverses ? inverses->size() : 0;
+}
+
+IfcUtil::IfcBaseClass* create_direction(IfcParse::IfcFile* file, const std::vector<double>& ratios) {
+    if (ratios.size() != 3) {
+        throw std::runtime_error("Expected a 3D direction vector");
+    }
+    auto* direction = file->create(file->schema()->declaration_by_name("IfcDirection"));
+    ifcapi::detail::write_double_aggregate(direction, "DirectionRatios", ratios);
+    return direction;
+}
+
+IfcUtil::IfcBaseClass* create_condition_coordinate_system(IfcParse::IfcFile* file) {
+    auto* point = file->create(file->schema()->declaration_by_name("IfcCartesianPoint"));
+    ifcapi::detail::write_double_aggregate(point, "Coordinates", {0.0, 0.0, 0.0});
+    auto* placement = file->create(file->schema()->declaration_by_name("IfcAxis2Placement3D"));
+    ifcapi::detail::write_ref_attr(placement, "Location", point);
+    return placement;
 }
 
 } // namespace
@@ -215,6 +239,108 @@ IfcUtil::IfcBaseClass* structural_add_structural_member_connection(
     return rel;
 }
 
+IfcUtil::IfcBaseClass* structural_add_structural_boundary_condition(
+    IfcParse::IfcFile* file,
+    const char* name,
+    bool has_name,
+    IfcUtil::IfcBaseClass* connection,
+    const std::string& ifc_class)
+{
+    ifcopenshell_clear_error();
+    if (!file) {
+        set_error("Invalid arguments");
+        return nullptr;
+    }
+    try {
+        std::string boundary_class = ifc_class;
+        if (connection) {
+            auto* related_connection = connection;
+            if (connection->declaration().is("IfcRelConnectsStructuralMember")) {
+                related_connection = ifcapi::detail::read_ref_attr(connection, "RelatedStructuralConnection");
+            }
+            if (!related_connection) {
+                throw std::runtime_error("RelatedStructuralConnection is null or missing");
+            }
+            if (related_connection->declaration().is("IfcStructuralPointConnection")) {
+                boundary_class = "IfcBoundaryNodeCondition";
+            } else if (related_connection->declaration().is("IfcStructuralCurveConnection")) {
+                boundary_class = "IfcBoundaryEdgeCondition";
+            } else if (related_connection->declaration().is("IfcStructuralSurfaceConnection")) {
+                boundary_class = "IfcBoundaryFaceCondition";
+            } else {
+                throw std::runtime_error("Unsupported structural connection type");
+            }
+        }
+        auto* condition = file->create(file->schema()->declaration_by_name(boundary_class));
+        if (has_name) {
+            ifcapi::detail::write_string_attr(condition, "Name", name ? name : "");
+        }
+        if (connection) {
+            ifcapi::detail::write_ref_attr(connection, "AppliedCondition", condition);
+        }
+        return condition;
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
+void structural_edit_structural_connection_cs(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* structural_item,
+    const std::vector<double>& axis,
+    const std::vector<double>& ref_direction)
+{
+    ifcopenshell_clear_error();
+    if (!file || !structural_item) {
+        set_error("Invalid arguments");
+        return;
+    }
+    try {
+        if (!ifcapi::detail::entity_has_attr(structural_item, "ConditionCoordinateSystem")) {
+            throw std::runtime_error("Structural item has no ConditionCoordinateSystem attribute");
+        }
+        auto* ccs = ifcapi::detail::read_ref_attr(structural_item, "ConditionCoordinateSystem");
+        if (!ccs) {
+            ccs = create_condition_coordinate_system(file);
+            ifcapi::detail::write_ref_attr(structural_item, "ConditionCoordinateSystem", ccs);
+        }
+        if (auto* current_axis = ifcapi::detail::read_ref_attr(ccs, "Axis")) {
+            if (total_inverses(file, current_axis) == 1) file->removeEntity(current_axis);
+        }
+        ifcapi::detail::write_ref_attr(ccs, "Axis", create_direction(file, axis));
+        if (auto* current_ref_direction = ifcapi::detail::read_ref_attr(ccs, "RefDirection")) {
+            if (total_inverses(file, current_ref_direction) == 1) file->removeEntity(current_ref_direction);
+        }
+        ifcapi::detail::write_ref_attr(ccs, "RefDirection", create_direction(file, ref_direction));
+    } catch (const std::exception& e) {
+        set_error(e.what());
+    }
+}
+
+void structural_edit_structural_item_axis(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* structural_item,
+    const std::vector<double>& axis)
+{
+    ifcopenshell_clear_error();
+    if (!file || !structural_item) {
+        set_error("Invalid arguments");
+        return;
+    }
+    try {
+        if (!ifcapi::detail::entity_has_attr(structural_item, "Axis")) {
+            throw std::runtime_error("Structural item has no Axis attribute");
+        }
+        if (auto* current_axis = ifcapi::detail::read_ref_attr(structural_item, "Axis")) {
+            if (total_inverses(file, current_axis) == 1) file->removeEntity(current_axis);
+        }
+        ifcapi::detail::write_ref_attr(structural_item, "Axis", create_direction(file, axis));
+    } catch (const std::exception& e) {
+        set_error(e.what());
+    }
+}
+
 IfcUtil::IfcBaseClass* structural_assign_to_building(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* structural_analysis_model,
@@ -289,6 +415,67 @@ void structural_remove_structural_load_group(IfcParse::IfcFile* file, IfcUtil::I
         }
     }
     ifcapi::detail::remove_with_history(file, structural_load_group);
+}
+
+void structural_remove_structural_boundary_condition(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* connection,
+    IfcUtil::IfcBaseClass* boundary_condition)
+{
+    ifcopenshell_clear_error();
+    if (!file) return;
+    try {
+        if (connection) {
+            auto* applied_condition = ifcapi::detail::read_ref_attr(connection, "AppliedCondition");
+            if (!applied_condition) return;
+            if (total_inverses(file, applied_condition) == 1) {
+                file->removeEntity(applied_condition);
+            }
+            ifcapi::detail::write_ref_attr(connection, "AppliedCondition", nullptr);
+            return;
+        }
+        if (!boundary_condition) {
+            set_error("Either connection or boundary_condition must be provided.");
+            return;
+        }
+        std::vector<IfcUtil::IfcBaseClass*> inverses;
+        if (boundary_condition->id()) {
+            auto inverse_list = file->getInverse(boundary_condition->id(), nullptr, -1);
+            if (inverse_list) {
+                for (auto* inverse : *inverse_list) inverses.push_back(inverse);
+            }
+        }
+        for (auto* inverse : inverses) {
+            ifcapi::detail::write_ref_attr(inverse, "AppliedCondition", nullptr);
+        }
+        file->removeEntity(boundary_condition);
+    } catch (const std::exception& e) {
+        set_error(e.what());
+    }
+}
+
+void structural_remove_structural_connection_condition(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* relation)
+{
+    ifcopenshell_clear_error();
+    if (!file || !relation) {
+        set_error("Invalid arguments");
+        return;
+    }
+    try {
+        if (ifcapi::detail::read_ref_attr(relation, "AppliedCondition")) {
+            structural_remove_structural_boundary_condition(
+                file,
+                ifcapi::detail::read_ref_attr(relation, "RelatedStructuralConnection"),
+                nullptr);
+        }
+        auto* history = ifcapi::detail::read_ref_attr(relation, "OwnerHistory");
+        file->removeEntity(relation);
+        if (history) ifcapi::bindings::entity_remove_deep2(history);
+    } catch (const std::exception& e) {
+        set_error(e.what());
+    }
 }
 
 } // namespace bindings

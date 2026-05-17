@@ -18,6 +18,7 @@
 from typing import Optional
 
 import ifcopenshell
+from ifcopenshell.api.structural import _capi
 
 
 def remove_structural_boundary_condition(
@@ -32,18 +33,12 @@ def remove_structural_boundary_condition(
     :param boundary_condition: The IfcBoundaryCondition to remove.
     :return: None
     """
-
-    if connection:
-        # remove boundary condition from a connection
-        if not connection.AppliedCondition:
-            return
-        applied_condition = connection.AppliedCondition
-        if file.get_total_inverses(applied_condition) == 1:
-            file.remove(applied_condition)
-        connection.AppliedCondition = None
-    else:
+    if connection is None:
         assert boundary_condition, "Either connection or boundary_condition must be provided."
-        # remove the boundary condition
-        for conn in file.get_inverse(boundary_condition):
-            conn.AppliedCondition = None
-        file.remove(boundary_condition)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_structural_remove_structural_boundary_condition,
+        _capi.file_handle(file),
+        _capi.instance_handle(connection),
+        _capi.instance_handle(boundary_condition),
+    )

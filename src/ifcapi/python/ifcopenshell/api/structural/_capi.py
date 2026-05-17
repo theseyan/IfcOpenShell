@@ -18,10 +18,15 @@ _BIND_NAMES = (
     "ifcopenshell_ifcapi_structural_add_structural_load_case",
     "ifcopenshell_ifcapi_structural_add_structural_load_group",
     "ifcopenshell_ifcapi_structural_add_structural_member_connection",
+    "ifcopenshell_ifcapi_structural_add_structural_boundary_condition",
     "ifcopenshell_ifcapi_structural_assign_to_building",
     "ifcopenshell_ifcapi_structural_assign_product",
     "ifcopenshell_ifcapi_structural_assign_structural_analysis_model",
+    "ifcopenshell_ifcapi_structural_edit_structural_connection_cs",
+    "ifcopenshell_ifcapi_structural_edit_structural_item_axis",
     "ifcopenshell_ifcapi_structural_remove_structural_analysis_model",
+    "ifcopenshell_ifcapi_structural_remove_structural_boundary_condition",
+    "ifcopenshell_ifcapi_structural_remove_structural_connection_condition",
     "ifcopenshell_ifcapi_structural_remove_structural_load",
     "ifcopenshell_ifcapi_structural_remove_structural_load_case",
     "ifcopenshell_ifcapi_structural_remove_structural_load_group",
@@ -61,6 +66,10 @@ def instance_list(entities):
 
 def string(value: str) -> bytes:
     return _generated_capi.encode_string(value)
+
+
+def double_list(values):
+    return _generated_capi.make_double_list(values)
 
 
 def owner_history(file: ifcopenshell.file):

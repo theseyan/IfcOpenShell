@@ -14,6 +14,7 @@
 // onto related occurrences when a typed object is assigned.
 
 #include "ifcapi/ifcapi.h"
+#include "ifcapi/bindings/context.h"
 #include "ifcapi/bindings/entity.h"
 #include "ifcapi/bindings/element.h"
 #include "ifcapi/bindings/geometry.h"
@@ -29,6 +30,8 @@
 #include "ifcapi/detail/matrix.h"
 #include "ifcapi/detail/relationship.h"
 #include "ifcapi/detail/representation.h"
+#include "ifcapi/detail/shape_builder.h"
+#include "ifcapi/detail/vector.h"
 #include "guid.h"
 
 #include "ifcparse/IfcFile.h"
@@ -684,6 +687,696 @@ IfcUtil::IfcBaseClass* find_bbim_boolean_pset(IfcUtil::IfcBaseClass* element) {
     }
     return nullptr;
 }
+
+double read_double(IfcUtil::IfcBaseClass* entity, const char* attr, double fallback = 0.0) {
+    int idx = attr_index_of(entity, attr);
+    if (idx < 0) return fallback;
+    try {
+        auto value = entity->get_attribute_value(static_cast<size_t>(idx));
+        if (value.isNull()) return fallback;
+        return static_cast<double>(value);
+    } catch (...) {
+        return fallback;
+    }
+}
+
+int read_int(IfcUtil::IfcBaseClass* entity, const char* attr, int fallback = 0) {
+    int idx = attr_index_of(entity, attr);
+    if (idx < 0) return fallback;
+    try {
+        auto value = entity->get_attribute_value(static_cast<size_t>(idx));
+        if (value.isNull()) return fallback;
+        return static_cast<int>(value);
+    } catch (...) {
+        return fallback;
+    }
+}
+
+bool allclose(const std::vector<double>& a, const std::vector<double>& b, double rtol = 1e-5, double atol = 1e-8) {
+    if (a.size() != b.size()) return false;
+    for (size_t i = 0; i < a.size(); ++i) {
+        if (std::fabs(a[i] - b[i]) > atol + rtol * std::fabs(b[i])) return false;
+    }
+    return true;
+}
+
+std::vector<double> add2(const std::vector<double>& a, const std::vector<double>& b) {
+    return {a[0] + b[0], a[1] + b[1]};
+}
+
+std::vector<double> mul2(const std::vector<double>& a, double factor) {
+    return {a[0] * factor, a[1] * factor};
+}
+
+double intersect_x_or_throw(const std::vector<double>& p1, const std::vector<double>& p2, double y) {
+    double x = 0.0;
+    if (!ifcapi::detail::intersect_x_axis_2d(p1, p2, y, x)) {
+        throw std::runtime_error("Unable to intersect wall axes");
+    }
+    return x;
+}
+
+struct PrioritisedLayer {
+    int priority = 0;
+    double thickness = 0.0;
+};
+
+struct WallVectors {
+    std::vector<double> z = {0.0, 0.0, 1.0};
+    std::vector<double> y = {0.0, 1.0, 0.0};
+    double a = 0.0;
+    double d = 1.0;
+    double h = 1.0;
+};
+
+std::vector<PrioritisedLayer> get_wall_layers(IfcUtil::IfcBaseClass* wall) {
+    std::vector<PrioritisedLayer> result;
+    auto* material = ifcapi::bindings::element_get_material(wall, true, false);
+    if (!is_a(material, "IfcMaterialLayerSet")) return result;
+    for (auto* layer : read_ref_list(material, "MaterialLayers")) {
+        result.push_back({read_int(layer, "Priority", 0), read_double(layer, "LayerThickness", 0.0)});
+    }
+    return result;
+}
+
+std::vector<PrioritisedLayer> combine_wall_layers(
+    std::vector<PrioritisedLayer> layers,
+    const std::vector<int>& override_priorities)
+{
+    for (size_t i = 0; i < override_priorities.size() && i < layers.size(); ++i) {
+        layers[i].priority = override_priorities[i];
+    }
+    std::vector<PrioritisedLayer> result;
+    if (layers.empty()) return result;
+    result.push_back(layers.front());
+    for (size_t i = 1; i < layers.size(); ++i) {
+        const auto& layer = layers[i];
+        if (layer.thickness == 0.0) continue;
+        if (layer.priority == result.back().priority) {
+            result.back().thickness += layer.thickness;
+        } else {
+            result.push_back(layer);
+        }
+    }
+    return result;
+}
+
+std::vector<int> read_int_vector_attr(IfcUtil::IfcBaseClass* entity, const char* attr) {
+    int idx = attr_index_of(entity, attr);
+    if (idx < 0) return {};
+    try {
+        auto value = entity->get_attribute_value(static_cast<size_t>(idx));
+        if (value.isNull()) return {};
+        return static_cast<std::vector<int>>(value);
+    } catch (...) {
+        return {};
+    }
+}
+
+std::vector<std::vector<double>> get_reference_line_with_fallback(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* wall,
+    double fallback_length)
+{
+    if (auto* axis = ifcapi::bindings::representation_get_product_representation(
+            wall, nullptr, "Plan", "Axis", "GRAPH_VIEW")) {
+        if (auto* resolved = ifcapi::bindings::representation_resolve(axis)) {
+            for (auto* item : read_ref_list(resolved, "Items")) {
+                std::vector<double> p0, p1;
+                if (ifcapi::detail::read_curve_axis_points(item, p0, p1)) {
+                    if (p0[0] < p1[0]) return {{p0[0], p0[1]}, {p1[0], p1[1]}};
+                    return {{p1[0], p1[1]}, {p0[0], p0[1]}};
+                }
+            }
+        }
+    }
+    auto* definition = read_ref(wall, "Representation");
+    for (auto* representation : read_ref_list(definition, "Representations")) {
+        for (auto* item : read_ref_list(representation, "Items")) {
+            std::vector<IfcUtil::IfcBaseClass*> candidates = {item};
+            if (file && item) {
+                if (auto traversed = file->traverse(item, -1)) {
+                    candidates.assign(traversed->begin(), traversed->end());
+                }
+            }
+            for (auto* candidate : candidates) {
+                if (!is_a(candidate, "IfcExtrudedAreaSolid")) continue;
+                auto* profile = read_ref(candidate, "SweptArea");
+                auto* curve = read_ref(profile, "OuterCurve");
+                std::vector<double> x_values;
+                if (is_a(curve, "IfcPolyline")) {
+                    for (auto* point : read_ref_list(curve, "Points")) {
+                        auto coords = ifcapi::detail::read_double_aggregate(point, "Coordinates");
+                        if (!coords.empty()) x_values.push_back(coords[0]);
+                    }
+                } else if (is_a(curve, "IfcIndexedPolyCurve")) {
+                    auto* points = read_ref(curve, "Points");
+                    int idx = attr_index_of(points, "CoordList");
+                    if (idx >= 0) {
+                        try {
+                            auto value = points->get_attribute_value(static_cast<size_t>(idx));
+                            if (!value.isNull()) {
+                                for (const auto& coords : static_cast<std::vector<std::vector<double>>>(value)) {
+                                    if (!coords.empty()) x_values.push_back(coords[0]);
+                                }
+                            }
+                        } catch (...) {
+                        }
+                    }
+                }
+                if (!x_values.empty()) {
+                    auto bounds = std::minmax_element(x_values.begin(), x_values.end());
+                    return {{*bounds.first, 0.0}, {*bounds.second, 0.0}};
+                }
+            }
+        }
+    }
+    return {{0.0, 0.0}, {fallback_length, 0.0}};
+}
+
+struct WallRegenerator {
+    IfcParse::IfcFile* file = nullptr;
+    IfcUtil::IfcBaseClass* body = nullptr;
+    IfcUtil::IfcBaseClass* axis = nullptr;
+    double unit_scale = 1.0;
+    bool is_angled = false;
+    double fallback_length = 1.0;
+    double fallback_height = 1.0;
+    bool has_fallback_angle = false;
+    double fallback_angle = 0.0;
+    std::vector<double> reference_p1;
+    std::vector<double> reference_p2;
+    WallVectors wall_vectors;
+    std::vector<std::vector<double>> start_points;
+    std::vector<double> start_vector = {0.0, 0.0, 1.0};
+    double start_offset = 0.0;
+    std::vector<std::pair<std::vector<double>, std::vector<std::vector<double>>>> atpath_points;
+    std::vector<std::vector<std::vector<double>>> split_points;
+    std::vector<std::vector<std::vector<double>>> maxpath_points;
+    std::vector<std::vector<std::vector<double>>> minpath_points;
+    std::vector<std::vector<double>> end_points;
+    std::vector<double> end_vector = {0.0, 0.0, 1.0};
+    double end_offset = 0.0;
+
+    explicit WallRegenerator(IfcParse::IfcFile* f) : file(f) {
+        body = ifcapi::bindings::representation_get_context(file, "Model", "Body", "MODEL_VIEW");
+        axis = ifcapi::bindings::representation_get_context(file, "Plan", "Axis", "GRAPH_VIEW");
+        unit_scale = ifcapi::bindings::unit_calculate_unit_scale(file, "LENGTHUNIT");
+        if (!axis) {
+            auto* plan = ifcapi::bindings::representation_get_context(file, "Plan", nullptr, nullptr);
+            if (!plan) {
+                plan = ifcapi::bindings::context_add_context(file, "Plan", nullptr, nullptr, false, 0.0, nullptr);
+            }
+            axis = ifcapi::bindings::context_add_context(file, "Plan", "Axis", "GRAPH_VIEW", false, 0.0, plan);
+        }
+    }
+
+    WallVectors get_wall_vectors(IfcUtil::IfcBaseClass* wall) {
+        if (auto* body_rep = ifcapi::bindings::representation_get_product_representation(
+                wall, nullptr, "Model", "Body", "MODEL_VIEW")) {
+            if (auto* resolved = ifcapi::bindings::representation_resolve(body_rep)) {
+                for (auto* item : read_ref_list(resolved, "Items")) {
+                    while (is_a(item, "IfcBooleanResult")) {
+                        item = read_ref(item, "FirstOperand");
+                    }
+                    if (!is_a(item, "IfcExtrudedAreaSolid")) continue;
+                    auto z = ifcapi::detail::read_double_aggregate(read_ref(item, "ExtrudedDirection"), "DirectionRatios");
+                    z = ifcapi::detail::np_normalized(z);
+                    auto y = ifcapi::detail::vec_cross3(z, {1.0, 0.0, 0.0});
+                    const double d = read_double(item, "Depth", fallback_height);
+                    const double h = (z.size() > 2 ? z[2] : 0.0) * d;
+                    const double a = ifcapi::detail::np_angle_signed({0.0, 1.0}, {z.size() > 1 ? z[1] : 0.0, z.size() > 2 ? z[2] : 0.0});
+                    if (!ifcapi::detail::is_x(a, 0.0)) is_angled = true;
+                    return {z, y, a, d, h};
+                }
+            }
+        } else if (has_fallback_angle && fallback_angle != 0.0) {
+            const double a = fallback_angle;
+            std::vector<double> z = {0.0, std::sin(a), std::cos(a)};
+            auto y = ifcapi::detail::vec_cross3(z, {1.0, 0.0, 0.0});
+            const double h = fallback_height;
+            const double d = ifcapi::detail::vec_norm(ifcapi::detail::vec_mul(z, h / z[2]));
+            if (!ifcapi::detail::is_x(a, 0.0)) is_angled = true;
+            return {z, y, a, d, h};
+        }
+        return {{0.0, 0.0, 1.0}, {0.0, 1.0, 0.0}, 0.0, fallback_height, fallback_height};
+    }
+
+    std::vector<double> get_join_vector(const std::vector<double>& y1, const std::vector<double>& y2) {
+        auto result = ifcapi::detail::vec_cross3(y1, y2);
+        if (result[2] < 0.0) result = ifcapi::detail::vec_mul(result, -1.0);
+        return result;
+    }
+
+    std::vector<std::vector<std::vector<double>>> get_axes(
+        IfcUtil::IfcBaseClass* wall,
+        const std::vector<std::vector<double>>& reference,
+        const std::vector<PrioritisedLayer>& layers,
+        double angle)
+    {
+        std::vector<std::vector<std::vector<double>>> axes = {{reference[0], reference[1]}};
+        int sense_factor = 1;
+        auto* usage = ifcapi::bindings::element_get_material(wall, false, false);
+        if (is_a(usage, "IfcMaterialLayerSetUsage")) {
+            const double offset = read_double(usage, "OffsetFromReferenceLine", 0.0);
+            for (auto& point : axes[0]) point[1] += offset;
+            sense_factor = read_string(usage, "DirectionSense") == "NEGATIVE" ? -1 : 1;
+        }
+        for (const auto& layer : layers) {
+            const double y_offset = (layer.thickness * sense_factor) / std::cos(angle);
+            axes.push_back({add2(axes.back()[0], {0.0, y_offset}), add2(axes.back()[1], {0.0, y_offset})});
+        }
+        return axes;
+    }
+
+    std::vector<IfcUtil::IfcBaseClass*> get_manual_booleans(IfcUtil::IfcBaseClass* element) {
+        try {
+            auto* pset = find_bbim_boolean_pset(element);
+            if (!pset) return {};
+            std::vector<IfcUtil::IfcBaseClass*> result;
+            for (int id : parse_json_int_array(bbim_boolean_data(pset))) {
+                if (auto* boolean = file->instance_by_id(static_cast<unsigned>(id))) result.push_back(boolean);
+            }
+            return result;
+        } catch (...) {
+            return {};
+        }
+    }
+
+    void join(
+        IfcUtil::IfcBaseClass* wall1,
+        IfcUtil::IfcBaseClass* wall2,
+        std::vector<PrioritisedLayer> layers1,
+        std::vector<PrioritisedLayer> layers2,
+        const std::string& connection1,
+        const std::string& connection2)
+    {
+        if (connection1 == "NOTDEFINED" || connection2 == "NOTDEFINED") return;
+        if (connection1 == "ATPATH" && connection2 == "ATPATH") return;
+
+        auto reference1 = get_reference_line_with_fallback(file, wall1, fallback_length);
+        auto reference2 = get_reference_line_with_fallback(file, wall2, fallback_length);
+        auto wall_vectors2 = get_wall_vectors(wall2);
+        auto axes1 = get_axes(wall1, reference1, layers1, wall_vectors.a);
+        auto axes2 = get_axes(wall2, reference2, layers2, wall_vectors2.a);
+        auto matrix1i = ifcapi::detail::invert_rigid4(ifcapi::bindings::placement_get_local_placement(read_ref(wall1, "ObjectPlacement")));
+        auto matrix2 = ifcapi::bindings::placement_get_local_placement(read_ref(wall2, "ObjectPlacement"));
+        auto transform = ifcapi::detail::matmul4(matrix1i, matrix2);
+
+        for (auto& axis_pair : axes2) {
+            axis_pair[0] = ifcapi::detail::transform_point_2d(transform, axis_pair[0]);
+            axis_pair[1] = ifcapi::detail::transform_point_2d(transform, axis_pair[1]);
+        }
+        reference2[0] = ifcapi::detail::transform_point_2d(transform, reference2[0]);
+        reference2[1] = ifcapi::detail::transform_point_2d(transform, reference2[1]);
+        wall_vectors2.z = ifcapi::detail::transform_vector_3d(transform, wall_vectors2.z);
+        wall_vectors2.y = ifcapi::detail::transform_vector_3d(transform, wall_vectors2.y);
+
+        auto axis2 = axes2[0];
+        if (ifcapi::detail::is_x(axis2[0][1], axis2[1][1])) return;
+
+        if (connection1 == "ATEND") {
+            if (axes2[0][0][0] > axes2.back()[0][0]) {
+                std::reverse(axes2.begin(), axes2.end());
+                std::reverse(layers2.begin(), layers2.end());
+            }
+        } else if (connection1 == "ATSTART") {
+            if (axes2.back()[0][0] > axes2[0][0][0]) {
+                std::reverse(axes2.begin(), axes2.end());
+                std::reverse(layers2.begin(), layers2.end());
+            }
+        }
+
+        axis2 = axes2[0];
+        if (connection2 == "ATSTART") std::swap(axis2[0], axis2[1]);
+        if (axis2[0][1] < axis2[1][1]) {
+            if (axes1.back()[0][1] < axes1[0][0][1]) {
+                std::reverse(axes1.begin(), axes1.end());
+                std::reverse(layers1.begin(), layers1.end());
+            }
+        } else {
+            if (axes1[0][0][1] < axes1.back()[0][1]) {
+                std::reverse(axes1.begin(), axes1.end());
+                std::reverse(layers1.begin(), layers1.end());
+            }
+        }
+
+        if (connection1 == "ATPATH") {
+            const auto first_axis2 = axes2.front();
+            const auto last_axis2 = axes2.back();
+            const double first_y = axes1[0][0][1];
+            const double last_y = axes1.back()[0][1];
+            std::vector<double> p0 = {intersect_x_or_throw(first_axis2[0], first_axis2[1], first_y), first_y};
+            std::vector<double> pN = {intersect_x_or_throw(last_axis2[0], last_axis2[1], first_y), first_y};
+            std::vector<std::vector<double>> points = {p0};
+            size_t axis_index = 0;
+            for (const auto& layer2 : layers2) {
+                size_t y_index = 0;
+                double y = axes1[y_index++][0][1];
+                for (const auto& layer1 : layers1) {
+                    if (layer2.priority <= layer1.priority) break;
+                    y = axes1[y_index++][0][1];
+                }
+                std::vector<double> p1 = {intersect_x_or_throw(axes2[axis_index][0], axes2[axis_index][1], y), y};
+                ++axis_index;
+                std::vector<double> p2 = {intersect_x_or_throw(axes2[axis_index][0], axes2[axis_index][1], y), y};
+                if (!points.empty() && allclose(points.back(), p1)) points.back() = p2;
+                else {
+                    points.push_back(p1);
+                    points.push_back(p2);
+                }
+            }
+            if (!allclose(points.back(), pN)) points.push_back(pN);
+
+            const double split_a = first_y;
+            const double split_b = last_y;
+            std::vector<std::vector<double>> segment;
+            auto atpath_vector = get_join_vector(wall_vectors.y, wall_vectors2.y);
+            atpath_points.push_back({atpath_vector, points});
+            for (const auto& point : points) {
+                segment.push_back(point);
+                if (segment.size() == 1) continue;
+                if ((segment.front()[1] == split_a && segment.back()[1] == split_b) ||
+                    (segment.front()[1] == split_b && segment.back()[1] == split_a)) {
+                    if (segment.front()[1] > segment.back()[1]) std::reverse(segment.begin(), segment.end());
+                    split_points.push_back(segment);
+                    segment.clear();
+                } else if (segment.front()[1] == segment.back()[1]) {
+                    if (segment.front()[1] == maxy()) {
+                        if (segment.front()[0] > segment.back()[0]) std::reverse(segment.begin(), segment.end());
+                        maxpath_points.push_back(segment);
+                    } else if (segment.front()[1] == miny()) {
+                        if (segment.back()[0] > segment.front()[0]) std::reverse(segment.begin(), segment.end());
+                        minpath_points.push_back(segment);
+                    }
+                    segment.clear();
+                }
+            }
+        } else if (connection2 == "ATPATH") {
+            std::vector<std::vector<double>> points;
+            size_t y_index = 0;
+            double y = axes1[y_index++][0][1];
+            for (const auto& layer1 : layers1) {
+                size_t axis_index = 0;
+                for (const auto& layer2 : layers2) {
+                    if (layer1.priority <= layer2.priority) break;
+                    ++axis_index;
+                }
+                double x = intersect_x_or_throw(axes2[axis_index][0], axes2[axis_index][1], y);
+                std::vector<double> p1 = {x, y};
+                y = axes1[y_index++][0][1];
+                x = intersect_x_or_throw(axes2[axis_index][0], axes2[axis_index][1], y);
+                std::vector<double> p2 = {x, y};
+                if (!points.empty() && allclose(points.back(), p1)) points.push_back(p2);
+                else {
+                    points.push_back(p1);
+                    points.push_back(p2);
+                }
+            }
+            apply_terminal_join(connection1, points, reference1, reference2, wall_vectors2);
+        } else {
+            const double last_y = axes1.back()[0][1];
+            const auto last_axis2 = axes2.back();
+            size_t axis_index = 0;
+            size_t y_index = 0;
+            double y = axes1[y_index++][0][1];
+            double x = intersect_x_or_throw(axes2[axis_index][0], axes2[axis_index][1], y);
+            std::vector<std::vector<double>> points = {{x, y}};
+            size_t layer1_index = 0;
+            size_t layer2_index = 0;
+            while (layer1_index < layers1.size() && layer2_index < layers2.size()) {
+                if (layers1[layer1_index].priority > layers2[layer2_index].priority) {
+                    ++axis_index;
+                    x = intersect_x_or_throw(axes2[axis_index][0], axes2[axis_index][1], y);
+                    ++layer2_index;
+                } else if (layers2[layer2_index].priority > layers1[layer1_index].priority) {
+                    y = axes1[y_index++][0][1];
+                    x = intersect_x_or_throw(axes2[axis_index][0], axes2[axis_index][1], y);
+                    ++layer1_index;
+                } else {
+                    y = axes1[y_index++][0][1];
+                    ++axis_index;
+                    x = intersect_x_or_throw(axes2[axis_index][0], axes2[axis_index][1], y);
+                    ++layer1_index;
+                    ++layer2_index;
+                }
+                points.push_back({x, y});
+            }
+            if (points.back()[1] != last_y) {
+                points.push_back({intersect_x_or_throw(last_axis2[0], last_axis2[1], last_y), last_y});
+            }
+            apply_terminal_join(connection1, points, reference1, reference2, wall_vectors2);
+        }
+    }
+
+    double miny() const { return axes_miny; }
+    double maxy() const { return axes_maxy; }
+
+    void apply_terminal_join(
+        const std::string& connection1,
+        const std::vector<std::vector<double>>& points,
+        const std::vector<std::vector<double>>& reference1,
+        const std::vector<std::vector<double>>& reference2,
+        const WallVectors& wall_vectors2)
+    {
+        if (connection1 == "ATSTART") {
+            start_points = points;
+            start_vector = get_join_vector(wall_vectors.y, wall_vectors2.y);
+            start_offset = ifcapi::detail::vec_mul(start_vector, wall_vectors.h / start_vector[2])[0];
+            reference_p1[0] = intersect_x_or_throw(reference2[0], reference2[1], reference1[0][1]);
+        } else if (connection1 == "ATEND") {
+            end_points = points;
+            end_vector = get_join_vector(wall_vectors.y, wall_vectors2.y);
+            end_offset = ifcapi::detail::vec_mul(end_vector, wall_vectors.h / end_vector[2])[0];
+            reference_p2[0] = intersect_x_or_throw(reference2[0], reference2[1], reference1[0][1]);
+        }
+    }
+
+    double axes_miny = 0.0;
+    double axes_maxy = 0.0;
+
+    IfcUtil::IfcBaseClass* polyline(const std::vector<std::vector<double>>& points, bool closed, bool has_offset) {
+        return ifcapi::bindings::shape_builder_polyline(
+            file, points, closed, has_offset ? mul2(reference_p1, -1.0) : std::vector<double>{}, has_offset, {});
+    }
+
+    IfcUtil::IfcBaseClass* profile_from_points(const std::vector<std::vector<double>>& points, bool has_offset) {
+        return ifcapi::bindings::shape_builder_profile(
+            file,
+            polyline(points, true, has_offset),
+            nullptr,
+            {},
+            "AREA");
+    }
+
+    IfcUtil::IfcBaseClass* extrude(IfcUtil::IfcBaseClass* profile, double magnitude, const std::vector<double>& vector) {
+        return ifcapi::bindings::shape_builder_extrude(
+            file, profile, magnitude, {}, vector, vector, {1.0, 0.0, 0.0}, {}, false);
+    }
+
+    IfcUtil::IfcBaseClass* regenerate(IfcUtil::IfcBaseClass* wall, double length, double height, bool has_angle, double angle) {
+        fallback_length = length / unit_scale;
+        fallback_height = height / unit_scale;
+        has_fallback_angle = has_angle;
+        fallback_angle = angle;
+        auto layers = get_wall_layers(wall);
+        if (layers.empty()) return nullptr;
+        auto reference = get_reference_line_with_fallback(file, wall, fallback_length);
+        reference_p1 = reference[0];
+        reference_p2 = reference[1];
+        wall_vectors = get_wall_vectors(wall);
+        auto axes = get_axes(wall, reference, layers, wall_vectors.a);
+        axes_miny = axes[0][0][1];
+        axes_maxy = axes.back()[0][1];
+
+        auto manual_booleans = get_manual_booleans(wall);
+        for (auto* rel : inverse_refs(wall, "ConnectedTo")) {
+            if (!is_a(rel, "IfcRelConnectsPathElements")) continue;
+            auto* wall2 = read_ref(rel, "RelatedElement");
+            auto layers1 = combine_wall_layers(layers, read_int_vector_attr(rel, "RelatingPriorities"));
+            auto layers2 = combine_wall_layers(get_wall_layers(wall2), read_int_vector_attr(rel, "RelatedPriorities"));
+            if (!layers1.empty() && !layers2.empty()) join(wall, wall2, layers1, layers2, read_string(rel, "RelatingConnectionType"), read_string(rel, "RelatedConnectionType"));
+        }
+        for (auto* rel : inverse_refs(wall, "ConnectedFrom")) {
+            if (!is_a(rel, "IfcRelConnectsPathElements")) continue;
+            auto* wall2 = read_ref(rel, "RelatingElement");
+            auto layers1 = combine_wall_layers(layers, read_int_vector_attr(rel, "RelatedPriorities"));
+            auto layers2 = combine_wall_layers(get_wall_layers(wall2), read_int_vector_attr(rel, "RelatingPriorities"));
+            if (!layers1.empty() && !layers2.empty()) join(wall, wall2, layers1, layers2, read_string(rel, "RelatedConnectionType"), read_string(rel, "RelatingConnectionType"));
+        }
+
+        const double miny_value = axes[axes.size() - 2][0][1];
+        const double maxy_value = axes.back()[0][1];
+        if (start_points.empty()) {
+            const double minx = axes[0][0][0];
+            start_points = {{minx, axes[0][0][1]}, {minx, axes.back()[0][1]}};
+        }
+        if (end_points.empty()) {
+            const double maxx = axes[0][1][0];
+            end_points = {{maxx, axes[0][0][1]}, {maxx, axes.back()[0][1]}};
+        }
+        if (start_points.front()[1] > start_points.back()[1]) std::reverse(start_points.begin(), start_points.end());
+        if (end_points.front()[1] > end_points.back()[1]) std::reverse(end_points.begin(), end_points.end());
+
+        const bool has_offset = manual_booleans.empty();
+        IfcUtil::IfcBaseClass* item = nullptr;
+        if (is_angled) {
+            auto start = start_points;
+            auto end = end_points;
+            if (end_offset > 0.0) for (auto& point : end) point[0] += end_offset;
+            if (start_offset < 0.0) for (auto& point : start) point[0] += start_offset;
+            std::vector<std::vector<double>> points = start;
+            std::reverse(end.begin(), end.end());
+            points.insert(points.end(), end.begin(), end.end());
+            item = extrude(polyline(points, true, has_offset), wall_vectors.d, wall_vectors.z);
+
+            std::vector<const IfcUtil::IfcBaseClass*> operands;
+            add_angled_operand(operands, start_points, start_vector, start_offset, true, has_offset);
+            add_angled_operand(operands, end_points, end_vector, end_offset, false, has_offset);
+            for (const auto& atpath : atpath_points) {
+                if (atpath.second.size() <= 2) continue;
+                const double magnitude = ifcapi::detail::vec_norm(ifcapi::detail::vec_mul(atpath.first, wall_vectors.h / atpath.first[2]));
+                operands.push_back(extrude(polyline(atpath.second, true, has_offset), magnitude, atpath.first));
+            }
+            if (!operands.empty()) {
+                auto booleans = ifcapi::bindings::geometry_add_boolean(file, item, operands, "DIFFERENCE");
+                if (!booleans.empty()) item = booleans.back();
+            }
+        } else {
+            std::vector<IfcUtil::IfcBaseClass*> profiles;
+            const double minx = std::max_element(start_points.begin(), start_points.end(), [](const auto& a, const auto& b) { return a[0] < b[0]; })->at(0);
+            const double maxx = std::min_element(end_points.begin(), end_points.end(), [](const auto& a, const auto& b) { return a[0] < b[0]; })->at(0);
+            std::vector<std::vector<std::vector<double>>> ordered_splits;
+            std::sort(split_points.begin(), split_points.end(), [](const auto& a, const auto& b) { return a[0][0] < b[0][0]; });
+            for (const auto& points : split_points) {
+                bool outside = false;
+                for (const auto& point : points) {
+                    if (point[0] > maxx || point[0] < minx) outside = true;
+                }
+                if (!outside) ordered_splits.push_back(points);
+            }
+            ordered_splits.insert(ordered_splits.begin(), start_points);
+            ordered_splits.push_back(end_points);
+            if (maxy_value < miny_value) {
+                std::swap(maxpath_points, minpath_points);
+                if (!maxpath_points.empty()) std::reverse(maxpath_points[0].begin(), maxpath_points[0].end());
+                if (!minpath_points.empty()) std::reverse(minpath_points[0].begin(), minpath_points[0].end());
+            }
+            for (size_t i = 0; i + 1 < ordered_splits.size(); i += 2) {
+                auto points = ordered_splits[i];
+                const auto& end_split = ordered_splits[i + 1];
+                const double maxy_minx = points.back()[0];
+                const double maxy_maxx = end_split.back()[0];
+                const double miny_minx = points.front()[0];
+                const double miny_maxx = end_split.front()[0];
+                std::vector<std::vector<std::vector<double>>> remaining;
+                for (const auto& maxpath : maxpath_points) {
+                    if (maxpath.front()[0] > maxy_minx && maxpath.back()[0] < maxy_maxx) points.insert(points.end(), maxpath.begin(), maxpath.end());
+                    else remaining.push_back(maxpath);
+                }
+                maxpath_points = remaining;
+                points.insert(points.end(), end_split.rbegin(), end_split.rend());
+                remaining.clear();
+                for (const auto& minpath : minpath_points) {
+                    if (minpath.front()[0] < miny_maxx && minpath.back()[0] > miny_minx) points.insert(points.end(), minpath.begin(), minpath.end());
+                    else remaining.push_back(minpath);
+                }
+                minpath_points = remaining;
+                profiles.push_back(profile_from_points(points, has_offset));
+            }
+            for (const auto& points : maxpath_points) profiles.push_back(profile_from_points(points, has_offset));
+            for (const auto& points : minpath_points) profiles.push_back(profile_from_points(points, has_offset));
+            IfcUtil::IfcBaseClass* profile = nullptr;
+            if (profiles.size() > 1) {
+                profile = file->create(file->schema()->declaration_by_name("IfcCompositeProfileDef"));
+                write_string(profile, "ProfileType", "AREA");
+                write_ref_list(profile, "Profiles", profiles);
+            } else {
+                if (profiles.empty()) throw std::runtime_error("Unable to build wall profile");
+                profile = profiles.front();
+            }
+            item = extrude(profile, wall_vectors.d, wall_vectors.z);
+        }
+
+        for (auto* boolean : get_manual_booleans(wall)) {
+            write_ref(boolean, "FirstOperand", item);
+            item = boolean;
+        }
+
+        auto* body_rep = ifcapi::bindings::shape_builder_representation(file, body, {item}, nullptr);
+        if (auto* old_rep = ifcapi::bindings::representation_get_product_representation(wall, body, nullptr, nullptr, nullptr)) {
+            ifcapi::bindings::element_replace_element(old_rep, body_rep);
+            ifcapi::bindings::entity_remove_deep2(old_rep);
+        } else {
+            ifcapi::bindings::geometry_assign_representation(file, wall, body_rep);
+        }
+
+        auto* axis_curve = ifcapi::bindings::shape_builder_polyline(file, {reference_p1, reference_p2}, false, has_offset ? mul2(reference_p1, -1.0) : std::vector<double>{}, has_offset, {});
+        auto* axis_rep = ifcapi::bindings::shape_builder_representation(file, axis, {axis_curve}, nullptr);
+        if (auto* old_rep = ifcapi::bindings::representation_get_product_representation(wall, axis, nullptr, nullptr, nullptr)) {
+            ifcapi::bindings::element_replace_element(old_rep, axis_rep);
+            ifcapi::bindings::entity_remove_deep2(old_rep);
+        } else {
+            ifcapi::bindings::geometry_assign_representation(file, wall, axis_rep);
+        }
+
+        if (!allclose(reference_p1, {0.0, 0.0}) && manual_booleans.empty()) {
+            restore_wall_placement(wall);
+        }
+
+        return body_rep;
+    }
+
+    void add_angled_operand(
+        std::vector<const IfcUtil::IfcBaseClass*>& operands,
+        std::vector<std::vector<double>> points,
+        const std::vector<double>& vector,
+        double offset,
+        bool is_start,
+        bool has_offset)
+    {
+        if (allclose(vector, {0.0, 0.0, 1.0})) return;
+        while (points.size() > 1 && ifcapi::detail::is_x(points[0][1], points[1][1])) points.erase(points.begin());
+        while (points.size() > 1 && ifcapi::detail::is_x(points.back()[1], points[points.size() - 2][1])) points.pop_back();
+        const auto bounds = std::minmax_element(points.begin(), points.end(), [](const auto& a, const auto& b) { return a[0] < b[0]; });
+        const double newx = is_start ? bounds.first->at(0) - std::fabs(offset) : bounds.second->at(0) + std::fabs(offset);
+        auto p1 = points.back();
+        p1[0] = newx;
+        auto p2 = p1;
+        p2[1] = points.front()[1];
+        points.push_back(p1);
+        points.push_back(p2);
+        const double magnitude = ifcapi::detail::vec_norm(ifcapi::detail::vec_mul(vector, wall_vectors.h / vector[2]));
+        operands.push_back(extrude(polyline(points, true, has_offset), magnitude, vector));
+    }
+
+    void restore_wall_placement(IfcUtil::IfcBaseClass* wall) {
+        struct ChildPlacement {
+            std::vector<double> matrix;
+            std::vector<IfcUtil::IfcBaseClass*> elements;
+        };
+        std::vector<ChildPlacement> children;
+        auto* placement = read_ref(wall, "ObjectPlacement");
+        for (auto* referenced_placement : inverse_refs(placement, "ReferencedByPlacements")) {
+            children.push_back({
+                ifcapi::bindings::placement_get_local_placement(referenced_placement),
+                inverse_refs(referenced_placement, "PlacesObject"),
+            });
+        }
+        auto matrix = ifcapi::bindings::placement_get_local_placement(placement);
+        const double x = reference_p1[0];
+        const double y = reference_p1[1];
+        matrix[3] = matrix[0] * x + matrix[1] * y + matrix[3];
+        matrix[7] = matrix[4] * x + matrix[5] * y + matrix[7];
+        matrix[11] = matrix[8] * x + matrix[9] * y + matrix[11];
+        ifcapi::bindings::geometry_edit_object_placement(file, wall, matrix, false, true);
+        for (const auto& child : children) {
+            for (auto* element : child.elements) {
+                ifcapi::bindings::geometry_edit_object_placement(file, element, child.matrix, false, true);
+            }
+        }
+    }
+};
 
 void register_bbim_boolean(
     IfcParse::IfcFile* file,
@@ -1901,6 +2594,29 @@ IfcUtil::IfcBaseClass* geometry_assign_representation(
     try {
         assign_representation_impl(file, product, representation);
         return product;
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
+IfcUtil::IfcBaseClass* geometry_regenerate_wall_representation(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* wall,
+    double length,
+    double height,
+    double angle,
+    bool has_angle)
+{
+    ifcopenshell_clear_error();
+    if (!file || !wall) {
+        set_error("Invalid arguments");
+        return nullptr;
+    }
+
+    try {
+        WallRegenerator regenerator(file);
+        return regenerator.regenerate(wall, length, height, has_angle, angle);
     } catch (const std::exception& e) {
         set_error(e.what());
         return nullptr;

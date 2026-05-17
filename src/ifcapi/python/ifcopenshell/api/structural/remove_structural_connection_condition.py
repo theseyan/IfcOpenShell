@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.structural
-import ifcopenshell.util.element
+from ifcopenshell.api.structural import _capi
 
 
 def remove_structural_connection_condition(file: ifcopenshell.file, relation: ifcopenshell.entity_instance) -> None:
@@ -29,12 +28,9 @@ def remove_structural_connection_condition(file: ifcopenshell.file, relation: if
     :param relation: The IfcRelConnectsStructuralMember to remove.
     :return: None
     """
-    if relation.AppliedCondition:
-        ifcopenshell.api.structural.remove_structural_boundary_condition(
-            file,
-            connection=relation.RelatedStructuralConnection,
-        )
-    history = relation.OwnerHistory
-    file.remove(relation)
-    if history:
-        ifcopenshell.util.element.remove_deep2(file, history)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_structural_remove_structural_connection_condition,
+        _capi.file_handle(file),
+        _capi.instance_handle(relation),
+    )
