@@ -20,6 +20,8 @@ from typing import Any, Optional
 
 import ifcopenshell
 import ifcopenshell.api.pset
+from ifcopenshell.api import _relationship_capi
+from ifcopenshell.api.pset import _capi as pset_capi
 import ifcopenshell.util.element
 
 
@@ -82,36 +84,20 @@ def edit_georeferencing(
                 "Scale": 0.99956, # Ask your surveyor for your site's average combined scale factor!
             })
     """
-    if file.schema == "IFC2X3":
-        if not (project := file.by_type("IfcProject")):
-            return
-        project = project[0]
-        if projected_crs:
-            if crs := ifcopenshell.util.element.get_pset(project, "ePSet_ProjectedCRS"):
-                crs = file.by_id(crs["id"])
-                for k, v in projected_crs.items():
-                    if k == "Description":
-                        v = file.createIfcText(v)
-                    elif k == "Name":
-                        v = file.createIfcLabel(v)
-                    elif v is not None:
-                        v = file.createIfcIdentifier(v)
-                ifcopenshell.api.pset.edit_pset(file, crs, properties=projected_crs)
-        if coordinate_operation:
-            if conversion := ifcopenshell.util.element.get_pset(project, "ePSet_MapConversion"):
-                conversion = file.by_id(conversion["id"])
-                for k, v in coordinate_operation.items():
-                    if k in ("XAxisAbscissa", "XAxisOrdinate", "Scale"):
-                        v = file.createIfcReal(v)
-                    else:
-                        v = file.createIfcLengthMeasure(v)
-                ifcopenshell.api.pset.edit_pset(file, conversion, properties=coordinate_operation)
-        return
-    if projected_crs:
-        crs = file.by_type("IfcProjectedCRS")[0]
-        for name, value in projected_crs.items():
-            setattr(crs, name, value)
-    if coordinate_operation:
-        conversion = file.by_type("IfcCoordinateOperation")[0]
-        for name, value in coordinate_operation.items():
-            setattr(conversion, name, value)
+    has_coordinate_operation = bool(coordinate_operation)
+    has_projected_crs = bool(projected_crs)
+    coordinate_props = pset_capi.build_props(coordinate_operation or {})
+    projected_props = pset_capi.build_props(projected_crs or {})
+    try:
+        lib = _relationship_capi.get_lib()
+        _relationship_capi.call_status(
+            lib.ifcopenshell_ifcapi_georeference_edit_georeferencing,
+            _relationship_capi.file_handle(file),
+            has_coordinate_operation,
+            coordinate_props,
+            has_projected_crs,
+            projected_props,
+        )
+    finally:
+        pset_capi.free_props(coordinate_props)
+        pset_capi.free_props(projected_props)

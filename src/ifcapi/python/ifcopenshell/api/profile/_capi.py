@@ -16,6 +16,7 @@ _BIND_NAMES = (
     "ifcopenshell_ifcapi_profile_add_arbitrary_profile_with_voids",
     "ifcopenshell_ifcapi_profile_add_parameterized_profile",
     "ifcopenshell_ifcapi_profile_copy_profile",
+    "ifcopenshell_ifcapi_profile_edit_profile",
     "ifcopenshell_ifcapi_profile_remove_profile",
     "ifcopenshell_ifc_instance_destroy",
     "ifcopenshell_last_error_kind",
@@ -54,3 +55,10 @@ def double_list_list(values):
 
 def double_list_list_list(values):
     return _generated_capi.make_double_list_list_list(values)
+
+
+def call_status(fn, *args) -> None:
+    lib = get_lib()
+    _generated_capi.status_or_raise(lib, fn(*args), f"{fn.__name__} failed")
+    if _generated_capi.last_error_kind(lib) != _generated_capi.IFCOPENSHELL_ERROR_NONE:
+        _generated_capi.raise_last_error(lib, f"{fn.__name__} failed")

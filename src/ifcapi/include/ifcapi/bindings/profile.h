@@ -12,6 +12,8 @@
 #include <string>
 #include <vector>
 
+struct ifcopenshell_pset_props_t;
+
 namespace ifcapi {
 namespace bindings {
 
@@ -33,6 +35,9 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* profile_add_arbitrary_profile_with_voids(
 IFCAPI_BINDING IfcUtil::IfcBaseClass* profile_copy_profile(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* profile);
+IFCAPI_BINDING void profile_edit_profile(
+    IfcUtil::IfcBaseClass* profile,
+    ifcopenshell_pset_props_t* attributes);
 IFCAPI_BINDING void profile_remove_profile(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* profile);

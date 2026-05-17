@@ -7,7 +7,10 @@
 #include "ifcapi/bindings/shape_builder.h"
 #include "ifcapi/detail/attribute.h"
 #include "ifcapi/detail/copy.h"
+#include "ifcapi/detail/error.h"
 #include "ifcapi/detail/geometry.h"
+#include "../pset/attribute_props.hpp"
+#include "ifcopenshell_api_internal.hpp"
 
 #include "ifcparse/IfcFile.h"
 #include "ifcparse/IfcSchema.h"
@@ -146,6 +149,22 @@ IfcUtil::IfcBaseClass* profile_copy_profile(
         }
     }
     return new_profile;
+}
+
+void profile_edit_profile(
+    IfcUtil::IfcBaseClass* profile,
+    ifcopenshell_pset_props_t* attributes)
+{
+    ifcopenshell_clear_error();
+    if (!profile || !attributes) {
+        ifcapi::detail::set_error("Invalid arguments");
+        return;
+    }
+    try {
+        ifcapi::detail::apply_attribute_props(profile, attributes);
+    } catch (const std::exception& e) {
+        ifcapi::detail::set_error(e.what());
+    }
 }
 
 void profile_remove_profile(

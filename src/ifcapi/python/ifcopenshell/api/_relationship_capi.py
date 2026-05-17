@@ -36,6 +36,7 @@ _BIND_NAMES = (
     "ifcopenshell_ifcapi_drawing_assign_product",
     "ifcopenshell_ifcapi_drawing_unassign_product",
     "ifcopenshell_ifcapi_georeference_add_georeferencing",
+    "ifcopenshell_ifcapi_georeference_edit_georeferencing",
     "ifcopenshell_ifcapi_georeference_edit_true_north",
     "ifcopenshell_ifcapi_georeference_edit_wcs",
     "ifcopenshell_ifcapi_georeference_remove_georeferencing",

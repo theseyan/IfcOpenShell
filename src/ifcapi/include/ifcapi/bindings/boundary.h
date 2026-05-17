@@ -9,6 +9,7 @@
 #include "ifcparse/IfcFile.h"
 
 #include <string>
+#include <vector>
 
 namespace ifcapi {
 namespace bindings {
@@ -16,6 +17,15 @@ namespace bindings {
 IFCAPI_BINDING IfcUtil::IfcBaseClass* boundary_copy_boundary(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* boundary);
+IFCAPI_BINDING void boundary_assign_connection_geometry(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* rel_space_boundary,
+    const std::vector<std::vector<double>>& outer_boundary,
+    const std::vector<double>& location,
+    const std::vector<double>& axis,
+    const std::vector<double>& ref_direction,
+    const std::vector<std::vector<std::vector<double>>>& inner_boundaries,
+    double unit_scale);
 IFCAPI_BINDING void boundary_remove_boundary(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* boundary);

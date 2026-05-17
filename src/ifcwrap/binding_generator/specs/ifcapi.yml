@@ -1506,6 +1506,7 @@ discover:
         - profile_add_arbitrary_profile_with_voids
         - profile_add_parameterized_profile
         - profile_copy_profile
+        - profile_edit_profile
         - profile_remove_profile
       type_overrides:
         profile_add_arbitrary_profile:
@@ -1520,6 +1521,11 @@ discover:
           params:
             name:
               nullable: true
+        profile_edit_profile:
+          params:
+            attributes:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
     - namespace: ifcapi::bindings
       translation_unit: api/unit/unit.cpp
       include:
@@ -1682,10 +1688,23 @@ discover:
     - namespace: ifcapi::bindings
       translation_unit: api/boundary/boundary.cpp
       include:
+        - boundary_assign_connection_geometry
         - boundary_copy_boundary
         - boundary_edit_attributes
         - boundary_remove_boundary
       type_overrides:
+        boundary_assign_connection_geometry:
+          params:
+            outer_boundary:
+              kind: double_list_list
+            location:
+              kind: double_list
+            axis:
+              kind: double_list
+            ref_direction:
+              kind: double_list
+            inner_boundaries:
+              kind: double_list_list_list
         boundary_edit_attributes:
           params:
             parent_boundary:
@@ -1777,6 +1796,7 @@ discover:
       translation_unit: api/georeference/georeference.cpp
       include:
         - georeference_add_georeferencing
+        - georeference_edit_georeferencing
         - georeference_edit_true_north
         - georeference_edit_wcs
         - georeference_remove_georeferencing
@@ -1789,6 +1809,14 @@ discover:
               nullable: true
             application:
               nullable: true
+        georeference_edit_georeferencing:
+          params:
+            coordinate_operation:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+            projected_crs:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
     - namespace: ifcapi::bindings
       translation_unit: owner.cpp
       include:

@@ -12,6 +12,7 @@ from ifcopenshell.entity_instance import _generated_instance_handle_ptr
 
 _BOUND = False
 _BIND_NAMES = (
+    "ifcopenshell_ifcapi_boundary_assign_connection_geometry",
     "ifcopenshell_ifcapi_boundary_copy_boundary",
     "ifcopenshell_ifcapi_boundary_edit_attributes",
     "ifcopenshell_ifcapi_boundary_remove_boundary",
@@ -42,9 +43,23 @@ def string(value: str) -> bytes:
     return _generated_capi.encode_string(value)
 
 
+def double_list(values):
+    return _generated_capi.make_double_list(values)
+
+
+def double_list_list(values):
+    return _generated_capi.make_double_list_list(values)
+
+
+def double_list_list_list(values):
+    return _generated_capi.make_double_list_list_list(values)
+
+
 def call_status(fn, message: str, *args) -> None:
     lib = get_lib()
     _generated_capi.status_or_raise(lib, fn(*args), message)
+    if _generated_capi.last_error_kind(lib) != _generated_capi.IFCOPENSHELL_ERROR_NONE:
+        _generated_capi.raise_last_error(lib, message)
 
 
 def call_handle(file: ifcopenshell.file, fn, message: str, *args):
