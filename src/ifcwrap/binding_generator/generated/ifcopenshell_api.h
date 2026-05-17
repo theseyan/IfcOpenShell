@@ -773,6 +773,7 @@ bool ifcopenshell_ifcapi_profile_add_arbitrary_profile(ifcopenshell_ifc_file_t* 
 bool ifcopenshell_ifcapi_profile_add_arbitrary_profile_with_voids(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_list_t* outer_profile, const ifcopenshell_double_list_list_list_t* inner_profiles, const char* name, bool has_name, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_profile_add_parameterized_profile(ifcopenshell_ifc_file_t* file, const char* ifc_class, const char* profile_type, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_profile_copy_profile(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* profile, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_profile_edit_profile(ifcopenshell_ifc_instance_t* profile, void* attributes);
 bool ifcopenshell_ifcapi_profile_remove_profile(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* profile);
 bool ifcopenshell_ifcapi_unit_add_context_dependent_unit(ifcopenshell_ifc_file_t* file, const char* unit_type, const char* name, const ifcopenshell_int64_list_t* dimensions, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_unit_add_derived_unit(ifcopenshell_ifc_file_t* file, const char* unit_type, const char* userdefinedtype, const ifcopenshell_ifc_instance_list_t* units, const ifcopenshell_int64_list_t* exponents, ifcopenshell_ifc_instance_t** out_result);
@@ -796,6 +797,7 @@ bool ifcopenshell_ifcapi_selector_keys_is_regex(void* keys, size_t index, bool* 
 bool ifcopenshell_ifcapi_selector_parse_keys(const char* query, void** out_result);
 bool ifcopenshell_ifcapi_root_create_entity(ifcopenshell_ifc_file_t* file, const char* ifc_class, const char* predefined_type, const char* name, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_root_remove_product(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* product, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
+bool ifcopenshell_ifcapi_boundary_assign_connection_geometry(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* rel_space_boundary, const ifcopenshell_double_list_list_t* outer_boundary, const ifcopenshell_double_list_t* location, const ifcopenshell_double_list_t* axis, const ifcopenshell_double_list_t* ref_direction, const ifcopenshell_double_list_list_list_t* inner_boundaries, double unit_scale);
 bool ifcopenshell_ifcapi_boundary_copy_boundary(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* boundary, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_boundary_edit_attributes(ifcopenshell_ifc_instance_t* entity, ifcopenshell_ifc_instance_t* relating_space, ifcopenshell_ifc_instance_t* related_building_element, ifcopenshell_ifc_instance_t* parent_boundary, ifcopenshell_ifc_instance_t* corresponding_boundary, const char* physical_or_virtual, const char* internal_or_external);
 bool ifcopenshell_ifcapi_boundary_remove_boundary(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* boundary);
@@ -810,6 +812,7 @@ bool ifcopenshell_ifcapi_control_unassign_control(ifcopenshell_ifc_file_t* file,
 bool ifcopenshell_ifcapi_drawing_assign_product(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relating_product, ifcopenshell_ifc_instance_t* related_object, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_drawing_unassign_product(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relating_product, ifcopenshell_ifc_instance_t* related_object, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
 bool ifcopenshell_ifcapi_georeference_add_georeferencing(ifcopenshell_ifc_file_t* file, const char* ifc_class, const char* name, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
+bool ifcopenshell_ifcapi_georeference_edit_georeferencing(ifcopenshell_ifc_file_t* file, bool has_coordinate_operation, void* coordinate_operation, bool has_projected_crs, void* projected_crs);
 bool ifcopenshell_ifcapi_georeference_edit_true_north(ifcopenshell_ifc_file_t* file, bool has_true_north, double x, double y);
 bool ifcopenshell_ifcapi_georeference_edit_wcs(ifcopenshell_ifc_file_t* file, double x, double y, double z, double rotation, bool is_si);
 bool ifcopenshell_ifcapi_georeference_remove_georeferencing(ifcopenshell_ifc_file_t* file);

@@ -9,6 +9,7 @@
 #include "ifcapi/detail/error.h"
 #include "ifcapi/detail/pset.h"
 #include "ifcopenshell_api_internal.hpp"
+#include "../pset/attribute_props.hpp"
 
 #include "ifcparse/IfcSchema.h"
 
@@ -138,6 +139,29 @@ void remove_ifc2x3_georeferencing(IfcParse::IfcFile* file) {
     }
 }
 
+void edit_ifc2x3_georeferencing(
+    IfcParse::IfcFile* file,
+    bool has_coordinate_operation,
+    ifcopenshell_pset_props_t* coordinate_operation,
+    bool has_projected_crs,
+    ifcopenshell_pset_props_t* projected_crs)
+{
+    auto* project = ifcapi::detail::first_instance_by_type(file, "IfcProject");
+    if (!project) {
+        return;
+    }
+    if (has_projected_crs) {
+        if (auto* crs = ifcapi::detail::named_property_set(project, "ePSet_ProjectedCRS")) {
+            ifcapi::bindings::pset_edit_pset(file, crs, nullptr, projected_crs, nullptr, true);
+        }
+    }
+    if (has_coordinate_operation) {
+        if (auto* conversion = ifcapi::detail::named_property_set(project, "ePSet_MapConversion")) {
+            ifcapi::bindings::pset_edit_pset(file, conversion, nullptr, coordinate_operation, nullptr, true);
+        }
+    }
+}
+
 } // namespace
 
 namespace ifcapi {
@@ -239,6 +263,39 @@ void georeference_edit_true_north(IfcParse::IfcFile* file, bool has_true_north, 
                 ifcapi::detail::write_ref_attr(context, "TrueNorth", true_north);
             }
             ifcapi::detail::write_double_aggregate(true_north, "DirectionRatios", {x, y});
+        }
+    } catch (const std::exception& e) {
+        ifcapi::detail::set_error(e.what());
+    }
+}
+
+void georeference_edit_georeferencing(
+    IfcParse::IfcFile* file,
+    bool has_coordinate_operation,
+    ifcopenshell_pset_props_t* coordinate_operation,
+    bool has_projected_crs,
+    ifcopenshell_pset_props_t* projected_crs)
+{
+    ifcopenshell_clear_error();
+    try {
+        if (is_ifc2x3(file)) {
+            edit_ifc2x3_georeferencing(
+                file, has_coordinate_operation, coordinate_operation, has_projected_crs, projected_crs);
+            return;
+        }
+        if (has_projected_crs) {
+            auto crs_items = ifcapi::detail::instances_by_type(file, "IfcProjectedCRS");
+            if (crs_items.empty()) {
+                throw std::runtime_error("IfcProjectedCRS not found");
+            }
+            ifcapi::detail::apply_attribute_props(crs_items.front(), projected_crs);
+        }
+        if (has_coordinate_operation) {
+            auto conversion_items = ifcapi::detail::instances_by_type(file, "IfcCoordinateOperation");
+            if (conversion_items.empty()) {
+                throw std::runtime_error("IfcCoordinateOperation not found");
+            }
+            ifcapi::detail::apply_attribute_props(conversion_items.front(), coordinate_operation);
         }
     } catch (const std::exception& e) {
         ifcapi::detail::set_error(e.what());

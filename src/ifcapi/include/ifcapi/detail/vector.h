@@ -148,6 +148,22 @@ inline bool vec_allclose(const std::vector<double>& a, const std::vector<double>
     return true;
 }
 
+inline bool np_isclose(double a, double b) {
+    return std::abs(a - b) <= 1e-08 + 1e-05 * std::abs(b);
+}
+
+inline bool np_allclose(const std::vector<double>& a, const std::vector<double>& b) {
+    if (a.size() != b.size()) {
+        return false;
+    }
+    for (size_t i = 0; i < a.size(); ++i) {
+        if (!np_isclose(a[i], b[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
 inline std::vector<double> rotate_xy(const std::vector<double>& value, double angle) {
     const double c = std::cos(angle);
     const double s = std::sin(angle);

@@ -6,10 +6,12 @@
 #include "ifcapi/bindings/shape_builder.h"
 #include "ifcapi/detail/attribute.h"
 #include "ifcapi/detail/copy.h"
+#include "ifcapi/detail/geometry.h"
 #include "ifcapi/detail/relationship.h"
 #include "ifcopenshell_api_internal.hpp"
 
 #include <string>
+#include <vector>
 
 namespace {
 inline void set_error(const std::string& msg) { ifcopenshell::capi::set_last_error(msg); }
@@ -30,6 +32,48 @@ IfcUtil::IfcBaseClass* boundary_copy_boundary(IfcParse::IfcFile* file, IfcUtil::
     } catch (const std::exception& e) {
         set_error(e.what());
         return nullptr;
+    }
+}
+
+void boundary_assign_connection_geometry(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* rel_space_boundary,
+    const std::vector<std::vector<double>>& outer_boundary,
+    const std::vector<double>& location,
+    const std::vector<double>& axis,
+    const std::vector<double>& ref_direction,
+    const std::vector<std::vector<std::vector<double>>>& inner_boundaries,
+    double unit_scale)
+{
+    ifcopenshell_clear_error();
+    if (!file || !rel_space_boundary) {
+        set_error("Invalid arguments");
+        return;
+    }
+    try {
+        auto* outer_curve = ifcapi::detail::create_closed_polyline(file, outer_boundary, unit_scale);
+        std::vector<IfcUtil::IfcBaseClass*> inner_curves;
+        inner_curves.reserve(inner_boundaries.size());
+        for (const auto& boundary : inner_boundaries) {
+            inner_curves.push_back(ifcapi::detail::create_closed_polyline(file, boundary, unit_scale));
+        }
+
+        auto* curve_bounded_plane = file->create(file->schema()->declaration_by_name("IfcCurveBoundedPlane"));
+        auto* placement = ifcapi::detail::create_axis2_placement_3d(
+            file,
+            ifcapi::detail::scale_point_coordinates(location, unit_scale),
+            axis,
+            ref_direction);
+        ifcapi::detail::write_ref_attr(
+            curve_bounded_plane, "BasisSurface", ifcapi::detail::create_plane(file, placement));
+        ifcapi::detail::write_ref_attr(curve_bounded_plane, "OuterBoundary", outer_curve);
+        ifcapi::detail::write_ref_aggregate(curve_bounded_plane, "InnerBoundaries", inner_curves);
+
+        auto* connection_geometry = file->create(file->schema()->declaration_by_name("IfcConnectionSurfaceGeometry"));
+        ifcapi::detail::write_ref_attr(connection_geometry, "SurfaceOnRelatingElement", curve_bounded_plane);
+        ifcapi::detail::write_ref_attr(rel_space_boundary, "ConnectionGeometry", connection_geometry);
+    } catch (const std::exception& e) {
+        set_error(e.what());
     }
 }
 

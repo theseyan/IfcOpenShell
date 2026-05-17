@@ -11,6 +11,8 @@
 
 #include <string>
 
+struct ifcopenshell_pset_props_t;
+
 namespace ifcapi {
 namespace bindings {
 
@@ -23,6 +25,13 @@ IFCAPI_BINDING void georeference_add_georeferencing(
     IfcUtil::IfcBaseClass* application);
 
 IFCAPI_BINDING void georeference_edit_true_north(IfcParse::IfcFile* file, bool has_true_north, double x, double y);
+
+IFCAPI_BINDING void georeference_edit_georeferencing(
+    IfcParse::IfcFile* file,
+    bool has_coordinate_operation,
+    ifcopenshell_pset_props_t* coordinate_operation,
+    bool has_projected_crs,
+    ifcopenshell_pset_props_t* projected_crs);
 
 IFCAPI_BINDING void georeference_edit_wcs(
     IfcParse::IfcFile* file,

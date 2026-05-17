@@ -10195,6 +10195,24 @@ bool ifcopenshell_ifcapi_profile_copy_profile(ifcopenshell_ifc_file_t* file, ifc
     }
 }
 
+bool ifcopenshell_ifcapi_profile_edit_profile(ifcopenshell_ifc_instance_t* profile, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (profile == nullptr || profile->ptr == nullptr) { throw std::runtime_error("Handle parameter \"profile\" is invalid"); }
+    auto profile_cpp = profile->ptr;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::profile_edit_profile(profile_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_profile_remove_profile(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* profile) {
     try {
         ifcopenshell_clear_error();
@@ -10624,6 +10642,35 @@ bool ifcopenshell_ifcapi_root_remove_product(ifcopenshell_ifc_file_t* file, ifco
     }
 }
 
+bool ifcopenshell_ifcapi_boundary_assign_connection_geometry(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* rel_space_boundary, const ifcopenshell_double_list_list_t* outer_boundary, const ifcopenshell_double_list_t* location, const ifcopenshell_double_list_t* axis, const ifcopenshell_double_list_t* ref_direction, const ifcopenshell_double_list_list_list_t* inner_boundaries, double unit_scale) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (rel_space_boundary == nullptr || rel_space_boundary->ptr == nullptr) { throw std::runtime_error("Handle parameter \"rel_space_boundary\" is invalid"); }
+    auto rel_space_boundary_cpp = rel_space_boundary->ptr;
+    if (outer_boundary == nullptr) { throw std::runtime_error("Parameter \"outer_boundary\" must not be null"); }
+    auto outer_boundary_cpp = to_cpp_double_list_list(outer_boundary);
+    if (location == nullptr) { throw std::runtime_error("Parameter \"location\" must not be null"); }
+    auto location_cpp = to_cpp_double_list(location);
+    if (axis == nullptr) { throw std::runtime_error("Parameter \"axis\" must not be null"); }
+    auto axis_cpp = to_cpp_double_list(axis);
+    if (ref_direction == nullptr) { throw std::runtime_error("Parameter \"ref_direction\" must not be null"); }
+    auto ref_direction_cpp = to_cpp_double_list(ref_direction);
+    if (inner_boundaries == nullptr) { throw std::runtime_error("Parameter \"inner_boundaries\" must not be null"); }
+    auto inner_boundaries_cpp = to_cpp_double_list_list_list(inner_boundaries);
+    auto unit_scale_cpp = static_cast<double>(unit_scale);
+        ifcapi::bindings::boundary_assign_connection_geometry(file_cpp, rel_space_boundary_cpp, outer_boundary_cpp, location_cpp, axis_cpp, ref_direction_cpp, inner_boundaries_cpp, unit_scale_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_boundary_copy_boundary(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* boundary, ifcopenshell_ifc_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
@@ -10916,6 +10963,28 @@ bool ifcopenshell_ifcapi_georeference_add_georeferencing(ifcopenshell_ifc_file_t
     auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
     auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
         ifcapi::bindings::georeference_add_georeferencing(file_cpp, ifc_class_cpp, name_cpp, owner_history_cpp, user_cpp, application_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_georeference_edit_georeferencing(ifcopenshell_ifc_file_t* file, bool has_coordinate_operation, void* coordinate_operation, bool has_projected_crs, void* projected_crs) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    auto has_coordinate_operation_cpp = static_cast<bool>(has_coordinate_operation);
+    if (coordinate_operation == nullptr) { throw std::runtime_error("Parameter \"coordinate_operation\" must not be null"); }
+    auto coordinate_operation_cpp = static_cast<ifcopenshell_pset_props_t*>(coordinate_operation);
+    auto has_projected_crs_cpp = static_cast<bool>(has_projected_crs);
+    if (projected_crs == nullptr) { throw std::runtime_error("Parameter \"projected_crs\" must not be null"); }
+    auto projected_crs_cpp = static_cast<ifcopenshell_pset_props_t*>(projected_crs);
+        ifcapi::bindings::georeference_edit_georeferencing(file_cpp, has_coordinate_operation_cpp, coordinate_operation_cpp, has_projected_crs_cpp, projected_crs_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
