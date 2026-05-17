@@ -105,6 +105,28 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* geometry_add_window_representation(
     const std::vector<std::vector<double>>& panel_properties,
     IfcUtil::IfcBaseClass* part_of_product,
     double glass_thickness);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* geometry_add_door_representation(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* context,
+    double overall_height,
+    double overall_width,
+    const std::string& operation_type,
+    const std::vector<double>& lining_properties,
+    const std::vector<double>& panel_properties,
+    IfcUtil::IfcBaseClass* part_of_product,
+    double unit_scale);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* geometry_add_railing_representation(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* context,
+    const std::vector<std::vector<double>>& railing_path,
+    bool use_manual_supports,
+    double support_spacing,
+    double railing_diameter,
+    double clear_width,
+    const std::string& terminal_type,
+    double height,
+    bool looped_path,
+    double unit_scale);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* geometry_clip_solid(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* item,

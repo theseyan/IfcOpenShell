@@ -29,6 +29,8 @@ import ifcopenshell.util.unit
 from ifcopenshell.api.geometry.add_window_representation import create_ifc_window
 from ifcopenshell.util.shape_builder import ShapeBuilder, V
 
+from . import _capi
+
 DOOR_TYPE = Literal[
     "SINGLE_SWING_LEFT",
     "SINGLE_SWING_RIGHT",
@@ -41,6 +43,23 @@ DOOR_TYPE = Literal[
     "DOUBLE_DOOR_SLIDING",
 ]
 SUPPORTED_DOOR_TYPES = get_args(DOOR_TYPE)
+
+DOOR_LINING_PROPERTY_ORDER = (
+    "LiningDepth",
+    "LiningThickness",
+    "LiningOffset",
+    "LiningToPanelOffsetX",
+    "LiningToPanelOffsetY",
+    "TransomThickness",
+    "TransomOffset",
+    "CasingDepth",
+    "CasingThickness",
+    "ThresholdDepth",
+    "ThresholdThickness",
+    "ThresholdOffset",
+)
+
+DOOR_PANEL_PROPERTY_ORDER = ("PanelDepth", "PanelWidth", "FrameDepth", "FrameThickness")
 
 
 def mm(x: float) -> float:
@@ -252,6 +271,7 @@ def add_door_representation(
     # define unit_scale first as it's going to be used setting default arguments
     unit_scale = ifcopenshell.util.unit.calculate_unit_scale(file) if unit_scale is None else unit_scale
     settings: dict[str, Any] = {"unit_scale": unit_scale}
+    si_conversion = 1 / unit_scale
 
     if lining_properties is None:
         lining_properties = DoorLiningProperties()
@@ -270,16 +290,29 @@ def add_door_representation(
     settings.update(
         {
             "context": context,
-            "overall_height": overall_height if overall_height is not None else usecase.convert_si_to_unit(2.0),
-            "overall_width": overall_width if overall_width is not None else usecase.convert_si_to_unit(0.9),
+            "overall_height": overall_height if overall_height is not None else 2.0 * si_conversion,
+            "overall_width": overall_width if overall_width is not None else 0.9 * si_conversion,
             "operation_type": operation_type,
             "lining_properties": lining_properties,
             "panel_properties": panel_properties,
             "part_of_product": part_of_product,
         }
     )
-    usecase.settings = settings
-    return usecase.execute()
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_geometry_add_door_representation,
+        _capi.file_handle(file),
+        _capi.instance_handle(context),
+        settings["overall_height"],
+        settings["overall_width"],
+        _capi.string(operation_type),
+        _capi.double_list([lining_properties[name] for name in DOOR_LINING_PROPERTY_ORDER]),
+        _capi.double_list([panel_properties[name] for name in DOOR_PANEL_PROPERTY_ORDER]),
+        _capi.instance_handle(part_of_product),
+        unit_scale,
+        nullable=True,
+    )
 
 
 class Usecase:

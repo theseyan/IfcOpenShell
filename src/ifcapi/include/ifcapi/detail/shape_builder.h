@@ -93,6 +93,24 @@ inline IfcUtil::IfcBaseClass* extrude_y(
         false);
 }
 
+inline IfcUtil::IfcBaseClass* extrude_z(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* profile_or_curve,
+    double magnitude,
+    const std::vector<double>& position)
+{
+    return ifcapi::bindings::shape_builder_extrude(
+        file,
+        profile_or_curve,
+        magnitude,
+        position,
+        {0.0, 0.0, 1.0},
+        {0.0, 0.0, 1.0},
+        {1.0, 0.0, 0.0},
+        {},
+        false);
+}
+
 inline void translate_items(
     IfcParse::IfcFile* file,
     const std::vector<IfcUtil::IfcBaseClass*>& items,

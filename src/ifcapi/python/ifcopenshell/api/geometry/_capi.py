@@ -14,6 +14,7 @@ _BOUND = False
 _BIND_NAMES = (
     "ifcopenshell_ifcapi_geometry_add_boolean",
     "ifcopenshell_ifcapi_geometry_add_axis_representation",
+    "ifcopenshell_ifcapi_geometry_add_door_representation",
     "ifcopenshell_ifcapi_geometry_add_footprint_representation",
     "ifcopenshell_ifcapi_geometry_add_mesh_representation",
     "ifcopenshell_ifcapi_geometry_add_shape_aspect",
@@ -21,6 +22,7 @@ _BIND_NAMES = (
     "ifcopenshell_ifcapi_geometry_add_topology_representation",
     "ifcopenshell_ifcapi_geometry_add_wall_representation",
     "ifcopenshell_ifcapi_geometry_add_window_representation",
+    "ifcopenshell_ifcapi_geometry_add_railing_representation",
     "ifcopenshell_ifcapi_geometry_assign_representation",
     "ifcopenshell_ifcapi_geometry_clip_solid",
     "ifcopenshell_ifcapi_geometry_clip_solid_bounded",

@@ -7929,6 +7929,65 @@ bool ifcopenshell_ifcapi_geometry_add_window_representation(ifcopenshell_ifc_fil
     }
 }
 
+bool ifcopenshell_ifcapi_geometry_add_door_representation(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* context, double overall_height, double overall_width, const char* operation_type, const ifcopenshell_double_list_t* lining_properties, const ifcopenshell_double_list_t* panel_properties, ifcopenshell_ifc_instance_t* part_of_product, double unit_scale, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (context == nullptr || context->ptr == nullptr) { throw std::runtime_error("Handle parameter \"context\" is invalid"); }
+    auto context_cpp = context->ptr;
+    auto overall_height_cpp = static_cast<double>(overall_height);
+    auto overall_width_cpp = static_cast<double>(overall_width);
+    if (operation_type == nullptr) { throw std::runtime_error("Parameter \"operation_type\" must not be null"); }
+    std::string operation_type_cpp(operation_type);
+    if (lining_properties == nullptr) { throw std::runtime_error("Parameter \"lining_properties\" must not be null"); }
+    auto lining_properties_cpp = to_cpp_double_list(lining_properties);
+    if (panel_properties == nullptr) { throw std::runtime_error("Parameter \"panel_properties\" must not be null"); }
+    auto panel_properties_cpp = to_cpp_double_list(panel_properties);
+    auto part_of_product_cpp = (part_of_product != nullptr && part_of_product->ptr != nullptr) ? part_of_product->ptr : nullptr;
+    auto unit_scale_cpp = static_cast<double>(unit_scale);
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::geometry_add_door_representation(file_cpp, context_cpp, overall_height_cpp, overall_width_cpp, operation_type_cpp, lining_properties_cpp, panel_properties_cpp, part_of_product_cpp, unit_scale_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_geometry_add_railing_representation(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* context, const ifcopenshell_double_list_list_t* railing_path, bool use_manual_supports, double support_spacing, double railing_diameter, double clear_width, const char* terminal_type, double height, bool looped_path, double unit_scale, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (context == nullptr || context->ptr == nullptr) { throw std::runtime_error("Handle parameter \"context\" is invalid"); }
+    auto context_cpp = context->ptr;
+    if (railing_path == nullptr) { throw std::runtime_error("Parameter \"railing_path\" must not be null"); }
+    auto railing_path_cpp = to_cpp_double_list_list(railing_path);
+    auto use_manual_supports_cpp = static_cast<bool>(use_manual_supports);
+    auto support_spacing_cpp = static_cast<double>(support_spacing);
+    auto railing_diameter_cpp = static_cast<double>(railing_diameter);
+    auto clear_width_cpp = static_cast<double>(clear_width);
+    if (terminal_type == nullptr) { throw std::runtime_error("Parameter \"terminal_type\" must not be null"); }
+    std::string terminal_type_cpp(terminal_type);
+    auto height_cpp = static_cast<double>(height);
+    auto looped_path_cpp = static_cast<bool>(looped_path);
+    auto unit_scale_cpp = static_cast<double>(unit_scale);
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::geometry_add_railing_representation(file_cpp, context_cpp, railing_path_cpp, use_manual_supports_cpp, support_spacing_cpp, railing_diameter_cpp, clear_width_cpp, terminal_type_cpp, height_cpp, looped_path_cpp, unit_scale_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_shape_builder_axis2_placement_2d(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_t* position, const ifcopenshell_double_list_t* x_direction, bool has_x_direction, ifcopenshell_ifc_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();

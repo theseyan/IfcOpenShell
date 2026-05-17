@@ -766,6 +766,32 @@ discover:
             part_of_product:
               nullable: true
     - namespace: ifcapi::bindings
+      translation_unit: api/geometry/door.cpp
+      include:
+        - geometry_add_door_representation
+      type_overrides:
+        geometry_add_door_representation:
+          returns:
+            nullable: true
+          params:
+            lining_properties:
+              kind: double_list
+            panel_properties:
+              kind: double_list
+            part_of_product:
+              nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: api/geometry/railing.cpp
+      include:
+        - geometry_add_railing_representation
+      type_overrides:
+        geometry_add_railing_representation:
+          returns:
+            nullable: true
+          params:
+            railing_path:
+              kind: double_list_list
+    - namespace: ifcapi::bindings
       translation_unit: api/geometry/shape_builder.cpp
       include:
         - shape_builder_axis2_placement_2d
