@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 import ifcopenshell
+from ifcopenshell.api.structural import _capi
 from ifcopenshell.util.shape_builder import VectorType, ifc_safe_vector_type
 
 
@@ -31,6 +32,10 @@ def edit_structural_item_axis(
         Defaults to (0., 0., 1.).
     :return: None
     """
-    if file.get_total_inverses(axis_dir := structural_item.Axis) == 1:
-        file.remove(axis_dir)
-    structural_item.Axis = file.create_entity("IfcDirection", ifc_safe_vector_type(axis))
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_structural_edit_structural_item_axis,
+        _capi.file_handle(file),
+        _capi.instance_handle(structural_item),
+        _capi.double_list(ifc_safe_vector_type(axis)),
+    )

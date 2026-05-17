@@ -7738,6 +7738,29 @@ bool ifcopenshell_ifcapi_geometry_profile_extents(ifcopenshell_ifc_file_t* file,
     }
 }
 
+bool ifcopenshell_ifcapi_geometry_regenerate_wall_representation(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* wall, double length, double height, double angle, bool has_angle, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (wall == nullptr || wall->ptr == nullptr) { throw std::runtime_error("Handle parameter \"wall\" is invalid"); }
+    auto wall_cpp = wall->ptr;
+    auto length_cpp = static_cast<double>(length);
+    auto height_cpp = static_cast<double>(height);
+    auto angle_cpp = static_cast<double>(angle);
+    auto has_angle_cpp = static_cast<bool>(has_angle);
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::geometry_regenerate_wall_representation(file_cpp, wall_cpp, length_cpp, height_cpp, angle_cpp, has_angle_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_geometry_remove_boolean(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* item) {
     try {
         ifcopenshell_clear_error();
@@ -11884,6 +11907,28 @@ bool ifcopenshell_ifcapi_structural_add_structural_analysis_model(ifcopenshell_i
     }
 }
 
+bool ifcopenshell_ifcapi_structural_add_structural_boundary_condition(ifcopenshell_ifc_file_t* file, const char* name, bool has_name, ifcopenshell_ifc_instance_t* connection, const char* ifc_class, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    const char* name_str = name;
+    auto has_name_cpp = static_cast<bool>(has_name);
+    auto connection_cpp = (connection != nullptr && connection->ptr != nullptr) ? connection->ptr : nullptr;
+    if (ifc_class == nullptr) { throw std::runtime_error("Parameter \"ifc_class\" must not be null"); }
+    std::string ifc_class_cpp(ifc_class);
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::structural_add_structural_boundary_condition(file_cpp, name, has_name_cpp, connection_cpp, ifc_class_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_structural_add_structural_load(ifcopenshell_ifc_file_t* file, const char* ifc_class, const char* name, bool has_name, ifcopenshell_ifc_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
@@ -12043,6 +12088,48 @@ bool ifcopenshell_ifcapi_structural_assign_to_building(ifcopenshell_ifc_file_t* 
     }
 }
 
+bool ifcopenshell_ifcapi_structural_edit_structural_connection_cs(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* structural_item, const ifcopenshell_double_list_t* axis, const ifcopenshell_double_list_t* ref_direction) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (structural_item == nullptr || structural_item->ptr == nullptr) { throw std::runtime_error("Handle parameter \"structural_item\" is invalid"); }
+    auto structural_item_cpp = structural_item->ptr;
+    if (axis == nullptr) { throw std::runtime_error("Parameter \"axis\" must not be null"); }
+    auto axis_cpp = to_cpp_double_list(axis);
+    if (ref_direction == nullptr) { throw std::runtime_error("Parameter \"ref_direction\" must not be null"); }
+    auto ref_direction_cpp = to_cpp_double_list(ref_direction);
+        ifcapi::bindings::structural_edit_structural_connection_cs(file_cpp, structural_item_cpp, axis_cpp, ref_direction_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_structural_edit_structural_item_axis(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* structural_item, const ifcopenshell_double_list_t* axis) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (structural_item == nullptr || structural_item->ptr == nullptr) { throw std::runtime_error("Handle parameter \"structural_item\" is invalid"); }
+    auto structural_item_cpp = structural_item->ptr;
+    if (axis == nullptr) { throw std::runtime_error("Parameter \"axis\" must not be null"); }
+    auto axis_cpp = to_cpp_double_list(axis);
+        ifcapi::bindings::structural_edit_structural_item_axis(file_cpp, structural_item_cpp, axis_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_structural_remove_structural_analysis_model(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* structural_analysis_model) {
     try {
         ifcopenshell_clear_error();
@@ -12051,6 +12138,42 @@ bool ifcopenshell_ifcapi_structural_remove_structural_analysis_model(ifcopenshel
     if (structural_analysis_model == nullptr || structural_analysis_model->ptr == nullptr) { throw std::runtime_error("Handle parameter \"structural_analysis_model\" is invalid"); }
     auto structural_analysis_model_cpp = structural_analysis_model->ptr;
         ifcapi::bindings::structural_remove_structural_analysis_model(file_cpp, structural_analysis_model_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_structural_remove_structural_boundary_condition(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* connection, ifcopenshell_ifc_instance_t* boundary_condition) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    auto connection_cpp = (connection != nullptr && connection->ptr != nullptr) ? connection->ptr : nullptr;
+    auto boundary_condition_cpp = (boundary_condition != nullptr && boundary_condition->ptr != nullptr) ? boundary_condition->ptr : nullptr;
+        ifcapi::bindings::structural_remove_structural_boundary_condition(file_cpp, connection_cpp, boundary_condition_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_structural_remove_structural_connection_condition(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relation) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (relation == nullptr || relation->ptr == nullptr) { throw std::runtime_error("Handle parameter \"relation\" is invalid"); }
+    auto relation_cpp = relation->ptr;
+        ifcapi::bindings::structural_remove_structural_connection_condition(file_cpp, relation_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

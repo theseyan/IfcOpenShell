@@ -65,6 +65,21 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_add_structural_member_connectio
     IfcUtil::IfcBaseClass* relating_structural_member,
     IfcUtil::IfcBaseClass* related_structural_connection,
     IfcUtil::IfcBaseClass* owner_history);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_add_structural_boundary_condition(
+    IfcParse::IfcFile* file,
+    const char* name,
+    bool has_name,
+    IfcUtil::IfcBaseClass* connection,
+    const std::string& ifc_class);
+IFCAPI_BINDING void structural_edit_structural_connection_cs(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* structural_item,
+    const std::vector<double>& axis,
+    const std::vector<double>& ref_direction);
+IFCAPI_BINDING void structural_edit_structural_item_axis(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* structural_item,
+    const std::vector<double>& axis);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_assign_to_building(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* structural_analysis_model,
@@ -82,6 +97,13 @@ IFCAPI_BINDING void structural_remove_structural_load_case(
 IFCAPI_BINDING void structural_remove_structural_load_group(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* structural_load_group);
+IFCAPI_BINDING void structural_remove_structural_boundary_condition(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* connection,
+    IfcUtil::IfcBaseClass* boundary_condition);
+IFCAPI_BINDING void structural_remove_structural_connection_condition(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* relation);
 
 } // namespace bindings
 } // namespace ifcapi

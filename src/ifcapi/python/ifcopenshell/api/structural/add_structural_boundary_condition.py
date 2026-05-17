@@ -18,6 +18,7 @@
 from typing import Optional
 
 import ifcopenshell
+from ifcopenshell.api.structural import _capi
 
 
 def add_structural_boundary_condition(
@@ -48,23 +49,13 @@ def add_structural_boundary_condition(
 
         ifcopenshell.api.structural.add_structural_boundary_condition(model, connection=connection)
     """
-    if connection:
-        # assign boundary condition to a connection
-        if connection.is_a("IfcRelConnectsStructuralMember"):
-            related_connection = connection.RelatedStructuralConnection
-        else:
-            related_connection = connection
-
-        if related_connection.is_a("IfcStructuralPointConnection"):
-            boundary_class = "IfcBoundaryNodeCondition"
-        elif related_connection.is_a("IfcStructuralCurveConnection"):
-            boundary_class = "IfcBoundaryEdgeCondition"
-        elif related_connection.is_a("IfcStructuralSurfaceConnection"):
-            boundary_class = "IfcBoundaryFaceCondition"
-
-        condition = file.create_entity(boundary_class, Name=name)
-        connection.AppliedCondition = condition
-        return condition
-    else:
-        # add an orphan boundary condition
-        return file.create_entity(ifc_class, Name=name)
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_structural_add_structural_boundary_condition,
+        _capi.file_handle(file),
+        _capi.string(name) if name is not None else None,
+        name is not None,
+        _capi.instance_handle(connection),
+        _capi.string(ifc_class),
+    )
