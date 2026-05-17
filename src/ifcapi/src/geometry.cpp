@@ -15,11 +15,20 @@
 
 #include "ifcapi/ifcapi.h"
 #include "ifcapi/bindings/entity.h"
+#include "ifcapi/bindings/element.h"
 #include "ifcapi/bindings/geometry.h"
+#include "ifcapi/bindings/placement.h"
+#include "ifcapi/bindings/pset.h"
+#include "ifcapi/bindings/representation.h"
+#include "ifcapi/bindings/shape_builder.h"
 #include "ifcapi/bindings/type.h"
 #include "ifcapi/bindings/unit.h"
 #include "ifcapi/detail/attribute.h"
+#include "ifcapi/detail/copy.h"
+#include "ifcapi/detail/geometry.h"
+#include "ifcapi/detail/matrix.h"
 #include "ifcapi/detail/relationship.h"
+#include "ifcapi/detail/representation.h"
 #include "guid.h"
 
 #include "ifcparse/IfcFile.h"
@@ -29,10 +38,13 @@
 #include "ifcparse/ArgumentType.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
+#include <cctype>
 #include <limits>
 #include <memory>
 #include <set>
+#include <sstream>
 #include <string>
 #include <unordered_set>
 #include <unordered_map>
@@ -227,6 +239,125 @@ bool is_boolean_operand(IfcUtil::IfcBaseClass* item) {
         is_a(item, "IfcSolidModel") || is_a(item, "IfcTessellatedFaceSet");
 }
 
+std::string topology_representation_type(IfcUtil::IfcBaseClass* item) {
+    static const std::vector<std::pair<const char*, const char*>> type_map = {
+        {"IfcVertex", "Vertex"},
+        {"IfcVertexPoint", "Vertex"},
+        {"IfcEdge", "Edge"},
+        {"IfcOrientedEdge", "Edge"},
+        {"IfcEdgeCurve", "Edge"},
+        {"IfcEdgeLoop", "Edge"},
+        {"IfcPath", "Edge"},
+        {"IfcFace", "Face"},
+        {"IfcFaceSurface", "Face"},
+        {"IfcAdvancedFace", "Face"},
+        {"IfcClosedShell", "Face"},
+        {"IfcOpenShell", "Face"},
+        {"IfcConnectedFaceSet", "Face"},
+    };
+    for (const auto& entry : type_map) {
+        if (is_a(item, entry.first)) {
+            return entry.second;
+        }
+    }
+    return "Undefined";
+}
+
+template <typename Predicate>
+bool all_guess_items_are(const std::vector<IfcUtil::IfcBaseClass*>& items, Predicate predicate) {
+    return std::all_of(items.begin(), items.end(), [&](auto* item) { return item != nullptr && predicate(item); });
+}
+
+int read_dim_attr(IfcUtil::IfcBaseClass* item) {
+    int idx = attr_index_of(item, "Dim");
+    if (idx >= 0) {
+        try {
+            auto value = item->get_attribute_value(static_cast<size_t>(idx));
+            if (!value.isNull()) return static_cast<int>(value);
+        } catch (...) {
+        }
+    }
+    if (is_a(item, "IfcIndexedPolyCurve")) {
+        auto* points = read_ref(item, "Points");
+        if (is_a(points, "IfcCartesianPointList2D")) return 2;
+        if (is_a(points, "IfcCartesianPointList3D")) return 3;
+    }
+    if (is_a(item, "IfcPolyline")) {
+        auto points = read_ref_list(item, "Points");
+        if (!points.empty()) return static_cast<int>(ifcapi::detail::read_double_aggregate(points.front(), "Coordinates").size());
+    }
+    if (is_a(item, "IfcCompositeCurve")) {
+        auto segments = read_ref_list(item, "Segments");
+        if (!segments.empty()) return read_dim_attr(read_ref(segments.front(), "ParentCurve"));
+    }
+    if (is_a(item, "IfcTrimmedCurve") || is_a(item, "IfcOffsetCurve2D") || is_a(item, "IfcOffsetCurve3D")) {
+        return read_dim_attr(read_ref(item, "BasisCurve"));
+    }
+    return 0;
+}
+
+std::string guess_representation_type(const std::vector<IfcUtil::IfcBaseClass*>& items) {
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcMappedItem"); })) return "MappedRepresentation";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcPoint") || is_a(item, "IfcCartesianPointList"); })) return "Point";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcCartesianPointList3D"); })) return "PointCloud";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcCurve") && read_dim_attr(item) == 2; })) return "Curve2D";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcCurve") && read_dim_attr(item) == 3; })) return "Curve3D";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcCurve"); })) return "Curve";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcSegment"); })) return "Segment";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcSurface") && read_dim_attr(item) == 2; })) return "Surface2D";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcSurface") && read_dim_attr(item) == 3; })) return "Surface3D";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcSurface"); })) return "Surface";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcSectionedSurface"); })) return "SectionedSurface";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcAnnotationFillArea"); })) return "FillArea";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcTextLiteral"); })) return "Text";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcBSplineSurface"); })) return "AdvancedSurface";
+    if (all_guess_items_are(items, [](auto* item) {
+            return is_a(item, "IfcGeometricSet") || is_a(item, "IfcPoint") || is_a(item, "IfcCurve") ||
+                is_a(item, "IfcSurface");
+        })) return "GeometricSet";
+    if (all_guess_items_are(items, [](auto* item) {
+            if (is_a(item, "IfcGeometricCurveSet") || is_a(item, "IfcPoint") || is_a(item, "IfcCurve")) return true;
+            if (!is_a(item, "IfcGeometricSet")) return false;
+            return all_guess_items_are(read_ref_list(item, "Elements"), [](auto* element) { return is_a(element, "IfcSurface"); });
+        })) return "GeometricCurveSet";
+    if (all_guess_items_are(items, [](auto* item) {
+            return is_a(item, "IfcPoint") || is_a(item, "IfcCurve") || is_a(item, "IfcGeometricCurveSet") ||
+                is_a(item, "IfcAnnotationFillArea") || is_a(item, "IfcTextLiteral");
+        })) return "Annotation2D";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcTessellatedItem"); })) return "Tessellation";
+    if (all_guess_items_are(items, [](auto* item) {
+            return is_a(item, "IfcTessellatedItem") || is_a(item, "IfcShellBasedSurfaceModel") ||
+                is_a(item, "IfcFaceBasedSurfaceModel");
+        })) return "SurfaceModel";
+    if (all_guess_items_are(items, [](auto* item) {
+            return item && (item->declaration().name() == "IfcExtrudedAreaSolid" || item->declaration().name() == "IfcRevolvedAreaSolid");
+        })) return "SweptSolid";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcSolidModel"); })) return "SolidModel";
+    if (all_guess_items_are(items, [](auto* item) {
+            return is_a(item, "IfcTessellatedItem") || is_a(item, "IfcShellBasedSurfaceModel") ||
+                is_a(item, "IfcFaceBasedSurfaceModel") || is_a(item, "IfcSolidModel");
+        })) return "SurfaceOrSolidModel";
+    if (all_guess_items_are(items, [](auto* item) {
+            return is_a(item, "IfcSweptAreaSolid") || is_a(item, "IfcSweptDiskSolid") ||
+                is_a(item, "IfcSectionedSolidHorizontal");
+        })) return "AdvancedSweptSolid";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcCsgSolid") || is_a(item, "IfcBooleanClippingResult"); })) return "Clipping";
+    if (all_guess_items_are(items, [](auto* item) {
+            return is_a(item, "IfcBooleanResult") || is_a(item, "IfcCsgPrimitive3D") || is_a(item, "IfcCsgSolid");
+        })) return "CSG";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcFacetedBrep"); })) return "Brep";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcManifoldSolidBrep"); })) return "AdvancedBrep";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcBoundingBox"); })) return "BoundingBox";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcSectionedSpine"); })) return "SectionedSpine";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcLightSource"); })) return "LightSource";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcVertex"); })) return "Vertex";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcEdge"); })) return "Edge";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcPath"); })) return "Path";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcFace"); })) return "Face";
+    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcOpenShell"); })) return "Shell";
+    return "";
+}
+
 IfcUtil::IfcBaseClass* create_boolean_result(
     IfcParse::IfcFile* file,
     const std::string& operator_type,
@@ -308,6 +439,286 @@ IfcUtil::IfcBaseClass* make_axis2_placement_3d(IfcParse::IfcFile* file) {
     write_ref(p, "Axis",         make_direction(file, 0.0, 0.0, 1.0));
     write_ref(p, "RefDirection", make_direction(file, 1.0, 0.0, 0.0));
     return p;
+}
+
+bool allclose3(const std::vector<double>& value, const std::vector<double>& expected, double atol = 1e-2) {
+    if (value.size() != 3 || expected.size() != 3) return false;
+    for (size_t i = 0; i < 3; ++i) {
+        if (std::fabs(value[i] - expected[i]) > atol) return false;
+    }
+    return true;
+}
+
+std::vector<double> cross3(const std::vector<double>& a, const std::vector<double>& b) {
+    return {
+        a.at(1) * b.at(2) - a.at(2) * b.at(1),
+        a.at(2) * b.at(0) - a.at(0) * b.at(2),
+        a.at(0) * b.at(1) - a.at(1) * b.at(0),
+    };
+}
+
+void normalize_in_place(std::vector<double>& value) {
+    double length = std::sqrt(value.at(0) * value.at(0) + value.at(1) * value.at(1) + value.at(2) * value.at(2));
+    for (double& component : value) {
+        component /= length;
+    }
+}
+
+IfcUtil::IfcBaseClass* make_axis2_placement_3d(
+    IfcParse::IfcFile* file,
+    const std::vector<double>& location,
+    const std::vector<double>& axis,
+    const std::vector<double>& ref_direction)
+{
+    auto* placement = file->create(file->schema()->declaration_by_name("IfcAxis2Placement3D"));
+    write_ref(placement, "Location", ifcapi::detail::create_cartesian_point(file, location));
+    write_ref(placement, "Axis", make_direction(file, axis.at(0), axis.at(1), axis.at(2)));
+    write_ref(placement, "RefDirection", make_direction(file, ref_direction.at(0), ref_direction.at(1), ref_direction.at(2)));
+    return placement;
+}
+
+IfcUtil::IfcBaseClass* make_axis2_placement_3d_location_only(
+    IfcParse::IfcFile* file,
+    const std::vector<double>& location)
+{
+    auto* placement = file->create(file->schema()->declaration_by_name("IfcAxis2Placement3D"));
+    write_ref(placement, "Location", ifcapi::detail::create_cartesian_point(file, location));
+    return placement;
+}
+
+std::vector<double> clipping_x_axis(const std::vector<double>& normal) {
+    std::vector<double> arbitrary =
+        (allclose3(normal, {0.0, 0.0, 1.0}) || allclose3(normal, {0.0, 0.0, -1.0}))
+            ? std::vector<double>{0.0, 1.0, 0.0}
+            : std::vector<double>{0.0, 0.0, 1.0};
+    auto result = cross3(normal, arbitrary);
+    normalize_in_place(result);
+    return result;
+}
+
+IfcUtil::IfcBaseClass* make_clipping_plane(
+    IfcParse::IfcFile* file,
+    const std::vector<double>& location,
+    const std::vector<double>& normal,
+    double unit_scale)
+{
+    auto scaled_location = location;
+    for (auto& coordinate : scaled_location) coordinate /= unit_scale;
+    auto* plane = file->create(file->schema()->declaration_by_name("IfcPlane"));
+    write_ref(plane, "Position", make_axis2_placement_3d(file, scaled_location, normal, clipping_x_axis(normal)));
+    return plane;
+}
+
+IfcUtil::IfcBaseClass* make_clipping_result(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* first_operand,
+    const std::vector<double>& location,
+    const std::vector<double>& normal,
+    double unit_scale)
+{
+    auto* half_space = file->create(file->schema()->declaration_by_name("IfcHalfSpaceSolid"));
+    write_ref(half_space, "BaseSurface", make_clipping_plane(file, location, normal, unit_scale));
+    write_bool(half_space, "AgreementFlag", false);
+
+    auto* result = file->create(file->schema()->declaration_by_name("IfcBooleanClippingResult"));
+    write_string(result, "Operator", "DIFFERENCE");
+    write_ref(result, "FirstOperand", first_operand);
+    write_ref(result, "SecondOperand", half_space);
+    return result;
+}
+
+IfcUtil::IfcBaseClass* copy_boolean_clipping(
+    IfcParse::IfcFile* file,
+    const IfcUtil::IfcBaseClass* clipping,
+    IfcUtil::IfcBaseClass* first_operand)
+{
+    auto* copy = ifcapi::detail::copy_single(file, const_cast<IfcUtil::IfcBaseClass*>(clipping));
+    if (!copy) throw std::runtime_error("Unable to copy clipping entity");
+    write_ref(copy, "FirstOperand", first_operand);
+    return copy;
+}
+
+IfcUtil::IfcBaseClass* apply_ordered_clippings(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* first_operand,
+    const std::vector<int32_t>& clipping_kinds,
+    const std::vector<std::vector<double>>& clipping_locations,
+    const std::vector<std::vector<double>>& clipping_normals,
+    const std::vector<const IfcUtil::IfcBaseClass*>& clipping_entities,
+    double unit_scale)
+{
+    size_t plane_cursor = clipping_locations.size();
+    size_t entity_cursor = clipping_entities.size();
+    if (clipping_locations.size() != clipping_normals.size()) {
+        throw std::runtime_error("Clipping location/normal count mismatch");
+    }
+    for (auto it = clipping_kinds.rbegin(); it != clipping_kinds.rend(); ++it) {
+        if (*it == 0) {
+            if (plane_cursor == 0) throw std::runtime_error("Missing clipping plane data");
+            --plane_cursor;
+            first_operand = make_clipping_result(
+                file, first_operand, clipping_locations[plane_cursor], clipping_normals[plane_cursor], unit_scale);
+        } else if (*it == 1) {
+            if (entity_cursor == 0) throw std::runtime_error("Missing clipping entity data");
+            --entity_cursor;
+            first_operand = copy_boolean_clipping(file, clipping_entities[entity_cursor], first_operand);
+        } else {
+            throw std::runtime_error("Unknown clipping kind");
+        }
+    }
+    if (plane_cursor != 0 || entity_cursor != 0) {
+        throw std::runtime_error("Unused clipping data");
+    }
+    return first_operand;
+}
+
+IfcUtil::IfcBaseClass* make_closed_profile(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* curve) {
+    auto* profile = file->create(file->schema()->declaration_by_name("IfcArbitraryClosedProfileDef"));
+    write_string(profile, "ProfileType", "AREA");
+    write_ref(profile, "OuterCurve", curve);
+    return profile;
+}
+
+IfcUtil::IfcBaseClass* make_shape_representation(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* context,
+    const std::string& representation_type,
+    IfcUtil::IfcBaseClass* item)
+{
+    auto* representation = file->create(file->schema()->declaration_by_name("IfcShapeRepresentation"));
+    write_ref(representation, "ContextOfItems", context);
+    ifcapi::detail::copy_string_attr_preserving_null(representation, "RepresentationIdentifier", context, "ContextIdentifier");
+    write_string(representation, "RepresentationType", representation_type);
+    write_ref_list(representation, "Items", {item});
+    return representation;
+}
+
+IfcUtil::IfcBaseClass* make_axis2_placement_3d_optional(
+    IfcParse::IfcFile* file,
+    const std::vector<double>& location)
+{
+    return make_axis2_placement_3d(file, location, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0});
+}
+
+std::vector<int> parse_json_int_array(const std::string& json) {
+    std::vector<int> result;
+    size_t i = 0;
+    auto skip_ws = [&]() {
+        while (i < json.size() && std::isspace(static_cast<unsigned char>(json[i]))) ++i;
+    };
+    skip_ws();
+    if (i >= json.size() || json[i++] != '[') throw std::runtime_error("Expected JSON array");
+    skip_ws();
+    if (i < json.size() && json[i] == ']') {
+        ++i;
+        skip_ws();
+        if (i != json.size()) throw std::runtime_error("Unexpected trailing JSON data");
+        return result;
+    }
+    while (i < json.size()) {
+        skip_ws();
+        size_t start = i;
+        if (i < json.size() && json[i] == '-') ++i;
+        if (i >= json.size() || !std::isdigit(static_cast<unsigned char>(json[i]))) {
+            throw std::runtime_error("Expected integer in JSON array");
+        }
+        while (i < json.size() && std::isdigit(static_cast<unsigned char>(json[i]))) ++i;
+        result.push_back(std::stoi(json.substr(start, i - start)));
+        skip_ws();
+        if (i < json.size() && json[i] == ',') {
+            ++i;
+            continue;
+        }
+        if (i < json.size() && json[i] == ']') {
+            ++i;
+            break;
+        }
+        throw std::runtime_error("Expected comma or closing bracket in JSON array");
+    }
+    skip_ws();
+    if (i != json.size()) throw std::runtime_error("Unexpected trailing JSON data");
+    return result;
+}
+
+std::string dump_json_int_array(const std::vector<int>& values) {
+    std::ostringstream out;
+    out << "[";
+    for (size_t i = 0; i < values.size(); ++i) {
+        if (i) out << ", ";
+        out << values[i];
+    }
+    out << "]";
+    return out.str();
+}
+
+std::string read_property_single_value_string(IfcUtil::IfcBaseClass* property) {
+    auto* value = read_ref(property, "NominalValue");
+    if (!value) throw std::runtime_error("BBIM_Boolean Data property has no NominalValue");
+    try {
+        auto wrapped = value->get_attribute_value(0);
+        if (wrapped.isNull()) throw std::runtime_error("BBIM_Boolean Data property has null NominalValue");
+        return static_cast<std::string>(wrapped);
+    } catch (const std::exception&) {
+        throw;
+    } catch (...) {
+        throw std::runtime_error("BBIM_Boolean Data property is not a string value");
+    }
+}
+
+std::string bbim_boolean_data(IfcUtil::IfcBaseClass* pset) {
+    for (auto* prop : read_ref_list(pset, "HasProperties")) {
+        if (prop && is_a(prop, "IfcPropertySingleValue") && read_string(prop, "Name") == "Data") {
+            return read_property_single_value_string(prop);
+        }
+    }
+    throw std::runtime_error("BBIM_Boolean pset has no Data property");
+}
+
+IfcUtil::IfcBaseClass* find_bbim_boolean_pset(IfcUtil::IfcBaseClass* element) {
+    auto psets = ifcapi::bindings::element_get_pset_ids(element, true, false, true);
+    if (!psets) return nullptr;
+    for (auto* pset : *psets) {
+        if (pset && is_a(pset, "IfcPropertySet") && read_string(pset, "Name") == "BBIM_Boolean") {
+            return pset;
+        }
+    }
+    return nullptr;
+}
+
+void register_bbim_boolean(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* element,
+    IfcUtil::IfcBaseClass* result,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    if (!element) return;
+    auto* pset = find_bbim_boolean_pset(element);
+    std::vector<int> ids;
+    if (pset) {
+        ids = parse_json_int_array(bbim_boolean_data(pset));
+    } else {
+        pset = ifcapi::bindings::pset_add_pset(file, element, "BBIM_Boolean", owner_history, user, application, nullptr);
+        if (!pset) throw std::runtime_error("Unable to create BBIM_Boolean pset");
+    }
+    int result_id = static_cast<int>(result->id());
+    if (std::find(ids.begin(), ids.end(), result_id) == ids.end()) {
+        ids.push_back(result_id);
+    }
+
+    auto* props = ifcapi::bindings::pset_props_new();
+    if (!props) throw std::runtime_error("Unable to create pset property container");
+    try {
+        ifcapi::bindings::pset_props_set_string(props, "Data", dump_json_int_array(ids));
+        if (!ifcapi::bindings::pset_edit_pset(file, pset, nullptr, props, nullptr, true)) {
+            throw std::runtime_error("pset_edit_pset failed");
+        }
+        ifcapi::bindings::pset_props_free(props);
+    } catch (...) {
+        ifcapi::bindings::pset_props_free(props);
+        throw;
+    }
 }
 
 IfcUtil::IfcBaseClass* make_cartesian_transformation_op_3d(IfcParse::IfcFile* file) {
@@ -803,6 +1214,110 @@ std::vector<IfcUtil::IfcBaseClass*> geometry_add_boolean(
     }
 }
 
+IfcUtil::IfcBaseClass* geometry_add_axis_representation(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* context,
+    const std::vector<std::vector<double>>& axis)
+{
+    ifcopenshell_clear_error();
+    if (!file || !context) {
+        set_error("Invalid arguments");
+        return nullptr;
+    }
+
+    try {
+        size_t dimensions = axis.at(0).size();
+        auto points = ifcapi::detail::convert_si_to_project_units(file, axis);
+        auto* curve = ifcapi::detail::create_polyline_or_indexed_polycurve(file, points, dimensions);
+        auto* representation = file->create(file->schema()->declaration_by_name("IfcShapeRepresentation"));
+        write_ref(representation, "ContextOfItems", context);
+        write_string(representation, "RepresentationIdentifier", read_string(context, "ContextIdentifier"));
+        write_string(representation, "RepresentationType", dimensions == 2 ? "Curve2D" : "Curve3D");
+        write_ref_list(representation, "Items", {curve});
+        return representation;
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
+IfcUtil::IfcBaseClass* geometry_add_footprint_representation(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* context,
+    const std::vector<const IfcUtil::IfcBaseClass*>& curves)
+{
+    ifcopenshell_clear_error();
+    if (!file || !context) {
+        set_error("Invalid arguments");
+        return nullptr;
+    }
+
+    try {
+        auto* curve_set = file->create(file->schema()->declaration_by_name("IfcGeometricCurveSet"));
+        write_ref_list(curve_set, "Elements", ifcapi::detail::to_mutable_refs(curves));
+
+        auto* representation = file->create(file->schema()->declaration_by_name("IfcShapeRepresentation"));
+        write_ref(representation, "ContextOfItems", context);
+        write_string(representation, "RepresentationIdentifier", read_string(context, "ContextIdentifier"));
+        write_string(representation, "RepresentationType", "GeometricCurveSet");
+        write_ref_list(representation, "Items", {curve_set});
+        return representation;
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
+IfcUtil::IfcBaseClass* geometry_add_mesh_representation(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* context,
+    const std::vector<std::vector<std::vector<double>>>& vertices,
+    const std::vector<std::vector<std::vector<std::vector<int>>>>& faces,
+    bool force_faceted_brep)
+{
+    ifcopenshell_clear_error();
+    if (!file || !context) {
+        set_error("Invalid arguments");
+        return nullptr;
+    }
+
+    try {
+        if (vertices.size() != faces.size()) {
+            throw std::invalid_argument("vertices and faces item counts must match");
+        }
+
+        const bool use_faceted_brep = force_faceted_brep || file->schema()->name() == "IFC2X3";
+        std::vector<IfcUtil::IfcBaseClass*> items;
+        items.reserve(vertices.size());
+        for (size_t i = 0; i < vertices.size(); ++i) {
+            if (use_faceted_brep) {
+                std::vector<std::vector<int>> brep_faces;
+                brep_faces.reserve(faces[i].size());
+                for (const auto& face : faces[i]) {
+                    if (face.size() != 1) {
+                        throw std::invalid_argument("IfcFacetedBrep mesh faces cannot contain inner loops");
+                    }
+                    brep_faces.push_back(face.front());
+                }
+                items.push_back(shape_builder_faceted_brep(file, vertices[i], brep_faces));
+            } else {
+                items.push_back(shape_builder_polygonal_face_set(file, vertices[i], faces[i]));
+            }
+        }
+
+        auto* representation = file->create(file->schema()->declaration_by_name("IfcShapeRepresentation"));
+        write_ref(representation, "ContextOfItems", context);
+        ifcapi::detail::copy_string_attr_preserving_null(
+            representation, "RepresentationIdentifier", context, "ContextIdentifier");
+        write_string(representation, "RepresentationType", use_faceted_brep ? "Brep" : "Tessellation");
+        write_ref_list(representation, "Items", items);
+        return representation;
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
 IfcUtil::IfcBaseClass* geometry_add_shape_aspect(
     IfcParse::IfcFile* file,
     const std::string& name,
@@ -895,6 +1410,451 @@ IfcUtil::IfcBaseClass* geometry_add_shape_aspect(
     } catch (const std::exception& e) {
         set_error(e.what());
         return nullptr;
+    }
+}
+
+IfcUtil::IfcBaseClass* geometry_add_topology_representation(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* context,
+    IfcUtil::IfcBaseClass* item,
+    const char* representation_identifier,
+    bool has_representation_identifier,
+    const char* representation_type,
+    bool has_representation_type)
+{
+    ifcopenshell_clear_error();
+    if (!file || !context || !item) {
+        set_error("Invalid arguments");
+        return nullptr;
+    }
+
+    try {
+        auto* representation = file->create(file->schema()->declaration_by_name("IfcTopologyRepresentation"));
+        write_ref(representation, "ContextOfItems", context);
+        write_string(
+            representation,
+            "RepresentationIdentifier",
+            has_representation_identifier ? std::string(representation_identifier ? representation_identifier : "")
+                                          : read_string(context, "ContextIdentifier"));
+        write_string(
+            representation,
+            "RepresentationType",
+            has_representation_type ? std::string(representation_type ? representation_type : "")
+                                    : topology_representation_type(item));
+        write_ref_list(representation, "Items", {item});
+        return representation;
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
+IfcUtil::IfcBaseClass* geometry_add_wall_representation(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* context,
+    double length,
+    double height,
+    const std::string& direction_sense,
+    double offset,
+    double thickness,
+    double x_angle,
+    const std::vector<int32_t>& clipping_kinds,
+    const std::vector<std::vector<double>>& clipping_locations,
+    const std::vector<std::vector<double>>& clipping_normals,
+    const std::vector<const IfcUtil::IfcBaseClass*>& clipping_entities,
+    const std::vector<const IfcUtil::IfcBaseClass*>& booleans)
+{
+    ifcopenshell_clear_error();
+    if (!file || !context) {
+        set_error("Invalid arguments");
+        return nullptr;
+    }
+
+    try {
+        const double unit_scale = ifcapi::bindings::unit_calculate_unit_scale(file, "LENGTHUNIT");
+        double length_units = length / unit_scale;
+        double thickness_units = (thickness / unit_scale) * (1.0 / std::cos(x_angle));
+        if (direction_sense == "NEGATIVE") {
+            thickness_units *= -1.0;
+        }
+        const std::vector<std::vector<double>> points = {
+            {0.0, 0.0},
+            {0.0, thickness_units},
+            {length_units, thickness_units},
+            {length_units, 0.0},
+            {0.0, 0.0},
+        };
+        auto* curve = ifcapi::detail::create_polyline_or_indexed_polycurve(file, points, 2, true);
+        auto* profile = make_closed_profile(file, curve);
+        const std::vector<double> extrusion_ratios = x_angle ? std::vector<double>{0.0, std::sin(x_angle), std::cos(x_angle)}
+                                                            : std::vector<double>{0.0, 0.0, 1.0};
+
+        auto* extrusion = file->create(file->schema()->declaration_by_name("IfcExtrudedAreaSolid"));
+        write_ref(extrusion, "SweptArea", profile);
+        write_ref(extrusion, "Position", make_axis2_placement_3d_optional(file, {0.0, offset / unit_scale, 0.0}));
+        write_ref(
+            extrusion,
+            "ExtrudedDirection",
+            make_direction(file, extrusion_ratios[0], extrusion_ratios[1], extrusion_ratios[2]));
+        int depth_idx = attr_index_of(extrusion, "Depth");
+        if (depth_idx >= 0) {
+            extrusion->set_attribute_value(static_cast<size_t>(depth_idx), (height / unit_scale) * std::abs(1.0 / std::cos(x_angle)));
+        }
+
+        IfcUtil::IfcBaseClass* item = extrusion;
+        for (auto it = booleans.rbegin(); it != booleans.rend(); ++it) {
+            auto* boolean = const_cast<IfcUtil::IfcBaseClass*>(*it);
+            if (!boolean) continue;
+            write_ref(boolean, "FirstOperand", item);
+            item = boolean;
+        }
+        item = apply_ordered_clippings(file, item, clipping_kinds, clipping_locations, clipping_normals, clipping_entities, unit_scale);
+        return make_shape_representation(
+            file, context, (!clipping_kinds.empty() || !booleans.empty()) ? "Clipping" : "SweptSolid", item);
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
+IfcUtil::IfcBaseClass* geometry_add_slab_representation(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* context,
+    double depth,
+    const std::string& direction_sense,
+    double offset,
+    double x_angle,
+    const std::vector<int32_t>& clipping_kinds,
+    const std::vector<std::vector<double>>& clipping_locations,
+    const std::vector<std::vector<double>>& clipping_normals,
+    const std::vector<const IfcUtil::IfcBaseClass*>& clipping_entities,
+    const std::vector<std::vector<double>>& polyline,
+    bool has_polyline)
+{
+    ifcopenshell_clear_error();
+    if (!file || !context) {
+        set_error("Invalid arguments");
+        return nullptr;
+    }
+
+    try {
+        const double unit_scale = ifcapi::bindings::unit_calculate_unit_scale(file, "LENGTHUNIT");
+        std::vector<std::vector<double>> points;
+        if (has_polyline) {
+            points.reserve(polyline.size());
+            for (const auto& p : polyline) {
+                points.push_back({p.at(0) / unit_scale, p.at(1) * std::abs(1.0 / std::cos(x_angle)) / unit_scale});
+            }
+        } else {
+            const double size = 1.0 / unit_scale;
+            points = {{0.0, 0.0}, {size, 0.0}, {size, size}, {0.0, size}, {0.0, 0.0}};
+        }
+        auto* curve = ifcapi::detail::create_polyline_or_indexed_polycurve(file, points, 2, false);
+        auto* profile = make_closed_profile(file, curve);
+        std::vector<double> direction_ratios = x_angle ? std::vector<double>{0.0, std::sin(x_angle), std::cos(x_angle)}
+                                                       : std::vector<double>{0.0, 0.0, 1.0};
+        const std::vector<double> offset_direction = direction_ratios;
+        if (direction_sense == "NEGATIVE") {
+            for (auto& ratio : direction_ratios) {
+                ratio *= -1.0;
+            }
+        }
+
+        const double perpendicular_offset = (offset / unit_scale) * std::abs(1.0 / std::cos(x_angle));
+        const double perpendicular_depth = (depth / unit_scale) * std::abs(1.0 / std::cos(x_angle));
+        IfcUtil::IfcBaseClass* position = nullptr;
+        if (file->schema()->name() == "IFC2X3" || offset != 0.0) {
+            position = make_axis2_placement_3d_optional(
+                file,
+                {
+                    offset_direction[0] * perpendicular_offset,
+                    offset_direction[1] * perpendicular_offset,
+                    offset_direction[2] * perpendicular_offset,
+                });
+        }
+
+        auto* extrusion = file->create(file->schema()->declaration_by_name("IfcExtrudedAreaSolid"));
+        write_ref(extrusion, "SweptArea", profile);
+        write_ref(extrusion, "Position", position);
+        write_ref(
+            extrusion,
+            "ExtrudedDirection",
+            make_direction(file, direction_ratios[0], direction_ratios[1], direction_ratios[2]));
+        int depth_idx = attr_index_of(extrusion, "Depth");
+        if (depth_idx >= 0) {
+            extrusion->set_attribute_value(static_cast<size_t>(depth_idx), perpendicular_depth);
+        }
+
+        auto* item = apply_ordered_clippings(file, extrusion, clipping_kinds, clipping_locations, clipping_normals, clipping_entities, unit_scale);
+        return make_shape_representation(file, context, clipping_kinds.empty() ? "SweptSolid" : "Clipping", item);
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
+IfcUtil::IfcBaseClass* geometry_create_2pt_wall(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* element,
+    IfcUtil::IfcBaseClass* context,
+    const std::vector<double>& p1,
+    const std::vector<double>& p2,
+    double elevation,
+    double height,
+    double thickness,
+    bool is_si)
+{
+    ifcopenshell_clear_error();
+    if (!file || !element || !context || p1.size() < 2 || p2.size() < 2) {
+        set_error("Invalid arguments");
+        return nullptr;
+    }
+
+    try {
+        const double unit_scale = ifcapi::bindings::unit_calculate_unit_scale(file, "LENGTHUNIT");
+        std::vector<double> p1_si = {p1[0], p1[1]};
+        const double dx = p2[0] - p1[0];
+        const double dy = p2[1] - p1[1];
+        double length = std::sqrt(dx * dx + dy * dy);
+        if (!is_si) {
+            length *= unit_scale;
+            height *= unit_scale;
+            thickness *= unit_scale;
+            p1_si[0] *= unit_scale;
+            p1_si[1] *= unit_scale;
+            elevation *= unit_scale;
+        }
+        auto* representation = geometry_add_wall_representation(
+            file, context, length, height, "POSITIVE", 0.0, thickness, 0.0, {}, {}, {}, {}, {});
+        if (!representation) {
+            throw std::runtime_error("Unable to create wall representation");
+        }
+
+        const double norm = std::sqrt(dx * dx + dy * dy);
+        const double vx = dx / norm;
+        const double vy = dy / norm;
+        const std::vector<double> matrix = {
+            vx, -vy, 0.0, p1_si[0],
+            vy,  vx, 0.0, p1_si[1],
+            0.0, 0.0, 1.0, elevation,
+            0.0, 0.0, 0.0, 1.0,
+        };
+        if (!geometry_edit_object_placement(file, element, matrix, true, false)) {
+            throw std::runtime_error("Unable to edit wall placement");
+        }
+        return representation;
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
+IfcUtil::IfcBaseClass* geometry_connect_wall(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* wall1,
+    IfcUtil::IfcBaseClass* wall2,
+    bool is_atpath,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    ifcopenshell_clear_error();
+    if (!file || !wall1 || !wall2) {
+        set_error("Invalid arguments");
+        return nullptr;
+    }
+
+    try {
+        auto* placement1 = read_ref(wall1, "ObjectPlacement");
+        auto* placement2 = read_ref(wall2, "ObjectPlacement");
+        auto matrix1i = ifcapi::detail::invert_rigid4(ifcapi::bindings::placement_get_local_placement(placement1));
+        auto matrix2 = ifcapi::bindings::placement_get_local_placement(placement2);
+        auto transform = ifcapi::detail::matmul4(matrix1i, matrix2);
+        auto axis1 = ifcapi::detail::get_reference_line(file, wall1);
+        auto axis2 = ifcapi::detail::get_reference_line(file, wall2);
+        axis2[0] = ifcapi::detail::transform_point_2d(transform, axis2[0]);
+        axis2[1] = ifcapi::detail::transform_point_2d(transform, axis2[1]);
+
+        const double midx = (axis1[0][0] + axis1[1][0]) / 2.0;
+        const double starty = axis2[0][1];
+        const double endy = axis2[1][1];
+        const double y = axis1[0][1];
+        double x = 0.0;
+        if (!ifcapi::detail::intersect_x_axis_2d(axis2[0], axis2[1], y, x)) {
+            return nullptr;
+        }
+
+        const std::string wall1_end = x > midx ? "ATEND" : "ATSTART";
+        const std::string wall2_end = is_atpath ? "ATPATH" : (std::fabs(y - starty) < std::fabs(y - endy) ? "ATSTART" : "ATEND");
+        return geometry_connect_path(
+            file, wall1, wall2, wall1_end, wall2_end, nullptr, false, nullptr, owner_history, user, application);
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
+IfcUtil::IfcBaseClass* geometry_clip_solid(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* item,
+    const std::vector<double>& location,
+    const std::vector<double>& normal,
+    IfcUtil::IfcBaseClass* element,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    ifcopenshell_clear_error();
+    if (!file || !item) {
+        set_error("Invalid arguments");
+        return nullptr;
+    }
+
+    try {
+        double unit_scale = ifcapi::bindings::unit_calculate_unit_scale(file, "LENGTHUNIT");
+        auto* half_space = file->create(file->schema()->declaration_by_name("IfcHalfSpaceSolid"));
+        write_ref(half_space, "BaseSurface", make_clipping_plane(file, location, normal, unit_scale));
+        write_bool(half_space, "AgreementFlag", false);
+
+        auto* result = file->create(file->schema()->declaration_by_name("IfcBooleanClippingResult"));
+        write_string(result, "Operator", "DIFFERENCE");
+        write_ref(result, "FirstOperand", item);
+        write_ref(result, "SecondOperand", half_space);
+        register_bbim_boolean(file, element, result, owner_history, user, application);
+        return result;
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
+IfcUtil::IfcBaseClass* geometry_clip_solid_bounded(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* item,
+    const std::vector<double>& location,
+    const std::vector<double>& normal,
+    const std::vector<std::vector<double>>& boundary_points,
+    const std::vector<double>& boundary_position,
+    IfcUtil::IfcBaseClass* element,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    ifcopenshell_clear_error();
+    if (!file || !item) {
+        set_error("Invalid arguments");
+        return nullptr;
+    }
+
+    try {
+        double unit_scale = ifcapi::bindings::unit_calculate_unit_scale(file, "LENGTHUNIT");
+        auto scaled_boundary_position = boundary_position;
+        for (auto& coordinate : scaled_boundary_position) coordinate /= unit_scale;
+
+        std::vector<std::vector<double>> scaled_boundary_points;
+        scaled_boundary_points.reserve(boundary_points.size() + 1);
+        for (const auto& point : boundary_points) {
+            scaled_boundary_points.push_back({point.at(0) / unit_scale, point.at(1) / unit_scale});
+        }
+        scaled_boundary_points.push_back(scaled_boundary_points.at(0));
+
+        std::vector<IfcUtil::IfcBaseClass*> ifc_points;
+        ifc_points.reserve(scaled_boundary_points.size());
+        for (const auto& point : scaled_boundary_points) {
+            ifc_points.push_back(ifcapi::detail::create_cartesian_point(file, point));
+        }
+        auto* boundary = file->create(file->schema()->declaration_by_name("IfcPolyline"));
+        write_ref_list(boundary, "Points", ifc_points);
+
+        auto* half_space = file->create(file->schema()->declaration_by_name("IfcPolygonalBoundedHalfSpace"));
+        write_ref(half_space, "BaseSurface", make_clipping_plane(file, location, normal, unit_scale));
+        write_bool(half_space, "AgreementFlag", false);
+        write_ref(half_space, "Position", make_axis2_placement_3d_location_only(file, scaled_boundary_position));
+        write_ref(half_space, "PolygonalBoundary", boundary);
+
+        auto* result = file->create(file->schema()->declaration_by_name("IfcBooleanClippingResult"));
+        write_string(result, "Operator", "DIFFERENCE");
+        write_ref(result, "FirstOperand", item);
+        write_ref(result, "SecondOperand", half_space);
+        register_bbim_boolean(file, element, result, owner_history, user, application);
+        return result;
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
+bool geometry_validate_type(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* representation,
+    IfcUtil::IfcBaseClass* preferred_item)
+{
+    ifcopenshell_clear_error();
+    if (!file || !representation) {
+        set_error("Invalid arguments");
+        return false;
+    }
+
+    try {
+        auto items = read_ref_list(representation, "Items");
+        bool has_boolean = false;
+        std::vector<IfcUtil::IfcBaseClass*> remaining_items;
+        for (auto* item : items) {
+            if (is_a(item, "IfcBooleanResult")) {
+                has_boolean = true;
+            }
+            if (item != preferred_item &&
+                (is_a(item, "IfcBooleanResult") || is_a(item, "IfcCsgPrimitive3D") ||
+                 is_a(item, "IfcHalfSpaceSolid") || is_a(item, "IfcSolidModel") ||
+                 is_a(item, "IfcTessellatedFaceSet"))) {
+                remaining_items.push_back(item);
+            }
+        }
+
+        if (!has_boolean) {
+            std::string result = guess_representation_type(items);
+            if (!result.empty()) {
+                write_string(representation, "RepresentationType", result);
+                return true;
+            }
+            return false;
+        }
+
+        if (!preferred_item) {
+            for (auto* item : remaining_items) {
+                if (is_a(item, "IfcBooleanResult")) {
+                    preferred_item = item;
+                    break;
+                }
+            }
+            if (!preferred_item && !remaining_items.empty()) {
+                preferred_item = remaining_items.front();
+            }
+        }
+
+        if (!remaining_items.empty()) {
+            geometry_add_boolean(file, preferred_item, ifcapi::detail::to_const_refs(remaining_items), "UNION");
+            items = read_ref_list(representation, "Items");
+            items.erase(
+                std::remove_if(
+                    items.begin(),
+                    items.end(),
+                    [&](IfcUtil::IfcBaseClass* item) { return ifcapi::detail::contains_ref(remaining_items, item); }),
+                items.end());
+            write_ref_list(representation, "Items", items);
+        }
+
+        std::string representation_type = guess_representation_type(read_ref_list(representation, "Items"));
+        if (representation_type.empty()) {
+            int idx = attr_index_of(representation, "RepresentationType");
+            if (idx >= 0) representation->set_attribute_value(static_cast<size_t>(idx), Blank{});
+            return false;
+        }
+        write_string(representation, "RepresentationType", representation_type);
+        return representation_type == "CSG";
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return false;
     }
 }
 

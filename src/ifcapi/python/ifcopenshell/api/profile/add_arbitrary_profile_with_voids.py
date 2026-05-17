@@ -16,12 +16,12 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Optional, Union
+from typing import Optional
 
-import numpy.typing as npt
-
-import ifcopenshell.util.unit
-from ifcopenshell.util.shape_builder import SequenceOfVectors, V, ifc_safe_vector_type
+import ifcopenshell
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.profile import _capi
+from ifcopenshell.util.shape_builder import SequenceOfVectors
 
 
 def add_arbitrary_profile_with_voids(
@@ -61,54 +61,16 @@ def add_arbitrary_profile_with_voids(
             inner_profiles=[[(0.1, 0.1), (0.3, 0.1), (0.3, 0.3), (0.1, 0.3), (0.1, 0.1)]],
             name="SK01 Hole Profile")
     """
-    usecase = Usecase()
-    usecase.file = file
-    return usecase.execute(V(outer_profile), [V(p) for p in inner_profiles], name)
-
-
-class Usecase:
-    file: ifcopenshell.file
-
-    def execute(
-        self,
-        outer_profile: npt.NDArray,
-        inner_profiles: list[npt.NDArray],
-        name: Union[str, None],
-    ):
-        self.unit_scale = ifcopenshell.util.unit.calculate_unit_scale(self.file)
-        outer_points = self.convert_si_to_unit(outer_profile)
-        inner_points: list[npt.NDArray] = []
-        for inner_profile in inner_profiles:
-            inner_points.append(self.convert_si_to_unit(inner_profile))
-
-        inner_curves: list[ifcopenshell.entity_instance] = []
-        if self.file.schema == "IFC2X3":
-            outer_curve = self.file.create_entity(
-                "IfcPolyline",
-                [self.file.create_entity("IfcCartesianPoint", ifc_safe_vector_type(p)) for p in outer_points],
-            )
-            for inner_point in inner_points:
-                inner_curves.append(
-                    self.file.create_entity(
-                        "IfcPolyline",
-                        [self.file.create_entity("IfcCartesianPoint", ifc_safe_vector_type(p)) for p in inner_point],
-                    )
-                )
-        else:
-            outer_curve = self.file.create_entity(
-                "IfcIndexedPolyCurve",
-                (self.file.create_entity("IfcCartesianPointList3D", ifc_safe_vector_type(outer_points))),
-            )
-            for inner_point in inner_points:
-                dimensions = inner_point.shape[1]
-                if dimensions == 2:
-                    ifc_points = self.file.create_entity("IfcCartesianPointList2D", ifc_safe_vector_type(inner_point))
-                elif dimensions == 3:
-                    ifc_points = self.file.create_entity("IfcCartesianPointList3D", ifc_safe_vector_type(inner_point))
-                else:
-                    assert False, f"Invalid dimensions: {dimensions}."
-                inner_curves.append(self.file.create_entity("IfcIndexedPolyCurve", ifc_points))
-        return self.file.create_entity("IfcArbitraryProfileDefWithVoids", "AREA", name, outer_curve, inner_curves)
-
-    def convert_si_to_unit(self, co: npt.NDArray) -> npt.NDArray:
-        return co / self.unit_scale
+    lib = _capi.get_lib()
+    handle = _generated_capi.call_handle_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_profile_add_arbitrary_profile_with_voids,
+        "Failed to add arbitrary profile with voids",
+        _capi.file_handle(file),
+        _capi.double_list_list(outer_profile),
+        _capi.double_list_list_list(inner_profiles),
+        _capi.string(name) if name is not None else None,
+        name is not None,
+        destroy=lib.ifcopenshell_ifc_instance_destroy,
+    )
+    return _capi.wrap_handle(file, handle)

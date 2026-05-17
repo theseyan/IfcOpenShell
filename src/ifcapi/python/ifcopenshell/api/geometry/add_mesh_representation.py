@@ -16,16 +16,14 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Optional, TypeVar
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
 
 import ifcopenshell.util.unit
-from ifcopenshell.util.shape_builder import SequenceOfVectors, ShapeBuilder, VectorType
-
-T = TypeVar("T")
-COORD_3D = tuple[float, float, float]
+from ifcopenshell.util.shape_builder import SequenceOfVectors, VectorType
+from . import _capi
 
 
 def add_mesh_representation(
@@ -81,7 +79,28 @@ def add_mesh_representation(
     if coordinate_offset is not None:
         np_vertices += coordinate_offset
 
-    return usecase.execute(context, np_vertices, faces, force_faceted_brep)
+    return usecase.execute(context, np_vertices, _mesh_faces(faces), force_faceted_brep)
+
+
+def _mesh_faces(faces):
+    def is_sequence_of_ints(value):
+        return isinstance(value, (list, tuple)) and all(isinstance(item, int) for item in value)
+
+    def is_sequence_of_sequence_of_ints(value):
+        return isinstance(value, (list, tuple)) and all(is_sequence_of_ints(item) for item in value)
+
+    result = []
+    for item_faces in faces:
+        normalized_item_faces = []
+        for face in item_faces:
+            if is_sequence_of_ints(face):
+                normalized_item_faces.append([face])
+            elif is_sequence_of_sequence_of_ints(face):
+                normalized_item_faces.append(face)
+            else:
+                raise ValueError("Expected a sequence of int or sequence of sequence of int for each face")
+        result.append(normalized_item_faces)
+    return result
 
 
 class Usecase:
@@ -94,10 +113,9 @@ class Usecase:
         self,
         context: ifcopenshell.entity_instance,
         vertices: npt.NDArray[np.float64],
-        faces: list[list[list[int]]],
+        faces: list[list[list[list[int]]]],
         force_faceted_brep: bool,
     ) -> ifcopenshell.entity_instance:
-        self.builder = ShapeBuilder(self.file)
         self.vertices = vertices
         self.faces = faces
         self.context = context
@@ -105,30 +123,13 @@ class Usecase:
         return self.create_mesh_representation()
 
     def create_mesh_representation(self) -> ifcopenshell.entity_instance:
-        if self.force_faceted_brep or self.file.schema == "IFC2X3":
-            return self.create_faceted_brep()
-        return self.create_polygonal_face_set()
-
-    def create_faceted_brep(self) -> ifcopenshell.entity_instance:
-        items: list[ifcopenshell.entity_instance] = []
-        for i in range(0, len(self.vertices)):
-            items.append(self.builder.faceted_brep(self.vertices[i], self.faces[i]))
-        return self.file.create_entity(
-            "IfcShapeRepresentation",
-            self.context,
-            self.context.ContextIdentifier,
-            "Brep",
-            items,
-        )
-
-    def create_polygonal_face_set(self) -> ifcopenshell.entity_instance:
-        items: list[ifcopenshell.entity_instance] = []
-        for i in range(0, len(self.vertices)):
-            items.append(self.builder.polygonal_face_set(self.vertices[i], self.faces[i]))
-        return self.file.create_entity(
-            "IfcShapeRepresentation",
-            self.context,
-            self.context.ContextIdentifier,
-            "Tessellation",
-            items,
+        lib = _capi.get_lib()
+        return _capi.call_handle(
+            self.file,
+            lib.ifcopenshell_ifcapi_geometry_add_mesh_representation,
+            _capi.file_handle(self.file),
+            _capi.instance_handle(self.context),
+            _capi.double_list_list_list(self.vertices.tolist()),
+            _capi.int32_list_list_list_list(self.faces),
+            self.force_faceted_brep,
         )

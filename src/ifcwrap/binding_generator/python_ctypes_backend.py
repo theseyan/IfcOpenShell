@@ -203,7 +203,9 @@ _UINT32_LIST_DESTROY_NAME = "ifcopenshell_uint32_list_destroy"
 _DOUBLE_LIST_DESTROY_NAME = "ifcopenshell_double_list_destroy"
 _INT32_LIST_LIST_DESTROY_NAME = "ifcopenshell_int32_list_list_destroy"
 _INT32_LIST_LIST_LIST_DESTROY_NAME = "ifcopenshell_int32_list_list_list_destroy"
+_INT32_LIST_LIST_LIST_LIST_DESTROY_NAME = "ifcopenshell_int32_list_list_list_list_destroy"
 _DOUBLE_LIST_LIST_DESTROY_NAME = "ifcopenshell_double_list_list_destroy"
+_DOUBLE_LIST_LIST_LIST_DESTROY_NAME = "ifcopenshell_double_list_list_list_destroy"
 
 
 def encode_string(value):
@@ -326,6 +328,16 @@ def make_int32_list_list_list(values):
     return result
 
 
+def make_int32_list_list_list_list(values):
+    items = [make_int32_list_list_list(item) for item in values]
+    item_array = (ifcopenshell_int32_list_list_list_t * len(items))(*items)
+    result = ifcopenshell_int32_list_list_list_list_t()
+    result.items = item_array
+    result.size = len(item_array)
+    result._keepalive = (item_array, items)  # type: ignore[attr-defined]
+    return result
+
+
 def make_double_list_list(values):
     rows = [list(row) for row in values]
     row_buffers = [(ctypes.c_double * len(row))(*[float(value) for value in row]) for row in rows]
@@ -337,6 +349,16 @@ def make_double_list_list(values):
     result.items = items
     result.size = len(items)
     result._keepalive = (items, row_buffers)  # type: ignore[attr-defined]
+    return result
+
+
+def make_double_list_list_list(values):
+    items = [make_double_list_list(item) for item in values]
+    item_array = (ifcopenshell_double_list_list_t * len(items))(*items)
+    result = ifcopenshell_double_list_list_list_t()
+    result.items = item_array
+    result.size = len(item_array)
+    result._keepalive = (item_array, items)  # type: ignore[attr-defined]
     return result
 
 

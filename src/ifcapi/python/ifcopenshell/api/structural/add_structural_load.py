@@ -18,7 +18,8 @@
 
 from typing import Optional
 
-import ifcopenshell.api
+import ifcopenshell
+from ifcopenshell.api.structural import _capi
 
 
 def add_structural_load(
@@ -43,4 +44,12 @@ def add_structural_load(
         # Create a simple linear load
         ifcopenshell.api.structural.add_structural_load(model)
     """
-    return file.create_entity(ifc_class, Name=name)
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_structural_add_structural_load,
+        _capi.file_handle(file),
+        _capi.string(ifc_class),
+        _capi.string(name) if name is not None else None,
+        name is not None,
+    )

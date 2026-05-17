@@ -16,7 +16,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ifcopenshell.api.root
+import ifcopenshell
+from ifcopenshell.api.structural import _capi
 
 
 def add_structural_load_case(
@@ -33,9 +34,14 @@ def add_structural_load_case(
     :return: The new IfcStructuralLoadCase
     """
 
-    load_case = ifcopenshell.api.root.create_entity(
-        file, ifc_class="IfcStructuralLoadCase", predefined_type="LOAD_CASE", name=name
+    lib = _capi.get_lib()
+    owner_history = _capi.owner_history(file)
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_structural_add_structural_load_case,
+        _capi.file_handle(file),
+        _capi.string(name),
+        _capi.string(action_type),
+        _capi.string(action_source),
+        _capi.instance_handle(owner_history),
     )
-    load_case.ActionType = action_type
-    load_case.ActionSource = action_source
-    return load_case

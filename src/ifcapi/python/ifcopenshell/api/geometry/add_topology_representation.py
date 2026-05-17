@@ -20,6 +20,7 @@
 from typing import Optional
 
 import ifcopenshell
+from ifcopenshell.api.geometry import _capi
 
 
 _ITEM_TYPE_TO_REP_TYPE = {
@@ -79,20 +80,15 @@ def add_topology_representation(
         ifcopenshell.api.geometry.assign_representation(
             model, product=member, representation=rep)
     """
-    if representation_identifier is None:
-        representation_identifier = context.ContextIdentifier
-
-    if representation_type is None:
-        for ifc_class, rep_type in _ITEM_TYPE_TO_REP_TYPE.items():
-            if item.is_a(ifc_class):
-                representation_type = rep_type
-                break
-        else:
-            representation_type = "Undefined"
-
-    return file.createIfcTopologyRepresentation(
-        context,
-        representation_identifier,
-        representation_type,
-        [item],
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_geometry_add_topology_representation,
+        _capi.file_handle(file),
+        _capi.instance_handle(context),
+        _capi.instance_handle(item),
+        _capi.string(representation_identifier) if representation_identifier is not None else None,
+        representation_identifier is not None,
+        _capi.string(representation_type) if representation_type is not None else None,
+        representation_type is not None,
     )

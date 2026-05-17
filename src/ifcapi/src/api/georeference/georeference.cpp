@@ -3,14 +3,18 @@
 
 #include "ifcapi/bindings/entity.h"
 #include "ifcapi/bindings/georeference.h"
+#include "ifcapi/bindings/pset.h"
 #include "ifcapi/bindings/unit.h"
 #include "ifcapi/detail/attribute.h"
 #include "ifcapi/detail/error.h"
+#include "ifcapi/detail/pset.h"
 #include "ifcopenshell_api_internal.hpp"
 
 #include "ifcparse/IfcSchema.h"
 
 #include <cmath>
+#include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -20,6 +24,10 @@ constexpr double PI = 3.141592653589793238462643383279502884;
 
 IfcUtil::IfcBaseClass* create_entity(IfcParse::IfcFile* file, const char* ifc_class) {
     return file->create(file->schema()->declaration_by_name(ifc_class));
+}
+
+bool is_ifc2x3(IfcParse::IfcFile* file) {
+    return file && file->schema() && file->schema()->name() == "IFC2X3";
 }
 
 IfcUtil::IfcBaseClass* create_cartesian_point(IfcParse::IfcFile* file, const std::vector<double>& coordinates) {
@@ -58,18 +66,6 @@ IfcUtil::IfcBaseClass* create_axis2_placement_2d(
     return placement;
 }
 
-size_t total_inverses(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* entity) {
-    if (!file || !entity || entity->id() <= 0) {
-        return 0;
-    }
-    try {
-        auto inverses = file->getInverse(entity->id(), nullptr, -1);
-        return inverses ? inverses->size() : 0;
-    } catch (...) {
-        return 0;
-    }
-}
-
 bool is_close(double a, double b) {
     return std::abs(a - b) <= 1e-08 + 1e-05 * std::abs(b);
 }
@@ -96,10 +92,129 @@ std::vector<IfcUtil::IfcBaseClass*> geometric_contexts(IfcParse::IfcFile* file) 
     return result;
 }
 
+void add_ifc2x3_georeferencing(
+    IfcParse::IfcFile* file,
+    const std::string& name,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    auto* project = ifcapi::detail::first_instance_by_type(file, "IfcProject");
+    if (!project || ifcapi::detail::named_property_set(project, "ePSet_ProjectedCRS")) {
+        return;
+    }
+
+    auto* conversion = ifcapi::bindings::pset_add_pset(
+        file, project, "ePSet_MapConversion", owner_history, user, application, nullptr);
+    auto* crs = ifcapi::bindings::pset_add_pset(
+        file, project, "ePSet_ProjectedCRS", owner_history, user, application, nullptr);
+
+    std::unique_ptr<ifcopenshell_pset_props_t, void (*)(ifcopenshell_pset_props_t*)> crs_props(
+        ifcapi::bindings::pset_props_new(), ifcapi::bindings::pset_props_free);
+    ifcapi::bindings::pset_props_set_typed_string(crs_props.get(), "Name", name, "IfcLabel");
+    if (!ifcapi::bindings::pset_edit_pset(file, crs, nullptr, crs_props.get(), nullptr, true)) {
+        return;
+    }
+
+    std::unique_ptr<ifcopenshell_pset_props_t, void (*)(ifcopenshell_pset_props_t*)> conversion_props(
+        ifcapi::bindings::pset_props_new(), ifcapi::bindings::pset_props_free);
+    ifcapi::bindings::pset_props_set_typed_double(conversion_props.get(), "Eastings", 0.0, "IfcLengthMeasure");
+    ifcapi::bindings::pset_props_set_typed_double(conversion_props.get(), "Northings", 0.0, "IfcLengthMeasure");
+    ifcapi::bindings::pset_props_set_typed_double(conversion_props.get(), "OrthogonalHeight", 0.0, "IfcLengthMeasure");
+    ifcapi::bindings::pset_edit_pset(file, conversion, nullptr, conversion_props.get(), nullptr, true);
+}
+
+void remove_ifc2x3_georeferencing(IfcParse::IfcFile* file) {
+    auto* project = ifcapi::detail::first_instance_by_type(file, "IfcProject");
+    if (!project) {
+        ifcapi::detail::set_error(ifcapi::detail::ERROR_RUNTIME, "No IfcProject found");
+        return;
+    }
+    if (auto* pset = ifcapi::detail::named_property_set(project, "ePSet_ProjectedCRS")) {
+        ifcapi::bindings::pset_remove_pset(file, project, pset);
+    }
+    if (auto* pset = ifcapi::detail::named_property_set(project, "ePSet_MapConversion")) {
+        ifcapi::bindings::pset_remove_pset(file, project, pset);
+    }
+}
+
 } // namespace
 
 namespace ifcapi {
 namespace bindings {
+
+void georeference_add_georeferencing(
+    IfcParse::IfcFile* file,
+    const std::string& ifc_class,
+    const std::string& name,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    ifcopenshell_clear_error();
+    try {
+        if (is_ifc2x3(file)) {
+            add_ifc2x3_georeferencing(file, name, owner_history, user, application);
+            return;
+        }
+
+        const bool has_crs = !ifcapi::detail::instances_by_type(file, "IfcProjectedCRS").empty();
+        const bool has_conversion = !ifcapi::detail::instances_by_type(file, "IfcCoordinateOperation").empty();
+        if (has_crs && has_conversion) {
+            return;
+        }
+        if (has_crs || has_conversion) {
+            georeference_remove_georeferencing(file);
+        }
+
+        IfcUtil::IfcBaseClass* source_crs = nullptr;
+        for (auto* context : geometric_contexts(file)) {
+            if (ifcapi::detail::read_string_attr(context, "ContextType") == "Model") {
+                source_crs = context;
+                break;
+            }
+        }
+        if (!source_crs) {
+            return;
+        }
+
+        auto* projected_crs = create_entity(file, "IfcProjectedCRS");
+        ifcapi::detail::write_string_attr(projected_crs, "Name", name);
+
+        if (ifc_class == "IfcMapConversion" || ifc_class == "IfcMapConversionScaled") {
+            auto* conversion = create_entity(file, ifc_class.c_str());
+            ifcapi::detail::write_ref_attr(conversion, "SourceCRS", source_crs);
+            ifcapi::detail::write_ref_attr(conversion, "TargetCRS", projected_crs);
+            ifcapi::detail::write_double_attr(conversion, "Eastings", 0.0);
+            ifcapi::detail::write_double_attr(conversion, "Northings", 0.0);
+            ifcapi::detail::write_double_attr(conversion, "OrthogonalHeight", 0.0);
+            if (ifc_class == "IfcMapConversionScaled") {
+                ifcapi::detail::write_double_attr(conversion, "FactorX", 1.0);
+                ifcapi::detail::write_double_attr(conversion, "FactorY", 1.0);
+                ifcapi::detail::write_double_attr(conversion, "FactorZ", 1.0);
+            }
+        } else if (ifc_class == "IfcRigidOperation") {
+            auto* conversion = create_entity(file, ifc_class.c_str());
+            ifcapi::detail::write_ref_attr(conversion, "SourceCRS", source_crs);
+            ifcapi::detail::write_ref_attr(conversion, "TargetCRS", projected_crs);
+            int first_idx = ifcapi::detail::attr_index_of(conversion, "FirstCoordinate");
+            int second_idx = ifcapi::detail::attr_index_of(conversion, "SecondCoordinate");
+            auto* first_coordinate = ifcapi::detail::create_typed_double(file, "IfcLengthMeasure", 0.0);
+            auto* second_coordinate = ifcapi::detail::create_typed_double(file, "IfcLengthMeasure", 0.0);
+            if (!first_coordinate || !second_coordinate) {
+                throw std::runtime_error("Failed to create IfcLengthMeasure for IfcRigidOperation coordinates");
+            }
+            if (first_idx >= 0) {
+                conversion->set_attribute_value(static_cast<size_t>(first_idx), first_coordinate);
+            }
+            if (second_idx >= 0) {
+                conversion->set_attribute_value(static_cast<size_t>(second_idx), second_coordinate);
+            }
+        }
+    } catch (const std::exception& e) {
+        ifcapi::detail::set_error(e.what());
+    }
+}
 
 void georeference_edit_true_north(IfcParse::IfcFile* file, bool has_true_north, double x, double y) {
     ifcopenshell_clear_error();
@@ -108,14 +223,14 @@ void georeference_edit_true_north(IfcParse::IfcFile* file, bool has_true_north, 
             auto* true_north = ifcapi::detail::read_ref_attr(context, "TrueNorth");
             if (true_north && !has_true_north) {
                 ifcapi::detail::write_ref_attr(context, "TrueNorth", nullptr);
-                if (total_inverses(file, true_north) == 0) {
+                if (ifcapi::detail::total_inverses(file, true_north) == 0) {
                     ifcapi::bindings::entity_remove_deep2(true_north);
                 }
                 continue;
             }
 
             if (true_north) {
-                if (total_inverses(file, true_north) != 1) {
+                if (ifcapi::detail::total_inverses(file, true_north) != 1) {
                     true_north = create_direction(file, {});
                     ifcapi::detail::write_ref_attr(context, "TrueNorth", true_north);
                 }
@@ -163,10 +278,36 @@ void georeference_edit_wcs(IfcParse::IfcFile* file, double x, double y, double z
             }
             if (placement) {
                 ifcapi::detail::write_ref_attr(context, "WorldCoordinateSystem", placement);
-                if (total_inverses(file, old_wcs) == 0) {
+                if (ifcapi::detail::total_inverses(file, old_wcs) == 0) {
                     ifcapi::bindings::entity_remove_deep2(old_wcs);
                 }
             }
+        }
+    } catch (const std::exception& e) {
+        ifcapi::detail::set_error(e.what());
+    }
+}
+
+void georeference_remove_georeferencing(IfcParse::IfcFile* file) {
+    ifcopenshell_clear_error();
+    try {
+        if (is_ifc2x3(file)) {
+            remove_ifc2x3_georeferencing(file);
+            return;
+        }
+
+        auto projected_crs_items = ifcapi::detail::instances_by_type(file, "IfcProjectedCRS");
+        auto coordinate_operations = ifcapi::detail::instances_by_type(file, "IfcCoordinateOperation");
+        for (auto* projected_crs : projected_crs_items) {
+            auto* unit = ifcapi::detail::read_ref_attr(projected_crs, "MapUnit");
+            if (unit && ifcapi::detail::total_inverses(file, unit) == 1) {
+                ifcapi::detail::write_ref_attr(projected_crs, "MapUnit", nullptr);
+                ifcapi::bindings::entity_remove_deep2(unit);
+            }
+            file->removeEntity(projected_crs);
+        }
+        for (auto* coordinate_operation : coordinate_operations) {
+            file->removeEntity(coordinate_operation);
         }
     } catch (const std::exception& e) {
         ifcapi::detail::set_error(e.what());

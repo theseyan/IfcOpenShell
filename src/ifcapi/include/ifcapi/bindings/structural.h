@@ -43,6 +43,45 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_add_structural_activity(
     const std::string& global_or_local,
     IfcUtil::IfcBaseClass* activity_owner_history,
     IfcUtil::IfcBaseClass* relationship_owner_history);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_add_structural_load(
+    IfcParse::IfcFile* file,
+    const std::string& ifc_class,
+    const char* name,
+    bool has_name);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_add_structural_load_case(
+    IfcParse::IfcFile* file,
+    const std::string& name,
+    const std::string& action_type,
+    const std::string& action_source,
+    IfcUtil::IfcBaseClass* owner_history);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_add_structural_load_group(
+    IfcParse::IfcFile* file,
+    const std::string& name,
+    const std::string& action_type,
+    const std::string& action_source,
+    IfcUtil::IfcBaseClass* owner_history);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_add_structural_member_connection(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* relating_structural_member,
+    IfcUtil::IfcBaseClass* related_structural_connection,
+    IfcUtil::IfcBaseClass* owner_history);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_assign_to_building(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* structural_analysis_model,
+    IfcUtil::IfcBaseClass* building,
+    IfcUtil::IfcBaseClass* owner_history);
+IFCAPI_BINDING void structural_remove_structural_analysis_model(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* structural_analysis_model);
+IFCAPI_BINDING void structural_remove_structural_load(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* structural_load);
+IFCAPI_BINDING void structural_remove_structural_load_case(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* structural_load_case);
+IFCAPI_BINDING void structural_remove_structural_load_group(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* structural_load_group);
 
 } // namespace bindings
 } // namespace ifcapi

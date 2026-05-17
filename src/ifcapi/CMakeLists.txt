@@ -83,6 +83,7 @@ set(IFCAPI_SOURCES
     src/api/unit/unit.cpp
     src/api/geometry/placement.cpp
     src/api/geometry/shape_builder.cpp
+    src/api/geometry/window.cpp
     src/express/runtime.cpp
     src/express/compute_derived.cpp
     src/express/generated/IFC2X3_TC1.cpp

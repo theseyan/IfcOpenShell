@@ -203,6 +203,23 @@ inline void write_string_attr(IfcUtil::IfcBaseClass* entity, const char* attr, c
     }
 }
 
+inline void copy_string_attr_preserving_null(
+    IfcUtil::IfcBaseClass* target,
+    const char* target_attr,
+    IfcUtil::IfcBaseClass* source,
+    const char* source_attr)
+{
+    int idx = attr_index_of(target, target_attr);
+    if (idx < 0) {
+        return;
+    }
+    if (is_attr_null(source, source_attr)) {
+        target->set_attribute_value(static_cast<size_t>(idx), Blank{});
+        return;
+    }
+    target->set_attribute_value(static_cast<size_t>(idx), read_string_attr(source, source_attr));
+}
+
 inline void write_optional_string_attr(
     IfcUtil::IfcBaseClass* entity,
     const char* attr,
@@ -261,6 +278,17 @@ inline std::vector<double> read_double_aggregate(IfcUtil::IfcBaseClass* entity, 
 }
 
 inline void write_double_aggregate(IfcUtil::IfcBaseClass* entity, const char* attr, const std::vector<double>& values) {
+    int idx = attr_index_of(entity, attr);
+    if (idx >= 0) {
+        entity->set_attribute_value(static_cast<size_t>(idx), values);
+    }
+}
+
+inline void write_double_aggregate_aggregate(
+    IfcUtil::IfcBaseClass* entity,
+    const char* attr,
+    const std::vector<std::vector<double>>& values)
+{
     int idx = attr_index_of(entity, attr);
     if (idx >= 0) {
         entity->set_attribute_value(static_cast<size_t>(idx), values);
@@ -426,6 +454,43 @@ inline std::vector<IfcUtil::IfcBaseClass*> instances_by_type(IfcParse::IfcFile* 
         }
     }
     return result;
+}
+
+inline IfcUtil::IfcBaseClass* first_instance_by_type(IfcParse::IfcFile* file, const char* ifc_class) {
+    auto instances = instances_by_type(file, ifc_class);
+    return instances.empty() ? nullptr : instances.front();
+}
+
+inline IfcUtil::IfcBaseClass* create_typed_double(
+    IfcParse::IfcFile* file,
+    const char* ifc_type,
+    double value)
+{
+    if (!file || !file->schema()) {
+        return nullptr;
+    }
+    auto* declaration = file->schema()->declaration_by_name(ifc_type);
+    auto* type_declaration = declaration ? declaration->as_type_declaration() : nullptr;
+    if (!type_declaration) {
+        return nullptr;
+    }
+    auto* instance = file->create(type_declaration);
+    if (instance) {
+        instance->set_attribute_value(0, value);
+    }
+    return instance;
+}
+
+inline size_t total_inverses(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* entity) {
+    if (!file || !entity || entity->id() <= 0) {
+        return 0;
+    }
+    try {
+        auto inverses = file->getInverse(entity->id(), nullptr, -1);
+        return inverses ? inverses->size() : 0;
+    } catch (...) {
+        return 0;
+    }
 }
 
 inline void replace_attribute_reference(

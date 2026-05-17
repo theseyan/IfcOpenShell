@@ -28,6 +28,8 @@ import ifcopenshell.api.geometry
 import ifcopenshell.util.unit
 from ifcopenshell.util.shape_builder import ShapeBuilder, V
 
+from . import _capi
+
 # SCHEMAS describe panels setup
 # where:
 # - schema rows represent window X axis
@@ -57,6 +59,22 @@ DEFAULT_PANEL_SCHEMAS = {
     "TRIPLE_PANEL_HORIZONTAL": [[0], [1], [2]],
     "TRIPLE_PANEL_VERTICAL": [[0, 1, 2]],
 }
+
+WINDOW_LINING_PROPERTY_ORDER = (
+    "LiningDepth",
+    "LiningThickness",
+    "LiningOffset",
+    "LiningToPanelOffsetX",
+    "LiningToPanelOffsetY",
+    "MullionThickness",
+    "FirstMullionOffset",
+    "SecondMullionOffset",
+    "TransomThickness",
+    "FirstTransomOffset",
+    "SecondTransomOffset",
+)
+
+WINDOW_PANEL_PROPERTY_ORDER = ("FrameDepth", "FrameThickness")
 
 
 def mm(x: float) -> float:
@@ -393,6 +411,7 @@ def add_window_representation(
     # define unit_scale first as it's going to be used setting default arguments
     unit_scale = ifcopenshell.util.unit.calculate_unit_scale(file) if unit_scale is None else unit_scale
     settings: dict[str, Any] = {"unit_scale": unit_scale}
+    si_conversion = 1 / unit_scale
 
     if lining_properties is None:
         lining_properties = WindowLiningProperties()
@@ -414,8 +433,8 @@ def add_window_representation(
     settings.update(
         {
             "context": context,
-            "overall_height": overall_height if overall_height is not None else usecase.convert_si_to_unit(0.9),
-            "overall_width": overall_width if overall_width is not None else usecase.convert_si_to_unit(0.6),
+            "overall_height": overall_height if overall_height is not None else 0.9 * si_conversion,
+            "overall_width": overall_width if overall_width is not None else 0.6 * si_conversion,
             "partition_type": partition_type,
             "lining_properties": lining_properties,
             "panel_properties": panel_properties,
@@ -425,7 +444,24 @@ def add_window_representation(
 
     usecase.settings = settings
     usecase.settings["panel_schema"] = DEFAULT_PANEL_SCHEMAS[usecase.settings["partition_type"]]
-    return usecase.execute()
+    panel_schema = usecase.settings["panel_schema"]
+    max_panel_index = max(chain.from_iterable(panel_schema))
+    panel_properties[max_panel_index]
+
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_geometry_add_window_representation,
+        _capi.file_handle(file),
+        _capi.instance_handle(context),
+        settings["overall_height"],
+        settings["overall_width"],
+        _capi.int32_list_list(panel_schema),
+        _capi.double_list([lining_properties[name] for name in WINDOW_LINING_PROPERTY_ORDER]),
+        _capi.double_list_list([[panel[name] for name in WINDOW_PANEL_PROPERTY_ORDER] for panel in panel_properties]),
+        _capi.instance_handle(part_of_product),
+        0.01 * si_conversion,
+    )
 
 
 class Usecase:
