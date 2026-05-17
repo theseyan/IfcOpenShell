@@ -16,7 +16,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ifcopenshell.util.element
+import ifcopenshell
+from ifcopenshell.api.geometry import _capi
 
 
 def remove_boolean(file: ifcopenshell.file, item: ifcopenshell.entity_instance) -> None:
@@ -33,29 +34,9 @@ def remove_boolean(file: ifcopenshell.file, item: ifcopenshell.entity_instance) 
         IfcRepresentationItem that is participating in one or more boolean
         results (in which case all are removed).
     """
-    if not item.is_a("IfcBooleanResult"):
-        for inverse in file.get_inverse(item):
-            if inverse.is_a("IfcBooleanResult"):
-                remove_boolean(file, inverse)
-        return
-
-    representations = []
-    queue = list(file.get_inverse(item))
-    while queue:
-        inverse = queue.pop()
-        if inverse.is_a("IfcShapeRepresentation"):
-            representations.append(inverse)
-        elif inverse.is_a("IfcBooleanResult"):
-            queue.extend(file.get_inverse(inverse))
-        elif inverse.is_a("IfcCsgSolid"):
-            queue.extend(file.get_inverse(inverse))
-
-    first = item.FirstOperand
-    second = item.SecondOperand
-    for inverse in file.get_inverse(item):
-        ifcopenshell.util.element.replace_attribute(inverse, item, first)
-
-    for representation in set(representations):
-        representation.Items = list(representation.Items) + [second]
-
-    file.remove(item)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_geometry_remove_boolean,
+        _capi.file_handle(file),
+        _capi.instance_handle(item),
+    )

@@ -19,7 +19,7 @@
 from typing import Optional
 
 import ifcopenshell
-import ifcopenshell.util.element
+from ifcopenshell.api.geometry import _capi
 
 
 def disconnect_path(
@@ -34,25 +34,13 @@ def disconnect_path(
     - provide connected elements to disconnect explicitly:
     `relating_element` (connected from) and `related_element` (connected to)
     """
-    if connection_type and element:
-        connections = [
-            r
-            for r in element.ConnectedTo
-            if r.is_a("IfcRelConnectsPathElements") and r.RelatingConnectionType == connection_type
-        ] + [
-            r
-            for r in element.ConnectedFrom
-            if r.is_a("IfcRelConnectsPathElements") and r.RelatedConnectionType == connection_type
-        ]
-    elif related_element:
-        connections = [
-            r
-            for r in relating_element.ConnectedTo
-            if r.is_a("IfcRelConnectsPathElements") and r.RelatedElement == related_element
-        ]
-
-    for connection in set(connections):
-        history = connection.OwnerHistory
-        file.remove(connection)
-        if history:
-            ifcopenshell.util.element.remove_deep2(file, history)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_geometry_disconnect_path,
+        _capi.file_handle(file),
+        _capi.instance_handle(element),
+        _capi.string(connection_type or ""),
+        connection_type is not None,
+        _capi.instance_handle(relating_element),
+        _capi.instance_handle(related_element),
+    )

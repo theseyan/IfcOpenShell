@@ -25,6 +25,19 @@ IFCAPI_BINDING void spatial_unassign_container(
     const std::vector<const IfcUtil::IfcBaseClass*>& products,
     IfcUtil::IfcBaseClass* user,
     IfcUtil::IfcBaseClass* application);
+IFCAPI_BINDING IfcUtil::IfcBaseClass* spatial_reference_structure(
+    IfcParse::IfcFile* file,
+    const std::vector<const IfcUtil::IfcBaseClass*>& products,
+    IfcUtil::IfcBaseClass* relating_structure,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application);
+IFCAPI_BINDING void spatial_dereference_structure(
+    IfcParse::IfcFile* file,
+    const std::vector<const IfcUtil::IfcBaseClass*>& products,
+    IfcUtil::IfcBaseClass* relating_structure,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application);
 
 } // namespace bindings
 } // namespace ifcapi

@@ -19,8 +19,7 @@
 from typing import Union
 
 import ifcopenshell
-import ifcopenshell.api.spatial
-import ifcopenshell.util.representation
+from ifcopenshell.api.cogo import _capi
 from ifcopenshell import entity_instance
 
 
@@ -40,21 +39,15 @@ def add_survey_point(
 
         annotation = ifcopenshell.api.cogo.add_survey_point(file,file.createIfcCartesianPoint(4000.0,3500.0)))
     """
-    context = ifcopenshell.util.representation.get_context(file, "Model", "Annotation", "MODEL_VIEW")
-    shape_representation = file.createIfcShapeRepresentation(
-        ContextOfItems=context, RepresentationIdentifier="Annotation", RepresentationType="Point", Items=[survey_point]
+    lib = _capi.get_lib()
+    user, application = _capi.owner_user_application(file)
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_cogo_add_survey_point,
+        _capi.file_handle(file),
+        _capi.instance_handle(survey_point),
+        _capi.instance_handle(site),
+        None,
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
     )
-    representation = file.createIfcProductDefinitionShape(Representations=[shape_representation])
-    annotation = file.createIfcAnnotation(
-        ifcopenshell.guid.new(),
-        ObjectPlacement=context.WorldCoordinateSystem,
-        Representation=representation,
-        PredefinedType="SURVEY",
-    )
-
-    if site == None:
-        site = file.by_type("IfcSite")[0]
-
-    ifcopenshell.api.spatial.assign_container(file, relating_structure=site, products=[annotation])
-
-    return annotation

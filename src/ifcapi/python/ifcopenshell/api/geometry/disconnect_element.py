@@ -17,7 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.util.element
+from ifcopenshell.api.geometry import _capi
 
 
 def disconnect_element(
@@ -25,31 +25,10 @@ def disconnect_element(
     relating_element: ifcopenshell.entity_instance,
     related_element: ifcopenshell.entity_instance,
 ) -> None:
-    # TODO: arguments relating_element, related_element probably
-    # should be renamed to element1, element2
-    # as api call doesn't really treat them as "relating" and "related"
-    # and just purging all connections between them
-    incompatible_connections = []
-
-    for rel in relating_element.ConnectedTo:
-        if rel.is_a() == "IfcRelConnectsElements" and rel.RelatedElement == related_element:
-            incompatible_connections.append(rel)
-
-    for rel in relating_element.ConnectedFrom:
-        if rel.is_a() == "IfcRelConnectsElements" and rel.RelatingElement == related_element:
-            incompatible_connections.append(rel)
-
-    for rel in related_element.ConnectedTo:
-        if rel.is_a() == "IfcRelConnectsElements" and rel.RelatedElement == relating_element:
-            incompatible_connections.append(rel)
-
-    for rel in related_element.ConnectedFrom:
-        if rel.is_a() == "IfcRelConnectsElements" and rel.RelatingElement == relating_element:
-            incompatible_connections.append(rel)
-
-    if incompatible_connections:
-        for connection in set(incompatible_connections):
-            history = connection.OwnerHistory
-            file.remove(connection)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_geometry_disconnect_element,
+        _capi.file_handle(file),
+        _capi.instance_handle(relating_element),
+        _capi.instance_handle(related_element),
+    )

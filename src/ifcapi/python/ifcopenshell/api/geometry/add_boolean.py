@@ -20,7 +20,8 @@ from __future__ import annotations
 
 from typing import Literal
 
-import ifcopenshell.util.element
+import ifcopenshell
+from ifcopenshell.api.geometry import _capi
 
 
 def add_boolean(
@@ -48,67 +49,13 @@ def add_boolean(
         created, the list will be empty.
     """
 
-    def is_operand(item):
-        return (
-            item.is_a("IfcBooleanResult")
-            or item.is_a("IfcCsgPrimitive3D")
-            or item.is_a("IfcHalfSpaceSolid")
-            or item.is_a("IfcSolidModel")
-            or item.is_a("IfcTessellatedFaceSet")
-        )
-
-    if not is_operand(first_item):
-        return []
-
-    original_first_item = first_item
-
-    second_items = [i for i in second_items if i != first_item and is_operand(i)]
-
-    while True:
-        is_part_of_boolean = False
-        for inverse in file.get_inverse(first_item):
-            if inverse.is_a("IfcBooleanResult"):
-                is_part_of_boolean = True
-                first_item = inverse
-                if inverse.FirstOperand == original_first_item and inverse.SecondOperand in second_items:
-                    second_items.remove(inverse.SecondOperand)
-                elif inverse.SecondOperand == original_first_item and inverse.FirstOperand in second_items:
-                    second_items.remove(inverse.FirstOperand)
-                break
-        if not is_part_of_boolean:
-            break
-
-    if not second_items:
-        return []
-
-    # Don't replace style or aspect relationships.
-    to_replace = set(
-        [i for i in file.get_inverse(first_item) if i.is_a("IfcShapeRepresentation") or i.is_a("IfcBooleanResult")]
+    lib = _capi.get_lib()
+    second_item_list = _capi.instance_list(second_items)
+    return _capi.call_handle_list(
+        file,
+        lib.ifcopenshell_ifcapi_geometry_add_boolean,
+        _capi.file_handle(file),
+        _capi.instance_handle(first_item),
+        second_item_list,
+        _capi.string(operator),
     )
-
-    first = first_item
-
-    booleans = []
-    for second_item in second_items:
-        if first.is_a("IfcTesselatedFaceSet"):
-            first.Closed = True  # For now, trust the user to do the right thing.
-        if second_item.is_a("IfcTesselatedFaceSet"):
-            second_item.Closed = True  # For now, trust the user to do the right thing.
-        if (
-            operator == "DIFFERENCE"
-            and second_item.is_a("IfcHalfSpaceSolid")
-            and (
-                first.is_a("IfcSweptAreaSolid")
-                or first.is_a("IfcSweptDiskSolid")
-                or first.is_a("IfcBooleanClippingResult")
-            )
-        ):
-            first = file.create_entity("IfcBooleanClippingResult", operator, first, second_item)
-        else:
-            first = file.create_entity("IfcBooleanResult", operator, first, second_item)
-        booleans.append(first)
-
-    for inverse in to_replace:
-        ifcopenshell.util.element.replace_attribute(inverse, first_item, first)
-
-    return booleans

@@ -19,6 +19,7 @@
 from typing import Optional
 
 import ifcopenshell
+from ifcopenshell.api.geometry import _capi
 
 
 def add_shape_aspect(
@@ -47,43 +48,15 @@ def add_shape_aspect(
         not necessary.
     :return: The IfcShapeAspect
     """
-    result = None
-    items_set = set(items)
-    for aspect in part_of_product.HasShapeAspects or []:
-        if aspect.Name == name:
-            for aspect_rep in aspect.ShapeRepresentations:
-                if aspect_rep.ContextOfItems == representation.ContextOfItems:
-                    aspect.Description = description
-                    aspect_rep.Items = tuple(set(aspect_rep.Items) | items_set)
-                    result = aspect
-            if not result:
-                aspect_rep = file.createIfcShapeRepresentation(
-                    ContextOfItems=representation.ContextOfItems,
-                    RepresentationIdentifier=representation.RepresentationIdentifier,
-                    RepresentationType=representation.RepresentationType,
-                    Items=items,
-                )
-                aspect.ShapeRepresentations += (aspect_rep,)
-                result = aspect
-        else:
-            for aspect_rep in aspect.ShapeRepresentations:
-                if aspect_rep.ContextOfItems != representation.ContextOfItems:
-                    continue
-                if set(aspect_rep.Items) & items_set:
-                    if new_items := set(aspect_rep.Items) - items_set:
-                        aspect_rep.Items = tuple(new_items)
-                    else:
-                        file.remove(aspect_rep)
-            if not aspect.ShapeRepresentations:
-                file.remove(aspect)
-
-    if result:
-        return result
-
-    aspect_rep = file.createIfcShapeRepresentation(
-        ContextOfItems=representation.ContextOfItems,
-        RepresentationIdentifier=representation.RepresentationIdentifier,
-        RepresentationType=representation.RepresentationType,
-        Items=items,
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_geometry_add_shape_aspect,
+        _capi.file_handle(file),
+        _capi.string(name),
+        _capi.instance_list(items),
+        _capi.instance_handle(representation),
+        _capi.instance_handle(part_of_product),
+        _capi.string(description) if description is not None else None,
+        description is not None,
     )
-    return file.createIfcShapeAspect((aspect_rep,), name, description, True, part_of_product)

@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.util.element
+from ifcopenshell.api import _relationship_capi
 
 
 def dereference_structure(
@@ -66,17 +65,14 @@ def dereference_structure(
         # Actually, it only goes up to storey 2.
         ifcopenshell.api.spatial.dereference_structure(model, products=[column], relating_structure=storey3)
     """
-    products_set = set(products)
-    for rel in relating_structure.ReferencesElements:
-        related_elements = set(rel.RelatedElements)
-        if not related_elements.intersection(products_set):
-            continue
-        related_elements = related_elements - products_set
-        if related_elements:
-            rel.RelatedElements = list(related_elements)
-            ifcopenshell.api.owner.update_owner_history(file, element=rel)
-        else:
-            history = rel.OwnerHistory
-            file.remove(rel)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
+    product_list = _relationship_capi.instance_list(products)
+    user, application = _relationship_capi.owner_user_application(file)
+    lib = _relationship_capi.get_lib()
+    _relationship_capi.call_status(
+        lib.ifcopenshell_ifcapi_spatial_dereference_structure,
+        _relationship_capi.file_handle(file),
+        _relationship_capi.instance_list_ptr(product_list),
+        _relationship_capi.instance_handle(relating_structure),
+        _relationship_capi.instance_handle(user),
+        _relationship_capi.instance_handle(application),
+    )

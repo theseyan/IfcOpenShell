@@ -22,6 +22,8 @@ _BIND_NAMES = (
     "ifcopenshell_ifcapi_classification_remove_classification",
     "ifcopenshell_ifcapi_spatial_assign_container",
     "ifcopenshell_ifcapi_spatial_unassign_container",
+    "ifcopenshell_ifcapi_spatial_reference_structure",
+    "ifcopenshell_ifcapi_spatial_dereference_structure",
     "ifcopenshell_ifcapi_nest_assign_object",
     "ifcopenshell_ifcapi_nest_unassign_object",
     "ifcopenshell_ifcapi_group_add_group",
