@@ -40,6 +40,7 @@ set(IFCAPI_SOURCES
     src/api/boundary/boundary.cpp
     src/api/constraint/constraint.cpp
     src/api/control/control.cpp
+    src/api/cogo/cogo.cpp
     src/api/context/context.cpp
     src/api/document/document.cpp
     src/api/drawing/drawing.cpp
@@ -77,6 +78,7 @@ set(IFCAPI_SOURCES
     src/api/profile/profile.cpp
     src/api/project/project.cpp
     src/api/style/style.cpp
+    src/api/structural/structural.cpp
     src/api/system/system.cpp
     src/api/unit/unit.cpp
     src/api/geometry/placement.cpp

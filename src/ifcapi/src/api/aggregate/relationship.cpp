@@ -3,6 +3,7 @@
 
 #include "ifcapi/ifcapi.h"
 #include "ifcapi/bindings/aggregate.h"
+#include "ifcapi/bindings/element.h"
 #include "ifcapi/bindings/spatial.h"
 #include "ifcapi/detail/relationship.h"
 #include "guid.h"
@@ -431,6 +432,132 @@ void spatial_unassign_container(
             }
         }
     } catch (...) {}
+}
+
+IfcUtil::IfcBaseClass* spatial_reference_structure(
+    IfcParse::IfcFile* file,
+    const std::vector<const IfcUtil::IfcBaseClass*>& products,
+    IfcUtil::IfcBaseClass* relating_structure,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    ifcopenshell_clear_error();
+    if (!file || products.empty()) {
+        return nullptr;
+    }
+
+    try {
+        auto* structure = relating_structure;
+        if (!structure) {
+            set_error("Relating structure not found");
+            return nullptr;
+        }
+
+        auto product_vec = to_mutable_refs(products);
+        std::set<IfcUtil::IfcBaseClass*> products_set(product_vec.begin(), product_vec.end());
+        if (products_set.empty()) {
+            return nullptr;
+        }
+
+        std::set<IfcUtil::IfcBaseClass*> referenced_set;
+        auto referenced = element_get_structure_referenced_elements(structure);
+        if (referenced) {
+            for (auto& item : *referenced) {
+                if (item) {
+                    referenced_set.insert(item);
+                }
+            }
+        }
+        std::vector<IfcUtil::IfcBaseClass*> products_to_assign;
+        for (auto* product : products_set) {
+            if (referenced_set.find(product) == referenced_set.end()) {
+                products_to_assign.push_back(product);
+            }
+        }
+
+        auto references = read_inverse_aggregate(structure, "ReferencesElements");
+        IfcUtil::IfcBaseClass* rel = references.empty() ? nullptr : references.front();
+        if (products_to_assign.empty()) {
+            return rel;
+        }
+
+        const auto* rel_decl = file->schema()->declaration_by_name("IfcRelReferencedInSpatialStructure");
+        auto* rel_entity_decl = rel_decl->as_entity();
+        int related_idx = find_attr_index(rel_entity_decl, "RelatedElements");
+        if (rel) {
+            auto related = get_ref_aggregate(rel, related_idx);
+            append_unique(related, products_to_assign);
+            set_ref_aggregate(rel, related_idx, related);
+            update_owner_history(file, rel, user, application);
+            return rel;
+        }
+
+        rel = file->create(rel_decl);
+        if (!rel) {
+            set_error("Failed to create IfcRelReferencedInSpatialStructure");
+            return nullptr;
+        }
+        int gi_idx = find_attr_index(rel_entity_decl, "GlobalId");
+        if (gi_idx >= 0) {
+            rel->set_attribute_value(static_cast<size_t>(gi_idx), ifcapi::guid_new());
+        }
+        int oh_idx = find_attr_index(rel_entity_decl, "OwnerHistory");
+        set_ref(rel, oh_idx, ensure_owner_history(file, owner_history, user, application));
+        set_ref_aggregate(rel, related_idx, products_to_assign);
+        int rs_idx = find_attr_index(rel_entity_decl, "RelatingStructure");
+        set_ref(rel, rs_idx, structure);
+        return rel;
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
+void spatial_dereference_structure(
+    IfcParse::IfcFile* file,
+    const std::vector<const IfcUtil::IfcBaseClass*>& products,
+    IfcUtil::IfcBaseClass* relating_structure,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    ifcopenshell_clear_error();
+    if (!file || products.empty() || !relating_structure) {
+        return;
+    }
+
+    try {
+        auto product_vec = to_mutable_refs(products);
+        std::set<IfcUtil::IfcBaseClass*> products_set(product_vec.begin(), product_vec.end());
+        if (products_set.empty()) {
+            return;
+        }
+
+        auto references = read_inverse_aggregate(relating_structure, "ReferencesElements");
+        for (auto* rel : references) {
+            auto related = read_ref_aggregate(rel, "RelatedElements");
+            bool intersects = false;
+            std::vector<IfcUtil::IfcBaseClass*> remaining;
+            for (auto* element : related) {
+                if (products_set.find(element) != products_set.end()) {
+                    intersects = true;
+                } else {
+                    remaining.push_back(element);
+                }
+            }
+            if (!intersects) {
+                continue;
+            }
+            if (remaining.empty()) {
+                remove_with_history(file, rel);
+            } else {
+                write_ref_aggregate(rel, "RelatedElements", remaining);
+                update_owner_history(file, rel, user, application);
+            }
+        }
+    } catch (const std::exception& e) {
+        set_error(e.what());
+    }
 }
 
 } // namespace bindings

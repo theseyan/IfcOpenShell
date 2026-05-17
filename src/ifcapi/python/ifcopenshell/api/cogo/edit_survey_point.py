@@ -18,6 +18,7 @@
 
 
 from ifcopenshell import entity_instance
+from ifcopenshell.api.cogo import _capi
 
 
 def edit_survey_point(annotation: entity_instance, x: float, y: float, z: float = 0.0):
@@ -34,7 +35,11 @@ def edit_survey_point(annotation: entity_instance, x: float, y: float, z: float 
         annotation = ifcopenshell.api.cogo.add_survey_point(file,file.createIfcCartesianPoint(4000.0,3500.0)))
         ifcopenshell.api.cogo.edit_surve_point(annotation,3500.0,2000.0)
     """
-    if annotation.Representation.Representations[0].Items[0].Dim == 2:
-        annotation.Representation.Representations[0].Items[0].Coordinates = (x, y)
-    else:
-        annotation.Representation.Representations[0].Items[0].Coordinates = (x, y, z)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_cogo_edit_survey_point,
+        _capi.instance_handle(annotation),
+        x,
+        y,
+        z,
+    )

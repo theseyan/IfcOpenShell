@@ -17,7 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.group
+from ifcopenshell.api.structural import _capi
 
 
 def unassign_structural_analysis_model(
@@ -32,4 +32,13 @@ def unassign_structural_analysis_model(
         the structural element is related to.
     :return: None
     """
-    ifcopenshell.api.group.unassign_group(file, products, structural_analysis_model)
+    lib = _capi.get_lib()
+    user, application = _capi.owner_user_application(file)
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_structural_unassign_structural_analysis_model,
+        _capi.file_handle(file),
+        _capi.instance_list(products),
+        _capi.instance_handle(structural_analysis_model),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+    )

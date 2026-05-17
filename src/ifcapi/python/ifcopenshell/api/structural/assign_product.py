@@ -18,7 +18,7 @@
 # This file was generated with the assistance of an AI coding tool.
 
 import ifcopenshell
-import ifcopenshell.api.root
+from ifcopenshell.api.structural import _capi
 
 
 def assign_product(
@@ -48,17 +48,13 @@ def assign_product(
         ifcopenshell.api.structural.assign_product(model,
             relating_product=member, related_object=wall)
     """
-    for rel in relating_product.ReferencedBy or []:
-        if not rel.is_a("IfcRelAssignsToProduct"):
-            continue
-        if related_object in rel.RelatedObjects:
-            return rel
-        related_objects = list(rel.RelatedObjects)
-        related_objects.append(related_object)
-        rel.RelatedObjects = related_objects
-        return rel
-
-    rel = ifcopenshell.api.root.create_entity(file, ifc_class="IfcRelAssignsToProduct")
-    rel.RelatingProduct = relating_product
-    rel.RelatedObjects = [related_object]
-    return rel
+    lib = _capi.get_lib()
+    owner_history = _capi.owner_history(file)
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_structural_assign_product,
+        _capi.file_handle(file),
+        _capi.instance_handle(relating_product),
+        _capi.instance_handle(related_object),
+        _capi.instance_handle(owner_history),
+    )

@@ -19,6 +19,7 @@
 #include "ifcapi/bindings/type.h"
 #include "ifcapi/bindings/unit.h"
 #include "ifcapi/detail/attribute.h"
+#include "ifcapi/detail/relationship.h"
 #include "guid.h"
 
 #include "ifcparse/IfcFile.h"
@@ -33,6 +34,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <unordered_set>
 #include <unordered_map>
 #include <vector>
 
@@ -135,6 +137,149 @@ void write_ref(IfcUtil::IfcBaseClass* e, const char* attr, IfcUtil::IfcBaseClass
 
 inline bool is_a(IfcUtil::IfcBaseClass* e, const char* name) {
     return e && e->declaration().is(name);
+}
+
+bool is_terminal_connection(const std::string& connection_type) {
+    return connection_type == "ATSTART" || connection_type == "ATEND";
+}
+
+std::vector<IfcUtil::IfcBaseClass*> inverse_refs(IfcUtil::IfcBaseClass* entity, const char* attr) {
+    return ifcapi::detail::read_inverse_aggregate(entity, attr);
+}
+
+std::vector<IfcUtil::IfcBaseClass*> all_inverse_refs(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* entity) {
+    std::vector<IfcUtil::IfcBaseClass*> result;
+    if (!file || !entity || !entity->id()) {
+        return result;
+    }
+    try {
+        auto inverses = file->getInverse(entity->id(), nullptr, -1);
+        if (!inverses) {
+            return result;
+        }
+        for (auto* inverse : *inverses) {
+            if (inverse) {
+                result.push_back(inverse);
+            }
+        }
+    } catch (...) {
+    }
+    return result;
+}
+
+void append_unique_connection(
+    std::vector<IfcUtil::IfcBaseClass*>& connections,
+    std::unordered_set<IfcUtil::IfcBaseClass*>& seen,
+    IfcUtil::IfcBaseClass* connection)
+{
+    if (connection && seen.insert(connection).second) {
+        connections.push_back(connection);
+    }
+}
+
+void remove_connections_with_history(IfcParse::IfcFile* file, const std::vector<IfcUtil::IfcBaseClass*>& connections) {
+    for (auto* connection : connections) {
+        ifcapi::detail::remove_with_history(file, connection);
+    }
+}
+
+void write_optional_string(IfcUtil::IfcBaseClass* entity, const char* attr, const char* value, bool has_value) {
+    int idx = attr_index_of(entity, attr);
+    if (idx < 0) {
+        return;
+    }
+    if (has_value) {
+        entity->set_attribute_value(static_cast<size_t>(idx), std::string(value ? value : ""));
+    } else {
+        entity->set_attribute_value(static_cast<size_t>(idx), Blank{});
+    }
+}
+
+void write_bool(IfcUtil::IfcBaseClass* entity, const char* attr, bool value) {
+    int idx = attr_index_of(entity, attr);
+    if (idx >= 0) {
+        entity->set_attribute_value(static_cast<size_t>(idx), value);
+    }
+}
+
+void write_empty_int_aggregate(IfcUtil::IfcBaseClass* entity, const char* attr) {
+    int idx = attr_index_of(entity, attr);
+    if (idx >= 0) {
+        entity->set_attribute_value(static_cast<size_t>(idx), std::vector<int>());
+    }
+}
+
+IfcUtil::IfcBaseClass* create_shape_representation_like(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* representation,
+    const std::vector<IfcUtil::IfcBaseClass*>& items)
+{
+    auto* aspect_rep = file->create(file->schema()->declaration_by_name("IfcShapeRepresentation"));
+    write_ref(aspect_rep, "ContextOfItems", read_ref(representation, "ContextOfItems"));
+    write_string(aspect_rep, "RepresentationIdentifier", read_string(representation, "RepresentationIdentifier"));
+    write_string(aspect_rep, "RepresentationType", read_string(representation, "RepresentationType"));
+    write_ref_list(aspect_rep, "Items", items);
+    return aspect_rep;
+}
+
+bool is_boolean_operand(IfcUtil::IfcBaseClass* item) {
+    return is_a(item, "IfcBooleanResult") || is_a(item, "IfcCsgPrimitive3D") || is_a(item, "IfcHalfSpaceSolid") ||
+        is_a(item, "IfcSolidModel") || is_a(item, "IfcTessellatedFaceSet");
+}
+
+IfcUtil::IfcBaseClass* create_boolean_result(
+    IfcParse::IfcFile* file,
+    const std::string& operator_type,
+    IfcUtil::IfcBaseClass* first,
+    IfcUtil::IfcBaseClass* second)
+{
+    const bool should_clip = operator_type == "DIFFERENCE" && is_a(second, "IfcHalfSpaceSolid") &&
+        (is_a(first, "IfcSweptAreaSolid") || is_a(first, "IfcSweptDiskSolid") || is_a(first, "IfcBooleanClippingResult"));
+    auto* boolean = file->create(file->schema()->declaration_by_name(should_clip ? "IfcBooleanClippingResult" : "IfcBooleanResult"));
+    ifcapi::detail::write_enum_attr(boolean, "Operator", operator_type);
+    write_ref(boolean, "FirstOperand", first);
+    write_ref(boolean, "SecondOperand", second);
+    return boolean;
+}
+
+void geometry_remove_boolean_impl(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* item) {
+    if (!is_a(item, "IfcBooleanResult")) {
+        for (auto* inverse : all_inverse_refs(file, item)) {
+            if (is_a(inverse, "IfcBooleanResult")) {
+                geometry_remove_boolean_impl(file, inverse);
+            }
+        }
+        return;
+    }
+
+    std::vector<IfcUtil::IfcBaseClass*> representations;
+    std::vector<IfcUtil::IfcBaseClass*> queue = all_inverse_refs(file, item);
+    while (!queue.empty()) {
+        auto* inverse = queue.back();
+        queue.pop_back();
+        if (is_a(inverse, "IfcShapeRepresentation")) {
+            if (!ifcapi::detail::contains_ref(representations, inverse)) {
+                representations.push_back(inverse);
+            }
+        } else if (is_a(inverse, "IfcBooleanResult") || is_a(inverse, "IfcCsgSolid")) {
+            auto more = all_inverse_refs(file, inverse);
+            queue.insert(queue.end(), more.begin(), more.end());
+        }
+    }
+
+    auto* first = read_ref(item, "FirstOperand");
+    auto* second = read_ref(item, "SecondOperand");
+    for (auto* inverse : all_inverse_refs(file, item)) {
+        ifcapi::detail::replace_attribute_reference(inverse, item, first);
+    }
+
+    for (auto* representation : representations) {
+        auto items = read_ref_list(representation, "Items");
+        items.push_back(second);
+        write_ref_list(representation, "Items", items);
+    }
+
+    file->removeEntity(item);
 }
 
 // Construct standard geometry primitives reusable across representation
@@ -581,6 +726,191 @@ void assign_representation_impl(IfcParse::IfcFile* file,
 namespace ifcapi {
 namespace bindings {
 
+std::vector<IfcUtil::IfcBaseClass*> geometry_add_boolean(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* first_item,
+    const std::vector<const IfcUtil::IfcBaseClass*>& second_items,
+    const std::string& operator_type)
+{
+    ifcopenshell_clear_error();
+    std::vector<IfcUtil::IfcBaseClass*> booleans;
+    if (!file || !is_boolean_operand(first_item)) {
+        return booleans;
+    }
+
+    try {
+        auto* original_first_item = first_item;
+        auto filtered_second_items = ifcapi::detail::to_mutable_refs(second_items);
+        filtered_second_items.erase(
+            std::remove_if(
+                filtered_second_items.begin(),
+                filtered_second_items.end(),
+                [&](IfcUtil::IfcBaseClass* item) { return item == first_item || !is_boolean_operand(item); }),
+            filtered_second_items.end());
+
+        while (true) {
+            bool is_part_of_boolean = false;
+            for (auto* inverse : all_inverse_refs(file, first_item)) {
+                if (!is_a(inverse, "IfcBooleanResult")) {
+                    continue;
+                }
+                is_part_of_boolean = true;
+                first_item = inverse;
+                auto* first_operand = read_ref(inverse, "FirstOperand");
+                auto* second_operand = read_ref(inverse, "SecondOperand");
+                if (first_operand == original_first_item) {
+                    filtered_second_items.erase(
+                        std::remove(filtered_second_items.begin(), filtered_second_items.end(), second_operand),
+                        filtered_second_items.end());
+                } else if (second_operand == original_first_item) {
+                    filtered_second_items.erase(
+                        std::remove(filtered_second_items.begin(), filtered_second_items.end(), first_operand),
+                        filtered_second_items.end());
+                }
+                break;
+            }
+            if (!is_part_of_boolean) {
+                break;
+            }
+        }
+
+        if (filtered_second_items.empty()) {
+            return booleans;
+        }
+
+        std::vector<IfcUtil::IfcBaseClass*> to_replace;
+        for (auto* inverse : all_inverse_refs(file, first_item)) {
+            if (is_a(inverse, "IfcShapeRepresentation") || is_a(inverse, "IfcBooleanResult")) {
+                if (!ifcapi::detail::contains_ref(to_replace, inverse)) {
+                    to_replace.push_back(inverse);
+                }
+            }
+        }
+
+        auto* first = first_item;
+        for (auto* second_item : filtered_second_items) {
+            first = create_boolean_result(file, operator_type, first, second_item);
+            booleans.push_back(first);
+        }
+
+        for (auto* inverse : to_replace) {
+            ifcapi::detail::replace_attribute_reference(inverse, first_item, first);
+        }
+        return booleans;
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return {};
+    }
+}
+
+IfcUtil::IfcBaseClass* geometry_add_shape_aspect(
+    IfcParse::IfcFile* file,
+    const std::string& name,
+    const std::vector<const IfcUtil::IfcBaseClass*>& items,
+    IfcUtil::IfcBaseClass* representation,
+    IfcUtil::IfcBaseClass* part_of_product,
+    const char* description,
+    bool has_description)
+{
+    ifcopenshell_clear_error();
+    if (!file || !representation || !part_of_product) {
+        set_error("Invalid arguments");
+        return nullptr;
+    }
+
+    try {
+        auto shape_items = ifcapi::detail::to_mutable_refs(items);
+        auto* context = read_ref(representation, "ContextOfItems");
+        IfcUtil::IfcBaseClass* shape_aspect = nullptr;
+
+        for (auto* aspect : ifcapi::detail::read_inverse_aggregate(part_of_product, "HasShapeAspects")) {
+            if (read_string(aspect, "Name") == name) {
+                shape_aspect = aspect;
+                break;
+            }
+        }
+
+        if (shape_aspect) {
+            write_optional_string(shape_aspect, "Description", description, has_description);
+            bool has_context_representation = false;
+            for (auto* aspect_rep : read_ref_list(shape_aspect, "ShapeRepresentations")) {
+                if (read_ref(aspect_rep, "ContextOfItems") == context) {
+                    auto existing_items = read_ref_list(aspect_rep, "Items");
+                    ifcapi::detail::append_unique(existing_items, shape_items);
+                    write_ref_list(aspect_rep, "Items", existing_items);
+                    has_context_representation = true;
+                    break;
+                }
+            }
+            if (!has_context_representation) {
+                auto aspect_reps = read_ref_list(shape_aspect, "ShapeRepresentations");
+                aspect_reps.push_back(create_shape_representation_like(file, representation, shape_items));
+                write_ref_list(shape_aspect, "ShapeRepresentations", aspect_reps);
+            }
+        } else {
+            auto* aspect_rep = create_shape_representation_like(file, representation, shape_items);
+            shape_aspect = file->create(file->schema()->declaration_by_name("IfcShapeAspect"));
+            write_ref_list(shape_aspect, "ShapeRepresentations", {aspect_rep});
+            write_string(shape_aspect, "Name", name);
+            write_optional_string(shape_aspect, "Description", description, has_description);
+            write_bool(shape_aspect, "ProductDefinitional", true);
+            write_ref(shape_aspect, "PartOfProductDefinitionShape", part_of_product);
+        }
+
+        for (auto* aspect : ifcapi::detail::read_inverse_aggregate(part_of_product, "HasShapeAspects")) {
+            if (aspect == shape_aspect) {
+                continue;
+            }
+            auto aspect_reps = read_ref_list(aspect, "ShapeRepresentations");
+            for (auto it = aspect_reps.begin(); it != aspect_reps.end();) {
+                auto* aspect_rep = *it;
+                if (read_ref(aspect_rep, "ContextOfItems") != context) {
+                    ++it;
+                    continue;
+                }
+                auto aspect_items = read_ref_list(aspect_rep, "Items");
+                aspect_items.erase(
+                    std::remove_if(
+                        aspect_items.begin(),
+                        aspect_items.end(),
+                        [&](IfcUtil::IfcBaseClass* item) {
+                            return ifcapi::detail::contains_ref(shape_items, item);
+                        }),
+                    aspect_items.end());
+                if (aspect_items.empty()) {
+                    file->removeEntity(aspect_rep);
+                    it = aspect_reps.erase(it);
+                } else {
+                    write_ref_list(aspect_rep, "Items", aspect_items);
+                    ++it;
+                }
+            }
+            write_ref_list(aspect, "ShapeRepresentations", aspect_reps);
+            if (aspect_reps.empty()) {
+                file->removeEntity(aspect);
+            }
+        }
+
+        return shape_aspect;
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
+void geometry_remove_boolean(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* item) {
+    ifcopenshell_clear_error();
+    if (!file || !item) {
+        return;
+    }
+
+    try {
+        geometry_remove_boolean_impl(file, item);
+    } catch (const std::exception& e) {
+        set_error(e.what());
+    }
+}
+
 IfcUtil::IfcBaseClass* geometry_map_representation(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* representation)
@@ -614,6 +944,229 @@ IfcUtil::IfcBaseClass* geometry_assign_representation(
     } catch (const std::exception& e) {
         set_error(e.what());
         return nullptr;
+    }
+}
+
+IfcUtil::IfcBaseClass* geometry_connect_element(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* relating_element,
+    IfcUtil::IfcBaseClass* related_element,
+    const char* description,
+    bool has_description,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    ifcopenshell_clear_error();
+    if (!file || !relating_element || !related_element) {
+        set_error("Invalid arguments");
+        return nullptr;
+    }
+
+    try {
+        std::vector<IfcUtil::IfcBaseClass*> incompatible_connections;
+        std::unordered_set<IfcUtil::IfcBaseClass*> seen;
+        for (auto* rel : inverse_refs(relating_element, "ConnectedFrom")) {
+            if (is_a(rel, "IfcRelConnectsElements") && read_ref(rel, "RelatingElement") == related_element) {
+                append_unique_connection(incompatible_connections, seen, rel);
+            }
+        }
+        for (auto* rel : inverse_refs(related_element, "ConnectedTo")) {
+            if (is_a(rel, "IfcRelConnectsElements") && read_ref(rel, "RelatedElement") == relating_element) {
+                append_unique_connection(incompatible_connections, seen, rel);
+            }
+        }
+        remove_connections_with_history(file, incompatible_connections);
+
+        for (auto* rel : inverse_refs(relating_element, "ConnectedTo")) {
+            if (is_a(rel, "IfcRelConnectsElements") && read_ref(rel, "RelatedElement") == related_element) {
+                write_optional_string(rel, "Description", description, has_description);
+                return rel;
+            }
+        }
+
+        const auto* rel_decl = file->schema()->declaration_by_name("IfcRelConnectsElements");
+        auto* rel = file->create(rel_decl);
+        if (!rel) {
+            set_error("Failed to create IfcRelConnectsElements");
+            return nullptr;
+        }
+        write_string(rel, "GlobalId", ifcapi::guid_new());
+        write_ref(rel, "OwnerHistory", ifcapi::detail::ensure_owner_history(file, owner_history, user, application));
+        write_optional_string(rel, "Description", description, has_description);
+        write_ref(rel, "RelatingElement", relating_element);
+        write_ref(rel, "RelatedElement", related_element);
+        return rel;
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
+void geometry_disconnect_element(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* relating_element,
+    IfcUtil::IfcBaseClass* related_element)
+{
+    ifcopenshell_clear_error();
+    if (!file || !relating_element || !related_element) {
+        return;
+    }
+
+    try {
+        std::vector<IfcUtil::IfcBaseClass*> incompatible_connections;
+        std::unordered_set<IfcUtil::IfcBaseClass*> seen;
+        for (auto* rel : inverse_refs(relating_element, "ConnectedTo")) {
+            if (is_a(rel, "IfcRelConnectsElements") && read_ref(rel, "RelatedElement") == related_element) {
+                append_unique_connection(incompatible_connections, seen, rel);
+            }
+        }
+        for (auto* rel : inverse_refs(relating_element, "ConnectedFrom")) {
+            if (is_a(rel, "IfcRelConnectsElements") && read_ref(rel, "RelatingElement") == related_element) {
+                append_unique_connection(incompatible_connections, seen, rel);
+            }
+        }
+        for (auto* rel : inverse_refs(related_element, "ConnectedTo")) {
+            if (is_a(rel, "IfcRelConnectsElements") && read_ref(rel, "RelatedElement") == relating_element) {
+                append_unique_connection(incompatible_connections, seen, rel);
+            }
+        }
+        for (auto* rel : inverse_refs(related_element, "ConnectedFrom")) {
+            if (is_a(rel, "IfcRelConnectsElements") && read_ref(rel, "RelatingElement") == relating_element) {
+                append_unique_connection(incompatible_connections, seen, rel);
+            }
+        }
+        remove_connections_with_history(file, incompatible_connections);
+    } catch (const std::exception& e) {
+        set_error(e.what());
+    }
+}
+
+IfcUtil::IfcBaseClass* geometry_connect_path(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* relating_element,
+    IfcUtil::IfcBaseClass* related_element,
+    const std::string& relating_connection,
+    const std::string& related_connection,
+    const char* description,
+    bool has_description,
+    IfcUtil::IfcBaseClass* connection_geometry,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    ifcopenshell_clear_error();
+    if (!file || !relating_element || !related_element) {
+        set_error("Invalid arguments");
+        return nullptr;
+    }
+
+    try {
+        const std::string& relating_type = relating_connection;
+        const std::string& related_type = related_connection;
+        std::vector<IfcUtil::IfcBaseClass*> incompatible_connections;
+        std::unordered_set<IfcUtil::IfcBaseClass*> seen;
+
+        for (auto* rel : inverse_refs(relating_element, "ConnectedTo")) {
+            if (!is_a(rel, "IfcRelConnectsPathElements")) {
+                continue;
+            }
+            if (read_ref(rel, "RelatedElement") == related_element ||
+                (is_terminal_connection(read_string(rel, "RelatingConnectionType")) &&
+                    read_string(rel, "RelatingConnectionType") == relating_type)) {
+                append_unique_connection(incompatible_connections, seen, rel);
+            }
+        }
+        for (auto* rel : inverse_refs(relating_element, "ConnectedFrom")) {
+            if (is_a(rel, "IfcRelConnectsPathElements") &&
+                is_terminal_connection(read_string(rel, "RelatedConnectionType")) &&
+                read_string(rel, "RelatedConnectionType") == relating_type) {
+                append_unique_connection(incompatible_connections, seen, rel);
+            }
+        }
+        for (auto* rel : inverse_refs(related_element, "ConnectedFrom")) {
+            if (is_a(rel, "IfcRelConnectsPathElements") &&
+                is_terminal_connection(read_string(rel, "RelatedConnectionType")) &&
+                read_string(rel, "RelatedConnectionType") == related_type) {
+                append_unique_connection(incompatible_connections, seen, rel);
+            }
+        }
+        for (auto* rel : inverse_refs(related_element, "ConnectedTo")) {
+            if (!is_a(rel, "IfcRelConnectsPathElements")) {
+                continue;
+            }
+            if (read_ref(rel, "RelatedElement") == relating_element ||
+                (is_terminal_connection(read_string(rel, "RelatingConnectionType")) &&
+                    read_string(rel, "RelatingConnectionType") == related_type)) {
+                append_unique_connection(incompatible_connections, seen, rel);
+            }
+        }
+        remove_connections_with_history(file, incompatible_connections);
+
+        const auto* rel_decl = file->schema()->declaration_by_name("IfcRelConnectsPathElements");
+        auto* rel = file->create(rel_decl);
+        if (!rel) {
+            set_error("Failed to create IfcRelConnectsPathElements");
+            return nullptr;
+        }
+        write_string(rel, "GlobalId", ifcapi::guid_new());
+        write_ref(rel, "OwnerHistory", ifcapi::detail::ensure_owner_history(file, owner_history, user, application));
+        write_optional_string(rel, "Description", description, has_description);
+        write_ref(rel, "ConnectionGeometry", connection_geometry);
+        write_ref(rel, "RelatingElement", relating_element);
+        write_ref(rel, "RelatedElement", related_element);
+        ifcapi::detail::write_enum_attr(rel, "RelatingConnectionType", relating_type);
+        ifcapi::detail::write_enum_attr(rel, "RelatedConnectionType", related_type);
+        write_empty_int_aggregate(rel, "RelatingPriorities");
+        write_empty_int_aggregate(rel, "RelatedPriorities");
+        return rel;
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
+void geometry_disconnect_path(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* element,
+    const char* connection_type,
+    bool has_connection_type,
+    IfcUtil::IfcBaseClass* relating_element,
+    IfcUtil::IfcBaseClass* related_element)
+{
+    ifcopenshell_clear_error();
+    if (!file) {
+        return;
+    }
+
+    try {
+        std::vector<IfcUtil::IfcBaseClass*> connections;
+        std::unordered_set<IfcUtil::IfcBaseClass*> seen;
+        if (has_connection_type && element) {
+            const std::string type = connection_type ? connection_type : "";
+            for (auto* rel : inverse_refs(element, "ConnectedTo")) {
+                if (is_a(rel, "IfcRelConnectsPathElements") && read_string(rel, "RelatingConnectionType") == type) {
+                    append_unique_connection(connections, seen, rel);
+                }
+            }
+            for (auto* rel : inverse_refs(element, "ConnectedFrom")) {
+                if (is_a(rel, "IfcRelConnectsPathElements") && read_string(rel, "RelatedConnectionType") == type) {
+                    append_unique_connection(connections, seen, rel);
+                }
+            }
+        } else if (related_element) {
+            for (auto* rel : inverse_refs(relating_element, "ConnectedTo")) {
+                if (is_a(rel, "IfcRelConnectsPathElements") && read_ref(rel, "RelatedElement") == related_element) {
+                    append_unique_connection(connections, seen, rel);
+                }
+            }
+        } else {
+            set_error("cannot access local variable 'connections' where it is not associated with a value");
+            return;
+        }
+        remove_connections_with_history(file, connections);
+    } catch (const std::exception& e) {
+        set_error(e.what());
     }
 }
 

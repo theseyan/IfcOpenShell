@@ -19,9 +19,7 @@
 from typing import Optional
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.guid
-import ifcopenshell.util.element
+from ifcopenshell.api.geometry import _capi
 
 
 def connect_element(
@@ -30,32 +28,17 @@ def connect_element(
     related_element: ifcopenshell.entity_instance,
     description: Optional[str] = None,
 ) -> ifcopenshell.entity_instance:
-    incompatible_connections = []
-
-    for rel in relating_element.ConnectedFrom:
-        if rel.is_a() == "IfcRelConnectsElements" and rel.RelatingElement == related_element:
-            incompatible_connections.append(rel)
-
-    for rel in related_element.ConnectedTo:
-        if rel.is_a() == "IfcRelConnectsElements" and rel.RelatedElement == relating_element:
-            incompatible_connections.append(rel)
-
-    if incompatible_connections:
-        for connection in set(incompatible_connections):
-            history = connection.OwnerHistory
-            file.remove(connection)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
-
-    for rel in relating_element.ConnectedTo:
-        if rel.is_a() == "IfcRelConnectsElements" and rel.RelatedElement == related_element:
-            rel.Description = description
-            return rel
-
-    return file.createIfcRelConnectsElements(
-        ifcopenshell.guid.new(),
-        OwnerHistory=ifcopenshell.api.owner.create_owner_history(file),
-        Description=description,
-        RelatingElement=relating_element,
-        RelatedElement=related_element,
+    lib = _capi.get_lib()
+    user, application = _capi.owner_user_application(file)
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_geometry_connect_element,
+        _capi.file_handle(file),
+        _capi.instance_handle(relating_element),
+        _capi.instance_handle(related_element),
+        _capi.string(description or ""),
+        description is not None,
+        None,
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
     )

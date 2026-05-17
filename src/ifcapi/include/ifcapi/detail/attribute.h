@@ -220,11 +220,44 @@ inline void write_int_attr(IfcUtil::IfcBaseClass* entity, const char* attr, int 
     }
 }
 
+inline int read_int_attr(IfcUtil::IfcBaseClass* entity, const char* attr, int fallback = 0) {
+    int idx = attr_index_of(entity, attr);
+    if (idx < 0) {
+        return fallback;
+    }
+    try {
+        auto val = entity->get_attribute_value(static_cast<size_t>(idx));
+        if (val.isNull()) {
+            return fallback;
+        }
+        return static_cast<int>(val);
+    } catch (...) {
+        return fallback;
+    }
+}
+
 inline void write_double_attr(IfcUtil::IfcBaseClass* entity, const char* attr, double value) {
     int idx = attr_index_of(entity, attr);
     if (idx >= 0) {
         entity->set_attribute_value(static_cast<size_t>(idx), value);
     }
+}
+
+inline std::vector<double> read_double_aggregate(IfcUtil::IfcBaseClass* entity, const char* attr) {
+    std::vector<double> result;
+    int idx = attr_index_of(entity, attr);
+    if (idx < 0) {
+        return result;
+    }
+    try {
+        auto val = entity->get_attribute_value(static_cast<size_t>(idx));
+        if (val.isNull()) {
+            return result;
+        }
+        return static_cast<std::vector<double>>(val);
+    } catch (...) {
+    }
+    return result;
 }
 
 inline void write_double_aggregate(IfcUtil::IfcBaseClass* entity, const char* attr, const std::vector<double>& values) {

@@ -19,7 +19,7 @@
 from typing import Union
 
 import ifcopenshell
-import ifcopenshell.api.group
+from ifcopenshell.api.structural import _capi
 
 
 def assign_structural_analysis_model(
@@ -34,4 +34,17 @@ def assign_structural_analysis_model(
         the structural element is related to.
     :return: The IfcRelAssignsToGroup relationship
     """
-    return ifcopenshell.api.group.assign_group(file, products, structural_analysis_model)
+    lib = _capi.get_lib()
+    owner_history = _capi.owner_history(file)
+    user, application = _capi.owner_user_application(file)
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_structural_assign_structural_analysis_model,
+        _capi.file_handle(file),
+        _capi.instance_list(products),
+        _capi.instance_handle(structural_analysis_model),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+        nullable=True,
+    )

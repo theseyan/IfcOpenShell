@@ -13,6 +13,7 @@ public_headers:
   - ifcapi/bindings/boundary.h
   - guid.h
   - ifcapi/bindings/classification.h
+  - ifcapi/bindings/cogo.h
   - ifcapi/bindings/constraint.h
   - ifcapi/bindings/control.h
   - ifcapi/bindings/context.h
@@ -43,6 +44,7 @@ public_headers:
   - ifcapi/bindings/shape_builder.h
   - ifcapi/bindings/spatial.h
   - ifcapi/bindings/style.h
+  - ifcapi/bindings/structural.h
   - ifcapi/bindings/system.h
   - ifcapi/bindings/type.h
   - ifcapi/bindings/unit.h
@@ -417,6 +419,8 @@ discover:
         - aggregate_unassign_object
         - spatial_assign_container
         - spatial_unassign_container
+        - spatial_reference_structure
+        - spatial_dereference_structure
       type_overrides:
         aggregate_assign_object:
           returns:
@@ -445,6 +449,22 @@ discover:
             application:
               nullable: true
         spatial_unassign_container:
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
+        spatial_reference_structure:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        spatial_dereference_structure:
           params:
             user:
               nullable: true
@@ -508,17 +528,69 @@ discover:
     - namespace: ifcapi::bindings
       translation_unit: geometry.cpp
       include:
+        - geometry_add_boolean
+        - geometry_add_shape_aspect
         - geometry_assign_representation
+        - geometry_connect_element
+        - geometry_connect_path
         - geometry_copy_representation
+        - geometry_disconnect_element
+        - geometry_disconnect_path
         - geometry_map_representation
         - geometry_profile_extents
+        - geometry_remove_boolean
         - geometry_remove_representation
         - geometry_unassign_representation
         - type_map_type_representations
       type_overrides:
+        geometry_add_boolean:
+          returns:
+            ownership: owned
+        geometry_add_shape_aspect:
+          returns:
+            nullable: true
+          params:
+            description:
+              nullable: true
         geometry_assign_representation:
           returns:
             nullable: true
+        geometry_connect_element:
+          returns:
+            nullable: true
+          params:
+            description:
+              nullable: true
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        geometry_connect_path:
+          returns:
+            nullable: true
+          params:
+            description:
+              nullable: true
+            connection_geometry:
+              nullable: true
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        geometry_disconnect_path:
+          params:
+            element:
+              nullable: true
+            connection_type:
+              nullable: true
+            relating_element:
+              nullable: true
+            related_element:
+              nullable: true
         geometry_copy_representation:
           returns:
             nullable: true
@@ -1187,6 +1259,25 @@ discover:
             application:
               nullable: true
     - namespace: ifcapi::bindings
+      translation_unit: api/cogo/cogo.cpp
+      include:
+        - cogo_add_survey_point
+        - cogo_assign_survey_point
+        - cogo_edit_survey_point
+      type_overrides:
+        cogo_add_survey_point:
+          returns:
+            nullable: true
+          params:
+            site:
+              nullable: true
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+    - namespace: ifcapi::bindings
       translation_unit: api/constraint/constraint.cpp
       include:
         - constraint_add_objective
@@ -1657,6 +1748,51 @@ discover:
             nullable: true
           params:
             style:
+              nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: api/structural/structural.cpp
+      include:
+        - structural_add_structural_activity
+        - structural_add_structural_analysis_model
+        - structural_assign_product
+        - structural_assign_structural_analysis_model
+        - structural_unassign_structural_analysis_model
+      type_overrides:
+        structural_add_structural_activity:
+          returns:
+            nullable: true
+          params:
+            activity_owner_history:
+              nullable: true
+            relationship_owner_history:
+              nullable: true
+        structural_add_structural_analysis_model:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+        structural_assign_product:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+        structural_assign_structural_analysis_model:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        structural_unassign_structural_analysis_model:
+          params:
+            user:
+              nullable: true
+            application:
               nullable: true
     - namespace: ifcapi::bindings
       translation_unit: api/system/system.cpp

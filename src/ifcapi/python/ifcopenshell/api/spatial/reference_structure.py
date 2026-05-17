@@ -19,9 +19,7 @@
 from typing import Union
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.guid
-import ifcopenshell.util.element
+from ifcopenshell.api import _relationship_capi
 
 
 def reference_structure(
@@ -89,31 +87,16 @@ def reference_structure(
         )
     """
 
-    structure = relating_structure
-    products_set = set(products)
-
-    if not products_set:
-        return
-
-    referenced = ifcopenshell.util.element.get_structure_referenced_elements(structure)
-    products_to_assign = products_set - referenced
-    rel: Union[ifcopenshell.entity_instance, None]
-    rel = next(iter(structure.ReferencesElements), None)
-
-    if not products_to_assign:
-        return rel
-
-    if rel is None:
-        rel = file.create_entity(
-            "IfcRelReferencedInSpatialStructure",
-            GlobalId=ifcopenshell.guid.new(),
-            OwnerHistory=ifcopenshell.api.owner.create_owner_history(file),
-            RelatedElements=list(products_to_assign),
-            RelatingStructure=structure,
-        )
-    else:
-        related_elements = set(rel.RelatedElements) | products_to_assign
-        rel.RelatedElements = list(related_elements)
-        ifcopenshell.api.owner.update_owner_history(file, element=rel)
-
-    return rel
+    lib = _relationship_capi.get_lib()
+    owner_history, user, application = _relationship_capi.owner_context(file)
+    product_list = _relationship_capi.instance_list(products)
+    return _relationship_capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_spatial_reference_structure,
+        _relationship_capi.file_handle(file),
+        _relationship_capi.instance_list_ptr(product_list),
+        _relationship_capi.instance_handle(relating_structure),
+        _relationship_capi.instance_handle(owner_history),
+        _relationship_capi.instance_handle(user),
+        _relationship_capi.instance_handle(application),
+    )

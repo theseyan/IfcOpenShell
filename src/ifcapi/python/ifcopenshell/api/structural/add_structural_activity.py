@@ -18,7 +18,8 @@
 
 from typing import Literal
 
-import ifcopenshell.api.root
+import ifcopenshell
+from ifcopenshell.api.structural import _capi
 
 
 def add_structural_activity(
@@ -53,15 +54,18 @@ def add_structural_activity(
     :return: The newly created entity based on the ifc_class
     """
 
-    activity = ifcopenshell.api.root.create_entity(
+    lib = _capi.get_lib()
+    activity_owner_history = _capi.owner_history(file)
+    relationship_owner_history = _capi.owner_history(file)
+    return _capi.call_handle(
         file,
-        ifc_class=ifc_class,
-        predefined_type=predefined_type,
+        lib.ifcopenshell_ifcapi_structural_add_structural_activity,
+        _capi.file_handle(file),
+        _capi.instance_handle(applied_load),
+        _capi.instance_handle(structural_member),
+        _capi.string(ifc_class),
+        _capi.string(predefined_type),
+        _capi.string(global_or_local),
+        _capi.instance_handle(activity_owner_history),
+        _capi.instance_handle(relationship_owner_history),
     )
-    activity.AppliedLoad = applied_load
-    activity.GlobalOrLocal = global_or_local
-
-    rel = ifcopenshell.api.root.create_entity(file, ifc_class="IfcRelConnectsStructuralActivity")
-    rel.RelatingElement = structural_member
-    rel.RelatedStructuralActivity = activity
-    return activity
