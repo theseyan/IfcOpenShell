@@ -83,6 +83,8 @@ set(IFCAPI_SOURCES
     src/api/unit/unit.cpp
     src/api/geometry/placement.cpp
     src/api/geometry/shape_builder.cpp
+    src/api/geometry/door.cpp
+    src/api/geometry/railing.cpp
     src/api/geometry/window.cpp
     src/express/runtime.cpp
     src/express/compute_derived.cpp

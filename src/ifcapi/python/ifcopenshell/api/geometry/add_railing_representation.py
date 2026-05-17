@@ -37,6 +37,8 @@ from ifcopenshell.util.shape_builder import (
     np_to_3d,
 )
 
+from . import _capi
+
 
 def mm(x: float) -> float:
     """mm to meters shortcut for readability"""
@@ -92,9 +94,9 @@ def add_railing_representation(
     usecase = Usecase()
     usecase.file = file
     # define unit_scale first as it's going to be used setting default arguments
-    settings: dict[str, Any] = {
-        "unit_scale": ifcopenshell.util.unit.calculate_unit_scale(file) if unit_scale is None else unit_scale,
-    }
+    unit_scale = ifcopenshell.util.unit.calculate_unit_scale(file) if unit_scale is None else unit_scale
+    si_conversion = 1 / unit_scale
+    settings: dict[str, Any] = {"unit_scale": unit_scale}
     settings.update(
         {
             "context": context,
@@ -102,24 +104,38 @@ def add_railing_representation(
             "railing_path": (
                 railing_path
                 if railing_path is not None
-                else usecase.path_si_to_units(V([(0, 0, 1), (1, 0, 1), (2, 0, 1)]))
+                else V([(0, 0, 1), (1, 0, 1), (2, 0, 1)]) * si_conversion
             ),
             "use_manual_supports": use_manual_supports,
-            "support_spacing": support_spacing if support_spacing is not None else usecase.convert_si_to_unit(mm(1000)),
+            "support_spacing": support_spacing if support_spacing is not None else mm(1000) * si_conversion,
             "railing_diameter": (
-                railing_diameter if railing_diameter is not None else usecase.convert_si_to_unit(mm(50))
+                railing_diameter if railing_diameter is not None else mm(50) * si_conversion
             ),
-            "clear_width": clear_width if clear_width is not None else usecase.convert_si_to_unit(mm(40)),
+            "clear_width": clear_width if clear_width is not None else mm(40) * si_conversion,
             "terminal_type": terminal_type,
-            "height": height if height is not None else usecase.convert_si_to_unit(mm(1000)),
+            "height": height if height is not None else mm(1000) * si_conversion,
             "looped_path": looped_path,
         }
     )
-    usecase.settings = settings
 
     if railing_type != "WALL_MOUNTED_HANDRAIL":
         raise Exception('Only "WALL_MOUNTED_HANDRAIL" railing_type is supported at the moment.')
-    return usecase.execute()
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_geometry_add_railing_representation,
+        _capi.file_handle(file),
+        _capi.instance_handle(context),
+        _capi.double_list_list(settings["railing_path"]),
+        use_manual_supports,
+        settings["support_spacing"],
+        settings["railing_diameter"],
+        settings["clear_width"],
+        _capi.string(terminal_type),
+        settings["height"],
+        looped_path,
+        unit_scale,
+    )
 
 
 class Usecase:
