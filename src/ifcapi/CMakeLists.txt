@@ -40,6 +40,7 @@ set(IFCAPI_SOURCES
     src/api/boundary/boundary.cpp
     src/api/constraint/constraint.cpp
     src/api/control/control.cpp
+    src/api/cost/cost.cpp
     src/api/cogo/cogo.cpp
     src/api/context/context.cpp
     src/api/document/document.cpp

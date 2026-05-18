@@ -22,6 +22,7 @@ _BIND_NAMES = (
     "ifcopenshell_ifcapi_structural_assign_to_building",
     "ifcopenshell_ifcapi_structural_assign_product",
     "ifcopenshell_ifcapi_structural_assign_structural_analysis_model",
+    "ifcopenshell_ifcapi_structural_edit_structural_boundary_condition",
     "ifcopenshell_ifcapi_structural_edit_structural_connection_cs",
     "ifcopenshell_ifcapi_structural_edit_structural_item_axis",
     "ifcopenshell_ifcapi_structural_remove_structural_analysis_model",

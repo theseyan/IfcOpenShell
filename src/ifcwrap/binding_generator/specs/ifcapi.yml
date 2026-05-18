@@ -18,6 +18,7 @@ public_headers:
   - ifcapi/bindings/constraint.h
   - ifcapi/bindings/control.h
   - ifcapi/bindings/context.h
+  - ifcapi/bindings/cost.h
   - ifcapi/bindings/document.h
   - ifcapi/bindings/drawing.h
   - ifcapi/bindings/element.h
@@ -1164,6 +1165,7 @@ discover:
         - pset_props_set_double
         - pset_props_set_double_list
         - pset_props_set_instance
+        - pset_props_set_instance_list
         - pset_props_set_int
         - pset_props_set_int_list
         - pset_props_set_null
@@ -1216,6 +1218,13 @@ discover:
               cpp_type: ifcopenshell_pset_props_t*
             value:
               nullable: true
+        pset_props_set_instance_list:
+          params:
+            props:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+            values:
+              kind: instance_list
         pset_props_set_int:
           params:
             props:
@@ -2272,12 +2281,25 @@ discover:
             application:
               nullable: true
     - namespace: ifcapi::bindings
+      translation_unit: api/cost/cost.cpp
+      include:
+        - cost_edit_cost_value
+      type_overrides:
+        cost_edit_cost_value:
+          params:
+            attributes:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+            unit_component:
+              nullable: true
+    - namespace: ifcapi::bindings
       translation_unit: api/style/style.cpp
       include:
         - style_add_style
         - style_assign_item_style
         - style_assign_material_style
         - style_assign_representation_styles
+        - style_edit_surface_style
         - style_remove_style
         - style_remove_styled_representation
         - style_remove_surface_style
@@ -2294,6 +2316,11 @@ discover:
           params:
             style:
               nullable: true
+        style_edit_surface_style:
+          params:
+            attributes:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
     - namespace: ifcapi::bindings
       translation_unit: api/structural/structural.cpp
       include:
@@ -2304,6 +2331,7 @@ discover:
         - structural_add_structural_load_group
         - structural_add_structural_member_connection
         - structural_add_structural_boundary_condition
+        - structural_edit_structural_boundary_condition
         - structural_edit_structural_connection_cs
         - structural_edit_structural_item_axis
         - structural_assign_to_building
@@ -2369,6 +2397,11 @@ discover:
               kind: double_list
             ref_direction:
               kind: double_list
+        structural_edit_structural_boundary_condition:
+          params:
+            attributes:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
         structural_edit_structural_item_axis:
           params:
             axis:

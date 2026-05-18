@@ -19,8 +19,8 @@
 from typing import Any
 
 import ifcopenshell
-import ifcopenshell.util.element
-import ifcopenshell.util.unit
+from ifcopenshell.api.cost import _capi
+from ifcopenshell.api.pset import _capi as pset_capi
 
 
 def edit_cost_value(
@@ -47,18 +47,28 @@ def edit_cost_value(
         ifcopenshell.api.cost.edit_cost_value(model, cost_value=value,
             attributes={"AppliedValue": 42.0})
     """
-    for name, value in attributes.items():
-        if name == "AppliedValue" and value is not None:
-            # TODO: support all applied value select types
-            value = file.createIfcMonetaryMeasure(value)
-        elif name == "UnitBasis":
-            old_unit_basis = cost_value.UnitBasis
-            if value:
-                value_component = file.create_entity(
-                    ifcopenshell.util.unit.get_unit_measure_class(value["UnitComponent"].UnitType),
-                    value["ValueComponent"],
-                )
-                value = file.create_entity("IfcMeasureWithUnit", value_component, value["UnitComponent"])
-            if old_unit_basis:
-                ifcopenshell.util.element.remove_deep2(file, old_unit_basis)
-        setattr(cost_value, name, value)
+    native_attributes = attributes.copy()
+    has_unit_basis = "UnitBasis" in native_attributes
+    unit_basis = native_attributes.pop("UnitBasis", None)
+    unit_basis_is_null = unit_basis is None
+    value_component = 0.0
+    unit_component = None
+    if has_unit_basis and unit_basis:
+        value_component = unit_basis["ValueComponent"]
+        unit_component = unit_basis["UnitComponent"]
+
+    props = pset_capi.build_props(native_attributes)
+    try:
+        lib = _capi.get_lib()
+        _capi.call_status(
+            lib.ifcopenshell_ifcapi_cost_edit_cost_value,
+            _capi.file_handle(file),
+            _capi.instance_handle(cost_value),
+            props,
+            has_unit_basis,
+            unit_basis_is_null,
+            float(value_component),
+            _capi.instance_handle(unit_component),
+        )
+    finally:
+        pset_capi.free_props(props)

@@ -729,6 +729,7 @@ bool ifcopenshell_ifcapi_pset_props_set_dict(void* outer, const char* key, void*
 bool ifcopenshell_ifcapi_pset_props_set_double(void* props, const char* key, double value);
 bool ifcopenshell_ifcapi_pset_props_set_double_list(void* props, const char* key, const ifcopenshell_double_list_t* values);
 bool ifcopenshell_ifcapi_pset_props_set_instance(void* props, const char* key, ifcopenshell_ifc_instance_t* value);
+bool ifcopenshell_ifcapi_pset_props_set_instance_list(void* props, const char* key, const ifcopenshell_ifc_instance_list_t* values);
 bool ifcopenshell_ifcapi_pset_props_set_int(void* props, const char* key, int64_t value);
 bool ifcopenshell_ifcapi_pset_props_set_int_list(void* props, const char* key, const ifcopenshell_int64_list_t* values);
 bool ifcopenshell_ifcapi_pset_props_set_null(void* props, const char* key);
@@ -902,10 +903,12 @@ bool ifcopenshell_ifcapi_material_remove_material_set(ifcopenshell_ifc_file_t* f
 bool ifcopenshell_ifcapi_material_remove_profile(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* profile, bool should_remove_profile_def, bool should_remove_material);
 bool ifcopenshell_ifcapi_material_reorder_set_item(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* material_set, int32_t old_index, int32_t new_index);
 bool ifcopenshell_ifcapi_material_unassign_material(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* products, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
+bool ifcopenshell_ifcapi_cost_edit_cost_value(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* cost_value, void* attributes, bool has_unit_basis, bool unit_basis_is_null, double value_component, ifcopenshell_ifc_instance_t* unit_component);
 bool ifcopenshell_ifcapi_style_add_style(ifcopenshell_ifc_file_t* file, const char* name, const char* ifc_class, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_style_assign_item_style(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* item, ifcopenshell_ifc_instance_t* style, bool should_use_presentation_style_assignment, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_style_assign_material_style(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* material, ifcopenshell_ifc_instance_t* style, ifcopenshell_ifc_instance_t* context, bool should_use_presentation_style_assignment);
 bool ifcopenshell_ifcapi_style_assign_representation_styles(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* shape_representation, const ifcopenshell_ifc_instance_list_t* styles, bool should_use_presentation_style_assignment, bool replace_previous_same_type_style, ifcopenshell_ifc_instance_list_t* out_result);
+bool ifcopenshell_ifcapi_style_edit_surface_style(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* style, void* attributes);
 bool ifcopenshell_ifcapi_style_remove_style(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* style);
 bool ifcopenshell_ifcapi_style_remove_styled_representation(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* representation);
 bool ifcopenshell_ifcapi_style_remove_surface_style(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* style);
@@ -921,6 +924,7 @@ bool ifcopenshell_ifcapi_structural_add_structural_member_connection(ifcopenshel
 bool ifcopenshell_ifcapi_structural_assign_product(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relating_product, ifcopenshell_ifc_instance_t* related_object, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_structural_assign_structural_analysis_model(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* products, ifcopenshell_ifc_instance_t* structural_analysis_model, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_structural_assign_to_building(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* structural_analysis_model, ifcopenshell_ifc_instance_t* building, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_structural_edit_structural_boundary_condition(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* condition, void* attributes);
 bool ifcopenshell_ifcapi_structural_edit_structural_connection_cs(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* structural_item, const ifcopenshell_double_list_t* axis, const ifcopenshell_double_list_t* ref_direction);
 bool ifcopenshell_ifcapi_structural_edit_structural_item_axis(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* structural_item, const ifcopenshell_double_list_t* axis);
 bool ifcopenshell_ifcapi_structural_remove_structural_analysis_model(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* structural_analysis_model);

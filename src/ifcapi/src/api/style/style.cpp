@@ -5,10 +5,13 @@
 #include "ifcapi/bindings/entity.h"
 #include "ifcapi/bindings/style.h"
 #include "ifcapi/detail/attribute.h"
+#include "../pset/attribute_props.hpp"
 
+#include "ifcopenshell_api_internal.hpp"
 #include "ifcparse/IfcFile.h"
 
 #include <algorithm>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -66,6 +69,167 @@ bool contains_name(const std::vector<std::string>& values, const std::string& va
 
 bool same_single_style(const std::vector<IfcUtil::IfcBaseClass*>& styles, IfcUtil::IfcBaseClass* style) {
     return styles.size() == 1 && styles.front() == style;
+}
+
+const ifcapi_pset::Entry* nested_entry(const ifcapi_pset::Entry& entry, const std::string& key) {
+    if (!entry.nested) return nullptr;
+    for (const auto& nested : entry.nested->entries) {
+        if (nested.key == key) return &nested;
+    }
+    return nullptr;
+}
+
+bool entry_truthy(const ifcapi_pset::Entry* entry) {
+    if (!entry) return false;
+    switch (entry->kind) {
+        case ifcapi_pset::Kind::NONE:
+            return false;
+        case ifcapi_pset::Kind::BOOL:
+        case ifcapi_pset::Kind::TYPED_BOOL:
+            return entry->b_val;
+        case ifcapi_pset::Kind::INT:
+        case ifcapi_pset::Kind::TYPED_INT:
+            return entry->i_val != 0;
+        case ifcapi_pset::Kind::DOUBLE:
+        case ifcapi_pset::Kind::TYPED_DOUBLE:
+            return entry->d_val != 0.0;
+        case ifcapi_pset::Kind::STRING:
+        case ifcapi_pset::Kind::TYPED_STRING:
+            return !entry->s_val.empty();
+        case ifcapi_pset::Kind::INSTANCE:
+            return entry->inst != nullptr;
+        default:
+            return true;
+    }
+}
+
+double entry_double(const ifcapi_pset::Entry& entry) {
+    switch (entry.kind) {
+        case ifcapi_pset::Kind::DOUBLE:
+        case ifcapi_pset::Kind::TYPED_DOUBLE:
+            return entry.d_val;
+        case ifcapi_pset::Kind::INT:
+        case ifcapi_pset::Kind::TYPED_INT:
+            return static_cast<double>(entry.i_val);
+        case ifcapi_pset::Kind::BOOL:
+        case ifcapi_pset::Kind::TYPED_BOOL:
+            return entry.b_val ? 1.0 : 0.0;
+        default:
+            throw std::runtime_error("Expected a numeric colour value");
+    }
+}
+
+void write_optional_colour_name(IfcUtil::IfcBaseClass* colour, const ifcapi_pset::Entry* name) {
+    if (!name || name->kind == ifcapi_pset::Kind::NONE) {
+        ifcapi::detail::write_blank_attr(colour, "Name");
+    } else {
+        ifcapi::detail::write_string_attr(colour, "Name", name->s_val);
+    }
+}
+
+void write_colour_components(IfcUtil::IfcBaseClass* colour, const ifcapi_pset::Entry& value, bool include_name) {
+    if (!value.nested) {
+        throw std::runtime_error("Colour attributes require a dictionary value");
+    }
+    auto* red = nested_entry(value, "Red");
+    auto* green = nested_entry(value, "Green");
+    auto* blue = nested_entry(value, "Blue");
+    if (!red || !green || !blue) {
+        throw std::runtime_error("Colour attributes require Red, Green, and Blue");
+    }
+    if (include_name) {
+        write_optional_colour_name(colour, nested_entry(value, "Name"));
+    }
+    ifcapi::detail::write_double_attr(colour, "Red", entry_double(*red));
+    ifcapi::detail::write_double_attr(colour, "Green", entry_double(*green));
+    ifcapi::detail::write_double_attr(colour, "Blue", entry_double(*blue));
+}
+
+std::string declared_attribute_type(IfcUtil::IfcBaseClass* entity, const std::string& name) {
+    auto* base = dynamic_cast<IfcUtil::IfcBaseEntity*>(entity);
+    if (!base) return std::string();
+    auto* decl = base->declaration().as_entity();
+    if (!decl) return std::string();
+    auto attrs = decl->all_attributes();
+    for (auto* attr : attrs) {
+        if (attr->name() != name) continue;
+        const IfcParse::parameter_type* pt = attr->type_of_attribute();
+        if (auto* aggregate = pt ? pt->as_aggregation_type() : nullptr) {
+            pt = aggregate->type_of_element();
+        }
+        auto* named = pt ? pt->as_named_type() : nullptr;
+        auto* declared = named ? named->declared_type() : nullptr;
+        return declared ? declared->name() : std::string();
+    }
+    return std::string();
+}
+
+IfcUtil::IfcBaseClass* create_typed_double(IfcParse::IfcFile* file, const char* ifc_type, double value) {
+    auto* result = ifcapi::detail::create_typed_double(file, ifc_type, value);
+    if (!result) {
+        throw std::runtime_error(std::string("Unable to create ") + ifc_type);
+    }
+    return result;
+}
+
+void edit_colour_rgb(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* style, const ifcapi_pset::Entry& entry) {
+    auto* colour = ifcapi::detail::read_ref_attr(style, entry.key.c_str());
+    if (!colour) {
+        colour = create_entity(file, "IfcColourRgb");
+        ifcapi::detail::write_ref_attr(style, entry.key.c_str(), colour);
+    }
+    write_colour_components(colour, entry, true);
+}
+
+void edit_colour_or_factor(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* style, const ifcapi_pset::Entry& entry) {
+    if (entry.kind == ifcapi_pset::Kind::DICT) {
+        auto* colour = ifcapi::detail::read_ref_attr(style, entry.key.c_str());
+        if (!is_a(colour, "IfcColourRgb")) {
+            colour = create_entity(file, "IfcColourRgb");
+            ifcapi::detail::write_blank_attr(colour, "Name");
+            ifcapi::detail::write_double_attr(colour, "Red", 0.0);
+            ifcapi::detail::write_double_attr(colour, "Green", 0.0);
+            ifcapi::detail::write_double_attr(colour, "Blue", 0.0);
+            ifcapi::detail::write_ref_attr(style, entry.key.c_str(), colour);
+        }
+        write_colour_components(colour, entry, false);
+        return;
+    }
+
+    auto* existing = ifcapi::detail::read_ref_attr(style, entry.key.c_str());
+    if (existing && existing->id()) {
+        file->removeEntity(existing);
+    }
+    if (entry.kind == ifcapi_pset::Kind::NONE) {
+        ifcapi::detail::write_blank_attr(style, entry.key.c_str());
+    } else {
+        ifcapi::detail::write_ref_attr(
+            style,
+            entry.key.c_str(),
+            create_typed_double(file, "IfcNormalisedRatioMeasure", entry_double(entry)));
+    }
+}
+
+void edit_specular_highlight(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* style, const ifcapi_pset::Entry& entry) {
+    if (entry.kind == ifcapi_pset::Kind::NONE) {
+        ifcapi::detail::write_blank_attr(style, "SpecularHighlight");
+        return;
+    }
+    if (entry.kind != ifcapi_pset::Kind::DICT || !entry.nested) {
+        ifcapi::detail::apply_attribute_prop(style, entry);
+        return;
+    }
+    if (auto* exponent = nested_entry(entry, "IfcSpecularExponent"); entry_truthy(exponent)) {
+        ifcapi::detail::write_ref_attr(
+            style,
+            "SpecularHighlight",
+            create_typed_double(file, "IfcSpecularExponent", entry_double(*exponent)));
+    } else if (auto* roughness = nested_entry(entry, "IfcSpecularRoughness"); entry_truthy(roughness)) {
+        ifcapi::detail::write_ref_attr(
+            style,
+            "SpecularHighlight",
+            create_typed_double(file, "IfcSpecularRoughness", entry_double(*roughness)));
+    }
 }
 
 std::vector<IfcUtil::IfcBaseClass*> mutable_entities(
@@ -185,6 +349,34 @@ void style_unassign_representation_styles(
     IfcUtil::IfcBaseClass* shape_representation,
     const std::vector<const IfcUtil::IfcBaseClass*>& input_styles,
     bool should_use_presentation_style_assignment);
+
+void style_edit_surface_style(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* style,
+    ifcopenshell_pset_props_t* attributes)
+{
+    ifcopenshell_clear_error();
+    try {
+        if (!file || !style) {
+            throw std::runtime_error("style_edit_surface_style requires a file and style");
+        }
+        if (!attributes) return;
+        for (const auto& entry : attributes->entries) {
+            auto attribute_class = declared_attribute_type(style, entry.key);
+            if (attribute_class == "IfcColourRgb") {
+                edit_colour_rgb(file, style, entry);
+            } else if (entry.key == "SpecularHighlight") {
+                edit_specular_highlight(file, style, entry);
+            } else if (attribute_class == "IfcColourOrFactor") {
+                edit_colour_or_factor(file, style, entry);
+            } else {
+                ifcapi::detail::apply_attribute_prop(style, entry);
+            }
+        }
+    } catch (const std::exception& e) {
+        ifcopenshell::capi::set_last_error(e.what());
+    }
+}
 
 IfcUtil::IfcBaseClass* create_styled_item_for_material(
     IfcParse::IfcFile* file,

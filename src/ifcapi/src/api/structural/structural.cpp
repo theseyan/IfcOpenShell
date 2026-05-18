@@ -9,6 +9,7 @@
 #include "ifcapi/bindings/root.h"
 #include "ifcapi/detail/attribute.h"
 #include "ifcapi/detail/relationship.h"
+#include "../pset/attribute_props.hpp"
 
 #include <stdexcept>
 
@@ -41,6 +42,65 @@ IfcUtil::IfcBaseClass* create_condition_coordinate_system(IfcParse::IfcFile* fil
     auto* placement = file->create(file->schema()->declaration_by_name("IfcAxis2Placement3D"));
     ifcapi::detail::write_ref_attr(placement, "Location", point);
     return placement;
+}
+
+const ifcapi_pset::Entry* nested_entry(const ifcapi_pset::Entry& entry, const std::string& key) {
+    if (!entry.nested) return nullptr;
+    for (const auto& nested : entry.nested->entries) {
+        if (nested.key == key) return &nested;
+    }
+    return nullptr;
+}
+
+std::string entry_string(const ifcapi_pset::Entry& entry) {
+    switch (entry.kind) {
+        case ifcapi_pset::Kind::STRING:
+        case ifcapi_pset::Kind::TYPED_STRING:
+            return entry.s_val;
+        default:
+            throw std::runtime_error("Expected a string value");
+    }
+}
+
+double entry_double(const ifcapi_pset::Entry& entry) {
+    switch (entry.kind) {
+        case ifcapi_pset::Kind::DOUBLE:
+        case ifcapi_pset::Kind::TYPED_DOUBLE:
+            return entry.d_val;
+        case ifcapi_pset::Kind::INT:
+        case ifcapi_pset::Kind::TYPED_INT:
+            return static_cast<double>(entry.i_val);
+        case ifcapi_pset::Kind::BOOL:
+        case ifcapi_pset::Kind::TYPED_BOOL:
+            return entry.b_val ? 1.0 : 0.0;
+        default:
+            throw std::runtime_error("Expected a numeric value");
+    }
+}
+
+IfcUtil::IfcBaseClass* create_typed_value(
+    IfcParse::IfcFile* file,
+    const std::string& ifc_type,
+    const ifcapi_pset::Entry& value)
+{
+    auto* declaration = file->schema()->declaration_by_name(ifc_type);
+    auto* type_declaration = declaration ? declaration->as_type_declaration() : nullptr;
+    if (!type_declaration) {
+        throw std::runtime_error("Unable to create " + ifc_type);
+    }
+    auto* result = file->create(type_declaration);
+    if (ifc_type == "IfcBoolean") {
+        if (value.kind == ifcapi_pset::Kind::BOOL || value.kind == ifcapi_pset::Kind::TYPED_BOOL) {
+            result->set_attribute_value(0, value.b_val);
+        } else {
+            throw std::runtime_error("IfcBoolean requires a boolean value");
+        }
+    } else if (value.kind == ifcapi_pset::Kind::STRING || value.kind == ifcapi_pset::Kind::TYPED_STRING) {
+        result->set_attribute_value(0, value.s_val);
+    } else {
+        result->set_attribute_value(0, entry_double(value));
+    }
+    return result;
 }
 
 } // namespace
@@ -336,6 +396,40 @@ void structural_edit_structural_item_axis(
             if (total_inverses(file, current_axis) == 1) file->removeEntity(current_axis);
         }
         ifcapi::detail::write_ref_attr(structural_item, "Axis", create_direction(file, axis));
+    } catch (const std::exception& e) {
+        set_error(e.what());
+    }
+}
+
+void structural_edit_structural_boundary_condition(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* condition,
+    ifcopenshell_pset_props_t* attributes)
+{
+    ifcopenshell_clear_error();
+    try {
+        if (!file || !condition) {
+            throw std::runtime_error("structural_edit_structural_boundary_condition requires a file and condition");
+        }
+        if (!attributes) return;
+        for (const auto& entry : attributes->entries) {
+            if (entry.kind != ifcapi_pset::Kind::DICT || !entry.nested) {
+                throw std::runtime_error("Structural boundary condition attributes must be dictionaries");
+            }
+            auto* type_entry = nested_entry(entry, "type");
+            auto* value_entry = nested_entry(entry, "value");
+            if (!type_entry || !value_entry) {
+                throw std::runtime_error("Structural boundary condition attribute requires type and value");
+            }
+            auto type = entry_string(*type_entry);
+            if (type == "string" || type == "null") {
+                ifcapi_pset::Entry direct = *value_entry;
+                direct.key = entry.key;
+                ifcapi::detail::apply_attribute_prop(condition, direct);
+            } else {
+                ifcapi::detail::write_ref_attr(condition, entry.key.c_str(), create_typed_value(file, type, *value_entry));
+            }
+        }
     } catch (const std::exception& e) {
         set_error(e.what());
     }

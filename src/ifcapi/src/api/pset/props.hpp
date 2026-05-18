@@ -28,6 +28,7 @@ enum class Kind {
     STRING_LIST,
     DOUBLE_LIST,
     INT_LIST,
+    INSTANCE_LIST,
     DICT,
 };
 
@@ -44,6 +45,7 @@ struct Entry {
     std::vector<std::string> str_list;
     std::vector<double> dbl_list;
     std::vector<int64_t> int_list;
+    std::vector<IfcUtil::IfcBaseClass*> inst_list;
     std::shared_ptr<ifcopenshell_pset_props_t> nested;
 };
 
