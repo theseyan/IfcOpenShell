@@ -410,11 +410,16 @@ void unassign_materials(
 void remove_properties(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* properties, bool ifc2x3_extended_only) {
     const char* attr = "Properties";
     if (is_ifc2x3(file)) {
-        if (ifc2x3_extended_only && !is_a(properties, "IfcExtendedMaterialProperties")) return;
-        attr = "ExtendedProperties";
+        if (!ifc2x3_extended_only || is_a(properties, "IfcExtendedMaterialProperties")) {
+            attr = "ExtendedProperties";
+        } else {
+            attr = nullptr;
+        }
     }
-    for (auto* prop : ifcapi::detail::read_ref_aggregate(properties, attr)) {
-        file->removeEntity(prop);
+    if (attr) {
+        for (auto* prop : ifcapi::detail::read_ref_aggregate(properties, attr)) {
+            file->removeEntity(prop);
+        }
     }
     file->removeEntity(properties);
 }

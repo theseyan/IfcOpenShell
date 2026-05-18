@@ -737,7 +737,9 @@ class file:
         out = W._HandleStructP()
         fn = lib.ifcopenshell_ifc_file_by_type if include_subtypes else lib.ifcopenshell_ifc_file_by_type_excl_subtypes
         if not fn(_ifc_file_handle_ptr(self._ptr), _enc(type_name), ctypes.byref(out)):
-            return []
+            err = lib.ifcopenshell_last_error_message()
+            msg = err.decode("utf-8") if err else f"Entity type '{type_name}' not found in schema"
+            raise RuntimeError(msg)
         return _take_instance_list(self, out)
 
     def by_id(self, id: int) -> entity_instance:

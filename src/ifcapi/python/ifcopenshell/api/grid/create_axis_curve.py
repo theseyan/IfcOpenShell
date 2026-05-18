@@ -16,20 +16,9 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import annotations
-
-import numpy as np
-
 import ifcopenshell
-import ifcopenshell.util.element
-import ifcopenshell.util.placement
-import ifcopenshell.util.unit
-from ifcopenshell.util.shape_builder import (
-    V,
-    VectorType,
-    ifc_safe_vector_type,
-    np_apply_matrix,
-)
+from ifcopenshell.api.grid import _capi
+from ifcopenshell.util.shape_builder import VectorType
 
 
 def create_axis_curve(
@@ -71,22 +60,13 @@ def create_axis_curve(
         ifcopenshell.api.grid.create_axis_curve(
             model, p1=np.array((0., 0., 0.)), p2=np.array((0., 10., 0.)), grid_axis=axis_1)
     """
-    existing_curve = grid_axis.AxisCurve
-    points = V([p1, p2])
-    if is_si:
-        unit_scale = ifcopenshell.util.unit.calculate_unit_scale(file)
-        points /= unit_scale
-
-    grid = next(i for i in file.get_inverse(grid_axis) if i.is_a("IfcGrid"))
-    grid_matrix_i = np.linalg.inv(ifcopenshell.util.placement.get_local_placement(grid.ObjectPlacement))
-    p1, p2 = ifc_safe_vector_type(np_apply_matrix(points, grid_matrix_i))
-    grid_axis.AxisCurve = file.create_entity(
-        "IfcPolyline",
-        (
-            file.create_entity("IfcCartesianPoint", p1[:2]),
-            file.create_entity("IfcCartesianPoint", p2[:2]),
-        ),
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_grid_create_axis_curve,
+        "grid_create_axis_curve failed",
+        _capi.file_handle(file),
+        _capi.double_list(p1),
+        _capi.double_list(p2),
+        _capi.instance_handle(grid_axis),
+        is_si,
     )
-
-    if existing_curve:
-        ifcopenshell.util.element.remove_deep2(file, existing_curve)

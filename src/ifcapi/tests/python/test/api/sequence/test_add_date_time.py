@@ -32,6 +32,7 @@ class TestAddDateTime(test.bootstrap.IFC4):
             assert isinstance(res, ifcopenshell.entity_instance)
             assert res.is_a("IfcDateAndTime")
             assert ifcopenshell.util.date.ifc2datetime(res) == dt
+            assert "IFCLOCALTIME(12,31,24.,$,$)" in self.file.to_string()
             print(res)
         else:
             assert res == "2025-03-01T12:31:24"

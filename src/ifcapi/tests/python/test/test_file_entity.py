@@ -55,6 +55,10 @@ class TestFileEntityCreation:
         result = self.file.by_type("IfcWall")
         assert result == []
 
+    def test_by_type_invalid_type_raises(self):
+        with pytest.raises(RuntimeError, match="NotAType"):
+            self.file.by_type("NotAType")
+
     def test_by_type_subtypes(self):
         self.file.create_entity("IfcWall")
         self.file.create_entity("IfcSlab")
@@ -81,6 +85,12 @@ class TestFileByIdAndGuid:
         wall = self.file.create_entity("IfcWall")
         wall.GlobalId = "3nF$bnL8P7Ax9"  # manually set a GUID
         found = self.file.by_guid("3nF$bnL8P7Ax9")
+        assert found.id() == wall.id()
+
+    def test_by_id_string_delegates_to_by_guid(self):
+        wall = self.file.create_entity("IfcWall")
+        wall.GlobalId = "1S4gY3Mbj46xDRbIPZc77a"
+        found = self.file.by_id("1S4gY3Mbj46xDRbIPZc77a")
         assert found.id() == wall.id()
 
     def test_getitem_int(self):

@@ -825,8 +825,17 @@ void remove_surface_style_impl(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* s
             try {
                 auto value = style->get_attribute_value(i);
                 if (!value.isNull()) {
-                    auto* entity = static_cast<IfcUtil::IfcBaseClass*>(value);
-                    if (entity && entity->id()) to_delete.push_back(entity);
+                    if (value.type() == IfcUtil::Argument_ENTITY_INSTANCE) {
+                        auto* entity = static_cast<IfcUtil::IfcBaseClass*>(value);
+                        if (entity && entity->id()) to_delete.push_back(entity);
+                    } else if (value.type() == IfcUtil::Argument_AGGREGATE_OF_ENTITY_INSTANCE) {
+                        auto aggregate = static_cast<aggregate_of_instance::ptr>(value);
+                        if (aggregate) {
+                            for (auto* entity : *aggregate) {
+                                if (entity && entity->id()) to_delete.push_back(entity);
+                            }
+                        }
+                    }
                 }
             } catch (...) {
             }

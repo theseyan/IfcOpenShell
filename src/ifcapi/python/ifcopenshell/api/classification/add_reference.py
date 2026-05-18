@@ -205,7 +205,7 @@ class Usecase:
             self.file,
             self.settings["products"],
             reference,
-            identification,
+            self.settings["identification"],
             self.settings["name"],
             self.settings["classification"],
         )

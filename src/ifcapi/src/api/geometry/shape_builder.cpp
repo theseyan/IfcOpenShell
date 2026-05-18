@@ -6,6 +6,7 @@
 #include "ifcapi/bindings/placement.h"
 #include "ifcapi/bindings/representation.h"
 #include "ifcapi/bindings/unit.h"
+#include "ifcapi/detail/attribute.h"
 #include "ifcopenshell_api_internal.hpp"
 
 #include "ifcparse/IfcBaseClass.h"
@@ -539,7 +540,10 @@ IfcUtil::IfcBaseClass* representation_impl(
             : "IfcShapeRepresentation"
     );
     set_ref(result, "ContextOfItems", context);
-    set_attr(result, "RepresentationIdentifier", read_string(context, "ContextIdentifier"));
+    auto context_identifier = ifcapi::detail::read_optional_string_attr(context, "ContextIdentifier");
+    if (context_identifier.has_value) {
+        set_attr(result, "RepresentationIdentifier", context_identifier.value);
+    }
     if (!rep_type.empty()) {
         set_attr(result, "RepresentationType", rep_type);
     }
