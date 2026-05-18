@@ -18,6 +18,7 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
 
 
 def edit_monetary_unit(file: ifcopenshell.file, unit: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
@@ -41,5 +42,4 @@ def edit_monetary_unit(file: ifcopenshell.file, unit: ifcopenshell.entity_instan
         # Ah who are we kidding
         ifcopenshell.api.unit.edit_monetary_unit(model, unit=zwl, attributes={"Currency": "USD"})
     """
-    for name, value in attributes.items():
-        setattr(unit, name, value)
+    _edit_attributes(file, unit, attributes)

@@ -18,6 +18,7 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
 
 
 def edit_cost_item(
@@ -40,5 +41,4 @@ def edit_cost_item(
         item = ifcopenshell.api.cost.add_cost_item(model, cost_schedule=schedule)
         ifcopenshell.api.cost.edit_cost_item(model, cost_item=item, attributes={"Name": "Foo"})
     """
-    for name, value in attributes.items():
-        setattr(cost_item, name, value)
+    _edit_attributes(file, cost_item, attributes)

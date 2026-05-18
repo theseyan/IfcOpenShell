@@ -18,6 +18,7 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
 
 
 def edit_cost_item_quantity(
@@ -48,5 +49,4 @@ def edit_cost_item_quantity(
         ifcopenshell.api.cost.edit_cost_item_quantity(model,
             physical_quantity=quantity, "attributes": {"VolumeValue": 3.0})
     """
-    for name, value in attributes.items():
-        setattr(physical_quantity, name, value)
+    _edit_attributes(file, physical_quantity, attributes)

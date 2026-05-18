@@ -18,6 +18,7 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
 
 
 def edit_text_literal(
@@ -40,5 +41,4 @@ def edit_text_literal(
         ifcopenshell.api.drawing.edit_text_literal(model,
             text_literal=text, attributes={"Literal": "MY ANNOTATION"})
     """
-    for name, value in attributes.items():
-        setattr(text_literal, name, value)
+    _edit_attributes(file, text_literal, attributes)

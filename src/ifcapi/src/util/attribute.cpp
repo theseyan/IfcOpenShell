@@ -1,8 +1,18 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/bindings/attribute.h"
+#include "ifcapi/bindings/element.h"
+#include "ifcapi/detail/attribute.h"
+#include "ifcapi/detail/error.h"
+#include "ifcapi/detail/relationship.h"
+#include "../api/pset/attribute_props.hpp"
+#include "ifcopenshell_api_internal.hpp"
 
+#include "ifcparse/IfcBaseClass.h"
+#include "ifcparse/IfcFile.h"
 #include "ifcparse/IfcSchema.h"
+
+#include <stdexcept>
 
 namespace {
 
@@ -60,6 +70,53 @@ const IfcParse::enumeration_type* enum_type_for(const IfcParse::attribute* attr)
     return decl ? decl->as_enumeration_type() : nullptr;
 }
 
+bool has_attr(IfcUtil::IfcBaseClass* entity, const char* name) {
+    return ifcapi::detail::attr_index_of(entity, name) >= 0;
+}
+
+bool optional_truthy(const ifcapi::detail::OptionalString& value) {
+    return value.has_value && !value.value.empty();
+}
+
+void unset_attr(IfcUtil::IfcBaseClass* entity, const char* name) {
+    int idx = ifcapi::detail::attr_index_of(entity, name);
+    if (idx >= 0) {
+        entity->set_attribute_value(static_cast<size_t>(idx), Blank{});
+    }
+}
+
+void sync_predefined_type(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* product) {
+    if (!file || !product || !has_attr(product, "PredefinedType")) {
+        return;
+    }
+    auto predefined_type = ifcapi::detail::read_optional_string_attr(product, "PredefinedType");
+    if (has_attr(product, "ElementType")) {
+        auto element_type = ifcapi::detail::read_optional_string_attr(product, "ElementType");
+        if (!element_type.has_value && predefined_type.has_value && predefined_type.value == "USERDEFINED") {
+            ifcapi::detail::write_string_attr(product, "PredefinedType", "NOTDEFINED");
+        } else if (optional_truthy(element_type) && (!predefined_type.has_value || predefined_type.value != "USERDEFINED")) {
+            ifcapi::detail::write_string_attr(product, "PredefinedType", "USERDEFINED");
+        }
+        return;
+    }
+    if (!has_attr(product, "ObjectType")) {
+        return;
+    }
+    auto object_type = ifcapi::detail::read_optional_string_attr(product, "ObjectType");
+    auto* relating_type = ifcapi::bindings::element_get_type(product);
+    auto type_predefined = relating_type
+        ? ifcapi::detail::read_optional_string_attr(relating_type, "PredefinedType")
+        : ifcapi::detail::OptionalString{};
+    if (type_predefined.has_value && type_predefined.value != "NOTDEFINED") {
+        unset_attr(product, "ObjectType");
+        unset_attr(product, "PredefinedType");
+    } else if (!object_type.has_value && predefined_type.has_value && predefined_type.value == "USERDEFINED") {
+        ifcapi::detail::write_string_attr(product, "PredefinedType", "NOTDEFINED");
+    } else if (optional_truthy(object_type) && (!predefined_type.has_value || predefined_type.value != "USERDEFINED")) {
+        ifcapi::detail::write_string_attr(product, "PredefinedType", "USERDEFINED");
+    }
+}
+
 }  // namespace
 
 namespace ifcapi {
@@ -80,6 +137,31 @@ std::vector<std::string> attribute_get_enum_items(const IfcParse::attribute* att
     return result;
 }
 
+void attribute_edit_attributes(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* product,
+    ifcopenshell_pset_props_t* attributes,
+    bool should_sync_predefined_type,
+    bool should_update_owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    ifcopenshell_clear_error();
+    try {
+        if (!product) {
+            throw std::runtime_error("attribute_edit_attributes requires a product");
+        }
+        ifcapi::detail::apply_attribute_props(product, attributes);
+        if (should_sync_predefined_type) {
+            sync_predefined_type(file, product);
+        }
+        if (should_update_owner_history && has_attr(product, "OwnerHistory")) {
+            ifcapi::detail::update_owner_history(file, product, user, application);
+        }
+    } catch (const std::exception& e) {
+        ifcapi::detail::set_error(e.what());
+    }
+}
+
 } // namespace bindings
 } // namespace ifcapi
-

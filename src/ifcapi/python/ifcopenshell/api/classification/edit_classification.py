@@ -18,6 +18,7 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
 
 
 def edit_classification(
@@ -41,5 +42,4 @@ def edit_classification(
         ifcopenshell.api.classification.edit_classification(model,
             classification=classification, attributes={"Name": "Foo"})
     """
-    for name, value in attributes.items():
-        setattr(classification, name, value)
+    _edit_attributes(file, classification, attributes)

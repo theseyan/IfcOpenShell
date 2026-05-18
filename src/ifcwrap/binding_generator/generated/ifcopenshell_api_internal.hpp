@@ -55,6 +55,7 @@
 #include "Serialization/Serialization.h"
 #include "../svgfill/src/svgfill.h"
 #include "ifcapi/bindings/aggregate.h"
+#include "ifcapi/bindings/attribute.h"
 #include "ifcapi/bindings/boundary.h"
 #include "guid.h"
 #include "ifcapi/bindings/classification.h"

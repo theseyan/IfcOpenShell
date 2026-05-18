@@ -16,11 +16,36 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-from types import EllipsisType
-from typing import Any, Union
+from typing import Any
 
-import ifcopenshell.api.owner
-import ifcopenshell.util.element
+import ifcopenshell
+from ifcopenshell.api.attribute import _capi
+from ifcopenshell.api.pset import _capi as pset_capi
+
+
+def _edit_attributes(
+    file: ifcopenshell.file,
+    product: ifcopenshell.entity_instance,
+    attributes: dict[str, Any],
+    *,
+    sync_predefined_type: bool = False,
+    update_owner_history: bool = False,
+) -> None:
+    props = pset_capi.build_props(attributes)
+    try:
+        user, application = _capi.owner_context(file)
+        _capi.call_status(
+            _capi.get_lib().ifcopenshell_ifcapi_attribute_edit_attributes,
+            _capi.file_handle(file),
+            _capi.instance_handle(product),
+            props,
+            sync_predefined_type,
+            update_owner_history,
+            _capi.instance_handle(user),
+            _capi.instance_handle(application),
+        )
+    finally:
+        pset_capi.free_props(props)
 
 
 def edit_attributes(file: ifcopenshell.file, product: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
@@ -52,34 +77,4 @@ def edit_attributes(file: ifcopenshell.file, product: ifcopenshell.entity_instan
             product=element, attributes={"Name": "Waldo"})
     """
 
-    def getattr_safe(element: ifcopenshell.entity_instance, attr: str) -> Union[Any, EllipsisType]:
-        """Return attribute value or Ellipsis if attribute doesn't exist.
-
-        Useful as an alternative to hasattr - hasattr under the hood just does
-        getattr but doesn't return a value. That helps reduce times IFC is accessed.
-        """
-        return getattr(element, attr, ...)
-
-    for name, value in attributes.items():
-        setattr(product, name, value)
-
-    if (predefined_type := getattr_safe(product, "PredefinedType")) is not ...:
-        if (element_type := getattr_safe(product, "ElementType")) is not ...:
-            if element_type is None and predefined_type == "USERDEFINED":
-                product.PredefinedType = "NOTDEFINED"
-            elif element_type and predefined_type != "USERDEFINED":
-                product.PredefinedType = "USERDEFINED"
-
-        elif (object_type := getattr_safe(product, "ObjectType")) is not ...:
-            relating_type = ifcopenshell.util.element.get_type(product)
-            # Allow for None due to https://github.com/buildingSMART/IFC4.3.x-development/issues/818
-            if relating_type and relating_type.PredefinedType not in ("NOTDEFINED", None):
-                product.ObjectType = None
-                product.PredefinedType = None
-            elif object_type is None and predefined_type == "USERDEFINED":
-                product.PredefinedType = "NOTDEFINED"
-            elif object_type and predefined_type != "USERDEFINED":
-                product.PredefinedType = "USERDEFINED"
-
-    if hasattr(product, "OwnerHistory"):
-        ifcopenshell.api.owner.update_owner_history(file, element=product)
+    _edit_attributes(file, product, attributes, sync_predefined_type=True, update_owner_history=True)

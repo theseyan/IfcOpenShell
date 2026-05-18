@@ -18,6 +18,7 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
 
 
 def edit_information(
@@ -44,5 +45,4 @@ def edit_information(
             attributes={"Identification": "A-GA-6100", "Name": "Overall Plan",
             "Location": "A-GA-6100 - Overall Plan.pdf"})
     """
-    for name, value in attributes.items():
-        setattr(information, name, value)
+    _edit_attributes(file, information, attributes)

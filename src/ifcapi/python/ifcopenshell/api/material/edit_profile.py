@@ -20,6 +20,7 @@
 from typing import Any, Optional
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
 
 
 def edit_profile(
@@ -76,8 +77,7 @@ def edit_profile(
         ifcopenshell.api.material.edit_profile(model,
             profile=profile_item, profile_def=hea200, material=steel2)
     """
-    for name, value in (attributes or {}).items():
-        setattr(profile, name, value)
+    _edit_attributes(file, profile, attributes or {})
     if material:
         profile.Material = material
     if profile_def:

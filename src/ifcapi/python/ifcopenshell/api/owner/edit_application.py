@@ -41,5 +41,6 @@ def edit_application(
         ifcopenshell.api.owner.edit_application(model, application=application,
             attributes={"ApplicationFullName": "My App New Name"})
     """
-    for name, value in attributes.items():
-        setattr(application, name, value)
+    from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
+
+    _edit_attributes(file, application, attributes)

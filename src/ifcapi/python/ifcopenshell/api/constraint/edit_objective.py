@@ -18,6 +18,7 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
 
 
 def edit_objective(
@@ -40,5 +41,4 @@ def edit_objective(
         ifcopenshell.api.constraint.edit_objective(model,
             objective=objective, attributes={"ConstraintGrade": "HARD"})
     """
-    for name, value in attributes.items():
-        setattr(objective, name, value)
+    _edit_attributes(file, objective, attributes)

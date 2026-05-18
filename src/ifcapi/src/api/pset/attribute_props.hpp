@@ -25,17 +25,23 @@ inline void apply_attribute_prop(IfcUtil::IfcBaseClass* entity, const ifcapi_pse
             entity->set_attribute_value(attr_idx, Blank{});
             break;
         case ifcapi_pset::Kind::BOOL:
+        case ifcapi_pset::Kind::TYPED_BOOL:
             entity->set_attribute_value(attr_idx, entry.b_val);
             break;
         case ifcapi_pset::Kind::INT:
+        case ifcapi_pset::Kind::TYPED_INT:
             entity->set_attribute_value(attr_idx, static_cast<int>(entry.i_val));
             break;
         case ifcapi_pset::Kind::DOUBLE:
+        case ifcapi_pset::Kind::TYPED_DOUBLE:
             entity->set_attribute_value(attr_idx, entry.d_val);
             break;
         case ifcapi_pset::Kind::STRING:
         case ifcapi_pset::Kind::TYPED_STRING:
             entity->set_attribute_value(attr_idx, entry.s_val);
+            break;
+        case ifcapi_pset::Kind::STRING_LIST:
+            entity->set_attribute_value(attr_idx, entry.str_list);
             break;
         case ifcapi_pset::Kind::INSTANCE:
             entity->set_attribute_value(attr_idx, entry.inst);

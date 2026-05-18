@@ -20,6 +20,7 @@ from typing import Any
 
 import ifcopenshell
 import ifcopenshell.util.date
+from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
 
 
 def edit_library(file: ifcopenshell.file, library: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
@@ -52,5 +53,4 @@ def edit_library(file: ifcopenshell.file, library: ifcopenshell.entity_instance,
             attributes = attributes.copy()
             attributes["VersionDate"] = dt
 
-    for name, value in attributes.items():
-        setattr(library, name, value)
+    _edit_attributes(file, library, attributes)

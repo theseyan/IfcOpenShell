@@ -18,6 +18,7 @@
 from typing import Any, Optional
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
 
 
 def edit_layer(
@@ -60,7 +61,6 @@ def edit_layer(
         layer = ifcopenshell.api.material.add_layer(model, layer_set=material_set, material=gypsum)
         ifcopenshell.api.material.edit_layer(model, layer=layer, attributes={"LayerThickness": 13})
     """
-    for name, value in (attributes or {}).items():
-        setattr(layer, name, value)
+    _edit_attributes(file, layer, attributes or {})
     if material:
         layer.Material = material

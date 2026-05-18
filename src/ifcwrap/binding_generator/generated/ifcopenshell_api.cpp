@@ -5241,6 +5241,30 @@ return fn->end();
     }
 }
 
+bool ifcopenshell_ifcapi_attribute_edit_attributes(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* product, void* attributes, bool sync_predefined_type, bool update_owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (product == nullptr || product->ptr == nullptr) { throw std::runtime_error("Handle parameter \"product\" is invalid"); }
+    auto product_cpp = product->ptr;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+    auto sync_predefined_type_cpp = static_cast<bool>(sync_predefined_type);
+    auto update_owner_history_cpp = static_cast<bool>(update_owner_history);
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        ifcapi::bindings::attribute_edit_attributes(file_cpp, product_cpp, attributes_cpp, sync_predefined_type_cpp, update_owner_history_cpp, user_cpp, application_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_compute_derived(ifcopenshell_ifc_instance_t* instance, const char* attribute_name, ifcopenshell_ifcapi_value_t** out_result) {
     try {
         ifcopenshell_clear_error();

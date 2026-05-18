@@ -18,6 +18,7 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
 
 
 def edit_assigned_material(
@@ -40,5 +41,4 @@ def edit_assigned_material(
         ifcopenshell.api.material.edit_assigned_material(model,
             element=concrete, attributes={"Description": "40MPA concrete with broom finish"})
     """
-    for name, value in attributes.items():
-        setattr(element, name, value)
+    _edit_attributes(file, element, attributes)
