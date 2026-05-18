@@ -22,6 +22,7 @@ _BIND_NAMES = (
     "ifcopenshell_ifcapi_material_add_profile",
     "ifcopenshell_ifcapi_material_assign_material",
     "ifcopenshell_ifcapi_material_assign_profile",
+    "ifcopenshell_ifcapi_material_edit_profile_usage",
     "ifcopenshell_ifcapi_material_remove_constituent",
     "ifcopenshell_ifcapi_material_remove_layer",
     "ifcopenshell_ifcapi_material_remove_list_item",

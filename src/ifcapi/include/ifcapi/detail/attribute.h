@@ -203,6 +203,13 @@ inline void write_string_attr(IfcUtil::IfcBaseClass* entity, const char* attr, c
     }
 }
 
+inline void clear_attr(IfcUtil::IfcBaseClass* entity, const char* attr) {
+    int idx = attr_index_of(entity, attr);
+    if (idx >= 0) {
+        entity->set_attribute_value(static_cast<size_t>(idx), Blank{});
+    }
+}
+
 inline void copy_string_attr_preserving_null(
     IfcUtil::IfcBaseClass* target,
     const char* target_attr,

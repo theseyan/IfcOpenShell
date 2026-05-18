@@ -8,8 +8,11 @@
 #include "ifcapi/bindings/representation.h"
 #include "ifcapi/bindings/unit.h"
 #include "ifcapi/detail/attribute.h"
+#include "ifcapi/detail/geometry.h"
 #include "ifcapi/detail/relationship.h"
+#include "../pset/attribute_props.hpp"
 #include "guid.h"
+#include "ifcopenshell_api_internal.hpp"
 
 #include "ifcparse/IfcFile.h"
 
@@ -27,6 +30,107 @@ bool is_ifc2x3(IfcParse::IfcFile* file) {
 
 bool is_a(IfcUtil::IfcBaseClass* entity, const char* ifc_class) {
     return entity && entity->declaration().is(ifc_class);
+}
+
+std::vector<IfcUtil::IfcBaseClass*> inverse_entities(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* entity);
+std::vector<IfcUtil::IfcBaseClass*> inverse_entities(IfcUtil::IfcBaseClass* entity, const char* attribute);
+
+int read_optional_int_from_props(ifcopenshell_pset_props_t* props, const char* key, int fallback, bool& found) {
+    found = false;
+    if (!props) return fallback;
+    for (const auto& entry : props->entries) {
+        if (entry.key != key) continue;
+        found = true;
+        if (entry.kind == ifcapi_pset::Kind::INT || entry.kind == ifcapi_pset::Kind::TYPED_INT) {
+            return static_cast<int>(entry.i_val);
+        }
+        if (entry.kind == ifcapi_pset::Kind::DOUBLE || entry.kind == ifcapi_pset::Kind::TYPED_DOUBLE) {
+            return static_cast<int>(entry.d_val);
+        }
+        return fallback;
+    }
+    return fallback;
+}
+
+IfcUtil::IfcBaseClass* usage_profile(IfcUtil::IfcBaseClass* usage) {
+    auto* material_set = ifcapi::detail::read_ref_attr(usage, "ForProfileSet");
+    auto* profile = ifcapi::detail::read_ref_attr(material_set, "CompositeProfile");
+    if (profile) {
+        return profile;
+    }
+    auto profiles = ifcapi::detail::read_ref_aggregate(material_set, "MaterialProfiles");
+    if (!profiles.empty()) {
+        return ifcapi::detail::read_ref_attr(profiles.front(), "Profile");
+    }
+    return nullptr;
+}
+
+IfcUtil::IfcBaseClass* cardinal_point_position(IfcParse::IfcFile* file, int cardinal_point, double width, double height) {
+    std::vector<double> location{0.0, 0.0, 0.0};
+    if (cardinal_point == 1) location = {-width / 2.0, height / 2.0, 0.0};
+    else if (cardinal_point == 2) location = {0.0, height / 2.0, 0.0};
+    else if (cardinal_point == 3) location = {width / 2.0, height / 2.0, 0.0};
+    else if (cardinal_point == 4) location = {-width / 2.0, 0.0, 0.0};
+    else if (cardinal_point == 5) location = {0.0, 0.0, 0.0};
+    else if (cardinal_point == 6) location = {width / 2.0, 0.0, 0.0};
+    else if (cardinal_point == 7) location = {-width / 2.0, -height / 2.0, 0.0};
+    else if (cardinal_point == 8) location = {0.0, -height / 2.0, 0.0};
+    else if (cardinal_point == 9) location = {width / 2.0, -height / 2.0, 0.0};
+    else return nullptr;
+    auto* placement = file->create(file->schema()->declaration_by_name("IfcAxis2Placement3D"));
+    ifcapi::detail::write_ref_attr(placement, "Location", ifcapi::detail::create_cartesian_point(file, location));
+    return placement;
+}
+
+void update_profile_usage_representation(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* element,
+    IfcUtil::IfcBaseClass* profile,
+    IfcUtil::IfcBaseClass* position)
+{
+    auto* representation = ifcapi::bindings::representation_get_product_representation(
+        element,
+        nullptr,
+        "Model",
+        "Body",
+        "MODEL_VIEW");
+    if (!representation) {
+        return;
+    }
+    auto traversed = file->traverse(representation, -1);
+    if (!traversed) {
+        return;
+    }
+    for (auto* subelement : *traversed) {
+        if (is_a(subelement, "IfcSweptAreaSolid") && ifcapi::detail::read_ref_attr(subelement, "SweptArea") == profile) {
+            ifcapi::detail::write_ref_attr(subelement, "Position", position);
+        }
+    }
+}
+
+void update_profile_usage_cardinal_point(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* usage,
+    IfcUtil::IfcBaseClass* profile,
+    int cardinal_point,
+    double profile_width,
+    double profile_height)
+{
+    auto* position = cardinal_point_position(file, cardinal_point, profile_width, profile_height);
+    if (is_ifc2x3(file)) {
+        for (auto* rel : inverse_entities(file, usage)) {
+            if (!is_a(rel, "IfcRelAssociatesMaterial")) continue;
+            for (auto* element : ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects")) {
+                update_profile_usage_representation(file, element, profile, position);
+            }
+        }
+    } else {
+        for (auto* rel : inverse_entities(usage, "AssociatedTo")) {
+            for (auto* element : ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects")) {
+                update_profile_usage_representation(file, element, profile, position);
+            }
+        }
+    }
 }
 
 std::string exact_class_name(IfcUtil::IfcBaseClass* entity) {
@@ -528,6 +632,33 @@ void material_unassign_material(
     if (products.empty()) return;
     remove_material_usages_from_types(file, products);
     unassign_materials(file, products, user, application);
+}
+
+void material_edit_profile_usage(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* usage,
+    ifcopenshell_pset_props_t* attributes,
+    bool has_profile_dimensions,
+    double profile_width,
+    double profile_height)
+{
+    ifcopenshell_clear_error();
+    try {
+        if (!file || !usage) {
+            throw std::runtime_error("material_edit_profile_usage requires a file and usage");
+        }
+        bool found_cardinal_point = false;
+        int old_cardinal_point = ifcapi::detail::read_int_attr(usage, "CardinalPoint");
+        int cardinal_point = read_optional_int_from_props(attributes, "CardinalPoint", old_cardinal_point, found_cardinal_point);
+        if (found_cardinal_point && cardinal_point && cardinal_point != old_cardinal_point && has_profile_dimensions) {
+            if (auto* profile = usage_profile(usage)) {
+                update_profile_usage_cardinal_point(file, usage, profile, cardinal_point, profile_width, profile_height);
+            }
+        }
+        ifcapi::detail::apply_attribute_props(usage, attributes);
+    } catch (const std::exception& e) {
+        ifcopenshell::capi::set_last_error(e.what());
+    }
 }
 
 void material_assign_profile(

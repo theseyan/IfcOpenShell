@@ -8997,6 +8997,54 @@ bool ifcopenshell_ifcapi_pset_props_set_bool(void* props, const char* key, bool 
     }
 }
 
+bool ifcopenshell_ifcapi_pset_props_set_date(void* props, const char* key, int32_t year, int32_t month, int32_t day) {
+    try {
+        ifcopenshell_clear_error();
+    if (props == nullptr) { throw std::runtime_error("Parameter \"props\" must not be null"); }
+    auto props_cpp = static_cast<ifcopenshell_pset_props_t*>(props);
+    if (key == nullptr) { throw std::runtime_error("Parameter \"key\" must not be null"); }
+    std::string key_cpp(key);
+    auto year_cpp = static_cast<int>(year);
+    auto month_cpp = static_cast<int>(month);
+    auto day_cpp = static_cast<int>(day);
+        ifcapi::bindings::pset_props_set_date(props_cpp, key_cpp, year_cpp, month_cpp, day_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_pset_props_set_datetime(void* props, const char* key, int32_t year, int32_t month, int32_t day, int32_t hour, int32_t minute, int32_t second, int32_t microsecond, bool has_timezone, int32_t timezone_offset_minutes) {
+    try {
+        ifcopenshell_clear_error();
+    if (props == nullptr) { throw std::runtime_error("Parameter \"props\" must not be null"); }
+    auto props_cpp = static_cast<ifcopenshell_pset_props_t*>(props);
+    if (key == nullptr) { throw std::runtime_error("Parameter \"key\" must not be null"); }
+    std::string key_cpp(key);
+    auto year_cpp = static_cast<int>(year);
+    auto month_cpp = static_cast<int>(month);
+    auto day_cpp = static_cast<int>(day);
+    auto hour_cpp = static_cast<int>(hour);
+    auto minute_cpp = static_cast<int>(minute);
+    auto second_cpp = static_cast<int>(second);
+    auto microsecond_cpp = static_cast<int>(microsecond);
+    auto has_timezone_cpp = static_cast<bool>(has_timezone);
+    auto timezone_offset_minutes_cpp = static_cast<int>(timezone_offset_minutes);
+        ifcapi::bindings::pset_props_set_datetime(props_cpp, key_cpp, year_cpp, month_cpp, day_cpp, hour_cpp, minute_cpp, second_cpp, microsecond_cpp, has_timezone_cpp, timezone_offset_minutes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_pset_props_set_dict(void* outer, const char* key, void* inner) {
     try {
         ifcopenshell_clear_error();
@@ -9046,6 +9094,32 @@ bool ifcopenshell_ifcapi_pset_props_set_double_list(void* props, const char* key
     if (values == nullptr) { throw std::runtime_error("Parameter \"values\" must not be null"); }
     auto values_cpp = to_cpp_double_list(values);
         ifcapi::bindings::pset_props_set_double_list(props_cpp, key_cpp, values_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_pset_props_set_duration(void* props, const char* key, bool negative, int32_t years, int32_t months, int32_t days, int32_t hours, int32_t minutes, int32_t seconds, int32_t microseconds) {
+    try {
+        ifcopenshell_clear_error();
+    if (props == nullptr) { throw std::runtime_error("Parameter \"props\" must not be null"); }
+    auto props_cpp = static_cast<ifcopenshell_pset_props_t*>(props);
+    if (key == nullptr) { throw std::runtime_error("Parameter \"key\" must not be null"); }
+    std::string key_cpp(key);
+    auto negative_cpp = static_cast<bool>(negative);
+    auto years_cpp = static_cast<int>(years);
+    auto months_cpp = static_cast<int>(months);
+    auto days_cpp = static_cast<int>(days);
+    auto hours_cpp = static_cast<int>(hours);
+    auto minutes_cpp = static_cast<int>(minutes);
+    auto seconds_cpp = static_cast<int>(seconds);
+    auto microseconds_cpp = static_cast<int>(microseconds);
+        ifcapi::bindings::pset_props_set_duration(props_cpp, key_cpp, negative_cpp, years_cpp, months_cpp, days_cpp, hours_cpp, minutes_cpp, seconds_cpp, microseconds_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -12476,6 +12550,29 @@ bool ifcopenshell_ifcapi_material_assign_profile(ifcopenshell_ifc_file_t* file, 
     }
 }
 
+bool ifcopenshell_ifcapi_material_edit_profile_usage(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* usage, void* attributes, bool has_profile_dimensions, double profile_width, double profile_height) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (usage == nullptr || usage->ptr == nullptr) { throw std::runtime_error("Handle parameter \"usage\" is invalid"); }
+    auto usage_cpp = usage->ptr;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+    auto has_profile_dimensions_cpp = static_cast<bool>(has_profile_dimensions);
+    auto profile_width_cpp = static_cast<double>(profile_width);
+    auto profile_height_cpp = static_cast<double>(profile_height);
+        ifcapi::bindings::material_edit_profile_usage(file_cpp, usage_cpp, attributes_cpp, has_profile_dimensions_cpp, profile_width_cpp, profile_height_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_material_remove_constituent(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* constituent, bool should_remove_material) {
     try {
         ifcopenshell_clear_error();
@@ -12643,6 +12740,46 @@ bool ifcopenshell_ifcapi_cost_edit_cost_value(ifcopenshell_ifc_file_t* file, ifc
     auto value_component_cpp = static_cast<double>(value_component);
     auto unit_component_cpp = (unit_component != nullptr && unit_component->ptr != nullptr) ? unit_component->ptr : nullptr;
         ifcapi::bindings::cost_edit_cost_value(file_cpp, cost_value_cpp, attributes_cpp, has_unit_basis_cpp, unit_basis_is_null_cpp, value_component_cpp, unit_component_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_cost_edit_cost_value_formula(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* cost_value, const char* formula) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (cost_value == nullptr || cost_value->ptr == nullptr) { throw std::runtime_error("Handle parameter \"cost_value\" is invalid"); }
+    auto cost_value_cpp = cost_value->ptr;
+    if (formula == nullptr) { throw std::runtime_error("Parameter \"formula\" must not be null"); }
+    std::string formula_cpp(formula);
+        ifcapi::bindings::cost_edit_cost_value_formula(file_cpp, cost_value_cpp, formula_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_resource_edit_resource_time(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* resource_time, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (resource_time == nullptr || resource_time->ptr == nullptr) { throw std::runtime_error("Handle parameter \"resource_time\" is invalid"); }
+    auto resource_time_cpp = resource_time->ptr;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::resource_edit_resource_time(file_cpp, resource_time_cpp, attributes_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

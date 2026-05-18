@@ -22,6 +22,11 @@ IFCAPI_BINDING void cost_edit_cost_value(
     double value_component,
     IfcUtil::IfcBaseClass* unit_component);
 
+IFCAPI_BINDING void cost_edit_cost_value_formula(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* cost_value,
+    const std::string& formula);
+
 } // namespace bindings
 } // namespace ifcapi
 
