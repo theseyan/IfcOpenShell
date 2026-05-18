@@ -49,5 +49,6 @@ def edit_address(file: ifcopenshell.file, address: ifcopenshell.entity_instance,
             "ElectronicMailAddresses": ["bobthebuilder@example.com"],
             "WWWHomePageURL": "https://thinkmoult.com"})
     """
-    for name, value in attributes.items():
-        setattr(address, name, value)
+    from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
+
+    _edit_attributes(file, address, attributes)

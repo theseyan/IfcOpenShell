@@ -10,6 +10,7 @@ c_prefix: ifcopenshell_ifcapi
 
 public_headers:
   - ifcapi/bindings/aggregate.h
+  - ifcapi/bindings/attribute.h
   - ifcapi/bindings/boundary.h
   - guid.h
   - ifcapi/bindings/classification.h
@@ -123,6 +124,20 @@ imports:
 discover:
   include_dir: ../../../ifcapi/src
   functions:
+    - namespace: ifcapi::bindings
+      translation_unit: util/attribute.cpp
+      include:
+        - attribute_edit_attributes
+      type_overrides:
+        attribute_edit_attributes:
+          params:
+            attributes:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+            user:
+              nullable: true
+            application:
+              nullable: true
     - namespace: ifcapi::bindings
       translation_unit: element.cpp
       include:

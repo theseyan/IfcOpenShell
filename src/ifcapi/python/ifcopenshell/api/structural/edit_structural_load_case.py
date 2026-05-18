@@ -18,6 +18,7 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
 
 
 def edit_structural_load_case(
@@ -32,5 +33,4 @@ def edit_structural_load_case(
     :param attributes: a dictionary of attribute names and values.
     :return: None
     """
-    for name, value in attributes.items():
-        setattr(load_case, name, value)
+    _edit_attributes(file, load_case, attributes)

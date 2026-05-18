@@ -18,6 +18,7 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
 
 
 def edit_prop_template(
@@ -62,5 +63,4 @@ def edit_prop_template(
     if "Enumerators" in attributes:
         del attributes["Enumerators"]
 
-    for name, value in attributes.items():
-        setattr(prop_template, name, value)
+    _edit_attributes(file, prop_template, attributes)

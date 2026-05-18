@@ -43,5 +43,6 @@ def edit_role(file: ifcopenshell.file, role: ifcopenshell.entity_instance, attri
         # But Bob is not an architect
         ifcopenshell.api.owner.edit_role(model, role=role, attributes={"Role": "CONSTRUCTIONMANAGER"})
     """
-    for name, value in attributes.items():
-        setattr(role, name, value)
+    from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
+
+    _edit_attributes(file, role, attributes)

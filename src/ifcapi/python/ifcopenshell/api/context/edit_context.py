@@ -19,6 +19,7 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
 
 
 def edit_context(file: ifcopenshell.file, context: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
@@ -45,5 +46,4 @@ def edit_context(file: ifcopenshell.file, context: ifcopenshell.entity_instance,
         ifcopenshell.api.context.edit_context(model,
             context=body, attributes={"ContextIdentifier": "Body"})
     """
-    for name, value in attributes.items():
-        setattr(context, name, value)
+    _edit_attributes(file, context, attributes)

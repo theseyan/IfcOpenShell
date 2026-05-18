@@ -47,5 +47,6 @@ def edit_actor(file: ifcopenshell.file, actor: ifcopenshell.entity_instance, att
         ifcopenshell.api.actor.edit_actor(model,
             actor=actor, attributes={"Description": "Responsible for buildings A, B, and C."})
     """
-    for name, value in attributes.items():
-        setattr(actor, name, value)
+    from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
+
+    _edit_attributes(file, actor, attributes)

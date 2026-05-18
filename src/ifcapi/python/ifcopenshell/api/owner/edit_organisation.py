@@ -41,5 +41,6 @@ def edit_organisation(
         ifcopenshell.api.owner.edit_organisation(model, organisation=organisation,
             attributes={"name": "Architects Without Ballpens"})
     """
-    for name, value in attributes.items():
-        setattr(organisation, name, value)
+    from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
+
+    _edit_attributes(file, organisation, attributes)

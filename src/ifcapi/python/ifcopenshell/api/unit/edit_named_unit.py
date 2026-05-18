@@ -18,6 +18,7 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
 
 
 def edit_named_unit(file: ifcopenshell.file, unit: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
@@ -43,13 +44,13 @@ def edit_named_unit(file: ifcopenshell.file, unit: ifcopenshell.entity_instance,
         # Uh, crates? Boxes? Whatever.
         ifcopenshell.api.unit.edit_named_unit(model, unit=unit, attibutes={"Name": "CRATES"})
     """
-    for name, value in attributes.items():
-        if name == "Dimensions":
-            dimensions = unit.Dimensions
-            if file.get_total_inverses(dimensions) > 1:
-                unit.Dimensions = file.createIfcDimensionalExponents(*value)
-            else:
-                for i, exponent in enumerate(value):
-                    dimensions[i] = exponent
-            continue
-        setattr(unit, name, value)
+    attributes = attributes.copy()
+    if "Dimensions" in attributes:
+        value = attributes.pop("Dimensions")
+        dimensions = unit.Dimensions
+        if file.get_total_inverses(dimensions) > 1:
+            unit.Dimensions = file.createIfcDimensionalExponents(*value)
+        else:
+            for i, exponent in enumerate(value):
+                dimensions[i] = exponent
+    _edit_attributes(file, unit, attributes)

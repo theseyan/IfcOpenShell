@@ -18,10 +18,10 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
 
 
 def edit_material(file: ifcopenshell.file, material: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
     """Edits the attributes of an IfcMaterial"""
 
-    for name, value in attributes.items():
-        setattr(material, name, value)
+    _edit_attributes(file, material, attributes)

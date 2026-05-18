@@ -18,6 +18,7 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
 
 
 def edit_resource_quantity(
@@ -51,5 +52,4 @@ def edit_resource_quantity(
         ifcopenshell.api.resource.edit_resource_quantity(model,
             physical_quantity=time, attributes={"TimeValue": 8.0})
     """
-    for name, value in attributes.items():
-        setattr(physical_quantity, name, value)
+    _edit_attributes(file, physical_quantity, attributes)

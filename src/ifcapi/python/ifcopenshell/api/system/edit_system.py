@@ -18,6 +18,7 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
 
 
 def edit_system(file: ifcopenshell.file, system: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
@@ -40,5 +41,4 @@ def edit_system(file: ifcopenshell.file, system: ifcopenshell.entity_instance, a
         # Change the name of the system to "HW" for Hot Water
         ifcopenshell.api.system.edit_system(model, system=system, attributes={"Name": "HW"})
     """
-    for name, value in attributes.items():
-        setattr(system, name, value)
+    _edit_attributes(file, system, attributes)

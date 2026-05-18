@@ -39,5 +39,6 @@ def edit_person(file: ifcopenshell.file, person: ifcopenshell.entity_instance, a
         ifcopenshell.api.owner.edit_person(model, person=person,
             attributes={"MiddleNames": ["The"], "FamilyName": "Builder"})
     """
-    for name, value in attributes.items():
-        setattr(person, name, value)
+    from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
+
+    _edit_attributes(file, person, attributes)

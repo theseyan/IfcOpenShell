@@ -18,6 +18,7 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
 
 
 def edit_presentation_style(
@@ -42,5 +43,4 @@ def edit_presentation_style(
         # Change the name of the style to "Foo"
         ifcopenshell.api.style.edit_presentation_style(model, style=style, attributes={"Name": "Foo"})
     """
-    for name, value in attributes.items():
-        setattr(style, name, value)
+    _edit_attributes(file, style, attributes)

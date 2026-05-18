@@ -540,6 +540,7 @@ bool ifcopenshell_ifcgeom_convert_loop_to_function_item(ifcopenshell_ifcgeom_tax
 bool ifcopenshell_ifcgeom_create_function_item_evaluator(ifcopenshell_ifcgeom_settings_t* settings, ifcopenshell_ifcgeom_taxonomy_item_t* fn_item, ifcopenshell_ifcgeom_function_item_evaluator_t** out_result);
 bool ifcopenshell_ifcgeom_taxonomy_function_item_start(ifcopenshell_ifcgeom_taxonomy_item_t* item, double* out_result);
 bool ifcopenshell_ifcgeom_taxonomy_function_item_end(ifcopenshell_ifcgeom_taxonomy_item_t* item, double* out_result);
+bool ifcopenshell_ifcapi_attribute_edit_attributes(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* product, void* attributes, bool sync_predefined_type, bool update_owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
 bool ifcopenshell_ifcapi_compute_derived(ifcopenshell_ifc_instance_t* instance, const char* attribute_name, ifcopenshell_ifcapi_value_t** out_result);
 bool ifcopenshell_ifcapi_element_get_aggregate(ifcopenshell_ifc_instance_t* instance, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_element_get_contained(ifcopenshell_ifc_instance_t* element, ifcopenshell_ifcparse_instance_list_t** out_result);

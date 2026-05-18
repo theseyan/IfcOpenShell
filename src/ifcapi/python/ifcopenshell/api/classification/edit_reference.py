@@ -18,6 +18,7 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
 
 
 def edit_reference(
@@ -41,5 +42,4 @@ def edit_reference(
         ifcopenshell.api.classification.edit_reference(model,
             reference=reference, attributes={"Name": "Foo"})
     """
-    for name, value in attributes.items():
-        setattr(reference, name, value)
+    _edit_attributes(file, reference, attributes)

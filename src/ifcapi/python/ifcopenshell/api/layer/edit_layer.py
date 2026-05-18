@@ -18,6 +18,7 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
 
 
 def edit_layer(file: ifcopenshell.file, layer: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
@@ -38,5 +39,4 @@ def edit_layer(file: ifcopenshell.file, layer: ifcopenshell.entity_instance, att
         ifcopenshell.api.layer.edit_layer(model,
             layer=layer, attributes={"Description": "All walls, based on the AIA standard."})
     """
-    for name, value in attributes.items():
-        setattr(layer, name, value)
+    _edit_attributes(file, layer, attributes)

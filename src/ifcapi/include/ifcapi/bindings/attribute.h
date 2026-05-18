@@ -10,16 +10,30 @@
 
 namespace IfcParse {
 class attribute;
+class IfcFile;
 }
+
+namespace IfcUtil {
+class IfcBaseClass;
+}
+
+struct ifcopenshell_pset_props_t;
 
 namespace ifcapi {
 namespace bindings {
 
 IFCAPI_BINDING const char* attribute_get_primitive_type(const IfcParse::attribute* attribute);
 IFCAPI_BINDING std::vector<std::string> attribute_get_enum_items(const IfcParse::attribute* attribute);
+IFCAPI_BINDING void attribute_edit_attributes(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* product,
+    ifcopenshell_pset_props_t* attributes,
+    bool sync_predefined_type,
+    bool update_owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application);
 
 } // namespace bindings
 } // namespace ifcapi
 
 #endif /* IFCAPI_BINDINGS_ATTRIBUTE_H */
-
