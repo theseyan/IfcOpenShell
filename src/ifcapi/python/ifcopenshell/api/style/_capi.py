@@ -17,6 +17,7 @@ _BIND_NAMES = (
     "ifcopenshell_ifcapi_style_assign_item_style",
     "ifcopenshell_ifcapi_style_assign_material_style",
     "ifcopenshell_ifcapi_style_assign_representation_styles",
+    "ifcopenshell_ifcapi_style_edit_surface_style",
     "ifcopenshell_ifcapi_style_remove_style",
     "ifcopenshell_ifcapi_style_remove_styled_representation",
     "ifcopenshell_ifcapi_style_remove_surface_style",

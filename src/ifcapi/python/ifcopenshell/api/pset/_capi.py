@@ -30,6 +30,7 @@ _BIND_NAMES = (
     "ifcopenshell_ifcapi_pset_props_set_string_list",
     "ifcopenshell_ifcapi_pset_props_set_double_list",
     "ifcopenshell_ifcapi_pset_props_set_int_list",
+    "ifcopenshell_ifcapi_pset_props_set_instance_list",
     "ifcopenshell_ifcapi_pset_props_set_dict",
     "ifcopenshell_ifcapi_pset_props_set_unit_for_last",
     "ifcopenshell_ifcapi_pset_assign_pset",
@@ -84,16 +85,20 @@ def _add_entry(lib, props, key, value):
             return
         inner = _new_props(lib)
         try:
-            if "Discrimination" in value:
-                _call(
-                    lib,
-                    lib.ifcopenshell_ifcapi_pset_props_set_string,
-                    inner,
-                    _generated_capi.encode_string("Discrimination"),
-                    _generated_capi.encode_string(str(value["Discrimination"])),
-                )
-            if "HasQuantities" in value:
-                for k2, v2 in (value["HasQuantities"] or {}).items():
+            if "Discrimination" in value or "HasQuantities" in value:
+                if "Discrimination" in value:
+                    _call(
+                        lib,
+                        lib.ifcopenshell_ifcapi_pset_props_set_string,
+                        inner,
+                        _generated_capi.encode_string("Discrimination"),
+                        _generated_capi.encode_string(str(value["Discrimination"])),
+                    )
+                if "HasQuantities" in value:
+                    for k2, v2 in (value["HasQuantities"] or {}).items():
+                        _add_entry(lib, inner, k2, v2)
+            else:
+                for k2, v2 in value.items():
                     _add_entry(lib, inner, k2, v2)
             _call(lib, lib.ifcopenshell_ifcapi_pset_props_set_dict, props, k, inner)
         except Exception:
@@ -110,6 +115,10 @@ def _add_entry(lib, props, key, value):
         if not value:
             list_value = _generated_capi.make_string_list([])
             _call(lib, lib.ifcopenshell_ifcapi_pset_props_set_string_list, props, k, ctypes.byref(list_value))
+            return
+        if all(isinstance(v, ifcopenshell.entity_instance) for v in value):
+            list_value = instance_list(value)
+            _call(lib, lib.ifcopenshell_ifcapi_pset_props_set_instance_list, props, k, list_value)
             return
         # Detect uniform element kind. Mixed -> coerce to strings.
         if all(isinstance(v, bool) or isinstance(v, int) and not isinstance(v, bool) for v in value):

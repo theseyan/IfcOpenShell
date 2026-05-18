@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+struct ifcopenshell_pset_props_t;
+
 namespace ifcapi {
 namespace bindings {
 
@@ -80,6 +82,10 @@ IFCAPI_BINDING void structural_edit_structural_item_axis(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* structural_item,
     const std::vector<double>& axis);
+IFCAPI_BINDING void structural_edit_structural_boundary_condition(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* condition,
+    ifcopenshell_pset_props_t* attributes);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_assign_to_building(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* structural_analysis_model,

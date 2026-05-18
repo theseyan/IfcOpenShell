@@ -56,6 +56,9 @@ inline void apply_attribute_prop(IfcUtil::IfcBaseClass* entity, const ifcapi_pse
             entity->set_attribute_value(attr_idx, values);
             break;
         }
+        case ifcapi_pset::Kind::INSTANCE_LIST:
+            set_ref_aggregate(entity, idx, entry.inst_list);
+            break;
         default:
             throw std::runtime_error("Unsupported attribute value for " + entry.key);
     }

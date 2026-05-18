@@ -651,6 +651,17 @@ void pset_props_set_int_list(
     e.int_list = vals;
 }
 
+void pset_props_set_instance_list(
+    ifcopenshell_pset_props_t* p, const std::string& key, const std::vector<const IfcUtil::IfcBaseClass*>& vals) {
+    if (!p) return;
+    auto& e = append_entry(p, key);
+    e.kind = Kind::INSTANCE_LIST;
+    e.inst_list.reserve(vals.size());
+    for (auto* value : vals) {
+        e.inst_list.push_back(const_cast<IfcUtil::IfcBaseClass*>(value));
+    }
+}
+
 void pset_props_set_dict(ifcopenshell_pset_props_t* outer, const std::string& key, ifcopenshell_pset_props_t* inner) {
     if (!outer) {
         delete inner;

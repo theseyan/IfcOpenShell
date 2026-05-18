@@ -41,6 +41,8 @@ IFCAPI_BINDING void pset_props_set_double_list(
     ifcopenshell_pset_props_t* props, const std::string& key, const std::vector<double>& values);
 IFCAPI_BINDING void pset_props_set_int_list(
     ifcopenshell_pset_props_t* props, const std::string& key, const std::vector<int64_t>& values);
+IFCAPI_BINDING void pset_props_set_instance_list(
+    ifcopenshell_pset_props_t* props, const std::string& key, const std::vector<const IfcUtil::IfcBaseClass*>& values);
 IFCAPI_BINDING void pset_props_set_dict(
     ifcopenshell_pset_props_t* outer, const std::string& key, ifcopenshell_pset_props_t* inner);
 IFCAPI_BINDING void pset_props_set_unit_for_last(

@@ -63,6 +63,7 @@
 #include "ifcapi/bindings/constraint.h"
 #include "ifcapi/bindings/control.h"
 #include "ifcapi/bindings/context.h"
+#include "ifcapi/bindings/cost.h"
 #include "ifcapi/bindings/document.h"
 #include "ifcapi/bindings/drawing.h"
 #include "ifcapi/bindings/element.h"

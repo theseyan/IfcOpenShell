@@ -9075,6 +9075,26 @@ bool ifcopenshell_ifcapi_pset_props_set_instance(void* props, const char* key, i
     }
 }
 
+bool ifcopenshell_ifcapi_pset_props_set_instance_list(void* props, const char* key, const ifcopenshell_ifc_instance_list_t* values) {
+    try {
+        ifcopenshell_clear_error();
+    if (props == nullptr) { throw std::runtime_error("Parameter \"props\" must not be null"); }
+    auto props_cpp = static_cast<ifcopenshell_pset_props_t*>(props);
+    if (key == nullptr) { throw std::runtime_error("Parameter \"key\" must not be null"); }
+    std::string key_cpp(key);
+    if (values == nullptr) { throw std::runtime_error("Parameter \"values\" must not be null"); }
+    auto values_cpp = to_cpp_ifc_instance_list(values);
+        ifcapi::bindings::pset_props_set_instance_list(props_cpp, key_cpp, values_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_pset_props_set_int(void* props, const char* key, int64_t value) {
     try {
         ifcopenshell_clear_error();
@@ -12609,6 +12629,30 @@ bool ifcopenshell_ifcapi_material_unassign_material(ifcopenshell_ifc_file_t* fil
     }
 }
 
+bool ifcopenshell_ifcapi_cost_edit_cost_value(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* cost_value, void* attributes, bool has_unit_basis, bool unit_basis_is_null, double value_component, ifcopenshell_ifc_instance_t* unit_component) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (cost_value == nullptr || cost_value->ptr == nullptr) { throw std::runtime_error("Handle parameter \"cost_value\" is invalid"); }
+    auto cost_value_cpp = cost_value->ptr;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+    auto has_unit_basis_cpp = static_cast<bool>(has_unit_basis);
+    auto unit_basis_is_null_cpp = static_cast<bool>(unit_basis_is_null);
+    auto value_component_cpp = static_cast<double>(value_component);
+    auto unit_component_cpp = (unit_component != nullptr && unit_component->ptr != nullptr) ? unit_component->ptr : nullptr;
+        ifcapi::bindings::cost_edit_cost_value(file_cpp, cost_value_cpp, attributes_cpp, has_unit_basis_cpp, unit_basis_is_null_cpp, value_component_cpp, unit_component_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_style_add_style(ifcopenshell_ifc_file_t* file, const char* name, const char* ifc_class, ifcopenshell_ifc_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
@@ -12686,6 +12730,26 @@ bool ifcopenshell_ifcapi_style_assign_representation_styles(ifcopenshell_ifc_fil
     auto should_use_presentation_style_assignment_cpp = static_cast<bool>(should_use_presentation_style_assignment);
     auto replace_previous_same_type_style_cpp = static_cast<bool>(replace_previous_same_type_style);
         *out_result = make_ifc_instance_list(ifcapi::bindings::style_assign_representation_styles(file_cpp, shape_representation_cpp, styles_cpp, should_use_presentation_style_assignment_cpp, replace_previous_same_type_style_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_style_edit_surface_style(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* style, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (style == nullptr || style->ptr == nullptr) { throw std::runtime_error("Handle parameter \"style\" is invalid"); }
+    auto style_cpp = style->ptr;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::style_edit_surface_style(file_cpp, style_cpp, attributes_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -13011,6 +13075,26 @@ bool ifcopenshell_ifcapi_structural_assign_to_building(ifcopenshell_ifc_file_t* 
     auto building_cpp = building->ptr;
     auto owner_history_cpp = (owner_history != nullptr && owner_history->ptr != nullptr) ? owner_history->ptr : nullptr;
         *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::structural_assign_to_building(file_cpp, structural_analysis_model_cpp, building_cpp, owner_history_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_structural_edit_structural_boundary_condition(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* condition, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (condition == nullptr || condition->ptr == nullptr) { throw std::runtime_error("Handle parameter \"condition\" is invalid"); }
+    auto condition_cpp = condition->ptr;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::structural_edit_structural_boundary_condition(file_cpp, condition_cpp, attributes_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

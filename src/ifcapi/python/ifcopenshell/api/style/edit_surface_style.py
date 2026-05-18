@@ -15,9 +15,11 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
-from typing import Any, Union
+from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.pset import _capi as pset_capi
+from ifcopenshell.api.style import _capi
 
 
 def edit_surface_style(
@@ -70,69 +72,15 @@ def edit_surface_style(
                 "SpecularHighlight": {"SpecularRoughness": 0.5}, # Roughness factor
             })
     """
-    usecase = Usecase()
-    usecase.file = file
-    return usecase.execute(style, attributes)
-
-
-class Usecase:
-    file: ifcopenshell.file
-
-    def execute(self, style: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
-        self.style = style
-
-        attribute_types: dict[str, str] = {}
-        for attribute in style.wrapped_data.declaration().as_entity().all_attributes():
-            attribute_type = attribute.type_of_attribute()
-            if attribute_type.as_aggregation_type() is None:
-                attribute_type = attribute_type.declared_type().name()
-            else:
-                # doesn't have .declared_type()
-                attribute_type = attribute_type.type_of_element()
-            attribute_types[attribute.name()] = attribute_type
-
-        for key, value in attributes.items():
-            attribute_class = attribute_types.get(key)
-            if attribute_class == "IfcColourRgb":
-                self.edit_colour_rgb(key, value)
-            elif key == "SpecularHighlight":
-                self.edit_specular_highlight(value)
-            elif attribute_class == "IfcColourOrFactor":
-                self.edit_colour_or_factor(key, value)
-            else:
-                setattr(style, key, value)
-
-    def edit_colour_rgb(self, name: str, value: dict[str, Any]):
-        if (attribute := getattr(self.style, name)) is None:
-            attribute = self.file.createIfcColourRgb()
-            setattr(self.style, name, attribute)
-        attribute.Name = value.get("Name", None)
-        attribute.Red = value["Red"]
-        attribute.Green = value["Green"]
-        attribute.Blue = value["Blue"]
-
-    def edit_colour_or_factor(self, name: str, value: Union[dict[str, Any], ifcopenshell.entity_instance, None]):
-        if isinstance(value, dict):
-            attribute = getattr(self.style, name)
-            if not attribute or not attribute.is_a("IfcColourRgb"):
-                colour = self.file.createIfcColourRgb(None, 0, 0, 0)
-                setattr(self.style, name, colour)
-                attribute = getattr(self.style, name)
-            attribute[1] = value["Red"]
-            attribute[2] = value["Green"]
-            attribute[3] = value["Blue"]
-        else:  # assume it's float value for IfcNormalisedRatioMeasure or None
-            existing_value = getattr(self.style, name)
-            if existing_value and existing_value.id():
-                self.file.remove(existing_value)
-            if value is not None:
-                value = self.file.create_entity("IfcNormalisedRatioMeasure", value)
-            setattr(self.style, name, value)
-
-    def edit_specular_highlight(self, value: Union[dict[str, Any], None]) -> None:
-        if value is None:
-            self.style.SpecularHighlight = None
-        elif value.get("IfcSpecularExponent", None):
-            self.style.SpecularHighlight = self.file.createIfcSpecularExponent(value["IfcSpecularExponent"])
-        elif value.get("IfcSpecularRoughness", None):
-            self.style.SpecularHighlight = self.file.createIfcSpecularRoughness(value["IfcSpecularRoughness"])
+    props = pset_capi.build_props(attributes)
+    try:
+        lib = _capi.get_lib()
+        _capi.call_status(
+            lib.ifcopenshell_ifcapi_style_edit_surface_style,
+            "Failed to edit surface style",
+            _capi.file_handle(file),
+            _capi.instance_handle(style),
+            props,
+        )
+    finally:
+        pset_capi.free_props(props)

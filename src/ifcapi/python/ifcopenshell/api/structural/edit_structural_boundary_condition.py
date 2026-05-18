@@ -18,6 +18,8 @@
 from typing import Any, Literal, TypedDict, Union
 
 import ifcopenshell
+from ifcopenshell.api.pset import _capi as pset_capi
+from ifcopenshell.api.structural import _capi
 
 
 class AttributeDict(TypedDict):
@@ -43,11 +45,14 @@ def edit_structural_boundary_condition(
         Each value is represented by a dictionary.
     :return: None
     """
-    for name, data in attributes.items():
-        if data["type"] == "string" or data["type"] == "null":
-            value = data["value"]
-        elif data["type"] == "IfcBoolean":
-            value = file.createIfcBoolean(data["value"])
-        else:
-            value = file.create_entity(data["type"], data["value"])
-        setattr(condition, name, value)
+    props = pset_capi.build_props(attributes)
+    try:
+        lib = _capi.get_lib()
+        _capi.call_status(
+            lib.ifcopenshell_ifcapi_structural_edit_structural_boundary_condition,
+            _capi.file_handle(file),
+            _capi.instance_handle(condition),
+            props,
+        )
+    finally:
+        pset_capi.free_props(props)
