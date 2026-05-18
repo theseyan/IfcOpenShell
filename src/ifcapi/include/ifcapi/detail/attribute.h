@@ -481,6 +481,26 @@ inline IfcUtil::IfcBaseClass* create_typed_double(
     return instance;
 }
 
+inline IfcUtil::IfcBaseClass* create_typed_string(
+    IfcParse::IfcFile* file,
+    const char* ifc_type,
+    const std::string& value)
+{
+    if (!file || !file->schema()) {
+        return nullptr;
+    }
+    auto* declaration = file->schema()->declaration_by_name(ifc_type);
+    auto* type_declaration = declaration ? declaration->as_type_declaration() : nullptr;
+    if (!type_declaration) {
+        return nullptr;
+    }
+    auto* instance = file->create(type_declaration);
+    if (instance) {
+        instance->set_attribute_value(0, value);
+    }
+    return instance;
+}
+
 inline size_t total_inverses(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* entity) {
     if (!file || !entity || entity->id() <= 0) {
         return 0;

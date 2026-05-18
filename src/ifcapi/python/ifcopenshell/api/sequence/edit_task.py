@@ -18,6 +18,8 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.pset import _capi as pset_capi
+from ifcopenshell.api.sequence import _capi
 
 
 def edit_task(file: ifcopenshell.file, task: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
@@ -46,5 +48,12 @@ def edit_task(file: ifcopenshell.file, task: ifcopenshell.entity_instance, attri
         # Change the identification
         ifcopenshell.api.sequence.edit_task(model, task=task, attributes={"Identification": "M"})
     """
-    for name, value in attributes.items():
-        setattr(task, name, value)
+    props = pset_capi.build_props(attributes)
+    try:
+        _capi.call_status(
+            _capi.get_lib().ifcopenshell_ifcapi_sequence_edit_task,
+            _capi.instance_handle(task),
+            props,
+        )
+    finally:
+        pset_capi.free_props(props)

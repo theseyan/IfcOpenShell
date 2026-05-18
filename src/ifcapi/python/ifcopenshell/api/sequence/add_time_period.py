@@ -22,6 +22,7 @@ from typing import Optional, Union
 import ifcopenshell.api
 import ifcopenshell.util.date
 import ifcopenshell.util.sequence
+from ifcopenshell.api.sequence import _capi
 
 
 def add_time_period(
@@ -77,12 +78,17 @@ def add_time_period(
         ifcopenshell.api.sequence.add_time_period(model,
             recurrence_pattern=pattern, start_time="13:00", end_time="17:00")
     """
-    time_period = file.create_entity("IfcTimePeriod")
-    time_period.StartTime = ifcopenshell.util.date.datetime2ifc(start_time, "IfcTime")
-    time_period.EndTime = ifcopenshell.util.date.datetime2ifc(end_time, "IfcTime")
-    time_periods = list(recurrence_pattern.TimePeriods or [])
-    time_periods.append(time_period)
-    recurrence_pattern.TimePeriods = time_periods
+    start_time = ifcopenshell.util.date.datetime2ifc(start_time, "IfcTime")
+    end_time = ifcopenshell.util.date.datetime2ifc(end_time, "IfcTime")
+    time_period = _capi.call_handle(
+        file,
+        _capi.get_lib().ifcopenshell_ifcapi_sequence_add_time_period,
+        _capi.file_handle(file),
+        _capi.instance_handle(recurrence_pattern),
+        _capi.string(start_time) if start_time is not None else None,
+        _capi.string(end_time) if end_time is not None else None,
+        nullable=True,
+    )
 
     ifcopenshell.util.sequence.is_working_day.cache_clear()
     ifcopenshell.util.sequence.is_calendar_applicable.cache_clear()

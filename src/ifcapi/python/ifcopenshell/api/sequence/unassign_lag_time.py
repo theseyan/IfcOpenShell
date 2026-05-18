@@ -17,6 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell.api.sequence
+from ifcopenshell.api.sequence import _capi
 
 
 def unassign_lag_time(file: ifcopenshell.file, rel_sequence: ifcopenshell.entity_instance) -> None:
@@ -55,8 +56,9 @@ def unassign_lag_time(file: ifcopenshell.file, rel_sequence: ifcopenshell.entity
         # What if you didn't?
         ifcopenshell.api.sequence.unassign_lag_time(model, rel_sequence=sequence)
     """
-    if file.get_total_inverses(current_lag_time := rel_sequence.TimeLag) == 1:
-        file.remove(current_lag_time)
-    else:
-        rel_sequence.TimeLag = None
+    _capi.call_status(
+        _capi.get_lib().ifcopenshell_ifcapi_sequence_unassign_lag_time,
+        _capi.file_handle(file),
+        _capi.instance_handle(rel_sequence),
+    )
     ifcopenshell.api.sequence.cascade_schedule(file, task=rel_sequence.RelatedProcess)

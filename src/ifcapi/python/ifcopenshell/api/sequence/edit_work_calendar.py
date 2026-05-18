@@ -18,6 +18,8 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.pset import _capi as pset_capi
+from ifcopenshell.api.sequence import _capi
 
 
 def edit_work_calendar(
@@ -43,5 +45,12 @@ def edit_work_calendar(
         ifcopenshell.api.sequence.edit_work_calendar(model,
             work_calendar=calendar, attributes={"Description": "Monday to Friday 8 hour days"})
     """
-    for name, value in attributes.items():
-        setattr(work_calendar, name, value)
+    props = pset_capi.build_props(attributes)
+    try:
+        _capi.call_status(
+            _capi.get_lib().ifcopenshell_ifcapi_sequence_edit_work_calendar,
+            _capi.instance_handle(work_calendar),
+            props,
+        )
+    finally:
+        pset_capi.free_props(props)

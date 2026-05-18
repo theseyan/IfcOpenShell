@@ -20,9 +20,8 @@ from datetime import datetime, time
 from typing import Optional, Union
 
 import ifcopenshell.api.owner.settings
-import ifcopenshell.api.project
-import ifcopenshell.api.root
-import ifcopenshell.api.sequence
+import ifcopenshell.util.date
+from ifcopenshell.api.sequence import _capi
 
 
 def add_work_plan(
@@ -59,24 +58,24 @@ def add_work_plan(
         schedule = ifcopenshell.api.sequence.add_work_schedule(model,
             name="Construction Schedule A", work_plan=work_plan)
     """
+    # Preserve upstream behavior: the public start_time argument is normalised but not used.
     start_time = start_time or datetime.now()
-    work_plan = ifcopenshell.api.root.create_entity(
-        file,
-        ifc_class="IfcWorkPlan",
-        predefined_type=predefined_type,
-        name=name,
-    )
-    work_plan.CreationDate = ifcopenshell.api.sequence.add_date_time(file, datetime.now())
+    creation_date = ifcopenshell.util.date.datetime2ifc(datetime.now(), "IfcDateTime")
+    start_time = ifcopenshell.util.date.datetime2ifc(datetime.now(), "IfcDateTime")
     user = ifcopenshell.api.owner.settings.get_user(file)
-    if user:
-        work_plan.Creators = [user.ThePerson]
-    work_plan.StartTime = ifcopenshell.api.sequence.add_date_time(file, datetime.now())
-
-    if file.schema != "IFC2X3":
-        context = file.by_type("IfcContext")[0]
-        ifcopenshell.api.project.assign_declaration(
-            file,
-            definitions=[work_plan],
-            relating_context=context,
-        )
-    return work_plan
+    creator_person = user.ThePerson if user else None
+    owner_history, user_context, application = _capi.owner_context(file)
+    return _capi.call_handle(
+        file,
+        _capi.get_lib().ifcopenshell_ifcapi_sequence_add_work_plan,
+        _capi.file_handle(file),
+        _capi.string(name) if name is not None else None,
+        _capi.string(predefined_type),
+        _capi.string(creation_date),
+        _capi.string(start_time),
+        _capi.instance_handle(creator_person),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user_context),
+        _capi.instance_handle(application),
+        nullable=True,
+    )

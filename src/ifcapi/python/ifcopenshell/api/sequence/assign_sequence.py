@@ -17,9 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.api.sequence
-import ifcopenshell.guid
+from ifcopenshell.api.sequence import _capi
 
 
 def assign_sequence(
@@ -106,18 +104,21 @@ def assign_sequence(
         # to be 2000-01-05.
         ifcopenshell.api.sequence.cascade_schedule(model, task=formwork)
     """
-    for rel in related_process.IsSuccessorFrom or []:
-        if rel.RelatingProcess == relating_process:
-            return rel
-    rel = file.create_entity(
-        "IfcRelSequence",
-        **{
-            "GlobalId": ifcopenshell.guid.new(),
-            "OwnerHistory": ifcopenshell.api.owner.create_owner_history(file),
-            "RelatingProcess": relating_process,
-            "RelatedProcess": related_process,
-            "SequenceType": sequence_type,
-        }
-    )
-    ifcopenshell.api.sequence.cascade_schedule(file, task=relating_process)
-    return rel
+    owner_history, user, application = _capi.owner_context(file)
+    try:
+        return _capi.call_handle(
+            file,
+            _capi.get_lib().ifcopenshell_ifcapi_sequence_assign_sequence,
+            _capi.file_handle(file),
+            _capi.instance_handle(relating_process),
+            _capi.instance_handle(related_process),
+            _capi.string(sequence_type),
+            _capi.instance_handle(owner_history),
+            _capi.instance_handle(user),
+            _capi.instance_handle(application),
+            nullable=True,
+        )
+    except RuntimeError as e:
+        if str(e) == "Recursive tasks found. Could not cascade schedule.":
+            raise RecursionError(str(e)) from e
+        raise

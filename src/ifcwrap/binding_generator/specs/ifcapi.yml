@@ -39,6 +39,7 @@ public_headers:
   - ifcapi/bindings/representation.h
   - ifcapi/bindings/root.h
   - ifcapi/bindings/schema.h
+  - ifcapi/bindings/sequence.h
   - ifcapi/bindings/selector.h
   - ifcapi/bindings/shape.h
   - ifcapi/bindings/shape_builder.h
@@ -1526,6 +1527,216 @@ discover:
             attributes:
               kind: opaque_ptr
               cpp_type: ifcopenshell_pset_props_t*
+    - namespace: ifcapi::bindings
+      translation_unit: api/sequence/sequence.cpp
+      include:
+        - sequence_add_task
+        - sequence_add_task_time
+        - sequence_add_time_period
+        - sequence_add_work_calendar
+        - sequence_add_work_plan
+        - sequence_add_work_schedule
+        - sequence_add_work_time
+        - sequence_assign_lag_time
+        - sequence_assign_process
+        - sequence_assign_product
+        - sequence_assign_recurrence_pattern
+        - sequence_assign_sequence
+        - sequence_assign_work_plan
+        - sequence_cascade_schedule
+        - sequence_edit_lag_time
+        - sequence_edit_recurrence_pattern
+        - sequence_edit_sequence
+        - sequence_edit_task
+        - sequence_edit_work_calendar
+        - sequence_edit_work_plan
+        - sequence_edit_work_schedule
+        - sequence_edit_work_time
+        - sequence_recalculate_schedule
+        - sequence_remove_time_period
+        - sequence_remove_work_time
+        - sequence_unassign_lag_time
+        - sequence_unassign_process
+        - sequence_unassign_product
+        - sequence_unassign_recurrence_pattern
+        - sequence_unassign_sequence
+      type_overrides:
+        sequence_add_task:
+          returns:
+            nullable: true
+          params:
+            work_schedule:
+              nullable: true
+            parent_task:
+              nullable: true
+            name:
+              nullable: true
+            description:
+              nullable: true
+            identification:
+              nullable: true
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        sequence_add_task_time:
+          returns:
+            nullable: true
+        sequence_add_time_period:
+          returns:
+            nullable: true
+          params:
+            start_time:
+              nullable: true
+            end_time:
+              nullable: true
+        sequence_add_work_calendar:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        sequence_add_work_plan:
+          returns:
+            nullable: true
+          params:
+            name:
+              nullable: true
+            creator_person:
+              nullable: true
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        sequence_add_work_schedule:
+          returns:
+            nullable: true
+          params:
+            object_type:
+              nullable: true
+            work_plan:
+              nullable: true
+            creator_person:
+              nullable: true
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        sequence_add_work_time:
+          returns:
+            nullable: true
+        sequence_assign_lag_time:
+          returns:
+            nullable: true
+        sequence_assign_process:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        sequence_assign_product:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        sequence_assign_recurrence_pattern:
+          returns:
+            nullable: true
+        sequence_assign_sequence:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        sequence_assign_work_plan:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        sequence_edit_lag_time:
+          params:
+            attributes:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+        sequence_edit_recurrence_pattern:
+          params:
+            attributes:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+        sequence_edit_sequence:
+          params:
+            attributes:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+        sequence_edit_task:
+          params:
+            attributes:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+        sequence_edit_work_calendar:
+          params:
+            attributes:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+        sequence_edit_work_plan:
+          params:
+            attributes:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+        sequence_edit_work_schedule:
+          params:
+            attributes:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+        sequence_edit_work_time:
+          params:
+            attributes:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+        sequence_unassign_process:
+          returns:
+            nullable: true
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
+        sequence_unassign_product:
+          returns:
+            nullable: true
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
     - namespace: ifcapi::bindings
       translation_unit: api/unit/unit.cpp
       include:

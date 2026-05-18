@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.guid
+from ifcopenshell.api.sequence import _capi
 
 
 def assign_product(
@@ -64,28 +63,15 @@ def assign_product(
         # Let's construct that wall!
         ifcopenshell.api.sequence.assign_product(model, relating_product=wall, related_object=task)
     """
-    if related_object.HasAssignments:
-        for assignment in related_object.HasAssignments:
-            if assignment.is_a("IfcRelAssignsToProduct") and assignment.RelatingProduct == relating_product:
-                return assignment
-
-    referenced_by = None
-    if relating_product.ReferencedBy:
-        referenced_by = relating_product.ReferencedBy[0]
-
-    if referenced_by:
-        related_objects = list(referenced_by.RelatedObjects)
-        related_objects.append(related_object)
-        referenced_by.RelatedObjects = related_objects
-        ifcopenshell.api.owner.update_owner_history(file, element=referenced_by)
-    else:
-        referenced_by = file.create_entity(
-            "IfcRelAssignsToProduct",
-            **{
-                "GlobalId": ifcopenshell.guid.new(),
-                "OwnerHistory": ifcopenshell.api.owner.create_owner_history(file),
-                "RelatedObjects": [related_object],
-                "RelatingProduct": relating_product,
-            }
-        )
-    return referenced_by
+    owner_history, user, application = _capi.owner_context(file)
+    return _capi.call_handle(
+        file,
+        _capi.get_lib().ifcopenshell_ifcapi_sequence_assign_product,
+        _capi.file_handle(file),
+        _capi.instance_handle(relating_product),
+        _capi.instance_handle(related_object),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+        nullable=True,
+    )

@@ -20,6 +20,7 @@ from typing import Literal
 import ifcopenshell
 
 TIME_TYPE = Literal["WorkingTimes", "ExceptionTimes"]
+from ifcopenshell.api.sequence import _capi
 
 
 def add_work_time(
@@ -72,13 +73,11 @@ def add_work_time(
         ifcopenshell.api.sequence.edit_recurrence_pattern(model,
             recurrence_pattern=pattern, attributes={"DayComponent": [1], "MonthComponent": [1]})
     """
-    work_time = file.create_entity("IfcWorkTime")
-    if time_type == "WorkingTimes":
-        working_times = list(work_calendar.WorkingTimes or [])
-        working_times.append(work_time)
-        work_calendar.WorkingTimes = working_times
-    elif time_type == "ExceptionTimes":
-        exception_times = list(work_calendar.ExceptionTimes or [])
-        exception_times.append(work_time)
-        work_calendar.ExceptionTimes = exception_times
-    return work_time
+    return _capi.call_handle(
+        file,
+        _capi.get_lib().ifcopenshell_ifcapi_sequence_add_work_time,
+        _capi.file_handle(file),
+        _capi.instance_handle(work_calendar),
+        _capi.string(time_type),
+        nullable=True,
+    )

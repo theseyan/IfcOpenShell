@@ -21,6 +21,7 @@ from typing import Optional, Union
 
 import ifcopenshell.util.date
 import ifcopenshell.util.sequence
+from ifcopenshell.api.sequence import _capi
 from ifcopenshell.util.sequence import DURATION_TYPE
 
 
@@ -102,9 +103,16 @@ def cascade_schedule(file: ifcopenshell.file, task: ifcopenshell.entity_instance
         # Calculate the critical path and floats.
         ifcopenshell.api.sequence.recalculate_schedule(model, work_schedule=schedule)
     """
-    usecase = Usecase()
-    usecase.file = file
-    return usecase.execute(task)
+    try:
+        _capi.call_status(
+            _capi.get_lib().ifcopenshell_ifcapi_sequence_cascade_schedule,
+            _capi.file_handle(file),
+            _capi.instance_handle(task),
+        )
+    except RuntimeError as e:
+        if str(e) == "Recursive tasks found. Could not cascade schedule.":
+            raise RecursionError(str(e)) from e
+        raise
 
 
 class Usecase:

@@ -20,6 +20,8 @@ from typing import Any
 
 import ifcopenshell.api.sequence
 import ifcopenshell.util.date
+from ifcopenshell.api.pset import _capi as pset_capi
+from ifcopenshell.api.sequence import _capi
 
 
 def edit_lag_time(file: ifcopenshell.file, lag_time: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
@@ -73,12 +75,22 @@ def edit_lag_time(file: ifcopenshell.file, lag_time: ifcopenshell.entity_instanc
         # Or, let's make it 2 days instead.
         ifcopenshell.api.sequence.edit_lag_time(model, lag_time=lag, attributes={"LagValue": "P2D"})
     """
+    native_attributes = {}
     for name, value in attributes.items():
         if name == "LagValue" and value is not None:
             if isinstance(value, float):
                 value = file.createIfcRatioMeasure(value)
             else:
                 value = file.createIfcDuration(ifcopenshell.util.date.datetime2ifc(value, "IfcDuration"))
-        setattr(lag_time, name, value)
+        native_attributes[name] = value
+    props = pset_capi.build_props(native_attributes)
+    try:
+        _capi.call_status(
+            _capi.get_lib().ifcopenshell_ifcapi_sequence_edit_lag_time,
+            _capi.instance_handle(lag_time),
+            props,
+        )
+    finally:
+        pset_capi.free_props(props)
     for rel in [r for r in file.get_inverse(lag_time) if r.is_a("IfcRelSequence")]:
         ifcopenshell.api.sequence.cascade_schedule(file, task=rel.RelatedProcess)

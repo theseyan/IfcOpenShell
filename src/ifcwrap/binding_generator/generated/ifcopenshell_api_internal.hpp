@@ -84,6 +84,7 @@
 #include "ifcapi/bindings/representation.h"
 #include "ifcapi/bindings/root.h"
 #include "ifcapi/bindings/schema.h"
+#include "ifcapi/bindings/sequence.h"
 #include "ifcapi/bindings/selector.h"
 #include "ifcapi/bindings/shape.h"
 #include "ifcapi/bindings/shape_builder.h"
