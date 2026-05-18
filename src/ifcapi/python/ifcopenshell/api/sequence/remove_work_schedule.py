@@ -17,10 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.aggregate
-import ifcopenshell.api.project
-import ifcopenshell.api.sequence
-import ifcopenshell.util.element
+from ifcopenshell.api.sequence import _capi
 
 
 def remove_work_schedule(file: ifcopenshell.file, work_schedule: ifcopenshell.entity_instance) -> None:
@@ -45,39 +42,11 @@ def remove_work_schedule(file: ifcopenshell.file, work_schedule: ifcopenshell.en
         # And remove it immediately
         ifcopenshell.api.sequence.remove_work_schedule(model, work_schedule=schedule)
     """
-    # TODO: do a deep purge
-    ifcopenshell.api.project.unassign_declaration(
-        file, definitions=[work_schedule], relating_context=file.by_type("IfcContext")[0]
+    _, user, application = _capi.owner_context(file)
+    _capi.call_status(
+        _capi.get_lib().ifcopenshell_ifcapi_sequence_remove_work_schedule,
+        _capi.file_handle(file),
+        _capi.instance_handle(work_schedule),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
     )
-
-    if work_schedule.Declares:
-        for rel in work_schedule.Declares:
-            for work_schedule_ in rel.RelatedObjects:
-                ifcopenshell.api.sequence.remove_work_schedule(file, work_schedule=work_schedule_)
-
-    # Unassign from work plans.
-    if work_schedule.Decomposes:
-        ifcopenshell.api.aggregate.unassign_object(file, [work_schedule])
-
-    for inverse in file.get_inverse(work_schedule):
-        if inverse.is_a("IfcRelDefinesByObject"):
-            if inverse.RelatingObject == work_schedule or len(inverse.RelatedObjects) == 1:
-                history = inverse.OwnerHistory
-                file.remove(inverse)
-                if history:
-                    ifcopenshell.util.element.remove_deep2(file, history)
-            else:
-                related_objects = list(inverse.RelatedObjects)
-                related_objects.remove(work_schedule)
-                inverse.RelatedObjects = related_objects
-        elif inverse.is_a("IfcRelAssignsToControl"):
-            [
-                ifcopenshell.api.sequence.remove_task(file, task=related_object)
-                for related_object in inverse.RelatedObjects
-                if related_object.is_a("IfcTask")
-            ]
-
-    history = work_schedule.OwnerHistory
-    file.remove(work_schedule)
-    if history:
-        ifcopenshell.util.element.remove_deep2(file, history)

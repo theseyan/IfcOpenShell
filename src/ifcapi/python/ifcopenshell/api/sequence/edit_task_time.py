@@ -16,14 +16,14 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import datetime
 from typing import Any
 
 import ifcopenshell.api.resource
-import ifcopenshell.api.sequence
 import ifcopenshell.util.constraint
 import ifcopenshell.util.date
 import ifcopenshell.util.sequence
+from ifcopenshell.api.pset import _capi as pset_capi
+from ifcopenshell.api.sequence import _capi
 
 
 def edit_task_time(
@@ -57,97 +57,35 @@ def edit_task_time(
         ifcopenshell.api.sequence.edit_task_time(model,
             task_time=time, attributes={"ScheduleStart": "2000-01-01", "ScheduleDuration": "P2D"})
     """
-    usecase = Usecase()
-    usecase.file = file
-    return usecase.execute(task_time, attributes)
+    if attributes.get("ScheduleDuration", None) and "ScheduleFinish" in attributes.keys():
+        del attributes["ScheduleFinish"]
 
+    converted_attributes = {}
+    for name, value in attributes.items():
+        if value is not None:
+            if "Start" in name or "Finish" in name or name == "StatusTime":
+                value = ifcopenshell.util.date.datetime2ifc(value, "IfcDateTime")
+            elif name == "ScheduleDuration" or name == "ActualDuration" or name == "RemainingTime":
+                value = ifcopenshell.util.date.datetime2ifc(value, "IfcDuration")
+        converted_attributes[name] = value
 
-class Usecase:
-    file: ifcopenshell.file
-
-    def execute(self, task_time: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
-        self.task_time = task_time
-        self.task = self.get_task()
-        self.calendar = ifcopenshell.util.sequence.derive_calendar(self.task)
-
-        # If the user specifies both an end date and a duration, the duration takes priority
-        if attributes.get("ScheduleDuration", None) and "ScheduleFinish" in attributes.keys():
-            del attributes["ScheduleFinish"]
-
-        duration_type = attributes.get("DurationType", self.task_time.DurationType)
-        finish = attributes.get("ScheduleFinish", None)
-        if finish:
-            if isinstance(finish, str):
-                finish = datetime.datetime.fromisoformat(finish)
-            attributes["ScheduleFinish"] = datetime.datetime.combine(
-                ifcopenshell.util.sequence.get_soonest_working_day(finish, duration_type, self.calendar),
-                datetime.time(17),
-            )
-        start = attributes.get("ScheduleStart", None)
-        if start:
-            if isinstance(start, str):
-                start = datetime.datetime.fromisoformat(start)
-            attributes["ScheduleStart"] = datetime.datetime.combine(
-                ifcopenshell.util.sequence.get_soonest_working_day(start, duration_type, self.calendar),
-                datetime.time(9),
-            )
-
-        for name, value in attributes.items():
-            if value is not None:
-                if "Start" in name or "Finish" in name or name == "StatusTime":
-                    value = ifcopenshell.util.date.datetime2ifc(value, "IfcDateTime")
-                elif name == "ScheduleDuration" or name == "ActualDuration" or name == "RemainingTime":
-                    value = ifcopenshell.util.date.datetime2ifc(value, "IfcDuration")
-            setattr(self.task_time, name, value)
-
-        if "ScheduleDuration" in attributes.keys() and task_time.ScheduleDuration and task_time.ScheduleStart:
-            self.calculate_finish()
-        elif attributes.get("ScheduleStart", None) and task_time.ScheduleDuration:
-            self.calculate_finish()
-        elif attributes.get("ScheduleFinish", None) and task_time.ScheduleStart:
-            self.calculate_duration()
-
-        if task_time.ScheduleDuration and (
-            "ScheduleStart" in attributes.keys()
-            or "ScheduleFinish" in attributes.keys()
-            or "ScheduleDuration" in attributes.keys()
-        ):
-            ifcopenshell.api.sequence.cascade_schedule(self.file, task=self.task)
-        if task_time.ScheduleDuration:
-            self.handle_resource_calculation()
-
-    def calculate_finish(self):
-        finish = ifcopenshell.util.sequence.get_start_or_finish_date(
-            ifcopenshell.util.date.ifc2datetime(self.task_time.ScheduleStart),
-            ifcopenshell.util.date.ifc2datetime(self.task_time.ScheduleDuration),
-            self.task_time.DurationType,
-            self.calendar,
-            date_type="FINISH",
+    props = pset_capi.build_props(converted_attributes)
+    try:
+        _capi.call_status(
+            _capi.get_lib().ifcopenshell_ifcapi_sequence_edit_task_time,
+            _capi.file_handle(file),
+            _capi.instance_handle(task_time),
+            props,
         )
-        self.task_time.ScheduleFinish = ifcopenshell.util.date.datetime2ifc(finish, "IfcDateTime")
+    finally:
+        pset_capi.free_props(props)
 
-    def calculate_duration(self):
-        start = ifcopenshell.util.date.ifc2datetime(self.task_time.ScheduleStart)
-        finish = ifcopenshell.util.date.ifc2datetime(self.task_time.ScheduleFinish)
-        current_date = datetime.date(start.year, start.month, start.day)
-        finish_date = datetime.date(finish.year, finish.month, finish.day)
-        duration = datetime.timedelta(days=1)
-        while current_date < finish_date:
-            if self.task_time.DurationType == "ELAPSEDTIME" or not self.calendar:
-                duration += datetime.timedelta(days=1)
-            elif ifcopenshell.util.sequence.is_working_day(current_date, self.calendar):
-                duration += datetime.timedelta(days=1)
-            current_date += datetime.timedelta(days=1)
-        self.task_time.ScheduleDuration = ifcopenshell.util.date.datetime2ifc(duration, "IfcDuration")
-
-    def get_task(self) -> ifcopenshell.entity_instance:
-        return next(e for e in self.file.get_inverse(self.task_time) if e.is_a("IfcTask"))
-
-    def handle_resource_calculation(self):
-        resources = ifcopenshell.util.sequence.get_task_resources(self.task, is_recursive=False)
+    if task_time.ScheduleDuration:
+        task = next(e for e in file.get_inverse(task_time) if e.is_a("IfcTask"))
+        resources = ifcopenshell.util.sequence.get_task_resources(task, is_recursive=False)
         for resource in resources:
             if ifcopenshell.util.constraint.is_attribute_locked(resource, "Usage.ScheduleWork"):
-                ifcopenshell.api.resource.calculate_resource_usage(self.file, resource=resource)
+                ifcopenshell.api.resource.calculate_resource_usage(file, resource=resource)
             # TODO: If the duration changes, this implies the productivity rate must change to accomModate the new Schedule Work to be calculated.
             # elif ifcopenshell.util.constraint.is_attribute_locked(resource, "Usage.ScheduleUsage"):
-            #     ifcopenshell.api.resource.calculate_resource_work(self.file, resource=resource)
+            #     ifcopenshell.api.resource.calculate_resource_work(file, resource=resource)

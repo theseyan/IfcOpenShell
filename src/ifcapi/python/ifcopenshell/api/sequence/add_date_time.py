@@ -19,7 +19,10 @@
 from datetime import datetime
 from typing import Union
 
+import ifcopenshell
 import ifcopenshell.util.date
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.sequence import _capi
 
 
 def add_date_time(file: ifcopenshell.file, dt: datetime) -> Union[str, ifcopenshell.entity_instance]:
@@ -45,16 +48,27 @@ def add_date_time(file: ifcopenshell.file, dt: datetime) -> Union[str, ifcopensh
 
     """
 
-    if file.schema == "IFC2X3":
-        ifc_dt = file.create_entity("IfcDateAndTime")
-        calendar_date_data = ifcopenshell.util.date.datetime2ifc(dt, "IfcCalendarDate")
-        assert isinstance(calendar_date_data, dict)
-        ifc_dt.DateComponent = file.create_entity("IfcCalendarDate", **calendar_date_data)
-        local_time_data = ifcopenshell.util.date.datetime2ifc(dt, "IfcLocalTime")
-        assert isinstance(local_time_data, dict)
-        ifc_dt.TimeComponent = file.create_entity("IfcLocalTime", **local_time_data)
-        return ifc_dt
-
     dt_str = ifcopenshell.util.date.datetime2ifc(dt, "IfcDateTime")
     assert isinstance(dt_str, str)
-    return dt_str
+    lib = _capi.get_lib()
+    result = _generated_capi.call_struct_or_raise(
+        lib,
+        lib.ifcopenshell_ifcapi_sequence_add_date_time,
+        _generated_capi.ifcopenshell_sequence_date_time_result_t,
+        "sequence_add_date_time failed",
+        _capi.file_handle(file),
+        _generated_capi.encode_string(dt_str),
+    )
+    if result.is_entity:
+        _generated_capi.take_string(lib, result.date_time_string)
+        handle = _generated_capi.take_nullable_handle(
+            lib,
+            result.date_time,
+            destroy=lib.ifcopenshell_ifc_instance_destroy,
+        )
+        if handle:
+            return ifcopenshell.entity_instance(file, handle)
+        _generated_capi.raise_last_error(lib, "sequence_add_date_time failed")
+    value = _generated_capi.take_string(lib, result.date_time_string)
+    assert isinstance(value, str)
+    return value

@@ -10,11 +10,58 @@
 #include "ifcparse/IfcFile.h"
 
 #include <string>
+#include <vector>
 
 struct ifcopenshell_pset_props_t;
 
 namespace ifcapi {
 namespace bindings {
+
+struct SequenceDateTimeResult {
+    IfcUtil::IfcBaseClass* date_time = nullptr;
+    std::string date_time_string;
+    bool is_entity = false;
+};
+
+struct SequenceDuplicateTaskResult {
+    std::vector<IfcUtil::IfcBaseClass*> current;
+    std::vector<IfcUtil::IfcBaseClass*> duplicate;
+};
+
+IFCAPI_BINDING SequenceDateTimeResult sequence_add_date_time(
+    IfcParse::IfcFile* file,
+    const std::string& date_time);
+
+IFCAPI_BINDING void sequence_calculate_task_duration(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* task);
+
+IFCAPI_BINDING void sequence_edit_task_time(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* task_time,
+    ifcopenshell_pset_props_t* attributes);
+
+IFCAPI_BINDING SequenceDuplicateTaskResult sequence_duplicate_task(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* task,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application);
+
+IFCAPI_BINDING IfcUtil::IfcBaseClass* sequence_copy_work_schedule(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* work_schedule,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application);
+
+IFCAPI_BINDING void sequence_create_baseline(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* work_schedule,
+    const char* name,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application);
 
 IFCAPI_BINDING IfcUtil::IfcBaseClass* sequence_add_task_time(
     IfcParse::IfcFile* file,
@@ -194,6 +241,30 @@ IFCAPI_BINDING void sequence_remove_time_period(
 IFCAPI_BINDING void sequence_remove_work_time(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* work_time);
+
+IFCAPI_BINDING void sequence_remove_task(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* task,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application);
+
+IFCAPI_BINDING void sequence_remove_work_calendar(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* work_calendar,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application);
+
+IFCAPI_BINDING void sequence_remove_work_plan(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* work_plan,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application);
+
+IFCAPI_BINDING void sequence_remove_work_schedule(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* work_schedule,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application);
 
 } // namespace bindings
 } // namespace ifcapi

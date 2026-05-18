@@ -17,9 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.aggregate
-import ifcopenshell.api.project
-import ifcopenshell.util.element
+from ifcopenshell.api.sequence import _capi
 
 
 def remove_work_plan(file: ifcopenshell.file, work_plan: ifcopenshell.entity_instance) -> None:
@@ -41,17 +39,11 @@ def remove_work_plan(file: ifcopenshell.file, work_plan: ifcopenshell.entity_ins
         # And remove it immediately
         ifcopenshell.api.sequence.remove_work_plan(model, work_plan=work_plan)
     """
-    ifcopenshell.api.project.unassign_declaration(
-        file,
-        definitions=[work_plan],
-        relating_context=file.by_type("IfcContext")[0],
+    _, user, application = _capi.owner_context(file)
+    _capi.call_status(
+        _capi.get_lib().ifcopenshell_ifcapi_sequence_remove_work_plan,
+        _capi.file_handle(file),
+        _capi.instance_handle(work_plan),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
     )
-
-    related_objects = [obj for rel in work_plan.IsDecomposedBy for obj in rel.RelatedObjects]
-    if related_objects:
-        ifcopenshell.api.aggregate.unassign_object(file, related_objects)
-
-    history = work_plan.OwnerHistory
-    file.remove(work_plan)
-    if history:
-        ifcopenshell.util.element.remove_deep2(file, history)
