@@ -159,6 +159,21 @@ class TestEditTaskTime(test.bootstrap.IFC4):
         assert task_time.ScheduleStart == "2000-01-01T09:00:00"
         assert task_time.ScheduleFinish == "2000-01-01T17:00:00"
 
+    def test_none_duration_does_not_take_priority_over_finish_dates(self):
+        task_time = ifcopenshell.api.sequence.add_task_time(self.file, task=self.file.createIfcTask())
+        task_time.ScheduleStart = "2000-01-01T09:00:00"
+        ifcopenshell.api.sequence.edit_task_time(
+            self.file,
+            task_time=task_time,
+            attributes={
+                "DurationType": "ELAPSEDTIME",
+                "ScheduleDuration": None,
+                "ScheduleFinish": "2000-01-01T17:00:00",
+            },
+        )
+        assert task_time.ScheduleDuration == "P1D"
+        assert task_time.ScheduleFinish == "2000-01-01T17:00:00"
+
     def test_durations_can_be_specified_in_datetime_objects(self):
         task_time = ifcopenshell.api.sequence.add_task_time(self.file, task=self.file.createIfcTask())
         ifcopenshell.api.sequence.edit_task_time(

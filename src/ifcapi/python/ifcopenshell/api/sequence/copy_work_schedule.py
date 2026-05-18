@@ -16,9 +16,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ifcopenshell.api.control
-import ifcopenshell.api.sequence
-import ifcopenshell.util.element
+import ifcopenshell
+from ifcopenshell.api.sequence import _capi
 
 
 def copy_work_schedule(
@@ -39,13 +38,14 @@ def copy_work_schedule(
             name="Construction Schedule A", work_plan=work_plan)
         new_schedule = ifcopenshell.api.sequence.copy_work_schedule(model, schedule)
     """
-    # Shared code logic with copy_cost_schedule.
-    new_schedule = ifcopenshell.util.element.copy(file, work_schedule)
-
-    for rel in work_schedule.Controls:
-        for task in rel.RelatedObjects:
-            duplicated_tasks = ifcopenshell.api.sequence.duplicate_task(file, task)[1]
-            # All other nested items are not connected to the work schedule explicitly.
-            duplicated_task = duplicated_tasks[0]
-            ifcopenshell.api.control.assign_control(file, new_schedule, [duplicated_task])
-    return new_schedule
+    owner_history, user, application = _capi.owner_context(file)
+    return _capi.call_handle(
+        file,
+        _capi.get_lib().ifcopenshell_ifcapi_sequence_copy_work_schedule,
+        _capi.file_handle(file),
+        _capi.instance_handle(work_schedule),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+        nullable=True,
+    )

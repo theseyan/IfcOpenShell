@@ -6,8 +6,10 @@
 #include "ifcapi/bindings/control.h"
 #include "ifcapi/bindings/nest.h"
 #include "ifcapi/bindings/project.h"
+#include "ifcapi/bindings/pset.h"
 #include "ifcapi/bindings/root.h"
 #include "ifcapi/detail/attribute.h"
+#include "ifcapi/detail/copy.h"
 #include "ifcapi/detail/error.h"
 #include "ifcapi/detail/relationship.h"
 #include "ifcapi/detail/sequence_time.h"
@@ -16,10 +18,13 @@
 #include "ifcopenshell_api_internal.hpp"
 
 #include <algorithm>
+#include <cmath>
+#include <ctime>
 #include <map>
 #include <optional>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace {
@@ -85,6 +90,35 @@ IfcUtil::IfcBaseClass* create_ifc_date_time(IfcParse::IfcFile* file, const std::
     ifcapi::detail::write_ref_attr(date_time, "DateComponent", calendar_date);
     ifcapi::detail::write_ref_attr(date_time, "TimeComponent", local_time);
     return date_time;
+}
+
+std::string current_ifc_datetime() {
+    std::time_t now = std::time(nullptr);
+    std::tm local_time{};
+#ifdef _WIN32
+    localtime_s(&local_time, &now);
+#else
+    localtime_r(&now, &local_time);
+#endif
+    char buffer[32];
+    std::snprintf(buffer, sizeof(buffer), "%04d-%02d-%02dT%02d:%02d:%02d",
+        local_time.tm_year + 1900,
+        local_time.tm_mon + 1,
+        local_time.tm_mday,
+        local_time.tm_hour,
+        local_time.tm_min,
+        local_time.tm_sec);
+    return buffer;
+}
+
+ifcapi::bindings::SequenceDateTimeResult make_date_time_result(
+    IfcParse::IfcFile* file,
+    const std::string& value)
+{
+    if (is_ifc2x3(file)) {
+        return ifcapi::bindings::SequenceDateTimeResult{create_ifc_date_time(file, value), std::string(), true};
+    }
+    return ifcapi::bindings::SequenceDateTimeResult{nullptr, value, false};
 }
 
 void write_date_time_attr(
@@ -231,6 +265,22 @@ bool read_task_time_date(IfcUtil::IfcBaseClass* task, const char* attribute, ifc
     return task_time && ifcapi::detail::sequence::read_date_attribute(task_time, attribute, result);
 }
 
+IfcUtil::IfcBaseClass* task_from_task_time(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* task_time) {
+    if (!file || !task_time) {
+        return nullptr;
+    }
+    auto inverses = file->getInverse(task_time->id(), nullptr, -1);
+    if (!inverses) {
+        return nullptr;
+    }
+    for (auto* inverse : *inverses) {
+        if (inverse && inverse->declaration().is("IfcTask")) {
+            return inverse;
+        }
+    }
+    return nullptr;
+}
+
 ifcapi::detail::sequence::Duration read_task_duration(IfcUtil::IfcBaseClass* task) {
     ifcapi::detail::sequence::Duration result;
     auto* task_time = ifcapi::detail::read_ref_attr(task, "TaskTime");
@@ -239,6 +289,830 @@ ifcapi::detail::sequence::Duration read_task_duration(IfcUtil::IfcBaseClass* tas
         ifcapi::detail::sequence::parse_duration(duration.value, result);
     }
     return result;
+}
+
+std::optional<double> read_double_like_attr(IfcUtil::IfcBaseClass* entity, const char* attr) {
+    int idx = ifcapi::detail::attr_index_of(entity, attr);
+    if (idx < 0) {
+        return std::nullopt;
+    }
+    auto value = entity->get_attribute_value(static_cast<size_t>(idx));
+    if (value.isNull()) {
+        return std::nullopt;
+    }
+    if (value.type() == IfcUtil::Argument_DOUBLE || value.type() == IfcUtil::Argument_INT) {
+        return static_cast<double>(value);
+    }
+    return std::nullopt;
+}
+
+std::optional<std::string> read_typed_string_value(IfcUtil::IfcBaseClass* value) {
+    if (!value) {
+        return std::nullopt;
+    }
+    auto text = ifcapi::detail::read_optional_string_attr(value, "wrappedValue");
+    if (!text.has_value) {
+        text = ifcapi::detail::read_optional_string_attr(value, "Value");
+    }
+    if (text.has_value) {
+        return text.value;
+    }
+    auto* declaration = value->declaration().as_entity();
+    if (!declaration || !declaration->all_attributes().empty()) {
+        auto arg = value->get_attribute_value(0);
+        if (!arg.isNull() && arg.type() == IfcUtil::Argument_STRING) {
+            return static_cast<std::string>(arg);
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<double> duration_to_seconds(
+    const std::string& value,
+    double seconds_per_workday,
+    bool hourly_work)
+{
+    if (value.empty() || value[0] != 'P') {
+        return std::nullopt;
+    }
+    bool in_time = false;
+    double days = 0.0;
+    double seconds = 0.0;
+    size_t i = 1;
+    while (i < value.size()) {
+        if (value[i] == 'T') {
+            in_time = true;
+            ++i;
+            continue;
+        }
+        char* end = nullptr;
+        double amount = std::strtod(value.c_str() + i, &end);
+        if (end == value.c_str() + i || end >= value.c_str() + value.size()) {
+            return std::nullopt;
+        }
+        char designator = *end;
+        if (designator == 'Y') {
+            days += amount * 365.0;
+        } else if (designator == 'M' && !in_time) {
+            days += amount * 30.0;
+        } else if (designator == 'W') {
+            days += amount * 7.0;
+        } else if (designator == 'D') {
+            days += amount;
+        } else if (designator == 'H') {
+            seconds += amount * 60.0 * 60.0;
+        } else if (designator == 'M' && in_time) {
+            seconds += amount * 60.0;
+        } else if (designator == 'S') {
+            seconds += amount;
+        } else {
+            return std::nullopt;
+        }
+        i = static_cast<size_t>(end - value.c_str()) + 1;
+    }
+    if (hourly_work) {
+        return days * 24.0 * 60.0 * 60.0 + seconds;
+    }
+    double partial_days = seconds / (24.0 * 60.0 * 60.0);
+    return (days + partial_days) * seconds_per_workday;
+}
+
+IfcUtil::IfcBaseClass* task_work_schedule(IfcUtil::IfcBaseClass* task) {
+    for (auto* rel : ifcapi::detail::read_inverse_aggregate(task, "HasAssignments")) {
+        auto* control = ifcapi::detail::read_ref_attr(rel, "RelatingControl");
+        if (rel && rel->declaration().is("IfcRelAssignsToControl") && control && control->declaration().is("IfcWorkSchedule")) {
+            return control;
+        }
+    }
+    for (auto* rel : ifcapi::detail::read_inverse_aggregate(task, "Nests")) {
+        if (auto* parent = ifcapi::detail::read_ref_attr(rel, "RelatingObject")) {
+            return task_work_schedule(parent);
+        }
+    }
+    return nullptr;
+}
+
+std::optional<std::string> pset_property_string(
+    IfcUtil::IfcBaseClass* product,
+    const std::string& pset_name,
+    const std::string& property_name)
+{
+    for (auto* rel : ifcapi::detail::read_inverse_aggregate(product, "IsDefinedBy")) {
+        if (!rel || !rel->declaration().is("IfcRelDefinesByProperties")) {
+            continue;
+        }
+        auto* pset = ifcapi::detail::read_ref_attr(rel, "RelatingPropertyDefinition");
+        if (!pset || ifcapi::detail::read_string_attr(pset, "Name") != pset_name) {
+            continue;
+        }
+        for (auto* property : ifcapi::detail::read_ref_aggregate(pset, "HasProperties")) {
+            if (!property || ifcapi::detail::read_string_attr(property, "Name") != property_name) {
+                continue;
+            }
+            auto* nominal = ifcapi::detail::read_ref_attr(property, "NominalValue");
+            if (!nominal) {
+                continue;
+            }
+            auto value = read_typed_string_value(nominal);
+            if (value.has_value()) {
+                return *value;
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+double seconds_per_workday(IfcUtil::IfcBaseClass* task) {
+    constexpr double default_seconds = 8.0 * 60.0 * 60.0;
+    auto* schedule = task_work_schedule(task);
+    if (!schedule) {
+        return default_seconds;
+    }
+    auto workday = pset_property_string(schedule, "Pset_WorkControlCommon", "WorkDayDuration");
+    if (!workday.has_value()) {
+        return default_seconds;
+    }
+    auto seconds = duration_to_seconds(*workday, default_seconds, true);
+    return seconds.value_or(default_seconds);
+}
+
+double resource_duration_days(IfcUtil::IfcBaseClass* resource, double seconds_per_day) {
+    auto* usage = ifcapi::detail::read_ref_attr(resource, "Usage");
+    auto schedule_work = usage ? ifcapi::detail::read_optional_string_attr(usage, "ScheduleWork") : ifcapi::detail::OptionalString{};
+    if (!schedule_work.has_value) {
+        return 0.0;
+    }
+    double schedule_usage = read_double_like_attr(usage, "ScheduleUsage").value_or(1.0);
+    if (schedule_usage == 0.0) {
+        schedule_usage = 1.0;
+    }
+    bool hourly = schedule_work.value.find('T') != std::string::npos;
+    auto schedule_seconds = duration_to_seconds(schedule_work.value, seconds_per_day, hourly);
+    if (!schedule_seconds.has_value()) {
+        return 0.0;
+    }
+    return std::ceil((*schedule_seconds / seconds_per_day) / schedule_usage);
+}
+
+double max_resource_usage_duration(IfcUtil::IfcBaseClass* task, double seconds_per_day) {
+    double max_duration = 0.0;
+    for (auto* rel : ifcapi::detail::read_inverse_aggregate(task, "OperatesOn")) {
+        for (auto* related : ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects")) {
+            if (related && related->declaration().is("IfcConstructionResource")) {
+                double duration = resource_duration_days(related, seconds_per_day);
+                if (duration > max_duration) {
+                    max_duration = duration;
+                }
+            }
+        }
+    }
+    return max_duration;
+}
+
+IfcUtil::IfcBaseClass* ensure_task_time(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* task) {
+    if (auto* task_time = ifcapi::detail::read_ref_attr(task, "TaskTime")) {
+        return task_time;
+    }
+    auto* task_time = create_entity(file, "IfcTaskTime");
+    ifcapi::detail::write_ref_attr(task, "TaskTime", task_time);
+    return task_time;
+}
+
+bool prop_has_key(ifcopenshell_pset_props_t* props, const std::string& key) {
+    if (!props) {
+        return false;
+    }
+    return std::any_of(props->entries.begin(), props->entries.end(), [&](const auto& entry) {
+        return entry.key == key;
+    });
+}
+
+const ifcapi_pset::Entry* prop_entry(ifcopenshell_pset_props_t* props, const std::string& key) {
+    if (!props) {
+        return nullptr;
+    }
+    auto it = std::find_if(props->entries.begin(), props->entries.end(), [&](const auto& entry) {
+        return entry.key == key;
+    });
+    return it == props->entries.end() ? nullptr : &*it;
+}
+
+bool prop_is_truthy(ifcopenshell_pset_props_t* props, const std::string& key) {
+    const auto* entry = prop_entry(props, key);
+    if (!entry || entry->kind == ifcapi_pset::Kind::NONE) {
+        return false;
+    }
+    if (entry->kind == ifcapi_pset::Kind::STRING || entry->kind == ifcapi_pset::Kind::TYPED_STRING) {
+        return !entry->s_val.empty();
+    }
+    if (entry->kind == ifcapi_pset::Kind::BOOL || entry->kind == ifcapi_pset::Kind::TYPED_BOOL) {
+        return entry->b_val;
+    }
+    if (entry->kind == ifcapi_pset::Kind::INT || entry->kind == ifcapi_pset::Kind::TYPED_INT) {
+        return entry->i_val != 0;
+    }
+    if (entry->kind == ifcapi_pset::Kind::DOUBLE || entry->kind == ifcapi_pset::Kind::TYPED_DOUBLE) {
+        return entry->d_val != 0.0;
+    }
+    return true;
+}
+
+std::optional<ifcapi::detail::sequence::DateTime> entry_date(const ifcapi_pset::Entry* entry) {
+    if (!entry || entry->kind == ifcapi_pset::Kind::NONE) {
+        return std::nullopt;
+    }
+    ifcapi::detail::sequence::DateTime result;
+    if (entry->kind == ifcapi_pset::Kind::STRING || entry->kind == ifcapi_pset::Kind::TYPED_STRING) {
+        if (ifcapi::detail::sequence::parse_date_time(entry->s_val, result)) {
+            return result;
+        }
+    }
+    return std::nullopt;
+}
+
+void erase_prop_key(ifcopenshell_pset_props_t* props, const std::string& key) {
+    if (!props) {
+        return;
+    }
+    props->entries.erase(std::remove_if(props->entries.begin(), props->entries.end(), [&](const auto& entry) {
+        return entry.key == key;
+    }), props->entries.end());
+}
+
+void normalize_task_time_dates(
+    IfcUtil::IfcBaseClass* task_time,
+    IfcUtil::IfcBaseClass* calendar,
+    ifcopenshell_pset_props_t* props)
+{
+    auto duration_type_entry = prop_entry(props, "DurationType");
+    std::string duration_type = duration_type_entry &&
+            (duration_type_entry->kind == ifcapi_pset::Kind::STRING || duration_type_entry->kind == ifcapi_pset::Kind::TYPED_STRING)
+        ? duration_type_entry->s_val
+        : ifcapi::detail::read_string_attr(task_time, "DurationType");
+
+    if (auto finish = entry_date(prop_entry(props, "ScheduleFinish"))) {
+        auto soonest = ifcapi::detail::sequence::get_soonest_working_day(*finish, duration_type, calendar);
+        for (auto& entry : props->entries) {
+            if (entry.key == "ScheduleFinish") {
+                entry.kind = ifcapi_pset::Kind::STRING;
+                entry.s_val = ifcapi::detail::sequence::format_date_time(ifcapi::detail::sequence::with_time(soonest, 17));
+            }
+        }
+    }
+    if (auto start = entry_date(prop_entry(props, "ScheduleStart"))) {
+        auto soonest = ifcapi::detail::sequence::get_soonest_working_day(*start, duration_type, calendar);
+        for (auto& entry : props->entries) {
+            if (entry.key == "ScheduleStart") {
+                entry.kind = ifcapi_pset::Kind::STRING;
+                entry.s_val = ifcapi::detail::sequence::format_date_time(ifcapi::detail::sequence::with_time(soonest, 9));
+            }
+        }
+    }
+}
+
+void calculate_task_time_finish(IfcUtil::IfcBaseClass* task_time, IfcUtil::IfcBaseClass* calendar) {
+    ifcapi::detail::sequence::DateTime start;
+    if (!ifcapi::detail::sequence::read_date_attribute(task_time, "ScheduleStart", start)) {
+        return;
+    }
+    auto duration_text = ifcapi::detail::read_optional_string_attr(task_time, "ScheduleDuration");
+    if (!duration_text.has_value) {
+        return;
+    }
+    ifcapi::detail::sequence::Duration duration;
+    if (!ifcapi::detail::sequence::parse_duration(duration_text.value, duration)) {
+        return;
+    }
+    auto duration_type = ifcapi::detail::read_string_attr(task_time, "DurationType");
+    if (duration_type.empty()) {
+        duration_type = "ELAPSEDTIME";
+    }
+    auto finish = ifcapi::detail::sequence::get_start_or_finish_date(start, duration, duration_type, calendar, "FINISH");
+    ifcapi::detail::write_string_attr(task_time, "ScheduleFinish", ifcapi::detail::sequence::format_date_time(finish));
+}
+
+void calculate_task_time_duration(IfcUtil::IfcBaseClass* task_time, IfcUtil::IfcBaseClass* calendar) {
+    ifcapi::detail::sequence::DateTime start;
+    ifcapi::detail::sequence::DateTime finish;
+    if (!ifcapi::detail::sequence::read_date_attribute(task_time, "ScheduleStart", start) ||
+        !ifcapi::detail::sequence::read_date_attribute(task_time, "ScheduleFinish", finish)) {
+        return;
+    }
+    auto duration_type = ifcapi::detail::read_string_attr(task_time, "DurationType");
+    int current = ifcapi::detail::sequence::date_serial(start);
+    const int finish_day = ifcapi::detail::sequence::date_serial(finish);
+    int days = 1;
+    while (current < finish_day) {
+        if (duration_type == "ELAPSEDTIME" || !calendar ||
+            ifcapi::detail::sequence::is_working_day(ifcapi::detail::sequence::civil_from_days(current), calendar)) {
+            ++days;
+        }
+        ++current;
+    }
+    ifcapi::detail::sequence::Duration duration;
+    duration.days = days;
+    ifcapi::detail::write_string_attr(task_time, "ScheduleDuration", ifcapi::detail::sequence::format_duration(duration));
+}
+
+void remove_task_internal(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* task,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application);
+
+void remove_work_schedule_internal(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* work_schedule,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application);
+
+void remove_task_time(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* task_time) {
+    if (!task_time) {
+        return;
+    }
+    if (task_time->declaration().is("IfcTaskTimeRecurring")) {
+        if (auto* recurrence = ifcapi::detail::read_ref_attr(task_time, "Recurrence")) {
+            for (auto* time_period : ifcapi::detail::read_ref_aggregate(recurrence, "TimePeriods")) {
+                file->removeEntity(time_period);
+            }
+            file->removeEntity(recurrence);
+        }
+    }
+    file->removeEntity(task_time);
+}
+
+IfcUtil::IfcBaseClass* deep_copy_entity(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* element,
+    std::unordered_map<unsigned, IfcUtil::IfcBaseClass*>& memo)
+{
+    if (!element) {
+        return nullptr;
+    }
+    auto id = element->id();
+    if (id) {
+        auto it = memo.find(id);
+        if (it != memo.end()) {
+            return it->second;
+        }
+    }
+    auto* base = dynamic_cast<IfcUtil::IfcBaseEntity*>(element);
+    if (!base) {
+        return element;
+    }
+    const auto* declaration = base->declaration().as_entity();
+    if (!declaration) {
+        return element;
+    }
+    auto* result = file->create(declaration);
+    if (id) {
+        memo[id] = result;
+    }
+    auto attributes = declaration->all_attributes();
+    for (size_t i = 0; i < attributes.size(); ++i) {
+        auto value = element->get_attribute_value(i);
+        if (value.isNull()) {
+            continue;
+        }
+        if (attributes[i]->name() == "GlobalId") {
+            result->set_attribute_value(i, ifcapi::guid_new());
+            continue;
+        }
+        ifcapi::detail::copy_attribute_value(result, i, value);
+        if (value.type() == IfcUtil::Argument_ENTITY_INSTANCE) {
+            result->set_attribute_value(i, deep_copy_entity(file, static_cast<IfcUtil::IfcBaseClass*>(value), memo));
+        } else if (value.type() == IfcUtil::Argument_AGGREGATE_OF_ENTITY_INSTANCE) {
+            auto aggregate = static_cast<aggregate_of_instance::ptr>(value);
+            auto copied = aggregate_of_instance::ptr(new aggregate_of_instance());
+            if (aggregate) {
+                for (auto& item : *aggregate) {
+                    copied->push(deep_copy_entity(file, item, memo));
+                }
+            }
+            result->set_attribute_value(i, copied);
+        } else if (value.type() == IfcUtil::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE) {
+            auto aggregate = static_cast<aggregate_of_aggregate_of_instance::ptr>(value);
+            auto copied = aggregate_of_aggregate_of_instance::ptr(new aggregate_of_aggregate_of_instance());
+            if (aggregate) {
+                for (const auto& row : *aggregate) {
+                    std::vector<IfcUtil::IfcBaseClass*> copied_row;
+                    copied_row.reserve(row.size());
+                    for (auto* item : row) {
+                        copied_row.push_back(deep_copy_entity(file, item, memo));
+                    }
+                    copied->push(copied_row);
+                }
+            }
+            result->set_attribute_value(i, copied);
+        }
+    }
+    return result;
+}
+
+IfcUtil::IfcBaseClass* deep_copy_entity(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* element) {
+    std::unordered_map<unsigned, IfcUtil::IfcBaseClass*> memo;
+    return deep_copy_entity(file, element, memo);
+}
+
+void create_object_reference(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* relating_object,
+    IfcUtil::IfcBaseClass* related_object,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    IfcUtil::IfcBaseClass* referenced_by = nullptr;
+    auto declares = ifcapi::detail::read_inverse_aggregate(relating_object, "Declares");
+    if (!declares.empty()) {
+        referenced_by = declares.front();
+    }
+    if (referenced_by) {
+        auto related = ifcapi::detail::read_ref_aggregate(referenced_by, "RelatedObjects");
+        related.push_back(related_object);
+        ifcapi::detail::write_ref_aggregate(referenced_by, "RelatedObjects", related);
+        ifcapi::detail::update_owner_history(file, referenced_by, user, application);
+        return;
+    }
+    referenced_by = create_entity(file, "IfcRelDefinesByObject");
+    ifcapi::detail::write_string_attr(referenced_by, "GlobalId", ifcapi::guid_new());
+    ifcapi::detail::write_ref_attr(
+        referenced_by, "OwnerHistory", ifcapi::detail::ensure_owner_history(file, owner_history, user, application));
+    ifcapi::detail::write_ref_aggregate(referenced_by, "RelatedObjects", {related_object});
+    ifcapi::detail::write_ref_attr(referenced_by, "RelatingObject", relating_object);
+}
+
+class DuplicateTask {
+public:
+    DuplicateTask(
+        IfcParse::IfcFile* file,
+        IfcUtil::IfcBaseClass* owner_history,
+        IfcUtil::IfcBaseClass* user,
+        IfcUtil::IfcBaseClass* application)
+        : file_(file), owner_history_(owner_history), user_(user), application_(application) {}
+
+    ifcapi::bindings::SequenceDuplicateTaskResult execute(IfcUtil::IfcBaseClass* task) {
+        duplicate_task(task);
+        copy_sequence_relationships();
+        return {current_, duplicate_};
+    }
+
+private:
+    IfcParse::IfcFile* file_;
+    IfcUtil::IfcBaseClass* owner_history_;
+    IfcUtil::IfcBaseClass* user_;
+    IfcUtil::IfcBaseClass* application_;
+    std::vector<IfcUtil::IfcBaseClass*> current_;
+    std::vector<IfcUtil::IfcBaseClass*> duplicate_;
+
+    IfcUtil::IfcBaseClass* duplicate_task(IfcUtil::IfcBaseClass* task) {
+        auto* new_task = deep_copy_entity(file_, task);
+        current_.push_back(task);
+        duplicate_.push_back(new_task);
+        copy_indirect_attributes(task, new_task);
+        return new_task;
+    }
+
+    int current_index(IfcUtil::IfcBaseClass* task) const {
+        auto it = std::find(current_.begin(), current_.end(), task);
+        return it == current_.end() ? -1 : static_cast<int>(std::distance(current_.begin(), it));
+    }
+
+    void copy_indirect_attributes(IfcUtil::IfcBaseClass* from_element, IfcUtil::IfcBaseClass* to_element) {
+        auto inverses = file_->getInverse(from_element->id(), nullptr, -1);
+        std::vector<IfcUtil::IfcBaseClass*> snapshot;
+        if (inverses) {
+            for (auto* inverse : *inverses) {
+                if (inverse) {
+                    snapshot.push_back(inverse);
+                }
+            }
+        }
+        for (auto* inverse : snapshot) {
+            if (!ifcapi::detail::exists_in_file(file_, inverse)) {
+                continue;
+            }
+            if (inverse->declaration().is("IfcRelDefinesByProperties")) {
+                auto* rel = ifcapi::detail::shallow_copy(file_, inverse);
+                ifcapi::detail::write_ref_aggregate(rel, "RelatedObjects", {to_element});
+                ifcapi::detail::write_ref_attr(
+                    rel, "RelatingPropertyDefinition",
+                    deep_copy_entity(file_, ifcapi::detail::read_ref_attr(inverse, "RelatingPropertyDefinition")));
+            } else if (inverse->declaration().is("IfcRelNests") &&
+                ifcapi::detail::read_ref_attr(inverse, "RelatingObject") == from_element) {
+                std::vector<IfcUtil::IfcBaseClass*> new_tasks;
+                for (auto* nested_task : ifcapi::detail::read_ref_aggregate(inverse, "RelatedObjects")) {
+                    new_tasks.push_back(duplicate_task(nested_task));
+                }
+                if (!new_tasks.empty()) {
+                    ifcapi::bindings::nest_assign_object(
+                        file_, ifcapi::detail::to_const_refs(new_tasks), to_element, owner_history_, user_, application_);
+                }
+            } else if (inverse->declaration().is("IfcRelSequence") ||
+                (inverse->declaration().is("IfcRelAssignsToControl") &&
+                    ifcapi::detail::read_ref_attr(inverse, "RelatingControl") &&
+                    ifcapi::detail::read_ref_attr(inverse, "RelatingControl")->declaration().is("IfcWorkSchedule")) ||
+                inverse->declaration().is("IfcRelDefinesByObject")) {
+                continue;
+            } else {
+                copy_or_extend_inverse(inverse, from_element, to_element);
+            }
+        }
+    }
+
+    void copy_or_extend_inverse(
+        IfcUtil::IfcBaseClass* inverse,
+        IfcUtil::IfcBaseClass* from_element,
+        IfcUtil::IfcBaseClass* to_element)
+    {
+        auto* decl = inverse->declaration().as_entity();
+        if (!decl) {
+            return;
+        }
+        auto attributes = decl->all_attributes();
+        for (size_t i = 0; i < attributes.size(); ++i) {
+            auto value = inverse->get_attribute_value(i);
+            if (value.isNull()) {
+                continue;
+            }
+            if (value.type() == IfcUtil::Argument_ENTITY_INSTANCE &&
+                static_cast<IfcUtil::IfcBaseClass*>(value) == from_element) {
+                auto* copied = ifcapi::detail::shallow_copy(file_, inverse);
+                copied->set_attribute_value(i, to_element);
+            } else if (value.type() == IfcUtil::Argument_AGGREGATE_OF_ENTITY_INSTANCE) {
+                auto aggregate = static_cast<aggregate_of_instance::ptr>(value);
+                if (!aggregate) {
+                    continue;
+                }
+                bool contains = false;
+                std::vector<IfcUtil::IfcBaseClass*> refs;
+                for (auto& item : *aggregate) {
+                    refs.push_back(item);
+                    if (item == from_element) {
+                        contains = true;
+                    }
+                }
+                if (contains) {
+                    refs.push_back(to_element);
+                    ifcapi::detail::set_ref_aggregate(inverse, static_cast<int>(i), refs);
+                }
+            }
+        }
+    }
+
+    void copy_sequence_relationships() {
+        for (size_t i = 0; i < current_.size(); ++i) {
+            auto* original_task = current_[i];
+            auto* duplicated_task = duplicate_[i];
+            auto inverses = file_->getInverse(original_task->id(), nullptr, -1);
+            if (!inverses) {
+                continue;
+            }
+            for (auto* inverse : *inverses) {
+                if (!inverse || !inverse->declaration().is("IfcRelSequence")) {
+                    continue;
+                }
+                auto* relating_process = ifcapi::detail::read_ref_attr(inverse, "RelatingProcess");
+                auto* related_process = ifcapi::detail::read_ref_attr(inverse, "RelatedProcess");
+                if (relating_process == original_task) {
+                    relating_process = duplicated_task;
+                }
+                if (related_process == original_task) {
+                    related_process = duplicated_task;
+                }
+                int related_index = current_index(ifcapi::detail::read_ref_attr(inverse, "RelatedProcess"));
+                if (related_index >= 0) {
+                    related_process = duplicate_[static_cast<size_t>(related_index)];
+                }
+                int relating_index = current_index(ifcapi::detail::read_ref_attr(inverse, "RelatingProcess"));
+                if (relating_index >= 0) {
+                    relating_process = duplicate_[static_cast<size_t>(relating_index)];
+                }
+                if (relating_process && related_process) {
+                    auto* rel = ifcapi::bindings::sequence_assign_sequence(
+                        file_,
+                        relating_process,
+                        related_process,
+                        ifcapi::detail::read_string_attr(inverse, "SequenceType"),
+                        owner_history_,
+                        user_,
+                        application_);
+                    if (auto* lag = ifcapi::detail::read_ref_attr(inverse, "TimeLag")) {
+                        ifcapi::detail::write_ref_attr(rel, "TimeLag", deep_copy_entity(file_, lag));
+                    }
+                }
+            }
+        }
+    }
+};
+
+void remove_from_related_objects_or_relation(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* rel,
+    IfcUtil::IfcBaseClass* object)
+{
+    auto related = ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects");
+    if (related.size() <= 1) {
+        ifcapi::detail::remove_with_history(file, rel);
+        return;
+    }
+    related.erase(std::remove(related.begin(), related.end(), object), related.end());
+    ifcapi::detail::write_ref_aggregate(rel, "RelatedObjects", related);
+}
+
+void remove_rel_defines_by_object_or_unassign(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* rel,
+    IfcUtil::IfcBaseClass* object)
+{
+    if (ifcapi::detail::read_ref_attr(rel, "RelatingObject") == object ||
+        ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects").size() <= 1) {
+        ifcapi::detail::remove_with_history(file, rel);
+        return;
+    }
+    auto related = ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects");
+    related.erase(std::remove(related.begin(), related.end(), object), related.end());
+    ifcapi::detail::write_ref_aggregate(rel, "RelatedObjects", related);
+}
+
+void remove_task_internal(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* task,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    if (!ifcapi::detail::exists_in_file(file, task)) {
+        return;
+    }
+    ifcapi::bindings::project_unassign_declaration(file, one_const(task), first_context(file), user, application);
+
+    remove_task_time(file, ifcapi::detail::read_ref_attr(task, "TaskTime"));
+
+    auto nested_by = ifcapi::detail::read_inverse_aggregate(task, "IsNestedBy");
+    if (!nested_by.empty()) {
+        auto subtasks = ifcapi::detail::read_ref_aggregate(nested_by.front(), "RelatedObjects");
+        if (!subtasks.empty()) {
+            ifcapi::bindings::nest_unassign_object(file, ifcapi::detail::to_const_refs(subtasks), user, application);
+            for (auto* subtask : subtasks) {
+                remove_task_internal(file, subtask, user, application);
+            }
+        }
+    }
+    if (!ifcapi::detail::read_inverse_aggregate(task, "Nests").empty()) {
+        ifcapi::bindings::nest_unassign_object(file, one_const(task), user, application);
+    }
+
+    auto inverses = file->getInverse(task->id(), nullptr, -1);
+    std::vector<IfcUtil::IfcBaseClass*> snapshot;
+    if (inverses) {
+        for (auto* inverse : *inverses) {
+            if (inverse) {
+                snapshot.push_back(inverse);
+            }
+        }
+    }
+    for (auto* inverse : snapshot) {
+        if (!ifcapi::detail::exists_in_file(file, inverse)) {
+            continue;
+        }
+        if (inverse->declaration().is("IfcRelSequence")) {
+            ifcapi::detail::remove_with_history(file, inverse);
+        } else if (inverse->declaration().is("IfcRelAssignsToControl")) {
+            auto* control = ifcapi::detail::read_ref_attr(inverse, "RelatingControl");
+            if (control == task || ifcapi::detail::read_ref_aggregate(inverse, "RelatedObjects").size() <= 1) {
+                ifcapi::detail::remove_with_history(file, inverse);
+            } else {
+                remove_from_related_objects_or_relation(file, inverse, task);
+            }
+        } else if (inverse->declaration().is("IfcRelDefinesByProperties")) {
+            ifcapi::bindings::pset_remove_pset(file, task, ifcapi::detail::read_ref_attr(inverse, "RelatingPropertyDefinition"));
+        } else if (inverse->declaration().is("IfcRelAssignsToProcess")) {
+            if (ifcapi::detail::read_ref_attr(inverse, "RelatingProcess") == task ||
+                ifcapi::detail::read_ref_aggregate(inverse, "RelatedObjects").size() <= 1) {
+                ifcapi::detail::remove_with_history(file, inverse);
+            }
+        } else if (inverse->declaration().is("IfcRelAssignsToProduct")) {
+            if (ifcapi::detail::read_ref_attr(inverse, "RelatingProduct") == task) {
+                ifcapi::detail::remove_with_history(file, inverse);
+            } else {
+                remove_from_related_objects_or_relation(file, inverse, task);
+            }
+        } else if (inverse->declaration().is("IfcRelAssignsToObject")) {
+            if (ifcapi::detail::read_ref_attr(inverse, "RelatingObject") == task) {
+                ifcapi::detail::remove_with_history(file, inverse);
+            } else {
+                remove_from_related_objects_or_relation(file, inverse, task);
+            }
+        }
+    }
+
+    ifcapi::detail::remove_with_history(file, task);
+}
+
+void remove_work_calendar_internal(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* work_calendar,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    if (!ifcapi::detail::exists_in_file(file, work_calendar)) {
+        return;
+    }
+    ifcapi::bindings::project_unassign_declaration(file, one_const(work_calendar), first_context(file), user, application);
+    for (auto* rel : ifcapi::detail::read_inverse_aggregate(work_calendar, "Controls")) {
+        if (!ifcapi::detail::exists_in_file(file, rel)) {
+            continue;
+        }
+        auto related = ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects");
+        ifcapi::bindings::control_unassign_control(
+            file, work_calendar, ifcapi::detail::to_const_refs(related), user, application);
+    }
+    auto working_times = ifcapi::detail::read_ref_aggregate(work_calendar, "WorkingTimes");
+    auto exception_times = ifcapi::detail::read_ref_aggregate(work_calendar, "ExceptionTimes");
+    for (auto* work_time : working_times) {
+        if (ifcapi::detail::exists_in_file(file, work_time)) {
+            ifcapi::bindings::sequence_remove_work_time(file, work_time);
+        }
+    }
+    for (auto* work_time : exception_times) {
+        if (ifcapi::detail::exists_in_file(file, work_time)) {
+            ifcapi::bindings::sequence_remove_work_time(file, work_time);
+        }
+    }
+    ifcapi::detail::remove_with_history(file, work_calendar);
+}
+
+void remove_work_plan_internal(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* work_plan,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    if (!ifcapi::detail::exists_in_file(file, work_plan)) {
+        return;
+    }
+    ifcapi::bindings::project_unassign_declaration(file, one_const(work_plan), first_context(file), user, application);
+    std::vector<IfcUtil::IfcBaseClass*> related_objects;
+    for (auto* rel : ifcapi::detail::read_inverse_aggregate(work_plan, "IsDecomposedBy")) {
+        auto related = ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects");
+        related_objects.insert(related_objects.end(), related.begin(), related.end());
+    }
+    if (!related_objects.empty()) {
+        ifcapi::bindings::aggregate_unassign_object(file, ifcapi::detail::to_const_refs(related_objects), user, application);
+    }
+    ifcapi::detail::remove_with_history(file, work_plan);
+}
+
+void remove_work_schedule_internal(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* work_schedule,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    if (!ifcapi::detail::exists_in_file(file, work_schedule)) {
+        return;
+    }
+    ifcapi::bindings::project_unassign_declaration(file, one_const(work_schedule), first_context(file), user, application);
+
+    for (auto* rel : ifcapi::detail::read_inverse_aggregate(work_schedule, "Declares")) {
+        auto related = ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects");
+        for (auto* nested_schedule : related) {
+            if (nested_schedule && nested_schedule->declaration().is("IfcWorkSchedule")) {
+                remove_work_schedule_internal(file, nested_schedule, user, application);
+            }
+        }
+    }
+
+    if (!ifcapi::detail::read_inverse_aggregate(work_schedule, "Decomposes").empty()) {
+        ifcapi::bindings::aggregate_unassign_object(file, one_const(work_schedule), user, application);
+    }
+
+    auto inverses = file->getInverse(work_schedule->id(), nullptr, -1);
+    std::vector<IfcUtil::IfcBaseClass*> snapshot;
+    if (inverses) {
+        for (auto* inverse : *inverses) {
+            if (inverse) {
+                snapshot.push_back(inverse);
+            }
+        }
+    }
+    for (auto* inverse : snapshot) {
+        if (!ifcapi::detail::exists_in_file(file, inverse)) {
+            continue;
+        }
+        if (inverse->declaration().is("IfcRelDefinesByObject")) {
+            remove_rel_defines_by_object_or_unassign(file, inverse, work_schedule);
+        } else if (inverse->declaration().is("IfcRelAssignsToControl")) {
+            auto related = ifcapi::detail::read_ref_aggregate(inverse, "RelatedObjects");
+            for (auto* related_object : related) {
+                if (related_object && related_object->declaration().is("IfcTask")) {
+                    remove_task_internal(file, related_object, user, application);
+                }
+            }
+        }
+    }
+
+    ifcapi::detail::remove_with_history(file, work_schedule);
 }
 
 int lag_time_days(IfcUtil::IfcBaseClass* lag_time) {
@@ -253,13 +1127,13 @@ int lag_time_days(IfcUtil::IfcBaseClass* lag_time) {
     if (!text.has_value) {
         int idx = ifcapi::detail::attr_index_of(value, "wrappedValue");
         if (idx < 0) idx = 0;
-        try {
+        auto* declaration = value->declaration().as_entity();
+        if (!declaration || static_cast<size_t>(idx) < declaration->all_attributes().size()) {
             auto arg = value->get_attribute_value(static_cast<size_t>(idx));
             if (!arg.isNull() && arg.type() == IfcUtil::Argument_STRING) {
                 text.has_value = true;
                 text.value = static_cast<std::string>(arg);
             }
-        } catch (...) {
         }
     }
     if (!text.has_value) {
@@ -277,12 +1151,12 @@ double lag_time_ratio(IfcUtil::IfcBaseClass* lag_time) {
     }
     int idx = ifcapi::detail::attr_index_of(value, "wrappedValue");
     if (idx < 0) idx = 0;
-    try {
+    auto* declaration = value->declaration().as_entity();
+    if (!declaration || static_cast<size_t>(idx) < declaration->all_attributes().size()) {
         auto arg = value->get_attribute_value(static_cast<size_t>(idx));
         if (!arg.isNull()) {
             return static_cast<double>(arg);
         }
-    } catch (...) {
     }
     return 0.0;
 }
@@ -875,6 +1749,159 @@ private:
 namespace ifcapi {
 namespace bindings {
 
+SequenceDateTimeResult sequence_add_date_time(IfcParse::IfcFile* file, const std::string& date_time) {
+    ifcopenshell_clear_error();
+    return make_date_time_result(file, date_time);
+}
+
+void sequence_calculate_task_duration(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* task) {
+    ifcopenshell_clear_error();
+    try {
+        double duration = max_resource_usage_duration(task, seconds_per_workday(task));
+        if (duration <= 0.0) {
+            return;
+        }
+        auto* task_time = ensure_task_time(file, task);
+        ifcapi::detail::write_string_attr(task_time, "ScheduleDuration", "P" + std::to_string(static_cast<int>(duration)) + "D");
+    } catch (const std::exception& e) {
+        set_error(e.what());
+    }
+}
+
+void sequence_edit_task_time(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* task_time,
+    ifcopenshell_pset_props_t* attributes)
+{
+    ifcopenshell_clear_error();
+    try {
+        auto* task = task_from_task_time(file, task_time);
+        auto* calendar = task ? ifcapi::detail::sequence::derive_calendar(task) : nullptr;
+        if (prop_is_truthy(attributes, "ScheduleDuration") && prop_has_key(attributes, "ScheduleFinish")) {
+            erase_prop_key(attributes, "ScheduleFinish");
+        }
+        normalize_task_time_dates(task_time, calendar, attributes);
+
+        ifcapi::detail::apply_attribute_props(task_time, attributes);
+
+        if (prop_has_key(attributes, "ScheduleDuration") &&
+            !ifcapi::detail::is_attr_null(task_time, "ScheduleDuration") &&
+            !ifcapi::detail::is_attr_null(task_time, "ScheduleStart")) {
+            calculate_task_time_finish(task_time, calendar);
+        } else if (prop_is_truthy(attributes, "ScheduleStart") &&
+            !ifcapi::detail::is_attr_null(task_time, "ScheduleDuration")) {
+            calculate_task_time_finish(task_time, calendar);
+        } else if (prop_is_truthy(attributes, "ScheduleFinish") &&
+            !ifcapi::detail::is_attr_null(task_time, "ScheduleStart")) {
+            calculate_task_time_duration(task_time, calendar);
+        }
+
+        if (task && !ifcapi::detail::is_attr_null(task_time, "ScheduleDuration") &&
+            (prop_has_key(attributes, "ScheduleStart") ||
+                prop_has_key(attributes, "ScheduleFinish") ||
+                prop_has_key(attributes, "ScheduleDuration"))) {
+            CascadeSchedule(file).execute(task);
+        }
+    } catch (const std::exception& e) {
+        set_error(e.what());
+    }
+}
+
+SequenceDuplicateTaskResult sequence_duplicate_task(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* task,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    ifcopenshell_clear_error();
+    try {
+        return DuplicateTask(file, owner_history, user, application).execute(task);
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return {};
+    }
+}
+
+IfcUtil::IfcBaseClass* sequence_copy_work_schedule(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* work_schedule,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    ifcopenshell_clear_error();
+    try {
+        auto* new_schedule = ifcapi::detail::shallow_copy(file, work_schedule);
+        for (auto* rel : ifcapi::detail::read_inverse_aggregate(work_schedule, "Controls")) {
+            for (auto* task : ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects")) {
+                auto duplicated = DuplicateTask(file, owner_history, user, application).execute(task).duplicate;
+                if (!duplicated.empty()) {
+                    ifcapi::bindings::control_assign_control(
+                        file, new_schedule, one_const(duplicated.front()), owner_history, user, application);
+                }
+            }
+        }
+        return new_schedule;
+    } catch (const std::exception& e) {
+        set_error(e.what());
+        return nullptr;
+    }
+}
+
+void sequence_create_baseline(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* work_schedule,
+    const char* name,
+    IfcUtil::IfcBaseClass* owner_history,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    ifcopenshell_clear_error();
+    try {
+        if (ifcapi::detail::read_string_attr(work_schedule, "PredefinedType") != "PLANNED") {
+            return;
+        }
+        const auto now = current_ifc_datetime();
+        auto* baseline = sequence_add_work_schedule(
+            file,
+            ifcapi::detail::read_string_attr(work_schedule, "Name"),
+            "BASELINE",
+            nullptr,
+            now,
+            now,
+            nullptr,
+            nullptr,
+            owner_history,
+            user,
+            application);
+        if (name) {
+            ifcapi::detail::write_string_attr(baseline, "Name", name);
+        } else {
+            ifcapi::detail::write_blank_attr(baseline, "Name");
+        }
+        create_object_reference(file, work_schedule, baseline, owner_history, user, application);
+        for (auto* rel : ifcapi::detail::read_inverse_aggregate(work_schedule, "Controls")) {
+            for (auto* task : ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects")) {
+                if (!task || !task->declaration().is("IfcTask")) {
+                    continue;
+                }
+                auto duplicated = DuplicateTask(file, owner_history, user, application).execute(task);
+                if (!duplicated.duplicate.empty()) {
+                    ifcapi::bindings::control_assign_control(
+                        file, baseline, one_const(duplicated.duplicate.front()), owner_history, user, application);
+                }
+                for (size_t i = 0; i < duplicated.current.size() && i < duplicated.duplicate.size(); ++i) {
+                    create_object_reference(
+                        file, duplicated.current[i], duplicated.duplicate[i], owner_history, user, application);
+                }
+            }
+        }
+    } catch (const std::exception& e) {
+        set_error(e.what());
+    }
+}
+
 IfcUtil::IfcBaseClass* sequence_add_task_time(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* task,
@@ -1426,6 +2453,62 @@ void sequence_remove_work_time(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* w
             file->removeEntity(recurrence_pattern);
         }
         file->removeEntity(work_time);
+    } catch (const std::exception& e) {
+        set_error(e.what());
+    }
+}
+
+void sequence_remove_task(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* task,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    ifcopenshell_clear_error();
+    try {
+        remove_task_internal(file, task, user, application);
+    } catch (const std::exception& e) {
+        set_error(e.what());
+    }
+}
+
+void sequence_remove_work_calendar(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* work_calendar,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    ifcopenshell_clear_error();
+    try {
+        remove_work_calendar_internal(file, work_calendar, user, application);
+    } catch (const std::exception& e) {
+        set_error(e.what());
+    }
+}
+
+void sequence_remove_work_plan(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* work_plan,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    ifcopenshell_clear_error();
+    try {
+        remove_work_plan_internal(file, work_plan, user, application);
+    } catch (const std::exception& e) {
+        set_error(e.what());
+    }
+}
+
+void sequence_remove_work_schedule(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* work_schedule,
+    IfcUtil::IfcBaseClass* user,
+    IfcUtil::IfcBaseClass* application)
+{
+    ifcopenshell_clear_error();
+    try {
+        remove_work_schedule_internal(file, work_schedule, user, application);
     } catch (const std::exception& e) {
         set_error(e.what());
     }

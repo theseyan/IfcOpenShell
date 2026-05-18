@@ -16,14 +16,10 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Optional, Union
+from typing import Optional
 
 import ifcopenshell
-import ifcopenshell.api.control
-import ifcopenshell.api.owner
-import ifcopenshell.api.sequence
-import ifcopenshell.guid
-import ifcopenshell.util.sequence
+from ifcopenshell.api.sequence import _capi
 
 
 def create_baseline(
@@ -56,50 +52,13 @@ def create_baseline(
         # And now we have a baseline for our Work Schedule
         baseline_work_schedule = ifcopenshell.api.sequence.create_baseline(file, work_schedule=planned_work_schedule, name="Baseline 1")
     """
-    usecase = Usecase()
-    usecase.file = file
-    return usecase.execute(work_schedule, name)
-
-
-class Usecase:
-    file: ifcopenshell.file
-
-    def execute(self, work_schedule: ifcopenshell.entity_instance, name: Union[str, None]) -> None:
-        # create work schedule
-        if not work_schedule.PredefinedType == "PLANNED":
-            return
-        baseline_work_schedule = ifcopenshell.api.sequence.add_work_schedule(
-            self.file, name=work_schedule.Name, predefined_type="BASELINE"
-        )
-        baseline_work_schedule.Name = name
-        self.create_baseline_reference(work_schedule, baseline_work_schedule)
-        for summary_task in ifcopenshell.util.sequence.get_root_tasks(work_schedule):
-            res = ifcopenshell.api.sequence.duplicate_task(self.file, task=summary_task)
-            assert isinstance(res, list)
-            current, duplicate = res
-            ifcopenshell.api.control.assign_control(
-                self.file, relating_control=baseline_work_schedule, related_objects=[duplicate[0]]
-            )
-            for i, task in enumerate(current):
-                self.create_baseline_reference(task, duplicate[i])
-
-    def create_baseline_reference(
-        self, relating_object: ifcopenshell.entity_instance, related_object: ifcopenshell.entity_instance
-    ) -> ifcopenshell.entity_instance:
-        referenced_by = None
-        if relating_object.Declares:
-            referenced_by = relating_object.Declares[0]
-        if referenced_by:
-            related_objects = list(referenced_by.RelatedObjects)
-            related_objects.append(related_object)
-            referenced_by.RelatedObjects = related_objects
-            ifcopenshell.api.owner.update_owner_history(self.file, element=referenced_by)
-        else:
-            referenced_by = self.file.create_entity(
-                "IfcRelDefinesByObject",
-                GlobalId=ifcopenshell.guid.new(),
-                OwnerHistory=ifcopenshell.api.owner.create_owner_history(self.file),
-                RelatedObjects=[related_object],
-                RelatingObject=relating_object,
-            )
-        return referenced_by
+    owner_history, user, application = _capi.owner_context(file)
+    _capi.call_status(
+        _capi.get_lib().ifcopenshell_ifcapi_sequence_create_baseline,
+        _capi.file_handle(file),
+        _capi.instance_handle(work_schedule),
+        _capi.string(name) if name is not None else None,
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+    )

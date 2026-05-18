@@ -533,6 +533,21 @@ class ifcopenshell_int32_list_list_list_list_t(ctypes.Structure):
     ]
 
 
+class ifcopenshell_sequence_date_time_result_t(ctypes.Structure):
+    _fields_ = [
+        ("date_time", ctypes.POINTER(_HandleStruct)),
+        ("date_time_string", ifcopenshell_string_t),
+        ("is_entity", ctypes.c_bool),
+    ]
+
+
+class ifcopenshell_sequence_duplicate_task_result_t(ctypes.Structure):
+    _fields_ = [
+        ("current", ifcopenshell_ifc_instance_list_t),
+        ("duplicate", ifcopenshell_ifc_instance_list_t),
+    ]
+
+
 class ifcopenshell_shape_builder_mep_bend_shape_result_t(ctypes.Structure):
     _fields_ = [
         ("representation", ctypes.POINTER(_HandleStruct)),
@@ -1003,6 +1018,7 @@ FUNCTION_SIGNATURES = {
     "ifcopenshell_ifcapi_selector_parse_get_element": (ctypes.c_bool, [ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p)]),
     "ifcopenshell_ifcapi_selector_parse_keys": (ctypes.c_bool, [ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p)]),
     "ifcopenshell_ifcapi_selector_set_element_value": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_string_list_t), ctypes.POINTER(ifcopenshell_bool_list_t), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(ctypes.c_bool)]),
+    "ifcopenshell_ifcapi_sequence_add_date_time": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(ifcopenshell_sequence_date_time_result_t)]),
     "ifcopenshell_ifcapi_sequence_add_task": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_sequence_add_task_time": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_bool, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_sequence_add_time_period": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
@@ -1016,17 +1032,26 @@ FUNCTION_SIGNATURES = {
     "ifcopenshell_ifcapi_sequence_assign_recurrence_pattern": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_sequence_assign_sequence": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcapi_sequence_assign_work_plan": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_sequence_calculate_task_duration": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct)]),
     "ifcopenshell_ifcapi_sequence_cascade_schedule": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct)]),
+    "ifcopenshell_ifcapi_sequence_copy_work_schedule": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcapi_sequence_create_baseline": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_char_p, ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct)]),
+    "ifcopenshell_ifcapi_sequence_duplicate_task": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ifcopenshell_sequence_duplicate_task_result_t)]),
     "ifcopenshell_ifcapi_sequence_edit_lag_time": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_void_p]),
     "ifcopenshell_ifcapi_sequence_edit_recurrence_pattern": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_void_p]),
     "ifcopenshell_ifcapi_sequence_edit_sequence": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_void_p]),
     "ifcopenshell_ifcapi_sequence_edit_task": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_void_p]),
+    "ifcopenshell_ifcapi_sequence_edit_task_time": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.c_void_p]),
     "ifcopenshell_ifcapi_sequence_edit_work_calendar": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_void_p]),
     "ifcopenshell_ifcapi_sequence_edit_work_plan": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_void_p]),
     "ifcopenshell_ifcapi_sequence_edit_work_schedule": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_void_p]),
     "ifcopenshell_ifcapi_sequence_edit_work_time": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_void_p]),
     "ifcopenshell_ifcapi_sequence_recalculate_schedule": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct)]),
+    "ifcopenshell_ifcapi_sequence_remove_task": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct)]),
     "ifcopenshell_ifcapi_sequence_remove_time_period": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct)]),
+    "ifcopenshell_ifcapi_sequence_remove_work_calendar": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct)]),
+    "ifcopenshell_ifcapi_sequence_remove_work_plan": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct)]),
+    "ifcopenshell_ifcapi_sequence_remove_work_schedule": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct)]),
     "ifcopenshell_ifcapi_sequence_remove_work_time": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct)]),
     "ifcopenshell_ifcapi_sequence_unassign_lag_time": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct)]),
     "ifcopenshell_ifcapi_sequence_unassign_process": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),

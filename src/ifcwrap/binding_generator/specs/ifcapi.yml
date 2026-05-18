@@ -94,6 +94,24 @@ result_structs:
         type: {kind: int32}
       - name: main_profile_dimension
         type: {kind: double}
+  - name: sequence_date_time_result
+    cpp_type: ifcapi::bindings::SequenceDateTimeResult
+    c_type: ifcopenshell_sequence_date_time_result_t
+    fields:
+      - name: date_time
+        type: {kind: handle, handle: instance, ownership: borrowed, nullable: true}
+      - name: date_time_string
+        type: {kind: string, ownership: owned}
+      - name: is_entity
+        type: {kind: bool}
+  - name: sequence_duplicate_task_result
+    cpp_type: ifcapi::bindings::SequenceDuplicateTaskResult
+    c_type: ifcopenshell_sequence_duplicate_task_result_t
+    fields:
+      - name: current
+        type: {kind: instance_list}
+      - name: duplicate
+        type: {kind: instance_list}
 
 imports:
   - slice: ifcparse
@@ -1530,6 +1548,7 @@ discover:
     - namespace: ifcapi::bindings
       translation_unit: api/sequence/sequence.cpp
       include:
+        - sequence_add_date_time
         - sequence_add_task
         - sequence_add_task_time
         - sequence_add_time_period
@@ -1543,7 +1562,12 @@ discover:
         - sequence_assign_recurrence_pattern
         - sequence_assign_sequence
         - sequence_assign_work_plan
+        - sequence_calculate_task_duration
         - sequence_cascade_schedule
+        - sequence_copy_work_schedule
+        - sequence_create_baseline
+        - sequence_duplicate_task
+        - sequence_edit_task_time
         - sequence_edit_lag_time
         - sequence_edit_recurrence_pattern
         - sequence_edit_sequence
@@ -1553,7 +1577,11 @@ discover:
         - sequence_edit_work_schedule
         - sequence_edit_work_time
         - sequence_recalculate_schedule
+        - sequence_remove_task
         - sequence_remove_time_period
+        - sequence_remove_work_calendar
+        - sequence_remove_work_plan
+        - sequence_remove_work_schedule
         - sequence_remove_work_time
         - sequence_unassign_lag_time
         - sequence_unassign_process
@@ -1561,6 +1589,41 @@ discover:
         - sequence_unassign_recurrence_pattern
         - sequence_unassign_sequence
       type_overrides:
+        sequence_add_date_time:
+          returns:
+            kind: struct
+            struct: sequence_date_time_result
+        sequence_duplicate_task:
+          returns:
+            kind: struct
+            struct: sequence_duplicate_task_result
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        sequence_copy_work_schedule:
+          returns:
+            nullable: true
+          params:
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
+        sequence_create_baseline:
+          params:
+            name:
+              nullable: true
+            owner_history:
+              nullable: true
+            user:
+              nullable: true
+            application:
+              nullable: true
         sequence_add_task:
           returns:
             nullable: true
@@ -1701,6 +1764,11 @@ discover:
             attributes:
               kind: opaque_ptr
               cpp_type: ifcopenshell_pset_props_t*
+        sequence_edit_task_time:
+          params:
+            attributes:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
         sequence_edit_work_calendar:
           params:
             attributes:
@@ -1732,6 +1800,30 @@ discover:
         sequence_unassign_product:
           returns:
             nullable: true
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
+        sequence_remove_task:
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
+        sequence_remove_work_calendar:
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
+        sequence_remove_work_plan:
+          params:
+            user:
+              nullable: true
+            application:
+              nullable: true
+        sequence_remove_work_schedule:
           params:
             user:
               nullable: true

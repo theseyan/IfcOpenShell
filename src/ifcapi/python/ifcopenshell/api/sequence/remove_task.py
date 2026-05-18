@@ -17,11 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.nest
-import ifcopenshell.api.project
-import ifcopenshell.api.pset
-import ifcopenshell.api.sequence
-import ifcopenshell.util.element
+from ifcopenshell.api.sequence import _capi
 
 
 def remove_task(file: ifcopenshell.file, task: ifcopenshell.entity_instance) -> None:
@@ -54,82 +50,11 @@ def remove_task(file: ifcopenshell.file, task: ifcopenshell.entity_instance) -> 
         # just fix it on site.
         ifcopenshell.api.sequence.remove_task(model, task=design)
     """
-    # TODO: do a deep purge
-    ifcopenshell.api.project.unassign_declaration(
-        file,
-        definitions=[task],
-        relating_context=file.by_type("IfcContext")[0],
+    _, user, application = _capi.owner_context(file)
+    _capi.call_status(
+        _capi.get_lib().ifcopenshell_ifcapi_sequence_remove_task,
+        _capi.file_handle(file),
+        _capi.instance_handle(task),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
     )
-    if task_time := task.TaskTime:
-        if task_time.is_a("IfcTaskTimeRecurring"):
-            ifcopenshell.api.sequence.unassign_recurrence_pattern(file, task_time.Recurrence)
-        file.remove(task_time)
-
-    # Handle IfcRelNests.
-    if rels := task.IsNestedBy:
-        subtasks = rels[0].RelatedObjects
-        # Use batching for optimization.
-        ifcopenshell.api.nest.unassign_object(file, subtasks)
-        for task_ in subtasks:
-            ifcopenshell.api.sequence.remove_task(file, task=task_)
-    if task.Nests:
-        ifcopenshell.api.nest.unassign_object(file, [task])
-
-    for inverse in file.get_inverse(task):
-        if inverse.is_a("IfcRelSequence"):
-            history = inverse.OwnerHistory
-            file.remove(inverse)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
-        elif inverse.is_a("IfcRelAssignsToControl"):
-            if inverse.RelatingControl == task or len(inverse.RelatedObjects) == 1:
-                history = inverse.OwnerHistory
-                file.remove(inverse)
-                if history:
-                    ifcopenshell.util.element.remove_deep2(file, history)
-            else:
-                related_objects = list(inverse.RelatedObjects)
-                related_objects.remove(task)
-                inverse.RelatedObjects = related_objects
-        elif inverse.is_a("IfcRelDefinesByProperties"):
-            ifcopenshell.api.pset.remove_pset(
-                file,
-                product=task,
-                pset=inverse.RelatingPropertyDefinition,
-            )
-        elif inverse.is_a("IfcRelAssignsToProcess"):
-            if inverse.RelatingProcess == task or len(inverse.RelatedObjects) == 1:
-                history = inverse.OwnerHistory
-                file.remove(inverse)
-                if history:
-                    ifcopenshell.util.element.remove_deep2(file, history)
-        elif inverse.is_a("IfcRelAssignsToProduct"):
-            if inverse.RelatingProduct == task or len(inverse.RelatedObjects) == 1:
-                history = inverse.OwnerHistory
-                file.remove(inverse)
-                if history:
-                    ifcopenshell.util.element.remove_deep2(file, history)
-            else:
-                related_objects = list(inverse.RelatedObjects)
-                related_objects.remove(task)
-                inverse.RelatedObjects = related_objects
-        elif inverse.is_a("IfcRelAssignsToObject"):
-            if inverse.RelatingObject == task or len(inverse.RelatedObjects) == 1:
-                history = inverse.OwnerHistory
-                file.remove(inverse)
-                if history:
-                    ifcopenshell.util.element.remove_deep2(file, history)
-            else:
-                related_objects = list(inverse.RelatedObjects)
-                related_objects.remove(task)
-                inverse.RelatedObjects = related_objects
-        elif inverse.is_a("IfcRelAssignsToProcess"):
-            history = inverse.OwnerHistory
-            file.remove(inverse)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
-
-    history = task.OwnerHistory
-    file.remove(task)
-    if history:
-        ifcopenshell.util.element.remove_deep2(file, history)

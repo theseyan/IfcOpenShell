@@ -323,6 +323,17 @@ typedef struct ifcopenshell_shape_builder_mep_bend_shape_result_t {
     double main_profile_dimension;
 } ifcopenshell_shape_builder_mep_bend_shape_result_t;
 
+typedef struct ifcopenshell_sequence_date_time_result_t {
+    ifcopenshell_ifc_instance_t* date_time;
+    ifcopenshell_string_t date_time_string;
+    bool is_entity;
+} ifcopenshell_sequence_date_time_result_t;
+
+typedef struct ifcopenshell_sequence_duplicate_task_result_t {
+    ifcopenshell_ifc_instance_list_t current;
+    ifcopenshell_ifc_instance_list_t duplicate;
+} ifcopenshell_sequence_duplicate_task_result_t;
+
 typedef enum {
     IFCOPENSHELL_ERROR_NONE = 0,
     IFCOPENSHELL_ERROR_RUNTIME = 1,
@@ -775,6 +786,7 @@ bool ifcopenshell_ifcapi_profile_add_parameterized_profile(ifcopenshell_ifc_file
 bool ifcopenshell_ifcapi_profile_copy_profile(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* profile, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_profile_edit_profile(ifcopenshell_ifc_instance_t* profile, void* attributes);
 bool ifcopenshell_ifcapi_profile_remove_profile(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* profile);
+bool ifcopenshell_ifcapi_sequence_add_date_time(ifcopenshell_ifc_file_t* file, const char* date_time, ifcopenshell_sequence_date_time_result_t* out_result);
 bool ifcopenshell_ifcapi_sequence_add_task(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* work_schedule, ifcopenshell_ifc_instance_t* parent_task, const char* name, const char* description, const char* identification, const char* predefined_type, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_sequence_add_task_time(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* task, bool is_recurring, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_sequence_add_time_period(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* recurrence_pattern, const char* start_time, const char* end_time, ifcopenshell_ifc_instance_t** out_result);
@@ -788,17 +800,26 @@ bool ifcopenshell_ifcapi_sequence_assign_product(ifcopenshell_ifc_file_t* file, 
 bool ifcopenshell_ifcapi_sequence_assign_recurrence_pattern(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* parent, const char* recurrence_type, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_sequence_assign_sequence(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relating_process, ifcopenshell_ifc_instance_t* related_process, const char* sequence_type, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_sequence_assign_work_plan(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* work_schedule, ifcopenshell_ifc_instance_t* work_plan, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_sequence_calculate_task_duration(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* task);
 bool ifcopenshell_ifcapi_sequence_cascade_schedule(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* task);
+bool ifcopenshell_ifcapi_sequence_copy_work_schedule(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* work_schedule, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_sequence_create_baseline(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* work_schedule, const char* name, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
+bool ifcopenshell_ifcapi_sequence_duplicate_task(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* task, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_sequence_duplicate_task_result_t* out_result);
 bool ifcopenshell_ifcapi_sequence_edit_lag_time(ifcopenshell_ifc_instance_t* lag_time, void* attributes);
 bool ifcopenshell_ifcapi_sequence_edit_recurrence_pattern(ifcopenshell_ifc_instance_t* recurrence_pattern, void* attributes);
 bool ifcopenshell_ifcapi_sequence_edit_sequence(ifcopenshell_ifc_instance_t* rel_sequence, void* attributes);
 bool ifcopenshell_ifcapi_sequence_edit_task(ifcopenshell_ifc_instance_t* task, void* attributes);
+bool ifcopenshell_ifcapi_sequence_edit_task_time(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* task_time, void* attributes);
 bool ifcopenshell_ifcapi_sequence_edit_work_calendar(ifcopenshell_ifc_instance_t* work_calendar, void* attributes);
 bool ifcopenshell_ifcapi_sequence_edit_work_plan(ifcopenshell_ifc_instance_t* work_plan, void* attributes);
 bool ifcopenshell_ifcapi_sequence_edit_work_schedule(ifcopenshell_ifc_instance_t* work_schedule, void* attributes);
 bool ifcopenshell_ifcapi_sequence_edit_work_time(ifcopenshell_ifc_instance_t* work_time, void* attributes);
 bool ifcopenshell_ifcapi_sequence_recalculate_schedule(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* work_schedule);
+bool ifcopenshell_ifcapi_sequence_remove_task(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* task, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
 bool ifcopenshell_ifcapi_sequence_remove_time_period(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* time_period);
+bool ifcopenshell_ifcapi_sequence_remove_work_calendar(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* work_calendar, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
+bool ifcopenshell_ifcapi_sequence_remove_work_plan(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* work_plan, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
+bool ifcopenshell_ifcapi_sequence_remove_work_schedule(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* work_schedule, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
 bool ifcopenshell_ifcapi_sequence_remove_work_time(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* work_time);
 bool ifcopenshell_ifcapi_sequence_unassign_lag_time(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* rel_sequence);
 bool ifcopenshell_ifcapi_sequence_unassign_process(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relating_process, ifcopenshell_ifc_instance_t* related_object, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
