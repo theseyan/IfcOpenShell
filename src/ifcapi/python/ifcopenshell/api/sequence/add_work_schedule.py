@@ -19,11 +19,9 @@
 from datetime import datetime, time
 from typing import Optional, Union
 
-import ifcopenshell.api.aggregate
 import ifcopenshell.api.owner.settings
-import ifcopenshell.api.project
-import ifcopenshell.api.root
-import ifcopenshell.api.sequence
+import ifcopenshell.util.date
+from ifcopenshell.api.sequence import _capi
 
 
 def add_work_schedule(
@@ -75,32 +73,24 @@ def add_work_schedule(
             work_schedule=schedule, name="Construction", identification="C")
     """
     start_time = start_time or datetime.now()
-    work_schedule = ifcopenshell.api.root.create_entity(
-        file,
-        ifc_class="IfcWorkSchedule",
-        predefined_type=predefined_type,
-        name=name,
-    )
-    work_schedule.CreationDate = ifcopenshell.api.sequence.add_date_time(file, datetime.now())
+    creation_date = ifcopenshell.util.date.datetime2ifc(datetime.now(), "IfcDateTime")
+    start_time = ifcopenshell.util.date.datetime2ifc(start_time, "IfcDateTime")
     user = ifcopenshell.api.owner.settings.get_user(file)
-    if user:
-        work_schedule.Creators = [user.ThePerson]
-    work_schedule.StartTime = ifcopenshell.api.sequence.add_date_time(file, start_time)
-    if object_type:
-        work_schedule.ObjectType = object_type
-    if work_plan:
-        ifcopenshell.api.aggregate.assign_object(
-            file,
-            products=[work_schedule],
-            relating_object=work_plan,
-        )
-    elif file.schema != "IFC2X3":
-        # TODO: this is an ambiguity by buildingSMART
-        # See https://forums.buildingsmart.org/t/is-the-ifcworkschedule-project-declaration-mutually-exclusive-to-aggregation-within-a-relating-ifcworkplan/3510
-        context = file.by_type("IfcContext")[0]
-        ifcopenshell.api.project.assign_declaration(
-            file,
-            definitions=[work_schedule],
-            relating_context=context,
-        )
-    return work_schedule
+    creator_person = user.ThePerson if user else None
+    owner_history, user_context, application = _capi.owner_context(file)
+    return _capi.call_handle(
+        file,
+        _capi.get_lib().ifcopenshell_ifcapi_sequence_add_work_schedule,
+        _capi.file_handle(file),
+        _capi.string(name),
+        _capi.string(predefined_type),
+        _capi.string(object_type) if object_type is not None else None,
+        _capi.string(creation_date),
+        _capi.string(start_time),
+        _capi.instance_handle(work_plan),
+        _capi.instance_handle(creator_person),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user_context),
+        _capi.instance_handle(application),
+        nullable=True,
+    )

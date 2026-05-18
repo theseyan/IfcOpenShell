@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 import ifcopenshell
+from ifcopenshell.api.sequence import _capi
 
 
 def unassign_recurrence_pattern(file: ifcopenshell.file, recurrence_pattern: ifcopenshell.entity_instance) -> None:
@@ -48,6 +49,8 @@ def unassign_recurrence_pattern(file: ifcopenshell.file, recurrence_pattern: ifc
         # Change our mind, let's just maintain it whenever we feel like it.
         ifcopenshell.api.sequence.unassign_recurrence_pattern(recurrence_pattern=pattern)
     """
-    for time_period in recurrence_pattern.TimePeriods or []:
-        file.remove(time_period)
-    file.remove(recurrence_pattern)
+    _capi.call_status(
+        _capi.get_lib().ifcopenshell_ifcapi_sequence_unassign_recurrence_pattern,
+        _capi.file_handle(file),
+        _capi.instance_handle(recurrence_pattern),
+    )

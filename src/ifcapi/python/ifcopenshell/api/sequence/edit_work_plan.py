@@ -19,6 +19,8 @@
 from typing import Any
 
 import ifcopenshell.util.date
+from ifcopenshell.api.pset import _capi as pset_capi
+from ifcopenshell.api.sequence import _capi
 
 
 def edit_work_plan(
@@ -44,10 +46,20 @@ def edit_work_plan(
         ifcopenshell.api.sequence.edit_work_plan(model,
             work_plan=work_plan, attributes={"Description": "Construction of phase 1"})
     """
+    converted_attributes = {}
     for name, value in attributes.items():
         if value:
             if "Date" in name or "Time" in name:
                 value = ifcopenshell.util.date.datetime2ifc(value, "IfcDateTime")
             elif name == "Duration" or name == "TotalFloat":
                 value = ifcopenshell.util.date.datetime2ifc(value, "IfcDuration")
-        setattr(work_plan, name, value)
+        converted_attributes[name] = value
+    props = pset_capi.build_props(converted_attributes)
+    try:
+        _capi.call_status(
+            _capi.get_lib().ifcopenshell_ifcapi_sequence_edit_work_plan,
+            _capi.instance_handle(work_plan),
+            props,
+        )
+    finally:
+        pset_capi.free_props(props)

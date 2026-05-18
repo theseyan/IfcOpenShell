@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 import ifcopenshell
+from ifcopenshell.api.sequence import _capi
 
 
 def add_task_time(
@@ -58,9 +59,10 @@ def add_task_time(
         ifcopenshell.api.sequence.edit_task_time(model,
             task_time=time, attributes={"ScheduleStart": "2000-01-01", "ScheduleDuration": "P2D"})
     """
-    if is_recurring:
-        task_time = file.create_entity("IfcTaskTimeRecurring")
-    else:
-        task_time = file.create_entity("IfcTaskTime")
-    task.TaskTime = task_time
-    return task_time
+    return _capi.call_handle(
+        file,
+        _capi.get_lib().ifcopenshell_ifcapi_sequence_add_task_time,
+        _capi.file_handle(file),
+        _capi.instance_handle(task),
+        is_recurring,
+    )

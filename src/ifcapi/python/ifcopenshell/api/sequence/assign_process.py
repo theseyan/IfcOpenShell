@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.guid
+from ifcopenshell.api.sequence import _capi
 
 
 def assign_process(
@@ -103,28 +102,15 @@ def assign_process(
         # build_task = ifcopenshell.api.sequence.add_task(model, ..., predefined_type="CONSTRUCTION")
         # ifcopenshell.api.sequence.assign_product(model, relating_product=wall, related_object=build_task)
     """
-    if related_object.HasAssignments:
-        for assignment in related_object.HasAssignments:
-            if assignment.is_a("IfcRelAssignsToProcess") and assignment.RelatingProcess == relating_process:
-                return
-
-    operates_on = None
-    if relating_process.OperatesOn:
-        operates_on = relating_process.OperatesOn[0]
-
-    if operates_on:
-        related_objects = list(operates_on.RelatedObjects)
-        related_objects.append(related_object)
-        operates_on.RelatedObjects = related_objects
-        ifcopenshell.api.owner.update_owner_history(file, element=operates_on)
-    else:
-        operates_on = file.create_entity(
-            "IfcRelAssignsToProcess",
-            **{
-                "GlobalId": ifcopenshell.guid.new(),
-                "OwnerHistory": ifcopenshell.api.owner.create_owner_history(file),
-                "RelatedObjects": [related_object],
-                "RelatingProcess": relating_process,
-            }
-        )
-    return operates_on
+    owner_history, user, application = _capi.owner_context(file)
+    return _capi.call_handle(
+        file,
+        _capi.get_lib().ifcopenshell_ifcapi_sequence_assign_process,
+        _capi.file_handle(file),
+        _capi.instance_handle(relating_process),
+        _capi.instance_handle(related_object),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+        nullable=True,
+    )

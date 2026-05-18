@@ -19,6 +19,8 @@
 from typing import Any
 
 import ifcopenshell.util.date
+from ifcopenshell.api.pset import _capi as pset_capi
+from ifcopenshell.api.sequence import _capi
 
 
 def edit_work_time(
@@ -52,14 +54,19 @@ def edit_work_time(
         ifcopenshell.api.sequence.edit_work_time(model,
             work_time=work_time, attributes={"StartDate": "2000-01-01", "FinishDate": "2000-01-02"})
     """
+    converted_attributes = {}
     for name, value in attributes.items():
         if name in ("Start", "StartDate"):
             value = ifcopenshell.util.date.datetime2ifc(value, "IfcDate")
-            # 4 IfcWorktime Start
-            work_time[4] = value
         elif name in ("Finish", "FinishDate"):
             value = ifcopenshell.util.date.datetime2ifc(value, "IfcDate")
-            # 5 IfcWorktime Finish
-            work_time[5] = value
-        else:
-            setattr(work_time, name, value)
+        converted_attributes[name] = value
+    props = pset_capi.build_props(converted_attributes)
+    try:
+        _capi.call_status(
+            _capi.get_lib().ifcopenshell_ifcapi_sequence_edit_work_time,
+            _capi.instance_handle(work_time),
+            props,
+        )
+    finally:
+        pset_capi.free_props(props)

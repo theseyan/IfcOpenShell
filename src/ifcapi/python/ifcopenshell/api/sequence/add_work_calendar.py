@@ -16,8 +16,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ifcopenshell.api.project
-import ifcopenshell.api.root
+import ifcopenshell
+from ifcopenshell.api.sequence import _capi
 
 
 def add_work_calendar(
@@ -77,16 +77,15 @@ def add_work_calendar(
         # this calendar by default (though you can override them).
         ifcopenshell.api.control.assign_control(model, relating_control=calendar, related_objects=[task])
     """
-    work_calendar = ifcopenshell.api.root.create_entity(
+    owner_history, user, application = _capi.owner_context(file)
+    return _capi.call_handle(
         file,
-        ifc_class="IfcWorkCalendar",
-        predefined_type=predefined_type,
-        name=name,
+        _capi.get_lib().ifcopenshell_ifcapi_sequence_add_work_calendar,
+        _capi.file_handle(file),
+        _capi.string(name),
+        _capi.string(predefined_type),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+        nullable=True,
     )
-    context = file.by_type("IfcContext")[0]
-    ifcopenshell.api.project.assign_declaration(
-        file,
-        definitions=[work_calendar],
-        relating_context=context,
-    )
-    return work_calendar

@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.util.element
+from ifcopenshell.api.sequence import _capi
 
 
 def unassign_process(
@@ -56,17 +55,14 @@ def unassign_process(
         # Change our mind.
         ifcopenshell.api.sequence.unassign_process(model, relating_process=task, related_object=wall)
     """
-    for rel in related_object.HasAssignments or []:
-        if not rel.is_a("IfcRelAssignsToProcess") or rel.RelatingProcess != relating_process:
-            continue
-        if len(rel.RelatedObjects) == 1:
-            history = rel.OwnerHistory
-            file.remove(rel)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
-            return
-        related_objects = list(rel.RelatedObjects)
-        related_objects.remove(related_object)
-        rel.RelatedObjects = related_objects
-        ifcopenshell.api.owner.update_owner_history(file, element=rel)
-        return rel
+    _, user, application = _capi.owner_context(file)
+    return _capi.call_handle(
+        file,
+        _capi.get_lib().ifcopenshell_ifcapi_sequence_unassign_process,
+        _capi.file_handle(file),
+        _capi.instance_handle(relating_process),
+        _capi.instance_handle(related_object),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+        nullable=True,
+    )

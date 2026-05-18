@@ -77,6 +77,7 @@ set(IFCAPI_SOURCES
     src/api/pset_template/template.cpp
     src/api/profile/profile.cpp
     src/api/project/project.cpp
+    src/api/sequence/sequence.cpp
     src/api/style/style.cpp
     src/api/structural/structural.cpp
     src/api/system/system.cpp

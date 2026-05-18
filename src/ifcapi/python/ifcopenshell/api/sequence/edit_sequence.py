@@ -20,6 +20,8 @@ from typing import Any
 
 import ifcopenshell
 import ifcopenshell.api.sequence
+from ifcopenshell.api.pset import _capi as pset_capi
+from ifcopenshell.api.sequence import _capi
 
 
 def edit_sequence(
@@ -60,7 +62,14 @@ def edit_sequence(
         ifcopenshell.api.sequence.edit_sequence(model,
             rel_sequence=sequence, attributes={"SequenceType": "START_START"})
     """
-    for name, value in attributes.items():
-        setattr(rel_sequence, name, value)
+    props = pset_capi.build_props(attributes)
+    try:
+        _capi.call_status(
+            _capi.get_lib().ifcopenshell_ifcapi_sequence_edit_sequence,
+            _capi.instance_handle(rel_sequence),
+            props,
+        )
+    finally:
+        pset_capi.free_props(props)
     if "SequenceType" in attributes.keys():
         ifcopenshell.api.sequence.cascade_schedule(file, task=rel_sequence.RelatedProcess)

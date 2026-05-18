@@ -20,6 +20,8 @@ from typing import Any
 
 import ifcopenshell
 import ifcopenshell.util.sequence
+from ifcopenshell.api.pset import _capi as pset_capi
+from ifcopenshell.api.sequence import _capi
 
 
 def edit_recurrence_pattern(
@@ -53,8 +55,15 @@ def edit_recurrence_pattern(
         ifcopenshell.api.sequence.edit_recurrence_pattern(model,
             recurrence_pattern=pattern, attributes={"WeekdayComponent": [1, 2, 3, 4, 5]})
     """
-    for name, value in attributes.items():
-        setattr(recurrence_pattern, name, value)
+    props = pset_capi.build_props(attributes)
+    try:
+        _capi.call_status(
+            _capi.get_lib().ifcopenshell_ifcapi_sequence_edit_recurrence_pattern,
+            _capi.instance_handle(recurrence_pattern),
+            props,
+        )
+    finally:
+        pset_capi.free_props(props)
 
     ifcopenshell.util.sequence.is_working_day.cache_clear()
     ifcopenshell.util.sequence.is_calendar_applicable.cache_clear()

@@ -10231,6 +10231,638 @@ bool ifcopenshell_ifcapi_profile_remove_profile(ifcopenshell_ifc_file_t* file, i
     }
 }
 
+bool ifcopenshell_ifcapi_sequence_add_task(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* work_schedule, ifcopenshell_ifc_instance_t* parent_task, const char* name, const char* description, const char* identification, const char* predefined_type, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    auto work_schedule_cpp = (work_schedule != nullptr && work_schedule->ptr != nullptr) ? work_schedule->ptr : nullptr;
+    auto parent_task_cpp = (parent_task != nullptr && parent_task->ptr != nullptr) ? parent_task->ptr : nullptr;
+    const char* name_str = name;
+    const char* description_str = description;
+    const char* identification_str = identification;
+    if (predefined_type == nullptr) { throw std::runtime_error("Parameter \"predefined_type\" must not be null"); }
+    std::string predefined_type_cpp(predefined_type);
+    auto owner_history_cpp = (owner_history != nullptr && owner_history->ptr != nullptr) ? owner_history->ptr : nullptr;
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::sequence_add_task(file_cpp, work_schedule_cpp, parent_task_cpp, name, description, identification, predefined_type_cpp, owner_history_cpp, user_cpp, application_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_add_task_time(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* task, bool is_recurring, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (task == nullptr || task->ptr == nullptr) { throw std::runtime_error("Handle parameter \"task\" is invalid"); }
+    auto task_cpp = task->ptr;
+    auto is_recurring_cpp = static_cast<bool>(is_recurring);
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::sequence_add_task_time(file_cpp, task_cpp, is_recurring_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_add_time_period(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* recurrence_pattern, const char* start_time, const char* end_time, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (recurrence_pattern == nullptr || recurrence_pattern->ptr == nullptr) { throw std::runtime_error("Handle parameter \"recurrence_pattern\" is invalid"); }
+    auto recurrence_pattern_cpp = recurrence_pattern->ptr;
+    const char* start_time_str = start_time;
+    const char* end_time_str = end_time;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::sequence_add_time_period(file_cpp, recurrence_pattern_cpp, start_time, end_time), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_add_work_calendar(ifcopenshell_ifc_file_t* file, const char* name, const char* predefined_type, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
+    std::string name_cpp(name);
+    if (predefined_type == nullptr) { throw std::runtime_error("Parameter \"predefined_type\" must not be null"); }
+    std::string predefined_type_cpp(predefined_type);
+    auto owner_history_cpp = (owner_history != nullptr && owner_history->ptr != nullptr) ? owner_history->ptr : nullptr;
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::sequence_add_work_calendar(file_cpp, name_cpp, predefined_type_cpp, owner_history_cpp, user_cpp, application_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_add_work_plan(ifcopenshell_ifc_file_t* file, const char* name, const char* predefined_type, const char* creation_date, const char* start_time, ifcopenshell_ifc_instance_t* creator_person, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    const char* name_str = name;
+    if (predefined_type == nullptr) { throw std::runtime_error("Parameter \"predefined_type\" must not be null"); }
+    std::string predefined_type_cpp(predefined_type);
+    if (creation_date == nullptr) { throw std::runtime_error("Parameter \"creation_date\" must not be null"); }
+    std::string creation_date_cpp(creation_date);
+    if (start_time == nullptr) { throw std::runtime_error("Parameter \"start_time\" must not be null"); }
+    std::string start_time_cpp(start_time);
+    auto creator_person_cpp = (creator_person != nullptr && creator_person->ptr != nullptr) ? creator_person->ptr : nullptr;
+    auto owner_history_cpp = (owner_history != nullptr && owner_history->ptr != nullptr) ? owner_history->ptr : nullptr;
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::sequence_add_work_plan(file_cpp, name, predefined_type_cpp, creation_date_cpp, start_time_cpp, creator_person_cpp, owner_history_cpp, user_cpp, application_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_add_work_schedule(ifcopenshell_ifc_file_t* file, const char* name, const char* predefined_type, const char* object_type, const char* creation_date, const char* start_time, ifcopenshell_ifc_instance_t* work_plan, ifcopenshell_ifc_instance_t* creator_person, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
+    std::string name_cpp(name);
+    if (predefined_type == nullptr) { throw std::runtime_error("Parameter \"predefined_type\" must not be null"); }
+    std::string predefined_type_cpp(predefined_type);
+    const char* object_type_str = object_type;
+    if (creation_date == nullptr) { throw std::runtime_error("Parameter \"creation_date\" must not be null"); }
+    std::string creation_date_cpp(creation_date);
+    if (start_time == nullptr) { throw std::runtime_error("Parameter \"start_time\" must not be null"); }
+    std::string start_time_cpp(start_time);
+    auto work_plan_cpp = (work_plan != nullptr && work_plan->ptr != nullptr) ? work_plan->ptr : nullptr;
+    auto creator_person_cpp = (creator_person != nullptr && creator_person->ptr != nullptr) ? creator_person->ptr : nullptr;
+    auto owner_history_cpp = (owner_history != nullptr && owner_history->ptr != nullptr) ? owner_history->ptr : nullptr;
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::sequence_add_work_schedule(file_cpp, name_cpp, predefined_type_cpp, object_type, creation_date_cpp, start_time_cpp, work_plan_cpp, creator_person_cpp, owner_history_cpp, user_cpp, application_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_add_work_time(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* work_calendar, const char* time_type, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (work_calendar == nullptr || work_calendar->ptr == nullptr) { throw std::runtime_error("Handle parameter \"work_calendar\" is invalid"); }
+    auto work_calendar_cpp = work_calendar->ptr;
+    if (time_type == nullptr) { throw std::runtime_error("Parameter \"time_type\" must not be null"); }
+    std::string time_type_cpp(time_type);
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::sequence_add_work_time(file_cpp, work_calendar_cpp, time_type_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_assign_lag_time(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* rel_sequence, const char* lag_value, const char* duration_type, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (rel_sequence == nullptr || rel_sequence->ptr == nullptr) { throw std::runtime_error("Handle parameter \"rel_sequence\" is invalid"); }
+    auto rel_sequence_cpp = rel_sequence->ptr;
+    if (lag_value == nullptr) { throw std::runtime_error("Parameter \"lag_value\" must not be null"); }
+    std::string lag_value_cpp(lag_value);
+    if (duration_type == nullptr) { throw std::runtime_error("Parameter \"duration_type\" must not be null"); }
+    std::string duration_type_cpp(duration_type);
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::sequence_assign_lag_time(file_cpp, rel_sequence_cpp, lag_value_cpp, duration_type_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_assign_process(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relating_process, ifcopenshell_ifc_instance_t* related_object, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (relating_process == nullptr || relating_process->ptr == nullptr) { throw std::runtime_error("Handle parameter \"relating_process\" is invalid"); }
+    auto relating_process_cpp = relating_process->ptr;
+    if (related_object == nullptr || related_object->ptr == nullptr) { throw std::runtime_error("Handle parameter \"related_object\" is invalid"); }
+    auto related_object_cpp = related_object->ptr;
+    auto owner_history_cpp = (owner_history != nullptr && owner_history->ptr != nullptr) ? owner_history->ptr : nullptr;
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::sequence_assign_process(file_cpp, relating_process_cpp, related_object_cpp, owner_history_cpp, user_cpp, application_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_assign_product(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relating_product, ifcopenshell_ifc_instance_t* related_object, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (relating_product == nullptr || relating_product->ptr == nullptr) { throw std::runtime_error("Handle parameter \"relating_product\" is invalid"); }
+    auto relating_product_cpp = relating_product->ptr;
+    if (related_object == nullptr || related_object->ptr == nullptr) { throw std::runtime_error("Handle parameter \"related_object\" is invalid"); }
+    auto related_object_cpp = related_object->ptr;
+    auto owner_history_cpp = (owner_history != nullptr && owner_history->ptr != nullptr) ? owner_history->ptr : nullptr;
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::sequence_assign_product(file_cpp, relating_product_cpp, related_object_cpp, owner_history_cpp, user_cpp, application_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_assign_recurrence_pattern(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* parent, const char* recurrence_type, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (parent == nullptr || parent->ptr == nullptr) { throw std::runtime_error("Handle parameter \"parent\" is invalid"); }
+    auto parent_cpp = parent->ptr;
+    if (recurrence_type == nullptr) { throw std::runtime_error("Parameter \"recurrence_type\" must not be null"); }
+    std::string recurrence_type_cpp(recurrence_type);
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::sequence_assign_recurrence_pattern(file_cpp, parent_cpp, recurrence_type_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_assign_sequence(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relating_process, ifcopenshell_ifc_instance_t* related_process, const char* sequence_type, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (relating_process == nullptr || relating_process->ptr == nullptr) { throw std::runtime_error("Handle parameter \"relating_process\" is invalid"); }
+    auto relating_process_cpp = relating_process->ptr;
+    if (related_process == nullptr || related_process->ptr == nullptr) { throw std::runtime_error("Handle parameter \"related_process\" is invalid"); }
+    auto related_process_cpp = related_process->ptr;
+    if (sequence_type == nullptr) { throw std::runtime_error("Parameter \"sequence_type\" must not be null"); }
+    std::string sequence_type_cpp(sequence_type);
+    auto owner_history_cpp = (owner_history != nullptr && owner_history->ptr != nullptr) ? owner_history->ptr : nullptr;
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::sequence_assign_sequence(file_cpp, relating_process_cpp, related_process_cpp, sequence_type_cpp, owner_history_cpp, user_cpp, application_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_assign_work_plan(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* work_schedule, ifcopenshell_ifc_instance_t* work_plan, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (work_schedule == nullptr || work_schedule->ptr == nullptr) { throw std::runtime_error("Handle parameter \"work_schedule\" is invalid"); }
+    auto work_schedule_cpp = work_schedule->ptr;
+    if (work_plan == nullptr || work_plan->ptr == nullptr) { throw std::runtime_error("Handle parameter \"work_plan\" is invalid"); }
+    auto work_plan_cpp = work_plan->ptr;
+    auto owner_history_cpp = (owner_history != nullptr && owner_history->ptr != nullptr) ? owner_history->ptr : nullptr;
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::sequence_assign_work_plan(file_cpp, work_schedule_cpp, work_plan_cpp, owner_history_cpp, user_cpp, application_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_cascade_schedule(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* task) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (task == nullptr || task->ptr == nullptr) { throw std::runtime_error("Handle parameter \"task\" is invalid"); }
+    auto task_cpp = task->ptr;
+        ifcapi::bindings::sequence_cascade_schedule(file_cpp, task_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_edit_lag_time(ifcopenshell_ifc_instance_t* lag_time, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (lag_time == nullptr || lag_time->ptr == nullptr) { throw std::runtime_error("Handle parameter \"lag_time\" is invalid"); }
+    auto lag_time_cpp = lag_time->ptr;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::sequence_edit_lag_time(lag_time_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_edit_recurrence_pattern(ifcopenshell_ifc_instance_t* recurrence_pattern, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (recurrence_pattern == nullptr || recurrence_pattern->ptr == nullptr) { throw std::runtime_error("Handle parameter \"recurrence_pattern\" is invalid"); }
+    auto recurrence_pattern_cpp = recurrence_pattern->ptr;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::sequence_edit_recurrence_pattern(recurrence_pattern_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_edit_sequence(ifcopenshell_ifc_instance_t* rel_sequence, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (rel_sequence == nullptr || rel_sequence->ptr == nullptr) { throw std::runtime_error("Handle parameter \"rel_sequence\" is invalid"); }
+    auto rel_sequence_cpp = rel_sequence->ptr;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::sequence_edit_sequence(rel_sequence_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_edit_task(ifcopenshell_ifc_instance_t* task, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (task == nullptr || task->ptr == nullptr) { throw std::runtime_error("Handle parameter \"task\" is invalid"); }
+    auto task_cpp = task->ptr;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::sequence_edit_task(task_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_edit_work_calendar(ifcopenshell_ifc_instance_t* work_calendar, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (work_calendar == nullptr || work_calendar->ptr == nullptr) { throw std::runtime_error("Handle parameter \"work_calendar\" is invalid"); }
+    auto work_calendar_cpp = work_calendar->ptr;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::sequence_edit_work_calendar(work_calendar_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_edit_work_plan(ifcopenshell_ifc_instance_t* work_plan, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (work_plan == nullptr || work_plan->ptr == nullptr) { throw std::runtime_error("Handle parameter \"work_plan\" is invalid"); }
+    auto work_plan_cpp = work_plan->ptr;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::sequence_edit_work_plan(work_plan_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_edit_work_schedule(ifcopenshell_ifc_instance_t* work_schedule, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (work_schedule == nullptr || work_schedule->ptr == nullptr) { throw std::runtime_error("Handle parameter \"work_schedule\" is invalid"); }
+    auto work_schedule_cpp = work_schedule->ptr;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::sequence_edit_work_schedule(work_schedule_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_edit_work_time(ifcopenshell_ifc_instance_t* work_time, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (work_time == nullptr || work_time->ptr == nullptr) { throw std::runtime_error("Handle parameter \"work_time\" is invalid"); }
+    auto work_time_cpp = work_time->ptr;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::sequence_edit_work_time(work_time_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_recalculate_schedule(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* work_schedule) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (work_schedule == nullptr || work_schedule->ptr == nullptr) { throw std::runtime_error("Handle parameter \"work_schedule\" is invalid"); }
+    auto work_schedule_cpp = work_schedule->ptr;
+        ifcapi::bindings::sequence_recalculate_schedule(file_cpp, work_schedule_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_remove_time_period(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* time_period) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (time_period == nullptr || time_period->ptr == nullptr) { throw std::runtime_error("Handle parameter \"time_period\" is invalid"); }
+    auto time_period_cpp = time_period->ptr;
+        ifcapi::bindings::sequence_remove_time_period(file_cpp, time_period_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_remove_work_time(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* work_time) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (work_time == nullptr || work_time->ptr == nullptr) { throw std::runtime_error("Handle parameter \"work_time\" is invalid"); }
+    auto work_time_cpp = work_time->ptr;
+        ifcapi::bindings::sequence_remove_work_time(file_cpp, work_time_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_unassign_lag_time(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* rel_sequence) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (rel_sequence == nullptr || rel_sequence->ptr == nullptr) { throw std::runtime_error("Handle parameter \"rel_sequence\" is invalid"); }
+    auto rel_sequence_cpp = rel_sequence->ptr;
+        ifcapi::bindings::sequence_unassign_lag_time(file_cpp, rel_sequence_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_unassign_process(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relating_process, ifcopenshell_ifc_instance_t* related_object, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (relating_process == nullptr || relating_process->ptr == nullptr) { throw std::runtime_error("Handle parameter \"relating_process\" is invalid"); }
+    auto relating_process_cpp = relating_process->ptr;
+    if (related_object == nullptr || related_object->ptr == nullptr) { throw std::runtime_error("Handle parameter \"related_object\" is invalid"); }
+    auto related_object_cpp = related_object->ptr;
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::sequence_unassign_process(file_cpp, relating_process_cpp, related_object_cpp, user_cpp, application_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_unassign_product(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relating_product, ifcopenshell_ifc_instance_t* related_object, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (relating_product == nullptr || relating_product->ptr == nullptr) { throw std::runtime_error("Handle parameter \"relating_product\" is invalid"); }
+    auto relating_product_cpp = relating_product->ptr;
+    if (related_object == nullptr || related_object->ptr == nullptr) { throw std::runtime_error("Handle parameter \"related_object\" is invalid"); }
+    auto related_object_cpp = related_object->ptr;
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::sequence_unassign_product(file_cpp, relating_product_cpp, related_object_cpp, user_cpp, application_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_unassign_recurrence_pattern(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* recurrence_pattern) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (recurrence_pattern == nullptr || recurrence_pattern->ptr == nullptr) { throw std::runtime_error("Handle parameter \"recurrence_pattern\" is invalid"); }
+    auto recurrence_pattern_cpp = recurrence_pattern->ptr;
+        ifcapi::bindings::sequence_unassign_recurrence_pattern(file_cpp, recurrence_pattern_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_sequence_unassign_sequence(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* relating_process, ifcopenshell_ifc_instance_t* related_process) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (relating_process == nullptr || relating_process->ptr == nullptr) { throw std::runtime_error("Handle parameter \"relating_process\" is invalid"); }
+    auto relating_process_cpp = relating_process->ptr;
+    if (related_process == nullptr || related_process->ptr == nullptr) { throw std::runtime_error("Handle parameter \"related_process\" is invalid"); }
+    auto related_process_cpp = related_process->ptr;
+        ifcapi::bindings::sequence_unassign_sequence(file_cpp, relating_process_cpp, related_process_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_unit_add_context_dependent_unit(ifcopenshell_ifc_file_t* file, const char* unit_type, const char* name, const ifcopenshell_int64_list_t* dimensions, ifcopenshell_ifc_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();

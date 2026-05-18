@@ -19,8 +19,7 @@
 from typing import Union
 
 import ifcopenshell
-import ifcopenshell.api.aggregate
-import ifcopenshell.api.project
+from ifcopenshell.api.sequence import _capi
 
 
 def assign_work_plan(
@@ -49,16 +48,15 @@ def assign_work_plan(
         # ... you can assign the work plan afterwards.
         ifcopenshell.api.sequence.assign_work_plan(work_schedule=schedule, work_plan=work_plan)
     """
-    # TODO: this is an ambiguity by buildingSMART
-    # See https://forums.buildingsmart.org/t/is-the-ifcworkschedule-project-declaration-mutually-exclusive-to-aggregation-within-a-relating-ifcworkplan/3510
-    ifcopenshell.api.project.unassign_declaration(
+    owner_history, user, application = _capi.owner_context(file)
+    return _capi.call_handle(
         file,
-        definitions=[work_schedule],
-        relating_context=file.by_type("IfcContext")[0],
+        _capi.get_lib().ifcopenshell_ifcapi_sequence_assign_work_plan,
+        _capi.file_handle(file),
+        _capi.instance_handle(work_schedule),
+        _capi.instance_handle(work_plan),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+        nullable=True,
     )
-    rel_aggregates = ifcopenshell.api.aggregate.assign_object(
-        file,
-        products=[work_schedule],
-        relating_object=work_plan,
-    )
-    return rel_aggregates

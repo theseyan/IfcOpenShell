@@ -23,6 +23,7 @@ import networkx as nx
 import ifcopenshell.api.sequence
 import ifcopenshell.util.date
 import ifcopenshell.util.sequence
+from ifcopenshell.api.sequence import _capi
 
 
 def recalculate_schedule(file: ifcopenshell.file, work_schedule: ifcopenshell.entity_instance) -> None:
@@ -48,9 +49,16 @@ def recalculate_schedule(file: ifcopenshell.file, work_schedule: ifcopenshell.en
         # critical path. Typically cascade_schedule is run prior to ensure
         # that dates are correct.
     """
-    usecase = Usecase()
-    usecase.file = file
-    return usecase.execute(work_schedule)
+    try:
+        _capi.call_status(
+            _capi.get_lib().ifcopenshell_ifcapi_sequence_recalculate_schedule,
+            _capi.file_handle(file),
+            _capi.instance_handle(work_schedule),
+        )
+    except RuntimeError as e:
+        if str(e) == "Task graph is cyclic and so critical path method cannot be performed.":
+            raise RecursionError(str(e)) from e
+        raise
 
 
 class Usecase:

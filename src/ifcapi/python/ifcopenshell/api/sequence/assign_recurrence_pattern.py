@@ -17,6 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 import ifcopenshell
 import ifcopenshell.util.sequence
+from ifcopenshell.api.sequence import _capi
 
 
 def assign_recurrence_pattern(
@@ -105,14 +106,11 @@ def assign_recurrence_pattern(
         ifcopenshell.api.sequence.edit_recurrence_pattern(model,
             recurrence_pattern=pattern, attributes={"DayComponent": [1], "Interval": 6})
     """
-    recurrence = file.create_entity("IfcRecurrencePattern", recurrence_type)
-
-    if parent.is_a("IfcWorkTime"):
-        if (old_recurrence := parent.RecurrencePattern) and file.get_total_inverses(old_recurrence) == 1:
-            file.remove(old_recurrence)
-        parent.RecurrencePattern = recurrence
-    elif parent.is_a("IfcTaskTimeRecurring"):
-        if (recurrence_old := parent.Recurrence) and file.get_total_inverses(recurrence_old) == 1:
-            file.remove(recurrence_old)
-        parent.Recurrence = recurrence
-    return recurrence
+    return _capi.call_handle(
+        file,
+        _capi.get_lib().ifcopenshell_ifcapi_sequence_assign_recurrence_pattern,
+        _capi.file_handle(file),
+        _capi.instance_handle(parent),
+        _capi.string(recurrence_type),
+        nullable=True,
+    )

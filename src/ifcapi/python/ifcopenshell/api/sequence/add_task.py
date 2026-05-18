@@ -19,9 +19,7 @@
 from typing import Optional
 
 import ifcopenshell
-import ifcopenshell.api.control
-import ifcopenshell.api.nest
-import ifcopenshell.api.root
+from ifcopenshell.api.sequence import _capi
 
 
 def add_task(
@@ -132,21 +130,19 @@ def add_task(
         ifcopenshell.api.sequence.add_task(model, parent_task=cleaning, identification="3",
             description="Setup the water pressure by tapping to a water supply and connecting to a ...")
     """
-    task = ifcopenshell.api.root.create_entity(file, ifc_class="IfcTask", name=name, predefined_type=predefined_type)
-    if description:
-        task.Description = description
-    if identification:
-        task.Identification = identification
-    task.IsMilestone = False
-    if work_schedule:
-        ifcopenshell.api.control.assign_control(file, work_schedule, [task])
-    elif parent_task:
-        rel = ifcopenshell.api.nest.assign_object(
-            file,
-            related_objects=[task],
-            relating_object=parent_task,
-        )
-        if file.schema != "IFC2X3" and parent_task.Identification:
-            assert rel
-            task.Identification = parent_task.Identification + "." + str(len(rel.RelatedObjects))
-    return task
+    owner_history, user, application = _capi.owner_context(file)
+    return _capi.call_handle(
+        file,
+        _capi.get_lib().ifcopenshell_ifcapi_sequence_add_task,
+        _capi.file_handle(file),
+        _capi.instance_handle(work_schedule),
+        _capi.instance_handle(parent_task),
+        _capi.string(name) if name is not None else None,
+        _capi.string(description) if description is not None else None,
+        _capi.string(identification) if identification is not None else None,
+        _capi.string(predefined_type),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+        nullable=True,
+    )

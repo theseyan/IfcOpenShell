@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.sequence
-import ifcopenshell.util.element
+from ifcopenshell.api.sequence import _capi
 
 
 def unassign_sequence(
@@ -57,10 +56,14 @@ def unassign_sequence(
         ifcopenshell.api.sequence.unassign_sequence(model,
             relating_process=zone1, related_process=zone2)
     """
-    for rel in related_process.IsSuccessorFrom or []:
-        if rel.RelatingProcess == relating_process:
-            history = rel.OwnerHistory
-            file.remove(rel)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
-    ifcopenshell.api.sequence.cascade_schedule(file, task=related_process)
+    try:
+        _capi.call_status(
+            _capi.get_lib().ifcopenshell_ifcapi_sequence_unassign_sequence,
+            _capi.file_handle(file),
+            _capi.instance_handle(relating_process),
+            _capi.instance_handle(related_process),
+        )
+    except RuntimeError as e:
+        if str(e) == "Recursive tasks found. Could not cascade schedule.":
+            raise RecursionError(str(e)) from e
+        raise
