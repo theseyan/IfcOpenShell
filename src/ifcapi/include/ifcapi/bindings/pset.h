@@ -43,6 +43,14 @@ IFCAPI_BINDING void pset_props_set_int_list(
     ifcopenshell_pset_props_t* props, const std::string& key, const std::vector<int64_t>& values);
 IFCAPI_BINDING void pset_props_set_instance_list(
     ifcopenshell_pset_props_t* props, const std::string& key, const std::vector<const IfcUtil::IfcBaseClass*>& values);
+IFCAPI_BINDING void pset_props_set_date(
+    ifcopenshell_pset_props_t* props, const std::string& key, int year, int month, int day);
+IFCAPI_BINDING void pset_props_set_datetime(
+    ifcopenshell_pset_props_t* props, const std::string& key, int year, int month, int day, int hour, int minute, int second,
+    int microsecond, bool has_timezone, int timezone_offset_minutes);
+IFCAPI_BINDING void pset_props_set_duration(
+    ifcopenshell_pset_props_t* props, const std::string& key, bool negative, int years, int months, int days, int hours,
+    int minutes, int seconds, int microseconds);
 IFCAPI_BINDING void pset_props_set_dict(
     ifcopenshell_pset_props_t* outer, const std::string& key, ifcopenshell_pset_props_t* inner);
 IFCAPI_BINDING void pset_props_set_unit_for_last(

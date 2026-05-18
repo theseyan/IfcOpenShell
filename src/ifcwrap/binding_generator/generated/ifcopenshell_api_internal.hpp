@@ -84,6 +84,7 @@
 #include "ifcapi/bindings/pset.h"
 #include "ifcapi/bindings/pset_template.h"
 #include "ifcapi/bindings/representation.h"
+#include "ifcapi/bindings/resource.h"
 #include "ifcapi/bindings/root.h"
 #include "ifcapi/bindings/schema.h"
 #include "ifcapi/bindings/sequence.h"

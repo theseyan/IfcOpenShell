@@ -13,6 +13,7 @@ from ifcopenshell.entity_instance import _generated_instance_handle_ptr
 _BOUND = False
 _BIND_NAMES = (
     "ifcopenshell_ifcapi_cost_edit_cost_value",
+    "ifcopenshell_ifcapi_cost_edit_cost_value_formula",
     "ifcopenshell_last_error_kind",
     "ifcopenshell_last_error_message",
 )

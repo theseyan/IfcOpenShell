@@ -39,6 +39,7 @@ public_headers:
   - ifcapi/bindings/pset.h
   - ifcapi/bindings/pset_template.h
   - ifcapi/bindings/representation.h
+  - ifcapi/bindings/resource.h
   - ifcapi/bindings/root.h
   - ifcapi/bindings/schema.h
   - ifcapi/bindings/sequence.h
@@ -1161,9 +1162,12 @@ discover:
         - pset_props_free
         - pset_props_new
         - pset_props_set_bool
+        - pset_props_set_date
+        - pset_props_set_datetime
         - pset_props_set_dict
         - pset_props_set_double
         - pset_props_set_double_list
+        - pset_props_set_duration
         - pset_props_set_instance
         - pset_props_set_instance_list
         - pset_props_set_int
@@ -1193,6 +1197,16 @@ discover:
             props:
               kind: opaque_ptr
               cpp_type: ifcopenshell_pset_props_t*
+        pset_props_set_date:
+          params:
+            props:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+        pset_props_set_datetime:
+          params:
+            props:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
         pset_props_set_dict:
           params:
             outer:
@@ -1207,6 +1221,11 @@ discover:
               kind: opaque_ptr
               cpp_type: ifcopenshell_pset_props_t*
         pset_props_set_double_list:
+          params:
+            props:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
+        pset_props_set_duration:
           params:
             props:
               kind: opaque_ptr
@@ -2231,6 +2250,7 @@ discover:
         - material_add_profile
         - material_assign_material
         - material_assign_profile
+        - material_edit_profile_usage
         - material_remove_constituent
         - material_remove_layer
         - material_remove_list_item
@@ -2280,10 +2300,16 @@ discover:
               nullable: true
             application:
               nullable: true
+        material_edit_profile_usage:
+          params:
+            attributes:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
     - namespace: ifcapi::bindings
       translation_unit: api/cost/cost.cpp
       include:
         - cost_edit_cost_value
+        - cost_edit_cost_value_formula
       type_overrides:
         cost_edit_cost_value:
           params:
@@ -2292,6 +2318,16 @@ discover:
               cpp_type: ifcopenshell_pset_props_t*
             unit_component:
               nullable: true
+    - namespace: ifcapi::bindings
+      translation_unit: api/resource/resource.cpp
+      include:
+        - resource_edit_resource_time
+      type_overrides:
+        resource_edit_resource_time:
+          params:
+            attributes:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
     - namespace: ifcapi::bindings
       translation_unit: api/style/style.cpp
       include:

@@ -725,9 +725,12 @@ bool ifcopenshell_ifcapi_pset_edit_qto(ifcopenshell_ifc_file_t* file, ifcopenshe
 bool ifcopenshell_ifcapi_pset_props_free(void* props);
 bool ifcopenshell_ifcapi_pset_props_new(void** out_result);
 bool ifcopenshell_ifcapi_pset_props_set_bool(void* props, const char* key, bool value);
+bool ifcopenshell_ifcapi_pset_props_set_date(void* props, const char* key, int32_t year, int32_t month, int32_t day);
+bool ifcopenshell_ifcapi_pset_props_set_datetime(void* props, const char* key, int32_t year, int32_t month, int32_t day, int32_t hour, int32_t minute, int32_t second, int32_t microsecond, bool has_timezone, int32_t timezone_offset_minutes);
 bool ifcopenshell_ifcapi_pset_props_set_dict(void* outer, const char* key, void* inner);
 bool ifcopenshell_ifcapi_pset_props_set_double(void* props, const char* key, double value);
 bool ifcopenshell_ifcapi_pset_props_set_double_list(void* props, const char* key, const ifcopenshell_double_list_t* values);
+bool ifcopenshell_ifcapi_pset_props_set_duration(void* props, const char* key, bool negative, int32_t years, int32_t months, int32_t days, int32_t hours, int32_t minutes, int32_t seconds, int32_t microseconds);
 bool ifcopenshell_ifcapi_pset_props_set_instance(void* props, const char* key, ifcopenshell_ifc_instance_t* value);
 bool ifcopenshell_ifcapi_pset_props_set_instance_list(void* props, const char* key, const ifcopenshell_ifc_instance_list_t* values);
 bool ifcopenshell_ifcapi_pset_props_set_int(void* props, const char* key, int64_t value);
@@ -895,6 +898,7 @@ bool ifcopenshell_ifcapi_material_add_material_set(ifcopenshell_ifc_file_t* file
 bool ifcopenshell_ifcapi_material_add_profile(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* profile_set, ifcopenshell_ifc_instance_t* material, ifcopenshell_ifc_instance_t* profile, const char* name, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_material_assign_material(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* products, const char* type, ifcopenshell_ifc_instance_t* material, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_list_t* out_result);
 bool ifcopenshell_ifcapi_material_assign_profile(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* material_profile, ifcopenshell_ifc_instance_t* profile);
+bool ifcopenshell_ifcapi_material_edit_profile_usage(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* usage, void* attributes, bool has_profile_dimensions, double profile_width, double profile_height);
 bool ifcopenshell_ifcapi_material_remove_constituent(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* constituent, bool should_remove_material);
 bool ifcopenshell_ifcapi_material_remove_layer(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* layer, bool should_remove_material);
 bool ifcopenshell_ifcapi_material_remove_list_item(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* material_list, int32_t material_index);
@@ -904,6 +908,8 @@ bool ifcopenshell_ifcapi_material_remove_profile(ifcopenshell_ifc_file_t* file, 
 bool ifcopenshell_ifcapi_material_reorder_set_item(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* material_set, int32_t old_index, int32_t new_index);
 bool ifcopenshell_ifcapi_material_unassign_material(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* products, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
 bool ifcopenshell_ifcapi_cost_edit_cost_value(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* cost_value, void* attributes, bool has_unit_basis, bool unit_basis_is_null, double value_component, ifcopenshell_ifc_instance_t* unit_component);
+bool ifcopenshell_ifcapi_cost_edit_cost_value_formula(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* cost_value, const char* formula);
+bool ifcopenshell_ifcapi_resource_edit_resource_time(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* resource_time, void* attributes);
 bool ifcopenshell_ifcapi_style_add_style(ifcopenshell_ifc_file_t* file, const char* name, const char* ifc_class, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_style_assign_item_style(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* item, ifcopenshell_ifc_instance_t* style, bool should_use_presentation_style_assignment, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_style_assign_material_style(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* material, ifcopenshell_ifc_instance_t* style, ifcopenshell_ifc_instance_t* context, bool should_use_presentation_style_assignment);

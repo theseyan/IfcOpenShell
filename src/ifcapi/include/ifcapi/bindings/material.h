@@ -11,6 +11,8 @@
 #include <string>
 #include <vector>
 
+struct ifcopenshell_pset_props_t;
+
 namespace ifcapi {
 namespace bindings {
 
@@ -84,6 +86,13 @@ IFCAPI_BINDING void material_unassign_material(
     const std::vector<const IfcUtil::IfcBaseClass*>& products,
     IfcUtil::IfcBaseClass* user,
     IfcUtil::IfcBaseClass* application);
+IFCAPI_BINDING void material_edit_profile_usage(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* usage,
+    ifcopenshell_pset_props_t* attributes,
+    bool has_profile_dimensions,
+    double profile_width,
+    double profile_height);
 
 } // namespace bindings
 } // namespace ifcapi

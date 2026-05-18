@@ -662,6 +662,48 @@ void pset_props_set_instance_list(
     }
 }
 
+void pset_props_set_date(ifcopenshell_pset_props_t* p, const std::string& key, int year, int month, int day) {
+    if (!p) return;
+    auto& e = append_entry(p, key);
+    e.kind = Kind::DATE;
+    e.year = year;
+    e.month = month;
+    e.day = day;
+}
+
+void pset_props_set_datetime(
+    ifcopenshell_pset_props_t* p, const std::string& key, int year, int month, int day, int hour, int minute, int second,
+    int microsecond, bool has_timezone, int timezone_offset_minutes) {
+    if (!p) return;
+    auto& e = append_entry(p, key);
+    e.kind = Kind::DATETIME;
+    e.year = year;
+    e.month = month;
+    e.day = day;
+    e.hour = hour;
+    e.minute = minute;
+    e.second = second;
+    e.microsecond = microsecond;
+    e.has_timezone = has_timezone;
+    e.timezone_offset_minutes = timezone_offset_minutes;
+}
+
+void pset_props_set_duration(
+    ifcopenshell_pset_props_t* p, const std::string& key, bool negative, int years, int months, int days, int hours,
+    int minutes, int seconds, int microseconds) {
+    if (!p) return;
+    auto& e = append_entry(p, key);
+    e.kind = Kind::DURATION;
+    e.duration_negative = negative;
+    e.duration_years = years;
+    e.duration_months = months;
+    e.duration_days = days;
+    e.duration_hours = hours;
+    e.duration_minutes = minutes;
+    e.duration_seconds = seconds;
+    e.duration_microseconds = microseconds;
+}
+
 void pset_props_set_dict(ifcopenshell_pset_props_t* outer, const std::string& key, ifcopenshell_pset_props_t* inner) {
     if (!outer) {
         delete inner;

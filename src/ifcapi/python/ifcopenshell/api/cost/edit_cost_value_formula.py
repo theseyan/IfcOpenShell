@@ -16,11 +16,9 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Any
-
 import ifcopenshell
-import ifcopenshell.api.cost
-import ifcopenshell.util.cost
+from ifcopenshell import _generated_capi
+from ifcopenshell.api.cost import _capi
 
 
 def edit_cost_value_formula(file: ifcopenshell.file, cost_value: ifcopenshell.entity_instance, formula: str) -> None:
@@ -47,34 +45,10 @@ def edit_cost_value_formula(file: ifcopenshell.file, cost_value: ifcopenshell.en
         ifcopenshell.api.cost.edit_cost_value_formula(model, cost_value=value,
             formula="5000 * 1.19")
     """
-    usecase = Usecase()
-    usecase.file = file
-    usecase.settings = {"cost_value": cost_value, "formula": formula or {}}
-    return usecase.execute()
-
-
-class Usecase:
-    file: ifcopenshell.file
-    settings: dict[str, Any]
-
-    def execute(self):
-        try:
-            data = ifcopenshell.util.cost.unserialise_cost_value(self.settings["formula"], self.settings["cost_value"])
-        except:
-            return
-        self.edit_cost_value(data)
-
-    def edit_cost_value(self, data, parent=None):
-        ifc = data.get("ifc", None)
-        if not ifc:
-            ifc = ifcopenshell.api.cost.add_cost_value(self.file, parent=parent)
-        if "AppliedValue" in data:
-            if data["AppliedValue"]:
-                ifc.AppliedValue = self.file.createIfcMonetaryMeasure(data["AppliedValue"])
-            else:
-                ifc.AppliedValue = None
-        ifc.Category = data["Category"] if "Category" in data else None
-        ifc.ArithmeticOperator = data["ArithmeticOperator"] if "ArithmeticOperator" in data else None
-        if "Components" in data:
-            for component in data["Components"]:
-                self.edit_cost_value(component, ifc)
+    lib = _capi.get_lib()
+    _capi.call_status(
+        lib.ifcopenshell_ifcapi_cost_edit_cost_value_formula,
+        _capi.file_handle(file),
+        _capi.instance_handle(cost_value),
+        _generated_capi.encode_string(formula or ""),
+    )
