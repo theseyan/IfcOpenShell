@@ -7906,6 +7906,26 @@ bool ifcopenshell_ifcapi_context_add_context(ifcopenshell_ifc_file_t* file, cons
     }
 }
 
+bool ifcopenshell_ifcapi_context_edit_context(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* context, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (context == nullptr || context->ptr == nullptr) { throw std::runtime_error("Handle parameter \"context\" is invalid"); }
+    auto context_cpp = context->ptr;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::context_edit_context(file_cpp, context_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_context_remove_context(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* context) {
     try {
         ifcopenshell_clear_error();
@@ -11764,6 +11784,29 @@ bool ifcopenshell_ifcapi_feature_remove_filling(ifcopenshell_ifc_file_t* file, i
     if (element == nullptr || element->ptr == nullptr) { throw std::runtime_error("Handle parameter \"element\" is invalid"); }
     auto element_cpp = element->ptr;
         ifcapi::bindings::feature_remove_filling(file_cpp, element_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_grid_create_axis_curve(ifcopenshell_ifc_file_t* file, const ifcopenshell_double_list_t* p1, const ifcopenshell_double_list_t* p2, ifcopenshell_ifc_instance_t* grid_axis, bool is_si) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (p1 == nullptr) { throw std::runtime_error("Parameter \"p1\" must not be null"); }
+    auto p1_cpp = to_cpp_double_list(p1);
+    if (p2 == nullptr) { throw std::runtime_error("Parameter \"p2\" must not be null"); }
+    auto p2_cpp = to_cpp_double_list(p2);
+    if (grid_axis == nullptr || grid_axis->ptr == nullptr) { throw std::runtime_error("Handle parameter \"grid_axis\" is invalid"); }
+    auto grid_axis_cpp = grid_axis->ptr;
+    auto is_si_cpp = static_cast<bool>(is_si);
+        ifcapi::bindings::grid_create_axis_curve(file_cpp, p1_cpp, p2_cpp, grid_axis_cpp, is_si_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

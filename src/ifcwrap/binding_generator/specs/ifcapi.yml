@@ -766,6 +766,7 @@ discover:
       translation_unit: api/context/context.cpp
       include:
         - context_add_context
+        - context_edit_context
         - context_remove_context
       type_overrides:
         context_add_context:
@@ -780,6 +781,11 @@ discover:
               nullable: true
             parent:
               nullable: true
+        context_edit_context:
+          params:
+            attributes:
+              kind: opaque_ptr
+              cpp_type: ifcopenshell_pset_props_t*
     - namespace: ifcapi::bindings
       translation_unit: api/geometry/placement.cpp
       include:
@@ -2088,9 +2094,16 @@ discover:
     - namespace: ifcapi::bindings
       translation_unit: api/grid/grid.cpp
       include:
+        - grid_create_axis_curve
         - grid_create_grid_axis
         - grid_remove_grid_axis
       type_overrides:
+        grid_create_axis_curve:
+          params:
+            p1:
+              kind: double_list
+            p2:
+              kind: double_list
         grid_create_grid_axis:
           returns:
             nullable: true

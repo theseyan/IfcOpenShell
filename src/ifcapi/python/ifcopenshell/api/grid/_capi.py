@@ -12,6 +12,7 @@ from ifcopenshell.entity_instance import _generated_instance_handle_ptr
 
 _BOUND = False
 _BIND_NAMES = (
+    "ifcopenshell_ifcapi_grid_create_axis_curve",
     "ifcopenshell_ifcapi_grid_create_grid_axis",
     "ifcopenshell_ifcapi_grid_remove_grid_axis",
     "ifcopenshell_ifc_instance_destroy",
@@ -39,6 +40,10 @@ def instance_handle(entity: ifcopenshell.entity_instance | None):
 
 def string(value: str) -> bytes:
     return _generated_capi.encode_string(value)
+
+
+def double_list(values):
+    return _generated_capi.make_double_list(values)
 
 
 def call_status(fn, message: str, *args) -> None:

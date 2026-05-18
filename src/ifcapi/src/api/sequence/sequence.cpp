@@ -81,10 +81,7 @@ IfcUtil::IfcBaseClass* create_ifc_date_time(IfcParse::IfcFile* file, const std::
     auto* local_time = create_entity(file, "IfcLocalTime");
     ifcapi::detail::write_int_attr(local_time, "HourComponent", parsed.hour);
     ifcapi::detail::write_int_attr(local_time, "MinuteComponent", parsed.minute);
-    int second_idx = ifcapi::detail::attr_index_of(local_time, "SecondComponent");
-    if (second_idx >= 0) {
-        local_time->set_attribute_value(static_cast<size_t>(second_idx), static_cast<double>(parsed.second));
-    }
+    ifcapi::detail::write_double_attr(local_time, "SecondComponent", static_cast<double>(parsed.second));
 
     auto* date_time = create_entity(file, "IfcDateAndTime");
     ifcapi::detail::write_ref_attr(date_time, "DateComponent", calendar_date);

@@ -21,6 +21,8 @@ struct OptionalString {
     std::string value;
 };
 
+inline const IfcParse::enumeration_type* resolve_enum_type(IfcUtil::IfcBaseClass* entity, int attr_idx);
+
 inline int find_attr_index(const IfcParse::entity* decl, const char* name) {
     if (!decl) {
         return -1;
@@ -199,6 +201,16 @@ inline bool write_ref_aggregate(
 inline void write_string_attr(IfcUtil::IfcBaseClass* entity, const char* attr, const std::string& value) {
     int idx = attr_index_of(entity, attr);
     if (idx >= 0) {
+        if (auto* enum_type = resolve_enum_type(entity, idx)) {
+            const auto& items = enum_type->enumeration_items();
+            auto it = std::find(items.begin(), items.end(), value);
+            if (it != items.end()) {
+                entity->set_attribute_value(
+                    static_cast<size_t>(idx),
+                    EnumerationReference(enum_type, static_cast<size_t>(std::distance(items.begin(), it))));
+                return;
+            }
+        }
         entity->set_attribute_value(static_cast<size_t>(idx), value);
     }
 }

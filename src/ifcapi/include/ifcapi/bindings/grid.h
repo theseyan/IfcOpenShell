@@ -9,6 +9,7 @@
 #include "ifcparse/IfcFile.h"
 
 #include <string>
+#include <vector>
 
 namespace ifcapi {
 namespace bindings {
@@ -22,6 +23,12 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* grid_create_grid_axis(
 IFCAPI_BINDING void grid_remove_grid_axis(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* axis);
+IFCAPI_BINDING void grid_create_axis_curve(
+    IfcParse::IfcFile* file,
+    const std::vector<double>& p1,
+    const std::vector<double>& p2,
+    IfcUtil::IfcBaseClass* grid_axis,
+    bool is_si);
 
 } // namespace bindings
 } // namespace ifcapi

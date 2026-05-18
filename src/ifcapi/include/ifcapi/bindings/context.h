@@ -8,6 +8,8 @@
 #include "ifcparse/IfcBaseClass.h"
 #include "ifcparse/IfcFile.h"
 
+struct ifcopenshell_pset_props_t;
+
 namespace ifcapi {
 namespace bindings {
 
@@ -20,6 +22,10 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* context_add_context(
     double target_scale,
     IfcUtil::IfcBaseClass* parent);
 IFCAPI_BINDING void context_remove_context(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* context);
+IFCAPI_BINDING void context_edit_context(
+    IfcParse::IfcFile* file,
+    IfcUtil::IfcBaseClass* context,
+    ifcopenshell_pset_props_t* attributes);
 
 } // namespace bindings
 } // namespace ifcapi

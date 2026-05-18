@@ -257,14 +257,10 @@ void apply_formula_node(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* cost_val
     }
     if (!node.components.empty()) {
         auto existing = ifcapi::detail::read_ref_aggregate(cost_value, "Components");
-        std::vector<IfcUtil::IfcBaseClass*> components;
-        components.reserve(node.components.size());
         for (size_t i = 0; i < node.components.size(); ++i) {
             auto* component = i < existing.size() && existing[i] ? existing[i] : add_cost_value(file, cost_value);
-            components.push_back(component);
             apply_formula_node(file, component, node.components[i]);
         }
-        ifcapi::detail::write_ref_aggregate(cost_value, "Components", components);
     }
 }
 

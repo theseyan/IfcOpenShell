@@ -21,7 +21,7 @@ inline void set_error(const std::string& msg) { ifcopenshell::capi::set_last_err
 
 bool is_ifc2x3(IfcParse::IfcFile* file) {
     const std::string schema = file && file->schema() ? file->schema()->name() : std::string();
-    return schema.find("2x3") != std::string::npos || schema.find("2X3") != std::string::npos;
+    return schema == "IFC2X3";
 }
 
 int attr_index(IfcUtil::IfcBaseClass* entity, const char* name) {
@@ -175,7 +175,10 @@ IfcUtil::IfcBaseClass* owner_create_owner_history(
         set_error("file is NULL");
         return nullptr;
     }
-    if (!is_ifc2x3(file) && (!user || !application)) {
+    if (!user || !application) {
+        if (is_ifc2x3(file)) {
+            set_error("IFC2X3 owner history requires an owning user and application");
+        }
         return nullptr;
     }
 

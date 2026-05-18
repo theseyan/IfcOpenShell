@@ -46,17 +46,21 @@ def _bind() -> ctypes.CDLL:
     return lib
 
 
-def _matrix_from_values(values: Optional[Iterable[float]]) -> MatrixType:
+def _matrix_from_values(values: Optional[Iterable[float]], *, fallback: str) -> MatrixType:
     if values is None:
-        return np.eye(4)
+        raise RuntimeError(fallback)
     values = list(values)
     if len(values) != 16:
-        return np.eye(4)
+        raise RuntimeError(fallback)
     return np.array(values, dtype=np.float64).reshape((4, 4))
 
 
 def _call_matrix(fn, *args) -> MatrixType:
-    return _matrix_from_values(_generated_capi.call_double_list(_bind(), fn, *args))
+    name = getattr(fn, "__name__", "native placement function")
+    return _matrix_from_values(
+        _generated_capi.call_double_list(_bind(), fn, *args),
+        fallback=f"{name} failed to compute a 4x4 placement matrix",
+    )
 
 
 def a2p(o: Iterable[float], z: Iterable[float], x: Iterable[float]) -> MatrixType:
@@ -82,7 +86,7 @@ def get_axis2placement(placement: "ifcopenshell.entity_instance") -> MatrixType:
         _generated_instance_handle_ptr(placement._handle),
     )
     if matrix_values and len(matrix_values) == 16:
-        return _matrix_from_values(matrix_values)
+        return _matrix_from_values(matrix_values, fallback="Failed to compute axis placement matrix")
     # Fallback for IfcAxis2PlacementLinear with IfcPointByDistanceExpression.
     if placement.is_a("IfcAxis2PlacementLinear"):
         import ifcopenshell.ifcopenshell_wrapper as ifcopenshell_wrapper
@@ -93,7 +97,7 @@ def get_axis2placement(placement: "ifcopenshell.entity_instance") -> MatrixType:
         basis_curve = getattr(location, "BasisCurve", None)
         distance = getattr(location, "DistanceAlong", None)
         if basis_curve is None or distance is None:
-            return np.eye(4)
+            raise RuntimeError("IfcAxis2PlacementLinear is missing a basis curve or distance expression")
 
         unit_scale = ifcopenshell.util.unit.calculate_unit_scale(placement.file)
         distance_along = getattr(distance, "wrappedValue", distance)
@@ -106,18 +110,18 @@ def get_axis2placement(placement: "ifcopenshell.entity_instance") -> MatrixType:
         matrix = np.array(evaluator.evaluate(float(distance_along) * unit_scale), dtype=np.float64)
         matrix[0:3, 3] = matrix[0:3, 3] / unit_scale + matrix[0:3, 1] * float(offset_lateral)
         return matrix
-    return np.eye(4)
+    raise RuntimeError(f"Failed to compute axis placement matrix for {placement.is_a()}")
 
 
 def get_local_placement(placement: Optional["ifcopenshell.entity_instance"] = None) -> MatrixType:
     """Parse an IfcLocalPlacement into a 4x4 transformation matrix."""
     if placement is None:
         return np.eye(4)
-    lib = _bind()
-    return _call_matrix(
-        lib.ifcopenshell_ifcapi_placement_get_local_placement,
-        _generated_instance_handle_ptr(placement._handle),
-    )
+    if (rel_to := placement.PlacementRelTo) is None:
+        parent = np.eye(4)
+    else:
+        parent = get_local_placement(rel_to)
+    return np.dot(parent, get_axis2placement(placement.RelativePlacement))
 
 
 def get_cartesiantransformationoperator3d(inst: "ifcopenshell.entity_instance") -> MatrixType:
@@ -142,7 +146,7 @@ def get_mappeditem_transformation(item: "ifcopenshell.entity_instance") -> Optio
     )
     if not matrix_values or len(matrix_values) != 16:
         return None
-    return _matrix_from_values(matrix_values)
+    return _matrix_from_values(matrix_values, fallback="Failed to compute mapped item transformation matrix")
 
 
 def get_storey_elevation(storey: "ifcopenshell.entity_instance") -> float:

@@ -6,6 +6,8 @@
 #include "ifcapi/bindings/entity.h"
 #include "ifcapi/bindings/geometry.h"
 #include "ifcapi/detail/attribute.h"
+#include "../pset/attribute_props.hpp"
+#include "ifcopenshell_api_internal.hpp"
 
 #include "ifcparse/IfcFile.h"
 
@@ -160,6 +162,19 @@ IfcUtil::IfcBaseClass* context_add_context(
 void context_remove_context(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* context) {
     if (!file || !context) return;
     remove_context_impl(file, context);
+}
+
+void context_edit_context(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* context, ifcopenshell_pset_props_t* attributes) {
+    (void)file;
+    ifcopenshell_clear_error();
+    try {
+        if (!context) {
+            throw std::runtime_error("context_edit_context requires a context");
+        }
+        ifcapi::detail::apply_attribute_props(context, attributes);
+    } catch (const std::exception& e) {
+        ifcopenshell::capi::set_last_error(e.what());
+    }
 }
 
 } // namespace bindings

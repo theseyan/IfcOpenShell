@@ -13,6 +13,7 @@ from ifcopenshell.entity_instance import _generated_instance_handle_ptr
 _BOUND = False
 _BIND_NAMES = (
     "ifcopenshell_ifcapi_context_add_context",
+    "ifcopenshell_ifcapi_context_edit_context",
     "ifcopenshell_ifcapi_context_remove_context",
     "ifcopenshell_ifc_instance_destroy",
     "ifcopenshell_last_error_kind",

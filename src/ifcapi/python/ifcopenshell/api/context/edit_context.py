@@ -19,7 +19,8 @@
 from typing import Any
 
 import ifcopenshell
-from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
+from ifcopenshell.api.context import _capi
+from ifcopenshell.api.pset import _capi as pset_capi
 
 
 def edit_context(file: ifcopenshell.file, context: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
@@ -46,4 +47,15 @@ def edit_context(file: ifcopenshell.file, context: ifcopenshell.entity_instance,
         ifcopenshell.api.context.edit_context(model,
             context=body, attributes={"ContextIdentifier": "Body"})
     """
-    _edit_attributes(file, context, attributes)
+    props = pset_capi.build_props(attributes)
+    try:
+        lib = _capi.get_lib()
+        _capi.call_status(
+            lib.ifcopenshell_ifcapi_context_edit_context,
+            "context_edit_context failed",
+            _capi.file_handle(file),
+            _capi.instance_handle(context),
+            props,
+        )
+    finally:
+        pset_capi.free_props(props)
