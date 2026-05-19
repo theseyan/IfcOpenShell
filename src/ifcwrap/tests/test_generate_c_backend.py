@@ -9,6 +9,7 @@ from src.ifcwrap.binding_generator.binding_model import TypeSpec
 from src.ifcwrap.binding_generator.binding_ir import BindingIR
 from src.ifcwrap.binding_generator.c_backend import _render_result_assignment
 from src.ifcwrap.binding_generator.c_backend import generate
+from src.ifcwrap.binding_generator.c_runtime_support import _render_cpp_support_runtime
 from src.ifcwrap.tests._binding_generator_test_utils import find_repo_compile_commands, require_repo_compile_commands
 
 
@@ -234,6 +235,18 @@ def test_generate_ifcparse_c_backend(tmp_path: Path) -> None:
     assert "data_cpp.size()" in cpp
     assert "set_instance_argument(self_cpp, index, value_cpp);" in cpp
     assert "unset_instance_argument(self_cpp, index);" in cpp
+
+
+def test_runtime_support_renders_cpp_braces_and_json_literals() -> None:
+    runtime = _render_cpp_support_runtime()
+
+    assert "namespace ifcopenshell {" in runtime
+    assert "namespace ifcopenshell {{" not in runtime
+    assert 'return std::string(R"({"ref":)") + std::to_string(reference.v) + "}";' in runtime
+    assert 'out << "{";' in runtime
+    assert 'out << "}";' in runtime
+    assert "{{" not in runtime
+    assert "}}" not in runtime
 
 
 def test_nullable_string_result_returns_successful_null_string_without_allocating() -> None:
