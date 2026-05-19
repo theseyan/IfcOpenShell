@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
+import os
 from pathlib import Path
 import re
 from typing import Any
@@ -319,6 +321,17 @@ def _expect_str(value: Any, context: str) -> str:
         msg = f"{context} must be a non-empty string"
         raise ValueError(msg)
     return value
+
+
+def _bindgen_jobs() -> int:
+    raw = os.environ.get("IFCWRAP_BINDGEN_JOBS")
+    if raw is not None:
+        try:
+            return max(1, int(raw))
+        except ValueError as exc:
+            msg = "IFCWRAP_BINDGEN_JOBS must be a positive integer"
+            raise ValueError(msg) from exc
+    return min(8, max(1, os.cpu_count() or 1))
 
 
 def _expect_int(value: Any, context: str) -> int:
@@ -2515,6 +2528,43 @@ def _discover_function_calls(
         f"spec={debug_path(spec_path)} namespaces={len(discovery.functions)} include_dir={debug_path(include_dir)}",
     )
 
+    discovery_jobs: dict[tuple[str, str, frozenset[str] | None], tuple[str, Path, frozenset[str] | None]] = {}
+    for item in discovery.functions:
+        selected_function_names = _selected_discovery_names(item.include_all, item.include, item.overloads)
+        cache_key = (item.namespace, item.translation_unit, selected_function_names)
+        if cache_key not in discovery_jobs:
+            discovery_jobs[cache_key] = (
+                item.namespace,
+                (include_dir / item.translation_unit).resolve(),
+                selected_function_names,
+            )
+
+    jobs = min(_bindgen_jobs(), len(discovery_jobs)) if discovery_jobs else 1
+    debug_log("spec.discover_functions.jobs", f"spec={debug_path(spec_path)} jobs={jobs} unique_namespaces={len(discovery_jobs)}")
+
+    def discover_one(cache_key: tuple[str, str, frozenset[str] | None]) -> tuple[
+        tuple[str, str, frozenset[str] | None],
+        dict[str, tuple[DiscoveredFunction, ...]],
+    ]:
+        namespace, translation_unit, selected_function_names = discovery_jobs[cache_key]
+        return cache_key, discover_namespace_functions_with_compile_commands(
+            compile_commands_path,
+            translation_unit,
+            namespace,
+            selected_names=selected_function_names,
+        )
+
+    if jobs > 1:
+        with ThreadPoolExecutor(max_workers=jobs) as executor:
+            futures = {executor.submit(discover_one, cache_key): cache_key for cache_key in discovery_jobs}
+            for future in as_completed(futures):
+                cache_key, functions_by_name = future.result()
+                namespace_cache[cache_key] = functions_by_name
+    else:
+        for cache_key in discovery_jobs:
+            cache_key, functions_by_name = discover_one(cache_key)
+            namespace_cache[cache_key] = functions_by_name
+
     for item_index, item in enumerate(discovery.functions, start=1):
         debug_log(
             "spec.discover_functions.namespace",
@@ -2522,13 +2572,7 @@ def _discover_function_calls(
         )
         selected_function_names = _selected_discovery_names(item.include_all, item.include, item.overloads)
         cache_key = (item.namespace, item.translation_unit, selected_function_names)
-        functions_by_name = namespace_cache.get(cache_key)
-        if functions_by_name is None:
-            translation_unit = (include_dir / item.translation_unit).resolve()
-            functions_by_name = discover_namespace_functions_with_compile_commands(
-                compile_commands_path, translation_unit, item.namespace, selected_names=selected_function_names
-            )
-            namespace_cache[cache_key] = functions_by_name
+        functions_by_name = namespace_cache[cache_key]
 
         for overload_spec in item.overloads:
             overloads = functions_by_name.get(overload_spec.cpp_name)

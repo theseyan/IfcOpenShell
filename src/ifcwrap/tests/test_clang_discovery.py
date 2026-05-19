@@ -9,6 +9,7 @@ import pytest
 from src.ifcwrap.binding_generator.clang_discovery import (
     CompileCommand,
     TranslationUnitIndex,
+    _ast_filter_for_lookup,
     discover_namespace_functions_with_compile_commands,
     discover_public_fields_with_compile_commands,
     discover_public_methods_with_compile_commands,
@@ -254,6 +255,141 @@ def test_namespace_discovery_skips_unselected_signatures(tmp_path: Path) -> None
 
     assert set(functions) == {"wanted"}
     assert ast_filters == ["Demo"]
+
+
+def test_qualified_record_lookup_uses_coarse_namespace_filter(tmp_path: Path) -> None:
+    index = TranslationUnitIndex(
+        CompileCommand(directory=tmp_path, file=tmp_path / "bindings.cpp", arguments=("clang++", "-c", "bindings.cpp"))
+    )
+    ast_filters: list[str] = []
+
+    def fake_ast_dump(ast_filter: str) -> tuple[dict, ...]:
+        ast_filters.append(ast_filter)
+        assert ast_filter == "Demo"
+        return (
+            {
+                "kind": "NamespaceDecl",
+                "name": "Demo",
+                "inner": [
+                    {
+                        "kind": "CXXRecordDecl",
+                        "name": "Widget",
+                        "completeDefinition": True,
+                    }
+                ],
+            },
+        )
+
+    index._run_ast_dump = fake_ast_dump  # type: ignore[method-assign]
+
+    assert index.resolve_record("Demo::Widget").qualified_name == "Demo::Widget"
+    assert ast_filters == ["Demo"]
+
+
+def test_scoped_lookup_prefers_longest_matching_suffix(tmp_path: Path) -> None:
+    index = TranslationUnitIndex(
+        CompileCommand(directory=tmp_path, file=tmp_path / "bindings.cpp", arguments=("clang++", "-c", "bindings.cpp"))
+    )
+    ast_filters: list[str] = []
+
+    def fake_ast_dump(ast_filter: str) -> tuple[dict, ...]:
+        ast_filters.append(ast_filter)
+        assert ast_filter == "ifcopenshell::geometry::taxonomy"
+        return (
+            {
+                "kind": "NamespaceDecl",
+                "name": "geometry",
+                "inner": [
+                    {
+                        "kind": "NamespaceDecl",
+                        "name": "taxonomy",
+                        "inner": [
+                            {
+                                "kind": "CXXRecordDecl",
+                                "name": "item",
+                                "completeDefinition": True,
+                            }
+                        ],
+                    },
+                ],
+            },
+            {
+                "kind": "NamespaceDecl",
+                "name": "taxonomy",
+                "inner": [
+                    {
+                        "kind": "CXXRecordDecl",
+                        "name": "item",
+                        "completeDefinition": True,
+                    }
+                ],
+            },
+        )
+
+    index._run_ast_dump = fake_ast_dump  # type: ignore[method-assign]
+
+    record = index.resolve_record("ifcopenshell::geometry::taxonomy::item")
+
+    assert record.qualified_name == "geometry::taxonomy::item"
+    assert ast_filters == ["ifcopenshell::geometry::taxonomy"]
+
+
+def test_scoped_lookup_rejects_true_ambiguity(tmp_path: Path) -> None:
+    index = TranslationUnitIndex(
+        CompileCommand(directory=tmp_path, file=tmp_path / "bindings.cpp", arguments=("clang++", "-c", "bindings.cpp"))
+    )
+
+    def fake_ast_dump(ast_filter: str) -> tuple[dict, ...]:
+        assert ast_filter == "Demo"
+        return (
+            {
+                "kind": "NamespaceDecl",
+                "name": "Alpha",
+                "inner": [
+                    {
+                        "kind": "NamespaceDecl",
+                        "name": "Demo",
+                        "inner": [
+                            {
+                                "kind": "CXXRecordDecl",
+                                "name": "Widget",
+                                "completeDefinition": True,
+                            }
+                        ],
+                    },
+                ],
+            },
+            {
+                "kind": "NamespaceDecl",
+                "name": "Beta",
+                "inner": [
+                    {
+                        "kind": "NamespaceDecl",
+                        "name": "Demo",
+                        "inner": [
+                            {
+                                "kind": "CXXRecordDecl",
+                                "name": "Widget",
+                                "completeDefinition": True,
+                            }
+                        ],
+                    },
+                ],
+            },
+        )
+
+    index._run_ast_dump = fake_ast_dump  # type: ignore[method-assign]
+
+    with pytest.raises(ValueError, match="Ambiguous declaration lookup"):
+        index.resolve_record("Demo::Widget")
+
+
+def test_ast_filter_for_lookup_coarsens_known_qualified_names() -> None:
+    assert _ast_filter_for_lookup("IfcGeom::Iterator") == "IfcGeom"
+    assert _ast_filter_for_lookup("IfcParse::schema_definition") == "IfcParse"
+    assert _ast_filter_for_lookup("ifcopenshell::geometry::taxonomy::item") == "ifcopenshell::geometry::taxonomy"
+    assert _ast_filter_for_lookup("ifcopenshell::geometry::Settings") == "ifcopenshell::geometry"
+    assert _ast_filter_for_lookup("BareType") == "BareType"
 
 
 def test_discovery_skips_known_namespace_roots_before_clang_lookup(tmp_path: Path) -> None:
