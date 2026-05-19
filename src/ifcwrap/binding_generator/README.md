@@ -53,6 +53,12 @@ typed C access.
   Developer-only regeneration mode.
   This regenerates the checked-in C API from `specs/ifcparse.yml` using the
   active build's `compile_commands.json`.
+- `IFCWRAP_BINDGEN_JOBS=<N>`
+  Optional generator-only concurrency for independent Clang discovery jobs.
+  CMake's `--parallel` flag still only controls CMake build scheduling; it does
+  not parallelise the Python generator itself. The default is
+  `min(8, os.cpu_count())`; set `IFCWRAP_BINDGEN_JOBS=1` to force sequential
+  discovery while debugging.
 
 The generated files are intended to be checked in. Normal users of the library
 do not need the generator dependencies.

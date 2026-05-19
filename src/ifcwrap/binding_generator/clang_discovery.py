@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import shlex
 import subprocess
+import threading
 from typing import Iterable
 
 try:
@@ -87,6 +88,22 @@ def _has_skipped_qualified_root(text: str) -> bool:
     if "::" not in text:
         return False
     return text.split("::", 1)[0] in _SKIP_QUALIFIED_ROOTS
+
+
+def _ast_filter_for_lookup(text: str) -> str:
+    if "::" not in text:
+        return text
+    # Avoid a very broad "ifcopenshell" filter while still batching the
+    # heavily-used geometry and taxonomy namespaces.
+    if text.startswith("ifcopenshell::geometry::taxonomy::"):
+        return "ifcopenshell::geometry::taxonomy"
+    if text.startswith("ifcopenshell::geometry::"):
+        return "ifcopenshell::geometry"
+    return text.split("::", 1)[0]
+
+
+def _ast_filter_covers_lookup(ast_filter: str, text: str) -> bool:
+    return text == ast_filter or text.startswith(f"{ast_filter}::")
 
 
 def _selected_key(selected_names: Iterable[str] | None) -> tuple[str, ...] | None:
@@ -187,6 +204,11 @@ class TranslationUnitIndex:
     ] = field(default_factory=dict)
     _record_miss_filters: set[str] = field(default_factory=set)
     _enum_miss_filters: set[str] = field(default_factory=set)
+    _lock: threading.RLock = field(default_factory=threading.RLock)
+
+    def _ensure_lookup_filter_loaded(self, lookup_name: str) -> None:
+        ast_filter = _ast_filter_for_lookup(lookup_name)
+        self.ensure_ast_filter_loaded(ast_filter)
 
     def _run_ast_dump(self, ast_filter: str) -> tuple[dict, ...]:
         debug_log("clang.ast_dump.start", f"tu={debug_path(self.command.file)} filter={ast_filter}")
@@ -246,7 +268,7 @@ class TranslationUnitIndex:
                 continue
             if candidate in self._record_miss_filters:
                 continue
-            self.ensure_ast_filter_loaded(candidate)
+            self._ensure_lookup_filter_loaded(candidate)
 
             record = self._records_by_qualified.get(candidate)
             if record is not None:
@@ -256,7 +278,12 @@ class TranslationUnitIndex:
             simple = _simple_name(candidate)
             simple_candidates = self._record_names_by_simple.get(simple, [])
             if simple_candidates:
-                resolved = self._records_by_qualified[simple_candidates[-1]]
+                resolved = self._resolve_best_scoped_decl(
+                    candidate,
+                    current_scope=current_scope,
+                    qualified=self._records_by_qualified,
+                    simple=self._record_names_by_simple,
+                )
                 if "::" not in resolved.qualified_name:
                     return IndexedRecord(
                         qualified_name=candidate,
@@ -293,7 +320,7 @@ class TranslationUnitIndex:
                 continue
             if candidate in self._enum_miss_filters:
                 continue
-            self.ensure_ast_filter_loaded(candidate)
+            self._ensure_lookup_filter_loaded(candidate)
             enum = self._enums_by_qualified.get(candidate)
             if enum is not None:
                 return enum
@@ -301,7 +328,12 @@ class TranslationUnitIndex:
                 simple = _simple_name(candidate)
                 simple_candidates = self._enum_names_by_simple.get(simple, [])
                 if simple_candidates:
-                    resolved = self._enums_by_qualified[simple_candidates[-1]]
+                    resolved = self._resolve_best_scoped_decl(
+                        candidate,
+                        current_scope=current_scope,
+                        qualified=self._enums_by_qualified,
+                        simple=self._enum_names_by_simple,
+                    )
                     if "::" not in resolved.qualified_name:
                         return IndexedEnum(
                             qualified_name=candidate,
@@ -317,6 +349,14 @@ class TranslationUnitIndex:
         )
 
     def discover_namespace_functions(
+        self,
+        namespace_name: str,
+        selected_names: Iterable[str] | None = None,
+    ) -> dict[str, tuple[DiscoveredFunction, ...]]:
+        with self._lock:
+            return self._discover_namespace_functions(namespace_name, selected_names=selected_names)
+
+    def _discover_namespace_functions(
         self,
         namespace_name: str,
         selected_names: Iterable[str] | None = None,
@@ -398,7 +438,47 @@ class TranslationUnitIndex:
         candidates = simple.get(_simple_name(name), [])
         if not candidates:
             return None
-        return qualified[candidates[-1]]
+        return self._resolve_best_scoped_decl(name, current_scope=current_scope, qualified=qualified, simple=simple)
+
+    def _resolve_best_scoped_decl(
+        self,
+        name: str,
+        current_scope: str,
+        qualified: dict[str, object],
+        simple: dict[str, list[str]],
+    ):
+        candidates = simple.get(_simple_name(name), [])
+        if not candidates:
+            return None
+        if len(candidates) == 1:
+            return qualified[candidates[0]]
+
+        wanted_simple = _simple_name(name)
+
+        def scope_score(candidate: str) -> tuple[int, int, str]:
+            if candidate == name:
+                return (0, 0, candidate)
+            scope = current_scope
+            depth = 1
+            while scope:
+                if candidate == f"{scope}::{wanted_simple}":
+                    return (1, depth, candidate)
+                scope = scope.rsplit("::", 1)[0] if "::" in scope else ""
+                depth += 1
+            if "::" in name and name.endswith(candidate):
+                return (2, -candidate.count("::"), candidate)
+            if "::" in name and candidate.endswith(f"::{name}"):
+                return (3, 0, candidate)
+            if "::" not in candidate:
+                return (4, 0, candidate)
+            return (5, 0, candidate)
+
+        ranked = sorted(candidates, key=scope_score)
+        best = ranked[0]
+        if scope_score(best)[:2] == scope_score(ranked[1])[:2]:
+            msg = f"Ambiguous declaration lookup for '{name}': {ranked}"
+            raise ValueError(msg)
+        return qualified[best]
 
     def _record_declares_nested_name(self, record_name: str, nested_name: str, *, kinds: set[str]) -> bool:
         record = self._records_by_qualified.get(record_name)
@@ -417,6 +497,7 @@ class TranslationUnitIndex:
 
 _COMPILE_COMMAND_CACHE: dict[Path, tuple[CompileCommand, ...]] = {}
 _TRANSLATION_UNIT_INDEX_CACHE: dict[tuple[Path, Path], TranslationUnitIndex] = {}
+_CACHE_LOCK = threading.RLock()
 
 
 def _resolve_path(path: Path, base_dir: Path) -> Path:
@@ -427,26 +508,27 @@ def _resolve_path(path: Path, base_dir: Path) -> Path:
 
 def _parse_compile_commands(path: Path) -> tuple[CompileCommand, ...]:
     resolved_path = path.resolve()
-    cached = _COMPILE_COMMAND_CACHE.get(resolved_path)
-    if cached is not None:
-        return cached
+    with _CACHE_LOCK:
+        cached = _COMPILE_COMMAND_CACHE.get(resolved_path)
+        if cached is not None:
+            return cached
 
-    debug_log("compile_commands.load.start", f"path={debug_path(resolved_path)}")
-    raw = json.loads(resolved_path.read_text(encoding="utf-8"))
-    commands: list[CompileCommand] = []
-    for item in raw:
-        directory = Path(item["directory"]).resolve()
-        file_path = _resolve_path(Path(item["file"]), directory)
-        if "arguments" in item:
-            arguments = tuple(item["arguments"])
-        else:
-            arguments = tuple(shlex.split(item["command"]))
-        commands.append(CompileCommand(directory=directory, file=file_path, arguments=arguments))
+        debug_log("compile_commands.load.start", f"path={debug_path(resolved_path)}")
+        raw = json.loads(resolved_path.read_text(encoding="utf-8"))
+        commands: list[CompileCommand] = []
+        for item in raw:
+            directory = Path(item["directory"]).resolve()
+            file_path = _resolve_path(Path(item["file"]), directory)
+            if "arguments" in item:
+                arguments = tuple(item["arguments"])
+            else:
+                arguments = tuple(shlex.split(item["command"]))
+            commands.append(CompileCommand(directory=directory, file=file_path, arguments=arguments))
 
-    result = tuple(commands)
-    _COMPILE_COMMAND_CACHE[resolved_path] = result
-    debug_log("compile_commands.load.done", f"path={debug_path(resolved_path)} entries={len(result)}")
-    return result
+        result = tuple(commands)
+        _COMPILE_COMMAND_CACHE[resolved_path] = result
+        debug_log("compile_commands.load.done", f"path={debug_path(resolved_path)} entries={len(result)}")
+        return result
 
 
 def _translation_unit_index(compile_commands_path: Path, translation_unit: Path) -> TranslationUnitIndex:
@@ -454,20 +536,21 @@ def _translation_unit_index(compile_commands_path: Path, translation_unit: Path)
     tu_resolved = translation_unit.resolve()
     cache_key = (compile_commands_key, tu_resolved)
 
-    cached = _TRANSLATION_UNIT_INDEX_CACHE.get(cache_key)
-    if cached is not None:
-        return cached
+    with _CACHE_LOCK:
+        cached = _TRANSLATION_UNIT_INDEX_CACHE.get(cache_key)
+        if cached is not None:
+            return cached
 
-    commands = _parse_compile_commands(compile_commands_key)
-    command = next((item for item in commands if item.file == tu_resolved), None)
-    if command is None:
-        msg = f"Translation unit '{translation_unit}' not found in '{compile_commands_path}'"
-        raise ValueError(msg)
+        commands = _parse_compile_commands(compile_commands_key)
+        command = next((item for item in commands if item.file == tu_resolved), None)
+        if command is None:
+            msg = f"Translation unit '{translation_unit}' not found in '{compile_commands_path}'"
+            raise ValueError(msg)
 
-    index = TranslationUnitIndex(command=command)
-    _TRANSLATION_UNIT_INDEX_CACHE[cache_key] = index
-    debug_log("clang.tu_index.create", f"compile_commands={debug_path(compile_commands_key)} tu={debug_path(tu_resolved)}")
-    return index
+        index = TranslationUnitIndex(command=command)
+        _TRANSLATION_UNIT_INDEX_CACHE[cache_key] = index
+        debug_log("clang.tu_index.create", f"compile_commands={debug_path(compile_commands_key)} tu={debug_path(tu_resolved)}")
+        return index
 
 
 def _decode_json_stream(text: str) -> list[dict]:
