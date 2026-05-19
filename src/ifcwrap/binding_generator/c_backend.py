@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-import re
 from typing import Union
 
 try:
@@ -30,8 +29,37 @@ try:
         VariantSetOp,
         lower_binding_spec,
     )
+    from .c_sequence_helpers import (
+        _handle_list_c_type,
+        _handle_list_helper_name,
+        _handle_list_list_c_type,
+        _handle_list_list_helper_name,
+        _render_common_type_impls,
+        _render_handle_list_destroy_impl,
+        _render_handle_list_helpers,
+        _render_handle_list_list_destroy_impl,
+        _render_handle_list_list_helpers,
+        _render_sequence_helpers,
+        _sequence_make_helper,
+        _sequence_to_cpp_helper,
+        _snake_name,
+        _type_spec_sequence_kind,
+        _used_handle_list_handles,
+        _used_scalar_sequence_kinds,
+    )
+    from .c_handle_rendering import _destroy_body, _handle_storage_type, _wrap_handle_expr
+    from .c_header_rendering import _render_header
+    from .c_internal_header import _render_internal_header
     from .debug import debug_log, debug_path
     from .python_ctypes_backend import generate_python_ctypes
+    from .c_type_rendering import (
+        _BUFFER_TYPE_MAP,
+        _SCALAR_TYPE_MAP,
+        _cpp_param_type,
+        _normalize_cpp_type,
+        _out_param_type,
+        _qualify_handle_cpp_fragment,
+    )
 except ImportError:  # pragma: no cover - script execution fallback
     from authored_spec import AuthoredBindingSpec, HandleSpec, MergedBindingSpec, ParamSpec, TypeSpec, load_authored_spec, load_merged_specs
     from binding_ir import (
@@ -57,482 +85,40 @@ except ImportError:  # pragma: no cover - script execution fallback
         VariantSetOp,
         lower_binding_spec,
     )
+    from c_sequence_helpers import (
+        _handle_list_c_type,
+        _handle_list_helper_name,
+        _handle_list_list_c_type,
+        _handle_list_list_helper_name,
+        _render_common_type_impls,
+        _render_handle_list_destroy_impl,
+        _render_handle_list_helpers,
+        _render_handle_list_list_destroy_impl,
+        _render_handle_list_list_helpers,
+        _render_sequence_helpers,
+        _sequence_make_helper,
+        _sequence_to_cpp_helper,
+        _snake_name,
+        _type_spec_sequence_kind,
+        _used_handle_list_handles,
+        _used_scalar_sequence_kinds,
+    )
+    from c_handle_rendering import _destroy_body, _handle_storage_type, _wrap_handle_expr
+    from c_header_rendering import _render_header
+    from c_internal_header import _render_internal_header
     from debug import debug_log, debug_path
     from python_ctypes_backend import generate_python_ctypes
+    from c_type_rendering import (
+        _BUFFER_TYPE_MAP,
+        _SCALAR_TYPE_MAP,
+        _cpp_param_type,
+        _normalize_cpp_type,
+        _out_param_type,
+        _qualify_handle_cpp_fragment,
+    )
 
 # Type alias for spec types
 SourceBindingSpec = Union[AuthoredBindingSpec, MergedBindingSpec]
-
-_SEQUENCE_LEAF_CPP_TYPE: dict[str, str] = {
-    "string": "std::string",
-    "bool": "bool",
-    "int32": "int",
-    "int64": "int64_t",
-    "uint8": "uint8_t",
-    "uint32": "unsigned int",
-    "double": "double",
-}
-
-_SEQUENCE_LEAF_C_TYPE: dict[str, str] = {
-    "string": "ifcopenshell_string_t",
-    "bool": "bool",
-    "int32": "int32_t",
-    "int64": "int64_t",
-    "uint8": "uint8_t",
-    "uint32": "uint32_t",
-    "double": "double",
-}
-
-
-def _sequence_kind_parts(kind: str) -> tuple[str, int] | None:
-    match = re.fullmatch(r"([a-z0-9]+)((?:_list)+)", kind)
-    if match is None:
-        return None
-    leaf = match.group(1)
-    depth = match.group(2).count("_list")
-    if leaf not in _SEQUENCE_LEAF_CPP_TYPE:
-        return None
-    return leaf, depth
-
-
-def _is_sequence_kind(kind: str) -> bool:
-    return _sequence_kind_parts(kind) is not None
-
-
-def _sequence_c_type(kind: str) -> str:
-    return f"ifcopenshell_{kind}_t"
-
-
-def _sequence_destroy_name(kind: str) -> str:
-    return f"ifcopenshell_{kind}_destroy"
-
-
-def _sequence_make_name(kind: str) -> str:
-    return f"make_{kind}"
-
-
-def _sequence_to_cpp_name(kind: str) -> str:
-    return f"to_cpp_{kind}"
-
-
-def _sequence_prev_kind(kind: str) -> str:
-    leaf, depth = _sequence_kind_parts(kind) or ("", 0)
-    if depth <= 1:
-        raise ValueError(f"{kind} has no previous sequence kind")
-    return f"{leaf}{'_list' * (depth - 1)}"
-
-
-def _sequence_cpp_type(kind: str) -> str:
-    leaf, depth = _sequence_kind_parts(kind) or ("", 0)
-    cpp_type = _SEQUENCE_LEAF_CPP_TYPE[leaf]
-    for _ in range(depth):
-        cpp_type = f"std::vector<{cpp_type}>"
-    return cpp_type
-
-
-def _sequence_items_c_type(kind: str) -> str:
-    leaf, depth = _sequence_kind_parts(kind) or ("", 0)
-    if depth == 1:
-        return _SEQUENCE_LEAF_C_TYPE[leaf]
-    return _sequence_c_type(_sequence_prev_kind(kind))
-
-
-def _render_common_type_decls(sequence_kinds: tuple[str, ...]) -> str:
-    typedefs = [
-        """typedef struct ifcopenshell_string_t {
-    char* data;
-    size_t size;
-    bool owned;
-} ifcopenshell_string_t;"""
-        ,
-        """typedef enum ifcopenshell_logical_t {
-    IFCOPENSHELL_LOGICAL_UNKNOWN = -1,
-    IFCOPENSHELL_LOGICAL_FALSE = 0,
-    IFCOPENSHELL_LOGICAL_TRUE = 1
-} ifcopenshell_logical_t;"""
-    ]
-    for kind in sequence_kinds:
-        typedefs.append(
-            f"""typedef struct {_sequence_c_type(kind)} {{
-    {_sequence_items_c_type(kind)}* items;
-    size_t size;
-}} {_sequence_c_type(kind)};"""
-        )
-    decls = ["void ifcopenshell_string_destroy(ifcopenshell_string_t* value);"]
-    decls.extend(f"void {_sequence_destroy_name(kind)}({_sequence_c_type(kind)}* value);" for kind in sequence_kinds)
-    return "\n\n".join((*typedefs, *decls))
-
-
-def _render_sequence_destroy_impl(kind: str) -> str:
-    leaf, depth = _sequence_kind_parts(kind) or ("", 0)
-    if depth == 1 and leaf != "string":
-        body = "    delete[] value->items;"
-    else:
-        child_destroy = "ifcopenshell_string_destroy" if depth == 1 and leaf == "string" else _sequence_destroy_name(_sequence_prev_kind(kind))
-        body = (
-            "    for (size_t i = 0; i < value->size; ++i) {\n"
-            f"        {child_destroy}(&value->items[i]);\n"
-            "    }\n"
-            "    delete[] value->items;"
-        )
-    return f"""void {_sequence_destroy_name(kind)}({_sequence_c_type(kind)}* value) {{
-    if (value == nullptr || value->items == nullptr) {{
-        return;
-    }}
-{body}
-    value->items = nullptr;
-    value->size = 0;
-}}"""
-
-
-def _render_common_type_impls(sequence_kinds: tuple[str, ...]) -> str:
-    impls = [
-        """void ifcopenshell_string_destroy(ifcopenshell_string_t* value) {
-    if (value == nullptr) {
-        return;
-    }
-    if (value->owned && value->data != nullptr) {
-        delete[] value->data;
-    }
-    value->data = nullptr;
-    value->size = 0;
-    value->owned = false;
-}"""
-    ]
-    impls.extend(_render_sequence_destroy_impl(kind) for kind in sequence_kinds)
-    return "\n\n".join(impls)
-
-
-def _render_sequence_make_impl(kind: str) -> str:
-    leaf, depth = _sequence_kind_parts(kind) or ("", 0)
-    cpp_type = _sequence_cpp_type(kind)
-    c_type = _sequence_c_type(kind)
-    if depth == 1:
-        if leaf == "string":
-            item_init = "        items[i] = make_string(values[i]);"
-            # String items allocate; need cleanup on exception
-            return f"""static {c_type} {_sequence_make_name(kind)}(const {cpp_type}& values) {{
-    auto* items = values.empty() ? nullptr : new {_sequence_items_c_type(kind)}[values.size()];
-    size_t initialized = 0;
-    try {{
-        for (size_t i = 0; i < values.size(); ++i) {{
-{item_init}
-            ++initialized;
-        }}
-    }} catch (...) {{
-        for (size_t j = 0; j < initialized; ++j) {{
-            delete[] items[j].data;
-        }}
-        delete[] items;
-        throw;
-    }}
-    return {c_type}{{items, values.size()}};
-}}"""
-        elif leaf == "int32":
-            item_init = "        items[i] = static_cast<int32_t>(values[i]);"
-        elif leaf == "uint32":
-            item_init = "        items[i] = static_cast<uint32_t>(values[i]);"
-        else:
-            item_init = "        items[i] = values[i];"
-        return f"""static {c_type} {_sequence_make_name(kind)}(const {cpp_type}& values) {{
-    auto* items = values.empty() ? nullptr : new {_sequence_items_c_type(kind)}[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {{
-{item_init}
-    }}
-    return {c_type}{{items, values.size()}};
-}}"""
-    prev_kind = _sequence_prev_kind(kind)
-    return f"""static {c_type} {_sequence_make_name(kind)}(const {cpp_type}& values) {{
-    auto* items = values.empty() ? nullptr : new {_sequence_items_c_type(kind)}[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {{
-        items[i] = {_sequence_make_name(prev_kind)}(values[i]);
-    }}
-    return {c_type}{{items, values.size()}};
-}}"""
-
-
-def _render_sequence_to_cpp_impl(kind: str) -> str:
-    leaf, depth = _sequence_kind_parts(kind) or ("", 0)
-    cpp_type = _sequence_cpp_type(kind)
-    c_type = _sequence_c_type(kind)
-    if depth == 1:
-        if leaf == "string":
-            body = (
-                "    std::vector<std::string> result;\n"
-                "    result.reserve(value->size);\n"
-                "    for (size_t i = 0; i < value->size; ++i) {\n"
-                "        const auto& item = value->items[i];\n"
-                '        if (item.data == nullptr && item.size > 0) {\n'
-                '            throw std::runtime_error("string_list contains a null string buffer");\n'
-                "        }\n"
-                '        result.emplace_back(item.data == nullptr ? "" : item.data, item.size);\n'
-                "    }\n"
-                "    return result;"
-            )
-        elif leaf == "bool":
-            body = (
-                "    std::vector<bool> result;\n"
-                "    result.reserve(value->size);\n"
-                "    for (size_t i = 0; i < value->size; ++i) {\n"
-                "        result.push_back(value->items[i]);\n"
-                "    }\n"
-                "    return result;"
-            )
-        else:
-            body = (
-                "    if (value->size == 0) {\n"
-                "        return {};\n"
-                "    }\n"
-                f"    return {cpp_type}(value->items, value->items + value->size);"
-            )
-        return f"""static {cpp_type} {_sequence_to_cpp_name(kind)}(const {c_type}* value) {{
-    validate_list_items("{kind}", value->items, value->size);
-{body}
-}}"""
-    prev_kind = _sequence_prev_kind(kind)
-    return f"""static {cpp_type} {_sequence_to_cpp_name(kind)}(const {c_type}* value) {{
-    validate_list_items("{kind}", value->items, value->size);
-    {cpp_type} result;
-    result.reserve(value->size);
-    for (size_t i = 0; i < value->size; ++i) {{
-        result.push_back({_sequence_to_cpp_name(prev_kind)}(&value->items[i]));
-    }}
-    return result;
-}}"""
-
-
-def _render_sequence_helpers(sequence_kinds: tuple[str, ...]) -> str:
-    blocks: list[str] = []
-    for kind in sequence_kinds:
-        blocks.append(_render_sequence_make_impl(kind))
-        blocks.append(_render_sequence_to_cpp_impl(kind))
-    return "\n\n".join(blocks)
-
-
-def _snake_name(c_type: str) -> str:
-    base = c_type.removeprefix("ifcopenshell_").removesuffix("_t")
-    return base
-
-
-def _handle_list_c_type(handle: HandleSpec) -> str:
-    return f"{handle.c_type.removesuffix('_t')}_list_t"
-
-
-def _handle_list_list_c_type(handle: HandleSpec) -> str:
-    return f"{handle.c_type.removesuffix('_t')}_list_list_t"
-
-
-def _handle_list_helper_name(handle: HandleSpec) -> str:
-    return f"make_{_snake_name(_handle_list_c_type(handle))}"
-
-
-def _handle_list_list_helper_name(handle: HandleSpec) -> str:
-    return f"make_{_snake_name(_handle_list_list_c_type(handle))}"
-
-
-def _render_handle_list_helpers(handle: HandleSpec) -> str:
-    """Generate make_ and to_cpp_ helpers for a handle list type."""
-    list_c = _handle_list_c_type(handle)
-    helper_name = _handle_list_helper_name(handle)
-    snake = _snake_name(list_c)
-    if handle.ptr_type == "shared_ptr":
-        return f"""static {list_c} {helper_name}(const std::vector<std::shared_ptr<{handle.cpp_type}>>& values) {{
-    auto** items = values.empty() ? nullptr : new {handle.c_type}*[values.size()];
-    size_t initialized = 0;
-    try {{
-        for (size_t i = 0; i < values.size(); ++i) {{
-            items[i] = new {handle.c_type}{{values[i]}};
-            ++initialized;
-        }}
-    }} catch (...) {{
-        for (size_t j = 0; j < initialized; ++j) {{ delete items[j]; }}
-        delete[] items;
-        throw;
-    }}
-    return {list_c}{{items, values.size()}};
-}}
-
-static std::vector<std::shared_ptr<{handle.cpp_type}>> to_cpp_{snake}(const {list_c}* values) {{
-    validate_list_items("{snake}", values->items, values->size);
-    std::vector<std::shared_ptr<{handle.cpp_type}>> result;
-    result.reserve(values->size);
-    for (size_t i = 0; i < values->size; ++i) {{
-        auto* item = values->items[i];
-        if (item == nullptr) {{
-            throw std::runtime_error("handle_list contains an invalid handle");
-        }}
-        result.push_back(item->ptr);
-    }}
-    return result;
-}}"""
-    return f"""static {list_c} {helper_name}(const std::vector<{handle.cpp_type}*>& values) {{
-    auto** items = values.empty() ? nullptr : new {handle.c_type}*[values.size()];
-    size_t initialized = 0;
-    try {{
-        for (size_t i = 0; i < values.size(); ++i) {{
-            items[i] = new {handle.c_type}{{values[i], false}};
-            ++initialized;
-        }}
-    }} catch (...) {{
-        for (size_t j = 0; j < initialized; ++j) {{ delete items[j]; }}
-        delete[] items;
-        throw;
-    }}
-    return {list_c}{{items, values.size()}};
-}}
-
-static {list_c} {helper_name}(const std::vector<const {handle.cpp_type}*>& values) {{
-    auto** items = values.empty() ? nullptr : new {handle.c_type}*[values.size()];
-    size_t initialized = 0;
-    try {{
-        for (size_t i = 0; i < values.size(); ++i) {{
-            items[i] = new {handle.c_type}{{const_cast<{handle.cpp_type}*>(values[i]), false}};
-            ++initialized;
-        }}
-    }} catch (...) {{
-        for (size_t j = 0; j < initialized; ++j) {{ delete items[j]; }}
-        delete[] items;
-        throw;
-    }}
-    return {list_c}{{items, values.size()}};
-}}
-
-static {list_c} {helper_name}(std::vector<std::unique_ptr<{handle.cpp_type}>> values) {{
-    auto** items = values.empty() ? nullptr : new {handle.c_type}*[values.size()];
-    size_t initialized = 0;
-    try {{
-        for (size_t i = 0; i < values.size(); ++i) {{
-            items[i] = new {handle.c_type}{{values[i].release(), true}};
-            ++initialized;
-        }}
-    }} catch (...) {{
-        for (size_t j = 0; j < initialized; ++j) {{ delete items[j]; }}
-        delete[] items;
-        throw;
-    }}
-    return {list_c}{{items, values.size()}};
-}}
-
-static std::vector<const {handle.cpp_type}*> to_cpp_{snake}(const {list_c}* values) {{
-    validate_list_items("{snake}", values->items, values->size);
-    std::vector<const {handle.cpp_type}*> result;
-    result.reserve(values->size);
-    for (size_t i = 0; i < values->size; ++i) {{
-        auto* item = values->items[i];
-        if (item == nullptr || item->ptr == nullptr) {{
-            throw std::runtime_error("handle_list contains an invalid handle");
-        }}
-        result.push_back(item->ptr);
-    }}
-    return result;
-}}"""
-
-
-def _render_handle_list_list_helpers(handle: HandleSpec) -> str:
-    list_list_c = _handle_list_list_c_type(handle)
-    list_c = _handle_list_c_type(handle)
-    helper_name = _handle_list_list_helper_name(handle)
-    row_helper_name = _handle_list_helper_name(handle)
-    snake = _snake_name(list_list_c)
-    row_snake = _snake_name(list_c)
-    if handle.ptr_type == "shared_ptr":
-        return f"""static {list_list_c} {helper_name}(const std::vector<std::vector<std::shared_ptr<{handle.cpp_type}>>>& values) {{
-    auto* items = values.empty() ? nullptr : new {list_c}[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {{
-        items[i] = {row_helper_name}(values[i]);
-    }}
-    return {list_list_c}{{items, values.size()}};
-}}
-
-static std::vector<std::vector<std::shared_ptr<{handle.cpp_type}>>> to_cpp_{snake}(const {list_list_c}* values) {{
-    validate_list_items("{snake}", values->items, values->size);
-    std::vector<std::vector<std::shared_ptr<{handle.cpp_type}>>> result;
-    result.reserve(values->size);
-    for (size_t i = 0; i < values->size; ++i) {{
-        result.push_back(to_cpp_{row_snake}(&values->items[i]));
-    }}
-    return result;
-}}"""
-    return f"""static {list_list_c} {helper_name}(const std::vector<std::vector<{handle.cpp_type}*>>& values) {{
-    auto* items = values.empty() ? nullptr : new {list_c}[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {{
-        items[i] = {row_helper_name}(values[i]);
-    }}
-    return {list_list_c}{{items, values.size()}};
-}}
-
-static {list_list_c} {helper_name}(const std::vector<std::vector<const {handle.cpp_type}*>>& values) {{
-    auto* items = values.empty() ? nullptr : new {list_c}[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {{
-        items[i] = {row_helper_name}(values[i]);
-    }}
-    return {list_list_c}{{items, values.size()}};
-}}
-
-static std::vector<std::vector<const {handle.cpp_type}*>> to_cpp_{snake}(const {list_list_c}* values) {{
-    validate_list_items("{snake}", values->items, values->size);
-    std::vector<std::vector<const {handle.cpp_type}*>> result;
-    result.reserve(values->size);
-    for (size_t i = 0; i < values->size; ++i) {{
-        result.push_back(to_cpp_{row_snake}(&values->items[i]));
-    }}
-    return result;
-}}"""
-
-
-def _used_handle_list_handles(spec: BindingIR) -> tuple[HandleSpec, ...]:
-    seen: set[str] = set()
-    handles: list[HandleSpec] = []
-    for call in (*spec.functions, *spec.methods):
-        if call.returns.kind == "handle" and call.returns.sequence_depth > 0:
-            handle_name = call.returns.handle
-            if handle_name not in seen:
-                seen.add(handle_name)
-                handles.append(spec.handles[handle_name])
-        for param in call.params:
-            if param.type.kind != "handle" or param.type.sequence_depth == 0:
-                continue
-            handle_name = param.type.handle
-            if handle_name in seen:
-                continue
-            seen.add(handle_name)
-            handles.append(spec.handles[handle_name])
-    return tuple(handles)
-
-
-def _used_scalar_sequence_kinds(spec: BindingIR) -> tuple[str, ...]:
-    seen: set[str] = set()
-    ordered: list[str] = []
-
-    def add_type(type_spec: TypeSpec) -> None:
-        kind = _type_spec_sequence_kind(type_spec)
-        if kind is None:
-            return
-        parts = _sequence_kind_parts(kind)
-        if parts is None:
-            return
-        leaf, depth = parts
-        for current_depth in range(1, depth + 1):
-            current_kind = f"{leaf}{'_list' * current_depth}"
-            if current_kind not in seen:
-                seen.add(current_kind)
-                ordered.append(current_kind)
-
-    for call in (*spec.functions, *spec.methods):
-        add_type(call.returns)
-        for param in call.params:
-            add_type(param.type)
-    return tuple(ordered)
-
-
-def _normalize_cpp_type(cpp_type: str | None) -> str:
-    if not cpp_type:
-        return ""
-    cpp_type = re.sub(r"/\*.*?\*/", "", cpp_type)
-    return " ".join(
-        cpp_type.replace(" &", "&").replace(" *", "*").replace("< ", "<").replace(" >", ">").split()
-    )
-
 
 def _set_element_cpp_type(cpp_type: str | None) -> str | None:
     normalized = _normalize_cpp_type(cpp_type)
@@ -542,316 +128,6 @@ def _set_element_cpp_type(cpp_type: str | None) -> str | None:
     if not normalized.startswith("std::set<") or not normalized.endswith(">"):
         return None
     return normalized[len("std::set<") : -1].strip()
-
-
-def _qualify_handle_cpp_fragment(cpp_fragment: str, handle_cpp_type: str) -> str:
-    qualified = _normalize_cpp_type(handle_cpp_type)
-    simple = qualified.rsplit("::", 1)[-1]
-    if not simple or "::" in cpp_fragment:
-        return cpp_fragment
-    return re.sub(rf"\b{re.escape(simple)}\b", qualified, cpp_fragment)
-
-
-# Mapping from type kind to (param_type, out_type, result_template, needs_conversion).
-# Entries with None require handle-specific logic handled separately.
-_SCALAR_TYPE_MAP: dict[str, tuple[str, str, str]] = {
-    "bool":            ("bool",     "bool*",     "*out_result = {expr};"),
-    "logical":         ("ifcopenshell_logical_t", "ifcopenshell_logical_t*", "*out_result = static_cast<ifcopenshell_logical_t>({expr});"),
-    "int32":           ("int32_t",  "int32_t*",  "*out_result = static_cast<int32_t>({expr});"),
-    "int64":           ("int64_t",  "int64_t*",  "*out_result = static_cast<int64_t>({expr});"),
-    "double":          ("double",   "double*",   "*out_result = static_cast<double>({expr});"),
-    "uint32":          ("uint32_t", "uint32_t*", "*out_result = static_cast<uint32_t>({expr});"),
-    "size":            ("size_t",   "size_t*",   "*out_result = static_cast<size_t>({expr});"),
-}
-
-_BUFFER_TYPE_MAP: dict[str, tuple[str, str]] = {
-    "double_buffer": ("const double*",   "const double**"),
-    "int32_buffer":  ("const int32_t*",  "const int32_t**"),
-}
-
-
-def _sequence_param_type(kind: str) -> str:
-    return f"const {_sequence_c_type(kind)}*"
-
-
-def _sequence_out_type(kind: str) -> str:
-    return f"{_sequence_c_type(kind)}*"
-
-
-def _sequence_make_helper(kind: str) -> str:
-    return _sequence_make_name(kind)
-
-
-def _sequence_to_cpp_helper(kind: str) -> str:
-    return _sequence_to_cpp_name(kind)
-
-
-def _type_spec_sequence_kind(type_spec: TypeSpec) -> str | None:
-    if type_spec.sequence_depth <= 0:
-        return None
-    if type_spec.kind == "handle":
-        return None
-    return f"{type_spec.kind}{'_list' * type_spec.sequence_depth}"
-
-
-def _needs_conversion(type_spec: TypeSpec) -> bool:
-    return (
-        type_spec.kind in _SCALAR_TYPE_MAP
-        or type_spec.kind == "string"
-        or type_spec.sequence_depth > 0
-        or type_spec.kind in {"handle", "opaque_ptr"}
-    )
-
-
-def _cpp_param_type(param: ParamSpec, spec: BindingIR) -> str:
-    type_spec = param.type
-    kind = type_spec.kind
-    sequence_kind = _type_spec_sequence_kind(type_spec)
-    if sequence_kind is not None:
-        return _sequence_param_type(sequence_kind)
-    if kind in _SCALAR_TYPE_MAP:
-        return _SCALAR_TYPE_MAP[kind][0]
-    if kind == "string":
-        return "const char*"
-    if kind in _BUFFER_TYPE_MAP:
-        return _BUFFER_TYPE_MAP[kind][0]
-    if kind == "handle":
-        if param.type.sequence_depth == 1:
-            return f"const {_handle_list_c_type(spec.handles[param.type.handle])}*"
-        if param.type.sequence_depth == 2:
-            return f"const {_handle_list_list_c_type(spec.handles[param.type.handle])}*"
-        return f"{spec.handles[param.type.handle].c_type}*"
-    if kind == "opaque_ptr":
-        return "void*"
-    if kind == "struct":
-        if type_spec.struct is None:
-            raise ValueError("struct parameter is missing struct name")
-        return spec.result_structs[type_spec.struct].c_type
-    msg = f"Unsupported parameter kind: {kind}"
-    raise ValueError(msg)
-
-
-def _out_param_type(type_spec: TypeSpec, spec: BindingIR) -> str:
-    kind = type_spec.kind
-    sequence_kind = _type_spec_sequence_kind(type_spec)
-    if kind == "void":
-        msg = "void has no out parameter"
-        raise ValueError(msg)
-    if sequence_kind is not None:
-        return _sequence_out_type(sequence_kind)
-    if kind in _SCALAR_TYPE_MAP:
-        return _SCALAR_TYPE_MAP[kind][1]
-    if kind == "string":
-        return "ifcopenshell_string_t*"
-    if kind in _BUFFER_TYPE_MAP:
-        return _BUFFER_TYPE_MAP[kind][1]
-    if kind == "handle":
-        if type_spec.sequence_depth == 1:
-            return f"{_handle_list_c_type(spec.handles[type_spec.handle])}*"
-        if type_spec.sequence_depth == 2:
-            return f"{_handle_list_list_c_type(spec.handles[type_spec.handle])}*"
-        return f"{spec.handles[type_spec.handle].c_type}**"
-    if kind == "opaque_ptr":
-        return "void**"
-    if kind == "struct":
-        if type_spec.struct is None:
-            raise ValueError("struct return is missing struct name")
-        return f"{spec.result_structs[type_spec.struct].c_type}*"
-    msg = f"Unsupported return kind: {kind}"
-    raise ValueError(msg)
-
-
-def _result_struct_field_c_type(type_spec: TypeSpec, spec: BindingIR) -> str:
-    sequence_kind = _type_spec_sequence_kind(type_spec)
-    if sequence_kind is not None:
-        return _sequence_c_type(sequence_kind)
-    if type_spec.kind in _SCALAR_TYPE_MAP:
-        return _SCALAR_TYPE_MAP[type_spec.kind][0]
-    if type_spec.kind == "string":
-        return "ifcopenshell_string_t"
-    if type_spec.kind == "handle":
-        if type_spec.sequence_depth == 1:
-            return _handle_list_c_type(spec.handles[type_spec.handle])
-        if type_spec.sequence_depth == 2:
-            return _handle_list_list_c_type(spec.handles[type_spec.handle])
-        return f"{spec.handles[type_spec.handle].c_type}*"
-    if type_spec.kind == "opaque_ptr":
-        return "void*"
-    raise ValueError(f"Unsupported result struct field kind: {type_spec.kind}")
-
-
-def _render_result_struct_decl(struct: object, spec: BindingIR) -> str:
-    fields = "\n".join(
-        f"    {_result_struct_field_c_type(field.type, spec)} {field.name};"
-        for field in struct.fields
-    )
-    return f"typedef struct {struct.c_type} {{\n{fields}\n}} {struct.c_type};"
-
-
-def _render_call_decl(call: CallIR, spec: BindingIR) -> str:
-    parts = []
-    if call.receiver is not None:
-        parts.append(f"{spec.handles[call.receiver].c_type}* self")
-    try:
-        parts.extend(f"{_cpp_param_type(param, spec)} {param.name}" for param in call.params)
-    except ValueError as exc:
-        msg = f"{exc} in call {call.c_name}"
-        raise ValueError(msg) from exc
-    if call.returns.kind != "void":
-        parts.append(f"{_out_param_type(call.returns, spec)} out_result")
-    params = ", ".join(parts) if parts else "void"
-    return f"bool {call.c_name}({params});"
-
-
-def _render_handle_destroy_decl(handle: HandleSpec) -> str:
-    return f"void ifcopenshell_{_snake_name(handle.c_type)}_destroy({handle.c_type}* handle);"
-
-
-def _render_handle_list_destroy_decl(handle: HandleSpec) -> str:
-    list_c_type = _handle_list_c_type(handle)
-    return f"void ifcopenshell_{_snake_name(list_c_type)}_destroy({list_c_type}* value);"
-
-
-def _render_handle_list_list_destroy_decl(handle: HandleSpec) -> str:
-    list_list_c_type = _handle_list_list_c_type(handle)
-    return f"void ifcopenshell_{_snake_name(list_list_c_type)}_destroy({list_list_c_type}* value);"
-
-
-def _render_header(spec: BindingIR) -> str:
-    debug_log(
-        "c_backend.render_header.start",
-        f"module={spec.module} handles={len(spec.handles)} functions={len(spec.functions)} methods={len(spec.methods)}",
-    )
-    guard = f"{spec.c_prefix.upper()}_API_H"
-    handle_forwards = "\n".join(f"typedef struct {handle.c_type} {handle.c_type};" for handle in spec.handles.values())
-    handle_list_types = _used_handle_list_handles(spec)
-    handle_list_forwards = "\n".join(
-        f"typedef struct {_handle_list_c_type(handle)} {{\n"
-        f"    {handle.c_type}** items;\n"
-        f"    size_t size;\n"
-        f"}} {_handle_list_c_type(handle)};"
-        for handle in handle_list_types
-    )
-    handle_list_list_forwards = "\n".join(
-        f"typedef struct {_handle_list_list_c_type(handle)} {{\n"
-        f"    {_handle_list_c_type(handle)}* items;\n"
-        f"    size_t size;\n"
-        f"}} {_handle_list_list_c_type(handle)};"
-        for handle in handle_list_types
-    )
-    result_struct_decls = "\n\n".join(
-        _render_result_struct_decl(struct, spec)
-        for struct in spec.result_structs.values()
-    )
-    destroy_decls = "\n".join(_render_handle_destroy_decl(handle) for handle in spec.handles.values())
-    handle_list_destroy_decls = "\n".join(_render_handle_list_destroy_decl(handle) for handle in handle_list_types)
-    handle_list_list_destroy_decls = "\n".join(_render_handle_list_list_destroy_decl(handle) for handle in handle_list_types)
-    call_decls = "\n".join(_render_call_decl(call, spec) for call in (*spec.functions, *spec.methods))
-    sequence_kinds = _used_scalar_sequence_kinds(spec)
-    common_type_decls = _render_common_type_decls(sequence_kinds)
-
-    rendered = f"""#ifndef {guard}
-#define {guard}
-
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-
-#ifdef __cplusplus
-extern "C" {{
-#endif
-
-/* Common types - guarded to allow multiple API headers to be included */
-#ifndef IFCOPENSHELL_COMMON_TYPES_DEFINED
-#define IFCOPENSHELL_COMMON_TYPES_DEFINED
-
-{common_type_decls}
-
-#endif /* IFCOPENSHELL_COMMON_TYPES_DEFINED */
-
-{handle_forwards}
-
-{handle_list_forwards}
-{handle_list_list_forwards}
-
-{result_struct_decls}
-
-typedef enum {{
-    IFCOPENSHELL_ERROR_NONE = 0,
-    IFCOPENSHELL_ERROR_RUNTIME = 1,
-    IFCOPENSHELL_ERROR_VALUE = 2,
-    IFCOPENSHELL_ERROR_TYPE = 3,
-    IFCOPENSHELL_ERROR_NOT_IMPLEMENTED = 4,
-    IFCOPENSHELL_ERROR_KEY = 5
-}} ifcopenshell_error_kind_t;
-
-void {spec.c_prefix}_clear_error(void);
-const char* {spec.c_prefix}_last_error_message(void);
-int {spec.c_prefix}_last_error_kind(void);
-
-{destroy_decls}
-{handle_list_destroy_decls}
-{handle_list_list_destroy_decls}
-
-{call_decls}
-
-#ifdef __cplusplus
-}}
-#endif
-
-#endif
-"""
-    debug_log("c_backend.render_header.done", f"module={spec.module} bytes={len(rendered)}")
-    return rendered
-
-
-def _handle_storage_type(handle: HandleSpec) -> str:
-    if handle.name == "attribute_value":
-        return "AttributeValue"
-    if handle.name == "instance_list":
-        return "aggregate_of_instance::ptr"
-    if handle.ptr_type == "shared_ptr":
-        return f"std::shared_ptr<{handle.cpp_type}>"
-    return f"{handle.cpp_type}*"
-
-
-def _destroy_body(handle: HandleSpec) -> str:
-    if handle.name in {"attribute_value", "instance_list"}:
-        return "delete handle;"
-    if handle.destructor.startswith("function:"):
-        destructor = handle.destructor[len("function:") :].strip()
-        return f"if (handle->owned && handle->ptr) {{ {destructor}(handle->ptr); }}\n    delete handle;"
-    if handle.destructor == "shared_ptr":
-        # For shared_ptr handles, the shared_ptr destructor handles the ref count
-        return "handle->ptr.reset();\n    delete handle;"
-    if handle.destructor == "delete":
-        return "if (handle->owned && handle->ptr) { delete handle->ptr; }\n    delete handle;"
-    return "delete handle;"
-
-
-def _wrap_handle_expr(type_spec: TypeSpec, expr: str, spec: BindingIR) -> str:
-    handle = spec.handles[type_spec.handle]
-    owned = "true" if type_spec.ownership == "owned" else "false"
-    if handle.name in {"attribute_value", "instance_list"}:
-        return f"new {handle.c_type}{{{expr}}}"
-    if handle.ptr_type == "shared_ptr":
-        # For shared_ptr types, we copy the shared_ptr
-        return f"new {handle.c_type}{{{expr}}}"
-    normalized_cpp_type = _normalize_cpp_type(type_spec.cpp_type)
-    if normalized_cpp_type.startswith("std::unique_ptr<"):
-        return f"new {handle.c_type}{{{expr}.release(), true}}"
-    pointer_expr = expr
-    if normalized_cpp_type.endswith("&"):
-        pointer_expr = f"&({expr})"
-    if normalized_cpp_type.startswith("const "):
-        cast_target = normalized_cpp_type
-        while cast_target.startswith("const "):
-            cast_target = cast_target[len("const ") :].strip()
-        while cast_target.endswith("&") or cast_target.endswith("*"):
-            cast_target = cast_target[:-1].strip()
-        cast_target = _qualify_handle_cpp_fragment(cast_target, handle.cpp_type)
-        pointer_expr = f"const_cast<{cast_target}*>({pointer_expr})"
-    return f"new {handle.c_type}{{{pointer_expr}, {owned}}}"
 
 
 def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
@@ -1276,130 +552,6 @@ def _render_call_impl(call: CallIR, spec: BindingIR) -> str:
 }}"""
 
 
-def _render_internal_header(spec: BindingIR, header_name: str) -> str:
-    """Render an internal C++ header that exposes handle struct definitions and
-    error helpers so that other C++ translation units (e.g. the handwritten
-    high-level layer in src/ifcapi) can interoperate with the autogen C API
-    natively, sharing the same opaque handle types declared in the public
-    header.
-
-    The header is intentionally NOT installed and is meant to be included only
-    by code that lives in the same source tree as the autogen output.
-    """
-    debug_log(
-        "c_backend.render_internal_header.start",
-        f"module={spec.module} handles={len(spec.handles)}",
-    )
-    handle_structs = []
-    for handle in spec.handles.values():
-        storage_type = _handle_storage_type(handle)
-        if handle.name in {"attribute_value", "instance_list"}:
-            handle_structs.append(f"struct {handle.c_type} {{\n    {storage_type} value;\n}};")
-        elif handle.ptr_type == "shared_ptr":
-            handle_structs.append(f"struct {handle.c_type} {{\n    {storage_type} ptr;\n}};")
-        else:
-            handle_structs.append(f"struct {handle.c_type} {{\n    {storage_type} ptr;\n    bool owned;\n}};")
-    handle_structs_block = "\n\n".join(handle_structs)
-    includes = "\n".join(
-        f'#include {header}' if header.startswith('<') else f'#include "{header}"'
-        for header in spec.public_headers
-    )
-    guard = f"{spec.c_prefix.upper()}_API_INTERNAL_HPP"
-    rendered = f"""// Auto-generated by src/ifcwrap/binding_generator/c_backend.py.
-// Do not edit by hand; regenerate via the binding generator.
-//
-// This header exposes the C++ definitions backing the opaque handle types
-// declared in {header_name}. It is intended for INTERNAL use by C++ translation
-// units that want to interoperate with the autogen C API natively (notably the
-// handwritten high-level layer that ships alongside the autogen library). It
-// is NOT a public/installed header.
-
-#ifndef {guard}
-#define {guard}
-
-#include "{header_name}"
-
-#include <memory>
-#include <sstream>
-#include <string>
-#include <vector>
-
-{includes}
-#include "aggregate_of_instance.h"
-#include "IfcEntityInstanceData.h"
-
-{handle_structs_block}
-
-namespace ifcopenshell {{
-namespace capi {{
-
-// Thread-local storage for the most recent error string. Populated by
-// set_last_error() and read via the public {spec.c_prefix}_last_error_message().
-extern thread_local std::string g_last_error;
-extern thread_local int g_last_error_kind;
-
-// Set the global error message that will be returned by
-// {spec.c_prefix}_last_error_message(). Use this from external translation
-// units (e.g. high-level handwritten functions) to participate in the same
-// error reporting channel as the autogen API.
-void set_last_error(const std::string& message);
-void set_last_error(int kind, const std::string& message);
-
-// ------------------------------------------------------------------
-// Handle wrap/unwrap helpers
-// ------------------------------------------------------------------
-//
-// These thin inline accessors let handwritten C++ translation units convert
-// between the opaque public handle types and the underlying C++ pointers
-// without duplicating the struct layouts. They preserve the `owned` flag
-// when wrapping so that callers can decide whether the returned handle
-// should free its target when destroyed.
-
-inline IfcParse::IfcFile* unwrap_file({spec.c_prefix}_ifc_file_t* h) {{
-    return h ? h->ptr : nullptr;
-}}
-
-inline const IfcParse::IfcFile* unwrap_file(const {spec.c_prefix}_ifc_file_t* h) {{
-    return h ? h->ptr : nullptr;
-}}
-
-inline IfcUtil::IfcBaseClass* unwrap_instance({spec.c_prefix}_ifc_instance_t* h) {{
-    return h ? h->ptr : nullptr;
-}}
-
-inline const IfcUtil::IfcBaseClass* unwrap_instance(const {spec.c_prefix}_ifc_instance_t* h) {{
-    return h ? h->ptr : nullptr;
-}}
-
-// Wrap a raw C++ instance pointer in a freshly allocated handle. Pass
-// owned=false (the default) for instances whose lifetime is owned by an
-// IfcFile; pass owned=true only when the caller is responsible for
-// deleting the wrapped instance.
-inline {spec.c_prefix}_ifc_instance_t* wrap_instance(IfcUtil::IfcBaseClass* p, bool owned = false) {{
-    if (!p) return nullptr;
-    auto* h = new {spec.c_prefix}_ifc_instance_t;
-    h->ptr = p;
-    h->owned = owned;
-    return h;
-}}
-
-inline {spec.c_prefix}_ifc_file_t* wrap_file(IfcParse::IfcFile* p, bool owned = true) {{
-    if (!p) return nullptr;
-    auto* h = new {spec.c_prefix}_ifc_file_t;
-    h->ptr = p;
-    h->owned = owned;
-    return h;
-}}
-
-}} // namespace capi
-}} // namespace ifcopenshell
-
-#endif // {guard}
-"""
-    debug_log("c_backend.render_internal_header.done", f"module={spec.module} bytes={len(rendered)}")
-    return rendered
-
-
 def _render_cpp(spec: BindingIR, header_name: str) -> str:
     debug_log(
         "c_backend.render_cpp.start",
@@ -1448,35 +600,9 @@ def _render_cpp(spec: BindingIR, header_name: str) -> str:
     handle_list_list_helpers = "\n\n".join(
         _render_handle_list_list_helpers(handle) for handle in handle_list_types
     )
-    handle_list_destroy_impls = "\n\n".join(
-        f"""void ifcopenshell_{_snake_name(_handle_list_c_type(handle))}_destroy({_handle_list_c_type(handle)}* value) {{
-    if (value == nullptr || value->items == nullptr) {{
-        return;
-    }}
-    for (size_t i = 0; i < value->size; ++i) {{
-        if (value->items[i] != nullptr) {{
-            ifcopenshell_{_snake_name(handle.c_type)}_destroy(value->items[i]);
-        }}
-    }}
-    delete[] value->items;
-    value->items = nullptr;
-    value->size = 0;
-}}"""
-        for handle in handle_list_types
-    )
+    handle_list_destroy_impls = "\n\n".join(_render_handle_list_destroy_impl(handle) for handle in handle_list_types)
     handle_list_list_destroy_impls = "\n\n".join(
-        f"""void ifcopenshell_{_snake_name(_handle_list_list_c_type(handle))}_destroy({_handle_list_list_c_type(handle)}* value) {{
-    if (value == nullptr || value->items == nullptr) {{
-        return;
-    }}
-    for (size_t i = 0; i < value->size; ++i) {{
-        ifcopenshell_{_snake_name(_handle_list_c_type(handle))}_destroy(&value->items[i]);
-    }}
-    delete[] value->items;
-    value->items = nullptr;
-    value->size = 0;
-}}"""
-        for handle in handle_list_types
+        _render_handle_list_list_destroy_impl(handle) for handle in handle_list_types
     )
 
     # Only emit common type implementations if this is not a dependent module.
