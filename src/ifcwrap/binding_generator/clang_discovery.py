@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import shlex
 import subprocess
+import tempfile
 import threading
 from typing import Iterable
 
@@ -553,6 +554,55 @@ def _translation_unit_index(compile_commands_path: Path, translation_unit: Path)
         return index
 
 
+def _is_relative_to(path: Path, parent: Path) -> bool:
+    try:
+        path.resolve().relative_to(parent.resolve())
+    except ValueError:
+        return False
+    return True
+
+
+def _choose_reference_compile_command(
+    compile_commands_path: Path,
+    reference_source_root: Path | None,
+) -> CompileCommand:
+    commands = _parse_compile_commands(compile_commands_path)
+    candidates = commands
+    if reference_source_root is not None:
+        source_root = reference_source_root.resolve()
+        candidates = tuple(command for command in commands if _is_relative_to(command.file, source_root))
+    if not candidates:
+        msg = f"No compile command found under '{reference_source_root}'"
+        raise ValueError(msg)
+    return sorted(candidates, key=lambda item: str(item.file))[0]
+
+
+def _is_compile_source_token(token: str, command: CompileCommand) -> bool:
+    if token == str(command.file):
+        return True
+    if token.startswith("-"):
+        return False
+    try:
+        return _resolve_path(Path(token), command.directory) == command.file
+    except RuntimeError:
+        return False
+
+
+def _synthetic_compile_arguments(command: CompileCommand, synthetic_source: Path) -> tuple[str, ...]:
+    synthetic = str(synthetic_source)
+    replaced = False
+    arguments: list[str] = []
+    for token in command.arguments:
+        if _is_compile_source_token(token, command):
+            arguments.append(synthetic)
+            replaced = True
+        else:
+            arguments.append(token)
+    if not replaced:
+        arguments.extend(["-c", synthetic])
+    return tuple(arguments)
+
+
 def _decode_json_stream(text: str) -> list[dict]:
     decoder = json.JSONDecoder()
     objects: list[dict] = []
@@ -876,6 +926,31 @@ def discover_namespace_functions_with_compile_commands(
 ) -> dict[str, tuple[DiscoveredFunction, ...]]:
     index = _translation_unit_index(compile_commands_path, translation_unit)
     return index.discover_namespace_functions(namespace_name, selected_names=selected_names)
+
+
+def discover_namespace_functions_with_synthetic_source(
+    compile_commands_path: Path,
+    source_text: str,
+    namespace_name: str,
+    selected_names: Iterable[str] | None = None,
+    *,
+    reference_source_root: Path | None = None,
+) -> dict[str, tuple[DiscoveredFunction, ...]]:
+    reference_command = _choose_reference_compile_command(compile_commands_path, reference_source_root)
+    with tempfile.TemporaryDirectory(prefix="ifcwrap-bindgen-") as tmp_dir:
+        synthetic_source = Path(tmp_dir) / "contract_discovery.cpp"
+        synthetic_source.write_text(source_text, encoding="utf-8")
+        command = CompileCommand(
+            directory=reference_command.directory,
+            file=synthetic_source,
+            arguments=_synthetic_compile_arguments(reference_command, synthetic_source),
+        )
+        debug_log(
+            "clang.synthetic_tu_index.create",
+            f"compile_commands={debug_path(compile_commands_path)} reference={debug_path(reference_command.file)}",
+        )
+        index = TranslationUnitIndex(command=command)
+        return index.discover_namespace_functions(namespace_name, selected_names=selected_names)
 
 
 def _normalize_cpp_type_text(text: str) -> str:

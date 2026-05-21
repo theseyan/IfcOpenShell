@@ -22,8 +22,8 @@ struct ifcopenshell_pset_props_t;
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING const char* attribute_get_primitive_type(const IfcParse::attribute* attribute);
-IFCAPI_BINDING std::vector<std::string> attribute_get_enum_items(const IfcParse::attribute* attribute);
+const char* attribute_get_primitive_type(const IfcParse::attribute* attribute);
+std::vector<std::string> attribute_get_enum_items(const IfcParse::attribute* attribute);
 IFCAPI_BINDING void attribute_edit_attributes(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* product,

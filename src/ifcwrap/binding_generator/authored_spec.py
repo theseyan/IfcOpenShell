@@ -91,9 +91,11 @@ try:
         DiscoveredFunction,
         DiscoveredMethod,
         discover_namespace_functions_with_compile_commands,
+        discover_namespace_functions_with_synthetic_source,
         discover_public_fields_with_compile_commands,
         discover_public_methods_with_compile_commands,
     )
+    from .contract_discovery import discover_marked_functions_in_headers
 except ImportError:  # pragma: no cover - script execution fallback
     from clang_discovery import (
         DiscoveredCppType,
@@ -101,9 +103,11 @@ except ImportError:  # pragma: no cover - script execution fallback
         DiscoveredFunction,
         DiscoveredMethod,
         discover_namespace_functions_with_compile_commands,
+        discover_namespace_functions_with_synthetic_source,
         discover_public_fields_with_compile_commands,
         discover_public_methods_with_compile_commands,
     )
+    from contract_discovery import discover_marked_functions_in_headers
 
 try:
     from .semantic_types import (
@@ -239,7 +243,7 @@ class DiscoverySpec:
 @dataclass(frozen=True)
 class DiscoveryFunctionSpec:
     namespace: str
-    translation_unit: str
+    translation_unit: str | None
     include_all: bool
     include: tuple[str, ...]
     exclude: tuple[str, ...]
@@ -1106,7 +1110,12 @@ def _parse_discovery(
     for index, item in enumerate(_expect_list(mapping.get("functions", []), f"{context}.functions")):
         item_context = f"{context}.functions[{index}]"
         item_mapping = _expect_mapping(item, item_context)
-        translation_unit = _expect_str(item_mapping.get("translation_unit"), f"{item_context}.translation_unit")
+        translation_unit_raw = item_mapping.get("translation_unit")
+        translation_unit = (
+            _expect_str(translation_unit_raw, f"{item_context}.translation_unit")
+            if translation_unit_raw is not None
+            else None
+        )
         namespace = _expect_str(item_mapping.get("namespace"), f"{item_context}.namespace")
         include_all = item_mapping.get("include_all", function_include_all_default)
         if not isinstance(include_all, bool):
@@ -1157,7 +1166,7 @@ def _parse_discovery(
                     known_result_structs=known_result_structs,
                 )
             type_overrides[function_name] = DiscoveryTypeOverrideSpec(returns=returns, params=params)
-        if not include_all and not include and not overloads:
+        if translation_unit is not None and not include_all and not include and not overloads:
             msg = f"{item_context} must specify include_all: true or a non-empty include list"
             raise ValueError(msg)
         functions.append(
@@ -1303,11 +1312,13 @@ def _type_spec_from_record_semantic(
     handles: dict[str, HandleSpec],
     ownership: str,
     nullable: bool,
+    own_shared_ptr: bool = False,
 ) -> TypeSpec | None:
     for match_name in semantic_record_match_names(semantic):
         handle_name = _find_handle_for_cpp_type(match_name, handles)
         if handle_name is not None:
-            resolved_ownership = "owned" if semantic.pointer_wrapper == "unique_ptr" else ownership
+            is_shared_ptr = semantic.pointer_wrapper == "shared_ptr" or _normalize_cpp_type(semantic.cpp_type).endswith("::ptr")
+            resolved_ownership = "owned" if semantic.pointer_wrapper == "unique_ptr" or (own_shared_ptr and is_shared_ptr) else ownership
             return TypeSpec(
                 kind="handle",
                 handle=handle_name,
@@ -1315,6 +1326,29 @@ def _type_spec_from_record_semantic(
                 nullable=nullable,
                 cpp_type=semantic.cpp_type,
             )
+    return None
+
+
+def _type_spec_from_result_struct_semantic(
+    semantic: RecordSemanticType,
+    result_structs: dict[str, ResultStructSpec],
+) -> TypeSpec | None:
+    for match_name in semantic_record_match_names(semantic):
+        for struct_name, struct in result_structs.items():
+            if _cpp_type_names_match(struct.cpp_type, match_name):
+                return TypeSpec(kind="struct", struct=struct_name, cpp_type=semantic.cpp_type)
+    return None
+
+
+def _type_spec_from_logical_semantic(semantic: RecordSemanticType) -> TypeSpec | None:
+    if any(_cpp_type_names_match("boost::logic::tribool", match_name) for match_name in semantic_record_match_names(semantic)):
+        return TypeSpec(kind="logical", cpp_type=semantic.cpp_type)
+    return None
+
+
+def _type_spec_from_opaque_pointer_semantic(semantic: RecordSemanticType, *, nullable: bool) -> TypeSpec | None:
+    if semantic.pointer_wrapper is None and _normalize_cpp_type(semantic.cpp_type).endswith("*"):
+        return TypeSpec(kind="opaque_ptr", cpp_type=semantic.cpp_type, nullable=nullable)
     return None
 
 
@@ -1342,6 +1376,12 @@ def _lower_generic_sequence_type(
     if isinstance(leaf, RecordSemanticType):
         record_spec = _type_spec_from_record_semantic(leaf, handles=handles, ownership=ownership, nullable=False)
         if record_spec is None:
+            reparsed_leaf = analyze_cpp_type(leaf.cpp_type)
+            if isinstance(reparsed_leaf, RecordSemanticType):
+                record_spec = _type_spec_from_record_semantic(
+                    reparsed_leaf, handles=handles, ownership=ownership, nullable=False
+                )
+        if record_spec is None:
             return None
         return TypeSpec(
             kind="handle",
@@ -1366,14 +1406,19 @@ def _infer_type(
     *,
     ownership: str,
     nullable_pointers: bool,
+    own_shared_ptr: bool = False,
+    nullable_string_pointers: bool = False,
+    result_structs: dict[str, ResultStructSpec] | None = None,
 ) -> TypeSpec:
+    result_structs = result_structs or {}
     semantic = analyze_cpp_type(cpp_type)
     if isinstance(semantic, VoidSemanticType):
         return TypeSpec(kind="void", cpp_type=_cpp_type_storage(cpp_type))
     if isinstance(semantic, EnumSemanticType):
         return TypeSpec(kind="int32", cpp_type=_cpp_type_storage(cpp_type))
     if isinstance(semantic, StringSemanticType):
-        return TypeSpec(kind="string", ownership="copy", cpp_type=_cpp_type_storage(cpp_type))
+        nullable = nullable_string_pointers and _normalize_cpp_type(semantic.cpp_type).endswith("*")
+        return TypeSpec(kind="string", ownership="copy", nullable=nullable, cpp_type=_cpp_type_storage(cpp_type))
     if isinstance(semantic, OptionalSemanticType):
         inner = _infer_type(semantic.element.cpp_type, handles, ownership=ownership, nullable_pointers=True)
         return TypeSpec(
@@ -1397,16 +1442,33 @@ def _infer_type(
         if scalar_kind is not None:
             return TypeSpec(kind=scalar_kind, cpp_type=_cpp_type_storage(cpp_type))
     if isinstance(semantic, RecordSemanticType):
+        logical_spec = _type_spec_from_logical_semantic(semantic)
+        if logical_spec is not None:
+            return logical_spec
+        struct_spec = _type_spec_from_result_struct_semantic(semantic, result_structs)
+        if struct_spec is not None:
+            return struct_spec
         record_spec = _type_spec_from_record_semantic(
             semantic,
             handles=handles,
             ownership=ownership,
             nullable=nullable_pointers and _normalize_cpp_type(semantic.cpp_type).endswith("*"),
+            own_shared_ptr=own_shared_ptr,
         )
         if record_spec is not None:
             return record_spec
+        opaque_spec = _type_spec_from_opaque_pointer_semantic(
+            semantic,
+            nullable=nullable_pointers and _normalize_cpp_type(semantic.cpp_type).endswith("*"),
+        )
+        if opaque_spec is not None:
+            return opaque_spec
     if isinstance(semantic, SequenceSemanticType):
         sequence_spec = _lower_generic_sequence_type(semantic, handles=handles, ownership=ownership)
+        if sequence_spec is None:
+            reparsed_sequence = analyze_cpp_type(semantic.cpp_type)
+            if isinstance(reparsed_sequence, SequenceSemanticType) and reparsed_sequence != semantic:
+                sequence_spec = _lower_generic_sequence_type(reparsed_sequence, handles=handles, ownership=ownership)
         if sequence_spec is not None:
             return sequence_spec
 
@@ -1414,9 +1476,20 @@ def _infer_type(
     raise ValueError(msg)
 
 
-def _infer_return_type(cpp_type: str | DiscoveredCppType, handles: dict[str, HandleSpec]) -> TypeSpec:
+def _infer_return_type(
+    cpp_type: str | DiscoveredCppType,
+    handles: dict[str, HandleSpec],
+    result_structs: dict[str, ResultStructSpec] | None = None,
+) -> TypeSpec:
     try:
-        return _infer_type(cpp_type, handles, ownership="borrowed", nullable_pointers=True)
+        return _infer_type(
+            cpp_type,
+            handles,
+            ownership="borrowed",
+            nullable_pointers=True,
+            own_shared_ptr=True,
+            result_structs=result_structs,
+        )
     except ValueError as exc:
         msg = str(exc).replace("Unsupported discovered type", "Unsupported discovered return type")
         raise ValueError(msg) from exc
@@ -1424,7 +1497,7 @@ def _infer_return_type(cpp_type: str | DiscoveredCppType, handles: dict[str, Han
 
 def _infer_param_type(cpp_type: str | DiscoveredCppType, handles: dict[str, HandleSpec]) -> TypeSpec:
     try:
-        return _infer_type(cpp_type, handles, ownership="borrowed", nullable_pointers=False)
+        return _infer_type(cpp_type, handles, ownership="borrowed", nullable_pointers=False, nullable_string_pointers=True)
     except ValueError as exc:
         msg = str(exc).replace("Unsupported discovered type", "Unsupported discovered parameter type")
         raise ValueError(msg) from exc
@@ -2510,15 +2583,90 @@ def _discover_method_calls(
     return tuple(calls), tuple(diagnostics)
 
 
+def _resolve_public_header(spec_path: Path, include_dir: Path, header: str) -> Path:
+    candidates = (
+        spec_path.parent / header,
+        include_dir / header,
+        include_dir.parent / "include" / header,
+        include_dir.parent / header,
+    )
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate.resolve()
+    raise FileNotFoundError(header)
+
+
+def _contract_headers(spec_path: Path, include_dir: Path, public_headers: tuple[str, ...]) -> tuple[Path, ...]:
+    headers: list[Path] = []
+    for header in public_headers:
+        resolved = _resolve_public_header(spec_path, include_dir, header)
+        if discover_marked_functions_in_headers([resolved]):
+            headers.append(resolved)
+    if not headers:
+        msg = "No public headers with IFCAPI_BINDING declarations were found for contract discovery"
+        raise ValueError(msg)
+    return tuple(headers)
+
+
+def _contract_function_names(spec_path: Path, include_dir: Path, public_headers: tuple[str, ...]) -> frozenset[str]:
+    headers = _contract_headers(spec_path, include_dir, public_headers)
+    names = frozenset(function.name for function in discover_marked_functions_in_headers(headers))
+    if not names:
+        msg = "No IFCAPI_BINDING declarations were found for contract discovery"
+        raise ValueError(msg)
+    return names
+
+
+def _contract_source_text(headers: tuple[Path, ...]) -> str:
+    includes = "\n".join(f'#include "{header.as_posix()}"' for header in headers)
+    return f"{includes}\n"
+
+
+def _selected_contract_function_names(item: DiscoveryFunctionSpec, contract_names: frozenset[str]) -> frozenset[str]:
+    selected_function_names = _selected_discovery_names(item.include_all, item.include, item.overloads)
+    if not selected_function_names:
+        selected_function_names = contract_names
+    else:
+        unknown = sorted(set(selected_function_names) - set(contract_names))
+        if unknown:
+            msg = f"Contract discovery requested unmarked functions in namespace '{item.namespace}': {unknown}"
+            raise ValueError(msg)
+
+    unknown_overrides = sorted(set(item.type_overrides) - set(contract_names))
+    if unknown_overrides:
+        msg = f"Contract discovery has type overrides for unmarked functions in namespace '{item.namespace}': {unknown_overrides}"
+        raise ValueError(msg)
+    return frozenset(set(selected_function_names) - set(item.exclude))
+
+
+def _validate_function_type_overrides(
+    item: DiscoveryFunctionSpec,
+    function_names: set[str] | frozenset[str],
+    *,
+    context: str,
+) -> None:
+    unknown_overrides = sorted(set(item.type_overrides) - set(function_names))
+    if unknown_overrides:
+        if context == "Contract discovery":
+            msg = f"{context} has type overrides for unmarked functions in namespace '{item.namespace}': {unknown_overrides}"
+        else:
+            msg = f"{context} has type overrides for unknown functions in namespace '{item.namespace}': {unknown_overrides}"
+        raise ValueError(msg)
+
+
 def _discover_function_calls(
     spec_path: Path,
     discovery: DiscoverySpec,
+    public_headers: tuple[str, ...],
     handles: dict[str, HandleSpec],
+    result_structs: dict[str, ResultStructSpec],
     c_prefix: str,
     compile_commands_path: Path,
 ) -> tuple[tuple[CallSpec, ...], tuple[DiscoveryDiagnostic, ...]]:
     include_dir = (spec_path.parent / discovery.include_dir).resolve()
-    namespace_cache: dict[tuple[str, str, frozenset[str] | None], dict[str, tuple[DiscoveredFunction, ...]]] = {}
+    namespace_cache: dict[tuple[str, str, str | None, frozenset[str] | None], dict[str, tuple[DiscoveredFunction, ...]]] = {}
+    contract_name_cache: dict[str, frozenset[str]] = {}
+    contract_header_cache: tuple[Path, ...] | None = None
     calls: list[CallSpec] = []
     calls_by_c_name: dict[str, CallSpec] = {}
     diagnostics: list[DiscoveryDiagnostic] = []
@@ -2528,10 +2676,26 @@ def _discover_function_calls(
         f"spec={debug_path(spec_path)} namespaces={len(discovery.functions)} include_dir={debug_path(include_dir)}",
     )
 
-    discovery_jobs: dict[tuple[str, str, frozenset[str] | None], tuple[str, Path, frozenset[str] | None]] = {}
+    discovery_jobs: dict[
+        tuple[str, str, str | None, frozenset[str] | None],
+        tuple[str, Path, frozenset[str] | None],
+    ] = {}
+    contract_jobs: dict[tuple[str, str, str | None, frozenset[str]], tuple[str, frozenset[str]]] = {}
     for item in discovery.functions:
+        if item.translation_unit is None:
+            contract_names = contract_name_cache.get(item.namespace)
+            if contract_names is None:
+                contract_names = _contract_function_names(spec_path, include_dir, public_headers)
+                contract_name_cache[item.namespace] = contract_names
+            _validate_function_type_overrides(item, contract_names, context="Contract discovery")
+            selected_function_names = _selected_contract_function_names(item, contract_names)
+            cache_key = ("contract", item.namespace, None, selected_function_names)
+            if cache_key not in contract_jobs:
+                contract_jobs[cache_key] = (item.namespace, selected_function_names)
+            continue
+
         selected_function_names = _selected_discovery_names(item.include_all, item.include, item.overloads)
-        cache_key = (item.namespace, item.translation_unit, selected_function_names)
+        cache_key = ("tu", item.namespace, item.translation_unit, selected_function_names)
         if cache_key not in discovery_jobs:
             discovery_jobs[cache_key] = (
                 item.namespace,
@@ -2539,11 +2703,14 @@ def _discover_function_calls(
                 selected_function_names,
             )
 
-    jobs = min(_bindgen_jobs(), len(discovery_jobs)) if discovery_jobs else 1
-    debug_log("spec.discover_functions.jobs", f"spec={debug_path(spec_path)} jobs={jobs} unique_namespaces={len(discovery_jobs)}")
+    jobs = min(_bindgen_jobs(), len(discovery_jobs) + len(contract_jobs)) if discovery_jobs or contract_jobs else 1
+    debug_log(
+        "spec.discover_functions.jobs",
+        f"spec={debug_path(spec_path)} jobs={jobs} unique_namespaces={len(discovery_jobs) + len(contract_jobs)}",
+    )
 
-    def discover_one(cache_key: tuple[str, str, frozenset[str] | None]) -> tuple[
-        tuple[str, str, frozenset[str] | None],
+    def discover_one(cache_key: tuple[str, str, str | None, frozenset[str] | None]) -> tuple[
+        tuple[str, str, str | None, frozenset[str] | None],
         dict[str, tuple[DiscoveredFunction, ...]],
     ]:
         namespace, translation_unit, selected_function_names = discovery_jobs[cache_key]
@@ -2554,9 +2721,27 @@ def _discover_function_calls(
             selected_names=selected_function_names,
         )
 
+    def discover_contract(cache_key: tuple[str, str, str | None, frozenset[str]]) -> tuple[
+        tuple[str, str, str | None, frozenset[str]],
+        dict[str, tuple[DiscoveredFunction, ...]],
+    ]:
+        nonlocal contract_header_cache
+        namespace, selected_function_names = contract_jobs[cache_key]
+        if contract_header_cache is None:
+            contract_header_cache = _contract_headers(spec_path, include_dir, public_headers)
+        source_text = _contract_source_text(contract_header_cache)
+        return cache_key, discover_namespace_functions_with_synthetic_source(
+            compile_commands_path,
+            source_text,
+            namespace,
+            selected_names=selected_function_names,
+            reference_source_root=include_dir,
+        )
+
     if jobs > 1:
         with ThreadPoolExecutor(max_workers=jobs) as executor:
             futures = {executor.submit(discover_one, cache_key): cache_key for cache_key in discovery_jobs}
+            futures.update({executor.submit(discover_contract, cache_key): cache_key for cache_key in contract_jobs})
             for future in as_completed(futures):
                 cache_key, functions_by_name = future.result()
                 namespace_cache[cache_key] = functions_by_name
@@ -2564,15 +2749,27 @@ def _discover_function_calls(
         for cache_key in discovery_jobs:
             cache_key, functions_by_name = discover_one(cache_key)
             namespace_cache[cache_key] = functions_by_name
+        for cache_key in contract_jobs:
+            cache_key, functions_by_name = discover_contract(cache_key)
+            namespace_cache[cache_key] = functions_by_name
 
     for item_index, item in enumerate(discovery.functions, start=1):
+        tu_label = item.translation_unit or "__contract__"
         debug_log(
             "spec.discover_functions.namespace",
-            f"{item_index}/{len(discovery.functions)} namespace={item.namespace} tu={item.translation_unit}",
+            f"{item_index}/{len(discovery.functions)} namespace={item.namespace} tu={tu_label}",
         )
-        selected_function_names = _selected_discovery_names(item.include_all, item.include, item.overloads)
-        cache_key = (item.namespace, item.translation_unit, selected_function_names)
+        if item.translation_unit is None:
+            contract_names = contract_name_cache[item.namespace]
+            _validate_function_type_overrides(item, contract_names, context="Contract discovery")
+            selected_function_names = _selected_contract_function_names(item, contract_names)
+            cache_key = ("contract", item.namespace, None, selected_function_names)
+        else:
+            selected_function_names = _selected_discovery_names(item.include_all, item.include, item.overloads)
+            cache_key = ("tu", item.namespace, item.translation_unit, selected_function_names)
         functions_by_name = namespace_cache[cache_key]
+        if item.translation_unit is not None:
+            _validate_function_type_overrides(item, set(functions_by_name), context="Function discovery")
 
         for overload_spec in item.overloads:
             overloads = functions_by_name.get(overload_spec.cpp_name)
@@ -2580,7 +2777,7 @@ def _discover_function_calls(
                 msg = f"Unable to discover function '{overload_spec.cpp_name}' in namespace '{item.namespace}'"
                 raise ValueError(msg)
             discovered = _select_overload(overloads, overload_spec)
-            inferred_returns = _infer_return_type(discovered.return_type_ref, handles)
+            inferred_returns = _infer_return_type(discovered.return_type_ref, handles, result_structs)
             inferred_params = tuple(
                 ParamSpec(name=param.name, type=_infer_param_type(param.cpp_type_ref, handles))
                 for param in discovered.params
@@ -2610,9 +2807,12 @@ def _discover_function_calls(
 
         explicit_includes = set(item.include)
         excluded = set(item.exclude)
-        candidate_names = set(functions_by_name) if item.include_all else set()
-        candidate_names.update(explicit_includes)
-        candidate_names.difference_update(excluded)
+        if item.translation_unit is None:
+            candidate_names = set(selected_function_names or ())
+        else:
+            candidate_names = set(functions_by_name) if item.include_all else set()
+            candidate_names.update(explicit_includes)
+            candidate_names.difference_update(excluded)
 
         for cpp_name in sorted(candidate_names):
             overloads = functions_by_name.get(cpp_name)
@@ -2642,7 +2842,7 @@ def _discover_function_calls(
                         override.returns,
                     )
                 else:
-                    inferred_returns = _infer_return_type(discovered.return_type_ref, handles)
+                    inferred_returns = _infer_return_type(discovered.return_type_ref, handles, result_structs)
                 override_params = override.params if override is not None else {}
                 inferred_params_list: list[ParamSpec] = []
                 for param in discovered.params:
@@ -2834,7 +3034,7 @@ def load_authored_spec(
             path, discovery, handles, compile_commands_path, authored_c_names
         )
         discovered_functions, function_diagnostics = _discover_function_calls(
-            path, discovery, handles, c_prefix, compile_commands_path
+            path, discovery, public_headers, handles, result_structs, c_prefix, compile_commands_path
         )
         discovery_diagnostics = method_diagnostics + function_diagnostics
 

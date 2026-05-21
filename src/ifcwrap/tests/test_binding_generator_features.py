@@ -992,6 +992,429 @@ def test_autodiscovery_supports_nested_namespace_functions(tmp_path: Path) -> No
     assert "ifcapi::bindings::qualified_scale(value_cpp)" in generated_cpp
 
 
+def test_autodiscovery_uses_marked_contract_when_translation_unit_is_omitted(tmp_path: Path) -> None:
+    header = tmp_path / "bindings.h"
+    source = tmp_path / "reference.cpp"
+    spec_path = tmp_path / "bindings.yml"
+
+    header.write_text(
+        dedent(
+            """
+            #include <string>
+            #define IFCAPI_BINDING
+
+            namespace ifcapi::bindings {
+            IFCAPI_BINDING int contract_count(const std::string& name);
+            IFCAPI_BINDING double contract_scale(double value);
+            int internal_helper();
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text("int reference() { return 0; }\n", encoding="utf-8")
+    compile_commands = _write_compile_commands(tmp_path, source)
+
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - bindings.h
+            discover:
+              include_dir: .
+              functions:
+                - namespace: ifcapi::bindings
+                  type_overrides:
+                    contract_scale:
+                      returns:
+                        kind: double
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    calls = {call.c_name: call for call in spec.functions}
+
+    assert set(calls) == {"ifcopenshell_demo_contract_count", "ifcopenshell_demo_contract_scale"}
+    assert calls["ifcopenshell_demo_contract_count"].params[0].type.kind == "string"
+    assert calls["ifcopenshell_demo_contract_scale"].returns.kind == "double"
+
+
+def test_contract_discovery_rejects_unmarked_policy(tmp_path: Path) -> None:
+    header = tmp_path / "bindings.h"
+    source = tmp_path / "reference.cpp"
+    spec_path = tmp_path / "bindings.yml"
+
+    header.write_text(
+        dedent(
+            """
+            #define IFCAPI_BINDING
+
+            namespace ifcapi::bindings {
+            IFCAPI_BINDING int contract_count();
+            int internal_helper();
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text("int reference() { return 0; }\n", encoding="utf-8")
+    compile_commands = _write_compile_commands(tmp_path, source)
+
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - bindings.h
+            discover:
+              include_dir: .
+              functions:
+                - namespace: ifcapi::bindings
+                  type_overrides:
+                    internal_helper:
+                      returns:
+                        kind: int32
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="type overrides for unmarked functions"):
+        load_authored_spec(spec_path, compile_commands_path=compile_commands)
+
+
+def test_contract_discovery_rejects_missing_public_header(tmp_path: Path) -> None:
+    source = tmp_path / "reference.cpp"
+    spec_path = tmp_path / "bindings.yml"
+
+    source.write_text("int reference() { return 0; }\n", encoding="utf-8")
+    compile_commands = _write_compile_commands(tmp_path, source)
+
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - missing_bindings.h
+            discover:
+              include_dir: .
+              functions:
+                - namespace: ifcapi::bindings
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(FileNotFoundError, match="missing_bindings.h"):
+        load_authored_spec(spec_path, compile_commands_path=compile_commands)
+
+
+def test_namespace_function_discovery_rejects_stale_type_override(tmp_path: Path) -> None:
+    header = tmp_path / "bindings.h"
+    source = tmp_path / "bindings.cpp"
+    spec_path = tmp_path / "bindings.yml"
+
+    header.write_text(
+        dedent(
+            """
+            namespace Demo {
+            int count();
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "bindings.h"\n', encoding="utf-8")
+    compile_commands = _write_compile_commands(tmp_path, source)
+
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - bindings.h
+            discover:
+              include_dir: .
+              functions:
+                - namespace: Demo
+                  translation_unit: bindings.cpp
+                  include:
+                    - count
+                  type_overrides:
+                    missing:
+                      returns:
+                        kind: int32
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="type overrides for unknown functions"):
+        load_authored_spec(spec_path, compile_commands_path=compile_commands)
+
+
+def test_autodiscovery_treats_char_pointer_params_as_nullable_strings(tmp_path: Path) -> None:
+    header = tmp_path / "nullable_strings.h"
+    source = tmp_path / "nullable_strings.cpp"
+    spec_path = tmp_path / "nullable_strings.yml"
+
+    header.write_text(
+        dedent(
+            """
+            namespace Demo {
+            int maybe_named(const char* name);
+            int definitely_named(const std::string& name);
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include <string>\n#include "nullable_strings.h"\n', encoding="utf-8")
+    compile_commands = _write_compile_commands(tmp_path, source)
+
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - nullable_strings.h
+            discover:
+              include_dir: .
+              functions:
+                - namespace: Demo
+                  translation_unit: nullable_strings.cpp
+                  include:
+                    - maybe_named
+                    - definitely_named
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    calls = {call.c_name: call for call in spec.functions}
+
+    assert calls["ifcopenshell_demo_maybe_named"].params[0].type.kind == "string"
+    assert calls["ifcopenshell_demo_maybe_named"].params[0].type.nullable
+    assert calls["ifcopenshell_demo_definitely_named"].params[0].type.kind == "string"
+    assert not calls["ifcopenshell_demo_definitely_named"].params[0].type.nullable
+
+    header_out = tmp_path / "nullable_strings_api.h"
+    cpp_out = tmp_path / "nullable_strings_api.cpp"
+    generate(spec_path, header_out, cpp_out, compile_commands_path=compile_commands)
+    generated_cpp = cpp_out.read_text(encoding="utf-8")
+    assert "Demo::maybe_named(name)" in generated_cpp
+    assert "std::string name_cpp(name);" in generated_cpp
+    assert "Demo::definitely_named(name_cpp)" in generated_cpp
+
+
+def test_namespace_function_discovery_infers_result_struct_returns(tmp_path: Path) -> None:
+    header = tmp_path / "result_structs.h"
+    source = tmp_path / "result_structs.cpp"
+    spec_path = tmp_path / "result_structs.yml"
+
+    header.write_text(
+        dedent(
+            """
+            namespace Demo {
+            struct PairResult {
+                int left;
+                int right;
+            };
+
+            PairResult make_pair_result();
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "result_structs.h"\n', encoding="utf-8")
+    compile_commands = _write_compile_commands(tmp_path, source)
+
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - result_structs.h
+            result_structs:
+              - name: pair_result
+                cpp_type: Demo::PairResult
+                c_type: ifcopenshell_demo_pair_result_t
+                fields:
+                  - name: left
+                    type: {kind: int32}
+                  - name: right
+                    type: {kind: int32}
+            discover:
+              include_dir: .
+              functions:
+                - namespace: Demo
+                  translation_unit: result_structs.cpp
+                  include:
+                    - make_pair_result
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    calls = {call.c_name: call for call in spec.functions}
+
+    assert calls["ifcopenshell_demo_make_pair_result"].returns.kind == "struct"
+    assert calls["ifcopenshell_demo_make_pair_result"].returns.struct == "pair_result"
+
+
+def test_namespace_function_discovery_infers_tribool_as_logical(tmp_path: Path) -> None:
+    header = tmp_path / "logical.h"
+    source = tmp_path / "logical.cpp"
+    spec_path = tmp_path / "logical.yml"
+
+    header.write_text(
+        dedent(
+            """
+            namespace boost::logic {
+            class tribool {};
+            }
+
+            namespace Demo {
+            bool set_flags(boost::logic::tribool enabled);
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "logical.h"\n', encoding="utf-8")
+    compile_commands = _write_compile_commands(tmp_path, source)
+
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - logical.h
+            discover:
+              include_dir: .
+              functions:
+                - namespace: Demo
+                  translation_unit: logical.cpp
+                  include:
+                    - set_flags
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    calls = {call.c_name: call for call in spec.functions}
+
+    assert calls["ifcopenshell_demo_set_flags"].params[0].type.kind == "logical"
+
+
+def test_namespace_function_discovery_infers_unknown_raw_pointers_as_opaque(tmp_path: Path) -> None:
+    header = tmp_path / "opaque.h"
+    source = tmp_path / "opaque.cpp"
+    spec_path = tmp_path / "opaque.yml"
+
+    header.write_text(
+        dedent(
+            """
+            namespace Demo {
+            struct Options;
+            Options* create_options();
+            bool use_options(Options* options);
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "opaque.h"\n', encoding="utf-8")
+    compile_commands = _write_compile_commands(tmp_path, source)
+
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - opaque.h
+            discover:
+              include_dir: .
+              functions:
+                - namespace: Demo
+                  translation_unit: opaque.cpp
+                  include:
+                    - create_options
+                    - use_options
+                  type_overrides:
+                    use_options:
+                      params:
+                        options:
+                          nullable: true
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    calls = {call.c_name: call for call in spec.functions}
+
+    assert calls["ifcopenshell_demo_create_options"].returns.kind == "opaque_ptr"
+    assert calls["ifcopenshell_demo_create_options"].returns.cpp_type == "Options*"
+    assert calls["ifcopenshell_demo_create_options"].returns.nullable
+    assert calls["ifcopenshell_demo_use_options"].params[0].type.kind == "opaque_ptr"
+    assert calls["ifcopenshell_demo_use_options"].params[0].type.cpp_type == "Options*"
+    assert calls["ifcopenshell_demo_use_options"].params[0].type.nullable
+
+    header_out = tmp_path / "opaque_api.h"
+    cpp_out = tmp_path / "opaque_api.cpp"
+    generate(spec_path, header_out, cpp_out, compile_commands_path=compile_commands)
+    generated_cpp = cpp_out.read_text(encoding="utf-8")
+    assert 'Parameter "options" must not be null' not in generated_cpp
+    assert "auto options_cpp = static_cast<Options*>(options);" in generated_cpp
+
+
 def test_autodiscovery_supports_shared_ptr_handle_vectors(tmp_path: Path) -> None:
     header = tmp_path / "shared_ptr_vectors.h"
     source = tmp_path / "shared_ptr_vectors.cpp"
@@ -1296,6 +1719,7 @@ def test_autodiscovery_matches_shared_ptr_handles_by_qualified_suffix(tmp_path: 
 
     assert calls["ifcopenshell_demo_evaluator_evaluate"].returns.kind == "handle"
     assert calls["ifcopenshell_demo_evaluator_evaluate"].returns.handle == "taxonomy_item"
+    assert calls["ifcopenshell_demo_evaluator_evaluate"].returns.ownership == "owned"
     assert calls["ifcopenshell_demo_evaluator_evaluate"].returns.cpp_type == "taxonomy::item::ptr"
 
 

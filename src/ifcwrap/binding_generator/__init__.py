@@ -1,5 +1,6 @@
 from .clang_discovery import (
     discover_namespace_functions_with_compile_commands,
+    discover_namespace_functions_with_synthetic_source,
     discover_public_fields_with_compile_commands,
     discover_public_methods_with_compile_commands,
 )
@@ -10,6 +11,7 @@ __all__ = [
     "discover_public_fields_with_compile_commands",
     "discover_public_methods_with_compile_commands",
     "discover_namespace_functions_with_compile_commands",
+    "discover_namespace_functions_with_synthetic_source",
     "DiscoveryDiagnostic",
     "generate",
     "generate_merged",

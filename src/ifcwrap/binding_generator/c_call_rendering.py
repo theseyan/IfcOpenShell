@@ -284,6 +284,8 @@ def _render_param_prelude(param: ParamSpec, spec: BindingIR) -> str:
         )
     if kind == "opaque_ptr":
         cpp_type = type_spec.cpp_type
+        if type_spec.nullable:
+            return f"    auto {param.name}_cpp = static_cast<{cpp_type}>({param.name});"
         return (
             f'{_null_check(param.name, "Parameter")}\n'
             f"    auto {param.name}_cpp = static_cast<{cpp_type}>({param.name});"
