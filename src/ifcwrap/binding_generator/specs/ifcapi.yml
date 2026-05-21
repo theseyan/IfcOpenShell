@@ -127,169 +127,17 @@ discover:
   include_dir: ../../../ifcapi/src
   functions:
     - namespace: ifcapi::bindings
-      translation_unit: util/attribute.cpp
-      include:
-        - attribute_edit_attributes
       type_overrides:
         attribute_edit_attributes:
           params:
-            attributes:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
             user:
               nullable: true
             application:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: element.cpp
-      include:
-        - compute_derived
-        - element_get_aggregate
-        - element_get_container
-        - element_get_contained
-        - element_get_controls
-        - element_get_elements_by_layer
-        - element_get_elements_by_material
-        - element_get_elements_by_profile
-        - element_get_elements_by_representation
-        - element_get_elements_by_style
-        - element_get_filled_void
-        - element_get_groups
-        - element_get_layers
-        - element_get_material
-        - element_get_nest
-        - element_get_openings
-        - element_get_parent
-        - element_get_parts
-        - element_get_pset_ids
-        - element_get_referenced_elements
-        - element_get_referenced_structures
-        - element_get_shape_aspects
-        - element_get_structure_referenced_elements
-        - element_get_styles
-        - element_get_type
-        - element_get_types
-        - element_get_voided_element
-        - element_get_decomposition
-        - element_remove_deep
-        - element_replace_element
-        - element_is_userdefined_type
-        - entity_remove_deep2
-        - entity_remove_deep2_ex
-        - selector_filter_all
-        - selector_filter_elements
-        - selector_get_element_value
-        - selector_set_element_value
-        - shape_is_x
-        - unit_calculate_unit_scale
-        - unit_convert
-        - unit_convert_unit
-        - unit_format_length
-        - unit_get_full_unit_name
-        - unit_get_measure_class
-        - unit_get_measure_unit_type
-        - unit_get_named_dimensions
-        - unit_get_prefix
-        - unit_get_prefix_multiplier
-        - unit_get_project_unit
-        - unit_get_si_dimensions
-        - unit_get_symbol_measure_class
-        - unit_get_symbol_quantity_class
-        - unit_get_unit_assignment
-        - unit_get_unit_name
-        - unit_get_unit_name_universal
-        - unit_get_unit_symbol
-        - unit_resolve_property_measure_class
-        - unit_resolve_property_table_defined_measure_class
-        - unit_resolve_property_table_defined_unit
-        - unit_resolve_property_table_defining_measure_class
-        - unit_resolve_property_table_defining_unit
-        - unit_resolve_property_unit
-        - value_as_bool
-        - value_as_double
-        - value_as_instance
-        - value_as_int64
-        - value_as_string
-        - value_dict_key_at
-        - value_dict_size
-        - value_dict_value_at
-        - value_kind
-        - value_list_append
-        - value_list_at
-        - value_list_size
-        - value_new_bool
-        - value_new_double
-        - value_new_instance
-        - value_new_int
-        - value_new_list
-        - value_new_none
-        - value_new_string
-      type_overrides:
         compute_derived:
           returns:
             ownership: owned
             nullable: true
-        element_get_container:
-          params:
-            ifc_class:
-              nullable: true
-        element_get_contained:
-          returns:
-            ownership: owned
-        element_get_controls:
-          returns:
-            ownership: owned
-        element_get_elements_by_layer:
-          returns:
-            ownership: owned
-        element_get_elements_by_material:
-          returns:
-            ownership: owned
-        element_get_elements_by_profile:
-          returns:
-            ownership: owned
-        element_get_elements_by_representation:
-          returns:
-            ownership: owned
-        element_get_elements_by_style:
-          returns:
-            ownership: owned
-        element_get_groups:
-          returns:
-            ownership: owned
-        element_get_layers:
-          returns:
-            ownership: owned
-        element_get_openings:
-          returns:
-            ownership: owned
-        element_get_parts:
-          returns:
-            ownership: owned
-        element_get_pset_ids:
-          returns:
-            ownership: owned
-        element_get_referenced_elements:
-          returns:
-            ownership: owned
-        element_get_referenced_structures:
-          returns:
-            ownership: owned
-        element_get_shape_aspects:
-          returns:
-            ownership: owned
-        element_get_structure_referenced_elements:
-          returns:
-            ownership: owned
-        element_get_styles:
-          returns:
-            ownership: owned
-        element_get_types:
-          returns:
-            ownership: owned
-        element_get_decomposition:
-          returns:
-            ownership: owned
         selector_filter_all:
           returns:
             ownership: owned
@@ -310,8 +158,6 @@ discover:
             element:
               nullable: true
             value:
-              nullable: true
-            concat:
               nullable: true
         value_list_append:
           params:
@@ -341,24 +187,7 @@ discover:
         value_new_string:
           returns:
             ownership: owned
-    - namespace: ifcapi::bindings
-      translation_unit: util/classification.cpp
-      include:
-        - classification_get_references
-        - classification_add_classification
-        - classification_add_reference
-        - classification_remove_reference
-        - classification_remove_classification
-      type_overrides:
-        classification_get_references:
-          returns:
-            ownership: owned
-        classification_add_classification:
-          returns:
-            nullable: true
         classification_add_reference:
-          returns:
-            nullable: true
           params:
             reference:
               nullable: true
@@ -376,91 +205,15 @@ discover:
               nullable: true
             application:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: representation.cpp
-      include:
-        - representation_get_context
-        - representation_get_prioritised_contexts
-        - representation_get_product_representation
-        - representation_resolve
-        - representation_resolve_base_items
-      type_overrides:
-        representation_get_context:
-          returns:
-            nullable: true
-          params:
-            context_type:
-              nullable: true
-            subcontext:
-              nullable: true
-            target_view:
-              nullable: true
-        representation_get_prioritised_contexts:
-          returns:
-            ownership: owned
         representation_get_product_representation:
-          returns:
-            nullable: true
           params:
             context:
               nullable: true
-            context_type:
-              nullable: true
-            subcontext:
-              nullable: true
-            target_view:
-              nullable: true
-        representation_resolve:
-          returns:
-            nullable: true
-        representation_resolve_base_items:
-          returns:
-            ownership: owned
-    - namespace: ifcapi::bindings
-      translation_unit: placement.cpp
-      include:
-        - placement_a2p
-        - placement_get_axis2placement
-        - placement_get_cartesian_xform_3d
-        - placement_get_local_placement
-        - placement_get_mappeditem_xform
-        - placement_get_storey_elevation
-        - placement_rotation
-      type_overrides:
-        placement_a2p:
-          returns:
-            ownership: copy
-        placement_get_axis2placement:
-          returns:
-            ownership: copy
-        placement_get_cartesian_xform_3d:
-          returns:
-            ownership: copy
         placement_get_local_placement:
-          returns:
-            ownership: copy
           params:
             instance:
               nullable: true
-        placement_get_mappeditem_xform:
-          returns:
-            ownership: copy
-        placement_rotation:
-          returns:
-            ownership: copy
-    - namespace: ifcapi::bindings
-      translation_unit: api/aggregate/relationship.cpp
-      include:
-        - aggregate_assign_object
-        - aggregate_unassign_object
-        - spatial_assign_container
-        - spatial_unassign_container
-        - spatial_reference_structure
-        - spatial_dereference_structure
-      type_overrides:
         aggregate_assign_object:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -475,8 +228,6 @@ discover:
             application:
               nullable: true
         spatial_assign_container:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -491,8 +242,6 @@ discover:
             application:
               nullable: true
         spatial_reference_structure:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -506,15 +255,7 @@ discover:
               nullable: true
             application:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/nest/relationship.cpp
-      include:
-        - nest_assign_object
-        - nest_unassign_object
-      type_overrides:
         nest_assign_object:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -528,16 +269,7 @@ discover:
               nullable: true
             application:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/type/relationship.cpp
-      include:
-        - type_assign_type
-        - type_assign_type_ex
-        - type_unassign_type
-      type_overrides:
         type_assign_type:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -546,8 +278,6 @@ discover:
             application:
               nullable: true
         type_assign_type_ex:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -561,103 +291,11 @@ discover:
               nullable: true
             application:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: geometry.cpp
-      include:
-        - geometry_add_boolean
-        - geometry_add_axis_representation
-        - geometry_add_footprint_representation
-        - geometry_add_mesh_representation
-        - geometry_add_shape_aspect
-        - geometry_add_slab_representation
-        - geometry_add_topology_representation
-        - geometry_add_wall_representation
-        - geometry_assign_representation
-        - geometry_clip_solid
-        - geometry_clip_solid_bounded
-        - geometry_connect_element
-        - geometry_connect_path
-        - geometry_connect_wall
-        - geometry_copy_representation
-        - geometry_create_2pt_wall
-        - geometry_disconnect_element
-        - geometry_disconnect_path
-        - geometry_map_representation
-        - geometry_profile_extents
-        - geometry_regenerate_wall_representation
-        - geometry_remove_boolean
-        - geometry_remove_representation
-        - geometry_unassign_representation
-        - geometry_validate_type
-        - type_map_type_representations
-      type_overrides:
         geometry_add_boolean:
           returns:
             ownership: owned
-        geometry_add_axis_representation:
-          returns:
-            nullable: true
-        geometry_add_footprint_representation:
-          returns:
-            nullable: true
-        geometry_add_mesh_representation:
-          returns:
-            nullable: true
-          params:
-            vertices:
-              kind: double_list_list_list
-            faces:
-              kind: int32_list_list_list_list
-        geometry_add_shape_aspect:
-          returns:
-            nullable: true
-          params:
-            description:
-              nullable: true
-        geometry_add_slab_representation:
-          returns:
-            nullable: true
-          params:
-            clipping_kinds:
-              kind: int32_list
-            clipping_locations:
-              kind: double_list_list
-            clipping_normals:
-              kind: double_list_list
-            clipping_entities:
-              kind: instance_list
-            polyline:
-              kind: double_list_list
-        geometry_add_topology_representation:
-          returns:
-            nullable: true
-          params:
-            representation_identifier:
-              nullable: true
-            representation_type:
-              nullable: true
-        geometry_add_wall_representation:
-          returns:
-            nullable: true
-          params:
-            clipping_kinds:
-              kind: int32_list
-            clipping_locations:
-              kind: double_list_list
-            clipping_normals:
-              kind: double_list_list
-            clipping_entities:
-              kind: instance_list
-            booleans:
-              kind: instance_list
         geometry_clip_solid:
-          returns:
-            nullable: true
           params:
-            location:
-              kind: double_list
-            normal:
-              kind: double_list
             element:
               nullable: true
             owner_history:
@@ -667,17 +305,7 @@ discover:
             application:
               nullable: true
         geometry_clip_solid_bounded:
-          returns:
-            nullable: true
           params:
-            location:
-              kind: double_list
-            normal:
-              kind: double_list
-            boundary_points:
-              kind: double_list_list
-            boundary_position:
-              kind: double_list
             element:
               nullable: true
             owner_history:
@@ -686,15 +314,8 @@ discover:
               nullable: true
             application:
               nullable: true
-        geometry_assign_representation:
-          returns:
-            nullable: true
         geometry_connect_element:
-          returns:
-            nullable: true
           params:
-            description:
-              nullable: true
             owner_history:
               nullable: true
             user:
@@ -702,11 +323,7 @@ discover:
             application:
               nullable: true
         geometry_connect_path:
-          returns:
-            nullable: true
           params:
-            description:
-              nullable: true
             connection_geometry:
               nullable: true
             owner_history:
@@ -716,8 +333,6 @@ discover:
             application:
               nullable: true
         geometry_connect_wall:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -729,406 +344,35 @@ discover:
           params:
             element:
               nullable: true
-            connection_type:
-              nullable: true
             relating_element:
               nullable: true
             related_element:
               nullable: true
-        geometry_regenerate_wall_representation:
-          returns:
-            nullable: true
-        geometry_copy_representation:
-          returns:
-            nullable: true
-          params:
-            context_identifier:
-              nullable: true
-        geometry_create_2pt_wall:
-          returns:
-            nullable: true
-          params:
-            p1:
-              kind: double_list
-            p2:
-              kind: double_list
-        geometry_map_representation:
-          returns:
-            nullable: true
-        geometry_profile_extents:
-          returns:
-            ownership: copy
         geometry_validate_type:
           params:
             preferred_item:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/context/context.cpp
-      include:
-        - context_add_context
-        - context_edit_context
-        - context_remove_context
-      type_overrides:
         context_add_context:
-          returns:
-            nullable: true
           params:
-            context_type:
-              nullable: true
-            context_identifier:
-              nullable: true
-            target_view:
-              nullable: true
             parent:
               nullable: true
-        context_edit_context:
-          params:
-            attributes:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-    - namespace: ifcapi::bindings
-      translation_unit: api/geometry/placement.cpp
-      include:
-        - geometry_edit_object_placement
-      type_overrides:
-        geometry_edit_object_placement:
-          returns:
-            nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/geometry/window.cpp
-      include:
-        - geometry_add_window_representation
-      type_overrides:
         geometry_add_window_representation:
-          returns:
-            nullable: true
           params:
-            panel_schema:
-              kind: int32_list_list
-            lining_properties:
-              kind: double_list
-            panel_properties:
-              kind: double_list_list
             part_of_product:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/geometry/door.cpp
-      include:
-        - geometry_add_door_representation
-      type_overrides:
         geometry_add_door_representation:
-          returns:
-            nullable: true
           params:
-            lining_properties:
-              kind: double_list
-            panel_properties:
-              kind: double_list
             part_of_product:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/geometry/railing.cpp
-      include:
-        - geometry_add_railing_representation
-      type_overrides:
-        geometry_add_railing_representation:
-          returns:
-            nullable: true
-          params:
-            railing_path:
-              kind: double_list_list
-    - namespace: ifcapi::bindings
-      translation_unit: api/geometry/shape_builder.cpp
-      include:
-        - shape_builder_axis2_placement_2d
-        - shape_builder_axis2_placement_3d
-        - shape_builder_block
-        - shape_builder_circle
-        - shape_builder_curve_between_two_points
-        - shape_builder_deep_copy
-        - shape_builder_edge
-        - shape_builder_ellipse_curve
-        - shape_builder_extrude
-        - shape_builder_faceted_brep
-        - shape_builder_face
-        - shape_builder_half_space_solid
-        - shape_builder_get_polyline_coords
-        - shape_builder_indexed_polycurve_2d
-        - shape_builder_mep_transition_calculate
-        - shape_builder_mep_transition_length
-        - shape_builder_mep_transition_shape
-        - shape_builder_mep_bend_shape
-        - shape_builder_mesh
-        - shape_builder_plane
-        - shape_builder_polyline
-        - shape_builder_polygonal_face_set
-        - shape_builder_profile
-        - shape_builder_representation
-        - shape_builder_rotate
-        - shape_builder_sphere
-        - shape_builder_swept_disk_solid
-        - shape_builder_set_polyline_coords
-        - shape_builder_translate
-        - shape_builder_triangulated_face_set
-        - shape_builder_vertex
-        - shape_builder_mirror
-      type_overrides:
-        shape_builder_axis2_placement_2d:
-          returns:
-            nullable: true
-          params:
-            position:
-              kind: double_list
-            x_direction:
-              kind: double_list
-        shape_builder_axis2_placement_3d:
-          returns:
-            nullable: true
-          params:
-            position:
-              kind: double_list
-            z_axis:
-              kind: double_list
-            x_axis:
-              kind: double_list
-        shape_builder_block:
-          returns:
-            nullable: true
-          params:
-            position:
-              kind: double_list
-        shape_builder_circle:
-          returns:
-            nullable: true
-          params:
-            center:
-              kind: double_list
-        shape_builder_deep_copy:
-          returns:
-            nullable: true
-        shape_builder_curve_between_two_points:
-          returns:
-            nullable: true
-          params:
-            points:
-              kind: double_list_list
-        shape_builder_edge:
-          returns:
-            nullable: true
-          params:
-            start:
-              kind: double_list
-            end:
-              kind: double_list
-        shape_builder_ellipse_curve:
-          returns:
-            nullable: true
-          params:
-            position:
-              kind: double_list
-            trim_points:
-              kind: double_list_list
-            ref_x_direction:
-              kind: double_list
-            trim_points_mask:
-              kind: int32_list
-        shape_builder_extrude:
-          returns:
-            nullable: true
-          params:
-            position:
-              kind: double_list
-            extrusion_vector:
-              kind: double_list
-            position_z_axis:
-              kind: double_list
-            position_x_axis:
-              kind: double_list
-            position_y_axis:
-              kind: double_list
-        shape_builder_faceted_brep:
-          returns:
-            nullable: true
-          params:
-            points:
-              kind: double_list_list
-            faces:
-              kind: int32_list_list
-        shape_builder_face:
-          returns:
-            nullable: true
-          params:
-            points:
-              kind: double_list_list
-        shape_builder_half_space_solid:
-          returns:
-            nullable: true
-        shape_builder_get_polyline_coords:
-          params: {}
-        shape_builder_indexed_polycurve_2d:
-          returns:
-            nullable: true
-          params:
-            points:
-              kind: double_list_list
-            segments:
-              kind: int32_list_list
-        shape_builder_mep_transition_calculate:
-          params:
-            start_half_dim:
-              kind: double_list
-            end_half_dim:
-              kind: double_list
-            offset:
-              kind: double_list
-            diff:
-              kind: double_list
-        shape_builder_mep_transition_length:
-          params:
-            start_half_dim:
-              kind: double_list
-            end_half_dim:
-              kind: double_list
-            profile_offset:
-              kind: double_list
-        shape_builder_mep_transition_shape:
-          returns:
-            kind: struct
-            struct: shape_builder_mep_transition_shape_result
-          params:
-            profile_offset:
-              kind: double_list
-        shape_builder_mep_bend_shape:
-          returns:
-            kind: struct
-            struct: shape_builder_mep_bend_shape_result
-          params:
-            bend_vector:
-              kind: double_list
-        shape_builder_mesh:
-          returns:
-            nullable: true
-          params:
-            points:
-              kind: double_list_list
-            faces:
-              kind: int32_list_list
-        shape_builder_plane:
-          returns:
-            nullable: true
-          params:
-            location:
-              kind: double_list
-            normal:
-              kind: double_list
-        shape_builder_polyline:
-          returns:
-            nullable: true
-          params:
-            points:
-              kind: double_list_list
-            position_offset:
-              kind: double_list
-            arc_points:
-              kind: int32_list
-        shape_builder_vertex:
-          returns:
-            nullable: true
-          params:
-            position:
-              kind: double_list
-        shape_builder_polygonal_face_set:
-          returns:
-            nullable: true
-          params:
-            points:
-              kind: double_list_list
-            faces:
-              kind: int32_list_list_list
-        shape_builder_profile:
-          returns:
-            nullable: true
-          params:
-            name:
-              nullable: true
-            inner_curves:
-              kind: instance_list
-            profile_type:
-              nullable: true
-        shape_builder_representation:
-          returns:
-            nullable: true
-          params:
-            items:
-              kind: instance_list
-            representation_type:
-              nullable: true
-        shape_builder_rotate:
-          returns:
-            nullable: true
-          params:
-            pivot_point:
-              kind: double_list
-        shape_builder_sphere:
-          returns:
-            nullable: true
-          params:
-            center:
-              kind: double_list
-        shape_builder_swept_disk_solid:
-          returns:
-            nullable: true
-        shape_builder_set_polyline_coords:
-          returns:
-            nullable: true
-          params:
-            coords:
-              kind: double_list_list
-        shape_builder_translate:
-          returns:
-            nullable: true
-          params:
-            translation:
-              kind: double_list
-        shape_builder_triangulated_face_set:
-          returns:
-            nullable: true
-          params:
-            points:
-              kind: double_list_list
-            faces:
-              kind: int32_list_list
-        shape_builder_mirror:
-          returns:
-            nullable: true
-          params:
-            mirror_axes:
-              kind: double_list
-            mirror_point:
-              kind: double_list
-            placement_matrix:
-              kind: double_list
-    - namespace: ifcapi::bindings
-      translation_unit: api/pset/add.cpp
-      include:
-        - pset_add_pset
-        - pset_add_qto
-      type_overrides:
         pset_add_pset:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
             user:
               nullable: true
             application:
-              nullable: true
-            ifc2x3_subclass:
               nullable: true
         pset_add_qto:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -1136,17 +380,7 @@ discover:
               nullable: true
             application:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/pset/relationship.cpp
-      include:
-        - pset_assign_pset
-        - pset_unassign_pset
-        - pset_remove_pset
-        - pset_unshare_pset
-      type_overrides:
         pset_assign_pset:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -1162,280 +396,25 @@ discover:
               nullable: true
             application:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/pset/edit.cpp
-      include:
-        - pset_props_free
-        - pset_props_new
-        - pset_props_set_bool
-        - pset_props_set_date
-        - pset_props_set_datetime
-        - pset_props_set_dict
-        - pset_props_set_double
-        - pset_props_set_double_list
-        - pset_props_set_duration
-        - pset_props_set_instance
-        - pset_props_set_instance_list
-        - pset_props_set_int
-        - pset_props_set_int_list
-        - pset_props_set_null
-        - pset_props_set_string
-        - pset_props_set_string_list
-        - pset_props_set_typed_bool
-        - pset_props_set_typed_double
-        - pset_props_set_typed_int
-        - pset_props_set_typed_string
-        - pset_props_set_unit_for_last
-        - pset_edit_pset
-        - pset_edit_qto
-      type_overrides:
-        pset_props_new:
-          returns:
-            kind: opaque_ptr
-            cpp_type: ifcopenshell_pset_props_t*
-        pset_props_free:
-          params:
-            props:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-        pset_props_set_bool:
-          params:
-            props:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-        pset_props_set_date:
-          params:
-            props:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-        pset_props_set_datetime:
-          params:
-            props:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-        pset_props_set_dict:
-          params:
-            outer:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-            inner:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-        pset_props_set_double:
-          params:
-            props:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-        pset_props_set_double_list:
-          params:
-            props:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-        pset_props_set_duration:
-          params:
-            props:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
         pset_props_set_instance:
           params:
-            props:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
             value:
               nullable: true
-        pset_props_set_instance_list:
-          params:
-            props:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-            values:
-              kind: instance_list
-        pset_props_set_int:
-          params:
-            props:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-        pset_props_set_int_list:
-          params:
-            props:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-            values:
-              kind: int64_list
-        pset_props_set_null:
-          params:
-            props:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-        pset_props_set_string:
-          params:
-            props:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-        pset_props_set_string_list:
-          params:
-            props:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-        pset_props_set_typed_bool:
-          params:
-            props:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-        pset_props_set_typed_double:
-          params:
-            props:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-        pset_props_set_typed_int:
-          params:
-            props:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-        pset_props_set_typed_string:
-          params:
-            props:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
         pset_props_set_unit_for_last:
           params:
-            props:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
             unit:
               nullable: true
         pset_edit_pset:
           params:
-            name:
-              nullable: true
-            properties:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
             pset_template:
               nullable: true
         pset_edit_qto:
           params:
-            name:
-              nullable: true
-            properties:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
             qto_template:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: util/pset/template.cpp
-      include:
-        - pset_template_get_applicable
-        - pset_template_get_applicable_names
-        - pset_template_get_by_name
-        - pset_template_create_from_files
-        - pset_template_free
-        - pset_template_get_template
-        - pset_template_is_templated
-        - pset_template_pset_type
-        - pset_template_set_template_dir
-      type_overrides:
         pset_template_get_applicable:
           returns:
             ownership: copy
-          params:
-            pqt:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_template_t*
-            ifc_class:
-              nullable: true
-            predefined_type:
-              nullable: true
-            schema_name:
-              nullable: true
-        pset_template_get_applicable_names:
-          returns:
-            ownership: copy
-          params:
-            pqt:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_template_t*
-            ifc_class:
-              nullable: true
-            predefined_type:
-              nullable: true
-            schema_name:
-              nullable: true
-        pset_template_get_by_name:
-          returns:
-            nullable: true
-          params:
-            pqt:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_template_t*
-        pset_template_create_from_files:
-          returns:
-            kind: opaque_ptr
-            cpp_type: ifcopenshell_pset_template_t*
-          params:
-            template_files:
-              kind: handle_list
-              handle: file
-        pset_template_free:
-          params:
-            pqt:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_template_t*
-        pset_template_get_template:
-          returns:
-            kind: opaque_ptr
-            cpp_type: ifcopenshell_pset_template_t*
-        pset_template_is_templated:
-          params:
-            pqt:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_template_t*
-        pset_template_pset_type:
-          returns:
-            ownership: copy
-    - namespace: ifcapi::bindings
-      translation_unit: api/pset_template/template.cpp
-      include:
-        - pset_template_add_pset_template
-        - pset_template_add_prop_template
-        - pset_template_remove_pset_template
-        - pset_template_remove_prop_template
-      type_overrides:
-        pset_template_add_prop_template:
-          params:
-            description:
-              nullable: true
-            template_type:
-              nullable: true
-            primary_measure_type:
-              nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/layer/layer.cpp
-      include:
-        - layer_add_layer
-        - layer_add_layer_with_style
-        - layer_assign_layer
-        - layer_remove_layer
-        - layer_unassign_layer
-      type_overrides:
-        layer_add_layer_with_style:
-          params:
-            "on":
-              kind: logical
-            "frozen":
-              kind: logical
-            "blocked":
-              kind: logical
-    - namespace: ifcapi::bindings
-      translation_unit: api/document/document.cpp
-      include:
-        - document_add_information
-        - document_add_reference
-        - document_assign_document
-        - document_unassign_document
-        - document_remove_reference
-        - document_remove_information
-      type_overrides:
         document_add_information:
           params:
             parent:
@@ -1451,8 +430,6 @@ discover:
             information:
               nullable: true
         document_assign_document:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -1466,19 +443,7 @@ discover:
               nullable: true
             application:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/library/library.cpp
-      include:
-        - library_add_library
-        - library_add_reference
-        - library_assign_reference
-        - library_unassign_reference
-        - library_remove_reference
-        - library_remove_library
-      type_overrides:
         library_assign_reference:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -1492,16 +457,7 @@ discover:
               nullable: true
             application:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/cogo/cogo.cpp
-      include:
-        - cogo_add_survey_point
-        - cogo_assign_survey_point
-        - cogo_edit_survey_point
-      type_overrides:
         cogo_add_survey_point:
-          returns:
-            nullable: true
           params:
             site:
               nullable: true
@@ -1511,17 +467,6 @@ discover:
               nullable: true
             application:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/constraint/constraint.cpp
-      include:
-        - constraint_add_objective
-        - constraint_add_metric
-        - constraint_add_metric_reference
-        - constraint_assign_constraint
-        - constraint_unassign_constraint
-        - constraint_remove_constraint
-        - constraint_remove_metric
-      type_overrides:
         constraint_add_metric:
           params:
             objective:
@@ -1530,8 +475,6 @@ discover:
           returns:
             ownership: owned
         constraint_assign_constraint:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -1545,15 +488,7 @@ discover:
               nullable: true
             application:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/project/project.cpp
-      include:
-        - project_assign_declaration
-        - project_unassign_declaration
-      type_overrides:
         project_assign_declaration:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -1567,85 +502,7 @@ discover:
               nullable: true
             application:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/profile/profile.cpp
-      include:
-        - profile_add_arbitrary_profile
-        - profile_add_arbitrary_profile_with_voids
-        - profile_add_parameterized_profile
-        - profile_copy_profile
-        - profile_edit_profile
-        - profile_remove_profile
-      type_overrides:
-        profile_add_arbitrary_profile:
-          returns:
-            nullable: true
-          params:
-            name:
-              nullable: true
-        profile_add_arbitrary_profile_with_voids:
-          returns:
-            nullable: true
-          params:
-            name:
-              nullable: true
-        profile_edit_profile:
-          params:
-            attributes:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-    - namespace: ifcapi::bindings
-      translation_unit: api/sequence/sequence.cpp
-      include:
-        - sequence_add_date_time
-        - sequence_add_task
-        - sequence_add_task_time
-        - sequence_add_time_period
-        - sequence_add_work_calendar
-        - sequence_add_work_plan
-        - sequence_add_work_schedule
-        - sequence_add_work_time
-        - sequence_assign_lag_time
-        - sequence_assign_process
-        - sequence_assign_product
-        - sequence_assign_recurrence_pattern
-        - sequence_assign_sequence
-        - sequence_assign_work_plan
-        - sequence_calculate_task_duration
-        - sequence_cascade_schedule
-        - sequence_copy_work_schedule
-        - sequence_create_baseline
-        - sequence_duplicate_task
-        - sequence_edit_task_time
-        - sequence_edit_lag_time
-        - sequence_edit_recurrence_pattern
-        - sequence_edit_sequence
-        - sequence_edit_task
-        - sequence_edit_work_calendar
-        - sequence_edit_work_plan
-        - sequence_edit_work_schedule
-        - sequence_edit_work_time
-        - sequence_recalculate_schedule
-        - sequence_remove_task
-        - sequence_remove_time_period
-        - sequence_remove_work_calendar
-        - sequence_remove_work_plan
-        - sequence_remove_work_schedule
-        - sequence_remove_work_time
-        - sequence_unassign_lag_time
-        - sequence_unassign_process
-        - sequence_unassign_product
-        - sequence_unassign_recurrence_pattern
-        - sequence_unassign_sequence
-      type_overrides:
-        sequence_add_date_time:
-          returns:
-            kind: struct
-            struct: sequence_date_time_result
         sequence_duplicate_task:
-          returns:
-            kind: struct
-            struct: sequence_duplicate_task_result
           params:
             owner_history:
               nullable: true
@@ -1654,8 +511,6 @@ discover:
             application:
               nullable: true
         sequence_copy_work_schedule:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -1665,8 +520,6 @@ discover:
               nullable: true
         sequence_create_baseline:
           params:
-            name:
-              nullable: true
             owner_history:
               nullable: true
             user:
@@ -1674,18 +527,10 @@ discover:
             application:
               nullable: true
         sequence_add_task:
-          returns:
-            nullable: true
           params:
             work_schedule:
               nullable: true
             parent_task:
-              nullable: true
-            name:
-              nullable: true
-            description:
-              nullable: true
-            identification:
               nullable: true
             owner_history:
               nullable: true
@@ -1693,20 +538,7 @@ discover:
               nullable: true
             application:
               nullable: true
-        sequence_add_task_time:
-          returns:
-            nullable: true
-        sequence_add_time_period:
-          returns:
-            nullable: true
-          params:
-            start_time:
-              nullable: true
-            end_time:
-              nullable: true
         sequence_add_work_calendar:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -1715,11 +547,7 @@ discover:
             application:
               nullable: true
         sequence_add_work_plan:
-          returns:
-            nullable: true
           params:
-            name:
-              nullable: true
             creator_person:
               nullable: true
             owner_history:
@@ -1729,11 +557,7 @@ discover:
             application:
               nullable: true
         sequence_add_work_schedule:
-          returns:
-            nullable: true
           params:
-            object_type:
-              nullable: true
             work_plan:
               nullable: true
             creator_person:
@@ -1744,15 +568,7 @@ discover:
               nullable: true
             application:
               nullable: true
-        sequence_add_work_time:
-          returns:
-            nullable: true
-        sequence_assign_lag_time:
-          returns:
-            nullable: true
         sequence_assign_process:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -1761,8 +577,6 @@ discover:
             application:
               nullable: true
         sequence_assign_product:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -1770,12 +584,7 @@ discover:
               nullable: true
             application:
               nullable: true
-        sequence_assign_recurrence_pattern:
-          returns:
-            nullable: true
         sequence_assign_sequence:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -1784,8 +593,6 @@ discover:
             application:
               nullable: true
         sequence_assign_work_plan:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -1793,62 +600,13 @@ discover:
               nullable: true
             application:
               nullable: true
-        sequence_edit_lag_time:
-          params:
-            attributes:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-        sequence_edit_recurrence_pattern:
-          params:
-            attributes:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-        sequence_edit_sequence:
-          params:
-            attributes:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-        sequence_edit_task:
-          params:
-            attributes:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-        sequence_edit_task_time:
-          params:
-            attributes:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-        sequence_edit_work_calendar:
-          params:
-            attributes:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-        sequence_edit_work_plan:
-          params:
-            attributes:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-        sequence_edit_work_schedule:
-          params:
-            attributes:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-        sequence_edit_work_time:
-          params:
-            attributes:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
         sequence_unassign_process:
-          returns:
-            nullable: true
           params:
             user:
               nullable: true
             application:
               nullable: true
         sequence_unassign_product:
-          returns:
-            nullable: true
           params:
             user:
               nullable: true
@@ -1878,107 +636,27 @@ discover:
               nullable: true
             application:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/unit/unit.cpp
-      include:
-        - unit_add_context_dependent_unit
-        - unit_add_derived_unit
-        - unit_add_monetary_unit
-        - unit_add_si_unit
-        - unit_remove_unit
-        - unit_unassign_unit
-      type_overrides:
-        unit_add_si_unit:
-          params:
-            prefix:
-              nullable: true
-        unit_add_context_dependent_unit:
-          params:
-            dimensions:
-              kind: int64_list
-        unit_add_derived_unit:
-          params:
-            userdefinedtype:
-              nullable: true
-            exponents:
-              kind: int64_list
-    - namespace: ifcapi::bindings
-      translation_unit: selector/parser.cpp
-      include:
-        - selector_node_child
-        - selector_node_child_count
-        - selector_node_free
-        - selector_node_kind
-        - selector_node_text
-        - selector_parse_filter
-        - selector_parse_format
-        - selector_parse_get_element
-      type_overrides:
         selector_node_child:
-          returns:
-            kind: opaque_ptr
-            cpp_type: ifcopenshell_selector_node_t*
-            nullable: true
           params:
             node:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_selector_node_t*
               nullable: true
         selector_node_child_count:
           params:
             node:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_selector_node_t*
               nullable: true
         selector_node_free:
           params:
             root:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_selector_node_t*
               nullable: true
         selector_node_kind:
           params:
             node:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_selector_node_t*
               nullable: true
         selector_node_text:
-          returns:
-            ownership: copy
           params:
             node:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_selector_node_t*
               nullable: true
-        selector_parse_filter:
-          returns:
-            kind: opaque_ptr
-            cpp_type: ifcopenshell_selector_node_t*
-            nullable: true
-        selector_parse_format:
-          returns:
-            kind: opaque_ptr
-            cpp_type: ifcopenshell_selector_node_t*
-            nullable: true
-        selector_parse_get_element:
-          returns:
-            kind: opaque_ptr
-            cpp_type: ifcopenshell_selector_node_t*
-            nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: selector/format.cpp
-      include:
-        - selector_format
-        - selector_keys_count
-        - selector_keys_free
-        - selector_keys_get
-        - selector_keys_is_regex
-        - selector_parse_keys
-      type_overrides:
         selector_format:
-          returns:
-            ownership: copy
-            nullable: true
           params:
             file:
               nullable: true
@@ -1987,48 +665,21 @@ discover:
         selector_keys_count:
           params:
             keys:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_selector_keys_t*
               nullable: true
         selector_keys_free:
           params:
             keys:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_selector_keys_t*
               nullable: true
         selector_keys_get:
-          returns:
-            ownership: copy
           params:
             keys:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_selector_keys_t*
               nullable: true
         selector_keys_is_regex:
           params:
             keys:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_selector_keys_t*
               nullable: true
-        selector_parse_keys:
-          returns:
-            kind: opaque_ptr
-            cpp_type: ifcopenshell_selector_keys_t*
-            nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: root.cpp
-      include:
-        - root_create_entity
-        - root_remove_product
-      type_overrides:
         root_create_entity:
-          returns:
-            nullable: true
           params:
-            predefined_type:
-              nullable: true
-            name:
-              nullable: true
             owner_history:
               nullable: true
         root_remove_product:
@@ -2037,85 +688,25 @@ discover:
               nullable: true
             application:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/boundary/boundary.cpp
-      include:
-        - boundary_assign_connection_geometry
-        - boundary_copy_boundary
-        - boundary_edit_attributes
-        - boundary_remove_boundary
-      type_overrides:
-        boundary_assign_connection_geometry:
-          params:
-            outer_boundary:
-              kind: double_list_list
-            location:
-              kind: double_list
-            axis:
-              kind: double_list
-            ref_direction:
-              kind: double_list
-            inner_boundaries:
-              kind: double_list_list_list
         boundary_edit_attributes:
           params:
             parent_boundary:
               nullable: true
             corresponding_boundary:
               nullable: true
-        boundary_copy_boundary:
-          returns:
-            nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/feature/feature.cpp
-      include:
-        - feature_add_feature
-        - feature_add_filling
-        - feature_remove_feature
-        - feature_remove_filling
-      type_overrides:
         feature_add_feature:
-          returns:
-            nullable: true
           params:
             user:
               nullable: true
             application:
               nullable: true
-        feature_add_filling:
-          returns:
-            nullable: true
         feature_remove_feature:
           params:
             user:
               nullable: true
             application:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/grid/grid.cpp
-      include:
-        - grid_create_axis_curve
-        - grid_create_grid_axis
-        - grid_remove_grid_axis
-      type_overrides:
-        grid_create_axis_curve:
-          params:
-            p1:
-              kind: double_list
-            p2:
-              kind: double_list
-        grid_create_grid_axis:
-          returns:
-            nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/control/control.cpp
-      include:
-        - control_assign_control
-        - control_unassign_control
-      type_overrides:
         control_assign_control:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -2129,15 +720,7 @@ discover:
               nullable: true
             application:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/drawing/drawing.cpp
-      include:
-        - drawing_assign_product
-        - drawing_unassign_product
-      type_overrides:
         drawing_assign_product:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -2151,15 +734,6 @@ discover:
               nullable: true
             application:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/georeference/georeference.cpp
-      include:
-        - georeference_add_georeferencing
-        - georeference_edit_georeferencing
-        - georeference_edit_true_north
-        - georeference_edit_wcs
-        - georeference_remove_georeferencing
-      type_overrides:
         georeference_add_georeferencing:
           params:
             owner_history:
@@ -2168,31 +742,13 @@ discover:
               nullable: true
             application:
               nullable: true
-        georeference_edit_georeferencing:
-          params:
-            coordinate_operation:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-            projected_crs:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-    - namespace: ifcapi::bindings
-      translation_unit: owner.cpp
-      include:
-        - owner_create_owner_history
-        - owner_update_owner_history
-      type_overrides:
         owner_create_owner_history:
-          returns:
-            nullable: true
           params:
             user:
               nullable: true
             application:
               nullable: true
         owner_update_owner_history:
-          returns:
-            nullable: true
           params:
             element:
               nullable: true
@@ -2200,26 +756,6 @@ discover:
               nullable: true
             application:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/owner/owner.cpp
-      include:
-        - owner_add_actor
-        - owner_add_address
-        - owner_add_application
-        - owner_add_organisation
-        - owner_add_person
-        - owner_add_person_and_organisation
-        - owner_add_role
-        - owner_assign_actor
-        - owner_remove_actor
-        - owner_remove_address
-        - owner_remove_application
-        - owner_remove_organisation
-        - owner_remove_person
-        - owner_remove_person_and_organisation
-        - owner_remove_role
-        - owner_unassign_actor
-      type_overrides:
         owner_add_actor:
           params:
             owner_history:
@@ -2252,50 +788,11 @@ discover:
               nullable: true
             application:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/material/material.cpp
-      include:
-        - material_add_constituent
-        - material_add_layer
-        - material_add_list_item
-        - material_add_material
-        - material_add_material_set
-        - material_add_profile
-        - material_assign_material
-        - material_assign_profile
-        - material_edit_profile_usage
-        - material_remove_constituent
-        - material_remove_layer
-        - material_remove_list_item
-        - material_remove_material
-        - material_remove_material_set
-        - material_remove_profile
-        - material_reorder_set_item
-        - material_unassign_material
-      type_overrides:
-        material_add_constituent:
-          params:
-            name:
-              nullable: true
-        material_add_layer:
-          params:
-            name:
-              nullable: true
-        material_add_material:
-          params:
-            name:
-              nullable: true
-            category:
-              nullable: true
-            description:
-              nullable: true
         material_add_profile:
           params:
             material:
               nullable: true
             profile:
-              nullable: true
-            name:
               nullable: true
         material_assign_material:
           params:
@@ -2313,163 +810,49 @@ discover:
               nullable: true
             application:
               nullable: true
-        material_edit_profile_usage:
-          params:
-            attributes:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-    - namespace: ifcapi::bindings
-      translation_unit: api/cost/cost.cpp
-      include:
-        - cost_edit_cost_value
-        - cost_edit_cost_value_formula
-      type_overrides:
         cost_edit_cost_value:
           params:
-            attributes:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
             unit_component:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/resource/resource.cpp
-      include:
-        - resource_edit_resource_time
-      type_overrides:
-        resource_edit_resource_time:
-          params:
-            attributes:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-    - namespace: ifcapi::bindings
-      translation_unit: api/style/style.cpp
-      include:
-        - style_add_style
-        - style_assign_item_style
-        - style_assign_material_style
-        - style_assign_representation_styles
-        - style_edit_surface_style
-        - style_remove_style
-        - style_remove_styled_representation
-        - style_remove_surface_style
-        - style_unassign_material_style
-        - style_unassign_representation_styles
-      type_overrides:
-        style_add_style:
-          params:
-            name:
-              nullable: true
         style_assign_item_style:
-          returns:
-            nullable: true
           params:
             style:
               nullable: true
-        style_edit_surface_style:
-          params:
-            attributes:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-    - namespace: ifcapi::bindings
-      translation_unit: api/structural/structural.cpp
-      include:
-        - structural_add_structural_activity
-        - structural_add_structural_analysis_model
-        - structural_add_structural_load
-        - structural_add_structural_load_case
-        - structural_add_structural_load_group
-        - structural_add_structural_member_connection
-        - structural_add_structural_boundary_condition
-        - structural_edit_structural_boundary_condition
-        - structural_edit_structural_connection_cs
-        - structural_edit_structural_item_axis
-        - structural_assign_to_building
-        - structural_assign_product
-        - structural_assign_structural_analysis_model
-        - structural_remove_structural_analysis_model
-        - structural_remove_structural_boundary_condition
-        - structural_remove_structural_connection_condition
-        - structural_remove_structural_load
-        - structural_remove_structural_load_case
-        - structural_remove_structural_load_group
-        - structural_unassign_structural_analysis_model
-      type_overrides:
         structural_add_structural_activity:
-          returns:
-            nullable: true
           params:
             activity_owner_history:
               nullable: true
             relationship_owner_history:
               nullable: true
         structural_add_structural_analysis_model:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
-        structural_add_structural_load:
-          returns:
-            nullable: true
-          params:
-            name:
-              nullable: true
         structural_add_structural_load_case:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
         structural_add_structural_load_group:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
         structural_add_structural_member_connection:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
         structural_add_structural_boundary_condition:
-          returns:
-            nullable: true
           params:
-            name:
-              nullable: true
             connection:
               nullable: true
-        structural_edit_structural_connection_cs:
-          params:
-            axis:
-              kind: double_list
-            ref_direction:
-              kind: double_list
-        structural_edit_structural_boundary_condition:
-          params:
-            attributes:
-              kind: opaque_ptr
-              cpp_type: ifcopenshell_pset_props_t*
-        structural_edit_structural_item_axis:
-          params:
-            axis:
-              kind: double_list
         structural_assign_to_building:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
         structural_assign_product:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
         structural_assign_structural_analysis_model:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -2489,21 +872,6 @@ discover:
               nullable: true
             boundary_condition:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/system/system.cpp
-      include:
-        - system_add_port
-        - system_add_system
-        - system_assign_flow_control
-        - system_assign_port
-        - system_assign_system
-        - system_connect_port
-        - system_disconnect_port
-        - system_remove_system
-        - system_unassign_flow_control
-        - system_unassign_port
-        - system_unassign_system
-      type_overrides:
         system_add_port:
           params:
             element:
@@ -2519,8 +887,6 @@ discover:
             owner_history:
               nullable: true
         system_assign_flow_control:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -2537,8 +903,6 @@ discover:
             application:
               nullable: true
         system_assign_system:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -2574,21 +938,8 @@ discover:
               nullable: true
             application:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: api/group/relationship.cpp
-      include:
-        - group_add_group
-        - group_update_group_products
-        - group_assign_group
-        - group_unassign_group
-        - group_remove_group
-      type_overrides:
         group_add_group:
-          returns:
-            nullable: true
           params:
-            description:
-              nullable: true
             owner_history:
               nullable: true
             user:
@@ -2596,8 +947,6 @@ discover:
             application:
               nullable: true
         group_update_group_products:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -2606,8 +955,6 @@ discover:
             application:
               nullable: true
         group_assign_group:
-          returns:
-            nullable: true
           params:
             owner_history:
               nullable: true
@@ -2621,14 +968,7 @@ discover:
               nullable: true
             application:
               nullable: true
-    - namespace: ifcapi::bindings
-      translation_unit: util/schema.cpp
-      include:
-        - schema_reassign_class
-      type_overrides:
         schema_reassign_class:
-          returns:
-            nullable: true
           params:
             file:
               nullable: true

@@ -11,6 +11,7 @@ from src.ifcwrap.binding_generator.clang_discovery import (
     TranslationUnitIndex,
     _ast_filter_for_lookup,
     discover_namespace_functions_with_compile_commands,
+    discover_namespace_functions_with_synthetic_source,
     discover_public_fields_with_compile_commands,
     discover_public_methods_with_compile_commands,
 )
@@ -144,6 +145,63 @@ double qualified_scale(double value) { return value; }
     assert functions["nested_count"][0].return_cpp_type == "int"
     assert functions["nested_count"][0].params[0].cpp_type == "const std::string &"
     assert functions["qualified_scale"][0].return_cpp_type == "double"
+
+
+def test_discover_namespace_functions_with_synthetic_contract_source(tmp_path: Path) -> None:
+    compiler = shutil.which("clang++")
+    if compiler is None:
+        pytest.skip("clang++ is not available")
+
+    header_a = tmp_path / "contract_a.h"
+    header_b = tmp_path / "contract_b.h"
+    source = tmp_path / "reference.cpp"
+    compile_commands = tmp_path / "compile_commands.json"
+
+    header_a.write_text(
+        """
+#include <string>
+
+namespace ifcapi::bindings {
+int contract_count(const std::string& name);
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    header_b.write_text(
+        """
+namespace ifcapi::bindings {
+double contract_scale(double value);
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text("int reference() { return 0; }\n", encoding="utf-8")
+    compile_commands.write_text(
+        json.dumps(
+            [
+                {
+                    "directory": str(tmp_path),
+                    "command": f"{compiler} -std=c++17 -I {tmp_path} -c {source}",
+                    "file": str(source),
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    functions = discover_namespace_functions_with_synthetic_source(
+        compile_commands,
+        f'#include "{header_a.as_posix()}"\n#include "{header_b.as_posix()}"\n',
+        "ifcapi::bindings",
+        selected_names={"contract_count", "contract_scale"},
+        reference_source_root=tmp_path,
+    )
+
+    assert set(functions) == {"contract_count", "contract_scale"}
+    assert functions["contract_count"][0].params[0].cpp_type == "const std::string &"
+    assert functions["contract_scale"][0].return_cpp_type == "double"
 
 
 def test_namespace_discovery_uses_simple_fallback_lazily(tmp_path: Path) -> None:
