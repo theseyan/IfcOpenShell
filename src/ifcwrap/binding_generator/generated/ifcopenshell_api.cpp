@@ -1580,7 +1580,7 @@ void ifcopenshell_string_list_destroy(ifcopenshell_string_list_t* value) {
     value->size = 0;
 }
 
-void ifcopenshell_int32_list_destroy(ifcopenshell_int32_list_t* value) {
+void ifcopenshell_double_list_destroy(ifcopenshell_double_list_t* value) {
     if (value == nullptr || value->items == nullptr) {
         return;
     }
@@ -1589,7 +1589,7 @@ void ifcopenshell_int32_list_destroy(ifcopenshell_int32_list_t* value) {
     value->size = 0;
 }
 
-void ifcopenshell_double_list_destroy(ifcopenshell_double_list_t* value) {
+void ifcopenshell_int32_list_destroy(ifcopenshell_int32_list_t* value) {
     if (value == nullptr || value->items == nullptr) {
         return;
     }
@@ -1726,22 +1726,6 @@ static std::vector<std::string> to_cpp_string_list(const ifcopenshell_string_lis
     return result;
 }
 
-static ifcopenshell_int32_list_t make_int32_list(const std::vector<int>& values) {
-    auto* items = values.empty() ? nullptr : new int32_t[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {
-        items[i] = static_cast<int32_t>(values[i]);
-    }
-    return ifcopenshell_int32_list_t{items, values.size()};
-}
-
-static std::vector<int> to_cpp_int32_list(const ifcopenshell_int32_list_t* value) {
-    validate_list_items("int32_list", value->items, value->size);
-    if (value->size == 0) {
-        return {};
-    }
-    return std::vector<int>(value->items, value->items + value->size);
-}
-
 static ifcopenshell_double_list_t make_double_list(const std::vector<double>& values) {
     auto* items = values.empty() ? nullptr : new double[values.size()];
     for (size_t i = 0; i < values.size(); ++i) {
@@ -1756,6 +1740,22 @@ static std::vector<double> to_cpp_double_list(const ifcopenshell_double_list_t* 
         return {};
     }
     return std::vector<double>(value->items, value->items + value->size);
+}
+
+static ifcopenshell_int32_list_t make_int32_list(const std::vector<int>& values) {
+    auto* items = values.empty() ? nullptr : new int32_t[values.size()];
+    for (size_t i = 0; i < values.size(); ++i) {
+        items[i] = static_cast<int32_t>(values[i]);
+    }
+    return ifcopenshell_int32_list_t{items, values.size()};
+}
+
+static std::vector<int> to_cpp_int32_list(const ifcopenshell_int32_list_t* value) {
+    validate_list_items("int32_list", value->items, value->size);
+    if (value->size == 0) {
+        return {};
+    }
+    return std::vector<int>(value->items, value->items + value->size);
 }
 
 static ifcopenshell_double_list_list_t make_double_list_list(const std::vector<std::vector<double>>& values) {
@@ -2852,6 +2852,23 @@ void ifcopenshell_ifcgeom_element_list_list_destroy(ifcopenshell_ifcgeom_element
     value->size = 0;
 }
 
+bool ifcopenshell_ifcparse_ifc_si_prefix_to_value(const char* prefix, double* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (prefix == nullptr) { throw std::runtime_error("Parameter \"prefix\" must not be null"); }
+    std::string prefix_cpp(prefix);
+        *out_result = static_cast<double>(IfcParse::IfcSIPrefixToValue(prefix_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcparse_clear_schemas(void) {
     try {
         ifcopenshell_clear_error();
@@ -3341,26 +3358,6 @@ Logger::OutputFormat(Logger::FMT_PLAIN);
     }
 }
 
-bool ifcopenshell_ifcparse_ifc_si_prefix_to_value(const char* prefix, double* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (prefix == nullptr) { throw std::runtime_error("Parameter \"prefix\" must not be null"); }
-    std::string prefix_cpp(prefix);
-        auto generated_result = [&]() {
-return IfcParse::IfcSIPrefixToValue(prefix_cpp);
-        }();
-        *out_result = static_cast<double>(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
 bool ifcopenshell_ifcparse_get_si_equivalent(ifcopenshell_ifc_instance_t* named_unit, double* out_result) {
     try {
         ifcopenshell_clear_error();
@@ -3489,6 +3486,25 @@ if (auto* entinst = inst->as<IfcUtil::IfcBaseEntity>()) {
 return inst;
         }();
         *out_result = new ifcopenshell_ifc_instance_t{generated_result, true};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_helmert_curve_point(double A0, double A1, double A2, double s, ifcopenshell_double_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    auto A0_cpp = static_cast<double>(A0);
+    auto A1_cpp = static_cast<double>(A1);
+    auto A2_cpp = static_cast<double>(A2);
+    auto s_cpp = static_cast<double>(s);
+        *out_result = make_double_list(ifcopenshell::geometry::helmert_curve_point(A0_cpp, A1_cpp, A2_cpp, s_cpp));
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -5111,24 +5127,6 @@ return std::vector<const svgfill::polygon_2*>();
 #endif
         }();
         *out_result = make_ifcgeom_svgfill_polygon_list(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_helmert_curve_point(double A0, double A1, double A2, double s, ifcopenshell_double_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        auto generated_result = [&]() {
-return ifcopenshell::geometry::helmert_curve_point(A0, A1, A2, s);
-        }();
-        *out_result = make_double_list(generated_result);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -22502,6 +22500,23 @@ bool ifcopenshell_ifcgeom_tree_uint8_to_b64(ifcopenshell_ifcgeom_tree_t* self, c
     }
 }
 
+bool ifcopenshell_ifcgeom_tree_style_count(ifcopenshell_ifcgeom_tree_t* self, size_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = self_cpp->styles().size();
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcgeom_tree_clash_a(ifcopenshell_ifcgeom_tree_clash_t* self, ifcopenshell_ifc_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
@@ -23006,26 +23021,6 @@ for (auto* item : selected) {
 return result;
         }();
         *out_result = new ifcopenshell_ifcparse_instance_list_t{generated_result};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_style_count(ifcopenshell_ifcgeom_tree_t* self, size_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-return self_cpp->styles().size();
-        }();
-        *out_result = static_cast<size_t>(generated_result);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

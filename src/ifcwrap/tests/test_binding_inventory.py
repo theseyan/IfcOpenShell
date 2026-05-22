@@ -22,6 +22,7 @@ _HELPER_BODY_RE = re.compile(
     r"(?P<name>(?:make|to_cpp)_[A-Za-z0-9_]+|ifcopenshell_[A-Za-z0-9_]+_destroy)\s*\(",
     re.MULTILINE,
 )
+_SCALAR_PARAM_KINDS = {"bool", "double", "int32", "logical", "size", "string", "uint32"}
 
 
 def _repo_root() -> Path:
@@ -249,6 +250,36 @@ def test_generated_highlevel_c_symbols_are_reported_separately() -> None:
     assert inventory["generated_highlevel_c"]["symbol_count"] == len(generated_highlevel)
     assert "ifcopenshell_ifcapi_unit_convert" in generated_highlevel
     assert "ifcopenshell_ifcapi_value_kind" in generated_highlevel
+
+
+def test_scalar_param_specs_do_not_carry_ownership_policy() -> None:
+    spec_dir = _repo_root() / "src/ifcwrap/binding_generator/specs"
+    offenders: list[str] = []
+
+    for spec_path in sorted(spec_dir.glob("*.yml")):
+        spec = yaml.safe_load(spec_path.read_text(encoding="utf-8"))
+
+        def visit(node: object, path: tuple[str, ...] = ()) -> None:
+            if isinstance(node, dict):
+                params = node.get("params")
+                if isinstance(params, list):
+                    for index, param in enumerate(params):
+                        param_type = param.get("type") if isinstance(param, dict) else None
+                        if (
+                            isinstance(param_type, dict)
+                            and param_type.get("kind") in _SCALAR_PARAM_KINDS
+                            and "ownership" in param_type
+                        ):
+                            offenders.append(f"{spec_path.name}:{'.'.join(path + ('params', str(index), 'type'))}")
+                for key, value in node.items():
+                    visit(value, path + (str(key),))
+            elif isinstance(node, list):
+                for index, value in enumerate(node):
+                    visit(value, path + (str(index),))
+
+        visit(spec)
+
+    assert offenders == []
 
 
 def test_fresh_generation_matches_checked_in_api_semantics(tmp_path: Path) -> None:
