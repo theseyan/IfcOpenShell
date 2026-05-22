@@ -200,6 +200,12 @@ discover:
   include_dir: ../../../ifcgeom
   class_defaults:
     include_all: true
+  functions:
+    - namespace: ifcopenshell::geometry
+      translation_unit: function_item_evaluator.cpp
+      include_all: false
+      include:
+        - helmert_curve_point
   classes:
     - handle: triangulation
       translation_unit: IfcGeomRepresentation.cpp
@@ -672,6 +678,8 @@ discover:
         - cpp_name: add_file
           expose_as: add_iterator
           params: ["IfcGeom::Iterator &"]
+      method_sizes:
+        styles: style_count
 
     - handle: tree_clash
       translation_unit: kernels/opencascade/boolean_utils.cpp
@@ -930,7 +938,6 @@ functions:
       - name: filename
         type:
           kind: string
-          ownership: borrowed
     implementation:
       kind: inline_cpp
       body: |
@@ -955,7 +962,6 @@ functions:
       - name: filename
         type:
           kind: string
-          ownership: borrowed
     implementation:
       kind: inline_cpp
       body: |
@@ -976,7 +982,6 @@ functions:
       - name: rocksdb_filename
         type:
           kind: string
-          ownership: borrowed
     implementation:
       kind: inline_cpp
       body: |
@@ -2370,30 +2375,6 @@ functions:
         return std::vector<const svgfill::polygon_2*>();
         #endif
 
-  # helmert_curve_point: Compute point on helmert curve
-  - kind: adapter_function
-    expose_as: helmert_curve_point
-    returns:
-      kind: double_list
-      ownership: copy
-    params:
-      - name: A0
-        type:
-          kind: double
-      - name: A1
-        type:
-          kind: double
-      - name: A2
-        type:
-          kind: double
-      - name: s
-        type:
-          kind: double
-    implementation:
-      kind: inline_cpp
-      body: |
-        return ifcopenshell::geometry::helmert_curve_point(A0, A1, A2, s);
-
   # convert_loop_to_function_item: Convert a taxonomy loop to a function_item
   - kind: adapter_function
     expose_as: convert_loop_to_function_item
@@ -2722,17 +2703,6 @@ methods:
             result->push(const_cast<IfcUtil::IfcBaseEntity*>(item));
         }
         return result;
-
-  - kind: adapter_method
-    receiver: tree
-    expose_as: style_count
-    returns:
-      kind: size
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->styles().size();
 
   - kind: adapter_method
     receiver: tree

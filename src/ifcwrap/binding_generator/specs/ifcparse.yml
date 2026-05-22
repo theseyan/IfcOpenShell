@@ -276,7 +276,6 @@ discover:
     - namespace: IfcParse
       translation_unit: IfcParse.cpp
       exclude:
-        - IfcSIPrefixToValue
         - GeneralTokenPtr
         - OperatorTokenPtr
         - get_SI_equivalent
@@ -569,19 +568,6 @@ functions:
         ifcopenshell_log_stream.str("");
         ifcopenshell_log_stream.clear();
         Logger::OutputFormat(Logger::FMT_PLAIN);
-
-  - kind: adapter_function
-    expose_as: ifc_si_prefix_to_value
-    returns:
-      kind: double
-    params:
-      - name: prefix
-        type:
-          kind: string
-    implementation:
-      kind: inline_cpp
-      body: |
-        return IfcParse::IfcSIPrefixToValue(prefix_cpp);
 
   - kind: adapter_function
     expose_as: get_si_equivalent
