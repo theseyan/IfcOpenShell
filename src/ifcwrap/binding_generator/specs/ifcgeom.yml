@@ -166,6 +166,9 @@ handle_families:
     c_prefix: ifcopenshell_ifcgeom_taxonomy
     destructor: shared_ptr
     ptr_type: shared_ptr
+    validate_against:
+      header: taxonomy.h
+      marker_macro: DECLARE_PTR
     types:
       - item
       - matrix4
@@ -206,6 +209,46 @@ discover:
       include_all: false
       include:
         - helmert_curve_point
+  constructors:
+    - handle: serializer
+      cpp_class: XmlSerializer
+      translation_unit: ../serializers/XmlSerializer.cpp
+      expose_as: create_xml_serializer
+      params:
+        - IfcParse::IfcFile*
+        - const std::string&
+      param_renames:
+        xml_filename: filename
+    - handle: tree
+      cpp_class: IfcGeom::tree
+      translation_unit: kernels/opencascade/boolean_utils.cpp
+      expose_as: create_tree
+      params: []
+    - handle: tree
+      cpp_class: IfcGeom::tree
+      translation_unit: kernels/opencascade/boolean_utils.cpp
+      expose_as: create_tree_from_file
+      params:
+        - IfcParse::IfcFile&
+      param_renames:
+        f: file
+    - handle: tree
+      cpp_class: IfcGeom::tree
+      translation_unit: kernels/opencascade/boolean_utils.cpp
+      expose_as: create_tree_from_file_with_settings
+      params:
+        - IfcParse::IfcFile&
+        - ifcopenshell::geometry::Settings
+      param_renames:
+        f: file
+    - handle: tree
+      cpp_class: IfcGeom::tree
+      translation_unit: kernels/opencascade/boolean_utils.cpp
+      expose_as: create_tree_from_iterator
+      params:
+        - IfcGeom::Iterator&
+      param_renames:
+        it: iterator
   classes:
     - handle: triangulation
       translation_unit: IfcGeomRepresentation.cpp
@@ -308,9 +351,30 @@ discover:
         - cpp_name: evaluation_points
           expose_as: evaluation_points
           params: []
+        - cpp_name: evaluation_points
+          expose_as: evaluation_points_range
+          params:
+            - double
+            - double
+            - unsigned int
         - cpp_name: evaluate
           expose_as: evaluate
           params: []
+        - cpp_name: evaluate
+          expose_as: evaluate_range
+          params:
+            - double
+            - double
+            - unsigned int
+      type_overrides:
+        "evaluation_points(double, double, unsigned int)":
+          params:
+            nsteps:
+              kind: int32
+        "evaluate(double, double, unsigned int)":
+          params:
+            nsteps:
+              kind: int32
 
     - handle: serialization
       translation_unit: IfcGeomRepresentation.cpp
@@ -471,9 +535,6 @@ discover:
         - control_points
       discover_children:
         cpp_field: control_points
-        element_handle: taxonomy_point3
-        count_as: control_point_count
-        at_as: control_point_at
 
     - handle: taxonomy_sweep_along_curve
       translation_unit: Iterator.cpp
@@ -493,10 +554,7 @@ discover:
       discover_as_item: true
       extra_fields:
         matrix: "matrix4::ptr"
-      discover_children:
-        element_handle: taxonomy_loop
-        count_as: loop_count
-        at_as: loop_at
+      discover_children: true
 
     - handle: taxonomy_loft
       translation_unit: Iterator.cpp
@@ -507,44 +565,31 @@ discover:
         - axis
       discover_children:
         element_handle: taxonomy_item
-        count_as: item_count
-        at_as: item_at
         add_as: add_item
         add_cast_cpp_type: "ifcopenshell::geometry::taxonomy::geom_item"
 
     - handle: taxonomy_loop
       translation_unit: Iterator.cpp
       include_all: false
-      discover_children:
-        element_handle: taxonomy_edge
-        count_as: edge_count
-        at_as: edge_at
+      discover_children: true
 
     - handle: taxonomy_shell
       translation_unit: Iterator.cpp
       include_all: false
-      discover_children:
-        element_handle: taxonomy_face
-        count_as: face_count
-        at_as: face_at
+      discover_children: true
 
     - handle: taxonomy_solid
       translation_unit: Iterator.cpp
       include_all: false
       extra_fields:
         matrix: "matrix4::ptr"
-      discover_children:
-        element_handle: taxonomy_shell
-        count_as: shell_count
-        at_as: shell_at
+      discover_children: true
 
     - handle: taxonomy_collection
       translation_unit: Iterator.cpp
       include_all: false
       discover_children:
         element_handle: taxonomy_item
-        count_as: item_count
-        at_as: item_at
         add_as: add_item
         add_cast_cpp_type: "ifcopenshell::geometry::taxonomy::geom_item"
 
@@ -552,12 +597,8 @@ discover:
       translation_unit: Iterator.cpp
       include_all: false
       discover_fields: true
-      enum_types_as_int32:
-        - operation_t
       discover_children:
         element_handle: taxonomy_item
-        count_as: item_count
-        at_as: item_at
         add_as: add_item
         add_cast_cpp_type: "ifcopenshell::geometry::taxonomy::geom_item"
 
@@ -566,9 +607,9 @@ discover:
       include_all: false
       discover_as_item: true
       array_pair_fields:
-        degree: int32
-        multiplicities: int32_list
-        knots: double_list
+        - degree
+        - multiplicities
+        - knots
 
     - handle: opaque_number
       translation_unit: ConversionResult.cpp
@@ -649,8 +690,6 @@ discover:
     - handle: taxonomy_item
       translation_unit: Iterator.cpp
       include_all: true
-      enum_types_as_int32:
-        - kinds
       exclude:
         - clone_
         - reverse
@@ -700,28 +739,24 @@ discover:
       include_all: false
       ccomponents_accessor:
         expose_as: get_data
-        dimensions: 3
 
     - handle: taxonomy_direction3
       translation_unit: Iterator.cpp
       include_all: false
       ccomponents_accessor:
         expose_as: get_data
-        dimensions: 3
 
     - handle: taxonomy_matrix4
       translation_unit: Iterator.cpp
       include_all: false
       ccomponents_accessor:
         expose_as: get_data
-        dimensions: 16
 
     - handle: taxonomy_colour
       translation_unit: Iterator.cpp
       include_all: false
       ccomponents_accessor:
         expose_as: get_data
-        dimensions: 3
 
     - handle: transformation
       translation_unit: Iterator.cpp
@@ -765,21 +800,25 @@ functions:
           kind: handle
           handle: buffer
           ownership: borrowed
+          cpp_type: const stream_or_filename&
       - name: mtl_output
         type:
           kind: handle
           handle: buffer
           ownership: borrowed
+          cpp_type: const stream_or_filename&
       - name: geometry_settings
         type:
           kind: handle
           handle: settings
           ownership: borrowed
+          cpp_type: const ifcopenshell::geometry::Settings&
       - name: serializer_settings
         type:
           kind: handle
           handle: serializer_settings
           ownership: borrowed
+          cpp_type: const ifcopenshell::geometry::SerializerSettings&
 
   - kind: constructor
     expose_as: create_ttl_serializer
@@ -791,16 +830,19 @@ functions:
           kind: handle
           handle: buffer
           ownership: borrowed
+          cpp_type: const stream_or_filename&
       - name: geometry_settings
         type:
           kind: handle
           handle: settings
           ownership: borrowed
+          cpp_type: const ifcopenshell::geometry::Settings&
       - name: serializer_settings
         type:
           kind: handle
           handle: serializer_settings
           ownership: borrowed
+          cpp_type: const ifcopenshell::geometry::SerializerSettings&
 
   - kind: constructor
     expose_as: create_svg_serializer
@@ -812,16 +854,19 @@ functions:
           kind: handle
           handle: buffer
           ownership: borrowed
+          cpp_type: const stream_or_filename&
       - name: geometry_settings
         type:
           kind: handle
           handle: settings
           ownership: borrowed
+          cpp_type: const ifcopenshell::geometry::Settings&
       - name: serializer_settings
         type:
           kind: handle
           handle: serializer_settings
           ownership: borrowed
+          cpp_type: const ifcopenshell::geometry::SerializerSettings&
 
   - kind: constructor
     expose_as: create_gltf_serializer
@@ -837,11 +882,13 @@ functions:
           kind: handle
           handle: settings
           ownership: borrowed
+          cpp_type: const ifcopenshell::geometry::Settings&
       - name: serializer_settings
         type:
           kind: handle
           handle: serializer_settings
           ownership: borrowed
+          cpp_type: const ifcopenshell::geometry::SerializerSettings&
 
   - kind: constructor
     expose_as: create_iges_serializer
@@ -857,11 +904,13 @@ functions:
           kind: handle
           handle: settings
           ownership: borrowed
+          cpp_type: const ifcopenshell::geometry::Settings&
       - name: serializer_settings
         type:
           kind: handle
           handle: serializer_settings
           ownership: borrowed
+          cpp_type: const ifcopenshell::geometry::SerializerSettings&
 
   - kind: constructor
     expose_as: create_step_serializer
@@ -877,11 +926,13 @@ functions:
           kind: handle
           handle: settings
           ownership: borrowed
+          cpp_type: const ifcopenshell::geometry::Settings&
       - name: serializer_settings
         type:
           kind: handle
           handle: serializer_settings
           ownership: borrowed
+          cpp_type: const ifcopenshell::geometry::SerializerSettings&
 
   - kind: constructor
     expose_as: create_collada_serializer
@@ -897,11 +948,13 @@ functions:
           kind: handle
           handle: settings
           ownership: borrowed
+          cpp_type: const ifcopenshell::geometry::Settings&
       - name: serializer_settings
         type:
           kind: handle
           handle: serializer_settings
           ownership: borrowed
+          cpp_type: const ifcopenshell::geometry::SerializerSettings&
 
   - kind: constructor
     expose_as: create_hdf_serializer
@@ -917,11 +970,13 @@ functions:
           kind: handle
           handle: settings
           ownership: borrowed
+          cpp_type: const ifcopenshell::geometry::Settings&
       - name: serializer_settings
         type:
           kind: handle
           handle: serializer_settings
           ownership: borrowed
+          cpp_type: const ifcopenshell::geometry::SerializerSettings&
 
   - kind: adapter_function
     expose_as: create_json_serializer
@@ -935,6 +990,7 @@ functions:
           kind: handle
           handle: file
           ownership: borrowed
+          cpp_type: IfcParse::IfcFile*
       - name: filename
         type:
           kind: string
@@ -946,26 +1002,6 @@ functions:
         #else
         throw std::runtime_error("JSON serializer requires GLTF support (nlohmann_json)");
         #endif
-
-  - kind: adapter_function
-    expose_as: create_xml_serializer
-    returns:
-      kind: handle
-      handle: serializer
-      ownership: owned
-    params:
-      - name: file
-        type:
-          kind: handle
-          handle: file
-          ownership: borrowed
-      - name: filename
-        type:
-          kind: string
-    implementation:
-      kind: inline_cpp
-      body: |
-        return new XmlSerializer(file_cpp, std::string(filename));
 
   - kind: adapter_function
     expose_as: create_rocksdb_serializer
@@ -1006,46 +1042,6 @@ functions:
       - name: stream
         type:
           kind: bool
-
-  - kind: constructor
-    expose_as: create_tree
-    handle: tree
-    params: []
-
-  - kind: constructor
-    expose_as: create_tree_from_file
-    handle: tree
-    params:
-      - name: file
-        type:
-          kind: handle
-          handle: file
-          ownership: borrowed
-
-  - kind: constructor
-    expose_as: create_tree_from_file_with_settings
-    handle: tree
-    params:
-      - name: file
-        type:
-          kind: handle
-          handle: file
-          ownership: borrowed
-      - name: settings
-        type:
-          kind: handle
-          handle: settings
-          ownership: borrowed
-
-  - kind: constructor
-    expose_as: create_tree_from_iterator
-    handle: tree
-    params:
-      - name: iterator
-        type:
-          kind: handle
-          handle: iterator
-          ownership: borrowed
 
   # Iterator constructor - takes file handle from ifcparse
   - kind: adapter_function
@@ -3756,49 +3752,6 @@ methods:
         return result;
 
   # === Function Item Evaluator Methods ===
-
-  - kind: adapter_method
-    receiver: function_item_evaluator
-    expose_as: evaluation_points_range
-    returns:
-      kind: double_list
-      ownership: copy
-    params:
-      - name: ustart
-        type:
-          kind: double
-      - name: uend
-        type:
-          kind: double
-      - name: nsteps
-        type:
-          kind: int32
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->evaluation_points(ustart, uend, static_cast<unsigned>(nsteps));
-
-  - kind: adapter_method
-    receiver: function_item_evaluator
-    expose_as: evaluate_range
-    returns:
-      kind: handle
-      handle: taxonomy_item
-      ownership: owned
-    params:
-      - name: ustart
-        type:
-          kind: double
-      - name: uend
-        type:
-          kind: double
-      - name: nsteps
-        type:
-          kind: int32
-    implementation:
-      kind: inline_cpp
-      body: |
-        return self_cpp->evaluate(ustart, uend, static_cast<unsigned>(nsteps));
 
   - kind: adapter_method
     receiver: function_item_evaluator

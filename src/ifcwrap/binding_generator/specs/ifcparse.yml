@@ -209,10 +209,6 @@ discover:
             - const std::string &
     - handle: simple_type
       translation_unit: IfcSchema.cpp
-      type_overrides:
-        declared_type:
-          returns:
-            kind: int32
     - handle: aggregation_type
       translation_unit: IfcSchema.cpp
       exclude:

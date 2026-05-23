@@ -153,9 +153,23 @@ class DiscoveredMethod:
 
 
 @dataclass(frozen=True)
+class DiscoveredConstructor:
+    class_name: str
+    cpp_name: str
+    params: tuple[DiscoveredParam, ...]
+
+
+@dataclass(frozen=True)
 class DiscoveredField:
     class_name: str
     cpp_name: str
+    cpp_type: str
+    cpp_type_ref: DiscoveredCppType
+
+
+@dataclass(frozen=True)
+class DiscoveredBase:
+    class_name: str
     cpp_type: str
     cpp_type_ref: DiscoveredCppType
 
@@ -419,6 +433,31 @@ class TranslationUnitIndex:
                     )
                     if qualified_name not in self._enum_names_by_simple[name]:
                         self._enum_names_by_simple[name].append(qualified_name)
+            elif kind == "TypedefDecl" and name:
+                enum_child = next((child for child in node.get("inner", []) if child.get("kind") == "EnumDecl"), None)
+                if enum_child is None:
+                    enum_child = next(
+                        (
+                            child.get("ownedTagDecl")
+                            for child in node.get("inner", [])
+                            if child.get("kind") == "ElaboratedType"
+                            and child.get("ownedTagDecl", {}).get("kind") == "EnumDecl"
+                        ),
+                        None,
+                    )
+                if enum_child is not None:
+                    type_info = node.get("type", {})
+                    qualified_name = type_info.get("desugaredQualType", "")
+                    if not qualified_name or _simple_name(qualified_name) != name:
+                        qualified_name = _qualified_name(current_scope, name)
+                    if qualified_name not in self._enums_by_qualified:
+                        self._enums_by_qualified[qualified_name] = IndexedEnum(
+                            qualified_name=qualified_name,
+                            simple_name=name,
+                            node=enum_child,
+                        )
+                        if qualified_name not in self._enum_names_by_simple[name]:
+                            self._enum_names_by_simple[name].append(qualified_name)
 
             for child in node.get("inner", []):
                 visit(child, next_scope)
@@ -684,6 +723,54 @@ def _extract_public_methods(
     return {name: tuple(overloads) for name, overloads in methods.items()}
 
 
+def _is_copy_or_move_constructor(child: dict, record_name: str, current_scope: str) -> bool:
+    params = [item for item in child.get("inner", []) if item.get("kind") == "ParmVarDecl"]
+    if len(params) != 1:
+        return False
+    param_type = params[0].get("type", {}).get("qualType", "")
+    lookup_name = _normalize_record_lookup_name(param_type)
+    return lookup_name in {record_name, _qualified_name(_enclosing_scope(current_scope), record_name), current_scope}
+
+
+def _extract_public_constructors(
+    record: dict,
+    index: TranslationUnitIndex,
+    current_scope: str,
+) -> tuple[DiscoveredConstructor, ...]:
+    constructors: list[DiscoveredConstructor] = []
+    access = _default_access(record)
+    record_name = record.get("name", "")
+    for child in record.get("inner", []):
+        if child.get("kind") == "AccessSpecDecl":
+            access = child.get("access", access)
+            continue
+        if access != "public":
+            continue
+        if child.get("kind") != "CXXConstructorDecl":
+            continue
+        if child.get("isImplicit") or child.get("isDeleted"):
+            continue
+        if _is_copy_or_move_constructor(child, record_name, current_scope):
+            continue
+
+        params = tuple(
+            DiscoveredParam(
+                name=param.get("name") or f"arg_{param_index}",
+                cpp_type=param.get("type", {}).get("qualType", ""),
+                cpp_type_ref=_parse_discovered_cpp_type(param.get("type", {}), index=index, current_scope=current_scope),
+            )
+            for param_index, param in enumerate(item for item in child.get("inner", []) if item.get("kind") == "ParmVarDecl")
+        )
+        constructors.append(
+            DiscoveredConstructor(
+                class_name=current_scope,
+                cpp_name=current_scope,
+                params=params,
+            )
+        )
+    return tuple(constructors)
+
+
 def _extract_public_fields(record: dict, index: TranslationUnitIndex, current_scope: str) -> dict[str, DiscoveredField]:
     fields: dict[str, DiscoveredField] = {}
     access = _default_access(record)
@@ -780,6 +867,23 @@ def _base_record_lookup_names(record: dict) -> list[str]:
         if lookup_name:
             base_names.append(lookup_name)
     return base_names
+
+
+def _extract_bases(record: dict, index: TranslationUnitIndex, current_scope: str) -> tuple[DiscoveredBase, ...]:
+    bases: list[DiscoveredBase] = []
+    for base in record.get("bases", []):
+        type_info = base.get("type", {})
+        cpp_type = type_info.get("desugaredQualType") or type_info.get("qualType", "")
+        if not cpp_type:
+            continue
+        bases.append(
+            DiscoveredBase(
+                class_name=record.get("name", ""),
+                cpp_type=cpp_type,
+                cpp_type_ref=_parse_discovered_cpp_type(type_info, index=index, current_scope=current_scope),
+            )
+        )
+    return tuple(bases)
 
 
 def _extract_namespace_functions(
@@ -886,6 +990,19 @@ def discover_public_methods_with_compile_commands(
     return methods
 
 
+def discover_public_constructors_with_compile_commands(
+    compile_commands_path: Path,
+    translation_unit: Path,
+    class_name: str,
+) -> tuple[DiscoveredConstructor, ...]:
+    index = _translation_unit_index(compile_commands_path, translation_unit)
+    record = index.resolve_record(class_name)
+    if record is None:
+        msg = f"Class '{class_name}' not found in AST for '{translation_unit}'"
+        raise ValueError(msg)
+    return _extract_public_constructors(record.node, index, record.qualified_name)
+
+
 def discover_public_fields_with_compile_commands(
     compile_commands_path: Path,
     translation_unit: Path,
@@ -916,6 +1033,19 @@ def discover_public_fields_with_compile_commands(
             queue.extend(_base_record_lookup_names(base_record.node))
 
     return fields
+
+
+def discover_base_types_with_compile_commands(
+    compile_commands_path: Path,
+    translation_unit: Path,
+    class_name: str,
+) -> tuple[DiscoveredBase, ...]:
+    index = _translation_unit_index(compile_commands_path, translation_unit)
+    record = index.resolve_record(class_name)
+    if record is None:
+        msg = f"Class '{class_name}' not found in AST for '{translation_unit}'"
+        raise ValueError(msg)
+    return _extract_bases(record.node, index, record.qualified_name)
 
 
 def discover_namespace_functions_with_compile_commands(
@@ -1128,13 +1258,35 @@ def _qualified_type_core(text: str, *, index: TranslationUnitIndex | None = None
     return text
 
 
+def _with_requested_enum_name(enum: IndexedEnum, text: str, current_scope: str) -> IndexedEnum:
+    if (
+        "::" in text
+        and enum.qualified_name != text
+        and _simple_name(text) == enum.simple_name
+        and ("::" not in enum.qualified_name or text.endswith(f"::{enum.qualified_name}"))
+    ):
+        return IndexedEnum(
+            qualified_name=text,
+            simple_name=enum.simple_name,
+            node=enum.node,
+        )
+    if "::" not in enum.qualified_name and "::" not in text:
+        enclosing_scope = _enclosing_scope(current_scope)
+        if enclosing_scope:
+            return IndexedEnum(
+                qualified_name=f"{enclosing_scope}::{text}",
+                simple_name=enum.simple_name,
+                node=enum.node,
+            )
+    return enum
+
+
 def _resolved_enum(index: TranslationUnitIndex | None, text: str, current_scope: str) -> IndexedEnum | None:
     if (
         index is None
         or not _looks_like_named_type(text)
         or _is_external_qualified_type(text)
         or _should_skip_clang_type_resolution(text)
-        or _has_skipped_qualified_root(text)
     ):
         return None
     enum = index._resolve_scoped_decl(  # noqa: SLF001
@@ -1144,21 +1296,9 @@ def _resolved_enum(index: TranslationUnitIndex | None, text: str, current_scope:
         simple=index._enum_names_by_simple,  # noqa: SLF001
     )
     if enum is not None:
-        if "::" in text and "::" not in enum.qualified_name:
-            return IndexedEnum(
-                qualified_name=text,
-                simple_name=enum.simple_name,
-                node=enum.node,
-            )
-        if "::" not in enum.qualified_name and "::" not in text:
-            enclosing_scope = _enclosing_scope(current_scope)
-            if enclosing_scope:
-                return IndexedEnum(
-                    qualified_name=f"{enclosing_scope}::{text}",
-                    simple_name=enum.simple_name,
-                    node=enum.node,
-                )
-        return enum
+        return _with_requested_enum_name(enum, text, current_scope)
+    if _has_skipped_qualified_root(text):
+        return None
     return index.resolve_enum(text, current_scope)
 
 

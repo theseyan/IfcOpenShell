@@ -96,6 +96,7 @@ def test_load_merged_specs_resolves_cross_slice_handles(tmp_path: Path) -> None:
                       kind: handle
                       handle: file
                       ownership: borrowed
+                      cpp_type: Demo::File&
             """
         ).strip()
         + "\n",
@@ -118,6 +119,352 @@ def test_load_merged_specs_resolves_cross_slice_handles(tmp_path: Path) -> None:
         "bool ifcopenshell_demo_create_serializer(ifcopenshell_demo_file_t* file, "
         "ifcopenshell_demo_serializer_t** out_result);"
     ) in header
+
+
+def test_constructor_handle_args_require_and_follow_cpp_type_passing_policy(tmp_path: Path) -> None:
+    spec_path = tmp_path / "constructors.yml"
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - demo.h
+            handles:
+              - name: file
+                cpp_type: Demo::File
+                c_type: ifcopenshell_demo_file_t
+                destructor: delete
+              - name: serializer
+                cpp_type: Demo::Serializer
+                c_type: ifcopenshell_demo_serializer_t
+                destructor: delete
+            functions:
+              - kind: constructor
+                expose_as: create_missing_policy_serializer
+                handle: serializer
+                params:
+                  - name: file
+                    type:
+                      kind: handle
+                      handle: file
+                      ownership: borrowed
+              - kind: constructor
+                expose_as: create_pointer_serializer
+                handle: serializer
+                cpp_class: Demo::PointerSerializer
+                params:
+                  - name: file
+                    type:
+                      kind: handle
+                      handle: file
+                      ownership: borrowed
+                      cpp_type: Demo::File*
+              - kind: constructor
+                expose_as: create_reference_serializer
+                handle: serializer
+                cpp_class: Demo::ReferenceSerializer
+                params:
+                  - name: file
+                    type:
+                      kind: handle
+                      handle: file
+                      ownership: borrowed
+                      cpp_type: const Demo::File&
+              - kind: constructor
+                expose_as: create_value_serializer
+                handle: serializer
+                cpp_class: Demo::ValueSerializer
+                params:
+                  - name: file
+                    type:
+                      kind: handle
+                      handle: file
+                      ownership: borrowed
+                      cpp_type: Demo::File
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    header_out = tmp_path / "demo_api.h"
+    cpp_out = tmp_path / "demo_api.cpp"
+    with pytest.raises(ValueError, match='Constructor handle parameter "file" requires cpp_type'):
+        generate(spec_path, header_out, cpp_out)
+
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - demo.h
+            handles:
+              - name: file
+                cpp_type: Demo::File
+                c_type: ifcopenshell_demo_file_t
+                destructor: delete
+              - name: serializer
+                cpp_type: Demo::Serializer
+                c_type: ifcopenshell_demo_serializer_t
+                destructor: delete
+            functions:
+              - kind: constructor
+                expose_as: create_pointer_serializer
+                handle: serializer
+                cpp_class: Demo::PointerSerializer
+                params:
+                  - name: file
+                    type:
+                      kind: handle
+                      handle: file
+                      ownership: borrowed
+                      cpp_type: Demo::File*
+              - kind: constructor
+                expose_as: create_reference_serializer
+                handle: serializer
+                cpp_class: Demo::ReferenceSerializer
+                params:
+                  - name: file
+                    type:
+                      kind: handle
+                      handle: file
+                      ownership: borrowed
+                      cpp_type: const Demo::File&
+              - kind: constructor
+                expose_as: create_value_serializer
+                handle: serializer
+                cpp_class: Demo::ValueSerializer
+                params:
+                  - name: file
+                    type:
+                      kind: handle
+                      handle: file
+                      ownership: borrowed
+                      cpp_type: Demo::File
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    generate(spec_path, header_out, cpp_out)
+
+    generated_cpp = cpp_out.read_text(encoding="utf-8")
+    assert "auto file_cpp = file->ptr;" in generated_cpp
+    assert "new Demo::PointerSerializer(file_cpp)" in generated_cpp
+    assert "auto& file_cpp = *file->ptr;" in generated_cpp
+    assert "new Demo::ReferenceSerializer(file_cpp)" in generated_cpp
+    assert "auto file_cpp = *file->ptr;" in generated_cpp
+    assert "new Demo::ValueSerializer(file_cpp)" in generated_cpp
+
+
+def test_constructor_rejects_nullable_reference_handle_params(tmp_path: Path) -> None:
+    spec_path = tmp_path / "nullable_reference.yml"
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - demo.h
+            handles:
+              - name: file
+                cpp_type: Demo::File
+                c_type: ifcopenshell_demo_file_t
+                destructor: delete
+              - name: serializer
+                cpp_type: Demo::Serializer
+                c_type: ifcopenshell_demo_serializer_t
+                destructor: delete
+            functions:
+              - kind: constructor
+                expose_as: create_serializer
+                handle: serializer
+                params:
+                  - name: file
+                    type:
+                      kind: handle
+                      handle: file
+                      ownership: borrowed
+                      nullable: true
+                      cpp_type: const Demo::File&
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match='cannot be nullable with reference cpp_type "const Demo::File&"'):
+        generate(spec_path, tmp_path / "demo_api.h", tmp_path / "demo_api.cpp")
+
+
+def test_discovery_supports_public_constructors(tmp_path: Path) -> None:
+    header = tmp_path / "constructors.h"
+    source = tmp_path / "constructors.cpp"
+    spec_path = tmp_path / "constructors.yml"
+
+    header.write_text(
+        dedent(
+            """
+            #include <string>
+
+            namespace Demo {
+            struct File {};
+
+            struct Serializer {
+                virtual ~Serializer() = default;
+            };
+
+            struct XmlSerializer : Serializer {
+            public:
+                XmlSerializer(File* file, const std::string& xml_filename) {}
+                XmlSerializer(const XmlSerializer&) = default;
+            };
+
+            struct Tree {
+            public:
+                Tree() = default;
+                explicit Tree(File& file) {}
+            };
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "constructors.h"\n', encoding="utf-8")
+    compile_commands = _write_compile_commands(tmp_path, source)
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - constructors.h
+            handles:
+              - name: file
+                cpp_type: Demo::File
+                c_type: ifcopenshell_demo_file_t
+                destructor: delete
+              - name: serializer
+                cpp_type: Demo::Serializer
+                c_type: ifcopenshell_demo_serializer_t
+                destructor: delete
+              - name: tree
+                cpp_type: Demo::Tree
+                c_type: ifcopenshell_demo_tree_t
+                destructor: delete
+            discover:
+              include_dir: .
+              constructors:
+                - handle: serializer
+                  cpp_class: Demo::XmlSerializer
+                  translation_unit: constructors.cpp
+                  expose_as: create_xml_serializer
+                  params:
+                    - Demo::File*
+                    - const std::string&
+                  param_renames:
+                    xml_filename: filename
+                - handle: tree
+                  cpp_class: Demo::Tree
+                  translation_unit: constructors.cpp
+                  expose_as: create_tree_from_file
+                  params:
+                    - Demo::File&
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    calls = {call.c_name: call for call in spec.functions}
+
+    xml_call = calls["ifcopenshell_demo_create_xml_serializer"]
+    assert isinstance(xml_call.policy_operation, ConstructorPolicyOp)
+    assert xml_call.policy_operation.cpp_class == "Demo::XmlSerializer"
+    assert [param.name for param in xml_call.params] == ["file", "filename"]
+    assert xml_call.params[0].type.cpp_type == "Demo::File*"
+    assert xml_call.params[1].type.kind == "string"
+    assert "ifcopenshell_demo_create_tree_from_file" in calls
+
+    header_out = tmp_path / "demo_api.h"
+    cpp_out = tmp_path / "demo_api.cpp"
+    generate(spec_path, header_out, cpp_out, compile_commands_path=compile_commands)
+
+    generated_cpp = cpp_out.read_text(encoding="utf-8")
+    assert "new Demo::XmlSerializer(file_cpp, filename_cpp)" in generated_cpp
+    assert "new Demo::Tree(file_cpp)" in generated_cpp
+    assert "XmlSerializer(const XmlSerializer&" not in generated_cpp
+
+
+def test_discovery_rejects_stale_constructor_signature(tmp_path: Path) -> None:
+    header = tmp_path / "constructors.h"
+    source = tmp_path / "constructors.cpp"
+    spec_path = tmp_path / "constructors.yml"
+
+    header.write_text(
+        dedent(
+            """
+            namespace Demo {
+            struct File {};
+            struct Tree {
+            public:
+                explicit Tree(File& file) {}
+            };
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "constructors.h"\n', encoding="utf-8")
+    compile_commands = _write_compile_commands(tmp_path, source)
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - constructors.h
+            handles:
+              - name: file
+                cpp_type: Demo::File
+                c_type: ifcopenshell_demo_file_t
+                destructor: delete
+              - name: tree
+                cpp_type: Demo::Tree
+                c_type: ifcopenshell_demo_tree_t
+                destructor: delete
+            discover:
+              include_dir: .
+              constructors:
+                - handle: tree
+                  cpp_class: Demo::Tree
+                  translation_unit: constructors.cpp
+                  expose_as: create_tree_from_file
+                  params:
+                    - Demo::File*
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match=r"unable to resolve constructor.*available: Demo::Tree"):
+        load_authored_spec(spec_path, compile_commands_path=compile_commands)
 
 
 def test_load_authored_spec_infers_simple_call_kinds(tmp_path: Path) -> None:
@@ -188,6 +535,24 @@ def test_load_authored_spec_infers_simple_call_kinds(tmp_path: Path) -> None:
 
 def test_load_authored_spec_expands_handle_families(tmp_path: Path) -> None:
     spec_path = tmp_path / "families.yml"
+    (tmp_path / "demo.h").write_text(
+        dedent(
+            """
+            #include <memory>
+            #define DECLARE_PTR(item) typedef std::shared_ptr<item> ptr;
+            namespace Demo { namespace Taxonomy {
+            struct item {
+                DECLARE_PTR(item)
+            };
+            struct curve {
+                using ptr = std::shared_ptr<curve>;
+            };
+            }}
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
     spec_path.write_text(
         dedent(
             """
@@ -202,6 +567,9 @@ def test_load_authored_spec_expands_handle_families(tmp_path: Path) -> None:
                 prefix: taxonomy
                 destructor: shared_ptr
                 ptr_type: shared_ptr
+                validate_against:
+                  header: demo.h
+                  marker_macro: DECLARE_PTR
                 types:
                   - item
                   - curve
@@ -218,6 +586,102 @@ def test_load_authored_spec_expands_handle_families(tmp_path: Path) -> None:
     assert spec.handles["taxonomy_item"].destructor == "shared_ptr"
     assert spec.handles["taxonomy_item"].ptr_type == "shared_ptr"
     assert spec.handles["taxonomy_curve"].cpp_type == "Demo::Taxonomy::curve"
+
+
+def test_load_authored_spec_rejects_unmarked_handle_family_type(tmp_path: Path) -> None:
+    spec_path = tmp_path / "families.yml"
+    (tmp_path / "demo.h").write_text(
+        dedent(
+            """
+            #include <memory>
+            #define DECLARE_PTR(item) typedef std::shared_ptr<item> ptr;
+            namespace Demo { namespace Taxonomy {
+            struct item {
+                DECLARE_PTR(item)
+            };
+            struct curve {
+            };
+            }}
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - demo.h
+            handle_families:
+              - namespace: Demo::Taxonomy
+                prefix: taxonomy
+                destructor: shared_ptr
+                ptr_type: shared_ptr
+                validate_against:
+                  header: demo.h
+                  marker_macro: DECLARE_PTR
+                types:
+                  - item
+                  - curve
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match=r"types not marked.*curve"):
+        load_authored_spec(spec_path)
+
+
+def test_handle_family_validation_ignores_macro_definition_signatures(tmp_path: Path) -> None:
+    spec_path = tmp_path / "families.yml"
+    (tmp_path / "demo.h").write_text(
+        dedent(
+            """
+            #define DECLARE_PTR(phantom) typedef int ignored;
+            namespace Demo {
+            struct item {
+                DECLARE_PTR(item)
+            };
+            struct phantom {
+            };
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - demo.h
+            handle_families:
+              - namespace: Demo
+                prefix: taxonomy
+                destructor: shared_ptr
+                ptr_type: shared_ptr
+                validate_against:
+                  header: demo.h
+                  marker_macro: DECLARE_PTR
+                types:
+                  - phantom
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match=r"types not marked.*phantom"):
+        load_authored_spec(spec_path)
 
 
 def test_load_authored_spec_rejects_handle_family_collisions(tmp_path: Path) -> None:
@@ -433,6 +897,8 @@ def test_generate_synthetic_autodiscovery_features(tmp_path: Path) -> None:
                     std::string,
                     std::set<int>,
                     std::set<std::string>,
+                    std::vector<int>,
+                    std::vector<std::string>,
                     std::vector<double>
                 >;
 
@@ -501,12 +967,11 @@ def test_generate_synthetic_autodiscovery_features(tmp_path: Path) -> None:
                     - axis
                   discover_children:
                     cpp_field: children
-                    element_handle: node
                     count_as: child_count
                     at_as: child_at
                     add_as: add_child
                   array_pair_fields:
-                    uv: int32
+                    - uv
                 - handle: settings
                   translation_unit: sample.cpp
                   include_all: false
@@ -525,6 +990,8 @@ def test_generate_synthetic_autodiscovery_features(tmp_path: Path) -> None:
                       string: "std::string"
                       int_set: "std::set<int>"
                       string_set: "std::set<std::string>"
+                      int_list: "std::vector<int>"
+                      string_list: "std::vector<std::string>"
                       double_list: "std::vector<double>"
                 - handle: point3
                   translation_unit: sample.cpp
@@ -564,15 +1031,19 @@ def test_generate_synthetic_autodiscovery_features(tmp_path: Path) -> None:
         "ifcopenshell_demo_settings_get_double",
         "ifcopenshell_demo_settings_get_int",
         "ifcopenshell_demo_settings_get_int_set",
+        "ifcopenshell_demo_settings_get_int_list",
         "ifcopenshell_demo_settings_get_double_list",
         "ifcopenshell_demo_settings_get_string",
+        "ifcopenshell_demo_settings_get_string_list",
         "ifcopenshell_demo_settings_get_string_set",
         "ifcopenshell_demo_settings_set_bool",
         "ifcopenshell_demo_settings_set_double",
         "ifcopenshell_demo_settings_set_double_list",
         "ifcopenshell_demo_settings_set_int",
         "ifcopenshell_demo_settings_set_int_set",
+        "ifcopenshell_demo_settings_set_int_list",
         "ifcopenshell_demo_settings_set_string",
+        "ifcopenshell_demo_settings_set_string_list",
         "ifcopenshell_demo_settings_set_string_set",
     }
     assert expected_calls.issubset(calls)
@@ -580,6 +1051,8 @@ def test_generate_synthetic_autodiscovery_features(tmp_path: Path) -> None:
     assert isinstance(calls["ifcopenshell_demo_derived_add_child"].policy_operation, ChildrenAddPolicyOp)
     assert isinstance(calls["ifcopenshell_demo_derived_weight"].policy_operation, OptionalGetPolicyOp)
     assert isinstance(calls["ifcopenshell_demo_settings_get_bool"].policy_operation, VariantGetPolicyOp)
+    assert calls["ifcopenshell_demo_derived_uv_u"].returns.kind == "int32"
+    assert calls["ifcopenshell_demo_derived_uv_v"].returns.kind == "int32"
 
     header_out = tmp_path / "demo_api.h"
     cpp_out = tmp_path / "demo_api.cpp"
@@ -598,6 +1071,8 @@ def test_generate_synthetic_autodiscovery_features(tmp_path: Path) -> None:
     assert "bool ifcopenshell_demo_settings_set_int(ifcopenshell_demo_settings_t* self, const char* name, int64_t value);" in generated_header
     assert "bool ifcopenshell_demo_settings_get_int_set(ifcopenshell_demo_settings_t* self, const char* name, ifcopenshell_int32_list_t* out_result);" in generated_header
     assert "bool ifcopenshell_demo_settings_set_int_set(ifcopenshell_demo_settings_t* self, const char* name, const ifcopenshell_int32_list_t* value);" in generated_header
+    assert "bool ifcopenshell_demo_settings_get_int_list(ifcopenshell_demo_settings_t* self, const char* name, ifcopenshell_int32_list_t* out_result);" in generated_header
+    assert "bool ifcopenshell_demo_settings_set_string_list(ifcopenshell_demo_settings_t* self, const char* name, const ifcopenshell_string_list_t* value);" in generated_header
     assert "bool ifcopenshell_demo_point3_get_data(ifcopenshell_demo_point3_t* self, ifcopenshell_double_list_t* out_result);" in generated_header
 
     assert "self_cpp->axis = value_cpp;" in generated_cpp
@@ -608,7 +1083,11 @@ def test_generate_synthetic_autodiscovery_features(tmp_path: Path) -> None:
     assert "if (auto* p = boost::get<int64_t>(&val))" in generated_cpp
     assert "if (auto* p = boost::get<Demo::Mode>(&val))" in generated_cpp
     assert "if (auto* p = boost::get<std::set<int>>(&val))" in generated_cpp
+    assert "if (auto* p = boost::get<std::vector<int>>(&val))" in generated_cpp
+    assert "if (auto* p = boost::get<std::vector<std::string>>(&val))" in generated_cpp
     assert "std::set<int> value_cpp(value_vec.begin(), value_vec.end());" in generated_cpp
+    assert "auto value_cpp = to_cpp_int32_list(value);" in generated_cpp
+    assert "auto value_cpp = to_cpp_string_list(value);" in generated_cpp
     assert "self_cpp->set(name_cpp, Demo::Settings::value_variant_t(static_cast<int64_t>(value)));" in generated_cpp
     assert "self_cpp->set(name_cpp, Demo::Settings::value_variant_t(value_cpp));" in generated_cpp
     assert "const auto& v = self_cpp->ccomponents();" in generated_cpp
@@ -990,6 +1469,137 @@ def test_autodiscovery_supports_nested_namespace_functions(tmp_path: Path) -> No
     generated_cpp = cpp_out.read_text(encoding="utf-8")
     assert "ifcapi::bindings::nested_count(name_cpp)" in generated_cpp
     assert "ifcapi::bindings::qualified_scale(value_cpp)" in generated_cpp
+
+
+def test_discovery_type_overrides_can_target_canonical_overload_signature(tmp_path: Path) -> None:
+    header = tmp_path / "overloaded.h"
+    source = tmp_path / "overloaded.cpp"
+    spec_path = tmp_path / "overloaded.yml"
+
+    header.write_text(
+        dedent(
+            """
+            namespace Demo {
+            class Overloaded {
+            public:
+                int value() const;
+                int value(int amount) const;
+            };
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "overloaded.h"\n', encoding="utf-8")
+    compile_commands = _write_compile_commands(tmp_path, source)
+
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - overloaded.h
+            handles:
+              - name: overloaded
+                cpp_type: Demo::Overloaded
+                c_type: ifcopenshell_demo_overloaded_t
+                destructor: delete
+            discover:
+              include_dir: .
+              classes:
+                - handle: overloaded
+                  translation_unit: overloaded.cpp
+                  overloads:
+                    - cpp_name: value
+                      expose_as: value
+                      params: []
+                    - cpp_name: value
+                      expose_as: value_with_amount
+                      params:
+                        - int
+                  type_overrides:
+                    "value()":
+                      returns:
+                        kind: double
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    calls = {call.c_name: call for call in spec.methods}
+
+    assert calls["ifcopenshell_demo_overloaded_value"].returns.kind == "double"
+    assert calls["ifcopenshell_demo_overloaded_value_with_amount"].returns.kind == "int32"
+
+
+def test_discovery_rejects_name_scoped_type_override_for_overloaded_member(tmp_path: Path) -> None:
+    header = tmp_path / "overloaded.h"
+    source = tmp_path / "overloaded.cpp"
+    spec_path = tmp_path / "overloaded.yml"
+
+    header.write_text(
+        dedent(
+            """
+            namespace Demo {
+            class Overloaded {
+            public:
+                int value() const;
+                int value(int amount) const;
+            };
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "overloaded.h"\n', encoding="utf-8")
+    compile_commands = _write_compile_commands(tmp_path, source)
+
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - overloaded.h
+            handles:
+              - name: overloaded
+                cpp_type: Demo::Overloaded
+                c_type: ifcopenshell_demo_overloaded_t
+                destructor: delete
+            discover:
+              include_dir: .
+              classes:
+                - handle: overloaded
+                  translation_unit: overloaded.cpp
+                  overloads:
+                    - cpp_name: value
+                      expose_as: value
+                      params: []
+                    - cpp_name: value
+                      expose_as: value_with_amount
+                      params:
+                        - int
+                  type_overrides:
+                    value:
+                      returns:
+                        kind: double
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="canonical signature keys"):
+        load_authored_spec(spec_path, compile_commands_path=compile_commands)
 
 
 def test_autodiscovery_uses_marked_contract_when_translation_unit_is_omitted(tmp_path: Path) -> None:
