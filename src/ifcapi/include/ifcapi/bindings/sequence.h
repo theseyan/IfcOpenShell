@@ -44,24 +44,24 @@ IFCAPI_BINDING void sequence_edit_task_time(
 IFCAPI_BINDING SequenceDuplicateTaskResult sequence_duplicate_task(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* task,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 IFCAPI_BINDING IfcUtil::IfcBaseClass* sequence_copy_work_schedule(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* work_schedule,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 IFCAPI_BINDING void sequence_create_baseline(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* work_schedule,
     const char* name,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 IFCAPI_BINDING IfcUtil::IfcBaseClass* sequence_add_task_time(
     IfcParse::IfcFile* file,
@@ -70,23 +70,23 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* sequence_add_task_time(
 
 IFCAPI_BINDING IfcUtil::IfcBaseClass* sequence_add_task(
     IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* work_schedule,
-    IfcUtil::IfcBaseClass* parent_task,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* work_schedule,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* parent_task,
     const char* name,
     const char* description,
     const char* identification,
     const std::string& predefined_type,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 IFCAPI_BINDING IfcUtil::IfcBaseClass* sequence_add_work_calendar(
     IfcParse::IfcFile* file,
     const std::string& name,
     const std::string& predefined_type,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 IFCAPI_BINDING IfcUtil::IfcBaseClass* sequence_add_work_plan(
     IfcParse::IfcFile* file,
@@ -94,10 +94,10 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* sequence_add_work_plan(
     const std::string& predefined_type,
     const std::string& creation_date,
     const std::string& start_time,
-    IfcUtil::IfcBaseClass* creator_person,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* creator_person,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 IFCAPI_BINDING IfcUtil::IfcBaseClass* sequence_add_work_schedule(
     IfcParse::IfcFile* file,
@@ -106,11 +106,11 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* sequence_add_work_schedule(
     const char* object_type,
     const std::string& creation_date,
     const std::string& start_time,
-    IfcUtil::IfcBaseClass* work_plan,
-    IfcUtil::IfcBaseClass* creator_person,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* work_plan,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* creator_person,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 IFCAPI_BINDING IfcUtil::IfcBaseClass* sequence_add_work_time(
     IfcParse::IfcFile* file,
@@ -128,9 +128,9 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* sequence_assign_sequence(
     IfcUtil::IfcBaseClass* relating_process,
     IfcUtil::IfcBaseClass* related_process,
     const std::string& sequence_type,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 IFCAPI_BINDING void sequence_cascade_schedule(
     IfcParse::IfcFile* file,
@@ -150,25 +150,25 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* sequence_assign_process(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* relating_process,
     IfcUtil::IfcBaseClass* related_object,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 IFCAPI_BINDING IfcUtil::IfcBaseClass* sequence_assign_product(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* relating_product,
     IfcUtil::IfcBaseClass* related_object,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 IFCAPI_BINDING IfcUtil::IfcBaseClass* sequence_assign_work_plan(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* work_schedule,
     IfcUtil::IfcBaseClass* work_plan,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 IFCAPI_BINDING IfcUtil::IfcBaseClass* sequence_assign_recurrence_pattern(
     IfcParse::IfcFile* file,
@@ -220,15 +220,15 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* sequence_unassign_process(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* relating_process,
     IfcUtil::IfcBaseClass* related_object,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 IFCAPI_BINDING IfcUtil::IfcBaseClass* sequence_unassign_product(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* relating_product,
     IfcUtil::IfcBaseClass* related_object,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 IFCAPI_BINDING void sequence_unassign_recurrence_pattern(
     IfcParse::IfcFile* file,
@@ -245,26 +245,26 @@ IFCAPI_BINDING void sequence_remove_work_time(
 IFCAPI_BINDING void sequence_remove_task(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* task,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 IFCAPI_BINDING void sequence_remove_work_calendar(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* work_calendar,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 IFCAPI_BINDING void sequence_remove_work_plan(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* work_plan,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 IFCAPI_BINDING void sequence_remove_work_schedule(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* work_schedule,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 } // namespace bindings
 } // namespace ifcapi

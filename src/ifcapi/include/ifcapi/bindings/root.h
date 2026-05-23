@@ -18,12 +18,12 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* root_create_entity(
     const std::string& ifc_class,
     const char* predefined_type,
     const char* name,
-    IfcUtil::IfcBaseClass* owner_history);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history);
 IFCAPI_BINDING void root_remove_product(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* product,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 } // namespace bindings
 } // namespace ifcapi

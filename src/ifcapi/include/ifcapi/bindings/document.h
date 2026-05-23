@@ -16,26 +16,26 @@ namespace bindings {
 
 IFCAPI_BINDING IfcUtil::IfcBaseClass* document_add_information(
     IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* parent,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* parent,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* document_add_reference(
     IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* information);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* information);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* document_assign_document(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& products,
     IfcUtil::IfcBaseClass* document,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING void document_unassign_document(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& products,
     IfcUtil::IfcBaseClass* document,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING void document_remove_reference(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* reference);

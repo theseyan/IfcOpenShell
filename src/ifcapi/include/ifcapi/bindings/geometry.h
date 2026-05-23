@@ -15,7 +15,7 @@
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING std::vector<IfcUtil::IfcBaseClass*> geometry_add_boolean(
+IFCAPI_BINDING IFCAPI_OWNED std::vector<IfcUtil::IfcBaseClass*> geometry_add_boolean(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* first_item,
     const std::vector<const IfcUtil::IfcBaseClass*>& second_items,
@@ -92,9 +92,9 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* geometry_connect_wall(
     IfcUtil::IfcBaseClass* wall1,
     IfcUtil::IfcBaseClass* wall2,
     bool is_atpath,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* geometry_regenerate_wall_representation(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* wall,
@@ -110,7 +110,7 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* geometry_add_window_representation(
     const std::vector<std::vector<int>>& panel_schema,
     const std::vector<double>& lining_properties,
     const std::vector<std::vector<double>>& panel_properties,
-    IfcUtil::IfcBaseClass* part_of_product,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* part_of_product,
     double glass_thickness);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* geometry_add_door_representation(
     IfcParse::IfcFile* file,
@@ -120,7 +120,7 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* geometry_add_door_representation(
     const std::string& operation_type,
     const std::vector<double>& lining_properties,
     const std::vector<double>& panel_properties,
-    IfcUtil::IfcBaseClass* part_of_product,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* part_of_product,
     double unit_scale);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* geometry_add_railing_representation(
     IfcParse::IfcFile* file,
@@ -139,10 +139,10 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* geometry_clip_solid(
     IfcUtil::IfcBaseClass* item,
     const std::vector<double>& location,
     const std::vector<double>& normal,
-    IfcUtil::IfcBaseClass* element,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* element,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* geometry_clip_solid_bounded(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* item,
@@ -150,14 +150,14 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* geometry_clip_solid_bounded(
     const std::vector<double>& normal,
     const std::vector<std::vector<double>>& boundary_points,
     const std::vector<double>& boundary_position,
-    IfcUtil::IfcBaseClass* element,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* element,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING bool geometry_validate_type(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* representation,
-    IfcUtil::IfcBaseClass* preferred_item);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* preferred_item);
 IFCAPI_BINDING void geometry_remove_boolean(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* item);
@@ -196,9 +196,9 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* geometry_connect_element(
     IfcUtil::IfcBaseClass* related_element,
     const char* description,
     bool has_description,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING void geometry_disconnect_element(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* relating_element,
@@ -211,17 +211,17 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* geometry_connect_path(
     const std::string& related_connection,
     const char* description,
     bool has_description,
-    IfcUtil::IfcBaseClass* connection_geometry,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* connection_geometry,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING void geometry_disconnect_path(
     IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* element,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* element,
     const char* connection_type,
     bool has_connection_type,
-    IfcUtil::IfcBaseClass* relating_element,
-    IfcUtil::IfcBaseClass* related_element);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* relating_element,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* related_element);
 
 } // namespace bindings
 } // namespace ifcapi

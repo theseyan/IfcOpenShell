@@ -20,9 +20,9 @@ IFCAPI_BINDING void georeference_add_georeferencing(
     IfcParse::IfcFile* file,
     const std::string& ifc_class,
     const std::string& name,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 IFCAPI_BINDING void georeference_edit_true_north(IfcParse::IfcFile* file, bool has_true_north, double x, double y);
 

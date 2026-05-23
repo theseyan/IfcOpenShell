@@ -28,7 +28,7 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* pset_template_get_by_name(
     ifcopenshell_pset_template_t* pqt,
     const std::string& name);
 IFCAPI_BINDING bool pset_template_is_templated(ifcopenshell_pset_template_t* pqt, const std::string& name);
-IFCAPI_BINDING std::vector<IfcUtil::IfcBaseClass*> pset_template_get_applicable(
+IFCAPI_BINDING IFCAPI_COPY std::vector<IfcUtil::IfcBaseClass*> pset_template_get_applicable(
     ifcopenshell_pset_template_t* pqt,
     const char* ifc_class,
     const char* predefined_type,

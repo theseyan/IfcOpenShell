@@ -20,7 +20,7 @@ IFCAPI_BINDING void cost_edit_cost_value(
     bool has_unit_basis,
     bool unit_basis_is_null,
     double value_component,
-    IfcUtil::IfcBaseClass* unit_component);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* unit_component);
 
 IFCAPI_BINDING void cost_edit_cost_value_formula(
     IfcParse::IfcFile* file,

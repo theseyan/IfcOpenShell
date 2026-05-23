@@ -26,7 +26,7 @@ IFCAPI_BINDING void pset_props_set_double(ifcopenshell_pset_props_t* props, cons
 IFCAPI_BINDING void pset_props_set_string(
     ifcopenshell_pset_props_t* props, const std::string& key, const std::string& value);
 IFCAPI_BINDING void pset_props_set_instance(
-    ifcopenshell_pset_props_t* props, const std::string& key, IfcUtil::IfcBaseClass* value);
+    ifcopenshell_pset_props_t* props, const std::string& key, IFCAPI_NULLABLE IfcUtil::IfcBaseClass* value);
 IFCAPI_BINDING void pset_props_set_typed_string(
     ifcopenshell_pset_props_t* props, const std::string& key, const std::string& value, const std::string& ifc_type);
 IFCAPI_BINDING void pset_props_set_typed_double(
@@ -54,43 +54,43 @@ IFCAPI_BINDING void pset_props_set_duration(
 IFCAPI_BINDING void pset_props_set_dict(
     ifcopenshell_pset_props_t* outer, const std::string& key, ifcopenshell_pset_props_t* inner);
 IFCAPI_BINDING void pset_props_set_unit_for_last(
-    ifcopenshell_pset_props_t* props, IfcUtil::IfcBaseClass* unit);
+    ifcopenshell_pset_props_t* props, IFCAPI_NULLABLE IfcUtil::IfcBaseClass* unit);
 
 IFCAPI_BINDING IfcUtil::IfcBaseClass* pset_add_pset(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* product,
     const std::string& name,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application,
     const char* ifc2x3_subclass);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* pset_add_qto(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* product,
     const std::string& name,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING bool pset_edit_pset(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* pset,
     const char* name,
     ifcopenshell_pset_props_t* properties,
-    IfcUtil::IfcBaseClass* pset_template,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* pset_template,
     bool should_purge);
 IFCAPI_BINDING bool pset_edit_qto(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* qto,
     const char* name,
     ifcopenshell_pset_props_t* properties,
-    IfcUtil::IfcBaseClass* qto_template);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* qto_template);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* pset_assign_pset(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& products,
     IfcUtil::IfcBaseClass* pset,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING void pset_unassign_pset(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& products,
@@ -103,9 +103,9 @@ IFCAPI_BINDING std::vector<IfcUtil::IfcBaseClass*> pset_unshare_pset(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& products,
     IfcUtil::IfcBaseClass* pset,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 } // namespace bindings
 } // namespace ifcapi

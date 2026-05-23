@@ -20,7 +20,7 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* context_add_context(
     const char* target_view,
     bool has_target_scale,
     double target_scale,
-    IfcUtil::IfcBaseClass* parent);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* parent);
 IFCAPI_BINDING void context_remove_context(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* context);
 IFCAPI_BINDING void context_edit_context(
     IfcParse::IfcFile* file,

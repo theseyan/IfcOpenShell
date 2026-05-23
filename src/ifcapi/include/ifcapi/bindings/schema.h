@@ -19,7 +19,7 @@ namespace ifcapi {
 namespace bindings {
 
 IFCAPI_BINDING IfcUtil::IfcBaseClass* schema_reassign_class(
-    IfcParse::IfcFile* file,
+    IFCAPI_NULLABLE IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* element,
     const std::string& new_class);
 

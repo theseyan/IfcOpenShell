@@ -24,21 +24,21 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* classification_add_classification(
 IFCAPI_BINDING IfcUtil::IfcBaseClass* classification_add_reference(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& products,
-    IfcUtil::IfcBaseClass* reference,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* reference,
     const std::string& identification,
     bool has_identification,
     const std::string& name,
     bool has_name,
-    IfcUtil::IfcBaseClass* classification,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* classification,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING void classification_remove_reference(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* reference,
     const std::vector<const IfcUtil::IfcBaseClass*>& products,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING void classification_remove_classification(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* classification);

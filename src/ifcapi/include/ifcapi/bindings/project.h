@@ -18,15 +18,15 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* project_assign_declaration(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& definitions,
     IfcUtil::IfcBaseClass* relating_context,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING void project_unassign_declaration(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& definitions,
     IfcUtil::IfcBaseClass* relating_context,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 } // namespace bindings
 } // namespace ifcapi

@@ -15,8 +15,8 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* feature_add_feature(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* feature,
     IfcUtil::IfcBaseClass* element,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* feature_add_filling(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* opening,
@@ -24,8 +24,8 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* feature_add_filling(
 IFCAPI_BINDING void feature_remove_feature(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* feature,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING void feature_remove_filling(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* element);

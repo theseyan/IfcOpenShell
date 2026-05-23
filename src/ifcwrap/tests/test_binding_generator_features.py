@@ -2054,11 +2054,20 @@ def test_autodiscovery_uses_marked_contract_when_translation_unit_is_omitted(tmp
         dedent(
             """
             #include <string>
+            #include <vector>
             #define IFCAPI_BINDING
+            #define IFCAPI_OWNED
+            #define IFCAPI_COPY
+            #define IFCAPI_NULLABLE
+            struct DemoValue {};
 
             namespace ifcapi::bindings {
             IFCAPI_BINDING int contract_count(const std::string& name);
             IFCAPI_BINDING double contract_scale(double value);
+            IFCAPI_BINDING IFCAPI_OWNED IFCAPI_NULLABLE DemoValue* contract_value(
+                IFCAPI_NULLABLE DemoValue* input,
+                const std::vector<int>& values);
+            IFCAPI_BINDING IFCAPI_COPY std::vector<DemoValue*> contract_copies();
             int internal_helper();
             }
             """
@@ -2078,6 +2087,11 @@ def test_autodiscovery_uses_marked_contract_when_translation_unit_is_omitted(tmp
             c_prefix: ifcopenshell_demo
             public_headers:
               - bindings.h
+            handles:
+              - name: demo_value
+                cpp_type: DemoValue
+                c_type: ifcopenshell_demo_value_t
+                destructor: delete
             discover:
               include_dir: .
               functions:
@@ -2095,9 +2109,21 @@ def test_autodiscovery_uses_marked_contract_when_translation_unit_is_omitted(tmp
     spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
     calls = {call.c_name: call for call in spec.functions}
 
-    assert set(calls) == {"ifcopenshell_demo_contract_count", "ifcopenshell_demo_contract_scale"}
+    assert set(calls) == {
+        "ifcopenshell_demo_contract_count",
+        "ifcopenshell_demo_contract_copies",
+        "ifcopenshell_demo_contract_scale",
+        "ifcopenshell_demo_contract_value",
+    }
     assert calls["ifcopenshell_demo_contract_count"].params[0].type.kind == "string"
+    assert calls["ifcopenshell_demo_contract_copies"].returns.ownership == "copy"
     assert calls["ifcopenshell_demo_contract_scale"].returns.kind == "double"
+    value_call = calls["ifcopenshell_demo_contract_value"]
+    assert value_call.returns.handle == "demo_value"
+    assert value_call.returns.ownership == "owned"
+    assert value_call.returns.nullable is True
+    assert value_call.params[0].type.nullable is True
+    assert value_call.params[1].name == "values"
 
 
 def test_contract_discovery_rejects_unmarked_policy(tmp_path: Path) -> None:
@@ -2146,6 +2172,117 @@ def test_contract_discovery_rejects_unmarked_policy(tmp_path: Path) -> None:
     )
 
     with pytest.raises(ValueError, match="type overrides for unmarked functions"):
+        load_authored_spec(spec_path, compile_commands_path=compile_commands)
+
+
+def test_contract_discovery_rejects_duplicate_header_policy(tmp_path: Path) -> None:
+    header = tmp_path / "bindings.h"
+    source = tmp_path / "reference.cpp"
+    spec_path = tmp_path / "bindings.yml"
+
+    header.write_text(
+        dedent(
+            """
+            #define IFCAPI_BINDING
+            #define IFCAPI_OWNED
+            struct DemoValue {};
+
+            namespace ifcapi::bindings {
+            IFCAPI_BINDING IFCAPI_OWNED DemoValue* contract_value();
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text("int reference() { return 0; }\n", encoding="utf-8")
+    compile_commands = _write_compile_commands(tmp_path, source)
+
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - bindings.h
+            handles:
+              - name: demo_value
+                cpp_type: DemoValue
+                c_type: ifcopenshell_demo_value_t
+                destructor: delete
+            discover:
+              include_dir: .
+              functions:
+                - namespace: ifcapi::bindings
+                  type_overrides:
+                    contract_value:
+                      returns:
+                        ownership: owned
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="duplicate return policy"):
+        load_authored_spec(spec_path, compile_commands_path=compile_commands)
+
+
+def test_contract_discovery_rejects_duplicate_parameter_policy(tmp_path: Path) -> None:
+    header = tmp_path / "bindings.h"
+    source = tmp_path / "reference.cpp"
+    spec_path = tmp_path / "bindings.yml"
+
+    header.write_text(
+        dedent(
+            """
+            #define IFCAPI_BINDING
+            #define IFCAPI_NULLABLE
+            struct DemoValue {};
+
+            namespace ifcapi::bindings {
+            IFCAPI_BINDING void contract_value(IFCAPI_NULLABLE DemoValue* value);
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text("int reference() { return 0; }\n", encoding="utf-8")
+    compile_commands = _write_compile_commands(tmp_path, source)
+
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - bindings.h
+            handles:
+              - name: demo_value
+                cpp_type: DemoValue
+                c_type: ifcopenshell_demo_value_t
+                destructor: delete
+            discover:
+              include_dir: .
+              functions:
+                - namespace: ifcapi::bindings
+                  type_overrides:
+                    contract_value:
+                      params:
+                        value:
+                          nullable: true
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="duplicate parameter policy"):
         load_authored_spec(spec_path, compile_commands_path=compile_commands)
 
 

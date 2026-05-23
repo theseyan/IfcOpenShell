@@ -18,8 +18,8 @@ namespace bindings {
 IFCAPI_BINDING IfcUtil::IfcBaseClass* constraint_add_objective(IfcParse::IfcFile* file);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* constraint_add_metric(
     IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* objective);
-IFCAPI_BINDING std::vector<IfcUtil::IfcBaseClass*> constraint_add_metric_reference(
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* objective);
+IFCAPI_BINDING IFCAPI_OWNED std::vector<IfcUtil::IfcBaseClass*> constraint_add_metric_reference(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* metric,
     const std::string& reference_path);
@@ -27,15 +27,15 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* constraint_assign_constraint(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& products,
     IfcUtil::IfcBaseClass* constraint,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING void constraint_unassign_constraint(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& products,
     IfcUtil::IfcBaseClass* constraint,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING void constraint_remove_constraint(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* constraint);
