@@ -257,6 +257,10 @@ def _render_param_prelude(param: ParamSpec, spec: BindingIR) -> str:
         refers_to_shared_ptr = is_shared and cpp_type is not None and (
             "::ptr" in cpp_type or "shared_ptr" in cpp_type
         )
+        if type_spec.nullable and cpp_type.endswith("&") and not refers_to_shared_ptr:
+            raise ValueError(
+                f'Handle parameter "{param.name}" cannot be nullable with reference cpp_type "{type_spec.cpp_type}"'
+            )
         if type_spec.cpp_type is not None and cpp_type.endswith("&"):
             if refers_to_shared_ptr:
                 # Reference to the shared_ptr: pass ptr member directly as reference
@@ -313,7 +317,9 @@ def _constructor_arg(p: ParamSpec) -> str:
     if p.type.kind == "handle":
         if p.type.sequence_depth > 0:
             return f"{p.name}_cpp"
-        return f"*{p.name}_cpp"
+        if not _normalize_cpp_type(p.type.cpp_type):
+            raise ValueError(f'Constructor handle parameter "{p.name}" requires cpp_type for source-derived passing')
+        return f"{p.name}_cpp"
     if _uses_cpp_arg_name(p.type):
         return f"{p.name}_cpp"
     return p.name

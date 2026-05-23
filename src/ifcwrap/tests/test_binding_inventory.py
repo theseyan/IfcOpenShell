@@ -16,7 +16,19 @@ from src.ifcwrap.binding_generator.contract_discovery import discover_marked_fun
 
 
 _C_TYPEDEF_RE = re.compile(r"\btypedef\s+(?:struct|enum)\s+(ifcopenshell_[A-Za-z0-9_]+_t)\b")
+_C_STRUCT_BLOCK_RE = re.compile(
+    r"\btypedef\s+struct\s+(?P<name>ifcopenshell_[A-Za-z0-9_]+_t)\s*\{(?P<body>.*?)\}\s*(?P=name)\s*;",
+    re.DOTALL,
+)
+_C_ENUM_BLOCK_RE = re.compile(
+    r"\btypedef\s+enum\s+(?P<name>ifcopenshell_[A-Za-z0-9_]+_t)\s*\{(?P<body>.*?)\}\s*(?P=name)\s*;",
+    re.DOTALL,
+)
 _INTERNAL_STRUCT_RE = re.compile(r"^\s*struct\s+(ifcopenshell_[A-Za-z0-9_]+_t)\s*\{", re.MULTILINE)
+_INTERNAL_STRUCT_BLOCK_RE = re.compile(
+    r"^\s*struct\s+(?P<name>ifcopenshell_[A-Za-z0-9_]+_t)\s*\{(?P<body>.*?)^\s*\};",
+    re.DOTALL | re.MULTILINE,
+)
 _HELPER_BODY_RE = re.compile(
     r"\b(?:static\s+)?[\w:<>,\s\*&]+?\s+"
     r"(?P<name>(?:make|to_cpp)_[A-Za-z0-9_]+|ifcopenshell_[A-Za-z0-9_]+_destroy)\s*\(",
@@ -45,8 +57,54 @@ def _c_type_names(path: Path) -> set[str]:
     return set(_C_TYPEDEF_RE.findall(path.read_text(encoding="utf-8")))
 
 
+def _field_declarations(body: str) -> tuple[str, ...]:
+    fields: list[str] = []
+    for raw_line in body.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("//"):
+            continue
+        if line.endswith(";"):
+            fields.append(" ".join(line[:-1].split()))
+    return tuple(fields)
+
+
+def _c_struct_layouts(path: Path) -> dict[str, tuple[str, ...]]:
+    text = path.read_text(encoding="utf-8")
+    return {
+        match.group("name"): _field_declarations(match.group("body"))
+        for match in _C_STRUCT_BLOCK_RE.finditer(text)
+    }
+
+
+def _c_enum_ordinals(path: Path) -> dict[str, tuple[tuple[str, str], ...]]:
+    text = path.read_text(encoding="utf-8")
+    enums: dict[str, tuple[tuple[str, str], ...]] = {}
+    for match in _C_ENUM_BLOCK_RE.finditer(text):
+        values: list[tuple[str, str]] = []
+        for raw_entry in match.group("body").split(","):
+            entry = " ".join(raw_entry.split())
+            if not entry:
+                continue
+            name, _, value = entry.partition("=")
+            values.append((name.strip(), value.strip()))
+        enums[match.group("name")] = tuple(values)
+    return enums
+
+
 def _internal_struct_names(path: Path) -> set[str]:
     return set(_INTERNAL_STRUCT_RE.findall(path.read_text(encoding="utf-8")))
+
+
+def _internal_struct_layouts(path: Path) -> dict[str, tuple[str, ...]]:
+    text = path.read_text(encoding="utf-8")
+    return {
+        match.group("name"): _field_declarations(match.group("body"))
+        for match in _INTERNAL_STRUCT_BLOCK_RE.finditer(text)
+    }
+
+
+def _node_source(node: ast.AST) -> str:
+    return " ".join(ast.unparse(node).split())
 
 
 def _python_generated_types(path: Path) -> set[str]:
@@ -60,6 +118,61 @@ def _python_generated_types(path: Path) -> set[str]:
                 if isinstance(target, ast.Name) and target.id.startswith("ifcopenshell_") and target.id.endswith("_t"):
                     names.add(target.id)
     return names
+
+
+def _python_structure_fields(path: Path) -> dict[str, tuple[tuple[str, str], ...]]:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    fields: dict[str, tuple[tuple[str, str], ...]] = {}
+    for node in tree.body:
+        if not isinstance(node, ast.ClassDef):
+            continue
+        for statement in node.body:
+            if not isinstance(statement, ast.Assign):
+                continue
+            if not any(isinstance(target, ast.Name) and target.id == "_fields_" for target in statement.targets):
+                continue
+            if not isinstance(statement.value, ast.List):
+                continue
+            class_fields: list[tuple[str, str]] = []
+            for element in statement.value.elts:
+                if not isinstance(element, ast.Tuple) or len(element.elts) < 2:
+                    continue
+                field_name = ast.literal_eval(element.elts[0])
+                class_fields.append((field_name, _node_source(element.elts[1])))
+            fields[node.name] = tuple(class_fields)
+    return fields
+
+
+def _python_signature_map(path: Path) -> dict[str, str]:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        if not any(isinstance(target, ast.Name) and target.id == "FUNCTION_SIGNATURES" for target in node.targets):
+            continue
+        if not isinstance(node.value, ast.Dict):
+            msg = "FUNCTION_SIGNATURES must be a dict literal"
+            raise AssertionError(msg)
+        signatures: dict[str, str] = {}
+        for key_node, value_node in zip(node.value.keys, node.value.values, strict=True):
+            key = ast.literal_eval(key_node)
+            signatures[key] = _node_source(value_node)
+        return signatures
+    msg = f"{path} does not define FUNCTION_SIGNATURES"
+    raise AssertionError(msg)
+
+
+def _python_generated_constants(path: Path) -> dict[str, int]:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    constants: dict[str, int] = {}
+    for node in tree.body:
+        if not isinstance(node, ast.Assign) or len(node.targets) != 1:
+            continue
+        target = node.targets[0]
+        if not isinstance(target, ast.Name) or not target.id.startswith("IFCOPENSHELL_"):
+            continue
+        constants[target.id] = ast.literal_eval(node.value)
+    return constants
 
 
 def _cpp_helper_bodies(path: Path) -> dict[str, str]:
@@ -318,8 +431,14 @@ def test_fresh_generation_matches_checked_in_api_semantics(tmp_path: Path) -> No
 
     assert fresh_c_signatures == checked_c_signatures
     assert _c_type_names(fresh_header) == _c_type_names(checked_header)
+    assert _c_struct_layouts(fresh_header) == _c_struct_layouts(checked_header)
+    assert _c_enum_ordinals(fresh_header) == _c_enum_ordinals(checked_header)
     assert _internal_struct_names(fresh_internal) == _internal_struct_names(checked_internal)
+    assert _internal_struct_layouts(fresh_internal) == _internal_struct_layouts(checked_internal)
     assert fresh_python_symbols == checked_python_symbols
     assert _python_generated_types(fresh_python) == _python_generated_types(checked_python)
+    assert _python_structure_fields(fresh_python) == _python_structure_fields(checked_python)
+    assert _python_signature_map(fresh_python) == _python_signature_map(checked_python)
+    assert _python_generated_constants(fresh_python) == _python_generated_constants(checked_python)
     assert set(fresh_c_signatures) <= fresh_python_symbols
     assert _cpp_helper_bodies(fresh_cpp) == _cpp_helper_bodies(checked_cpp)

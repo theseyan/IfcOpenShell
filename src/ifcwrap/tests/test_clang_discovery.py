@@ -601,6 +601,94 @@ struct Widget {
     assert methods["set_mode"][0].params[0].cpp_type_ref.is_enum
 
 
+def test_discover_cpp_types_marks_typedef_enums(tmp_path: Path) -> None:
+    compiler = shutil.which("clang++")
+    if compiler is None:
+        pytest.skip("clang++ is not available")
+
+    header = tmp_path / "typedef_enums.h"
+    source = tmp_path / "typedef_enums.cpp"
+    compile_commands = tmp_path / "compile_commands.json"
+
+    header.write_text(
+        """
+namespace Demo {
+struct SimpleType {
+    typedef enum {
+        integer_type,
+        string_type
+    } data_type;
+
+    data_type declared_type() const;
+};
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "typedef_enums.h"\n', encoding="utf-8")
+    compile_commands.write_text(
+        json.dumps(
+            [
+                {
+                    "directory": str(tmp_path),
+                    "command": f"{compiler} -std=c++17 -I {tmp_path} -c {source}",
+                    "file": str(source),
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    methods = discover_public_methods_with_compile_commands(compile_commands, source, "Demo::SimpleType")
+
+    assert methods["declared_type"][0].return_type_ref.is_enum
+    assert methods["declared_type"][0].return_type_ref.enum_qualified_name == "Demo::SimpleType::data_type"
+
+
+def test_discover_cpp_types_marks_enum_fields_under_skipped_root(tmp_path: Path) -> None:
+    compiler = shutil.which("clang++")
+    if compiler is None:
+        pytest.skip("clang++ is not available")
+
+    header = tmp_path / "enum_fields.h"
+    source = tmp_path / "enum_fields.cpp"
+    compile_commands = tmp_path / "compile_commands.json"
+
+    header.write_text(
+        """
+namespace ifcopenshell {
+namespace demo {
+struct Widget {
+    enum Mode { A, B };
+    Mode mode;
+};
+}
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "enum_fields.h"\n', encoding="utf-8")
+    compile_commands.write_text(
+        json.dumps(
+            [
+                {
+                    "directory": str(tmp_path),
+                    "command": f"{compiler} -std=c++17 -I {tmp_path} -c {source}",
+                    "file": str(source),
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    fields = discover_public_fields_with_compile_commands(compile_commands, source, "ifcopenshell::demo::Widget")
+
+    assert fields["mode"].cpp_type_ref.is_enum
+    assert fields["mode"].cpp_type_ref.enum_qualified_name == "ifcopenshell::demo::Widget::Mode"
+
+
 def test_discovery_avoids_unscoped_and_std_ast_filters(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     compiler = shutil.which("clang++")
     if compiler is None:
