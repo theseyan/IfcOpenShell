@@ -17,15 +17,15 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* control_assign_control(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* relating_control,
     const std::vector<const IfcUtil::IfcBaseClass*>& related_objects,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING void control_unassign_control(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* relating_control,
     const std::vector<const IfcUtil::IfcBaseClass*>& related_objects,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 } // namespace bindings
 } // namespace ifcapi

@@ -17,25 +17,25 @@ namespace bindings {
 
 IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_add_structural_analysis_model(
     IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* owner_history);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_assign_structural_analysis_model(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& products,
     IfcUtil::IfcBaseClass* structural_analysis_model,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING void structural_unassign_structural_analysis_model(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& products,
     IfcUtil::IfcBaseClass* structural_analysis_model,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_assign_product(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* relating_product,
     IfcUtil::IfcBaseClass* related_object,
-    IfcUtil::IfcBaseClass* owner_history);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_add_structural_activity(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* applied_load,
@@ -43,8 +43,8 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_add_structural_activity(
     const std::string& ifc_class,
     const std::string& predefined_type,
     const std::string& global_or_local,
-    IfcUtil::IfcBaseClass* activity_owner_history,
-    IfcUtil::IfcBaseClass* relationship_owner_history);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* activity_owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* relationship_owner_history);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_add_structural_load(
     IfcParse::IfcFile* file,
     const std::string& ifc_class,
@@ -55,23 +55,23 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_add_structural_load_case(
     const std::string& name,
     const std::string& action_type,
     const std::string& action_source,
-    IfcUtil::IfcBaseClass* owner_history);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_add_structural_load_group(
     IfcParse::IfcFile* file,
     const std::string& name,
     const std::string& action_type,
     const std::string& action_source,
-    IfcUtil::IfcBaseClass* owner_history);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_add_structural_member_connection(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* relating_structural_member,
     IfcUtil::IfcBaseClass* related_structural_connection,
-    IfcUtil::IfcBaseClass* owner_history);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_add_structural_boundary_condition(
     IfcParse::IfcFile* file,
     const char* name,
     bool has_name,
-    IfcUtil::IfcBaseClass* connection,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* connection,
     const std::string& ifc_class);
 IFCAPI_BINDING void structural_edit_structural_connection_cs(
     IfcParse::IfcFile* file,
@@ -90,7 +90,7 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_assign_to_building(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* structural_analysis_model,
     IfcUtil::IfcBaseClass* building,
-    IfcUtil::IfcBaseClass* owner_history);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history);
 IFCAPI_BINDING void structural_remove_structural_analysis_model(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* structural_analysis_model);
@@ -105,8 +105,8 @@ IFCAPI_BINDING void structural_remove_structural_load_group(
     IfcUtil::IfcBaseClass* structural_load_group);
 IFCAPI_BINDING void structural_remove_structural_boundary_condition(
     IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* connection,
-    IfcUtil::IfcBaseClass* boundary_condition);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* connection,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* boundary_condition);
 IFCAPI_BINDING void structural_remove_structural_connection_condition(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* relation);

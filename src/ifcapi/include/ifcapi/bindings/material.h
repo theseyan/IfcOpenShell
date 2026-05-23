@@ -42,17 +42,17 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* material_add_material_set(
 IFCAPI_BINDING IfcUtil::IfcBaseClass* material_add_profile(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* profile_set,
-    IfcUtil::IfcBaseClass* material,
-    IfcUtil::IfcBaseClass* profile,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* material,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* profile,
     const char* name);
 IFCAPI_BINDING std::vector<IfcUtil::IfcBaseClass*> material_assign_material(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& products,
     const std::string& type,
-    IfcUtil::IfcBaseClass* material,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* material,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING void material_assign_profile(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* material_profile,
@@ -84,8 +84,8 @@ IFCAPI_BINDING void material_reorder_set_item(
 IFCAPI_BINDING void material_unassign_material(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& products,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING void material_edit_profile_usage(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* usage,

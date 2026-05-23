@@ -20,7 +20,7 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* representation_get_context(
 IFCAPI_BINDING IfcUtil::IfcBaseClass* representation_resolve(IfcUtil::IfcBaseClass* representation);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* representation_get_product_representation(
     IfcUtil::IfcBaseClass* element,
-    IfcUtil::IfcBaseClass* context,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* context,
     const char* context_type,
     const char* subcontext,
     const char* target_view);
@@ -31,4 +31,3 @@ IFCAPI_BINDING aggregate_of_instance::ptr representation_get_prioritised_context
 } // namespace ifcapi
 
 #endif /* IFCAPI_BINDINGS_REPRESENTATION_H */
-

@@ -23,7 +23,7 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* style_add_style(
 IFCAPI_BINDING IfcUtil::IfcBaseClass* style_assign_item_style(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* item,
-    IfcUtil::IfcBaseClass* style,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* style,
     bool should_use_presentation_style_assignment);
 IFCAPI_BINDING std::vector<IfcUtil::IfcBaseClass*> style_assign_representation_styles(
     IfcParse::IfcFile* file,

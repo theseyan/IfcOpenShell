@@ -23,31 +23,35 @@ namespace ifcapi {
 namespace bindings {
 
 void value_free(ifcopenshell_value_t* value);
-IFCAPI_BINDING ifcopenshell_value_t* value_new_none();
-IFCAPI_BINDING ifcopenshell_value_t* value_new_bool(bool value);
-IFCAPI_BINDING ifcopenshell_value_t* value_new_int(int64_t value);
-IFCAPI_BINDING ifcopenshell_value_t* value_new_double(double value);
-IFCAPI_BINDING ifcopenshell_value_t* value_new_string(const std::string& value);
-IFCAPI_BINDING ifcopenshell_value_t* value_new_instance(IfcUtil::IfcBaseClass* value);
-IFCAPI_BINDING ifcopenshell_value_t* value_new_list();
-IFCAPI_BINDING bool value_list_append(ifcopenshell_value_t* list, const ifcopenshell_value_t* item);
-IFCAPI_BINDING ifcopenshell_value_t* selector_get_element_value(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING IFCAPI_OWNED ifcopenshell_value_t* value_new_none();
+IFCAPI_BINDING IFCAPI_OWNED ifcopenshell_value_t* value_new_bool(bool value);
+IFCAPI_BINDING IFCAPI_OWNED ifcopenshell_value_t* value_new_int(int64_t value);
+IFCAPI_BINDING IFCAPI_OWNED ifcopenshell_value_t* value_new_double(double value);
+IFCAPI_BINDING IFCAPI_OWNED ifcopenshell_value_t* value_new_string(const std::string& value);
+IFCAPI_BINDING IFCAPI_OWNED ifcopenshell_value_t* value_new_instance(IFCAPI_NULLABLE IfcUtil::IfcBaseClass* value);
+IFCAPI_BINDING IFCAPI_OWNED ifcopenshell_value_t* value_new_list();
+IFCAPI_BINDING bool value_list_append(ifcopenshell_value_t* list, IFCAPI_NULLABLE const ifcopenshell_value_t* item);
+IFCAPI_BINDING IFCAPI_OWNED IFCAPI_NULLABLE ifcopenshell_value_t* selector_get_element_value(
+    IFCAPI_NULLABLE IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* element,
     const std::string& query);
-IFCAPI_BINDING ifcopenshell_value_t* selector_filter_all(IfcParse::IfcFile* file, const std::string& query);
-IFCAPI_BINDING ifcopenshell_value_t* selector_filter_elements(
+IFCAPI_BINDING IFCAPI_OWNED IFCAPI_NULLABLE ifcopenshell_value_t* selector_filter_all(
+    IfcParse::IfcFile* file,
+    const std::string& query);
+IFCAPI_BINDING IFCAPI_OWNED IFCAPI_NULLABLE ifcopenshell_value_t* selector_filter_elements(
     IfcParse::IfcFile* file,
     const std::string& query,
     const std::vector<const IfcUtil::IfcBaseClass*>& elements);
 IFCAPI_BINDING bool selector_set_element_value(
     IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* element,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* element,
     const std::vector<std::string>& keys,
     const std::vector<bool>& regex_flags,
-    const ifcopenshell_value_t* value,
+    IFCAPI_NULLABLE const ifcopenshell_value_t* value,
     const char* concat);
-IFCAPI_BINDING ifcopenshell_value_t* compute_derived(IfcUtil::IfcBaseClass* instance, const std::string& attribute_name);
+IFCAPI_BINDING IFCAPI_OWNED IFCAPI_NULLABLE ifcopenshell_value_t* compute_derived(
+    IfcUtil::IfcBaseClass* instance,
+    const std::string& attribute_name);
 IFCAPI_BINDING int32_t value_kind(const ifcopenshell_value_t* value);
 IFCAPI_BINDING bool value_as_bool(const ifcopenshell_value_t* value);
 IFCAPI_BINDING int64_t value_as_int64(const ifcopenshell_value_t* value);

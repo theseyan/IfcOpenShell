@@ -33,8 +33,8 @@ IFCAPI_BINDING void boundary_edit_attributes(
     IfcUtil::IfcBaseClass* entity,
     IfcUtil::IfcBaseClass* relating_space,
     IfcUtil::IfcBaseClass* related_building_element,
-    IfcUtil::IfcBaseClass* parent_boundary,
-    IfcUtil::IfcBaseClass* corresponding_boundary,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* parent_boundary,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* corresponding_boundary,
     const std::string& physical_or_virtual,
     const std::string& internal_or_external);
 

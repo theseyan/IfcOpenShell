@@ -16,16 +16,16 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* drawing_assign_product(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* relating_product,
     IfcUtil::IfcBaseClass* related_object,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 IFCAPI_BINDING void drawing_unassign_product(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* relating_product,
     IfcUtil::IfcBaseClass* related_object,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 } // namespace bindings
 } // namespace ifcapi

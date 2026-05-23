@@ -17,17 +17,17 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* type_assign_type(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& objects,
     IfcUtil::IfcBaseClass* relating_type,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING IfcUtil::IfcBaseClass* type_assign_type_ex(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& objects,
     IfcUtil::IfcBaseClass* relating_type,
     bool should_map_representations,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING bool type_map_type_representations(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* related_object,
@@ -35,8 +35,8 @@ IFCAPI_BINDING bool type_map_type_representations(
 IFCAPI_BINDING void type_unassign_type(
     IfcParse::IfcFile* file,
     const std::vector<const IfcUtil::IfcBaseClass*>& objects,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 } // namespace bindings
 } // namespace ifcapi

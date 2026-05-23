@@ -102,7 +102,7 @@ try:
         discover_public_fields_with_compile_commands,
         discover_public_methods_with_compile_commands,
     )
-    from .contract_discovery import discover_marked_functions_in_headers
+    from .contract_discovery import MarkedFunction, discover_marked_functions_in_headers
 except ImportError:  # pragma: no cover - script execution fallback
     from clang_discovery import (
         DiscoveredCppType,
@@ -117,7 +117,7 @@ except ImportError:  # pragma: no cover - script execution fallback
         discover_public_fields_with_compile_commands,
         discover_public_methods_with_compile_commands,
     )
-    from contract_discovery import discover_marked_functions_in_headers
+    from contract_discovery import MarkedFunction, discover_marked_functions_in_headers
 
 try:
     from .semantic_types import (
@@ -3158,6 +3158,65 @@ def _contract_function_names(spec_path: Path, include_dir: Path, public_headers:
     return names
 
 
+def _contract_function_overrides(headers: tuple[Path, ...]) -> dict[str, DiscoveryTypeOverrideSpec]:
+    overrides: dict[str, DiscoveryTypeOverrideSpec] = {}
+    for function in discover_marked_functions_in_headers(headers):
+        returns: TypeSpec | None = None
+        if function.return_annotations:
+            if "IFCAPI_OWNED" in function.return_annotations and "IFCAPI_COPY" in function.return_annotations:
+                msg = f"Contract discovery has conflicting ownership annotations for '{function.name}'"
+                raise ValueError(msg)
+            returns = TypeSpec(
+                kind="",
+                ownership=(
+                    "owned"
+                    if "IFCAPI_OWNED" in function.return_annotations
+                    else "copy"
+                    if "IFCAPI_COPY" in function.return_annotations
+                    else None
+                ),
+                nullable="IFCAPI_NULLABLE" in function.return_annotations,
+            )
+        params = {
+            param_name: TypeSpec(kind="", nullable=True)
+            for param_name, annotations in function.param_annotations.items()
+            if "IFCAPI_NULLABLE" in annotations
+        }
+        if returns is not None or params:
+            overrides[function.name] = DiscoveryTypeOverrideSpec(returns=returns, params=params)
+    return overrides
+
+
+def _merge_contract_and_yaml_overrides(
+    contract_overrides: dict[str, DiscoveryTypeOverrideSpec],
+    yaml_overrides: dict[str, DiscoveryTypeOverrideSpec],
+    *,
+    selected_function_names: frozenset[str],
+) -> dict[str, DiscoveryTypeOverrideSpec]:
+    merged = {
+        name: override
+        for name, override in contract_overrides.items()
+        if name in selected_function_names
+    }
+    for name, yaml_override in yaml_overrides.items():
+        contract_override = merged.get(name)
+        if contract_override is None:
+            merged[name] = yaml_override
+            continue
+        if contract_override.returns is not None and yaml_override.returns is not None:
+            msg = f"Contract discovery has duplicate return policy for '{name}'; remove the YAML override"
+            raise ValueError(msg)
+        duplicate_params = sorted(set(contract_override.params) & set(yaml_override.params))
+        if duplicate_params:
+            msg = f"Contract discovery has duplicate parameter policy for '{name}' params {duplicate_params}; remove the YAML override"
+            raise ValueError(msg)
+        merged[name] = DiscoveryTypeOverrideSpec(
+            returns=contract_override.returns or yaml_override.returns,
+            params={**contract_override.params, **yaml_override.params},
+        )
+    return merged
+
+
 def _contract_source_text(headers: tuple[Path, ...]) -> str:
     includes = "\n".join(f'#include "{header.as_posix()}"' for header in headers)
     return f"{includes}\n"
@@ -3208,6 +3267,7 @@ def _discover_function_calls(
     include_dir = (spec_path.parent / discovery.include_dir).resolve()
     namespace_cache: dict[tuple[str, str, str | None, frozenset[str] | None], dict[str, tuple[DiscoveredFunction, ...]]] = {}
     contract_name_cache: dict[str, frozenset[str]] = {}
+    contract_override_cache: dict[str, dict[str, DiscoveryTypeOverrideSpec]] = {}
     contract_header_cache: tuple[Path, ...] | None = None
     calls: list[CallSpec] = []
     calls_by_c_name: dict[str, CallSpec] = {}
@@ -3227,8 +3287,13 @@ def _discover_function_calls(
         if item.translation_unit is None:
             contract_names = contract_name_cache.get(item.namespace)
             if contract_names is None:
-                contract_names = _contract_function_names(spec_path, include_dir, public_headers)
+                headers = _contract_headers(spec_path, include_dir, public_headers)
+                contract_names = frozenset(function.name for function in discover_marked_functions_in_headers(headers))
+                if not contract_names:
+                    msg = "No IFCAPI_BINDING declarations were found for contract discovery"
+                    raise ValueError(msg)
                 contract_name_cache[item.namespace] = contract_names
+                contract_override_cache[item.namespace] = _contract_function_overrides(headers)
             _validate_function_type_overrides(item, contract_names, context="Contract discovery")
             selected_function_names = _selected_contract_function_names(item, contract_names)
             cache_key = ("contract", item.namespace, None, selected_function_names)
@@ -3306,14 +3371,20 @@ def _discover_function_calls(
             _validate_function_type_overrides(item, contract_names, context="Contract discovery")
             selected_function_names = _selected_contract_function_names(item, contract_names)
             cache_key = ("contract", item.namespace, None, selected_function_names)
+            type_overrides = _merge_contract_and_yaml_overrides(
+                contract_override_cache[item.namespace],
+                item.type_overrides,
+                selected_function_names=selected_function_names,
+            )
         else:
             selected_function_names = _selected_discovery_names(item.include_all, item.include, item.overloads)
             cache_key = ("tu", item.namespace, item.translation_unit, selected_function_names)
+            type_overrides = item.type_overrides
         functions_by_name = namespace_cache[cache_key]
         if item.translation_unit is not None:
             _validate_function_type_overrides(item, set(functions_by_name), context="Function discovery")
         _validate_override_keys_for_overloads(
-            item.type_overrides,
+            type_overrides,
             functions_by_name,
             context=f"Function discovery for namespace '{item.namespace}'",
         )
@@ -3332,7 +3403,7 @@ def _discover_function_calls(
             returns, params = _apply_function_type_override(
                 discovered,
                 override=_resolve_type_override(
-                    item.type_overrides,
+                    type_overrides,
                     discovered,
                     overloads,
                     context=f"Function discovery for namespace '{item.namespace}'",
@@ -3388,7 +3459,7 @@ def _discover_function_calls(
             discovered = overloads[0]
             try:
                 override = _resolve_type_override(
-                    item.type_overrides,
+                    type_overrides,
                     discovered,
                     overloads,
                     context=f"Function discovery for namespace '{item.namespace}'",

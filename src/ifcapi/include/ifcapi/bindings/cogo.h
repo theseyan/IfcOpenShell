@@ -13,10 +13,10 @@ namespace bindings {
 IFCAPI_BINDING IfcUtil::IfcBaseClass* cogo_add_survey_point(
     IfcParse::IfcFile* file,
     IfcUtil::IfcBaseClass* survey_point,
-    IfcUtil::IfcBaseClass* site,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* site,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 IFCAPI_BINDING void cogo_assign_survey_point(
     IfcUtil::IfcBaseClass* annotation,
     IfcUtil::IfcBaseClass* survey_point);

@@ -30,8 +30,8 @@ IFCAPI_BINDING void attribute_edit_attributes(
     ifcopenshell_pset_props_t* attributes,
     bool sync_predefined_type,
     bool update_owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
+    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
 
 } // namespace bindings
 } // namespace ifcapi
