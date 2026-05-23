@@ -732,6 +732,12 @@ def _is_copy_or_move_constructor(child: dict, record_name: str, current_scope: s
     return lookup_name in {record_name, _qualified_name(_enclosing_scope(current_scope), record_name), current_scope}
 
 
+def _is_implicit_default_constructor(child: dict) -> bool:
+    return bool(child.get("isImplicit")) and not any(
+        item.get("kind") == "ParmVarDecl" for item in child.get("inner", [])
+    )
+
+
 def _extract_public_constructors(
     record: dict,
     index: TranslationUnitIndex,
@@ -740,17 +746,20 @@ def _extract_public_constructors(
     constructors: list[DiscoveredConstructor] = []
     access = _default_access(record)
     record_name = record.get("name", "")
+    saw_non_copy_move_constructor_decl = False
     for child in record.get("inner", []):
         if child.get("kind") == "AccessSpecDecl":
             access = child.get("access", access)
             continue
-        if access != "public":
-            continue
         if child.get("kind") != "CXXConstructorDecl":
             continue
-        if child.get("isImplicit") or child.get("isDeleted"):
-            continue
         if _is_copy_or_move_constructor(child, record_name, current_scope):
+            continue
+        saw_non_copy_move_constructor_decl = True
+        implicit_default = _is_implicit_default_constructor(child)
+        if access != "public" and not implicit_default:
+            continue
+        if (child.get("isImplicit") and not implicit_default) or child.get("isDeleted"):
             continue
 
         params = tuple(
@@ -768,6 +777,8 @@ def _extract_public_constructors(
                 params=params,
             )
         )
+    if not constructors and not saw_non_copy_move_constructor_decl:
+        constructors.append(DiscoveredConstructor(class_name=current_scope, cpp_name=current_scope, params=()))
     return tuple(constructors)
 
 
@@ -853,7 +864,8 @@ def _normalize_record_lookup_name(name: str) -> str:
         if normalized.startswith(prefix):
             normalized = normalized[len(prefix) :].strip()
             break
-    normalized = normalized.removesuffix("&").removesuffix("*").strip()
+    while normalized.endswith("&") or normalized.endswith("*"):
+        normalized = normalized[:-1].strip()
     normalized = _strip_template_args(normalized).strip()
     return normalized
 

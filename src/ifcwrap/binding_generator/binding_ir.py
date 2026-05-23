@@ -26,6 +26,7 @@ try:
         OptionalGetPolicyOp,
         OptionalHasPolicyOp,
         PointerPresencePolicyOp,
+        TaxonomyMakeFactoryPolicyOp,
         ValueHandleFieldPolicyOp,
         VariantGetPolicyOp,
         VariantSetPolicyOp,
@@ -51,6 +52,7 @@ except ImportError:  # pragma: no cover - script execution fallback
         OptionalGetPolicyOp,
         OptionalHasPolicyOp,
         PointerPresencePolicyOp,
+        TaxonomyMakeFactoryPolicyOp,
         ValueHandleFieldPolicyOp,
         VariantGetPolicyOp,
         VariantSetPolicyOp,
@@ -156,6 +158,12 @@ class ConstructorOp:
 
 
 @dataclass(frozen=True)
+class TaxonomyMakeFactoryOp:
+    cpp_class: str
+    field_initializers: tuple[object, ...] = ()
+
+
+@dataclass(frozen=True)
 class InlineImplementationOp:
     implementation: ImplementationSpec
 
@@ -178,6 +186,7 @@ OperationIR = Union[
     VariantGetOp,
     VariantSetOp,
     ConstructorOp,
+    TaxonomyMakeFactoryOp,
     InlineImplementationOp,
 ]
 
@@ -228,6 +237,11 @@ def _lower_policy_operation(call: CallSpec, operation: object) -> OperationIR:
         return ValueHandleFieldGetOp(field_name=operation.field_name)
     if isinstance(operation, ConstructorPolicyOp):
         return ConstructorOp(cpp_class=operation.cpp_class, compile_guard=operation.compile_guard)
+    if isinstance(operation, TaxonomyMakeFactoryPolicyOp):
+        return TaxonomyMakeFactoryOp(
+            cpp_class=operation.cpp_class,
+            field_initializers=operation.field_initializers,
+        )
     if isinstance(operation, InlineAdapterPolicyOp):
         return InlineImplementationOp(implementation=operation.implementation)
     if isinstance(operation, PointerPresencePolicyOp):

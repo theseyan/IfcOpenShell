@@ -19,6 +19,7 @@ from src.ifcwrap.binding_generator.policy_ir import (
     DirectMethodPolicyOp,
     InlineAdapterPolicyOp,
     OptionalGetPolicyOp,
+    TaxonomyMakeFactoryPolicyOp,
     VariantGetPolicyOp,
 )
 
@@ -330,7 +331,7 @@ def test_discovery_supports_public_constructors(tmp_path: Path) -> None:
 
             struct Tree {
             public:
-                Tree() = default;
+                explicit Tree(int index) {}
                 explicit Tree(File& file) {}
             };
             }
@@ -370,9 +371,6 @@ def test_discovery_supports_public_constructors(tmp_path: Path) -> None:
                   cpp_class: Demo::XmlSerializer
                   translation_unit: constructors.cpp
                   expose_as: create_xml_serializer
-                  params:
-                    - Demo::File*
-                    - const std::string&
                   param_renames:
                     xml_filename: filename
                 - handle: tree
@@ -406,6 +404,451 @@ def test_discovery_supports_public_constructors(tmp_path: Path) -> None:
     assert "new Demo::XmlSerializer(file_cpp, filename_cpp)" in generated_cpp
     assert "new Demo::Tree(file_cpp)" in generated_cpp
     assert "XmlSerializer(const XmlSerializer&" not in generated_cpp
+
+
+def test_discovery_supports_implicit_default_constructors(tmp_path: Path) -> None:
+    header = tmp_path / "constructors.h"
+    source = tmp_path / "constructors.cpp"
+    spec_path = tmp_path / "constructors.yml"
+
+    header.write_text(
+        dedent(
+            """
+            namespace Demo {
+            class Settings {};
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "constructors.h"\n', encoding="utf-8")
+    compile_commands = _write_compile_commands(tmp_path, source)
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - constructors.h
+            handles:
+              - name: settings
+                cpp_type: Demo::Settings
+                c_type: ifcopenshell_demo_settings_t
+                destructor: delete
+            discover:
+              include_dir: .
+              constructors:
+                - handle: settings
+                  cpp_class: Demo::Settings
+                  translation_unit: constructors.cpp
+                  expose_as: create_settings
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    call = next(call for call in spec.functions if call.c_name == "ifcopenshell_demo_create_settings")
+    assert call.params == ()
+
+    cpp_out = tmp_path / "demo_api.cpp"
+    generate(spec_path, tmp_path / "demo_api.h", cpp_out, compile_commands_path=compile_commands)
+    generated_cpp = cpp_out.read_text(encoding="utf-8")
+    assert "new Demo::Settings()" in generated_cpp
+
+
+def test_constructor_discovery_requires_params_for_overloaded_constructors(tmp_path: Path) -> None:
+    header = tmp_path / "constructors.h"
+    source = tmp_path / "constructors.cpp"
+    spec_path = tmp_path / "constructors.yml"
+
+    header.write_text(
+        dedent(
+            """
+            namespace Demo {
+            struct File {};
+            struct Tree {
+            public:
+                Tree() = default;
+                explicit Tree(File& file) {}
+            };
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "constructors.h"\n', encoding="utf-8")
+    compile_commands = _write_compile_commands(tmp_path, source)
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - constructors.h
+            handles:
+              - name: tree
+                cpp_type: Demo::Tree
+                c_type: ifcopenshell_demo_tree_t
+                destructor: delete
+            discover:
+              include_dir: .
+              constructors:
+                - handle: tree
+                  cpp_class: Demo::Tree
+                  translation_unit: constructors.cpp
+                  expose_as: create_tree
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="constructor params are required when overloads are present"):
+        load_authored_spec(spec_path, compile_commands_path=compile_commands)
+
+
+def test_constructor_discovery_reports_missing_source_constructors(tmp_path: Path) -> None:
+    header = tmp_path / "constructors.h"
+    source = tmp_path / "constructors.cpp"
+    spec_path = tmp_path / "constructors.yml"
+
+    header.write_text(
+        dedent(
+            """
+            namespace Demo {
+            struct Settings {
+            private:
+                explicit Settings(int index) {}
+            };
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "constructors.h"\n', encoding="utf-8")
+    compile_commands = _write_compile_commands(tmp_path, source)
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - constructors.h
+            handles:
+              - name: settings
+                cpp_type: Demo::Settings
+                c_type: ifcopenshell_demo_settings_t
+                destructor: delete
+            discover:
+              include_dir: .
+              constructors:
+                - handle: settings
+                  cpp_class: Demo::Settings
+                  translation_unit: constructors.cpp
+                  expose_as: create_settings
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="no public constructors are available"):
+        load_authored_spec(spec_path, compile_commands_path=compile_commands)
+
+
+def test_constructor_discovery_rejects_compile_guarded_factories(tmp_path: Path) -> None:
+    spec_path = tmp_path / "constructors.yml"
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - constructors.h
+            handles:
+              - name: serializer
+                cpp_type: Demo::Serializer
+                c_type: ifcopenshell_demo_serializer_t
+                destructor: delete
+            discover:
+              include_dir: .
+              constructors:
+                - handle: serializer
+                  cpp_class: Demo::OptionalSerializer
+                  translation_unit: constructors.cpp
+                  expose_as: create_optional_serializer
+                  compile_guard: WITH_OPTIONAL_SERIALIZER
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="keep guarded factories authored"):
+        load_authored_spec(spec_path, compile_commands_path=tmp_path / "compile_commands.json")
+
+
+def test_discovery_supports_taxonomy_make_factories(tmp_path: Path) -> None:
+    header = tmp_path / "taxonomy.h"
+    source = tmp_path / "taxonomy.cpp"
+    spec_path = tmp_path / "taxonomy.yml"
+
+    header.write_text(
+        dedent(
+            """
+            #include <array>
+            #include <memory>
+            #include <utility>
+
+            namespace ifcopenshell::geometry::taxonomy {
+            template <typename T, typename... Args>
+            std::shared_ptr<T> make(Args&&... args) {
+                return std::make_shared<T>(std::forward<Args>(args)...);
+            }
+
+            struct item {};
+            struct direction3 {};
+            struct node {};
+            struct point3 {
+                point3(double x, double y, double z) {}
+            };
+            struct bspline_curve {
+                int degree;
+            };
+            struct bspline_surface {
+                std::array<int, 2> degree;
+            };
+            struct boolean_result {
+                enum operation_t { UNION, SUBTRACTION, INTERSECTION };
+                operation_t operation;
+            };
+            struct offset_curve {
+                std::shared_ptr<item> basis;
+                std::shared_ptr<direction3> reference;
+                double offset;
+            };
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "taxonomy.h"\n', encoding="utf-8")
+    compile_commands = _write_compile_commands(tmp_path, source)
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - taxonomy.h
+            handles:
+              - name: taxonomy_node
+                cpp_type: ifcopenshell::geometry::taxonomy::node
+                c_type: ifcopenshell_demo_taxonomy_node_t
+                destructor: shared_ptr
+                ptr_type: shared_ptr
+              - name: taxonomy_item
+                cpp_type: ifcopenshell::geometry::taxonomy::item
+                c_type: ifcopenshell_demo_taxonomy_item_t
+                destructor: shared_ptr
+                ptr_type: shared_ptr
+              - name: taxonomy_direction3
+                cpp_type: ifcopenshell::geometry::taxonomy::direction3
+                c_type: ifcopenshell_demo_taxonomy_direction3_t
+                destructor: shared_ptr
+                ptr_type: shared_ptr
+              - name: taxonomy_point3
+                cpp_type: ifcopenshell::geometry::taxonomy::point3
+                c_type: ifcopenshell_demo_taxonomy_point3_t
+                destructor: shared_ptr
+                ptr_type: shared_ptr
+              - name: taxonomy_bspline_curve
+                cpp_type: ifcopenshell::geometry::taxonomy::bspline_curve
+                c_type: ifcopenshell_demo_taxonomy_bspline_curve_t
+                destructor: shared_ptr
+                ptr_type: shared_ptr
+              - name: taxonomy_bspline_surface
+                cpp_type: ifcopenshell::geometry::taxonomy::bspline_surface
+                c_type: ifcopenshell_demo_taxonomy_bspline_surface_t
+                destructor: shared_ptr
+                ptr_type: shared_ptr
+              - name: taxonomy_boolean_result
+                cpp_type: ifcopenshell::geometry::taxonomy::boolean_result
+                c_type: ifcopenshell_demo_taxonomy_boolean_result_t
+                destructor: shared_ptr
+                ptr_type: shared_ptr
+              - name: taxonomy_offset_curve
+                cpp_type: ifcopenshell::geometry::taxonomy::offset_curve
+                c_type: ifcopenshell_demo_taxonomy_offset_curve_t
+                destructor: shared_ptr
+                ptr_type: shared_ptr
+            discover:
+              include_dir: .
+              constructors:
+                - handle: taxonomy_node
+                  cpp_class: ifcopenshell::geometry::taxonomy::node
+                  translation_unit: taxonomy.cpp
+                  expose_as: taxonomy_create_node
+                  factory: taxonomy_make
+                - handle: taxonomy_point3
+                  cpp_class: ifcopenshell::geometry::taxonomy::point3
+                  translation_unit: taxonomy.cpp
+                  expose_as: taxonomy_create_point3
+                  factory: taxonomy_make
+                  params:
+                    - double
+                    - double
+                    - double
+                - handle: taxonomy_bspline_curve
+                  cpp_class: ifcopenshell::geometry::taxonomy::bspline_curve
+                  translation_unit: taxonomy.cpp
+                  expose_as: taxonomy_create_bspline_curve
+                  factory: taxonomy_make
+                  field_initializers:
+                    - field: degree
+                      min: 1
+                      error: B-spline curve degree must be >= 1
+                - handle: taxonomy_bspline_surface
+                  cpp_class: ifcopenshell::geometry::taxonomy::bspline_surface
+                  translation_unit: taxonomy.cpp
+                  expose_as: taxonomy_create_bspline_surface
+                  factory: taxonomy_make
+                  field_initializers:
+                    - field: degree
+                      params:
+                        - degree_u
+                        - degree_v
+                      min: 1
+                      error: B-spline surface degrees must be >= 1
+                - handle: taxonomy_boolean_result
+                  cpp_class: ifcopenshell::geometry::taxonomy::boolean_result
+                  translation_unit: taxonomy.cpp
+                  expose_as: taxonomy_create_boolean_result
+                  factory: taxonomy_make
+                  field_initializers:
+                    - field: operation
+                      min: 0
+                      max: 2
+                      error: Boolean operation must be 0 (UNION), 1 (SUBTRACTION), or 2 (INTERSECTION)
+                - handle: taxonomy_offset_curve
+                  cpp_class: ifcopenshell::geometry::taxonomy::offset_curve
+                  translation_unit: taxonomy.cpp
+                  expose_as: taxonomy_create_offset_curve
+                  factory: taxonomy_make
+                  field_initializers:
+                    - field: basis
+                    - field: reference
+                    - field: offset
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    call = next(call for call in spec.functions if call.c_name == "ifcopenshell_demo_taxonomy_create_node")
+    assert isinstance(call.policy_operation, TaxonomyMakeFactoryPolicyOp)
+    assert call.params == ()
+    point_call = next(call for call in spec.functions if call.c_name == "ifcopenshell_demo_taxonomy_create_point3")
+    assert isinstance(point_call.policy_operation, TaxonomyMakeFactoryPolicyOp)
+    assert [param.name for param in point_call.params] == ["x", "y", "z"]
+    curve_call = next(call for call in spec.functions if call.c_name == "ifcopenshell_demo_taxonomy_create_bspline_curve")
+    assert isinstance(curve_call.policy_operation, TaxonomyMakeFactoryPolicyOp)
+    assert [param.name for param in curve_call.params] == ["degree"]
+    surface_call = next(
+        call for call in spec.functions if call.c_name == "ifcopenshell_demo_taxonomy_create_bspline_surface"
+    )
+    assert isinstance(surface_call.policy_operation, TaxonomyMakeFactoryPolicyOp)
+    assert [param.name for param in surface_call.params] == ["degree_u", "degree_v"]
+    boolean_call = next(
+        call for call in spec.functions if call.c_name == "ifcopenshell_demo_taxonomy_create_boolean_result"
+    )
+    assert isinstance(boolean_call.policy_operation, TaxonomyMakeFactoryPolicyOp)
+    assert [param.name for param in boolean_call.params] == ["operation"]
+    offset_call = next(call for call in spec.functions if call.c_name == "ifcopenshell_demo_taxonomy_create_offset_curve")
+    assert isinstance(offset_call.policy_operation, TaxonomyMakeFactoryPolicyOp)
+    assert [param.name for param in offset_call.params] == ["basis", "reference", "offset"]
+
+    cpp_out = tmp_path / "demo_api.cpp"
+    generate(spec_path, tmp_path / "demo_api.h", cpp_out, compile_commands_path=compile_commands)
+    generated_cpp = cpp_out.read_text(encoding="utf-8")
+    assert (
+        "ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::node>()"
+        in generated_cpp
+    )
+    assert (
+        "ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::point3>(x_cpp, y_cpp, z_cpp)"
+        in generated_cpp
+    )
+    assert 'throw std::runtime_error("B-spline curve degree must be >= 1");' in generated_cpp
+    assert "result_value->degree = static_cast<int>(degree_cpp);" in generated_cpp
+    assert 'throw std::runtime_error("B-spline surface degrees must be >= 1");' in generated_cpp
+    assert "result_value->degree = { degree_u_cpp, degree_v_cpp };" in generated_cpp
+    assert 'throw std::runtime_error("Boolean operation must be 0 (UNION), 1 (SUBTRACTION), or 2 (INTERSECTION)");' in generated_cpp
+    assert (
+        "result_value->operation = "
+        "static_cast<ifcopenshell::geometry::taxonomy::boolean_result::operation_t>(operation_cpp);"
+        in generated_cpp
+    )
+    assert "result_value->basis = basis_cpp;" in generated_cpp
+    assert "result_value->reference = reference_cpp;" in generated_cpp
+    assert "result_value->offset = static_cast<double>(offset_cpp);" in generated_cpp
+
+
+def test_taxonomy_make_factories_require_shared_ptr_handles(tmp_path: Path) -> None:
+    header = tmp_path / "taxonomy.h"
+    source = tmp_path / "taxonomy.cpp"
+    spec_path = tmp_path / "taxonomy.yml"
+
+    header.write_text("namespace Demo { struct Node {}; }\n", encoding="utf-8")
+    source.write_text('#include "taxonomy.h"\n', encoding="utf-8")
+    compile_commands = _write_compile_commands(tmp_path, source)
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - taxonomy.h
+            handles:
+              - name: node
+                cpp_type: Demo::Node
+                c_type: ifcopenshell_demo_node_t
+                destructor: delete
+            discover:
+              include_dir: .
+              constructors:
+                - handle: node
+                  cpp_class: Demo::Node
+                  translation_unit: taxonomy.cpp
+                  expose_as: create_node
+                  factory: taxonomy_make
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="taxonomy_make requires a shared_ptr handle"):
+        load_authored_spec(spec_path, compile_commands_path=compile_commands)
 
 
 def test_discovery_rejects_stale_constructor_signature(tmp_path: Path) -> None:

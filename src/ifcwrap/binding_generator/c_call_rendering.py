@@ -22,6 +22,7 @@ try:
         OptionalPresenceCheckOp,
         PointerPresenceCheckOp,
         StaticCastOp,
+        TaxonomyMakeFactoryOp,
         ValueHandleFieldGetOp,
         VariantGetOp,
         VariantSetOp,
@@ -65,6 +66,7 @@ except ImportError:  # pragma: no cover - script execution fallback
         OptionalPresenceCheckOp,
         PointerPresenceCheckOp,
         StaticCastOp,
+        TaxonomyMakeFactoryOp,
         ValueHandleFieldGetOp,
         VariantGetOp,
         VariantSetOp,
@@ -351,6 +353,47 @@ def _render_constructor(call: CallIR, op: ConstructorOp, spec: BindingIR) -> str
     return result_line
 
 
+def _render_taxonomy_make_factory(call: CallIR, op: TaxonomyMakeFactoryOp, spec: BindingIR) -> str:
+    field_param_names = {param_name for field in op.field_initializers for param_name in field.param_names}
+    constructor_params = tuple(param for param in call.params if param.name not in field_param_names)
+    arg_str = ", ".join(_constructor_arg(p) for p in constructor_params)
+    expr = f"ifcopenshell::geometry::taxonomy::make<{op.cpp_class}>({arg_str})"
+    if not op.field_initializers:
+        return _render_result_assignment(call, spec, expr)
+
+    lines: list[str] = []
+    for field in op.field_initializers:
+        param_exprs = [f"{param_name}_cpp" for param_name in field.param_names]
+        range_checks: list[str] = []
+        if field.min_value is not None:
+            range_checks.extend(f"{param_expr} < {field.min_value}" for param_expr in param_exprs)
+        if field.max_value is not None:
+            range_checks.extend(f"{param_expr} > {field.max_value}" for param_expr in param_exprs)
+        if range_checks:
+            error = field.error or f"{', '.join(field.param_names)} out of range"
+            lines.append(f"if ({' || '.join(range_checks)}) {{")
+            lines.append(f'    throw std::runtime_error("{error}");')
+            lines.append("}")
+    lines.append(f"auto result_value = {expr};")
+    for field in op.field_initializers:
+        param_exprs = [f"{param_name}_cpp" for param_name in field.param_names]
+        if len(param_exprs) == 1:
+            if (
+                field.cpp_type
+                and not field.cpp_type.startswith("std::")
+                and "::ptr" not in field.cpp_type
+                and "shared_ptr" not in field.cpp_type
+            ):
+                value_expr = f"static_cast<{field.cpp_type}>({param_exprs[0]})"
+            else:
+                value_expr = param_exprs[0]
+        else:
+            value_expr = "{ " + ", ".join(param_exprs) + " }"
+        lines.append(f"result_value->{field.field_name} = {value_expr};")
+    lines.append(_render_result_assignment(call, spec, "result_value"))
+    return "\n        ".join(lines)
+
+
 def _call_expr_args(call: CallIR) -> str:
     return ", ".join(
         f"{p.name}_cpp" if _uses_cpp_arg_name(p.type) else p.name
@@ -501,6 +544,8 @@ def _render_call_impl(call: CallIR, spec: BindingIR) -> str:
         body_line = f"self_cpp->{op.method_name}(name_cpp, {value_expr});"
     elif isinstance(op, ConstructorOp):
         body_line = _render_constructor(call, op, spec)
+    elif isinstance(op, TaxonomyMakeFactoryOp):
+        body_line = _render_taxonomy_make_factory(call, op, spec)
     else:
         if not isinstance(op, InlineImplementationOp):
             raise ValueError(f"Unsupported call operation for {call.c_name}")

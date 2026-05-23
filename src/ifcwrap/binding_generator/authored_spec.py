@@ -49,6 +49,7 @@ try:
         DirectFieldPolicyOp,
         DirectFunctionPolicyOp,
         DirectMethodPolicyOp,
+        FactoryFieldInitializerPolicy,
         FieldSetterPolicyOp,
         InlineAdapterPolicyOp,
         MethodSizePolicyOp,
@@ -56,6 +57,7 @@ try:
         OptionalHasPolicyOp,
         PointerPresencePolicyOp,
         PolicyCallSpec,
+        TaxonomyMakeFactoryPolicyOp,
         ValueHandleFieldPolicyOp,
         VariantGetPolicyOp,
         VariantSetPolicyOp,
@@ -72,6 +74,7 @@ except ImportError:  # pragma: no cover - script execution fallback
         DirectFieldPolicyOp,
         DirectFunctionPolicyOp,
         DirectMethodPolicyOp,
+        FactoryFieldInitializerPolicy,
         FieldSetterPolicyOp,
         InlineAdapterPolicyOp,
         MethodSizePolicyOp,
@@ -79,6 +82,7 @@ except ImportError:  # pragma: no cover - script execution fallback
         OptionalHasPolicyOp,
         PointerPresencePolicyOp,
         PolicyCallSpec,
+        TaxonomyMakeFactoryPolicyOp,
         ValueHandleFieldPolicyOp,
         VariantGetPolicyOp,
         VariantSetPolicyOp,
@@ -260,14 +264,25 @@ class DiscoveryFunctionSpec:
 
 
 @dataclass(frozen=True)
+class DiscoveryFactoryFieldSpec:
+    field_name: str
+    param_names: tuple[str, ...]
+    min_value: int | None
+    max_value: int | None
+    error: str | None
+
+
+@dataclass(frozen=True)
 class DiscoveryConstructorSpec:
     handle: str
     cpp_class: str
     translation_unit: str
     expose_as: str
-    params: tuple[str, ...]
+    params: tuple[str, ...] | None
     param_renames: dict[str, str]
     compile_guard: str | None
+    factory: str | None
+    field_initializers: tuple[DiscoveryFactoryFieldSpec, ...]
     type_overrides: dict[str, TypeSpec]
 
 
@@ -1323,10 +1338,13 @@ def _parse_discovery(
         cpp_class = _expect_str(item_mapping.get("cpp_class"), f"{item_context}.cpp_class")
         translation_unit = _expect_str(item_mapping.get("translation_unit"), f"{item_context}.translation_unit")
         expose_as = _expect_str(item_mapping.get("expose_as"), f"{item_context}.expose_as")
-        params = tuple(
-            _expect_str(param, f"{item_context}.params[{param_index}]")
-            for param_index, param in enumerate(_expect_list(item_mapping.get("params", []), f"{item_context}.params"))
-        )
+        if "params" in item_mapping:
+            params: tuple[str, ...] | None = tuple(
+                _expect_str(param, f"{item_context}.params[{param_index}]")
+                for param_index, param in enumerate(_expect_list(item_mapping.get("params"), f"{item_context}.params"))
+            )
+        else:
+            params = None
         param_renames_raw = _expect_mapping(item_mapping.get("param_renames", {}), f"{item_context}.param_renames")
         param_renames: dict[str, str] = {}
         for source_name, c_name in param_renames_raw.items():
@@ -1340,6 +1358,61 @@ def _parse_discovery(
             if compile_guard_raw is not None
             else None
         )
+        if compile_guard is not None:
+            msg = (
+                f"{item_context}.compile_guard is not supported for source-discovered constructors; "
+                "keep guarded factories authored so the C symbol remains stable when the guarded C++ class is unavailable"
+            )
+            raise ValueError(msg)
+        factory_raw = item_mapping.get("factory")
+        factory = _expect_str(factory_raw, f"{item_context}.factory") if factory_raw is not None else None
+        if factory is not None and factory != "taxonomy_make":
+            msg = f"{item_context}.factory must be 'taxonomy_make'"
+            raise ValueError(msg)
+        field_initializers_raw = _expect_list(
+            item_mapping.get("field_initializers", []),
+            f"{item_context}.field_initializers",
+        )
+        field_initializers: list[DiscoveryFactoryFieldSpec] = []
+        for field_index, field_raw in enumerate(field_initializers_raw):
+            field_context = f"{item_context}.field_initializers[{field_index}]"
+            field_mapping = _expect_mapping(field_raw, field_context)
+            field_name = _expect_str(field_mapping.get("field"), f"{field_context}.field")
+            if "params" in field_mapping and "param" in field_mapping:
+                msg = f"{field_context} may specify either param or params, not both"
+                raise ValueError(msg)
+            if "params" in field_mapping:
+                param_names = tuple(
+                    _expect_str(param, f"{field_context}.params[{param_index}]")
+                    for param_index, param in enumerate(_expect_list(field_mapping.get("params"), f"{field_context}.params"))
+                )
+                if not param_names:
+                    msg = f"{field_context}.params must not be empty"
+                    raise ValueError(msg)
+            else:
+                param_names = (_expect_str(field_mapping.get("param", field_name), f"{field_context}.param"),)
+            min_raw = field_mapping.get("min")
+            if min_raw is not None and not isinstance(min_raw, int):
+                msg = f"{field_context}.min must be an integer"
+                raise ValueError(msg)
+            max_raw = field_mapping.get("max")
+            if max_raw is not None and not isinstance(max_raw, int):
+                msg = f"{field_context}.max must be an integer"
+                raise ValueError(msg)
+            error_raw = field_mapping.get("error")
+            error = _expect_str(error_raw, f"{field_context}.error") if error_raw is not None else None
+            field_initializers.append(
+                DiscoveryFactoryFieldSpec(
+                    field_name=field_name,
+                    param_names=param_names,
+                    min_value=min_raw,
+                    max_value=max_raw,
+                    error=error,
+                )
+            )
+        if field_initializers and factory != "taxonomy_make":
+            msg = f"{item_context}.field_initializers requires factory: taxonomy_make"
+            raise ValueError(msg)
         overrides_raw = _expect_mapping(item_mapping.get("param_type_overrides", {}), f"{item_context}.param_type_overrides")
         type_overrides: dict[str, TypeSpec] = {}
         for param_name, param_raw in overrides_raw.items():
@@ -1361,6 +1434,8 @@ def _parse_discovery(
                 params=params,
                 param_renames=param_renames,
                 compile_guard=compile_guard,
+                factory=factory,
+                field_initializers=tuple(field_initializers),
                 type_overrides=type_overrides,
             )
         )
@@ -3387,7 +3462,7 @@ def _discover_function_calls(
 
 def _select_constructor(
     constructors: tuple[DiscoveredConstructor, ...],
-    params: tuple[str, ...],
+    params: tuple[str, ...] | None,
     *,
     context: str,
 ) -> DiscoveredConstructor:
@@ -3403,6 +3478,16 @@ def _select_constructor(
         discovered_base = discovered_type.replace("*", "").replace("&", "").strip()
         target_base = target_type.replace("*", "").replace("&", "").strip()
         return _cpp_type_names_match(discovered_base, target_base)
+
+    if params is None:
+        if not constructors:
+            msg = f"{context}: no public constructors are available for source inference"
+            raise ValueError(msg)
+        if len(constructors) == 1:
+            return constructors[0]
+        available = ", ".join(_constructor_signature_debug(constructor) for constructor in constructors)
+        msg = f"{context}: constructor params are required when overloads are present; available: {available}"
+        raise ValueError(msg)
 
     matches = [
         constructor
@@ -3420,6 +3505,19 @@ def _select_constructor(
     raise ValueError(msg)
 
 
+def _array_field_element_type(cpp_type: str, param_count: int, *, context: str) -> str:
+    match = re.match(r"std::array<\s*(.+?)\s*,\s*(\d+)\s*>", _normalize_cpp_type(cpp_type))
+    if match is None:
+        msg = f"{context}: multiple field initializer params require a std::array field"
+        raise ValueError(msg)
+    element_type = match.group(1).strip()
+    field_count = int(match.group(2))
+    if field_count != param_count:
+        msg = f"{context}: field expects {field_count} initializer params, got {param_count}"
+        raise ValueError(msg)
+    return element_type
+
+
 def _discover_constructor_calls(
     spec_path: Path,
     discovery: DiscoverySpec,
@@ -3430,6 +3528,7 @@ def _discover_constructor_calls(
 ) -> tuple[tuple[CallSpec, ...], tuple[DiscoveryDiagnostic, ...]]:
     include_dir = (spec_path.parent / discovery.include_dir).resolve()
     constructor_cache: dict[tuple[str, str], tuple[DiscoveredConstructor, ...]] = {}
+    field_cache: dict[tuple[str, str], dict[str, DiscoveredField]] = {}
     calls: list[CallSpec] = []
     calls_by_c_name: dict[str, CallSpec] = {}
     diagnostics: list[DiscoveryDiagnostic] = []
@@ -3441,6 +3540,16 @@ def _discover_constructor_calls(
 
     for item_index, item in enumerate(discovery.constructors, start=1):
         handle = handles[item.handle]
+        if item.factory == "taxonomy_make":
+            if handle.ptr_type != "shared_ptr":
+                msg = f"Constructor discovery for '{item.cpp_class}' item {item_index}: taxonomy_make requires a shared_ptr handle"
+                raise ValueError(msg)
+            if _normalize_cpp_type(item.cpp_class) != _normalize_cpp_type(handle.cpp_type):
+                msg = (
+                    f"Constructor discovery for '{item.cpp_class}' item {item_index}: "
+                    f"taxonomy_make cpp_class must match handle '{item.handle}' cpp_type"
+                )
+                raise ValueError(msg)
         cache_key = (item.cpp_class, item.translation_unit)
         constructors = constructor_cache.get(cache_key)
         if constructors is None:
@@ -3469,13 +3578,68 @@ def _discover_constructor_calls(
                 )
                 continue
             raise
-
         params: list[ParamSpec] = []
+        param_names: set[str] = set()
         for param in constructor.params:
             inferred = _infer_param_type(param.cpp_type_ref, handles)
             override = item.type_overrides.get(param.name)
             param_type = _merge_type_override(inferred, override)
-            params.append(ParamSpec(name=item.param_renames.get(param.name, param.name), type=param_type))
+            param_name = item.param_renames.get(param.name, param.name)
+            param_names.add(param_name)
+            params.append(ParamSpec(name=param_name, type=param_type))
+
+        factory_field_initializers: list[FactoryFieldInitializerPolicy] = []
+        if item.field_initializers:
+            fields = field_cache.get(cache_key)
+            if fields is None:
+                translation_unit = (include_dir / item.translation_unit).resolve()
+                fields = discover_public_fields_with_compile_commands(
+                    compile_commands_path,
+                    translation_unit,
+                    item.cpp_class,
+                    include_inherited=False,
+                )
+                field_cache[cache_key] = fields
+            fields_by_name = fields
+            for field_spec in item.field_initializers:
+                field = fields_by_name.get(field_spec.field_name)
+                if field is None:
+                    available = ", ".join(sorted(fields_by_name))
+                    msg = (
+                        f"Constructor discovery for '{item.cpp_class}' item {item_index}: "
+                        f"field initializer references unknown field '{field_spec.field_name}'; available: {available}"
+                    )
+                    raise ValueError(msg)
+                field_context = (
+                    f"Constructor discovery for '{item.cpp_class}' item {item_index} "
+                    f"field initializer '{field_spec.field_name}'"
+                )
+                if len(field_spec.param_names) == 1:
+                    inferred = _infer_param_type(field.cpp_type_ref, handles)
+                else:
+                    element_type = _array_field_element_type(field.cpp_type, len(field_spec.param_names), context=field_context)
+                    inferred = _infer_param_type(element_type, handles)
+                for param_name in field_spec.param_names:
+                    if param_name in param_names:
+                        msg = (
+                            f"Constructor discovery for '{item.cpp_class}' item {item_index}: "
+                            f"field initializer parameter '{param_name}' collides with another parameter"
+                        )
+                        raise ValueError(msg)
+                    override = item.type_overrides.get(param_name)
+                    param_type = _merge_type_override(inferred, override)
+                    param_names.add(param_name)
+                    params.append(ParamSpec(name=param_name, type=param_type))
+                factory_field_initializers.append(
+                    FactoryFieldInitializerPolicy(
+                        field_name=field_spec.field_name,
+                        param_names=field_spec.param_names,
+                        cpp_type=_cpp_type_storage(field.cpp_type_ref),
+                        min_value=field_spec.min_value,
+                        max_value=field_spec.max_value,
+                        error=field_spec.error,
+                    )
+                )
 
         call = CallSpec(
             expose_as=item.expose_as,
@@ -3483,9 +3647,16 @@ def _discover_constructor_calls(
             receiver=None,
             returns=TypeSpec(kind="handle", handle=item.handle, ownership="owned"),
             params=tuple(params),
-            policy_operation=ConstructorPolicyOp(
-                cpp_class=item.cpp_class if item.cpp_class != handle.cpp_type else None,
-                compile_guard=item.compile_guard,
+            policy_operation=(
+                TaxonomyMakeFactoryPolicyOp(
+                    cpp_class=item.cpp_class,
+                    field_initializers=tuple(factory_field_initializers),
+                )
+                if item.factory == "taxonomy_make"
+                else ConstructorPolicyOp(
+                    cpp_class=item.cpp_class if item.cpp_class != handle.cpp_type else None,
+                    compile_guard=item.compile_guard,
+                )
             ),
         )
         if call.c_name in authored_c_names:
