@@ -3583,87 +3583,6 @@ bool ifcopenshell_ifcgeom_create_tree_from_iterator(ifcopenshell_ifcgeom_iterato
     }
 }
 
-bool ifcopenshell_ifcgeom_helmert_curve_point(double A0, double A1, double A2, double s, ifcopenshell_double_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    auto A0_cpp = static_cast<double>(A0);
-    auto A1_cpp = static_cast<double>(A1);
-    auto A2_cpp = static_cast<double>(A2);
-    auto s_cpp = static_cast<double>(s);
-        *out_result = make_double_list(ifcopenshell::geometry::helmert_curve_point(A0_cpp, A1_cpp, A2_cpp, s_cpp));
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_create_settings(ifcopenshell_ifcgeom_settings_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        *out_result = new ifcopenshell_ifcgeom_settings_t{new ifcopenshell::geometry::Settings(), true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_create_serializer_settings(ifcopenshell_ifcgeom_serializer_settings_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        *out_result = new ifcopenshell_ifcgeom_serializer_settings_t{new ifcopenshell::geometry::SerializerSettings(), true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_create_buffer(ifcopenshell_ifcgeom_buffer_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        *out_result = new ifcopenshell_ifcgeom_buffer_t{new stream_or_filename(), true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_create_buffer_from_filename(const char* filename, ifcopenshell_ifcgeom_buffer_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (filename == nullptr) { throw std::runtime_error("Parameter \"filename\" must not be null"); }
-    std::string filename_cpp(filename);
-        *out_result = new ifcopenshell_ifcgeom_buffer_t{new stream_or_filename(filename_cpp), true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
 bool ifcopenshell_ifcgeom_create_obj_serializer(ifcopenshell_ifcgeom_buffer_t* obj_output, ifcopenshell_ifcgeom_buffer_t* mtl_output, ifcopenshell_ifcgeom_settings_t* geometry_settings, ifcopenshell_ifcgeom_serializer_settings_t* serializer_settings, ifcopenshell_ifcgeom_geometry_serializer_t** out_result) {
     try {
         ifcopenshell_clear_error();
@@ -3719,6 +3638,238 @@ bool ifcopenshell_ifcgeom_create_svg_serializer(ifcopenshell_ifcgeom_buffer_t* o
     if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
     auto& serializer_settings_cpp = *serializer_settings->ptr;
         *out_result = new ifcopenshell_ifcgeom_geometry_serializer_t{static_cast<GeometrySerializer*>(new SvgSerializer(output_cpp, geometry_settings_cpp, serializer_settings_cpp)), true};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_create_buffer(ifcopenshell_ifcgeom_buffer_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+        *out_result = new ifcopenshell_ifcgeom_buffer_t{new stream_or_filename(), true};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_create_buffer_from_filename(const char* filename, ifcopenshell_ifcgeom_buffer_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (filename == nullptr) { throw std::runtime_error("Parameter \"filename\" must not be null"); }
+    std::string filename_cpp(filename);
+        *out_result = new ifcopenshell_ifcgeom_buffer_t{new stream_or_filename(filename_cpp), true};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_create_settings(ifcopenshell_ifcgeom_settings_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+        *out_result = new ifcopenshell_ifcgeom_settings_t{new ifcopenshell::geometry::Settings(), true};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_create_serializer_settings(ifcopenshell_ifcgeom_serializer_settings_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+        *out_result = new ifcopenshell_ifcgeom_serializer_settings_t{new ifcopenshell::geometry::SerializerSettings(), true};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_taxonomy_create_collection(ifcopenshell_ifcgeom_taxonomy_collection_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+        *out_result = new ifcopenshell_ifcgeom_taxonomy_collection_t{ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::collection>()};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_taxonomy_create_loft(ifcopenshell_ifcgeom_taxonomy_loft_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+        *out_result = new ifcopenshell_ifcgeom_taxonomy_loft_t{ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::loft>()};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_taxonomy_create_node(ifcopenshell_ifcgeom_taxonomy_node_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+        *out_result = new ifcopenshell_ifcgeom_taxonomy_node_t{ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::node>()};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_taxonomy_create_point3(double x, double y, double z, ifcopenshell_ifcgeom_taxonomy_point3_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    auto x_cpp = static_cast<double>(x);
+    auto y_cpp = static_cast<double>(y);
+    auto z_cpp = static_cast<double>(z);
+        *out_result = new ifcopenshell_ifcgeom_taxonomy_point3_t{ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::point3>(x_cpp, y_cpp, z_cpp)};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_taxonomy_create_bspline_curve(int32_t degree, ifcopenshell_ifcgeom_taxonomy_bspline_curve_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    auto degree_cpp = static_cast<int>(degree);
+        if (degree_cpp < 1) {
+            throw std::runtime_error("B-spline curve degree must be >= 1");
+        }
+        auto result_value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::bspline_curve>();
+        result_value->degree = static_cast<int>(degree_cpp);
+        *out_result = new ifcopenshell_ifcgeom_taxonomy_bspline_curve_t{result_value};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_taxonomy_create_bspline_surface(int32_t degree_u, int32_t degree_v, ifcopenshell_ifcgeom_taxonomy_bspline_surface_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    auto degree_u_cpp = static_cast<int>(degree_u);
+    auto degree_v_cpp = static_cast<int>(degree_v);
+        if (degree_u_cpp < 1 || degree_v_cpp < 1) {
+            throw std::runtime_error("B-spline surface degrees must be >= 1");
+        }
+        auto result_value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::bspline_surface>();
+        result_value->degree = { degree_u_cpp, degree_v_cpp };
+        *out_result = new ifcopenshell_ifcgeom_taxonomy_bspline_surface_t{result_value};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_taxonomy_create_boolean_result(int32_t operation, ifcopenshell_ifcgeom_taxonomy_boolean_result_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    auto operation_cpp = static_cast<ifcopenshell::geometry::taxonomy::boolean_result::operation_t>(operation);
+        if (operation_cpp < 0 || operation_cpp > 2) {
+            throw std::runtime_error("Boolean operation must be 0 (UNION), 1 (SUBTRACTION), or 2 (INTERSECTION)");
+        }
+        auto result_value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::boolean_result>();
+        result_value->operation = static_cast<ifcopenshell::geometry::taxonomy::boolean_result::operation_t>(operation_cpp);
+        *out_result = new ifcopenshell_ifcgeom_taxonomy_boolean_result_t{result_value};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_taxonomy_create_offset_curve(ifcopenshell_ifcgeom_taxonomy_item_t* basis, ifcopenshell_ifcgeom_taxonomy_direction3_t* reference, double offset, ifcopenshell_ifcgeom_taxonomy_offset_curve_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (basis == nullptr || basis->ptr == nullptr) { throw std::runtime_error("Handle parameter \"basis\" is invalid"); }
+    auto basis_cpp = basis->ptr;
+    if (reference == nullptr || reference->ptr == nullptr) { throw std::runtime_error("Handle parameter \"reference\" is invalid"); }
+    auto reference_cpp = reference->ptr;
+    auto offset_cpp = static_cast<double>(offset);
+        auto result_value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::offset_curve>();
+        result_value->basis = basis_cpp;
+        result_value->reference = reference_cpp;
+        result_value->offset = static_cast<double>(offset_cpp);
+        *out_result = new ifcopenshell_ifcgeom_taxonomy_offset_curve_t{result_value};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_helmert_curve_point(double A0, double A1, double A2, double s, ifcopenshell_double_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    auto A0_cpp = static_cast<double>(A0);
+    auto A1_cpp = static_cast<double>(A1);
+    auto A2_cpp = static_cast<double>(A2);
+    auto s_cpp = static_cast<double>(s);
+        *out_result = make_double_list(ifcopenshell::geometry::helmert_curve_point(A0_cpp, A1_cpp, A2_cpp, s_cpp));
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -4048,24 +4199,6 @@ return new IfcGeom::Iterator(std::move(kernel), *settings_ptr, file_cpp, {af}, n
     }
 }
 
-bool ifcopenshell_ifcgeom_taxonomy_create_point3(double x, double y, double z, ifcopenshell_ifcgeom_taxonomy_point3_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        auto generated_result = [&]() {
-return ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::point3>(x, y, z);
-        }();
-        *out_result = new ifcopenshell_ifcgeom_taxonomy_point3_t{generated_result};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
 bool ifcopenshell_ifcgeom_taxonomy_create_direction3(double x, double y, double z, ifcopenshell_ifcgeom_taxonomy_direction3_t** out_result) {
     try {
         ifcopenshell_clear_error();
@@ -4285,82 +4418,6 @@ return value;
     }
 }
 
-bool ifcopenshell_ifcgeom_taxonomy_create_bspline_curve(int32_t degree, ifcopenshell_ifcgeom_taxonomy_bspline_curve_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        auto generated_result = [&]() {
-if (degree < 1) {
-    throw std::runtime_error("B-spline curve degree must be >= 1");
-}
-auto value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::bspline_curve>();
-value->degree = degree;
-return value;
-        }();
-        *out_result = new ifcopenshell_ifcgeom_taxonomy_bspline_curve_t{generated_result};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_taxonomy_create_offset_curve(ifcopenshell_ifcgeom_taxonomy_item_t* basis, ifcopenshell_ifcgeom_taxonomy_direction3_t* reference, double offset, ifcopenshell_ifcgeom_taxonomy_offset_curve_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (basis == nullptr || basis->ptr == nullptr) { throw std::runtime_error("Handle parameter \"basis\" is invalid"); }
-    auto basis_cpp = basis->ptr;
-    if (reference == nullptr || reference->ptr == nullptr) { throw std::runtime_error("Handle parameter \"reference\" is invalid"); }
-    auto reference_cpp = reference->ptr;
-        auto generated_result = [&]() {
-auto basis_value = ifcopenshell::geometry::taxonomy::dcast<ifcopenshell::geometry::taxonomy::item>(basis_cpp);
-if (!basis_value) {
-    throw std::runtime_error("Offset-curve basis is invalid");
-}
-auto value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::offset_curve>();
-value->basis = basis_value;
-value->reference = reference_cpp;
-value->offset = offset;
-return value;
-        }();
-        *out_result = new ifcopenshell_ifcgeom_taxonomy_offset_curve_t{generated_result};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_taxonomy_create_bspline_surface(int32_t degree_u, int32_t degree_v, ifcopenshell_ifcgeom_taxonomy_bspline_surface_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        auto generated_result = [&]() {
-if (degree_u < 1 || degree_v < 1) {
-    throw std::runtime_error("B-spline surface degrees must be >= 1");
-}
-auto value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::bspline_surface>();
-value->degree = { degree_u, degree_v };
-return value;
-        }();
-        *out_result = new ifcopenshell_ifcgeom_taxonomy_bspline_surface_t{generated_result};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
 bool ifcopenshell_ifcgeom_taxonomy_create_box(double dx, double dy, double dz, ifcopenshell_ifcgeom_taxonomy_solid_t** out_result) {
     try {
         ifcopenshell_clear_error();
@@ -4372,83 +4429,6 @@ if (dx <= 0. || dy <= 0. || dz <= 0.) {
 return ifcopenshell::geometry::create_box(dx, dy, dz);
         }();
         *out_result = new ifcopenshell_ifcgeom_taxonomy_solid_t{generated_result};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_taxonomy_create_collection(ifcopenshell_ifcgeom_taxonomy_collection_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        auto generated_result = [&]() {
-return ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::collection>();
-        }();
-        *out_result = new ifcopenshell_ifcgeom_taxonomy_collection_t{generated_result};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_taxonomy_create_loft(ifcopenshell_ifcgeom_taxonomy_loft_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        auto generated_result = [&]() {
-return ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::loft>();
-        }();
-        *out_result = new ifcopenshell_ifcgeom_taxonomy_loft_t{generated_result};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_taxonomy_create_node(ifcopenshell_ifcgeom_taxonomy_node_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        auto generated_result = [&]() {
-return ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::node>();
-        }();
-        *out_result = new ifcopenshell_ifcgeom_taxonomy_node_t{generated_result};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_taxonomy_create_boolean_result(int32_t operation, ifcopenshell_ifcgeom_taxonomy_boolean_result_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        auto generated_result = [&]() {
-if (operation < 0 || operation > 2) {
-    throw std::runtime_error("Boolean operation must be 0 (UNION), 1 (SUBTRACTION), or 2 (INTERSECTION)");
-}
-auto value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::boolean_result>();
-value->operation = static_cast<ifcopenshell::geometry::taxonomy::boolean_result::operation_t>(operation);
-return value;
-        }();
-        *out_result = new ifcopenshell_ifcgeom_taxonomy_boolean_result_t{generated_result};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

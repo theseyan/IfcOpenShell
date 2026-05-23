@@ -37,6 +37,22 @@ class ConstructorPolicyOp:
 
 
 @dataclass(frozen=True)
+class TaxonomyMakeFactoryPolicyOp:
+    cpp_class: str
+    field_initializers: tuple["FactoryFieldInitializerPolicy", ...] = ()
+
+
+@dataclass(frozen=True)
+class FactoryFieldInitializerPolicy:
+    field_name: str
+    param_names: tuple[str, ...]
+    cpp_type: str
+    min_value: int | None = None
+    max_value: int | None = None
+    error: str | None = None
+
+
+@dataclass(frozen=True)
 class InlineAdapterPolicyOp:
     implementation: ImplementationSpec
 
@@ -118,6 +134,7 @@ PolicyOperation = (
     | DirectFieldPolicyOp
     | ValueHandleFieldPolicyOp
     | ConstructorPolicyOp
+    | TaxonomyMakeFactoryPolicyOp
     | InlineAdapterPolicyOp
     | ChildrenCountPolicyOp
     | ChildrenAtPolicyOp

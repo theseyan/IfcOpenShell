@@ -249,6 +249,113 @@ discover:
         - IfcGeom::Iterator&
       param_renames:
         it: iterator
+    - handle: geometry_serializer
+      cpp_class: WaveFrontOBJSerializer
+      translation_unit: ../serializers/WavefrontObjSerializer.cpp
+      expose_as: create_obj_serializer
+      param_renames:
+        obj_filename: obj_output
+        mtl_filename: mtl_output
+        settings: serializer_settings
+    - handle: geometry_serializer
+      cpp_class: TtlWktSerializer
+      translation_unit: ../serializers/TtlWktSerializer.cpp
+      expose_as: create_ttl_serializer
+      param_renames:
+        filename: output
+        settings: serializer_settings
+    - handle: geometry_serializer
+      cpp_class: SvgSerializer
+      translation_unit: ../serializers/SvgSerializer.cpp
+      expose_as: create_svg_serializer
+      param_renames:
+        out_filename: output
+        settings: serializer_settings
+    - handle: buffer
+      cpp_class: stream_or_filename
+      translation_unit: Iterator.cpp
+      expose_as: create_buffer
+      params: []
+    - handle: buffer
+      cpp_class: stream_or_filename
+      translation_unit: Iterator.cpp
+      expose_as: create_buffer_from_filename
+      params:
+        - const std::string&
+      param_renames:
+        fn: filename
+    - handle: settings
+      cpp_class: ifcopenshell::geometry::Settings
+      translation_unit: Iterator.cpp
+      expose_as: create_settings
+    - handle: serializer_settings
+      cpp_class: ifcopenshell::geometry::SerializerSettings
+      translation_unit: Iterator.cpp
+      expose_as: create_serializer_settings
+    - handle: taxonomy_collection
+      cpp_class: ifcopenshell::geometry::taxonomy::collection
+      translation_unit: Iterator.cpp
+      expose_as: taxonomy_create_collection
+      factory: taxonomy_make
+    - handle: taxonomy_loft
+      cpp_class: ifcopenshell::geometry::taxonomy::loft
+      translation_unit: Iterator.cpp
+      expose_as: taxonomy_create_loft
+      factory: taxonomy_make
+    - handle: taxonomy_node
+      cpp_class: ifcopenshell::geometry::taxonomy::node
+      translation_unit: Iterator.cpp
+      expose_as: taxonomy_create_node
+      factory: taxonomy_make
+    - handle: taxonomy_point3
+      cpp_class: ifcopenshell::geometry::taxonomy::point3
+      translation_unit: Iterator.cpp
+      expose_as: taxonomy_create_point3
+      factory: taxonomy_make
+      params:
+        - double
+        - double
+        - double
+    - handle: taxonomy_bspline_curve
+      cpp_class: ifcopenshell::geometry::taxonomy::bspline_curve
+      translation_unit: Iterator.cpp
+      expose_as: taxonomy_create_bspline_curve
+      factory: taxonomy_make
+      field_initializers:
+        - field: degree
+          min: 1
+          error: B-spline curve degree must be >= 1
+    - handle: taxonomy_bspline_surface
+      cpp_class: ifcopenshell::geometry::taxonomy::bspline_surface
+      translation_unit: Iterator.cpp
+      expose_as: taxonomy_create_bspline_surface
+      factory: taxonomy_make
+      field_initializers:
+        - field: degree
+          params:
+            - degree_u
+            - degree_v
+          min: 1
+          error: B-spline surface degrees must be >= 1
+    - handle: taxonomy_boolean_result
+      cpp_class: ifcopenshell::geometry::taxonomy::boolean_result
+      translation_unit: Iterator.cpp
+      expose_as: taxonomy_create_boolean_result
+      factory: taxonomy_make
+      field_initializers:
+        - field: operation
+          min: 0
+          max: 2
+          error: Boolean operation must be 0 (UNION), 1 (SUBTRACTION), or 2 (INTERSECTION)
+    - handle: taxonomy_offset_curve
+      cpp_class: ifcopenshell::geometry::taxonomy::offset_curve
+      translation_unit: Iterator.cpp
+      expose_as: taxonomy_create_offset_curve
+      factory: taxonomy_make
+      field_initializers:
+        - field: basis
+        - field: reference
+        - field: offset
   classes:
     - handle: triangulation
       translation_unit: IfcGeomRepresentation.cpp
@@ -768,107 +875,6 @@ discover:
 
 functions:
   - kind: constructor
-    expose_as: create_settings
-    handle: settings
-    params: []
-
-  - kind: constructor
-    expose_as: create_serializer_settings
-    handle: serializer_settings
-    params: []
-
-  - kind: constructor
-    expose_as: create_buffer
-    handle: buffer
-    params: []
-
-  - kind: constructor
-    expose_as: create_buffer_from_filename
-    handle: buffer
-    params:
-      - name: filename
-        type:
-          kind: string
-
-  - kind: constructor
-    expose_as: create_obj_serializer
-    handle: geometry_serializer
-    cpp_class: WaveFrontOBJSerializer
-    params:
-      - name: obj_output
-        type:
-          kind: handle
-          handle: buffer
-          ownership: borrowed
-          cpp_type: const stream_or_filename&
-      - name: mtl_output
-        type:
-          kind: handle
-          handle: buffer
-          ownership: borrowed
-          cpp_type: const stream_or_filename&
-      - name: geometry_settings
-        type:
-          kind: handle
-          handle: settings
-          ownership: borrowed
-          cpp_type: const ifcopenshell::geometry::Settings&
-      - name: serializer_settings
-        type:
-          kind: handle
-          handle: serializer_settings
-          ownership: borrowed
-          cpp_type: const ifcopenshell::geometry::SerializerSettings&
-
-  - kind: constructor
-    expose_as: create_ttl_serializer
-    handle: geometry_serializer
-    cpp_class: TtlWktSerializer
-    params:
-      - name: output
-        type:
-          kind: handle
-          handle: buffer
-          ownership: borrowed
-          cpp_type: const stream_or_filename&
-      - name: geometry_settings
-        type:
-          kind: handle
-          handle: settings
-          ownership: borrowed
-          cpp_type: const ifcopenshell::geometry::Settings&
-      - name: serializer_settings
-        type:
-          kind: handle
-          handle: serializer_settings
-          ownership: borrowed
-          cpp_type: const ifcopenshell::geometry::SerializerSettings&
-
-  - kind: constructor
-    expose_as: create_svg_serializer
-    handle: geometry_serializer
-    cpp_class: SvgSerializer
-    params:
-      - name: output
-        type:
-          kind: handle
-          handle: buffer
-          ownership: borrowed
-          cpp_type: const stream_or_filename&
-      - name: geometry_settings
-        type:
-          kind: handle
-          handle: settings
-          ownership: borrowed
-          cpp_type: const ifcopenshell::geometry::Settings&
-      - name: serializer_settings
-        type:
-          kind: handle
-          handle: serializer_settings
-          ownership: borrowed
-          cpp_type: const ifcopenshell::geometry::SerializerSettings&
-
-  - kind: constructor
     expose_as: create_gltf_serializer
     handle: geometry_serializer
     cpp_class: GltfSerializer
@@ -1195,27 +1201,6 @@ functions:
         return new IfcGeom::Iterator(std::move(kernel), *settings_ptr, file_cpp, {af}, num_threads);
 
   # Taxonomy primitive constructors
-  - kind: adapter_function
-    expose_as: taxonomy_create_point3
-    returns:
-      kind: handle
-      handle: taxonomy_point3
-      ownership: owned
-    params:
-      - name: x
-        type:
-          kind: double
-      - name: y
-        type:
-          kind: double
-      - name: z
-        type:
-          kind: double
-    implementation:
-      kind: inline_cpp
-      body: |
-        return ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::point3>(x, y, z);
-
   - kind: adapter_function
     expose_as: taxonomy_create_direction3
     returns:
@@ -1544,82 +1529,6 @@ functions:
         return value;
 
   - kind: adapter_function
-    expose_as: taxonomy_create_bspline_curve
-    returns:
-      kind: handle
-      handle: taxonomy_bspline_curve
-      ownership: owned
-    params:
-      - name: degree
-        type:
-          kind: int32
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (degree < 1) {
-            throw std::runtime_error("B-spline curve degree must be >= 1");
-        }
-        auto value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::bspline_curve>();
-        value->degree = degree;
-        return value;
-
-  - kind: adapter_function
-    expose_as: taxonomy_create_offset_curve
-    returns:
-      kind: handle
-      handle: taxonomy_offset_curve
-      ownership: owned
-    params:
-      - name: basis
-        type:
-          kind: handle
-          handle: taxonomy_item
-          ownership: borrowed
-      - name: reference
-        type:
-          kind: handle
-          handle: taxonomy_direction3
-          ownership: borrowed
-      - name: offset
-        type:
-          kind: double
-    implementation:
-      kind: inline_cpp
-      body: |
-        auto basis_value = ifcopenshell::geometry::taxonomy::dcast<ifcopenshell::geometry::taxonomy::item>(basis_cpp);
-        if (!basis_value) {
-            throw std::runtime_error("Offset-curve basis is invalid");
-        }
-        auto value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::offset_curve>();
-        value->basis = basis_value;
-        value->reference = reference_cpp;
-        value->offset = offset;
-        return value;
-
-  - kind: adapter_function
-    expose_as: taxonomy_create_bspline_surface
-    returns:
-      kind: handle
-      handle: taxonomy_bspline_surface
-      ownership: owned
-    params:
-      - name: degree_u
-        type:
-          kind: int32
-      - name: degree_v
-        type:
-          kind: int32
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (degree_u < 1 || degree_v < 1) {
-            throw std::runtime_error("B-spline surface degrees must be >= 1");
-        }
-        auto value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::bspline_surface>();
-        value->degree = { degree_u, degree_v };
-        return value;
-
-  - kind: adapter_function
     expose_as: taxonomy_create_box
     returns:
       kind: handle
@@ -1642,62 +1551,6 @@ functions:
             throw std::runtime_error("Box dimensions must be > 0");
         }
         return ifcopenshell::geometry::create_box(dx, dy, dz);
-
-  - kind: adapter_function
-    expose_as: taxonomy_create_collection
-    returns:
-      kind: handle
-      handle: taxonomy_collection
-      ownership: owned
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::collection>();
-
-  - kind: adapter_function
-    expose_as: taxonomy_create_loft
-    returns:
-      kind: handle
-      handle: taxonomy_loft
-      ownership: owned
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::loft>();
-
-  - kind: adapter_function
-    expose_as: taxonomy_create_node
-    returns:
-      kind: handle
-      handle: taxonomy_node
-      ownership: owned
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::node>();
-
-  - kind: adapter_function
-    expose_as: taxonomy_create_boolean_result
-    returns:
-      kind: handle
-      handle: taxonomy_boolean_result
-      ownership: owned
-    params:
-      - name: operation
-        type:
-          kind: int32
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (operation < 0 || operation > 2) {
-            throw std::runtime_error("Boolean operation must be 0 (UNION), 1 (SUBTRACTION), or 2 (INTERSECTION)");
-        }
-        auto value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::boolean_result>();
-        value->operation = static_cast<ifcopenshell::geometry::taxonomy::boolean_result::operation_t>(operation);
-        return value;
 
   - kind: adapter_function
     expose_as: taxonomy_create_extrusion
