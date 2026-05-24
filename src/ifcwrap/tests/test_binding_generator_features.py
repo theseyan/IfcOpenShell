@@ -306,6 +306,223 @@ def test_constructor_rejects_nullable_reference_handle_params(tmp_path: Path) ->
         generate(spec_path, tmp_path / "demo_api.h", tmp_path / "demo_api.cpp")
 
 
+def test_guarded_constructor_discovery_uses_fallback_signature_when_unavailable(tmp_path: Path) -> None:
+    include_dir = tmp_path / "include"
+    include_dir.mkdir()
+    (include_dir / "optional.hpp").write_text(
+        dedent(
+            """
+            #include <string>
+
+            namespace Demo {
+            struct Settings {};
+            #ifdef WITH_DEMO_OPTIONAL
+            struct OptionalSerializer {
+                OptionalSerializer(const std::string& filename, const Settings& settings);
+            };
+            #endif
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    spec_path = tmp_path / "guarded_constructor.yml"
+    spec_path.write_text(
+        dedent(
+            f"""
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - demo.h
+            handles:
+              - name: serializer
+                cpp_type: Demo::OptionalSerializer
+                c_type: ifcopenshell_demo_serializer_t
+                destructor: delete
+              - name: settings
+                cpp_type: Demo::Settings
+                c_type: ifcopenshell_demo_settings_t
+                destructor: delete
+            discover:
+              include_dir: {include_dir.as_posix()}
+              constructors:
+                - handle: serializer
+                  cpp_class: Demo::OptionalSerializer
+                  translation_unit: optional.hpp
+                  expose_as: create_optional_serializer
+                  compile_guard: WITH_DEMO_OPTIONAL
+                  params:
+                    - const std::string&
+                    - const Demo::Settings&
+                  param_names:
+                    - filename
+                    - settings
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    _write_compile_commands(tmp_path, include_dir / "optional.hpp")
+
+    spec = load_authored_spec(spec_path, compile_commands_path=tmp_path / "compile_commands.json")
+    assert len(spec.functions) == 1
+    call = spec.functions[0]
+    assert call.c_name == "ifcopenshell_demo_create_optional_serializer"
+    assert [param.name for param in call.params] == ["filename", "settings"]
+    assert call.params[1].type.handle == "settings"
+
+    header_out = tmp_path / "demo_api.h"
+    cpp_out = tmp_path / "demo_api.cpp"
+    generate(spec_path, header_out, cpp_out, compile_commands_path=tmp_path / "compile_commands.json")
+    cpp = cpp_out.read_text(encoding="utf-8")
+    assert "#if defined(WITH_DEMO_OPTIONAL)" in cpp
+    assert "new Demo::OptionalSerializer(filename_cpp, settings_cpp)" in cpp
+    assert 'throw std::runtime_error("ifcopenshell_demo_create_optional_serializer requires WITH_DEMO_OPTIONAL");' in cpp
+
+
+def test_handle_list_accessors_generate_count_and_at_methods(tmp_path: Path) -> None:
+    spec_path = tmp_path / "list_accessors.yml"
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - demo.h
+            handles:
+              - name: tree
+                cpp_type: Demo::Tree
+                c_type: ifcopenshell_demo_tree_t
+                destructor: delete
+              - name: result_list
+                cpp_type: std::vector<Demo::Result>
+                c_type: ifcopenshell_demo_result_list_t
+                destructor: delete
+                list_accessors:
+                  receiver: tree
+                  list_param: results
+                  item_handle: result
+                  count_as: result_count
+                  at_as: result_at
+                  out_of_range_message: Result index out of range
+              - name: result
+                cpp_type: Demo::Result
+                c_type: ifcopenshell_demo_result_t
+                destructor: delete
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    spec = load_authored_spec(spec_path)
+    methods = {call.c_name: call for call in spec.methods}
+    assert set(methods) == {"ifcopenshell_demo_tree_result_count", "ifcopenshell_demo_tree_result_at"}
+    assert methods["ifcopenshell_demo_tree_result_count"].params[0].type.handle == "result_list"
+    assert methods["ifcopenshell_demo_tree_result_at"].returns.handle == "result"
+    assert methods["ifcopenshell_demo_tree_result_at"].returns.cpp_type == "Demo::Result*"
+
+    header_out = tmp_path / "demo_api.h"
+    cpp_out = tmp_path / "demo_api.cpp"
+    generate(spec_path, header_out, cpp_out)
+
+    header = header_out.read_text(encoding="utf-8")
+    cpp = cpp_out.read_text(encoding="utf-8")
+    assert (
+        "bool ifcopenshell_demo_tree_result_count(ifcopenshell_demo_tree_t* self, "
+        "ifcopenshell_demo_result_list_t* results, size_t* out_result);"
+    ) in header
+    assert (
+        "bool ifcopenshell_demo_tree_result_at(ifcopenshell_demo_tree_t* self, "
+        "ifcopenshell_demo_result_list_t* results, size_t index, ifcopenshell_demo_result_t** out_result);"
+    ) in header
+    assert "*out_result = results_cpp->size();" in cpp
+    assert 'throw std::out_of_range("Result index out of range");' in cpp
+    assert "auto result_value = std::unique_ptr<Demo::Result>(new Demo::Result((*results_cpp)[index]));" in cpp
+    assert "*out_result = new ifcopenshell_demo_result_t{result_value.release(), true};" in cpp
+
+
+def test_method_at_accessors_generate_indexed_method_items(tmp_path: Path) -> None:
+    include_dir = tmp_path / "include"
+    include_dir.mkdir()
+    (include_dir / "demo.hpp").write_text(
+        dedent(
+            """
+            #include <memory>
+            #include <vector>
+
+            namespace Demo {
+            struct Style {};
+            struct Tree {
+                const std::vector<std::shared_ptr<Style>>& styles() const;
+            };
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    spec_path = tmp_path / "method_at.yml"
+    spec_path.write_text(
+        dedent(
+            f"""
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - demo.h
+            handles:
+              - name: tree
+                cpp_type: Demo::Tree
+                c_type: ifcopenshell_demo_tree_t
+                destructor: delete
+              - name: style
+                cpp_type: std::shared_ptr<Demo::Style>
+                c_type: ifcopenshell_demo_style_t
+                destructor: shared_ptr
+                ptr_type: shared_ptr
+            discover:
+              include_dir: {include_dir.as_posix()}
+              classes:
+                - handle: tree
+                  translation_unit: demo.hpp
+                  method_at_accessors:
+                    - method: styles
+                      expose_as: style_at
+                      item_handle: style
+                      ownership: owned
+                      out_of_range_message: Style index out of range
+                      exception: std::runtime_error
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    _write_compile_commands(tmp_path, include_dir / "demo.hpp")
+
+    spec = load_authored_spec(spec_path, compile_commands_path=tmp_path / "compile_commands.json")
+    assert len(spec.methods) == 1
+    call = spec.methods[0]
+    assert call.c_name == "ifcopenshell_demo_tree_style_at"
+    assert call.params[0].name == "index"
+    assert call.returns.handle == "style"
+    assert call.returns.ownership == "owned"
+
+    header_out = tmp_path / "demo_api.h"
+    cpp_out = tmp_path / "demo_api.cpp"
+    generate(spec_path, header_out, cpp_out, compile_commands_path=tmp_path / "compile_commands.json")
+    cpp = cpp_out.read_text(encoding="utf-8")
+    assert "const auto& items = self_cpp->styles();" in cpp
+    assert 'throw std::runtime_error("Style index out of range");' in cpp
+    assert "*out_result = new ifcopenshell_demo_style_t{items[index]};" in cpp
+
+
 def test_discovery_supports_public_constructors(tmp_path: Path) -> None:
     header = tmp_path / "constructors.h"
     source = tmp_path / "constructors.cpp"
@@ -567,7 +784,7 @@ def test_constructor_discovery_reports_missing_source_constructors(tmp_path: Pat
         load_authored_spec(spec_path, compile_commands_path=compile_commands)
 
 
-def test_constructor_discovery_rejects_compile_guarded_factories(tmp_path: Path) -> None:
+def test_constructor_discovery_rejects_guarded_factories_without_fallback_params(tmp_path: Path) -> None:
     spec_path = tmp_path / "constructors.yml"
     spec_path.write_text(
         dedent(
@@ -597,7 +814,7 @@ def test_constructor_discovery_rejects_compile_guarded_factories(tmp_path: Path)
         encoding="utf-8",
     )
 
-    with pytest.raises(ValueError, match="keep guarded factories authored"):
+    with pytest.raises(ValueError, match="compile_guard requires params"):
         load_authored_spec(spec_path, compile_commands_path=tmp_path / "compile_commands.json")
 
 

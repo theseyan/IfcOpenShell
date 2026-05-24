@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 try:
     from .authored_spec import ParamSpec, TypeSpec
     from .binding_ir import (
@@ -17,6 +19,9 @@ try:
         FieldGetOp,
         FieldSetterOp,
         InlineImplementationOp,
+        ListAtOp,
+        ListCountOp,
+        MethodAtOp,
         MethodSizeOp,
         OptionalGetOp,
         OptionalPresenceCheckOp,
@@ -61,6 +66,9 @@ except ImportError:  # pragma: no cover - script execution fallback
         FieldGetOp,
         FieldSetterOp,
         InlineImplementationOp,
+        ListAtOp,
+        ListCountOp,
+        MethodAtOp,
         MethodSizeOp,
         OptionalGetOp,
         OptionalPresenceCheckOp,
@@ -100,6 +108,10 @@ def _set_element_cpp_type(cpp_type: str | None) -> str | None:
     if not normalized.startswith("std::set<") or not normalized.endswith(">"):
         return None
     return normalized[len("std::set<") : -1].strip()
+
+
+def _cpp_string_literal(value: str) -> str:
+    return json.dumps(value)
 
 
 def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
@@ -144,6 +156,19 @@ def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
         if type_spec.sequence_depth == 2:
             helper = _handle_list_list_helper_name(spec.handles[type_spec.handle])
             return f"*out_result = {helper}({expr});"
+        handle = spec.handles[type_spec.handle]
+        if (
+            type_spec.ownership == "owned"
+            and handle.name not in {"attribute_value", "instance_list"}
+            and handle.ptr_type != "shared_ptr"
+            and handle.destructor == "delete"
+        ):
+            normalized_cpp_type = _normalize_cpp_type(type_spec.cpp_type)
+            if not normalized_cpp_type.startswith("std::unique_ptr<"):
+                return (
+                    f"auto result_value = std::unique_ptr<{handle.cpp_type}>({expr});\n"
+                    f"        *out_result = new {handle.c_type}{{result_value.release(), true}};"
+                )
         return f"*out_result = {_wrap_handle_expr(type_spec, expr, spec)};"
     if kind == "opaque_ptr":
         return f"*out_result = static_cast<void*>({expr});"
@@ -340,13 +365,14 @@ def _render_constructor(call: CallIR, op: ConstructorOp, spec: BindingIR) -> str
 
     if op.compile_guard:
         guard = op.compile_guard
+        guard_message = op.compile_guard_message or f"{call.c_name} requires {guard}"
         # Use #if defined() for all guards; compound guards (containing "defined(") are used as-is
         guard_expr = guard if "defined(" in guard else f"defined({guard})"
         return (
             f"#if {guard_expr}\n"
             f"        {result_line}\n"
             f"#else\n"
-            f'        throw std::runtime_error("{call.c_name} requires {guard}");\n'
+            f"        throw std::runtime_error({_cpp_string_literal(guard_message)});\n"
             f"#endif"
         )
 
@@ -486,6 +512,22 @@ def _render_call_impl(call: CallIR, spec: BindingIR) -> str:
         body_line = f"self_cpp->{op.field_name} = value_cpp;"
     elif isinstance(op, MethodSizeOp):
         body_line = f"*out_result = self_cpp->{op.method_name}().size();"
+    elif isinstance(op, MethodAtOp):
+        body_line = (
+            f"const auto& items = self_cpp->{op.method_name}();\n"
+            f"        if (index >= items.size()) "
+            f"{{ throw {op.exception_type}({_cpp_string_literal(op.out_of_range_message)}); }}\n"
+            f"        {_render_result_assignment(call, spec, 'items[index]')}"
+        )
+    elif isinstance(op, ListCountOp):
+        body_line = f"(void)self_cpp;\n        *out_result = {op.list_param}_cpp->size();"
+    elif isinstance(op, ListAtOp):
+        body_line = (
+            f"(void)self_cpp;\n"
+            f"        if (index >= {op.list_param}_cpp->size()) "
+            f"{{ throw std::out_of_range({_cpp_string_literal(op.out_of_range_message)}); }}\n"
+            f"        {_render_result_assignment(call, spec, f'new {op.item_cpp_type}((*{op.list_param}_cpp)[index])')}"
+        )
     elif isinstance(op, ArrayElementFieldOp):
         body_line = _render_result_assignment(call, spec, f"self_cpp->{op.expression}")
     elif isinstance(op, OptionalPresenceCheckOp):

@@ -75,6 +75,13 @@ handles:
     cpp_type: std::vector<IfcGeom::clash>
     c_type: ifcopenshell_ifcgeom_tree_clash_list_t
     destructor: delete
+    list_accessors:
+      receiver: tree
+      list_param: clashes
+      item_handle: tree_clash
+      count_as: clash_count
+      at_as: clash_at
+      out_of_range_message: Clash index out of range
 
   - name: tree_clash
     cpp_type: IfcGeom::clash
@@ -85,6 +92,13 @@ handles:
     cpp_type: std::vector<IfcGeom::ray_intersection_result>
     c_type: ifcopenshell_ifcgeom_tree_ray_intersection_list_t
     destructor: delete
+    list_accessors:
+      receiver: tree
+      list_param: intersections
+      item_handle: tree_ray_intersection
+      count_as: ray_intersection_count
+      at_as: ray_intersection_at
+      out_of_range_message: Ray intersection index out of range
 
   - name: tree_ray_intersection
     cpp_type: IfcGeom::ray_intersection_result
@@ -271,6 +285,108 @@ discover:
       param_renames:
         out_filename: output
         settings: serializer_settings
+    - handle: geometry_serializer
+      cpp_class: GltfSerializer
+      translation_unit: ../serializers/GltfSerializer.cpp
+      expose_as: create_gltf_serializer
+      compile_guard: WITH_GLTF
+      params:
+        - const std::string&
+        - const ifcopenshell::geometry::Settings&
+        - const ifcopenshell::geometry::SerializerSettings&
+      param_names:
+        - filename
+        - geometry_settings
+        - serializer_settings
+    - handle: geometry_serializer
+      cpp_class: IgesSerializer
+      translation_unit: ../serializers/OpenCascadeBasedSerializer.cpp
+      expose_as: create_iges_serializer
+      compile_guard: IFOPSH_WITH_OPENCASCADE
+      params:
+        - const std::string&
+        - const ifcopenshell::geometry::Settings&
+        - const ifcopenshell::geometry::SerializerSettings&
+      param_names:
+        - filename
+        - geometry_settings
+        - serializer_settings
+    - handle: geometry_serializer
+      cpp_class: StepSerializer
+      translation_unit: ../serializers/OpenCascadeBasedSerializer.cpp
+      expose_as: create_step_serializer
+      compile_guard: IFOPSH_WITH_OPENCASCADE
+      params:
+        - const std::string&
+        - const ifcopenshell::geometry::Settings&
+        - const ifcopenshell::geometry::SerializerSettings&
+      param_names:
+        - filename
+        - geometry_settings
+        - serializer_settings
+    - handle: geometry_serializer
+      cpp_class: ColladaSerializer
+      translation_unit: ../serializers/ColladaSerializer.cpp
+      expose_as: create_collada_serializer
+      compile_guard: WITH_OPENCOLLADA
+      params:
+        - const std::string&
+        - const ifcopenshell::geometry::Settings&
+        - const ifcopenshell::geometry::SerializerSettings&
+      param_names:
+        - filename
+        - geometry_settings
+        - serializer_settings
+    - handle: geometry_serializer
+      cpp_class: HdfSerializer
+      translation_unit: ../serializers/HdfSerializer.cpp
+      expose_as: create_hdf_serializer
+      compile_guard: "defined(WITH_HDF5) && defined(IFOPSH_WITH_OPENCASCADE)"
+      params:
+        - const std::string&
+        - const ifcopenshell::geometry::Settings&
+        - const ifcopenshell::geometry::SerializerSettings&
+      param_names:
+        - filename
+        - geometry_settings
+        - serializer_settings
+    - handle: serializer
+      cpp_class: JsonSerializer
+      translation_unit: ../serializers/JsonSerializer.cpp
+      expose_as: create_json_serializer
+      compile_guard: WITH_GLTF
+      compile_guard_message: JSON serializer requires GLTF support (nlohmann_json)
+      params:
+        - IfcParse::IfcFile*
+        - const std::string&
+      param_names:
+        - file
+        - filename
+    - handle: serializer
+      cpp_class: RocksDbSerializer
+      translation_unit: ../serializers/RocksDbSerializer.cpp
+      expose_as: create_rocksdb_serializer
+      compile_guard: IFOPSH_WITH_ROCKSDB
+      compile_guard_message: RocksDB serializer requires WITH_ROCKSDB support
+      params:
+        - IfcParse::IfcFile*
+        - const std::string&
+      param_names:
+        - file
+        - rocksdb_filename
+    - handle: serializer
+      cpp_class: RocksDbSerializer
+      translation_unit: ../serializers/RocksDbSerializer.cpp
+      expose_as: create_rocksdb_serializer_streaming
+      compile_guard: IFOPSH_WITH_ROCKSDB
+      params:
+        - const std::string&
+        - const std::string&
+        - bool
+      param_names:
+        - input_filename
+        - rocksdb_filename
+        - stream
     - handle: buffer
       cpp_class: stream_or_filename
       translation_unit: Iterator.cpp
@@ -381,6 +497,13 @@ discover:
         edges_item_ids: edges_item_ids_buffer_size
         uvs: uvs_buffer_size
         materials: material_count
+      method_at_accessors:
+        - method: materials
+          expose_as: material_at
+          item_handle: taxonomy_style
+          ownership: borrowed
+          out_of_range_message: Material index out of bounds
+          exception: std::runtime_error
 
     - handle: iterator
       translation_unit: Iterator.cpp
@@ -826,6 +949,13 @@ discover:
           params: ["IfcGeom::Iterator &"]
       method_sizes:
         styles: style_count
+      method_at_accessors:
+        - method: styles
+          expose_as: style_at
+          item_handle: taxonomy_style
+          ownership: owned
+          out_of_range_message: Style index out of range
+          exception: std::out_of_range
 
     - handle: tree_clash
       translation_unit: kernels/opencascade/boolean_utils.cpp
@@ -874,181 +1004,6 @@ discover:
         access_via: "data()->ccomponents"
 
 functions:
-  - kind: constructor
-    expose_as: create_gltf_serializer
-    handle: geometry_serializer
-    cpp_class: GltfSerializer
-    compile_guard: WITH_GLTF
-    params:
-      - name: filename
-        type:
-          kind: string
-      - name: geometry_settings
-        type:
-          kind: handle
-          handle: settings
-          ownership: borrowed
-          cpp_type: const ifcopenshell::geometry::Settings&
-      - name: serializer_settings
-        type:
-          kind: handle
-          handle: serializer_settings
-          ownership: borrowed
-          cpp_type: const ifcopenshell::geometry::SerializerSettings&
-
-  - kind: constructor
-    expose_as: create_iges_serializer
-    handle: geometry_serializer
-    cpp_class: IgesSerializer
-    compile_guard: IFOPSH_WITH_OPENCASCADE
-    params:
-      - name: filename
-        type:
-          kind: string
-      - name: geometry_settings
-        type:
-          kind: handle
-          handle: settings
-          ownership: borrowed
-          cpp_type: const ifcopenshell::geometry::Settings&
-      - name: serializer_settings
-        type:
-          kind: handle
-          handle: serializer_settings
-          ownership: borrowed
-          cpp_type: const ifcopenshell::geometry::SerializerSettings&
-
-  - kind: constructor
-    expose_as: create_step_serializer
-    handle: geometry_serializer
-    cpp_class: StepSerializer
-    compile_guard: IFOPSH_WITH_OPENCASCADE
-    params:
-      - name: filename
-        type:
-          kind: string
-      - name: geometry_settings
-        type:
-          kind: handle
-          handle: settings
-          ownership: borrowed
-          cpp_type: const ifcopenshell::geometry::Settings&
-      - name: serializer_settings
-        type:
-          kind: handle
-          handle: serializer_settings
-          ownership: borrowed
-          cpp_type: const ifcopenshell::geometry::SerializerSettings&
-
-  - kind: constructor
-    expose_as: create_collada_serializer
-    handle: geometry_serializer
-    cpp_class: ColladaSerializer
-    compile_guard: WITH_OPENCOLLADA
-    params:
-      - name: filename
-        type:
-          kind: string
-      - name: geometry_settings
-        type:
-          kind: handle
-          handle: settings
-          ownership: borrowed
-          cpp_type: const ifcopenshell::geometry::Settings&
-      - name: serializer_settings
-        type:
-          kind: handle
-          handle: serializer_settings
-          ownership: borrowed
-          cpp_type: const ifcopenshell::geometry::SerializerSettings&
-
-  - kind: constructor
-    expose_as: create_hdf_serializer
-    handle: geometry_serializer
-    cpp_class: HdfSerializer
-    compile_guard: "defined(WITH_HDF5) && defined(IFOPSH_WITH_OPENCASCADE)"
-    params:
-      - name: filename
-        type:
-          kind: string
-      - name: geometry_settings
-        type:
-          kind: handle
-          handle: settings
-          ownership: borrowed
-          cpp_type: const ifcopenshell::geometry::Settings&
-      - name: serializer_settings
-        type:
-          kind: handle
-          handle: serializer_settings
-          ownership: borrowed
-          cpp_type: const ifcopenshell::geometry::SerializerSettings&
-
-  - kind: adapter_function
-    expose_as: create_json_serializer
-    returns:
-      kind: handle
-      handle: serializer
-      ownership: owned
-    params:
-      - name: file
-        type:
-          kind: handle
-          handle: file
-          ownership: borrowed
-          cpp_type: IfcParse::IfcFile*
-      - name: filename
-        type:
-          kind: string
-    implementation:
-      kind: inline_cpp
-      body: |
-        #ifdef WITH_GLTF
-        return new JsonSerializer(file_cpp, std::string(filename));
-        #else
-        throw std::runtime_error("JSON serializer requires GLTF support (nlohmann_json)");
-        #endif
-
-  - kind: adapter_function
-    expose_as: create_rocksdb_serializer
-    returns:
-      kind: handle
-      handle: serializer
-      ownership: owned
-    params:
-      - name: file
-        type:
-          kind: handle
-          handle: file
-          ownership: borrowed
-      - name: rocksdb_filename
-        type:
-          kind: string
-    implementation:
-      kind: inline_cpp
-      body: |
-        #ifdef IFOPSH_WITH_ROCKSDB
-        return new RocksDbSerializer(file_cpp, std::string(rocksdb_filename));
-        #else
-        throw std::runtime_error("RocksDB serializer requires WITH_ROCKSDB support");
-        #endif
-
-  - kind: constructor
-    expose_as: create_rocksdb_serializer_streaming
-    handle: serializer
-    cpp_class: RocksDbSerializer
-    compile_guard: IFOPSH_WITH_ROCKSDB
-    params:
-      - name: input_filename
-        type:
-          kind: string
-      - name: rocksdb_filename
-        type:
-          kind: string
-      - name: stream
-        type:
-          kind: bool
-
   # Iterator constructor - takes file handle from ifcparse
   - kind: adapter_function
     expose_as: create_iterator
@@ -2555,26 +2510,6 @@ methods:
 
   - kind: adapter_method
     receiver: tree
-    expose_as: style_at
-    returns:
-      kind: handle
-      handle: taxonomy_style
-      ownership: owned
-    params:
-      - name: index
-        type:
-          kind: size
-    implementation:
-      kind: inline_cpp
-      body: |
-        const auto& styles = self_cpp->styles();
-        if (index >= styles.size()) {
-            throw std::out_of_range("Style index out of range");
-        }
-        return styles[index];
-
-  - kind: adapter_method
-    receiver: tree
     expose_as: clash_intersection_many
     returns:
       kind: handle
@@ -2719,47 +2654,6 @@ methods:
 
   - kind: adapter_method
     receiver: tree
-    expose_as: clash_count
-    returns:
-      kind: size
-    params:
-      - name: clashes
-        type:
-          kind: handle
-          handle: tree_clash_list
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return clashes_cpp->size();
-
-  - kind: adapter_method
-    receiver: tree
-    expose_as: clash_at
-    returns:
-      kind: handle
-      handle: tree_clash
-      ownership: owned
-    params:
-      - name: clashes
-        type:
-          kind: handle
-          handle: tree_clash_list
-          ownership: borrowed
-      - name: index
-        type:
-          kind: size
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (index >= clashes_cpp->size()) {
-            throw std::out_of_range("Clash index out of range");
-        }
-        return new IfcGeom::clash((*clashes_cpp)[index]);
-
-
-  - kind: adapter_method
-    receiver: tree
     expose_as: select_ray
     returns:
       kind: handle
@@ -2793,46 +2687,6 @@ methods:
         gp_Pnt p0(origin_x, origin_y, origin_z);
         gp_Dir d(dir_x, dir_y, dir_z);
         return new std::vector<IfcGeom::ray_intersection_result>(self_cpp->select_ray(p0, d, length));
-
-  - kind: adapter_method
-    receiver: tree
-    expose_as: ray_intersection_count
-    returns:
-      kind: size
-    params:
-      - name: intersections
-        type:
-          kind: handle
-          handle: tree_ray_intersection_list
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        return intersections_cpp->size();
-
-  - kind: adapter_method
-    receiver: tree
-    expose_as: ray_intersection_at
-    returns:
-      kind: handle
-      handle: tree_ray_intersection
-      ownership: owned
-    params:
-      - name: intersections
-        type:
-          kind: handle
-          handle: tree_ray_intersection_list
-          ownership: borrowed
-      - name: index
-        type:
-          kind: size
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (index >= intersections_cpp->size()) {
-            throw std::out_of_range("Ray intersection index out of range");
-        }
-        return new IfcGeom::ray_intersection_result((*intersections_cpp)[index]);
 
   - kind: adapter_method
     receiver: tree_ray_intersection
@@ -3188,26 +3042,6 @@ methods:
         delete result;
         return val;
 
-
-  # Triangulation representation methods
-  - kind: adapter_method
-    receiver: triangulation
-    expose_as: material_at
-    returns:
-      kind: handle
-      handle: taxonomy_style
-      ownership: borrowed
-    params:
-      - name: index
-        type:
-          kind: size
-    implementation:
-      kind: inline_cpp
-      body: |
-        if (index >= self_cpp->materials().size()) {
-            throw std::runtime_error("Material index out of bounds");
-        }
-        return self_cpp->materials()[index];
 
   # Triangulation buffer methods (zero-copy access, manually defined like SWIG %extend)
   - kind: method

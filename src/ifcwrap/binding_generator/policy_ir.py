@@ -34,6 +34,7 @@ class ValueHandleFieldPolicyOp:
 class ConstructorPolicyOp:
     cpp_class: str | None = None
     compile_guard: str | None = None
+    compile_guard_message: str | None = None
 
 
 @dataclass(frozen=True)
@@ -99,6 +100,26 @@ class MethodSizePolicyOp:
 
 
 @dataclass(frozen=True)
+class MethodAtPolicyOp:
+    method_name: str
+    item_cpp_type: str
+    out_of_range_message: str
+    exception_type: str
+
+
+@dataclass(frozen=True)
+class ListCountPolicyOp:
+    list_param: str
+
+
+@dataclass(frozen=True)
+class ListAtPolicyOp:
+    list_param: str
+    item_cpp_type: str
+    out_of_range_message: str
+
+
+@dataclass(frozen=True)
 class ArrayElementFieldPolicyOp:
     expression: str
 
@@ -144,6 +165,9 @@ PolicyOperation = (
     | PointerPresencePolicyOp
     | FieldSetterPolicyOp
     | MethodSizePolicyOp
+    | MethodAtPolicyOp
+    | ListCountPolicyOp
+    | ListAtPolicyOp
     | ArrayElementFieldPolicyOp
     | AsItemCastPolicyOp
     | CcomponentsAccessorPolicyOp

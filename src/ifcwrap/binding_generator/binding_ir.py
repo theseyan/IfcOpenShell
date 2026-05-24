@@ -21,7 +21,10 @@ try:
         DirectFunctionPolicyOp,
         DirectMethodPolicyOp,
         FieldSetterPolicyOp,
+        MethodAtPolicyOp,
         InlineAdapterPolicyOp,
+        ListAtPolicyOp,
+        ListCountPolicyOp,
         MethodSizePolicyOp,
         OptionalGetPolicyOp,
         OptionalHasPolicyOp,
@@ -47,7 +50,10 @@ except ImportError:  # pragma: no cover - script execution fallback
         DirectFunctionPolicyOp,
         DirectMethodPolicyOp,
         FieldSetterPolicyOp,
+        MethodAtPolicyOp,
         InlineAdapterPolicyOp,
+        ListAtPolicyOp,
+        ListCountPolicyOp,
         MethodSizePolicyOp,
         OptionalGetPolicyOp,
         OptionalHasPolicyOp,
@@ -112,6 +118,26 @@ class MethodSizeOp:
 
 
 @dataclass(frozen=True)
+class MethodAtOp:
+    method_name: str
+    item_cpp_type: str
+    out_of_range_message: str
+    exception_type: str
+
+
+@dataclass(frozen=True)
+class ListCountOp:
+    list_param: str
+
+
+@dataclass(frozen=True)
+class ListAtOp:
+    list_param: str
+    item_cpp_type: str
+    out_of_range_message: str
+
+
+@dataclass(frozen=True)
 class ArrayElementFieldOp:
     expression: str
 
@@ -155,6 +181,7 @@ class VariantSetOp:
 class ConstructorOp:
     cpp_class: str | None
     compile_guard: str | None
+    compile_guard_message: str | None
 
 
 @dataclass(frozen=True)
@@ -178,6 +205,9 @@ OperationIR = Union[
     ChildrenAddOp,
     FieldSetterOp,
     MethodSizeOp,
+    MethodAtOp,
+    ListCountOp,
+    ListAtOp,
     ArrayElementFieldOp,
     OptionalPresenceCheckOp,
     OptionalGetOp,
@@ -236,7 +266,11 @@ def _lower_policy_operation(call: CallSpec, operation: object) -> OperationIR:
     if isinstance(operation, ValueHandleFieldPolicyOp):
         return ValueHandleFieldGetOp(field_name=operation.field_name)
     if isinstance(operation, ConstructorPolicyOp):
-        return ConstructorOp(cpp_class=operation.cpp_class, compile_guard=operation.compile_guard)
+        return ConstructorOp(
+            cpp_class=operation.cpp_class,
+            compile_guard=operation.compile_guard,
+            compile_guard_message=operation.compile_guard_message,
+        )
     if isinstance(operation, TaxonomyMakeFactoryPolicyOp):
         return TaxonomyMakeFactoryOp(
             cpp_class=operation.cpp_class,
@@ -256,6 +290,21 @@ def _lower_policy_operation(call: CallSpec, operation: object) -> OperationIR:
         return FieldSetterOp(field_name=operation.field_name)
     if isinstance(operation, MethodSizePolicyOp):
         return MethodSizeOp(method_name=operation.method_name)
+    if isinstance(operation, MethodAtPolicyOp):
+        return MethodAtOp(
+            method_name=operation.method_name,
+            item_cpp_type=operation.item_cpp_type,
+            out_of_range_message=operation.out_of_range_message,
+            exception_type=operation.exception_type,
+        )
+    if isinstance(operation, ListCountPolicyOp):
+        return ListCountOp(list_param=operation.list_param)
+    if isinstance(operation, ListAtPolicyOp):
+        return ListAtOp(
+            list_param=operation.list_param,
+            item_cpp_type=operation.item_cpp_type,
+            out_of_range_message=operation.out_of_range_message,
+        )
     if isinstance(operation, ArrayElementFieldPolicyOp):
         return ArrayElementFieldOp(expression=operation.expression)
     if isinstance(operation, OptionalHasPolicyOp):

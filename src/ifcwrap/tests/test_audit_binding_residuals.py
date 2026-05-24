@@ -39,6 +39,8 @@ def test_binding_residual_audit_classifies_generator_inference_candidates() -> N
     assert summary["redundant_candidate_count"] == 0
     assert summary["category_counts"]["shared_ptr_handle_family"] == 1
     assert summary["category_counts"]["variant_accessor"] == 2
+    assert summary["category_counts"]["list_handle_accessor"] == 2
+    assert summary["category_counts"]["method_at_accessor"] == 2
     assert summary["category_counts"]["abi_type_policy"] >= 1
 
     swig_patterns = report["swig_patterns"]
@@ -56,6 +58,8 @@ def test_binding_residual_audit_classifies_generator_inference_candidates() -> N
         path_contains="ifcopenshell::geometry::taxonomy",
     )
     assert _has_residual(report, spec="ifcgeom.yml", category="variant_accessor", path_contains="settings")
+    assert _has_residual(report, spec="ifcgeom.yml", category="list_handle_accessor", path_contains="tree_clash_list")
+    assert _has_residual(report, spec="ifcgeom.yml", category="method_at_accessor", path_contains="triangulation")
     assert _has_residual(report, spec="ifcgeom.yml", category="taxonomy_children_accessor", path_contains="taxonomy_face")
     assert _has_residual(report, spec="ifcgeom.yml", category="taxonomy_components_accessor", path_contains="taxonomy_point3")
     assert _has_residual(report, spec="ifcgeom.yml", category="abi_type_policy", path_contains="function_item_evaluator")
