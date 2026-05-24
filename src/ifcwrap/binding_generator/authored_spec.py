@@ -52,6 +52,9 @@ try:
         FactoryFieldInitializerPolicy,
         FieldSetterPolicyOp,
         InlineAdapterPolicyOp,
+        MethodAtPolicyOp,
+        ListAtPolicyOp,
+        ListCountPolicyOp,
         MethodSizePolicyOp,
         OptionalGetPolicyOp,
         OptionalHasPolicyOp,
@@ -77,6 +80,9 @@ except ImportError:  # pragma: no cover - script execution fallback
         FactoryFieldInitializerPolicy,
         FieldSetterPolicyOp,
         InlineAdapterPolicyOp,
+        MethodAtPolicyOp,
+        ListAtPolicyOp,
+        ListCountPolicyOp,
         MethodSizePolicyOp,
         OptionalGetPolicyOp,
         OptionalHasPolicyOp,
@@ -209,6 +215,26 @@ class VariantAccessorsSpec:
 
 
 @dataclass(frozen=True)
+class MethodAtAccessorSpec:
+    method_name: str
+    expose_as: str
+    item_handle: str
+    ownership: str
+    out_of_range_message: str
+    exception_type: str
+
+
+@dataclass(frozen=True)
+class HandleListAccessorsSpec:
+    receiver: str
+    list_param: str
+    item_handle: str
+    count_as: str
+    at_as: str
+    out_of_range_message: str
+
+
+@dataclass(frozen=True)
 class DiscoveryTypeOverrideSpec:
     returns: TypeSpec | None
     params: dict[str, TypeSpec]
@@ -233,6 +259,7 @@ class DiscoveryClassSpec:
     extra_fields: dict[str, str]  # field_name -> cpp_type (for template classes)
     field_setters: tuple[str, ...]  # field names to generate setters for
     method_sizes: dict[str, str]  # method_name -> expose_as (generates X().size())
+    method_at_accessors: tuple[MethodAtAccessorSpec, ...]
     array_pair_fields: dict[str, str | None]  # field_name -> optional return_kind for std::array<T,2> split accessors
     binary_operators: dict[str, str]  # expose_as -> C++ operator (e.g. add: "+")
     unary_operators: dict[str, str]   # expose_as -> C++ operator (e.g. negate: "-")
@@ -279,8 +306,10 @@ class DiscoveryConstructorSpec:
     translation_unit: str
     expose_as: str
     params: tuple[str, ...] | None
+    param_names: tuple[str, ...]
     param_renames: dict[str, str]
     compile_guard: str | None
+    compile_guard_message: str | None
     factory: str | None
     field_initializers: tuple[DiscoveryFactoryFieldSpec, ...]
     type_overrides: dict[str, TypeSpec]
@@ -718,6 +747,73 @@ def _handle_from_family(family: HandleFamilySpec, type_name: str) -> HandleSpec:
     )
 
 
+def _parse_handle_list_accessors(raw: Any, *, context: str, known_handles: set[str]) -> HandleListAccessorsSpec | None:
+    if raw is None:
+        return None
+    mapping = _expect_mapping(raw, context)
+    item_handle = _expect_str(mapping.get("item_handle"), f"{context}.item_handle")
+    if item_handle not in known_handles:
+        msg = f"{context}.item_handle refers to unknown handle '{item_handle}'"
+        raise ValueError(msg)
+    return HandleListAccessorsSpec(
+        receiver=_expect_str(mapping.get("receiver"), f"{context}.receiver"),
+        list_param=_expect_str(mapping.get("list_param", "items"), f"{context}.list_param"),
+        item_handle=item_handle,
+        count_as=_expect_str(mapping.get("count_as"), f"{context}.count_as"),
+        at_as=_expect_str(mapping.get("at_as"), f"{context}.at_as"),
+        out_of_range_message=_expect_str(mapping.get("out_of_range_message"), f"{context}.out_of_range_message"),
+    )
+
+
+def _handle_list_accessor_calls(
+    *,
+    list_handle_name: str,
+    accessors: HandleListAccessorsSpec,
+    handles: dict[str, HandleSpec],
+) -> tuple[CallSpec, CallSpec]:
+    if accessors.receiver not in handles:
+        msg = f"list accessors for '{list_handle_name}' refer to unknown receiver handle '{accessors.receiver}'"
+        raise ValueError(msg)
+    if accessors.item_handle not in handles:
+        msg = f"list accessors for '{list_handle_name}' refer to unknown item handle '{accessors.item_handle}'"
+        raise ValueError(msg)
+
+    list_type = TypeSpec(kind="handle", handle=list_handle_name, ownership="borrowed")
+    item_handle = handles[accessors.item_handle]
+    item_type = TypeSpec(
+        kind="handle",
+        handle=accessors.item_handle,
+        ownership="owned",
+        cpp_type=f"{item_handle.cpp_type}*",
+    )
+    list_param = ParamSpec(name=accessors.list_param, type=list_type)
+    index_param = ParamSpec(name="index", type=TypeSpec(kind="size"))
+    receiver = handles[accessors.receiver]
+
+    count_call = PolicyCallSpec(
+        expose_as=accessors.count_as,
+        receiver=accessors.receiver,
+        returns=TypeSpec(kind="size"),
+        params=(list_param,),
+        operation=ListCountPolicyOp(list_param=accessors.list_param),
+    )
+    at_call = PolicyCallSpec(
+        expose_as=accessors.at_as,
+        receiver=accessors.receiver,
+        returns=item_type,
+        params=(list_param, index_param),
+        operation=ListAtPolicyOp(
+            list_param=accessors.list_param,
+            item_cpp_type=item_handle.cpp_type,
+            out_of_range_message=accessors.out_of_range_message,
+        ),
+    )
+    return (
+        _materialize_policy_call(count_call, c_name=_make_c_name(receiver, count_call.expose_as)),
+        _materialize_policy_call(at_call, c_name=_make_c_name(receiver, at_call.expose_as)),
+    )
+
+
 def _strip_cpp_comments(text: str) -> str:
     text = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
     return re.sub(r"//.*", "", text)
@@ -1087,6 +1183,38 @@ def _parse_discovery(
                 msg = f"{item_context}.method_sizes keys must be non-empty strings"
                 raise ValueError(msg)
             method_sizes[method_name] = _expect_str(expose_as_val, f"{item_context}.method_sizes[{method_name}]")
+        method_at_accessors_raw = _expect_list(
+            item_mapping.get("method_at_accessors", []),
+            f"{item_context}.method_at_accessors",
+        )
+        method_at_accessors: list[MethodAtAccessorSpec] = []
+        for accessor_index, accessor_raw in enumerate(method_at_accessors_raw):
+            accessor_context = f"{item_context}.method_at_accessors[{accessor_index}]"
+            accessor_mapping = _expect_mapping(accessor_raw, accessor_context)
+            exception_type = _expect_str(
+                accessor_mapping.get("exception", "std::out_of_range"),
+                f"{accessor_context}.exception",
+            )
+            if exception_type not in {"std::out_of_range", "std::runtime_error"}:
+                msg = f"{accessor_context}.exception must be std::out_of_range or std::runtime_error"
+                raise ValueError(msg)
+            ownership = _expect_str(accessor_mapping.get("ownership"), f"{accessor_context}.ownership")
+            if ownership not in {"owned", "borrowed", "static"}:
+                msg = f"{accessor_context}.ownership must be one of owned, borrowed, static"
+                raise ValueError(msg)
+            method_at_accessors.append(
+                MethodAtAccessorSpec(
+                    method_name=_expect_str(accessor_mapping.get("method"), f"{accessor_context}.method"),
+                    expose_as=_expect_str(accessor_mapping.get("expose_as"), f"{accessor_context}.expose_as"),
+                    item_handle=_expect_str(accessor_mapping.get("item_handle"), f"{accessor_context}.item_handle"),
+                    ownership=ownership,
+                    out_of_range_message=_expect_str(
+                        accessor_mapping.get("out_of_range_message"),
+                        f"{accessor_context}.out_of_range_message",
+                    ),
+                    exception_type=exception_type,
+                )
+            )
         # Parse array_pair_fields: field names generate field_u/field_v accessors for std::array<T,2>.
         array_pair_raw = item_mapping.get("array_pair_fields", {})
         array_pair_fields: dict[str, str | None] = {}
@@ -1214,7 +1342,7 @@ def _parse_discovery(
         has_any_feature = (include_all or include or overloads or discover_fields
                           or discover_children is not None or discover_as_item
                           or extra_fields or field_setters or discover_optional_fields
-                          or method_sizes or array_pair_fields
+                          or method_sizes or method_at_accessors or array_pair_fields
                           or binary_operators or unary_operators or comparison_operators
                           or ccomponents_accessor is not None or variant_accessors is not None
                           or type_overrides)
@@ -1240,6 +1368,7 @@ def _parse_discovery(
                 extra_fields=extra_fields,
                 field_setters=field_setters,
                 method_sizes=method_sizes,
+                method_at_accessors=tuple(method_at_accessors),
                 array_pair_fields=array_pair_fields,
                 binary_operators=binary_operators,
                 unary_operators=unary_operators,
@@ -1345,6 +1474,13 @@ def _parse_discovery(
             )
         else:
             params = None
+        param_names_raw = item_mapping.get("param_names")
+        param_names: tuple[str, ...] = tuple()
+        if param_names_raw is not None:
+            param_names = tuple(
+                _expect_str(param, f"{item_context}.param_names[{param_index}]")
+                for param_index, param in enumerate(_expect_list(param_names_raw, f"{item_context}.param_names"))
+            )
         param_renames_raw = _expect_mapping(item_mapping.get("param_renames", {}), f"{item_context}.param_renames")
         param_renames: dict[str, str] = {}
         for source_name, c_name in param_renames_raw.items():
@@ -1358,11 +1494,24 @@ def _parse_discovery(
             if compile_guard_raw is not None
             else None
         )
+        compile_guard_message_raw = item_mapping.get("compile_guard_message")
+        compile_guard_message = (
+            _expect_str(compile_guard_message_raw, f"{item_context}.compile_guard_message")
+            if compile_guard_message_raw is not None
+            else None
+        )
+        if compile_guard is None and compile_guard_message is not None:
+            msg = f"{item_context}.compile_guard_message requires compile_guard"
+            raise ValueError(msg)
         if compile_guard is not None:
-            msg = (
-                f"{item_context}.compile_guard is not supported for source-discovered constructors; "
-                "keep guarded factories authored so the C symbol remains stable when the guarded C++ class is unavailable"
-            )
+            if params is None:
+                msg = f"{item_context}.compile_guard requires params so the C symbol remains stable when the guarded class is unavailable"
+                raise ValueError(msg)
+            if not param_names:
+                msg = f"{item_context}.compile_guard requires param_names so fallback generation does not depend on source parameter names"
+                raise ValueError(msg)
+        if param_names and params is not None and len(param_names) != len(params):
+            msg = f"{item_context}.param_names must have the same length as params"
             raise ValueError(msg)
         factory_raw = item_mapping.get("factory")
         factory = _expect_str(factory_raw, f"{item_context}.factory") if factory_raw is not None else None
@@ -1432,8 +1581,10 @@ def _parse_discovery(
                 translation_unit=translation_unit,
                 expose_as=expose_as,
                 params=params,
+                param_names=param_names,
                 param_renames=param_renames,
                 compile_guard=compile_guard,
+                compile_guard_message=compile_guard_message,
                 factory=factory,
                 field_initializers=tuple(field_initializers),
                 type_overrides=type_overrides,
@@ -1459,6 +1610,20 @@ def _normalize_cpp_type(cpp_type: str) -> str:
     )
     cpp_type = cpp_type.replace("const ", "").strip()
     return cpp_type
+
+
+def _cpp_type_contains_handle_item(cpp_type: str, handle_cpp_type: str) -> bool:
+    normalized = _normalize_cpp_type(cpp_type)
+    normalized_handle = _normalize_cpp_type(handle_cpp_type)
+    if normalized_handle in normalized:
+        return True
+    simple = normalized_handle
+    shared_ptr_match = re.fullmatch(r"std::shared_ptr<\s*(.+?)\s*>", simple)
+    if shared_ptr_match:
+        simple = shared_ptr_match.group(1)
+    simple = simple.removesuffix("::ptr").removesuffix("*").removesuffix("&").strip()
+    simple = simple.split("::")[-1]
+    return bool(simple and re.search(rf"(?<![A-Za-z0-9_]){re.escape(simple)}(?![A-Za-z0-9_])", normalized))
 
 
 def _cpp_type_variants(cpp_type: str | DiscoveredCppType) -> tuple[str, ...]:
@@ -2580,10 +2745,11 @@ def _discover_method_calls(
         )
 
         # Only run AST method discovery if there's something to discover
-        needs_method_discovery = item.include_all or item.include or item.overloads
+        method_at_names = tuple(accessor.method_name for accessor in item.method_at_accessors)
+        needs_method_discovery = item.include_all or item.include or item.overloads or method_at_names
         methods_by_name: dict[str, tuple[DiscoveredMethod, ...]] = {}
         if needs_method_discovery:
-            selected_method_names = _selected_discovery_names(item.include_all, item.include, item.overloads)
+            selected_method_names = _selected_discovery_names(item.include_all, item.include + method_at_names, item.overloads)
             cache_key = (handle.cpp_type, item.translation_unit, item.include_inherited_methods, selected_method_names)
             cached = class_cache.get(cache_key)
             if cached is None:
@@ -2983,6 +3149,51 @@ def _discover_method_calls(
                 diagnostics=diagnostics,
                 owner=item.handle,
                 member=method_name,
+            )
+
+        for accessor in item.method_at_accessors:
+            item_handle = handles.get(accessor.item_handle)
+            if item_handle is None:
+                msg = f"method_at_accessors entry '{accessor.expose_as}' refers to unknown handle '{accessor.item_handle}'"
+                raise ValueError(msg)
+            overloads = methods_by_name.get(accessor.method_name)
+            if overloads is None:
+                msg = f"method_at_accessors entry '{accessor.method_name}' was not discovered on {item.handle}"
+                raise ValueError(msg)
+            if len(overloads) != 1:
+                msg = f"method_at_accessors entry '{accessor.method_name}' on {item.handle} is overloaded"
+                raise ValueError(msg)
+            discovered = overloads[0]
+            if discovered.params:
+                msg = f"method_at_accessors entry '{accessor.method_name}' on {item.handle} must refer to a no-argument method"
+                raise ValueError(msg)
+            if not _cpp_type_contains_handle_item(discovered.return_cpp_type, item_handle.cpp_type):
+                msg = (
+                    f"method_at_accessors entry '{accessor.method_name}' returns '{discovered.return_cpp_type}', "
+                    f"which does not contain item handle type '{item_handle.cpp_type}'"
+                )
+                raise ValueError(msg)
+            at_call = PolicyCallSpec(
+                expose_as=accessor.expose_as,
+                receiver=item.handle,
+                returns=TypeSpec(kind="handle", handle=accessor.item_handle, ownership=accessor.ownership),
+                params=(ParamSpec(name="index", type=TypeSpec(kind="size")),),
+                operation=MethodAtPolicyOp(
+                    method_name=accessor.method_name,
+                    item_cpp_type=item_handle.cpp_type,
+                    out_of_range_message=accessor.out_of_range_message,
+                    exception_type=accessor.exception_type,
+                ),
+            )
+            _register_policy_call(
+                at_call,
+                handle=handle,
+                calls=calls,
+                calls_by_c_name=calls_by_c_name,
+                reserved_c_names=reserved_c_names,
+                diagnostics=diagnostics,
+                owner=item.handle,
+                member=accessor.method_name,
             )
 
         # Generate array_pair_field calls (field[0] as _u, field[1] as _v)
@@ -3589,6 +3800,18 @@ def _array_field_element_type(cpp_type: str, param_count: int, *, context: str) 
     return element_type
 
 
+def _constructor_fallback_params(item: DiscoveryConstructorSpec, handles: dict[str, HandleSpec]) -> tuple[ParamSpec, ...]:
+    if item.params is None or not item.param_names:
+        msg = f"Guarded constructor '{item.expose_as}' requires params and param_names for fallback generation"
+        raise ValueError(msg)
+    params: list[ParamSpec] = []
+    for source_type, param_name in zip(item.params, item.param_names):
+        inferred = _infer_param_type(source_type, handles)
+        override = item.type_overrides.get(param_name)
+        params.append(ParamSpec(name=param_name, type=_merge_type_override(inferred, override)))
+    return tuple(params)
+
+
 def _discover_constructor_calls(
     spec_path: Path,
     discovery: DiscoverySpec,
@@ -3625,12 +3848,21 @@ def _discover_constructor_calls(
         constructors = constructor_cache.get(cache_key)
         if constructors is None:
             translation_unit = (include_dir / item.translation_unit).resolve()
-            constructors = discover_public_constructors_with_compile_commands(
-                compile_commands_path,
-                translation_unit,
-                item.cpp_class,
-            )
+            try:
+                constructors = discover_public_constructors_with_compile_commands(
+                    compile_commands_path,
+                    translation_unit,
+                    item.cpp_class,
+                )
+            except ValueError:
+                if item.compile_guard is None:
+                    raise
+                constructors = tuple()
             constructor_cache[cache_key] = constructors
+
+        fallback_params: tuple[ParamSpec, ...] | None = None
+        if item.compile_guard is not None:
+            fallback_params = _constructor_fallback_params(item, handles)
 
         try:
             constructor = _select_constructor(
@@ -3639,26 +3871,33 @@ def _discover_constructor_calls(
                 context=f"Constructor discovery for '{item.cpp_class}' item {item_index}",
             )
         except ValueError:
-            if item.compile_guard is not None:
+            if fallback_params is not None:
                 _append_discovery_diagnostic(
                     diagnostics,
                     owner=item.cpp_class,
                     member=item.expose_as,
                     code="guarded_constructor_unavailable",
-                    message=f"Skipped guarded constructor '{item.expose_as}' because it was unavailable in the AST",
+                    message=f"Using guarded fallback signature for '{item.expose_as}' because the constructor was unavailable in the AST",
                 )
-                continue
-            raise
-        params: list[ParamSpec] = []
-        param_names: set[str] = set()
-        for param in constructor.params:
-            inferred = _infer_param_type(param.cpp_type_ref, handles)
-            override = item.type_overrides.get(param.name)
-            param_type = _merge_type_override(inferred, override)
-            param_name = item.param_renames.get(param.name, param.name)
-            param_names.add(param_name)
-            params.append(ParamSpec(name=param_name, type=param_type))
-
+                constructor = None
+                params = list(fallback_params)
+                param_names = {param.name for param in params}
+            else:
+                raise
+        else:
+            params = []
+            param_names: set[str] = set()
+            if fallback_params is not None:
+                params = list(fallback_params)
+                param_names = {param.name for param in params}
+            else:
+                for param in constructor.params:
+                    inferred = _infer_param_type(param.cpp_type_ref, handles)
+                    override = item.type_overrides.get(param.name)
+                    param_type = _merge_type_override(inferred, override)
+                    param_name = item.param_renames.get(param.name, param.name)
+                    param_names.add(param_name)
+                    params.append(ParamSpec(name=param_name, type=param_type))
         factory_field_initializers: list[FactoryFieldInitializerPolicy] = []
         if item.field_initializers:
             fields = field_cache.get(cache_key)
@@ -3727,6 +3966,7 @@ def _discover_constructor_calls(
                 else ConstructorPolicyOp(
                     cpp_class=item.cpp_class if item.cpp_class != handle.cpp_type else None,
                     compile_guard=item.compile_guard,
+                    compile_guard_message=item.compile_guard_message,
                 )
             ),
         )
@@ -3808,6 +4048,7 @@ def load_authored_spec(
             handles[handle.name] = handle
 
     raw_handles = _expect_list(root.get("handles", []), "handles")
+    raw_handle_mappings: list[tuple[str, dict[str, Any], str]] = []
     for index, item in enumerate(raw_handles):
         context = f"handles[{index}]"
         mapping = _expect_mapping(item, context)
@@ -3825,6 +4066,7 @@ def load_authored_spec(
             msg = f"{context}.name '{handle.name}' is duplicated"
             raise ValueError(msg)
         handles[handle.name] = handle
+        raw_handle_mappings.append((handle.name, mapping, context))
 
     # Parse imports section
     raw_imports = _expect_list(root.get("imports", []), "imports")
@@ -3882,9 +4124,26 @@ def load_authored_spec(
         )
         for index, item in enumerate(_expect_list(root.get("methods", []), "methods"))
     )
+    accessor_methods_list: list[CallSpec] = []
+    for handle_name, mapping, context in raw_handle_mappings:
+        accessors = _parse_handle_list_accessors(
+            mapping.get("list_accessors"),
+            context=f"{context}.list_accessors",
+            known_handles=known_handles,
+        )
+        if accessors is None:
+            continue
+        accessor_methods_list.extend(
+            _handle_list_accessor_calls(
+                list_handle_name=handle_name,
+                accessors=accessors,
+                handles=handles,
+            )
+        )
+    accessor_methods = tuple(accessor_methods_list)
 
     # Collect authored c_names so discovery can skip collisions
-    authored_c_names = frozenset(c.c_name for c in (*authored_functions, *authored_methods))
+    authored_c_names = frozenset(c.c_name for c in (*authored_functions, *accessor_methods, *authored_methods))
     discovered_methods: tuple[CallSpec, ...] = tuple()
     discovered_functions: tuple[CallSpec, ...] = tuple()
     discovered_constructors: tuple[CallSpec, ...] = tuple()
@@ -3918,7 +4177,7 @@ def load_authored_spec(
         depends_on_common=depends_on_common,
         discovery=discovery,
         functions=discovered_constructors + discovered_functions + authored_functions,
-        methods=discovered_methods + authored_methods,
+        methods=discovered_methods + accessor_methods + authored_methods,
         discovery_diagnostics=discovery_diagnostics,
     )
     debug_log(

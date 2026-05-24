@@ -212,7 +212,8 @@ def test_generate_ifcparse_c_backend(tmp_path: Path) -> None:
     assert "bool ifcopenshell_ifc_instance_set_argument_enumeration(ifcopenshell_ifc_instance_t* self, size_t index, ifcopenshell_ifc_enumeration_t* enumeration, size_t enumeration_index)" in cpp
     assert "bool ifcopenshell_ifcparse_instance_list_size(ifcopenshell_ifcparse_instance_list_t* self, size_t* out_result)" in cpp
     assert "bool ifcopenshell_ifcparse_instance_list_get(ifcopenshell_ifcparse_instance_list_t* self, size_t index, ifcopenshell_ifc_instance_t** out_result)" in cpp
-    assert "*out_result = new ifcopenshell_ifc_file_t{generated_result, true};" in cpp
+    assert "auto result_value = std::unique_ptr<IfcParse::IfcFile>(generated_result);" in cpp
+    assert "*out_result = new ifcopenshell_ifc_file_t{result_value.release(), true};" in cpp
     assert "*out_result = make_string_list(IfcParse::schema_names());" in cpp
 
     assert "*out_result = make_int32_list(generated_result);" in cpp

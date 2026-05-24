@@ -3020,7 +3020,8 @@ if (!file->good()) {
 }
 return file.release();
         }();
-        *out_result = new ifcopenshell_ifc_file_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcParse::IfcFile>(generated_result);
+        *out_result = new ifcopenshell_ifc_file_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3049,7 +3050,8 @@ if (!file->initialize(path_cpp)) {
 }
 return file.release();
         }();
-        *out_result = new ifcopenshell_ifc_file_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcParse::IfcFile>(generated_result);
+        *out_result = new ifcopenshell_ifc_file_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3072,7 +3074,8 @@ bool ifcopenshell_ifcparse_new_file(const char* schema_identifier, int32_t file_
 const IfcParse::schema_definition* schema = IfcParse::schema_by_name(schema_identifier);
 return new IfcParse::IfcFile(schema, static_cast<IfcParse::filetype>(file_type), path);
         }();
-        *out_result = new ifcopenshell_ifc_file_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcParse::IfcFile>(generated_result);
+        *out_result = new ifcopenshell_ifc_file_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3099,7 +3102,8 @@ if (!file->good()) {
 }
 return file.release();
         }();
-        *out_result = new ifcopenshell_ifc_file_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcParse::IfcFile>(generated_result);
+        *out_result = new ifcopenshell_ifc_file_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3117,7 +3121,8 @@ bool ifcopenshell_ifcparse_stream(ifcopenshell_ifc_instance_streamer_t** out_res
         auto generated_result = [&]() {
 return new IfcParse::InstanceStreamer();
         }();
-        *out_result = new ifcopenshell_ifc_instance_streamer_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcParse::InstanceStreamer>(generated_result);
+        *out_result = new ifcopenshell_ifc_instance_streamer_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3142,7 +3147,8 @@ return new IfcParse::InstanceStreamer(path_cpp, mmap);
 return new IfcParse::InstanceStreamer(path_cpp, false);
 #endif
         }();
-        *out_result = new ifcopenshell_ifc_instance_streamer_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcParse::InstanceStreamer>(generated_result);
+        *out_result = new ifcopenshell_ifc_instance_streamer_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3162,7 +3168,8 @@ bool ifcopenshell_ifcparse_stream_from_string(const char* data, ifcopenshell_ifc
         auto generated_result = [&]() {
 return new IfcParse::InstanceStreamer((void*)data_cpp.data(), static_cast<int>(data_cpp.size()));
         }();
-        *out_result = new ifcopenshell_ifc_instance_streamer_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcParse::InstanceStreamer>(generated_result);
+        *out_result = new ifcopenshell_ifc_instance_streamer_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3485,7 +3492,8 @@ if (auto* entinst = inst->as<IfcUtil::IfcBaseEntity>()) {
 }
 return inst;
         }();
-        *out_result = new ifcopenshell_ifc_instance_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcUtil::IfcBaseClass>(generated_result);
+        *out_result = new ifcopenshell_ifc_instance_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3504,7 +3512,8 @@ bool ifcopenshell_ifcgeom_create_xml_serializer(ifcopenshell_ifc_file_t* file, c
     auto file_cpp = file->ptr;
     if (filename == nullptr) { throw std::runtime_error("Parameter \"filename\" must not be null"); }
     std::string filename_cpp(filename);
-        *out_result = new ifcopenshell_ifcgeom_serializer_t{static_cast<Serializer*>(new XmlSerializer(file_cpp, filename_cpp)), true};
+        auto result_value = std::unique_ptr<Serializer>(static_cast<Serializer*>(new XmlSerializer(file_cpp, filename_cpp)));
+        *out_result = new ifcopenshell_ifcgeom_serializer_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3519,7 +3528,8 @@ bool ifcopenshell_ifcgeom_create_tree(ifcopenshell_ifcgeom_tree_t** out_result) 
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        *out_result = new ifcopenshell_ifcgeom_tree_t{new IfcGeom::tree(), true};
+        auto result_value = std::unique_ptr<IfcGeom::tree>(new IfcGeom::tree());
+        *out_result = new ifcopenshell_ifcgeom_tree_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3536,7 +3546,8 @@ bool ifcopenshell_ifcgeom_create_tree_from_file(ifcopenshell_ifc_file_t* file, i
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto& file_cpp = *file->ptr;
-        *out_result = new ifcopenshell_ifcgeom_tree_t{new IfcGeom::tree(file_cpp), true};
+        auto result_value = std::unique_ptr<IfcGeom::tree>(new IfcGeom::tree(file_cpp));
+        *out_result = new ifcopenshell_ifcgeom_tree_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3555,7 +3566,8 @@ bool ifcopenshell_ifcgeom_create_tree_from_file_with_settings(ifcopenshell_ifc_f
     auto& file_cpp = *file->ptr;
     if (settings == nullptr || settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"settings\" is invalid"); }
     auto settings_cpp = *settings->ptr;
-        *out_result = new ifcopenshell_ifcgeom_tree_t{new IfcGeom::tree(file_cpp, settings_cpp), true};
+        auto result_value = std::unique_ptr<IfcGeom::tree>(new IfcGeom::tree(file_cpp, settings_cpp));
+        *out_result = new ifcopenshell_ifcgeom_tree_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3572,7 +3584,8 @@ bool ifcopenshell_ifcgeom_create_tree_from_iterator(ifcopenshell_ifcgeom_iterato
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (iterator == nullptr || iterator->ptr == nullptr) { throw std::runtime_error("Handle parameter \"iterator\" is invalid"); }
     auto& iterator_cpp = *iterator->ptr;
-        *out_result = new ifcopenshell_ifcgeom_tree_t{new IfcGeom::tree(iterator_cpp), true};
+        auto result_value = std::unique_ptr<IfcGeom::tree>(new IfcGeom::tree(iterator_cpp));
+        *out_result = new ifcopenshell_ifcgeom_tree_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3595,7 +3608,8 @@ bool ifcopenshell_ifcgeom_create_obj_serializer(ifcopenshell_ifcgeom_buffer_t* o
     auto& geometry_settings_cpp = *geometry_settings->ptr;
     if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
     auto& serializer_settings_cpp = *serializer_settings->ptr;
-        *out_result = new ifcopenshell_ifcgeom_geometry_serializer_t{static_cast<GeometrySerializer*>(new WaveFrontOBJSerializer(obj_output_cpp, mtl_output_cpp, geometry_settings_cpp, serializer_settings_cpp)), true};
+        auto result_value = std::unique_ptr<GeometrySerializer>(static_cast<GeometrySerializer*>(new WaveFrontOBJSerializer(obj_output_cpp, mtl_output_cpp, geometry_settings_cpp, serializer_settings_cpp)));
+        *out_result = new ifcopenshell_ifcgeom_geometry_serializer_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3616,7 +3630,8 @@ bool ifcopenshell_ifcgeom_create_ttl_serializer(ifcopenshell_ifcgeom_buffer_t* o
     auto& geometry_settings_cpp = *geometry_settings->ptr;
     if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
     auto& serializer_settings_cpp = *serializer_settings->ptr;
-        *out_result = new ifcopenshell_ifcgeom_geometry_serializer_t{static_cast<GeometrySerializer*>(new TtlWktSerializer(output_cpp, geometry_settings_cpp, serializer_settings_cpp)), true};
+        auto result_value = std::unique_ptr<GeometrySerializer>(static_cast<GeometrySerializer*>(new TtlWktSerializer(output_cpp, geometry_settings_cpp, serializer_settings_cpp)));
+        *out_result = new ifcopenshell_ifcgeom_geometry_serializer_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3637,7 +3652,211 @@ bool ifcopenshell_ifcgeom_create_svg_serializer(ifcopenshell_ifcgeom_buffer_t* o
     auto& geometry_settings_cpp = *geometry_settings->ptr;
     if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
     auto& serializer_settings_cpp = *serializer_settings->ptr;
-        *out_result = new ifcopenshell_ifcgeom_geometry_serializer_t{static_cast<GeometrySerializer*>(new SvgSerializer(output_cpp, geometry_settings_cpp, serializer_settings_cpp)), true};
+        auto result_value = std::unique_ptr<GeometrySerializer>(static_cast<GeometrySerializer*>(new SvgSerializer(output_cpp, geometry_settings_cpp, serializer_settings_cpp)));
+        *out_result = new ifcopenshell_ifcgeom_geometry_serializer_t{result_value.release(), true};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_create_gltf_serializer(const char* filename, ifcopenshell_ifcgeom_settings_t* geometry_settings, ifcopenshell_ifcgeom_serializer_settings_t* serializer_settings, ifcopenshell_ifcgeom_geometry_serializer_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (filename == nullptr) { throw std::runtime_error("Parameter \"filename\" must not be null"); }
+    std::string filename_cpp(filename);
+    if (geometry_settings == nullptr || geometry_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"geometry_settings\" is invalid"); }
+    auto& geometry_settings_cpp = *geometry_settings->ptr;
+    if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
+    auto& serializer_settings_cpp = *serializer_settings->ptr;
+        #if defined(WITH_GLTF)
+        auto result_value = std::unique_ptr<GeometrySerializer>(static_cast<GeometrySerializer*>(new GltfSerializer(filename_cpp, geometry_settings_cpp, serializer_settings_cpp)));
+        *out_result = new ifcopenshell_ifcgeom_geometry_serializer_t{result_value.release(), true};
+#else
+        throw std::runtime_error("ifcopenshell_ifcgeom_create_gltf_serializer requires WITH_GLTF");
+#endif
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_create_iges_serializer(const char* filename, ifcopenshell_ifcgeom_settings_t* geometry_settings, ifcopenshell_ifcgeom_serializer_settings_t* serializer_settings, ifcopenshell_ifcgeom_geometry_serializer_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (filename == nullptr) { throw std::runtime_error("Parameter \"filename\" must not be null"); }
+    std::string filename_cpp(filename);
+    if (geometry_settings == nullptr || geometry_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"geometry_settings\" is invalid"); }
+    auto& geometry_settings_cpp = *geometry_settings->ptr;
+    if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
+    auto& serializer_settings_cpp = *serializer_settings->ptr;
+        #if defined(IFOPSH_WITH_OPENCASCADE)
+        auto result_value = std::unique_ptr<GeometrySerializer>(static_cast<GeometrySerializer*>(new IgesSerializer(filename_cpp, geometry_settings_cpp, serializer_settings_cpp)));
+        *out_result = new ifcopenshell_ifcgeom_geometry_serializer_t{result_value.release(), true};
+#else
+        throw std::runtime_error("ifcopenshell_ifcgeom_create_iges_serializer requires IFOPSH_WITH_OPENCASCADE");
+#endif
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_create_step_serializer(const char* filename, ifcopenshell_ifcgeom_settings_t* geometry_settings, ifcopenshell_ifcgeom_serializer_settings_t* serializer_settings, ifcopenshell_ifcgeom_geometry_serializer_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (filename == nullptr) { throw std::runtime_error("Parameter \"filename\" must not be null"); }
+    std::string filename_cpp(filename);
+    if (geometry_settings == nullptr || geometry_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"geometry_settings\" is invalid"); }
+    auto& geometry_settings_cpp = *geometry_settings->ptr;
+    if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
+    auto& serializer_settings_cpp = *serializer_settings->ptr;
+        #if defined(IFOPSH_WITH_OPENCASCADE)
+        auto result_value = std::unique_ptr<GeometrySerializer>(static_cast<GeometrySerializer*>(new StepSerializer(filename_cpp, geometry_settings_cpp, serializer_settings_cpp)));
+        *out_result = new ifcopenshell_ifcgeom_geometry_serializer_t{result_value.release(), true};
+#else
+        throw std::runtime_error("ifcopenshell_ifcgeom_create_step_serializer requires IFOPSH_WITH_OPENCASCADE");
+#endif
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_create_collada_serializer(const char* filename, ifcopenshell_ifcgeom_settings_t* geometry_settings, ifcopenshell_ifcgeom_serializer_settings_t* serializer_settings, ifcopenshell_ifcgeom_geometry_serializer_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (filename == nullptr) { throw std::runtime_error("Parameter \"filename\" must not be null"); }
+    std::string filename_cpp(filename);
+    if (geometry_settings == nullptr || geometry_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"geometry_settings\" is invalid"); }
+    auto& geometry_settings_cpp = *geometry_settings->ptr;
+    if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
+    auto& serializer_settings_cpp = *serializer_settings->ptr;
+        #if defined(WITH_OPENCOLLADA)
+        auto result_value = std::unique_ptr<GeometrySerializer>(static_cast<GeometrySerializer*>(new ColladaSerializer(filename_cpp, geometry_settings_cpp, serializer_settings_cpp)));
+        *out_result = new ifcopenshell_ifcgeom_geometry_serializer_t{result_value.release(), true};
+#else
+        throw std::runtime_error("ifcopenshell_ifcgeom_create_collada_serializer requires WITH_OPENCOLLADA");
+#endif
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_create_hdf_serializer(const char* filename, ifcopenshell_ifcgeom_settings_t* geometry_settings, ifcopenshell_ifcgeom_serializer_settings_t* serializer_settings, ifcopenshell_ifcgeom_geometry_serializer_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (filename == nullptr) { throw std::runtime_error("Parameter \"filename\" must not be null"); }
+    std::string filename_cpp(filename);
+    if (geometry_settings == nullptr || geometry_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"geometry_settings\" is invalid"); }
+    auto& geometry_settings_cpp = *geometry_settings->ptr;
+    if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
+    auto& serializer_settings_cpp = *serializer_settings->ptr;
+        #if defined(WITH_HDF5) && defined(IFOPSH_WITH_OPENCASCADE)
+        auto result_value = std::unique_ptr<GeometrySerializer>(static_cast<GeometrySerializer*>(new HdfSerializer(filename_cpp, geometry_settings_cpp, serializer_settings_cpp)));
+        *out_result = new ifcopenshell_ifcgeom_geometry_serializer_t{result_value.release(), true};
+#else
+        throw std::runtime_error("ifcopenshell_ifcgeom_create_hdf_serializer requires defined(WITH_HDF5) && defined(IFOPSH_WITH_OPENCASCADE)");
+#endif
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_create_json_serializer(ifcopenshell_ifc_file_t* file, const char* filename, ifcopenshell_ifcgeom_serializer_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (filename == nullptr) { throw std::runtime_error("Parameter \"filename\" must not be null"); }
+    std::string filename_cpp(filename);
+        #if defined(WITH_GLTF)
+        auto result_value = std::unique_ptr<Serializer>(static_cast<Serializer*>(new JsonSerializer(file_cpp, filename_cpp)));
+        *out_result = new ifcopenshell_ifcgeom_serializer_t{result_value.release(), true};
+#else
+        throw std::runtime_error("JSON serializer requires GLTF support (nlohmann_json)");
+#endif
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_create_rocksdb_serializer(ifcopenshell_ifc_file_t* file, const char* rocksdb_filename, ifcopenshell_ifcgeom_serializer_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (rocksdb_filename == nullptr) { throw std::runtime_error("Parameter \"rocksdb_filename\" must not be null"); }
+    std::string rocksdb_filename_cpp(rocksdb_filename);
+        #if defined(IFOPSH_WITH_ROCKSDB)
+        auto result_value = std::unique_ptr<Serializer>(static_cast<Serializer*>(new RocksDbSerializer(file_cpp, rocksdb_filename_cpp)));
+        *out_result = new ifcopenshell_ifcgeom_serializer_t{result_value.release(), true};
+#else
+        throw std::runtime_error("RocksDB serializer requires WITH_ROCKSDB support");
+#endif
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_create_rocksdb_serializer_streaming(const char* input_filename, const char* rocksdb_filename, bool stream, ifcopenshell_ifcgeom_serializer_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (input_filename == nullptr) { throw std::runtime_error("Parameter \"input_filename\" must not be null"); }
+    std::string input_filename_cpp(input_filename);
+    if (rocksdb_filename == nullptr) { throw std::runtime_error("Parameter \"rocksdb_filename\" must not be null"); }
+    std::string rocksdb_filename_cpp(rocksdb_filename);
+    auto stream_cpp = static_cast<bool>(stream);
+        #if defined(IFOPSH_WITH_ROCKSDB)
+        auto result_value = std::unique_ptr<Serializer>(static_cast<Serializer*>(new RocksDbSerializer(input_filename_cpp, rocksdb_filename_cpp, stream_cpp)));
+        *out_result = new ifcopenshell_ifcgeom_serializer_t{result_value.release(), true};
+#else
+        throw std::runtime_error("ifcopenshell_ifcgeom_create_rocksdb_serializer_streaming requires IFOPSH_WITH_ROCKSDB");
+#endif
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3652,7 +3871,8 @@ bool ifcopenshell_ifcgeom_create_buffer(ifcopenshell_ifcgeom_buffer_t** out_resu
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        *out_result = new ifcopenshell_ifcgeom_buffer_t{new stream_or_filename(), true};
+        auto result_value = std::unique_ptr<stream_or_filename>(new stream_or_filename());
+        *out_result = new ifcopenshell_ifcgeom_buffer_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3669,7 +3889,8 @@ bool ifcopenshell_ifcgeom_create_buffer_from_filename(const char* filename, ifco
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (filename == nullptr) { throw std::runtime_error("Parameter \"filename\" must not be null"); }
     std::string filename_cpp(filename);
-        *out_result = new ifcopenshell_ifcgeom_buffer_t{new stream_or_filename(filename_cpp), true};
+        auto result_value = std::unique_ptr<stream_or_filename>(new stream_or_filename(filename_cpp));
+        *out_result = new ifcopenshell_ifcgeom_buffer_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3684,7 +3905,8 @@ bool ifcopenshell_ifcgeom_create_settings(ifcopenshell_ifcgeom_settings_t** out_
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        *out_result = new ifcopenshell_ifcgeom_settings_t{new ifcopenshell::geometry::Settings(), true};
+        auto result_value = std::unique_ptr<ifcopenshell::geometry::Settings>(new ifcopenshell::geometry::Settings());
+        *out_result = new ifcopenshell_ifcgeom_settings_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3699,7 +3921,8 @@ bool ifcopenshell_ifcgeom_create_serializer_settings(ifcopenshell_ifcgeom_serial
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        *out_result = new ifcopenshell_ifcgeom_serializer_settings_t{new ifcopenshell::geometry::SerializerSettings(), true};
+        auto result_value = std::unique_ptr<ifcopenshell::geometry::SerializerSettings>(new ifcopenshell::geometry::SerializerSettings());
+        *out_result = new ifcopenshell_ifcgeom_serializer_settings_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3880,206 +4103,6 @@ bool ifcopenshell_ifcgeom_helmert_curve_point(double A0, double A1, double A2, d
     }
 }
 
-bool ifcopenshell_ifcgeom_create_gltf_serializer(const char* filename, ifcopenshell_ifcgeom_settings_t* geometry_settings, ifcopenshell_ifcgeom_serializer_settings_t* serializer_settings, ifcopenshell_ifcgeom_geometry_serializer_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (filename == nullptr) { throw std::runtime_error("Parameter \"filename\" must not be null"); }
-    std::string filename_cpp(filename);
-    if (geometry_settings == nullptr || geometry_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"geometry_settings\" is invalid"); }
-    auto& geometry_settings_cpp = *geometry_settings->ptr;
-    if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
-    auto& serializer_settings_cpp = *serializer_settings->ptr;
-        #if defined(WITH_GLTF)
-        *out_result = new ifcopenshell_ifcgeom_geometry_serializer_t{static_cast<GeometrySerializer*>(new GltfSerializer(filename_cpp, geometry_settings_cpp, serializer_settings_cpp)), true};
-#else
-        throw std::runtime_error("ifcopenshell_ifcgeom_create_gltf_serializer requires WITH_GLTF");
-#endif
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_create_iges_serializer(const char* filename, ifcopenshell_ifcgeom_settings_t* geometry_settings, ifcopenshell_ifcgeom_serializer_settings_t* serializer_settings, ifcopenshell_ifcgeom_geometry_serializer_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (filename == nullptr) { throw std::runtime_error("Parameter \"filename\" must not be null"); }
-    std::string filename_cpp(filename);
-    if (geometry_settings == nullptr || geometry_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"geometry_settings\" is invalid"); }
-    auto& geometry_settings_cpp = *geometry_settings->ptr;
-    if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
-    auto& serializer_settings_cpp = *serializer_settings->ptr;
-        #if defined(IFOPSH_WITH_OPENCASCADE)
-        *out_result = new ifcopenshell_ifcgeom_geometry_serializer_t{static_cast<GeometrySerializer*>(new IgesSerializer(filename_cpp, geometry_settings_cpp, serializer_settings_cpp)), true};
-#else
-        throw std::runtime_error("ifcopenshell_ifcgeom_create_iges_serializer requires IFOPSH_WITH_OPENCASCADE");
-#endif
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_create_step_serializer(const char* filename, ifcopenshell_ifcgeom_settings_t* geometry_settings, ifcopenshell_ifcgeom_serializer_settings_t* serializer_settings, ifcopenshell_ifcgeom_geometry_serializer_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (filename == nullptr) { throw std::runtime_error("Parameter \"filename\" must not be null"); }
-    std::string filename_cpp(filename);
-    if (geometry_settings == nullptr || geometry_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"geometry_settings\" is invalid"); }
-    auto& geometry_settings_cpp = *geometry_settings->ptr;
-    if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
-    auto& serializer_settings_cpp = *serializer_settings->ptr;
-        #if defined(IFOPSH_WITH_OPENCASCADE)
-        *out_result = new ifcopenshell_ifcgeom_geometry_serializer_t{static_cast<GeometrySerializer*>(new StepSerializer(filename_cpp, geometry_settings_cpp, serializer_settings_cpp)), true};
-#else
-        throw std::runtime_error("ifcopenshell_ifcgeom_create_step_serializer requires IFOPSH_WITH_OPENCASCADE");
-#endif
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_create_collada_serializer(const char* filename, ifcopenshell_ifcgeom_settings_t* geometry_settings, ifcopenshell_ifcgeom_serializer_settings_t* serializer_settings, ifcopenshell_ifcgeom_geometry_serializer_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (filename == nullptr) { throw std::runtime_error("Parameter \"filename\" must not be null"); }
-    std::string filename_cpp(filename);
-    if (geometry_settings == nullptr || geometry_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"geometry_settings\" is invalid"); }
-    auto& geometry_settings_cpp = *geometry_settings->ptr;
-    if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
-    auto& serializer_settings_cpp = *serializer_settings->ptr;
-        #if defined(WITH_OPENCOLLADA)
-        *out_result = new ifcopenshell_ifcgeom_geometry_serializer_t{static_cast<GeometrySerializer*>(new ColladaSerializer(filename_cpp, geometry_settings_cpp, serializer_settings_cpp)), true};
-#else
-        throw std::runtime_error("ifcopenshell_ifcgeom_create_collada_serializer requires WITH_OPENCOLLADA");
-#endif
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_create_hdf_serializer(const char* filename, ifcopenshell_ifcgeom_settings_t* geometry_settings, ifcopenshell_ifcgeom_serializer_settings_t* serializer_settings, ifcopenshell_ifcgeom_geometry_serializer_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (filename == nullptr) { throw std::runtime_error("Parameter \"filename\" must not be null"); }
-    std::string filename_cpp(filename);
-    if (geometry_settings == nullptr || geometry_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"geometry_settings\" is invalid"); }
-    auto& geometry_settings_cpp = *geometry_settings->ptr;
-    if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
-    auto& serializer_settings_cpp = *serializer_settings->ptr;
-        #if defined(WITH_HDF5) && defined(IFOPSH_WITH_OPENCASCADE)
-        *out_result = new ifcopenshell_ifcgeom_geometry_serializer_t{static_cast<GeometrySerializer*>(new HdfSerializer(filename_cpp, geometry_settings_cpp, serializer_settings_cpp)), true};
-#else
-        throw std::runtime_error("ifcopenshell_ifcgeom_create_hdf_serializer requires defined(WITH_HDF5) && defined(IFOPSH_WITH_OPENCASCADE)");
-#endif
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_create_json_serializer(ifcopenshell_ifc_file_t* file, const char* filename, ifcopenshell_ifcgeom_serializer_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
-    auto file_cpp = file->ptr;
-    if (filename == nullptr) { throw std::runtime_error("Parameter \"filename\" must not be null"); }
-    std::string filename_cpp(filename);
-        auto generated_result = [&]() {
-#ifdef WITH_GLTF
-return new JsonSerializer(file_cpp, std::string(filename));
-#else
-throw std::runtime_error("JSON serializer requires GLTF support (nlohmann_json)");
-#endif
-        }();
-        *out_result = new ifcopenshell_ifcgeom_serializer_t{generated_result, true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_create_rocksdb_serializer(ifcopenshell_ifc_file_t* file, const char* rocksdb_filename, ifcopenshell_ifcgeom_serializer_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
-    auto file_cpp = file->ptr;
-    if (rocksdb_filename == nullptr) { throw std::runtime_error("Parameter \"rocksdb_filename\" must not be null"); }
-    std::string rocksdb_filename_cpp(rocksdb_filename);
-        auto generated_result = [&]() {
-#ifdef IFOPSH_WITH_ROCKSDB
-return new RocksDbSerializer(file_cpp, std::string(rocksdb_filename));
-#else
-throw std::runtime_error("RocksDB serializer requires WITH_ROCKSDB support");
-#endif
-        }();
-        *out_result = new ifcopenshell_ifcgeom_serializer_t{generated_result, true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_create_rocksdb_serializer_streaming(const char* input_filename, const char* rocksdb_filename, bool stream, ifcopenshell_ifcgeom_serializer_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (input_filename == nullptr) { throw std::runtime_error("Parameter \"input_filename\" must not be null"); }
-    std::string input_filename_cpp(input_filename);
-    if (rocksdb_filename == nullptr) { throw std::runtime_error("Parameter \"rocksdb_filename\" must not be null"); }
-    std::string rocksdb_filename_cpp(rocksdb_filename);
-        #if defined(IFOPSH_WITH_ROCKSDB)
-        *out_result = new ifcopenshell_ifcgeom_serializer_t{static_cast<Serializer*>(new RocksDbSerializer(input_filename_cpp, rocksdb_filename_cpp, stream)), true};
-#else
-        throw std::runtime_error("ifcopenshell_ifcgeom_create_rocksdb_serializer_streaming requires IFOPSH_WITH_ROCKSDB");
-#endif
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
 bool ifcopenshell_ifcgeom_create_iterator(const char* geometry_library, ifcopenshell_ifcgeom_settings_t* settings, ifcopenshell_ifc_file_t* file, int32_t num_threads, ifcopenshell_ifcgeom_iterator_t** out_result) {
     try {
         ifcopenshell_clear_error();
@@ -4095,7 +4118,8 @@ auto* settings_ptr = settings_cpp;
 auto kernel = ifcopenshell::geometry::kernels::construct(file_cpp, geometry_library_cpp, *settings_ptr);
 return new IfcGeom::Iterator(std::move(kernel), *settings_ptr, file_cpp, num_threads);
         }();
-        *out_result = new ifcopenshell_ifcgeom_iterator_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcGeom::Iterator>(generated_result);
+        *out_result = new ifcopenshell_ifcgeom_iterator_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -4125,7 +4149,8 @@ std::set<std::string> elems_set(elems_cpp.begin(), elems_cpp.end());
 IfcGeom::entity_filter ef{include, false, elems_set};
 return new IfcGeom::Iterator(std::move(kernel), *settings_ptr, file_cpp, {ef}, num_threads);
         }();
-        *out_result = new ifcopenshell_ifcgeom_iterator_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcGeom::Iterator>(generated_result);
+        *out_result = new ifcopenshell_ifcgeom_iterator_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -4158,7 +4183,8 @@ af.populate(elems_set);
 af.include = include;
 return new IfcGeom::Iterator(std::move(kernel), *settings_ptr, file_cpp, {af}, num_threads);
         }();
-        *out_result = new ifcopenshell_ifcgeom_iterator_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcGeom::Iterator>(generated_result);
+        *out_result = new ifcopenshell_ifcgeom_iterator_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -4188,7 +4214,8 @@ std::set<int> elems_set(elems_cpp.begin(), elems_cpp.end());
 IfcGeom::instance_id_filter af(include, false, elems_set);
 return new IfcGeom::Iterator(std::move(kernel), *settings_ptr, file_cpp, {af}, num_threads);
         }();
-        *out_result = new ifcopenshell_ifcgeom_iterator_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcGeom::Iterator>(generated_result);
+        *out_result = new ifcopenshell_ifcgeom_iterator_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -4710,7 +4737,8 @@ else if (entity->declaration().is("IfcRepresentationItem") ||
 }
 throw IfcParse::IfcException("Unsupported instance type for create_shape. Use map_shape for placements.");
         }();
-        *out_result = new ifcopenshell_ifcgeom_element_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcGeom::Element>(generated_result);
+        *out_result = new ifcopenshell_ifcgeom_element_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -4770,7 +4798,8 @@ throw std::runtime_error("serialise requires IFOPSH_WITH_OPENCASCADE");
 return (IfcUtil::IfcBaseClass*)nullptr;
 #endif
         }();
-        *out_result = new ifcopenshell_ifc_instance_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcUtil::IfcBaseClass>(generated_result);
+        *out_result = new ifcopenshell_ifc_instance_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -4803,7 +4832,8 @@ throw std::runtime_error("tesselate requires IFOPSH_WITH_OPENCASCADE");
 return (IfcUtil::IfcBaseClass*)nullptr;
 #endif
         }();
-        *out_result = new ifcopenshell_ifc_instance_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcUtil::IfcBaseClass>(generated_result);
+        *out_result = new ifcopenshell_ifc_instance_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -4819,7 +4849,8 @@ bool ifcopenshell_ifcgeom_create_epeck_from_int(int32_t value, ifcopenshell_ifcg
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
         #if defined(IFOPSH_WITH_CGAL)
-        *out_result = new ifcopenshell_ifcgeom_opaque_number_t{static_cast<IfcGeom::OpaqueNumber*>(new ifcopenshell::geometry::NumberEpeck(value)), true};
+        auto result_value = std::unique_ptr<IfcGeom::OpaqueNumber>(static_cast<IfcGeom::OpaqueNumber*>(new ifcopenshell::geometry::NumberEpeck(value)));
+        *out_result = new ifcopenshell_ifcgeom_opaque_number_t{result_value.release(), true};
 #else
         throw std::runtime_error("ifcopenshell_ifcgeom_create_epeck_from_int requires IFOPSH_WITH_CGAL");
 #endif
@@ -4838,7 +4869,8 @@ bool ifcopenshell_ifcgeom_create_epeck_from_double(double value, ifcopenshell_if
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
         #if defined(IFOPSH_WITH_CGAL)
-        *out_result = new ifcopenshell_ifcgeom_opaque_number_t{static_cast<IfcGeom::OpaqueNumber*>(new ifcopenshell::geometry::NumberEpeck(value)), true};
+        auto result_value = std::unique_ptr<IfcGeom::OpaqueNumber>(static_cast<IfcGeom::OpaqueNumber*>(new ifcopenshell::geometry::NumberEpeck(value)));
+        *out_result = new ifcopenshell_ifcgeom_opaque_number_t{result_value.release(), true};
 #else
         throw std::runtime_error("ifcopenshell_ifcgeom_create_epeck_from_double requires IFOPSH_WITH_CGAL");
 #endif
@@ -4867,7 +4899,8 @@ throw std::runtime_error("create_epeck requires IFOPSH_WITH_CGAL");
 return (IfcGeom::OpaqueNumber*)nullptr;
 #endif
         }();
-        *out_result = new ifcopenshell_ifcgeom_opaque_number_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcGeom::OpaqueNumber>(generated_result);
+        *out_result = new ifcopenshell_ifcgeom_opaque_number_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -4904,7 +4937,8 @@ throw std::runtime_error("nary_union requires IFOPSH_WITH_CGAL");
 return (IfcGeom::ConversionResultShape*)nullptr;
 #endif
         }();
-        *out_result = new ifcopenshell_ifcgeom_conversion_result_shape_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcGeom::ConversionResultShape>(generated_result);
+        *out_result = new ifcopenshell_ifcgeom_conversion_result_shape_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -5157,7 +5191,8 @@ if (!fn) {
 }
 return new ifcopenshell::geometry::function_item_evaluator(*settings_cpp, fn);
         }();
-        *out_result = new ifcopenshell_ifcgeom_function_item_evaluator_t{generated_result, true};
+        auto result_value = std::unique_ptr<ifcopenshell::geometry::function_item_evaluator>(generated_result);
+        *out_result = new ifcopenshell_ifcgeom_function_item_evaluator_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -17904,7 +17939,8 @@ if (auto* entity = instance->as<IfcUtil::IfcBaseEntity>()) {
 }
 return instance;
         }();
-        *out_result = new ifcopenshell_ifc_instance_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcUtil::IfcBaseClass>(generated_result);
+        *out_result = new ifcopenshell_ifc_instance_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -18647,6 +18683,25 @@ bool ifcopenshell_ifcgeom_triangulation_material_count(ifcopenshell_ifcgeom_tria
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->materials().size();
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_triangulation_material_at(ifcopenshell_ifcgeom_triangulation_t* self, size_t index, ifcopenshell_ifcgeom_taxonomy_style_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        const auto& items = self_cpp->materials();
+        if (index >= items.size()) { throw std::runtime_error("Material index out of bounds"); }
+        *out_result = new ifcopenshell_ifcgeom_taxonomy_style_t{items[index]};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -21492,7 +21547,8 @@ bool ifcopenshell_ifcgeom_opaque_number_add(ifcopenshell_ifcgeom_opaque_number_t
         auto generated_result = [&]() {
 return (*self_cpp) + other_cpp;
         }();
-        *out_result = new ifcopenshell_ifcgeom_opaque_number_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcGeom::OpaqueNumber>(generated_result);
+        *out_result = new ifcopenshell_ifcgeom_opaque_number_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -21514,7 +21570,8 @@ bool ifcopenshell_ifcgeom_opaque_number_subtract(ifcopenshell_ifcgeom_opaque_num
         auto generated_result = [&]() {
 return (*self_cpp) - other_cpp;
         }();
-        *out_result = new ifcopenshell_ifcgeom_opaque_number_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcGeom::OpaqueNumber>(generated_result);
+        *out_result = new ifcopenshell_ifcgeom_opaque_number_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -21536,7 +21593,8 @@ bool ifcopenshell_ifcgeom_opaque_number_multiply(ifcopenshell_ifcgeom_opaque_num
         auto generated_result = [&]() {
 return (*self_cpp) * other_cpp;
         }();
-        *out_result = new ifcopenshell_ifcgeom_opaque_number_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcGeom::OpaqueNumber>(generated_result);
+        *out_result = new ifcopenshell_ifcgeom_opaque_number_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -21558,7 +21616,8 @@ bool ifcopenshell_ifcgeom_opaque_number_divide(ifcopenshell_ifcgeom_opaque_numbe
         auto generated_result = [&]() {
 return (*self_cpp) / other_cpp;
         }();
-        *out_result = new ifcopenshell_ifcgeom_opaque_number_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcGeom::OpaqueNumber>(generated_result);
+        *out_result = new ifcopenshell_ifcgeom_opaque_number_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -21578,7 +21637,8 @@ bool ifcopenshell_ifcgeom_opaque_number_negate(ifcopenshell_ifcgeom_opaque_numbe
         auto generated_result = [&]() {
 return -(*self_cpp);
         }();
-        *out_result = new ifcopenshell_ifcgeom_opaque_number_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcGeom::OpaqueNumber>(generated_result);
+        *out_result = new ifcopenshell_ifcgeom_opaque_number_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -22534,6 +22594,25 @@ bool ifcopenshell_ifcgeom_tree_style_count(ifcopenshell_ifcgeom_tree_t* self, si
     }
 }
 
+bool ifcopenshell_ifcgeom_tree_style_at(ifcopenshell_ifcgeom_tree_t* self, size_t index, ifcopenshell_ifcgeom_taxonomy_style_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        const auto& items = self_cpp->styles();
+        if (index >= items.size()) { throw std::out_of_range("Style index out of range"); }
+        *out_result = new ifcopenshell_ifcgeom_taxonomy_style_t{items[index]};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcgeom_tree_clash_a(ifcopenshell_ifcgeom_tree_clash_t* self, ifcopenshell_ifc_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
@@ -22842,6 +22921,90 @@ bool ifcopenshell_ifcgeom_transformation_matrix(ifcopenshell_ifcgeom_transformat
     }
 }
 
+bool ifcopenshell_ifcgeom_tree_clash_count(ifcopenshell_ifcgeom_tree_t* self, ifcopenshell_ifcgeom_tree_clash_list_t* clashes, size_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+    if (clashes == nullptr || clashes->ptr == nullptr) { throw std::runtime_error("Handle parameter \"clashes\" is invalid"); }
+    auto clashes_cpp = clashes->ptr;
+        (void)self_cpp;
+        *out_result = clashes_cpp->size();
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_tree_clash_at(ifcopenshell_ifcgeom_tree_t* self, ifcopenshell_ifcgeom_tree_clash_list_t* clashes, size_t index, ifcopenshell_ifcgeom_tree_clash_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+    if (clashes == nullptr || clashes->ptr == nullptr) { throw std::runtime_error("Handle parameter \"clashes\" is invalid"); }
+    auto clashes_cpp = clashes->ptr;
+        (void)self_cpp;
+        if (index >= clashes_cpp->size()) { throw std::out_of_range("Clash index out of range"); }
+        auto result_value = std::unique_ptr<IfcGeom::clash>(new IfcGeom::clash((*clashes_cpp)[index]));
+        *out_result = new ifcopenshell_ifcgeom_tree_clash_t{result_value.release(), true};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_tree_ray_intersection_count(ifcopenshell_ifcgeom_tree_t* self, ifcopenshell_ifcgeom_tree_ray_intersection_list_t* intersections, size_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+    if (intersections == nullptr || intersections->ptr == nullptr) { throw std::runtime_error("Handle parameter \"intersections\" is invalid"); }
+    auto intersections_cpp = intersections->ptr;
+        (void)self_cpp;
+        *out_result = intersections_cpp->size();
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_tree_ray_intersection_at(ifcopenshell_ifcgeom_tree_t* self, ifcopenshell_ifcgeom_tree_ray_intersection_list_t* intersections, size_t index, ifcopenshell_ifcgeom_tree_ray_intersection_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+    if (intersections == nullptr || intersections->ptr == nullptr) { throw std::runtime_error("Handle parameter \"intersections\" is invalid"); }
+    auto intersections_cpp = intersections->ptr;
+        (void)self_cpp;
+        if (index >= intersections_cpp->size()) { throw std::out_of_range("Ray intersection index out of range"); }
+        auto result_value = std::unique_ptr<IfcGeom::ray_intersection_result>(new IfcGeom::ray_intersection_result((*intersections_cpp)[index]));
+        *out_result = new ifcopenshell_ifcgeom_tree_ray_intersection_t{result_value.release(), true};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcgeom_tree_select_element(ifcopenshell_ifcgeom_tree_t* self, ifcopenshell_ifc_instance_t* instance, bool completely_within, double extend, ifcopenshell_ifcparse_instance_list_t** out_result) {
     try {
         ifcopenshell_clear_error();
@@ -23048,30 +23211,6 @@ return result;
     }
 }
 
-bool ifcopenshell_ifcgeom_tree_style_at(ifcopenshell_ifcgeom_tree_t* self, size_t index, ifcopenshell_ifcgeom_taxonomy_style_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-const auto& styles = self_cpp->styles();
-if (index >= styles.size()) {
-    throw std::out_of_range("Style index out of range");
-}
-return styles[index];
-        }();
-        *out_result = new ifcopenshell_ifcgeom_taxonomy_style_t{generated_result};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
 bool ifcopenshell_ifcgeom_tree_clash_intersection_many(ifcopenshell_ifcgeom_tree_t* self, ifcopenshell_ifcparse_instance_list_t* set_a, ifcopenshell_ifcparse_instance_list_t* set_b, double tolerance, bool check_all, ifcopenshell_ifcgeom_tree_clash_list_t** out_result) {
     try {
         ifcopenshell_clear_error();
@@ -23105,7 +23244,8 @@ for (auto it = set_b_cpp->begin(); it != set_b_cpp->end(); ++it) {
 
 return new std::vector<IfcGeom::clash>(self_cpp->clash_intersection_many(entities_a, entities_b, tolerance, check_all));
         }();
-        *out_result = new ifcopenshell_ifcgeom_tree_clash_list_t{generated_result, true};
+        auto result_value = std::unique_ptr<std::vector<IfcGeom::clash>>(generated_result);
+        *out_result = new ifcopenshell_ifcgeom_tree_clash_list_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -23149,7 +23289,8 @@ for (auto it = set_b_cpp->begin(); it != set_b_cpp->end(); ++it) {
 
 return new std::vector<IfcGeom::clash>(self_cpp->clash_collision_many(entities_a, entities_b, allow_touching));
         }();
-        *out_result = new ifcopenshell_ifcgeom_tree_clash_list_t{generated_result, true};
+        auto result_value = std::unique_ptr<std::vector<IfcGeom::clash>>(generated_result);
+        *out_result = new ifcopenshell_ifcgeom_tree_clash_list_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -23193,54 +23334,8 @@ for (auto it = set_b_cpp->begin(); it != set_b_cpp->end(); ++it) {
 
 return new std::vector<IfcGeom::clash>(self_cpp->clash_clearance_many(entities_a, entities_b, clearance, check_all));
         }();
-        *out_result = new ifcopenshell_ifcgeom_tree_clash_list_t{generated_result, true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_clash_count(ifcopenshell_ifcgeom_tree_t* self, ifcopenshell_ifcgeom_tree_clash_list_t* clashes, size_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-    if (clashes == nullptr || clashes->ptr == nullptr) { throw std::runtime_error("Handle parameter \"clashes\" is invalid"); }
-    auto clashes_cpp = clashes->ptr;
-        auto generated_result = [&]() {
-return clashes_cpp->size();
-        }();
-        *out_result = static_cast<size_t>(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_clash_at(ifcopenshell_ifcgeom_tree_t* self, ifcopenshell_ifcgeom_tree_clash_list_t* clashes, size_t index, ifcopenshell_ifcgeom_tree_clash_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-    if (clashes == nullptr || clashes->ptr == nullptr) { throw std::runtime_error("Handle parameter \"clashes\" is invalid"); }
-    auto clashes_cpp = clashes->ptr;
-        auto generated_result = [&]() {
-if (index >= clashes_cpp->size()) {
-    throw std::out_of_range("Clash index out of range");
-}
-return new IfcGeom::clash((*clashes_cpp)[index]);
-        }();
-        *out_result = new ifcopenshell_ifcgeom_tree_clash_t{generated_result, true};
+        auto result_value = std::unique_ptr<std::vector<IfcGeom::clash>>(generated_result);
+        *out_result = new ifcopenshell_ifcgeom_tree_clash_list_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -23262,54 +23357,8 @@ gp_Pnt p0(origin_x, origin_y, origin_z);
 gp_Dir d(dir_x, dir_y, dir_z);
 return new std::vector<IfcGeom::ray_intersection_result>(self_cpp->select_ray(p0, d, length));
         }();
-        *out_result = new ifcopenshell_ifcgeom_tree_ray_intersection_list_t{generated_result, true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_ray_intersection_count(ifcopenshell_ifcgeom_tree_t* self, ifcopenshell_ifcgeom_tree_ray_intersection_list_t* intersections, size_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-    if (intersections == nullptr || intersections->ptr == nullptr) { throw std::runtime_error("Handle parameter \"intersections\" is invalid"); }
-    auto intersections_cpp = intersections->ptr;
-        auto generated_result = [&]() {
-return intersections_cpp->size();
-        }();
-        *out_result = static_cast<size_t>(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_ray_intersection_at(ifcopenshell_ifcgeom_tree_t* self, ifcopenshell_ifcgeom_tree_ray_intersection_list_t* intersections, size_t index, ifcopenshell_ifcgeom_tree_ray_intersection_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-    if (intersections == nullptr || intersections->ptr == nullptr) { throw std::runtime_error("Handle parameter \"intersections\" is invalid"); }
-    auto intersections_cpp = intersections->ptr;
-        auto generated_result = [&]() {
-if (index >= intersections_cpp->size()) {
-    throw std::out_of_range("Ray intersection index out of range");
-}
-return new IfcGeom::ray_intersection_result((*intersections_cpp)[index]);
-        }();
-        *out_result = new ifcopenshell_ifcgeom_tree_ray_intersection_t{generated_result, true};
+        auto result_value = std::unique_ptr<std::vector<IfcGeom::ray_intersection_result>>(generated_result);
+        *out_result = new ifcopenshell_ifcgeom_tree_ray_intersection_list_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -23607,7 +23656,8 @@ bool ifcopenshell_ifcgeom_brep_representation_as_compound(ifcopenshell_ifcgeom_b
         auto generated_result = [&]() {
 return self_cpp->as_compound(force_meters);
         }();
-        *out_result = new ifcopenshell_ifcgeom_conversion_result_shape_t{generated_result, true};
+        auto result_value = std::unique_ptr<IfcGeom::ConversionResultShape>(generated_result);
+        *out_result = new ifcopenshell_ifcgeom_conversion_result_shape_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -23826,29 +23876,6 @@ delete result;
 return val;
         }();
         *out_result = static_cast<double>(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_triangulation_material_at(ifcopenshell_ifcgeom_triangulation_t* self, size_t index, ifcopenshell_ifcgeom_taxonomy_style_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-if (index >= self_cpp->materials().size()) {
-    throw std::runtime_error("Material index out of bounds");
-}
-return self_cpp->materials()[index];
-        }();
-        *out_result = new ifcopenshell_ifcgeom_taxonomy_style_t{generated_result};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

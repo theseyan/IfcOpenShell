@@ -154,6 +154,13 @@ def _class_residuals(spec_name: str, classes: list[Any]) -> list[Residual]:
                 "Keep as policy unless the generator can infer C count accessors for returned containers safely.",
             ),
             (
+                "method_at_accessors",
+                "method_at_accessor",
+                "stable_c_abi_policy",
+                "cxx_ast_candidate",
+                "Keep indexed accessor names, ownership, and error behavior explicit; source validation proves the container-returning method exists.",
+            ),
+            (
                 "enum_types_as_int32",
                 "enum_return_policy",
                 "cxx_inference_gap",
@@ -237,11 +244,34 @@ def _handle_family_residuals(spec_name: str, families: list[Any]) -> list[Residu
     return residuals
 
 
+def _handle_residuals(spec_name: str, handles: list[Any]) -> list[Residual]:
+    residuals: list[Residual] = []
+    for index, handle in enumerate(handles):
+        if not isinstance(handle, dict):
+            continue
+        list_accessors = handle.get("list_accessors")
+        if not list_accessors:
+            continue
+        name = str(handle.get("name", f"handles[{index}]"))
+        residuals.append(
+            Residual(
+                spec=spec_name,
+                path=f"handles[{index}]({name}).list_accessors",
+                category="list_handle_accessor",
+                reason="stable_c_abi_policy",
+                inference_source="yaml_only",
+                next_step="Keep list accessor names and out-of-range messages explicit; item copy type is derived from the selected handle.",
+            )
+        )
+    return residuals
+
+
 def _spec_residuals(spec_path: Path) -> list[Residual]:
     spec = _load_yaml(spec_path)
     spec_name = spec_path.name
     residuals: list[Residual] = []
     residuals.extend(_handle_family_residuals(spec_name, spec.get("handle_families", [])))
+    residuals.extend(_handle_residuals(spec_name, spec.get("handles", [])))
 
     discover = spec.get("discover", {})
     if isinstance(discover, dict):
