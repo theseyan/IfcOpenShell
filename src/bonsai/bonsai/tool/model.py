@@ -15,6 +15,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Bonsai.  If not, see <http://www.gnu.org/licenses/>.
+#
+# This file was modified with the assistance of an AI coding tool.
 
 from __future__ import annotations
 
@@ -77,6 +79,7 @@ if TYPE_CHECKING:
         BIMRoofProperties,
         BIMStairProperties,
         BIMSverchokProperties,
+        BIMWallProperties,
         BIMWindowProperties,
     )
 
@@ -97,6 +100,10 @@ class Model(bonsai.core.tool.Model):
     @classmethod
     def get_stair_props(cls, obj: bpy.types.Object) -> BIMStairProperties:
         return obj.BIMStairProperties  # pyright: ignore[reportAttributeAccessIssue]
+
+    @classmethod
+    def get_wall_props(cls, obj: bpy.types.Object) -> BIMWallProperties:
+        return obj.BIMWallProperties  # pyright: ignore[reportAttributeAccessIssue]
 
     @classmethod
     def get_roof_props(cls, obj: bpy.types.Object) -> BIMRoofProperties:
@@ -1305,8 +1312,8 @@ class Model(bonsai.core.tool.Model):
         return [obj for obj in tool.Blender.get_selected_objects() if tool.Ifc.get_entity(obj)]
 
     @classmethod
-    def has_selected_ifc_objects(cls) -> bool:
-        return any(tool.Ifc.get_entity(obj) for obj in tool.Blender.get_selected_objects())
+    def has_selected_ifc_objects(cls, include_active: bool = True) -> bool:
+        return any(tool.Ifc.get_entity(obj) for obj in tool.Blender.get_selected_objects(include_active=include_active))
 
     @classmethod
     def get_selected_mesh_objects(cls) -> list[bpy.types.Object]:
