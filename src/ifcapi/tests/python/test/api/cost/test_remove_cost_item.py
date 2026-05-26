@@ -17,6 +17,9 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell.api.cost
+import ifcopenshell.api.control
+import ifcopenshell.api.root
+import ifcopenshell.util.cost
 import test.bootstrap
 
 
@@ -55,6 +58,14 @@ class TestRemoveCostItem(test.bootstrap.IFC4):
         rel = next(iter(self.file.by_type("IfcRelAssignsToControl")), None)
         assert rel
         assert rel.RelatedObjects == (item2,)
+
+    def test_remove_cost_item_removes_product_assignment(self):
+        schedule = ifcopenshell.api.cost.add_cost_schedule(self.file, name="Foo", predefined_type="BUDGET")
+        item = ifcopenshell.api.cost.add_cost_item(self.file, cost_schedule=schedule)
+        element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        ifcopenshell.api.control.assign_control(self.file, related_objects=[element], relating_control=item)
+        ifcopenshell.api.cost.remove_cost_item(self.file, cost_item=item)
+        assert ifcopenshell.util.cost.get_cost_items_for_product(element) == []
 
 
 class TestRemoveCostItemIFC2X3(test.bootstrap.IFC2X3, TestRemoveCostItem):
