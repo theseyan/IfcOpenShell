@@ -18,6 +18,7 @@
 
 import ifcopenshell.api
 import ifcopenshell.util.unit
+from ifcopenshell.api.cost import _capi
 
 
 def add_cost_item_quantity(
@@ -73,18 +74,11 @@ def add_cost_item_quantity(
         ifcopenshell.api.cost.add_cost_item_quantity(model,
             cost_item=item, ifc_class="IfcQuantityCount")
     """
-    quantity = file.create_entity(ifc_class, Name="Unnamed")
-    # 3 IfcPhysicalSimpleQuantity Value
-    # This is a bold assumption
-    # https://forums.buildingsmart.org/t/how-does-a-cost-item-know-that-it-is-counting-a-controlled-product/3564
-    if ifc_class == "IfcQuantityCount":
-        count = 0
-        for rel in cost_item.Controls:
-            count += len(rel.RelatedObjects)
-        quantity[3] = count
-    else:
-        quantity[3] = 0.0
-    quantities = list(cost_item.CostQuantities or [])
-    quantities.append(quantity)
-    cost_item.CostQuantities = quantities
-    return quantity
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_cost_add_cost_item_quantity,
+        _capi.file_handle(file),
+        _capi.instance_handle(cost_item),
+        _capi.string(ifc_class),
+    )

@@ -18,10 +18,8 @@
 
 from typing import Optional
 
-import ifcopenshell.api.control
-import ifcopenshell.api.nest
-import ifcopenshell.api.root
-import ifcopenshell.guid
+import ifcopenshell
+from ifcopenshell.api.cost import _capi
 
 
 def add_cost_item(
@@ -57,10 +55,15 @@ def add_cost_item(
         # Alternatively you may add them as subitems
         item2 = ifcopenshell.api.cost.add_cost_item(model, cost_item=item1)
     """
-    cost_item_ = ifcopenshell.api.root.create_entity(file, ifc_class="IfcCostItem")
-
-    if cost_schedule:
-        ifcopenshell.api.control.assign_control(file, cost_schedule, [cost_item_])
-    elif cost_item:
-        ifcopenshell.api.nest.assign_object(file, related_objects=[cost_item_], relating_object=cost_item)
-    return cost_item_
+    lib = _capi.get_lib()
+    owner_history, user, application = _capi.owner_context(file)
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_cost_add_cost_item,
+        _capi.file_handle(file),
+        _capi.instance_handle(cost_schedule),
+        _capi.instance_handle(cost_item),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+    )

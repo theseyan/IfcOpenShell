@@ -19,8 +19,9 @@
 from datetime import datetime
 from typing import Optional
 
-import ifcopenshell.api.root
-import ifcopenshell.api.sequence
+import ifcopenshell
+import ifcopenshell.util.date
+from ifcopenshell.api.cost import _capi
 
 
 def add_cost_schedule(
@@ -53,11 +54,16 @@ def add_cost_schedule(
         # Now that we have a cost schedule, we may add cost items to it
         item = ifcopenshell.api.cost.add_cost_item(model, cost_schedule=schedule)
     """
-    cost_schedule = ifcopenshell.api.root.create_entity(
+    lib = _capi.get_lib()
+    owner_history, _, _ = _capi.owner_context(file)
+    update_date = ifcopenshell.util.date.datetime2ifc(datetime.now(), "IfcDateTime")
+    assert isinstance(update_date, str)
+    return _capi.call_handle(
         file,
-        ifc_class="IfcCostSchedule",
-        predefined_type=predefined_type,
-        name=name,
+        lib.ifcopenshell_ifcapi_cost_add_cost_schedule,
+        _capi.file_handle(file),
+        _capi.string(name) if name is not None else None,
+        _capi.string(predefined_type),
+        _capi.string(update_date),
+        _capi.instance_handle(owner_history),
     )
-    cost_schedule.UpdateDate = ifcopenshell.api.sequence.add_date_time(file, datetime.now())
-    return cost_schedule

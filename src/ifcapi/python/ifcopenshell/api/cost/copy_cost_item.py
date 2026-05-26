@@ -19,8 +19,7 @@
 from typing import Union
 
 import ifcopenshell
-import ifcopenshell.api.nest
-import ifcopenshell.util.element
+from ifcopenshell.api.cost import _capi
 
 
 def copy_cost_item(
@@ -48,68 +47,11 @@ def copy_cost_item(
 
 
     """
-    usecase = Usecase()
-    usecase.file = file
-    return usecase.execute(cost_item)
-
-
-class Usecase:
-    file: ifcopenshell.file
-    new_cost_items: list[ifcopenshell.entity_instance]
-
-    def execute(
-        self, cost_item: ifcopenshell.entity_instance
-    ) -> Union[ifcopenshell.entity_instance, list[ifcopenshell.entity_instance]]:
-        self.new_cost_items = []
-        self.duplicate_cost_item(cost_item)
-        return self.new_cost_items[0] if len(self.new_cost_items) == 1 else self.new_cost_items
-
-    def duplicate_cost_item(self, cost_item: ifcopenshell.entity_instance) -> ifcopenshell.entity_instance:
-        new_cost_item = ifcopenshell.util.element.copy_deep(self.file, cost_item)
-        self.new_cost_items.append(new_cost_item)
-        self.copy_indirect_attributes(cost_item, new_cost_item)
-        return new_cost_item
-
-    def copy_indirect_attributes(
-        self, from_element: ifcopenshell.entity_instance, to_element: ifcopenshell.entity_instance
-    ) -> None:
-        for inverse in self.file.get_inverse(from_element):
-            if inverse.is_a("IfcRelDefinesByProperties"):
-                inverse = ifcopenshell.util.element.copy(self.file, inverse)
-                inverse.RelatedObjects = [to_element]
-                pset = ifcopenshell.util.element.copy_deep(self.file, inverse.RelatingPropertyDefinition)
-                inverse.RelatingPropertyDefinition = pset
-            elif inverse.is_a("IfcRelNests") and inverse.RelatingObject == from_element:
-                nested_cost_items = [e for e in inverse.RelatedObjects]
-                if nested_cost_items:
-                    new_cost_items = []
-                    for cost_item in nested_cost_items:
-                        new_cost_item = self.duplicate_cost_item(cost_item)
-                        new_cost_items.append(new_cost_item)
-                    inverse = ifcopenshell.util.element.copy(self.file, inverse)
-                    inverse.RelatingObject = to_element
-                    inverse.RelatedObjects = new_cost_items
-                    ifcopenshell.api.nest.unassign_object(self.file, related_objects=new_cost_items)
-                    ifcopenshell.api.nest.assign_object(
-                        self.file, related_objects=new_cost_items, relating_object=to_element
-                    )
-            # elif inverse.is_a("IfcRelAssignsToProduct"):
-            #     continue
-            #     to_element.IsDefinedBy = inverse.RelatingOrder
-            # elif inverse.is_a("IfcRelAssignsToProcess"):
-            #     to_element.IsDefinedBy = inverse.RelatingProcess
-            # elif inverse.is_a("IfcRelAssignsToResource"):
-            #     continue
-            # elif inverse.is_a("IfcRelAssignsToControl"):
-            #     continue
-            # elif inverse.is_a("IfcRelDefinesByObject"):
-            #     continue
-            else:
-                for i, value in enumerate(inverse):
-                    if value == from_element:
-                        new_inverse = ifcopenshell.util.element.copy(self.file, inverse)
-                        new_inverse[i] = to_element
-                    elif isinstance(value, (tuple, list)) and from_element in value:
-                        new_value = list(value)
-                        new_value.append(to_element)
-                        inverse[i] = new_value
+    lib = _capi.get_lib()
+    copied = _capi.call_handle_list(
+        file,
+        lib.ifcopenshell_ifcapi_cost_copy_cost_item,
+        _capi.file_handle(file),
+        _capi.instance_handle(cost_item),
+    )
+    return copied[0] if len(copied) == 1 else copied

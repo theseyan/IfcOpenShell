@@ -16,9 +16,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ifcopenshell.api.control
-import ifcopenshell.api.cost
-import ifcopenshell.util.element
+import ifcopenshell
+from ifcopenshell.api.cost import _capi
 
 
 def copy_cost_schedule(
@@ -36,14 +35,14 @@ def copy_cost_schedule(
         schedule = ifcopenshell.api.cost.add_cost_schedule(model)
         new_schedule = ifcopenshell.api.cost.copy_cost_schedule(schedule)
     """
-    # Shared code logic with copy_work_schedule.
-    new_schedule = ifcopenshell.util.element.copy(file, cost_schedule)
-
-    for rel in cost_schedule.Controls:
-        for cost_item in rel.RelatedObjects:
-            duplicated_cost_item = ifcopenshell.api.cost.copy_cost_item(file, cost_item)
-            if isinstance(duplicated_cost_item, list):
-                # All other nested items are not connected to the cost schedule explicitly.
-                duplicated_cost_item = duplicated_cost_item[0]
-            ifcopenshell.api.control.assign_control(file, new_schedule, [duplicated_cost_item])
-    return new_schedule
+    lib = _capi.get_lib()
+    owner_history, user, application = _capi.owner_context(file)
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_cost_copy_cost_schedule,
+        _capi.file_handle(file),
+        _capi.instance_handle(cost_schedule),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+    )

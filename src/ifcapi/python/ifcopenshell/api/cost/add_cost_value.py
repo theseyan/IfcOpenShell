@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 import ifcopenshell
+from ifcopenshell.api.cost import _capi
 
 
 def add_cost_value(file: ifcopenshell.file, parent: ifcopenshell.entity_instance) -> ifcopenshell.entity_instance:
@@ -89,17 +90,10 @@ def add_cost_value(file: ifcopenshell.file, parent: ifcopenshell.entity_instance
         ifcopenshell.api.cost.edit_cost_value(model,
             cost_value=subvalue2, attributes={"AppliedValue": 3.0})
     """
-    value = file.create_entity("IfcCostValue")
-    if parent.is_a("IfcCostItem"):
-        values = list(parent.CostValues or [])
-        values.append(value)
-        parent.CostValues = values
-    elif parent.is_a("IfcConstructionResource"):
-        values = list(parent.BaseCosts or [])
-        values.append(value)
-        parent.BaseCosts = values
-    elif parent.is_a("IfcCostValue"):
-        values = list(parent.Components or [])
-        values.append(value)
-        parent.Components = values
-    return value
+    lib = _capi.get_lib()
+    return _capi.call_handle(
+        file,
+        lib.ifcopenshell_ifcapi_cost_add_cost_value,
+        _capi.file_handle(file),
+        _capi.instance_handle(parent),
+    )

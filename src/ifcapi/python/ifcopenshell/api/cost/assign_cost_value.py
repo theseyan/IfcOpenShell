@@ -16,7 +16,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ifcopenshell.api.cost
+import ifcopenshell
+from ifcopenshell.api.cost import _capi
 
 
 def assign_cost_value(
@@ -58,14 +59,10 @@ def assign_cost_value(
         # Now the cost item has the same rate as the one from the schedule of rate's item
         ifcopenshell.api.cost.assign_cost_value(model, cost_item=item, cost_rate=rate)
     """
-    if cost_item.CostValues:
-        [
-            ifcopenshell.api.cost.remove_cost_value(
-                file,
-                parent=cost_item,
-                cost_value=cost_value,
-            )
-            for cost_value in cost_item.CostValues
-        ]
-    # This is an assumption, and not part of the official IFC documentation
-    cost_item.CostValues = cost_rate.CostValues
+    lib = _capi.get_lib()
+    return _capi.call_status(
+        lib.ifcopenshell_ifcapi_cost_assign_cost_value,
+        _capi.file_handle(file),
+        _capi.instance_handle(cost_item),
+        _capi.instance_handle(cost_rate),
+    )

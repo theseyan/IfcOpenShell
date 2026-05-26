@@ -16,7 +16,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ifcopenshell.api.control
+import ifcopenshell
+from ifcopenshell.api.cost import _capi
 
 
 def unassign_cost_item_quantity(
@@ -64,43 +65,13 @@ def unassign_cost_item_quantity(
         ifcopenshell.api.cost.unassign_cost_item_quantity(model,
             cost_item=item, products=[slab])
     """
-    usecase = Usecase()
-    usecase.file = file
-    return usecase.execute(cost_item, products or [])
-
-
-class Usecase:
-    file: ifcopenshell.file
-
-    def execute(self, cost_item: ifcopenshell.entity_instance, products: list[ifcopenshell.entity_instance]) -> None:
-        quantities = set(cost_item.CostQuantities or [])
-        for quantity in cost_item.CostQuantities or []:
-            for inverse in self.file.get_inverse(quantity):
-                if not inverse.is_a("IfcElementQuantity"):
-                    continue
-                for rel in inverse.DefinesOccurrence or []:
-                    for related_object in rel.RelatedObjects:
-                        if related_object in products:
-                            quantities.remove(quantity)
-        cost_item.CostQuantities = list(quantities)
-        for product in products:
-            ifcopenshell.api.control.unassign_control(
-                self.file,
-                related_objects=[product],
-                relating_control=cost_item,
-            )
-        self.update_cost_item_count(cost_item)
-
-    def update_cost_item_count(self, cost_item: ifcopenshell.entity_instance) -> None:
-        # This is a bold assumption
-        # https://forums.buildingsmart.org/t/how-does-a-cost-item-know-that-it-is-counting-a-controlled-product/3564
-        if len(cost_item.CostQuantities) == 1:
-            quantity = cost_item.CostQuantities[0]
-            if quantity.is_a("IfcQuantityCount"):
-                count = 0
-                for rel in cost_item.Controls:
-                    count += len(rel.RelatedObjects)
-                if count:
-                    quantity[3] = count
-                else:
-                    self.file.remove(quantity)
+    lib = _capi.get_lib()
+    _, user, application = _capi.owner_context(file)
+    return _capi.call_status(
+        lib.ifcopenshell_ifcapi_cost_unassign_cost_item_quantity,
+        _capi.file_handle(file),
+        _capi.instance_handle(cost_item),
+        _capi.instance_list(products or []),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+    )

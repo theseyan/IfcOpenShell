@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 import ifcopenshell
+from ifcopenshell.api.cost import _capi
 
 
 def remove_cost_item_quantity(
@@ -43,9 +44,10 @@ def remove_cost_item_quantity(
         ifcopenshell.api.cost.remove_cost_item(model,
             cost_item=item, physical_quantity=quantity)
     """
-    if file.get_total_inverses(physical_quantity) == 1:
-        file.remove(physical_quantity)
-        return
-    quantities = list(cost_item.CostQuantities or [])
-    quantities.remove(physical_quantity)
-    cost_item.CostQuantities = quantities
+    lib = _capi.get_lib()
+    return _capi.call_status(
+        lib.ifcopenshell_ifcapi_cost_remove_cost_item_quantity,
+        _capi.file_handle(file),
+        _capi.instance_handle(cost_item),
+        _capi.instance_handle(physical_quantity),
+    )

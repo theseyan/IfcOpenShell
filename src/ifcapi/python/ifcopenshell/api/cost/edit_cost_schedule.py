@@ -18,7 +18,7 @@
 from typing import Any
 
 import ifcopenshell
-from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
+from ifcopenshell.api.cost import _capi
 
 
 def edit_cost_schedule(
@@ -41,4 +41,14 @@ def edit_cost_schedule(
         ifcopenshell.api.cost.edit_cost_schedule(model,
             cost_schedule=schedule, attributes={"Name": "Foo"})
     """
-    _edit_attributes(file, cost_schedule, attributes)
+    lib = _capi.get_lib()
+    props = _capi.build_props(attributes)
+    try:
+        return _capi.call_status(
+            lib.ifcopenshell_ifcapi_cost_edit_cost_schedule,
+            _capi.file_handle(file),
+            _capi.instance_handle(cost_schedule),
+            props,
+        )
+    finally:
+        _capi.free_props(props)

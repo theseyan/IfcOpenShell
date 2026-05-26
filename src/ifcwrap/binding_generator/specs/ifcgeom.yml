@@ -2086,7 +2086,7 @@ functions:
             input.push_back(*p);
         }
         std::vector<svgfill::polygon_2> arranged;
-        if (!svgfill::arrange_polygons(input, arranged)) {
+        if (!svgfill::arrange_polygons(svgfill::arrange_polygon_settings(), input, arranged)) {
             throw std::runtime_error("Failed to arrange polygons");
         }
         std::vector<const svgfill::polygon_2*> result;
