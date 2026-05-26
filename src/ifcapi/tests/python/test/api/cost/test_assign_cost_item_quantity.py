@@ -50,3 +50,13 @@ class TestUnassignCostItemQuantity(test.bootstrap.IFC4):
         assert item.CostQuantities
         ifcopenshell.api.cost.unassign_cost_item_quantity(self.file, cost_item=item, products=[wall])
         assert not item.CostQuantities
+
+    def test_unassign_count_includes_resources(self):
+        schedule = ifcopenshell.api.cost.add_cost_schedule(self.file)
+        item = ifcopenshell.api.cost.add_cost_item(self.file, cost_schedule=schedule)
+        wall = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        resource = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcConstructionMaterialResource")
+        ifcopenshell.api.cost.assign_cost_item_quantity(self.file, cost_item=item, products=[wall, resource])
+        assert item.CostQuantities[0][3] == 1
+        ifcopenshell.api.cost.unassign_cost_item_quantity(self.file, cost_item=item, products=[wall])
+        assert item.CostQuantities[0][3] == 1

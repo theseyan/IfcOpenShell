@@ -5046,7 +5046,7 @@ for (auto* p : polygons_cpp) {
     input.push_back(*p);
 }
 std::vector<svgfill::polygon_2> arranged;
-if (!svgfill::arrange_polygons(input, arranged)) {
+if (!svgfill::arrange_polygons(svgfill::arrange_polygon_settings(), input, arranged)) {
     throw std::runtime_error("Failed to arrange polygons");
 }
 std::vector<const svgfill::polygon_2*> result;
@@ -5842,6 +5842,274 @@ bool ifcopenshell_ifcapi_control_unassign_control(ifcopenshell_ifc_file_t* file,
     }
 }
 
+bool ifcopenshell_ifcapi_cost_add_cost_item(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* cost_schedule, ifcopenshell_ifc_instance_t* cost_item, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    auto cost_schedule_cpp = (cost_schedule != nullptr && cost_schedule->ptr != nullptr) ? cost_schedule->ptr : nullptr;
+    auto cost_item_cpp = (cost_item != nullptr && cost_item->ptr != nullptr) ? cost_item->ptr : nullptr;
+    auto owner_history_cpp = (owner_history != nullptr && owner_history->ptr != nullptr) ? owner_history->ptr : nullptr;
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::cost_add_cost_item(file_cpp, cost_schedule_cpp, cost_item_cpp, owner_history_cpp, user_cpp, application_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_cost_add_cost_item_quantity(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* cost_item, const char* ifc_class, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (cost_item == nullptr || cost_item->ptr == nullptr) { throw std::runtime_error("Handle parameter \"cost_item\" is invalid"); }
+    auto cost_item_cpp = cost_item->ptr;
+    if (ifc_class == nullptr) { throw std::runtime_error("Parameter \"ifc_class\" must not be null"); }
+    std::string ifc_class_cpp(ifc_class);
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::cost_add_cost_item_quantity(file_cpp, cost_item_cpp, ifc_class_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_cost_add_cost_schedule(ifcopenshell_ifc_file_t* file, const char* name, const char* predefined_type, const char* update_date, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    const char* name_str = name;
+    if (predefined_type == nullptr) { throw std::runtime_error("Parameter \"predefined_type\" must not be null"); }
+    std::string predefined_type_cpp(predefined_type);
+    if (update_date == nullptr) { throw std::runtime_error("Parameter \"update_date\" must not be null"); }
+    std::string update_date_cpp(update_date);
+    auto owner_history_cpp = (owner_history != nullptr && owner_history->ptr != nullptr) ? owner_history->ptr : nullptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::cost_add_cost_schedule(file_cpp, name, predefined_type_cpp, update_date_cpp, owner_history_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_cost_add_cost_value(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* parent, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (parent == nullptr || parent->ptr == nullptr) { throw std::runtime_error("Handle parameter \"parent\" is invalid"); }
+    auto parent_cpp = parent->ptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::cost_add_cost_value(file_cpp, parent_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_cost_assign_cost_item_quantity(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* cost_item, const ifcopenshell_ifc_instance_list_t* products, const char* prop_name, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (cost_item == nullptr || cost_item->ptr == nullptr) { throw std::runtime_error("Handle parameter \"cost_item\" is invalid"); }
+    auto cost_item_cpp = cost_item->ptr;
+    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
+    auto products_cpp = to_cpp_ifc_instance_list(products);
+    const char* prop_name_str = prop_name;
+    auto owner_history_cpp = (owner_history != nullptr && owner_history->ptr != nullptr) ? owner_history->ptr : nullptr;
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        ifcapi::bindings::cost_assign_cost_item_quantity(file_cpp, cost_item_cpp, products_cpp, prop_name, owner_history_cpp, user_cpp, application_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_cost_assign_cost_value(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* cost_item, ifcopenshell_ifc_instance_t* cost_rate) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (cost_item == nullptr || cost_item->ptr == nullptr) { throw std::runtime_error("Handle parameter \"cost_item\" is invalid"); }
+    auto cost_item_cpp = cost_item->ptr;
+    if (cost_rate == nullptr || cost_rate->ptr == nullptr) { throw std::runtime_error("Handle parameter \"cost_rate\" is invalid"); }
+    auto cost_rate_cpp = cost_rate->ptr;
+        ifcapi::bindings::cost_assign_cost_value(file_cpp, cost_item_cpp, cost_rate_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_cost_calculate_cost_item_resource_value(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* cost_item) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (cost_item == nullptr || cost_item->ptr == nullptr) { throw std::runtime_error("Handle parameter \"cost_item\" is invalid"); }
+    auto cost_item_cpp = cost_item->ptr;
+        ifcapi::bindings::cost_calculate_cost_item_resource_value(file_cpp, cost_item_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_cost_copy_cost_item(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* cost_item, ifcopenshell_ifc_instance_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (cost_item == nullptr || cost_item->ptr == nullptr) { throw std::runtime_error("Handle parameter \"cost_item\" is invalid"); }
+    auto cost_item_cpp = cost_item->ptr;
+        *out_result = make_ifc_instance_list(ifcapi::bindings::cost_copy_cost_item(file_cpp, cost_item_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_cost_copy_cost_item_values(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* source, ifcopenshell_ifc_instance_t* destination) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (source == nullptr || source->ptr == nullptr) { throw std::runtime_error("Handle parameter \"source\" is invalid"); }
+    auto source_cpp = source->ptr;
+    if (destination == nullptr || destination->ptr == nullptr) { throw std::runtime_error("Handle parameter \"destination\" is invalid"); }
+    auto destination_cpp = destination->ptr;
+        ifcapi::bindings::cost_copy_cost_item_values(file_cpp, source_cpp, destination_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_cost_copy_cost_schedule(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* cost_schedule, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (cost_schedule == nullptr || cost_schedule->ptr == nullptr) { throw std::runtime_error("Handle parameter \"cost_schedule\" is invalid"); }
+    auto cost_schedule_cpp = cost_schedule->ptr;
+    auto owner_history_cpp = (owner_history != nullptr && owner_history->ptr != nullptr) ? owner_history->ptr : nullptr;
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        *out_result = new ifcopenshell_ifc_instance_t{ifcapi::bindings::cost_copy_cost_schedule(file_cpp, cost_schedule_cpp, owner_history_cpp, user_cpp, application_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_cost_edit_cost_item(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* cost_item, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (cost_item == nullptr || cost_item->ptr == nullptr) { throw std::runtime_error("Handle parameter \"cost_item\" is invalid"); }
+    auto cost_item_cpp = cost_item->ptr;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::cost_edit_cost_item(file_cpp, cost_item_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_cost_edit_cost_item_quantity(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* physical_quantity, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (physical_quantity == nullptr || physical_quantity->ptr == nullptr) { throw std::runtime_error("Handle parameter \"physical_quantity\" is invalid"); }
+    auto physical_quantity_cpp = physical_quantity->ptr;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::cost_edit_cost_item_quantity(file_cpp, physical_quantity_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_cost_edit_cost_schedule(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* cost_schedule, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (cost_schedule == nullptr || cost_schedule->ptr == nullptr) { throw std::runtime_error("Handle parameter \"cost_schedule\" is invalid"); }
+    auto cost_schedule_cpp = cost_schedule->ptr;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::cost_edit_cost_schedule(file_cpp, cost_schedule_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_cost_edit_cost_value(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* cost_value, void* attributes, bool has_unit_basis, bool unit_basis_is_null, double value_component, ifcopenshell_ifc_instance_t* unit_component) {
     try {
         ifcopenshell_clear_error();
@@ -5876,6 +6144,104 @@ bool ifcopenshell_ifcapi_cost_edit_cost_value_formula(ifcopenshell_ifc_file_t* f
     if (formula == nullptr) { throw std::runtime_error("Parameter \"formula\" must not be null"); }
     std::string formula_cpp(formula);
         ifcapi::bindings::cost_edit_cost_value_formula(file_cpp, cost_value_cpp, formula_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_cost_remove_cost_item(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* cost_item) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (cost_item == nullptr || cost_item->ptr == nullptr) { throw std::runtime_error("Handle parameter \"cost_item\" is invalid"); }
+    auto cost_item_cpp = cost_item->ptr;
+        ifcapi::bindings::cost_remove_cost_item(file_cpp, cost_item_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_cost_remove_cost_item_quantity(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* cost_item, ifcopenshell_ifc_instance_t* physical_quantity) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (cost_item == nullptr || cost_item->ptr == nullptr) { throw std::runtime_error("Handle parameter \"cost_item\" is invalid"); }
+    auto cost_item_cpp = cost_item->ptr;
+    if (physical_quantity == nullptr || physical_quantity->ptr == nullptr) { throw std::runtime_error("Handle parameter \"physical_quantity\" is invalid"); }
+    auto physical_quantity_cpp = physical_quantity->ptr;
+        ifcapi::bindings::cost_remove_cost_item_quantity(file_cpp, cost_item_cpp, physical_quantity_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_cost_remove_cost_schedule(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* cost_schedule) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (cost_schedule == nullptr || cost_schedule->ptr == nullptr) { throw std::runtime_error("Handle parameter \"cost_schedule\" is invalid"); }
+    auto cost_schedule_cpp = cost_schedule->ptr;
+        ifcapi::bindings::cost_remove_cost_schedule(file_cpp, cost_schedule_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_cost_remove_cost_value(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* parent, ifcopenshell_ifc_instance_t* cost_value) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (parent == nullptr || parent->ptr == nullptr) { throw std::runtime_error("Handle parameter \"parent\" is invalid"); }
+    auto parent_cpp = parent->ptr;
+    if (cost_value == nullptr || cost_value->ptr == nullptr) { throw std::runtime_error("Handle parameter \"cost_value\" is invalid"); }
+    auto cost_value_cpp = cost_value->ptr;
+        ifcapi::bindings::cost_remove_cost_value(file_cpp, parent_cpp, cost_value_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_cost_unassign_cost_item_quantity(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* cost_item, const ifcopenshell_ifc_instance_list_t* products, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (cost_item == nullptr || cost_item->ptr == nullptr) { throw std::runtime_error("Handle parameter \"cost_item\" is invalid"); }
+    auto cost_item_cpp = cost_item->ptr;
+    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
+    auto products_cpp = to_cpp_ifc_instance_list(products);
+    auto user_cpp = (user != nullptr && user->ptr != nullptr) ? user->ptr : nullptr;
+    auto application_cpp = (application != nullptr && application->ptr != nullptr) ? application->ptr : nullptr;
+        ifcapi::bindings::cost_unassign_cost_item_quantity(file_cpp, cost_item_cpp, products_cpp, user_cpp, application_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -15827,6 +16193,23 @@ bool ifcopenshell_ifc_entity_derived(ifcopenshell_ifc_entity_t* self, ifcopenshe
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_bool_list(self_cpp->derived());
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_entity_inverse_attributes(ifcopenshell_ifc_entity_t* self, ifcopenshell_ifc_inverse_attribute_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = make_ifc_inverse_attribute_list(self_cpp->inverse_attributes());
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

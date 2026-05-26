@@ -36,4 +36,6 @@ class TestAddCostSchedule(test.bootstrap.IFC4):
 
 
 class TestAddCostScheduleIFC2X3(test.bootstrap.IFC2X3, TestAddCostSchedule):
-    pass
+    def test_update_date_is_ifc2x3_date_and_time(self):
+        schedule = ifcopenshell.api.cost.add_cost_schedule(self.file)
+        assert schedule.UpdateDate.is_a("IfcDateAndTime")

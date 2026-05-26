@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 import ifcopenshell
+from ifcopenshell.api.cost import _capi
 
 
 def remove_cost_value(
@@ -45,18 +46,10 @@ def remove_cost_value(
 
         ifcopenshell.api.cost.remove_cost_value(model, parent=item, cost_value=value)
     """
-    if file.get_total_inverses(cost_value) == 1:
-        file.remove(cost_value)
-        # TODO deep purge
-    elif parent.is_a("IfcCostItem"):
-        values = list(parent.CostValues)
-        values.remove(cost_value)
-        parent.CostValues = values if values else None
-    elif parent.is_a("IfcConstructionResource"):
-        values = list(parent.BaseCosts)
-        values.remove(cost_value)
-        parent.BaseCosts = values if values else None
-    elif parent.is_a("IfcCostValue"):
-        components = list(parent.Components)
-        components.remove(cost_value)
-        parent.Components = components if components else None
+    lib = _capi.get_lib()
+    return _capi.call_status(
+        lib.ifcopenshell_ifcapi_cost_remove_cost_value,
+        _capi.file_handle(file),
+        _capi.instance_handle(parent),
+        _capi.instance_handle(cost_value),
+    )

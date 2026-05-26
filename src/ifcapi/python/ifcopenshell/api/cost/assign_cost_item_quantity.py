@@ -16,10 +16,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Any
-
-import ifcopenshell.api.control
-import ifcopenshell.api.cost
+import ifcopenshell
+from ifcopenshell.api.cost import _capi
 
 
 def assign_cost_item_quantity(
@@ -85,76 +83,15 @@ def assign_cost_item_quantity(
         ifcopenshell.api.cost.assign_cost_item_quantity(model,
             cost_item=item, products=[slab], prop_name="NetVolume")
     """
-    usecase = Usecase()
-    usecase.file = file
-    usecase.settings = {
-        "cost_item": cost_item,
-        "products": products or [],
-        "prop_name": prop_name,
-    }
-    return usecase.execute()
-
-
-class Usecase:
-    file: ifcopenshell.file
-    settings: dict[str, Any]
-
-    def execute(self):
-        if self.settings["prop_name"]:
-            self.quantities = set(self.settings["cost_item"].CostQuantities or [])
-        for product in self.settings["products"]:
-            if product.is_a("IfcSpatialElement"):
-                continue
-            self.assign_cost_control(related_object=product, cost_item=self.settings["cost_item"])
-            if self.settings["prop_name"]:
-                if (
-                    self.settings["cost_item"].CostQuantities
-                    and self.settings["cost_item"].CostQuantities[0].Name.lower() != self.settings["prop_name"].lower()
-                ):
-                    continue
-                self.add_quantity_from_related_object(product)
-        if self.settings["prop_name"]:
-            self.settings["cost_item"].CostQuantities = list(self.quantities)
-        else:
-            self.update_cost_item_count()
-
-    def assign_cost_control(
-        self, related_object: ifcopenshell.entity_instance, cost_item: ifcopenshell.entity_instance
-    ) -> ifcopenshell.entity_instance:
-        return ifcopenshell.api.control.assign_control(
-            self.file,
-            related_objects=[related_object],
-            relating_control=cost_item,
-        )
-
-    def add_quantity_from_related_object(self, element: ifcopenshell.entity_instance) -> None:
-        for relationship in element.IsDefinedBy:
-            if relationship.is_a("IfcRelDefinesByProperties"):
-                self.add_quantity_from_qto(relationship.RelatingPropertyDefinition)
-
-    def add_quantity_from_qto(self, qto: ifcopenshell.entity_instance) -> None:
-        if not qto.is_a("IfcElementQuantity"):
-            return
-        for prop in qto.Quantities:
-            if prop.is_a("IfcPhysicalSimpleQuantity") and prop.Name.lower() == self.settings["prop_name"].lower():
-                self.quantities.add(prop)
-
-    def update_cost_item_count(self):
-        # This is a bold assumption
-        # https://forums.buildingsmart.org/t/how-does-a-cost-item-know-that-it-is-counting-a-controlled-product/3564
-        if not self.settings["cost_item"].CostQuantities:
-            ifcopenshell.api.cost.add_cost_item_quantity(
-                self.file,
-                cost_item=self.settings["cost_item"],
-                ifc_class="IfcQuantityCount",
-            )
-        if len(self.settings["cost_item"].CostQuantities) == 1:
-            quantity = self.settings["cost_item"].CostQuantities[0]
-            if quantity.is_a("IfcQuantityCount"):
-                count = 0
-                for rel in self.settings["cost_item"].Controls:
-                    for obj in rel.RelatedObjects:
-                        # Only increment if not a resource
-                        if not obj.is_a("IfcConstructionResource"):
-                            count += 1
-                quantity[3] = count
+    lib = _capi.get_lib()
+    owner_history, user, application = _capi.owner_context(file)
+    return _capi.call_status(
+        lib.ifcopenshell_ifcapi_cost_assign_cost_item_quantity,
+        _capi.file_handle(file),
+        _capi.instance_handle(cost_item),
+        _capi.instance_list(products or []),
+        _capi.string(prop_name),
+        _capi.instance_handle(owner_history),
+        _capi.instance_handle(user),
+        _capi.instance_handle(application),
+    )

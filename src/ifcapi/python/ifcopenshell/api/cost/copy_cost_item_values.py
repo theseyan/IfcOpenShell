@@ -16,8 +16,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ifcopenshell.api.cost
-import ifcopenshell.util.element
+import ifcopenshell
+from ifcopenshell.api.cost import _capi
 
 
 def copy_cost_item_values(
@@ -50,9 +50,10 @@ def copy_cost_item_values(
         # Let's copy the value from one item to another
         ifcopenshell.api.cost.copy_cost_item_values(model, source=item1, destination=item2)
     """
-    for cost_value in destination.CostValues or []:
-        ifcopenshell.api.cost.remove_cost_value(file, source, cost_value=cost_value)
-    copied_cost_values = []
-    for cost_value in source.CostValues or []:
-        copied_cost_values.append(ifcopenshell.util.element.copy_deep(file, cost_value))
-    destination.CostValues = copied_cost_values
+    lib = _capi.get_lib()
+    return _capi.call_status(
+        lib.ifcopenshell_ifcapi_cost_copy_cost_item_values,
+        _capi.file_handle(file),
+        _capi.instance_handle(source),
+        _capi.instance_handle(destination),
+    )

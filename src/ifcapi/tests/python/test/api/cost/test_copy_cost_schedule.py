@@ -18,6 +18,7 @@
 
 import ifcopenshell.api.cost
 import ifcopenshell.util.cost
+import ifcopenshell.guid
 import test.bootstrap
 
 
@@ -47,3 +48,35 @@ class TestCopyCostScheduleIFC2X3(test.bootstrap.IFC2X3, TestCopyCostSchedule):
 
 class TestCopyCostScheduleIFC4X3(test.bootstrap.IFC4X3, TestCopyCostSchedule):
     pass
+
+
+class TestCopyCostItem(test.bootstrap.IFC4):
+    def test_copy_cost_item_tree_and_deep_values(self):
+        schedule = ifcopenshell.api.cost.add_cost_schedule(self.file)
+        item = ifcopenshell.api.cost.add_cost_item(self.file, cost_schedule=schedule)
+        child = ifcopenshell.api.cost.add_cost_item(self.file, cost_item=item)
+        value = ifcopenshell.api.cost.add_cost_value(self.file, parent=item)
+        ifcopenshell.api.cost.edit_cost_value(self.file, value, {"AppliedValue": 5.0})
+        prop = self.file.create_entity("IfcPropertySingleValue", Name="Foo", NominalValue=self.file.create_entity("IfcLabel", "Bar"))
+        pset = self.file.create_entity("IfcPropertySet", GlobalId=ifcopenshell.guid.new(), Name="Pset_Foo", HasProperties=[prop])
+        self.file.create_entity(
+            "IfcRelDefinesByProperties",
+            GlobalId=ifcopenshell.guid.new(),
+            RelatedObjects=[item],
+            RelatingPropertyDefinition=pset,
+        )
+
+        copied = ifcopenshell.api.cost.copy_cost_item(self.file, item)
+
+        assert isinstance(copied, list)
+        assert len(copied) == 2
+        new_item, new_child = copied
+        assert new_item != item
+        assert new_child != child
+        assert new_item.CostValues[0] != value
+        ifcopenshell.api.cost.edit_cost_value(self.file, new_item.CostValues[0], {"AppliedValue": 9.0})
+        assert value.AppliedValue.wrappedValue == 5.0
+        assert ifcopenshell.util.cost.get_nested_cost_items(new_item) == [new_child]
+        psets = [rel.RelatingPropertyDefinition for rel in new_item.IsDefinedBy or []]
+        assert len(psets) == 1
+        assert psets[0] != pset

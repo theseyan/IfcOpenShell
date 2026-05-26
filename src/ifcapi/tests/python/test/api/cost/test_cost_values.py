@@ -18,6 +18,10 @@ class TestAssignCostValue(test.bootstrap.IFC4):
         item = ifcopenshell.api.cost.add_cost_item(self.file, cost_schedule=schedule)
         ifcopenshell.api.cost.assign_cost_value(self.file, cost_item=item, cost_rate=rate)
         assert item.CostValues == rate.CostValues
+        ifcopenshell.api.cost.edit_cost_value(
+            self.file, cost_value=rate_value, attributes={"AppliedValue": 7.0}
+        )
+        assert item.CostValues[0].AppliedValue.wrappedValue == 7.0
 
 
 class TestCopyCostItemValues(test.bootstrap.IFC4):

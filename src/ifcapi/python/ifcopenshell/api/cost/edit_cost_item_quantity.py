@@ -18,7 +18,7 @@
 from typing import Any
 
 import ifcopenshell
-from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
+from ifcopenshell.api.cost import _capi
 
 
 def edit_cost_item_quantity(
@@ -49,4 +49,14 @@ def edit_cost_item_quantity(
         ifcopenshell.api.cost.edit_cost_item_quantity(model,
             physical_quantity=quantity, "attributes": {"VolumeValue": 3.0})
     """
-    _edit_attributes(file, physical_quantity, attributes)
+    lib = _capi.get_lib()
+    props = _capi.build_props(attributes)
+    try:
+        return _capi.call_status(
+            lib.ifcopenshell_ifcapi_cost_edit_cost_item_quantity,
+            _capi.file_handle(file),
+            _capi.instance_handle(physical_quantity),
+            props,
+        )
+    finally:
+        _capi.free_props(props)
