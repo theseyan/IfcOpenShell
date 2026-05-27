@@ -27,6 +27,7 @@ public_headers:
   - <BRepTools_ShapeSet.hxx>
   - taxonomy.h
   - hybrid_kernel.h
+  - kernels/cgal/CgalConversionResult.h
   - Converter.h
   - abstract_mapping.h
   - function_item_evaluator.h
@@ -1909,7 +1910,7 @@ functions:
       body: |
         #ifdef IFOPSH_WITH_CGAL
         std::vector<std::vector<svgfill::line_segment_2>> segments;
-        boost::optional<std::string> cn;
+        std::optional<std::string> cn;
         if (class_name_str) cn = std::string(class_name_str);
         if (!svgfill::svg_to_line_segments(std::string(svg_data_cpp), cn, segments)) {
             throw std::runtime_error("Failed to read SVG");
@@ -1955,7 +1956,7 @@ functions:
       body: |
         #ifdef IFOPSH_WITH_CGAL
         std::vector<svgfill::polygon_2> polygons;
-        boost::optional<std::string> cn;
+        std::optional<std::string> cn;
         if (class_name_str) cn = std::string(class_name_str);
         if (!svgfill::svg_to_polygons(std::string(svg_data_cpp), cn, polygons)) {
             throw std::runtime_error("Failed to read SVG");

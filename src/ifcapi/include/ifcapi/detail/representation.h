@@ -7,7 +7,7 @@
 #include "ifcapi/bindings/representation.h"
 #include "ifcapi/detail/attribute.h"
 
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/file.h"
 
 #include <algorithm>
 #include <cmath>
@@ -16,11 +16,11 @@
 namespace ifcapi {
 namespace detail {
 
-inline bool is_a(IfcUtil::IfcBaseClass* entity, const char* name) {
-    return entity && entity->declaration().is(name);
+inline bool is_a(express::Base entity, const char* name) {
+    return entity && entity.declaration().is(name);
 }
 
-inline bool read_curve_axis_points(IfcUtil::IfcBaseClass* curve, std::vector<double>& p0, std::vector<double>& p1) {
+inline bool read_curve_axis_points(express::Base curve, std::vector<double>& p0, std::vector<double>& p1) {
     if (is_a(curve, "IfcPolyline")) {
         auto points = read_ref_aggregate(curve, "Points");
         if (points.size() < 2) {
@@ -31,7 +31,7 @@ inline bool read_curve_axis_points(IfcUtil::IfcBaseClass* curve, std::vector<dou
         return p0.size() >= 2 && p1.size() >= 2;
     }
     if (is_a(curve, "IfcIndexedPolyCurve")) {
-        auto* points = read_ref_attr(curve, "Points");
+        auto points = read_ref_attr(curve, "Points");
         if (!points) {
             return false;
         }
@@ -40,7 +40,7 @@ inline bool read_curve_axis_points(IfcUtil::IfcBaseClass* curve, std::vector<dou
             return false;
         }
         try {
-            auto value = points->get_attribute_value(static_cast<size_t>(idx));
+            auto value = points.get_attribute_value(static_cast<size_t>(idx));
             if (value.isNull()) {
                 return false;
             }
@@ -58,11 +58,12 @@ inline bool read_curve_axis_points(IfcUtil::IfcBaseClass* curve, std::vector<dou
     return false;
 }
 
-inline std::vector<std::vector<double>> get_reference_line(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* wall) {
-    if (auto* axis = ifcapi::bindings::representation_get_product_representation(
-            wall, nullptr, "Plan", "Axis", "GRAPH_VIEW")) {
-        if (auto* resolved = ifcapi::bindings::representation_resolve(axis)) {
-            for (auto* item : read_ref_aggregate(resolved, "Items")) {
+inline std::vector<std::vector<double>> get_reference_line(ifcopenshell::file* file, express::Base wall) {
+    auto wall_ref = wall;
+    if (auto axis = ifcapi::bindings::representation_get_product_representation(
+            &wall_ref, nullptr, "Plan", "Axis", "GRAPH_VIEW")) {
+        if (auto resolved = ifcapi::bindings::representation_resolve(&axis)) {
+            for (auto item : read_ref_aggregate(resolved, "Items")) {
                 std::vector<double> p0, p1;
                 if (!read_curve_axis_points(item, p0, p1)) {
                     continue;
@@ -75,35 +76,33 @@ inline std::vector<std::vector<double>> get_reference_line(IfcParse::IfcFile* fi
         }
     }
 
-    auto* definition = read_ref_attr(wall, "Representation");
-    for (auto* representation : read_ref_aggregate(definition, "Representations")) {
-        for (auto* item : read_ref_aggregate(representation, "Items")) {
-            std::vector<IfcUtil::IfcBaseClass*> candidates = {item};
+    auto definition = read_ref_attr(wall, "Representation");
+    for (auto representation : read_ref_aggregate(definition, "Representations")) {
+        for (auto item : read_ref_aggregate(representation, "Items")) {
+            std::vector<express::Base> candidates = {item};
             if (file && item) {
-                if (auto traversed = file->traverse(item, -1)) {
-                    candidates.assign(traversed->begin(), traversed->end());
-                }
+                candidates = ifcopenshell::file::traverse(item, -1);
             }
-            for (auto* candidate : candidates) {
+            for (auto candidate : candidates) {
                 if (!is_a(candidate, "IfcExtrudedAreaSolid")) {
                     continue;
                 }
-                auto* profile = read_ref_attr(candidate, "SweptArea");
-                auto* curve = read_ref_attr(profile, "OuterCurve");
+                auto profile = read_ref_attr(candidate, "SweptArea");
+                auto curve = read_ref_attr(profile, "OuterCurve");
                 std::vector<double> x_values;
                 if (is_a(curve, "IfcPolyline")) {
-                    for (auto* point : read_ref_aggregate(curve, "Points")) {
+                    for (auto point : read_ref_aggregate(curve, "Points")) {
                         auto coords = read_double_aggregate(point, "Coordinates");
                         if (!coords.empty()) {
                             x_values.push_back(coords[0]);
                         }
                     }
                 } else if (is_a(curve, "IfcIndexedPolyCurve")) {
-                    auto* points = read_ref_attr(curve, "Points");
+                    auto points = read_ref_attr(curve, "Points");
                     int idx = attr_index_of(points, "CoordList");
                     if (idx >= 0) {
                         try {
-                            auto value = points->get_attribute_value(static_cast<size_t>(idx));
+                            auto value = points.get_attribute_value(static_cast<size_t>(idx));
                             if (!value.isNull()) {
                                 for (const auto& coords : static_cast<std::vector<std::vector<double>>>(value)) {
                                     if (!coords.empty()) {

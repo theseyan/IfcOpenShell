@@ -16,6 +16,10 @@
 namespace ifcapi {
 namespace detail {
 
+inline express::Base deref_or_empty(express::Base* value) {
+    return value ? *value : express::Base();
+}
+
 struct OptionalString {
     bool has_value = false;
     std::string value;

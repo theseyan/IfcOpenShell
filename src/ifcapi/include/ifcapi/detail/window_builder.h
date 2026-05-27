@@ -8,8 +8,8 @@
 #include "ifcapi/detail/attribute.h"
 #include "ifcapi/detail/shape_builder.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
 
 #include <algorithm>
 #include <vector>
@@ -94,35 +94,35 @@ inline std::vector<std::vector<double>> window_segment_points(
     return points;
 }
 
-inline std::vector<IfcUtil::IfcBaseClass*> create_window_frame_simple(
-    IfcParse::IfcFile* file,
+inline std::vector<express::Base> create_window_frame_simple(
+    ifcopenshell::file* file,
     const std::vector<double>& size,
     std::vector<double> thickness,
     const std::vector<double>& position)
 {
-    std::vector<IfcUtil::IfcBaseClass*> result;
+    std::vector<express::Base> result;
     if (std::count(thickness.begin(), thickness.end(), 0.0) == 0) {
-        auto* panel_rect = rectangle(file, {size[0], size[2]});
-        auto* inner_rect = rectangle(
+        auto panel_rect = rectangle(file, {size[0], size[2]});
+        auto inner_rect = rectangle(
             file,
             {size[0] - (thickness[0] + thickness[2]), size[2] - (thickness[3] + thickness[1])},
             {thickness[0], thickness[3]},
             true);
-        auto* panel_profile = ifcapi::bindings::shape_builder_profile(file, panel_rect, nullptr, {inner_rect}, "AREA");
+        auto panel_profile = ifcapi::bindings::shape_builder_profile(file, &panel_rect, nullptr, {inner_rect}, "AREA");
         result.push_back(extrude_y(file, panel_profile, size[1], position));
         return result;
     }
 
     for (const auto& segment : segments_from_thickness(thickness)) {
-        auto* curve = polyline(file, window_segment_points(segment, size, thickness), true);
-        auto* panel_profile = ifcapi::bindings::shape_builder_profile(file, curve, nullptr, {}, "AREA");
+        auto curve = polyline(file, window_segment_points(segment, size, thickness), true);
+        auto panel_profile = ifcapi::bindings::shape_builder_profile(file, &curve, nullptr, {}, "AREA");
         result.push_back(extrude_y(file, panel_profile, size[1], position));
     }
     return result;
 }
 
-inline std::vector<IfcUtil::IfcBaseClass*> create_window_frame_simple(
-    IfcParse::IfcFile* file,
+inline std::vector<express::Base> create_window_frame_simple(
+    ifcopenshell::file* file,
     const std::vector<double>& size,
     double thickness,
     const std::vector<double>& position)
@@ -131,13 +131,13 @@ inline std::vector<IfcUtil::IfcBaseClass*> create_window_frame_simple(
 }
 
 struct WindowItems {
-    std::vector<IfcUtil::IfcBaseClass*> lining;
-    std::vector<IfcUtil::IfcBaseClass*> framing;
-    std::vector<IfcUtil::IfcBaseClass*> glazing;
+    std::vector<express::Base> lining;
+    std::vector<express::Base> framing;
+    std::vector<express::Base> glazing;
 };
 
 inline WindowItems create_ifc_window(
-    IfcParse::IfcFile* file,
+    ifcopenshell::file* file,
     const std::vector<double>& lining_size,
     const std::vector<double>& lining_thickness,
     double lining_to_panel_offset_x,
@@ -169,12 +169,13 @@ inline WindowItems create_ifc_window(
     output.framing = create_window_frame_simple(file, frame_size, frame_thickness, frame_position);
 
     auto glass_position = add3(frame_position, v3(0.0, frame_size[1] / 2.0 - glass_thickness / 2.0, 0.0));
-    auto* swept_area = read_ref_attr(output.framing.at(0), "SweptArea");
+    auto swept_area = read_ref_attr(output.framing.at(0), "SweptArea");
     auto inner_curves = read_ref_aggregate(swept_area, "InnerCurves");
-    auto* glass_rect = ifcapi::bindings::shape_builder_deep_copy(file, inner_curves.at(0));
+    auto inner_curve = inner_curves.at(0);
+    auto glass_rect = ifcapi::bindings::shape_builder_deep_copy(file, &inner_curve);
     output.glazing.push_back(extrude_y(file, glass_rect, glass_thickness, glass_position));
 
-    std::vector<IfcUtil::IfcBaseClass*> all_items;
+    std::vector<express::Base> all_items;
     append_items(all_items, output.lining);
     append_items(all_items, output.framing);
     append_items(all_items, output.glazing);
@@ -183,7 +184,7 @@ inline WindowItems create_ifc_window(
 }
 
 inline WindowItems create_ifc_window(
-    IfcParse::IfcFile* file,
+    ifcopenshell::file* file,
     const std::vector<double>& lining_size,
     const std::vector<double>& lining_thickness,
     double lining_to_panel_offset_x,

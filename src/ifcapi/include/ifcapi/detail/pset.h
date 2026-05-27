@@ -11,17 +11,17 @@
 namespace ifcapi {
 namespace detail {
 
-inline IfcUtil::IfcBaseClass* named_property_set(IfcUtil::IfcBaseClass* product, const std::string& name) {
-    for (auto* rel : read_inverse_aggregate(product, "IsDefinedBy")) {
-        if (!rel || !rel->declaration().is("IfcRelDefinesByProperties")) {
+inline express::Base named_property_set(express::Base product, const std::string& name) {
+    for (auto rel : read_inverse_aggregate(product, "IsDefinedBy")) {
+        if (!rel || !rel.declaration().is("IfcRelDefinesByProperties")) {
             continue;
         }
-        auto* pset = read_ref_attr(rel, "RelatingPropertyDefinition");
-        if (pset && pset->declaration().is("IfcPropertySet") && read_string_attr(pset, "Name") == name) {
+        auto pset = read_ref_attr(rel, "RelatingPropertyDefinition");
+        if (pset && pset.declaration().is("IfcPropertySet") && read_string_attr(pset, "Name") == name) {
             return pset;
         }
     }
-    return nullptr;
+    return {};
 }
 
 } // namespace detail

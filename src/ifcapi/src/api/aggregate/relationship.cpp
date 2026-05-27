@@ -1,311 +1,287 @@
 // This file was generated with the assistance of an AI coding tool.
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-#include "ifcapi/ifcapi.h"
 #include "ifcapi/bindings/aggregate.h"
 #include "ifcapi/bindings/element.h"
 #include "ifcapi/bindings/spatial.h"
+#include "ifcapi/detail/attribute.h"
 #include "ifcapi/detail/relationship.h"
 #include "guid.h"
+#include "ifcopenshell_api_internal.hpp"
 
+#include "ifcparse/exception.h"
 #include "ifcparse/file.h"
 #include "ifcparse/schema.h"
-#include "ifcparse/express.h"
-#include "ifcparse/instance_data.h"
-#include "ifcparse/exception.h"
 
 #include <algorithm>
-#include <cstring>
 #include <set>
 #include <string>
 #include <vector>
 
-// Shared error helpers (defined in root.cpp)
-#include "ifcopenshell_api_internal.hpp"
-
-// Route error reporting through the autogen layer's shared error string
-// so that ifcopenshell_last_error_message() returns errors raised by the
-// high-level layer too.
 namespace {
+
 inline void set_error(const char* msg) { ifcopenshell::capi::set_last_error(msg); }
 inline void set_error(const std::string& msg) { ifcopenshell::capi::set_last_error(msg); }
-}
 
-// Helper: get the IfcRelAggregates inverse for "IsDecomposedBy" on an entity.
-static IfcUtil::IfcBaseClass* find_is_decomposed_by(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* entity) {
-    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(entity);
-    if (!be) return nullptr;
-    try {
-        auto result = be->get_inverse("IsDecomposedBy");
-        if (result && result->size() > 0) {
-            for (size_t i = 0; i < result->size(); ++i) {
-                if ((*result)[i]->declaration().is(*(file->schema()->declaration_by_name("IfcRelAggregates")))) {
-                    return (*result)[i];
-                }
-            }
+express::Base first_inverse_of_type(express::Base entity, const char* inverse_name, const char* ifc_class) {
+    for (auto inverse : ifcapi::detail::read_inverse_aggregate(entity, inverse_name)) {
+        if (inverse && inverse.declaration().is(ifc_class)) {
+            return inverse;
         }
-    } catch (...) {}
-    return nullptr;
+    }
+    return {};
 }
 
-// Helper: get the IfcRelAggregates that this entity "Decomposes" into.
-static IfcUtil::IfcBaseClass* find_decomposes(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* entity) {
-    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(entity);
-    if (!be) return nullptr;
-    try {
-        auto result = be->get_inverse("Decomposes");
-        if (result && result->size() > 0) {
-            for (size_t i = 0; i < result->size(); ++i) {
-                if ((*result)[i]->declaration().is(*(file->schema()->declaration_by_name("IfcRelAggregates")))) {
-                    return (*result)[i];
-                }
-            }
+express::Base find_is_decomposed_by(express::Base entity) {
+    return first_inverse_of_type(entity, "IsDecomposedBy", "IfcRelAggregates");
+}
+
+express::Base find_decomposes(express::Base entity) {
+    return first_inverse_of_type(entity, "Decomposes", "IfcRelAggregates");
+}
+
+express::Base find_contained_in_structure(express::Base entity) {
+    auto result = ifcapi::detail::read_inverse_aggregate(entity, "ContainedInStructure");
+    return result.empty() ? express::Base() : result.front();
+}
+
+express::Base find_contains_elements(express::Base entity) {
+    auto result = ifcapi::detail::read_inverse_aggregate(entity, "ContainsElements");
+    return result.empty() ? express::Base() : result.front();
+}
+
+std::set<express::Base> to_ref_set_filtered(const std::vector<express::Base>& products) {
+    std::set<express::Base> result;
+    for (const auto& product : products) {
+        if (product) {
+            result.insert(product);
         }
-    } catch (...) {}
-    return nullptr;
+    }
+    return result;
 }
 
-// Helper: get the IfcRelContainedInSpatialStructure for "ContainedInStructure" on an entity.
-static IfcUtil::IfcBaseClass* find_contained_in_structure(IfcParse::IfcFile* /*file*/, IfcUtil::IfcBaseClass* entity) {
-    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(entity);
-    if (!be) return nullptr;
-    try {
-        auto result = be->get_inverse("ContainedInStructure");
-        if (result && result->size() > 0) return (*result)[0];
-    } catch (...) {}
-    return nullptr;
+std::vector<express::Base> without_set(
+    const std::vector<express::Base>& values,
+    const std::set<express::Base>& removed)
+{
+    std::vector<express::Base> result;
+    for (const auto& value : values) {
+        if (removed.find(value) == removed.end()) {
+            result.push_back(value);
+        }
+    }
+    return result;
 }
 
-// Helper: get the IfcRelContainedInSpatialStructure for "ContainsElements" on a spatial structure.
-static IfcUtil::IfcBaseClass* find_contains_elements(IfcParse::IfcFile* /*file*/, IfcUtil::IfcBaseClass* entity) {
-    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(entity);
-    if (!be) return nullptr;
-    try {
-        auto result = be->get_inverse("ContainsElements");
-        if (result && result->size() > 0) return (*result)[0];
-    } catch (...) {}
-    return nullptr;
+express::Base create_relationship(
+    ifcopenshell::file* file,
+    const char* ifc_class,
+    express::Base owner_history,
+    express::Base user,
+    express::Base application)
+{
+    const auto* rel_decl = file->schema()->declaration_by_name(ifc_class);
+    auto rel = file->create(rel_decl);
+    if (!rel) {
+        return {};
+    }
+    ifcapi::detail::write_string_attr(rel, "GlobalId", ifcapi::guid_new());
+    auto history = ifcapi::detail::ensure_owner_history(file, owner_history, user, application);
+    ifcapi::detail::write_ref_attr(rel, "OwnerHistory", history);
+    return rel;
 }
+
+} // namespace
 
 namespace ifcapi {
 namespace bindings {
-using namespace ifcapi::detail;
 
-IfcUtil::IfcBaseClass* aggregate_assign_object(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& products,
-    IfcUtil::IfcBaseClass* relating_object,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+express::Base aggregate_assign_object(
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& products,
+    express::Base* relating_object,
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
     if (!file || products.empty()) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
 
     try {
-        auto* relating = relating_object;
+        auto relating = relating_object ? *relating_object : express::Base();
         if (!relating) {
             set_error("Relating object not found");
-            return nullptr;
+            return {};
         }
 
-        // Collect product entities.
-        std::set<IfcUtil::IfcBaseClass*> products_set;
-        for (auto* product : products) {
-            if (product) products_set.insert(const_cast<IfcUtil::IfcBaseClass*>(product));
+        auto products_set = to_ref_set_filtered(products);
+        if (products_set.empty()) {
+            return {};
         }
-        if (products_set.empty()) return nullptr;
 
-        // Find existing IfcRelAggregates on the relating object.
-        auto* existing_rel = find_is_decomposed_by(file, relating);
+        auto existing_rel = find_is_decomposed_by(relating);
+        std::set<express::Base> previous_rels;
+        std::vector<express::Base> products_without_aggregates;
+        std::vector<express::Base> products_to_change;
 
-        const auto* rel_agg_decl = file->schema()->declaration_by_name("IfcRelAggregates");
-        auto* rel_entity_decl = rel_agg_decl->as_entity();
-        int related_idx = find_attr_index(rel_entity_decl, "RelatedObjects");
-
-        // Determine which products need to change.
-        std::set<IfcUtil::IfcBaseClass*> previous_rels;
-        std::vector<IfcUtil::IfcBaseClass*> products_without_aggregates;
-        std::vector<IfcUtil::IfcBaseClass*> products_to_change;
-
-        for (auto* product : products_set) {
-            auto* cur_rel = find_decomposes(file, product);
-            if (cur_rel == nullptr) {
+        for (const auto& product : products_set) {
+            auto cur_rel = find_decomposes(product);
+            if (!cur_rel) {
                 products_without_aggregates.push_back(product);
                 products_to_change.push_back(product);
             } else if (cur_rel != existing_rel) {
                 previous_rels.insert(cur_rel);
                 products_to_change.push_back(product);
             }
-            // If cur_rel == existing_rel, product is already correctly assigned — skip.
         }
 
         if (products_to_change.empty()) {
             return existing_rel;
         }
 
-        // Unassign from spatial containers (products that aren't already aggregated).
-        std::set<IfcUtil::IfcBaseClass*> products_without_aggregates_set(
+        std::set<express::Base> products_without_aggregates_set(
             products_without_aggregates.begin(), products_without_aggregates.end());
-        for (auto* product : products_without_aggregates) {
-            auto* container_rel = find_contained_in_structure(file, product);
-            if (!container_rel) continue;
-            auto* container_decl = container_rel->declaration().as_entity();
-            int re_idx = find_attr_index(container_decl, "RelatedElements");
-            auto elems = get_ref_aggregate(container_rel, re_idx);
-            std::vector<IfcUtil::IfcBaseClass*> remaining;
-            for (auto* e : elems) {
-                if (products_without_aggregates_set.find(e) == products_without_aggregates_set.end()) {
-                    remaining.push_back(e);
-                }
+        for (const auto& product : products_without_aggregates) {
+            auto container_rel = find_contained_in_structure(product);
+            if (!container_rel) {
+                continue;
             }
+            auto remaining = without_set(
+                ifcapi::detail::read_ref_aggregate(container_rel, "RelatedElements"),
+                products_without_aggregates_set);
             if (remaining.empty()) {
-                remove_with_history(file, container_rel);
+                ifcapi::detail::remove_with_history(file, container_rel);
             } else {
-                set_ref_aggregate(container_rel, re_idx, remaining);
-                update_owner_history(file, container_rel, user, application);
+                ifcapi::detail::write_ref_aggregate(container_rel, "RelatedElements", remaining);
+                ifcapi::detail::update_owner_history(
+                    file,
+                    container_rel,
+                    user ? *user : express::Base(),
+                    application ? *application : express::Base());
             }
         }
 
-        // Remove from previous aggregates.
-        for (auto* prev_rel : previous_rels) {
-            auto related = get_ref_aggregate(prev_rel, related_idx);
-            std::vector<IfcUtil::IfcBaseClass*> remaining;
-            for (auto* e : related) {
-                if (products_set.find(e) == products_set.end()) {
-                    remaining.push_back(e);
-                }
-            }
+        for (auto prev_rel : previous_rels) {
+            auto remaining = without_set(ifcapi::detail::read_ref_aggregate(prev_rel, "RelatedObjects"), products_set);
             if (remaining.empty()) {
-                remove_with_history(file, prev_rel);
+                ifcapi::detail::remove_with_history(file, prev_rel);
             } else {
-                set_ref_aggregate(prev_rel, related_idx, remaining);
-                update_owner_history(file, prev_rel, user, application);
+                ifcapi::detail::write_ref_aggregate(prev_rel, "RelatedObjects", remaining);
+                ifcapi::detail::update_owner_history(
+                    file,
+                    prev_rel,
+                    user ? *user : express::Base(),
+                    application ? *application : express::Base());
             }
         }
 
-        // Add to target aggregate.
         if (existing_rel) {
-            auto current = get_ref_aggregate(existing_rel, related_idx);
-            std::set<IfcUtil::IfcBaseClass*> current_set(current.begin(), current.end());
-            for (auto* p : products_set) current_set.insert(p);
-            std::vector<IfcUtil::IfcBaseClass*> merged(current_set.begin(), current_set.end());
-            set_ref_aggregate(existing_rel, related_idx, merged);
-            update_owner_history(file, existing_rel, user, application);
+            auto current = ifcapi::detail::read_ref_aggregate(existing_rel, "RelatedObjects");
+            auto current_set = ifcapi::detail::to_ref_set(current);
+            current_set.insert(products_set.begin(), products_set.end());
+            auto merged = ifcapi::detail::to_ref_vector(current_set);
+            ifcapi::detail::write_ref_aggregate(existing_rel, "RelatedObjects", merged);
+            ifcapi::detail::update_owner_history(
+                file,
+                existing_rel,
+                user ? *user : express::Base(),
+                application ? *application : express::Base());
             return existing_rel;
-        } else {
-            // Create new IfcRelAggregates.
-            auto* rel = file->create(rel_agg_decl);
-            if (!rel) {
-                set_error("Failed to create IfcRelAggregates");
-                return nullptr;
-            }
-            int gi_idx = find_attr_index(rel_entity_decl, "GlobalId");
-            if (gi_idx >= 0) {
-                rel->set_attribute_value(static_cast<size_t>(gi_idx), ifcapi::guid_new());
-            }
-            int ro_idx = find_attr_index(rel_entity_decl, "RelatingObject");
-            set_ref(rel, ro_idx, relating);
-            int oh_idx = find_attr_index(rel_entity_decl, "OwnerHistory");
-            set_ref(rel, oh_idx, ensure_owner_history(file, owner_history, user, application));
-            std::vector<IfcUtil::IfcBaseClass*> prods(products_set.begin(), products_set.end());
-            set_ref_aggregate(rel, related_idx, prods);
-            return rel;
         }
+
+        auto rel = create_relationship(
+            file,
+            "IfcRelAggregates",
+            owner_history ? *owner_history : express::Base(),
+            user ? *user : express::Base(),
+            application ? *application : express::Base());
+        if (!rel) {
+            set_error("Failed to create IfcRelAggregates");
+            return {};
+        }
+        ifcapi::detail::write_ref_attr(rel, "RelatingObject", relating);
+        ifcapi::detail::write_ref_aggregate(rel, "RelatedObjects", ifcapi::detail::to_ref_vector(products_set));
+        return rel;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
 void aggregate_unassign_object(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& products,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& products,
+    express::Base* user,
+    express::Base* application)
 {
-    if (!file || products.empty()) return;
+    if (!file || products.empty()) {
+        return;
+    }
 
     try {
-        const auto* rel_agg_decl = file->schema()->declaration_by_name("IfcRelAggregates");
-        auto* rel_entity_decl = rel_agg_decl->as_entity();
-        int related_idx = find_attr_index(rel_entity_decl, "RelatedObjects");
-
-        std::set<IfcUtil::IfcBaseClass*> products_set;
-        for (auto* product : products) {
-            if (product) products_set.insert(const_cast<IfcUtil::IfcBaseClass*>(product));
-        }
-
-        // Collect all affected rels.
-        std::set<IfcUtil::IfcBaseClass*> rels;
-        for (auto* p : products_set) {
-            auto* rel = find_decomposes(file, p);
-            if (rel) rels.insert(rel);
-        }
-
-        for (auto* rel : rels) {
-            auto related = get_ref_aggregate(rel, related_idx);
-            std::vector<IfcUtil::IfcBaseClass*> remaining;
-            for (auto* e : related) {
-                if (products_set.find(e) == products_set.end()) {
-                    remaining.push_back(e);
-                }
+        auto products_set = to_ref_set_filtered(products);
+        std::set<express::Base> rels;
+        for (const auto& product : products_set) {
+            auto rel = find_decomposes(product);
+            if (rel) {
+                rels.insert(rel);
             }
+        }
+
+        for (auto rel : rels) {
+            auto remaining = without_set(ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects"), products_set);
             if (remaining.empty()) {
-                remove_with_history(file, rel);
+                ifcapi::detail::remove_with_history(file, rel);
             } else {
-                set_ref_aggregate(rel, related_idx, remaining);
-                update_owner_history(file, rel, user, application);
+                ifcapi::detail::write_ref_aggregate(rel, "RelatedObjects", remaining);
+                ifcapi::detail::update_owner_history(
+                    file,
+                    rel,
+                    user ? *user : express::Base(),
+                    application ? *application : express::Base());
             }
         }
-    } catch (...) {}
+    } catch (...) {
+    }
 }
 
-IfcUtil::IfcBaseClass* spatial_assign_container(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& products,
-    IfcUtil::IfcBaseClass* relating_structure,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+express::Base spatial_assign_container(
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& products,
+    express::Base* relating_structure,
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
     if (!file || products.empty()) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
 
     try {
-        auto* structure = relating_structure;
+        auto structure = relating_structure ? *relating_structure : express::Base();
         if (!structure) {
             set_error("Relating structure not found");
-            return nullptr;
+            return {};
         }
 
-        std::set<IfcUtil::IfcBaseClass*> products_set;
-        for (auto* product : products) {
-            if (product) products_set.insert(const_cast<IfcUtil::IfcBaseClass*>(product));
+        auto products_set = to_ref_set_filtered(products);
+        if (products_set.empty()) {
+            return {};
         }
-        if (products_set.empty()) return nullptr;
 
-        // Find existing container relationship on the structure.
-        auto* existing_rel = find_contains_elements(file, structure);
+        auto existing_rel = find_contains_elements(structure);
+        std::set<express::Base> previous_rels;
+        std::vector<express::Base> products_without_containers;
+        std::vector<express::Base> products_to_change;
 
-        const auto* rel_decl = file->schema()->declaration_by_name("IfcRelContainedInSpatialStructure");
-        auto* rel_entity_decl = rel_decl->as_entity();
-        int related_idx = find_attr_index(rel_entity_decl, "RelatedElements");
-
-        // Determine which products need to change.
-        std::set<IfcUtil::IfcBaseClass*> previous_rels;
-        std::vector<IfcUtil::IfcBaseClass*> products_without_containers;
-        std::vector<IfcUtil::IfcBaseClass*> products_to_change;
-
-        for (auto* product : products_set) {
-            auto* cur_rel = find_contained_in_structure(file, product);
-            if (cur_rel == nullptr) {
+        for (const auto& product : products_set) {
+            auto cur_rel = find_contained_in_structure(product);
+            if (!cur_rel) {
                 products_without_containers.push_back(product);
                 products_to_change.push_back(product);
             } else if (cur_rel != existing_rel) {
@@ -318,227 +294,209 @@ IfcUtil::IfcBaseClass* spatial_assign_container(
             return existing_rel;
         }
 
-        // Unassign from aggregates (products can't be both aggregated and contained).
-        std::set<IfcUtil::IfcBaseClass*> products_without_containers_set(
+        std::set<express::Base> products_without_containers_set(
             products_without_containers.begin(), products_without_containers.end());
-        for (auto* product : products_without_containers) {
-            auto* agg_rel = find_decomposes(file, product);
-            if (!agg_rel) continue;
-            const auto* agg_decl = file->schema()->declaration_by_name("IfcRelAggregates");
-            auto* agg_entity_decl = agg_decl->as_entity();
-            int agg_re_idx = find_attr_index(agg_entity_decl, "RelatedObjects");
-            auto objs = get_ref_aggregate(agg_rel, agg_re_idx);
-            std::vector<IfcUtil::IfcBaseClass*> remaining;
-            for (auto* e : objs) {
-                if (products_without_containers_set.find(e) == products_without_containers_set.end()) {
-                    remaining.push_back(e);
-                }
+        for (const auto& product : products_without_containers) {
+            auto agg_rel = find_decomposes(product);
+            if (!agg_rel) {
+                continue;
             }
+            auto remaining = without_set(
+                ifcapi::detail::read_ref_aggregate(agg_rel, "RelatedObjects"),
+                products_without_containers_set);
             if (remaining.empty()) {
-                remove_with_history(file, agg_rel);
+                ifcapi::detail::remove_with_history(file, agg_rel);
             } else {
-                set_ref_aggregate(agg_rel, agg_re_idx, remaining);
-                update_owner_history(file, agg_rel, user, application);
+                ifcapi::detail::write_ref_aggregate(agg_rel, "RelatedObjects", remaining);
+                ifcapi::detail::update_owner_history(
+                    file,
+                    agg_rel,
+                    user ? *user : express::Base(),
+                    application ? *application : express::Base());
             }
         }
 
-        // Unassign from previous containers.
-        for (auto* prev_rel : previous_rels) {
-            auto elems = get_ref_aggregate(prev_rel, related_idx);
-            std::vector<IfcUtil::IfcBaseClass*> remaining;
-            for (auto* e : elems) {
-                if (products_set.find(e) == products_set.end()) {
-                    remaining.push_back(e);
-                }
-            }
+        for (auto prev_rel : previous_rels) {
+            auto remaining = without_set(ifcapi::detail::read_ref_aggregate(prev_rel, "RelatedElements"), products_set);
             if (remaining.empty()) {
-                remove_with_history(file, prev_rel);
+                ifcapi::detail::remove_with_history(file, prev_rel);
             } else {
-                set_ref_aggregate(prev_rel, related_idx, remaining);
-                update_owner_history(file, prev_rel, user, application);
+                ifcapi::detail::write_ref_aggregate(prev_rel, "RelatedElements", remaining);
+                ifcapi::detail::update_owner_history(
+                    file,
+                    prev_rel,
+                    user ? *user : express::Base(),
+                    application ? *application : express::Base());
             }
         }
 
-        // Add to target container.
         if (existing_rel) {
-            auto current = get_ref_aggregate(existing_rel, related_idx);
-            std::set<IfcUtil::IfcBaseClass*> current_set(current.begin(), current.end());
-            for (auto* p : products_set) current_set.insert(p);
-            std::vector<IfcUtil::IfcBaseClass*> merged(current_set.begin(), current_set.end());
-            set_ref_aggregate(existing_rel, related_idx, merged);
-            update_owner_history(file, existing_rel, user, application);
+            auto current = ifcapi::detail::read_ref_aggregate(existing_rel, "RelatedElements");
+            auto current_set = ifcapi::detail::to_ref_set(current);
+            current_set.insert(products_set.begin(), products_set.end());
+            ifcapi::detail::write_ref_aggregate(existing_rel, "RelatedElements", ifcapi::detail::to_ref_vector(current_set));
+            ifcapi::detail::update_owner_history(
+                file,
+                existing_rel,
+                user ? *user : express::Base(),
+                application ? *application : express::Base());
             return existing_rel;
-        } else {
-            auto* rel = file->create(rel_decl);
-            if (!rel) {
-                set_error("Failed to create IfcRelContainedInSpatialStructure");
-                return nullptr;
-            }
-            int gi_idx = find_attr_index(rel_entity_decl, "GlobalId");
-            if (gi_idx >= 0) {
-                rel->set_attribute_value(static_cast<size_t>(gi_idx), ifcapi::guid_new());
-            }
-            int rs_idx = find_attr_index(rel_entity_decl, "RelatingStructure");
-            set_ref(rel, rs_idx, structure);
-            int oh_idx = find_attr_index(rel_entity_decl, "OwnerHistory");
-            set_ref(rel, oh_idx, ensure_owner_history(file, owner_history, user, application));
-            std::vector<IfcUtil::IfcBaseClass*> prods(products_set.begin(), products_set.end());
-            set_ref_aggregate(rel, related_idx, prods);
-            return rel;
         }
+
+        auto rel = create_relationship(
+            file,
+            "IfcRelContainedInSpatialStructure",
+            owner_history ? *owner_history : express::Base(),
+            user ? *user : express::Base(),
+            application ? *application : express::Base());
+        if (!rel) {
+            set_error("Failed to create IfcRelContainedInSpatialStructure");
+            return {};
+        }
+        ifcapi::detail::write_ref_attr(rel, "RelatingStructure", structure);
+        ifcapi::detail::write_ref_aggregate(rel, "RelatedElements", ifcapi::detail::to_ref_vector(products_set));
+        return rel;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
 void spatial_unassign_container(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& products,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& products,
+    express::Base* user,
+    express::Base* application)
 {
-    if (!file || products.empty()) return;
-
-    try {
-        const auto* rel_decl = file->schema()->declaration_by_name("IfcRelContainedInSpatialStructure");
-        auto* rel_entity_decl = rel_decl->as_entity();
-        int related_idx = find_attr_index(rel_entity_decl, "RelatedElements");
-
-        std::set<IfcUtil::IfcBaseClass*> products_set;
-        for (auto* product : products) {
-            if (product) products_set.insert(const_cast<IfcUtil::IfcBaseClass*>(product));
-        }
-
-        std::set<IfcUtil::IfcBaseClass*> rels;
-        for (auto* p : products_set) {
-            auto* rel = find_contained_in_structure(file, p);
-            if (rel) rels.insert(rel);
-        }
-
-        for (auto* rel : rels) {
-            auto related = get_ref_aggregate(rel, related_idx);
-            std::vector<IfcUtil::IfcBaseClass*> remaining;
-            for (auto* e : related) {
-                if (products_set.find(e) == products_set.end()) {
-                    remaining.push_back(e);
-                }
-            }
-            if (remaining.empty()) {
-                remove_with_history(file, rel);
-            } else {
-                set_ref_aggregate(rel, related_idx, remaining);
-                update_owner_history(file, rel, user, application);
-            }
-        }
-    } catch (...) {}
-}
-
-IfcUtil::IfcBaseClass* spatial_reference_structure(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& products,
-    IfcUtil::IfcBaseClass* relating_structure,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
-{
-    ifcopenshell_clear_error();
     if (!file || products.empty()) {
-        return nullptr;
+        return;
     }
 
     try {
-        auto* structure = relating_structure;
-        if (!structure) {
-            set_error("Relating structure not found");
-            return nullptr;
-        }
-
-        auto product_vec = to_mutable_refs(products);
-        std::set<IfcUtil::IfcBaseClass*> products_set(product_vec.begin(), product_vec.end());
-        if (products_set.empty()) {
-            return nullptr;
-        }
-
-        std::set<IfcUtil::IfcBaseClass*> referenced_set;
-        auto referenced = element_get_structure_referenced_elements(structure);
-        if (referenced) {
-            for (auto& item : *referenced) {
-                if (item) {
-                    referenced_set.insert(item);
-                }
+        auto products_set = to_ref_set_filtered(products);
+        std::set<express::Base> rels;
+        for (const auto& product : products_set) {
+            auto rel = find_contained_in_structure(product);
+            if (rel) {
+                rels.insert(rel);
             }
         }
-        std::vector<IfcUtil::IfcBaseClass*> products_to_assign;
-        for (auto* product : products_set) {
+
+        for (auto rel : rels) {
+            auto remaining = without_set(ifcapi::detail::read_ref_aggregate(rel, "RelatedElements"), products_set);
+            if (remaining.empty()) {
+                ifcapi::detail::remove_with_history(file, rel);
+            } else {
+                ifcapi::detail::write_ref_aggregate(rel, "RelatedElements", remaining);
+                ifcapi::detail::update_owner_history(
+                    file,
+                    rel,
+                    user ? *user : express::Base(),
+                    application ? *application : express::Base());
+            }
+        }
+    } catch (...) {
+    }
+}
+
+express::Base spatial_reference_structure(
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& products,
+    express::Base* relating_structure,
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
+{
+    ifcopenshell_clear_error();
+    if (!file || products.empty()) {
+        return {};
+    }
+
+    try {
+        auto structure = relating_structure ? *relating_structure : express::Base();
+        if (!structure) {
+            set_error("Relating structure not found");
+            return {};
+        }
+
+        auto products_set = to_ref_set_filtered(products);
+        if (products_set.empty()) {
+            return {};
+        }
+
+        std::set<express::Base> referenced_set;
+        auto structure_ref = structure;
+        auto referenced = element_get_structure_referenced_elements(&structure_ref);
+        referenced_set.insert(referenced.begin(), referenced.end());
+
+        std::vector<express::Base> products_to_assign;
+        for (const auto& product : products_set) {
             if (referenced_set.find(product) == referenced_set.end()) {
                 products_to_assign.push_back(product);
             }
         }
 
-        auto references = read_inverse_aggregate(structure, "ReferencesElements");
-        IfcUtil::IfcBaseClass* rel = references.empty() ? nullptr : references.front();
+        auto references = ifcapi::detail::read_inverse_aggregate(structure, "ReferencesElements");
+        auto rel = references.empty() ? express::Base() : references.front();
         if (products_to_assign.empty()) {
             return rel;
         }
 
-        const auto* rel_decl = file->schema()->declaration_by_name("IfcRelReferencedInSpatialStructure");
-        auto* rel_entity_decl = rel_decl->as_entity();
-        int related_idx = find_attr_index(rel_entity_decl, "RelatedElements");
         if (rel) {
-            auto related = get_ref_aggregate(rel, related_idx);
-            append_unique(related, products_to_assign);
-            set_ref_aggregate(rel, related_idx, related);
-            update_owner_history(file, rel, user, application);
+            auto related = ifcapi::detail::read_ref_aggregate(rel, "RelatedElements");
+            ifcapi::detail::append_unique(related, products_to_assign);
+            ifcapi::detail::write_ref_aggregate(rel, "RelatedElements", related);
+            ifcapi::detail::update_owner_history(
+                file,
+                rel,
+                user ? *user : express::Base(),
+                application ? *application : express::Base());
             return rel;
         }
 
-        rel = file->create(rel_decl);
+        rel = create_relationship(
+            file,
+            "IfcRelReferencedInSpatialStructure",
+            owner_history ? *owner_history : express::Base(),
+            user ? *user : express::Base(),
+            application ? *application : express::Base());
         if (!rel) {
             set_error("Failed to create IfcRelReferencedInSpatialStructure");
-            return nullptr;
+            return {};
         }
-        int gi_idx = find_attr_index(rel_entity_decl, "GlobalId");
-        if (gi_idx >= 0) {
-            rel->set_attribute_value(static_cast<size_t>(gi_idx), ifcapi::guid_new());
-        }
-        int oh_idx = find_attr_index(rel_entity_decl, "OwnerHistory");
-        set_ref(rel, oh_idx, ensure_owner_history(file, owner_history, user, application));
-        set_ref_aggregate(rel, related_idx, products_to_assign);
-        int rs_idx = find_attr_index(rel_entity_decl, "RelatingStructure");
-        set_ref(rel, rs_idx, structure);
+        ifcapi::detail::write_ref_aggregate(rel, "RelatedElements", products_to_assign);
+        ifcapi::detail::write_ref_attr(rel, "RelatingStructure", structure);
         return rel;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
 void spatial_dereference_structure(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& products,
-    IfcUtil::IfcBaseClass* relating_structure,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& products,
+    express::Base* relating_structure,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
-    if (!file || products.empty() || !relating_structure) {
+    if (!file || products.empty() || !relating_structure || !*relating_structure) {
         return;
     }
 
     try {
-        auto product_vec = to_mutable_refs(products);
-        std::set<IfcUtil::IfcBaseClass*> products_set(product_vec.begin(), product_vec.end());
+        auto products_set = to_ref_set_filtered(products);
         if (products_set.empty()) {
             return;
         }
 
-        auto references = read_inverse_aggregate(relating_structure, "ReferencesElements");
-        for (auto* rel : references) {
-            auto related = read_ref_aggregate(rel, "RelatedElements");
+        auto references = ifcapi::detail::read_inverse_aggregate(*relating_structure, "ReferencesElements");
+        for (auto rel : references) {
+            auto related = ifcapi::detail::read_ref_aggregate(rel, "RelatedElements");
             bool intersects = false;
-            std::vector<IfcUtil::IfcBaseClass*> remaining;
-            for (auto* element : related) {
+            std::vector<express::Base> remaining;
+            for (const auto& element : related) {
                 if (products_set.find(element) != products_set.end()) {
                     intersects = true;
                 } else {
@@ -549,10 +507,14 @@ void spatial_dereference_structure(
                 continue;
             }
             if (remaining.empty()) {
-                remove_with_history(file, rel);
+                ifcapi::detail::remove_with_history(file, rel);
             } else {
-                write_ref_aggregate(rel, "RelatedElements", remaining);
-                update_owner_history(file, rel, user, application);
+                ifcapi::detail::write_ref_aggregate(rel, "RelatedElements", remaining);
+                ifcapi::detail::update_owner_history(
+                    file,
+                    rel,
+                    user ? *user : express::Base(),
+                    application ? *application : express::Base());
             }
         }
     } catch (const std::exception& e) {

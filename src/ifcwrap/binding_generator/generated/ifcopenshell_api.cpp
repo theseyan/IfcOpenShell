@@ -4843,7 +4843,7 @@ bool ifcopenshell_ifcgeom_svg_to_line_segments(const char* svg_data, const char*
         auto generated_result = [&]() {
 #ifdef IFOPSH_WITH_CGAL
 std::vector<std::vector<svgfill::line_segment_2>> segments;
-boost::optional<std::string> cn;
+std::optional<std::string> cn;
 if (class_name_str) cn = std::string(class_name_str);
 if (!svgfill::svg_to_line_segments(std::string(svg_data_cpp), cn, segments)) {
     throw std::runtime_error("Failed to read SVG");
@@ -4890,7 +4890,7 @@ bool ifcopenshell_ifcgeom_svg_to_polygons(const char* svg_data, const char* clas
         auto generated_result = [&]() {
 #ifdef IFOPSH_WITH_CGAL
 std::vector<svgfill::polygon_2> polygons;
-boost::optional<std::string> cn;
+std::optional<std::string> cn;
 if (class_name_str) cn = std::string(class_name_str);
 if (!svgfill::svg_to_polygons(std::string(svg_data_cpp), cn, polygons)) {
     throw std::runtime_error("Failed to read SVG");

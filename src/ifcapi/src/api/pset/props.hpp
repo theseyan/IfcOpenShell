@@ -43,12 +43,12 @@ struct Entry {
     double d_val = 0.0;
     std::string s_val;
     std::string ifc_type;
-    IfcUtil::IfcBaseClass* inst = nullptr;
-    IfcUtil::IfcBaseClass* unit = nullptr;
+    express::Base inst;
+    express::Base unit;
     std::vector<std::string> str_list;
     std::vector<double> dbl_list;
     std::vector<int64_t> int_list;
-    std::vector<IfcUtil::IfcBaseClass*> inst_list;
+    std::vector<express::Base> inst_list;
     int year = 0;
     int month = 0;
     int day = 0;

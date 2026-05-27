@@ -198,14 +198,14 @@ inline bool contains_int(const std::vector<int>& values, int value) {
     return std::find(values.begin(), values.end(), value) != values.end();
 }
 
-inline std::vector<int> read_int_aggregate(IfcUtil::IfcBaseClass* entity, const char* attr) {
+inline std::vector<int> read_int_aggregate(express::Base entity, const char* attr) {
     std::vector<int> result;
     int idx = attr_index_of(entity, attr);
     if (idx < 0) {
         return result;
     }
     try {
-        auto value = entity->get_attribute_value(static_cast<size_t>(idx));
+        auto value = entity.get_attribute_value(static_cast<size_t>(idx));
         if (!value.isNull()) {
             result = static_cast<std::vector<int>>(value);
         }
@@ -214,19 +214,19 @@ inline std::vector<int> read_int_aggregate(IfcUtil::IfcBaseClass* entity, const 
     return result;
 }
 
-inline bool read_ifc_date(IfcUtil::IfcBaseClass* value, DateTime& result) {
+inline bool read_ifc_date(express::Base value, DateTime& result) {
     if (!value) {
         return false;
     }
-    if (value->declaration().is("IfcCalendarDate")) {
+    if (value.declaration().is("IfcCalendarDate")) {
         result.year = read_int_attr(value, "YearComponent");
         result.month = read_int_attr(value, "MonthComponent");
         result.day = read_int_attr(value, "DayComponent");
         return true;
     }
-    if (value->declaration().is("IfcDateAndTime")) {
-        auto* date = read_ref_attr(value, "DateComponent");
-        auto* time = read_ref_attr(value, "TimeComponent");
+    if (value.declaration().is("IfcDateAndTime")) {
+        auto date = read_ref_attr(value, "DateComponent");
+        auto time = read_ref_attr(value, "TimeComponent");
         if (!read_ifc_date(date, result)) {
             return false;
         }
@@ -238,43 +238,43 @@ inline bool read_ifc_date(IfcUtil::IfcBaseClass* value, DateTime& result) {
     return false;
 }
 
-inline bool read_date_attribute(IfcUtil::IfcBaseClass* entity, const char* attr, DateTime& result) {
+inline bool read_date_attribute(express::Base entity, const char* attr, DateTime& result) {
     int idx = attr_index_of(entity, attr);
     if (idx < 0) {
         return false;
     }
     try {
-        auto value = entity->get_attribute_value(static_cast<size_t>(idx));
+        auto value = entity.get_attribute_value(static_cast<size_t>(idx));
         if (value.isNull()) {
             return false;
         }
-        if (value.type() == IfcUtil::Argument_STRING) {
+        if (value.type() == ifcopenshell::Argument_STRING) {
             return parse_date_time(static_cast<std::string>(value), result);
         }
-        if (value.type() == IfcUtil::Argument_ENTITY_INSTANCE) {
-            return read_ifc_date(static_cast<IfcUtil::IfcBaseClass*>(value), result);
+        if (value.type() == ifcopenshell::Argument_ENTITY_INSTANCE) {
+            return read_ifc_date(static_cast<express::Base>(value), result);
         }
     } catch (...) {
     }
     return false;
 }
 
-inline IfcUtil::IfcBaseClass* derive_calendar(IfcUtil::IfcBaseClass* task) {
-    for (auto* rel : read_inverse_aggregate(task, "HasAssignments")) {
-        auto* control = read_ref_attr(rel, "RelatingControl");
-        if (rel && rel->declaration().is("IfcRelAssignsToControl") && control && control->declaration().is("IfcWorkCalendar")) {
+inline express::Base derive_calendar(express::Base task) {
+    for (auto rel : read_inverse_aggregate(task, "HasAssignments")) {
+        auto control = read_ref_attr(rel, "RelatingControl");
+        if (rel && rel.declaration().is("IfcRelAssignsToControl") && control && control.declaration().is("IfcWorkCalendar")) {
             return control;
         }
     }
-    for (auto* rel : read_inverse_aggregate(task, "Nests")) {
-        if (auto* parent = read_ref_attr(rel, "RelatingObject")) {
+    for (auto rel : read_inverse_aggregate(task, "Nests")) {
+        if (auto parent = read_ref_attr(rel, "RelatingObject")) {
             return derive_calendar(parent);
         }
     }
-    return nullptr;
+    return {};
 }
 
-inline bool is_day_in_work_time(const DateTime& day, IfcUtil::IfcBaseClass* work_time) {
+inline bool is_day_in_work_time(const DateTime& day, express::Base work_time) {
     bool applicable = true;
     DateTime start;
     if (read_date_attribute(work_time, "Start", start) || read_date_attribute(work_time, "StartDate", start)) {
@@ -287,11 +287,11 @@ inline bool is_day_in_work_time(const DateTime& day, IfcUtil::IfcBaseClass* work
     return applicable;
 }
 
-inline bool is_work_time_applicable_to_day(IfcUtil::IfcBaseClass* work_time, const DateTime& day) {
+inline bool is_work_time_applicable_to_day(express::Base work_time, const DateTime& day) {
     if (!is_day_in_work_time(day, work_time)) {
         return false;
     }
-    auto* recurrence = read_ref_attr(work_time, "RecurrencePattern");
+    auto recurrence = read_ref_attr(work_time, "RecurrencePattern");
     if (!recurrence) {
         return true;
     }
@@ -331,11 +331,11 @@ inline bool is_work_time_applicable_to_day(IfcUtil::IfcBaseClass* work_time, con
     return false;
 }
 
-inline bool is_calendar_applicable(const DateTime& day, IfcUtil::IfcBaseClass* calendar) {
+inline bool is_calendar_applicable(const DateTime& day, express::Base calendar) {
     if (!calendar || read_ref_aggregate(calendar, "WorkingTimes").empty()) {
         return false;
     }
-    for (auto* work_time : read_ref_aggregate(calendar, "WorkingTimes")) {
+    for (auto work_time : read_ref_aggregate(calendar, "WorkingTimes")) {
         if (is_day_in_work_time(day, work_time)) {
             return true;
         }
@@ -343,9 +343,9 @@ inline bool is_calendar_applicable(const DateTime& day, IfcUtil::IfcBaseClass* c
     return false;
 }
 
-inline bool is_working_day(const DateTime& day, IfcUtil::IfcBaseClass* calendar) {
+inline bool is_working_day(const DateTime& day, express::Base calendar) {
     bool working = false;
-    for (auto* work_time : read_ref_aggregate(calendar, "WorkingTimes")) {
+    for (auto work_time : read_ref_aggregate(calendar, "WorkingTimes")) {
         if (is_work_time_applicable_to_day(work_time, day)) {
             working = true;
             break;
@@ -354,7 +354,7 @@ inline bool is_working_day(const DateTime& day, IfcUtil::IfcBaseClass* calendar)
     if (!working) {
         return false;
     }
-    for (auto* work_time : read_ref_aggregate(calendar, "ExceptionTimes")) {
+    for (auto work_time : read_ref_aggregate(calendar, "ExceptionTimes")) {
         if (is_work_time_applicable_to_day(work_time, day)) {
             return false;
         }
@@ -362,7 +362,7 @@ inline bool is_working_day(const DateTime& day, IfcUtil::IfcBaseClass* calendar)
     return true;
 }
 
-inline DateTime get_soonest_working_day(DateTime start, const std::string& duration_type, IfcUtil::IfcBaseClass* calendar) {
+inline DateTime get_soonest_working_day(DateTime start, const std::string& duration_type, express::Base calendar) {
     if (duration_type == "ELAPSEDTIME" || !is_calendar_applicable(start, calendar)) {
         return start;
     }
@@ -375,7 +375,7 @@ inline DateTime get_soonest_working_day(DateTime start, const std::string& durat
     return start;
 }
 
-inline DateTime get_recent_working_day(DateTime start, const std::string& duration_type, IfcUtil::IfcBaseClass* calendar) {
+inline DateTime get_recent_working_day(DateTime start, const std::string& duration_type, express::Base calendar) {
     if (duration_type == "ELAPSEDTIME" || !is_calendar_applicable(start, calendar)) {
         return start;
     }
@@ -388,7 +388,7 @@ inline DateTime get_recent_working_day(DateTime start, const std::string& durati
     return start;
 }
 
-inline DateTime offset_date(DateTime start, const Duration& duration, const std::string& duration_type, IfcUtil::IfcBaseClass* calendar) {
+inline DateTime offset_date(DateTime start, const Duration& duration, const std::string& duration_type, express::Base calendar) {
     int total_days = duration.days + duration.months * 30 + duration.years * 12 * 30;
     int remaining = std::abs(total_days);
     int direction = duration.days > 0 ? 1 : -1;
@@ -408,7 +408,7 @@ inline DateTime get_start_or_finish_date(
     DateTime start,
     const Duration& duration,
     const std::string& duration_type,
-    IfcUtil::IfcBaseClass* calendar,
+    express::Base calendar,
     const std::string& date_type)
 {
     if (!duration.days) {
@@ -425,7 +425,7 @@ inline DateTime get_start_or_finish_date(
     return date_type == "START" ? with_time(result, 9) : with_time(result, 17);
 }
 
-inline int count_working_days(DateTime start, DateTime finish, IfcUtil::IfcBaseClass* calendar) {
+inline int count_working_days(DateTime start, DateTime finish, express::Base calendar) {
     if (date_serial(start) == date_serial(finish)) {
         return 0;
     }

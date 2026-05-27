@@ -6,8 +6,8 @@
 
 #include "ifcapi/bindings/shape_builder.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
 
 #include <stdexcept>
 #include <vector>
@@ -15,8 +15,8 @@
 namespace ifcapi {
 namespace detail {
 
-inline std::vector<const IfcUtil::IfcBaseClass*> const_refs(const std::vector<IfcUtil::IfcBaseClass*>& items) {
-    return {items.begin(), items.end()};
+inline std::vector<express::Base> const_refs(const std::vector<express::Base>& items) {
+    return items;
 }
 
 inline std::vector<double> v2(double x, double y) {
@@ -58,16 +58,16 @@ inline std::vector<std::vector<double>> rectangle_coords(
     return points;
 }
 
-inline IfcUtil::IfcBaseClass* polyline(
-    IfcParse::IfcFile* file,
+inline express::Base polyline(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& points,
     bool closed = true)
 {
     return ifcapi::bindings::shape_builder_polyline(file, points, closed, {}, false, {});
 }
 
-inline IfcUtil::IfcBaseClass* rectangle(
-    IfcParse::IfcFile* file,
+inline express::Base rectangle(
+    ifcopenshell::file* file,
     const std::vector<double>& size,
     const std::vector<double>& position = {},
     bool has_position = false)
@@ -75,15 +75,15 @@ inline IfcUtil::IfcBaseClass* rectangle(
     return polyline(file, rectangle_coords(size, position, has_position), true);
 }
 
-inline IfcUtil::IfcBaseClass* extrude_y(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* profile_or_curve,
+inline express::Base extrude_y(
+    ifcopenshell::file* file,
+    express::Base profile_or_curve,
     double magnitude,
     const std::vector<double>& position)
 {
     return ifcapi::bindings::shape_builder_extrude(
         file,
-        profile_or_curve,
+        &profile_or_curve,
         magnitude,
         position,
         {0.0, 0.0, -1.0},
@@ -93,15 +93,15 @@ inline IfcUtil::IfcBaseClass* extrude_y(
         false);
 }
 
-inline IfcUtil::IfcBaseClass* extrude_z(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* profile_or_curve,
+inline express::Base extrude_z(
+    ifcopenshell::file* file,
+    express::Base profile_or_curve,
     double magnitude,
     const std::vector<double>& position)
 {
     return ifcapi::bindings::shape_builder_extrude(
         file,
-        profile_or_curve,
+        &profile_or_curve,
         magnitude,
         position,
         {0.0, 0.0, 1.0},
@@ -112,16 +112,16 @@ inline IfcUtil::IfcBaseClass* extrude_z(
 }
 
 inline void translate_items(
-    IfcParse::IfcFile* file,
-    const std::vector<IfcUtil::IfcBaseClass*>& items,
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& items,
     const std::vector<double>& translation)
 {
-    for (auto* item : items) {
-        ifcapi::bindings::shape_builder_translate(file, item, translation, false);
+    for (auto item : items) {
+        ifcapi::bindings::shape_builder_translate(file, &item, translation, false);
     }
 }
 
-inline void append_items(std::vector<IfcUtil::IfcBaseClass*>& target, const std::vector<IfcUtil::IfcBaseClass*>& source) {
+inline void append_items(std::vector<express::Base>& target, const std::vector<express::Base>& source) {
     target.insert(target.end(), source.begin(), source.end());
 }
 

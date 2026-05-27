@@ -19,17 +19,14 @@ void set_error(const std::string& message) {
     ifcopenshell::capi::set_last_error(message);
 }
 
-bool is_a(IfcUtil::IfcBaseClass* entity, const char* name) {
-    return entity && entity->declaration().is(name);
+bool is_a(express::Base entity, const char* name) {
+    return entity && entity.declaration().is(name);
 }
 
-IfcUtil::IfcBaseClass* find_context(IfcParse::IfcFile* file) {
-    auto contexts = file->instances_by_type(std::string("IfcGeometricRepresentationContext"));
-    if (!contexts) {
-        return nullptr;
-    }
-    for (auto it = contexts->begin(); it != contexts->end(); ++it) {
-        auto* context = *it;
+express::Base find_context(ifcopenshell::file* file) {
+    auto* declaration = ifcapi::detail::declaration_by_name(file, "IfcGeometricRepresentationContext");
+    if (!declaration) return {};
+    for (auto context : file->instances_by_type(declaration)) {
         if (ifcapi::detail::read_string_attr(context, "ContextType") != "Model") {
             continue;
         }
@@ -42,64 +39,62 @@ IfcUtil::IfcBaseClass* find_context(IfcParse::IfcFile* file) {
         }
         return context;
     }
-    return nullptr;
+    return {};
 }
 
-IfcUtil::IfcBaseClass* first_site(IfcParse::IfcFile* file) {
-    auto sites = file->instances_by_type(std::string("IfcSite"));
-    if (!sites || sites->begin() == sites->end()) {
-        return nullptr;
-    }
-    return *sites->begin();
+express::Base first_site(ifcopenshell::file* file) {
+    auto sites = ifcapi::detail::instances_by_type(file, "IfcSite");
+    return sites.empty() ? express::Base() : sites.front();
 }
 
-IfcUtil::IfcBaseClass* first_representation(IfcUtil::IfcBaseClass* annotation) {
-    auto* product_representation = ifcapi::detail::read_ref_attr(annotation, "Representation");
+express::Base first_representation(express::Base annotation) {
+    auto product_representation = ifcapi::detail::read_ref_attr(annotation, "Representation");
     auto representations = ifcapi::detail::read_ref_aggregate(product_representation, "Representations");
-    return representations.empty() ? nullptr : representations.front();
+    return representations.empty() ? express::Base() : representations.front();
 }
 
-IfcUtil::IfcBaseClass* first_item(IfcUtil::IfcBaseClass* annotation) {
+express::Base first_item(express::Base annotation) {
     auto items = ifcapi::detail::read_ref_aggregate(first_representation(annotation), "Items");
-    return items.empty() ? nullptr : items.front();
+    return items.empty() ? express::Base() : items.front();
 }
 
 } // namespace
 
-IfcUtil::IfcBaseClass* cogo_add_survey_point(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* survey_point,
-    IfcUtil::IfcBaseClass* site,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+express::Base cogo_add_survey_point(
+    ifcopenshell::file* file,
+    express::Base* survey_point,
+    express::Base* site,
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
-    if (!file || !survey_point) {
+    auto survey_point_value = ifcapi::detail::deref_or_empty(survey_point);
+    if (!file || !survey_point_value) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
 
     try {
-        auto* context = find_context(file);
+        auto context = find_context(file);
         if (!context) {
             throw std::runtime_error("No Model/Annotation/MODEL_VIEW representation context found");
         }
-        auto* actual_site = site ? site : first_site(file);
+        auto actual_site = site && *site ? *site : first_site(file);
         if (!actual_site) {
             throw std::runtime_error("No IfcSite found");
         }
 
-        auto* shape_representation = file->create(file->schema()->declaration_by_name("IfcShapeRepresentation"));
+        auto shape_representation = file->create(file->schema()->declaration_by_name("IfcShapeRepresentation"));
         ifcapi::detail::write_ref_attr(shape_representation, "ContextOfItems", context);
         ifcapi::detail::write_string_attr(shape_representation, "RepresentationIdentifier", "Annotation");
         ifcapi::detail::write_string_attr(shape_representation, "RepresentationType", "Point");
-        ifcapi::detail::write_ref_aggregate(shape_representation, "Items", {survey_point});
+        ifcapi::detail::write_ref_aggregate(shape_representation, "Items", {survey_point_value});
 
-        auto* representation = file->create(file->schema()->declaration_by_name("IfcProductDefinitionShape"));
+        auto representation = file->create(file->schema()->declaration_by_name("IfcProductDefinitionShape"));
         ifcapi::detail::write_ref_aggregate(representation, "Representations", {shape_representation});
 
-        auto* annotation = file->create(file->schema()->declaration_by_name("IfcAnnotation"));
+        auto annotation = file->create(file->schema()->declaration_by_name("IfcAnnotation"));
         ifcapi::detail::write_string_attr(annotation, "GlobalId", ifcapi::guid_new());
         ifcapi::detail::write_ref_attr(
             annotation,
@@ -108,42 +103,44 @@ IfcUtil::IfcBaseClass* cogo_add_survey_point(
         ifcapi::detail::write_ref_attr(annotation, "Representation", representation);
         ifcapi::detail::write_enum_attr(annotation, "PredefinedType", "SURVEY");
 
-        std::vector<const IfcUtil::IfcBaseClass*> products = {annotation};
-        spatial_assign_container(file, products, actual_site, owner_history, user, application);
+        spatial_assign_container(file, {annotation}, &actual_site, owner_history, user, application);
         return annotation;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-void cogo_assign_survey_point(IfcUtil::IfcBaseClass* annotation, IfcUtil::IfcBaseClass* survey_point) {
+void cogo_assign_survey_point(express::Base* annotation, express::Base* survey_point) {
     ifcopenshell_clear_error();
-    if (!annotation || !survey_point) {
+    auto annotation_value = ifcapi::detail::deref_or_empty(annotation);
+    auto survey_point_value = ifcapi::detail::deref_or_empty(survey_point);
+    if (!annotation_value || !survey_point_value) {
         set_error("Invalid arguments");
         return;
     }
 
     try {
-        auto* representation = first_representation(annotation);
+        auto representation = first_representation(annotation_value);
         if (!representation) {
             throw std::runtime_error("Annotation has no shape representation");
         }
-        ifcapi::detail::write_ref_aggregate(representation, "Items", {survey_point});
+        ifcapi::detail::write_ref_aggregate(representation, "Items", {survey_point_value});
     } catch (const std::exception& e) {
         set_error(e.what());
     }
 }
 
-void cogo_edit_survey_point(IfcUtil::IfcBaseClass* annotation, double x, double y, double z) {
+void cogo_edit_survey_point(express::Base* annotation, double x, double y, double z) {
     ifcopenshell_clear_error();
-    if (!annotation) {
+    auto annotation_value = ifcapi::detail::deref_or_empty(annotation);
+    if (!annotation_value) {
         set_error("Invalid arguments");
         return;
     }
 
     try {
-        auto* survey_point = first_item(annotation);
+        auto survey_point = first_item(annotation_value);
         if (!survey_point) {
             throw std::runtime_error("Annotation has no survey point");
         }
