@@ -29,6 +29,7 @@ class HandleSpec:
     c_type: str
     destructor: str
     ptr_type: str = "raw"
+    empty_check: str | None = None
 
 
 @dataclass(frozen=True)

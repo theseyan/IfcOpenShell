@@ -5,30 +5,30 @@
 
 #include "ifcapi/bindings/contract.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
 
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING IfcUtil::IfcBaseClass* feature_add_feature(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* feature,
-    IfcUtil::IfcBaseClass* element,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* feature_add_filling(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* opening,
-    IfcUtil::IfcBaseClass* element);
+IFCAPI_BINDING express::Base feature_add_feature(
+    ifcopenshell::file* file,
+    express::Base* feature,
+    express::Base* element,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
+IFCAPI_BINDING express::Base feature_add_filling(
+    ifcopenshell::file* file,
+    express::Base* opening,
+    express::Base* element);
 IFCAPI_BINDING void feature_remove_feature(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* feature,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+    ifcopenshell::file* file,
+    express::Base* feature,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 IFCAPI_BINDING void feature_remove_filling(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* element);
+    ifcopenshell::file* file,
+    express::Base* element);
 
 } // namespace bindings
 } // namespace ifcapi

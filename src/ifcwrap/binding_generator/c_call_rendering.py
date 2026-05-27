@@ -114,6 +114,13 @@ def _cpp_string_literal(value: str) -> str:
     return json.dumps(value)
 
 
+def _value_handle_empty_expr(handle: object, value_expr: str) -> str:
+    empty_check = getattr(handle, "empty_check", None)
+    if empty_check:
+        return empty_check.replace("{value}", value_expr)
+    return f"!static_cast<bool>({value_expr})"
+
+
 def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
     type_spec = call.returns
     kind = type_spec.kind
@@ -161,6 +168,7 @@ def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
             type_spec.ownership == "owned"
             and handle.name not in {"attribute_value", "instance_list"}
             and handle.ptr_type != "shared_ptr"
+            and handle.ptr_type != "value"
             and handle.destructor == "delete"
         ):
             normalized_cpp_type = _normalize_cpp_type(type_spec.cpp_type)
@@ -169,6 +177,15 @@ def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
                     f"auto result_value = std::unique_ptr<{handle.cpp_type}>({expr});\n"
                     f"        *out_result = new {handle.c_type}{{result_value.release(), true}};"
                 )
+        if handle.ptr_type == "value" and type_spec.nullable:
+            return (
+                f"auto result_value = {expr};\n"
+                f"        if ({_value_handle_empty_expr(handle, 'result_value')}) {{\n"
+                f"            *out_result = nullptr;\n"
+                f"        }} else {{\n"
+                f"            *out_result = new {handle.c_type}{{std::move(result_value)}};\n"
+                f"        }}"
+            )
         return f"*out_result = {_wrap_handle_expr(type_spec, expr, spec)};"
     if kind == "opaque_ptr":
         return f"*out_result = static_cast<void*>({expr});"
@@ -273,7 +290,32 @@ def _render_param_prelude(param: ParamSpec, spec: BindingIR) -> str:
                 f"    auto {param.name}_cpp = {helper_name}({param.name});"
             )
         handle = spec.handles[type_spec.handle]
-        if handle.name in {"attribute_value", "instance_list"}:
+        if handle.name == "attribute_value":
+            return (
+                f'{_null_check(param.name, "Handle parameter")}\n'
+                f"    auto {param.name}_cpp = {param.name}->value;"
+            )
+        if handle.ptr_type == "value":
+            cpp_type = _normalize_cpp_type(type_spec.cpp_type)
+            if not cpp_type:
+                cpp_type = f"{handle.cpp_type}*"
+            if type_spec.nullable:
+                if cpp_type.endswith("*"):
+                    return f"    auto {param.name}_cpp = ({param.name} != nullptr) ? &{param.name}->value : nullptr;"
+                raise ValueError(
+                    f'Value handle parameter "{param.name}" can only be nullable with pointer cpp_type "{type_spec.cpp_type}"'
+                )
+            if cpp_type.endswith("*"):
+                return (
+                    f'{_null_check(param.name, "Handle parameter")}\n'
+                    f"    auto {param.name}_cpp = &{param.name}->value;"
+                )
+            if cpp_type.endswith("&"):
+                auto_kw = "const auto&" if cpp_type.startswith("const ") else "auto&"
+                return (
+                    f'{_null_check(param.name, "Handle parameter")}\n'
+                    f"    {auto_kw} {param.name}_cpp = {param.name}->value;"
+                )
             return (
                 f'{_null_check(param.name, "Handle parameter")}\n'
                 f"    auto {param.name}_cpp = {param.name}->value;"
@@ -442,14 +484,24 @@ def _render_call_impl(call: CallIR, spec: BindingIR) -> str:
         receiver_handle = spec.handles[call.receiver]
         if receiver_handle.name == "instance_list":
             prelude_lines.append(
-                f'    if ({receiver_name} == nullptr || !{receiver_name}->value) {{ throw std::runtime_error("Receiver handle is invalid"); }}'
+                f'    if ({receiver_name} == nullptr) {{ throw std::runtime_error("Receiver handle is invalid"); }}'
             )
-            prelude_lines.append(f"    auto self_cpp = {receiver_name}->value;")
+            prelude_lines.append(f"    auto* self_cpp = &{receiver_name}->value;")
         elif receiver_handle.name == "attribute_value":
             prelude_lines.append(
                 f'    if ({receiver_name} == nullptr) {{ throw std::runtime_error("Receiver handle is invalid"); }}'
             )
             prelude_lines.append(f"    auto& self_cpp = {receiver_name}->value;")
+        elif receiver_handle.ptr_type == "value":
+            prelude_lines.append(
+                f'    if ({receiver_name} == nullptr) {{ throw std::runtime_error("Receiver handle is invalid"); }}'
+            )
+            if receiver_handle.empty_check:
+                empty_check = receiver_handle.empty_check.format(value=f"{receiver_name}->value")
+                prelude_lines.append(
+                    f'    if ({empty_check}) {{ throw std::runtime_error("Receiver handle is invalid"); }}'
+                )
+            prelude_lines.append(f"    auto* self_cpp = &{receiver_name}->value;")
         elif receiver_handle.ptr_type == "shared_ptr":
             # For shared_ptr handles, check that the shared_ptr is not null and use .get()
             prelude_lines.append(
@@ -488,7 +540,10 @@ def _render_call_impl(call: CallIR, spec: BindingIR) -> str:
             body_line = _render_result_assignment(call, spec, expr)
     elif isinstance(op, ValueHandleFieldGetOp):
         target_handle = spec.handles[call.returns.handle]
-        expr = f"std::make_shared<{target_handle.cpp_type}>(self_cpp->{op.field_name})"
+        if target_handle.ptr_type == "value":
+            expr = f"self_cpp->{op.field_name}"
+        else:
+            expr = f"std::make_shared<{target_handle.cpp_type}>(self_cpp->{op.field_name})"
         body_line = _render_result_assignment(call, spec, expr)
     elif isinstance(op, PointerPresenceCheckOp):
         body_line = f"*out_result = (self_cpp->{op.field_name} != nullptr);"
@@ -531,10 +586,10 @@ def _render_call_impl(call: CallIR, spec: BindingIR) -> str:
     elif isinstance(op, ArrayElementFieldOp):
         body_line = _render_result_assignment(call, spec, f"self_cpp->{op.expression}")
     elif isinstance(op, OptionalPresenceCheckOp):
-        body_line = f"*out_result = self_cpp->{op.field_name}.is_initialized();"
+        body_line = f"*out_result = static_cast<bool>(self_cpp->{op.field_name});"
     elif isinstance(op, OptionalGetOp):
         null_guard = (
-            f'if (!self_cpp->{op.field_name}.is_initialized()) '
+            f'if (!self_cpp->{op.field_name}) '
             f'{{ throw std::runtime_error("{op.field_name} is not set"); }}\n        '
         )
         body_line = null_guard + _render_result_assignment(call, spec, f"*self_cpp->{op.field_name}")
@@ -565,7 +620,7 @@ def _render_call_impl(call: CallIR, spec: BindingIR) -> str:
         getter_lines = [f"auto val = self_cpp->{op.method_name}(name_cpp);", "        bool matched = false;"]
         for getter_type in op.getter_types:
             getter_lines.append(
-                f"        if (auto* p = boost::get<{getter_type}>(&val)) {{ {_render_result_assignment(call, spec, '*p')} matched = true; }}"
+                f"        if (auto* p = std::get_if<{getter_type}>(&val)) {{ {_render_result_assignment(call, spec, '*p')} matched = true; }}"
             )
         getter_lines.append('        if (!matched) { throw std::runtime_error("Setting is not of expected type"); }')
         body_line = "\n".join(getter_lines)

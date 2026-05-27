@@ -5,38 +5,38 @@
 
 #include "ifcapi/bindings/contract.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
 
 #include <vector>
 
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING IfcUtil::IfcBaseClass* type_assign_type(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& objects,
-    IfcUtil::IfcBaseClass* relating_type,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* type_assign_type_ex(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& objects,
-    IfcUtil::IfcBaseClass* relating_type,
+IFCAPI_BINDING express::Base type_assign_type(
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& objects,
+    express::Base* relating_type,
+    IFCAPI_NULLABLE express::Base* owner_history,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
+IFCAPI_BINDING express::Base type_assign_type_ex(
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& objects,
+    express::Base* relating_type,
     bool should_map_representations,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE express::Base* owner_history,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 IFCAPI_BINDING bool type_map_type_representations(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* related_object,
-    IfcUtil::IfcBaseClass* relating_type);
+    ifcopenshell::file* file,
+    express::Base* related_object,
+    express::Base* relating_type);
 IFCAPI_BINDING void type_unassign_type(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& objects,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& objects,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 
 } // namespace bindings
 } // namespace ifcapi

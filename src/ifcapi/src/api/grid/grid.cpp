@@ -9,7 +9,7 @@
 #include "placement_helpers.hpp"
 #include "ifcopenshell_api_internal.hpp"
 
-#include "ifcparse/IfcSchema.h"
+#include "ifcparse/schema.h"
 
 #include <stdexcept>
 #include <string>

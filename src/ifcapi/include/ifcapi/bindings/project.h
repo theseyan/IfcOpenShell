@@ -6,27 +6,27 @@
 
 #include "ifcapi/bindings/contract.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
 
 #include <vector>
 
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING IfcUtil::IfcBaseClass* project_assign_declaration(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& definitions,
-    IfcUtil::IfcBaseClass* relating_context,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+IFCAPI_BINDING express::Base project_assign_declaration(
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& definitions,
+    express::Base* relating_context,
+    IFCAPI_NULLABLE express::Base* owner_history,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 IFCAPI_BINDING void project_unassign_declaration(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& definitions,
-    IfcUtil::IfcBaseClass* relating_context,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& definitions,
+    express::Base* relating_context,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 
 } // namespace bindings
 } // namespace ifcapi

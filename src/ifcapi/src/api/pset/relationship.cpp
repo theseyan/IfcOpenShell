@@ -7,9 +7,9 @@
 #include "ifcapi/detail/relationship.h"
 #include "guid.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
-#include "ifcparse/IfcSchema.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
+#include "ifcparse/schema.h"
 
 #include <algorithm>
 #include <set>

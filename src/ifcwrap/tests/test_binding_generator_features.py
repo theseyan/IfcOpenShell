@@ -1510,6 +1510,7 @@ def test_generate_synthetic_autodiscovery_features(tmp_path: Path) -> None:
                 optional() = default;
                 optional(const T&) {}
                 bool is_initialized() const { return true; }
+                explicit operator bool() const { return is_initialized(); }
                 T& operator*();
                 const T& operator*() const;
             };
@@ -1737,14 +1738,14 @@ def test_generate_synthetic_autodiscovery_features(tmp_path: Path) -> None:
 
     assert "self_cpp->axis = value_cpp;" in generated_cpp
     assert "self_cpp->children.push_back(item_cpp);" in generated_cpp
-    assert "*out_result = self_cpp->weight.is_initialized();" in generated_cpp
-    assert 'if (!self_cpp->weight.is_initialized()) { throw std::runtime_error("weight is not set"); }' in generated_cpp
-    assert "if (auto* p = boost::get<bool>(&val))" in generated_cpp
-    assert "if (auto* p = boost::get<int64_t>(&val))" in generated_cpp
-    assert "if (auto* p = boost::get<Demo::Mode>(&val))" in generated_cpp
-    assert "if (auto* p = boost::get<std::set<int>>(&val))" in generated_cpp
-    assert "if (auto* p = boost::get<std::vector<int>>(&val))" in generated_cpp
-    assert "if (auto* p = boost::get<std::vector<std::string>>(&val))" in generated_cpp
+    assert "*out_result = static_cast<bool>(self_cpp->weight);" in generated_cpp
+    assert 'if (!self_cpp->weight) { throw std::runtime_error("weight is not set"); }' in generated_cpp
+    assert "if (auto* p = std::get_if<bool>(&val))" in generated_cpp
+    assert "if (auto* p = std::get_if<int64_t>(&val))" in generated_cpp
+    assert "if (auto* p = std::get_if<Demo::Mode>(&val))" in generated_cpp
+    assert "if (auto* p = std::get_if<std::set<int>>(&val))" in generated_cpp
+    assert "if (auto* p = std::get_if<std::vector<int>>(&val))" in generated_cpp
+    assert "if (auto* p = std::get_if<std::vector<std::string>>(&val))" in generated_cpp
     assert "std::set<int> value_cpp(value_vec.begin(), value_vec.end());" in generated_cpp
     assert "auto value_cpp = to_cpp_int32_list(value);" in generated_cpp
     assert "auto value_cpp = to_cpp_string_list(value);" in generated_cpp
@@ -2129,6 +2130,258 @@ def test_autodiscovery_supports_nested_namespace_functions(tmp_path: Path) -> No
     generated_cpp = cpp_out.read_text(encoding="utf-8")
     assert "ifcapi::bindings::nested_count(name_cpp)" in generated_cpp
     assert "ifcapi::bindings::qualified_scale(value_cpp)" in generated_cpp
+
+
+def test_authored_spec_discovery_uses_explicit_compilation_without_compile_commands(tmp_path: Path) -> None:
+    compiler = shutil.which("clang++")
+    if compiler is None:
+        pytest.skip("clang++ is not available")
+
+    header = tmp_path / "bindings.h"
+    source = tmp_path / "bindings.cpp"
+    spec_path = tmp_path / "bindings.yml"
+
+    header.write_text(
+        dedent(
+            """
+            #include <string>
+
+            namespace ifcapi::bindings {
+            int nested_count(const std::string& name);
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "bindings.h"\n', encoding="utf-8")
+    spec_path.write_text(
+        dedent(
+            f"""
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - bindings.h
+            discover:
+              include_dir: .
+              compilation:
+                compiler: {compiler}
+                include_dirs:
+                  - .
+              functions:
+                - namespace: ifcapi::bindings
+                  translation_unit: bindings.cpp
+                  include:
+                    - nested_count
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    spec = load_authored_spec(spec_path, compile_commands_path=None)
+    calls = {call.c_name: call for call in spec.functions}
+
+    assert calls["ifcopenshell_demo_nested_count"].policy_operation.cpp_name == "ifcapi::bindings::nested_count"
+    assert calls["ifcopenshell_demo_nested_count"].params[0].type.kind == "string"
+
+    header_out = tmp_path / "bindings_api.h"
+    cpp_out = tmp_path / "bindings_api.cpp"
+    generate(spec_path, header_out, cpp_out, compile_commands_path=None)
+
+    generated_cpp = cpp_out.read_text(encoding="utf-8")
+    assert "ifcapi::bindings::nested_count(name_cpp)" in generated_cpp
+
+
+def test_authored_spec_discovery_accepts_global_include_dirs_without_compile_commands(tmp_path: Path) -> None:
+    compiler = shutil.which("clang++")
+    if compiler is None:
+        pytest.skip("clang++ is not available")
+
+    dependency_dir = tmp_path / "dependency"
+    dependency_dir.mkdir()
+    (dependency_dir / "dep.hpp").write_text("using external_int = int;\n", encoding="utf-8")
+
+    header = tmp_path / "bindings.h"
+    source = tmp_path / "bindings.cpp"
+    spec_path = tmp_path / "bindings.yml"
+
+    header.write_text(
+        dedent(
+            """
+            #include <dep.hpp>
+
+            namespace ifcapi::bindings {
+            int dependency_value(external_int value);
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "bindings.h"\n', encoding="utf-8")
+    spec_path.write_text(
+        dedent(
+            f"""
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - bindings.h
+            discover:
+              include_dir: .
+              compilation:
+                compiler: {compiler}
+              functions:
+                - namespace: ifcapi::bindings
+                  translation_unit: bindings.cpp
+                  include:
+                    - dependency_value
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    spec = load_authored_spec(
+        spec_path,
+        compile_commands_path=None,
+        discovery_include_dirs=(dependency_dir,),
+    )
+    calls = {call.c_name: call for call in spec.functions}
+    assert calls["ifcopenshell_demo_dependency_value"].params[0].type.kind == "int32"
+
+    header_out = tmp_path / "bindings_api.h"
+    cpp_out = tmp_path / "bindings_api.cpp"
+    generate(
+        spec_path,
+        header_out,
+        cpp_out,
+        compile_commands_path=None,
+        discovery_include_dirs=(dependency_dir,),
+    )
+    assert "int32_t value" in header_out.read_text(encoding="utf-8")
+
+
+def test_value_handle_discovery_wraps_values_without_pointer_storage(tmp_path: Path) -> None:
+    compiler = shutil.which("clang++")
+    if compiler is None:
+        pytest.skip("clang++ is not available")
+
+    header = tmp_path / "values.h"
+    source = tmp_path / "values.cpp"
+    spec_path = tmp_path / "values.yml"
+
+    header.write_text(
+        dedent(
+            """
+            #include <vector>
+
+            namespace Demo {
+            struct Value {
+                bool valid = true;
+                explicit operator bool() const { return valid; }
+            };
+
+            Value find_value(int id);
+            int consume_ref(const Value& value);
+            int consume_value(Value value);
+            std::vector<Value> all_values();
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "values.h"\n', encoding="utf-8")
+    spec_path.write_text(
+        dedent(
+            f"""
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - values.h
+            handles:
+              - name: value
+                cpp_type: Demo::Value
+                c_type: ifcopenshell_demo_value_t
+                destructor: none
+                ptr_type: value
+                empty_check: "!static_cast<bool>({{value}})"
+            discover:
+              include_dir: .
+              compilation:
+                compiler: {compiler}
+              functions:
+                - namespace: Demo
+                  translation_unit: values.cpp
+                  include:
+                    - find_value
+                    - consume_ref
+                    - consume_value
+                    - all_values
+                  type_overrides:
+                    find_value:
+                      returns:
+                        nullable: true
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    spec = load_authored_spec(spec_path)
+    calls = {call.c_name: call for call in spec.functions}
+    assert calls["ifcopenshell_demo_find_value"].returns.handle == "value"
+    assert calls["ifcopenshell_demo_find_value"].returns.nullable
+    assert calls["ifcopenshell_demo_consume_ref"].params[0].type.handle == "value"
+    assert calls["ifcopenshell_demo_all_values"].returns.sequence_depth == 1
+
+    header_out = tmp_path / "values_api.h"
+    cpp_out = tmp_path / "values_api.cpp"
+    generate(spec_path, header_out, cpp_out)
+
+    generated_cpp = cpp_out.read_text(encoding="utf-8")
+    generated_internal = cpp_out.with_name("values_api_internal.hpp").read_text(encoding="utf-8")
+    assert "struct ifcopenshell_demo_value_t {\n    Demo::Value value;\n};" in generated_internal
+    assert "if (!static_cast<bool>(result_value))" in generated_cpp
+    assert "*out_result = new ifcopenshell_demo_value_t{std::move(result_value)};" in generated_cpp
+    assert "const auto& value_cpp = value->value;" in generated_cpp
+    assert "auto value_cpp = value->value;" in generated_cpp
+    assert "new ifcopenshell_demo_value_t{Demo::Value(values[i])}" in generated_cpp
+    assert "result.push_back(item->value);" in generated_cpp
+    assert "value->ptr" not in generated_cpp
+
+
+def test_value_handle_requires_none_destructor(tmp_path: Path) -> None:
+    spec_path = tmp_path / "bad_value.yml"
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers: []
+            handles:
+              - name: value
+                cpp_type: Demo::Value
+                c_type: ifcopenshell_demo_value_t
+                destructor: delete
+                ptr_type: value
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="destructor must be 'none' for ptr_type: value"):
+        load_authored_spec(spec_path)
 
 
 def test_discovery_type_overrides_can_target_canonical_overload_signature(tmp_path: Path) -> None:

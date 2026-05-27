@@ -6,8 +6,8 @@
 
 #include "ifcapi/bindings/contract.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
 
 #include <boost/logic/tribool.hpp>
 
@@ -17,27 +17,27 @@
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING IfcUtil::IfcBaseClass* layer_add_layer(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base layer_add_layer(
+    ifcopenshell::file* file,
     const std::string& name);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* layer_add_layer_with_style(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base layer_add_layer_with_style(
+    ifcopenshell::file* file,
     const std::string& name,
     boost::logic::tribool on,
     boost::logic::tribool frozen,
     boost::logic::tribool blocked,
-    const std::vector<const IfcUtil::IfcBaseClass*>& styles);
+    const std::vector<express::Base>& styles);
 IFCAPI_BINDING void layer_assign_layer(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& items,
-    IfcUtil::IfcBaseClass* layer);
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& items,
+    express::Base* layer);
 IFCAPI_BINDING void layer_unassign_layer(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& items,
-    IfcUtil::IfcBaseClass* layer);
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& items,
+    express::Base* layer);
 IFCAPI_BINDING void layer_remove_layer(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* layer);
+    ifcopenshell::file* file,
+    express::Base* layer);
 
 } // namespace bindings
 } // namespace ifcapi

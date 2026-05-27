@@ -6,8 +6,8 @@
 
 #include "ifcapi/bindings/contract.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
 
 struct ifcopenshell_pset_props_t;
 
@@ -15,8 +15,8 @@ namespace ifcapi {
 namespace bindings {
 
 IFCAPI_BINDING void resource_edit_resource_time(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* resource_time,
+    ifcopenshell::file* file,
+    express::Base* resource_time,
     ifcopenshell_pset_props_t* attributes);
 
 } // namespace bindings

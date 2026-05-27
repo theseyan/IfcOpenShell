@@ -191,6 +191,21 @@ class CompileCommand:
 
 
 @dataclass(frozen=True)
+class CompilationConfig:
+    compiler: str = "clang++"
+    clang_args: tuple[str, ...] = ("-x", "c++", "-std=c++17")
+    include_dirs: tuple[Path, ...] = ()
+    defines: tuple[str, ...] = ()
+    working_directory: Path | None = None
+
+
+@dataclass(frozen=True)
+class DiscoveryEnvironment:
+    compile_commands_path: Path | None = None
+    compilation: CompilationConfig = field(default_factory=CompilationConfig)
+
+
+@dataclass(frozen=True)
 class IndexedRecord:
     qualified_name: str
     simple_name: str
@@ -536,7 +551,7 @@ class TranslationUnitIndex:
 
 
 _COMPILE_COMMAND_CACHE: dict[Path, tuple[CompileCommand, ...]] = {}
-_TRANSLATION_UNIT_INDEX_CACHE: dict[tuple[Path, Path], TranslationUnitIndex] = {}
+_TRANSLATION_UNIT_INDEX_CACHE: dict[tuple[object, Path], TranslationUnitIndex] = {}
 _CACHE_LOCK = threading.RLock()
 
 
@@ -571,25 +586,56 @@ def _parse_compile_commands(path: Path) -> tuple[CompileCommand, ...]:
         return result
 
 
-def _translation_unit_index(compile_commands_path: Path, translation_unit: Path) -> TranslationUnitIndex:
-    compile_commands_key = compile_commands_path.resolve()
+def _compile_command_from_config(config: CompilationConfig, translation_unit: Path) -> CompileCommand:
     tu_resolved = translation_unit.resolve()
-    cache_key = (compile_commands_key, tu_resolved)
+    directory = (config.working_directory or tu_resolved.parent).resolve()
+    arguments: list[str] = [config.compiler]
+    arguments.extend(config.clang_args)
+    arguments.extend(f"-I{include_dir.resolve()}" for include_dir in config.include_dirs)
+    arguments.extend(f"-D{define}" for define in config.defines)
+    arguments.extend(["-c", str(tu_resolved)])
+    return CompileCommand(directory=directory, file=tu_resolved, arguments=tuple(arguments))
+
+
+def _environment_cache_key(environment: DiscoveryEnvironment) -> object:
+    if environment.compile_commands_path is not None:
+        return ("compile_commands", environment.compile_commands_path.resolve())
+    compilation = environment.compilation
+    return (
+        "compilation",
+        compilation.compiler,
+        compilation.clang_args,
+        tuple(path.resolve() for path in compilation.include_dirs),
+        compilation.defines,
+        compilation.working_directory.resolve() if compilation.working_directory is not None else None,
+    )
+
+
+def _translation_unit_index(environment: DiscoveryEnvironment, translation_unit: Path) -> TranslationUnitIndex:
+    tu_resolved = translation_unit.resolve()
+    environment_key = _environment_cache_key(environment)
+    cache_key = (environment_key, tu_resolved)
 
     with _CACHE_LOCK:
         cached = _TRANSLATION_UNIT_INDEX_CACHE.get(cache_key)
         if cached is not None:
             return cached
 
-        commands = _parse_compile_commands(compile_commands_key)
-        command = next((item for item in commands if item.file == tu_resolved), None)
-        if command is None:
-            msg = f"Translation unit '{translation_unit}' not found in '{compile_commands_path}'"
-            raise ValueError(msg)
+        if environment.compile_commands_path is not None:
+            compile_commands_key = environment.compile_commands_path.resolve()
+            commands = _parse_compile_commands(compile_commands_key)
+            command = next((item for item in commands if item.file == tu_resolved), None)
+            if command is None:
+                msg = f"Translation unit '{translation_unit}' not found in '{compile_commands_key}'"
+                raise ValueError(msg)
+            debug_context = f"compile_commands={debug_path(compile_commands_key)}"
+        else:
+            command = _compile_command_from_config(environment.compilation, tu_resolved)
+            debug_context = "compile_commands=<none>"
 
         index = TranslationUnitIndex(command=command)
         _TRANSLATION_UNIT_INDEX_CACHE[cache_key] = index
-        debug_log("clang.tu_index.create", f"compile_commands={debug_path(compile_commands_key)} tu={debug_path(tu_resolved)}")
+        debug_log("clang.tu_index.create", f"{debug_context} tu={debug_path(tu_resolved)}")
         return index
 
 
@@ -602,10 +648,22 @@ def _is_relative_to(path: Path, parent: Path) -> bool:
 
 
 def _choose_reference_compile_command(
-    compile_commands_path: Path,
+    environment: DiscoveryEnvironment,
     reference_source_root: Path | None,
 ) -> CompileCommand:
-    commands = _parse_compile_commands(compile_commands_path)
+    if environment.compile_commands_path is None:
+        source_root = reference_source_root.resolve() if reference_source_root is not None else Path.cwd().resolve()
+        return _compile_command_from_config(
+            CompilationConfig(
+                compiler=environment.compilation.compiler,
+                clang_args=environment.compilation.clang_args,
+                include_dirs=environment.compilation.include_dirs,
+                defines=environment.compilation.defines,
+                working_directory=environment.compilation.working_directory or source_root,
+            ),
+            source_root / "contract_discovery.cpp",
+        )
+    commands = _parse_compile_commands(environment.compile_commands_path)
     candidates = commands
     if reference_source_root is not None:
         source_root = reference_source_root.resolve()
@@ -968,14 +1026,14 @@ def _dedupe_discovered_functions(functions: Iterable[DiscoveredFunction]) -> tup
     return tuple(result)
 
 
-def discover_public_methods_with_compile_commands(
-    compile_commands_path: Path,
+def discover_public_methods(
+    environment: DiscoveryEnvironment,
     translation_unit: Path,
     class_name: str,
     include_inherited: bool = False,
     selected_names: Iterable[str] | None = None,
 ) -> dict[str, tuple[DiscoveredMethod, ...]]:
-    index = _translation_unit_index(compile_commands_path, translation_unit)
+    index = _translation_unit_index(environment, translation_unit)
     record = index.resolve_record(class_name)
     if record is None:
         msg = f"Class '{class_name}' not found in AST for '{translation_unit}'"
@@ -1002,12 +1060,12 @@ def discover_public_methods_with_compile_commands(
     return methods
 
 
-def discover_public_constructors_with_compile_commands(
-    compile_commands_path: Path,
+def discover_public_constructors(
+    environment: DiscoveryEnvironment,
     translation_unit: Path,
     class_name: str,
 ) -> tuple[DiscoveredConstructor, ...]:
-    index = _translation_unit_index(compile_commands_path, translation_unit)
+    index = _translation_unit_index(environment, translation_unit)
     record = index.resolve_record(class_name)
     if record is None:
         msg = f"Class '{class_name}' not found in AST for '{translation_unit}'"
@@ -1015,13 +1073,13 @@ def discover_public_constructors_with_compile_commands(
     return _extract_public_constructors(record.node, index, record.qualified_name)
 
 
-def discover_public_fields_with_compile_commands(
-    compile_commands_path: Path,
+def discover_public_fields(
+    environment: DiscoveryEnvironment,
     translation_unit: Path,
     class_name: str,
     include_inherited: bool = False,
 ) -> dict[str, DiscoveredField]:
-    index = _translation_unit_index(compile_commands_path, translation_unit)
+    index = _translation_unit_index(environment, translation_unit)
     record = index.resolve_record(class_name)
     if record is None:
         msg = f"Class '{class_name}' not found in AST for '{translation_unit}'"
@@ -1047,12 +1105,12 @@ def discover_public_fields_with_compile_commands(
     return fields
 
 
-def discover_base_types_with_compile_commands(
-    compile_commands_path: Path,
+def discover_base_types(
+    environment: DiscoveryEnvironment,
     translation_unit: Path,
     class_name: str,
 ) -> tuple[DiscoveredBase, ...]:
-    index = _translation_unit_index(compile_commands_path, translation_unit)
+    index = _translation_unit_index(environment, translation_unit)
     record = index.resolve_record(class_name)
     if record is None:
         msg = f"Class '{class_name}' not found in AST for '{translation_unit}'"
@@ -1060,25 +1118,27 @@ def discover_base_types_with_compile_commands(
     return _extract_bases(record.node, index, record.qualified_name)
 
 
-def discover_namespace_functions_with_compile_commands(
-    compile_commands_path: Path,
+def discover_namespace_functions(
+    environment: DiscoveryEnvironment,
     translation_unit: Path,
     namespace_name: str,
     selected_names: Iterable[str] | None = None,
 ) -> dict[str, tuple[DiscoveredFunction, ...]]:
-    index = _translation_unit_index(compile_commands_path, translation_unit)
+    index = _translation_unit_index(environment, translation_unit)
     return index.discover_namespace_functions(namespace_name, selected_names=selected_names)
 
 
 def discover_namespace_functions_with_synthetic_source(
-    compile_commands_path: Path,
+    environment: DiscoveryEnvironment | Path,
     source_text: str,
     namespace_name: str,
     selected_names: Iterable[str] | None = None,
     *,
     reference_source_root: Path | None = None,
 ) -> dict[str, tuple[DiscoveredFunction, ...]]:
-    reference_command = _choose_reference_compile_command(compile_commands_path, reference_source_root)
+    if not isinstance(environment, DiscoveryEnvironment):
+        environment = DiscoveryEnvironment(compile_commands_path=environment)
+    reference_command = _choose_reference_compile_command(environment, reference_source_root)
     with tempfile.TemporaryDirectory(prefix="ifcwrap-bindgen-") as tmp_dir:
         synthetic_source = Path(tmp_dir) / "contract_discovery.cpp"
         synthetic_source.write_text(source_text, encoding="utf-8")
@@ -1089,10 +1149,70 @@ def discover_namespace_functions_with_synthetic_source(
         )
         debug_log(
             "clang.synthetic_tu_index.create",
-            f"compile_commands={debug_path(compile_commands_path)} reference={debug_path(reference_command.file)}",
+            f"compile_commands={debug_path(environment.compile_commands_path)} reference={debug_path(reference_command.file)}",
         )
         index = TranslationUnitIndex(command=command)
         return index.discover_namespace_functions(namespace_name, selected_names=selected_names)
+
+
+def discover_public_methods_with_compile_commands(
+    compile_commands_path: Path,
+    translation_unit: Path,
+    class_name: str,
+    include_inherited: bool = False,
+    selected_names: Iterable[str] | None = None,
+) -> dict[str, tuple[DiscoveredMethod, ...]]:
+    return discover_public_methods(
+        DiscoveryEnvironment(compile_commands_path=compile_commands_path),
+        translation_unit,
+        class_name,
+        include_inherited=include_inherited,
+        selected_names=selected_names,
+    )
+
+
+def discover_public_constructors_with_compile_commands(
+    compile_commands_path: Path,
+    translation_unit: Path,
+    class_name: str,
+) -> tuple[DiscoveredConstructor, ...]:
+    return discover_public_constructors(DiscoveryEnvironment(compile_commands_path=compile_commands_path), translation_unit, class_name)
+
+
+def discover_public_fields_with_compile_commands(
+    compile_commands_path: Path,
+    translation_unit: Path,
+    class_name: str,
+    include_inherited: bool = False,
+) -> dict[str, DiscoveredField]:
+    return discover_public_fields(
+        DiscoveryEnvironment(compile_commands_path=compile_commands_path),
+        translation_unit,
+        class_name,
+        include_inherited=include_inherited,
+    )
+
+
+def discover_base_types_with_compile_commands(
+    compile_commands_path: Path,
+    translation_unit: Path,
+    class_name: str,
+) -> tuple[DiscoveredBase, ...]:
+    return discover_base_types(DiscoveryEnvironment(compile_commands_path=compile_commands_path), translation_unit, class_name)
+
+
+def discover_namespace_functions_with_compile_commands(
+    compile_commands_path: Path,
+    translation_unit: Path,
+    namespace_name: str,
+    selected_names: Iterable[str] | None = None,
+) -> dict[str, tuple[DiscoveredFunction, ...]]:
+    return discover_namespace_functions(
+        DiscoveryEnvironment(compile_commands_path=compile_commands_path),
+        translation_unit,
+        namespace_name,
+        selected_names=selected_names,
+    )
 
 
 def _normalize_cpp_type_text(text: str) -> str:

@@ -14,7 +14,7 @@
 #include "guid.h"
 #include "ifcopenshell_api_internal.hpp"
 
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/file.h"
 
 #include <algorithm>
 #include <stdexcept>

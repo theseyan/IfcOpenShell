@@ -4,11 +4,11 @@
 #ifndef IFCAPI_DETAIL_ATTRIBUTE_H
 #define IFCAPI_DETAIL_ATTRIBUTE_H
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
-#include "ifcparse/IfcSchema.h"
+#include "ifcparse/file.h"
+#include "ifcparse/instance_data.h"
 
 #include <algorithm>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -21,80 +21,141 @@ struct OptionalString {
     std::string value;
 };
 
-inline const IfcParse::enumeration_type* resolve_enum_type(IfcUtil::IfcBaseClass* entity, int attr_idx);
+class entity_view {
+    mutable express::Entity entity_;
 
-inline int find_attr_index(const IfcParse::entity* decl, const char* name) {
+  public:
+    entity_view() = default;
+    entity_view(const express::Base& entity) : entity_(entity.as<express::Entity>()) {}
+    entity_view(const express::Entity& entity) : entity_(entity) {}
+
+    explicit operator bool() const { return static_cast<bool>(entity_); }
+    const express::Entity& get() const { return entity_; }
+    express::Entity& get() { return entity_; }
+
+    ifcopenshell::file* file() const { return entity_ ? entity_.file() : nullptr; }
+    uint32_t id() const { return entity_ ? entity_.id() : 0; }
+
+    const ifcopenshell::entity* declaration() const {
+        return entity_ ? entity_.declaration().as_entity() : nullptr;
+    }
+
+    bool is(const std::string& ifc_class) const {
+        return entity_ && entity_.declaration().is(ifc_class);
+    }
+
+    int attr_index(const char* attr) const {
+        auto* decl = declaration();
+        if (!decl) {
+            return -1;
+        }
+        ptrdiff_t idx = decl->attribute_index(attr);
+        return idx < 0 ? -1 : static_cast<int>(idx);
+    }
+
+    bool has_attr(const char* attr) const { return attr_index(attr) >= 0; }
+
+    attribute_value attr(size_t idx) const { return entity_.get_attribute_value(idx); }
+
+    attribute_value attr(const char* name) const {
+        int idx = attr_index(name);
+        if (idx < 0) {
+            return attribute_value();
+        }
+        return attr(static_cast<size_t>(idx));
+    }
+
+    bool is_null(const char* name) const {
+        int idx = attr_index(name);
+        return idx < 0 || attr(static_cast<size_t>(idx)).isNull();
+    }
+
+    template <typename T>
+    std::optional<T> get_optional(const char* name) const {
+        int idx = attr_index(name);
+        if (idx < 0) {
+            return std::nullopt;
+        }
+        auto value = attr(static_cast<size_t>(idx));
+        if (value.isNull()) {
+            return std::nullopt;
+        }
+        return static_cast<T>(value);
+    }
+
+    template <typename T>
+    T get_or(const char* name, const T& fallback) const {
+        auto value = get_optional<T>(name);
+        return value ? *value : fallback;
+    }
+
+    template <typename T>
+    void set(size_t idx, const T& value) const {
+        entity_.set_attribute_value(idx, value);
+    }
+
+    template <typename T>
+    bool set(const char* name, const T& value) const {
+        int idx = attr_index(name);
+        if (idx < 0) {
+            return false;
+        }
+        set(static_cast<size_t>(idx), value);
+        return true;
+    }
+
+    bool unset(const char* name) const {
+        int idx = attr_index(name);
+        if (idx < 0) {
+            return false;
+        }
+        entity_.unset_attribute_value(static_cast<size_t>(idx));
+        return true;
+    }
+
+    std::vector<express::Entity> inverse(const char* name) const {
+        return entity_ ? entity_.get_inverse(name) : std::vector<express::Entity>();
+    }
+};
+
+inline const ifcopenshell::enumeration_type* resolve_enum_type(entity_view entity, int attr_idx);
+
+inline int find_attr_index(const ifcopenshell::entity* decl, const char* name) {
     if (!decl) {
         return -1;
     }
-    auto attrs = decl->all_attributes();
-    for (size_t i = 0; i < attrs.size(); ++i) {
-        if (attrs[i]->name() == name) {
-            return static_cast<int>(i);
-        }
-    }
-    return -1;
+    ptrdiff_t idx = decl->attribute_index(name);
+    return idx < 0 ? -1 : static_cast<int>(idx);
 }
 
-inline int attr_index_of(IfcUtil::IfcBaseClass* entity, const char* attr) {
-    auto* base = dynamic_cast<IfcUtil::IfcBaseEntity*>(entity);
-    if (!base) {
-        return -1;
-    }
-    return find_attr_index(base->declaration().as_entity(), attr);
+inline int attr_index_of(entity_view entity, const char* attr) {
+    return entity.attr_index(attr);
 }
 
-inline bool entity_has_attr(IfcUtil::IfcBaseClass* entity, const char* attr) {
-    return attr_index_of(entity, attr) >= 0;
+inline bool entity_has_attr(entity_view entity, const char* attr) {
+    return entity.has_attr(attr);
 }
 
-inline bool is_attr_null(IfcUtil::IfcBaseClass* entity, const char* attr) {
-    int idx = attr_index_of(entity, attr);
-    if (idx < 0) {
-        return true;
-    }
-    try {
-        return entity->get_attribute_value(static_cast<size_t>(idx)).isNull();
-    } catch (...) {
-        return true;
-    }
+inline bool is_attr_null(entity_view entity, const char* attr) {
+    return entity.is_null(attr);
 }
 
-inline std::string read_string_attr(IfcUtil::IfcBaseClass* entity, const char* attr) {
-    int idx = attr_index_of(entity, attr);
-    if (idx < 0) {
-        return std::string();
-    }
-    try {
-        auto val = entity->get_attribute_value(static_cast<size_t>(idx));
-        if (val.isNull()) {
-            return std::string();
-        }
-        return static_cast<std::string>(val);
-    } catch (...) {
-        return std::string();
-    }
+inline std::string read_string_attr(entity_view entity, const char* attr) {
+    return entity.get_or<std::string>(attr, std::string());
 }
 
-inline OptionalString read_optional_string_attr(IfcUtil::IfcBaseClass* entity, const char* attr) {
+inline OptionalString read_optional_string_attr(entity_view entity, const char* attr) {
     OptionalString result;
-    int idx = attr_index_of(entity, attr);
-    if (idx < 0) {
-        return result;
-    }
-    try {
-        auto val = entity->get_attribute_value(static_cast<size_t>(idx));
-        if (!val.isNull()) {
-            result.has_value = true;
-            result.value = static_cast<std::string>(val);
-        }
-    } catch (...) {
+    auto value = entity.get_optional<std::string>(attr);
+    if (value) {
+        result.has_value = true;
+        result.value = *value;
     }
     return result;
 }
 
 inline bool optional_string_attr_equals(
-    IfcUtil::IfcBaseClass* entity,
+    entity_view entity,
     const char* attr,
     const OptionalString& expected)
 {
@@ -105,90 +166,47 @@ inline bool optional_string_attr_equals(
     return !expected.has_value || actual.value == expected.value;
 }
 
-inline IfcUtil::IfcBaseClass* read_ref_attr(IfcUtil::IfcBaseClass* entity, const char* attr) {
-    int idx = attr_index_of(entity, attr);
-    if (idx < 0) {
-        return nullptr;
-    }
-    try {
-        auto val = entity->get_attribute_value(static_cast<size_t>(idx));
-        if (val.isNull()) {
-            return nullptr;
-        }
-        return static_cast<IfcUtil::IfcBaseClass*>(val);
-    } catch (...) {
-        return nullptr;
-    }
+inline express::Base read_ref_attr(entity_view entity, const char* attr) {
+    return entity.get_or<express::Base>(attr, express::Base());
 }
 
-inline std::vector<IfcUtil::IfcBaseClass*> get_ref_aggregate(IfcUtil::IfcBaseClass* entity, int attr_idx) {
-    std::vector<IfcUtil::IfcBaseClass*> result;
+inline std::vector<express::Base> get_ref_aggregate(entity_view entity, int attr_idx) {
     if (!entity || attr_idx < 0) {
-        return result;
+        return {};
     }
-    try {
-        auto val = entity->get_attribute_value(static_cast<size_t>(attr_idx));
-        if (val.isNull()) {
-            return result;
-        }
-        auto agg = (aggregate_of_instance::ptr)val;
-        if (agg) {
-            for (auto& item : *agg) {
-                result.push_back(item);
-            }
-        }
-    } catch (...) {
+    auto value = entity.attr(static_cast<size_t>(attr_idx));
+    if (value.isNull()) {
+        return {};
     }
-    return result;
+    return static_cast<std::vector<express::Base>>(value);
 }
 
-inline std::vector<IfcUtil::IfcBaseClass*> read_ref_aggregate(IfcUtil::IfcBaseClass* entity, const char* attr) {
+inline std::vector<express::Base> read_ref_aggregate(entity_view entity, const char* attr) {
     return get_ref_aggregate(entity, attr_index_of(entity, attr));
 }
 
-inline std::vector<IfcUtil::IfcBaseClass*> read_inverse_aggregate(
-    IfcUtil::IfcBaseClass* entity,
-    const char* attr)
-{
-    std::vector<IfcUtil::IfcBaseClass*> result;
-    auto* base = dynamic_cast<IfcUtil::IfcBaseEntity*>(entity);
-    if (!base) {
-        return result;
-    }
-    try {
-        auto values = base->get_inverse(attr);
-        if (!values) {
-            return result;
-        }
-        for (size_t i = 0; i < values->size(); ++i) {
-            if ((*values)[i]) {
-                result.push_back((*values)[i]);
-            }
-        }
-    } catch (...) {
+inline std::vector<express::Base> read_inverse_aggregate(entity_view entity, const char* attr) {
+    std::vector<express::Base> result;
+    for (const auto& inverse : entity.inverse(attr)) {
+        result.push_back(inverse);
     }
     return result;
 }
 
 inline void set_ref_aggregate(
-    IfcUtil::IfcBaseClass* entity,
+    entity_view entity,
     int attr_idx,
-    const std::vector<IfcUtil::IfcBaseClass*>& refs)
+    const std::vector<express::Base>& refs)
 {
-    if (!entity || attr_idx < 0) {
-        return;
+    if (entity && attr_idx >= 0) {
+        entity.set(static_cast<size_t>(attr_idx), refs);
     }
-    auto agg = aggregate_of_instance::ptr(new aggregate_of_instance());
-    for (auto* ref : refs) {
-        agg->push(ref);
-    }
-    entity->set_attribute_value(static_cast<size_t>(attr_idx), agg);
 }
 
 inline bool write_ref_aggregate(
-    IfcUtil::IfcBaseClass* entity,
+    entity_view entity,
     const char* attr,
-    const std::vector<IfcUtil::IfcBaseClass*>& refs)
+    const std::vector<express::Base>& refs)
 {
     int idx = attr_index_of(entity, attr);
     if (idx < 0) {
@@ -198,34 +216,31 @@ inline bool write_ref_aggregate(
     return true;
 }
 
-inline void write_string_attr(IfcUtil::IfcBaseClass* entity, const char* attr, const std::string& value) {
+inline void write_string_attr(entity_view entity, const char* attr, const std::string& value) {
     int idx = attr_index_of(entity, attr);
     if (idx >= 0) {
         if (auto* enum_type = resolve_enum_type(entity, idx)) {
             const auto& items = enum_type->enumeration_items();
             auto it = std::find(items.begin(), items.end(), value);
             if (it != items.end()) {
-                entity->set_attribute_value(
+                entity.set(
                     static_cast<size_t>(idx),
-                    EnumerationReference(enum_type, static_cast<size_t>(std::distance(items.begin(), it))));
+                    enumeration_reference(enum_type, static_cast<size_t>(std::distance(items.begin(), it))));
                 return;
             }
         }
-        entity->set_attribute_value(static_cast<size_t>(idx), value);
+        entity.set(static_cast<size_t>(idx), value);
     }
 }
 
-inline void clear_attr(IfcUtil::IfcBaseClass* entity, const char* attr) {
-    int idx = attr_index_of(entity, attr);
-    if (idx >= 0) {
-        entity->set_attribute_value(static_cast<size_t>(idx), Blank{});
-    }
+inline void clear_attr(entity_view entity, const char* attr) {
+    entity.unset(attr);
 }
 
 inline void copy_string_attr_preserving_null(
-    IfcUtil::IfcBaseClass* target,
+    entity_view target,
     const char* target_attr,
-    IfcUtil::IfcBaseClass* source,
+    entity_view source,
     const char* source_attr)
 {
     int idx = attr_index_of(target, target_attr);
@@ -233,14 +248,14 @@ inline void copy_string_attr_preserving_null(
         return;
     }
     if (is_attr_null(source, source_attr)) {
-        target->set_attribute_value(static_cast<size_t>(idx), Blank{});
+        target.unset(target_attr);
         return;
     }
-    target->set_attribute_value(static_cast<size_t>(idx), read_string_attr(source, source_attr));
+    target.set(static_cast<size_t>(idx), read_string_attr(source, source_attr));
 }
 
 inline void write_optional_string_attr(
-    IfcUtil::IfcBaseClass* entity,
+    entity_view entity,
     const char* attr,
     const OptionalString& value)
 {
@@ -249,85 +264,44 @@ inline void write_optional_string_attr(
     }
 }
 
-inline void write_int_attr(IfcUtil::IfcBaseClass* entity, const char* attr, int value) {
-    int idx = attr_index_of(entity, attr);
-    if (idx >= 0) {
-        entity->set_attribute_value(static_cast<size_t>(idx), value);
-    }
+inline void write_int_attr(entity_view entity, const char* attr, int value) {
+    entity.set(attr, value);
 }
 
-inline int read_int_attr(IfcUtil::IfcBaseClass* entity, const char* attr, int fallback = 0) {
-    int idx = attr_index_of(entity, attr);
-    if (idx < 0) {
-        return fallback;
-    }
-    try {
-        auto val = entity->get_attribute_value(static_cast<size_t>(idx));
-        if (val.isNull()) {
-            return fallback;
-        }
-        return static_cast<int>(val);
-    } catch (...) {
-        return fallback;
-    }
+inline int read_int_attr(entity_view entity, const char* attr, int fallback = 0) {
+    return entity.get_or<int>(attr, fallback);
 }
 
-inline void write_double_attr(IfcUtil::IfcBaseClass* entity, const char* attr, double value) {
-    int idx = attr_index_of(entity, attr);
-    if (idx >= 0) {
-        entity->set_attribute_value(static_cast<size_t>(idx), value);
-    }
+inline void write_double_attr(entity_view entity, const char* attr, double value) {
+    entity.set(attr, value);
 }
 
-inline std::vector<double> read_double_aggregate(IfcUtil::IfcBaseClass* entity, const char* attr) {
-    std::vector<double> result;
-    int idx = attr_index_of(entity, attr);
-    if (idx < 0) {
-        return result;
-    }
-    try {
-        auto val = entity->get_attribute_value(static_cast<size_t>(idx));
-        if (val.isNull()) {
-            return result;
-        }
-        return static_cast<std::vector<double>>(val);
-    } catch (...) {
-    }
-    return result;
+inline std::vector<double> read_double_aggregate(entity_view entity, const char* attr) {
+    return entity.get_or<std::vector<double>>(attr, std::vector<double>());
 }
 
-inline void write_double_aggregate(IfcUtil::IfcBaseClass* entity, const char* attr, const std::vector<double>& values) {
-    int idx = attr_index_of(entity, attr);
-    if (idx >= 0) {
-        entity->set_attribute_value(static_cast<size_t>(idx), values);
-    }
+inline void write_double_aggregate(entity_view entity, const char* attr, const std::vector<double>& values) {
+    entity.set(attr, values);
 }
 
 inline void write_double_aggregate_aggregate(
-    IfcUtil::IfcBaseClass* entity,
+    entity_view entity,
     const char* attr,
     const std::vector<std::vector<double>>& values)
 {
-    int idx = attr_index_of(entity, attr);
-    if (idx >= 0) {
-        entity->set_attribute_value(static_cast<size_t>(idx), values);
-    }
+    entity.set(attr, values);
 }
 
-inline const IfcParse::enumeration_type* resolve_enum_type(IfcUtil::IfcBaseClass* entity, int attr_idx) {
-    auto* base = dynamic_cast<IfcUtil::IfcBaseEntity*>(entity);
-    if (!base || attr_idx < 0) {
-        return nullptr;
-    }
-    auto* entity_decl = base->declaration().as_entity();
-    if (!entity_decl) {
+inline const ifcopenshell::enumeration_type* resolve_enum_type(entity_view entity, int attr_idx) {
+    auto* entity_decl = entity.declaration();
+    if (!entity_decl || attr_idx < 0) {
         return nullptr;
     }
     auto attrs = entity_decl->all_attributes();
     if (static_cast<size_t>(attr_idx) >= attrs.size()) {
         return nullptr;
     }
-    const IfcParse::parameter_type* pt = attrs[static_cast<size_t>(attr_idx)]->type_of_attribute();
+    const ifcopenshell::parameter_type* pt = attrs[static_cast<size_t>(attr_idx)]->type_of_attribute();
     while (pt) {
         auto* named = pt->as_named_type();
         if (!named) {
@@ -346,14 +320,14 @@ inline const IfcParse::enumeration_type* resolve_enum_type(IfcUtil::IfcBaseClass
     return nullptr;
 }
 
-inline bool write_enum_attr(IfcUtil::IfcBaseClass* entity, const char* attr, const std::string& value) {
+inline bool write_enum_attr(entity_view entity, const char* attr, const std::string& value) {
     int idx = attr_index_of(entity, attr);
     if (idx < 0) {
         return false;
     }
     auto* enum_type = resolve_enum_type(entity, idx);
     if (!enum_type) {
-        entity->set_attribute_value(static_cast<size_t>(idx), value);
+        entity.set(static_cast<size_t>(idx), value);
         return true;
     }
     const auto& items = enum_type->enumeration_items();
@@ -361,218 +335,162 @@ inline bool write_enum_attr(IfcUtil::IfcBaseClass* entity, const char* attr, con
     if (it == items.end()) {
         return false;
     }
-    entity->set_attribute_value(
+    entity.set(
         static_cast<size_t>(idx),
-        EnumerationReference(enum_type, static_cast<size_t>(std::distance(items.begin(), it))));
+        enumeration_reference(enum_type, static_cast<size_t>(std::distance(items.begin(), it))));
     return true;
 }
 
-inline void write_blank_attr(IfcUtil::IfcBaseClass* entity, const char* attr) {
-    int idx = attr_index_of(entity, attr);
-    if (idx >= 0) {
-        entity->set_attribute_value(static_cast<size_t>(idx), Blank{});
-    }
+inline void write_blank_attr(entity_view entity, const char* attr) {
+    entity.unset(attr);
 }
 
-inline void set_ref(IfcUtil::IfcBaseClass* entity, int attr_idx, IfcUtil::IfcBaseClass* ref) {
+inline void set_ref(entity_view entity, int attr_idx, const express::Base& ref) {
     if (entity && attr_idx >= 0 && ref) {
-        entity->set_attribute_value(static_cast<size_t>(attr_idx), ref);
+        entity.set(static_cast<size_t>(attr_idx), ref);
     }
 }
 
-inline void write_ref_attr(IfcUtil::IfcBaseClass* entity, const char* attr, IfcUtil::IfcBaseClass* ref) {
-    int idx = attr_index_of(entity, attr);
-    if (idx < 0) {
-        return;
-    }
+inline void write_ref_attr(entity_view entity, const char* attr, const express::Base& ref) {
     if (ref) {
-        entity->set_attribute_value(static_cast<size_t>(idx), ref);
+        entity.set(attr, ref);
     } else {
-        entity->set_attribute_value(static_cast<size_t>(idx), Blank{});
+        entity.unset(attr);
     }
 }
 
-inline bool exists_in_file(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* entity) {
-    if (!file || !entity || !entity->id()) return false;
-    try {
-        return file->instance_by_id(entity->id()) == entity;
-    } catch (const IfcParse::IfcException&) {
+inline bool exists_in_file(ifcopenshell::file* file, const express::Base& entity) {
+    if (!file || !entity || entity.id() == 0) {
         return false;
     }
+    return file->instance_by_id(static_cast<int>(entity.id())) == entity;
 }
 
-inline bool contains_ref(const std::vector<IfcUtil::IfcBaseClass*>& values, IfcUtil::IfcBaseClass* value) {
+inline bool contains_ref(const std::vector<express::Base>& values, const express::Base& value) {
     return std::find(values.begin(), values.end(), value) != values.end();
 }
 
-inline void append_unique(std::vector<IfcUtil::IfcBaseClass*>& values, IfcUtil::IfcBaseClass* value) {
+inline void append_unique(std::vector<express::Base>& values, const express::Base& value) {
     if (value && !contains_ref(values, value)) {
         values.push_back(value);
     }
 }
 
 inline void append_unique(
-    std::vector<IfcUtil::IfcBaseClass*>& values,
-    const std::vector<IfcUtil::IfcBaseClass*>& additional)
+    std::vector<express::Base>& values,
+    const std::vector<express::Base>& additional)
 {
-    for (auto* value : additional) {
+    for (const auto& value : additional) {
         append_unique(values, value);
     }
 }
 
-inline std::vector<const IfcUtil::IfcBaseClass*> to_const_refs(
-    const std::vector<IfcUtil::IfcBaseClass*>& values)
-{
-    std::vector<const IfcUtil::IfcBaseClass*> result;
-    result.reserve(values.size());
-    for (auto* value : values) {
-        if (value) {
-            result.push_back(value);
-        }
-    }
-    return result;
+inline std::vector<express::Base> to_const_refs(const std::vector<express::Base>& values) {
+    return values;
 }
 
-inline std::vector<IfcUtil::IfcBaseClass*> to_mutable_refs(
-    const std::vector<const IfcUtil::IfcBaseClass*>& values)
-{
-    std::vector<IfcUtil::IfcBaseClass*> result;
-    result.reserve(values.size());
-    for (auto* value : values) {
-        if (value) {
-            result.push_back(const_cast<IfcUtil::IfcBaseClass*>(value));
-        }
-    }
-    return result;
+inline std::vector<express::Base> to_mutable_refs(const std::vector<express::Base>& values) {
+    return values;
 }
 
-inline std::set<IfcUtil::IfcBaseClass*> to_ref_set(const std::vector<IfcUtil::IfcBaseClass*>& values) {
-    return std::set<IfcUtil::IfcBaseClass*>(values.begin(), values.end());
+inline std::set<express::Base> to_ref_set(const std::vector<express::Base>& values) {
+    return std::set<express::Base>(values.begin(), values.end());
 }
 
-inline std::vector<IfcUtil::IfcBaseClass*> to_ref_vector(const std::set<IfcUtil::IfcBaseClass*>& values) {
-    return std::vector<IfcUtil::IfcBaseClass*>(values.begin(), values.end());
+inline std::vector<express::Base> to_ref_vector(const std::set<express::Base>& values) {
+    return std::vector<express::Base>(values.begin(), values.end());
 }
 
-inline std::vector<IfcUtil::IfcBaseClass*> instances_by_type(IfcParse::IfcFile* file, const char* ifc_class) {
-    std::vector<IfcUtil::IfcBaseClass*> result;
+inline const ifcopenshell::declaration* declaration_by_name(ifcopenshell::file* file, const char* ifc_class) {
     if (!file || !file->schema()) {
-        return result;
+        return nullptr;
     }
-    const auto* declaration = file->schema()->declaration_by_name(ifc_class);
-    if (!declaration) {
-        return result;
+    try {
+        return file->schema()->declaration_by_name(ifc_class);
+    } catch (const ifcopenshell::exception&) {
+        return nullptr;
     }
-    auto instances = file->instances_by_type(declaration);
-    if (!instances) {
-        return result;
-    }
-    for (auto* instance : *instances) {
-        if (instance) {
-            result.push_back(instance);
-        }
-    }
-    return result;
 }
 
-inline IfcUtil::IfcBaseClass* first_instance_by_type(IfcParse::IfcFile* file, const char* ifc_class) {
+inline std::vector<express::Base> instances_by_type(ifcopenshell::file* file, const char* ifc_class) {
+    auto* declaration = declaration_by_name(file, ifc_class);
+    return declaration ? file->instances_by_type(declaration) : std::vector<express::Base>();
+}
+
+inline express::Base first_instance_by_type(ifcopenshell::file* file, const char* ifc_class) {
     auto instances = instances_by_type(file, ifc_class);
-    return instances.empty() ? nullptr : instances.front();
+    return instances.empty() ? express::Base() : instances.front();
 }
 
-inline IfcUtil::IfcBaseClass* create_typed_double(
-    IfcParse::IfcFile* file,
+inline express::Base create_typed_double(
+    ifcopenshell::file* file,
     const char* ifc_type,
     double value)
 {
-    if (!file || !file->schema()) {
-        return nullptr;
-    }
-    auto* declaration = file->schema()->declaration_by_name(ifc_type);
+    auto* declaration = declaration_by_name(file, ifc_type);
     auto* type_declaration = declaration ? declaration->as_type_declaration() : nullptr;
     if (!type_declaration) {
-        return nullptr;
+        return express::Base();
     }
-    auto* instance = file->create(type_declaration);
+    auto instance = file->create(type_declaration);
     if (instance) {
-        instance->set_attribute_value(0, value);
+        instance.set_attribute_value(0, value);
     }
     return instance;
 }
 
-inline IfcUtil::IfcBaseClass* create_typed_string(
-    IfcParse::IfcFile* file,
+inline express::Base create_typed_string(
+    ifcopenshell::file* file,
     const char* ifc_type,
     const std::string& value)
 {
-    if (!file || !file->schema()) {
-        return nullptr;
-    }
-    auto* declaration = file->schema()->declaration_by_name(ifc_type);
+    auto* declaration = declaration_by_name(file, ifc_type);
     auto* type_declaration = declaration ? declaration->as_type_declaration() : nullptr;
     if (!type_declaration) {
-        return nullptr;
+        return express::Base();
     }
-    auto* instance = file->create(type_declaration);
+    auto instance = file->create(type_declaration);
     if (instance) {
-        instance->set_attribute_value(0, value);
+        instance.set_attribute_value(0, value);
     }
     return instance;
 }
 
-inline size_t total_inverses(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* entity) {
-    if (!file || !entity || entity->id() <= 0) {
-        return 0;
-    }
-    try {
-        auto inverses = file->getInverse(entity->id(), nullptr, -1);
-        return inverses ? inverses->size() : 0;
-    } catch (...) {
-        return 0;
-    }
+inline size_t total_inverses(ifcopenshell::file* file, const express::Base& entity) {
+    return file && entity && entity.id() > 0 ? file->get_total_inverses(static_cast<int>(entity.id())) : 0;
 }
 
 inline void replace_attribute_reference(
-    IfcUtil::IfcBaseClass* element,
-    IfcUtil::IfcBaseClass* old_reference,
-    IfcUtil::IfcBaseClass* new_reference)
+    entity_view element,
+    const express::Base& old_reference,
+    const express::Base& new_reference)
 {
-    auto* base = dynamic_cast<IfcUtil::IfcBaseEntity*>(element);
-    auto* declaration = base ? base->declaration().as_entity() : nullptr;
+    auto* declaration = element.declaration();
     if (!element || !old_reference || !new_reference || !declaration) {
         return;
     }
     auto attrs = declaration->all_attributes();
     for (size_t i = 0; i < attrs.size(); ++i) {
-        try {
-            auto value = element->get_attribute_value(i);
-            if (value.isNull()) {
-                continue;
+        auto value = element.attr(i);
+        if (value.isNull()) {
+            continue;
+        }
+        if (value.type() == ifcopenshell::Argument_ENTITY_INSTANCE) {
+            if (static_cast<express::Base>(value) == old_reference) {
+                element.set(i, new_reference);
             }
-            if (value.type() == IfcUtil::Argument_ENTITY_INSTANCE) {
-                if (static_cast<IfcUtil::IfcBaseClass*>(value) == old_reference) {
-                    element->set_attribute_value(i, new_reference);
-                }
-            } else if (value.type() == IfcUtil::Argument_AGGREGATE_OF_ENTITY_INSTANCE) {
-                auto aggregate = (aggregate_of_instance::ptr)value;
-                if (!aggregate) {
-                    continue;
-                }
-                bool changed = false;
-                auto replacement = aggregate_of_instance::ptr(new aggregate_of_instance());
-                for (auto& item : *aggregate) {
-                    if (item == old_reference) {
-                        replacement->push(new_reference);
-                        changed = true;
-                    } else {
-                        replacement->push(item);
-                    }
-                }
-                if (changed) {
-                    element->set_attribute_value(i, replacement);
+        } else if (value.type() == ifcopenshell::Argument_AGGREGATE_OF_ENTITY_INSTANCE) {
+            auto aggregate = static_cast<std::vector<express::Base>>(value);
+            bool changed = false;
+            for (auto& item : aggregate) {
+                if (item == old_reference) {
+                    item = new_reference;
+                    changed = true;
                 }
             }
-        } catch (...) {
+            if (changed) {
+                element.set(i, aggregate);
+            }
         }
     }
 }

@@ -292,6 +292,9 @@ def _host_structs_for_handles(ir: BindingIR) -> dict[str, HostStructMetadata]:
         if handle.ptr_type == "shared_ptr":
             fields: tuple[HostStructField, ...] = ()
             layout = "opaque"
+        elif handle.ptr_type == "value":
+            fields = ()
+            layout = "opaque"
         else:
             fields = (HostStructField("ptr", "void*"), HostStructField("owned", "bool"))
             layout = "ptr_owned"

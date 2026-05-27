@@ -9,10 +9,10 @@
 #include "ifcapi/detail/attribute.h"
 #include "ifcopenshell_api_internal.hpp"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcEntityInstanceData.h"
-#include "ifcparse/IfcFile.h"
-#include "ifcparse/IfcSchema.h"
+#include "ifcparse/express.h"
+#include "ifcparse/instance_data.h"
+#include "ifcparse/file.h"
+#include "ifcparse/schema.h"
 
 #include <algorithm>
 #include <cmath>

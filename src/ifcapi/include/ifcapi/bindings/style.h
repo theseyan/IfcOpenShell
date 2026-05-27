@@ -5,8 +5,8 @@
 
 #include "ifcapi/bindings/contract.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
 
 #include <string>
 #include <vector>
@@ -16,46 +16,46 @@ struct ifcopenshell_pset_props_t;
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING IfcUtil::IfcBaseClass* style_add_style(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base style_add_style(
+    ifcopenshell::file* file,
     const char* name,
     const std::string& ifc_class);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* style_assign_item_style(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* item,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* style,
+IFCAPI_BINDING express::Base style_assign_item_style(
+    ifcopenshell::file* file,
+    express::Base* item,
+    IFCAPI_NULLABLE express::Base* style,
     bool should_use_presentation_style_assignment);
-IFCAPI_BINDING std::vector<IfcUtil::IfcBaseClass*> style_assign_representation_styles(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* shape_representation,
-    const std::vector<const IfcUtil::IfcBaseClass*>& styles,
+IFCAPI_BINDING std::vector<express::Base> style_assign_representation_styles(
+    ifcopenshell::file* file,
+    express::Base* shape_representation,
+    const std::vector<express::Base>& styles,
     bool should_use_presentation_style_assignment,
     bool replace_previous_same_type_style);
 IFCAPI_BINDING void style_assign_material_style(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* material,
-    IfcUtil::IfcBaseClass* style,
-    IfcUtil::IfcBaseClass* context,
+    ifcopenshell::file* file,
+    express::Base* material,
+    express::Base* style,
+    express::Base* context,
     bool should_use_presentation_style_assignment);
 IFCAPI_BINDING void style_edit_surface_style(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* style,
+    ifcopenshell::file* file,
+    express::Base* style,
     ifcopenshell_pset_props_t* attributes);
-IFCAPI_BINDING void style_remove_style(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* style);
+IFCAPI_BINDING void style_remove_style(ifcopenshell::file* file, express::Base* style);
 IFCAPI_BINDING void style_remove_styled_representation(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* representation);
-IFCAPI_BINDING void style_remove_surface_style(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* style);
+    ifcopenshell::file* file,
+    express::Base* representation);
+IFCAPI_BINDING void style_remove_surface_style(ifcopenshell::file* file, express::Base* style);
 IFCAPI_BINDING void style_unassign_representation_styles(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* shape_representation,
-    const std::vector<const IfcUtil::IfcBaseClass*>& styles,
+    ifcopenshell::file* file,
+    express::Base* shape_representation,
+    const std::vector<express::Base>& styles,
     bool should_use_presentation_style_assignment);
 IFCAPI_BINDING void style_unassign_material_style(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* material,
-    IfcUtil::IfcBaseClass* style,
-    IfcUtil::IfcBaseClass* context);
+    ifcopenshell::file* file,
+    express::Base* material,
+    express::Base* style,
+    express::Base* context);
 
 } // namespace bindings
 } // namespace ifcapi

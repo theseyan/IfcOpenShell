@@ -284,6 +284,37 @@ def _render_handle_list_helpers(handle: HandleSpec) -> str:
     list_c = _handle_list_c_type(handle)
     helper_name = _handle_list_helper_name(handle)
     snake = _snake_name(list_c)
+    if handle.ptr_type == "value":
+        return f"""template <typename Value>
+static {list_c} {helper_name}(const std::vector<Value>& values) {{
+    auto** items = values.empty() ? nullptr : new {handle.c_type}*[values.size()];
+    size_t initialized = 0;
+    try {{
+        for (size_t i = 0; i < values.size(); ++i) {{
+            items[i] = new {handle.c_type}{{{handle.cpp_type}(values[i])}};
+            ++initialized;
+        }}
+    }} catch (...) {{
+        for (size_t j = 0; j < initialized; ++j) {{ delete items[j]; }}
+        delete[] items;
+        throw;
+    }}
+    return {list_c}{{items, values.size()}};
+}}
+
+static std::vector<{handle.cpp_type}> to_cpp_{snake}(const {list_c}* values) {{
+    validate_list_items("{snake}", values->items, values->size);
+    std::vector<{handle.cpp_type}> result;
+    result.reserve(values->size);
+    for (size_t i = 0; i < values->size; ++i) {{
+        auto* item = values->items[i];
+        if (item == nullptr) {{
+            throw std::runtime_error("handle_list contains an invalid handle");
+        }}
+        result.push_back(item->value);
+    }}
+    return result;
+}}"""
     if handle.ptr_type == "shared_ptr":
         return f"""static {list_c} {helper_name}(const std::vector<std::shared_ptr<{handle.cpp_type}>>& values) {{
     auto** items = values.empty() ? nullptr : new {handle.c_type}*[values.size()];
@@ -384,6 +415,25 @@ def _render_handle_list_list_helpers(handle: HandleSpec) -> str:
     row_helper_name = _handle_list_helper_name(handle)
     snake = _snake_name(list_list_c)
     row_snake = _snake_name(list_c)
+    if handle.ptr_type == "value":
+        value_vector = f"std::vector<std::vector<{handle.cpp_type}>>"
+        return f"""static {list_list_c} {helper_name}(const {value_vector}& values) {{
+    auto* items = values.empty() ? nullptr : new {list_c}[values.size()];
+    for (size_t i = 0; i < values.size(); ++i) {{
+        items[i] = {row_helper_name}(values[i]);
+    }}
+    return {list_list_c}{{items, values.size()}};
+}}
+
+static {value_vector} to_cpp_{snake}(const {list_list_c}* values) {{
+    validate_list_items("{snake}", values->items, values->size);
+    {value_vector} result;
+    result.reserve(values->size);
+    for (size_t i = 0; i < values->size; ++i) {{
+        result.push_back(to_cpp_{row_snake}(&values->items[i]));
+    }}
+    return result;
+}}"""
     if handle.ptr_type == "shared_ptr":
         shared_vector = f"std::vector<std::vector<std::shared_ptr<{handle.cpp_type}>>>"
         return f"""static {list_list_c} {helper_name}(const {shared_vector}& values) {{

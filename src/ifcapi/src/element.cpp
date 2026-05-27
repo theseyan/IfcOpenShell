@@ -1,426 +1,365 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-#include "ifcapi/ifcapi.h"
 #include "ifcapi/bindings/element.h"
+#include "ifcapi/detail/attribute.h"
 
-#include "ifcparse/IfcFile.h"
-#include "ifcparse/IfcSchema.h"
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcEntityInstanceData.h"
-#include "ifcparse/IfcException.h"
+#include "ifcparse/file.h"
 
-#include <algorithm>
-#include <cstdlib>
-#include <cstring>
 #include <deque>
 #include <set>
 #include <string>
 #include <vector>
 
-#include "ifcopenshell_api_internal.hpp"
-
-// Route error reporting through the autogen layer's shared error string
-// so that ifcopenshell_last_error_message() returns errors raised by the
-// high-level layer too.
-namespace {
-inline void set_error(const char* msg) { ifcopenshell::capi::set_last_error(msg); }
-inline void set_error(const std::string& msg) { ifcopenshell::capi::set_last_error(msg); }
-}
-
-namespace {
-
-IfcUtil::IfcBaseClass* get_entity(const ifcopenshell_ifc_instance_t* instance) {
-    return instance ? instance->ptr : nullptr;
-}
-
-IfcParse::IfcFile* as_file(const ifcopenshell_ifc_file_t* file) {
-    return file->ptr;
-}
-
-bool is_a(IfcUtil::IfcBaseClass* e, const char* name) {
-    return e && e->declaration().is(name);
-}
-
-int32_t id_of(IfcUtil::IfcBaseClass* e) {
-    return e ? static_cast<int32_t>(e->id()) : 0;
-}
-
-// Get all inverse entities for a given attribute name (e.g. "IsTypedBy").
-aggregate_of_instance::ptr get_inverse(IfcUtil::IfcBaseClass* e, const char* attr) {
-    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(e);
-    if (!be) return nullptr;
-    try {
-        return be->get_inverse(attr);
-    } catch (...) {
-        return nullptr;
-    }
-}
-
-// Read a direct forward attribute that is a reference.
-IfcUtil::IfcBaseClass* read_ref(IfcUtil::IfcBaseClass* e, const char* attr) {
-    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(e);
-    if (!be) return nullptr;
-    auto* d = be->declaration().as_entity();
-    if (!d) return nullptr;
-    int idx = d->attribute_index(attr);
-    if (idx < 0) return nullptr;
-    try {
-        auto val = e->get_attribute_value(static_cast<size_t>(idx));
-        if (val.isNull()) return nullptr;
-        return (IfcUtil::IfcBaseClass*)val;
-    } catch (...) {
-        return nullptr;
-    }
-}
-
-// Read a direct forward attribute that is an aggregate of references.
-std::vector<IfcUtil::IfcBaseClass*> read_ref_list(IfcUtil::IfcBaseClass* e, const char* attr) {
-    std::vector<IfcUtil::IfcBaseClass*> out;
-    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(e);
-    if (!be) return out;
-    auto* d = be->declaration().as_entity();
-    if (!d) return out;
-    int idx = d->attribute_index(attr);
-    if (idx < 0) return out;
-    try {
-        auto val = e->get_attribute_value(static_cast<size_t>(idx));
-        if (val.isNull()) return out;
-        auto agg = (aggregate_of_instance::ptr)val;
-        if (!agg) return out;
-        for (auto& item : *agg) out.push_back(item);
-    } catch (...) {}
-    return out;
-}
-
-ifcopenshell_ifc_instance_t** alloc_id_handles(IfcParse::IfcFile* f, const std::vector<int32_t>& ids, uint32_t* out_count) {
-    if (out_count) *out_count = static_cast<uint32_t>(ids.size());
-    if (ids.empty()) return nullptr;
-    auto* buf = static_cast<ifcopenshell_ifc_instance_t**>(std::malloc(ids.size() * sizeof(ifcopenshell_ifc_instance_t*)));
-    if (!buf) {
-        if (out_count) *out_count = 0;
-        return nullptr;
-    }
-    for (size_t i = 0; i < ids.size(); ++i) {
-        auto* e = f ? f->instance_by_id(ids[i]) : nullptr;
-        buf[i] = ifcopenshell::capi::wrap_instance(e);
-    }
-    return buf;
-}
-
-aggregate_of_instance::ptr make_instance_list(IfcParse::IfcFile* f, const std::vector<int32_t>& ids) {
-    aggregate_of_instance::ptr result(new aggregate_of_instance);
-    if (!f) return result;
-    for (int32_t id : ids) {
-        if (auto* e = f->instance_by_id(id)) result->push(e);
-    }
-    return result;
-}
-
-// Forward decls
-IfcUtil::IfcBaseClass* resolve_aggregate(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e);
-IfcUtil::IfcBaseClass* resolve_nest(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e);
-
-IfcUtil::IfcBaseClass* resolve_type(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e) {
-    if (!e) return nullptr;
-    if (is_a(e, "IfcTypeObject")) return e;
-
-    bool is_ifc2x3 = file && file->schema() && file->schema()->name() == "IFC2X3";
-    if (!is_ifc2x3) {
-        auto inv = get_inverse(e, "IsTypedBy");
-        if (inv && inv->size() > 0) {
-            return read_ref((*inv)[0], "RelatingType");
-        }
-        return nullptr;
-    }
-    // IFC2X3: walk IsDefinedBy looking for IfcRelDefinesByType
-    auto inv = get_inverse(e, "IsDefinedBy");
-    if (!inv) return nullptr;
-    for (size_t i = 0; i < inv->size(); ++i) {
-        if (is_a((*inv)[i], "IfcRelDefinesByType")) {
-            return read_ref((*inv)[i], "RelatingType");
-        }
-    }
-    return nullptr;
-}
-
-IfcUtil::IfcBaseClass* resolve_aggregate(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e) {
-    if (!e) return nullptr;
-    auto inv = get_inverse(e, "Decomposes");
-    if (!inv || inv->size() == 0) return nullptr;
-    auto* rel = (*inv)[0];
-    bool is_ifc2x3 = file && file->schema() && file->schema()->name() == "IFC2X3";
-    if (is_ifc2x3 && !is_a(rel, "IfcRelAggregates")) return nullptr;
-    return read_ref(rel, "RelatingObject");
-}
-
-IfcUtil::IfcBaseClass* resolve_nest(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e) {
-    if (!e) return nullptr;
-    bool is_ifc2x3 = file && file->schema() && file->schema()->name() == "IFC2X3";
-    if (is_ifc2x3) {
-        auto inv = get_inverse(e, "Decomposes");
-        if (!inv || inv->size() == 0) return nullptr;
-        auto* rel = (*inv)[0];
-        if (!is_a(rel, "IfcRelNests")) return nullptr;
-        return read_ref(rel, "RelatingObject");
-    }
-    auto inv = get_inverse(e, "Nests");
-    if (!inv || inv->size() == 0) return nullptr;
-    return read_ref((*inv)[0], "RelatingObject");
-}
-
-IfcUtil::IfcBaseClass* resolve_filled_void(IfcUtil::IfcBaseClass* e) {
-    // IfcElement.FillsVoids -> IfcRelFillsElement -> RelatingOpeningElement
-    auto inv = get_inverse(e, "FillsVoids");
-    if (!inv || inv->size() == 0) return nullptr;
-    return read_ref((*inv)[0], "RelatingOpeningElement");
-}
-
-IfcUtil::IfcBaseClass* resolve_voided_element(IfcUtil::IfcBaseClass* e) {
-    // IfcOpeningElement.VoidsElements -> IfcRelVoidsElement -> RelatingBuildingElement
-    auto inv = get_inverse(e, "VoidsElements");
-    if (!inv || inv->size() == 0) return nullptr;
-    return read_ref((*inv)[0], "RelatingBuildingElement");
-}
-
-IfcUtil::IfcBaseClass* resolve_container_direct(IfcUtil::IfcBaseClass* e) {
-    auto inv = get_inverse(e, "ContainedInStructure");
-    if (!inv || inv->size() == 0) return nullptr;
-    return read_ref((*inv)[0], "RelatingStructure");
-}
-
-IfcUtil::IfcBaseClass* resolve_parent(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e) {
-    if (!e) return nullptr;
-    if (auto* c = resolve_container_direct(e)) return c;
-    if (auto* a = resolve_aggregate(file, e)) return a;
-    if (auto* n = resolve_nest(file, e)) return n;
-    if (auto* f = resolve_filled_void(e)) return f;
-    if (auto* v = resolve_voided_element(e)) return v;
-    return nullptr;
-}
-
-IfcUtil::IfcBaseClass* resolve_container(
-    IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e,
-    bool direct_only, const char* ifc_class)
-{
-    if (!e) return nullptr;
-    if (direct_only) {
-        auto* c = resolve_container_direct(e);
-        if (!c) return nullptr;
-        if (!ifc_class || *ifc_class == '\0') return c;
-        return is_a(c, ifc_class) ? c : nullptr;
-    }
-    if (auto* c = resolve_container_direct(e)) {
-        if (!ifc_class || *ifc_class == '\0') return c;
-        while (c) {
-            if (is_a(c, ifc_class)) return c;
-            c = resolve_aggregate(file, c);
-        }
-        return nullptr;
-    }
-    if (auto* p = resolve_parent(file, e)) {
-        return resolve_container(file, p, direct_only, ifc_class);
-    }
-    return nullptr;
-}
-
-}  // namespace
-
 namespace ifcapi {
 namespace bindings {
 
-IfcUtil::IfcBaseClass* element_get_type(IfcUtil::IfcBaseClass* instance) {
-    return instance ? resolve_type(instance->file_, instance) : nullptr;
+namespace {
+
+bool is_a(const express::Base& entity, const char* name) {
+    return entity && entity.declaration().is(name);
 }
 
-IfcUtil::IfcBaseClass* element_get_aggregate(IfcUtil::IfcBaseClass* instance) {
-    return instance ? resolve_aggregate(instance->file_, instance) : nullptr;
+int32_t id_of(const express::Base& entity) {
+    return entity ? static_cast<int32_t>(entity.id()) : 0;
 }
 
-IfcUtil::IfcBaseClass* element_get_nest(IfcUtil::IfcBaseClass* instance) {
-    return instance ? resolve_nest(instance->file_, instance) : nullptr;
+std::vector<express::Base> get_inverse(const express::Base& entity, const char* attr) {
+    return ifcapi::detail::read_inverse_aggregate(entity, attr);
 }
 
-IfcUtil::IfcBaseClass* element_get_container(
-    IfcUtil::IfcBaseClass* instance,
+express::Base read_ref(const express::Base& entity, const char* attr) {
+    return ifcapi::detail::read_ref_attr(entity, attr);
+}
+
+std::vector<express::Base> read_ref_list(const express::Base& entity, const char* attr) {
+    return ifcapi::detail::read_ref_aggregate(entity, attr);
+}
+
+bool is_ifc2x3(ifcopenshell::file* file) {
+    return file && file->schema() && file->schema()->name() == "IFC2X3";
+}
+
+express::Base resolve_aggregate(ifcopenshell::file* file, const express::Base& element);
+express::Base resolve_nest(ifcopenshell::file* file, const express::Base& element);
+
+express::Base resolve_type(ifcopenshell::file* file, const express::Base& element) {
+    if (!element) {
+        return {};
+    }
+    if (is_a(element, "IfcTypeObject")) {
+        return element;
+    }
+
+    if (!is_ifc2x3(file)) {
+        auto inv = get_inverse(element, "IsTypedBy");
+        return inv.empty() ? express::Base() : read_ref(inv.front(), "RelatingType");
+    }
+
+    for (const auto& rel : get_inverse(element, "IsDefinedBy")) {
+        if (is_a(rel, "IfcRelDefinesByType")) {
+            return read_ref(rel, "RelatingType");
+        }
+    }
+    return {};
+}
+
+express::Base resolve_aggregate(ifcopenshell::file* file, const express::Base& element) {
+    if (!element) {
+        return {};
+    }
+    auto inv = get_inverse(element, "Decomposes");
+    if (inv.empty()) {
+        return {};
+    }
+    auto rel = inv.front();
+    if (is_ifc2x3(file) && !is_a(rel, "IfcRelAggregates")) {
+        return {};
+    }
+    return read_ref(rel, "RelatingObject");
+}
+
+express::Base resolve_nest(ifcopenshell::file* file, const express::Base& element) {
+    if (!element) {
+        return {};
+    }
+    if (is_ifc2x3(file)) {
+        auto inv = get_inverse(element, "Decomposes");
+        if (inv.empty() || !is_a(inv.front(), "IfcRelNests")) {
+            return {};
+        }
+        return read_ref(inv.front(), "RelatingObject");
+    }
+    auto inv = get_inverse(element, "Nests");
+    return inv.empty() ? express::Base() : read_ref(inv.front(), "RelatingObject");
+}
+
+express::Base resolve_filled_void(const express::Base& element) {
+    auto inv = get_inverse(element, "FillsVoids");
+    return inv.empty() ? express::Base() : read_ref(inv.front(), "RelatingOpeningElement");
+}
+
+express::Base resolve_voided_element(const express::Base& element) {
+    auto inv = get_inverse(element, "VoidsElements");
+    return inv.empty() ? express::Base() : read_ref(inv.front(), "RelatingBuildingElement");
+}
+
+express::Base resolve_container_direct(const express::Base& element) {
+    auto inv = get_inverse(element, "ContainedInStructure");
+    return inv.empty() ? express::Base() : read_ref(inv.front(), "RelatingStructure");
+}
+
+express::Base resolve_parent(ifcopenshell::file* file, const express::Base& element) {
+    if (!element) {
+        return {};
+    }
+    if (auto container = resolve_container_direct(element)) {
+        return container;
+    }
+    if (auto aggregate = resolve_aggregate(file, element)) {
+        return aggregate;
+    }
+    if (auto nest = resolve_nest(file, element)) {
+        return nest;
+    }
+    if (auto filled_void = resolve_filled_void(element)) {
+        return filled_void;
+    }
+    return resolve_voided_element(element);
+}
+
+express::Base resolve_container(
+    ifcopenshell::file* file,
+    const express::Base& element,
     bool direct_only,
     const char* ifc_class)
 {
-    return instance ? resolve_container(instance->file_, instance, direct_only, ifc_class) : nullptr;
+    if (!element) {
+        return {};
+    }
+    if (direct_only) {
+        auto container = resolve_container_direct(element);
+        if (!container || (ifc_class && *ifc_class != '\0' && !is_a(container, ifc_class))) {
+            return {};
+        }
+        return container;
+    }
+    if (auto container = resolve_container_direct(element)) {
+        if (!ifc_class || *ifc_class == '\0') {
+            return container;
+        }
+        while (container) {
+            if (is_a(container, ifc_class)) {
+                return container;
+            }
+            container = resolve_aggregate(file, container);
+        }
+        return {};
+    }
+    if (auto parent = resolve_parent(file, element)) {
+        return resolve_container(file, parent, direct_only, ifc_class);
+    }
+    return {};
 }
 
-IfcUtil::IfcBaseClass* element_get_parent(IfcUtil::IfcBaseClass* instance) {
-    return instance ? resolve_parent(instance->file_, instance) : nullptr;
+} // namespace
+
+express::Base element_get_type(express::Base* instance) {
+    return instance ? resolve_type(instance->file(), *instance) : express::Base();
 }
 
-IfcUtil::IfcBaseClass* element_get_material(
-    IfcUtil::IfcBaseClass* instance,
+express::Base element_get_aggregate(express::Base* instance) {
+    return instance ? resolve_aggregate(instance->file(), *instance) : express::Base();
+}
+
+express::Base element_get_nest(express::Base* instance) {
+    return instance ? resolve_nest(instance->file(), *instance) : express::Base();
+}
+
+express::Base element_get_container(
+    express::Base* instance,
+    bool direct_only,
+    const char* ifc_class)
+{
+    return instance ? resolve_container(instance->file(), *instance, direct_only, ifc_class) : express::Base();
+}
+
+express::Base element_get_parent(express::Base* instance) {
+    return instance ? resolve_parent(instance->file(), *instance) : express::Base();
+}
+
+express::Base element_get_material(
+    express::Base* instance,
     bool should_skip_usage,
     bool should_inherit)
 {
-    auto* f = instance ? instance->file_ : nullptr;
-    if (!f || !instance) return nullptr;
+    if (!instance || !*instance) {
+        return {};
+    }
 
-    auto has_associations = get_inverse(instance, "HasAssociations");
-    if (has_associations) {
-        for (size_t i = 0; i < has_associations->size(); ++i) {
-            auto* rel = (*has_associations)[i];
-            if (!is_a(rel, "IfcRelAssociatesMaterial")) continue;
-            auto* mat = read_ref(rel, "RelatingMaterial");
-            if (!mat) continue;
-            if (should_skip_usage) {
-                if (is_a(mat, "IfcMaterialLayerSetUsage")) {
-                    return read_ref(mat, "ForLayerSet");
-                }
-                if (is_a(mat, "IfcMaterialProfileSetUsage")) {
-                    return read_ref(mat, "ForProfileSet");
-                }
+    for (const auto& rel : get_inverse(*instance, "HasAssociations")) {
+        if (!is_a(rel, "IfcRelAssociatesMaterial")) {
+            continue;
+        }
+        auto material = read_ref(rel, "RelatingMaterial");
+        if (!material) {
+            continue;
+        }
+        if (should_skip_usage) {
+            if (is_a(material, "IfcMaterialLayerSetUsage")) {
+                return read_ref(material, "ForLayerSet");
             }
-            return mat;
+            if (is_a(material, "IfcMaterialProfileSetUsage")) {
+                return read_ref(material, "ForProfileSet");
+            }
         }
+        return material;
     }
+
     if (should_inherit) {
-        auto* type_obj = resolve_type(f, instance);
-        if (type_obj && type_obj != instance && get_inverse(type_obj, "HasAssociations")) {
-            return element_get_material(type_obj, should_skip_usage, false);
+        auto type_obj = resolve_type(instance->file(), *instance);
+        if (type_obj && type_obj != *instance && !get_inverse(type_obj, "HasAssociations").empty()) {
+            return element_get_material(&type_obj, should_skip_usage, false);
         }
     }
-    return nullptr;
+    return {};
 }
 
-aggregate_of_instance::ptr element_get_decomposition(IfcUtil::IfcBaseClass* instance, bool is_recursive) {
-    auto* f = instance ? instance->file_ : nullptr;
-    if (!f || !instance) return aggregate_of_instance::ptr(new aggregate_of_instance);
+std::vector<express::Base> element_get_decomposition(express::Base* instance, bool is_recursive) {
+    if (!instance || !*instance) {
+        return {};
+    }
 
     std::set<int32_t> seen;
-    std::vector<int32_t> result;
-    std::deque<IfcUtil::IfcBaseClass*> queue;
-    queue.push_back(instance);
+    std::vector<express::Base> result;
+    std::deque<express::Base> queue;
+    queue.push_back(*instance);
 
-    auto push_all = [&](const std::vector<IfcUtil::IfcBaseClass*>& refs) {
-        for (auto* r : refs) {
-            int32_t rid = id_of(r);
-            if (rid && seen.insert(rid).second) {
-                result.push_back(rid);
-                queue.push_back(r);
+    auto push_all = [&](const std::vector<express::Base>& refs) {
+        for (const auto& ref : refs) {
+            int32_t id = id_of(ref);
+            if (id && seen.insert(id).second) {
+                result.push_back(ref);
+                queue.push_back(ref);
             }
         }
     };
 
     while (!queue.empty()) {
-        auto* cur = queue.front();
+        auto current = queue.front();
         queue.pop_front();
 
-        if (auto inv = get_inverse(cur, "ContainsElements")) {
-            for (size_t i = 0; i < inv->size(); ++i) {
-                push_all(read_ref_list((*inv)[i], "RelatedElements"));
+        for (const auto& rel : get_inverse(current, "ContainsElements")) {
+            push_all(read_ref_list(rel, "RelatedElements"));
+        }
+        for (const auto& rel : get_inverse(current, "IsDecomposedBy")) {
+            push_all(read_ref_list(rel, "RelatedObjects"));
+        }
+        for (const auto& rel : get_inverse(current, "HasOpenings")) {
+            auto opening = read_ref(rel, "RelatedOpeningElement");
+            int32_t id = id_of(opening);
+            if (id && seen.insert(id).second) {
+                result.push_back(opening);
+                queue.push_back(opening);
             }
         }
-        if (auto inv = get_inverse(cur, "IsDecomposedBy")) {
-            for (size_t i = 0; i < inv->size(); ++i) {
-                push_all(read_ref_list((*inv)[i], "RelatedObjects"));
+        for (const auto& rel : get_inverse(current, "HasFillings")) {
+            auto filler = read_ref(rel, "RelatedBuildingElement");
+            int32_t id = id_of(filler);
+            if (id && seen.insert(id).second) {
+                result.push_back(filler);
+                queue.push_back(filler);
             }
         }
-        if (auto inv = get_inverse(cur, "HasOpenings")) {
-            for (size_t i = 0; i < inv->size(); ++i) {
-                auto* opening = read_ref((*inv)[i], "RelatedOpeningElement");
-                int32_t oid = id_of(opening);
-                if (oid && seen.insert(oid).second) {
-                    result.push_back(oid);
-                    queue.push_back(opening);
-                }
-            }
+        for (const auto& rel : get_inverse(current, "IsNestedBy")) {
+            push_all(read_ref_list(rel, "RelatedObjects"));
         }
-        if (auto inv = get_inverse(cur, "HasFillings")) {
-            for (size_t i = 0; i < inv->size(); ++i) {
-                auto* filler = read_ref((*inv)[i], "RelatedBuildingElement");
-                int32_t fid = id_of(filler);
-                if (fid && seen.insert(fid).second) {
-                    result.push_back(fid);
-                    queue.push_back(filler);
-                }
-            }
+        if (!is_recursive) {
+            break;
         }
-        if (auto inv = get_inverse(cur, "IsNestedBy")) {
-            for (size_t i = 0; i < inv->size(); ++i) {
-                push_all(read_ref_list((*inv)[i], "RelatedObjects"));
-            }
-        }
-        if (!is_recursive) break;
     }
 
-    return make_instance_list(f, result);
+    return result;
 }
 
-aggregate_of_instance::ptr element_get_pset_ids(
-    IfcUtil::IfcBaseClass* element,
+std::vector<express::Base> element_get_pset_ids(
+    express::Base* element,
     bool psets_only,
     bool qtos_only,
     bool should_inherit)
 {
-    auto* f = element ? element->file_ : nullptr;
-    if (!f || !element) return aggregate_of_instance::ptr(new aggregate_of_instance);
-
-    bool is_ifc2x3 = f->schema() && f->schema()->name() == "IFC2X3";
-    std::vector<int32_t> result;
+    if (!element || !*element) {
+        return {};
+    }
+    auto* file = element->file();
+    bool file_is_ifc2x3 = is_ifc2x3(file);
+    std::vector<express::Base> result;
     std::set<int32_t> seen;
 
-    auto push_def = [&](IfcUtil::IfcBaseClass* d) {
-        if (!d) return;
-        if (psets_only &&
-            !is_a(d, "IfcPropertySet") &&
-            !is_a(d, "IfcPreDefinedPropertySet") &&
-            !(is_ifc2x3 && is_a(d, "IfcExtendedMaterialProperties"))) {
+    auto push_def = [&](const express::Base& definition) {
+        if (!definition) {
             return;
         }
-        if (qtos_only && !is_a(d, "IfcElementQuantity")) return;
-        int32_t did = id_of(d);
-        if (did && seen.insert(did).second) result.push_back(did);
+        if (psets_only &&
+            !is_a(definition, "IfcPropertySet") &&
+            !is_a(definition, "IfcPreDefinedPropertySet") &&
+            !(file_is_ifc2x3 && is_a(definition, "IfcExtendedMaterialProperties"))) {
+            return;
+        }
+        if (qtos_only && !is_a(definition, "IfcElementQuantity")) {
+            return;
+        }
+        int32_t id = id_of(definition);
+        if (id && seen.insert(id).second) {
+            result.push_back(definition);
+        }
     };
 
-    if (is_a(element, "IfcTypeObject")) {
-        for (auto* d : read_ref_list(element, "HasPropertySets")) push_def(d);
-        return make_instance_list(f, result);
+    if (is_a(*element, "IfcTypeObject")) {
+        for (const auto& definition : read_ref_list(*element, "HasPropertySets")) {
+            push_def(definition);
+        }
+        return result;
     }
 
-    if ((is_ifc2x3 && is_a(element, "IfcMaterial")) ||
-        is_a(element, "IfcMaterialDefinition") || is_a(element, "IfcProfileDef")) {
-        if (qtos_only) return make_instance_list(f, result);
-        if (is_ifc2x3 && is_a(element, "IfcMaterial")) {
-            auto insts = f->instances_by_type(std::string("IfcExtendedMaterialProperties"));
-            if (insts) {
-                for (auto& inst : *insts) {
-                    auto* mat = read_ref(inst, "Material");
-                    if (mat == element) push_def(inst);
+    if ((file_is_ifc2x3 && is_a(*element, "IfcMaterial")) ||
+        is_a(*element, "IfcMaterialDefinition") ||
+        is_a(*element, "IfcProfileDef")) {
+        if (qtos_only) {
+            return result;
+        }
+        if (file_is_ifc2x3 && is_a(*element, "IfcMaterial")) {
+            for (const auto& instance : ifcapi::detail::instances_by_type(file, "IfcExtendedMaterialProperties")) {
+                if (read_ref(instance, "Material") == *element) {
+                    push_def(instance);
                 }
             }
-        } else if (!is_ifc2x3) {
-            if (auto inv = get_inverse(element, "HasProperties")) {
-                for (size_t i = 0; i < inv->size(); ++i) push_def((*inv)[i]);
+        } else if (!file_is_ifc2x3) {
+            for (const auto& inverse : get_inverse(*element, "HasProperties")) {
+                push_def(inverse);
             }
         }
-        return make_instance_list(f, result);
+        return result;
     }
 
-    auto is_defined_by = get_inverse(element, "IsDefinedBy");
-    if (is_defined_by) {
+    auto is_defined_by = get_inverse(*element, "IsDefinedBy");
+    if (!is_defined_by.empty()) {
         if (should_inherit) {
-            auto* type_obj = resolve_type(f, element);
+            auto type_obj = resolve_type(file, *element);
             if (type_obj) {
-                auto inherited = element_get_pset_ids(type_obj, psets_only, qtos_only, false);
-                if (inherited) {
-                    for (auto& item : *inherited) push_def(item);
+                for (const auto& inherited : element_get_pset_ids(&type_obj, psets_only, qtos_only, false)) {
+                    push_def(inherited);
                 }
             }
         }
-        for (size_t i = 0; i < is_defined_by->size(); ++i) {
-            auto* rel = (*is_defined_by)[i];
-            if (!is_a(rel, "IfcRelDefinesByProperties")) continue;
-            push_def(read_ref(rel, "RelatingPropertyDefinition"));
+        for (const auto& rel : is_defined_by) {
+            if (is_a(rel, "IfcRelDefinesByProperties")) {
+                push_def(read_ref(rel, "RelatingPropertyDefinition"));
+            }
         }
     }
 
-    return make_instance_list(f, result);
+    return result;
 }
 
-}  // namespace bindings
-}  // namespace ifcapi
+} // namespace bindings
+} // namespace ifcapi

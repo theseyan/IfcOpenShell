@@ -6,8 +6,8 @@
 
 #include "ifcapi/bindings/contract.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
 
 #include <string>
 #include <vector>
@@ -15,33 +15,33 @@
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING IfcUtil::IfcBaseClass* constraint_add_objective(IfcParse::IfcFile* file);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* constraint_add_metric(
-    IfcParse::IfcFile* file,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* objective);
-IFCAPI_BINDING IFCAPI_OWNED std::vector<IfcUtil::IfcBaseClass*> constraint_add_metric_reference(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* metric,
+IFCAPI_BINDING express::Base constraint_add_objective(ifcopenshell::file* file);
+IFCAPI_BINDING express::Base constraint_add_metric(
+    ifcopenshell::file* file,
+    IFCAPI_NULLABLE express::Base* objective);
+IFCAPI_BINDING IFCAPI_OWNED std::vector<express::Base> constraint_add_metric_reference(
+    ifcopenshell::file* file,
+    express::Base* metric,
     const std::string& reference_path);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* constraint_assign_constraint(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& products,
-    IfcUtil::IfcBaseClass* constraint,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+IFCAPI_BINDING express::Base constraint_assign_constraint(
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& products,
+    express::Base* constraint,
+    IFCAPI_NULLABLE express::Base* owner_history,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 IFCAPI_BINDING void constraint_unassign_constraint(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& products,
-    IfcUtil::IfcBaseClass* constraint,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& products,
+    express::Base* constraint,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 IFCAPI_BINDING void constraint_remove_constraint(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* constraint);
+    ifcopenshell::file* file,
+    express::Base* constraint);
 IFCAPI_BINDING void constraint_remove_metric(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* metric);
+    ifcopenshell::file* file,
+    express::Base* metric);
 
 } // namespace bindings
 } // namespace ifcapi

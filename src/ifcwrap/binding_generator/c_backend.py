@@ -69,6 +69,8 @@ def _render_cpp(spec: BindingIR, header_name: str) -> str:
         elif handle.ptr_type == "shared_ptr":
             # shared_ptr handles don't need owned field - ref counting handles ownership
             handle_structs.append(f"struct {handle.c_type} {{\n    {storage_type} ptr;\n}};")
+        elif handle.ptr_type == "value":
+            handle_structs.append(f"struct {handle.c_type} {{\n    {storage_type} value;\n}};")
         else:
             handle_structs.append(f"struct {handle.c_type} {{\n    {storage_type} ptr;\n    bool owned;\n}};")
 
@@ -176,12 +178,23 @@ def generate(
     compile_commands_path: Path | None = None,
     internal_header_out: Path | None = None,
     python_out: Path | None = None,
+    discovery_include_dirs: tuple[Path, ...] = (),
+    discovery_defines: tuple[str, ...] = (),
+    discovery_clang_args: tuple[str, ...] = (),
 ) -> None:
     debug_log(
         "c_backend.generate.start",
         f"spec={debug_path(spec_path)} header_out={debug_path(header_out)} cpp_out={debug_path(cpp_out)} internal_header_out={debug_path(internal_header_out)} compile_commands={debug_path(compile_commands_path)}",
     )
-    spec = lower_binding_spec(load_authored_spec(spec_path, compile_commands_path=compile_commands_path))
+    spec = lower_binding_spec(
+        load_authored_spec(
+            spec_path,
+            compile_commands_path=compile_commands_path,
+            discovery_include_dirs=discovery_include_dirs,
+            discovery_defines=discovery_defines,
+            discovery_clang_args=discovery_clang_args,
+        )
+    )
     header_out.parent.mkdir(parents=True, exist_ok=True)
     cpp_out.parent.mkdir(parents=True, exist_ok=True)
     header_out.write_text(_render_header(spec), encoding="utf-8")
@@ -205,13 +218,26 @@ def generate_merged(
     compile_commands_path: Path | None = None,
     internal_header_out: Path | None = None,
     python_out: Path | None = None,
+    discovery_include_dirs: tuple[Path, ...] = (),
+    discovery_defines: tuple[str, ...] = (),
+    discovery_clang_args: tuple[str, ...] = (),
 ) -> None:
     """Generate bindings from multiple specs merged together."""
     debug_log(
         "c_backend.generate_merged.start",
         f"specs={len(spec_paths)} header_out={debug_path(header_out)} cpp_out={debug_path(cpp_out)} internal_header_out={debug_path(internal_header_out)} compile_commands={debug_path(compile_commands_path)}",
     )
-    spec = lower_binding_spec(load_merged_specs(spec_paths, module, c_prefix, compile_commands_path=compile_commands_path))
+    spec = lower_binding_spec(
+        load_merged_specs(
+            spec_paths,
+            module,
+            c_prefix,
+            compile_commands_path=compile_commands_path,
+            discovery_include_dirs=discovery_include_dirs,
+            discovery_defines=discovery_defines,
+            discovery_clang_args=discovery_clang_args,
+        )
+    )
     header_out.parent.mkdir(parents=True, exist_ok=True)
     cpp_out.parent.mkdir(parents=True, exist_ok=True)
     header_out.write_text(_render_header(spec), encoding="utf-8")
@@ -248,7 +274,26 @@ def _build_parser() -> argparse.ArgumentParser:
         "--compile-commands",
         type=Path,
         default=None,
-        help="Optional path to compile_commands.json for AST-backed source discovery.",
+        help="Optional compile_commands.json override for AST-backed source discovery.",
+    )
+    parser.add_argument(
+        "--discovery-include-dir",
+        type=Path,
+        action="append",
+        default=[],
+        help="Additional deterministic include directory for no-compile-commands AST discovery.",
+    )
+    parser.add_argument(
+        "--discovery-define",
+        action="append",
+        default=[],
+        help="Additional preprocessor definition for no-compile-commands AST discovery, without the -D prefix.",
+    )
+    parser.add_argument(
+        "--discovery-clang-arg",
+        action="append",
+        default=[],
+        help="Additional raw Clang argument for no-compile-commands AST discovery.",
     )
     parser.add_argument(
         "--module",
@@ -276,6 +321,9 @@ def main() -> int:
             compile_commands_path=args.compile_commands,
             internal_header_out=args.internal_header_out,
             python_out=args.python_out,
+            discovery_include_dirs=tuple(args.discovery_include_dir),
+            discovery_defines=tuple(args.discovery_define),
+            discovery_clang_args=tuple(args.discovery_clang_arg),
         )
     else:
         # Multiple specs - merge them
@@ -288,6 +336,9 @@ def main() -> int:
             compile_commands_path=args.compile_commands,
             internal_header_out=args.internal_header_out,
             python_out=args.python_out,
+            discovery_include_dirs=tuple(args.discovery_include_dir),
+            discovery_defines=tuple(args.discovery_define),
+            discovery_clang_args=tuple(args.discovery_clang_arg),
         )
     return 0
 

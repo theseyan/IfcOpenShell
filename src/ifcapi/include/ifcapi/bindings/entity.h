@@ -5,18 +5,18 @@
 
 #include "ifcapi/bindings/contract.h"
 
-#include "ifcparse/IfcBaseClass.h"
+#include "ifcparse/express.h"
 
 #include <vector>
 
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING void entity_remove_deep2(IfcUtil::IfcBaseClass* instance);
+IFCAPI_BINDING void entity_remove_deep2(express::Base* instance);
 IFCAPI_BINDING void entity_remove_deep2_ex(
-    IfcUtil::IfcBaseClass* instance,
-    const std::vector<const IfcUtil::IfcBaseClass*>& also_consider,
-    const std::vector<const IfcUtil::IfcBaseClass*>& do_not_delete);
+    express::Base* instance,
+    const std::vector<express::Base>& also_consider,
+    const std::vector<express::Base>& do_not_delete);
 
 } // namespace bindings
 } // namespace ifcapi

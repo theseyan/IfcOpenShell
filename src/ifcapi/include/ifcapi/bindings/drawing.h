@@ -6,26 +6,26 @@
 
 #include "ifcapi/bindings/contract.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
 
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING IfcUtil::IfcBaseClass* drawing_assign_product(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relating_product,
-    IfcUtil::IfcBaseClass* related_object,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+IFCAPI_BINDING express::Base drawing_assign_product(
+    ifcopenshell::file* file,
+    express::Base* relating_product,
+    express::Base* related_object,
+    IFCAPI_NULLABLE express::Base* owner_history,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 
 IFCAPI_BINDING void drawing_unassign_product(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relating_product,
-    IfcUtil::IfcBaseClass* related_object,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+    ifcopenshell::file* file,
+    express::Base* relating_product,
+    express::Base* related_object,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 
 } // namespace bindings
 } // namespace ifcapi

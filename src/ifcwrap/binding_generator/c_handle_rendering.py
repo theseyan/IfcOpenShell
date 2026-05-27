@@ -13,17 +13,15 @@ except ImportError:  # pragma: no cover - script execution fallback
 
 
 def _handle_storage_type(handle: HandleSpec) -> str:
-    if handle.name == "attribute_value":
-        return "AttributeValue"
-    if handle.name == "instance_list":
-        return "aggregate_of_instance::ptr"
     if handle.ptr_type == "shared_ptr":
         return f"std::shared_ptr<{handle.cpp_type}>"
+    if handle.ptr_type == "value":
+        return handle.cpp_type
     return f"{handle.cpp_type}*"
 
 
 def _destroy_body(handle: HandleSpec) -> str:
-    if handle.name in {"attribute_value", "instance_list"}:
+    if handle.ptr_type == "value":
         return "delete handle;"
     if handle.destructor.startswith("function:"):
         destructor = handle.destructor[len("function:") :].strip()
@@ -38,9 +36,12 @@ def _destroy_body(handle: HandleSpec) -> str:
 def _wrap_handle_expr(type_spec: TypeSpec, expr: str, spec: BindingIR) -> str:
     handle = spec.handles[type_spec.handle]
     owned = "true" if type_spec.ownership == "owned" else "false"
-    if handle.name in {"attribute_value", "instance_list"}:
-        return f"new {handle.c_type}{{{expr}}}"
     if handle.ptr_type == "shared_ptr":
+        return f"new {handle.c_type}{{{expr}}}"
+    if handle.ptr_type == "value":
+        normalized_cpp_type = _normalize_cpp_type(type_spec.cpp_type)
+        if handle.cpp_type.startswith("std::vector<"):
+            return f"new {handle.c_type}{{{handle.cpp_type}({expr}.begin(), {expr}.end())}}"
         return f"new {handle.c_type}{{{expr}}}"
     normalized_cpp_type = _normalize_cpp_type(type_spec.cpp_type)
     if normalized_cpp_type.startswith("std::unique_ptr<"):

@@ -4,11 +4,11 @@
 #include "ifcapi/bindings/schema.h"
 #include "ifcapi/detail/error.h"
 
-#include "ifcparse/IfcFile.h"
-#include "ifcparse/IfcSchema.h"
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcEntityInstanceData.h"
-#include "ifcparse/ArgumentType.h"
+#include "ifcparse/file.h"
+#include "ifcparse/schema.h"
+#include "ifcparse/express.h"
+#include "ifcparse/instance_data.h"
+#include "ifcparse/argument_type.h"
 #include "ifcparse/aggregate_of_instance.h"
 
 #include <algorithm>

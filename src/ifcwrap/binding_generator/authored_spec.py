@@ -96,32 +96,36 @@ except ImportError:  # pragma: no cover - script execution fallback
 
 try:
     from .clang_discovery import (
+        CompilationConfig,
+        DiscoveryEnvironment,
         DiscoveredCppType,
         DiscoveredConstructor,
         DiscoveredField,
         DiscoveredFunction,
         DiscoveredMethod,
-        discover_base_types_with_compile_commands,
-        discover_namespace_functions_with_compile_commands,
+        discover_base_types,
+        discover_namespace_functions,
         discover_namespace_functions_with_synthetic_source,
-        discover_public_constructors_with_compile_commands,
-        discover_public_fields_with_compile_commands,
-        discover_public_methods_with_compile_commands,
+        discover_public_constructors,
+        discover_public_fields,
+        discover_public_methods,
     )
     from .contract_discovery import MarkedFunction, discover_marked_functions_in_headers
 except ImportError:  # pragma: no cover - script execution fallback
     from clang_discovery import (
+        CompilationConfig,
+        DiscoveryEnvironment,
         DiscoveredCppType,
         DiscoveredConstructor,
         DiscoveredField,
         DiscoveredFunction,
         DiscoveredMethod,
-        discover_base_types_with_compile_commands,
-        discover_namespace_functions_with_compile_commands,
+        discover_base_types,
+        discover_namespace_functions,
         discover_namespace_functions_with_synthetic_source,
-        discover_public_constructors_with_compile_commands,
-        discover_public_fields_with_compile_commands,
-        discover_public_methods_with_compile_commands,
+        discover_public_constructors,
+        discover_public_fields,
+        discover_public_methods,
     )
     from contract_discovery import MarkedFunction, discover_marked_functions_in_headers
 
@@ -176,7 +180,7 @@ _ALLOWED_TYPE_KINDS = {
 }
 _ALLOWED_OWNERSHIP = {"owned", "borrowed", "static", "copy"}
 _ALLOWED_DESTRUCTORS = {"delete", "none", "shared_ptr"}
-_ALLOWED_PTR_TYPES = {"raw", "shared_ptr"}
+_ALLOWED_PTR_TYPES = {"raw", "shared_ptr", "value"}
 _FUNCTION_CALL_KINDS = {"function", "adapter_function", "constructor"}
 _METHOD_CALL_KINDS = {"method", "adapter_method"}
 _ALLOWED_IMPLEMENTATION_KINDS = {"inline_cpp"}
@@ -271,8 +275,17 @@ class DiscoveryClassSpec:
 
 
 @dataclass(frozen=True)
+class DiscoveryCompilationSpec:
+    compiler: str
+    clang_args: tuple[str, ...]
+    include_dirs: tuple[Path, ...]
+    defines: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class DiscoverySpec:
     include_dir: Path
+    compilation: DiscoveryCompilationSpec
     classes: tuple[DiscoveryClassSpec, ...]
     functions: tuple["DiscoveryFunctionSpec", ...]
     constructors: tuple["DiscoveryConstructorSpec", ...]
@@ -702,6 +715,17 @@ def _validate_destructor(destructor: str, *, context: str) -> None:
         raise ValueError(msg)
 
 
+def _validate_handle_storage(ptr_type: str, destructor: str, empty_check: str | None, *, context: str) -> None:
+    if ptr_type != "value":
+        if empty_check is not None:
+            msg = f"{context}.empty_check is only supported for ptr_type: value"
+            raise ValueError(msg)
+        return
+    if destructor != "none":
+        msg = f"{context}.destructor must be 'none' for ptr_type: value"
+        raise ValueError(msg)
+
+
 def _parse_handle_family(raw: Any, *, context: str, default_c_prefix: str) -> HandleFamilySpec:
     mapping = _expect_mapping(raw, context)
     namespace = _expect_str(mapping.get("namespace"), f"{context}.namespace")
@@ -710,6 +734,7 @@ def _parse_handle_family(raw: Any, *, context: str, default_c_prefix: str) -> Ha
     destructor = _expect_str(mapping.get("destructor"), f"{context}.destructor")
     _validate_destructor(destructor, context=f"{context}.destructor")
     ptr_type = _parse_ptr_type(mapping.get("ptr_type", "raw"), context=f"{context}.ptr_type")
+    _validate_handle_storage(ptr_type, destructor, None, context=context)
     types = tuple(
         _expect_str(type_name, f"{context}.types[{type_index}]")
         for type_index, type_name in enumerate(_expect_list(mapping.get("types", []), f"{context}.types"))
@@ -1047,6 +1072,28 @@ def _parse_discovery(
 
     mapping = _expect_mapping(raw, context)
     include_dir = Path(_expect_str(mapping.get("include_dir"), f"{context}.include_dir"))
+    compilation_mapping = _expect_mapping(mapping.get("compilation", {}), f"{context}.compilation")
+    compiler = _expect_str(compilation_mapping.get("compiler", "clang++"), f"{context}.compilation.compiler")
+    clang_args = tuple(
+        _expect_str(value, f"{context}.compilation.clang_args[{index}]")
+        for index, value in enumerate(
+            _expect_list(compilation_mapping.get("clang_args", ["-x", "c++", "-std=c++17"]), f"{context}.compilation.clang_args")
+        )
+    )
+    include_dirs = tuple(
+        Path(_expect_str(value, f"{context}.compilation.include_dirs[{index}]"))
+        for index, value in enumerate(_expect_list(compilation_mapping.get("include_dirs", []), f"{context}.compilation.include_dirs"))
+    )
+    defines = tuple(
+        _expect_str(value, f"{context}.compilation.defines[{index}]")
+        for index, value in enumerate(_expect_list(compilation_mapping.get("defines", []), f"{context}.compilation.defines"))
+    )
+    compilation = DiscoveryCompilationSpec(
+        compiler=compiler,
+        clang_args=clang_args,
+        include_dirs=include_dirs,
+        defines=defines,
+    )
     class_defaults = _expect_mapping(mapping.get("class_defaults", {}), f"{context}.class_defaults")
     function_defaults = _expect_mapping(mapping.get("function_defaults", {}), f"{context}.function_defaults")
     def default_include_all(defaults: dict[str, Any], default_context: str) -> bool:
@@ -1593,6 +1640,7 @@ def _parse_discovery(
 
     return DiscoverySpec(
         include_dir=include_dir,
+        compilation=compilation,
         classes=tuple(classes),
         functions=tuple(functions),
         constructors=tuple(constructors),
@@ -2282,15 +2330,16 @@ def _validate_override_keys_for_overloads(
 
 
 def _extract_optional_inner_type(cpp_type: str | DiscoveredCppType) -> str | DiscoveredCppType | None:
-    """Extract T from boost::optional<T>. Returns None if not an optional type."""
+    """Extract T from boost::optional<T> or std::optional<T>. Returns None if not optional."""
     if isinstance(cpp_type, DiscoveredCppType):
-        if cpp_type.template_name == "boost::optional" and len(cpp_type.template_args) == 1:
+        if cpp_type.template_name in {"boost::optional", "std::optional"} and len(cpp_type.template_args) == 1:
             return cpp_type.template_args[0]
         normalized = cpp_type.canonical_spelling
     else:
         normalized = _normalize_cpp_type(cpp_type)
-    if normalized.startswith("boost::optional<") and normalized.endswith(">"):
-        return normalized[len("boost::optional<"):-1].strip()
+    for prefix in ("boost::optional<", "std::optional<"):
+        if normalized.startswith(prefix) and normalized.endswith(">"):
+            return normalized[len(prefix):-1].strip()
     return None
 
 
@@ -2342,11 +2391,11 @@ def _collection_base_child_handle(
     handle: HandleSpec,
     *,
     handles: dict[str, HandleSpec],
-    compile_commands_path: Path,
+    discovery_environment: DiscoveryEnvironment,
     include_dir: Path,
 ) -> str | None:
     translation_unit = (include_dir / item.translation_unit).resolve()
-    for base in discover_base_types_with_compile_commands(compile_commands_path, translation_unit, handle.cpp_type):
+    for base in discover_base_types(discovery_environment, translation_unit, handle.cpp_type):
         if _simple_cpp_name(base.cpp_type_ref.template_name or "") != "collection_base":
             continue
         if not base.cpp_type_ref.template_args:
@@ -2364,15 +2413,15 @@ def _infer_children_element_handle(
     *,
     handles: dict[str, HandleSpec],
     class_cache: dict[object, object],
-    compile_commands_path: Path,
+    discovery_environment: DiscoveryEnvironment,
     include_dir: Path,
 ) -> str:
     field_cache_key = ("fields", handle.cpp_type, item.translation_unit, True)
     fields_by_name = class_cache.get(field_cache_key)
     if fields_by_name is None:
         translation_unit = (include_dir / item.translation_unit).resolve()
-        fields_by_name = discover_public_fields_with_compile_commands(
-            compile_commands_path,
+        fields_by_name = discover_public_fields(
+            discovery_environment,
             translation_unit,
             handle.cpp_type,
             include_inherited=True,
@@ -2398,7 +2447,7 @@ def _infer_children_element_handle(
             item,
             handle,
             handles=handles,
-            compile_commands_path=compile_commands_path,
+            discovery_environment=discovery_environment,
             include_dir=include_dir,
         )
         if child_handle is not None:
@@ -2418,7 +2467,7 @@ def _infer_ccomponents_dimensions(
     item: DiscoveryClassSpec,
     handle: HandleSpec,
     *,
-    compile_commands_path: Path,
+    discovery_environment: DiscoveryEnvironment,
     include_dir: Path,
 ) -> int:
     if item.ccomponents_accessor is None:
@@ -2434,7 +2483,7 @@ def _infer_ccomponents_dimensions(
         if class_name in visited:
             continue
         visited.add(class_name)
-        for base in discover_base_types_with_compile_commands(compile_commands_path, translation_unit, class_name):
+        for base in discover_base_types(discovery_environment, translation_unit, class_name):
             if _simple_cpp_name(base.cpp_type_ref.template_name or "") == "eigen_base" and base.cpp_type_ref.template_args:
                 dimensions = _eigen_matrix_dimensions(base.cpp_type_ref.template_args[0].storage_spelling)
                 if dimensions is not None:
@@ -2527,7 +2576,7 @@ def _emit_children_calls(
     handle: HandleSpec,
     handles: dict[str, HandleSpec],
     class_cache: dict[object, object],
-    compile_commands_path: Path,
+    discovery_environment: DiscoveryEnvironment,
     include_dir: Path,
     calls: list[CallSpec],
     calls_by_c_name: dict[str, CallSpec],
@@ -2544,7 +2593,7 @@ def _emit_children_calls(
         dc,
         handles=handles,
         class_cache=class_cache,
-        compile_commands_path=compile_commands_path,
+        discovery_environment=discovery_environment,
         include_dir=include_dir,
     )
     stem = _children_stem(dc.cpp_field, element_handle)
@@ -2612,7 +2661,7 @@ def _emit_children_calls(
 def _emit_ccomponents_call(
     item: DiscoveryClassSpec,
     handle: HandleSpec,
-    compile_commands_path: Path,
+    discovery_environment: DiscoveryEnvironment,
     include_dir: Path,
     calls: list[CallSpec],
     calls_by_c_name: dict[str, CallSpec],
@@ -2627,7 +2676,7 @@ def _emit_ccomponents_call(
         dimensions = _infer_ccomponents_dimensions(
             item,
             handle,
-            compile_commands_path=compile_commands_path,
+            discovery_environment=discovery_environment,
             include_dir=include_dir,
         )
     cc_call = PolicyCallSpec(
@@ -2721,7 +2770,7 @@ def _discover_method_calls(
     spec_path: Path,
     discovery: DiscoverySpec,
     handles: dict[str, HandleSpec],
-    compile_commands_path: Path,
+    discovery_environment: DiscoveryEnvironment,
     authored_c_names: frozenset[str] = frozenset(),
 ) -> tuple[tuple[CallSpec, ...], tuple[DiscoveryDiagnostic, ...]]:
     include_dir = (spec_path.parent / discovery.include_dir).resolve()
@@ -2754,8 +2803,8 @@ def _discover_method_calls(
             cached = class_cache.get(cache_key)
             if cached is None:
                 translation_unit = (include_dir / item.translation_unit).resolve()
-                cached = discover_public_methods_with_compile_commands(
-                    compile_commands_path, translation_unit, handle.cpp_type,
+                cached = discover_public_methods(
+                    discovery_environment, translation_unit, handle.cpp_type,
                     include_inherited=item.include_inherited_methods,
                     selected_names=selected_method_names,
                 )
@@ -2898,8 +2947,8 @@ def _discover_method_calls(
             fields_by_name = class_cache.get(field_cache_key)
             if fields_by_name is None:
                 translation_unit = (include_dir / item.translation_unit).resolve()
-                fields_by_name = discover_public_fields_with_compile_commands(
-                    compile_commands_path, translation_unit, handle.cpp_type,
+                fields_by_name = discover_public_fields(
+                    discovery_environment, translation_unit, handle.cpp_type,
                     include_inherited=item.include_inherited_fields,
                 )
                 class_cache[field_cache_key] = fields_by_name
@@ -3016,7 +3065,7 @@ def _discover_method_calls(
             handle,
             handles,
             class_cache,
-            compile_commands_path,
+            discovery_environment,
             include_dir,
             calls,
             calls_by_c_name,
@@ -3205,8 +3254,8 @@ def _discover_method_calls(
                 fields_by_name = class_cache.get(field_cache_key)
                 if fields_by_name is None:
                     translation_unit = (include_dir / item.translation_unit).resolve()
-                    fields_by_name = discover_public_fields_with_compile_commands(
-                        compile_commands_path,
+                    fields_by_name = discover_public_fields(
+                        discovery_environment,
                         translation_unit,
                         handle.cpp_type,
                         include_inherited=item.include_inherited_fields,
@@ -3311,7 +3360,7 @@ def _discover_method_calls(
         _emit_ccomponents_call(
             item,
             handle,
-            compile_commands_path,
+            discovery_environment,
             include_dir,
             calls,
             calls_by_c_name,
@@ -3450,6 +3499,62 @@ def _selected_contract_function_names(item: DiscoveryFunctionSpec, contract_name
     return frozenset(set(selected_function_names) - set(item.exclude))
 
 
+def _resolve_extra_include_dir(path: Path) -> Path:
+    return path.resolve()
+
+
+def _resolve_compilation_include_dirs(
+    spec_path: Path,
+    include_dir: Path,
+    compilation: DiscoveryCompilationSpec,
+    extra_include_dirs: tuple[Path, ...] = (),
+) -> tuple[Path, ...]:
+    result: list[Path] = [include_dir]
+    result.extend(_resolve_extra_include_dir(include) for include in extra_include_dirs)
+    for include in compilation.include_dirs:
+        result.append(include.resolve() if include.is_absolute() else (spec_path.parent / include).resolve())
+    seen: set[Path] = set()
+    unique: list[Path] = []
+    for path in result:
+        if path in seen:
+            continue
+        seen.add(path)
+        unique.append(path)
+    return tuple(unique)
+
+
+def _discovery_environment(
+    spec_path: Path,
+    discovery: DiscoverySpec,
+    compile_commands_path: Path | None,
+    *,
+    discovery_include_dirs: tuple[Path, ...] = (),
+    discovery_defines: tuple[str, ...] = (),
+    discovery_clang_args: tuple[str, ...] = (),
+) -> DiscoveryEnvironment:
+    if compile_commands_path is not None:
+        return DiscoveryEnvironment(compile_commands_path=compile_commands_path)
+    include_dir = (spec_path.parent / discovery.include_dir).resolve()
+    if not include_dir.exists():
+        msg = f"discover.include_dir '{discovery.include_dir}' does not exist for '{spec_path}'"
+        raise ValueError(msg)
+    compilation = discovery.compilation
+    return DiscoveryEnvironment(
+        compilation=CompilationConfig(
+            compiler=compilation.compiler,
+            clang_args=compilation.clang_args + discovery_clang_args,
+            include_dirs=_resolve_compilation_include_dirs(
+                spec_path,
+                include_dir,
+                compilation,
+                extra_include_dirs=discovery_include_dirs,
+            ),
+            defines=compilation.defines + discovery_defines,
+            working_directory=include_dir,
+        )
+    )
+
+
 def _validate_function_type_overrides(
     item: DiscoveryFunctionSpec,
     function_names: set[str] | frozenset[str],
@@ -3473,7 +3578,7 @@ def _discover_function_calls(
     handles: dict[str, HandleSpec],
     result_structs: dict[str, ResultStructSpec],
     c_prefix: str,
-    compile_commands_path: Path,
+    discovery_environment: DiscoveryEnvironment,
 ) -> tuple[tuple[CallSpec, ...], tuple[DiscoveryDiagnostic, ...]]:
     include_dir = (spec_path.parent / discovery.include_dir).resolve()
     namespace_cache: dict[tuple[str, str, str | None, frozenset[str] | None], dict[str, tuple[DiscoveredFunction, ...]]] = {}
@@ -3532,8 +3637,8 @@ def _discover_function_calls(
         dict[str, tuple[DiscoveredFunction, ...]],
     ]:
         namespace, translation_unit, selected_function_names = discovery_jobs[cache_key]
-        return cache_key, discover_namespace_functions_with_compile_commands(
-            compile_commands_path,
+        return cache_key, discover_namespace_functions(
+            discovery_environment,
             translation_unit,
             namespace,
             selected_names=selected_function_names,
@@ -3549,7 +3654,7 @@ def _discover_function_calls(
             contract_header_cache = _contract_headers(spec_path, include_dir, public_headers)
         source_text = _contract_source_text(contract_header_cache)
         return cache_key, discover_namespace_functions_with_synthetic_source(
-            compile_commands_path,
+            discovery_environment,
             source_text,
             namespace,
             selected_names=selected_function_names,
@@ -3817,7 +3922,7 @@ def _discover_constructor_calls(
     discovery: DiscoverySpec,
     handles: dict[str, HandleSpec],
     c_prefix: str,
-    compile_commands_path: Path,
+    discovery_environment: DiscoveryEnvironment,
     authored_c_names: frozenset[str] = frozenset(),
 ) -> tuple[tuple[CallSpec, ...], tuple[DiscoveryDiagnostic, ...]]:
     include_dir = (spec_path.parent / discovery.include_dir).resolve()
@@ -3849,8 +3954,8 @@ def _discover_constructor_calls(
         if constructors is None:
             translation_unit = (include_dir / item.translation_unit).resolve()
             try:
-                constructors = discover_public_constructors_with_compile_commands(
-                    compile_commands_path,
+                constructors = discover_public_constructors(
+                    discovery_environment,
                     translation_unit,
                     item.cpp_class,
                 )
@@ -3903,8 +4008,8 @@ def _discover_constructor_calls(
             fields = field_cache.get(cache_key)
             if fields is None:
                 translation_unit = (include_dir / item.translation_unit).resolve()
-                fields = discover_public_fields_with_compile_commands(
-                    compile_commands_path,
+                fields = discover_public_fields(
+                    discovery_environment,
                     translation_unit,
                     item.cpp_class,
                     include_inherited=False,
@@ -3995,6 +4100,9 @@ def load_authored_spec(
     path: Path,
     compile_commands_path: Path | None = None,
     existing_handles: dict[str, HandleSpec] | None = None,
+    discovery_include_dirs: tuple[Path, ...] = (),
+    discovery_defines: tuple[str, ...] = (),
+    discovery_clang_args: tuple[str, ...] = (),
 ) -> AuthoredBindingSpec:
     """Load a single authored binding spec.
     
@@ -4055,12 +4163,20 @@ def load_authored_spec(
         destructor = _expect_str(mapping.get("destructor"), f"{context}.destructor")
         _validate_destructor(destructor, context=f"{context}.destructor")
         ptr_type = _parse_ptr_type(mapping.get("ptr_type", "raw"), context=f"{context}.ptr_type")
+        empty_check_raw = mapping.get("empty_check")
+        empty_check = (
+            _expect_str(empty_check_raw, f"{context}.empty_check")
+            if empty_check_raw is not None
+            else None
+        )
+        _validate_handle_storage(ptr_type, destructor, empty_check, context=context)
         handle = HandleSpec(
             name=_expect_str(mapping.get("name"), f"{context}.name"),
             cpp_type=_expect_str(mapping.get("cpp_type"), f"{context}.cpp_type"),
             c_type=_expect_str(mapping.get("c_type"), f"{context}.c_type"),
             destructor=destructor,
             ptr_type=ptr_type,
+            empty_check=empty_check,
         )
         if handle.name in handles:
             msg = f"{context}.name '{handle.name}' is duplicated"
@@ -4096,9 +4212,18 @@ def load_authored_spec(
         known_handles=known_handles,
         known_result_structs=known_result_structs,
     )
-    if discovery is not None and compile_commands_path is None:
-        msg = "compile_commands.json is required for AST-backed discovery"
-        raise ValueError(msg)
+    discovery_environment = (
+        _discovery_environment(
+            path,
+            discovery,
+            compile_commands_path,
+            discovery_include_dirs=discovery_include_dirs,
+            discovery_defines=discovery_defines,
+            discovery_clang_args=discovery_clang_args,
+        )
+        if discovery is not None
+        else None
+    )
 
     authored_functions = tuple(
         _parse_call(
@@ -4149,14 +4274,15 @@ def load_authored_spec(
     discovered_constructors: tuple[CallSpec, ...] = tuple()
     discovery_diagnostics: tuple[DiscoveryDiagnostic, ...] = tuple()
     if discovery is not None:
+        assert discovery_environment is not None
         discovered_constructors, constructor_diagnostics = _discover_constructor_calls(
-            path, discovery, handles, c_prefix, compile_commands_path, authored_c_names
+            path, discovery, handles, c_prefix, discovery_environment, authored_c_names
         )
         discovered_methods, method_diagnostics = _discover_method_calls(
-            path, discovery, handles, compile_commands_path, authored_c_names
+            path, discovery, handles, discovery_environment, authored_c_names
         )
         discovered_functions, function_diagnostics = _discover_function_calls(
-            path, discovery, public_headers, handles, result_structs, c_prefix, compile_commands_path
+            path, discovery, public_headers, handles, result_structs, c_prefix, discovery_environment
         )
         discovery_diagnostics = constructor_diagnostics + method_diagnostics + function_diagnostics
 
@@ -4192,6 +4318,9 @@ def load_merged_specs(
     module: str,
     c_prefix: str,
     compile_commands_path: Path | None = None,
+    discovery_include_dirs: tuple[Path, ...] = (),
+    discovery_defines: tuple[str, ...] = (),
+    discovery_clang_args: tuple[str, ...] = (),
 ) -> MergedBindingSpec:
     """Load multiple binding specs and merge them into a unified spec.
     
@@ -4216,6 +4345,9 @@ def load_merged_specs(
             spec_path,
             compile_commands_path=compile_commands_path,
             existing_handles=all_handles.copy(),  # Pass accumulated handles
+            discovery_include_dirs=discovery_include_dirs,
+            discovery_defines=discovery_defines,
+            discovery_clang_args=discovery_clang_args,
         )
         
         # Merge new handles (check for collisions with exact match to handle

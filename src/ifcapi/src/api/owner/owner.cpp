@@ -7,7 +7,7 @@
 #include "ifcapi/detail/relationship.h"
 #include "guid.h"
 
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/file.h"
 
 #include <algorithm>
 #include <string>

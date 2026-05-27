@@ -5,8 +5,8 @@
 
 #include "ifcapi/bindings/contract.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
 
 #include <string>
 #include <vector>
@@ -14,36 +14,36 @@
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING IfcUtil::IfcBaseClass* group_add_group(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base group_add_group(
+    ifcopenshell::file* file,
     const std::string& name,
     const char* description,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* group_update_group_products(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* group,
-    const std::vector<const IfcUtil::IfcBaseClass*>& products,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* group_assign_group(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& products,
-    IfcUtil::IfcBaseClass* group,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE express::Base* owner_history,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
+IFCAPI_BINDING express::Base group_update_group_products(
+    ifcopenshell::file* file,
+    express::Base* group,
+    const std::vector<express::Base>& products,
+    IFCAPI_NULLABLE express::Base* owner_history,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
+IFCAPI_BINDING express::Base group_assign_group(
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& products,
+    express::Base* group,
+    IFCAPI_NULLABLE express::Base* owner_history,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 IFCAPI_BINDING void group_unassign_group(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& products,
-    IfcUtil::IfcBaseClass* group,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& products,
+    express::Base* group,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 IFCAPI_BINDING void group_remove_group(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* group);
+    ifcopenshell::file* file,
+    express::Base* group);
 
 } // namespace bindings
 } // namespace ifcapi

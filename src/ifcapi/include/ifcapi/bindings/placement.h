@@ -5,7 +5,7 @@
 
 #include "ifcapi/bindings/contract.h"
 
-#include "ifcparse/IfcBaseClass.h"
+#include "ifcparse/express.h"
 
 #include <string>
 #include <vector>
@@ -17,12 +17,12 @@ IFCAPI_BINDING std::vector<double> placement_a2p(
     const std::vector<double>& origin,
     const std::vector<double>& z_axis,
     const std::vector<double>& x_axis);
-IFCAPI_BINDING std::vector<double> placement_get_axis2placement(IfcUtil::IfcBaseClass* instance);
+IFCAPI_BINDING std::vector<double> placement_get_axis2placement(express::Base* instance);
 IFCAPI_BINDING std::vector<double> placement_get_local_placement(
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* instance);
-IFCAPI_BINDING std::vector<double> placement_get_cartesian_xform_3d(IfcUtil::IfcBaseClass* instance);
-IFCAPI_BINDING std::vector<double> placement_get_mappeditem_xform(IfcUtil::IfcBaseClass* instance);
-IFCAPI_BINDING double placement_get_storey_elevation(IfcUtil::IfcBaseClass* instance);
+    IFCAPI_NULLABLE express::Base* instance);
+IFCAPI_BINDING std::vector<double> placement_get_cartesian_xform_3d(express::Base* instance);
+IFCAPI_BINDING std::vector<double> placement_get_mappeditem_xform(express::Base* instance);
+IFCAPI_BINDING double placement_get_storey_elevation(express::Base* instance);
 IFCAPI_BINDING std::vector<double> placement_rotation(double angle_rad, const std::string& axis);
 
 } // namespace bindings

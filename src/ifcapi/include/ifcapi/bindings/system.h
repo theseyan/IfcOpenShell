@@ -5,8 +5,8 @@
 
 #include "ifcapi/bindings/contract.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
 
 #include <string>
 #include <vector>
@@ -14,66 +14,66 @@
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING IfcUtil::IfcBaseClass* system_add_port(
-    IfcParse::IfcFile* file,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* element,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* system_add_system(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base system_add_port(
+    ifcopenshell::file* file,
+    IFCAPI_NULLABLE express::Base* element,
+    IFCAPI_NULLABLE express::Base* owner_history,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
+IFCAPI_BINDING express::Base system_add_system(
+    ifcopenshell::file* file,
     const std::string& ifc_class,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* system_assign_flow_control(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relating_flow_element,
-    IfcUtil::IfcBaseClass* related_flow_control,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* system_assign_port(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* element,
-    IfcUtil::IfcBaseClass* port,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* system_assign_system(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& products,
-    IfcUtil::IfcBaseClass* system,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE express::Base* owner_history);
+IFCAPI_BINDING express::Base system_assign_flow_control(
+    ifcopenshell::file* file,
+    express::Base* relating_flow_element,
+    express::Base* related_flow_control,
+    IFCAPI_NULLABLE express::Base* owner_history,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
+IFCAPI_BINDING express::Base system_assign_port(
+    ifcopenshell::file* file,
+    express::Base* element,
+    express::Base* port,
+    IFCAPI_NULLABLE express::Base* owner_history,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
+IFCAPI_BINDING express::Base system_assign_system(
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& products,
+    express::Base* system,
+    IFCAPI_NULLABLE express::Base* owner_history,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 IFCAPI_BINDING void system_connect_port(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* port1,
-    IfcUtil::IfcBaseClass* port2,
+    ifcopenshell::file* file,
+    express::Base* port1,
+    express::Base* port2,
     const std::string& direction,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* element,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
-IFCAPI_BINDING void system_disconnect_port(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* port);
-IFCAPI_BINDING void system_remove_system(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* system);
+    IFCAPI_NULLABLE express::Base* element,
+    IFCAPI_NULLABLE express::Base* owner_history,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
+IFCAPI_BINDING void system_disconnect_port(ifcopenshell::file* file, express::Base* port);
+IFCAPI_BINDING void system_remove_system(ifcopenshell::file* file, express::Base* system);
 IFCAPI_BINDING void system_unassign_flow_control(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relating_flow_element,
-    IfcUtil::IfcBaseClass* related_flow_control,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+    ifcopenshell::file* file,
+    express::Base* relating_flow_element,
+    express::Base* related_flow_control,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 IFCAPI_BINDING void system_unassign_port(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* element,
-    IfcUtil::IfcBaseClass* port,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+    ifcopenshell::file* file,
+    express::Base* element,
+    express::Base* port,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 IFCAPI_BINDING void system_unassign_system(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& products,
-    IfcUtil::IfcBaseClass* system,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& products,
+    express::Base* system,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 
 } // namespace bindings
 } // namespace ifcapi

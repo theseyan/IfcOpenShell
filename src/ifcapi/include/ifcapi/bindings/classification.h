@@ -5,9 +5,9 @@
 
 #include "ifcapi/bindings/contract.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
-#include "ifcparse/aggregate_of_instance.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
+#include <vector>
 
 #include <string>
 #include <vector>
@@ -15,33 +15,33 @@
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING aggregate_of_instance::ptr classification_get_references(
-    IfcUtil::IfcBaseClass* element,
+IFCAPI_BINDING std::vector<express::Base> classification_get_references(
+    express::Base* element,
     bool should_inherit);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* classification_add_classification(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base classification_add_classification(
+    ifcopenshell::file* file,
     const std::string& name);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* classification_add_reference(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& products,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* reference,
+IFCAPI_BINDING express::Base classification_add_reference(
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& products,
+    IFCAPI_NULLABLE express::Base* reference,
     const std::string& identification,
     bool has_identification,
     const std::string& name,
     bool has_name,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* classification,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE express::Base* classification,
+    IFCAPI_NULLABLE express::Base* owner_history,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 IFCAPI_BINDING void classification_remove_reference(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* reference,
-    const std::vector<const IfcUtil::IfcBaseClass*>& products,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+    ifcopenshell::file* file,
+    express::Base* reference,
+    const std::vector<express::Base>& products,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 IFCAPI_BINDING void classification_remove_classification(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* classification);
+    ifcopenshell::file* file,
+    express::Base* classification);
 
 } // namespace bindings
 } // namespace ifcapi

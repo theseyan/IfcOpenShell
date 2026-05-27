@@ -5,27 +5,27 @@
 
 #include "ifcapi/bindings/contract.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
-#include "ifcparse/aggregate_of_instance.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
+#include <vector>
 
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING IfcUtil::IfcBaseClass* representation_get_context(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base representation_get_context(
+    ifcopenshell::file* file,
     const char* context_type,
     const char* subcontext,
     const char* target_view);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* representation_resolve(IfcUtil::IfcBaseClass* representation);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* representation_get_product_representation(
-    IfcUtil::IfcBaseClass* element,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* context,
+IFCAPI_BINDING express::Base representation_resolve(express::Base* representation);
+IFCAPI_BINDING express::Base representation_get_product_representation(
+    express::Base* element,
+    IFCAPI_NULLABLE express::Base* context,
     const char* context_type,
     const char* subcontext,
     const char* target_view);
-IFCAPI_BINDING aggregate_of_instance::ptr representation_resolve_base_items(IfcUtil::IfcBaseClass* representation);
-IFCAPI_BINDING aggregate_of_instance::ptr representation_get_prioritised_contexts(IfcParse::IfcFile* file);
+IFCAPI_BINDING std::vector<express::Base> representation_resolve_base_items(express::Base* representation);
+IFCAPI_BINDING std::vector<express::Base> representation_get_prioritised_contexts(ifcopenshell::file* file);
 
 } // namespace bindings
 } // namespace ifcapi

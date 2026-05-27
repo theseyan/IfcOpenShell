@@ -5,27 +5,27 @@
 
 #include "ifcapi/bindings/contract.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
 
 #include <vector>
 
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING IfcUtil::IfcBaseClass* control_assign_control(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relating_control,
-    const std::vector<const IfcUtil::IfcBaseClass*>& related_objects,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+IFCAPI_BINDING express::Base control_assign_control(
+    ifcopenshell::file* file,
+    express::Base* relating_control,
+    const std::vector<express::Base>& related_objects,
+    IFCAPI_NULLABLE express::Base* owner_history,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 IFCAPI_BINDING void control_unassign_control(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relating_control,
-    const std::vector<const IfcUtil::IfcBaseClass*>& related_objects,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+    ifcopenshell::file* file,
+    express::Base* relating_control,
+    const std::vector<express::Base>& related_objects,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 
 } // namespace bindings
 } // namespace ifcapi

@@ -3,7 +3,7 @@
 #ifndef IFCAPI_API_PSET_PROPS_HPP
 #define IFCAPI_API_PSET_PROPS_HPP
 
-#include "ifcparse/IfcBaseClass.h"
+#include "ifcparse/express.h"
 
 #include <cstdint>
 #include <memory>

@@ -5,7 +5,7 @@
 #define IFCAPI_BINDINGS_STRUCTURAL_H
 
 #include "ifcapi/bindings/contract.h"
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/file.h"
 
 #include <string>
 #include <vector>
@@ -15,101 +15,101 @@ struct ifcopenshell_pset_props_t;
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_add_structural_analysis_model(
-    IfcParse::IfcFile* file,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_assign_structural_analysis_model(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& products,
-    IfcUtil::IfcBaseClass* structural_analysis_model,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+IFCAPI_BINDING express::Base structural_add_structural_analysis_model(
+    ifcopenshell::file* file,
+    IFCAPI_NULLABLE express::Base* owner_history);
+IFCAPI_BINDING express::Base structural_assign_structural_analysis_model(
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& products,
+    express::Base* structural_analysis_model,
+    IFCAPI_NULLABLE express::Base* owner_history,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 IFCAPI_BINDING void structural_unassign_structural_analysis_model(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& products,
-    IfcUtil::IfcBaseClass* structural_analysis_model,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_assign_product(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relating_product,
-    IfcUtil::IfcBaseClass* related_object,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_add_structural_activity(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* applied_load,
-    IfcUtil::IfcBaseClass* structural_member,
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& products,
+    express::Base* structural_analysis_model,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
+IFCAPI_BINDING express::Base structural_assign_product(
+    ifcopenshell::file* file,
+    express::Base* relating_product,
+    express::Base* related_object,
+    IFCAPI_NULLABLE express::Base* owner_history);
+IFCAPI_BINDING express::Base structural_add_structural_activity(
+    ifcopenshell::file* file,
+    express::Base* applied_load,
+    express::Base* structural_member,
     const std::string& ifc_class,
     const std::string& predefined_type,
     const std::string& global_or_local,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* activity_owner_history,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* relationship_owner_history);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_add_structural_load(
-    IfcParse::IfcFile* file,
+    IFCAPI_NULLABLE express::Base* activity_owner_history,
+    IFCAPI_NULLABLE express::Base* relationship_owner_history);
+IFCAPI_BINDING express::Base structural_add_structural_load(
+    ifcopenshell::file* file,
     const std::string& ifc_class,
     const char* name,
     bool has_name);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_add_structural_load_case(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base structural_add_structural_load_case(
+    ifcopenshell::file* file,
     const std::string& name,
     const std::string& action_type,
     const std::string& action_source,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_add_structural_load_group(
-    IfcParse::IfcFile* file,
+    IFCAPI_NULLABLE express::Base* owner_history);
+IFCAPI_BINDING express::Base structural_add_structural_load_group(
+    ifcopenshell::file* file,
     const std::string& name,
     const std::string& action_type,
     const std::string& action_source,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_add_structural_member_connection(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relating_structural_member,
-    IfcUtil::IfcBaseClass* related_structural_connection,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_add_structural_boundary_condition(
-    IfcParse::IfcFile* file,
+    IFCAPI_NULLABLE express::Base* owner_history);
+IFCAPI_BINDING express::Base structural_add_structural_member_connection(
+    ifcopenshell::file* file,
+    express::Base* relating_structural_member,
+    express::Base* related_structural_connection,
+    IFCAPI_NULLABLE express::Base* owner_history);
+IFCAPI_BINDING express::Base structural_add_structural_boundary_condition(
+    ifcopenshell::file* file,
     const char* name,
     bool has_name,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* connection,
+    IFCAPI_NULLABLE express::Base* connection,
     const std::string& ifc_class);
 IFCAPI_BINDING void structural_edit_structural_connection_cs(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* structural_item,
+    ifcopenshell::file* file,
+    express::Base* structural_item,
     const std::vector<double>& axis,
     const std::vector<double>& ref_direction);
 IFCAPI_BINDING void structural_edit_structural_item_axis(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* structural_item,
+    ifcopenshell::file* file,
+    express::Base* structural_item,
     const std::vector<double>& axis);
 IFCAPI_BINDING void structural_edit_structural_boundary_condition(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* condition,
+    ifcopenshell::file* file,
+    express::Base* condition,
     ifcopenshell_pset_props_t* attributes);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* structural_assign_to_building(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* structural_analysis_model,
-    IfcUtil::IfcBaseClass* building,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history);
+IFCAPI_BINDING express::Base structural_assign_to_building(
+    ifcopenshell::file* file,
+    express::Base* structural_analysis_model,
+    express::Base* building,
+    IFCAPI_NULLABLE express::Base* owner_history);
 IFCAPI_BINDING void structural_remove_structural_analysis_model(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* structural_analysis_model);
+    ifcopenshell::file* file,
+    express::Base* structural_analysis_model);
 IFCAPI_BINDING void structural_remove_structural_load(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* structural_load);
+    ifcopenshell::file* file,
+    express::Base* structural_load);
 IFCAPI_BINDING void structural_remove_structural_load_case(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* structural_load_case);
+    ifcopenshell::file* file,
+    express::Base* structural_load_case);
 IFCAPI_BINDING void structural_remove_structural_load_group(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* structural_load_group);
+    ifcopenshell::file* file,
+    express::Base* structural_load_group);
 IFCAPI_BINDING void structural_remove_structural_boundary_condition(
-    IfcParse::IfcFile* file,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* connection,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* boundary_condition);
+    ifcopenshell::file* file,
+    IFCAPI_NULLABLE express::Base* connection,
+    IFCAPI_NULLABLE express::Base* boundary_condition);
 IFCAPI_BINDING void structural_remove_structural_connection_condition(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relation);
+    ifcopenshell::file* file,
+    express::Base* relation);
 
 } // namespace bindings
 } // namespace ifcapi

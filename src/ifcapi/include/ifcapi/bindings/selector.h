@@ -7,8 +7,8 @@
 #include "ifcapi/bindings/contract.h"
 #include "ifcapi/selector/ast.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -21,8 +21,8 @@ namespace ifcapi {
 namespace bindings {
 
 IFCAPI_BINDING std::optional<std::string> selector_format(
-    IFCAPI_NULLABLE IfcParse::IfcFile* file,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* instance,
+    IFCAPI_NULLABLE ifcopenshell::file* file,
+    IFCAPI_NULLABLE express::Base* instance,
     const std::string& query);
 
 IFCAPI_BINDING ifcopenshell_selector_keys_t* selector_parse_keys(const std::string& query);

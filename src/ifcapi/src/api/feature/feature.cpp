@@ -11,7 +11,7 @@
 #include "guid.h"
 #include "ifcopenshell_api_internal.hpp"
 
-#include "ifcparse/IfcSchema.h"
+#include "ifcparse/schema.h"
 
 #include <algorithm>
 #include <string>

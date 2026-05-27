@@ -15,7 +15,6 @@ public_headers:
   - WavefrontObjSerializer.h
   - TtlWktSerializer.h
   - SvgSerializer.h
-  - HdfSerializer.h
   - ColladaSerializer.h
   - GltfSerializer.h
   - JsonSerializer.h
@@ -226,10 +225,10 @@ discover:
   constructors:
     - handle: serializer
       cpp_class: XmlSerializer
-      translation_unit: ../serializers/XmlSerializer.cpp
+      translation_unit: ../serializers/XmlSerializer.h
       expose_as: create_xml_serializer
       params:
-        - IfcParse::IfcFile*
+        - ifcopenshell::file*
         - const std::string&
       param_renames:
         xml_filename: filename
@@ -243,7 +242,7 @@ discover:
       translation_unit: kernels/opencascade/boolean_utils.cpp
       expose_as: create_tree_from_file
       params:
-        - IfcParse::IfcFile&
+        - ifcopenshell::file&
       param_renames:
         f: file
     - handle: tree
@@ -251,8 +250,8 @@ discover:
       translation_unit: kernels/opencascade/boolean_utils.cpp
       expose_as: create_tree_from_file_with_settings
       params:
-        - IfcParse::IfcFile&
-        - ifcopenshell::geometry::Settings
+        - ifcopenshell::file&
+        - const ifcopenshell::geometry::Settings&
       param_renames:
         f: file
     - handle: tree
@@ -337,43 +336,18 @@ discover:
         - filename
         - geometry_settings
         - serializer_settings
-    - handle: geometry_serializer
-      cpp_class: HdfSerializer
-      translation_unit: ../serializers/HdfSerializer.cpp
-      expose_as: create_hdf_serializer
-      compile_guard: "defined(WITH_HDF5) && defined(IFOPSH_WITH_OPENCASCADE)"
-      params:
-        - const std::string&
-        - const ifcopenshell::geometry::Settings&
-        - const ifcopenshell::geometry::SerializerSettings&
-      param_names:
-        - filename
-        - geometry_settings
-        - serializer_settings
     - handle: serializer
       cpp_class: JsonSerializer
-      translation_unit: ../serializers/JsonSerializer.cpp
+      translation_unit: ../serializers/JsonSerializer.h
       expose_as: create_json_serializer
       compile_guard: WITH_GLTF
       compile_guard_message: JSON serializer requires GLTF support (nlohmann_json)
       params:
-        - IfcParse::IfcFile*
+        - ifcopenshell::file*
         - const std::string&
       param_names:
         - file
         - filename
-    - handle: serializer
-      cpp_class: RocksDbSerializer
-      translation_unit: ../serializers/RocksDbSerializer.cpp
-      expose_as: create_rocksdb_serializer
-      compile_guard: IFOPSH_WITH_ROCKSDB
-      compile_guard_message: RocksDB serializer requires WITH_ROCKSDB support
-      params:
-        - IfcParse::IfcFile*
-        - const std::string&
-      param_names:
-        - file
-        - rocksdb_filename
     - handle: serializer
       cpp_class: RocksDbSerializer
       translation_unit: ../serializers/RocksDbSerializer.cpp
@@ -382,19 +356,17 @@ discover:
       params:
         - const std::string&
         - const std::string&
-        - bool
       param_names:
         - input_filename
         - rocksdb_filename
-        - stream
     - handle: buffer
       cpp_class: stream_or_filename
-      translation_unit: Iterator.cpp
+      translation_unit: GeometrySerializer.h
       expose_as: create_buffer
       params: []
     - handle: buffer
       cpp_class: stream_or_filename
-      translation_unit: Iterator.cpp
+      translation_unit: GeometrySerializer.h
       expose_as: create_buffer_from_filename
       params:
         - const std::string&
@@ -406,7 +378,7 @@ discover:
       expose_as: create_settings
     - handle: serializer_settings
       cpp_class: ifcopenshell::geometry::SerializerSettings
-      translation_unit: Iterator.cpp
+      translation_unit: GeometrySerializer.h
       expose_as: create_serializer_settings
     - handle: taxonomy_collection
       cpp_class: ifcopenshell::geometry::taxonomy::collection
@@ -858,7 +830,7 @@ discover:
         less_than: "<"
 
     - handle: serializer
-      translation_unit: Iterator.cpp
+      translation_unit: GeometrySerializer.h
       include_all: true
       rename:
         writeHeader: write_header
@@ -943,7 +915,7 @@ discover:
           params: [bool]
         - cpp_name: add_file
           expose_as: add_file
-          params: ["IfcParse::IfcFile &", "ifcopenshell::geometry::Settings"]
+          params: ["ifcopenshell::file &", "const ifcopenshell::geometry::Settings &"]
         - cpp_name: add_file
           expose_as: add_iterator
           params: ["IfcGeom::Iterator &"]
@@ -1582,7 +1554,7 @@ functions:
             basis_value,
             axis_origin_cpp,
             direction_cpp,
-            boost::optional<double>(angle)
+            std::optional<double>(angle)
         );
         return value;
 
@@ -1656,7 +1628,7 @@ functions:
     implementation:
       kind: inline_cpp
       body: |
-        IfcParse::IfcFile* file = instance_cpp->file_;
+        ifcopenshell::file* file = instance_cpp->file();
         if (!file) {
             throw std::runtime_error("Instance has no associated file");
         }
@@ -1665,38 +1637,38 @@ functions:
             ifcopenshell::geometry::kernels::construct(file, geom_lib, *settings_cpp),
             file, *settings_cpp);
 
-        auto* entity = instance_cpp->as<IfcUtil::IfcBaseEntity>();
+        auto entity = instance_cpp->as<express::Entity>();
         if (!entity) {
             throw std::runtime_error("Instance is not an entity");
         }
 
         // Handle IfcProduct instances
-        if (entity->declaration().is("IfcProduct")) {
-            IfcUtil::IfcBaseClass* ifc_representation = representation_cpp;
+        if (entity.declaration().is("IfcProduct")) {
+            express::Base ifc_representation = representation_cpp ? *representation_cpp : express::Base();
 
             if (!ifc_representation) {
                 // Find representation from product
-                auto prod_rep_attr = entity->get("Representation");
+                auto prod_rep_attr = entity.get("Representation");
                 if (prod_rep_attr.isNull()) {
-                    throw IfcParse::IfcException("Representation is NULL");
+                    throw ifcopenshell::exception("Representation is NULL");
                 }
-                auto* prod_rep = (IfcUtil::IfcBaseClass*)prod_rep_attr;
-                auto* prod_rep_entity = prod_rep->as<IfcUtil::IfcBaseEntity>();
-                auto reps_attr = prod_rep_entity->get("Representations");
-                auto reps = (boost::shared_ptr<aggregate_of_instance>)reps_attr;
+                auto prod_rep = static_cast<express::Base>(prod_rep_attr);
+                auto prod_rep_entity = prod_rep.as<express::Entity>();
+                auto reps_attr = prod_rep_entity.get("Representations");
+                auto reps = static_cast<std::vector<express::Base>>(reps_attr);
 
-                if (!reps || reps->size() == 0) {
-                    throw IfcParse::IfcException("No suitable IfcRepresentation found");
+                if (reps.empty()) {
+                    throw ifcopenshell::exception("No suitable IfcRepresentation found");
                 }
 
                 bool is_curves = settings_cpp->get<ifcopenshell::geometry::settings::OutputDimensionality>().get()
                     == ifcopenshell::geometry::settings::CURVES;
 
                 // Strategy 1: Find by RepresentationIdentifier
-                for (auto it = reps->begin(); it != reps->end(); ++it) {
-                    auto* rep_entity = (*it)->as<IfcUtil::IfcBaseEntity>();
+                for (auto it = reps.begin(); it != reps.end(); ++it) {
+                    auto rep_entity = it->as<express::Entity>();
                     if (!rep_entity) continue;
-                    auto id_attr = rep_entity->get("RepresentationIdentifier");
+                    auto id_attr = rep_entity.get("RepresentationIdentifier");
                     if (id_attr.isNull()) continue;
                     std::string rep_id = (std::string)id_attr;
                     if (!is_curves) {
@@ -1714,14 +1686,14 @@ functions:
 
                 // Strategy 2: Find by ContextType
                 if (!ifc_representation) {
-                    for (auto it = reps->begin(); it != reps->end(); ++it) {
-                        auto* rep_entity = (*it)->as<IfcUtil::IfcBaseEntity>();
+                    for (auto it = reps.begin(); it != reps.end(); ++it) {
+                        auto rep_entity = it->as<express::Entity>();
                         if (!rep_entity) continue;
-                        auto ctx_attr = rep_entity->get("ContextOfItems");
+                        auto ctx_attr = rep_entity.get("ContextOfItems");
                         if (ctx_attr.isNull()) continue;
-                        auto* ctx = ((IfcUtil::IfcBaseClass*)ctx_attr)->as<IfcUtil::IfcBaseEntity>();
+                        auto ctx = static_cast<express::Base>(ctx_attr).as<express::Entity>();
                         if (!ctx) continue;
-                        auto ct_attr = ctx->get("ContextType");
+                        auto ct_attr = ctx.get("ContextType");
                         if (ct_attr.isNull()) continue;
                         std::string context_type = (std::string)ct_attr;
                         std::transform(context_type.begin(), context_type.end(), context_type.begin(), ::tolower);
@@ -1739,18 +1711,18 @@ functions:
 
                 // Strategy 3: Use first available
                 if (!ifc_representation) {
-                    ifc_representation = *reps->begin();
+                    ifc_representation = *reps.begin();
                 }
             } else {
-                if (!ifc_representation->declaration().is("IfcRepresentation")) {
-                    throw IfcParse::IfcException("Supplied representation not of type IfcRepresentation");
+                if (!ifc_representation.declaration().is("IfcRepresentation")) {
+                    throw ifcopenshell::exception("Supplied representation not of type IfcRepresentation");
                 }
             }
 
-            auto* rep_entity = ifc_representation->as<IfcUtil::IfcBaseEntity>();
+            auto rep_entity = ifc_representation.as<express::Entity>();
             IfcGeom::BRepElement* brep = kernel.create_brep_for_representation_and_product(rep_entity, entity);
             if (!brep) {
-                throw IfcParse::IfcException("Failed to process shape");
+                throw ifcopenshell::exception("Failed to process shape");
             }
 
             auto output_type = settings_cpp->get<ifcopenshell::geometry::settings::IteratorOutput>().get();
@@ -1767,33 +1739,33 @@ functions:
         }
         // Handle representation items directly (mirrors SWIG's behaviour
         // for IfcRepresentationItem / IfcRepresentation / IfcProfileDef).
-        else if (entity->declaration().is("IfcRepresentationItem") ||
-                 entity->declaration().is("IfcRepresentation") ||
-                 entity->declaration().is("IfcProfileDef")) {
+        else if (entity.declaration().is("IfcRepresentationItem") ||
+                 entity.declaration().is("IfcRepresentation") ||
+                 entity.declaration().is("IfcProfileDef")) {
             IfcGeom::ConversionResults shapes;
             try {
-                shapes = kernel.convert(instance_cpp);
+                shapes = kernel.convert(*instance_cpp);
             } catch (...) {
-                throw IfcParse::IfcException("Failed to process representation item");
+                throw ifcopenshell::exception("Failed to process representation item");
             }
             if (shapes.empty()) {
-                throw IfcParse::IfcException(std::string("kernel.convert produced no shapes for ") + entity->declaration().name() + " #" + std::to_string(entity->id()));
+                throw ifcopenshell::exception(std::string("kernel.convert produced no shapes for ") + entity.declaration().name() + " #" + std::to_string(entity.id()));
             }
             auto brep_rep = boost::shared_ptr<IfcGeom::Representation::BRep>(
                 new IfcGeom::Representation::BRep(
-                    kernel.settings(), entity->declaration().name(),
-                    std::to_string(entity->id()), shapes));
+                    kernel.settings(), entity.declaration().name(),
+                    std::to_string(entity.id()), shapes));
 
             auto output_type = settings_cpp->get<ifcopenshell::geometry::settings::IteratorOutput>().get();
             // Build a lightweight BRepElement that wraps the bare
             // representation so the resulting handle can flow through
             // ``element_geometry`` accessors uniformly.
             auto identity = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::matrix4>();
-            const IfcUtil::IfcBaseEntity* null_product = nullptr;
+            express::Entity null_product;
             auto* brep_elem = new IfcGeom::BRepElement(
-                entity->id(), -1,
-                entity->declaration().name(),
-                entity->declaration().name(),
+                entity.id(), -1,
+                entity.declaration().name(),
+                entity.declaration().name(),
                 std::string(),
                 std::string(),
                 identity, brep_rep,
@@ -1810,7 +1782,7 @@ functions:
             }
             return static_cast<IfcGeom::Element*>(brep_elem);
         }
-        throw IfcParse::IfcException("Unsupported instance type for create_shape. Use map_shape for placements.");
+        throw ifcopenshell::exception("Unsupported instance type for create_shape. Use map_shape for placements.");
 
   # map_shape: Map an IFC instance to a taxonomy item
   - kind: adapter_function
@@ -1833,78 +1805,12 @@ functions:
     implementation:
       kind: inline_cpp
       body: |
-        if (instance_cpp->file_ == nullptr) {
+        if (instance_cpp->file() == nullptr) {
             throw std::runtime_error("Unable to map instance without file");
         }
         std::unique_ptr<ifcopenshell::geometry::abstract_mapping> mapping(
-            ifcopenshell::geometry::impl::mapping_implementations().construct(instance_cpp->file_, *settings_cpp));
-        return mapping->map(instance_cpp);
-
-  # serialise: Deserialize a BRep shape string into an IFC entity (OCC-only)
-  - kind: adapter_function
-    expose_as: serialise
-    returns:
-      kind: handle
-      handle: instance
-      ownership: owned
-    params:
-      - name: schema_name
-        type:
-          kind: string
-      - name: shape_str
-        type:
-          kind: string
-      - name: advanced
-        type:
-          kind: bool
-    implementation:
-      kind: inline_cpp
-      body: |
-        #ifdef IFOPSH_WITH_OPENCASCADE
-        std::string shape_string(shape_str_cpp);
-        std::stringstream stream{shape_string};
-        BRepTools_ShapeSet shapes;
-        shapes.Read(stream);
-        const TopoDS_Shape& shp = shapes.Shape(shapes.NbShapes());
-        return IfcGeom::serialise(std::string(schema_name_cpp), shp, advanced);
-        #else
-        (void)schema_name_cpp; (void)shape_str_cpp; (void)advanced;
-        throw std::runtime_error("serialise requires IFOPSH_WITH_OPENCASCADE");
-        return (IfcUtil::IfcBaseClass*)nullptr;
-        #endif
-
-  # tesselate: Tesselate a BRep shape string into an IFC entity (OCC-only)
-  - kind: adapter_function
-    expose_as: tesselate
-    returns:
-      kind: handle
-      handle: instance
-      ownership: owned
-    params:
-      - name: schema_name
-        type:
-          kind: string
-      - name: shape_str
-        type:
-          kind: string
-      - name: deflection
-        type:
-          kind: double
-    implementation:
-      kind: inline_cpp
-      body: |
-        #ifdef IFOPSH_WITH_OPENCASCADE
-        std::string shape_string(shape_str_cpp);
-        std::stringstream stream{shape_string};
-        BRepTools_ShapeSet shapes;
-        shapes.Read(stream);
-        const TopoDS_Shape& shp = shapes.Shape(shapes.NbShapes());
-        return IfcGeom::tesselate(std::string(schema_name_cpp), shp, deflection);
-        #else
-        (void)schema_name_cpp; (void)shape_str_cpp; (void)deflection;
-        throw std::runtime_error("tesselate requires IFOPSH_WITH_OPENCASCADE");
-        return (IfcUtil::IfcBaseClass*)nullptr;
-        #endif
+            ifcopenshell::geometry::impl::mapping_implementations().construct(instance_cpp->file(), *settings_cpp));
+        return mapping->map(*instance_cpp);
 
   # create_epeck_from_int: Create CGAL exact precision number from integer
   - kind: constructor
@@ -2294,17 +2200,11 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        auto* entity = instance_cpp->as<IfcUtil::IfcBaseEntity>();
+        auto entity = instance_cpp->as<express::Entity>();
         if (!entity) {
             throw std::runtime_error("Instance should be an IfcProduct entity");
         }
-        auto selected = self_cpp->select(entity, completely_within, extend);
-        auto result = aggregate_of_instance::ptr(new aggregate_of_instance());
-        result->reserve(selected.size());
-        for (auto* item : selected) {
-            result->push(const_cast<IfcUtil::IfcBaseEntity*>(item));
-        }
-        return result;
+        return self_cpp->select(entity, completely_within, extend);
 
   - kind: adapter_method
     receiver: tree
@@ -2329,14 +2229,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        gp_Pnt p(x, y, z);
-        auto selected = self_cpp->select(p, extend);
-        auto result = aggregate_of_instance::ptr(new aggregate_of_instance());
-        result->reserve(selected.size());
-        for (auto* item : selected) {
-            result->push(const_cast<IfcUtil::IfcBaseEntity*>(item));
-        }
-        return result;
+        return self_cpp->select(IfcGeom::tree_point{x, y, z}, extend);
 
   - kind: adapter_method
     receiver: tree
@@ -2360,13 +2253,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        auto selected = self_cpp->select(element_cpp, completely_within, extend);
-        auto result = aggregate_of_instance::ptr(new aggregate_of_instance());
-        result->reserve(selected.size());
-        for (auto* item : selected) {
-            result->push(const_cast<IfcUtil::IfcBaseEntity*>(item));
-        }
-        return result;
+        return self_cpp->select(element_cpp, completely_within, extend);
 
   - kind: adapter_method
     receiver: tree
@@ -2388,17 +2275,9 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        std::stringstream stream(shape_serialization);
-        BRepTools_ShapeSet shapes;
-        shapes.Read(stream);
-        const TopoDS_Shape& shape = shapes.Shape(shapes.NbShapes());
-        auto selected = self_cpp->select(shape, completely_within, extend);
-        auto result = aggregate_of_instance::ptr(new aggregate_of_instance());
-        result->reserve(selected.size());
-        for (auto* item : selected) {
-            result->push(const_cast<IfcUtil::IfcBaseEntity*>(item));
-        }
-        return result;
+        (void)self_cpp; (void)shape_serialization_cpp; (void)completely_within; (void)extend;
+        throw std::runtime_error("Selecting from shape serialization is not supported by the current ifcgeom tree API");
+        return std::vector<express::Base>();
 
   - kind: adapter_method
     receiver: tree
@@ -2423,14 +2302,8 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        gp_Pnt p(x, y, z);
-        auto selected = self_cpp->select_box(p, extend);
-        auto result = aggregate_of_instance::ptr(new aggregate_of_instance());
-        result->reserve(selected.size());
-        for (auto* item : selected) {
-            result->push(const_cast<IfcUtil::IfcBaseEntity*>(item));
-        }
-        return result;
+        (void)extend;
+        return self_cpp->select_box(IfcGeom::tree_point{x, y, z});
 
   - kind: adapter_method
     receiver: tree
@@ -2454,17 +2327,11 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        auto* entity = instance_cpp->as<IfcUtil::IfcBaseEntity>();
+        auto entity = instance_cpp->as<express::Entity>();
         if (!entity) {
             throw std::runtime_error("Instance should be an IfcProduct entity");
         }
-        auto selected = self_cpp->select_box(entity, completely_within, extend);
-        auto result = aggregate_of_instance::ptr(new aggregate_of_instance());
-        result->reserve(selected.size());
-        for (auto* item : selected) {
-            result->push(const_cast<IfcUtil::IfcBaseEntity*>(item));
-        }
-        return result;
+        return self_cpp->select_box(entity, completely_within, extend);
 
   - kind: adapter_method
     receiver: tree
@@ -2498,15 +2365,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        Bnd_Box box;
-        box.Update(xmin, ymin, zmin, xmax, ymax, zmax);
-        auto selected = self_cpp->select_box(box, completely_within);
-        auto result = aggregate_of_instance::ptr(new aggregate_of_instance());
-        result->reserve(selected.size());
-        for (auto* item : selected) {
-            result->push(const_cast<IfcUtil::IfcBaseEntity*>(item));
-        }
-        return result;
+        return self_cpp->select_box(IfcGeom::tree_box{{IfcGeom::tree_point{xmin, ymin, zmin}, IfcGeom::tree_point{xmax, ymax, zmax}}}, completely_within);
 
   - kind: adapter_method
     receiver: tree
@@ -2535,20 +2394,20 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        std::vector<const IfcUtil::IfcBaseEntity*> entities_a;
+        std::vector<express::Base> entities_a;
         entities_a.reserve(set_a_cpp->size());
-        for (auto it = set_a_cpp->begin(); it != set_a_cpp->end(); ++it) {
-            auto* entity = (*it) ? (*it)->as<IfcUtil::IfcBaseEntity>() : nullptr;
+        for (const auto& value : *set_a_cpp) {
+            auto entity = value.as<express::Entity>();
             if (!entity) {
                 throw std::runtime_error("set_a must contain IfcProduct entities");
             }
             entities_a.push_back(entity);
         }
 
-        std::vector<const IfcUtil::IfcBaseEntity*> entities_b;
+        std::vector<express::Base> entities_b;
         entities_b.reserve(set_b_cpp->size());
-        for (auto it = set_b_cpp->begin(); it != set_b_cpp->end(); ++it) {
-            auto* entity = (*it) ? (*it)->as<IfcUtil::IfcBaseEntity>() : nullptr;
+        for (const auto& value : *set_b_cpp) {
+            auto entity = value.as<express::Entity>();
             if (!entity) {
                 throw std::runtime_error("set_b must contain IfcProduct entities");
             }
@@ -2581,20 +2440,20 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        std::vector<const IfcUtil::IfcBaseEntity*> entities_a;
+        std::vector<express::Base> entities_a;
         entities_a.reserve(set_a_cpp->size());
-        for (auto it = set_a_cpp->begin(); it != set_a_cpp->end(); ++it) {
-            auto* entity = (*it) ? (*it)->as<IfcUtil::IfcBaseEntity>() : nullptr;
+        for (const auto& value : *set_a_cpp) {
+            auto entity = value.as<express::Entity>();
             if (!entity) {
                 throw std::runtime_error("set_a must contain IfcProduct entities");
             }
             entities_a.push_back(entity);
         }
 
-        std::vector<const IfcUtil::IfcBaseEntity*> entities_b;
+        std::vector<express::Base> entities_b;
         entities_b.reserve(set_b_cpp->size());
-        for (auto it = set_b_cpp->begin(); it != set_b_cpp->end(); ++it) {
-            auto* entity = (*it) ? (*it)->as<IfcUtil::IfcBaseEntity>() : nullptr;
+        for (const auto& value : *set_b_cpp) {
+            auto entity = value.as<express::Entity>();
             if (!entity) {
                 throw std::runtime_error("set_b must contain IfcProduct entities");
             }
@@ -2630,20 +2489,20 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        std::vector<const IfcUtil::IfcBaseEntity*> entities_a;
+        std::vector<express::Base> entities_a;
         entities_a.reserve(set_a_cpp->size());
-        for (auto it = set_a_cpp->begin(); it != set_a_cpp->end(); ++it) {
-            auto* entity = (*it) ? (*it)->as<IfcUtil::IfcBaseEntity>() : nullptr;
+        for (const auto& value : *set_a_cpp) {
+            auto entity = value.as<express::Entity>();
             if (!entity) {
                 throw std::runtime_error("set_a must contain IfcProduct entities");
             }
             entities_a.push_back(entity);
         }
 
-        std::vector<const IfcUtil::IfcBaseEntity*> entities_b;
+        std::vector<express::Base> entities_b;
         entities_b.reserve(set_b_cpp->size());
-        for (auto it = set_b_cpp->begin(); it != set_b_cpp->end(); ++it) {
-            auto* entity = (*it) ? (*it)->as<IfcUtil::IfcBaseEntity>() : nullptr;
+        for (const auto& value : *set_b_cpp) {
+            auto entity = value.as<express::Entity>();
             if (!entity) {
                 throw std::runtime_error("set_b must contain IfcProduct entities");
             }
@@ -2684,9 +2543,11 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        gp_Pnt p0(origin_x, origin_y, origin_z);
-        gp_Dir d(dir_x, dir_y, dir_z);
-        return new std::vector<IfcGeom::ray_intersection_result>(self_cpp->select_ray(p0, d, length));
+        return new std::vector<IfcGeom::ray_intersection_result>(
+            self_cpp->select_ray(
+                IfcGeom::tree_point{origin_x, origin_y, origin_z},
+                IfcGeom::tree_point{dir_x, dir_y, dir_z},
+                length));
 
   - kind: adapter_method
     receiver: tree_ray_intersection
@@ -2699,7 +2560,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        return const_cast<IfcUtil::IfcBaseEntity*>(self_cpp->instance);
+        return self_cpp->instance;
 
   # Iterator methods
   - kind: adapter_method
@@ -2711,7 +2572,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        return self_cpp->next() != nullptr;
+        return static_cast<bool>(self_cpp->next());
 
   - kind: adapter_method
     receiver: iterator
@@ -2806,20 +2667,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        std::vector<std::vector<const IfcUtil::IfcBaseClass*>> result;
-        auto tasks = self_cpp->get_task_products();
-        if (!tasks) {
-            return result;
-        }
-        for (auto outer = tasks->begin(); outer != tasks->end(); ++outer) {
-            std::vector<const IfcUtil::IfcBaseClass*> row;
-            row.reserve(outer->size());
-            for (size_t i = 0; i < outer->size(); ++i) {
-                row.push_back((*outer)[static_cast<int>(i)]);
-            }
-            result.push_back(std::move(row));
-        }
-        return result;
+        return self_cpp->get_task_products();
 
   # Element methods
   - kind: adapter_method
@@ -3161,14 +3009,14 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        if (self_cpp->instance == nullptr) {
+        if (!self_cpp->instance) {
             return static_cast<size_t>(0);
         }
-        const auto* entity = self_cpp->instance->as<IfcUtil::IfcBaseEntity>();
-        if (entity == nullptr) {
+        auto entity = self_cpp->instance.as<express::Entity>();
+        if (!entity) {
             return static_cast<size_t>(0);
         }
-        return static_cast<size_t>(entity->id());
+        return static_cast<size_t>(entity.id());
 
 
 
@@ -3263,7 +3111,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        return self_cpp->weights.is_initialized();
+        return static_cast<bool>(self_cpp->weights);
 
   - kind: adapter_method
     receiver: taxonomy_bspline_surface
@@ -3274,7 +3122,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        if (!self_cpp->weights.is_initialized()) {
+        if (!self_cpp->weights) {
             throw std::runtime_error("B-spline surface weights are not set");
         }
         return self_cpp->weights->size();
@@ -3291,7 +3139,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        if (!self_cpp->weights.is_initialized()) {
+        if (!self_cpp->weights) {
             throw std::runtime_error("B-spline surface weights are not set");
         }
         if (row >= self_cpp->weights->size()) {
@@ -3314,7 +3162,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        if (!self_cpp->weights.is_initialized()) {
+        if (!self_cpp->weights) {
             throw std::runtime_error("B-spline surface weights are not set");
         }
         if (row >= self_cpp->weights->size()) {

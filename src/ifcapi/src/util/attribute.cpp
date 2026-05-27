@@ -8,9 +8,9 @@
 #include "../api/pset/attribute_props.hpp"
 #include "ifcopenshell_api_internal.hpp"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
-#include "ifcparse/IfcSchema.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
+#include "ifcparse/schema.h"
 
 #include <stdexcept>
 

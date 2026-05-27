@@ -8,10 +8,14 @@ import pytest
 
 from src.ifcwrap.binding_generator.clang_discovery import (
     CompileCommand,
+    CompilationConfig,
+    DiscoveryEnvironment,
     TranslationUnitIndex,
     _ast_filter_for_lookup,
+    discover_namespace_functions,
     discover_namespace_functions_with_compile_commands,
     discover_namespace_functions_with_synthetic_source,
+    discover_public_methods,
     discover_public_fields_with_compile_commands,
     discover_public_methods_with_compile_commands,
 )
@@ -202,6 +206,78 @@ double contract_scale(double value);
     assert set(functions) == {"contract_count", "contract_scale"}
     assert functions["contract_count"][0].params[0].cpp_type == "const std::string &"
     assert functions["contract_scale"][0].return_cpp_type == "double"
+
+
+def test_discovery_uses_explicit_compilation_without_compile_commands(tmp_path: Path) -> None:
+    compiler = shutil.which("clang++")
+    if compiler is None:
+        pytest.skip("clang++ is not available")
+
+    header = tmp_path / "sample.h"
+    source = tmp_path / "sample.cpp"
+
+    header.write_text(
+        """
+#include <string>
+
+namespace Demo {
+class Foo {
+public:
+    int bar(int id);
+    const std::string& baz(const std::string& guid) const;
+};
+
+int walk(int steps);
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "sample.h"\n', encoding="utf-8")
+    environment = DiscoveryEnvironment(
+        compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)
+    )
+
+    methods = discover_public_methods(environment, source, "Demo::Foo")
+    functions = discover_namespace_functions(environment, source, "Demo")
+
+    assert set(methods) == {"bar", "baz"}
+    assert methods["baz"][0].params[0].cpp_type == "const std::string &"
+    assert set(functions) == {"walk"}
+    assert functions["walk"][0].params[0].cpp_type == "int"
+
+
+def test_synthetic_contract_discovery_uses_explicit_compilation_without_compile_commands(tmp_path: Path) -> None:
+    compiler = shutil.which("clang++")
+    if compiler is None:
+        pytest.skip("clang++ is not available")
+
+    header = tmp_path / "contract.h"
+    header.write_text(
+        """
+#include <string>
+
+namespace ifcapi::bindings {
+int contract_count(const std::string& name);
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    environment = DiscoveryEnvironment(
+        compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)
+    )
+
+    functions = discover_namespace_functions_with_synthetic_source(
+        environment,
+        f'#include "{header.as_posix()}"\n',
+        "ifcapi::bindings",
+        selected_names={"contract_count"},
+        reference_source_root=tmp_path,
+    )
+
+    assert set(functions) == {"contract_count"}
+    assert functions["contract_count"][0].params[0].cpp_type == "const std::string &"
 
 
 def test_namespace_discovery_uses_simple_fallback_lazily(tmp_path: Path) -> None:

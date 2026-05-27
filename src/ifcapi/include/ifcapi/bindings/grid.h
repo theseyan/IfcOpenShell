@@ -5,8 +5,8 @@
 
 #include "ifcapi/bindings/contract.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
 
 #include <string>
 #include <vector>
@@ -14,20 +14,20 @@
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING IfcUtil::IfcBaseClass* grid_create_grid_axis(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* grid,
+IFCAPI_BINDING express::Base grid_create_grid_axis(
+    ifcopenshell::file* file,
+    express::Base* grid,
     const std::string& axis_tag,
     bool same_sense,
     const std::string& uvw_axes);
 IFCAPI_BINDING void grid_remove_grid_axis(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* axis);
+    ifcopenshell::file* file,
+    express::Base* axis);
 IFCAPI_BINDING void grid_create_axis_curve(
-    IfcParse::IfcFile* file,
+    ifcopenshell::file* file,
     const std::vector<double>& p1,
     const std::vector<double>& p2,
-    IfcUtil::IfcBaseClass* grid_axis,
+    express::Base* grid_axis,
     bool is_si);
 
 } // namespace bindings

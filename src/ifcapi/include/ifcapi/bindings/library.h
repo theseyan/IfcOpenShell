@@ -6,8 +6,8 @@
 
 #include "ifcapi/bindings/contract.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
 
 #include <string>
 #include <vector>
@@ -15,31 +15,31 @@
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING IfcUtil::IfcBaseClass* library_add_library(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base library_add_library(
+    ifcopenshell::file* file,
     const std::string& name);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* library_add_reference(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* library);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* library_assign_reference(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& products,
-    IfcUtil::IfcBaseClass* reference,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+IFCAPI_BINDING express::Base library_add_reference(
+    ifcopenshell::file* file,
+    express::Base* library);
+IFCAPI_BINDING express::Base library_assign_reference(
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& products,
+    express::Base* reference,
+    IFCAPI_NULLABLE express::Base* owner_history,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 IFCAPI_BINDING void library_unassign_reference(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* reference,
-    const std::vector<const IfcUtil::IfcBaseClass*>& products,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+    ifcopenshell::file* file,
+    express::Base* reference,
+    const std::vector<express::Base>& products,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 IFCAPI_BINDING void library_remove_reference(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* reference);
+    ifcopenshell::file* file,
+    express::Base* reference);
 IFCAPI_BINDING void library_remove_library(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* library);
+    ifcopenshell::file* file,
+    express::Base* library);
 
 } // namespace bindings
 } // namespace ifcapi

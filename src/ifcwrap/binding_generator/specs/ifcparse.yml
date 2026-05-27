@@ -5,101 +5,114 @@ c_prefix: ifcopenshell_ifcparse
 
 public_headers:
   - ifc_parse_api.h
-  - IfcParse.h
-  - IfcSIPrefix.h
-  - IfcLogger.h
-  - Header_section_schema.h
-  - IfcSpfHeader.h
-  - IfcFile.h
+  - parse.h
+  - exception.h
+  - logger.h
+  - si_prefix.h
+  - utils.h
+  - schemas/Header_section_schema.h
+  - spf_header.h
+  - file.h
   - file_open_status.h
-  - IfcBaseClass.h
-  - IfcSchema.h
+  - express.h
+  - instance_data.h
+  - schema.h
 
 handles:
   - name: file
-    cpp_type: IfcParse::IfcFile
+    cpp_type: ifcopenshell::file
     c_type: ifcopenshell_ifc_file_t
     destructor: delete
   - name: instance_streamer
-    cpp_type: IfcParse::InstanceStreamer
+    cpp_type: ifcopenshell::instance_streamer<>
     c_type: ifcopenshell_ifc_instance_streamer_t
     destructor: delete
   - name: instance
-    cpp_type: IfcUtil::IfcBaseClass
+    cpp_type: express::Base
     c_type: ifcopenshell_ifc_instance_t
-    destructor: delete
+    destructor: none
+    ptr_type: value
+    empty_check: "!static_cast<bool>({value})"
   - name: header
-    cpp_type: IfcParse::IfcSpfHeader
+    cpp_type: ifcopenshell::spf_header
     c_type: ifcopenshell_ifc_header_t
     destructor: none
   - name: file_description
     cpp_type: Header_section_schema::file_description
     c_type: ifcopenshell_ifc_file_description_t
     destructor: none
+    ptr_type: value
+    empty_check: "!static_cast<bool>({value})"
   - name: file_name
     cpp_type: Header_section_schema::file_name
     c_type: ifcopenshell_ifc_file_name_t
     destructor: none
+    ptr_type: value
+    empty_check: "!static_cast<bool>({value})"
   - name: file_schema
     cpp_type: Header_section_schema::file_schema
     c_type: ifcopenshell_ifc_file_schema_t
     destructor: none
+    ptr_type: value
+    empty_check: "!static_cast<bool>({value})"
   - name: declaration
-    cpp_type: IfcParse::declaration
+    cpp_type: ifcopenshell::declaration
     c_type: ifcopenshell_ifc_declaration_t
     destructor: none
   - name: type_declaration
-    cpp_type: IfcParse::type_declaration
+    cpp_type: ifcopenshell::type_declaration
     c_type: ifcopenshell_ifc_type_declaration_t
     destructor: none
   - name: select_type
-    cpp_type: IfcParse::select_type
+    cpp_type: ifcopenshell::select_type
     c_type: ifcopenshell_ifc_select_type_t
     destructor: none
   - name: schema
-    cpp_type: IfcParse::schema_definition
+    cpp_type: ifcopenshell::schema_definition
     c_type: ifcopenshell_ifc_schema_t
     destructor: none
   - name: enumeration
-    cpp_type: IfcParse::enumeration_type
+    cpp_type: ifcopenshell::enumeration_type
     c_type: ifcopenshell_ifc_enumeration_t
     destructor: none
   - name: parameter_type
-    cpp_type: IfcParse::parameter_type
+    cpp_type: ifcopenshell::parameter_type
     c_type: ifcopenshell_ifc_parameter_type_t
     destructor: none
   - name: named_type
-    cpp_type: IfcParse::named_type
+    cpp_type: ifcopenshell::named_type
     c_type: ifcopenshell_ifc_named_type_t
     destructor: none
   - name: simple_type
-    cpp_type: IfcParse::simple_type
+    cpp_type: ifcopenshell::simple_type
     c_type: ifcopenshell_ifc_simple_type_t
     destructor: none
   - name: aggregation_type
-    cpp_type: IfcParse::aggregation_type
+    cpp_type: ifcopenshell::aggregation_type
     c_type: ifcopenshell_ifc_aggregation_type_t
     destructor: none
   - name: entity
-    cpp_type: IfcParse::entity
+    cpp_type: ifcopenshell::entity
     c_type: ifcopenshell_ifc_entity_t
     destructor: none
   - name: attribute
-    cpp_type: IfcParse::attribute
+    cpp_type: ifcopenshell::attribute
     c_type: ifcopenshell_ifc_attribute_t
     destructor: none
   - name: inverse_attribute
-    cpp_type: IfcParse::inverse_attribute
+    cpp_type: ifcopenshell::inverse_attribute
     c_type: ifcopenshell_ifc_inverse_attribute_t
     destructor: none
   - name: attribute_value
-    cpp_type: AttributeValue
+    cpp_type: attribute_value
     c_type: ifcopenshell_ifcparse_attribute_value_t
-    destructor: delete
+    destructor: none
+    ptr_type: value
   - name: instance_list
-    cpp_type: aggregate_of_instance
+    cpp_type: std::vector<express::Base>
     c_type: ifcopenshell_ifcparse_instance_list_t
-    destructor: delete
+    destructor: none
+    ptr_type: value
 
 discover:
   include_dir: ../../../ifcparse
@@ -109,13 +122,13 @@ discover:
     include_all: true
   classes:
     - handle: file
-      translation_unit: IfcFile.cpp
+      translation_unit: file.cpp
       exclude:
         - header
         - begin
         - end
-        - getInverse
-        - getUnit
+        - get_inverse
+        - get_unit
         - good
         - internal_guid_map
         - instances_by_type
@@ -125,25 +138,26 @@ discover:
         - types_end
         - unregister_inverse
       rename:
-        addEntity: add
+        add_entity: add
         addEntities: add_entities
         add_type_ref: add_type_ref
         get_inverse_indices: get_inverse_indices_by_id
         instance_by_id: by_id
         instance_by_guid: by_guid
-        getTotalInverses: get_total_inverses_by_id
+        get_total_inverses: get_total_inverses_by_id
         remove_type_ref: remove_type_ref
-        removeEntity: remove
+        remove_entity: remove
       overloads:
         - cpp_name: create
           expose_as: create
           params:
-            - const IfcParse::declaration *
-        - cpp_name: getInverse
+            - const ifcopenshell::declaration *
+            - int
+        - cpp_name: get_inverse
           expose_as: get_inverses_by_declaration
           params:
             - int
-            - const IfcParse::declaration *
+            - const ifcopenshell::declaration *
             - int
         - cpp_name: instances_by_type
           expose_as: by_type
@@ -154,16 +168,16 @@ discover:
           params:
             - const std::string &
     - handle: instance
-      translation_unit: IfcParse.cpp
+      translation_unit: parse.cpp
       exclude:
         - data
         - set_attribute_value
-        - toString
+        - to_string
         - unset_attribute_value
       rename:
         get_attribute_value: get_argument
     - handle: schema
-      translation_unit: IfcSchema.cpp
+      translation_unit: schema.cpp
       exclude:
         - declaration_by_name
         - instantiate
@@ -177,7 +191,7 @@ discover:
           params:
             - size_t
     - handle: declaration
-      translation_unit: IfcSchema.cpp
+      translation_unit: schema.cpp
       exclude:
         - is
       overloads:
@@ -186,20 +200,20 @@ discover:
           params:
             - const std::string &
     - handle: type_declaration
-      translation_unit: IfcSchema.cpp
+      translation_unit: schema.cpp
     - handle: select_type
-      translation_unit: IfcSchema.cpp
+      translation_unit: schema.cpp
     - handle: enumeration
-      translation_unit: IfcSchema.cpp
+      translation_unit: schema.cpp
     - handle: parameter_type
-      translation_unit: IfcSchema.cpp
+      translation_unit: schema.cpp
       include_all: false
       include:
         - as_aggregation_type
         - as_named_type
         - as_simple_type
     - handle: named_type
-      translation_unit: IfcSchema.cpp
+      translation_unit: schema.cpp
       exclude:
         - is
       overloads:
@@ -208,21 +222,21 @@ discover:
           params:
             - const std::string &
     - handle: simple_type
-      translation_unit: IfcSchema.cpp
+      translation_unit: schema.cpp
     - handle: aggregation_type
-      translation_unit: IfcSchema.cpp
+      translation_unit: schema.cpp
       exclude:
         - type_of_aggregation
     - handle: header
-      translation_unit: IfcSpfHeader.cpp
+      translation_unit: spf_header.cpp
       exclude:
-        - file
+        - owner_file
         - file_description
         - file_name
         - file_schema
         - write
       overloads:
-        - cpp_name: file
+        - cpp_name: owner_file
           expose_as: file
           params: []
         - cpp_name: file_description
@@ -235,13 +249,13 @@ discover:
           expose_as: file_schema
           params: []
     - handle: file_description
-      translation_unit: Header_section_schema.cpp
+      translation_unit: schemas/Header_section_schema.cpp
     - handle: file_name
-      translation_unit: Header_section_schema.cpp
+      translation_unit: schemas/Header_section_schema.cpp
     - handle: file_schema
-      translation_unit: Header_section_schema.cpp
+      translation_unit: schemas/Header_section_schema.cpp
     - handle: entity
-      translation_unit: IfcSchema.cpp
+      translation_unit: schema.cpp
       exclude:
         - attribute_index
       overloads:
@@ -250,33 +264,28 @@ discover:
           params:
             - const std::string &
     - handle: attribute
-      translation_unit: IfcSchema.cpp
+      translation_unit: schema.cpp
     - handle: inverse_attribute
-      translation_unit: IfcSchema.cpp
+      translation_unit: schema.cpp
       exclude:
         - type_of_aggregation
     - handle: instance_streamer
-      translation_unit: IfcFile.cpp
+      translation_unit: file.cpp
       include_all: false
       include:
         - bypassed_instances
-        - hasSemicolon
-        - pushPage
-        - semicolonCount
-    - handle: instance_list
-      translation_unit: IfcUtil.cpp
-      include_all: false
-      include:
-        - size
+        - has_semicolon
+        - push_page
+        - semicolon_count
   functions:
-    - namespace: IfcParse
-      translation_unit: IfcParse.cpp
+    - namespace: ifcopenshell
+      translation_unit: parse.cpp
       exclude:
         - GeneralTokenPtr
         - OperatorTokenPtr
         - get_SI_equivalent
-    - namespace: IfcParse
-      translation_unit: IfcSchema.cpp
+    - namespace: ifcopenshell
+      translation_unit: schema.cpp
 
 functions:
   - kind: adapter_function
@@ -301,7 +310,7 @@ functions:
                 throw std::runtime_error(std::string("File does not exist or is not readable: ") + path_cpp);
             }
         }
-        auto file = std::make_unique<IfcParse::IfcFile>(path_cpp, IfcParse::FT_AUTODETECT, readonly);
+        auto file = std::make_unique<ifcopenshell::file>(path_cpp, ifcopenshell::FT_AUTODETECT, readonly);
         if (!file->good()) {
             throw std::runtime_error(std::string("Failed to open IFC file: ") + path_cpp);
         }
@@ -323,7 +332,7 @@ functions:
     implementation:
       kind: inline_cpp
       body: |
-        auto file = std::make_unique<IfcParse::IfcFile>(IfcParse::uninitialized_tag{});
+        auto file = std::make_unique<ifcopenshell::file>(ifcopenshell::uninitialized_tag{});
         for (const auto& type_name : type_names_cpp) {
             file->bypass_type(type_name);
         }
@@ -351,8 +360,8 @@ functions:
     implementation:
       kind: inline_cpp
       body: |
-        const IfcParse::schema_definition* schema = IfcParse::schema_by_name(schema_identifier);
-        return new IfcParse::IfcFile(schema, static_cast<IfcParse::filetype>(file_type), path);
+        const ifcopenshell::schema_definition* schema = ifcopenshell::schema_by_name(schema_identifier_cpp);
+        return new ifcopenshell::file(schema, static_cast<ifcopenshell::filetype>(file_type), path_cpp);
 
   - kind: adapter_function
     expose_as: read
@@ -375,7 +384,7 @@ functions:
         if (length < 0) {
             throw std::runtime_error("length is negative");
         }
-        auto file = std::make_unique<IfcParse::IfcFile>(const_cast<void*>(data_cpp), static_cast<int>(length));
+        auto file = std::make_unique<ifcopenshell::file>(const_cast<void*>(data_cpp), static_cast<int>(length));
         if (!file->good()) {
             throw std::runtime_error("Failed to parse IFC data from string");
         }
@@ -391,7 +400,7 @@ functions:
     implementation:
       kind: inline_cpp
       body: |
-        return new IfcParse::InstanceStreamer();
+        return new ifcopenshell::instance_streamer<>();
 
   - kind: adapter_function
     expose_as: stream_from_path
@@ -410,10 +419,10 @@ functions:
       kind: inline_cpp
       body: |
         #ifdef USE_MMAP
-        return new IfcParse::InstanceStreamer(path_cpp, mmap);
+        return new ifcopenshell::instance_streamer<>(path_cpp, mmap);
         #else
         (void)mmap;
-        return new IfcParse::InstanceStreamer(path_cpp, false);
+        return new ifcopenshell::instance_streamer<>(path_cpp, false);
         #endif
 
   - kind: adapter_function
@@ -429,7 +438,7 @@ functions:
     implementation:
       kind: inline_cpp
       body: |
-        return new IfcParse::InstanceStreamer((void*)data_cpp.data(), static_cast<int>(data_cpp.size()));
+        return new ifcopenshell::instance_streamer<>((void*)data_cpp.data(), static_cast<int>(data_cpp.size()));
 
   - kind: adapter_function
     expose_as: version
@@ -501,8 +510,8 @@ functions:
     implementation:
       kind: inline_cpp
       body: |
-        Logger::SetOutput(&std::cout, &std::cout);
-        Logger::Verbosity(Logger::LOG_DEBUG);
+        logger::set_output(&std::cout, &std::cout);
+        logger::verbosity(logger::LOG_DEBUG);
 
   - kind: adapter_function
     expose_as: turn_off_detailed_logging
@@ -513,8 +522,8 @@ functions:
       kind: inline_cpp
       body: |
         ensure_log_stream_initialized();
-        Logger::SetOutput(nullptr, &ifcopenshell_log_stream);
-        Logger::Verbosity(Logger::LOG_WARNING);
+        logger::set_output(nullptr, &ifcopenshell_log_stream);
+        logger::verbosity(logger::LOG_WARNING);
 
   - kind: adapter_function
     expose_as: instance_list_create_from_handles
@@ -530,11 +539,11 @@ functions:
     implementation:
       kind: inline_cpp
       body: |
-        boost::shared_ptr<aggregate_of_instance> agg(new aggregate_of_instance());
-        agg->reserve(instances_cpp.size());
-        for (const auto* inst : instances_cpp) {
-            if (inst != nullptr) {
-                agg->push(const_cast<IfcUtil::IfcBaseClass*>(inst));
+        std::vector<express::Base> agg;
+        agg.reserve(instances_cpp.size());
+        for (const auto& inst : instances_cpp) {
+            if (inst) {
+                agg.push_back(inst);
             }
         }
         return agg;
@@ -550,7 +559,7 @@ functions:
         ensure_log_stream_initialized();
         ifcopenshell_log_stream.str("");
         ifcopenshell_log_stream.clear();
-        Logger::OutputFormat(Logger::FMT_JSON);
+        logger::output_format(logger::FMT_JSON);
 
   - kind: adapter_function
     expose_as: set_log_format_text
@@ -563,7 +572,7 @@ functions:
         ensure_log_stream_initialized();
         ifcopenshell_log_stream.str("");
         ifcopenshell_log_stream.clear();
-        Logger::OutputFormat(Logger::FMT_PLAIN);
+        logger::output_format(logger::FMT_PLAIN);
 
   - kind: adapter_function
     expose_as: get_si_equivalent
@@ -579,29 +588,29 @@ functions:
       kind: inline_cpp
       body: |
         if (!named_unit_cpp->declaration().is("IfcNamedUnit")) {
-            throw IfcParse::IfcException("Instance is not an IfcNamedUnit.");
+            throw ifcopenshell::exception("Instance is not an IfcNamedUnit.");
         }
         double scale = 1.0;
-        IfcUtil::IfcBaseClass* si_unit = nullptr;
+        express::Base si_unit;
         if (named_unit_cpp->declaration().is("IfcConversionBasedUnit")) {
-            auto* factor = static_cast<IfcUtil::IfcBaseClass*>(named_unit_cpp->get_attribute_value(
+            auto factor = static_cast<express::Base>(named_unit_cpp->get_attribute_value(
                 named_unit_cpp->declaration().as_entity()->attribute_index("ConversionFactor")));
-            auto* value_component = static_cast<IfcUtil::IfcBaseClass*>(factor->get_attribute_value(
-                factor->declaration().as_entity()->attribute_index("ValueComponent")));
-            auto* unit_component = static_cast<IfcUtil::IfcBaseClass*>(factor->get_attribute_value(
-                factor->declaration().as_entity()->attribute_index("UnitComponent")));
-            scale = static_cast<double>(value_component->get_attribute_value(0));
-            if (unit_component->declaration().is("IfcSIUnit")) {
+            auto value_component = static_cast<express::Base>(factor.get_attribute_value(
+                factor.declaration().as_entity()->attribute_index("ValueComponent")));
+            auto unit_component = static_cast<express::Base>(factor.get_attribute_value(
+                factor.declaration().as_entity()->attribute_index("UnitComponent")));
+            scale = static_cast<double>(value_component.get_attribute_value(0));
+            if (unit_component.declaration().is("IfcSIUnit")) {
                 si_unit = unit_component;
             }
         } else if (named_unit_cpp->declaration().is("IfcSIUnit")) {
-            si_unit = named_unit_cpp;
+            si_unit = *named_unit_cpp;
         }
-        if (si_unit != nullptr) {
-            AttributeValue prefix = si_unit->get_attribute_value(
-                si_unit->declaration().as_entity()->attribute_index("Prefix"));
+        if (si_unit) {
+            attribute_value prefix = si_unit.get_attribute_value(
+                si_unit.declaration().as_entity()->attribute_index("Prefix"));
             if (!prefix.isNull()) {
-                scale *= IfcParse::IfcSIPrefixToValue(static_cast<std::string>(prefix));
+                scale *= ifcopenshell::si_prefix_to_value(static_cast<std::string>(prefix));
             }
         } else {
             scale = 0.0;
@@ -625,7 +634,7 @@ functions:
     implementation:
       kind: inline_cpp
       body: |
-        return instance_to_info_json_string(instance_cpp, include_identifier);
+        return instance_to_info_json_string(*instance_cpp, include_identifier);
 
   - kind: adapter_function
     expose_as: operator_token_ptr
@@ -642,7 +651,7 @@ functions:
       kind: inline_cpp
       body: |
         const char value = data_cpp.empty() ? '$' : data_cpp.front();
-        return static_cast<int>(IfcParse::OperatorTokenPtr(nullptr, start, value).type);
+        return static_cast<int>(ifcopenshell::token(start, value).type);
 
   - kind: adapter_function
     expose_as: general_token_ptr
@@ -658,33 +667,7 @@ functions:
     implementation:
       kind: inline_cpp
       body: |
-        return static_cast<int>(IfcParse::GeneralTokenPtr(nullptr, start, token_cpp).type);
-
-  - kind: adapter_function
-    expose_as: new_IfcBaseClass
-    c_expose_as: new_instance
-    returns:
-      kind: handle
-      handle: instance
-      ownership: owned
-    params:
-      - name: schema_identifier
-        type:
-          kind: string
-      - name: declaration_name
-        type:
-          kind: string
-    implementation:
-      kind: inline_cpp
-      body: |
-        const IfcParse::schema_definition* schema = IfcParse::schema_by_name(schema_identifier_cpp);
-        const IfcParse::declaration* decl = schema->declaration_by_name(declaration_name_cpp);
-        IfcEntityInstanceData data(in_memory_attribute_storage(decl->as_entity() ? decl->as_entity()->attribute_count() : 1));
-        auto* inst = schema->instantiate(decl, std::move(data));
-        if (auto* entinst = inst->as<IfcUtil::IfcBaseEntity>()) {
-            entinst->populate_derived();
-        }
-        return inst;
+        return static_cast<int>(ifcopenshell::token(start, ifcopenshell::token::Token_STRING, token_cpp).type);
 
 methods:
   - kind: adapter_method
@@ -700,7 +683,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        std::ofstream stream(IfcUtil::path::from_utf8(path_cpp).c_str());
+        std::ofstream stream(ifcopenshell::path::from_utf8(path_cpp).c_str());
         if (!stream.good()) {
             throw std::runtime_error("Failed to write to path: '" + path_cpp + "', check folder and file permissions.");
         }
@@ -718,9 +701,9 @@ methods:
       body: |
         return std::visit([](auto& storage) -> int {
             using T = std::decay_t<decltype(storage)>;
-            if constexpr (std::is_same_v<T, IfcParse::impl::in_memory_file_storage>) {
+            if constexpr (std::is_same_v<T, ifcopenshell::impl::in_memory_file_storage>) {
                 return 0;
-            } else if constexpr (std::is_same_v<T, IfcParse::impl::rocks_db_file_storage>) {
+            } else if constexpr (std::is_same_v<T, ifcopenshell::impl::rocks_db_file_storage>) {
                 return 1;
             }
             return -1;
@@ -746,7 +729,7 @@ methods:
         if (!decl || (!decl->as_entity() && !decl->as_type_declaration() && !decl->as_enumeration_type())) {
             throw std::runtime_error("Declaration is not creatable");
         }
-        auto* entity = self_cpp->create(decl);
+        auto entity = self_cpp->create(decl);
         if (!entity) {
             throw std::runtime_error("Failed to create entity");
         }
@@ -775,10 +758,7 @@ methods:
         if (!decl || !decl->as_entity()) {
             throw std::runtime_error("Type declaration is not an entity");
         }
-        auto* inst = schema->instantiate(
-            decl, in_memory_attribute_storage(decl->as_entity()->attribute_count()));
-        inst->file_ = nullptr;
-        auto* entity = self_cpp->addEntity(inst, static_cast<int>(id));
+        auto entity = self_cpp->create(decl, static_cast<int>(id));
         if (!entity) {
             throw std::runtime_error("Failed to create entity with id");
         }
@@ -804,7 +784,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        auto* added = self_cpp->addEntity(instance_cpp, id == 0 ? -1 : static_cast<int>(id));
+        auto added = self_cpp->add_entity(*instance_cpp, id == 0 ? -1 : static_cast<int>(id));
         if (!added) {
             throw std::runtime_error("Failed to add entity");
         }
@@ -843,10 +823,11 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        if (auto* entity = instance_cpp->as<IfcUtil::IfcBaseEntity>()) {
-            return self_cpp->getInverse(entity->id(), 0, -1);
+        auto entity = instance_cpp->as<express::Entity>();
+        if (entity) {
+            return self_cpp->get_inverse(entity.id(), 0, -1);
         }
-        throw IfcParse::IfcException("Only entities with ids are supported for get_inverse.");
+        throw ifcopenshell::exception("Only entities with ids are supported for get_inverse.");
 
   - kind: adapter_method
     receiver: file
@@ -863,10 +844,11 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        if (auto* entity = instance_cpp->as<IfcUtil::IfcBaseEntity>()) {
-            return self_cpp->getTotalInverses(entity->id());
+        auto entity = instance_cpp->as<express::Entity>();
+        if (entity) {
+            return self_cpp->get_total_inverses(entity.id());
         }
-        throw IfcParse::IfcException("Only entities with ids are supported for get_total_inverses.");
+        throw ifcopenshell::exception("Only entities with ids are supported for get_total_inverses.");
 
   - kind: adapter_method
     receiver: file
@@ -882,7 +864,7 @@ methods:
         const size_t n = std::distance(self_cpp->types_begin(), self_cpp->types_end());
         std::vector<std::string> types;
         types.reserve(n);
-        std::transform(self_cpp->types_begin(), self_cpp->types_end(), std::back_inserter(types), [](const IfcParse::declaration* decl) {
+        std::transform(self_cpp->types_begin(), self_cpp->types_end(), std::back_inserter(types), [](const ifcopenshell::declaration* decl) {
             return decl->name();
         });
         return types;
@@ -948,10 +930,11 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        if (auto* entity = instance_cpp->as<IfcUtil::IfcBaseEntity>()) {
-            return self_cpp->get_inverse_indices(entity->id());
+        auto entity = instance_cpp->as<express::Entity>();
+        if (entity) {
+            return self_cpp->get_inverse_indices_by_id(entity.id());
         }
-        throw IfcParse::IfcException("Only entities with ids are supported for get_inverse_indices.");
+        throw ifcopenshell::exception("Only entities with ids are supported for get_inverse_indices.");
 
   - kind: adapter_method
     receiver: file
@@ -967,7 +950,7 @@ methods:
 
   - kind: adapter_method
     receiver: file
-    cpp_name: getUnit
+    cpp_name: get_unit
     expose_as: get_unit
     returns:
       kind: double
@@ -978,7 +961,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        return self_cpp->getUnit(unit_type_cpp).second;
+        return self_cpp->get_unit(unit_type_cpp).second;
 
   - kind: adapter_method
     receiver: file
@@ -994,9 +977,9 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        auto* storage = std::visit([](auto& value) -> const IfcParse::impl::rocks_db_file_storage* {
+        auto* storage = std::visit([](auto& value) -> const ifcopenshell::impl::rocks_db_file_storage* {
             using T = std::decay_t<decltype(value)>;
-            if constexpr (std::is_same_v<T, IfcParse::impl::rocks_db_file_storage>) {
+            if constexpr (std::is_same_v<T, ifcopenshell::impl::rocks_db_file_storage>) {
                 return &value;
             }
             return nullptr;
@@ -1029,9 +1012,9 @@ methods:
       kind: inline_cpp
       body: |
         std::vector<std::string> values;
-        auto* storage = std::visit([](auto& value) -> const IfcParse::impl::rocks_db_file_storage* {
+        auto* storage = std::visit([](auto& value) -> const ifcopenshell::impl::rocks_db_file_storage* {
             using T = std::decay_t<decltype(value)>;
-            if constexpr (std::is_same_v<T, IfcParse::impl::rocks_db_file_storage>) {
+            if constexpr (std::is_same_v<T, ifcopenshell::impl::rocks_db_file_storage>) {
                 return &value;
             }
             return nullptr;
@@ -1058,19 +1041,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        return reinterpret_cast<size_t>(self_cpp->file_);
-
-  - kind: adapter_method
-    receiver: instance
-    cpp_name: data
-    expose_as: data
-    returns:
-      kind: size
-    params: []
-    implementation:
-      kind: inline_cpp
-      body: |
-        return reinterpret_cast<size_t>(&self_cpp->data());
+        return reinterpret_cast<size_t>(self_cpp->file());
 
   - kind: adapter_method
     receiver: instance
@@ -1091,7 +1062,7 @@ methods:
         if (name_cpp == "wrappedValue") {
             return 0u;
         }
-        throw IfcParse::IfcException(name_cpp + " not found on " + self_cpp->declaration().name());
+        throw ifcopenshell::exception(name_cpp + " not found on " + self_cpp->declaration().name());
 
   - kind: adapter_method
     receiver: instance
@@ -1113,7 +1084,7 @@ methods:
         if (index == 0u) {
             return std::string("wrappedValue");
         }
-        throw IfcParse::IfcException(std::to_string(index) + " out of bounds on " + self_cpp->declaration().name());
+        throw ifcopenshell::exception(std::to_string(index) + " out of bounds on " + self_cpp->declaration().name());
 
   - kind: adapter_method
     receiver: instance
@@ -1163,14 +1134,14 @@ methods:
       body: |
         if (!self_cpp->declaration().as_entity()) {
             if (name_cpp != "wrappedValue") {
-                throw IfcParse::IfcException(name_cpp + " not found on " + self_cpp->declaration().name());
+                throw ifcopenshell::exception(name_cpp + " not found on " + self_cpp->declaration().name());
             }
             set_instance_attribute_from_attribute_value(self_cpp, 0u, value_cpp);
             return;
         }
         const auto index = self_cpp->declaration().as_entity()->attribute_index(name_cpp);
         if (index < 0) {
-            throw IfcParse::IfcException(name_cpp + " not found on " + self_cpp->declaration().name());
+            throw ifcopenshell::exception(name_cpp + " not found on " + self_cpp->declaration().name());
         }
         set_instance_attribute_from_attribute_value(self_cpp, static_cast<size_t>(index), value_cpp);
 
@@ -1189,14 +1160,14 @@ methods:
       body: |
         if (!self_cpp->declaration().as_entity()) {
             if (name_cpp != "wrappedValue") {
-                throw IfcParse::IfcException(name_cpp + " not found on " + self_cpp->declaration().name());
+                throw ifcopenshell::exception(name_cpp + " not found on " + self_cpp->declaration().name());
             }
             unset_instance_argument(self_cpp, 0u);
             return;
         }
         const auto index = self_cpp->declaration().as_entity()->attribute_index(name_cpp);
         if (index < 0) {
-            throw IfcParse::IfcException(name_cpp + " not found on " + self_cpp->declaration().name());
+            throw ifcopenshell::exception(name_cpp + " not found on " + self_cpp->declaration().name());
         }
         unset_instance_argument(self_cpp, static_cast<size_t>(index));
 
@@ -1216,9 +1187,9 @@ methods:
       kind: inline_cpp
       body: |
         if (self_cpp->declaration().as_entity()) {
-            return static_cast<IfcUtil::IfcBaseEntity*>(self_cpp)->get_inverse(name_cpp);
+            return self_cpp->as<express::Entity>().get_inverse(name_cpp);
         }
-        throw IfcParse::IfcException(name_cpp + " not found on " + self_cpp->declaration().name());
+        throw ifcopenshell::exception(name_cpp + " not found on " + self_cpp->declaration().name());
 
   - kind: adapter_method
     receiver: instance
@@ -1276,7 +1247,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        return IfcUtil::ArgumentTypeToString(helper_fn_attribute_type(self_cpp, index));
+        return ifcopenshell::argument_type_to_string(helper_fn_attribute_type(self_cpp, index));
 
   - kind: adapter_method
     receiver: instance
@@ -1293,7 +1264,7 @@ methods:
       kind: inline_cpp
       body: |
         std::ostringstream oss;
-        self_cpp->toString(oss, valid_spf);
+        self_cpp->to_string(oss, valid_spf);
         return oss.str();
 
   - kind: adapter_method
@@ -1390,10 +1361,11 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        if (auto* entity = self_cpp->as<IfcUtil::IfcBaseEntity>()) {
-            return entity->get_inverse(name_cpp);
+        auto entity = self_cpp->as<express::Entity>();
+        if (entity) {
+            return entity.get_inverse(name_cpp);
         }
-        throw IfcParse::IfcException("Only entities with ids are supported for inverse attributes.");
+        throw ifcopenshell::exception("Only entities with ids are supported for inverse attributes.");
 
   - kind: adapter_method
     receiver: instance
@@ -1633,9 +1605,9 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        IfcUtil::ArgumentType arg_type = helper_fn_attribute_type(self_cpp, static_cast<unsigned>(index));
-        if (arg_type != IfcUtil::Argument_LOGICAL) {
-            throw IfcParse::IfcException("Attribute not set");
+        ifcopenshell::argument_type arg_type = helper_fn_attribute_type(self_cpp, static_cast<unsigned>(index));
+        if (arg_type != ifcopenshell::Argument_LOGICAL) {
+            throw ifcopenshell::exception("Attribute not set");
         }
         boost::logic::tribool logical_value;
         if (value == 0) {
@@ -1645,7 +1617,7 @@ methods:
         } else if (value == -1) {
             logical_value = boost::logic::indeterminate;
         } else {
-            throw IfcParse::IfcException("Logical value must be -1, 0, or 1");
+            throw ifcopenshell::exception("Logical value must be -1, 0, or 1");
         }
         set_instance_argument(self_cpp, index, logical_value);
 
@@ -1666,25 +1638,25 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        IfcUtil::ArgumentType arg_type = helper_fn_attribute_type(self_cpp, static_cast<unsigned>(index));
-        if (arg_type != IfcUtil::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE) {
-            throw IfcParse::IfcException("Attribute not set");
+        ifcopenshell::argument_type arg_type = helper_fn_attribute_type(self_cpp, static_cast<unsigned>(index));
+        if (arg_type != ifcopenshell::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE) {
+            throw ifcopenshell::exception("Attribute not set");
         }
-        if (self_cpp->file_ == nullptr) {
-            throw IfcParse::IfcException("Instance is not attached to a file.");
+        if (self_cpp->file() == nullptr) {
+            throw ifcopenshell::exception("Instance is not attached to a file.");
         }
-        aggregate_of_aggregate_of_instance::ptr aggregate(new aggregate_of_aggregate_of_instance());
+        std::vector<std::vector<express::Base>> aggregate;
         for (const auto& group : value_cpp) {
-            std::vector<IfcUtil::IfcBaseClass*> instances;
+            std::vector<express::Base> instances;
             instances.reserve(group.size());
             for (int identifier : group) {
-                auto* instance = self_cpp->file_->instance_by_id(identifier);
-                if (instance == nullptr) {
-                    throw IfcParse::IfcException("Unable to resolve instance id " + std::to_string(identifier));
+                auto instance = self_cpp->file()->instance_by_id(identifier);
+                if (!instance) {
+                    throw ifcopenshell::exception("Unable to resolve instance id " + std::to_string(identifier));
                 }
                 instances.push_back(instance);
             }
-            aggregate->push(instances);
+            aggregate.push_back(std::move(instances));
         }
         set_instance_argument(self_cpp, index, aggregate);
 
@@ -1709,7 +1681,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        set_instance_argument(self_cpp, index, EnumerationReference(enumeration_cpp, enumeration_index));
+        set_instance_argument(self_cpp, index, enumeration_reference(enumeration_cpp, enumeration_index));
 
   - kind: adapter_method
     receiver: instance
@@ -1735,8 +1707,8 @@ methods:
         if (index >= attrs.size()) {
             return false;
         }
-        const IfcParse::parameter_type* parameter_type = attrs[index]->type_of_attribute();
-        const IfcParse::enumeration_type* enumeration = nullptr;
+        const ifcopenshell::parameter_type* parameter_type = attrs[index]->type_of_attribute();
+        const ifcopenshell::enumeration_type* enumeration = nullptr;
         while (parameter_type != nullptr) {
             auto* named = parameter_type->as_named_type();
             if (named == nullptr) {
@@ -1758,9 +1730,9 @@ methods:
         const auto& items = enumeration->enumeration_items();
         auto it = std::find(items.begin(), items.end(), value_cpp);
         if (it == items.end()) {
-            throw IfcParse::IfcException("'" + value_cpp + "' is not a valid value for enumeration " + enumeration->name());
+            throw ifcopenshell::exception("'" + value_cpp + "' is not a valid value for enumeration " + enumeration->name());
         }
-        set_instance_argument(self_cpp, index, EnumerationReference(enumeration, static_cast<size_t>(std::distance(items.begin(), it))));
+        set_instance_argument(self_cpp, index, enumeration_reference(enumeration, static_cast<size_t>(std::distance(items.begin(), it))));
         return true;
 
   - kind: adapter_method
@@ -1786,7 +1758,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        return IfcUtil::ArgumentTypeToString(self_cpp.type());
+        return ifcopenshell::argument_type_to_string(self_cpp.type());
 
   - kind: adapter_method
     receiver: attribute_value
@@ -1886,20 +1858,20 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        if (self_cpp.isNull() || self_cpp.type() != IfcUtil::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE) {
-            throw IfcParse::IfcException("Attribute is not an aggregate of aggregate of entity instance");
+        if (self_cpp.isNull() || self_cpp.type() != ifcopenshell::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE) {
+            throw ifcopenshell::exception("Attribute is not an aggregate of aggregate of entity instance");
         }
-        auto aggregate = static_cast<aggregate_of_aggregate_of_instance::ptr>(self_cpp);
+        auto aggregate = static_cast<std::vector<std::vector<express::Base>>>(self_cpp);
         std::vector<std::vector<int>> result;
-        result.reserve(aggregate->size());
-        for (const auto& group : *aggregate) {
+        result.reserve(aggregate.size());
+        for (const auto& group : aggregate) {
             std::vector<int> row;
             row.reserve(group.size());
-            for (const auto* instance : group) {
-                if (instance == nullptr) {
-                    throw IfcParse::IfcException("Aggregate contains a null entity instance");
+            for (const auto& instance : group) {
+                if (!instance) {
+                    throw ifcopenshell::exception("Aggregate contains a null entity instance");
                 }
-                row.push_back(static_cast<int>(instance->id()));
+                row.push_back(static_cast<int>(instance.id()));
             }
             result.push_back(std::move(row));
         }
@@ -1957,7 +1929,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        return static_cast<IfcUtil::IfcBaseClass*>(self_cpp);
+        return static_cast<express::Base>(self_cpp);
 
   - kind: adapter_method
     receiver: attribute_value
@@ -1971,7 +1943,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        return static_cast<boost::shared_ptr<aggregate_of_instance>>(self_cpp);
+        return static_cast<std::vector<express::Base>>(self_cpp);
 
   - kind: adapter_method
     receiver: attribute_value
@@ -1984,7 +1956,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        return std::string(static_cast<EnumerationReference>(self_cpp).value());
+        return std::string(static_cast<enumeration_reference>(self_cpp).value());
 
   - kind: adapter_method
     receiver: attribute_value
@@ -1996,7 +1968,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        return static_cast<EnumerationReference>(self_cpp).index();
+        return static_cast<enumeration_reference>(self_cpp).index();
 
   - kind: adapter_method
     receiver: attribute_value
@@ -2011,7 +1983,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        return const_cast<IfcParse::enumeration_type*>(static_cast<EnumerationReference>(self_cpp).enumeration());
+        return const_cast<ifcopenshell::enumeration_type*>(static_cast<enumeration_reference>(self_cpp).enumeration());
 
   - kind: adapter_method
     receiver: file
@@ -2041,8 +2013,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        return const_cast<IfcUtil::IfcBaseClass*>(
-            static_cast<const IfcUtil::IfcBaseClass*>(self_cpp->header().file_description()));
+        return self_cpp->header().file_description();
 
   - kind: adapter_method
     receiver: file
@@ -2057,8 +2028,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        return const_cast<IfcUtil::IfcBaseClass*>(
-            static_cast<const IfcUtil::IfcBaseClass*>(self_cpp->header().file_name()));
+        return self_cpp->header().file_name();
 
   - kind: adapter_method
     receiver: file
@@ -2073,8 +2043,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        return const_cast<IfcUtil::IfcBaseClass*>(
-            static_cast<const IfcUtil::IfcBaseClass*>(self_cpp->header().file_schema()));
+        return self_cpp->header().file_schema();
 
   - kind: adapter_method
     receiver: header
@@ -2090,30 +2059,6 @@ methods:
         std::ostringstream stream;
         self_cpp->write(stream);
         return stream.str();
-
-  - kind: adapter_method
-    receiver: schema
-    cpp_name: instantiate
-    expose_as: instantiate
-    returns:
-      kind: handle
-      handle: instance
-      ownership: owned
-    params:
-      - name: declaration
-        type:
-          kind: handle
-          handle: declaration
-          ownership: borrowed
-    implementation:
-      kind: inline_cpp
-      body: |
-        IfcEntityInstanceData data(in_memory_attribute_storage(declaration_cpp->as_entity() ? declaration_cpp->as_entity()->attribute_count() : 1));
-        auto* instance = self_cpp->instantiate(declaration_cpp, std::move(data));
-        if (auto* entity = instance->as<IfcUtil::IfcBaseEntity>()) {
-            entity->populate_derived();
-        }
-        return instance;
 
   - kind: adapter_method
     receiver: select_type
@@ -2145,12 +2090,12 @@ methods:
       kind: inline_cpp
       body: |
         std::vector<std::string> result;
-        auto argument_type = IfcUtil::Argument_UNKNOWN;
+        auto argument_type = ifcopenshell::Argument_UNKNOWN;
         auto* declared_type = self_cpp->declared_type();
         if (declared_type != nullptr) {
-            argument_type = IfcUtil::from_parameter_type(declared_type);
+            argument_type = ifcopenshell::from_parameter_type(declared_type);
         }
-        result.push_back(IfcUtil::ArgumentTypeToString(argument_type));
+        result.push_back(ifcopenshell::argument_type_to_string(argument_type));
         return result;
 
   - kind: adapter_method
@@ -2164,7 +2109,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        return std::vector<std::string>{IfcUtil::ArgumentTypeToString(IfcUtil::Argument_STRING)};
+        return std::vector<std::string>{ifcopenshell::argument_type_to_string(ifcopenshell::Argument_STRING)};
 
   - kind: adapter_method
     receiver: parameter_type
@@ -2200,21 +2145,21 @@ methods:
       kind: inline_cpp
       body: |
         switch (self_cpp->declared_type()) {
-        case IfcParse::simple_type::binary_type:
+        case ifcopenshell::simple_type::binary_type:
             return "BINARY";
-        case IfcParse::simple_type::boolean_type:
+        case ifcopenshell::simple_type::boolean_type:
             return "BOOLEAN";
-        case IfcParse::simple_type::integer_type:
+        case ifcopenshell::simple_type::integer_type:
             return "INTEGER";
-        case IfcParse::simple_type::logical_type:
+        case ifcopenshell::simple_type::logical_type:
             return "LOGICAL";
-        case IfcParse::simple_type::number_type:
+        case ifcopenshell::simple_type::number_type:
             return "NUMBER";
-        case IfcParse::simple_type::real_type:
+        case ifcopenshell::simple_type::real_type:
             return "REAL";
-        case IfcParse::simple_type::string_type:
+        case ifcopenshell::simple_type::string_type:
             return "STRING";
-        case IfcParse::simple_type::datatype_COUNT:
+        case ifcopenshell::simple_type::datatype_COUNT:
             break;
         }
         throw std::runtime_error("Unknown simple type.");
@@ -2243,13 +2188,13 @@ methods:
       kind: inline_cpp
       body: |
         switch (self_cpp->type_of_aggregation()) {
-        case IfcParse::aggregation_type::array_type:
+        case ifcopenshell::aggregation_type::array_type:
             return "array";
-        case IfcParse::aggregation_type::bag_type:
+        case ifcopenshell::aggregation_type::bag_type:
             return "bag";
-        case IfcParse::aggregation_type::list_type:
+        case ifcopenshell::aggregation_type::list_type:
             return "list";
-        case IfcParse::aggregation_type::set_type:
+        case ifcopenshell::aggregation_type::set_type:
             return "set";
         }
         throw std::runtime_error("Unknown aggregation type.");
@@ -2278,11 +2223,11 @@ methods:
       kind: inline_cpp
       body: |
         switch (self_cpp->type_of_aggregation()) {
-        case IfcParse::inverse_attribute::bag_type:
+        case ifcopenshell::inverse_attribute::bag_type:
             return "bag";
-        case IfcParse::inverse_attribute::set_type:
+        case ifcopenshell::inverse_attribute::set_type:
             return "set";
-        case IfcParse::inverse_attribute::unspecified_type:
+        case ifcopenshell::inverse_attribute::unspecified_type:
             return "";
         }
         throw std::runtime_error("Unknown inverse aggregation type.");
@@ -2301,14 +2246,14 @@ methods:
         std::vector<std::string> result;
         size_t index = 0;
         for (const auto* attr : self_cpp->all_attributes()) {
-            auto argument_type = IfcUtil::Argument_UNKNOWN;
+            auto argument_type = ifcopenshell::Argument_UNKNOWN;
             auto* parameter_type = attr->type_of_attribute();
             if (self_cpp->derived()[index++]) {
-                argument_type = IfcUtil::Argument_DERIVED;
+                argument_type = ifcopenshell::Argument_DERIVED;
             } else if (parameter_type != nullptr) {
-                argument_type = IfcUtil::from_parameter_type(parameter_type);
+                argument_type = ifcopenshell::from_parameter_type(parameter_type);
             }
-            result.push_back(IfcUtil::ArgumentTypeToString(argument_type));
+            result.push_back(ifcopenshell::argument_type_to_string(argument_type));
         }
         return result;
 
@@ -2321,7 +2266,7 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        return static_cast<int>(static_cast<IfcParse::file_open_status::file_open_enum>(self_cpp->status()));
+        return static_cast<int>(static_cast<ifcopenshell::file_open_status::file_open_enum>(self_cpp->status()));
 
   - kind: adapter_method
     receiver: instance_streamer
@@ -2378,13 +2323,13 @@ methods:
       kind: inline_cpp
       body: |
         switch (self_cpp->type_of_aggregation()) {
-        case IfcParse::aggregation_type::array_type:
+        case ifcopenshell::aggregation_type::array_type:
             return "ARRAY";
-        case IfcParse::aggregation_type::bag_type:
+        case ifcopenshell::aggregation_type::bag_type:
             return "BAG";
-        case IfcParse::aggregation_type::list_type:
+        case ifcopenshell::aggregation_type::list_type:
             return "LIST";
-        case IfcParse::aggregation_type::set_type:
+        case ifcopenshell::aggregation_type::set_type:
             return "SET";
         }
         throw std::runtime_error("Unknown aggregation type.");

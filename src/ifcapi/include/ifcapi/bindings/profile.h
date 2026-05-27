@@ -6,8 +6,8 @@
 
 #include "ifcapi/bindings/contract.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
 
 #include <string>
 #include <vector>
@@ -17,30 +17,30 @@ struct ifcopenshell_pset_props_t;
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING IfcUtil::IfcBaseClass* profile_add_parameterized_profile(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base profile_add_parameterized_profile(
+    ifcopenshell::file* file,
     const std::string& ifc_class,
     const std::string& profile_type);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* profile_add_arbitrary_profile(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base profile_add_arbitrary_profile(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& profile,
     const char* name,
     bool has_name);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* profile_add_arbitrary_profile_with_voids(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base profile_add_arbitrary_profile_with_voids(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& outer_profile,
     const std::vector<std::vector<std::vector<double>>>& inner_profiles,
     const char* name,
     bool has_name);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* profile_copy_profile(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* profile);
+IFCAPI_BINDING express::Base profile_copy_profile(
+    ifcopenshell::file* file,
+    express::Base* profile);
 IFCAPI_BINDING void profile_edit_profile(
-    IfcUtil::IfcBaseClass* profile,
+    express::Base* profile,
     ifcopenshell_pset_props_t* attributes);
 IFCAPI_BINDING void profile_remove_profile(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* profile);
+    ifcopenshell::file* file,
+    express::Base* profile);
 
 } // namespace bindings
 } // namespace ifcapi

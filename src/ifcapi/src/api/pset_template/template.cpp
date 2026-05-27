@@ -6,8 +6,8 @@
 #include "ifcapi/detail/attribute.h"
 #include "guid.h"
 
-#include "ifcparse/IfcFile.h"
-#include "ifcparse/IfcSchema.h"
+#include "ifcparse/file.h"
+#include "ifcparse/schema.h"
 
 #include <algorithm>
 #include <string>

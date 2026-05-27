@@ -5,8 +5,8 @@
 
 #include "ifcapi/bindings/contract.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
 
 #include <vector>
 
@@ -14,7 +14,7 @@ namespace ifcapi {
 namespace bindings {
 
 struct ShapeBuilderMepTransitionShapeResult {
-    IfcUtil::IfcBaseClass* representation = nullptr;
+    express::Base representation;
     bool has_result = false;
     double start_length = 0.0;
     double end_length = 0.0;
@@ -25,7 +25,7 @@ struct ShapeBuilderMepTransitionShapeResult {
 };
 
 struct ShapeBuilderMepBendShapeResult {
-    IfcUtil::IfcBaseClass* representation = nullptr;
+    express::Base representation;
     double start_length = 0.0;
     double end_length = 0.0;
     double radius = 0.0;
@@ -36,80 +36,80 @@ struct ShapeBuilderMepBendShapeResult {
     double main_profile_dimension = 0.0;
 };
 
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_mesh(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base shape_builder_mesh(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& points,
     const std::vector<std::vector<int>>& faces);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_faceted_brep(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base shape_builder_faceted_brep(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& points,
     const std::vector<std::vector<int>>& faces);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_triangulated_face_set(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base shape_builder_triangulated_face_set(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& points,
     const std::vector<std::vector<int>>& faces);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_polygonal_face_set(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base shape_builder_polygonal_face_set(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& points,
     const std::vector<std::vector<std::vector<int>>>& faces);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_vertex(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base shape_builder_vertex(
+    ifcopenshell::file* file,
     const std::vector<double>& position);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_edge(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base shape_builder_edge(
+    ifcopenshell::file* file,
     const std::vector<double>& start,
     const std::vector<double>& end);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_face(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base shape_builder_face(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& points);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_polyline(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base shape_builder_polyline(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& points,
     bool closed,
     const std::vector<double>& position_offset,
     bool has_position_offset,
     const std::vector<int>& arc_points);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_axis2_placement_3d(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base shape_builder_axis2_placement_3d(
+    ifcopenshell::file* file,
     const std::vector<double>& position,
     const std::vector<double>& z_axis,
     const std::vector<double>& x_axis);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_axis2_placement_2d(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base shape_builder_axis2_placement_2d(
+    ifcopenshell::file* file,
     const std::vector<double>& position,
     const std::vector<double>& x_direction,
     bool has_x_direction);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_circle(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base shape_builder_circle(
+    ifcopenshell::file* file,
     const std::vector<double>& center,
     double radius);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_plane(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base shape_builder_plane(
+    ifcopenshell::file* file,
     const std::vector<double>& location,
     const std::vector<double>& normal);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_profile(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* outer_curve,
+IFCAPI_BINDING express::Base shape_builder_profile(
+    ifcopenshell::file* file,
+    express::Base* outer_curve,
     const char* name,
-    const std::vector<const IfcUtil::IfcBaseClass*>& inner_curves,
+    const std::vector<express::Base>& inner_curves,
     const char* profile_type);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_sphere(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base shape_builder_sphere(
+    ifcopenshell::file* file,
     double radius,
     const std::vector<double>& center);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_block(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base shape_builder_block(
+    ifcopenshell::file* file,
     const std::vector<double>& position,
     double x_length,
     double y_length,
     double z_length);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_half_space_solid(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* plane,
+IFCAPI_BINDING express::Base shape_builder_half_space_solid(
+    ifcopenshell::file* file,
+    express::Base* plane,
     bool agreement_flag);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_extrude(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* profile_or_curve,
+IFCAPI_BINDING express::Base shape_builder_extrude(
+    ifcopenshell::file* file,
+    express::Base* profile_or_curve,
     double magnitude,
     const std::vector<double>& position,
     const std::vector<double>& extrusion_vector,
@@ -117,57 +117,57 @@ IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_extrude(
     const std::vector<double>& position_x_axis,
     const std::vector<double>& position_y_axis,
     bool has_position_y_axis);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_swept_disk_solid(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* path_curve,
+IFCAPI_BINDING express::Base shape_builder_swept_disk_solid(
+    ifcopenshell::file* file,
+    express::Base* path_curve,
     double radius);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_representation(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* context,
-    const std::vector<const IfcUtil::IfcBaseClass*>& items,
+IFCAPI_BINDING express::Base shape_builder_representation(
+    ifcopenshell::file* file,
+    express::Base* context,
+    const std::vector<express::Base>& items,
     const char* representation_type);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_deep_copy(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* element);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_curve_between_two_points(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base shape_builder_deep_copy(
+    ifcopenshell::file* file,
+    express::Base* element);
+IFCAPI_BINDING express::Base shape_builder_curve_between_two_points(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& points);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_ellipse_curve(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base shape_builder_ellipse_curve(
+    ifcopenshell::file* file,
     double x_axis_radius,
     double y_axis_radius,
     const std::vector<double>& position,
     const std::vector<std::vector<double>>& trim_points,
     const std::vector<double>& ref_x_direction,
     const std::vector<int>& trim_points_mask);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_indexed_polycurve_2d(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base shape_builder_indexed_polycurve_2d(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& points,
     const std::vector<std::vector<int>>& segments);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_translate(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* item,
+IFCAPI_BINDING express::Base shape_builder_translate(
+    ifcopenshell::file* file,
+    express::Base* item,
     const std::vector<double>& translation,
     bool create_copy);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_rotate(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* item,
+IFCAPI_BINDING express::Base shape_builder_rotate(
+    ifcopenshell::file* file,
+    express::Base* item,
     double angle,
     const std::vector<double>& pivot_point,
     bool counter_clockwise,
     bool create_copy);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_mirror(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* item,
+IFCAPI_BINDING express::Base shape_builder_mirror(
+    ifcopenshell::file* file,
+    express::Base* item,
     const std::vector<double>& mirror_axes,
     const std::vector<double>& mirror_point,
     bool create_copy,
     const std::vector<double>& placement_matrix);
 IFCAPI_BINDING std::vector<std::vector<double>> shape_builder_get_polyline_coords(
-    IfcUtil::IfcBaseClass* polyline);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* shape_builder_set_polyline_coords(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* polyline,
+    express::Base* polyline);
+IFCAPI_BINDING express::Base shape_builder_set_polyline_coords(
+    ifcopenshell::file* file,
+    express::Base* polyline,
     const std::vector<std::vector<double>>& coords);
 IFCAPI_BINDING double shape_builder_mep_transition_calculate(
     const std::vector<double>& start_half_dim,
@@ -186,16 +186,16 @@ IFCAPI_BINDING double shape_builder_mep_transition_length(
     double angle,
     const std::vector<double>& profile_offset);
 IFCAPI_BINDING ShapeBuilderMepTransitionShapeResult shape_builder_mep_transition_shape(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* start_segment,
-    IfcUtil::IfcBaseClass* end_segment,
+    ifcopenshell::file* file,
+    express::Base* start_segment,
+    express::Base* end_segment,
     double start_length,
     double end_length,
     double angle,
     const std::vector<double>& profile_offset);
 IFCAPI_BINDING ShapeBuilderMepBendShapeResult shape_builder_mep_bend_shape(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* segment,
+    ifcopenshell::file* file,
+    express::Base* segment,
     double start_length,
     double end_length,
     double angle,

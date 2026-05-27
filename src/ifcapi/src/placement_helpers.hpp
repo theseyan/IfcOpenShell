@@ -5,7 +5,7 @@
 #ifndef IFCAPI_PLACEMENT_HELPERS_HPP
 #define IFCAPI_PLACEMENT_HELPERS_HPP
 
-#include "ifcparse/IfcBaseClass.h"
+#include "ifcparse/express.h"
 
 #include <cmath>
 #include <cstring>

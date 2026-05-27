@@ -8,50 +8,45 @@
 #include "ifcapi/bindings/owner.h"
 #include "ifcapi/detail/attribute.h"
 
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/file.h"
 
 namespace ifcapi {
 namespace detail {
 
-inline IfcUtil::IfcBaseClass* ensure_owner_history(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+inline express::Base* nullable_ptr(express::Base& value) {
+    return value ? &value : nullptr;
+}
+
+inline express::Base ensure_owner_history(
+    ifcopenshell::file* file,
+    express::Base owner_history,
+    express::Base user,
+    express::Base application)
 {
-    return owner_history ? owner_history : ifcapi::bindings::owner_create_owner_history(file, user, application);
+    return owner_history
+        ? owner_history
+        : ifcapi::bindings::owner_create_owner_history(file, nullable_ptr(user), nullable_ptr(application));
 }
 
 inline void update_owner_history(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* entity,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    ifcopenshell::file* file,
+    express::Base entity,
+    express::Base user,
+    express::Base application)
 {
     if (entity && user && application) {
-        ifcapi::bindings::owner_update_owner_history(file, entity, user, application);
+        ifcapi::bindings::owner_update_owner_history(file, &entity, &user, &application);
     }
 }
 
-inline void remove_with_history(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* entity) {
+inline void remove_with_history(ifcopenshell::file* file, express::Base entity) {
     if (!file || !entity) {
         return;
     }
-    auto* decl = entity->declaration().as_entity();
-    int owner_history_idx = find_attr_index(decl, "OwnerHistory");
-    IfcUtil::IfcBaseClass* history = nullptr;
-    if (owner_history_idx >= 0) {
-        try {
-            auto val = entity->get_attribute_value(static_cast<size_t>(owner_history_idx));
-            if (!val.isNull()) {
-                history = (IfcUtil::IfcBaseClass*)val;
-            }
-        } catch (...) {
-        }
-    }
-    file->removeEntity(entity);
+    auto history = read_ref_attr(entity, "OwnerHistory");
+    file->remove_entity(entity);
     if (history) {
-        ifcapi::bindings::entity_remove_deep2(history);
+        ifcapi::bindings::entity_remove_deep2(&history);
     }
 }
 

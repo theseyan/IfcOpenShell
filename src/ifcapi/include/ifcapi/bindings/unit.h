@@ -5,8 +5,8 @@
 
 #include "ifcapi/bindings/contract.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
 
 #include <cstdint>
 #include <string>
@@ -39,45 +39,45 @@ IFCAPI_BINDING std::string unit_format_length(
     const std::string& unit_system,
     const std::string& input_unit,
     const std::string& output_unit);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* unit_get_unit_assignment(IfcParse::IfcFile* file);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* unit_get_project_unit(IfcParse::IfcFile* file, const std::string& unit_type);
-IFCAPI_BINDING std::string unit_get_full_unit_name(IfcUtil::IfcBaseClass* unit);
-IFCAPI_BINDING std::string unit_get_unit_symbol(IfcUtil::IfcBaseClass* unit);
+IFCAPI_BINDING express::Base unit_get_unit_assignment(ifcopenshell::file* file);
+IFCAPI_BINDING express::Base unit_get_project_unit(ifcopenshell::file* file, const std::string& unit_type);
+IFCAPI_BINDING std::string unit_get_full_unit_name(express::Base* unit);
+IFCAPI_BINDING std::string unit_get_unit_symbol(express::Base* unit);
 IFCAPI_BINDING double unit_convert_unit(
     double value,
-    IfcUtil::IfcBaseClass* from_unit,
-    IfcUtil::IfcBaseClass* to_unit);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* unit_resolve_property_unit(IfcUtil::IfcBaseClass* prop);
-IFCAPI_BINDING std::string unit_resolve_property_measure_class(IfcUtil::IfcBaseClass* prop);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* unit_resolve_property_table_defining_unit(IfcUtil::IfcBaseClass* prop);
-IFCAPI_BINDING std::string unit_resolve_property_table_defining_measure_class(IfcUtil::IfcBaseClass* prop);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* unit_resolve_property_table_defined_unit(IfcUtil::IfcBaseClass* prop);
-IFCAPI_BINDING std::string unit_resolve_property_table_defined_measure_class(IfcUtil::IfcBaseClass* prop);
-IFCAPI_BINDING double unit_calculate_unit_scale(IfcParse::IfcFile* file, const std::string& unit_type);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* unit_add_si_unit(
-    IfcParse::IfcFile* file,
+    express::Base* from_unit,
+    express::Base* to_unit);
+IFCAPI_BINDING express::Base unit_resolve_property_unit(express::Base* prop);
+IFCAPI_BINDING std::string unit_resolve_property_measure_class(express::Base* prop);
+IFCAPI_BINDING express::Base unit_resolve_property_table_defining_unit(express::Base* prop);
+IFCAPI_BINDING std::string unit_resolve_property_table_defining_measure_class(express::Base* prop);
+IFCAPI_BINDING express::Base unit_resolve_property_table_defined_unit(express::Base* prop);
+IFCAPI_BINDING std::string unit_resolve_property_table_defined_measure_class(express::Base* prop);
+IFCAPI_BINDING double unit_calculate_unit_scale(ifcopenshell::file* file, const std::string& unit_type);
+IFCAPI_BINDING express::Base unit_add_si_unit(
+    ifcopenshell::file* file,
     const std::string& unit_type,
     const char* prefix);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* unit_add_monetary_unit(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base unit_add_monetary_unit(
+    ifcopenshell::file* file,
     const std::string& currency);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* unit_add_context_dependent_unit(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base unit_add_context_dependent_unit(
+    ifcopenshell::file* file,
     const std::string& unit_type,
     const std::string& name,
     const std::vector<int64_t>& dimensions);
-IFCAPI_BINDING IfcUtil::IfcBaseClass* unit_add_derived_unit(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base unit_add_derived_unit(
+    ifcopenshell::file* file,
     const std::string& unit_type,
     const char* userdefinedtype,
-    const std::vector<const IfcUtil::IfcBaseClass*>& units,
+    const std::vector<express::Base>& units,
     const std::vector<int64_t>& exponents);
 IFCAPI_BINDING void unit_unassign_unit(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& units);
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& units);
 IFCAPI_BINDING void unit_remove_unit(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* unit);
+    ifcopenshell::file* file,
+    express::Base* unit);
 
 } // namespace bindings
 } // namespace ifcapi

@@ -18,15 +18,18 @@
 #include <vector>
 
 #include "ifc_parse_api.h"
-#include "IfcParse.h"
-#include "IfcSIPrefix.h"
-#include "IfcLogger.h"
-#include "Header_section_schema.h"
-#include "IfcSpfHeader.h"
-#include "IfcFile.h"
+#include "parse.h"
+#include "exception.h"
+#include "logger.h"
+#include "si_prefix.h"
+#include "utils.h"
+#include "schemas/Header_section_schema.h"
+#include "spf_header.h"
+#include "file.h"
 #include "file_open_status.h"
-#include "IfcBaseClass.h"
-#include "IfcSchema.h"
+#include "express.h"
+#include "instance_data.h"
+#include "schema.h"
 #include "ifc_geom_api.h"
 #include "Iterator.h"
 #include "IfcGeomElement.h"
@@ -36,7 +39,6 @@
 #include "WavefrontObjSerializer.h"
 #include "TtlWktSerializer.h"
 #include "SvgSerializer.h"
-#include "HdfSerializer.h"
 #include "ColladaSerializer.h"
 #include "GltfSerializer.h"
 #include "JsonSerializer.h"
@@ -98,110 +100,104 @@
 #include "ifcapi/bindings/type.h"
 #include "ifcapi/bindings/unit.h"
 #include "ifcapi/bindings/value.h"
-#include "aggregate_of_instance.h"
-#include "IfcEntityInstanceData.h"
 
 struct ifcopenshell_ifc_file_t {
-    IfcParse::IfcFile* ptr;
+    ifcopenshell::file* ptr;
     bool owned;
 };
 
 struct ifcopenshell_ifc_instance_streamer_t {
-    IfcParse::InstanceStreamer* ptr;
+    ifcopenshell::instance_streamer<>* ptr;
     bool owned;
 };
 
 struct ifcopenshell_ifc_instance_t {
-    IfcUtil::IfcBaseClass* ptr;
-    bool owned;
+    express::Base value;
 };
 
 struct ifcopenshell_ifc_header_t {
-    IfcParse::IfcSpfHeader* ptr;
+    ifcopenshell::spf_header* ptr;
     bool owned;
 };
 
 struct ifcopenshell_ifc_file_description_t {
-    Header_section_schema::file_description* ptr;
-    bool owned;
+    Header_section_schema::file_description value;
 };
 
 struct ifcopenshell_ifc_file_name_t {
-    Header_section_schema::file_name* ptr;
-    bool owned;
+    Header_section_schema::file_name value;
 };
 
 struct ifcopenshell_ifc_file_schema_t {
-    Header_section_schema::file_schema* ptr;
-    bool owned;
+    Header_section_schema::file_schema value;
 };
 
 struct ifcopenshell_ifc_declaration_t {
-    IfcParse::declaration* ptr;
+    ifcopenshell::declaration* ptr;
     bool owned;
 };
 
 struct ifcopenshell_ifc_type_declaration_t {
-    IfcParse::type_declaration* ptr;
+    ifcopenshell::type_declaration* ptr;
     bool owned;
 };
 
 struct ifcopenshell_ifc_select_type_t {
-    IfcParse::select_type* ptr;
+    ifcopenshell::select_type* ptr;
     bool owned;
 };
 
 struct ifcopenshell_ifc_schema_t {
-    IfcParse::schema_definition* ptr;
+    ifcopenshell::schema_definition* ptr;
     bool owned;
 };
 
 struct ifcopenshell_ifc_enumeration_t {
-    IfcParse::enumeration_type* ptr;
+    ifcopenshell::enumeration_type* ptr;
     bool owned;
 };
 
 struct ifcopenshell_ifc_parameter_type_t {
-    IfcParse::parameter_type* ptr;
+    ifcopenshell::parameter_type* ptr;
     bool owned;
 };
 
 struct ifcopenshell_ifc_named_type_t {
-    IfcParse::named_type* ptr;
+    ifcopenshell::named_type* ptr;
     bool owned;
 };
 
 struct ifcopenshell_ifc_simple_type_t {
-    IfcParse::simple_type* ptr;
+    ifcopenshell::simple_type* ptr;
     bool owned;
 };
 
 struct ifcopenshell_ifc_aggregation_type_t {
-    IfcParse::aggregation_type* ptr;
+    ifcopenshell::aggregation_type* ptr;
     bool owned;
 };
 
 struct ifcopenshell_ifc_entity_t {
-    IfcParse::entity* ptr;
+    ifcopenshell::entity* ptr;
     bool owned;
 };
 
 struct ifcopenshell_ifc_attribute_t {
-    IfcParse::attribute* ptr;
+    ifcopenshell::attribute* ptr;
     bool owned;
 };
 
 struct ifcopenshell_ifc_inverse_attribute_t {
-    IfcParse::inverse_attribute* ptr;
+    ifcopenshell::inverse_attribute* ptr;
     bool owned;
 };
 
 struct ifcopenshell_ifcparse_attribute_value_t {
-    AttributeValue value;
+    attribute_value value;
 };
 
 struct ifcopenshell_ifcparse_instance_list_t {
-    aggregate_of_instance::ptr value;
+    std::vector<express::Base> value;
 };
 
 struct ifcopenshell_ifcgeom_taxonomy_item_t {
@@ -451,6 +447,7 @@ extern thread_local int g_last_error_kind;
 void set_last_error(const std::string& message);
 void set_last_error(int kind, const std::string& message);
 
+
 // ------------------------------------------------------------------
 // Handle wrap/unwrap helpers
 // ------------------------------------------------------------------
@@ -461,41 +458,39 @@ void set_last_error(int kind, const std::string& message);
 // when wrapping so that callers can decide whether the returned handle
 // should free its target when destroyed.
 
-inline IfcParse::IfcFile* unwrap_file(ifcopenshell_ifc_file_t* h) {
+inline ifcopenshell::file* unwrap_file(ifcopenshell_ifc_file_t* h) {
     return h ? h->ptr : nullptr;
 }
 
-inline const IfcParse::IfcFile* unwrap_file(const ifcopenshell_ifc_file_t* h) {
+inline const ifcopenshell::file* unwrap_file(const ifcopenshell_ifc_file_t* h) {
     return h ? h->ptr : nullptr;
 }
 
-inline IfcUtil::IfcBaseClass* unwrap_instance(ifcopenshell_ifc_instance_t* h) {
-    return h ? h->ptr : nullptr;
+inline express::Base* unwrap_instance(ifcopenshell_ifc_instance_t* h) {
+    return h ? &h->value : nullptr;
 }
 
-inline const IfcUtil::IfcBaseClass* unwrap_instance(const ifcopenshell_ifc_instance_t* h) {
-    return h ? h->ptr : nullptr;
+inline const express::Base* unwrap_instance(const ifcopenshell_ifc_instance_t* h) {
+    return h ? &h->value : nullptr;
 }
 
-// Wrap a raw C++ instance pointer in a freshly allocated handle. Pass
-// owned=false (the default) for instances whose lifetime is owned by an
-// IfcFile; pass owned=true only when the caller is responsible for
-// deleting the wrapped instance.
-inline ifcopenshell_ifc_instance_t* wrap_instance(IfcUtil::IfcBaseClass* p, bool owned = false) {
-    if (!p) return nullptr;
-    auto* h = new ifcopenshell_ifc_instance_t;
-    h->ptr = p;
-    h->owned = owned;
-    return h;
+inline ifcopenshell_ifc_instance_t* wrap_instance(const express::Base& value) {
+    if (!value) return nullptr;
+    return new ifcopenshell_ifc_instance_t{value};
 }
 
-inline ifcopenshell_ifc_file_t* wrap_file(IfcParse::IfcFile* p, bool owned = true) {
+inline ifcopenshell_ifc_instance_t* wrap_instance(const express::Base* value) {
+    return value ? wrap_instance(*value) : nullptr;
+}
+
+inline ifcopenshell_ifc_file_t* wrap_file(ifcopenshell::file* p, bool owned = true) {
     if (!p) return nullptr;
     auto* h = new ifcopenshell_ifc_file_t;
     h->ptr = p;
     h->owned = owned;
     return h;
 }
+
 
 } // namespace capi
 } // namespace ifcopenshell

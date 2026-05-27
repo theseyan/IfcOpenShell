@@ -6,8 +6,8 @@
 #include "ifcapi/detail/shape_builder.h"
 #include "ifcapi/detail/window_builder.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
 
 #include <algorithm>
 #include <cmath>

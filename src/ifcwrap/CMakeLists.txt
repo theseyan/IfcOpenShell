@@ -60,6 +60,73 @@ if(BUILD_IFCCAPI)
             )
         endif()
 
+        set(IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS)
+        foreach(include_dir IN ITEMS
+            "${CMAKE_CURRENT_SOURCE_DIR}/.."
+            "${CMAKE_CURRENT_SOURCE_DIR}/../ifcparse"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../ifcparse/schemas"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../ifcgeom"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../ifcgeom/mapping"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../ifcgeom/kernels"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../serializers"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../svgfill/src"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../ifcapi/include"
+        )
+            list(APPEND IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS --discovery-include-dir "${include_dir}")
+        endforeach()
+        foreach(include_dir IN LISTS
+            Boost_INCLUDE_DIRS
+            CGAL_INCLUDE_DIR
+            GMP_INCLUDE_DIR
+            MPFR_INCLUDE_DIR
+            OCC_INCLUDE_DIR
+            OpenCASCADE_INCLUDE_DIR
+            OpenCASCADE_INCLUDE_DIRS
+            EIGEN3_INCLUDE_DIR
+            Eigen3_INCLUDE_DIR
+            Eigen3_INCLUDE_DIRS
+        )
+            if(NOT "${include_dir}" STREQUAL "")
+                list(APPEND IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS --discovery-include-dir "${include_dir}")
+            endif()
+        endforeach()
+        if(OpenCASCADE_DIR)
+            get_filename_component(IFCPARSE_CAPI_OPENCASCADE_PREFIX "${OpenCASCADE_DIR}/../../.." ABSOLUTE)
+            if(EXISTS "${IFCPARSE_CAPI_OPENCASCADE_PREFIX}/include/opencascade")
+                list(APPEND IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS
+                    --discovery-include-dir "${IFCPARSE_CAPI_OPENCASCADE_PREFIX}/include/opencascade"
+                )
+            endif()
+        endif()
+        if(Eigen3_DIR)
+            get_filename_component(IFCPARSE_CAPI_EIGEN_PREFIX "${Eigen3_DIR}/../../.." ABSOLUTE)
+            if(EXISTS "${IFCPARSE_CAPI_EIGEN_PREFIX}/include/eigen3")
+                list(APPEND IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS
+                    --discovery-include-dir "${IFCPARSE_CAPI_EIGEN_PREFIX}/include/eigen3"
+                )
+            endif()
+        endif()
+
+        set(IFCPARSE_CAPI_DISCOVERY_DEFINE_ARGS)
+        foreach(define IN LISTS SCHEMA_DEFINITIONS)
+            list(APPEND IFCPARSE_CAPI_DISCOVERY_DEFINE_ARGS --discovery-define "${define}")
+        endforeach()
+        if(USE_MMAP)
+            list(APPEND IFCPARSE_CAPI_DISCOVERY_DEFINE_ARGS --discovery-define USE_MMAP)
+        endif()
+        if(WITH_CGAL)
+            list(APPEND IFCPARSE_CAPI_DISCOVERY_DEFINE_ARGS --discovery-define IFOPSH_WITH_CGAL)
+        endif()
+        if(WITH_OPENCASCADE)
+            list(APPEND IFCPARSE_CAPI_DISCOVERY_DEFINE_ARGS --discovery-define IFOPSH_WITH_OPENCASCADE)
+        endif()
+        if(WITH_MANIFOLD)
+            list(APPEND IFCPARSE_CAPI_DISCOVERY_DEFINE_ARGS --discovery-define IFOPSH_WITH_MANIFOLD)
+        endif()
+        if(WITH_ROCKSDB)
+            list(APPEND IFCPARSE_CAPI_DISCOVERY_DEFINE_ARGS --discovery-define IFOPSH_WITH_ROCKSDB)
+        endif()
+
         # Unified C API code generation target - generates single header/source from all specs.
         # Use real outputs so normal builds do not rerun the expensive Clang-backed discovery
         # unless the specs or generator inputs changed.
@@ -77,7 +144,8 @@ if(BUILD_IFCCAPI)
                 --header-out "${UNIFIED_CAPI_HEADER}"
                 --cpp-out "${UNIFIED_CAPI_CPP}"
                 --python-out "${UNIFIED_CAPI_PYTHON_CTYPES}"
-                --compile-commands "${CMAKE_BINARY_DIR}/compile_commands.json"
+                ${IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS}
+                ${IFCPARSE_CAPI_DISCOVERY_DEFINE_ARGS}
                 --module ifcopenshell
                 --c-prefix ifcopenshell
             DEPENDS

@@ -1,15 +1,37 @@
 from .clang_discovery import (
+    CompilationConfig,
+    DiscoveryEnvironment,
+    discover_namespace_functions,
     discover_namespace_functions_with_compile_commands,
     discover_namespace_functions_with_synthetic_source,
+    discover_public_fields,
     discover_public_fields_with_compile_commands,
+    discover_public_methods,
     discover_public_methods_with_compile_commands,
 )
 from .authored_spec import DiscoveryDiagnostic, load_authored_spec, load_merged_specs
 from .c_backend import generate, generate_merged
+from .source_inventory import (
+    SourceCallableInventory,
+    SourceClassInventory,
+    SourceClassRequest,
+    SourceInventory,
+    SourceInventoryRequest,
+    SourceNamespaceInventory,
+    SourceNamespaceRequest,
+    SourceParamInventory,
+    SourceTypeInventory,
+    discover_source_inventory,
+)
 
 __all__ = [
+    "CompilationConfig",
+    "DiscoveryEnvironment",
+    "discover_public_fields",
     "discover_public_fields_with_compile_commands",
+    "discover_public_methods",
     "discover_public_methods_with_compile_commands",
+    "discover_namespace_functions",
     "discover_namespace_functions_with_compile_commands",
     "discover_namespace_functions_with_synthetic_source",
     "DiscoveryDiagnostic",
@@ -17,4 +39,14 @@ __all__ = [
     "generate_merged",
     "load_authored_spec",
     "load_merged_specs",
+    "SourceCallableInventory",
+    "SourceClassInventory",
+    "SourceClassRequest",
+    "SourceInventory",
+    "SourceInventoryRequest",
+    "SourceNamespaceInventory",
+    "SourceNamespaceRequest",
+    "SourceParamInventory",
+    "SourceTypeInventory",
+    "discover_source_inventory",
 ]

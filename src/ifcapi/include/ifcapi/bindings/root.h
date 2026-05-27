@@ -5,25 +5,25 @@
 
 #include "ifcapi/bindings/contract.h"
 
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcFile.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
 
 #include <string>
 
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING IfcUtil::IfcBaseClass* root_create_entity(
-    IfcParse::IfcFile* file,
+IFCAPI_BINDING express::Base root_create_entity(
+    ifcopenshell::file* file,
     const std::string& ifc_class,
     const char* predefined_type,
     const char* name,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* owner_history);
+    IFCAPI_NULLABLE express::Base* owner_history);
 IFCAPI_BINDING void root_remove_product(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* product,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+    ifcopenshell::file* file,
+    express::Base* product,
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 
 } // namespace bindings
 } // namespace ifcapi

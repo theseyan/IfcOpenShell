@@ -14,11 +14,11 @@
 #include "guid.h"
 #include "ifcopenshell_api_internal.hpp"
 
-#include "ifcparse/IfcFile.h"
-#include "ifcparse/IfcSchema.h"
-#include "ifcparse/IfcBaseClass.h"
-#include "ifcparse/IfcEntityInstanceData.h"
-#include "ifcparse/IfcException.h"
+#include "ifcparse/file.h"
+#include "ifcparse/schema.h"
+#include "ifcparse/express.h"
+#include "ifcparse/instance_data.h"
+#include "ifcparse/exception.h"
 
 #include <algorithm>
 #include <cstdlib>

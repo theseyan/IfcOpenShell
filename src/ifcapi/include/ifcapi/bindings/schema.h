@@ -18,9 +18,9 @@ class IfcBaseClass;
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING IfcUtil::IfcBaseClass* schema_reassign_class(
-    IFCAPI_NULLABLE IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* element,
+IFCAPI_BINDING express::Base schema_reassign_class(
+    IFCAPI_NULLABLE ifcopenshell::file* file,
+    express::Base* element,
     const std::string& new_class);
 
 } // namespace bindings

@@ -12,8 +12,8 @@
 #include "../pset/attribute_props.hpp"
 #include "ifcopenshell_api_internal.hpp"
 
-#include "ifcparse/IfcFile.h"
-#include "ifcparse/IfcSchema.h"
+#include "ifcparse/file.h"
+#include "ifcparse/schema.h"
 
 #include <stdexcept>
 #include <string>

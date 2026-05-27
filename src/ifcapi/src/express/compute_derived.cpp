@@ -12,7 +12,7 @@
 
 #include "ifcopenshell_api_internal.hpp"
 
-#include "ifcparse/IfcBaseClass.h"
+#include "ifcparse/express.h"
 
 namespace {
 

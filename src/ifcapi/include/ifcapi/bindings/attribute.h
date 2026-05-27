@@ -22,16 +22,16 @@ struct ifcopenshell_pset_props_t;
 namespace ifcapi {
 namespace bindings {
 
-const char* attribute_get_primitive_type(const IfcParse::attribute* attribute);
-std::vector<std::string> attribute_get_enum_items(const IfcParse::attribute* attribute);
+const char* attribute_get_primitive_type(const ifcopenshell::attribute* attribute);
+std::vector<std::string> attribute_get_enum_items(const ifcopenshell::attribute* attribute);
 IFCAPI_BINDING void attribute_edit_attributes(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* product,
+    ifcopenshell::file* file,
+    express::Base* product,
     ifcopenshell_pset_props_t* attributes,
     bool sync_predefined_type,
     bool update_owner_history,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* user,
-    IFCAPI_NULLABLE IfcUtil::IfcBaseClass* application);
+    IFCAPI_NULLABLE express::Base* user,
+    IFCAPI_NULLABLE express::Base* application);
 
 } // namespace bindings
 } // namespace ifcapi

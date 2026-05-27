@@ -5,8 +5,8 @@
 #include "ifcapi/bindings/unit.h"
 #include "ifcapi/detail/attribute.h"
 
-#include "ifcparse/IfcFile.h"
-#include "ifcparse/IfcSchema.h"
+#include "ifcparse/file.h"
+#include "ifcparse/schema.h"
 
 #include <algorithm>
 #include <array>
