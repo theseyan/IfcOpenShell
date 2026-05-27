@@ -1,6 +1,8 @@
 #ifndef GRAPH_2D_H
 #define GRAPH_2D_H
 
+#include <boost/optional.hpp>
+
 #ifdef SVGFILL_DEBUG
 #if 0
 #include <nlohmann/json.hpp>
