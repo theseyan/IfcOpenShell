@@ -59,120 +59,122 @@ namespace {
 
 inline void set_error(const char* msg) { ifcopenshell::capi::set_last_error(msg); }
 
-inline IfcUtil::IfcBaseEntity* as_entity(IfcUtil::IfcBaseClass* e) {
-    return dynamic_cast<IfcUtil::IfcBaseEntity*>(e);
+inline express::Entity as_entity(express::Base e) {
+    return e.as<express::Entity>();
 }
 
-inline int attr_index(const IfcParse::entity* d, const char* name) {
+inline int attr_index(const ifcopenshell::entity* d, const char* name) {
     if (!d) return -1;
     return d->attribute_index(name);
 }
 
-inline int attr_index_of(IfcUtil::IfcBaseClass* e, const char* name) {
-    auto* be = as_entity(e);
+inline int attr_index_of(express::Base e, const char* name) {
+    auto be = as_entity(e);
     if (!be) return -1;
-    return attr_index(be->declaration().as_entity(), name);
+    return attr_index(be.declaration().as_entity(), name);
 }
 
-IfcUtil::IfcBaseClass* read_ref(IfcUtil::IfcBaseClass* e, const char* attr) {
-    int idx = attr_index_of(e, attr);
-    if (idx < 0) return nullptr;
-    try {
-        auto v = e->get_attribute_value(static_cast<size_t>(idx));
-        if (v.isNull()) return nullptr;
-        return (IfcUtil::IfcBaseClass*)v;
-    } catch (...) { return nullptr; }
-}
-
-std::string read_string(IfcUtil::IfcBaseClass* e, const char* attr) {
+express::Base read_ref(express::Base e, const char* attr) {
     int idx = attr_index_of(e, attr);
     if (idx < 0) return {};
     try {
-        auto v = e->get_attribute_value(static_cast<size_t>(idx));
+        auto v = e.get_attribute_value(static_cast<size_t>(idx));
+        if (v.isNull()) return {};
+        return (express::Base)v;
+    } catch (...) { return {}; }
+}
+
+std::string read_string(express::Base e, const char* attr) {
+    int idx = attr_index_of(e, attr);
+    if (idx < 0) return {};
+    try {
+        auto v = e.get_attribute_value(static_cast<size_t>(idx));
         if (v.isNull()) return {};
         return (std::string)v;
     } catch (...) { return {}; }
 }
 
-std::vector<IfcUtil::IfcBaseClass*> read_ref_list(IfcUtil::IfcBaseClass* e, const char* attr) {
-    std::vector<IfcUtil::IfcBaseClass*> out;
+std::vector<express::Base> read_ref_list(express::Base e, const char* attr) {
+    std::vector<express::Base> out;
     int idx = attr_index_of(e, attr);
     if (idx < 0) return out;
     try {
-        auto v = e->get_attribute_value(static_cast<size_t>(idx));
+        auto v = e.get_attribute_value(static_cast<size_t>(idx));
         if (v.isNull()) return out;
-        auto agg = (aggregate_of_instance::ptr)v;
-        if (!agg) return out;
-        for (auto& it : *agg) out.push_back(it);
+        auto agg = (std::vector<express::Base>)v;
+        for (auto it : agg) out.push_back(it);
     } catch (...) {}
     return out;
 }
 
-void write_ref_list(IfcUtil::IfcBaseClass* e, const char* attr,
-                    const std::vector<IfcUtil::IfcBaseClass*>& refs) {
+void write_ref_list(express::Base e, const char* attr,
+                    const std::vector<express::Base>& refs) {
     int idx = attr_index_of(e, attr);
     if (idx < 0) return;
     if (refs.empty()) {
-        e->set_attribute_value(static_cast<size_t>(idx), Blank{});
+        e.unset_attribute_value(static_cast<size_t>(idx));
         return;
     }
-    auto agg = aggregate_of_instance::ptr(new aggregate_of_instance());
-    for (auto* r : refs) agg->push(r);
-    e->set_attribute_value(static_cast<size_t>(idx), agg);
+    e.set_attribute_value(static_cast<size_t>(idx), refs);
 }
 
-void write_double_list(IfcUtil::IfcBaseClass* e, const char* attr,
+void write_double_list(express::Base e, const char* attr,
                        const std::vector<double>& values) {
     int idx = attr_index_of(e, attr);
     if (idx < 0) return;
-    e->set_attribute_value(static_cast<size_t>(idx), values);
+                       e.set_attribute_value(static_cast<size_t>(idx), values);
 }
 
-void write_int(IfcUtil::IfcBaseClass* e, const char* attr, int v) {
+void write_int(express::Base e, const char* attr, int v) {
     int idx = attr_index_of(e, attr);
     if (idx < 0) return;
-    e->set_attribute_value(static_cast<size_t>(idx), v);
+    e.set_attribute_value(static_cast<size_t>(idx), v);
 }
 
-void write_string(IfcUtil::IfcBaseClass* e, const char* attr, const std::string& v) {
+void write_string(express::Base e, const char* attr, const std::string& v) {
     int idx = attr_index_of(e, attr);
     if (idx < 0) return;
-    e->set_attribute_value(static_cast<size_t>(idx), v);
+    ifcapi::detail::write_string_attr(e, attr, v);
 }
 
-void write_ref(IfcUtil::IfcBaseClass* e, const char* attr, IfcUtil::IfcBaseClass* ref) {
+void write_ref(express::Base e, const char* attr, express::Base ref) {
     int idx = attr_index_of(e, attr);
     if (idx < 0) return;
     if (!ref) {
-        e->set_attribute_value(static_cast<size_t>(idx), Blank{});
+        e.unset_attribute_value(static_cast<size_t>(idx));
         return;
     }
-    e->set_attribute_value(static_cast<size_t>(idx), ref);
+    e.set_attribute_value(static_cast<size_t>(idx), ref);
 }
 
-inline bool is_a(IfcUtil::IfcBaseClass* e, const char* name) {
-    return e && e->declaration().is(name);
+inline bool is_a(express::Base e, const char* name) {
+    return e && e.declaration().is(name);
+}
+
+inline express::Base* entity_ptr(express::Base& entity) {
+    return entity ? &entity : nullptr;
+}
+
+inline express::Base* nullable_entity_ptr(express::Base& entity) {
+    return entity ? &entity : nullptr;
 }
 
 bool is_terminal_connection(const std::string& connection_type) {
     return connection_type == "ATSTART" || connection_type == "ATEND";
 }
 
-std::vector<IfcUtil::IfcBaseClass*> inverse_refs(IfcUtil::IfcBaseClass* entity, const char* attr) {
+std::vector<express::Base> inverse_refs(express::Base entity, const char* attr) {
     return ifcapi::detail::read_inverse_aggregate(entity, attr);
 }
 
-std::vector<IfcUtil::IfcBaseClass*> all_inverse_refs(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* entity) {
-    std::vector<IfcUtil::IfcBaseClass*> result;
-    if (!file || !entity || !entity->id()) {
+std::vector<express::Base> all_inverse_refs(ifcopenshell::file* file, express::Base entity) {
+    std::vector<express::Base> result;
+    if (!file || !entity || !entity.id()) {
         return result;
     }
     try {
-        auto inverses = file->getInverse(entity->id(), nullptr, -1);
-        if (!inverses) {
-            return result;
-        }
-        for (auto* inverse : *inverses) {
+        auto inverses = file->instances_by_reference(static_cast<int>(entity.id()));
+        for (auto inverse : inverses) {
             if (inverse) {
                 result.push_back(inverse);
             }
@@ -183,53 +185,53 @@ std::vector<IfcUtil::IfcBaseClass*> all_inverse_refs(IfcParse::IfcFile* file, If
 }
 
 void append_unique_connection(
-    std::vector<IfcUtil::IfcBaseClass*>& connections,
-    std::unordered_set<IfcUtil::IfcBaseClass*>& seen,
-    IfcUtil::IfcBaseClass* connection)
+    std::vector<express::Base>& connections,
+    std::unordered_set<express::Base>& seen,
+    express::Base connection)
 {
     if (connection && seen.insert(connection).second) {
         connections.push_back(connection);
     }
 }
 
-void remove_connections_with_history(IfcParse::IfcFile* file, const std::vector<IfcUtil::IfcBaseClass*>& connections) {
-    for (auto* connection : connections) {
+void remove_connections_with_history(ifcopenshell::file* file, const std::vector<express::Base>& connections) {
+    for (auto connection : connections) {
         ifcapi::detail::remove_with_history(file, connection);
     }
 }
 
-void write_optional_string(IfcUtil::IfcBaseClass* entity, const char* attr, const char* value, bool has_value) {
+void write_optional_string(express::Base entity, const char* attr, const char* value, bool has_value) {
     int idx = attr_index_of(entity, attr);
     if (idx < 0) {
         return;
     }
     if (has_value) {
-        entity->set_attribute_value(static_cast<size_t>(idx), std::string(value ? value : ""));
+        entity.set_attribute_value(static_cast<size_t>(idx), std::string(value ? value : ""));
     } else {
-        entity->set_attribute_value(static_cast<size_t>(idx), Blank{});
+        entity.unset_attribute_value(static_cast<size_t>(idx));
     }
 }
 
-void write_bool(IfcUtil::IfcBaseClass* entity, const char* attr, bool value) {
+void write_bool(express::Base entity, const char* attr, bool value) {
     int idx = attr_index_of(entity, attr);
     if (idx >= 0) {
-        entity->set_attribute_value(static_cast<size_t>(idx), value);
+        entity.set_attribute_value(static_cast<size_t>(idx), value);
     }
 }
 
-void write_empty_int_aggregate(IfcUtil::IfcBaseClass* entity, const char* attr) {
+void write_empty_int_aggregate(express::Base entity, const char* attr) {
     int idx = attr_index_of(entity, attr);
     if (idx >= 0) {
-        entity->set_attribute_value(static_cast<size_t>(idx), std::vector<int>());
+        entity.set_attribute_value(static_cast<size_t>(idx), std::vector<int>());
     }
 }
 
-IfcUtil::IfcBaseClass* create_shape_representation_like(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* representation,
-    const std::vector<IfcUtil::IfcBaseClass*>& items)
+express::Base create_shape_representation_like(
+    ifcopenshell::file* file,
+    express::Base representation,
+    const std::vector<express::Base>& items)
 {
-    auto* aspect_rep = file->create(file->schema()->declaration_by_name("IfcShapeRepresentation"));
+    auto aspect_rep = file->create(file->schema()->declaration_by_name("IfcShapeRepresentation"));
     write_ref(aspect_rep, "ContextOfItems", read_ref(representation, "ContextOfItems"));
     write_string(aspect_rep, "RepresentationIdentifier", read_string(representation, "RepresentationIdentifier"));
     write_string(aspect_rep, "RepresentationType", read_string(representation, "RepresentationType"));
@@ -237,12 +239,12 @@ IfcUtil::IfcBaseClass* create_shape_representation_like(
     return aspect_rep;
 }
 
-bool is_boolean_operand(IfcUtil::IfcBaseClass* item) {
+bool is_boolean_operand(express::Base item) {
     return is_a(item, "IfcBooleanResult") || is_a(item, "IfcCsgPrimitive3D") || is_a(item, "IfcHalfSpaceSolid") ||
         is_a(item, "IfcSolidModel") || is_a(item, "IfcTessellatedFaceSet");
 }
 
-std::string topology_representation_type(IfcUtil::IfcBaseClass* item) {
+std::string topology_representation_type(express::Base item) {
     static const std::vector<std::pair<const char*, const char*>> type_map = {
         {"IfcVertex", "Vertex"},
         {"IfcVertexPoint", "Vertex"},
@@ -267,21 +269,21 @@ std::string topology_representation_type(IfcUtil::IfcBaseClass* item) {
 }
 
 template <typename Predicate>
-bool all_guess_items_are(const std::vector<IfcUtil::IfcBaseClass*>& items, Predicate predicate) {
-    return std::all_of(items.begin(), items.end(), [&](auto* item) { return item != nullptr && predicate(item); });
+bool all_guess_items_are(const std::vector<express::Base>& items, Predicate predicate) {
+    return std::all_of(items.begin(), items.end(), [&](auto item) { return item && predicate(item); });
 }
 
-int read_dim_attr(IfcUtil::IfcBaseClass* item) {
+int read_dim_attr(express::Base item) {
     int idx = attr_index_of(item, "Dim");
     if (idx >= 0) {
         try {
-            auto value = item->get_attribute_value(static_cast<size_t>(idx));
+            auto value = item.get_attribute_value(static_cast<size_t>(idx));
             if (!value.isNull()) return static_cast<int>(value);
         } catch (...) {
         }
     }
     if (is_a(item, "IfcIndexedPolyCurve")) {
-        auto* points = read_ref(item, "Points");
+        auto points = read_ref(item, "Points");
         if (is_a(points, "IfcCartesianPointList2D")) return 2;
         if (is_a(points, "IfcCartesianPointList3D")) return 3;
     }
@@ -299,86 +301,86 @@ int read_dim_attr(IfcUtil::IfcBaseClass* item) {
     return 0;
 }
 
-std::string guess_representation_type(const std::vector<IfcUtil::IfcBaseClass*>& items) {
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcMappedItem"); })) return "MappedRepresentation";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcPoint") || is_a(item, "IfcCartesianPointList"); })) return "Point";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcCartesianPointList3D"); })) return "PointCloud";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcCurve") && read_dim_attr(item) == 2; })) return "Curve2D";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcCurve") && read_dim_attr(item) == 3; })) return "Curve3D";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcCurve"); })) return "Curve";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcSegment"); })) return "Segment";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcSurface") && read_dim_attr(item) == 2; })) return "Surface2D";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcSurface") && read_dim_attr(item) == 3; })) return "Surface3D";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcSurface"); })) return "Surface";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcSectionedSurface"); })) return "SectionedSurface";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcAnnotationFillArea"); })) return "FillArea";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcTextLiteral"); })) return "Text";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcBSplineSurface"); })) return "AdvancedSurface";
-    if (all_guess_items_are(items, [](auto* item) {
+std::string guess_representation_type(const std::vector<express::Base>& items) {
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcMappedItem"); })) return "MappedRepresentation";
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcPoint") || is_a(item, "IfcCartesianPointList"); })) return "Point";
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcCartesianPointList3D"); })) return "PointCloud";
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcCurve") && read_dim_attr(item) == 2; })) return "Curve2D";
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcCurve") && read_dim_attr(item) == 3; })) return "Curve3D";
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcCurve"); })) return "Curve";
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcSegment"); })) return "Segment";
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcSurface") && read_dim_attr(item) == 2; })) return "Surface2D";
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcSurface") && read_dim_attr(item) == 3; })) return "Surface3D";
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcSurface"); })) return "Surface";
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcSectionedSurface"); })) return "SectionedSurface";
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcAnnotationFillArea"); })) return "FillArea";
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcTextLiteral"); })) return "Text";
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcBSplineSurface"); })) return "AdvancedSurface";
+    if (all_guess_items_are(items, [](auto item) {
             return is_a(item, "IfcGeometricSet") || is_a(item, "IfcPoint") || is_a(item, "IfcCurve") ||
                 is_a(item, "IfcSurface");
         })) return "GeometricSet";
-    if (all_guess_items_are(items, [](auto* item) {
+    if (all_guess_items_are(items, [](auto item) {
             if (is_a(item, "IfcGeometricCurveSet") || is_a(item, "IfcPoint") || is_a(item, "IfcCurve")) return true;
             if (!is_a(item, "IfcGeometricSet")) return false;
-            return all_guess_items_are(read_ref_list(item, "Elements"), [](auto* element) { return is_a(element, "IfcSurface"); });
+            return all_guess_items_are(read_ref_list(item, "Elements"), [](auto element) { return is_a(element, "IfcSurface"); });
         })) return "GeometricCurveSet";
-    if (all_guess_items_are(items, [](auto* item) {
+    if (all_guess_items_are(items, [](auto item) {
             return is_a(item, "IfcPoint") || is_a(item, "IfcCurve") || is_a(item, "IfcGeometricCurveSet") ||
                 is_a(item, "IfcAnnotationFillArea") || is_a(item, "IfcTextLiteral");
         })) return "Annotation2D";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcTessellatedItem"); })) return "Tessellation";
-    if (all_guess_items_are(items, [](auto* item) {
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcTessellatedItem"); })) return "Tessellation";
+    if (all_guess_items_are(items, [](auto item) {
             return is_a(item, "IfcTessellatedItem") || is_a(item, "IfcShellBasedSurfaceModel") ||
                 is_a(item, "IfcFaceBasedSurfaceModel");
         })) return "SurfaceModel";
-    if (all_guess_items_are(items, [](auto* item) {
-            return item && (item->declaration().name() == "IfcExtrudedAreaSolid" || item->declaration().name() == "IfcRevolvedAreaSolid");
+    if (all_guess_items_are(items, [](auto item) {
+            return item && (item.declaration().name() == "IfcExtrudedAreaSolid" || item.declaration().name() == "IfcRevolvedAreaSolid");
         })) return "SweptSolid";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcSolidModel"); })) return "SolidModel";
-    if (all_guess_items_are(items, [](auto* item) {
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcSolidModel"); })) return "SolidModel";
+    if (all_guess_items_are(items, [](auto item) {
             return is_a(item, "IfcTessellatedItem") || is_a(item, "IfcShellBasedSurfaceModel") ||
                 is_a(item, "IfcFaceBasedSurfaceModel") || is_a(item, "IfcSolidModel");
         })) return "SurfaceOrSolidModel";
-    if (all_guess_items_are(items, [](auto* item) {
+    if (all_guess_items_are(items, [](auto item) {
             return is_a(item, "IfcSweptAreaSolid") || is_a(item, "IfcSweptDiskSolid") ||
                 is_a(item, "IfcSectionedSolidHorizontal");
         })) return "AdvancedSweptSolid";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcCsgSolid") || is_a(item, "IfcBooleanClippingResult"); })) return "Clipping";
-    if (all_guess_items_are(items, [](auto* item) {
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcCsgSolid") || is_a(item, "IfcBooleanClippingResult"); })) return "Clipping";
+    if (all_guess_items_are(items, [](auto item) {
             return is_a(item, "IfcBooleanResult") || is_a(item, "IfcCsgPrimitive3D") || is_a(item, "IfcCsgSolid");
         })) return "CSG";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcFacetedBrep"); })) return "Brep";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcManifoldSolidBrep"); })) return "AdvancedBrep";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcBoundingBox"); })) return "BoundingBox";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcSectionedSpine"); })) return "SectionedSpine";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcLightSource"); })) return "LightSource";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcVertex"); })) return "Vertex";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcEdge"); })) return "Edge";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcPath"); })) return "Path";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcFace"); })) return "Face";
-    if (all_guess_items_are(items, [](auto* item) { return is_a(item, "IfcOpenShell"); })) return "Shell";
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcFacetedBrep"); })) return "Brep";
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcManifoldSolidBrep"); })) return "AdvancedBrep";
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcBoundingBox"); })) return "BoundingBox";
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcSectionedSpine"); })) return "SectionedSpine";
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcLightSource"); })) return "LightSource";
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcVertex"); })) return "Vertex";
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcEdge"); })) return "Edge";
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcPath"); })) return "Path";
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcFace"); })) return "Face";
+    if (all_guess_items_are(items, [](auto item) { return is_a(item, "IfcOpenShell"); })) return "Shell";
     return "";
 }
 
-IfcUtil::IfcBaseClass* create_boolean_result(
-    IfcParse::IfcFile* file,
+express::Base create_boolean_result(
+    ifcopenshell::file* file,
     const std::string& operator_type,
-    IfcUtil::IfcBaseClass* first,
-    IfcUtil::IfcBaseClass* second)
+    express::Base first,
+    express::Base second)
 {
     const bool should_clip = operator_type == "DIFFERENCE" && is_a(second, "IfcHalfSpaceSolid") &&
         (is_a(first, "IfcSweptAreaSolid") || is_a(first, "IfcSweptDiskSolid") || is_a(first, "IfcBooleanClippingResult"));
-    auto* boolean = file->create(file->schema()->declaration_by_name(should_clip ? "IfcBooleanClippingResult" : "IfcBooleanResult"));
+    auto boolean = file->create(file->schema()->declaration_by_name(should_clip ? "IfcBooleanClippingResult" : "IfcBooleanResult"));
     ifcapi::detail::write_enum_attr(boolean, "Operator", operator_type);
     write_ref(boolean, "FirstOperand", first);
     write_ref(boolean, "SecondOperand", second);
     return boolean;
 }
 
-void geometry_remove_boolean_impl(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* item) {
+void geometry_remove_boolean_impl(ifcopenshell::file* file, express::Base item) {
     if (!is_a(item, "IfcBooleanResult")) {
-        for (auto* inverse : all_inverse_refs(file, item)) {
+        for (auto inverse : all_inverse_refs(file, item)) {
             if (is_a(inverse, "IfcBooleanResult")) {
                 geometry_remove_boolean_impl(file, inverse);
             }
@@ -386,10 +388,10 @@ void geometry_remove_boolean_impl(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass
         return;
     }
 
-    std::vector<IfcUtil::IfcBaseClass*> representations;
-    std::vector<IfcUtil::IfcBaseClass*> queue = all_inverse_refs(file, item);
+    std::vector<express::Base> representations;
+    std::vector<express::Base> queue = all_inverse_refs(file, item);
     while (!queue.empty()) {
-        auto* inverse = queue.back();
+        auto inverse = queue.back();
         queue.pop_back();
         if (is_a(inverse, "IfcShapeRepresentation")) {
             if (!ifcapi::detail::contains_ref(representations, inverse)) {
@@ -401,43 +403,43 @@ void geometry_remove_boolean_impl(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass
         }
     }
 
-    auto* first = read_ref(item, "FirstOperand");
-    auto* second = read_ref(item, "SecondOperand");
-    for (auto* inverse : all_inverse_refs(file, item)) {
+    auto first = read_ref(item, "FirstOperand");
+    auto second = read_ref(item, "SecondOperand");
+    for (auto inverse : all_inverse_refs(file, item)) {
         ifcapi::detail::replace_attribute_reference(inverse, item, first);
     }
 
-    for (auto* representation : representations) {
+    for (auto representation : representations) {
         auto items = read_ref_list(representation, "Items");
         items.push_back(second);
         write_ref_list(representation, "Items", items);
     }
 
-    file->removeEntity(item);
+    file->remove_entity(item);
 }
 
 // Construct standard geometry primitives reusable across representation
 // assignment / mapping operations.
 
-IfcUtil::IfcBaseClass* make_cartesian_point(IfcParse::IfcFile* file,
+express::Base make_cartesian_point(ifcopenshell::file* file,
                                             double x, double y, double z) {
-    auto* decl = file->schema()->declaration_by_name("IfcCartesianPoint");
-    auto* p = file->create(decl);
+    auto decl = file->schema()->declaration_by_name("IfcCartesianPoint");
+    auto p = file->create(decl);
     write_double_list(p, "Coordinates", {x, y, z});
     return p;
 }
 
-IfcUtil::IfcBaseClass* make_direction(IfcParse::IfcFile* file,
+express::Base make_direction(ifcopenshell::file* file,
                                       double x, double y, double z) {
-    auto* decl = file->schema()->declaration_by_name("IfcDirection");
-    auto* p = file->create(decl);
+    auto decl = file->schema()->declaration_by_name("IfcDirection");
+    auto p = file->create(decl);
     write_double_list(p, "DirectionRatios", {x, y, z});
     return p;
 }
 
-IfcUtil::IfcBaseClass* make_axis2_placement_3d(IfcParse::IfcFile* file) {
-    auto* decl = file->schema()->declaration_by_name("IfcAxis2Placement3D");
-    auto* p = file->create(decl);
+express::Base make_axis2_placement_3d(ifcopenshell::file* file) {
+    auto decl = file->schema()->declaration_by_name("IfcAxis2Placement3D");
+    auto p = file->create(decl);
     write_ref(p, "Location",     make_cartesian_point(file, 0.0, 0.0, 0.0));
     write_ref(p, "Axis",         make_direction(file, 0.0, 0.0, 1.0));
     write_ref(p, "RefDirection", make_direction(file, 1.0, 0.0, 0.0));
@@ -467,24 +469,24 @@ void normalize_in_place(std::vector<double>& value) {
     }
 }
 
-IfcUtil::IfcBaseClass* make_axis2_placement_3d(
-    IfcParse::IfcFile* file,
+express::Base make_axis2_placement_3d(
+    ifcopenshell::file* file,
     const std::vector<double>& location,
     const std::vector<double>& axis,
     const std::vector<double>& ref_direction)
 {
-    auto* placement = file->create(file->schema()->declaration_by_name("IfcAxis2Placement3D"));
+    auto placement = file->create(file->schema()->declaration_by_name("IfcAxis2Placement3D"));
     write_ref(placement, "Location", ifcapi::detail::create_cartesian_point(file, location));
     write_ref(placement, "Axis", make_direction(file, axis.at(0), axis.at(1), axis.at(2)));
     write_ref(placement, "RefDirection", make_direction(file, ref_direction.at(0), ref_direction.at(1), ref_direction.at(2)));
     return placement;
 }
 
-IfcUtil::IfcBaseClass* make_axis2_placement_3d_location_only(
-    IfcParse::IfcFile* file,
+express::Base make_axis2_placement_3d_location_only(
+    ifcopenshell::file* file,
     const std::vector<double>& location)
 {
-    auto* placement = file->create(file->schema()->declaration_by_name("IfcAxis2Placement3D"));
+    auto placement = file->create(file->schema()->declaration_by_name("IfcAxis2Placement3D"));
     write_ref(placement, "Location", ifcapi::detail::create_cartesian_point(file, location));
     return placement;
 }
@@ -499,55 +501,55 @@ std::vector<double> clipping_x_axis(const std::vector<double>& normal) {
     return result;
 }
 
-IfcUtil::IfcBaseClass* make_clipping_plane(
-    IfcParse::IfcFile* file,
+express::Base make_clipping_plane(
+    ifcopenshell::file* file,
     const std::vector<double>& location,
     const std::vector<double>& normal,
     double unit_scale)
 {
     auto scaled_location = location;
     for (auto& coordinate : scaled_location) coordinate /= unit_scale;
-    auto* plane = file->create(file->schema()->declaration_by_name("IfcPlane"));
+    auto plane = file->create(file->schema()->declaration_by_name("IfcPlane"));
     write_ref(plane, "Position", make_axis2_placement_3d(file, scaled_location, normal, clipping_x_axis(normal)));
     return plane;
 }
 
-IfcUtil::IfcBaseClass* make_clipping_result(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* first_operand,
+express::Base make_clipping_result(
+    ifcopenshell::file* file,
+    express::Base first_operand,
     const std::vector<double>& location,
     const std::vector<double>& normal,
     double unit_scale)
 {
-    auto* half_space = file->create(file->schema()->declaration_by_name("IfcHalfSpaceSolid"));
+    auto half_space = file->create(file->schema()->declaration_by_name("IfcHalfSpaceSolid"));
     write_ref(half_space, "BaseSurface", make_clipping_plane(file, location, normal, unit_scale));
     write_bool(half_space, "AgreementFlag", false);
 
-    auto* result = file->create(file->schema()->declaration_by_name("IfcBooleanClippingResult"));
+    auto result = file->create(file->schema()->declaration_by_name("IfcBooleanClippingResult"));
     write_string(result, "Operator", "DIFFERENCE");
     write_ref(result, "FirstOperand", first_operand);
     write_ref(result, "SecondOperand", half_space);
     return result;
 }
 
-IfcUtil::IfcBaseClass* copy_boolean_clipping(
-    IfcParse::IfcFile* file,
-    const IfcUtil::IfcBaseClass* clipping,
-    IfcUtil::IfcBaseClass* first_operand)
+express::Base copy_boolean_clipping(
+    ifcopenshell::file* file,
+    express::Base clipping,
+    express::Base first_operand)
 {
-    auto* copy = ifcapi::detail::copy_single(file, const_cast<IfcUtil::IfcBaseClass*>(clipping));
+    auto copy = ifcapi::detail::copy_single(file, clipping);
     if (!copy) throw std::runtime_error("Unable to copy clipping entity");
     write_ref(copy, "FirstOperand", first_operand);
     return copy;
 }
 
-IfcUtil::IfcBaseClass* apply_ordered_clippings(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* first_operand,
+express::Base apply_ordered_clippings(
+    ifcopenshell::file* file,
+    express::Base first_operand,
     const std::vector<int32_t>& clipping_kinds,
     const std::vector<std::vector<double>>& clipping_locations,
     const std::vector<std::vector<double>>& clipping_normals,
-    const std::vector<const IfcUtil::IfcBaseClass*>& clipping_entities,
+    const std::vector<express::Base>& clipping_entities,
     double unit_scale)
 {
     size_t plane_cursor = clipping_locations.size();
@@ -575,20 +577,20 @@ IfcUtil::IfcBaseClass* apply_ordered_clippings(
     return first_operand;
 }
 
-IfcUtil::IfcBaseClass* make_closed_profile(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* curve) {
-    auto* profile = file->create(file->schema()->declaration_by_name("IfcArbitraryClosedProfileDef"));
+express::Base make_closed_profile(ifcopenshell::file* file, express::Base curve) {
+    auto profile = file->create(file->schema()->declaration_by_name("IfcArbitraryClosedProfileDef"));
     write_string(profile, "ProfileType", "AREA");
     write_ref(profile, "OuterCurve", curve);
     return profile;
 }
 
-IfcUtil::IfcBaseClass* make_shape_representation(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* context,
+express::Base make_shape_representation(
+    ifcopenshell::file* file,
+    express::Base context,
     const std::string& representation_type,
-    IfcUtil::IfcBaseClass* item)
+    express::Base item)
 {
-    auto* representation = file->create(file->schema()->declaration_by_name("IfcShapeRepresentation"));
+    auto representation = file->create(file->schema()->declaration_by_name("IfcShapeRepresentation"));
     write_ref(representation, "ContextOfItems", context);
     ifcapi::detail::copy_string_attr_preserving_null(representation, "RepresentationIdentifier", context, "ContextIdentifier");
     write_string(representation, "RepresentationType", representation_type);
@@ -596,8 +598,8 @@ IfcUtil::IfcBaseClass* make_shape_representation(
     return representation;
 }
 
-IfcUtil::IfcBaseClass* make_axis2_placement_3d_optional(
-    IfcParse::IfcFile* file,
+express::Base make_axis2_placement_3d_optional(
+    ifcopenshell::file* file,
     const std::vector<double>& location)
 {
     return make_axis2_placement_3d(file, location, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0});
@@ -654,11 +656,11 @@ std::string dump_json_int_array(const std::vector<int>& values) {
     return out.str();
 }
 
-std::string read_property_single_value_string(IfcUtil::IfcBaseClass* property) {
-    auto* value = read_ref(property, "NominalValue");
+std::string read_property_single_value_string(express::Base property) {
+    auto value = read_ref(property, "NominalValue");
     if (!value) throw std::runtime_error("BBIM_Boolean Data property has no NominalValue");
     try {
-        auto wrapped = value->get_attribute_value(0);
+        auto wrapped = value.get_attribute_value(0);
         if (wrapped.isNull()) throw std::runtime_error("BBIM_Boolean Data property has null NominalValue");
         return static_cast<std::string>(wrapped);
     } catch (const std::exception&) {
@@ -668,8 +670,8 @@ std::string read_property_single_value_string(IfcUtil::IfcBaseClass* property) {
     }
 }
 
-std::string bbim_boolean_data(IfcUtil::IfcBaseClass* pset) {
-    for (auto* prop : read_ref_list(pset, "HasProperties")) {
+std::string bbim_boolean_data(express::Base pset) {
+    for (auto prop : read_ref_list(pset, "HasProperties")) {
         if (prop && is_a(prop, "IfcPropertySingleValue") && read_string(prop, "Name") == "Data") {
             return read_property_single_value_string(prop);
         }
@@ -677,22 +679,21 @@ std::string bbim_boolean_data(IfcUtil::IfcBaseClass* pset) {
     throw std::runtime_error("BBIM_Boolean pset has no Data property");
 }
 
-IfcUtil::IfcBaseClass* find_bbim_boolean_pset(IfcUtil::IfcBaseClass* element) {
-    auto psets = ifcapi::bindings::element_get_pset_ids(element, true, false, true);
-    if (!psets) return nullptr;
-    for (auto* pset : *psets) {
+express::Base find_bbim_boolean_pset(express::Base element) {
+    auto psets = ifcapi::bindings::element_get_pset_ids(&element, true, false, true);
+    for (auto pset : psets) {
         if (pset && is_a(pset, "IfcPropertySet") && read_string(pset, "Name") == "BBIM_Boolean") {
             return pset;
         }
     }
-    return nullptr;
+    return {};
 }
 
-double read_double(IfcUtil::IfcBaseClass* entity, const char* attr, double fallback = 0.0) {
+double read_double(express::Base entity, const char* attr, double fallback = 0.0) {
     int idx = attr_index_of(entity, attr);
     if (idx < 0) return fallback;
     try {
-        auto value = entity->get_attribute_value(static_cast<size_t>(idx));
+        auto value = entity.get_attribute_value(static_cast<size_t>(idx));
         if (value.isNull()) return fallback;
         return static_cast<double>(value);
     } catch (...) {
@@ -700,11 +701,11 @@ double read_double(IfcUtil::IfcBaseClass* entity, const char* attr, double fallb
     }
 }
 
-int read_int(IfcUtil::IfcBaseClass* entity, const char* attr, int fallback = 0) {
+int read_int(express::Base entity, const char* attr, int fallback = 0) {
     int idx = attr_index_of(entity, attr);
     if (idx < 0) return fallback;
     try {
-        auto value = entity->get_attribute_value(static_cast<size_t>(idx));
+        auto value = entity.get_attribute_value(static_cast<size_t>(idx));
         if (value.isNull()) return fallback;
         return static_cast<int>(value);
     } catch (...) {
@@ -749,11 +750,11 @@ struct WallVectors {
     double h = 1.0;
 };
 
-std::vector<PrioritisedLayer> get_wall_layers(IfcUtil::IfcBaseClass* wall) {
+std::vector<PrioritisedLayer> get_wall_layers(express::Base wall) {
     std::vector<PrioritisedLayer> result;
-    auto* material = ifcapi::bindings::element_get_material(wall, true, false);
+    auto material = ifcapi::bindings::element_get_material(&wall, true, false);
     if (!is_a(material, "IfcMaterialLayerSet")) return result;
-    for (auto* layer : read_ref_list(material, "MaterialLayers")) {
+    for (auto layer : read_ref_list(material, "MaterialLayers")) {
         result.push_back({read_int(layer, "Priority", 0), read_double(layer, "LayerThickness", 0.0)});
     }
     return result;
@@ -781,11 +782,11 @@ std::vector<PrioritisedLayer> combine_wall_layers(
     return result;
 }
 
-std::vector<int> read_int_vector_attr(IfcUtil::IfcBaseClass* entity, const char* attr) {
+std::vector<int> read_int_vector_attr(express::Base entity, const char* attr) {
     int idx = attr_index_of(entity, attr);
     if (idx < 0) return {};
     try {
-        auto value = entity->get_attribute_value(static_cast<size_t>(idx));
+        auto value = entity.get_attribute_value(static_cast<size_t>(idx));
         if (value.isNull()) return {};
         return static_cast<std::vector<int>>(value);
     } catch (...) {
@@ -794,14 +795,14 @@ std::vector<int> read_int_vector_attr(IfcUtil::IfcBaseClass* entity, const char*
 }
 
 std::vector<std::vector<double>> get_reference_line_with_fallback(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* wall,
+    ifcopenshell::file* file,
+    express::Base wall,
     double fallback_length)
 {
-    if (auto* axis = ifcapi::bindings::representation_get_product_representation(
-            wall, nullptr, "Plan", "Axis", "GRAPH_VIEW")) {
-        if (auto* resolved = ifcapi::bindings::representation_resolve(axis)) {
-            for (auto* item : read_ref_list(resolved, "Items")) {
+    if (auto axis = ifcapi::bindings::representation_get_product_representation(
+        &wall, nullptr, "Plan", "Axis", "GRAPH_VIEW")) {
+    if (auto resolved = ifcapi::bindings::representation_resolve(&axis)) {
+            for (auto item : read_ref_list(resolved, "Items")) {
                 std::vector<double> p0, p1;
                 if (ifcapi::detail::read_curve_axis_points(item, p0, p1)) {
                     if (p0[0] < p1[0]) return {{p0[0], p0[1]}, {p1[0], p1[1]}};
@@ -810,31 +811,30 @@ std::vector<std::vector<double>> get_reference_line_with_fallback(
             }
         }
     }
-    auto* definition = read_ref(wall, "Representation");
-    for (auto* representation : read_ref_list(definition, "Representations")) {
-        for (auto* item : read_ref_list(representation, "Items")) {
-            std::vector<IfcUtil::IfcBaseClass*> candidates = {item};
+    auto definition = read_ref(wall, "Representation");
+    for (auto representation : read_ref_list(definition, "Representations")) {
+        for (auto item : read_ref_list(representation, "Items")) {
+            std::vector<express::Base> candidates = {item};
             if (file && item) {
-                if (auto traversed = file->traverse(item, -1)) {
-                    candidates.assign(traversed->begin(), traversed->end());
-                }
+                auto traversed = file->traverse(item, -1);
+                candidates.assign(traversed.begin(), traversed.end());
             }
-            for (auto* candidate : candidates) {
+            for (auto candidate : candidates) {
                 if (!is_a(candidate, "IfcExtrudedAreaSolid")) continue;
-                auto* profile = read_ref(candidate, "SweptArea");
-                auto* curve = read_ref(profile, "OuterCurve");
+                auto profile = read_ref(candidate, "SweptArea");
+                auto curve = read_ref(profile, "OuterCurve");
                 std::vector<double> x_values;
                 if (is_a(curve, "IfcPolyline")) {
-                    for (auto* point : read_ref_list(curve, "Points")) {
+                    for (auto point : read_ref_list(curve, "Points")) {
                         auto coords = ifcapi::detail::read_double_aggregate(point, "Coordinates");
                         if (!coords.empty()) x_values.push_back(coords[0]);
                     }
                 } else if (is_a(curve, "IfcIndexedPolyCurve")) {
-                    auto* points = read_ref(curve, "Points");
+                    auto points = read_ref(curve, "Points");
                     int idx = attr_index_of(points, "CoordList");
                     if (idx >= 0) {
                         try {
-                            auto value = points->get_attribute_value(static_cast<size_t>(idx));
+                            auto value = points.get_attribute_value(static_cast<size_t>(idx));
                             if (!value.isNull()) {
                                 for (const auto& coords : static_cast<std::vector<std::vector<double>>>(value)) {
                                     if (!coords.empty()) x_values.push_back(coords[0]);
@@ -855,9 +855,9 @@ std::vector<std::vector<double>> get_reference_line_with_fallback(
 }
 
 struct WallRegenerator {
-    IfcParse::IfcFile* file = nullptr;
-    IfcUtil::IfcBaseClass* body = nullptr;
-    IfcUtil::IfcBaseClass* axis = nullptr;
+    ifcopenshell::file* file = {};
+    express::Base body = {};
+    express::Base axis = {};
     double unit_scale = 1.0;
     bool is_angled = false;
     double fallback_length = 1.0;
@@ -878,24 +878,24 @@ struct WallRegenerator {
     std::vector<double> end_vector = {0.0, 0.0, 1.0};
     double end_offset = 0.0;
 
-    explicit WallRegenerator(IfcParse::IfcFile* f) : file(f) {
+    explicit WallRegenerator(ifcopenshell::file* f) : file(f) {
         body = ifcapi::bindings::representation_get_context(file, "Model", "Body", "MODEL_VIEW");
         axis = ifcapi::bindings::representation_get_context(file, "Plan", "Axis", "GRAPH_VIEW");
         unit_scale = ifcapi::bindings::unit_calculate_unit_scale(file, "LENGTHUNIT");
         if (!axis) {
-            auto* plan = ifcapi::bindings::representation_get_context(file, "Plan", nullptr, nullptr);
+            auto plan = ifcapi::bindings::representation_get_context(file, "Plan", {}, {});
             if (!plan) {
                 plan = ifcapi::bindings::context_add_context(file, "Plan", nullptr, nullptr, false, 0.0, nullptr);
             }
-            axis = ifcapi::bindings::context_add_context(file, "Plan", "Axis", "GRAPH_VIEW", false, 0.0, plan);
+            axis = ifcapi::bindings::context_add_context(file, "Plan", "Axis", "GRAPH_VIEW", false, 0.0, &plan);
         }
     }
 
-    WallVectors get_wall_vectors(IfcUtil::IfcBaseClass* wall) {
-        if (auto* body_rep = ifcapi::bindings::representation_get_product_representation(
-                wall, nullptr, "Model", "Body", "MODEL_VIEW")) {
-            if (auto* resolved = ifcapi::bindings::representation_resolve(body_rep)) {
-                for (auto* item : read_ref_list(resolved, "Items")) {
+    WallVectors get_wall_vectors(express::Base wall) {
+        if (auto body_rep = ifcapi::bindings::representation_get_product_representation(
+                &wall, nullptr, "Model", "Body", "MODEL_VIEW")) {
+            if (auto resolved = ifcapi::bindings::representation_resolve(&body_rep)) {
+                for (auto item : read_ref_list(resolved, "Items")) {
                     while (is_a(item, "IfcBooleanResult")) {
                         item = read_ref(item, "FirstOperand");
                     }
@@ -929,14 +929,14 @@ struct WallRegenerator {
     }
 
     std::vector<std::vector<std::vector<double>>> get_axes(
-        IfcUtil::IfcBaseClass* wall,
+        express::Base wall,
         const std::vector<std::vector<double>>& reference,
         const std::vector<PrioritisedLayer>& layers,
         double angle)
     {
         std::vector<std::vector<std::vector<double>>> axes = {{reference[0], reference[1]}};
         int sense_factor = 1;
-        auto* usage = ifcapi::bindings::element_get_material(wall, false, false);
+        auto usage = ifcapi::bindings::element_get_material(&wall, false, false);
         if (is_a(usage, "IfcMaterialLayerSetUsage")) {
             const double offset = read_double(usage, "OffsetFromReferenceLine", 0.0);
             for (auto& point : axes[0]) point[1] += offset;
@@ -949,13 +949,13 @@ struct WallRegenerator {
         return axes;
     }
 
-    std::vector<IfcUtil::IfcBaseClass*> get_manual_booleans(IfcUtil::IfcBaseClass* element) {
+    std::vector<express::Base> get_manual_booleans(express::Base element) {
         try {
-            auto* pset = find_bbim_boolean_pset(element);
+            auto pset = find_bbim_boolean_pset(element);
             if (!pset) return {};
-            std::vector<IfcUtil::IfcBaseClass*> result;
+            std::vector<express::Base> result;
             for (int id : parse_json_int_array(bbim_boolean_data(pset))) {
-                if (auto* boolean = file->instance_by_id(static_cast<unsigned>(id))) result.push_back(boolean);
+                if (auto boolean = file->instance_by_id(static_cast<unsigned>(id))) result.push_back(boolean);
             }
             return result;
         } catch (...) {
@@ -964,8 +964,8 @@ struct WallRegenerator {
     }
 
     void join(
-        IfcUtil::IfcBaseClass* wall1,
-        IfcUtil::IfcBaseClass* wall2,
+        express::Base wall1,
+        express::Base wall2,
         std::vector<PrioritisedLayer> layers1,
         std::vector<PrioritisedLayer> layers2,
         const std::string& connection1,
@@ -979,8 +979,10 @@ struct WallRegenerator {
         auto wall_vectors2 = get_wall_vectors(wall2);
         auto axes1 = get_axes(wall1, reference1, layers1, wall_vectors.a);
         auto axes2 = get_axes(wall2, reference2, layers2, wall_vectors2.a);
-        auto matrix1i = ifcapi::detail::invert_rigid4(ifcapi::bindings::placement_get_local_placement(read_ref(wall1, "ObjectPlacement")));
-        auto matrix2 = ifcapi::bindings::placement_get_local_placement(read_ref(wall2, "ObjectPlacement"));
+        auto placement1 = read_ref(wall1, "ObjectPlacement");
+        auto placement2 = read_ref(wall2, "ObjectPlacement");
+        auto matrix1i = ifcapi::detail::invert_rigid4(ifcapi::bindings::placement_get_local_placement(&placement1));
+        auto matrix2 = ifcapi::bindings::placement_get_local_placement(&placement2);
         auto transform = ifcapi::detail::matmul4(matrix1i, matrix2);
 
         for (auto& axis_pair : axes2) {
@@ -1155,32 +1157,33 @@ struct WallRegenerator {
     double axes_miny = 0.0;
     double axes_maxy = 0.0;
 
-    IfcUtil::IfcBaseClass* polyline(const std::vector<std::vector<double>>& points, bool closed, bool has_offset) {
+    express::Base polyline(const std::vector<std::vector<double>>& points, bool closed, bool has_offset) {
         return ifcapi::bindings::shape_builder_polyline(
             file, points, closed, has_offset ? mul2(reference_p1, -1.0) : std::vector<double>{}, has_offset, {});
     }
 
-    IfcUtil::IfcBaseClass* profile_from_points(const std::vector<std::vector<double>>& points, bool has_offset) {
+    express::Base profile_from_points(const std::vector<std::vector<double>>& points, bool has_offset) {
+        auto outer_curve = polyline(points, true, has_offset);
         return ifcapi::bindings::shape_builder_profile(
             file,
-            polyline(points, true, has_offset),
+            &outer_curve,
             nullptr,
             {},
             "AREA");
     }
 
-    IfcUtil::IfcBaseClass* extrude(IfcUtil::IfcBaseClass* profile, double magnitude, const std::vector<double>& vector) {
+    express::Base extrude(express::Base profile, double magnitude, const std::vector<double>& vector) {
         return ifcapi::bindings::shape_builder_extrude(
-            file, profile, magnitude, {}, vector, vector, {1.0, 0.0, 0.0}, {}, false);
+            file, &profile, magnitude, {}, vector, vector, {1.0, 0.0, 0.0}, {}, false);
     }
 
-    IfcUtil::IfcBaseClass* regenerate(IfcUtil::IfcBaseClass* wall, double length, double height, bool has_angle, double angle) {
+    express::Base regenerate(express::Base wall, double length, double height, bool has_angle, double angle) {
         fallback_length = length / unit_scale;
         fallback_height = height / unit_scale;
         has_fallback_angle = has_angle;
         fallback_angle = angle;
         auto layers = get_wall_layers(wall);
-        if (layers.empty()) return nullptr;
+        if (layers.empty()) return {};
         auto reference = get_reference_line_with_fallback(file, wall, fallback_length);
         reference_p1 = reference[0];
         reference_p2 = reference[1];
@@ -1190,16 +1193,16 @@ struct WallRegenerator {
         axes_maxy = axes.back()[0][1];
 
         auto manual_booleans = get_manual_booleans(wall);
-        for (auto* rel : inverse_refs(wall, "ConnectedTo")) {
+        for (auto rel : inverse_refs(wall, "ConnectedTo")) {
             if (!is_a(rel, "IfcRelConnectsPathElements")) continue;
-            auto* wall2 = read_ref(rel, "RelatedElement");
+            auto wall2 = read_ref(rel, "RelatedElement");
             auto layers1 = combine_wall_layers(layers, read_int_vector_attr(rel, "RelatingPriorities"));
             auto layers2 = combine_wall_layers(get_wall_layers(wall2), read_int_vector_attr(rel, "RelatedPriorities"));
             if (!layers1.empty() && !layers2.empty()) join(wall, wall2, layers1, layers2, read_string(rel, "RelatingConnectionType"), read_string(rel, "RelatedConnectionType"));
         }
-        for (auto* rel : inverse_refs(wall, "ConnectedFrom")) {
+        for (auto rel : inverse_refs(wall, "ConnectedFrom")) {
             if (!is_a(rel, "IfcRelConnectsPathElements")) continue;
-            auto* wall2 = read_ref(rel, "RelatingElement");
+            auto wall2 = read_ref(rel, "RelatingElement");
             auto layers1 = combine_wall_layers(layers, read_int_vector_attr(rel, "RelatedPriorities"));
             auto layers2 = combine_wall_layers(get_wall_layers(wall2), read_int_vector_attr(rel, "RelatingPriorities"));
             if (!layers1.empty() && !layers2.empty()) join(wall, wall2, layers1, layers2, read_string(rel, "RelatedConnectionType"), read_string(rel, "RelatingConnectionType"));
@@ -1219,7 +1222,7 @@ struct WallRegenerator {
         if (end_points.front()[1] > end_points.back()[1]) std::reverse(end_points.begin(), end_points.end());
 
         const bool has_offset = manual_booleans.empty();
-        IfcUtil::IfcBaseClass* item = nullptr;
+        express::Base item = {};
         if (is_angled) {
             auto start = start_points;
             auto end = end_points;
@@ -1230,7 +1233,7 @@ struct WallRegenerator {
             points.insert(points.end(), end.begin(), end.end());
             item = extrude(polyline(points, true, has_offset), wall_vectors.d, wall_vectors.z);
 
-            std::vector<const IfcUtil::IfcBaseClass*> operands;
+            std::vector<express::Base> operands;
             add_angled_operand(operands, start_points, start_vector, start_offset, true, has_offset);
             add_angled_operand(operands, end_points, end_vector, end_offset, false, has_offset);
             for (const auto& atpath : atpath_points) {
@@ -1239,11 +1242,11 @@ struct WallRegenerator {
                 operands.push_back(extrude(polyline(atpath.second, true, has_offset), magnitude, atpath.first));
             }
             if (!operands.empty()) {
-                auto booleans = ifcapi::bindings::geometry_add_boolean(file, item, operands, "DIFFERENCE");
+                auto booleans = ifcapi::bindings::geometry_add_boolean(file, &item, operands, "DIFFERENCE");
                 if (!booleans.empty()) item = booleans.back();
             }
         } else {
-            std::vector<IfcUtil::IfcBaseClass*> profiles;
+            std::vector<express::Base> profiles;
             const double minx = std::max_element(start_points.begin(), start_points.end(), [](const auto& a, const auto& b) { return a[0] < b[0]; })->at(0);
             const double maxx = std::min_element(end_points.begin(), end_points.end(), [](const auto& a, const auto& b) { return a[0] < b[0]; })->at(0);
             std::vector<std::vector<std::vector<double>>> ordered_splits;
@@ -1286,7 +1289,7 @@ struct WallRegenerator {
             }
             for (const auto& points : maxpath_points) profiles.push_back(profile_from_points(points, has_offset));
             for (const auto& points : minpath_points) profiles.push_back(profile_from_points(points, has_offset));
-            IfcUtil::IfcBaseClass* profile = nullptr;
+            express::Base profile = {};
             if (profiles.size() > 1) {
                 profile = file->create(file->schema()->declaration_by_name("IfcCompositeProfileDef"));
                 write_string(profile, "ProfileType", "AREA");
@@ -1298,26 +1301,26 @@ struct WallRegenerator {
             item = extrude(profile, wall_vectors.d, wall_vectors.z);
         }
 
-        for (auto* boolean : get_manual_booleans(wall)) {
+        for (auto boolean : get_manual_booleans(wall)) {
             write_ref(boolean, "FirstOperand", item);
             item = boolean;
         }
 
-        auto* body_rep = ifcapi::bindings::shape_builder_representation(file, body, {item}, nullptr);
-        if (auto* old_rep = ifcapi::bindings::representation_get_product_representation(wall, body, nullptr, nullptr, nullptr)) {
-            ifcapi::bindings::element_replace_element(old_rep, body_rep);
-            ifcapi::bindings::entity_remove_deep2(old_rep);
+        auto body_rep = ifcapi::bindings::shape_builder_representation(file, &body, {item}, nullptr);
+        if (auto old_rep = ifcapi::bindings::representation_get_product_representation(&wall, &body, nullptr, nullptr, nullptr)) {
+            ifcapi::bindings::element_replace_element(&old_rep, &body_rep);
+            ifcapi::bindings::entity_remove_deep2(&old_rep);
         } else {
-            ifcapi::bindings::geometry_assign_representation(file, wall, body_rep);
+            ifcapi::bindings::geometry_assign_representation(file, &wall, &body_rep);
         }
 
-        auto* axis_curve = ifcapi::bindings::shape_builder_polyline(file, {reference_p1, reference_p2}, false, has_offset ? mul2(reference_p1, -1.0) : std::vector<double>{}, has_offset, {});
-        auto* axis_rep = ifcapi::bindings::shape_builder_representation(file, axis, {axis_curve}, nullptr);
-        if (auto* old_rep = ifcapi::bindings::representation_get_product_representation(wall, axis, nullptr, nullptr, nullptr)) {
-            ifcapi::bindings::element_replace_element(old_rep, axis_rep);
-            ifcapi::bindings::entity_remove_deep2(old_rep);
+        auto axis_curve = ifcapi::bindings::shape_builder_polyline(file, {reference_p1, reference_p2}, false, has_offset ? mul2(reference_p1, -1.0) : std::vector<double>{}, has_offset, {});
+        auto axis_rep = ifcapi::bindings::shape_builder_representation(file, &axis, {axis_curve}, nullptr);
+        if (auto old_rep = ifcapi::bindings::representation_get_product_representation(&wall, &axis, nullptr, nullptr, nullptr)) {
+            ifcapi::bindings::element_replace_element(&old_rep, &axis_rep);
+            ifcapi::bindings::entity_remove_deep2(&old_rep);
         } else {
-            ifcapi::bindings::geometry_assign_representation(file, wall, axis_rep);
+            ifcapi::bindings::geometry_assign_representation(file, &wall, &axis_rep);
         }
 
         if (!allclose(reference_p1, {0.0, 0.0}) && manual_booleans.empty()) {
@@ -1328,7 +1331,7 @@ struct WallRegenerator {
     }
 
     void add_angled_operand(
-        std::vector<const IfcUtil::IfcBaseClass*>& operands,
+        std::vector<express::Base>& operands,
         std::vector<std::vector<double>> points,
         const std::vector<double>& vector,
         double offset,
@@ -1350,61 +1353,62 @@ struct WallRegenerator {
         operands.push_back(extrude(polyline(points, true, has_offset), magnitude, vector));
     }
 
-    void restore_wall_placement(IfcUtil::IfcBaseClass* wall) {
+    void restore_wall_placement(express::Base wall) {
         struct ChildPlacement {
             std::vector<double> matrix;
-            std::vector<IfcUtil::IfcBaseClass*> elements;
+            std::vector<express::Base> elements;
         };
         std::vector<ChildPlacement> children;
-        auto* placement = read_ref(wall, "ObjectPlacement");
-        for (auto* referenced_placement : inverse_refs(placement, "ReferencedByPlacements")) {
+        auto placement = read_ref(wall, "ObjectPlacement");
+        for (auto referenced_placement : inverse_refs(placement, "ReferencedByPlacements")) {
             children.push_back({
-                ifcapi::bindings::placement_get_local_placement(referenced_placement),
+                ifcapi::bindings::placement_get_local_placement(&referenced_placement),
                 inverse_refs(referenced_placement, "PlacesObject"),
             });
         }
-        auto matrix = ifcapi::bindings::placement_get_local_placement(placement);
+        auto matrix = ifcapi::bindings::placement_get_local_placement(&placement);
         const double x = reference_p1[0];
         const double y = reference_p1[1];
         matrix[3] = matrix[0] * x + matrix[1] * y + matrix[3];
         matrix[7] = matrix[4] * x + matrix[5] * y + matrix[7];
         matrix[11] = matrix[8] * x + matrix[9] * y + matrix[11];
-        ifcapi::bindings::geometry_edit_object_placement(file, wall, matrix, false, true);
+        ifcapi::bindings::geometry_edit_object_placement(file, &wall, matrix, false, true);
         for (const auto& child : children) {
-            for (auto* element : child.elements) {
-                ifcapi::bindings::geometry_edit_object_placement(file, element, child.matrix, false, true);
+            for (auto element : child.elements) {
+                ifcapi::bindings::geometry_edit_object_placement(file, &element, child.matrix, false, true);
             }
         }
     }
 };
 
 void register_bbim_boolean(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* element,
-    IfcUtil::IfcBaseClass* result,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    ifcopenshell::file* file,
+    express::Base element,
+    express::Base result,
+    express::Base owner_history,
+    express::Base user,
+    express::Base application)
 {
     if (!element) return;
-    auto* pset = find_bbim_boolean_pset(element);
+    auto pset = find_bbim_boolean_pset(element);
     std::vector<int> ids;
     if (pset) {
         ids = parse_json_int_array(bbim_boolean_data(pset));
     } else {
-        pset = ifcapi::bindings::pset_add_pset(file, element, "BBIM_Boolean", owner_history, user, application, nullptr);
+        pset = ifcapi::bindings::pset_add_pset(
+            file, &element, "BBIM_Boolean", entity_ptr(owner_history), entity_ptr(user), entity_ptr(application), nullptr);
         if (!pset) throw std::runtime_error("Unable to create BBIM_Boolean pset");
     }
-    int result_id = static_cast<int>(result->id());
+    int result_id = static_cast<int>(result.id());
     if (std::find(ids.begin(), ids.end(), result_id) == ids.end()) {
         ids.push_back(result_id);
     }
 
-    auto* props = ifcapi::bindings::pset_props_new();
+    auto props = ifcapi::bindings::pset_props_new();
     if (!props) throw std::runtime_error("Unable to create pset property container");
     try {
         ifcapi::bindings::pset_props_set_string(props, "Data", dump_json_int_array(ids));
-        if (!ifcapi::bindings::pset_edit_pset(file, pset, nullptr, props, nullptr, true)) {
+        if (!ifcapi::bindings::pset_edit_pset(file, &pset, nullptr, props, nullptr, true)) {
             throw std::runtime_error("pset_edit_pset failed");
         }
         ifcapi::bindings::pset_props_free(props);
@@ -1414,9 +1418,9 @@ void register_bbim_boolean(
     }
 }
 
-IfcUtil::IfcBaseClass* make_cartesian_transformation_op_3d(IfcParse::IfcFile* file) {
-    auto* decl = file->schema()->declaration_by_name("IfcCartesianTransformationOperator3D");
-    auto* p = file->create(decl);
+express::Base make_cartesian_transformation_op_3d(ifcopenshell::file* file) {
+    auto decl = file->schema()->declaration_by_name("IfcCartesianTransformationOperator3D");
+    auto p = file->create(decl);
     write_ref(p, "Axis1",       make_direction(file, 1.0, 0.0, 0.0));
     write_ref(p, "Axis2",       make_direction(file, 0.0, 1.0, 0.0));
     write_ref(p, "LocalOrigin", make_cartesian_point(file, 0.0, 0.0, 0.0));
@@ -1425,143 +1429,138 @@ IfcUtil::IfcBaseClass* make_cartesian_transformation_op_3d(IfcParse::IfcFile* fi
     return p;
 }
 
-IfcUtil::IfcBaseClass* make_representation_map(IfcParse::IfcFile* file,
-                                               IfcUtil::IfcBaseClass* mapped_rep) {
-    auto* decl = file->schema()->declaration_by_name("IfcRepresentationMap");
-    auto* p = file->create(decl);
+express::Base make_representation_map(ifcopenshell::file* file,
+                                               express::Base mapped_rep) {
+    auto decl = file->schema()->declaration_by_name("IfcRepresentationMap");
+    auto p = file->create(decl);
     write_ref(p, "MappingOrigin",       make_axis2_placement_3d(file));
     write_ref(p, "MappedRepresentation", mapped_rep);
     return p;
 }
 
-IfcUtil::IfcBaseClass* make_mapped_item(IfcParse::IfcFile* file,
-                                        IfcUtil::IfcBaseClass* source,
-                                        IfcUtil::IfcBaseClass* target) {
-    auto* decl = file->schema()->declaration_by_name("IfcMappedItem");
-    auto* p = file->create(decl);
+express::Base make_mapped_item(ifcopenshell::file* file,
+                                        express::Base source,
+                                        express::Base target) {
+    auto decl = file->schema()->declaration_by_name("IfcMappedItem");
+    auto p = file->create(decl);
     write_ref(p, "MappingSource", source);
     write_ref(p, "MappingTarget", target);
     return p;
 }
 
-IfcUtil::IfcBaseClass* find_existing_representation_map(IfcParse::IfcFile* file,
-                                                       IfcUtil::IfcBaseClass* representation) {
-    auto inverses = file->getInverse(representation->id(), nullptr, -1);
-    if (!inverses) return nullptr;
-    for (auto& inv : *inverses) {
+express::Base find_existing_representation_map(ifcopenshell::file* file,
+                                                       express::Base representation) {
+    auto inverses = file->instances_by_reference(static_cast<int>(representation.id()));
+    for (auto inv : inverses) {
         if (is_a(inv, "IfcRepresentationMap")) return inv;
     }
-    return nullptr;
+    return {};
 }
 
 // ---- copy_deep ----------------------------------------------------------
 
-bool excluded(IfcUtil::IfcBaseClass* e, const std::vector<std::string>& exclude) {
+bool excluded(express::Base e, const std::vector<std::string>& exclude) {
     if (!e) return false;
     for (const auto& name : exclude) {
-        if (e->declaration().is(name)) return true;
+        if (e.declaration().is(name)) return true;
     }
     return false;
 }
 
-IfcUtil::IfcBaseClass* deep_copy_entity(IfcParse::IfcFile* file,
-                                       IfcUtil::IfcBaseClass* element,
+express::Base deep_copy_entity(ifcopenshell::file* file,
+                                       express::Base element,
                                        const std::vector<std::string>& exclude,
-                                       std::unordered_map<unsigned, IfcUtil::IfcBaseClass*>& memo) {
-    if (!element) return nullptr;
-    auto id = element->id();
+                                       std::unordered_map<unsigned, express::Base>& memo) {
+    if (!element) return {};
+    auto id = element.id();
     if (id) {
         auto it = memo.find(id);
         if (it != memo.end()) return it->second;
     }
 
-    auto* be = as_entity(element);
+    auto be = as_entity(element);
     if (!be) return element; // simple types: return as-is
 
-    const auto* decl = be->declaration().as_entity();
+    const auto decl = be.declaration().as_entity();
     if (!decl) return element;
 
-    auto* dst = file->create(decl);
+    auto dst = file->create(decl);
     if (id) memo[id] = dst;
 
     auto attrs = decl->all_attributes();
     for (size_t i = 0; i < attrs.size(); ++i) {
         try {
-            auto v = element->get_attribute_value(i);
+            auto v = element.get_attribute_value(i);
             if (v.isNull()) continue;
             auto t = v.type();
 
             // Replace GlobalIds with fresh GUIDs.
             if (attrs[i]->name() == "GlobalId") {
-                dst->set_attribute_value(i, ifcapi::guid_new());
+                dst.set_attribute_value(i, ifcapi::guid_new());
                 continue;
             }
 
             switch (t) {
-                case IfcUtil::Argument_INT:
-                    dst->set_attribute_value(i, (int)v); break;
-                case IfcUtil::Argument_BOOL:
-                    dst->set_attribute_value(i, (bool)v); break;
-                case IfcUtil::Argument_LOGICAL:
-                    dst->set_attribute_value(i, (boost::logic::tribool)v); break;
-                case IfcUtil::Argument_DOUBLE:
-                    dst->set_attribute_value(i, (double)v); break;
-                case IfcUtil::Argument_STRING:
-                    dst->set_attribute_value(i, (std::string)v); break;
-                case IfcUtil::Argument_BINARY:
-                    dst->set_attribute_value(i, (boost::dynamic_bitset<>)v); break;
-                case IfcUtil::Argument_ENUMERATION:
-                    dst->set_attribute_value(i, (std::string)v); break;
-                case IfcUtil::Argument_ENTITY_INSTANCE: {
-                    auto* ref = (IfcUtil::IfcBaseClass*)v;
+                case ifcopenshell::Argument_INT:
+                    dst.set_attribute_value(i, (int)v); break;
+                case ifcopenshell::Argument_BOOL:
+                    dst.set_attribute_value(i, (bool)v); break;
+                case ifcopenshell::Argument_LOGICAL:
+                    dst.set_attribute_value(i, (boost::logic::tribool)v); break;
+                case ifcopenshell::Argument_DOUBLE:
+                    dst.set_attribute_value(i, (double)v); break;
+                case ifcopenshell::Argument_STRING:
+                    dst.set_attribute_value(i, (std::string)v); break;
+                case ifcopenshell::Argument_BINARY:
+                    dst.set_attribute_value(i, (boost::dynamic_bitset<>)v); break;
+                case ifcopenshell::Argument_ENUMERATION:
+                    dst.set_attribute_value(i, (std::string)v); break;
+                case ifcopenshell::Argument_ENTITY_INSTANCE: {
+                    auto ref = (express::Base)v;
                     if (excluded(ref, exclude)) {
-                        dst->set_attribute_value(i, ref);
+                        dst.set_attribute_value(i, ref);
                     } else {
-                        dst->set_attribute_value(i, deep_copy_entity(file, ref, exclude, memo));
+                        dst.set_attribute_value(i, deep_copy_entity(file, ref, exclude, memo));
                     }
                     break;
                 }
-                case IfcUtil::Argument_AGGREGATE_OF_INT:
-                    dst->set_attribute_value(i, (std::vector<int>)v); break;
-                case IfcUtil::Argument_AGGREGATE_OF_DOUBLE:
-                    dst->set_attribute_value(i, (std::vector<double>)v); break;
-                case IfcUtil::Argument_AGGREGATE_OF_STRING:
-                    dst->set_attribute_value(i, (std::vector<std::string>)v); break;
-                case IfcUtil::Argument_AGGREGATE_OF_BINARY:
-                    dst->set_attribute_value(i, (std::vector<boost::dynamic_bitset<>>)v); break;
-                case IfcUtil::Argument_AGGREGATE_OF_ENTITY_INSTANCE: {
-                    auto agg = (aggregate_of_instance::ptr)v;
-                    auto out = aggregate_of_instance::ptr(new aggregate_of_instance());
-                    if (agg) {
-                        for (auto& item : *agg) {
-                            if (excluded(item, exclude)) {
-                                out->push(item);
-                            } else {
-                                out->push(deep_copy_entity(file, item, exclude, memo));
-                            }
+                case ifcopenshell::Argument_AGGREGATE_OF_INT:
+                    dst.set_attribute_value(i, (std::vector<int>)v); break;
+                case ifcopenshell::Argument_AGGREGATE_OF_DOUBLE:
+                    dst.set_attribute_value(i, (std::vector<double>)v); break;
+                case ifcopenshell::Argument_AGGREGATE_OF_STRING:
+                    dst.set_attribute_value(i, (std::vector<std::string>)v); break;
+                case ifcopenshell::Argument_AGGREGATE_OF_BINARY:
+                    dst.set_attribute_value(i, (std::vector<boost::dynamic_bitset<>>)v); break;
+                case ifcopenshell::Argument_AGGREGATE_OF_ENTITY_INSTANCE: {
+                    auto agg = (std::vector<express::Base>)v;
+                    std::vector<express::Base> out;
+                    for (auto item : agg) {
+                        if (excluded(item, exclude)) {
+                            out.push_back(item);
+                        } else {
+                            out.push_back(deep_copy_entity(file, item, exclude, memo));
                         }
                     }
-                    dst->set_attribute_value(i, out);
+                    dst.set_attribute_value(i, out);
                     break;
                 }
-                case IfcUtil::Argument_AGGREGATE_OF_AGGREGATE_OF_INT:
-                    dst->set_attribute_value(i, (std::vector<std::vector<int>>)v); break;
-                case IfcUtil::Argument_AGGREGATE_OF_AGGREGATE_OF_DOUBLE:
-                    dst->set_attribute_value(i, (std::vector<std::vector<double>>)v); break;
-                case IfcUtil::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE: {
-                    auto agg = (aggregate_of_aggregate_of_instance::ptr)v;
-                    auto out = aggregate_of_aggregate_of_instance::ptr(new aggregate_of_aggregate_of_instance());
-                    if (agg) {
-                        for (auto outer_it = agg->begin(); outer_it != agg->end(); ++outer_it) {
-                            std::vector<IfcUtil::IfcBaseClass*> inner;
-                            for (auto* item : *outer_it) {
-                                if (excluded(item, exclude)) inner.push_back(item);
-                                else inner.push_back(deep_copy_entity(file, item, exclude, memo));
-                            }
-                            out->push(inner);
+                case ifcopenshell::Argument_AGGREGATE_OF_AGGREGATE_OF_INT:
+                    dst.set_attribute_value(i, (std::vector<std::vector<int>>)v); break;
+                case ifcopenshell::Argument_AGGREGATE_OF_AGGREGATE_OF_DOUBLE:
+                    dst.set_attribute_value(i, (std::vector<std::vector<double>>)v); break;
+                case ifcopenshell::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE: {
+                    auto agg = (std::vector<std::vector<express::Base>>)v;
+                    std::vector<std::vector<express::Base>> out;
+                    for (const auto& outer : agg) {
+                        std::vector<express::Base> inner;
+                        for (auto item : outer) {
+                            if (excluded(item, exclude)) inner.push_back(item);
+                            else inner.push_back(deep_copy_entity(file, item, exclude, memo));
                         }
+                        out.push_back(inner);
                     }
-                    dst->set_attribute_value(i, out);
+                    dst.set_attribute_value(i, out);
                     break;
                 }
                 default:
@@ -1576,26 +1575,26 @@ IfcUtil::IfcBaseClass* deep_copy_entity(IfcParse::IfcFile* file,
 
 // ---- get_representation_for_product ------------------------------------
 
-IfcUtil::IfcBaseClass* get_representation_for_product(IfcUtil::IfcBaseClass* product,
+express::Base get_representation_for_product(express::Base product,
                                                      const std::string& context_identifier) {
-    if (!product) return nullptr;
+    if (!product) return {};
     if (is_a(product, "IfcProduct")) {
-        auto* def = read_ref(product, "Representation");
-        if (!def) return nullptr;
-        for (auto* rep : read_ref_list(def, "Representations")) {
+        auto def = read_ref(product, "Representation");
+        if (!def) return {};
+        for (auto rep : read_ref_list(def, "Representations")) {
             if (read_string(rep, "RepresentationIdentifier") == context_identifier) {
                 return rep;
             }
         }
     } else if (is_a(product, "IfcTypeProduct")) {
-        for (auto* m : read_ref_list(product, "RepresentationMaps")) {
-            auto* mapped = read_ref(m, "MappedRepresentation");
+        for (auto m : read_ref_list(product, "RepresentationMaps")) {
+            auto mapped = read_ref(m, "MappedRepresentation");
             if (mapped && read_string(mapped, "RepresentationIdentifier") == context_identifier) {
                 return mapped;
             }
         }
     }
-    return nullptr;
+    return {};
 }
 
 // ---- representation removal --------------------------------------------
@@ -1604,27 +1603,27 @@ IfcUtil::IfcBaseClass* get_representation_for_product(IfcUtil::IfcBaseClass* pro
 // Walks the representation graph, and for each visited entity that has no
 // remaining inverses (after the rep is removed) deletes it.  Excludes
 // IfcGeometricRepresentationContext from deletion.
-void remove_representation_simple(IfcParse::IfcFile* file,
-                                  IfcUtil::IfcBaseClass* representation) {
+void remove_representation_simple(ifcopenshell::file* file,
+                                  express::Base representation) {
     if (!representation) return;
     auto subs = file->traverse(representation, -1);
-    if (!subs) {
-        file->removeEntity(representation);
+    if (subs.empty()) {
+        file->remove_entity(representation);
         return;
     }
 
     // Collect every entity to potentially delete, excluding contexts.
-    std::vector<IfcUtil::IfcBaseClass*> candidates;
-    candidates.reserve(subs->size());
-    for (auto& s : *subs) {
+    std::vector<express::Base> candidates;
+    candidates.reserve(subs.size());
+    for (auto s : subs) {
         if (!s) continue;
         if (is_a(s, "IfcGeometricRepresentationContext")) continue;
         candidates.push_back(s);
     }
 
     std::set<unsigned> deletable;
-    for (auto* c : candidates) {
-        if (c->id() != 0) deletable.insert(c->id());
+    for (auto c : candidates) {
+        if (c.id() != 0) deletable.insert(c.id());
     }
 
     // Only delete a node if every inverse is also deleted. If a candidate is
@@ -1633,14 +1632,13 @@ void remove_representation_simple(IfcParse::IfcFile* file,
     bool changed = true;
     while (changed) {
         changed = false;
-        for (auto* e : candidates) {
-            unsigned id = e->id();
+        for (auto e : candidates) {
+            unsigned id = e.id();
             if (id == 0 || deletable.find(id) == deletable.end()) continue;
-            auto invs = file->getInverse(id, nullptr, -1);
-            if (!invs) continue;
-            for (auto& inv : *invs) {
+            auto invs = file->instances_by_reference(static_cast<int>(id));
+            for (auto inv : invs) {
                 if (!inv) continue;
-                if (deletable.find(inv->id()) == deletable.end()) {
+                if (deletable.find(inv.id()) == deletable.end()) {
                     deletable.erase(id);
                     changed = true;
                     break;
@@ -1649,36 +1647,36 @@ void remove_representation_simple(IfcParse::IfcFile* file,
         }
     }
 
-    for (auto* e : candidates) {
-        unsigned id = e->id();
+    for (auto e : candidates) {
+        unsigned id = e.id();
         if (id == 0 || deletable.find(id) == deletable.end()) continue;
-        if (file->instance_by_id(id)) file->removeEntity(e);
+        if (file->instance_by_id(id)) file->remove_entity(e);
     }
 }
 
-void unassign_product_representation(IfcParse::IfcFile* file,
-                                     IfcUtil::IfcBaseClass* product,
-                                     IfcUtil::IfcBaseClass* representation) {
-    auto* def = read_ref(product, "Representation");
+void unassign_product_representation(ifcopenshell::file* file,
+                                     express::Base product,
+                                     express::Base representation) {
+    auto def = read_ref(product, "Representation");
     if (!def) return;
     auto reps = read_ref_list(def, "Representations");
     auto found = std::find(reps.begin(), reps.end(), representation);
     if (found == reps.end()) return;
     reps.erase(found);
     if (reps.empty()) {
-        if (auto* be = as_entity(def)) {
+        if (auto be = as_entity(def)) {
             try {
-                auto aspects = be->get_inverse("HasShapeAspects");
-                std::vector<IfcUtil::IfcBaseClass*> shape_aspects;
-                if (aspects) {
-                    for (auto& aspect : *aspects) {
-                        if (aspect) shape_aspects.push_back(aspect);
+                auto aspects = be.get_inverse("HasShapeAspects");
+                std::vector<express::Base> shape_aspects;
+                for (auto aspect : aspects) {
+                    if (aspect) {
+                        shape_aspects.push_back(aspect);
                     }
                 }
-                for (auto* aspect : shape_aspects) {
+                for (auto aspect : shape_aspects) {
                     auto shape_reps = read_ref_list(aspect, "ShapeRepresentations");
-                    file->removeEntity(aspect);
-                    for (auto* shape_rep : shape_reps) {
+                    file->remove_entity(aspect);
+                    for (auto shape_rep : shape_reps) {
                         remove_representation_simple(file, shape_rep);
                     }
                 }
@@ -1686,8 +1684,8 @@ void unassign_product_representation(IfcParse::IfcFile* file,
                 throw std::runtime_error(std::string("Failed to process shape aspects: ") + e.what());
             }
         }
-        write_ref(product, "Representation", nullptr);
-        file->removeEntity(def);
+        write_ref(product, "Representation", {});
+        file->remove_entity(def);
     } else {
         write_ref_list(def, "Representations", reps);
     }
@@ -1695,17 +1693,17 @@ void unassign_product_representation(IfcParse::IfcFile* file,
 
 // ---- map_representation -------------------------------------------------
 
-IfcUtil::IfcBaseClass* map_representation_impl(IfcParse::IfcFile* file,
-                                               IfcUtil::IfcBaseClass* representation) {
-    auto* mapping_source = find_existing_representation_map(file, representation);
+express::Base map_representation_impl(ifcopenshell::file* file,
+                                               express::Base representation) {
+    auto mapping_source = find_existing_representation_map(file, representation);
     if (!mapping_source) {
         mapping_source = make_representation_map(file, representation);
     }
-    auto* mapping_target = make_cartesian_transformation_op_3d(file);
-    auto* mapped_item = make_mapped_item(file, mapping_source, mapping_target);
+    auto mapping_target = make_cartesian_transformation_op_3d(file);
+    auto mapped_item = make_mapped_item(file, mapping_source, mapping_target);
 
-    auto* sr_decl = file->schema()->declaration_by_name("IfcShapeRepresentation");
-    auto* sr = file->create(sr_decl);
+    auto sr_decl = file->schema()->declaration_by_name("IfcShapeRepresentation");
+    auto sr = file->create(sr_decl);
     write_ref(sr, "ContextOfItems", read_ref(representation, "ContextOfItems"));
     auto rid = read_string(representation, "RepresentationIdentifier");
     if (!rid.empty()) write_string(sr, "RepresentationIdentifier", rid);
@@ -1717,53 +1715,50 @@ IfcUtil::IfcBaseClass* map_representation_impl(IfcParse::IfcFile* file,
 // ---- assign_representation ---------------------------------------------
 
 // Get the type of a product (IFC4: IsTypedBy, IFC2X3: IsDefinedBy).
-IfcUtil::IfcBaseClass* get_product_type(IfcParse::IfcFile* file,
-                                        IfcUtil::IfcBaseClass* product) {
-    auto* be = as_entity(product);
-    if (!be) return nullptr;
+express::Base get_product_type(ifcopenshell::file* file,
+                                        express::Base product) {
+    auto be = as_entity(product);
+    if (!be) return {};
     try {
-        auto invs = be->get_inverse("IsTypedBy");
-        if (invs && invs->size() > 0) {
-            auto* rel = (*invs)[0];
+        auto invs = be.get_inverse("IsTypedBy");
+        if (!invs.empty()) {
+            auto rel = invs[0];
             return read_ref(rel, "RelatingType");
         }
     } catch (...) {}
     try {
-        auto invs = be->get_inverse("IsDefinedBy");
-        if (invs) {
-            const auto* rdt = file->schema()->declaration_by_name("IfcRelDefinesByType");
-            for (size_t i = 0; i < invs->size(); ++i) {
-                if ((*invs)[i]->declaration().is(*rdt)) {
-                    return read_ref((*invs)[i], "RelatingType");
-                }
+        auto invs = be.get_inverse("IsDefinedBy");
+        const auto rdt = file->schema()->declaration_by_name("IfcRelDefinesByType");
+        for (auto inv : invs) {
+            if (inv.declaration().is(*rdt)) {
+                return read_ref(inv, "RelatingType");
             }
         }
     } catch (...) {}
-    return nullptr;
+    return {};
 }
 
 // Get the material association of an element (IfcRelAssociatesMaterial.RelatingMaterial).
-IfcUtil::IfcBaseClass* get_material_simple(IfcUtil::IfcBaseClass* element) {
-    auto* be = as_entity(element);
-    if (!be) return nullptr;
+express::Base get_material_simple(express::Base element) {
+    auto be = as_entity(element);
+    if (!be) return {};
     try {
-        auto invs = be->get_inverse("HasAssociations");
-        if (!invs) return nullptr;
-        for (auto& inv : *invs) {
+        auto invs = be.get_inverse("HasAssociations");
+        for (auto inv : invs) {
             if (is_a(inv, "IfcRelAssociatesMaterial")) {
                 return read_ref(inv, "RelatingMaterial");
             }
         }
     } catch (...) {}
-    return nullptr;
+    return {};
 }
 
-void assign_product_representation(IfcParse::IfcFile* file,
-                                   IfcUtil::IfcBaseClass* product,
-                                   IfcUtil::IfcBaseClass* representation) {
-    auto* def = read_ref(product, "Representation");
+void assign_product_representation(ifcopenshell::file* file,
+                                   express::Base product,
+                                   express::Base representation) {
+    auto def = read_ref(product, "Representation");
     if (!def) {
-        auto* pds_decl = file->schema()->declaration_by_name("IfcProductDefinitionShape");
+        auto pds_decl = file->schema()->declaration_by_name("IfcProductDefinitionShape");
         def = file->create(pds_decl);
         write_ref(product, "Representation", def);
     }
@@ -1772,17 +1767,17 @@ void assign_product_representation(IfcParse::IfcFile* file,
     write_ref_list(def, "Representations", reps);
 }
 
-void assign_representation_impl(IfcParse::IfcFile* file,
-                                IfcUtil::IfcBaseClass*& product /*may be re-routed*/,
-                                IfcUtil::IfcBaseClass* representation) {
+void assign_representation_impl(ifcopenshell::file* file,
+                                express::Base& product /*may be re-routed*/,
+                                express::Base representation) {
     if (is_a(product, "IfcProduct")) {
-        auto* product_type = get_product_type(file, product);
+        auto product_type = get_product_type(file, product);
         if (product_type) {
             auto maps = read_ref_list(product_type, "RepresentationMaps");
             std::string rep_type = read_string(representation, "RepresentationType");
             if (!maps.empty() && rep_type != "MappedRepresentation") {
                 // Skip re-routing for profile/layer-based types.
-                auto* mat = get_material_simple(product_type);
+                auto mat = get_material_simple(product_type);
                 bool is_profile_or_layer =
                     mat && (is_a(mat, "IfcMaterialProfileSet") ||
                             is_a(mat, "IfcMaterialLayerSet"));
@@ -1801,23 +1796,23 @@ void assign_representation_impl(IfcParse::IfcFile* file,
         write_ref_list(product, "RepresentationMaps", maps);
 
         // Resolve related occurrences for the type and assign mapped reps.
-        auto* be = as_entity(product);
+        auto be = as_entity(product);
         if (be) {
-            std::vector<IfcUtil::IfcBaseClass*> related_objects;
+            std::vector<express::Base> related_objects;
             // IFC4+: Types ; IFC2X3: ObjectTypeOf
             for (const char* inv_name : {"Types", "ObjectTypeOf"}) {
                 try {
-                    auto invs = be->get_inverse(inv_name);
-                    if (invs && invs->size() > 0) {
-                        for (auto* obj : read_ref_list((*invs)[0], "RelatedObjects")) {
+                    auto invs = be.get_inverse(inv_name);
+                    if (!invs.empty()) {
+                        for (auto obj : read_ref_list(invs[0], "RelatedObjects")) {
                             related_objects.push_back(obj);
                         }
                         break;
                     }
                 } catch (...) {}
             }
-            for (auto* element : related_objects) {
-                auto* mapped = map_representation_impl(file, representation);
+            for (auto element : related_objects) {
+                auto mapped = map_representation_impl(file, representation);
                 assign_product_representation(file, element, mapped);
             }
         }
@@ -1830,38 +1825,38 @@ void assign_representation_impl(IfcParse::IfcFile* file,
 namespace ifcapi {
 namespace bindings {
 
-std::vector<IfcUtil::IfcBaseClass*> geometry_add_boolean(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* first_item,
-    const std::vector<const IfcUtil::IfcBaseClass*>& second_items,
+std::vector<express::Base> geometry_add_boolean(
+    ifcopenshell::file* file,
+    express::Base first_item,
+    const std::vector<express::Base>& second_items,
     const std::string& operator_type)
 {
     ifcopenshell_clear_error();
-    std::vector<IfcUtil::IfcBaseClass*> booleans;
+    std::vector<express::Base> booleans;
     if (!file || !is_boolean_operand(first_item)) {
         return booleans;
     }
 
     try {
-        auto* original_first_item = first_item;
+        auto original_first_item = first_item;
         auto filtered_second_items = ifcapi::detail::to_mutable_refs(second_items);
         filtered_second_items.erase(
             std::remove_if(
                 filtered_second_items.begin(),
                 filtered_second_items.end(),
-                [&](IfcUtil::IfcBaseClass* item) { return item == first_item || !is_boolean_operand(item); }),
+                [&](express::Base item) { return item == first_item || !is_boolean_operand(item); }),
             filtered_second_items.end());
 
         while (true) {
             bool is_part_of_boolean = false;
-            for (auto* inverse : all_inverse_refs(file, first_item)) {
+            for (auto inverse : all_inverse_refs(file, first_item)) {
                 if (!is_a(inverse, "IfcBooleanResult")) {
                     continue;
                 }
                 is_part_of_boolean = true;
                 first_item = inverse;
-                auto* first_operand = read_ref(inverse, "FirstOperand");
-                auto* second_operand = read_ref(inverse, "SecondOperand");
+                auto first_operand = read_ref(inverse, "FirstOperand");
+                auto second_operand = read_ref(inverse, "SecondOperand");
                 if (first_operand == original_first_item) {
                     filtered_second_items.erase(
                         std::remove(filtered_second_items.begin(), filtered_second_items.end(), second_operand),
@@ -1882,8 +1877,8 @@ std::vector<IfcUtil::IfcBaseClass*> geometry_add_boolean(
             return booleans;
         }
 
-        std::vector<IfcUtil::IfcBaseClass*> to_replace;
-        for (auto* inverse : all_inverse_refs(file, first_item)) {
+        std::vector<express::Base> to_replace;
+        for (auto inverse : all_inverse_refs(file, first_item)) {
             if (is_a(inverse, "IfcShapeRepresentation") || is_a(inverse, "IfcBooleanResult")) {
                 if (!ifcapi::detail::contains_ref(to_replace, inverse)) {
                     to_replace.push_back(inverse);
@@ -1891,13 +1886,13 @@ std::vector<IfcUtil::IfcBaseClass*> geometry_add_boolean(
             }
         }
 
-        auto* first = first_item;
-        for (auto* second_item : filtered_second_items) {
+        auto first = first_item;
+        for (auto second_item : filtered_second_items) {
             first = create_boolean_result(file, operator_type, first, second_item);
             booleans.push_back(first);
         }
 
-        for (auto* inverse : to_replace) {
+        for (auto inverse : to_replace) {
             ifcapi::detail::replace_attribute_reference(inverse, first_item, first);
         }
         return booleans;
@@ -1907,22 +1902,22 @@ std::vector<IfcUtil::IfcBaseClass*> geometry_add_boolean(
     }
 }
 
-IfcUtil::IfcBaseClass* geometry_add_axis_representation(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* context,
+express::Base geometry_add_axis_representation(
+    ifcopenshell::file* file,
+    express::Base context,
     const std::vector<std::vector<double>>& axis)
 {
     ifcopenshell_clear_error();
     if (!file || !context) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
 
     try {
         size_t dimensions = axis.at(0).size();
         auto points = ifcapi::detail::convert_si_to_project_units(file, axis);
-        auto* curve = ifcapi::detail::create_polyline_or_indexed_polycurve(file, points, dimensions);
-        auto* representation = file->create(file->schema()->declaration_by_name("IfcShapeRepresentation"));
+        auto curve = ifcapi::detail::create_polyline_or_indexed_polycurve(file, points, dimensions);
+        auto representation = file->create(file->schema()->declaration_by_name("IfcShapeRepresentation"));
         write_ref(representation, "ContextOfItems", context);
         write_string(representation, "RepresentationIdentifier", read_string(context, "ContextIdentifier"));
         write_string(representation, "RepresentationType", dimensions == 2 ? "Curve2D" : "Curve3D");
@@ -1930,26 +1925,26 @@ IfcUtil::IfcBaseClass* geometry_add_axis_representation(
         return representation;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* geometry_add_footprint_representation(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* context,
-    const std::vector<const IfcUtil::IfcBaseClass*>& curves)
+express::Base geometry_add_footprint_representation(
+    ifcopenshell::file* file,
+    express::Base context,
+    const std::vector<express::Base>& curves)
 {
     ifcopenshell_clear_error();
     if (!file || !context) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
 
     try {
-        auto* curve_set = file->create(file->schema()->declaration_by_name("IfcGeometricCurveSet"));
+        auto curve_set = file->create(file->schema()->declaration_by_name("IfcGeometricCurveSet"));
         write_ref_list(curve_set, "Elements", ifcapi::detail::to_mutable_refs(curves));
 
-        auto* representation = file->create(file->schema()->declaration_by_name("IfcShapeRepresentation"));
+        auto representation = file->create(file->schema()->declaration_by_name("IfcShapeRepresentation"));
         write_ref(representation, "ContextOfItems", context);
         write_string(representation, "RepresentationIdentifier", read_string(context, "ContextIdentifier"));
         write_string(representation, "RepresentationType", "GeometricCurveSet");
@@ -1957,13 +1952,13 @@ IfcUtil::IfcBaseClass* geometry_add_footprint_representation(
         return representation;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* geometry_add_mesh_representation(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* context,
+express::Base geometry_add_mesh_representation(
+    ifcopenshell::file* file,
+    express::Base context,
     const std::vector<std::vector<std::vector<double>>>& vertices,
     const std::vector<std::vector<std::vector<std::vector<int>>>>& faces,
     bool force_faceted_brep)
@@ -1971,7 +1966,7 @@ IfcUtil::IfcBaseClass* geometry_add_mesh_representation(
     ifcopenshell_clear_error();
     if (!file || !context) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
 
     try {
@@ -1980,7 +1975,7 @@ IfcUtil::IfcBaseClass* geometry_add_mesh_representation(
         }
 
         const bool use_faceted_brep = force_faceted_brep || file->schema()->name() == "IFC2X3";
-        std::vector<IfcUtil::IfcBaseClass*> items;
+        std::vector<express::Base> items;
         items.reserve(vertices.size());
         for (size_t i = 0; i < vertices.size(); ++i) {
             if (use_faceted_brep) {
@@ -1998,7 +1993,7 @@ IfcUtil::IfcBaseClass* geometry_add_mesh_representation(
             }
         }
 
-        auto* representation = file->create(file->schema()->declaration_by_name("IfcShapeRepresentation"));
+        auto representation = file->create(file->schema()->declaration_by_name("IfcShapeRepresentation"));
         write_ref(representation, "ContextOfItems", context);
         ifcapi::detail::copy_string_attr_preserving_null(
             representation, "RepresentationIdentifier", context, "ContextIdentifier");
@@ -2007,31 +2002,31 @@ IfcUtil::IfcBaseClass* geometry_add_mesh_representation(
         return representation;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* geometry_add_shape_aspect(
-    IfcParse::IfcFile* file,
+express::Base geometry_add_shape_aspect(
+    ifcopenshell::file* file,
     const std::string& name,
-    const std::vector<const IfcUtil::IfcBaseClass*>& items,
-    IfcUtil::IfcBaseClass* representation,
-    IfcUtil::IfcBaseClass* part_of_product,
+    const std::vector<express::Base>& items,
+    express::Base representation,
+    express::Base part_of_product,
     const char* description,
     bool has_description)
 {
     ifcopenshell_clear_error();
     if (!file || !representation || !part_of_product) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
 
     try {
         auto shape_items = ifcapi::detail::to_mutable_refs(items);
-        auto* context = read_ref(representation, "ContextOfItems");
-        IfcUtil::IfcBaseClass* shape_aspect = nullptr;
+        auto context = read_ref(representation, "ContextOfItems");
+        express::Base shape_aspect = {};
 
-        for (auto* aspect : ifcapi::detail::read_inverse_aggregate(part_of_product, "HasShapeAspects")) {
+        for (auto aspect : ifcapi::detail::read_inverse_aggregate(part_of_product, "HasShapeAspects")) {
             if (read_string(aspect, "Name") == name) {
                 shape_aspect = aspect;
                 break;
@@ -2041,7 +2036,7 @@ IfcUtil::IfcBaseClass* geometry_add_shape_aspect(
         if (shape_aspect) {
             write_optional_string(shape_aspect, "Description", description, has_description);
             bool has_context_representation = false;
-            for (auto* aspect_rep : read_ref_list(shape_aspect, "ShapeRepresentations")) {
+            for (auto aspect_rep : read_ref_list(shape_aspect, "ShapeRepresentations")) {
                 if (read_ref(aspect_rep, "ContextOfItems") == context) {
                     auto existing_items = read_ref_list(aspect_rep, "Items");
                     ifcapi::detail::append_unique(existing_items, shape_items);
@@ -2056,7 +2051,7 @@ IfcUtil::IfcBaseClass* geometry_add_shape_aspect(
                 write_ref_list(shape_aspect, "ShapeRepresentations", aspect_reps);
             }
         } else {
-            auto* aspect_rep = create_shape_representation_like(file, representation, shape_items);
+            auto aspect_rep = create_shape_representation_like(file, representation, shape_items);
             shape_aspect = file->create(file->schema()->declaration_by_name("IfcShapeAspect"));
             write_ref_list(shape_aspect, "ShapeRepresentations", {aspect_rep});
             write_string(shape_aspect, "Name", name);
@@ -2065,13 +2060,13 @@ IfcUtil::IfcBaseClass* geometry_add_shape_aspect(
             write_ref(shape_aspect, "PartOfProductDefinitionShape", part_of_product);
         }
 
-        for (auto* aspect : ifcapi::detail::read_inverse_aggregate(part_of_product, "HasShapeAspects")) {
+        for (auto aspect : ifcapi::detail::read_inverse_aggregate(part_of_product, "HasShapeAspects")) {
             if (aspect == shape_aspect) {
                 continue;
             }
             auto aspect_reps = read_ref_list(aspect, "ShapeRepresentations");
             for (auto it = aspect_reps.begin(); it != aspect_reps.end();) {
-                auto* aspect_rep = *it;
+                auto aspect_rep = *it;
                 if (read_ref(aspect_rep, "ContextOfItems") != context) {
                     ++it;
                     continue;
@@ -2081,12 +2076,12 @@ IfcUtil::IfcBaseClass* geometry_add_shape_aspect(
                     std::remove_if(
                         aspect_items.begin(),
                         aspect_items.end(),
-                        [&](IfcUtil::IfcBaseClass* item) {
+                        [&](express::Base item) {
                             return ifcapi::detail::contains_ref(shape_items, item);
                         }),
                     aspect_items.end());
                 if (aspect_items.empty()) {
-                    file->removeEntity(aspect_rep);
+                    file->remove_entity(aspect_rep);
                     it = aspect_reps.erase(it);
                 } else {
                     write_ref_list(aspect_rep, "Items", aspect_items);
@@ -2095,21 +2090,21 @@ IfcUtil::IfcBaseClass* geometry_add_shape_aspect(
             }
             write_ref_list(aspect, "ShapeRepresentations", aspect_reps);
             if (aspect_reps.empty()) {
-                file->removeEntity(aspect);
+                file->remove_entity(aspect);
             }
         }
 
         return shape_aspect;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* geometry_add_topology_representation(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* context,
-    IfcUtil::IfcBaseClass* item,
+express::Base geometry_add_topology_representation(
+    ifcopenshell::file* file,
+    express::Base context,
+    express::Base item,
     const char* representation_identifier,
     bool has_representation_identifier,
     const char* representation_type,
@@ -2118,11 +2113,11 @@ IfcUtil::IfcBaseClass* geometry_add_topology_representation(
     ifcopenshell_clear_error();
     if (!file || !context || !item) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
 
     try {
-        auto* representation = file->create(file->schema()->declaration_by_name("IfcTopologyRepresentation"));
+        auto representation = file->create(file->schema()->declaration_by_name("IfcTopologyRepresentation"));
         write_ref(representation, "ContextOfItems", context);
         write_string(
             representation,
@@ -2138,13 +2133,13 @@ IfcUtil::IfcBaseClass* geometry_add_topology_representation(
         return representation;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* geometry_add_wall_representation(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* context,
+express::Base geometry_add_wall_representation(
+    ifcopenshell::file* file,
+    express::Base context,
     double length,
     double height,
     const std::string& direction_sense,
@@ -2154,13 +2149,13 @@ IfcUtil::IfcBaseClass* geometry_add_wall_representation(
     const std::vector<int32_t>& clipping_kinds,
     const std::vector<std::vector<double>>& clipping_locations,
     const std::vector<std::vector<double>>& clipping_normals,
-    const std::vector<const IfcUtil::IfcBaseClass*>& clipping_entities,
-    const std::vector<const IfcUtil::IfcBaseClass*>& booleans)
+    const std::vector<express::Base>& clipping_entities,
+    const std::vector<express::Base>& booleans)
 {
     ifcopenshell_clear_error();
     if (!file || !context) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
 
     try {
@@ -2177,12 +2172,12 @@ IfcUtil::IfcBaseClass* geometry_add_wall_representation(
             {length_units, 0.0},
             {0.0, 0.0},
         };
-        auto* curve = ifcapi::detail::create_polyline_or_indexed_polycurve(file, points, 2, true);
-        auto* profile = make_closed_profile(file, curve);
+        auto curve = ifcapi::detail::create_polyline_or_indexed_polycurve(file, points, 2, true);
+        auto profile = make_closed_profile(file, curve);
         const std::vector<double> extrusion_ratios = x_angle ? std::vector<double>{0.0, std::sin(x_angle), std::cos(x_angle)}
                                                             : std::vector<double>{0.0, 0.0, 1.0};
 
-        auto* extrusion = file->create(file->schema()->declaration_by_name("IfcExtrudedAreaSolid"));
+        auto extrusion = file->create(file->schema()->declaration_by_name("IfcExtrudedAreaSolid"));
         write_ref(extrusion, "SweptArea", profile);
         write_ref(extrusion, "Position", make_axis2_placement_3d_optional(file, {0.0, offset / unit_scale, 0.0}));
         write_ref(
@@ -2191,12 +2186,12 @@ IfcUtil::IfcBaseClass* geometry_add_wall_representation(
             make_direction(file, extrusion_ratios[0], extrusion_ratios[1], extrusion_ratios[2]));
         int depth_idx = attr_index_of(extrusion, "Depth");
         if (depth_idx >= 0) {
-            extrusion->set_attribute_value(static_cast<size_t>(depth_idx), (height / unit_scale) * std::abs(1.0 / std::cos(x_angle)));
+            extrusion.set_attribute_value(static_cast<size_t>(depth_idx), (height / unit_scale) * std::abs(1.0 / std::cos(x_angle)));
         }
 
-        IfcUtil::IfcBaseClass* item = extrusion;
+        express::Base item = extrusion;
         for (auto it = booleans.rbegin(); it != booleans.rend(); ++it) {
-            auto* boolean = const_cast<IfcUtil::IfcBaseClass*>(*it);
+            auto boolean = *it;
             if (!boolean) continue;
             write_ref(boolean, "FirstOperand", item);
             item = boolean;
@@ -2206,13 +2201,13 @@ IfcUtil::IfcBaseClass* geometry_add_wall_representation(
             file, context, (!clipping_kinds.empty() || !booleans.empty()) ? "Clipping" : "SweptSolid", item);
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* geometry_add_slab_representation(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* context,
+express::Base geometry_add_slab_representation(
+    ifcopenshell::file* file,
+    express::Base context,
     double depth,
     const std::string& direction_sense,
     double offset,
@@ -2220,14 +2215,14 @@ IfcUtil::IfcBaseClass* geometry_add_slab_representation(
     const std::vector<int32_t>& clipping_kinds,
     const std::vector<std::vector<double>>& clipping_locations,
     const std::vector<std::vector<double>>& clipping_normals,
-    const std::vector<const IfcUtil::IfcBaseClass*>& clipping_entities,
+    const std::vector<express::Base>& clipping_entities,
     const std::vector<std::vector<double>>& polyline,
     bool has_polyline)
 {
     ifcopenshell_clear_error();
     if (!file || !context) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
 
     try {
@@ -2242,8 +2237,8 @@ IfcUtil::IfcBaseClass* geometry_add_slab_representation(
             const double size = 1.0 / unit_scale;
             points = {{0.0, 0.0}, {size, 0.0}, {size, size}, {0.0, size}, {0.0, 0.0}};
         }
-        auto* curve = ifcapi::detail::create_polyline_or_indexed_polycurve(file, points, 2, false);
-        auto* profile = make_closed_profile(file, curve);
+        auto curve = ifcapi::detail::create_polyline_or_indexed_polycurve(file, points, 2, false);
+        auto profile = make_closed_profile(file, curve);
         std::vector<double> direction_ratios = x_angle ? std::vector<double>{0.0, std::sin(x_angle), std::cos(x_angle)}
                                                        : std::vector<double>{0.0, 0.0, 1.0};
         const std::vector<double> offset_direction = direction_ratios;
@@ -2255,7 +2250,7 @@ IfcUtil::IfcBaseClass* geometry_add_slab_representation(
 
         const double perpendicular_offset = (offset / unit_scale) * std::abs(1.0 / std::cos(x_angle));
         const double perpendicular_depth = (depth / unit_scale) * std::abs(1.0 / std::cos(x_angle));
-        IfcUtil::IfcBaseClass* position = nullptr;
+        express::Base position = {};
         if (file->schema()->name() == "IFC2X3" || offset != 0.0) {
             position = make_axis2_placement_3d_optional(
                 file,
@@ -2266,7 +2261,7 @@ IfcUtil::IfcBaseClass* geometry_add_slab_representation(
                 });
         }
 
-        auto* extrusion = file->create(file->schema()->declaration_by_name("IfcExtrudedAreaSolid"));
+        auto extrusion = file->create(file->schema()->declaration_by_name("IfcExtrudedAreaSolid"));
         write_ref(extrusion, "SweptArea", profile);
         write_ref(extrusion, "Position", position);
         write_ref(
@@ -2275,21 +2270,21 @@ IfcUtil::IfcBaseClass* geometry_add_slab_representation(
             make_direction(file, direction_ratios[0], direction_ratios[1], direction_ratios[2]));
         int depth_idx = attr_index_of(extrusion, "Depth");
         if (depth_idx >= 0) {
-            extrusion->set_attribute_value(static_cast<size_t>(depth_idx), perpendicular_depth);
+            extrusion.set_attribute_value(static_cast<size_t>(depth_idx), perpendicular_depth);
         }
 
-        auto* item = apply_ordered_clippings(file, extrusion, clipping_kinds, clipping_locations, clipping_normals, clipping_entities, unit_scale);
+        auto item = apply_ordered_clippings(file, extrusion, clipping_kinds, clipping_locations, clipping_normals, clipping_entities, unit_scale);
         return make_shape_representation(file, context, clipping_kinds.empty() ? "SweptSolid" : "Clipping", item);
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* geometry_create_2pt_wall(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* element,
-    IfcUtil::IfcBaseClass* context,
+express::Base geometry_create_2pt_wall(
+    ifcopenshell::file* file,
+    express::Base element,
+    express::Base context,
     const std::vector<double>& p1,
     const std::vector<double>& p2,
     double elevation,
@@ -2300,7 +2295,7 @@ IfcUtil::IfcBaseClass* geometry_create_2pt_wall(
     ifcopenshell_clear_error();
     if (!file || !element || !context || p1.size() < 2 || p2.size() < 2) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
 
     try {
@@ -2317,7 +2312,7 @@ IfcUtil::IfcBaseClass* geometry_create_2pt_wall(
             p1_si[1] *= unit_scale;
             elevation *= unit_scale;
         }
-        auto* representation = geometry_add_wall_representation(
+        auto representation = geometry_add_wall_representation(
             file, context, length, height, "POSITIVE", 0.0, thickness, 0.0, {}, {}, {}, {}, {});
         if (!representation) {
             throw std::runtime_error("Unable to create wall representation");
@@ -2332,36 +2327,36 @@ IfcUtil::IfcBaseClass* geometry_create_2pt_wall(
             0.0, 0.0, 1.0, elevation,
             0.0, 0.0, 0.0, 1.0,
         };
-        if (!geometry_edit_object_placement(file, element, matrix, true, false)) {
+        if (!geometry_edit_object_placement(file, &element, matrix, true, false)) {
             throw std::runtime_error("Unable to edit wall placement");
         }
         return representation;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* geometry_connect_wall(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* wall1,
-    IfcUtil::IfcBaseClass* wall2,
+express::Base geometry_connect_wall(
+    ifcopenshell::file* file,
+    express::Base wall1,
+    express::Base wall2,
     bool is_atpath,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    express::Base owner_history,
+    express::Base user,
+    express::Base application)
 {
     ifcopenshell_clear_error();
     if (!file || !wall1 || !wall2) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
 
     try {
-        auto* placement1 = read_ref(wall1, "ObjectPlacement");
-        auto* placement2 = read_ref(wall2, "ObjectPlacement");
-        auto matrix1i = ifcapi::detail::invert_rigid4(ifcapi::bindings::placement_get_local_placement(placement1));
-        auto matrix2 = ifcapi::bindings::placement_get_local_placement(placement2);
+        auto placement1 = read_ref(wall1, "ObjectPlacement");
+        auto placement2 = read_ref(wall2, "ObjectPlacement");
+        auto matrix1i = ifcapi::detail::invert_rigid4(ifcapi::bindings::placement_get_local_placement(&placement1));
+        auto matrix2 = ifcapi::bindings::placement_get_local_placement(&placement2);
         auto transform = ifcapi::detail::matmul4(matrix1i, matrix2);
         auto axis1 = ifcapi::detail::get_reference_line(file, wall1);
         auto axis2 = ifcapi::detail::get_reference_line(file, wall2);
@@ -2374,42 +2369,43 @@ IfcUtil::IfcBaseClass* geometry_connect_wall(
         const double y = axis1[0][1];
         double x = 0.0;
         if (!ifcapi::detail::intersect_x_axis_2d(axis2[0], axis2[1], y, x)) {
-            return nullptr;
+            return {};
         }
 
         const std::string wall1_end = x > midx ? "ATEND" : "ATSTART";
         const std::string wall2_end = is_atpath ? "ATPATH" : (std::fabs(y - starty) < std::fabs(y - endy) ? "ATSTART" : "ATEND");
         return geometry_connect_path(
-            file, wall1, wall2, wall1_end, wall2_end, nullptr, false, nullptr, owner_history, user, application);
+            file, &wall1, &wall2, wall1_end, wall2_end, nullptr, false, nullptr,
+            entity_ptr(owner_history), entity_ptr(user), entity_ptr(application));
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* geometry_clip_solid(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* item,
+express::Base geometry_clip_solid(
+    ifcopenshell::file* file,
+    express::Base item,
     const std::vector<double>& location,
     const std::vector<double>& normal,
-    IfcUtil::IfcBaseClass* element,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    express::Base element,
+    express::Base owner_history,
+    express::Base user,
+    express::Base application)
 {
     ifcopenshell_clear_error();
     if (!file || !item) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
 
     try {
         double unit_scale = ifcapi::bindings::unit_calculate_unit_scale(file, "LENGTHUNIT");
-        auto* half_space = file->create(file->schema()->declaration_by_name("IfcHalfSpaceSolid"));
+        auto half_space = file->create(file->schema()->declaration_by_name("IfcHalfSpaceSolid"));
         write_ref(half_space, "BaseSurface", make_clipping_plane(file, location, normal, unit_scale));
         write_bool(half_space, "AgreementFlag", false);
 
-        auto* result = file->create(file->schema()->declaration_by_name("IfcBooleanClippingResult"));
+        auto result = file->create(file->schema()->declaration_by_name("IfcBooleanClippingResult"));
         write_string(result, "Operator", "DIFFERENCE");
         write_ref(result, "FirstOperand", item);
         write_ref(result, "SecondOperand", half_space);
@@ -2417,26 +2413,26 @@ IfcUtil::IfcBaseClass* geometry_clip_solid(
         return result;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* geometry_clip_solid_bounded(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* item,
+express::Base geometry_clip_solid_bounded(
+    ifcopenshell::file* file,
+    express::Base item,
     const std::vector<double>& location,
     const std::vector<double>& normal,
     const std::vector<std::vector<double>>& boundary_points,
     const std::vector<double>& boundary_position,
-    IfcUtil::IfcBaseClass* element,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    express::Base element,
+    express::Base owner_history,
+    express::Base user,
+    express::Base application)
 {
     ifcopenshell_clear_error();
     if (!file || !item) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
 
     try {
@@ -2451,21 +2447,21 @@ IfcUtil::IfcBaseClass* geometry_clip_solid_bounded(
         }
         scaled_boundary_points.push_back(scaled_boundary_points.at(0));
 
-        std::vector<IfcUtil::IfcBaseClass*> ifc_points;
+        std::vector<express::Base> ifc_points;
         ifc_points.reserve(scaled_boundary_points.size());
         for (const auto& point : scaled_boundary_points) {
             ifc_points.push_back(ifcapi::detail::create_cartesian_point(file, point));
         }
-        auto* boundary = file->create(file->schema()->declaration_by_name("IfcPolyline"));
+        auto boundary = file->create(file->schema()->declaration_by_name("IfcPolyline"));
         write_ref_list(boundary, "Points", ifc_points);
 
-        auto* half_space = file->create(file->schema()->declaration_by_name("IfcPolygonalBoundedHalfSpace"));
+        auto half_space = file->create(file->schema()->declaration_by_name("IfcPolygonalBoundedHalfSpace"));
         write_ref(half_space, "BaseSurface", make_clipping_plane(file, location, normal, unit_scale));
         write_bool(half_space, "AgreementFlag", false);
         write_ref(half_space, "Position", make_axis2_placement_3d_location_only(file, scaled_boundary_position));
         write_ref(half_space, "PolygonalBoundary", boundary);
 
-        auto* result = file->create(file->schema()->declaration_by_name("IfcBooleanClippingResult"));
+        auto result = file->create(file->schema()->declaration_by_name("IfcBooleanClippingResult"));
         write_string(result, "Operator", "DIFFERENCE");
         write_ref(result, "FirstOperand", item);
         write_ref(result, "SecondOperand", half_space);
@@ -2473,14 +2469,14 @@ IfcUtil::IfcBaseClass* geometry_clip_solid_bounded(
         return result;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
 bool geometry_validate_type(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* representation,
-    IfcUtil::IfcBaseClass* preferred_item)
+    ifcopenshell::file* file,
+    express::Base representation,
+    express::Base preferred_item)
 {
     ifcopenshell_clear_error();
     if (!file || !representation) {
@@ -2491,8 +2487,8 @@ bool geometry_validate_type(
     try {
         auto items = read_ref_list(representation, "Items");
         bool has_boolean = false;
-        std::vector<IfcUtil::IfcBaseClass*> remaining_items;
-        for (auto* item : items) {
+        std::vector<express::Base> remaining_items;
+        for (auto item : items) {
             if (is_a(item, "IfcBooleanResult")) {
                 has_boolean = true;
             }
@@ -2514,7 +2510,7 @@ bool geometry_validate_type(
         }
 
         if (!preferred_item) {
-            for (auto* item : remaining_items) {
+            for (auto item : remaining_items) {
                 if (is_a(item, "IfcBooleanResult")) {
                     preferred_item = item;
                     break;
@@ -2532,7 +2528,7 @@ bool geometry_validate_type(
                 std::remove_if(
                     items.begin(),
                     items.end(),
-                    [&](IfcUtil::IfcBaseClass* item) { return ifcapi::detail::contains_ref(remaining_items, item); }),
+                    [&](express::Base item) { return ifcapi::detail::contains_ref(remaining_items, item); }),
                 items.end());
             write_ref_list(representation, "Items", items);
         }
@@ -2540,7 +2536,7 @@ bool geometry_validate_type(
         std::string representation_type = guess_representation_type(read_ref_list(representation, "Items"));
         if (representation_type.empty()) {
             int idx = attr_index_of(representation, "RepresentationType");
-            if (idx >= 0) representation->set_attribute_value(static_cast<size_t>(idx), Blank{});
+            if (idx >= 0) representation.unset_attribute_value(static_cast<size_t>(idx));
             return false;
         }
         write_string(representation, "RepresentationType", representation_type);
@@ -2551,7 +2547,7 @@ bool geometry_validate_type(
     }
 }
 
-void geometry_remove_boolean(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* item) {
+void geometry_remove_boolean(ifcopenshell::file* file, express::Base item) {
     ifcopenshell_clear_error();
     if (!file || !item) {
         return;
@@ -2564,45 +2560,45 @@ void geometry_remove_boolean(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* ite
     }
 }
 
-IfcUtil::IfcBaseClass* geometry_map_representation(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* representation)
+express::Base geometry_map_representation(
+    ifcopenshell::file* file,
+    express::Base representation)
 {
     ifcopenshell_clear_error();
     if (!file || !representation) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
     try {
         return map_representation_impl(file, representation);
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* geometry_assign_representation(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* product,
-    IfcUtil::IfcBaseClass* representation)
+express::Base geometry_assign_representation(
+    ifcopenshell::file* file,
+    express::Base product,
+    express::Base representation)
 {
     ifcopenshell_clear_error();
     if (!file || !product || !representation) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
     try {
         assign_representation_impl(file, product, representation);
         return product;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* geometry_regenerate_wall_representation(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* wall,
+express::Base geometry_regenerate_wall_representation(
+    ifcopenshell::file* file,
+    express::Base wall,
     double length,
     double height,
     double angle,
@@ -2611,7 +2607,7 @@ IfcUtil::IfcBaseClass* geometry_regenerate_wall_representation(
     ifcopenshell_clear_error();
     if (!file || !wall) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
 
     try {
@@ -2619,53 +2615,53 @@ IfcUtil::IfcBaseClass* geometry_regenerate_wall_representation(
         return regenerator.regenerate(wall, length, height, has_angle, angle);
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* geometry_connect_element(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relating_element,
-    IfcUtil::IfcBaseClass* related_element,
+express::Base geometry_connect_element(
+    ifcopenshell::file* file,
+    express::Base relating_element,
+    express::Base related_element,
     const char* description,
     bool has_description,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    express::Base owner_history,
+    express::Base user,
+    express::Base application)
 {
     ifcopenshell_clear_error();
     if (!file || !relating_element || !related_element) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
 
     try {
-        std::vector<IfcUtil::IfcBaseClass*> incompatible_connections;
-        std::unordered_set<IfcUtil::IfcBaseClass*> seen;
-        for (auto* rel : inverse_refs(relating_element, "ConnectedFrom")) {
+        std::vector<express::Base> incompatible_connections;
+        std::unordered_set<express::Base> seen;
+        for (auto rel : inverse_refs(relating_element, "ConnectedFrom")) {
             if (is_a(rel, "IfcRelConnectsElements") && read_ref(rel, "RelatingElement") == related_element) {
                 append_unique_connection(incompatible_connections, seen, rel);
             }
         }
-        for (auto* rel : inverse_refs(related_element, "ConnectedTo")) {
+        for (auto rel : inverse_refs(related_element, "ConnectedTo")) {
             if (is_a(rel, "IfcRelConnectsElements") && read_ref(rel, "RelatedElement") == relating_element) {
                 append_unique_connection(incompatible_connections, seen, rel);
             }
         }
         remove_connections_with_history(file, incompatible_connections);
 
-        for (auto* rel : inverse_refs(relating_element, "ConnectedTo")) {
+        for (auto rel : inverse_refs(relating_element, "ConnectedTo")) {
             if (is_a(rel, "IfcRelConnectsElements") && read_ref(rel, "RelatedElement") == related_element) {
                 write_optional_string(rel, "Description", description, has_description);
                 return rel;
             }
         }
 
-        const auto* rel_decl = file->schema()->declaration_by_name("IfcRelConnectsElements");
-        auto* rel = file->create(rel_decl);
+        const auto rel_decl = file->schema()->declaration_by_name("IfcRelConnectsElements");
+        auto rel = file->create(rel_decl);
         if (!rel) {
             set_error("Failed to create IfcRelConnectsElements");
-            return nullptr;
+            return {};
         }
         write_string(rel, "GlobalId", ifcapi::guid_new());
         write_ref(rel, "OwnerHistory", ifcapi::detail::ensure_owner_history(file, owner_history, user, application));
@@ -2675,14 +2671,14 @@ IfcUtil::IfcBaseClass* geometry_connect_element(
         return rel;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
 void geometry_disconnect_element(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relating_element,
-    IfcUtil::IfcBaseClass* related_element)
+    ifcopenshell::file* file,
+    express::Base relating_element,
+    express::Base related_element)
 {
     ifcopenshell_clear_error();
     if (!file || !relating_element || !related_element) {
@@ -2690,24 +2686,24 @@ void geometry_disconnect_element(
     }
 
     try {
-        std::vector<IfcUtil::IfcBaseClass*> incompatible_connections;
-        std::unordered_set<IfcUtil::IfcBaseClass*> seen;
-        for (auto* rel : inverse_refs(relating_element, "ConnectedTo")) {
+        std::vector<express::Base> incompatible_connections;
+        std::unordered_set<express::Base> seen;
+        for (auto rel : inverse_refs(relating_element, "ConnectedTo")) {
             if (is_a(rel, "IfcRelConnectsElements") && read_ref(rel, "RelatedElement") == related_element) {
                 append_unique_connection(incompatible_connections, seen, rel);
             }
         }
-        for (auto* rel : inverse_refs(relating_element, "ConnectedFrom")) {
+        for (auto rel : inverse_refs(relating_element, "ConnectedFrom")) {
             if (is_a(rel, "IfcRelConnectsElements") && read_ref(rel, "RelatingElement") == related_element) {
                 append_unique_connection(incompatible_connections, seen, rel);
             }
         }
-        for (auto* rel : inverse_refs(related_element, "ConnectedTo")) {
+        for (auto rel : inverse_refs(related_element, "ConnectedTo")) {
             if (is_a(rel, "IfcRelConnectsElements") && read_ref(rel, "RelatedElement") == relating_element) {
                 append_unique_connection(incompatible_connections, seen, rel);
             }
         }
-        for (auto* rel : inverse_refs(related_element, "ConnectedFrom")) {
+        for (auto rel : inverse_refs(related_element, "ConnectedFrom")) {
             if (is_a(rel, "IfcRelConnectsElements") && read_ref(rel, "RelatingElement") == relating_element) {
                 append_unique_connection(incompatible_connections, seen, rel);
             }
@@ -2718,32 +2714,32 @@ void geometry_disconnect_element(
     }
 }
 
-IfcUtil::IfcBaseClass* geometry_connect_path(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relating_element,
-    IfcUtil::IfcBaseClass* related_element,
+express::Base geometry_connect_path(
+    ifcopenshell::file* file,
+    express::Base relating_element,
+    express::Base related_element,
     const std::string& relating_connection,
     const std::string& related_connection,
     const char* description,
     bool has_description,
-    IfcUtil::IfcBaseClass* connection_geometry,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    express::Base connection_geometry,
+    express::Base owner_history,
+    express::Base user,
+    express::Base application)
 {
     ifcopenshell_clear_error();
     if (!file || !relating_element || !related_element) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
 
     try {
         const std::string& relating_type = relating_connection;
         const std::string& related_type = related_connection;
-        std::vector<IfcUtil::IfcBaseClass*> incompatible_connections;
-        std::unordered_set<IfcUtil::IfcBaseClass*> seen;
+        std::vector<express::Base> incompatible_connections;
+        std::unordered_set<express::Base> seen;
 
-        for (auto* rel : inverse_refs(relating_element, "ConnectedTo")) {
+        for (auto rel : inverse_refs(relating_element, "ConnectedTo")) {
             if (!is_a(rel, "IfcRelConnectsPathElements")) {
                 continue;
             }
@@ -2753,21 +2749,21 @@ IfcUtil::IfcBaseClass* geometry_connect_path(
                 append_unique_connection(incompatible_connections, seen, rel);
             }
         }
-        for (auto* rel : inverse_refs(relating_element, "ConnectedFrom")) {
+        for (auto rel : inverse_refs(relating_element, "ConnectedFrom")) {
             if (is_a(rel, "IfcRelConnectsPathElements") &&
                 is_terminal_connection(read_string(rel, "RelatedConnectionType")) &&
                 read_string(rel, "RelatedConnectionType") == relating_type) {
                 append_unique_connection(incompatible_connections, seen, rel);
             }
         }
-        for (auto* rel : inverse_refs(related_element, "ConnectedFrom")) {
+        for (auto rel : inverse_refs(related_element, "ConnectedFrom")) {
             if (is_a(rel, "IfcRelConnectsPathElements") &&
                 is_terminal_connection(read_string(rel, "RelatedConnectionType")) &&
                 read_string(rel, "RelatedConnectionType") == related_type) {
                 append_unique_connection(incompatible_connections, seen, rel);
             }
         }
-        for (auto* rel : inverse_refs(related_element, "ConnectedTo")) {
+        for (auto rel : inverse_refs(related_element, "ConnectedTo")) {
             if (!is_a(rel, "IfcRelConnectsPathElements")) {
                 continue;
             }
@@ -2779,11 +2775,11 @@ IfcUtil::IfcBaseClass* geometry_connect_path(
         }
         remove_connections_with_history(file, incompatible_connections);
 
-        const auto* rel_decl = file->schema()->declaration_by_name("IfcRelConnectsPathElements");
-        auto* rel = file->create(rel_decl);
+        const auto rel_decl = file->schema()->declaration_by_name("IfcRelConnectsPathElements");
+        auto rel = file->create(rel_decl);
         if (!rel) {
             set_error("Failed to create IfcRelConnectsPathElements");
-            return nullptr;
+            return {};
         }
         write_string(rel, "GlobalId", ifcapi::guid_new());
         write_ref(rel, "OwnerHistory", ifcapi::detail::ensure_owner_history(file, owner_history, user, application));
@@ -2798,17 +2794,17 @@ IfcUtil::IfcBaseClass* geometry_connect_path(
         return rel;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
 void geometry_disconnect_path(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* element,
+    ifcopenshell::file* file,
+    express::Base element,
     const char* connection_type,
     bool has_connection_type,
-    IfcUtil::IfcBaseClass* relating_element,
-    IfcUtil::IfcBaseClass* related_element)
+    express::Base relating_element,
+    express::Base related_element)
 {
     ifcopenshell_clear_error();
     if (!file) {
@@ -2816,22 +2812,22 @@ void geometry_disconnect_path(
     }
 
     try {
-        std::vector<IfcUtil::IfcBaseClass*> connections;
-        std::unordered_set<IfcUtil::IfcBaseClass*> seen;
+        std::vector<express::Base> connections;
+        std::unordered_set<express::Base> seen;
         if (has_connection_type && element) {
             const std::string type = connection_type ? connection_type : "";
-            for (auto* rel : inverse_refs(element, "ConnectedTo")) {
+            for (auto rel : inverse_refs(element, "ConnectedTo")) {
                 if (is_a(rel, "IfcRelConnectsPathElements") && read_string(rel, "RelatingConnectionType") == type) {
                     append_unique_connection(connections, seen, rel);
                 }
             }
-            for (auto* rel : inverse_refs(element, "ConnectedFrom")) {
+            for (auto rel : inverse_refs(element, "ConnectedFrom")) {
                 if (is_a(rel, "IfcRelConnectsPathElements") && read_string(rel, "RelatedConnectionType") == type) {
                     append_unique_connection(connections, seen, rel);
                 }
             }
         } else if (related_element) {
-            for (auto* rel : inverse_refs(relating_element, "ConnectedTo")) {
+            for (auto rel : inverse_refs(relating_element, "ConnectedTo")) {
                 if (is_a(rel, "IfcRelConnectsPathElements") && read_ref(rel, "RelatedElement") == related_element) {
                     append_unique_connection(connections, seen, rel);
                 }
@@ -2853,71 +2849,66 @@ void geometry_disconnect_path(
 
 namespace {
 
-void process_shape_aspects_for_rep_map(IfcParse::IfcFile* file,
-                                       IfcUtil::IfcBaseClass* rep_map) {
-    std::vector<IfcUtil::IfcBaseClass*> shape_aspects;
+void process_shape_aspects_for_rep_map(ifcopenshell::file* file,
+                                       express::Base rep_map) {
+    std::vector<express::Base> shape_aspects;
     bool is_2x3 = file->schema() && std::string(file->schema()->name()) == "IFC2X3";
     if (is_2x3) {
         // IFC2X3: scan all IfcShapeAspect, filter by PartOfProductDefinitionShape.
         try {
-            auto all = file->instances_by_type(std::string("IfcShapeAspect"));
-            if (all) {
-                for (auto& a : *all) {
-                    if (read_ref(a, "PartOfProductDefinitionShape") == rep_map) {
-                        shape_aspects.push_back(a);
-                    }
+            auto all = ifcapi::detail::instances_by_type(file, "IfcShapeAspect");
+            for (auto a : all) {
+                if (read_ref(a, "PartOfProductDefinitionShape") == rep_map) {
+                    shape_aspects.push_back(a);
                 }
             }
         } catch (...) {}
     } else {
-        auto* be = as_entity(rep_map);
+        auto be = as_entity(rep_map);
         if (be) {
             try {
-                auto invs = be->get_inverse("HasShapeAspects");
-                if (invs) {
-                    for (auto& a : *invs) shape_aspects.push_back(a);
-                }
+                auto invs = be.get_inverse("HasShapeAspects");
+                for (auto a : invs) shape_aspects.push_back(a);
             } catch (...) {}
         }
     }
-    for (auto* sa : shape_aspects) {
+    for (auto sa : shape_aspects) {
         auto reps = read_ref_list(sa, "ShapeRepresentations");
-        file->removeEntity(sa);
-        for (auto* r : reps) {
+        file->remove_entity(sa);
+        for (auto r : reps) {
             remove_representation_simple(file, r);
         }
     }
 }
 
-void unassign_products_using_mapped_representation(IfcParse::IfcFile* file,
-                                                   IfcUtil::IfcBaseClass* rep_map) {
-    struct PR { IfcUtil::IfcBaseClass* product; IfcUtil::IfcBaseClass* rep; };
+void unassign_products_using_mapped_representation(ifcopenshell::file* file,
+                                                   express::Base rep_map) {
+    struct PR { express::Base product; express::Base rep; };
     std::vector<PR> mapped_pairs;
-    std::vector<IfcUtil::IfcBaseClass*> just_reps;
+    std::vector<express::Base> just_reps;
 
-    auto* be = as_entity(rep_map);
+    auto be = as_entity(rep_map);
     if (!be) return;
-    aggregate_of_instance::ptr map_usages;
-    try { map_usages = be->get_inverse("MapUsage"); } catch (...) {}
-    if (!map_usages) return;
-    for (auto& mu : *map_usages) {
+    std::vector<express::Base> map_usages;
+    try { map_usages = ifcapi::detail::read_inverse_aggregate(rep_map, "MapUsage"); } catch (...) {}
+    if (map_usages.empty()) return;
+    for (auto mu : map_usages) {
         if (!mu) continue;
-        auto invs = file->getInverse(mu->id(), nullptr, -1);
-        if (!invs) continue;
-        for (auto& inv : *invs) {
+        auto invs = file->instances_by_reference(static_cast<int>(mu.id()));
+        for (auto inv : invs) {
             if (!inv || !is_a(inv, "IfcShapeRepresentation")) continue;
-            auto* inv_be = as_entity(inv);
+            auto inv_be = as_entity(inv);
             if (!inv_be) continue;
-            aggregate_of_instance::ptr defs;
-            try { defs = inv_be->get_inverse("OfProductRepresentation"); } catch (...) {}
-            if (!defs) continue;
-            for (auto& def : *defs) {
-                auto* def_be = as_entity(def);
+            std::vector<express::Base> defs;
+            try { defs = ifcapi::detail::read_inverse_aggregate(inv, "OfProductRepresentation"); } catch (...) {}
+            if (defs.empty()) continue;
+            for (auto def : defs) {
+                auto def_be = as_entity(def);
                 if (!def_be) continue;
-                aggregate_of_instance::ptr products;
-                try { products = def_be->get_inverse("ShapeOfProduct"); } catch (...) {}
-                if (!products) continue;
-                for (auto& product : *products) {
+                std::vector<express::Base> products;
+                try { products = ifcapi::detail::read_inverse_aggregate(def, "ShapeOfProduct"); } catch (...) {}
+                if (products.empty()) continue;
+                for (auto product : products) {
                     mapped_pairs.push_back({product, inv});
                     just_reps.push_back(inv);
                 }
@@ -2927,17 +2918,17 @@ void unassign_products_using_mapped_representation(IfcParse::IfcFile* file,
     for (auto& pr : mapped_pairs) {
         unassign_product_representation(file, pr.product, pr.rep);
     }
-    for (auto* r : just_reps) {
+    for (auto r : just_reps) {
         remove_representation_simple(file, r);
     }
 }
 
-void unassign_type_representation(IfcParse::IfcFile* file,
-                                  IfcUtil::IfcBaseClass* type_product,
-                                  IfcUtil::IfcBaseClass* representation) {
+void unassign_type_representation(ifcopenshell::file* file,
+                                  express::Base type_product,
+                                  express::Base representation) {
     auto rep_maps = read_ref_list(type_product, "RepresentationMaps");
-    IfcUtil::IfcBaseClass* matching = nullptr;
-    for (auto* rm : rep_maps) {
+    express::Base matching = {};
+    for (auto rm : rep_maps) {
         if (read_ref(rm, "MappedRepresentation") == representation) {
             matching = rm; break;
         }
@@ -2946,11 +2937,11 @@ void unassign_type_representation(IfcParse::IfcFile* file,
 
     unassign_products_using_mapped_representation(file, matching);
 
-    std::vector<IfcUtil::IfcBaseClass*> remaining;
-    for (auto* rm : rep_maps) if (rm != matching) remaining.push_back(rm);
+    std::vector<express::Base> remaining;
+    for (auto rm : rep_maps) if (rm != matching) remaining.push_back(rm);
     if (remaining.empty()) {
         int idx = attr_index_of(type_product, "RepresentationMaps");
-        if (idx >= 0) type_product->set_attribute_value(static_cast<size_t>(idx), Blank{});
+        if (idx >= 0) type_product.unset_attribute_value(static_cast<size_t>(idx));
     } else {
         write_ref_list(type_product, "RepresentationMaps", remaining);
     }
@@ -2960,17 +2951,17 @@ void unassign_type_representation(IfcParse::IfcFile* file,
     // Replace MappedRepresentation with a fresh empty IfcShapeRepresentation
     // so the rep_map subgraph (which still references the *old* representation
     // shared by other things) becomes safely deletable.
-    auto* sr_decl = file->schema()->declaration_by_name("IfcShapeRepresentation");
-    auto* placeholder = file->create(sr_decl);
+    auto sr_decl = file->schema()->declaration_by_name("IfcShapeRepresentation");
+    auto placeholder = file->create(sr_decl);
     write_ref(matching, "MappedRepresentation", placeholder);
 
-    ifcapi::bindings::entity_remove_deep2(matching);
+    ifcapi::bindings::entity_remove_deep2(&matching);
 }
 
 // ---- profile extents (axis-aligned 2D bbox of an IfcProfileDef) ---------
 
-bool profile_extents(IfcParse::IfcFile* file,
-                     IfcUtil::IfcBaseClass* profile,
+bool profile_extents(ifcopenshell::file* file,
+                     express::Base profile,
                      double* x_out, double* y_out) {
     if (!profile || !x_out || !y_out) return false;
 
@@ -2978,7 +2969,7 @@ bool profile_extents(IfcParse::IfcFile* file,
         int idx = attr_index_of(profile, name);
         if (idx < 0) return 0.0;
         try {
-            auto v = profile->get_attribute_value(idx);
+            auto v = profile.get_attribute_value(idx);
             return (double)v;
         } catch (...) { return 0.0; }
     };
@@ -3015,7 +3006,7 @@ bool profile_extents(IfcParse::IfcFile* file,
         *x_out = (try_attr("FlangeWidth") * 2) - try_attr("WebThickness");
         *y_out = try_attr("Depth"); return true;
     }
-    auto* entity = profile->as<IfcUtil::IfcBaseEntity>();
+    auto entity = profile.as<express::Entity>();
     if (!file || !entity) return false;
 
     ifcopenshell::geometry::Settings settings;
@@ -3035,20 +3026,20 @@ bool profile_extents(IfcParse::IfcFile* file,
     auto brep = boost::shared_ptr<IfcGeom::Representation::BRep>(
         new IfcGeom::Representation::BRep(
             kernel.settings(),
-            entity->declaration().name(),
-            std::to_string(entity->id()),
+            entity.declaration().name(),
+            std::to_string(entity.id()),
             shapes));
     auto identity = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::matrix4>();
     IfcGeom::BRepElement brep_element(
-        entity->id(),
+        entity.id(),
         -1,
-        entity->declaration().name(),
-        entity->declaration().name(),
+        entity.declaration().name(),
+        entity.declaration().name(),
         std::string(),
         std::string(),
         identity,
         brep,
-        nullptr);
+        {});
     IfcGeom::TriangulationElement triangulated(brep_element);
     const auto& verts = triangulated.geometry().verts();
     if (verts.size() < 3) return false;
@@ -3077,9 +3068,9 @@ namespace ifcapi {
 namespace bindings {
 
 void geometry_unassign_representation(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* product,
-    IfcUtil::IfcBaseClass* representation)
+    ifcopenshell::file* file,
+    express::Base product,
+    express::Base representation)
 {
     if (!file || !product || !representation) return;
     try {
@@ -3096,22 +3087,22 @@ void geometry_unassign_representation(
 }
 
 void geometry_remove_representation(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* representation,
+    ifcopenshell::file* file,
+    express::Base representation,
     bool should_keep_named_profiles)
 {
     if (!file || !representation) return;
     bool is_ifc2x3 = file->schema() && file->schema()->name() == "IFC2X3";
-    std::vector<IfcUtil::IfcBaseClass*> styled_items;
-    std::vector<IfcUtil::IfcBaseClass*> presentation_layer_assignments_items;
-    std::vector<IfcUtil::IfcBaseClass*> presentation_layer_assignments_reps;
-    std::vector<IfcUtil::IfcBaseClass*> textures;
-    std::vector<IfcUtil::IfcBaseClass*> colours;
-    std::vector<IfcUtil::IfcBaseClass*> named_profiles;
+    std::vector<express::Base> styled_items;
+    std::vector<express::Base> presentation_layer_assignments_items;
+    std::vector<express::Base> presentation_layer_assignments_reps;
+    std::vector<express::Base> textures;
+    std::vector<express::Base> colours;
+    std::vector<express::Base> named_profiles;
 
     auto traversed = file->traverse(representation, -1);
-    if (traversed) {
-        for (auto* subelement : *traversed) {
+    if (!traversed.empty()) {
+        for (auto subelement : traversed) {
             if (is_a(subelement, "IfcRepresentationItem")) {
                 ifcapi::detail::append_unique(
                     styled_items,
@@ -3144,8 +3135,8 @@ void geometry_remove_representation(
         ifcapi::detail::append_unique(do_not_delete, named_profiles);
     }
 
-    std::vector<IfcUtil::IfcBaseClass*> also_consider = presentation_layer_assignments_reps;
-    for (auto* layer : presentation_layer_assignments_items) {
+    std::vector<express::Base> also_consider = presentation_layer_assignments_reps;
+    for (auto layer : presentation_layer_assignments_items) {
         if (!ifcapi::detail::contains_ref(presentation_layer_assignments_reps, layer)) {
             also_consider.push_back(layer);
         }
@@ -3154,64 +3145,64 @@ void geometry_remove_representation(
     ifcapi::detail::append_unique(also_consider, textures);
 
     entity_remove_deep2_ex(
-        representation,
+        &representation,
         ifcapi::detail::to_const_refs(also_consider),
         ifcapi::detail::to_const_refs(do_not_delete));
 
-    for (auto* texture : textures) {
-        entity_remove_deep2(texture);
+    for (auto texture : textures) {
+        entity_remove_deep2(&texture);
     }
-    for (auto* colour : colours) {
-        entity_remove_deep2(colour);
+    for (auto colour : colours) {
+        entity_remove_deep2(&colour);
     }
 
-    for (auto* styled_item : styled_items) {
+    for (auto styled_item : styled_items) {
         if (!ifcapi::detail::exists_in_file(file, styled_item)) continue;
-        auto* item = read_ref(styled_item, "Item");
+        auto item = read_ref(styled_item, "Item");
         if (!item || !ifcapi::detail::exists_in_file(file, item)) {
-            file->removeEntity(styled_item);
+            file->remove_entity(styled_item);
         }
     }
 
-    std::vector<IfcUtil::IfcBaseClass*> presentation_layer_assignments = presentation_layer_assignments_reps;
+    std::vector<express::Base> presentation_layer_assignments = presentation_layer_assignments_reps;
     ifcapi::detail::append_unique(presentation_layer_assignments, presentation_layer_assignments_items);
-    for (auto* layer : presentation_layer_assignments) {
+    for (auto layer : presentation_layer_assignments) {
         if (!ifcapi::detail::exists_in_file(file, layer)) continue;
         auto assigned_items = read_ref_list(layer, "AssignedItems");
         bool all_deleted = true;
-        for (auto* item : assigned_items) {
+        for (auto item : assigned_items) {
             if (ifcapi::detail::exists_in_file(file, item)) {
                 all_deleted = false;
                 break;
             }
         }
         if (all_deleted) {
-            file->removeEntity(layer);
+            file->remove_entity(layer);
         }
     }
 }
 
-IfcUtil::IfcBaseClass* geometry_copy_representation(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* source,
-    IfcUtil::IfcBaseClass* target,
+express::Base geometry_copy_representation(
+    ifcopenshell::file* file,
+    express::Base source,
+    express::Base target,
     const char* context_identifier)
 {
     ifcopenshell_clear_error();
     if (!file || !source || !target) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
     try {
         std::string ctx = context_identifier ? context_identifier : "Body";
-        auto* source_rep = get_representation_for_product(source, ctx);
-        if (!source_rep) return nullptr;
+        auto source_rep = get_representation_for_product(source, ctx);
+        if (!source_rep) return {};
 
-        std::unordered_map<unsigned, IfcUtil::IfcBaseClass*> memo;
-        auto* new_rep = deep_copy_entity(file, source_rep,
+        std::unordered_map<unsigned, express::Base> memo;
+        auto new_rep = deep_copy_entity(file, source_rep,
                                          {"IfcGeometricRepresentationContext"}, memo);
 
-        auto* existing = get_representation_for_product(target, ctx);
+        auto existing = get_representation_for_product(target, ctx);
         if (existing) {
             if (is_a(target, "IfcProduct")) {
                 unassign_product_representation(file, target, existing);
@@ -3223,14 +3214,14 @@ IfcUtil::IfcBaseClass* geometry_copy_representation(
         return new_rep;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
 bool type_map_type_representations(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* related_object,
-    IfcUtil::IfcBaseClass* relating_type)
+    ifcopenshell::file* file,
+    express::Base related_object,
+    express::Base relating_type)
 {
     ifcopenshell_clear_error();
     if (!file || !related_object || !relating_type) {
@@ -3241,19 +3232,19 @@ bool type_map_type_representations(
         auto maps = read_ref_list(relating_type, "RepresentationMaps");
         if (maps.empty()) return true;
 
-        auto* def = read_ref(related_object, "Representation");
+        auto def = read_ref(related_object, "Representation");
         if (def) {
             auto reps = read_ref_list(def, "Representations");
-            for (auto* rep : reps) {
+            for (auto rep : reps) {
                 unassign_product_representation(file, related_object, rep);
                 remove_representation_simple(file, rep);
             }
         }
 
-        for (auto* rmap : maps) {
-            auto* rep = read_ref(rmap, "MappedRepresentation");
+        for (auto rmap : maps) {
+            auto rep = read_ref(rmap, "MappedRepresentation");
             if (!rep) continue;
-            auto* mapped = map_representation_impl(file, rep);
+            auto mapped = map_representation_impl(file, rep);
             assign_product_representation(file, related_object, mapped);
         }
         return true;
@@ -3264,8 +3255,8 @@ bool type_map_type_representations(
 }
 
 std::vector<double> geometry_profile_extents(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* profile)
+    ifcopenshell::file* file,
+    express::Base profile)
 {
     ifcopenshell_clear_error();
     if (!file || !profile) {
@@ -3283,6 +3274,319 @@ std::vector<double> geometry_profile_extents(
         set_error(e.what());
         return {};
     }
+}
+
+} // namespace bindings
+} // namespace ifcapi
+
+namespace ifcapi {
+namespace bindings {
+
+std::vector<express::Base> geometry_add_boolean(
+    ifcopenshell::file* file,
+    express::Base* first_item,
+    const std::vector<express::Base>& second_items,
+    const std::string& operator_type)
+{
+    auto first = ifcapi::detail::deref_or_empty(first_item);
+    return geometry_add_boolean(file, first, second_items, operator_type);
+}
+
+express::Base geometry_add_axis_representation(
+    ifcopenshell::file* file,
+    express::Base* context,
+    const std::vector<std::vector<double>>& axis)
+{
+    auto context_value = ifcapi::detail::deref_or_empty(context);
+    return geometry_add_axis_representation(file, context_value, axis);
+}
+
+express::Base geometry_add_footprint_representation(
+    ifcopenshell::file* file,
+    express::Base* context,
+    const std::vector<express::Base>& curves)
+{
+    auto context_value = ifcapi::detail::deref_or_empty(context);
+    return geometry_add_footprint_representation(file, context_value, curves);
+}
+
+express::Base geometry_add_mesh_representation(
+    ifcopenshell::file* file,
+    express::Base* context,
+    const std::vector<std::vector<std::vector<double>>>& vertices,
+    const std::vector<std::vector<std::vector<std::vector<int>>>>& faces,
+    bool force_faceted_brep)
+{
+    auto context_value = ifcapi::detail::deref_or_empty(context);
+    return geometry_add_mesh_representation(file, context_value, vertices, faces, force_faceted_brep);
+}
+
+express::Base geometry_add_shape_aspect(
+    ifcopenshell::file* file,
+    const std::string& name,
+    const std::vector<express::Base>& items,
+    express::Base* representation,
+    express::Base* part_of_product,
+    const char* description,
+    bool has_description)
+{
+    auto representation_value = ifcapi::detail::deref_or_empty(representation);
+    auto part_value = ifcapi::detail::deref_or_empty(part_of_product);
+    return geometry_add_shape_aspect(file, name, items, representation_value, part_value, description, has_description);
+}
+
+express::Base geometry_add_topology_representation(
+    ifcopenshell::file* file,
+    express::Base* context,
+    express::Base* item,
+    const char* representation_identifier,
+    bool has_representation_identifier,
+    const char* representation_type,
+    bool has_representation_type)
+{
+    auto context_value = ifcapi::detail::deref_or_empty(context);
+    auto item_value = ifcapi::detail::deref_or_empty(item);
+    return geometry_add_topology_representation(
+        file, context_value, item_value, representation_identifier, has_representation_identifier,
+        representation_type, has_representation_type);
+}
+
+express::Base geometry_add_wall_representation(
+    ifcopenshell::file* file,
+    express::Base* context,
+    double length,
+    double height,
+    const std::string& direction_sense,
+    double offset,
+    double thickness,
+    double x_angle,
+    const std::vector<int32_t>& clipping_kinds,
+    const std::vector<std::vector<double>>& clipping_locations,
+    const std::vector<std::vector<double>>& clipping_normals,
+    const std::vector<express::Base>& clipping_entities,
+    const std::vector<express::Base>& booleans)
+{
+    auto context_value = ifcapi::detail::deref_or_empty(context);
+    return geometry_add_wall_representation(
+        file, context_value, length, height, direction_sense, offset, thickness, x_angle, clipping_kinds,
+        clipping_locations, clipping_normals, clipping_entities, booleans);
+}
+
+express::Base geometry_add_slab_representation(
+    ifcopenshell::file* file,
+    express::Base* context,
+    double depth,
+    const std::string& direction_sense,
+    double offset,
+    double x_angle,
+    const std::vector<int32_t>& clipping_kinds,
+    const std::vector<std::vector<double>>& clipping_locations,
+    const std::vector<std::vector<double>>& clipping_normals,
+    const std::vector<express::Base>& clipping_entities,
+    const std::vector<std::vector<double>>& polyline,
+    bool has_polyline)
+{
+    auto context_value = ifcapi::detail::deref_or_empty(context);
+    return geometry_add_slab_representation(
+        file, context_value, depth, direction_sense, offset, x_angle, clipping_kinds, clipping_locations,
+        clipping_normals, clipping_entities, polyline, has_polyline);
+}
+
+express::Base geometry_create_2pt_wall(
+    ifcopenshell::file* file,
+    express::Base* element,
+    express::Base* context,
+    const std::vector<double>& p1,
+    const std::vector<double>& p2,
+    double elevation,
+    double height,
+    double thickness,
+    bool is_si)
+{
+    auto element_value = ifcapi::detail::deref_or_empty(element);
+    auto context_value = ifcapi::detail::deref_or_empty(context);
+    return geometry_create_2pt_wall(file, element_value, context_value, p1, p2, elevation, height, thickness, is_si);
+}
+
+express::Base geometry_connect_wall(
+    ifcopenshell::file* file,
+    express::Base* wall1,
+    express::Base* wall2,
+    bool is_atpath,
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
+{
+    auto wall1_value = ifcapi::detail::deref_or_empty(wall1);
+    auto wall2_value = ifcapi::detail::deref_or_empty(wall2);
+    auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
+    auto user_value = ifcapi::detail::deref_or_empty(user);
+    auto application_value = ifcapi::detail::deref_or_empty(application);
+    return geometry_connect_wall(file, wall1_value, wall2_value, is_atpath, owner_history_value, user_value, application_value);
+}
+
+express::Base geometry_clip_solid(
+    ifcopenshell::file* file,
+    express::Base* item,
+    const std::vector<double>& location,
+    const std::vector<double>& normal,
+    express::Base* element,
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
+{
+    auto item_value = ifcapi::detail::deref_or_empty(item);
+    auto element_value = ifcapi::detail::deref_or_empty(element);
+    auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
+    auto user_value = ifcapi::detail::deref_or_empty(user);
+    auto application_value = ifcapi::detail::deref_or_empty(application);
+    return geometry_clip_solid(
+        file, item_value, location, normal, element_value, owner_history_value, user_value, application_value);
+}
+
+express::Base geometry_clip_solid_bounded(
+    ifcopenshell::file* file,
+    express::Base* item,
+    const std::vector<double>& location,
+    const std::vector<double>& normal,
+    const std::vector<std::vector<double>>& boundary_points,
+    const std::vector<double>& boundary_position,
+    express::Base* element,
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
+{
+    auto item_value = ifcapi::detail::deref_or_empty(item);
+    auto element_value = ifcapi::detail::deref_or_empty(element);
+    auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
+    auto user_value = ifcapi::detail::deref_or_empty(user);
+    auto application_value = ifcapi::detail::deref_or_empty(application);
+    return geometry_clip_solid_bounded(
+        file, item_value, location, normal, boundary_points, boundary_position, element_value,
+        owner_history_value, user_value, application_value);
+}
+
+bool geometry_validate_type(ifcopenshell::file* file, express::Base* representation, express::Base* preferred_item) {
+    auto representation_value = ifcapi::detail::deref_or_empty(representation);
+    auto preferred_value = ifcapi::detail::deref_or_empty(preferred_item);
+    return geometry_validate_type(file, representation_value, preferred_value);
+}
+
+void geometry_remove_boolean(ifcopenshell::file* file, express::Base* item) {
+    auto item_value = ifcapi::detail::deref_or_empty(item);
+    geometry_remove_boolean(file, item_value);
+}
+
+express::Base geometry_map_representation(ifcopenshell::file* file, express::Base* representation) {
+    auto representation_value = ifcapi::detail::deref_or_empty(representation);
+    return geometry_map_representation(file, representation_value);
+}
+
+express::Base geometry_assign_representation(ifcopenshell::file* file, express::Base* product, express::Base* representation) {
+    auto product_value = ifcapi::detail::deref_or_empty(product);
+    auto representation_value = ifcapi::detail::deref_or_empty(representation);
+    return geometry_assign_representation(file, product_value, representation_value);
+}
+
+express::Base geometry_regenerate_wall_representation(
+    ifcopenshell::file* file, express::Base* wall, double length, double height, double angle, bool has_angle)
+{
+    auto wall_value = ifcapi::detail::deref_or_empty(wall);
+    return geometry_regenerate_wall_representation(file, wall_value, length, height, angle, has_angle);
+}
+
+express::Base geometry_connect_element(
+    ifcopenshell::file* file,
+    express::Base* relating_element,
+    express::Base* related_element,
+    const char* description,
+    bool has_description,
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
+{
+    auto relating_value = ifcapi::detail::deref_or_empty(relating_element);
+    auto related_value = ifcapi::detail::deref_or_empty(related_element);
+    auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
+    auto user_value = ifcapi::detail::deref_or_empty(user);
+    auto application_value = ifcapi::detail::deref_or_empty(application);
+    return geometry_connect_element(
+        file, relating_value, related_value, description, has_description,
+        owner_history_value, user_value, application_value);
+}
+
+void geometry_disconnect_element(ifcopenshell::file* file, express::Base* relating_element, express::Base* related_element) {
+    auto relating_value = ifcapi::detail::deref_or_empty(relating_element);
+    auto related_value = ifcapi::detail::deref_or_empty(related_element);
+    geometry_disconnect_element(file, relating_value, related_value);
+}
+
+express::Base geometry_connect_path(
+    ifcopenshell::file* file,
+    express::Base* relating_element,
+    express::Base* related_element,
+    const std::string& relating_connection,
+    const std::string& related_connection,
+    const char* description,
+    bool has_description,
+    express::Base* connection_geometry,
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
+{
+    auto relating_value = ifcapi::detail::deref_or_empty(relating_element);
+    auto related_value = ifcapi::detail::deref_or_empty(related_element);
+    auto connection_geometry_value = ifcapi::detail::deref_or_empty(connection_geometry);
+    auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
+    auto user_value = ifcapi::detail::deref_or_empty(user);
+    auto application_value = ifcapi::detail::deref_or_empty(application);
+    return geometry_connect_path(
+        file, relating_value, related_value, relating_connection, related_connection, description, has_description,
+        connection_geometry_value, owner_history_value, user_value, application_value);
+}
+
+void geometry_disconnect_path(
+    ifcopenshell::file* file,
+    express::Base* element,
+    const char* connection_type,
+    bool has_connection_type,
+    express::Base* relating_element,
+    express::Base* related_element)
+{
+    auto element_value = ifcapi::detail::deref_or_empty(element);
+    auto relating_value = ifcapi::detail::deref_or_empty(relating_element);
+    auto related_value = ifcapi::detail::deref_or_empty(related_element);
+    geometry_disconnect_path(file, element_value, connection_type, has_connection_type, relating_value, related_value);
+}
+
+void geometry_unassign_representation(ifcopenshell::file* file, express::Base* product, express::Base* representation) {
+    auto product_value = ifcapi::detail::deref_or_empty(product);
+    auto representation_value = ifcapi::detail::deref_or_empty(representation);
+    geometry_unassign_representation(file, product_value, representation_value);
+}
+
+void geometry_remove_representation(ifcopenshell::file* file, express::Base* representation, bool should_keep_named_profiles) {
+    auto representation_value = ifcapi::detail::deref_or_empty(representation);
+    geometry_remove_representation(file, representation_value, should_keep_named_profiles);
+}
+
+express::Base geometry_copy_representation(
+    ifcopenshell::file* file, express::Base* source, express::Base* target, const char* context_identifier)
+{
+    auto source_value = ifcapi::detail::deref_or_empty(source);
+    auto target_value = ifcapi::detail::deref_or_empty(target);
+    return geometry_copy_representation(file, source_value, target_value, context_identifier);
+}
+
+bool type_map_type_representations(ifcopenshell::file* file, express::Base* related_object, express::Base* relating_type) {
+    auto related_value = ifcapi::detail::deref_or_empty(related_object);
+    auto type_value = ifcapi::detail::deref_or_empty(relating_type);
+    return type_map_type_representations(file, related_value, type_value);
+}
+
+std::vector<double> geometry_profile_extents(ifcopenshell::file* file, express::Base* profile) {
+    auto profile_value = ifcapi::detail::deref_or_empty(profile);
+    return geometry_profile_extents(file, profile_value);
 }
 
 } // namespace bindings

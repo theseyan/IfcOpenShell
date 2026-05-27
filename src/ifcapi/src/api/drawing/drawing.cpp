@@ -18,38 +18,38 @@ namespace {
 
 inline void set_error(const std::string& msg) { ifcopenshell::capi::set_last_error(msg); }
 
-bool is_a(IfcUtil::IfcBaseClass* entity, const char* ifc_class) {
-    return entity && entity->declaration().is(ifc_class);
+bool is_a(express::Base entity, const char* ifc_class) {
+    return entity && entity.declaration().is(ifc_class);
 }
 
-IfcUtil::IfcBaseClass* first_inverse(IfcUtil::IfcBaseClass* entity, const char* inverse_name) {
+express::Base first_inverse(express::Base entity, const char* inverse_name) {
     auto values = ifcapi::detail::read_inverse_aggregate(entity, inverse_name);
-    return values.empty() ? nullptr : values.front();
+    return values.empty() ? express::Base() : values.front();
 }
 
-IfcUtil::IfcBaseClass* grid_for_axis(IfcUtil::IfcBaseClass* axis) {
+express::Base grid_for_axis(express::Base axis) {
     for (const char* inverse_name : {"PartOfW", "PartOfV", "PartOfU"}) {
-        if (auto* grid = first_inverse(axis, inverse_name)) {
+        if (auto grid = first_inverse(axis, inverse_name)) {
             return grid;
         }
     }
-    return nullptr;
+    return {};
 }
 
-bool contains(const std::vector<IfcUtil::IfcBaseClass*>& values, IfcUtil::IfcBaseClass* value) {
+bool contains(const std::vector<express::Base>& values, express::Base value) {
     return std::find(values.begin(), values.end(), value) != values.end();
 }
 
-IfcUtil::IfcBaseClass* create_assigns_to_product(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relating_product,
-    IfcUtil::IfcBaseClass* related_object,
+express::Base create_assigns_to_product(
+    ifcopenshell::file* file,
+    express::Base relating_product,
+    express::Base related_object,
     const std::string& name,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    express::Base owner_history,
+    express::Base user,
+    express::Base application)
 {
-    auto* rel = file->create(file->schema()->declaration_by_name("IfcRelAssignsToProduct"));
+    auto rel = file->create(file->schema()->declaration_by_name("IfcRelAssignsToProduct"));
     ifcapi::detail::write_string_attr(rel, "GlobalId", ifcapi::guid_new());
     if (!name.empty()) {
         ifcapi::detail::write_string_attr(rel, "Name", name);
@@ -68,86 +68,95 @@ IfcUtil::IfcBaseClass* create_assigns_to_product(
 namespace ifcapi {
 namespace bindings {
 
-IfcUtil::IfcBaseClass* drawing_assign_product(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relating_product,
-    IfcUtil::IfcBaseClass* related_object,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+express::Base drawing_assign_product(
+    ifcopenshell::file* file,
+    express::Base* relating_product,
+    express::Base* related_object,
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
     try {
-        if (is_a(relating_product, "IfcGridAxis")) {
-            auto* axis = relating_product;
-            auto* grid = grid_for_axis(axis);
+        auto relating_product_value = ifcapi::detail::deref_or_empty(relating_product);
+        auto related_object_value = ifcapi::detail::deref_or_empty(related_object);
+        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
+        auto user_value = ifcapi::detail::deref_or_empty(user);
+        auto application_value = ifcapi::detail::deref_or_empty(application);
+        if (is_a(relating_product_value, "IfcGridAxis")) {
+            auto axis = relating_product_value;
+            auto grid = grid_for_axis(axis);
             if (!grid) {
                 throw std::runtime_error("IfcGridAxis is not assigned to an IfcGrid");
             }
             const auto axis_tag = ifcapi::detail::read_string_attr(axis, "AxisTag");
-            for (auto* rel : ifcapi::detail::read_inverse_aggregate(grid, "ReferencedBy")) {
+            for (auto rel : ifcapi::detail::read_inverse_aggregate(grid, "ReferencedBy")) {
                 if (ifcapi::detail::read_string_attr(rel, "Name") == axis_tag &&
-                    contains(ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects"), related_object)) {
-                    return nullptr;
+                    contains(ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects"), related_object_value)) {
+                    return {};
                 }
             }
             return create_assigns_to_product(
                 file,
                 grid,
-                related_object,
+                related_object_value,
                 axis_tag,
-                owner_history,
-                user,
-                application);
+                owner_history_value,
+                user_value,
+                application_value);
         }
 
-        for (auto* rel : ifcapi::detail::read_inverse_aggregate(related_object, "HasAssignments")) {
+        for (auto rel : ifcapi::detail::read_inverse_aggregate(related_object_value, "HasAssignments")) {
             if (is_a(rel, "IfcRelAssignsToProduct") &&
-                ifcapi::detail::read_ref_attr(rel, "RelatingProduct") == relating_product) {
-                return nullptr;
+                ifcapi::detail::read_ref_attr(rel, "RelatingProduct") == relating_product_value) {
+                return {};
             }
         }
 
-        auto referenced_by = ifcapi::detail::read_inverse_aggregate(relating_product, "ReferencedBy");
-        auto* rel = referenced_by.empty() ? nullptr : referenced_by.front();
+        auto referenced_by = ifcapi::detail::read_inverse_aggregate(relating_product_value, "ReferencedBy");
+        auto rel = referenced_by.empty() ? express::Base() : referenced_by.front();
         if (rel) {
             auto related_objects = ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects");
-            related_objects.push_back(related_object);
+            related_objects.push_back(related_object_value);
             ifcapi::detail::write_ref_aggregate(rel, "RelatedObjects", related_objects);
-            ifcapi::detail::update_owner_history(file, rel, user, application);
+            ifcapi::detail::update_owner_history(file, rel, user_value, application_value);
             return rel;
         }
 
         return create_assigns_to_product(
             file,
-            relating_product,
-            related_object,
+            relating_product_value,
+            related_object_value,
             std::string(),
-            owner_history,
-            user,
-            application);
+            owner_history_value,
+            user_value,
+            application_value);
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
 void drawing_unassign_product(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relating_product,
-    IfcUtil::IfcBaseClass* related_object,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    ifcopenshell::file* file,
+    express::Base* relating_product,
+    express::Base* related_object,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
     try {
-        if (is_a(relating_product, "IfcGridAxis")) {
-            relating_product = grid_for_axis(relating_product);
+        auto relating_product_value = ifcapi::detail::deref_or_empty(relating_product);
+        auto related_object_value = ifcapi::detail::deref_or_empty(related_object);
+        auto user_value = ifcapi::detail::deref_or_empty(user);
+        auto application_value = ifcapi::detail::deref_or_empty(application);
+        if (is_a(relating_product_value, "IfcGridAxis")) {
+            relating_product_value = grid_for_axis(relating_product_value);
         }
 
-        for (auto* rel : ifcapi::detail::read_inverse_aggregate(related_object, "HasAssignments")) {
+        for (auto rel : ifcapi::detail::read_inverse_aggregate(related_object_value, "HasAssignments")) {
             if (!is_a(rel, "IfcRelAssignsToProduct") ||
-                ifcapi::detail::read_ref_attr(rel, "RelatingProduct") != relating_product) {
+                ifcapi::detail::read_ref_attr(rel, "RelatingProduct") != relating_product_value) {
                 continue;
             }
             auto related_objects = ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects");
@@ -156,10 +165,10 @@ void drawing_unassign_product(
                 return;
             }
             related_objects.erase(
-                std::remove(related_objects.begin(), related_objects.end(), related_object),
+                std::remove(related_objects.begin(), related_objects.end(), related_object_value),
                 related_objects.end());
             ifcapi::detail::write_ref_aggregate(rel, "RelatedObjects", related_objects);
-            ifcapi::detail::update_owner_history(file, rel, user, application);
+            ifcapi::detail::update_owner_history(file, rel, user_value, application_value);
         }
     } catch (const std::exception& e) {
         set_error(e.what());

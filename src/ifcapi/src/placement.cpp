@@ -2,6 +2,7 @@
 
 #include "ifcapi/ifcapi.h"
 #include "ifcapi/bindings/placement.h"
+#include "ifcapi/detail/attribute.h"
 #include "entity_introspection.hpp"
 #include "placement_helpers.hpp"
 
@@ -31,13 +32,13 @@ using ifcapi::matmul4;
 using ifcapi::compute_local_placement;
 using ifcapi::compute_axis2placement;
 
-inline int attr_idx(IfcUtil::IfcBaseClass* e, const char* name) { return ifcapi::find_attr_idx(e, name); }
-inline IfcUtil::IfcBaseClass* read_ref(IfcUtil::IfcBaseClass* e, const char* attr) { return ifcapi::get_entity_ref(e, attr); }
-inline bool is_a(IfcUtil::IfcBaseClass* e, const char* name) { return ifcapi::entity_is_a(e, name); }
-inline bool read_double_vec(IfcUtil::IfcBaseClass* e, const char* attr, double out[3]) { return ifcapi::read_double_vec3(e, attr, out); }
-inline bool read_double_attr(IfcUtil::IfcBaseClass* e, const char* attr, double* out) { return ifcapi::get_double_attr(e, attr, out); }
+inline int attr_idx(express::Base e, const char* name) { return ifcapi::find_attr_idx(e, name); }
+inline express::Base read_ref(express::Base e, const char* attr) { return ifcapi::get_entity_ref(e, attr); }
+inline bool is_a(express::Base e, const char* name) { return ifcapi::entity_is_a(e, name); }
+inline bool read_double_vec(express::Base e, const char* attr, double out[3]) { return ifcapi::read_double_vec3(e, attr, out); }
+inline bool read_double_attr(express::Base e, const char* attr, double* out) { return ifcapi::get_double_attr(e, attr, out); }
 
-bool compute_cart_xform_3d(IfcUtil::IfcBaseClass* e, double* out) {
+bool compute_cart_xform_3d(express::Base e, double* out) {
     if (!e || !is_a(e, "IfcCartesianTransformationOperator3D")) {
         identity4(out);
         return false;
@@ -47,10 +48,10 @@ bool compute_cart_xform_3d(IfcUtil::IfcBaseClass* e, double* out) {
     double a2[3] = {0, 1, 0};
     double a3[3] = {0, 0, 1};
 
-    if (auto* loc = read_ref(e, "LocalOrigin")) read_double_vec(loc, "Coordinates", origin);
-    if (auto* ax = read_ref(e, "Axis1")) read_double_vec(ax, "DirectionRatios", a1);
-    if (auto* ax = read_ref(e, "Axis2")) read_double_vec(ax, "DirectionRatios", a2);
-    if (auto* ax = read_ref(e, "Axis3")) read_double_vec(ax, "DirectionRatios", a3);
+    if (auto loc = read_ref(e, "LocalOrigin")) read_double_vec(loc, "Coordinates", origin);
+    if (auto ax = read_ref(e, "Axis1")) read_double_vec(ax, "DirectionRatios", a1);
+    if (auto ax = read_ref(e, "Axis2")) read_double_vec(ax, "DirectionRatios", a2);
+    if (auto ax = read_ref(e, "Axis3")) read_double_vec(ax, "DirectionRatios", a3);
 
     a2p(origin, a3, a1, out);
 
@@ -80,12 +81,12 @@ bool compute_cart_xform_3d(IfcUtil::IfcBaseClass* e, double* out) {
     return true;
 }
 
-bool compute_mappeditem_xform(IfcUtil::IfcBaseClass* e, double* out) {
+bool compute_mappeditem_xform(express::Base e, double* out) {
     if (!e || !is_a(e, "IfcMappedItem")) return false;
-    auto* src = read_ref(e, "MappingSource");
-    auto* tgt = read_ref(e, "MappingTarget");
+    auto src = read_ref(e, "MappingSource");
+    auto tgt = read_ref(e, "MappingTarget");
     if (!src || !tgt) return false;
-    auto* origin = read_ref(src, "MappingOrigin");
+    auto origin = read_ref(src, "MappingOrigin");
     if (!origin) return false;
     double source_m[16];
     if (!compute_axis2placement(origin, source_m)) return false;
@@ -103,19 +104,19 @@ bool compute_mappeditem_xform(IfcUtil::IfcBaseClass* e, double* out) {
 
 namespace ifcapi {
 
-bool compute_local_placement(IfcUtil::IfcBaseClass* e, double* out) {
+bool compute_local_placement(express::Base e, double* out) {
     if (!e || !entity_is_a(e, "IfcLocalPlacement")) {
         identity4(out);
         return true;
     }
     double parent[16];
-    auto* rel_to = get_entity_ref(e, "PlacementRelTo");
+    auto rel_to = get_entity_ref(e, "PlacementRelTo");
     if (rel_to) {
         if (!compute_local_placement(rel_to, parent)) return false;
     } else {
         identity4(parent);
     }
-    auto* rel = get_entity_ref(e, "RelativePlacement");
+    auto rel = get_entity_ref(e, "RelativePlacement");
     if (!rel) {
         std::memcpy(out, parent, 16 * sizeof(double));
         return true;
@@ -126,7 +127,7 @@ bool compute_local_placement(IfcUtil::IfcBaseClass* e, double* out) {
     return true;
 }
 
-bool compute_axis2placement(IfcUtil::IfcBaseClass* e, double* out) {
+bool compute_axis2placement(express::Base e, double* out) {
     if (!e) {
         identity4(out);
         return false;
@@ -136,9 +137,9 @@ bool compute_axis2placement(IfcUtil::IfcBaseClass* e, double* out) {
     double o[3] = {0, 0, 0};
 
     if (entity_is_a(e, "IfcAxis2Placement3D") || entity_is_a(e, "IfcAxis2PlacementLinear")) {
-        if (auto* axis = get_entity_ref(e, "Axis")) read_double_vec3(axis, "DirectionRatios", z);
-        if (auto* refd = get_entity_ref(e, "RefDirection")) read_double_vec3(refd, "DirectionRatios", x);
-        auto* loc = get_entity_ref(e, "Location");
+        if (auto axis = get_entity_ref(e, "Axis")) read_double_vec3(axis, "DirectionRatios", z);
+        if (auto refd = get_entity_ref(e, "RefDirection")) read_double_vec3(refd, "DirectionRatios", x);
+        auto loc = get_entity_ref(e, "Location");
         if (!loc) {
             identity4(out);
             return false;
@@ -151,10 +152,10 @@ bool compute_axis2placement(IfcUtil::IfcBaseClass* e, double* out) {
         }
         read_double_vec3(loc, "Coordinates", o);
     } else if (entity_is_a(e, "IfcAxis2Placement2D")) {
-        if (auto* refd = get_entity_ref(e, "RefDirection")) {
+        if (auto refd = get_entity_ref(e, "RefDirection")) {
             read_double_vec3(refd, "DirectionRatios", x);
         }
-        if (auto* loc = get_entity_ref(e, "Location")) {
+        if (auto loc = get_entity_ref(e, "Location")) {
             double c[3] = {0, 0, 0};
             read_double_vec3(loc, "Coordinates", c);
             o[0] = c[0];
@@ -162,8 +163,8 @@ bool compute_axis2placement(IfcUtil::IfcBaseClass* e, double* out) {
             o[2] = 0.0;
         }
     } else if (entity_is_a(e, "IfcAxis1Placement")) {
-        if (auto* axis = get_entity_ref(e, "Axis")) read_double_vec3(axis, "DirectionRatios", z);
-        if (auto* loc = get_entity_ref(e, "Location")) read_double_vec3(loc, "Coordinates", o);
+        if (auto axis = get_entity_ref(e, "Axis")) read_double_vec3(axis, "DirectionRatios", z);
+        if (auto loc = get_entity_ref(e, "Location")) read_double_vec3(loc, "Coordinates", o);
     } else {
         identity4(out);
         return false;
@@ -212,36 +213,37 @@ std::vector<double> placement_a2p(
     return matrix_to_vector(out);
 }
 
-std::vector<double> placement_get_axis2placement(IfcUtil::IfcBaseClass* instance) {
+std::vector<double> placement_get_axis2placement(express::Base* instance) {
     double out[16];
     identity4(out);
-    return matrix_result(compute_axis2placement(instance, out), out);
+    return matrix_result(compute_axis2placement(ifcapi::detail::deref_or_empty(instance), out), out);
 }
 
-std::vector<double> placement_get_local_placement(IfcUtil::IfcBaseClass* instance) {
+std::vector<double> placement_get_local_placement(express::Base* instance) {
     double out[16];
     identity4(out);
-    if (!instance) return matrix_to_vector(out);
-    return matrix_result(compute_local_placement(instance, out), out);
+    auto instance_value = ifcapi::detail::deref_or_empty(instance);
+    if (!instance_value) return matrix_to_vector(out);
+    return matrix_result(compute_local_placement(instance_value, out), out);
 }
 
-std::vector<double> placement_get_cartesian_xform_3d(IfcUtil::IfcBaseClass* instance) {
+std::vector<double> placement_get_cartesian_xform_3d(express::Base* instance) {
     double out[16];
     identity4(out);
-    return matrix_result(compute_cart_xform_3d(instance, out), out);
+    return matrix_result(compute_cart_xform_3d(ifcapi::detail::deref_or_empty(instance), out), out);
 }
 
-std::vector<double> placement_get_mappeditem_xform(IfcUtil::IfcBaseClass* instance) {
+std::vector<double> placement_get_mappeditem_xform(express::Base* instance) {
     double out[16];
     identity4(out);
-    return matrix_result(compute_mappeditem_xform(instance, out), out);
+    return matrix_result(compute_mappeditem_xform(ifcapi::detail::deref_or_empty(instance), out), out);
 }
 
-double placement_get_storey_elevation(IfcUtil::IfcBaseClass* instance) {
+double placement_get_storey_elevation(express::Base* instance) {
     double out = 0.0;
-    auto* e = instance;
+    auto e = ifcapi::detail::deref_or_empty(instance);
     if (!e) return out;
-    auto* placement = read_ref(e, "ObjectPlacement");
+    auto placement = read_ref(e, "ObjectPlacement");
     if (placement) {
         double m[16];
         if (compute_local_placement(placement, m)) {

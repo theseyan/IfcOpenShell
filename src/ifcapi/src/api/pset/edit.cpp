@@ -60,13 +60,13 @@ ApiError key_error(const std::string& key) {
     return ApiError(ifcapi::detail::ERROR_KEY, key);
 }
 
-bool entity_is_a(IfcUtil::IfcBaseClass* e, const char* name) {
+bool entity_is_a(express::Base e, const char* name) {
     if (!e) return false;
-    return e->declaration().is(name);
+    return e.declaration().is(name);
 }
 
 // Walk a parameter_type chain to its underlying simple_type.
-const IfcParse::simple_type* underlying_simple_type(const IfcParse::type_declaration* td) {
+const ifcopenshell::simple_type* underlying_simple_type(const ifcopenshell::type_declaration* td) {
     auto* pt = td ? td->declared_type() : nullptr;
     while (pt) {
         if (auto* s = pt->as_simple_type()) return s;
@@ -88,35 +88,35 @@ std::string lowercase(std::string s) {
 }
 
 // Create an inline IFC simple-type wrapper instance (e.g. IfcLabel("hello")) from a primitive.
-IfcUtil::IfcBaseClass* create_typed_value(IfcParse::IfcFile* file, const std::string& type_name,
+express::Base create_typed_value(ifcopenshell::file* file, const std::string& type_name,
                                           const Entry& src, bool from_list = false,
                                           size_t list_idx = 0) {
-    const IfcParse::declaration* decl = nullptr;
+    const ifcopenshell::declaration* decl = nullptr;
     try {
         decl = file->schema()->declaration_by_name(type_name);
     } catch (...) {
-        return nullptr;
+        return {};
     }
     auto* type_decl = decl ? decl->as_type_declaration() : nullptr;
-    if (!type_decl) return nullptr;
+    if (!type_decl) return {};
 
-    auto* inst = file->create(type_decl);
-    if (!inst) return nullptr;
+    auto inst = file->create(type_decl);
+    if (!inst) return {};
 
     auto* simple = underlying_simple_type(type_decl);
-    auto kind = simple ? simple->declared_type() : IfcParse::simple_type::string_type;
+    auto kind = simple ? simple->declared_type() : ifcopenshell::simple_type::string_type;
 
     auto write_string = [&](const std::string& s) {
-        inst->set_attribute_value(0, s);
+        inst.set_attribute_value(0, s);
     };
     auto write_double = [&](double d) {
-        inst->set_attribute_value(0, d);
+        inst.set_attribute_value(0, d);
     };
     auto write_int = [&](int i) {
-        inst->set_attribute_value(0, i);
+        inst.set_attribute_value(0, i);
     };
     auto write_bool = [&](bool b) {
-        inst->set_attribute_value(0, b);
+        inst.set_attribute_value(0, b);
     };
 
     if (from_list) {
@@ -126,9 +126,9 @@ IfcUtil::IfcBaseClass* create_typed_value(IfcParse::IfcFile* file, const std::st
                 break;
             case Kind::DOUBLE_LIST:
                 if (list_idx < src.dbl_list.size()) {
-                    if (kind == IfcParse::simple_type::integer_type) {
+                    if (kind == ifcopenshell::simple_type::integer_type) {
                         write_int(static_cast<int>(src.dbl_list[list_idx]));
-                    } else if (kind == IfcParse::simple_type::string_type) {
+                    } else if (kind == ifcopenshell::simple_type::string_type) {
                         write_string(std::to_string(src.dbl_list[list_idx]));
                     } else {
                         write_double(src.dbl_list[list_idx]);
@@ -137,10 +137,10 @@ IfcUtil::IfcBaseClass* create_typed_value(IfcParse::IfcFile* file, const std::st
                 break;
             case Kind::INT_LIST:
                 if (list_idx < src.int_list.size()) {
-                    if (kind == IfcParse::simple_type::real_type ||
-                        kind == IfcParse::simple_type::number_type) {
+                    if (kind == ifcopenshell::simple_type::real_type ||
+                        kind == ifcopenshell::simple_type::number_type) {
                         write_double(static_cast<double>(src.int_list[list_idx]));
-                    } else if (kind == IfcParse::simple_type::string_type) {
+                    } else if (kind == ifcopenshell::simple_type::string_type) {
                         write_string(std::to_string(src.int_list[list_idx]));
                     } else {
                         write_int(static_cast<int>(src.int_list[list_idx]));
@@ -154,7 +154,7 @@ IfcUtil::IfcBaseClass* create_typed_value(IfcParse::IfcFile* file, const std::st
     }
 
     switch (kind) {
-        case IfcParse::simple_type::string_type:
+        case ifcopenshell::simple_type::string_type:
             switch (src.kind) {
                 case Kind::STRING:        write_string(src.s_val); break;
                 case Kind::TYPED_STRING:  write_string(src.s_val); break;
@@ -167,8 +167,8 @@ IfcUtil::IfcBaseClass* create_typed_value(IfcParse::IfcFile* file, const std::st
                 default: write_string(src.s_val); break;
             }
             break;
-        case IfcParse::simple_type::real_type:
-        case IfcParse::simple_type::number_type:
+        case ifcopenshell::simple_type::real_type:
+        case ifcopenshell::simple_type::number_type:
             switch (src.kind) {
                 case Kind::DOUBLE:        write_double(src.d_val); break;
                 case Kind::TYPED_DOUBLE:  write_double(src.d_val); break;
@@ -183,7 +183,7 @@ IfcUtil::IfcBaseClass* create_typed_value(IfcParse::IfcFile* file, const std::st
                 default: write_double(0.0); break;
             }
             break;
-        case IfcParse::simple_type::integer_type:
+        case ifcopenshell::simple_type::integer_type:
             switch (src.kind) {
                 case Kind::INT:           write_int(static_cast<int>(src.i_val)); break;
                 case Kind::TYPED_INT:     write_int(static_cast<int>(src.i_val)); break;
@@ -197,8 +197,8 @@ IfcUtil::IfcBaseClass* create_typed_value(IfcParse::IfcFile* file, const std::st
                 default: write_int(0); break;
             }
             break;
-        case IfcParse::simple_type::boolean_type:
-        case IfcParse::simple_type::logical_type:
+        case ifcopenshell::simple_type::boolean_type:
+        case ifcopenshell::simple_type::logical_type:
             switch (src.kind) {
                 case Kind::BOOL:          write_bool(src.b_val); break;
                 case Kind::TYPED_BOOL:    write_bool(src.b_val); break;
@@ -223,8 +223,8 @@ IfcUtil::IfcBaseClass* create_typed_value(IfcParse::IfcFile* file, const std::st
 }
 
 // Determine the IFC primary measure type for a single-value property.
-std::string primary_measure_type(IfcUtil::IfcBaseClass* pset_template, const std::string& prop_name,
-                                 IfcUtil::IfcBaseClass* old_value, const Entry& new_value) {
+std::string primary_measure_type(express::Base pset_template, const std::string& prop_name,
+                                 express::Base old_value, const Entry& new_value) {
     // An explicit type from the new value (TYPED_* kinds or an INSTANCE
     // wrapping a typed value) overrides any old/template-derived type;
     // mirrors upstream where ``prop.NominalValue = file.createIfcBoolean(...)``
@@ -234,13 +234,13 @@ std::string primary_measure_type(IfcUtil::IfcBaseClass* pset_template, const std
         return new_value.ifc_type;
     }
     if (new_value.kind == Kind::INSTANCE && new_value.inst) {
-        return new_value.inst->declaration().name();
+        return new_value.inst.declaration().name();
     }
     if (old_value) {
-        return old_value->declaration().name();
+        return old_value.declaration().name();
     }
     if (pset_template) {
-        for (auto* pt : read_ref_aggregate(pset_template, "HasPropertyTemplates")) {
+        for (auto pt : read_ref_aggregate(pset_template, "HasPropertyTemplates")) {
             if (read_string_attr(pt, "Name") == prop_name) {
                 std::string pmt = read_string_attr(pt, "PrimaryMeasureType");
                 return pmt.empty() ? std::string("IfcLabel") : pmt;
@@ -257,28 +257,27 @@ std::string primary_measure_type(IfcUtil::IfcBaseClass* pset_template, const std
 }
 
 // Get aggregate of properties on a pset, handling HasProperties/Properties/ExtendedProperties.
-const char* properties_attr_name(IfcUtil::IfcBaseClass* pset) {
+const char* properties_attr_name(express::Base pset) {
     if (entity_has_attr(pset, "HasProperties")) return "HasProperties";
     if (entity_has_attr(pset, "Properties"))    return "Properties";
     if (entity_is_a(pset, "IfcMaterialProperties") && entity_has_attr(pset, "ExtendedProperties"))
         return "ExtendedProperties";
-    return nullptr;
+    return {};
 }
 
-uint32_t total_inverses(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e) {
+uint32_t total_inverses(ifcopenshell::file* file, express::Base e) {
     if (!e || !file) return 0;
     try {
-        auto inv = file->getInverse(e->id(), nullptr, -1);
-        return inv ? static_cast<uint32_t>(inv->size()) : 0u;
+        return static_cast<uint32_t>(file->instances_by_reference(static_cast<int>(e.id())).size());
     } catch (...) {
         return 0;
     }
 }
 
-IfcUtil::IfcBaseClass* copy_property_enumeration(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* source) {
-    if (!file || !source) return nullptr;
-    auto* result = file->create(&source->declaration());
-    if (!result) return nullptr;
+express::Base copy_property_enumeration(ifcopenshell::file* file, express::Base source) {
+    if (!file || !source) return {};
+    auto result = file->create(&source.declaration());
+    if (!result) return {};
 
     write_string_attr(result, "Name", read_string_attr(source, "Name"));
     if (is_attr_null(source, "EnumerationValues")) {
@@ -290,63 +289,63 @@ IfcUtil::IfcBaseClass* copy_property_enumeration(IfcParse::IfcFile* file, IfcUti
     return result;
 }
 
-bool process_existing_single_value(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* prop,
-                                   IfcUtil::IfcBaseClass* pset_template,
+bool process_existing_single_value(ifcopenshell::file* file, express::Base prop,
+                                   express::Base pset_template,
                                    const Entry& entry, bool should_purge,
                                    bool& removed) {
     removed = false;
     auto kind = entry.kind;
     if (kind == Kind::NONE) {
         if (should_purge) {
-            file->removeEntity(prop);
+            file->remove_entity(prop);
             removed = true;
             return true;
         }
         // Set NominalValue = NULL.
         int idx = attr_index_of(prop, "NominalValue");
-        if (idx >= 0) prop->set_attribute_value(static_cast<size_t>(idx), Blank{});
+        if (idx >= 0) prop.set_attribute_value(static_cast<size_t>(idx), blank{});
         return true;
     }
 
     if (kind == Kind::INSTANCE) {
         // Caller passed an entity_instance already wrapping a typed value (or a raw IfcValue/IfcSimpleProperty).
         if (!entry.inst) return false;
-        if (entity_is_a(entry.inst, "IfcValue") || entry.inst->declaration().as_type_declaration()) {
+        if (entity_is_a(entry.inst, "IfcValue") || entry.inst.declaration().as_type_declaration()) {
             int idx = attr_index_of(prop, "NominalValue");
-            if (idx >= 0) prop->set_attribute_value(static_cast<size_t>(idx), entry.inst);
+            if (idx >= 0) prop.set_attribute_value(static_cast<size_t>(idx), entry.inst);
         } else {
             throw value_error(
-                entry.inst->declaration().name() + " cannot be assigned to the property set '"
+                entry.inst.declaration().name() + " cannot be assigned to the property set '"
                 + read_string_attr(prop, "Name") + "'");
         }
         if (entry.unit) {
             int u_idx = attr_index_of(prop, "Unit");
-            if (u_idx >= 0) prop->set_attribute_value(static_cast<size_t>(u_idx), entry.unit);
+            if (u_idx >= 0) prop.set_attribute_value(static_cast<size_t>(u_idx), entry.unit);
         }
         return true;
     }
 
-    auto* old_value = read_ref_attr(prop, "NominalValue");
+    auto old_value = read_ref_attr(prop, "NominalValue");
     std::string pmt = primary_measure_type(pset_template, read_string_attr(prop, "Name"), old_value, entry);
     if (pmt.empty()) pmt = "IfcLabel";
-    auto* typed = create_typed_value(file, pmt, entry);
+    auto typed = create_typed_value(file, pmt, entry);
     if (!typed) return false;
     int idx = attr_index_of(prop, "NominalValue");
-    if (idx >= 0) prop->set_attribute_value(static_cast<size_t>(idx), typed);
+    if (idx >= 0) prop.set_attribute_value(static_cast<size_t>(idx), typed);
     if (entry.unit) {
         int u_idx = attr_index_of(prop, "Unit");
-        if (u_idx >= 0) prop->set_attribute_value(static_cast<size_t>(u_idx), entry.unit);
+        if (u_idx >= 0) prop.set_attribute_value(static_cast<size_t>(u_idx), entry.unit);
     }
     return true;
 }
 
-bool process_existing_enumerated(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* prop,
+bool process_existing_enumerated(ifcopenshell::file* file, express::Base prop,
                                  const Entry& entry, bool should_purge, bool& removed) {
     removed = false;
     if (entry.kind == Kind::INSTANCE && entry.inst && entity_is_a(entry.inst, "IfcPropertyEnumeratedValue")) {
         if (is_attr_null(entry.inst, "EnumerationValues")) {
             if (should_purge) {
-                file->removeEntity(prop);
+                file->remove_entity(prop);
                 removed = true;
                 return true;
             }
@@ -355,10 +354,10 @@ bool process_existing_enumerated(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass*
             write_ref_aggregate(prop, "EnumerationValues", read_ref_aggregate(entry.inst, "EnumerationValues"));
         }
 
-        auto* value_reference = read_ref_attr(entry.inst, "EnumerationReference");
-        auto* prop_reference = read_ref_attr(prop, "EnumerationReference");
+        auto value_reference = read_ref_attr(entry.inst, "EnumerationReference");
+        auto prop_reference = read_ref_attr(prop, "EnumerationReference");
         if (!value_reference) {
-            if (prop_reference) ifcapi::bindings::entity_remove_deep2(prop_reference);
+            if (prop_reference) ifcapi::bindings::entity_remove_deep2(&prop_reference);
             write_blank_attr(prop, "EnumerationReference");
         } else if (!prop_reference) {
             write_ref_attr(prop, "EnumerationReference", copy_property_enumeration(file, value_reference));
@@ -384,58 +383,58 @@ bool process_existing_enumerated(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass*
         || (entry.kind == Kind::DOUBLE_LIST && entry.dbl_list.empty())
         || (entry.kind == Kind::INT_LIST && entry.int_list.empty());
     if (empty_list && should_purge) {
-        file->removeEntity(prop);
+        file->remove_entity(prop);
         removed = true;
         return true;
     }
 
     std::string pmt;
-    auto* ref = read_ref_attr(prop, "EnumerationReference");
+    auto ref = read_ref_attr(prop, "EnumerationReference");
     if (ref) {
         auto vals = read_ref_aggregate(ref, "EnumerationValues");
-        if (!vals.empty()) pmt = vals.front()->declaration().name();
+        if (!vals.empty()) pmt = vals.front().declaration().name();
     }
     if (pmt.empty()) {
         auto vals = read_ref_aggregate(prop, "EnumerationValues");
-        if (!vals.empty()) pmt = vals.front()->declaration().name();
+        if (!vals.empty()) pmt = vals.front().declaration().name();
     }
     if (pmt.empty()) pmt = "IfcLabel";
 
-    std::vector<IfcUtil::IfcBaseClass*> sel_vals;
+    std::vector<express::Base> sel_vals;
     size_t n = (entry.kind == Kind::STRING_LIST) ? entry.str_list.size()
         : (entry.kind == Kind::DOUBLE_LIST) ? entry.dbl_list.size() : entry.int_list.size();
     for (size_t i = 0; i < n; ++i) {
-        auto* tv = create_typed_value(file, pmt, entry, true, i);
+        auto tv = create_typed_value(file, pmt, entry, true, i);
         if (tv) sel_vals.push_back(tv);
     }
     if (sel_vals.empty()) {
         int idx = attr_index_of(prop, "EnumerationValues");
-        if (idx >= 0) prop->set_attribute_value(static_cast<size_t>(idx), Blank{});
+        if (idx >= 0) prop.set_attribute_value(static_cast<size_t>(idx), blank{});
     } else {
         write_ref_aggregate(prop, "EnumerationValues", sel_vals);
     }
     return true;
 }
 
-IfcUtil::IfcBaseClass* build_new_property(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* pset_template,
+express::Base build_new_property(ifcopenshell::file* file, express::Base pset_template,
                                           const std::string& name, const Entry& entry) {
     if (entry.kind == Kind::INSTANCE) {
-        if (!entry.inst) return nullptr;
+        if (!entry.inst) return {};
         if (entity_is_a(entry.inst, "IfcProperty")) {
             return entry.inst;
         }
-        if (!entry.inst->declaration().as_type_declaration() && !entity_is_a(entry.inst, "IfcValue")) {
+        if (!entry.inst.declaration().as_type_declaration() && !entity_is_a(entry.inst, "IfcValue")) {
             throw value_error(
-                entry.inst->declaration().name() + " cannot be assigned to the property set '" + name + "'");
+                entry.inst.declaration().name() + " cannot be assigned to the property set '" + name + "'");
         }
         const auto* sv_decl = file->schema()->declaration_by_name("IfcPropertySingleValue");
-        auto* sv = file->create(sv_decl);
+        auto sv = file->create(sv_decl);
         write_string_attr(sv, "Name", name);
         int nv_idx = attr_index_of(sv, "NominalValue");
-        if (nv_idx >= 0) sv->set_attribute_value(static_cast<size_t>(nv_idx), entry.inst);
+        if (nv_idx >= 0) sv.set_attribute_value(static_cast<size_t>(nv_idx), entry.inst);
         if (entry.unit) {
             int u_idx = attr_index_of(sv, "Unit");
-            if (u_idx >= 0) sv->set_attribute_value(static_cast<size_t>(u_idx), entry.unit);
+            if (u_idx >= 0) sv.set_attribute_value(static_cast<size_t>(u_idx), entry.unit);
         }
         return sv;
     }
@@ -443,11 +442,11 @@ IfcUtil::IfcBaseClass* build_new_property(IfcParse::IfcFile* file, IfcUtil::IfcB
     if (entry.kind == Kind::STRING_LIST || entry.kind == Kind::DOUBLE_LIST || entry.kind == Kind::INT_LIST) {
         size_t n = (entry.kind == Kind::STRING_LIST) ? entry.str_list.size()
             : (entry.kind == Kind::DOUBLE_LIST) ? entry.dbl_list.size() : entry.int_list.size();
-        if (n == 0) return nullptr;
+        if (n == 0) return {};
         if (!pset_template) {
             throw not_implemented_error("No template found for property '" + name + "'");
         }
-        for (auto* pt : read_ref_aggregate(pset_template, "HasPropertyTemplates")) {
+        for (auto pt : read_ref_aggregate(pset_template, "HasPropertyTemplates")) {
             if (read_string_attr(pt, "Name") != name) continue;
             std::string tt = read_string_attr(pt, "TemplateType");
             std::string pmt = read_string_attr(pt, "PrimaryMeasureType");
@@ -455,37 +454,37 @@ IfcUtil::IfcBaseClass* build_new_property(IfcParse::IfcFile* file, IfcUtil::IfcB
                 if (pmt.empty()) {
                     throw value_error("pset template '" + name + "' is missing PrimaryMeasureType");
                 }
-                std::vector<IfcUtil::IfcBaseClass*> items;
+                std::vector<express::Base> items;
                 for (size_t i = 0; i < n; ++i) {
-                    if (auto* tv = create_typed_value(file, pmt, entry, true, i)) items.push_back(tv);
+                    if (auto tv = create_typed_value(file, pmt, entry, true, i)) items.push_back(tv);
                 }
                 const auto* lv_decl = file->schema()->declaration_by_name("IfcPropertyListValue");
-                auto* lv = file->create(lv_decl);
+                auto lv = file->create(lv_decl);
                 write_string_attr(lv, "Name", name);
                 write_ref_aggregate(lv, "ListValues", items);
                 return lv;
             }
             if (tt == "P_ENUMERATEDVALUE") {
                 if (pmt.empty()) pmt = "IfcLabel";
-                auto* enumerators = read_ref_attr(pt, "Enumerators");
-                std::vector<IfcUtil::IfcBaseClass*> enum_value_items;
+                auto enumerators = read_ref_attr(pt, "Enumerators");
+                std::vector<express::Base> enum_value_items;
                 if (enumerators) enum_value_items = read_ref_aggregate(enumerators, "EnumerationValues");
 
                 const auto* pe_decl = file->schema()->declaration_by_name("IfcPropertyEnumeration");
-                auto* pe = file->create(pe_decl);
+                auto pe = file->create(pe_decl);
                 write_string_attr(pe, "Name", name);
                 write_ref_aggregate(pe, "EnumerationValues", enum_value_items);
 
-                std::vector<IfcUtil::IfcBaseClass*> sel;
+                std::vector<express::Base> sel;
                 for (size_t i = 0; i < n; ++i) {
-                    if (auto* tv = create_typed_value(file, pmt, entry, true, i)) sel.push_back(tv);
+                    if (auto tv = create_typed_value(file, pmt, entry, true, i)) sel.push_back(tv);
                 }
                 const auto* pev_decl = file->schema()->declaration_by_name("IfcPropertyEnumeratedValue");
-                auto* pev = file->create(pev_decl);
+                auto pev = file->create(pev_decl);
                 write_string_attr(pev, "Name", name);
                 write_ref_aggregate(pev, "EnumerationValues", sel);
                 int er_idx = attr_index_of(pev, "EnumerationReference");
-                if (er_idx >= 0) pev->set_attribute_value(static_cast<size_t>(er_idx), pe);
+                if (er_idx >= 0) pev.set_attribute_value(static_cast<size_t>(er_idx), pe);
                 return pev;
             }
             throw not_implemented_error("Template type '" + tt + "' is not supported yet");
@@ -495,27 +494,27 @@ IfcUtil::IfcBaseClass* build_new_property(IfcParse::IfcFile* file, IfcUtil::IfcB
 
     // Scalar single value path.
     Entry tmp = entry;
-    std::string pmt = primary_measure_type(pset_template, name, nullptr, tmp);
+    std::string pmt = primary_measure_type(pset_template, name, {}, tmp);
     if (pmt.empty()) pmt = "IfcLabel";
-    auto* tv = create_typed_value(file, pmt, entry);
-    if (!tv) return nullptr;
+    auto tv = create_typed_value(file, pmt, entry);
+    if (!tv) return {};
     const auto* sv_decl = file->schema()->declaration_by_name("IfcPropertySingleValue");
-    auto* sv = file->create(sv_decl);
+    auto sv = file->create(sv_decl);
     write_string_attr(sv, "Name", name);
     int nv_idx = attr_index_of(sv, "NominalValue");
-    if (nv_idx >= 0) sv->set_attribute_value(static_cast<size_t>(nv_idx), tv);
+    if (nv_idx >= 0) sv.set_attribute_value(static_cast<size_t>(nv_idx), tv);
     if (entry.unit) {
         int u_idx = attr_index_of(sv, "Unit");
-        if (u_idx >= 0) sv->set_attribute_value(static_cast<size_t>(u_idx), entry.unit);
+        if (u_idx >= 0) sv.set_attribute_value(static_cast<size_t>(u_idx), entry.unit);
     }
     return sv;
 }
 
-IfcUtil::IfcBaseClass* fetch_pset_template(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* pset,
-                                           IfcUtil::IfcBaseClass* explicit_template) {
+express::Base fetch_pset_template(ifcopenshell::file* file, express::Base pset,
+                                           express::Base explicit_template) {
     if (explicit_template) return explicit_template;
     std::string name = read_string_attr(pset, "Name");
-    if (name.empty()) return nullptr;
+    if (name.empty()) return {};
     std::vector<std::string> schemas = {file->schema()->name()};
     if (schemas.front().rfind("IFC2X3", 0) == 0) {
         schemas.push_back("IFC4");
@@ -524,9 +523,9 @@ IfcUtil::IfcBaseClass* fetch_pset_template(IfcParse::IfcFile* file, IfcUtil::Ifc
     for (const auto& schema : schemas) {
         auto* cache = ifcapi::bindings::pset_template_get_template(schema);
         if (!cache) continue;
-        if (auto* tmpl = ifcapi::bindings::pset_template_get_by_name(cache, name)) return tmpl;
+        if (auto tmpl = ifcapi::bindings::pset_template_get_by_name(cache, name)) return tmpl;
     }
-    return nullptr;
+    return {};
 }
 
 }  // namespace
@@ -584,11 +583,11 @@ void pset_props_set_string(ifcopenshell_pset_props_t* p, const std::string& key,
     e.s_val = v;
 }
 
-void pset_props_set_instance(ifcopenshell_pset_props_t* p, const std::string& key, IfcUtil::IfcBaseClass* v) {
+void pset_props_set_instance(ifcopenshell_pset_props_t* p, const std::string& key, express::Base* v) {
     if (!p) return;
     auto& e = append_entry(p, key);
     e.kind = Kind::INSTANCE;
-    e.inst = v;
+    e.inst = ifcapi::detail::deref_or_empty(v);
 }
 
 void pset_props_set_typed_string(
@@ -652,14 +651,11 @@ void pset_props_set_int_list(
 }
 
 void pset_props_set_instance_list(
-    ifcopenshell_pset_props_t* p, const std::string& key, const std::vector<const IfcUtil::IfcBaseClass*>& vals) {
+    ifcopenshell_pset_props_t* p, const std::string& key, const std::vector<express::Base>& vals) {
     if (!p) return;
     auto& e = append_entry(p, key);
     e.kind = Kind::INSTANCE_LIST;
-    e.inst_list.reserve(vals.size());
-    for (auto* value : vals) {
-        e.inst_list.push_back(const_cast<IfcUtil::IfcBaseClass*>(value));
-    }
+    e.inst_list = vals;
 }
 
 void pset_props_set_date(ifcopenshell_pset_props_t* p, const std::string& key, int year, int month, int day) {
@@ -717,21 +713,23 @@ void pset_props_set_dict(ifcopenshell_pset_props_t* outer, const std::string& ke
 // Attach an IfcUnit to the most recently added entry (mirrors upstream's
 // ``unpack_unit_value`` shape ``{NominalValue, Unit}``). The unit becomes the
 // ``Unit`` attribute on the resulting IfcPropertySingleValue.
-void pset_props_set_unit_for_last(ifcopenshell_pset_props_t* p, IfcUtil::IfcBaseClass* unit) {
+void pset_props_set_unit_for_last(ifcopenshell_pset_props_t* p, express::Base* unit) {
     if (!p || p->entries.empty()) return;
-    p->entries.back().unit = unit;
+    p->entries.back().unit = ifcapi::detail::deref_or_empty(unit);
 }
 
 /* ---- edit_pset ---- */
 
 bool pset_edit_pset(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* pset,
+    ifcopenshell::file* file,
+    express::Base* pset_ptr,
     const char* name,
     ifcopenshell_pset_props_t* properties,
-    IfcUtil::IfcBaseClass* pset_template,
+    express::Base* pset_template_ptr,
     bool should_purge)
 {
+    auto pset = ifcapi::detail::deref_or_empty(pset_ptr);
+    auto pset_template = ifcapi::detail::deref_or_empty(pset_template_ptr);
     if (!file || !pset) {
         set_error("pset_edit_pset: missing required argument");
         return false;
@@ -758,10 +756,10 @@ bool pset_edit_pset(
             return false;
         }
 
-        std::vector<IfcUtil::IfcBaseClass*> existing = read_ref_aggregate(pset, attr_name);
-        std::vector<IfcUtil::IfcBaseClass*> kept;
+        std::vector<express::Base> existing = read_ref_aggregate(pset, attr_name);
+        std::vector<express::Base> kept;
 
-        for (auto* prop : existing) {
+        for (auto prop : existing) {
             std::string pname = read_string_attr(prop, "Name");
             auto it = remaining.find(pname);
             if (it == remaining.end()) {
@@ -785,7 +783,7 @@ bool pset_edit_pset(
                 }
             } else {
                 throw not_implemented_error(
-                    "Updating '" + prop->declaration().name() + "' properties is not supported yet");
+                    "Updating '" + prop.declaration().name() + "' properties is not supported yet");
             }
             if (!removed) kept.push_back(prop);
             remaining.erase(it);
@@ -797,7 +795,7 @@ bool pset_edit_pset(
             if (it == remaining.end()) continue;
             const Entry* e = it->second;
             if (e->kind == Kind::NONE && should_purge) continue;
-            auto* np = build_new_property(file, pset_template, key, *e);
+            auto np = build_new_property(file, pset_template, key, *e);
             if (np) kept.push_back(np);
         }
 
@@ -855,10 +853,10 @@ std::string infer_qto_class(const std::string& name, const Entry& e) {
     return "Length";
 }
 
-std::string qto_canonical_type(const std::string& name, const Entry& e, IfcUtil::IfcBaseClass* qto_template) {
+std::string qto_canonical_type(const std::string& name, const Entry& e, express::Base qto_template) {
     std::string explicit_type;
     if (e.kind == Kind::INSTANCE && e.inst) {
-        explicit_type = e.inst->declaration().name();
+        explicit_type = e.inst.declaration().name();
     } else if ((e.kind == Kind::TYPED_DOUBLE || e.kind == Kind::TYPED_INT
                 || e.kind == Kind::TYPED_BOOL || e.kind == Kind::TYPED_STRING)
                && !e.ifc_type.empty()) {
@@ -877,7 +875,7 @@ std::string qto_canonical_type(const std::string& name, const Entry& e, IfcUtil:
         return n;
     }
     if (qto_template) {
-        for (auto* pt : read_ref_aggregate(qto_template, "HasPropertyTemplates")) {
+        for (auto pt : read_ref_aggregate(qto_template, "HasPropertyTemplates")) {
             if (read_string_attr(pt, "Name") != name) continue;
             std::string tt = read_string_attr(pt, "TemplateType");
             if (tt.size() > 2) {
@@ -905,17 +903,17 @@ double entry_to_double(const Entry& e) {
         case Kind::INSTANCE:
             if (e.inst) {
                 try {
-                    auto v = e.inst->get_attribute_value(0);
+                    auto v = e.inst.get_attribute_value(0);
                     if (!v.isNull()) {
                         switch (v.type()) {
-                            case IfcUtil::Argument_DOUBLE: return (double)v;
-                            case IfcUtil::Argument_INT: return (double)((int)v);
+                            case ifcopenshell::Argument_DOUBLE: return (double)v;
+                            case ifcopenshell::Argument_INT: return (double)((int)v);
                             default: break;
                         }
                     }
                 } catch (...) {}
             }
-            throw std::runtime_error(e.inst ? "Unsupported quantity value type: " + e.inst->declaration().name()
+            throw std::runtime_error(e.inst ? "Unsupported quantity value type: " + e.inst.declaration().name()
                                             : "Unsupported quantity value type");
         case Kind::STRING:
         case Kind::TYPED_STRING:
@@ -942,17 +940,17 @@ int64_t entry_to_int(const Entry& e) {
         case Kind::INSTANCE:
             if (e.inst) {
                 try {
-                    auto v = e.inst->get_attribute_value(0);
+                    auto v = e.inst.get_attribute_value(0);
                     if (!v.isNull()) {
                         switch (v.type()) {
-                            case IfcUtil::Argument_INT: return (int)v;
-                            case IfcUtil::Argument_DOUBLE: return (int64_t)((double)v);
+                            case ifcopenshell::Argument_INT: return (int)v;
+                            case ifcopenshell::Argument_DOUBLE: return (int64_t)((double)v);
                             default: break;
                         }
                     }
                 } catch (...) {}
             }
-            throw std::runtime_error(e.inst ? "Unsupported quantity value type: " + e.inst->declaration().name()
+            throw std::runtime_error(e.inst ? "Unsupported quantity value type: " + e.inst.declaration().name()
                                             : "Unsupported quantity value type");
         case Kind::STRING:
         case Kind::TYPED_STRING:
@@ -972,12 +970,14 @@ int64_t entry_to_int(const Entry& e) {
 }  // namespace
 
 bool pset_edit_qto(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* qto,
+    ifcopenshell::file* file,
+    express::Base* qto_ptr,
     const char* name,
     ifcopenshell_pset_props_t* properties,
-    IfcUtil::IfcBaseClass* qto_template)
+    express::Base* qto_template_ptr)
 {
+    auto qto = ifcapi::detail::deref_or_empty(qto_ptr);
+    auto qto_template = ifcapi::detail::deref_or_empty(qto_template_ptr);
     if (!file || !qto) {
         set_error("pset_edit_qto: missing required argument");
         return false;
@@ -1006,10 +1006,10 @@ bool pset_edit_qto(
             }
         }
 
-        std::vector<IfcUtil::IfcBaseClass*> existing = read_ref_aggregate(qto, attr_name);
-        std::vector<IfcUtil::IfcBaseClass*> kept;
+        std::vector<express::Base> existing = read_ref_aggregate(qto, attr_name);
+        std::vector<express::Base> kept;
 
-        for (auto* prop : existing) {
+        for (auto prop : existing) {
             std::string pname = read_string_attr(prop, "Name");
             auto it = remaining.find(pname);
             if (it == remaining.end()) {
@@ -1018,7 +1018,7 @@ bool pset_edit_qto(
             }
             const Entry* e = it->second;
             if (e->kind == Kind::NONE) {
-                file->removeEntity(prop);
+                file->remove_entity(prop);
                 remaining.erase(it);
                 continue;
             }
@@ -1036,7 +1036,7 @@ bool pset_edit_qto(
                         }
                     }
                     if (has_discrim) write_string_attr(prop, "Discrimination", discrim);
-                    pset_edit_qto(file, prop, nullptr, &sub, nullptr);
+                    pset_edit_qto(file, &prop, nullptr, &sub, nullptr);
                 }
                 kept.push_back(prop);
                 remaining.erase(it);
@@ -1047,9 +1047,9 @@ bool pset_edit_qto(
                 bool is_ifc4x3 = (std::string(file->schema()->name()) == "IFC4X3");
                 if (is_count && is_ifc4x3) {
                     int64_t v = entry_to_int(*e);
-                    prop->set_attribute_value(3, static_cast<int>(v));
+                    prop.set_attribute_value(3, static_cast<int>(v));
                 } else {
-                    prop->set_attribute_value(3, entry_to_double(*e));
+                    prop.set_attribute_value(3, entry_to_double(*e));
                 }
                 kept.push_back(prop);
                 remaining.erase(it);
@@ -1082,14 +1082,14 @@ bool pset_edit_qto(
                 }
                 if (!has_discrim) throw key_error("Discrimination");
                 if (!has_quantities) throw key_error("HasQuantities");
-                const IfcParse::declaration* cq_decl = nullptr;
+                const ifcopenshell::declaration* cq_decl = nullptr;
                 try { cq_decl = file->schema()->declaration_by_name("IfcPhysicalComplexQuantity"); }
                 catch (...) { cq_decl = nullptr; }
                 if (!cq_decl) continue;
-                auto* cq = file->create(cq_decl);
+                auto cq = file->create(cq_decl);
                 write_string_attr(cq, "Name", key);
                 write_string_attr(cq, "Discrimination", discrim);
-                pset_edit_qto(file, cq, nullptr, &sub, nullptr);
+                pset_edit_qto(file, &cq, nullptr, &sub, nullptr);
                 kept.push_back(cq);
                 continue;
             }
@@ -1098,19 +1098,19 @@ bool pset_edit_qto(
             std::string ifc_class = "IfcQuantity" + canonical;
             const char* value_attr = qto_value_attr_for_class(ifc_class);
             if (!value_attr) throw std::runtime_error("Unsupported quantity type: " + ifc_class);
-            const IfcParse::declaration* decl = nullptr;
+            const ifcopenshell::declaration* decl = nullptr;
             try { decl = file->schema()->declaration_by_name(ifc_class); } catch (...) { decl = nullptr; }
             if (!decl) throw std::runtime_error("Unsupported quantity type: " + ifc_class);
-            auto* nq = file->create(decl);
+            auto nq = file->create(decl);
             write_string_attr(nq, "Name", key);
             int va = attr_index_of(nq, value_attr);
             if (va >= 0) {
                 bool is_count = (ifc_class == "IfcQuantityCount");
                 bool is_ifc4x3 = (std::string(file->schema()->name()) == "IFC4X3");
                 if (is_count && is_ifc4x3) {
-                    nq->set_attribute_value(static_cast<size_t>(va), static_cast<int>(entry_to_int(*e)));
+                    nq.set_attribute_value(static_cast<size_t>(va), static_cast<int>(entry_to_int(*e)));
                 } else {
-                    nq->set_attribute_value(static_cast<size_t>(va), entry_to_double(*e));
+                    nq.set_attribute_value(static_cast<size_t>(va), entry_to_double(*e));
                 }
             }
             kept.push_back(nq);

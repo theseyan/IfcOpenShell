@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "ifcapi/ifcapi.h"
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
 #include "ifcapi/bindings/attribute.h"
 #include "ifcapi/bindings/classification.h"
 #include "ifcapi/bindings/geometry.h"
@@ -46,12 +48,12 @@ namespace {
 
 inline void set_error(const std::string& m) { ifcopenshell::capi::set_last_error(m); }
 
-inline IfcUtil::IfcBaseEntity* as_entity(IfcUtil::IfcBaseClass* e) {
-    return e ? dynamic_cast<IfcUtil::IfcBaseEntity*>(e) : nullptr;
+inline express::Entity as_entity(express::Base e) {
+    return e ? e.as<express::Entity>() : express::Entity();
 }
 
 inline std::string lower(std::string s) {
-    for (auto& c : s) c = (char)std::tolower((unsigned char)c);
+    for (auto c : s) c = (char)std::tolower((unsigned char)c);
     return s;
 }
 
@@ -87,7 +89,7 @@ bool val_truthy(const ifcopenshell_value_t* v) {
         case IFCSEL_VALUE_INT:    return v->i_val != 0;
         case IFCSEL_VALUE_DOUBLE: return v->d_val != 0.0;
         case IFCSEL_VALUE_STRING: return !v->s_val.empty();
-        case IFCSEL_VALUE_INSTANCE: return v->inst_val != nullptr;
+        case IFCSEL_VALUE_INSTANCE: return static_cast<bool>(v->inst_val);
         case IFCSEL_VALUE_LIST:   return !v->list_val.empty();
         case IFCSEL_VALUE_DICT:   return !v->dict_val.empty();
         default: return false;
@@ -130,80 +132,80 @@ bool vals_equal(const Val* a, const ifcopenshell_value_t* b) {
 
 /* Helpers around the existing C ABI ------------------------------------ */
 
-IfcUtil::IfcBaseClass* call_get_type(IfcUtil::IfcBaseClass* e) {
-    return ifcapi::bindings::element_get_type(e);
+express::Base call_get_type(express::Base e) {
+    return ifcapi::bindings::element_get_type(&e);
 }
 
-IfcUtil::IfcBaseClass* call_get_material(IfcUtil::IfcBaseClass* e) {
-    return ifcapi::bindings::element_get_material(e, true, true);
+express::Base call_get_material(express::Base e) {
+    return ifcapi::bindings::element_get_material(&e, true, true);
 }
 
-std::vector<IfcUtil::IfcBaseClass*> call_get_materials(IfcUtil::IfcBaseClass* e) {
-    std::vector<IfcUtil::IfcBaseClass*> out;
-    auto* mat = call_get_material(e);
+std::vector<express::Base> call_get_materials(express::Base e) {
+    std::vector<express::Base> out;
+    auto mat = call_get_material(e);
     if (!mat) return out;
     if (entity_is_a(mat, "IfcMaterial")) {
         out.push_back(mat);
     } else if (entity_is_a(mat, "IfcMaterialLayerSet")) {
-        for (auto* lay : get_entity_list(mat, "MaterialLayers")) {
-            auto* m = ifcapi::get_entity_ref(lay, "Material");
+        for (auto lay : get_entity_list(mat, "MaterialLayers")) {
+            auto m = ifcapi::get_entity_ref(lay, "Material");
             if (m) out.push_back(m);
         }
     } else if (entity_is_a(mat, "IfcMaterialProfileSet")) {
-        for (auto* pr : get_entity_list(mat, "MaterialProfiles")) {
-            auto* m = ifcapi::get_entity_ref(pr, "Material");
+        for (auto pr : get_entity_list(mat, "MaterialProfiles")) {
+            auto m = ifcapi::get_entity_ref(pr, "Material");
             if (m) out.push_back(m);
         }
     } else if (entity_is_a(mat, "IfcMaterialConstituentSet")) {
-        for (auto* co : get_entity_list(mat, "MaterialConstituents")) {
-            auto* m = ifcapi::get_entity_ref(co, "Material");
+        for (auto co : get_entity_list(mat, "MaterialConstituents")) {
+            auto m = ifcapi::get_entity_ref(co, "Material");
             if (m) out.push_back(m);
         }
     } else if (entity_is_a(mat, "IfcMaterialList")) {
-        for (auto* m : get_entity_list(mat, "Materials")) out.push_back(m);
+        for (auto m : get_entity_list(mat, "Materials")) out.push_back(m);
     }
     return out;
 }
 
-std::vector<IfcUtil::IfcBaseClass*> call_get_styles(IfcUtil::IfcBaseClass* e) {
-    std::vector<IfcUtil::IfcBaseClass*> out;
+std::vector<express::Base> call_get_styles(express::Base e) {
+    std::vector<express::Base> out;
     if (!e) return out;
-    auto styles = ifcapi::bindings::element_get_styles(e);
-    if (!styles) return out;
-    for (auto& style : *styles) if (style) out.push_back(style);
+    auto styles = ifcapi::bindings::element_get_styles(&e);
+    if (styles.empty()) return out;
+    for (auto style : styles) if (style) out.push_back(style);
     return out;
 }
 
-std::vector<IfcUtil::IfcBaseClass*> call_get_classification(IfcUtil::IfcBaseClass* e) {
-    std::vector<IfcUtil::IfcBaseClass*> out;
+std::vector<express::Base> call_get_classification(express::Base e) {
+    std::vector<express::Base> out;
     if (!e) return out;
-    auto refs = ifcapi::bindings::classification_get_references(e, true);
-    if (!refs) return out;
-    for (auto& ref : *refs) if (ref) out.push_back(ref);
+    auto refs = ifcapi::bindings::classification_get_references(&e, true);
+    if (refs.empty()) return out;
+    for (auto ref : refs) if (ref) out.push_back(ref);
     return out;
 }
 
-IfcUtil::IfcBaseClass* call_get_container(IfcUtil::IfcBaseClass* e, const char* cls) {
-    return ifcapi::bindings::element_get_container(e, false, cls);
+express::Base call_get_container(express::Base e, const char* cls) {
+    return ifcapi::bindings::element_get_container(&e, false, cls);
 }
 
-IfcUtil::IfcBaseClass* call_get_parent(IfcUtil::IfcBaseClass* e) {
-    return ifcapi::bindings::element_get_parent(e);
+express::Base call_get_parent(express::Base e) {
+    return ifcapi::bindings::element_get_parent(&e);
 }
 
 /* Get all psets (de-duplicated by name) of e — name → property-dict-Val. */
-std::vector<std::pair<std::string, Val*>> all_psets(IfcUtil::IfcBaseClass* e) {
+std::vector<std::pair<std::string, Val*>> all_psets(express::Base e) {
     return get_all_psets(e);
 }
 
 /* Find the pset_instance (IfcPropertySet/IfcElementQuantity) with the given
    Name on element. Returns nullptr if none. */
-IfcUtil::IfcBaseClass* find_pset_instance(IfcUtil::IfcBaseClass* e, const std::string& name) {
-    if (!e) return nullptr;
-    auto psets = ifcapi::bindings::element_get_pset_ids(e, false, false, true);
-    IfcUtil::IfcBaseClass* result = nullptr;
-    if (psets) {
-        for (auto& pset : *psets) {
+express::Base find_pset_instance(express::Base e, const std::string& name) {
+    if (!e) return {};
+    auto psets = ifcapi::bindings::element_get_pset_ids(&e, false, false, true);
+    express::Base result = {};
+    if (!psets.empty()) {
+        for (auto pset : psets) {
             if (!result && pset && get_string_attr(pset, "Name") == name) {
                 result = pset;
             }
@@ -236,13 +238,15 @@ void props_set_one(ifcopenshell_pset_props_t* props, const char* key,
         case IFCSEL_VALUE_INT:    ifcapi::bindings::pset_props_set_int(props, key, v->i_val); break;
         case IFCSEL_VALUE_DOUBLE: ifcapi::bindings::pset_props_set_double(props, key, v->d_val); break;
         case IFCSEL_VALUE_STRING: ifcapi::bindings::pset_props_set_string(props, key, v->s_val); break;
-        case IFCSEL_VALUE_INSTANCE:
-            ifcapi::bindings::pset_props_set_instance(props, key, v->inst_val);
+        case IFCSEL_VALUE_INSTANCE: {
+            auto inst = v->inst_val;
+            ifcapi::bindings::pset_props_set_instance(props, key, inst ? &inst : nullptr);
             break;
+        }
         case IFCSEL_VALUE_LIST: {
             // Distinguish string-list / int-list / double-list.
             bool all_str = true, all_int = true, all_dbl = true;
-            for (auto* it : v->list_val) {
+            for (auto it : v->list_val) {
                 if (!it || it->kind != IFCSEL_VALUE_STRING) all_str = false;
                 if (!it || it->kind != IFCSEL_VALUE_INT) all_int = false;
                 if (!it || (it->kind != IFCSEL_VALUE_DOUBLE && it->kind != IFCSEL_VALUE_INT)) all_dbl = false;
@@ -250,20 +254,20 @@ void props_set_one(ifcopenshell_pset_props_t* props, const char* key,
             if (all_str) {
                 std::vector<std::string> hold;
                 hold.reserve(v->list_val.size());
-                for (auto* it : v->list_val) hold.push_back(it->s_val);
+                for (auto it : v->list_val) hold.push_back(it->s_val);
                 ifcapi::bindings::pset_props_set_string_list(props, key, hold);
             } else if (all_int) {
                 std::vector<int64_t> vs;
-                for (auto* it : v->list_val) vs.push_back(it->i_val);
+                for (auto it : v->list_val) vs.push_back(it->i_val);
                 ifcapi::bindings::pset_props_set_int_list(props, key, vs);
             } else if (all_dbl) {
                 std::vector<double> vs;
-                for (auto* it : v->list_val) vs.push_back(it->kind == IFCSEL_VALUE_INT ? (double)it->i_val : it->d_val);
+                for (auto it : v->list_val) vs.push_back(it->kind == IFCSEL_VALUE_INT ? (double)it->i_val : it->d_val);
                 ifcapi::bindings::pset_props_set_double_list(props, key, vs);
             } else {
                 std::vector<std::string> hold;
                 hold.reserve(v->list_val.size());
-                for (auto* it : v->list_val) hold.push_back(it ? it->s_val : "");
+                for (auto it : v->list_val) hold.push_back(it ? it->s_val : "");
                 ifcapi::bindings::pset_props_set_string_list(props, key, hold);
             }
             break;
@@ -274,19 +278,19 @@ void props_set_one(ifcopenshell_pset_props_t* props, const char* key,
     }
 }
 
-void edit_pset_one(ifcopenshell_ifc_file_t* fh, IfcUtil::IfcBaseClass* pset,
+void edit_pset_one(ifcopenshell_ifc_file_t* fh, express::Base pset,
                    const char* key, const ifcopenshell_value_t* v) {
-    auto* props = ifcapi::bindings::pset_props_new();
+    auto props = ifcapi::bindings::pset_props_new();
     props_set_one(props, key, v, false);
-    ifcapi::bindings::pset_edit_pset(fh ? fh->ptr : nullptr, pset, nullptr, props, nullptr, false);
+    ifcapi::bindings::pset_edit_pset(fh ? fh->ptr : nullptr, &pset, nullptr, props, nullptr, false);
     ifcapi::bindings::pset_props_free(props);
 }
 
-void edit_qto_one(ifcopenshell_ifc_file_t* fh, IfcUtil::IfcBaseClass* qto,
+void edit_qto_one(ifcopenshell_ifc_file_t* fh, express::Base qto,
                   const char* key, const ifcopenshell_value_t* v, bool force_double = true) {
-    auto* props = ifcapi::bindings::pset_props_new();
+    auto props = ifcapi::bindings::pset_props_new();
     props_set_one(props, key, v, force_double);
-    ifcapi::bindings::pset_edit_qto(fh ? fh->ptr : nullptr, qto, nullptr, props, nullptr);
+    ifcapi::bindings::pset_edit_qto(fh ? fh->ptr : nullptr, &qto, nullptr, props, nullptr);
     ifcapi::bindings::pset_props_free(props);
 }
 
@@ -299,17 +303,17 @@ bool re_match(const std::regex& p, const std::string& s) {
 /* ====================================================================
  *  predefined_type closure                                              */
 
-void apply_set_predefined_type(IfcParse::IfcFile* /*file*/, IfcUtil::IfcBaseClass* element,
+void apply_set_predefined_type(ifcopenshell::file* /*file*/, express::Base element,
                                const ifcopenshell_value_t* value, bool is_type) {
-    auto* be = as_entity(element);
+    auto be = as_entity(element);
     if (!be) return;
-    auto* decl = be->declaration().as_entity();
+    auto decl = be.declaration().as_entity();
     if (!decl) return;
     int idx = static_cast<int>(decl->attribute_index("PredefinedType"));
     if (idx < 0) return;
     const auto& attrs = decl->all_attributes();
     if ((size_t)idx >= attrs.size()) return;
-    const IfcParse::attribute* attr = attrs[(size_t)idx];
+    const ifcopenshell::attribute* attr = attrs[(size_t)idx];
 
     std::vector<std::string> enum_items = ifcapi::bindings::attribute_get_enum_items(attr);
 
@@ -320,10 +324,10 @@ void apply_set_predefined_type(IfcParse::IfcFile* /*file*/, IfcUtil::IfcBaseClas
     std::string value_str = val_to_string(value);
 
     if (value_is_none || value_str == "NOTDEFINED" || value_str == "USERDEFINED") {
-        try { element->set_attribute_value((size_t)idx, std::string("NOTDEFINED")); } catch (...) {}
+        try { element.set_attribute_value((size_t)idx, std::string("NOTDEFINED")); } catch (...) {}
         int t_idx = ifcapi::find_attr_idx(element, type_attr_name);
         if (t_idx >= 0) {
-            try { element->set_attribute_value((size_t)t_idx, Blank{}); } catch (...) {}
+            try { element.unset_attribute_value((size_t)t_idx); } catch (...) {}
         }
         return;
     }
@@ -331,16 +335,16 @@ void apply_set_predefined_type(IfcParse::IfcFile* /*file*/, IfcUtil::IfcBaseClas
     bool in_enum = std::find(enum_items.begin(), enum_items.end(), value_str) != enum_items.end();
     if (in_enum) {
         if (current_pt == value_str) return;
-        try { element->set_attribute_value((size_t)idx, value_str); } catch (...) {}
+        try { element.set_attribute_value((size_t)idx, value_str); } catch (...) {}
         return;
     }
 
     if (current_pt != "USERDEFINED") {
-        try { element->set_attribute_value((size_t)idx, std::string("USERDEFINED")); } catch (...) {}
+        try { element.set_attribute_value((size_t)idx, std::string("USERDEFINED")); } catch (...) {}
     }
     int t_idx = ifcapi::find_attr_idx(element, type_attr_name);
     if (t_idx >= 0) {
-        try { element->set_attribute_value((size_t)t_idx, value_str); } catch (...) {}
+        try { element.set_attribute_value((size_t)t_idx, value_str); } catch (...) {}
     }
 }
 
@@ -356,7 +360,7 @@ void apply_set_predefined_type(IfcParse::IfcFile* /*file*/, IfcUtil::IfcBaseClas
 enum PsetPVResult { PV_USE_VALUE, PV_USE_LIST, PV_SKIP, PV_ERROR };
 
 PsetPVResult process_pset_prop_value(
-    IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* pset,
+    ifcopenshell::file* file, express::Base pset,
     const std::string& prop, const ifcopenshell_value_t* value,
     const Val* current_value /* may be nullptr */, const std::string& concat,
     std::vector<std::string>& out_list)
@@ -385,7 +389,7 @@ PsetPVResult process_pset_prop_value(
         if (enum_values.size() == current_value->list_val.size()) {
             std::vector<std::string> a = enum_values;
             std::vector<std::string> b;
-            for (auto* it : current_value->list_val)
+            for (auto it : current_value->list_val)
                 b.push_back(it && it->kind == IFCSEL_VALUE_STRING ? it->s_val : "");
             std::sort(a.begin(), a.end());
             std::sort(b.begin(), b.end());
@@ -393,17 +397,17 @@ PsetPVResult process_pset_prop_value(
         }
     }
 
-    auto* tmpl = ifcapi::bindings::pset_template_get_template(file->schema()->name());
+    auto tmpl = ifcapi::bindings::pset_template_get_template(file->schema()->name());
     if (!tmpl) return PV_USE_VALUE;
     std::string pset_name = get_string_attr(pset, "Name");
-    auto* pset_template = ifcapi::bindings::pset_template_get_by_name(tmpl, pset_name);
+    auto pset_template = ifcapi::bindings::pset_template_get_by_name(tmpl, pset_name);
     if (!pset_template) return PV_USE_VALUE;
-    IfcUtil::IfcBaseClass* prop_template = nullptr;
-    for (auto* pt : get_entity_list(pset_template, "HasPropertyTemplates")) {
+    express::Base prop_template = {};
+    for (auto pt : get_entity_list(pset_template, "HasPropertyTemplates")) {
         if (!pt) continue;
         std::string pname;
         try {
-            auto av = pt->get_attribute_value(2);
+            auto av = pt.get_attribute_value(2);
             if (!av.isNull()) pname = (std::string)av;
         } catch (...) {}
         if (pname == prop) { prop_template = pt; break; }
@@ -414,7 +418,7 @@ PsetPVResult process_pset_prop_value(
 
     std::string template_type;
     try {
-        auto av = prop_template->get_attribute_value(4);
+        auto av = prop_template.get_attribute_value(4);
         if (!av.isNull()) template_type = (std::string)av;
     } catch (...) {}
 
@@ -422,11 +426,11 @@ PsetPVResult process_pset_prop_value(
         return PV_USE_VALUE;
     }
 
-    IfcUtil::IfcBaseClass* enumeration = nullptr;
+    express::Base enumeration = {};
     try {
-        auto av = prop_template->get_attribute_value(7);
-        if (!av.isNull() && av.type() == IfcUtil::Argument_ENTITY_INSTANCE)
-            enumeration = (IfcUtil::IfcBaseClass*)av;
+        auto av = prop_template.get_attribute_value(7);
+        if (!av.isNull() && av.type() == ifcopenshell::Argument_ENTITY_INSTANCE)
+            enumeration = (express::Base)av;
     } catch (...) {}
 
     if (!enumeration) {
@@ -436,13 +440,13 @@ PsetPVResult process_pset_prop_value(
 
     std::vector<std::string> available;
     try {
-        auto av = enumeration->get_attribute_value(1);
+        auto av = enumeration.get_attribute_value(1);
         if (!av.isNull()) {
-            auto agg = (aggregate_of_instance::ptr)av;
-            if (agg) for (auto& it : *agg) {
+            auto agg = (std::vector<express::Base>)av;
+            for (auto it : agg) {
                 if (!it) continue;
                 try {
-                    auto inner = it->get_attribute_value(0);
+                    auto inner = it.get_attribute_value(0);
                     if (!inner.isNull()) available.push_back((std::string)inner);
                 } catch (...) {}
             }
@@ -467,7 +471,7 @@ PsetPVResult process_pset_prop_value(
             pos = found + concat.size();
         }
     }
-    for (const auto& ev : enum_values) {
+    for (const auto ev : enum_values) {
         if (std::find(available.begin(), available.end(), ev) == available.end()) {
             std::string msg = "Error setting pset enum property.\nInvalid enum values for property '" +
                               prop + "' in pset '" + pset_name + "': '";
@@ -493,11 +497,11 @@ PsetPVResult process_pset_prop_value(
  *  Cursor                                                                */
 
 struct DictView {
-    IfcUtil::IfcBaseClass* pset = nullptr;     // owning pset/qto entity
-    Val* dict = nullptr;                       // owned DICT
+    express::Base pset = {};     // owning pset/qto entity
+    Val* dict = {};                       // owned DICT
     DictView() = default;
-    DictView(DictView&& o) noexcept { pset = o.pset; dict = o.dict; o.dict = nullptr; }
-    DictView& operator=(DictView&& o) noexcept { delete dict; pset = o.pset; dict = o.dict; o.dict = nullptr; return *this; }
+    DictView(DictView&& o) noexcept { pset = o.pset; dict = o.dict; o.dict = {}; }
+    DictView& operator=(DictView&& o) noexcept { delete dict; pset = o.pset; dict = o.dict; o.dict = {}; return *this; }
     DictView(const DictView&) = delete;
     DictView& operator=(const DictView&) = delete;
     ~DictView() { delete dict; }
@@ -505,7 +509,7 @@ struct DictView {
 
 struct Cursor {
     enum K { K_NONE, K_INSTANCE, K_DICT, K_LIST } kind = K_NONE;
-    IfcUtil::IfcBaseClass* inst = nullptr;
+    express::Base inst = {};
     DictView dict;
     std::vector<Cursor> items;
 
@@ -515,11 +519,11 @@ struct Cursor {
     Cursor(const Cursor&) = delete;
     Cursor& operator=(const Cursor&) = delete;
 
-    static Cursor instance(IfcUtil::IfcBaseClass* e) {
+    static Cursor instance(express::Base e) {
         Cursor c; c.kind = K_INSTANCE; c.inst = e; return c;
     }
     static Cursor none() { Cursor c; c.kind = K_NONE; return c; }
-    static Cursor dictv(IfcUtil::IfcBaseClass* pset, Val* dict_val) {
+    static Cursor dictv(express::Base pset, Val* dict_val) {
         Cursor c; c.kind = K_DICT; c.dict.pset = pset; c.dict.dict = dict_val; return c;
     }
     static Cursor listv(std::vector<Cursor>&& it) {
@@ -529,16 +533,16 @@ struct Cursor {
 
 /* Look up a key inside a dict-pset and return the cloned Val*, or nullptr if missing. */
 Val* dict_get(const DictView& d, const std::string& key) {
-    if (!d.dict) return nullptr;
-    for (auto& kv : d.dict->dict_val)
+    if (!d.dict) return {};
+    for (auto kv : d.dict->dict_val)
         if (kv.first == key) return clone_val(kv.second);
-    return nullptr;
+    return {};
 }
 
 /* ====================================================================
  *  Forward declaration                                                   */
 
-int do_set(IfcParse::IfcFile* file,
+int do_set(ifcopenshell::file* file,
            ifcopenshell_ifc_file_t* file_h,
            Cursor cur,
            const std::vector<KeyEntry>& keys,
@@ -549,24 +553,24 @@ int do_set(IfcParse::IfcFile* file,
 /* ====================================================================
  *  Helper: try to set an attribute on `e`, with type-cast fallback        */
 
-void setattr_with_cast(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e,
+void setattr_with_cast(ifcopenshell::file* file, express::Base e,
                        const std::string& key, const ifcopenshell_value_t* value)
 {
-    auto* be = as_entity(e);
+    auto be = as_entity(e);
     if (!be) return;
-    auto* decl = be->declaration().as_entity();
+    auto decl = be.declaration().as_entity();
     if (!decl) return;
     int idx = (int)decl->attribute_index(key);
     if (idx < 0) return;
 
     const auto& attrs = decl->all_attributes();
     if ((size_t)idx >= attrs.size()) return;
-    const IfcParse::attribute* attr = attrs[(size_t)idx];
+    const ifcopenshell::attribute* attr = attrs[(size_t)idx];
     const char* dt = ifcapi::bindings::attribute_get_primitive_type(attr);
     std::string dts = dt ? dt : "";
 
     auto try_set_none = [&]() {
-        try { e->set_attribute_value((size_t)idx, Blank{}); } catch (...) {}
+        try { e.unset_attribute_value((size_t)idx); } catch (...) {}
     };
 
     if (val_is_none(value)) {
@@ -584,7 +588,7 @@ void setattr_with_cast(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e,
                 case IFCSEL_VALUE_BOOL:   s = value->b_val ? "True" : "False"; break;
                 default: s = val_to_string(value); break;
             }
-            e->set_attribute_value((size_t)idx, s);
+            e.set_attribute_value((size_t)idx, s);
         } else if (dts == "float") {
             double d = 0.0;
             if (value->kind == IFCSEL_VALUE_DOUBLE) d = value->d_val;
@@ -593,7 +597,7 @@ void setattr_with_cast(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e,
             else if (value->kind == IFCSEL_VALUE_STRING) {
                 try { d = std::stod(value->s_val); } catch (...) { d = 0.0; }
             }
-            e->set_attribute_value((size_t)idx, d);
+            e.set_attribute_value((size_t)idx, d);
         } else if (dts == "integer") {
             int iv = 0;
             if (value->kind == IFCSEL_VALUE_INT) iv = (int)value->i_val;
@@ -602,7 +606,7 @@ void setattr_with_cast(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e,
             else if (value->kind == IFCSEL_VALUE_STRING) {
                 try { iv = std::stoi(value->s_val); } catch (...) { iv = 0; }
             }
-            e->set_attribute_value((size_t)idx, iv);
+            e.set_attribute_value((size_t)idx, iv);
         } else if (dts == "boolean") {
             bool b = false;
             if (value->kind == IFCSEL_VALUE_BOOL) b = value->b_val;
@@ -614,26 +618,26 @@ void setattr_with_cast(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e,
                 else if (s == "False" || s == "false" || s == "FALSE" || s == "No" || s == "0") b = false;
                 else b = !s.empty();
             }
-            e->set_attribute_value((size_t)idx, b);
+            e.set_attribute_value((size_t)idx, b);
         } else if (dts == "entity") {
-            IfcUtil::IfcBaseClass* ref = nullptr;
+            express::Base ref = {};
             if (value->kind == IFCSEL_VALUE_INSTANCE) ref = value->inst_val;
             else if (value->kind == IFCSEL_VALUE_STRING) {
                 try { ref = file->instance_by_guid(value->s_val); }
-                catch (...) { ref = nullptr; }
+                catch (...) { ref = {}; }
             }
-            e->set_attribute_value((size_t)idx, ref);
+            e.set_attribute_value((size_t)idx, ref);
         } else if (dts == "enum") {
             std::string s = (value->kind == IFCSEL_VALUE_STRING) ? value->s_val : val_to_string(value);
-            e->set_attribute_value((size_t)idx, s);
+            e.set_attribute_value((size_t)idx, s);
         } else {
             /* Unknown primitive — fall back to raw value of matching kind. */
             switch (value->kind) {
-                case IFCSEL_VALUE_STRING: e->set_attribute_value((size_t)idx, value->s_val); break;
-                case IFCSEL_VALUE_INT:    e->set_attribute_value((size_t)idx, (int)value->i_val); break;
-                case IFCSEL_VALUE_DOUBLE: e->set_attribute_value((size_t)idx, value->d_val); break;
-                case IFCSEL_VALUE_BOOL:   e->set_attribute_value((size_t)idx, value->b_val); break;
-                case IFCSEL_VALUE_INSTANCE: e->set_attribute_value((size_t)idx, value->inst_val); break;
+                case IFCSEL_VALUE_STRING: e.set_attribute_value((size_t)idx, value->s_val); break;
+                case IFCSEL_VALUE_INT:    e.set_attribute_value((size_t)idx, (int)value->i_val); break;
+                case IFCSEL_VALUE_DOUBLE: e.set_attribute_value((size_t)idx, value->d_val); break;
+                case IFCSEL_VALUE_BOOL:   e.set_attribute_value((size_t)idx, value->b_val); break;
+                case IFCSEL_VALUE_INSTANCE: e.set_attribute_value((size_t)idx, value->inst_val); break;
                 default: break;
             }
         }
@@ -641,11 +645,11 @@ void setattr_with_cast(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e,
         /* Fallback: try the raw value type. */
         try {
             switch (value->kind) {
-                case IFCSEL_VALUE_STRING: e->set_attribute_value((size_t)idx, value->s_val); break;
-                case IFCSEL_VALUE_INT:    e->set_attribute_value((size_t)idx, (int)value->i_val); break;
-                case IFCSEL_VALUE_DOUBLE: e->set_attribute_value((size_t)idx, value->d_val); break;
-                case IFCSEL_VALUE_BOOL:   e->set_attribute_value((size_t)idx, value->b_val); break;
-                case IFCSEL_VALUE_INSTANCE: e->set_attribute_value((size_t)idx, value->inst_val); break;
+                case IFCSEL_VALUE_STRING: e.set_attribute_value((size_t)idx, value->s_val); break;
+                case IFCSEL_VALUE_INT:    e.set_attribute_value((size_t)idx, (int)value->i_val); break;
+                case IFCSEL_VALUE_DOUBLE: e.set_attribute_value((size_t)idx, value->d_val); break;
+                case IFCSEL_VALUE_BOOL:   e.set_attribute_value((size_t)idx, value->b_val); break;
+                case IFCSEL_VALUE_INSTANCE: e.set_attribute_value((size_t)idx, value->inst_val); break;
                 default: break;
             }
         } catch (...) {}
@@ -655,7 +659,7 @@ void setattr_with_cast(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e,
 /* ====================================================================
  *  do_set — iterative key application                                    */
 
-int do_set(IfcParse::IfcFile* file,
+int do_set(ifcopenshell::file* file,
            ifcopenshell_ifc_file_t* file_h,
            Cursor cur,
            const std::vector<KeyEntry>& keys,
@@ -677,24 +681,24 @@ int do_set(IfcParse::IfcFile* file,
                 if (k == "material" || k == "mat") { cur = Cursor::instance(call_get_material(cur.inst)); if (!cur.inst) cur.kind = Cursor::K_NONE; continue; }
                 if (k == "materials" || k == "mats") {
                     std::vector<Cursor> it;
-                    for (auto* m : call_get_materials(cur.inst)) it.push_back(Cursor::instance(m));
+                    for (auto m : call_get_materials(cur.inst)) it.push_back(Cursor::instance(m));
                     cur = Cursor::listv(std::move(it));
                     continue;
                 }
                 if (k == "styles") {
                     std::vector<Cursor> it;
-                    for (auto* s : call_get_styles(cur.inst)) it.push_back(Cursor::instance(s));
+                    for (auto s : call_get_styles(cur.inst)) it.push_back(Cursor::instance(s));
                     cur = Cursor::listv(std::move(it));
                     continue;
                 }
                 if (k == "item" || k == "i") {
-                    const char* attr = nullptr;
+                    const char* attr = {};
                     if (entity_is_a(cur.inst, "IfcMaterialLayerSet")) attr = "MaterialLayers";
                     else if (entity_is_a(cur.inst, "IfcMaterialProfileSet")) attr = "MaterialProfiles";
                     else if (entity_is_a(cur.inst, "IfcMaterialConstituentSet")) attr = "MaterialConstituents";
                     if (!attr) { /* unchanged — Python would leave element as-is */ continue; }
                     std::vector<Cursor> it;
-                    for (auto* x : get_entity_list(cur.inst, attr)) it.push_back(Cursor::instance(x));
+                    for (auto x : get_entity_list(cur.inst, attr)) it.push_back(Cursor::instance(x));
                     cur = Cursor::listv(std::move(it));
                     continue;
                 }
@@ -705,10 +709,10 @@ int do_set(IfcParse::IfcFile* file,
                 if (k == "site")      { cur = Cursor::instance(call_get_container(cur.inst, "IfcSite")); if (!cur.inst) cur.kind = Cursor::K_NONE; continue; }
                 if (k == "parent")    { cur = Cursor::instance(call_get_parent(cur.inst)); if (!cur.inst) cur.kind = Cursor::K_NONE; continue; }
                 if (k == "class") {
-                    std::string cur_cls = cur.inst->declaration().name();
+                    std::string cur_cls = cur.inst.declaration().name();
                     std::string val_str = val_to_string(value);
                     if (lower(cur_cls) == lower(val_str)) return 0;
-                    ifcapi::bindings::schema_reassign_class(file_h ? file_h->ptr : nullptr, cur.inst, val_str);
+                    ifcapi::bindings::schema_reassign_class(file_h ? file_h->ptr : nullptr, &cur.inst, val_str);
                     return 0;
                 }
                 if (k == "id") return 0;
@@ -719,14 +723,14 @@ int do_set(IfcParse::IfcFile* file,
                     delete current_val;
                     if (equal) return 0;
 
-                    auto* type_e = call_get_type(cur.inst);
+                    auto type_e = call_get_type(cur.inst);
                     if (type_e) apply_set_predefined_type(file, type_e, value, true);
                     else        apply_set_predefined_type(file, cur.inst, value, false);
                     return 0;
                 }
                 if (k == "classification") {
                     std::vector<Cursor> it;
-                    for (auto* r : call_get_classification(cur.inst)) it.push_back(Cursor::instance(r));
+                    for (auto r : call_get_classification(cur.inst)) it.push_back(Cursor::instance(r));
                     cur = Cursor::listv(std::move(it));
                     continue;
                 }
@@ -736,11 +740,11 @@ int do_set(IfcParse::IfcFile* file,
                     if (k == "easting" || k == "northing" || k == "elevation") return 0;
 
                     std::array<double, 16> matrix;
-                    auto* placement_e = ifcapi::get_entity_ref(cur.inst, "ObjectPlacement");
+                    auto placement_e = ifcapi::get_entity_ref(cur.inst, "ObjectPlacement");
                     if (!placement_e) {
                         ifcapi::identity4(matrix.data());
                     } else {
-                        auto placement_matrix = ifcapi::bindings::placement_get_local_placement(placement_e);
+                        auto placement_matrix = ifcapi::bindings::placement_get_local_placement(&placement_e);
                         if (placement_matrix.size() == matrix.size()) {
                             std::copy(placement_matrix.begin(), placement_matrix.end(), matrix.begin());
                         } else {
@@ -761,7 +765,7 @@ int do_set(IfcParse::IfcFile* file,
 
                     matrix[(size_t)ci * 4 + 3] = newv;
                     std::vector<double> matrix_values(matrix.begin(), matrix.end());
-                    ifcapi::bindings::geometry_edit_object_placement(file_h->ptr, cur.inst, matrix_values, false, true);
+                    ifcapi::bindings::geometry_edit_object_placement(file_h ? file_h->ptr : nullptr, &cur.inst, matrix_values, false, true);
                     return 0;
                 }
             }
@@ -774,9 +778,9 @@ int do_set(IfcParse::IfcFile* file,
             int aidx = key.is_regex ? -1 : ifcapi::find_attr_idx(cur.inst, attr_key.c_str());
             if (aidx >= 0) {
                 /* Read current value via attr_to_val. */
-                Val* current_val = nullptr;
+                Val* current_val = {};
                 try {
-                    auto av = cur.inst->get_attribute_value((size_t)aidx);
+                    auto av = cur.inst.get_attribute_value((size_t)aidx);
                     current_val = attr_to_val(av);
                 } catch (...) { current_val = make_none(); }
 
@@ -787,7 +791,7 @@ int do_set(IfcParse::IfcFile* file,
                         cur = Cursor::instance(current_val->inst_val);
                     } else if (current_val->kind == IFCSEL_VALUE_LIST) {
                         std::vector<Cursor> items;
-                        for (auto* it : current_val->list_val) {
+                        for (auto it : current_val->list_val) {
                             if (it && it->kind == IFCSEL_VALUE_INSTANCE && it->inst_val)
                                 items.push_back(Cursor::instance(it->inst_val));
                             else
@@ -816,9 +820,9 @@ int do_set(IfcParse::IfcFile* file,
             auto psets = all_psets(cur.inst);
             if (key.is_regex) {
                 std::vector<Cursor> matching;
-                for (auto& kv : psets) {
+                for (auto kv : psets) {
                     if (re_match(key.pattern, kv.first)) {
-                        IfcUtil::IfcBaseClass* p = find_pset_instance(cur.inst, kv.first);
+                        express::Base p = find_pset_instance(cur.inst, kv.first);
                         matching.push_back(Cursor::dictv(p, kv.second));
                     } else {
                         delete kv.second;
@@ -835,13 +839,13 @@ int do_set(IfcParse::IfcFile* file,
             }
 
             /* Scalar pset key: get_pset, possibly auto-create */
-            Val* pset_dict = nullptr;
-            for (auto& kv : psets) {
+            Val* pset_dict = {};
+            for (auto kv : psets) {
                 if (kv.first == k && !pset_dict) pset_dict = kv.second;
                 else delete kv.second;
             }
 
-            IfcUtil::IfcBaseClass* pset_inst = nullptr;
+            express::Base pset_inst = {};
             if (pset_dict) {
                 pset_inst = find_pset_instance(cur.inst, k);
             } else {
@@ -849,9 +853,9 @@ int do_set(IfcParse::IfcFile* file,
                 if (val_truthy(value) && (i + 2 == keys.size())) {
                     bool is_qto = icontains(k, "qto") || icontains(k, "quantity") || icontains(k, "quantities");
                     if (is_qto) {
-                        pset_inst = ifcapi::bindings::pset_add_qto(file, cur.inst, k, nullptr, nullptr, nullptr);
+                        pset_inst = ifcapi::bindings::pset_add_qto(file, &cur.inst, k, nullptr, nullptr, nullptr);
                     } else {
-                        pset_inst = ifcapi::bindings::pset_add_pset(file, cur.inst, k, nullptr, nullptr, nullptr, nullptr);
+                        pset_inst = ifcapi::bindings::pset_add_pset(file, &cur.inst, k, nullptr, nullptr, nullptr, nullptr);
                     }
                     if (pset_inst) {
                         pset_dict = make_dict();  /* empty */
@@ -866,12 +870,12 @@ int do_set(IfcParse::IfcFile* file,
 
         /* ----- DICT branch (a pset-property dict) ----- */
         if (cur.kind == Cursor::K_DICT) {
-            IfcUtil::IfcBaseClass* pset = cur.dict.pset;
+            express::Base pset = cur.dict.pset;
             if (!pset) return 0;
 
             if (key.is_regex) {
                 if (!cur.dict.dict) return 0;
-                for (auto& kv : cur.dict.dict->dict_val) {
+                for (auto kv : cur.dict.dict->dict_val) {
                     if (!re_match(key.pattern, kv.first)) continue;
                     if (entity_is_a(pset, "IfcPropertySet") && !vals_equal(kv.second, value)) {
                         edit_pset_one(file_h, pset, kv.first.c_str(), value);
@@ -903,9 +907,9 @@ int do_set(IfcParse::IfcFile* file,
                 if (pr == PV_ERROR) return -1;
                 if (pr == PV_SKIP) return 0;
                 if (pr == PV_USE_LIST) {
-                    auto* props = ifcapi::bindings::pset_props_new();
+                    auto props = ifcapi::bindings::pset_props_new();
                     ifcapi::bindings::pset_props_set_string_list(props, k, out_list);
-                    ifcapi::bindings::pset_edit_pset(file_h ? file_h->ptr : nullptr, pset, nullptr, props, nullptr, false);
+                    ifcapi::bindings::pset_edit_pset(file_h ? file_h->ptr : nullptr, &pset, nullptr, props, nullptr, false);
                     ifcapi::bindings::pset_props_free(props);
                     return 0;
                 }
@@ -991,8 +995,8 @@ ifcopenshell_value_t* value_new_string(const std::string& value) {
     return make_string(value);
 }
 
-ifcopenshell_value_t* value_new_instance(IfcUtil::IfcBaseClass* value) {
-    return make_instance(value);
+ifcopenshell_value_t* value_new_instance(express::Base* value) {
+    return make_instance(value ? *value : express::Base());
 }
 
 ifcopenshell_value_t* value_new_list() {
@@ -1000,7 +1004,7 @@ ifcopenshell_value_t* value_new_list() {
 }
 
 bool value_list_append(ifcopenshell_value_t* list, const ifcopenshell_value_t* item) {
-    if (list == nullptr || list->kind != IFCSEL_VALUE_LIST) {
+    if (!list || list->kind != IFCSEL_VALUE_LIST) {
         return false;
     }
     list->list_val.push_back(clone_val(item));
@@ -1008,14 +1012,14 @@ bool value_list_append(ifcopenshell_value_t* list, const ifcopenshell_value_t* i
 }
 
 bool selector_set_element_value(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* element,
+    ifcopenshell::file* file,
+    express::Base* element,
     const std::vector<std::string>& keys,
     const std::vector<bool>& regex_flags,
     const ifcopenshell_value_t* value,
     const char* concat)
 {
-    if (file == nullptr) {
+    if (!file) {
         set_error("ifcapi::bindings::selector_set_element_value: NULL file");
         return false;
     }
@@ -1042,7 +1046,7 @@ bool selector_set_element_value(
     }
 
     ifcopenshell_ifc_file_t file_handle{file, false};
-    Cursor cursor = element ? Cursor::instance(element) : Cursor::none();
+    Cursor cursor = (element && *element) ? Cursor::instance(*element) : Cursor::none();
     std::string concat_s = concat ? concat : ", ";
     try {
         return do_set(file, &file_handle, std::move(cursor), key_entries, 0, value, concat_s) == 0;

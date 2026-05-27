@@ -53,8 +53,8 @@ const std::unordered_map<std::string, std::string>& si_type_names() {
     return names;
 }
 
-IfcUtil::IfcBaseClass* create_dimensional_exponents(
-    IfcParse::IfcFile* file,
+express::Base create_dimensional_exponents(
+    ifcopenshell::file* file,
     const std::vector<int64_t>& dimensions)
 {
     std::array<int, 7> values{{0, 0, 0, 0, 0, 0, 0}};
@@ -62,7 +62,7 @@ IfcUtil::IfcBaseClass* create_dimensional_exponents(
         values[i] = static_cast<int>(dimensions[i]);
     }
     const auto* decl = file->schema()->declaration_by_name("IfcDimensionalExponents");
-    auto* result = file->create(decl);
+    auto result = file->create(decl);
     static const char* attrs[] = {
         "LengthExponent",
         "MassExponent",
@@ -74,29 +74,20 @@ IfcUtil::IfcBaseClass* create_dimensional_exponents(
     };
     for (size_t i = 0; i < values.size(); ++i) {
         int idx = ifcapi::detail::attr_index_of(result, attrs[i]);
-        if (idx >= 0) result->set_attribute_value(static_cast<size_t>(idx), values[i]);
+        if (idx >= 0) result.set_attribute_value(static_cast<size_t>(idx), values[i]);
     }
     return result;
 }
 
-std::vector<IfcUtil::IfcBaseClass*> mutable_units(const std::vector<const IfcUtil::IfcBaseClass*>& units) {
-    std::vector<IfcUtil::IfcBaseClass*> result;
-    result.reserve(units.size());
-    for (auto* unit : units) {
-        if (unit) result.push_back(const_cast<IfcUtil::IfcBaseClass*>(unit));
-    }
-    return result;
-}
-
-void remove_from_assignment(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* unit) {
-    auto* unit_assignment = ifcapi::bindings::unit_get_unit_assignment(file);
+void remove_from_assignment(ifcopenshell::file* file, express::Base unit) {
+    auto unit_assignment = ifcapi::bindings::unit_get_unit_assignment(file);
     if (!unit_assignment || !unit) return;
     auto units = ifcapi::detail::read_ref_aggregate(unit_assignment, "Units");
     auto it = std::find(units.begin(), units.end(), unit);
     if (it == units.end()) return;
     units.erase(it);
     if (units.empty()) {
-        file->removeEntity(unit_assignment);
+        file->remove_entity(unit_assignment);
     } else {
         ifcapi::detail::write_ref_aggregate(unit_assignment, "Units", units);
     }
@@ -107,13 +98,13 @@ void remove_from_assignment(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* unit
 namespace ifcapi {
 namespace bindings {
 
-IfcUtil::IfcBaseClass* unit_add_si_unit(
-    IfcParse::IfcFile* file,
+express::Base unit_add_si_unit(
+    ifcopenshell::file* file,
     const std::string& unit_type,
     const char* prefix)
 {
     const auto* decl = file->schema()->declaration_by_name("IfcSIUnit");
-    auto* result = file->create(decl);
+    auto result = file->create(decl);
     detail::write_string_attr(result, "UnitType", unit_type);
     auto it = si_type_names().find(unit_type);
     if (it != si_type_names().end()) detail::write_string_attr(result, "Name", it->second);
@@ -125,53 +116,53 @@ IfcUtil::IfcBaseClass* unit_add_si_unit(
     return result;
 }
 
-IfcUtil::IfcBaseClass* unit_add_monetary_unit(
-    IfcParse::IfcFile* file,
+express::Base unit_add_monetary_unit(
+    ifcopenshell::file* file,
     const std::string& currency)
 {
     const auto* decl = file->schema()->declaration_by_name("IfcMonetaryUnit");
-    auto* result = file->create(decl);
+    auto result = file->create(decl);
     detail::write_string_attr(result, "Currency", currency);
     return result;
 }
 
-IfcUtil::IfcBaseClass* unit_add_context_dependent_unit(
-    IfcParse::IfcFile* file,
+express::Base unit_add_context_dependent_unit(
+    ifcopenshell::file* file,
     const std::string& unit_type,
     const std::string& name,
     const std::vector<int64_t>& dimensions)
 {
     const auto* decl = file->schema()->declaration_by_name("IfcContextDependentUnit");
-    auto* result = file->create(decl);
+    auto result = file->create(decl);
     detail::write_ref_attr(result, "Dimensions", create_dimensional_exponents(file, dimensions));
     detail::write_string_attr(result, "UnitType", unit_type);
     detail::write_string_attr(result, "Name", name);
     return result;
 }
 
-IfcUtil::IfcBaseClass* unit_add_derived_unit(
-    IfcParse::IfcFile* file,
+express::Base unit_add_derived_unit(
+    ifcopenshell::file* file,
     const std::string& unit_type,
     const char* userdefinedtype,
-    const std::vector<const IfcUtil::IfcBaseClass*>& units,
+    const std::vector<express::Base>& units,
     const std::vector<int64_t>& exponents)
 {
     if (units.size() != exponents.size()) {
         throw std::runtime_error("Derived unit units and exponents must have the same length");
     }
-    std::vector<IfcUtil::IfcBaseClass*> elements;
+    std::vector<express::Base> elements;
     elements.reserve(units.size());
     const auto* element_decl = file->schema()->declaration_by_name("IfcDerivedUnitElement");
     for (size_t i = 0; i < units.size(); ++i) {
-        auto* element = file->create(element_decl);
-        detail::write_ref_attr(element, "Unit", const_cast<IfcUtil::IfcBaseClass*>(units[i]));
+        auto element = file->create(element_decl);
+        detail::write_ref_attr(element, "Unit", units[i]);
         int idx = detail::attr_index_of(element, "Exponent");
-        if (idx >= 0) element->set_attribute_value(static_cast<size_t>(idx), static_cast<int>(exponents[i]));
+        if (idx >= 0) element.set_attribute_value(static_cast<size_t>(idx), static_cast<int>(exponents[i]));
         elements.push_back(element);
     }
 
     const auto* decl = file->schema()->declaration_by_name("IfcDerivedUnit");
-    auto* result = file->create(decl);
+    auto result = file->create(decl);
     detail::write_ref_aggregate(result, "Elements", elements);
     detail::write_string_attr(result, "UnitType", unit_type);
     if (userdefinedtype) {
@@ -183,32 +174,32 @@ IfcUtil::IfcBaseClass* unit_add_derived_unit(
 }
 
 void unit_unassign_unit(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& units)
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& units)
 {
-    auto* unit_assignment = unit_get_unit_assignment(file);
+    auto unit_assignment = unit_get_unit_assignment(file);
     if (!unit_assignment) return;
     auto assigned_units = detail::read_ref_aggregate(unit_assignment, "Units");
-    auto units_to_remove = mutable_units(units);
-    std::vector<IfcUtil::IfcBaseClass*> kept;
-    for (auto* unit : assigned_units) {
-        if (std::find(units_to_remove.begin(), units_to_remove.end(), unit) == units_to_remove.end()) {
+    std::vector<express::Base> kept;
+    for (auto unit : assigned_units) {
+        if (std::find(units.begin(), units.end(), unit) == units.end()) {
             kept.push_back(unit);
         }
     }
     if (kept.empty()) {
-        file->removeEntity(unit_assignment);
+        file->remove_entity(unit_assignment);
     } else {
         detail::write_ref_aggregate(unit_assignment, "Units", kept);
     }
 }
 
 void unit_remove_unit(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* unit)
+    ifcopenshell::file* file,
+    express::Base* unit_ptr)
 {
+    auto unit = ifcapi::detail::deref_or_empty(unit_ptr);
     remove_from_assignment(file, unit);
-    entity_remove_deep2(unit);
+    entity_remove_deep2(&unit);
 }
 
 } // namespace bindings

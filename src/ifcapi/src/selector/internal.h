@@ -13,6 +13,8 @@
 #include "ifcapi/bindings/element.h"
 #include "ifcapi/bindings/placement.h"
 #include "ifcapi/bindings/representation.h"
+#include "ifcapi/detail/attribute.h"
+#include "ifcapi/detail/relationship.h"
 #include "ifcapi/bindings/selector.h"
 
 #include "ifcopenshell_api_internal.hpp"
@@ -37,13 +39,13 @@ struct ifcopenshell_value_t {
     int64_t i_val  = 0;
     double  d_val  = 0.0;
     std::string s_val;
-    IfcUtil::IfcBaseClass* inst_val = nullptr;
+    express::Base inst_val;
 
     std::vector<ifcopenshell_value_t*> list_val;
     std::vector<std::pair<std::string, ifcopenshell_value_t*>> dict_val;
 
     ~ifcopenshell_value_t() {
-        for (auto* v : list_val) delete v;
+        for (auto v : list_val) delete v;
         for (auto& kv : dict_val) delete kv.second;
     }
 
@@ -98,26 +100,26 @@ inline void ifcopenshell_selector_node_free(ifcopenshell_selector_node_t* root) 
 inline Val* make_none() { return new Val(); }
 
 inline Val* make_bool(bool b) {
-    auto* v = new Val(); v->kind = IFCSEL_VALUE_BOOL; v->b_val = b; return v;
+    auto v = new Val(); v->kind = IFCSEL_VALUE_BOOL; v->b_val = b; return v;
 }
 inline Val* make_int(int64_t i) {
-    auto* v = new Val(); v->kind = IFCSEL_VALUE_INT; v->i_val = i; return v;
+    auto v = new Val(); v->kind = IFCSEL_VALUE_INT; v->i_val = i; return v;
 }
 inline Val* make_double(double d) {
-    auto* v = new Val(); v->kind = IFCSEL_VALUE_DOUBLE; v->d_val = d; return v;
+    auto v = new Val(); v->kind = IFCSEL_VALUE_DOUBLE; v->d_val = d; return v;
 }
 inline Val* make_string(std::string s) {
-    auto* v = new Val(); v->kind = IFCSEL_VALUE_STRING; v->s_val = std::move(s); return v;
+    auto v = new Val(); v->kind = IFCSEL_VALUE_STRING; v->s_val = std::move(s); return v;
 }
-inline Val* make_instance(IfcUtil::IfcBaseClass* e) {
+inline Val* make_instance(express::Base e) {
     if (!e) return make_none();
-    auto* v = new Val(); v->kind = IFCSEL_VALUE_INSTANCE; v->inst_val = e; return v;
+    auto v = new Val(); v->kind = IFCSEL_VALUE_INSTANCE; v->inst_val = e; return v;
 }
 inline Val* make_list() {
-    auto* v = new Val(); v->kind = IFCSEL_VALUE_LIST; return v;
+    auto v = new Val(); v->kind = IFCSEL_VALUE_LIST; return v;
 }
 inline Val* make_dict() {
-    auto* v = new Val(); v->kind = IFCSEL_VALUE_DICT; return v;
+    auto v = new Val(); v->kind = IFCSEL_VALUE_DICT; return v;
 }
 
 inline bool placement_matrix_to_array(const std::vector<double>& values, double out[16]) {
@@ -136,12 +138,12 @@ inline Val* clone_val(const Val* v) {
         case IFCSEL_VALUE_STRING:   return make_string(v->s_val);
         case IFCSEL_VALUE_INSTANCE: return make_instance(v->inst_val);
         case IFCSEL_VALUE_LIST: {
-            auto* l = make_list();
-            for (auto* c : v->list_val) l->list_val.push_back(clone_val(c));
+            auto l = make_list();
+            for (auto c : v->list_val) l->list_val.push_back(clone_val(c));
             return l;
         }
         case IFCSEL_VALUE_DICT: {
-            auto* d = make_dict();
+            auto d = make_dict();
             for (auto& kv : v->dict_val) d->dict_val.push_back({kv.first, clone_val(kv.second)});
             return d;
         }
@@ -153,9 +155,9 @@ inline Val* clone_val(const Val* v) {
  *  RAII scoped handle
  * ==================================================================== */
 
-struct ScopedHandle {
+struct ScopedHandle_DISABLED {
     ifcopenshell_ifc_instance_t h;
-    explicit ScopedHandle(IfcUtil::IfcBaseClass* e) { h.ptr = e; h.owned = false; }
+    explicit ScopedHandle_DISABLED(express::Base e) { h.value = e; }
     ifcopenshell_ifc_instance_t* get() { return &h; }
 };
 
@@ -163,124 +165,117 @@ struct ScopedHandle {
  *  Entity introspection helpers
  * ==================================================================== */
 
-inline bool entity_is_a(IfcUtil::IfcBaseClass* e, const char* type) {
-    return e && e->declaration().is(type);
+inline bool entity_is_a(express::Base e, const char* type) {
+    return e && e.declaration().is(type);
 }
 
-inline int find_attr_idx(IfcUtil::IfcBaseClass* e, const char* name) {
-    auto* decl = e->declaration().as_entity();
+inline int find_attr_idx(express::Base e, const char* name) {
+    auto decl = e.declaration().as_entity();
     if (!decl) return -1;
     return static_cast<int>(decl->attribute_index(name));
 }
 
-inline std::string get_string_attr(IfcUtil::IfcBaseClass* e, const char* attr) {
+inline std::string get_string_attr(express::Base e, const char* attr) {
     int idx = find_attr_idx(e, attr);
     if (idx < 0) return "";
     try {
-        auto v = e->get_attribute_value(static_cast<size_t>(idx));
+        auto v = e.get_attribute_value(static_cast<size_t>(idx));
         if (v.isNull()) return "";
-        if (v.type() == IfcUtil::Argument_STRING || v.type() == IfcUtil::Argument_ENUMERATION)
+        if (v.type() == ifcopenshell::Argument_STRING || v.type() == ifcopenshell::Argument_ENUMERATION)
             return (std::string)v;
     } catch (...) {}
     return "";
 }
 
-inline IfcUtil::IfcBaseClass* get_entity_ref(IfcUtil::IfcBaseClass* e, const char* attr) {
+inline express::Base get_entity_ref(express::Base e, const char* attr) {
     int idx = find_attr_idx(e, attr);
-    if (idx < 0) return nullptr;
+    if (idx < 0) return {};
     try {
-        auto v = e->get_attribute_value(static_cast<size_t>(idx));
-        if (v.isNull() || v.type() != IfcUtil::Argument_ENTITY_INSTANCE) return nullptr;
-        return (IfcUtil::IfcBaseClass*)v;
-    } catch (...) { return nullptr; }
+        auto v = e.get_attribute_value(static_cast<size_t>(idx));
+        if (v.isNull() || v.type() != ifcopenshell::Argument_ENTITY_INSTANCE) return {};
+        return (express::Base)v;
+    } catch (...) { return {}; }
 }
 
-inline std::vector<IfcUtil::IfcBaseClass*> get_entity_list(IfcUtil::IfcBaseClass* e, const char* attr) {
-    std::vector<IfcUtil::IfcBaseClass*> result;
+inline std::vector<express::Base> get_entity_list(express::Base e, const char* attr) {
+    std::vector<express::Base> result;
     int idx = find_attr_idx(e, attr);
     if (idx < 0) return result;
     try {
-        auto v = e->get_attribute_value(static_cast<size_t>(idx));
+        auto v = e.get_attribute_value(static_cast<size_t>(idx));
         if (v.isNull()) return result;
-        auto agg = (aggregate_of_instance::ptr)v;
-        if (agg) for (auto& item : *agg) { if (item) result.push_back(item); }
+        auto agg = (std::vector<express::Base>)v;
+        for (auto item : agg) { if (item) result.push_back(item); }
     } catch (...) {}
     return result;
 }
 
-inline std::vector<IfcUtil::IfcBaseClass*> get_inverse_list(IfcUtil::IfcBaseClass* e, const char* name) {
-    std::vector<IfcUtil::IfcBaseClass*> result;
-    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(e);
-    if (!be) return result;
-    try {
-        auto inv = be->get_inverse(name);
-        if (inv) for (auto& item : *inv) { if (item) result.push_back(item); }
-    } catch (...) {}
-    return result;
+inline std::vector<express::Base> get_inverse_list(express::Base e, const char* name) {
+    return ifcapi::detail::read_inverse_aggregate(e, name);
 }
 
 /* ====================================================================
  *  Value unwrapping
  * ==================================================================== */
 
-inline Val* unwrap_typed_value(IfcUtil::IfcBaseClass* typed) {
+inline Val* unwrap_typed_value(express::Base typed) {
     if (!typed) return make_none();
     try {
-        auto inner = typed->get_attribute_value(0);
+        auto inner = typed.get_attribute_value(0);
         if (inner.isNull()) return make_none();
         switch (inner.type()) {
-            case IfcUtil::Argument_STRING:      return make_string((std::string)inner);
-            case IfcUtil::Argument_DOUBLE:      return make_double((double)inner);
-            case IfcUtil::Argument_INT:         return make_int((int)inner);
-            case IfcUtil::Argument_BOOL:        return make_bool((bool)inner);
-            case IfcUtil::Argument_ENUMERATION: return make_string((std::string)inner);
+            case ifcopenshell::Argument_STRING:      return make_string((std::string)inner);
+            case ifcopenshell::Argument_DOUBLE:      return make_double((double)inner);
+            case ifcopenshell::Argument_INT:         return make_int((int)inner);
+            case ifcopenshell::Argument_BOOL:        return make_bool((bool)inner);
+            case ifcopenshell::Argument_ENUMERATION: return make_string((std::string)inner);
             default:                            return make_none();
         }
     } catch (...) { return make_none(); }
 }
 
-inline Val* attr_to_val(const AttributeValue& v) {
+inline Val* attr_to_val(const attribute_value& v) {
     if (v.isNull()) return make_none();
     switch (v.type()) {
-        case IfcUtil::Argument_STRING:      return make_string((std::string)v);
-        case IfcUtil::Argument_INT:         return make_int((int)v);
-        case IfcUtil::Argument_DOUBLE:      return make_double((double)v);
-        case IfcUtil::Argument_BOOL:        return make_bool((bool)v);
-        case IfcUtil::Argument_ENUMERATION: return make_string((std::string)v);
-        case IfcUtil::Argument_ENTITY_INSTANCE: {
-            auto* ref = (IfcUtil::IfcBaseClass*)v;
+        case ifcopenshell::Argument_STRING:      return make_string((std::string)v);
+        case ifcopenshell::Argument_INT:         return make_int((int)v);
+        case ifcopenshell::Argument_DOUBLE:      return make_double((double)v);
+        case ifcopenshell::Argument_BOOL:        return make_bool((bool)v);
+        case ifcopenshell::Argument_ENUMERATION: return make_string((std::string)v);
+        case ifcopenshell::Argument_ENTITY_INSTANCE: {
+            auto ref = (express::Base)v;
             if (!ref) return make_none();
-            if (ref->declaration().as_type_declaration()) return unwrap_typed_value(ref);
+            if (ref.declaration().as_type_declaration()) return unwrap_typed_value(ref);
             return make_instance(ref);
         }
-        case IfcUtil::Argument_AGGREGATE_OF_ENTITY_INSTANCE: {
-            auto agg = (aggregate_of_instance::ptr)v;
-            if (!agg) return make_none();
-            auto* list = make_list();
-            for (auto& item : *agg) {
+        case ifcopenshell::Argument_AGGREGATE_OF_ENTITY_INSTANCE: {
+            auto agg = (std::vector<express::Base>)v;
+            if (agg.empty()) return make_none();
+            auto list = make_list();
+            for (auto item : agg) {
                 if (!item) { list->list_val.push_back(make_none()); continue; }
-                if (item->declaration().as_type_declaration())
+                if (item.declaration().as_type_declaration())
                     list->list_val.push_back(unwrap_typed_value(item));
                 else
                     list->list_val.push_back(make_instance(item));
             }
             return list;
         }
-        case IfcUtil::Argument_AGGREGATE_OF_DOUBLE: {
+        case ifcopenshell::Argument_AGGREGATE_OF_DOUBLE: {
             auto vec = (std::vector<double>)v;
-            auto* l = make_list();
+            auto l = make_list();
             for (double d : vec) l->list_val.push_back(make_double(d));
             return l;
         }
-        case IfcUtil::Argument_AGGREGATE_OF_INT: {
+        case ifcopenshell::Argument_AGGREGATE_OF_INT: {
             auto vec = (std::vector<int>)v;
-            auto* l = make_list();
+            auto l = make_list();
             for (int i : vec) l->list_val.push_back(make_int(i));
             return l;
         }
-        case IfcUtil::Argument_AGGREGATE_OF_STRING: {
+        case ifcopenshell::Argument_AGGREGATE_OF_STRING: {
             auto vec = (std::vector<std::string>)v;
-            auto* l = make_list();
+            auto l = make_list();
             for (auto& s : vec) l->list_val.push_back(make_string(s));
             return l;
         }
@@ -288,13 +283,13 @@ inline Val* attr_to_val(const AttributeValue& v) {
     }
 }
 
-inline Val* read_attr(IfcUtil::IfcBaseClass* e, const std::string& attr_name) {
-    auto* decl = e->declaration().as_entity();
-    if (!decl) return nullptr;
+inline Val* read_attr(express::Base e, const std::string& attr_name) {
+    auto decl = e.declaration().as_entity();
+    if (!decl) return {};
     int idx_i = static_cast<int>(decl->attribute_index(attr_name));
-    if (idx_i < 0) return nullptr;
+    if (idx_i < 0) return {};
     try {
-        auto v = e->get_attribute_value(static_cast<size_t>(idx_i));
+        auto v = e.get_attribute_value(static_cast<size_t>(idx_i));
         return attr_to_val(v);
     } catch (...) { return make_none(); }
 }
@@ -303,19 +298,19 @@ inline Val* read_attr(IfcUtil::IfcBaseClass* e, const std::string& attr_name) {
  *  Pset extraction
  * ==================================================================== */
 
-inline Val* extract_prop_value(IfcUtil::IfcBaseClass* prop) {
+inline Val* extract_prop_value(express::Base prop) {
     if (!prop) return make_none();
-    const auto& tname = prop->declaration().name();
+    const auto& tname = prop.declaration().name();
 
     if (tname == "IfcPropertySingleValue") {
         int nv = find_attr_idx(prop, "NominalValue");
         if (nv < 0) return make_none();
         try {
-            auto outer = prop->get_attribute_value(static_cast<size_t>(nv));
+            auto outer = prop.get_attribute_value(static_cast<size_t>(nv));
             if (outer.isNull()) return make_none();
-            if (outer.type() != IfcUtil::Argument_ENTITY_INSTANCE) return make_none();
-            auto* typed = (IfcUtil::IfcBaseClass*)outer;
-            if (!typed || !typed->declaration().as_type_declaration()) return make_none();
+            if (outer.type() != ifcopenshell::Argument_ENTITY_INSTANCE) return make_none();
+            auto typed = (express::Base)outer;
+            if (!typed || !typed.declaration().as_type_declaration()) return make_none();
             return unwrap_typed_value(typed);
         } catch (...) { return make_none(); }
     }
@@ -324,13 +319,13 @@ inline Val* extract_prop_value(IfcUtil::IfcBaseClass* prop) {
         int ev = find_attr_idx(prop, "EnumerationValues");
         if (ev < 0) return make_none();
         try {
-            auto outer = prop->get_attribute_value(static_cast<size_t>(ev));
+            auto outer = prop.get_attribute_value(static_cast<size_t>(ev));
             if (outer.isNull()) return make_none();
-            auto agg = (aggregate_of_instance::ptr)outer;
-            if (!agg) return make_none();
-            auto* list = make_list();
-            for (auto& item : *agg) {
-                if (item && item->declaration().as_type_declaration())
+            auto agg = (std::vector<express::Base>)outer;
+            if (agg.empty()) return make_none();
+            auto list = make_list();
+            for (auto item : agg) {
+                if (item && item.declaration().as_type_declaration())
                     list->list_val.push_back(unwrap_typed_value(item));
                 else
                     list->list_val.push_back(make_none());
@@ -343,13 +338,13 @@ inline Val* extract_prop_value(IfcUtil::IfcBaseClass* prop) {
         int lv = find_attr_idx(prop, "ListValues");
         if (lv < 0) return make_none();
         try {
-            auto outer = prop->get_attribute_value(static_cast<size_t>(lv));
+            auto outer = prop.get_attribute_value(static_cast<size_t>(lv));
             if (outer.isNull()) return make_none();
-            auto agg = (aggregate_of_instance::ptr)outer;
-            if (!agg) return make_none();
-            auto* list = make_list();
-            for (auto& item : *agg) {
-                if (item && item->declaration().as_type_declaration())
+            auto agg = (std::vector<express::Base>)outer;
+            if (agg.empty()) return make_none();
+            auto list = make_list();
+            for (auto item : agg) {
+                if (item && item.declaration().as_type_declaration())
                     list->list_val.push_back(unwrap_typed_value(item));
                 else
                     list->list_val.push_back(make_none());
@@ -361,10 +356,10 @@ inline Val* extract_prop_value(IfcUtil::IfcBaseClass* prop) {
     return make_none();
 }
 
-inline Val* extract_pset_props(IfcUtil::IfcBaseClass* defn) {
+inline Val* extract_pset_props(express::Base defn) {
     if (!defn) return make_none();
-    auto* dict = make_dict();
-    const auto& tname = defn->declaration().name();
+    auto dict = make_dict();
+    const auto& tname = defn.declaration().name();
 
     if (tname == "IfcPropertySet" || tname == "IfcMaterialProperties" ||
         tname == "IfcProfileProperties" || tname == "IfcExtendedMaterialProperties") {
@@ -372,17 +367,17 @@ inline Val* extract_pset_props(IfcUtil::IfcBaseClass* defn) {
         const char* pa = (tname == "IfcPropertySet") ? "HasProperties"
                        : (tname == "IfcExtendedMaterialProperties") ? "ExtendedProperties"
                        : "Properties";
-        for (auto* prop : get_entity_list(defn, pa)) {
+        for (auto prop : get_entity_list(defn, pa)) {
             if (!prop) continue;
             dict->dict_val.push_back({get_string_attr(prop, "Name"), extract_prop_value(prop)});
         }
     } else if (tname == "IfcElementQuantity") {
-        for (auto* q : get_entity_list(defn, "Quantities")) {
+        for (auto q : get_entity_list(defn, "Quantities")) {
             if (!q || !entity_is_a(q, "IfcPhysicalSimpleQuantity")) continue;
-            auto* edecl = q->declaration().as_entity();
+            auto edecl = q.declaration().as_entity();
             if (!edecl || edecl->all_attributes().size() < 4) continue;
             try {
-                auto v = q->get_attribute_value(3);
+                auto v = q.get_attribute_value(3);
                 dict->dict_val.push_back({get_string_attr(q, "Name"), attr_to_val(v)});
             } catch (...) {
                 dict->dict_val.push_back({get_string_attr(q, "Name"), make_none()});
@@ -393,12 +388,12 @@ inline Val* extract_pset_props(IfcUtil::IfcBaseClass* defn) {
 }
 
 inline std::vector<std::pair<std::string, Val*>>
-get_all_psets(IfcUtil::IfcBaseClass* entity) {
+get_all_psets(express::Base entity) {
     std::vector<std::pair<std::string, Val*>> result;
-    auto psets = ifcapi::bindings::element_get_pset_ids(entity, false, false, true);
-    if (!psets || psets->size() == 0) return result;
+    auto psets = ifcapi::bindings::element_get_pset_ids(&entity, false, false, true);
+    if (psets.empty()) return result;
 
-    for (auto& pset : *psets) {
+    for (auto pset : psets) {
         if (!pset) continue;
         std::string nm = get_string_attr(pset, "Name");
         Val* props = extract_pset_props(pset);
@@ -452,11 +447,11 @@ inline std::vector<KeyEntry> extract_keys(const ifcopenshell_selector_node_t* ro
 
     size_t n = ifcopenshell_selector_node_child_count(kl);
     for (size_t i = 0; i < n; ++i) {
-        auto* key_node = ifcopenshell_selector_node_child(kl, i);
+        auto key_node = ifcopenshell_selector_node_child(kl, i);
         if (!key_node || ifcopenshell_selector_node_kind(key_node) != IFCSEL_NODE_KEY) continue;
         if (ifcopenshell_selector_node_child_count(key_node) == 0) continue;
 
-        auto* val_node = ifcopenshell_selector_node_child(key_node, 0);
+        auto val_node = ifcopenshell_selector_node_child(key_node, 0);
         if (!val_node) continue;
 
         KeyEntry ke;
@@ -465,7 +460,7 @@ inline std::vector<KeyEntry> extract_keys(const ifcopenshell_selector_node_t* ro
         if (vk == IFCSEL_NODE_REGEX_STRING) {
             ke.is_regex = true;
             if (ifcopenshell_selector_node_child_count(val_node) > 0) {
-                auto* tok = ifcopenshell_selector_node_child(val_node, 0);
+                auto tok = ifcopenshell_selector_node_child(val_node, 0);
                 const char* txt = ifcopenshell_selector_node_text(tok);
                 ke.text = txt ? txt : "";
             }
@@ -473,13 +468,13 @@ inline std::vector<KeyEntry> extract_keys(const ifcopenshell_selector_node_t* ro
             catch (...) { continue; }
         } else if (vk == IFCSEL_NODE_QUOTED_STRING) {
             if (ifcopenshell_selector_node_child_count(val_node) > 0) {
-                auto* tok = ifcopenshell_selector_node_child(val_node, 0);
+                auto tok = ifcopenshell_selector_node_child(val_node, 0);
                 const char* txt = ifcopenshell_selector_node_text(tok);
                 ke.text = unescape_quoted(txt ? txt : "");
             }
         } else {
             if (ifcopenshell_selector_node_child_count(val_node) > 0) {
-                auto* tok = ifcopenshell_selector_node_child(val_node, 0);
+                auto tok = ifcopenshell_selector_node_child(val_node, 0);
                 const char* txt = ifcopenshell_selector_node_text(tok);
                 ke.text = txt ? txt : "";
             }
@@ -493,8 +488,8 @@ inline std::vector<KeyEntry> extract_keys(const ifcopenshell_selector_node_t* ro
  *  Semantic helpers
  * ==================================================================== */
 
-inline Val* resolve_predefined_type(IfcUtil::IfcBaseClass* e) {
-    auto* type_e = ifcapi::bindings::element_get_type(e);
+inline Val* resolve_predefined_type(express::Base e) {
+    auto type_e = ifcapi::bindings::element_get_type(&e);
 
     if (type_e) {
         std::string pt = get_string_attr(type_e, "PredefinedType");
@@ -520,52 +515,52 @@ inline Val* resolve_predefined_type(IfcUtil::IfcBaseClass* e) {
     return (pt == "NOTDEFINED") ? make_none() : make_string(pt);
 }
 
-inline Val* resolve_classification(IfcUtil::IfcBaseClass* e) {
-    auto* list = make_list();
-    for (auto* rel : get_inverse_list(e, "HasAssociations")) {
+inline Val* resolve_classification(express::Base e) {
+    auto list = make_list();
+    for (auto rel : get_inverse_list(e, "HasAssociations")) {
         if (!entity_is_a(rel, "IfcRelAssociatesClassification")) continue;
-        auto* ref = get_entity_ref(rel, "RelatingClassification");
+        auto ref = get_entity_ref(rel, "RelatingClassification");
         if (ref) list->list_val.push_back(make_instance(ref));
     }
     return list;
 }
 
-inline Val* resolve_groups(IfcUtil::IfcBaseClass* e) {
-    auto* list = make_list();
-    for (auto* rel : get_inverse_list(e, "HasAssignments")) {
+inline Val* resolve_groups(express::Base e) {
+    auto list = make_list();
+    for (auto rel : get_inverse_list(e, "HasAssignments")) {
         if (!entity_is_a(rel, "IfcRelAssignsToGroup")) continue;
-        auto* grp = get_entity_ref(rel, "RelatingGroup");
+        auto grp = get_entity_ref(rel, "RelatingGroup");
         if (grp) list->list_val.push_back(make_instance(grp));
     }
     return list;
 }
 
-inline Val* resolve_occurrences(IfcUtil::IfcBaseClass* e) {
-    auto* list = make_list();
-    for (auto* rel : get_inverse_list(e, "ObjectTypeOf")) {
+inline Val* resolve_occurrences(express::Base e) {
+    auto list = make_list();
+    for (auto rel : get_inverse_list(e, "ObjectTypeOf")) {
         if (!entity_is_a(rel, "IfcRelDefinesByType")) continue;
-        for (auto* obj : get_entity_list(rel, "RelatedObjects"))
+        for (auto obj : get_entity_list(rel, "RelatedObjects"))
             list->list_val.push_back(make_instance(obj));
     }
     return list;
 }
 
-inline Val* resolve_styles(IfcUtil::IfcBaseClass* e) {
-    auto* list = make_list();
+inline Val* resolve_styles(express::Base e) {
+    auto list = make_list();
     if (!e) return list;
-    auto styles = ifcapi::bindings::element_get_styles(e);
-    if (!styles) return list;
-    for (auto& style : *styles) {
+    auto styles = ifcapi::bindings::element_get_styles(&e);
+    if (styles.empty()) return list;
+    for (auto style : styles) {
         if (style) list->list_val.push_back(make_instance(style));
     }
     return list;
 }
 
-inline Val* resolve_systems(IfcUtil::IfcBaseClass* e, bool zones_only) {
-    auto* list = make_list();
-    for (auto* rel : get_inverse_list(e, "HasAssignments")) {
+inline Val* resolve_systems(express::Base e, bool zones_only) {
+    auto list = make_list();
+    for (auto rel : get_inverse_list(e, "HasAssignments")) {
         if (!entity_is_a(rel, "IfcRelAssignsToGroup")) continue;
-        auto* grp = get_entity_ref(rel, "RelatingGroup");
+        auto grp = get_entity_ref(rel, "RelatingGroup");
         if (!grp) continue;
         bool is_zone = entity_is_a(grp, "IfcZone");
         bool is_system = entity_is_a(grp, "IfcSystem") && !entity_is_a(grp, "IfcStructuralAnalysisModel");
@@ -576,54 +571,54 @@ inline Val* resolve_systems(IfcUtil::IfcBaseClass* e, bool zones_only) {
     return list;
 }
 
-inline Val* resolve_profiles(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e) {
-    auto* list = make_list();
+inline Val* resolve_profiles(ifcopenshell::file* file, express::Base e) {
+    auto list = make_list();
     if (!e) return list;
 
-    auto* mat = ifcapi::bindings::element_get_material(e, true, true);
+    auto mat = ifcapi::bindings::element_get_material(&e, true, true);
     if (mat && entity_is_a(mat, "IfcMaterialProfileSet")) {
-        for (auto* mp : get_entity_list(mat, "MaterialProfiles")) {
-            auto* profile = get_entity_ref(mp, "Profile");
+        for (auto mp : get_entity_list(mat, "MaterialProfiles")) {
+            auto profile = get_entity_ref(mp, "Profile");
             if (profile) list->list_val.push_back(make_instance(profile));
         }
         return list;
     }
 
     if (!file) return list;
-    auto* rep = ifcapi::bindings::representation_get_product_representation(
-        e, nullptr, "Model", "Body", "MODEL_VIEW");
+    auto rep = ifcapi::bindings::representation_get_product_representation(
+        &e, nullptr, "Model", "Body", "MODEL_VIEW");
     if (!rep) return list;
 
-    auto items = ifcapi::bindings::representation_resolve_base_items(rep);
-    if (!items) return list;
-    for (auto& item : *items) {
+    auto items = ifcapi::bindings::representation_resolve_base_items(&rep);
+    if (items.empty()) return list;
+    for (auto item : items) {
         if (!item || !entity_is_a(item, "IfcExtrudedAreaSolid")) continue;
-        auto* swept = get_entity_ref(item, "SweptArea");
+        auto swept = get_entity_ref(item, "SweptArea");
         if (swept) list->list_val.push_back(make_instance(swept));
     }
     return list;
 }
 
-inline Val* resolve_xyz(IfcUtil::IfcBaseClass* e, const std::string& k) {
-    auto* placement_e = get_entity_ref(e, "ObjectPlacement");
+inline Val* resolve_xyz(express::Base e, const std::string& k) {
+    auto placement_e = get_entity_ref(e, "ObjectPlacement");
     if (!placement_e) return make_none();
     double matrix[16];
-    if (!placement_matrix_to_array(ifcapi::bindings::placement_get_local_placement(placement_e), matrix)) return make_none();
+    if (!placement_matrix_to_array(ifcapi::bindings::placement_get_local_placement(&placement_e), matrix)) return make_none();
     int ci = (k == "x") ? 0 : (k == "y") ? 1 : 2;
     return make_double(matrix[ci * 4 + 3]);
 }
 
-inline bool get_numeric_attr(IfcUtil::IfcBaseClass* e, const char* attr, double* out) {
+inline bool get_numeric_attr(express::Base e, const char* attr, double* out) {
     int idx = find_attr_idx(e, attr);
     if (idx < 0) return false;
     try {
-        auto v = e->get_attribute_value(static_cast<size_t>(idx));
+        auto v = e.get_attribute_value(static_cast<size_t>(idx));
         if (v.isNull()) return false;
-        if (v.type() == IfcUtil::Argument_DOUBLE) {
+        if (v.type() == ifcopenshell::Argument_DOUBLE) {
             *out = (double)v;
             return true;
         }
-        if (v.type() == IfcUtil::Argument_INT) {
+        if (v.type() == ifcopenshell::Argument_INT) {
             *out = (double)(int)v;
             return true;
         }
@@ -652,16 +647,16 @@ inline void transform_point4(const double* m, double& x, double& y, double& z) {
     z = (m[8] * ox) + (m[9] * oy) + (m[10] * oz) + m[11];
 }
 
-inline bool get_typed_numeric_value(IfcUtil::IfcBaseClass* e, double* out) {
+inline bool get_typed_numeric_value(express::Base e, double* out) {
     if (!e || !out) return false;
     try {
-        auto inner = e->get_attribute_value(0);
+        auto inner = e.get_attribute_value(0);
         if (inner.isNull()) return false;
-        if (inner.type() == IfcUtil::Argument_DOUBLE) {
+        if (inner.type() == ifcopenshell::Argument_DOUBLE) {
             *out = (double)inner;
             return true;
         }
-        if (inner.type() == IfcUtil::Argument_INT) {
+        if (inner.type() == ifcopenshell::Argument_INT) {
             *out = (double)(int)inner;
             return true;
         }
@@ -669,28 +664,28 @@ inline bool get_typed_numeric_value(IfcUtil::IfcBaseClass* e, double* out) {
     return false;
 }
 
-inline bool apply_wcs_inverse(IfcParse::IfcFile* file, double& x, double& y, double& z) {
+inline bool apply_wcs_inverse(ifcopenshell::file* file, double& x, double& y, double& z) {
     if (!file) return false;
     auto ctxs = file->instances_by_type("IfcGeometricRepresentationContext");
-    if (!ctxs) return false;
-    IfcUtil::IfcBaseClass* chosen = nullptr;
-    for (auto& ctx : *ctxs) {
+    if (ctxs.empty()) return false;
+    express::Base chosen;
+    for (auto ctx : ctxs) {
         if (!ctx) continue;
         chosen = ctx;
         if (get_string_attr(ctx, "ContextType") == "Model") break;
     }
     if (!chosen) return false;
-    auto* wcs = get_entity_ref(chosen, "WorldCoordinateSystem");
+    auto wcs = get_entity_ref(chosen, "WorldCoordinateSystem");
     if (!wcs) return false;
     double m[16];
-    if (!placement_matrix_to_array(ifcapi::bindings::placement_get_axis2placement(wcs), m)) return false;
+    if (!placement_matrix_to_array(ifcapi::bindings::placement_get_axis2placement(&wcs), m)) return false;
     double inv[16];
     if (!invert_rigid4(m, inv)) return false;
     transform_point4(inv, x, y, z);
     return true;
 }
 
-inline bool get_map_conversion(IfcParse::IfcFile* file, double& eastings, double& northings,
+inline bool get_map_conversion(ifcopenshell::file* file, double& eastings, double& northings,
                                double& orthogonal_height, double& xaa, double& xao,
                                double& scale, double& factor_x, double& factor_y, double& factor_z) {
     eastings = northings = orthogonal_height = 0.0;
@@ -700,8 +695,8 @@ inline bool get_map_conversion(IfcParse::IfcFile* file, double& eastings, double
     if (!file) return false;
 
     auto conversions = file->instances_by_type("IfcCoordinateOperation");
-    if (!conversions || conversions->size() == 0) return false;
-    auto* conversion = (*conversions)[0];
+    if (conversions.empty()) return false;
+    auto conversion = conversions[0];
     if (!conversion) return false;
 
     if (entity_is_a(conversion, "IfcMapConversion")) {
@@ -724,8 +719,8 @@ inline bool get_map_conversion(IfcParse::IfcFile* file, double& eastings, double
     }
 
     if (entity_is_a(conversion, "IfcRigidOperation")) {
-        auto* first = get_entity_ref(conversion, "FirstCoordinate");
-        auto* second = get_entity_ref(conversion, "SecondCoordinate");
+        auto first = get_entity_ref(conversion, "FirstCoordinate");
+        auto second = get_entity_ref(conversion, "SecondCoordinate");
         get_typed_numeric_value(first, &eastings);
         get_typed_numeric_value(second, &northings);
         get_numeric_attr(conversion, "Height", &orthogonal_height);
@@ -735,11 +730,11 @@ inline bool get_map_conversion(IfcParse::IfcFile* file, double& eastings, double
     return false;
 }
 
-inline Val* resolve_map_coordinate(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* e, const std::string& k) {
-    auto* placement_e = get_entity_ref(e, "ObjectPlacement");
+inline Val* resolve_map_coordinate(ifcopenshell::file* file, express::Base e, const std::string& k) {
+    auto placement_e = get_entity_ref(e, "ObjectPlacement");
     if (!placement_e) return make_none();
     double matrix[16];
-    if (!placement_matrix_to_array(ifcapi::bindings::placement_get_local_placement(placement_e), matrix)) return make_none();
+    if (!placement_matrix_to_array(ifcapi::bindings::placement_get_local_placement(&placement_e), matrix)) return make_none();
     double x = matrix[3];
     double y = matrix[7];
     double z = matrix[11];
@@ -774,9 +769,9 @@ inline bool regex_match_start(const std::string& str, const std::regex& pattern)
  *  apply_key  (get_element evaluator)
  * ==================================================================== */
 
-inline Val* apply_key(IfcParse::IfcFile* file, const Val* cur, const KeyEntry& key);
+inline Val* apply_key(ifcopenshell::file* file, const Val* cur, const KeyEntry& key);
 
-inline Val* apply_key_to_list(IfcParse::IfcFile* file, const Val* cur, const KeyEntry& key) {
+inline Val* apply_key_to_list(ifcopenshell::file* file, const Val* cur, const KeyEntry& key) {
     const std::string& k = key.text;
 
     if (!key.is_regex) {
@@ -789,12 +784,12 @@ inline Val* apply_key_to_list(IfcParse::IfcFile* file, const Val* cur, const Key
         }
     }
 
-    auto* results = make_list();
-    for (auto* item : cur->list_val) {
+    auto results = make_list();
+    for (auto item : cur->list_val) {
         Val* sub = apply_key(file, item, key);
         if (!sub) { results->list_val.push_back(make_none()); continue; }
         if (sub->kind == IFCSEL_VALUE_LIST) {
-            for (auto* sv : sub->list_val) results->list_val.push_back(sv);
+            for (auto sv : sub->list_val) results->list_val.push_back(sv);
             sub->list_val.clear();
             delete sub;
         } else {
@@ -804,7 +799,7 @@ inline Val* apply_key_to_list(IfcParse::IfcFile* file, const Val* cur, const Key
     return results;
 }
 
-inline Val* apply_key(IfcParse::IfcFile* file, const Val* cur, const KeyEntry& key) {
+inline Val* apply_key(ifcopenshell::file* file, const Val* cur, const KeyEntry& key) {
     if (!cur || cur->kind == IFCSEL_VALUE_NONE) return make_none();
 
     if (cur->kind == IFCSEL_VALUE_LIST)
@@ -816,15 +811,15 @@ inline Val* apply_key(IfcParse::IfcFile* file, const Val* cur, const KeyEntry& k
             for (auto& kv : cur->dict_val) {
                 if (!regex_match_start(kv.first, key.pattern)) continue;
                 if (kv.second->kind == IFCSEL_VALUE_LIST) {
-                    for (auto* sv : kv.second->list_val) matches.push_back(clone_val(sv));
+                    for (auto sv : kv.second->list_val) matches.push_back(clone_val(sv));
                 } else {
                     matches.push_back(clone_val(kv.second));
                 }
             }
             if (matches.empty()) return make_none();
             if (matches.size() == 1) return matches[0];
-            auto* l = make_list();
-            for (auto* v : matches) l->list_val.push_back(v);
+            auto l = make_list();
+            for (auto v : matches) l->list_val.push_back(v);
             return l;
         } else {
             for (auto& kv : cur->dict_val)
@@ -834,43 +829,43 @@ inline Val* apply_key(IfcParse::IfcFile* file, const Val* cur, const KeyEntry& k
     }
 
     if (cur->kind != IFCSEL_VALUE_INSTANCE) return make_none();
-    auto* e = cur->inst_val;
+    auto e = cur->inst_val;
     if (!e) return make_none();
 
     const std::string& k = key.text;
 
     if (!key.is_regex) {
         if (k == "type") {
-            auto* type = ifcapi::bindings::element_get_type(e);
+            auto type = ifcapi::bindings::element_get_type(&e);
             return type ? make_instance(type) : make_none();
         }
         if (k == "material" || k == "mat") {
-            auto* material = ifcapi::bindings::element_get_material(e, true, true);
+            auto material = ifcapi::bindings::element_get_material(&e, true, true);
             return material ? make_instance(material) : make_none();
         }
         if (k == "materials" || k == "mats") {
-            auto* mat = ifcapi::bindings::element_get_material(e, true, true);
+            auto mat = ifcapi::bindings::element_get_material(&e, true, true);
             if (!mat) return make_none();
-            auto* list = make_list();
+            auto list = make_list();
             if (entity_is_a(mat, "IfcMaterial")) {
                 list->list_val.push_back(make_instance(mat));
             } else if (entity_is_a(mat, "IfcMaterialLayerSet")) {
-                for (auto* lay : get_entity_list(mat, "MaterialLayers")) {
-                    auto* m = get_entity_ref(lay, "Material");
+                for (auto lay : get_entity_list(mat, "MaterialLayers")) {
+                    auto m = get_entity_ref(lay, "Material");
                     if (m) list->list_val.push_back(make_instance(m));
                 }
             } else if (entity_is_a(mat, "IfcMaterialProfileSet")) {
-                for (auto* pr : get_entity_list(mat, "MaterialProfiles")) {
-                    auto* m = get_entity_ref(pr, "Material");
+                for (auto pr : get_entity_list(mat, "MaterialProfiles")) {
+                    auto m = get_entity_ref(pr, "Material");
                     if (m) list->list_val.push_back(make_instance(m));
                 }
             } else if (entity_is_a(mat, "IfcMaterialConstituentSet")) {
-                for (auto* co : get_entity_list(mat, "MaterialConstituents")) {
-                    auto* m = get_entity_ref(co, "Material");
+                for (auto co : get_entity_list(mat, "MaterialConstituents")) {
+                    auto m = get_entity_ref(co, "Material");
                     if (m) list->list_val.push_back(make_instance(m));
                 }
             } else if (entity_is_a(mat, "IfcMaterialList")) {
-                for (auto* m : get_entity_list(mat, "Materials"))
+                for (auto m : get_entity_list(mat, "Materials"))
                     list->list_val.push_back(make_instance(m));
             }
             return list;
@@ -886,39 +881,39 @@ inline Val* apply_key(IfcParse::IfcFile* file, const Val* cur, const KeyEntry& k
                              : entity_is_a(e, "IfcMaterialConstituentSet") ? "MaterialConstituents"
                              : nullptr;
             if (!attr) return make_none();
-            auto* list = make_list();
-            for (auto* item : get_entity_list(e, attr)) list->list_val.push_back(make_instance(item));
+            auto list = make_list();
+            for (auto item : get_entity_list(e, attr)) list->list_val.push_back(make_instance(item));
             return list;
         }
         if (k == "container") {
-            auto* container = ifcapi::bindings::element_get_container(e, false, nullptr);
+            auto container = ifcapi::bindings::element_get_container(&e, false, nullptr);
             return container ? make_instance(container) : make_none();
         }
         if (k == "space") {
-            auto* space = ifcapi::bindings::element_get_container(e, false, "IfcSpace");
+            auto space = ifcapi::bindings::element_get_container(&e, false, "IfcSpace");
             return space ? make_instance(space) : make_none();
         }
         if (k == "storey") {
-            auto* storey = ifcapi::bindings::element_get_container(e, false, "IfcBuildingStorey");
+            auto storey = ifcapi::bindings::element_get_container(&e, false, "IfcBuildingStorey");
             return storey ? make_instance(storey) : make_none();
         }
         if (k == "building") {
-            auto* building = ifcapi::bindings::element_get_container(e, false, "IfcBuilding");
+            auto building = ifcapi::bindings::element_get_container(&e, false, "IfcBuilding");
             return building ? make_instance(building) : make_none();
         }
         if (k == "site") {
-            auto* site = ifcapi::bindings::element_get_container(e, false, "IfcSite");
+            auto site = ifcapi::bindings::element_get_container(&e, false, "IfcSite");
             return site ? make_instance(site) : make_none();
         }
         if (k == "parent") {
-            auto* parent = ifcapi::bindings::element_get_parent(e);
+            auto parent = ifcapi::bindings::element_get_parent(&e);
             return parent ? make_instance(parent) : make_none();
         }
         if (k == "types" || k == "occurrences") return resolve_occurrences(e);
         if (k == "count")           return make_int(1);
-        if (k == "class")           return make_string(e->declaration().name());
+        if (k == "class")           return make_string(e.declaration().name());
         if (k == "predefined_type") return resolve_predefined_type(e);
-        if (k == "id")              return make_int(static_cast<int64_t>(e->id()));
+        if (k == "id")              return make_int(static_cast<int64_t>(e.id()));
         if (k == "classification")  return resolve_classification(e);
         if (k == "group")           return resolve_groups(e);
 
@@ -951,8 +946,8 @@ inline Val* apply_key(IfcParse::IfcFile* file, const Val* cur, const KeyEntry& k
         }
         if (matching.empty()) return make_none();
         if (matching.size() == 1) return matching[0];
-        auto* list = make_list();
-        for (auto* v : matching) list->list_val.push_back(v);
+        auto list = make_list();
+        for (auto v : matching) list->list_val.push_back(v);
         return list;
     }
 
@@ -968,8 +963,8 @@ inline Val* apply_key(IfcParse::IfcFile* file, const Val* cur, const KeyEntry& k
 }
 
 inline Val* get_element_value_impl(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* entity,
+    ifcopenshell::file* file,
+    express::Base entity,
     const std::vector<KeyEntry>& keys)
 {
     Val* cur = make_instance(entity);

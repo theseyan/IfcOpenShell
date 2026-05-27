@@ -17,49 +17,36 @@
 
 namespace {
 
-bool is_ifc2x3(IfcParse::IfcFile* file) {
+bool is_ifc2x3(ifcopenshell::file* file) {
     return file && file->schema() && file->schema()->name() == "IFC2X3";
 }
 
-bool is_ifc4x3(IfcParse::IfcFile* file) {
+bool is_ifc4x3(ifcopenshell::file* file) {
     return file && file->schema() && file->schema()->name().rfind("IFC4X3", 0) == 0;
 }
 
-bool is_a(IfcUtil::IfcBaseClass* entity, const char* ifc_class) {
-    return entity && entity->declaration().is(ifc_class);
+bool is_a(express::Base entity, const char* ifc_class) {
+    return entity && entity.declaration().is(ifc_class);
 }
 
-IfcUtil::IfcBaseClass* create_entity(IfcParse::IfcFile* file, const char* ifc_class) {
+express::Base create_entity(ifcopenshell::file* file, const char* ifc_class) {
     return file->create(file->schema()->declaration_by_name(ifc_class));
 }
 
-std::vector<IfcUtil::IfcBaseClass*> inverse_entities(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* entity) {
-    std::vector<IfcUtil::IfcBaseClass*> result;
-    if (!file || !entity || entity->id() <= 0) return result;
-    auto inverses = file->getInverse(entity->id(), nullptr, -1);
-    if (!inverses) return result;
-    for (auto* inverse : *inverses) {
+std::vector<express::Base> inverse_entities(ifcopenshell::file* file, express::Base entity) {
+    std::vector<express::Base> result;
+    if (!file || !entity || entity.id() <= 0) return result;
+    for (auto inverse : file->instances_by_reference(static_cast<int>(entity.id()))) {
         if (inverse) result.push_back(inverse);
     }
     return result;
 }
 
-std::vector<IfcUtil::IfcBaseClass*> inverse_entities(IfcUtil::IfcBaseClass* entity, const char* attribute) {
-    std::vector<IfcUtil::IfcBaseClass*> result;
-    auto* base = dynamic_cast<IfcUtil::IfcBaseEntity*>(entity);
-    if (!base) return result;
-    try {
-        auto inverses = base->get_inverse(attribute);
-        if (!inverses) return result;
-        for (size_t i = 0; i < inverses->size(); ++i) {
-            if ((*inverses)[i]) result.push_back((*inverses)[i]);
-        }
-    } catch (...) {
-    }
-    return result;
+std::vector<express::Base> inverse_entities(express::Base entity, const char* attribute) {
+    return ifcapi::detail::read_inverse_aggregate(entity, attribute);
 }
 
-bool contains(const std::vector<IfcUtil::IfcBaseClass*>& values, IfcUtil::IfcBaseClass* value) {
+bool contains(const std::vector<express::Base>& values, express::Base value) {
     return std::find(values.begin(), values.end(), value) != values.end();
 }
 
@@ -67,16 +54,16 @@ bool contains_name(const std::vector<std::string>& values, const std::string& va
     return std::find(values.begin(), values.end(), value) != values.end();
 }
 
-bool same_single_style(const std::vector<IfcUtil::IfcBaseClass*>& styles, IfcUtil::IfcBaseClass* style) {
+bool same_single_style(const std::vector<express::Base>& styles, express::Base style) {
     return styles.size() == 1 && styles.front() == style;
 }
 
 const ifcapi_pset::Entry* nested_entry(const ifcapi_pset::Entry& entry, const std::string& key) {
-    if (!entry.nested) return nullptr;
+    if (!entry.nested) return {};
     for (const auto& nested : entry.nested->entries) {
         if (nested.key == key) return &nested;
     }
-    return nullptr;
+    return {};
 }
 
 bool entry_truthy(const ifcapi_pset::Entry* entry) {
@@ -97,7 +84,7 @@ bool entry_truthy(const ifcapi_pset::Entry* entry) {
         case ifcapi_pset::Kind::TYPED_STRING:
             return !entry->s_val.empty();
         case ifcapi_pset::Kind::INSTANCE:
-            return entry->inst != nullptr;
+            return static_cast<bool>(entry->inst);
         default:
             return true;
     }
@@ -119,7 +106,7 @@ double entry_double(const ifcapi_pset::Entry& entry) {
     }
 }
 
-void write_optional_colour_name(IfcUtil::IfcBaseClass* colour, const ifcapi_pset::Entry* name) {
+void write_optional_colour_name(express::Base colour, const ifcapi_pset::Entry* name) {
     if (!name || name->kind == ifcapi_pset::Kind::NONE) {
         ifcapi::detail::write_blank_attr(colour, "Name");
     } else {
@@ -127,7 +114,7 @@ void write_optional_colour_name(IfcUtil::IfcBaseClass* colour, const ifcapi_pset
     }
 }
 
-void write_colour_components(IfcUtil::IfcBaseClass* colour, const ifcapi_pset::Entry& value, bool include_name) {
+void write_colour_components(express::Base colour, const ifcapi_pset::Entry& value, bool include_name) {
     if (!value.nested) {
         throw std::runtime_error("Colour attributes require a dictionary value");
     }
@@ -145,15 +132,13 @@ void write_colour_components(IfcUtil::IfcBaseClass* colour, const ifcapi_pset::E
     ifcapi::detail::write_double_attr(colour, "Blue", entry_double(*blue));
 }
 
-std::string declared_attribute_type(IfcUtil::IfcBaseClass* entity, const std::string& name) {
-    auto* base = dynamic_cast<IfcUtil::IfcBaseEntity*>(entity);
-    if (!base) return std::string();
-    auto* decl = base->declaration().as_entity();
+std::string declared_attribute_type(express::Base entity, const std::string& name) {
+    auto* decl = entity ? entity.declaration().as_entity() : nullptr;
     if (!decl) return std::string();
     auto attrs = decl->all_attributes();
-    for (auto* attr : attrs) {
+    for (auto attr : attrs) {
         if (attr->name() != name) continue;
-        const IfcParse::parameter_type* pt = attr->type_of_attribute();
+        const ifcopenshell::parameter_type* pt = attr->type_of_attribute();
         if (auto* aggregate = pt ? pt->as_aggregation_type() : nullptr) {
             pt = aggregate->type_of_element();
         }
@@ -164,16 +149,16 @@ std::string declared_attribute_type(IfcUtil::IfcBaseClass* entity, const std::st
     return std::string();
 }
 
-IfcUtil::IfcBaseClass* create_typed_double(IfcParse::IfcFile* file, const char* ifc_type, double value) {
-    auto* result = ifcapi::detail::create_typed_double(file, ifc_type, value);
+express::Base create_typed_double(ifcopenshell::file* file, const char* ifc_type, double value) {
+    auto result = ifcapi::detail::create_typed_double(file, ifc_type, value);
     if (!result) {
         throw std::runtime_error(std::string("Unable to create ") + ifc_type);
     }
     return result;
 }
 
-void edit_colour_rgb(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* style, const ifcapi_pset::Entry& entry) {
-    auto* colour = ifcapi::detail::read_ref_attr(style, entry.key.c_str());
+void edit_colour_rgb(ifcopenshell::file* file, express::Base style, const ifcapi_pset::Entry& entry) {
+    auto colour = ifcapi::detail::read_ref_attr(style, entry.key.c_str());
     if (!colour) {
         colour = create_entity(file, "IfcColourRgb");
         ifcapi::detail::write_ref_attr(style, entry.key.c_str(), colour);
@@ -181,9 +166,9 @@ void edit_colour_rgb(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* style, cons
     write_colour_components(colour, entry, true);
 }
 
-void edit_colour_or_factor(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* style, const ifcapi_pset::Entry& entry) {
+void edit_colour_or_factor(ifcopenshell::file* file, express::Base style, const ifcapi_pset::Entry& entry) {
     if (entry.kind == ifcapi_pset::Kind::DICT) {
-        auto* colour = ifcapi::detail::read_ref_attr(style, entry.key.c_str());
+        auto colour = ifcapi::detail::read_ref_attr(style, entry.key.c_str());
         if (!is_a(colour, "IfcColourRgb")) {
             colour = create_entity(file, "IfcColourRgb");
             ifcapi::detail::write_blank_attr(colour, "Name");
@@ -196,9 +181,9 @@ void edit_colour_or_factor(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* style
         return;
     }
 
-    auto* existing = ifcapi::detail::read_ref_attr(style, entry.key.c_str());
-    if (existing && existing->id()) {
-        file->removeEntity(existing);
+    auto existing = ifcapi::detail::read_ref_attr(style, entry.key.c_str());
+    if (existing && existing.id()) {
+        file->remove_entity(existing);
     }
     if (entry.kind == ifcapi_pset::Kind::NONE) {
         ifcapi::detail::write_blank_attr(style, entry.key.c_str());
@@ -210,7 +195,7 @@ void edit_colour_or_factor(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* style
     }
 }
 
-void edit_specular_highlight(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* style, const ifcapi_pset::Entry& entry) {
+void edit_specular_highlight(ifcopenshell::file* file, express::Base style, const ifcapi_pset::Entry& entry) {
     if (entry.kind == ifcapi_pset::Kind::NONE) {
         ifcapi::detail::write_blank_attr(style, "SpecularHighlight");
         return;
@@ -232,86 +217,86 @@ void edit_specular_highlight(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* sty
     }
 }
 
-std::vector<IfcUtil::IfcBaseClass*> mutable_entities(
-    const std::vector<const IfcUtil::IfcBaseClass*>& entities)
+std::vector<express::Base> mutable_entities(
+    const std::vector<express::Base>& entities)
 {
-    std::vector<IfcUtil::IfcBaseClass*> result;
+    std::vector<express::Base> result;
     result.reserve(entities.size());
-    for (auto* entity : entities) {
-        if (entity) result.push_back(const_cast<IfcUtil::IfcBaseClass*>(entity));
+    for (auto entity : entities) {
+        if (entity) result.push_back(entity);
     }
     return result;
 }
 
 void remove_styles(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* item,
-    const std::vector<IfcUtil::IfcBaseClass*>& styles)
+    ifcopenshell::file* file,
+    express::Base item,
+    const std::vector<express::Base>& styles)
 {
     auto current = ifcapi::detail::read_ref_aggregate(item, "Styles");
-    std::vector<IfcUtil::IfcBaseClass*> retained;
+    std::vector<express::Base> retained;
     retained.reserve(current.size());
-    for (auto* style : current) {
+    for (auto style : current) {
         if (!contains(styles, style)) retained.push_back(style);
     }
     if (retained.empty()) {
-        file->removeEntity(item);
+        file->remove_entity(item);
     } else if (retained.size() != current.size()) {
         ifcapi::detail::write_ref_aggregate(item, "Styles", retained);
     }
 }
 
-IfcUtil::IfcBaseClass* create_presentation_style_assignment(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* style) {
-    auto* assignment = create_entity(file, "IfcPresentationStyleAssignment");
+express::Base create_presentation_style_assignment(ifcopenshell::file* file, express::Base style) {
+    auto assignment = create_entity(file, "IfcPresentationStyleAssignment");
     ifcapi::detail::write_ref_aggregate(assignment, "Styles", {style});
     return assignment;
 }
 
-IfcUtil::IfcBaseClass* create_styled_item(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* item,
-    const std::vector<IfcUtil::IfcBaseClass*>& styles,
+express::Base create_styled_item(
+    ifcopenshell::file* file,
+    express::Base item,
+    const std::vector<express::Base>& styles,
     const std::string& name)
 {
-    auto* styled_item = create_entity(file, "IfcStyledItem");
+    auto styled_item = create_entity(file, "IfcStyledItem");
     if (item) ifcapi::detail::write_ref_attr(styled_item, "Item", item);
     ifcapi::detail::write_ref_aggregate(styled_item, "Styles", styles);
     ifcapi::detail::write_string_attr(styled_item, "Name", name);
     return styled_item;
 }
 
-std::vector<IfcUtil::IfcBaseClass*> append_ref(
-    std::vector<IfcUtil::IfcBaseClass*> values,
-    IfcUtil::IfcBaseClass* value)
+std::vector<express::Base> append_ref(
+    std::vector<express::Base> values,
+    express::Base value)
 {
     values.push_back(value);
     return values;
 }
 
 void remove_same_type_styles(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* style_item,
+    ifcopenshell::file* file,
+    express::Base style_item,
     const std::string& current_style_type,
     bool remove_item)
 {
     if (!style_item) return;
     auto current = ifcapi::detail::read_ref_aggregate(style_item, "Styles");
-    std::vector<IfcUtil::IfcBaseClass*> retained;
-    for (auto* style : current) {
+    std::vector<express::Base> retained;
+    for (auto style : current) {
         if (!is_a(style, current_style_type.c_str())) retained.push_back(style);
     }
     if (remove_item && retained.empty()) {
-        file->removeEntity(style_item);
+        file->remove_entity(style_item);
     } else {
         ifcapi::detail::write_ref_aggregate(style_item, "Styles", retained);
     }
 }
 
-bool has_proposed_style(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* styled_item, IfcUtil::IfcBaseClass* style) {
+bool has_proposed_style(ifcopenshell::file* file, express::Base styled_item, express::Base style) {
     auto styles = ifcapi::detail::read_ref_aggregate(styled_item, "Styles");
     if (contains(styles, style)) return true;
     if (!is_ifc4x3(file)) {
-        for (auto* s : styles) {
+        for (auto s : styles) {
             if (is_a(s, "IfcPresentationStyleAssignment") &&
                 contains(ifcapi::detail::read_ref_aggregate(s, "Styles"), style)) {
                 return true;
@@ -321,13 +306,13 @@ bool has_proposed_style(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* styled_i
     return false;
 }
 
-bool has_same_style_type(IfcUtil::IfcBaseClass* styled_item, IfcUtil::IfcBaseClass* style) {
-    auto style_class = style ? style->declaration().name() : std::string();
-    for (auto* s : ifcapi::detail::read_ref_aggregate(styled_item, "Styles")) {
-        if (s->declaration().name() == style_class) return true;
+bool has_same_style_type(express::Base styled_item, express::Base style) {
+    auto style_class = style ? style.declaration().name() : std::string();
+    for (auto s : ifcapi::detail::read_ref_aggregate(styled_item, "Styles")) {
+        if (s.declaration().name() == style_class) return true;
         if (is_a(s, "IfcPresentationStyleAssignment")) {
-            for (auto* ss : ifcapi::detail::read_ref_aggregate(s, "Styles")) {
-                if (ss->declaration().name() == style_class) return true;
+            for (auto ss : ifcapi::detail::read_ref_aggregate(s, "Styles")) {
+                if (ss.declaration().name() == style_class) return true;
             }
         }
     }
@@ -339,20 +324,20 @@ bool has_same_style_type(IfcUtil::IfcBaseClass* styled_item, IfcUtil::IfcBaseCla
 namespace ifcapi {
 namespace bindings {
 
-void remove_surface_style_impl(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* style);
+void remove_surface_style_impl(ifcopenshell::file* file, express::Base style);
 void remove_style_impl(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* style,
-    const std::vector<const IfcUtil::IfcBaseClass*>& do_not_delete);
-void style_unassign_representation_styles(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* shape_representation,
-    const std::vector<const IfcUtil::IfcBaseClass*>& input_styles,
+    ifcopenshell::file* file,
+    express::Base style,
+    const std::vector<express::Base>& do_not_delete);
+void style_unassign_representation_styles_impl(
+    ifcopenshell::file* file,
+    express::Base shape_representation,
+    const std::vector<express::Base>& input_styles,
     bool should_use_presentation_style_assignment);
 
-void style_edit_surface_style(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* style,
+void style_edit_surface_style_impl(
+    ifcopenshell::file* file,
+    express::Base style,
     ifcopenshell_pset_props_t* attributes)
 {
     ifcopenshell_clear_error();
@@ -378,17 +363,17 @@ void style_edit_surface_style(
     }
 }
 
-IfcUtil::IfcBaseClass* create_styled_item_for_material(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass*& active_style,
-    IfcUtil::IfcBaseClass* public_style,
-    IfcUtil::IfcBaseClass* reuse_item)
+express::Base create_styled_item_for_material(
+    ifcopenshell::file* file,
+    express::Base& active_style,
+    express::Base public_style,
+    express::Base reuse_item)
 {
     if (!reuse_item) {
-        return create_styled_item(file, nullptr, {active_style}, ifcapi::detail::read_string_attr(public_style, "Name"));
+        return create_styled_item(file, {}, {active_style}, ifcapi::detail::read_string_attr(public_style, "Name"));
     }
     if (is_a(reuse_item, "IfcPresentationStyleAssignment") && is_a(active_style, "IfcPresentationStyleAssignment")) {
-        file->removeEntity(active_style);
+        file->remove_entity(active_style);
         active_style = reuse_item;
     }
     ifcapi::detail::write_ref_aggregate(reuse_item, "Styles", {public_style});
@@ -396,26 +381,26 @@ IfcUtil::IfcBaseClass* create_styled_item_for_material(
     return reuse_item;
 }
 
-IfcUtil::IfcBaseClass* get_styled_representation(
-    IfcUtil::IfcBaseClass* definition_representation,
-    IfcUtil::IfcBaseClass* context)
+express::Base get_styled_representation(
+    express::Base definition_representation,
+    express::Base context)
 {
-    for (auto* representation : ifcapi::detail::read_ref_aggregate(definition_representation, "Representations")) {
+    for (auto representation : ifcapi::detail::read_ref_aggregate(definition_representation, "Representations")) {
         if (is_a(representation, "IfcStyledRepresentation") &&
             ifcapi::detail::read_ref_attr(representation, "ContextOfItems") == context) {
             return representation;
         }
     }
-    return nullptr;
+    return {};
 }
 
-IfcUtil::IfcBaseClass* create_styled_representation(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* context,
-    IfcUtil::IfcBaseClass*& active_style,
-    IfcUtil::IfcBaseClass* public_style)
+express::Base create_styled_representation(
+    ifcopenshell::file* file,
+    express::Base context,
+    express::Base& active_style,
+    express::Base public_style)
 {
-    auto* representation = create_entity(file, "IfcStyledRepresentation");
+    auto representation = create_entity(file, "IfcStyledRepresentation");
     ifcapi::detail::write_ref_attr(representation, "ContextOfItems", context);
     ifcapi::detail::write_string_attr(
         representation,
@@ -424,16 +409,16 @@ IfcUtil::IfcBaseClass* create_styled_representation(
     ifcapi::detail::write_ref_aggregate(
         representation,
         "Items",
-        {create_styled_item_for_material(file, active_style, public_style, nullptr)});
+        {create_styled_item_for_material(file, active_style, public_style, {})});
     return representation;
 }
 
-IfcUtil::IfcBaseClass* style_add_style(
-    IfcParse::IfcFile* file,
+express::Base style_add_style(
+    ifcopenshell::file* file,
     const char* name,
     const std::string& ifc_class)
 {
-    auto* style = create_entity(file, ifc_class.c_str());
+    auto style = create_entity(file, ifc_class.c_str());
     if (name) ifcapi::detail::write_string_attr(style, "Name", name);
     if (ifc_class == "IfcSurfaceStyle") {
         ifcapi::detail::write_enum_attr(style, "Side", "BOTH");
@@ -441,22 +426,22 @@ IfcUtil::IfcBaseClass* style_add_style(
     return style;
 }
 
-IfcUtil::IfcBaseClass* style_assign_item_style(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* item,
-    IfcUtil::IfcBaseClass* style,
+express::Base style_assign_item_style_impl(
+    ifcopenshell::file* file,
+    express::Base item,
+    express::Base style,
     bool should_use_presentation_style_assignment)
 {
     auto styled_items = inverse_entities(item, "StyledByItem");
     if (styled_items.empty()) {
-        if (!style) return nullptr;
-        auto* assigned_style = (is_ifc2x3(file) || should_use_presentation_style_assignment)
+        if (!style) return {};
+        auto assigned_style = (is_ifc2x3(file) || should_use_presentation_style_assignment)
             ? create_presentation_style_assignment(file, style)
             : style;
         return create_styled_item(file, item, {assigned_style}, std::string());
     }
 
-    auto* styled_item = styled_items.front();
+    auto styled_item = styled_items.front();
     auto styled_item_styles = ifcapi::detail::read_ref_aggregate(styled_item, "Styles");
     if (style && same_single_style(styled_item_styles, style)) {
         return styled_item;
@@ -464,18 +449,18 @@ IfcUtil::IfcBaseClass* style_assign_item_style(
 
     if (is_ifc4x3(file)) {
         if (!style) {
-            file->removeEntity(styled_item);
-            return nullptr;
+            file->remove_entity(styled_item);
+            return {};
         }
         ifcapi::detail::write_ref_aggregate(styled_item, "Styles", {style});
         return styled_item;
     }
 
-    IfcUtil::IfcBaseClass* assignment = nullptr;
-    for (auto* style_ : styled_item_styles) {
+    express::Base assignment = {};
+    for (auto style_ : styled_item_styles) {
         if (!is_a(style_, "IfcPresentationStyleAssignment")) continue;
         if (!style || assignment) {
-            file->removeEntity(style_);
+            file->remove_entity(style_);
         } else {
             assignment = style_;
             if (!same_single_style(ifcapi::detail::read_ref_aggregate(assignment, "Styles"), style)) {
@@ -485,8 +470,8 @@ IfcUtil::IfcBaseClass* style_assign_item_style(
     }
 
     if (!style) {
-        file->removeEntity(styled_item);
-        return nullptr;
+        file->remove_entity(styled_item);
+        return {};
     }
 
     if (assignment) {
@@ -501,24 +486,24 @@ IfcUtil::IfcBaseClass* style_assign_item_style(
     return styled_item;
 }
 
-std::vector<IfcUtil::IfcBaseClass*> style_assign_representation_styles(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* shape_representation,
-    const std::vector<const IfcUtil::IfcBaseClass*>& input_styles,
+std::vector<express::Base> style_assign_representation_styles_impl(
+    ifcopenshell::file* file,
+    express::Base shape_representation,
+    const std::vector<express::Base>& input_styles,
     bool should_use_presentation_style_assignment,
     bool replace_previous_same_type_style)
 {
     auto styles = mutable_entities(input_styles);
     if (styles.empty()) return {};
-    std::vector<IfcUtil::IfcBaseClass*> remaining_styles = styles;
-    std::vector<IfcUtil::IfcBaseClass*> results;
+    std::vector<express::Base> remaining_styles = styles;
+    std::vector<express::Base> results;
     bool use_style_assignment = is_ifc2x3(file) || should_use_presentation_style_assignment;
-    IfcUtil::IfcBaseClass* style = nullptr;
+    express::Base style = {};
     auto traversed = file->traverse(shape_representation, -1);
-    if (!traversed) return results;
-    for (auto* element : *traversed) {
+    if (traversed.empty()) return results;
+    for (auto element : traversed) {
         if (!is_a(element, "IfcShapeModel")) continue;
-        for (auto* item : ifcapi::detail::read_ref_aggregate(element, "Items")) {
+        for (auto item : ifcapi::detail::read_ref_aggregate(element, "Items")) {
             if (!is_a(item, "IfcGeometricRepresentationItem") && !is_a(item, "IfcTopologicalRepresentationItem")) {
                 continue;
             }
@@ -528,10 +513,10 @@ std::vector<IfcUtil::IfcBaseClass*> style_assign_representation_styles(
             }
             if (!style) continue;
             std::string name = ifcapi::detail::read_string_attr(style, "Name");
-            std::string current_style_type = style->declaration().name();
+            std::string current_style_type = style.declaration().name();
             auto styled_items = inverse_entities(item, "StyledByItem");
-            auto* prev_styled_item = styled_items.empty() ? nullptr : styled_items.front();
-            IfcUtil::IfcBaseClass* style_assignment = nullptr;
+            auto prev_styled_item = styled_items.empty() ? express::Base() : styled_items.front();
+            express::Base style_assignment = {};
 
             if (!prev_styled_item) {
                 if (use_style_assignment) {
@@ -546,7 +531,7 @@ std::vector<IfcUtil::IfcBaseClass*> style_assign_representation_styles(
             if (replace_previous_same_type_style) {
                 remove_same_type_styles(file, prev_styled_item, current_style_type, false);
                 auto prev_styles = ifcapi::detail::read_ref_aggregate(prev_styled_item, "Styles");
-                for (auto* style_ : prev_styles) {
+                for (auto style_ : prev_styles) {
                     if (is_a(style_, "IfcPresentationStyleAssignment")) {
                         if (use_style_assignment && !style_assignment) {
                             style_assignment = style_;
@@ -578,8 +563,8 @@ std::vector<IfcUtil::IfcBaseClass*> style_assign_representation_styles(
                 continue;
             }
 
-            std::vector<IfcUtil::IfcBaseClass*> assigned_styles;
-            for (auto* style_ : ifcapi::detail::read_ref_aggregate(prev_styled_item, "Styles")) {
+            std::vector<express::Base> assigned_styles;
+            for (auto style_ : ifcapi::detail::read_ref_aggregate(prev_styled_item, "Styles")) {
                 if (is_a(style_, "IfcPresentationStyleAssignment")) {
                     if (!style_assignment) style_assignment = style_;
                     auto nested = ifcapi::detail::read_ref_aggregate(style_, "Styles");
@@ -613,25 +598,25 @@ std::vector<IfcUtil::IfcBaseClass*> style_assign_representation_styles(
     return results;
 }
 
-void style_assign_material_style(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* material,
-    IfcUtil::IfcBaseClass* style,
-    IfcUtil::IfcBaseClass* context,
+void style_assign_material_style_impl(
+    ifcopenshell::file* file,
+    express::Base material,
+    express::Base style,
+    express::Base context,
     bool should_use_presentation_style_assignment)
 {
-    auto* active_style = (is_ifc2x3(file) || should_use_presentation_style_assignment)
+    auto active_style = (is_ifc2x3(file) || should_use_presentation_style_assignment)
         ? create_presentation_style_assignment(file, style)
         : style;
 
     auto definitions = inverse_entities(material, "HasRepresentation");
     if (!definitions.empty()) {
-        auto* definition_representation = definitions.front();
-        auto* representation = get_styled_representation(definition_representation, context);
+        auto definition_representation = definitions.front();
+        auto representation = get_styled_representation(definition_representation, context);
         if (representation) {
-            std::vector<IfcUtil::IfcBaseClass*> new_items;
-            std::vector<IfcUtil::IfcBaseClass*> same_style_items;
-            for (auto* item : ifcapi::detail::read_ref_aggregate(representation, "Items")) {
+            std::vector<express::Base> new_items;
+            std::vector<express::Base> same_style_items;
+            for (auto item : ifcapi::detail::read_ref_aggregate(representation, "Items")) {
                 if (!is_a(item, "IfcStyledItem")) continue;
                 if (has_proposed_style(file, item, style)) return;
                 if (has_same_style_type(item, style)) {
@@ -640,15 +625,15 @@ void style_assign_material_style(
                     new_items.push_back(item);
                 }
             }
-            IfcUtil::IfcBaseClass* item_to_reuse = nullptr;
+            express::Base item_to_reuse = {};
             if (!same_style_items.empty()) {
                 item_to_reuse = same_style_items.front();
                 same_style_items.erase(same_style_items.begin());
             }
             new_items.push_back(create_styled_item_for_material(file, active_style, style, item_to_reuse));
             ifcapi::detail::write_ref_aggregate(representation, "Items", new_items);
-            for (auto* item : same_style_items) {
-                if (file->getTotalInverses(item->id()) == 0) file->removeEntity(item);
+            for (auto item : same_style_items) {
+                if (file->get_total_inverses(static_cast<int>(item.id())) == 0) file->remove_entity(item);
             }
         } else {
             auto representations = ifcapi::detail::read_ref_aggregate(definition_representation, "Representations");
@@ -656,51 +641,49 @@ void style_assign_material_style(
             ifcapi::detail::write_ref_aggregate(definition_representation, "Representations", representations);
         }
     } else {
-        auto* representation = create_styled_representation(file, context, active_style, style);
-        auto* definition = create_entity(file, "IfcMaterialDefinitionRepresentation");
+        auto representation = create_styled_representation(file, context, active_style, style);
+        auto definition = create_entity(file, "IfcMaterialDefinitionRepresentation");
         ifcapi::detail::write_ref_aggregate(definition, "Representations", {representation});
         ifcapi::detail::write_ref_attr(definition, "RepresentedMaterial", material);
     }
 
     std::vector<std::string> constituent_names;
-    for (auto* inverse : inverse_entities(file, material)) {
+    for (auto inverse : inverse_entities(file, material)) {
         if (is_a(inverse, "IfcMaterialConstituent")) {
             std::string name = ifcapi::detail::read_string_attr(inverse, "Name");
             if (!name.empty()) constituent_names.push_back(name);
         }
     }
     if (constituent_names.empty()) return;
-    auto elements = ifcapi::bindings::element_get_elements_by_material(material);
-    if (!elements) return;
-    for (auto* element : *elements) {
-        auto shape_aspects = ifcapi::bindings::element_get_shape_aspects(element, true);
-        if (!shape_aspects) continue;
-        for (auto* shape_aspect : *shape_aspects) {
+    auto elements = ifcapi::bindings::element_get_elements_by_material(&material);
+    for (auto element : elements) {
+        auto shape_aspects = ifcapi::bindings::element_get_shape_aspects(&element, true);
+        for (auto shape_aspect : shape_aspects) {
             if (!contains_name(constituent_names, ifcapi::detail::read_string_attr(shape_aspect, "Name"))) continue;
-            for (auto* rep : ifcapi::detail::read_ref_aggregate(shape_aspect, "ShapeRepresentations")) {
-                style_assign_representation_styles(file, rep, {active_style}, false, true);
+            for (auto rep : ifcapi::detail::read_ref_aggregate(shape_aspect, "ShapeRepresentations")) {
+                style_assign_representation_styles_impl(file, rep, {active_style}, false, true);
             }
         }
     }
 }
 
-void style_unassign_material_style(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* material,
-    IfcUtil::IfcBaseClass* style,
-    IfcUtil::IfcBaseClass* context)
+void style_unassign_material_style_impl(
+    ifcopenshell::file* file,
+    express::Base material,
+    express::Base style,
+    express::Base context)
 {
-    for (auto* definition : inverse_entities(material, "HasRepresentation")) {
-        for (auto* representation : ifcapi::detail::read_ref_aggregate(definition, "Representations")) {
+    for (auto definition : inverse_entities(material, "HasRepresentation")) {
+        for (auto representation : ifcapi::detail::read_ref_aggregate(definition, "Representations")) {
             if (!is_a(representation, "IfcStyledRepresentation") ||
                 ifcapi::detail::read_ref_attr(representation, "ContextOfItems") != context) {
                 continue;
             }
-            for (auto* item : ifcapi::detail::read_ref_aggregate(representation, "Items")) {
+            for (auto item : ifcapi::detail::read_ref_aggregate(representation, "Items")) {
                 if (!is_a(item, "IfcStyledItem")) continue;
                 auto current = ifcapi::detail::read_ref_aggregate(item, "Styles");
-                std::vector<IfcUtil::IfcBaseClass*> retained;
-                for (auto* item_style : current) {
+                std::vector<express::Base> retained;
+                for (auto item_style : current) {
                     if (item_style == style) continue;
                     if (is_a(item_style, "IfcPresentationStyleAssignment") &&
                         same_single_style(ifcapi::detail::read_ref_aggregate(item_style, "Styles"), style)) {
@@ -709,63 +692,61 @@ void style_unassign_material_style(
                     retained.push_back(item_style);
                 }
                 if (retained.empty()) {
-                    file->removeEntity(item);
+                    file->remove_entity(item);
                 } else if (retained.size() != current.size()) {
                     ifcapi::detail::write_ref_aggregate(item, "Styles", retained);
                 }
             }
             if (ifcapi::detail::read_ref_aggregate(representation, "Items").empty()) {
-                file->removeEntity(representation);
+                file->remove_entity(representation);
             }
         }
         if (ifcapi::detail::read_ref_aggregate(definition, "Representations").empty()) {
-            file->removeEntity(definition);
+            file->remove_entity(definition);
         }
     }
 
     std::vector<std::string> constituent_names;
-    for (auto* inverse : inverse_entities(file, material)) {
+    for (auto inverse : inverse_entities(file, material)) {
         if (is_a(inverse, "IfcMaterialConstituent")) {
             std::string name = ifcapi::detail::read_string_attr(inverse, "Name");
             if (!name.empty()) constituent_names.push_back(name);
         }
     }
     if (constituent_names.empty()) return;
-    auto elements = ifcapi::bindings::element_get_elements_by_material(material);
-    if (!elements) return;
-    for (auto* element : *elements) {
-        auto shape_aspects = ifcapi::bindings::element_get_shape_aspects(element, true);
-        if (!shape_aspects) continue;
-        for (auto* shape_aspect : *shape_aspects) {
+    auto elements = ifcapi::bindings::element_get_elements_by_material(&material);
+    for (auto element : elements) {
+        auto shape_aspects = ifcapi::bindings::element_get_shape_aspects(&element, true);
+        for (auto shape_aspect : shape_aspects) {
             if (!contains_name(constituent_names, ifcapi::detail::read_string_attr(shape_aspect, "Name"))) continue;
-            for (auto* rep : ifcapi::detail::read_ref_aggregate(shape_aspect, "ShapeRepresentations")) {
-                style_unassign_representation_styles(file, rep, {style}, false);
+            for (auto rep : ifcapi::detail::read_ref_aggregate(shape_aspect, "ShapeRepresentations")) {
+                style_unassign_representation_styles_impl(file, rep, {style}, false);
             }
         }
     }
 }
 
-void style_unassign_representation_styles(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* shape_representation,
-    const std::vector<const IfcUtil::IfcBaseClass*>& input_styles,
+void style_unassign_representation_styles_impl(
+    ifcopenshell::file* file,
+    express::Base shape_representation,
+    const std::vector<express::Base>& input_styles,
     bool should_use_presentation_style_assignment)
 {
     auto styles = mutable_entities(input_styles);
     if (styles.empty()) return;
     bool use_style_assignment = is_ifc2x3(file) || should_use_presentation_style_assignment;
     auto traversed = file->traverse(shape_representation, -1);
-    if (!traversed) return;
-    for (auto* element : *traversed) {
+    if (traversed.empty()) return;
+    for (auto element : traversed) {
         if (!is_a(element, "IfcShapeRepresentation")) continue;
-        for (auto* item : ifcapi::detail::read_ref_aggregate(element, "Items")) {
+        for (auto item : ifcapi::detail::read_ref_aggregate(element, "Items")) {
             if (!is_a(item, "IfcGeometricRepresentationItem")) continue;
             auto styled_items = inverse_entities(item, "StyledByItem");
             if (styled_items.empty()) continue;
-            auto* styled_item = styled_items.front();
+            auto styled_item = styled_items.front();
             if (use_style_assignment) {
                 auto assigned_styles = ifcapi::detail::read_ref_aggregate(styled_item, "Styles");
-                for (auto* style : assigned_styles) {
+                for (auto style : assigned_styles) {
                     if (is_a(style, "IfcPresentationStyleAssignment")) {
                         remove_styles(file, style, styles);
                     }
@@ -776,38 +757,38 @@ void style_unassign_representation_styles(
     }
 }
 
-void style_remove_styled_representation(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* representation)
+void style_remove_styled_representation_impl(
+    ifcopenshell::file* file,
+    express::Base representation)
 {
-    for (auto* inverse : inverse_entities(file, representation)) {
+    for (auto inverse : inverse_entities(file, representation)) {
         if (is_a(inverse, "IfcMaterialDefinitionRepresentation") &&
             ifcapi::detail::read_ref_aggregate(inverse, "Representations").size() == 1) {
-            file->removeEntity(inverse);
+            file->remove_entity(inverse);
         }
     }
 
-    for (auto* item : ifcapi::detail::read_ref_aggregate(representation, "Items")) {
-        if (is_a(item, "IfcStyledItem") && file->getTotalInverses(item->id()) == 1) {
-            for (auto* style : ifcapi::detail::read_ref_aggregate(item, "Styles")) {
+    for (auto item : ifcapi::detail::read_ref_aggregate(representation, "Items")) {
+        if (is_a(item, "IfcStyledItem") && file->get_total_inverses(static_cast<int>(item.id())) == 1) {
+            for (auto style : ifcapi::detail::read_ref_aggregate(item, "Styles")) {
                 if (is_a(style, "IfcPresentationStyleAssignment")) {
-                    file->removeEntity(style);
+                    file->remove_entity(style);
                 }
             }
-            file->removeEntity(item);
+            file->remove_entity(item);
         }
     }
-    file->removeEntity(representation);
+    file->remove_entity(representation);
 }
 
-void remove_surface_style_impl(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* style) {
-    std::vector<IfcUtil::IfcBaseClass*> to_delete;
+void remove_surface_style_impl(ifcopenshell::file* file, express::Base style) {
+    std::vector<express::Base> to_delete;
     if (is_a(style, "IfcSurfaceStyleWithTextures")) {
         auto textures = ifcapi::detail::read_ref_aggregate(style, "Textures");
         if (is_ifc2x3(file)) {
             to_delete.insert(to_delete.end(), textures.begin(), textures.end());
         } else {
-            for (auto* texture : textures) {
+            for (auto texture : textures) {
                 auto coords = inverse_entities(texture, "IsMappedBy");
                 if (!coords.empty()) {
                     to_delete.insert(to_delete.end(), coords.begin(), coords.end());
@@ -818,21 +799,20 @@ void remove_surface_style_impl(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* s
         }
     }
 
-    auto* base = dynamic_cast<IfcUtil::IfcBaseEntity*>(style);
-    if (base) {
-        auto attrs = base->declaration().as_entity()->all_attributes();
+    if (style) {
+        auto attrs = style.declaration().as_entity()->all_attributes();
         for (size_t i = 0; i < attrs.size(); ++i) {
             try {
-                auto value = style->get_attribute_value(i);
+                auto value = style.get_attribute_value(i);
                 if (!value.isNull()) {
-                    if (value.type() == IfcUtil::Argument_ENTITY_INSTANCE) {
-                        auto* entity = static_cast<IfcUtil::IfcBaseClass*>(value);
-                        if (entity && entity->id()) to_delete.push_back(entity);
-                    } else if (value.type() == IfcUtil::Argument_AGGREGATE_OF_ENTITY_INSTANCE) {
-                        auto aggregate = static_cast<aggregate_of_instance::ptr>(value);
-                        if (aggregate) {
-                            for (auto* entity : *aggregate) {
-                                if (entity && entity->id()) to_delete.push_back(entity);
+                    if (value.type() == ifcopenshell::Argument_ENTITY_INSTANCE) {
+                        auto entity = static_cast<express::Base>(value);
+                        if (entity && entity.id()) to_delete.push_back(entity);
+                    } else if (value.type() == ifcopenshell::Argument_AGGREGATE_OF_ENTITY_INSTANCE) {
+                        auto aggregate = static_cast<std::vector<express::Base>>(value);
+                        if (!aggregate.empty()) {
+                            for (auto entity : aggregate) {
+                                if (entity && entity.id()) to_delete.push_back(entity);
                             }
                         }
                     }
@@ -842,54 +822,54 @@ void remove_surface_style_impl(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* s
         }
     }
 
-    file->removeEntity(style);
-    for (auto* element : to_delete) {
-        ifcapi::bindings::entity_remove_deep2(element);
+    file->remove_entity(style);
+    for (auto element : to_delete) {
+        ifcapi::bindings::entity_remove_deep2(&element);
     }
 }
 
-void style_remove_surface_style(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* style) {
+void style_remove_surface_style_impl_public(ifcopenshell::file* file, express::Base style) {
     remove_surface_style_impl(file, style);
 }
 
-void purge_material_definition_representations(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* styled_representation) {
-    for (auto* inverse : inverse_entities(file, styled_representation)) {
+void purge_material_definition_representations(ifcopenshell::file* file, express::Base styled_representation) {
+    for (auto inverse : inverse_entities(file, styled_representation)) {
         if (is_a(inverse, "IfcMaterialDefinitionRepresentation") &&
             ifcapi::detail::read_ref_aggregate(inverse, "Representations").size() == 1) {
-            file->removeEntity(inverse);
+            file->remove_entity(inverse);
         }
     }
 }
 
-void purge_styled_representations(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* styled_item) {
-    for (auto* inverse : inverse_entities(file, styled_item)) {
+void purge_styled_representations(ifcopenshell::file* file, express::Base styled_item) {
+    for (auto inverse : inverse_entities(file, styled_item)) {
         if (is_a(inverse, "IfcStyledRepresentation") &&
             ifcapi::detail::read_ref_aggregate(inverse, "Items").size() == 1) {
             purge_material_definition_representations(file, inverse);
-            file->removeEntity(inverse);
+            file->remove_entity(inverse);
         }
     }
 }
 
 void purge_fill_area_style_hatching(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* fill_area_style_hatching,
-    IfcUtil::IfcBaseClass* style)
+    ifcopenshell::file* file,
+    express::Base fill_area_style_hatching,
+    express::Base style)
 {
-    for (auto* inverse : inverse_entities(file, fill_area_style_hatching)) {
+    for (auto inverse : inverse_entities(file, fill_area_style_hatching)) {
         if (is_a(inverse, "IfcFillAreaStyle")) {
             remove_style_impl(file, inverse, {fill_area_style_hatching, style});
         }
     }
-    ifcapi::bindings::entity_remove_deep2_ex(fill_area_style_hatching, {}, {style});
+    ifcapi::bindings::entity_remove_deep2_ex(&fill_area_style_hatching, {}, {style});
 }
 
-void purge_inverses(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* style) {
-    for (auto* inverse : inverse_entities(file, style)) {
+void purge_inverses(ifcopenshell::file* file, express::Base style) {
+    for (auto inverse : inverse_entities(file, style)) {
         if (is_a(inverse, "IfcStyledItem")) {
             if (ifcapi::detail::read_ref_aggregate(inverse, "Styles").size() == 1) {
                 purge_styled_representations(file, inverse);
-                file->removeEntity(inverse);
+                file->remove_entity(inverse);
             }
         } else if (is_a(inverse, "IfcFillAreaStyleHatching")) {
             purge_fill_area_style_hatching(file, inverse, style);
@@ -898,26 +878,115 @@ void purge_inverses(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* style) {
 }
 
 void remove_style_impl(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* style,
-    const std::vector<const IfcUtil::IfcBaseClass*>& do_not_delete)
+    ifcopenshell::file* file,
+    express::Base style,
+    const std::vector<express::Base>& do_not_delete)
 {
     purge_inverses(file, style);
     if (is_a(style, "IfcSurfaceStyle")) {
         auto nested = ifcapi::detail::read_ref_aggregate(style, "Styles");
-        for (auto* style_item : nested) {
+        for (auto style_item : nested) {
             remove_surface_style_impl(file, style_item);
         }
     } else if (is_a(style, "IfcFillAreaStyle")) {
-        for (auto* style_item : ifcapi::detail::read_ref_aggregate(style, "FillStyles")) {
-            ifcapi::bindings::entity_remove_deep2_ex(style_item, {style}, do_not_delete);
+        for (auto style_item : ifcapi::detail::read_ref_aggregate(style, "FillStyles")) {
+            ifcapi::bindings::entity_remove_deep2_ex(&style_item, {style}, do_not_delete);
         }
     }
-    file->removeEntity(style);
+    file->remove_entity(style);
 }
 
-void style_remove_style(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* style) {
+void style_remove_style_impl_public(ifcopenshell::file* file, express::Base style) {
     remove_style_impl(file, style, {});
+}
+
+void style_edit_surface_style(
+    ifcopenshell::file* file,
+    express::Base* style,
+    ifcopenshell_pset_props_t* attributes)
+{
+    style_edit_surface_style_impl(file, ifcapi::detail::deref_or_empty(style), attributes);
+}
+
+express::Base style_assign_item_style(
+    ifcopenshell::file* file,
+    express::Base* item,
+    express::Base* style,
+    bool should_use_presentation_style_assignment)
+{
+    return style_assign_item_style_impl(
+        file,
+        ifcapi::detail::deref_or_empty(item),
+        ifcapi::detail::deref_or_empty(style),
+        should_use_presentation_style_assignment);
+}
+
+std::vector<express::Base> style_assign_representation_styles(
+    ifcopenshell::file* file,
+    express::Base* shape_representation,
+    const std::vector<express::Base>& styles,
+    bool should_use_presentation_style_assignment,
+    bool replace_previous_same_type_style)
+{
+    return style_assign_representation_styles_impl(
+        file,
+        ifcapi::detail::deref_or_empty(shape_representation),
+        styles,
+        should_use_presentation_style_assignment,
+        replace_previous_same_type_style);
+}
+
+void style_assign_material_style(
+    ifcopenshell::file* file,
+    express::Base* material,
+    express::Base* style,
+    express::Base* context,
+    bool should_use_presentation_style_assignment)
+{
+    style_assign_material_style_impl(
+        file,
+        ifcapi::detail::deref_or_empty(material),
+        ifcapi::detail::deref_or_empty(style),
+        ifcapi::detail::deref_or_empty(context),
+        should_use_presentation_style_assignment);
+}
+
+void style_unassign_material_style(
+    ifcopenshell::file* file,
+    express::Base* material,
+    express::Base* style,
+    express::Base* context)
+{
+    style_unassign_material_style_impl(
+        file,
+        ifcapi::detail::deref_or_empty(material),
+        ifcapi::detail::deref_or_empty(style),
+        ifcapi::detail::deref_or_empty(context));
+}
+
+void style_unassign_representation_styles(
+    ifcopenshell::file* file,
+    express::Base* shape_representation,
+    const std::vector<express::Base>& styles,
+    bool should_use_presentation_style_assignment)
+{
+    style_unassign_representation_styles_impl(
+        file,
+        ifcapi::detail::deref_or_empty(shape_representation),
+        styles,
+        should_use_presentation_style_assignment);
+}
+
+void style_remove_styled_representation(ifcopenshell::file* file, express::Base* representation) {
+    style_remove_styled_representation_impl(file, ifcapi::detail::deref_or_empty(representation));
+}
+
+void style_remove_surface_style(ifcopenshell::file* file, express::Base* style) {
+    remove_surface_style_impl(file, ifcapi::detail::deref_or_empty(style));
+}
+
+void style_remove_style(ifcopenshell::file* file, express::Base* style) {
+    remove_style_impl(file, ifcapi::detail::deref_or_empty(style), {});
 }
 
 } // namespace bindings

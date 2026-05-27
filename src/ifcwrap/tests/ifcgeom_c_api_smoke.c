@@ -2012,23 +2012,19 @@ static void test_iges_step_serializer_apis(void) {
 }
 
 static void test_collada_hdf_serializer_apis(void) {
-    printf("Testing Collada/HDF serializer APIs...\n");
+    printf("Testing Collada serializer APIs...\n");
 
     ifcopenshell_ifc_file_t* file = NULL;
     ifcopenshell_ifcgeom_serializer_settings_t* serializer_settings = NULL;
     ifcopenshell_ifcgeom_settings_t* collada_settings = NULL;
-    ifcopenshell_ifcgeom_settings_t* hdf_settings = NULL;
     ifcopenshell_ifcgeom_geometry_serializer_t* collada_serializer = NULL;
-    ifcopenshell_ifcgeom_geometry_serializer_t* hdf_serializer = NULL;
     ifcopenshell_ifcgeom_iterator_t* iterator = NULL;
     ifcopenshell_ifcgeom_triangulation_element_t* tri_elem = NULL;
-    ifcopenshell_ifcgeom_brep_element_t* brep_elem = NULL;
     bool initialized = false;
     bool ready = false;
     bool is_tesselated = false;
     int ok;
     const char* collada_filename = "/tmp/test_smoke.dae";
-    const char* hdf_filename = "/tmp/test_smoke.h5";
 
     ok = ifcopenshell_ifcparse_open(g_test_file_path, 1, &file);
     if (!ok) {
@@ -2092,80 +2088,23 @@ static void test_collada_hdf_serializer_apis(void) {
     }
     ifcopenshell_ifcgeom_settings_destroy(collada_settings);
 
-    /* Test HDF serializer (optional feature) */
-    expect_ok(ifcopenshell_ifcgeom_create_settings(&hdf_settings));
-    expect_ok(ifcopenshell_ifcgeom_settings_set_int(hdf_settings, "iterator-output", 1)); /* NATIVE */
-    ok = ifcopenshell_ifcgeom_create_hdf_serializer(
-        hdf_filename, hdf_settings, serializer_settings, &hdf_serializer);
-    if (!ok) {
-        const char* err = ifcopenshell_last_error_message();
-        if (err && (strstr(err, "not available in this build") != NULL || strstr(err, "requires") != NULL)) {
-            printf("  SKIP: HDF serializer not available in this build\n");
-            ifcopenshell_clear_error();
-        } else {
-            expect_ok(ok);
-        }
-    } else {
-        expect_true(hdf_serializer != NULL, "HDF serializer should be created");
-        expect_ok(ifcopenshell_ifcgeom_geometry_serializer_ready(hdf_serializer, &ready));
-        expect_true(ready, "HDF serializer should be ready");
-        expect_ok(ifcopenshell_ifcgeom_geometry_serializer_is_tesselated(hdf_serializer, &is_tesselated));
-        expect_true(!is_tesselated, "HDF serializer should report non-tesselated");
-        expect_ok(ifcopenshell_ifcgeom_geometry_serializer_set_file(hdf_serializer, file));
-        expect_ok(ifcopenshell_ifcgeom_geometry_serializer_set_unit_name_and_magnitude(hdf_serializer, "METER", 1.0));
-        expect_ok(ifcopenshell_ifcgeom_geometry_serializer_write_header(hdf_serializer));
-
-        expect_ok(ifcopenshell_ifcgeom_create_iterator("opencascade", hdf_settings, file, 1, &iterator));
-        expect_ok(ifcopenshell_ifcgeom_iterator_initialize(iterator, &initialized));
-        if (initialized) {
-            expect_ok(ifcopenshell_ifcgeom_iterator_get_as_brep_element(iterator, &brep_elem));
-            if (brep_elem) {
-                expect_ok(ifcopenshell_ifcgeom_geometry_serializer_write_brep_element(hdf_serializer, brep_elem));
-            }
-        }
-        expect_ok(ifcopenshell_ifcgeom_geometry_serializer_finalize(hdf_serializer));
-
-        FILE* f = fopen(hdf_filename, "rb");
-        expect_true(f != NULL, "HDF output file should exist");
-        if (f) {
-            long size = 0;
-            if (fseek(f, 0, SEEK_END) == 0) {
-                size = ftell(f);
-            }
-            expect_true(size > 0, "HDF output file should be non-empty");
-            fclose(f);
-        }
-        remove(hdf_filename);
-
-        ifcopenshell_ifcgeom_geometry_serializer_destroy(hdf_serializer);
-        hdf_serializer = NULL;
-        if (iterator) {
-            ifcopenshell_ifcgeom_iterator_destroy(iterator);
-            iterator = NULL;
-        }
-    }
-    ifcopenshell_ifcgeom_settings_destroy(hdf_settings);
-
     if (iterator) {
         ifcopenshell_ifcgeom_iterator_destroy(iterator);
     }
     ifcopenshell_ifcgeom_serializer_settings_destroy(serializer_settings);
     ifcopenshell_ifc_file_destroy(file);
 
-    printf("  Collada/HDF serializer APIs: PASS\n");
+    printf("  Collada serializer APIs: PASS\n");
 }
 
 static void test_rocksdb_serializer_apis(void) {
     printf("Testing RocksDB serializer APIs...\n");
 
     ifcopenshell_ifc_file_t* file = NULL;
-    ifcopenshell_ifcgeom_serializer_t* file_serializer = NULL;
     ifcopenshell_ifcgeom_serializer_t* stream_serializer = NULL;
     bool ready = false;
     int ok;
-    int ok_file_ctor = 0;
     int ok_stream_ctor = 0;
-    const char* rocksdb_file_path = "/tmp/test_smoke_file.rocksdb";
     const char* rocksdb_stream_path = "/tmp/test_smoke_stream.rocksdb";
 
     ok = ifcopenshell_ifcparse_open(g_test_file_path, 1, &file);
@@ -2174,11 +2113,10 @@ static void test_rocksdb_serializer_apis(void) {
         return;
     }
 
-    ok_file_ctor = ifcopenshell_ifcgeom_create_rocksdb_serializer(file, rocksdb_file_path, &file_serializer);
     ok_stream_ctor = ifcopenshell_ifcgeom_create_rocksdb_serializer_streaming(
-        g_test_file_path, rocksdb_stream_path, true, &stream_serializer);
+        g_test_file_path, rocksdb_stream_path, &stream_serializer);
 
-    if (!ok_file_ctor && !ok_stream_ctor) {
+    if (!ok_stream_ctor) {
         const char* err = ifcopenshell_last_error_message();
         if (err && (strstr(err, "RocksDB serializer requires WITH_ROCKSDB support") != NULL || strstr(err, "requires") != NULL)) {
             printf("  SKIP: RocksDB serializer not available in this build\n");
@@ -2186,18 +2124,7 @@ static void test_rocksdb_serializer_apis(void) {
             ifcopenshell_ifc_file_destroy(file);
             return;
         }
-        expect_ok(ok_file_ctor);
-    }
-
-    if (ok_file_ctor && file_serializer) {
-        expect_ok(ifcopenshell_ifcgeom_serializer_ready(file_serializer, &ready));
-        expect_true(ready, "RocksDB file serializer should be ready");
-        expect_ok(ifcopenshell_ifcgeom_serializer_write_header(file_serializer));
-        /* finalize may fail on an empty serializer (no geometry written) */
-        if (!ifcopenshell_ifcgeom_serializer_finalize(file_serializer)) {
-            ifcopenshell_clear_error();
-        }
-        ifcopenshell_ifcgeom_serializer_destroy(file_serializer);
+        expect_ok(ok_stream_ctor);
     }
 
     if (ok_stream_ctor && stream_serializer) {
@@ -2495,25 +2422,16 @@ static void test_create_shape(void) {
     }
 
     /* Get IfcProduct instances */
-    ifcopenshell_ifcparse_instance_list_t* products = NULL;
+    ifcopenshell_ifc_instance_list_t products = {0};
     ok = ifcopenshell_ifc_file_by_type(file, "IfcProduct", &products);
-    if (!ok || !products) {
+    if (!ok || products.size == 0) {
         printf("  SKIP: No IfcProduct instances found\n");
+        ifcopenshell_ifc_instance_list_destroy(&products);
         ifcopenshell_ifc_file_destroy(file);
         return;
     }
 
-    size_t count = 0;
-    ifcopenshell_ifcparse_instance_list_size(products, &count);
-    if (count == 0) {
-        printf("  SKIP: Empty product list\n");
-        ifcopenshell_ifcparse_instance_list_destroy(products);
-        ifcopenshell_ifc_file_destroy(file);
-        return;
-    }
-
-    ifcopenshell_ifc_instance_t* product = NULL;
-    ifcopenshell_ifcparse_instance_list_get(products, 0, &product);
+    ifcopenshell_ifc_instance_t* product = products.items[0];
 
     /* Create settings */
     ifcopenshell_ifcgeom_settings_t* settings = NULL;
@@ -2550,8 +2468,7 @@ static void test_create_shape(void) {
     }
 
     ifcopenshell_ifcgeom_settings_destroy(settings);
-    ifcopenshell_ifc_instance_destroy(product);
-    ifcopenshell_ifcparse_instance_list_destroy(products);
+    ifcopenshell_ifc_instance_list_destroy(&products);
     ifcopenshell_ifc_file_destroy(file);
 
     printf("  create_shape API: PASS\n");
@@ -2568,25 +2485,16 @@ static void test_map_shape(void) {
     }
 
     /* Get an IfcProduct */
-    ifcopenshell_ifcparse_instance_list_t* products = NULL;
+    ifcopenshell_ifc_instance_list_t products = {0};
     ok = ifcopenshell_ifc_file_by_type(file, "IfcProduct", &products);
-    if (!ok || !products) {
+    if (!ok || products.size == 0) {
         printf("  SKIP: No products\n");
+        ifcopenshell_ifc_instance_list_destroy(&products);
         ifcopenshell_ifc_file_destroy(file);
         return;
     }
 
-    size_t count = 0;
-    ifcopenshell_ifcparse_instance_list_size(products, &count);
-    if (count == 0) {
-        printf("  SKIP: Empty product list\n");
-        ifcopenshell_ifcparse_instance_list_destroy(products);
-        ifcopenshell_ifc_file_destroy(file);
-        return;
-    }
-
-    ifcopenshell_ifc_instance_t* product = NULL;
-    ifcopenshell_ifcparse_instance_list_get(products, 0, &product);
+    ifcopenshell_ifc_instance_t* product = products.items[0];
 
     ifcopenshell_ifcgeom_settings_t* settings = NULL;
     ifcopenshell_ifcgeom_create_settings(&settings);
@@ -2603,8 +2511,7 @@ static void test_map_shape(void) {
     }
 
     ifcopenshell_ifcgeom_settings_destroy(settings);
-    ifcopenshell_ifc_instance_destroy(product);
-    ifcopenshell_ifcparse_instance_list_destroy(products);
+    ifcopenshell_ifc_instance_list_destroy(&products);
     ifcopenshell_ifc_file_destroy(file);
 
     printf("  map_shape API: PASS\n");
@@ -2818,34 +2725,6 @@ static void test_conversion_result_shape_methods(void) {
     ifcopenshell_ifc_file_destroy(file);
 
     printf("  ConversionResultShape new methods: PASS\n");
-}
-
-/* Test serialise/tesselate (OCC-only, no CGAL) */
-static void test_serialise_tesselate(void) {
-    printf("Testing serialise/tesselate APIs...\n");
-
-    /* These functions need a valid BRep shape string.
-     * Without real geometry, we test that they fail gracefully. */
-    ifcopenshell_ifc_instance_t* result = NULL;
-    bool ok;
-
-    /* serialise with empty shape_str should fail gracefully */
-    ok = ifcopenshell_ifcgeom_serialise("IFC4", "", true, &result);
-    if (!ok) {
-        printf("  serialise (empty shape): correctly failed\n");
-    } else {
-        printf("  serialise (empty shape): unexpectedly succeeded\n");
-    }
-
-    /* tesselate with empty shape_str should fail gracefully */
-    ok = ifcopenshell_ifcgeom_tesselate("IFC4", "", 0.001, &result);
-    if (!ok) {
-        printf("  tesselate (empty shape): correctly failed\n");
-    } else {
-        printf("  tesselate (empty shape): unexpectedly succeeded\n");
-    }
-
-    printf("  Serialise/tesselate APIs: PASS\n");
 }
 
 /* Test CGAL-only functions (should fail gracefully without CGAL) */
@@ -3336,9 +3215,10 @@ static void test_tree_advanced_apis(void) {
 
     /* Test clash_intersection_many and clash_clearance_many
        We need instance lists - get them by iterating the file for IfcProduct instances */
+    ifcopenshell_ifc_instance_list_t product_handles = {0};
     ifcopenshell_ifcparse_instance_list_t* products = NULL;
-    ok = ifcopenshell_ifc_file_by_type(file, "IfcProduct", &products);
-    if (ok && products) {
+    ok = ifcopenshell_ifc_file_by_type(file, "IfcProduct", &product_handles);
+    if (ok && product_handles.size > 0 && ifcopenshell_ifcparse_instance_list_create_from_handles(&product_handles, &products)) {
         ifcopenshell_ifcgeom_tree_clash_list_t* clashes = NULL;
 
         ok = ifcopenshell_ifcgeom_tree_clash_intersection_many(tree, products, products, 0.0, false, &clashes);
@@ -3379,8 +3259,10 @@ static void test_tree_advanced_apis(void) {
         }
 
         ifcopenshell_ifcparse_instance_list_destroy(products);
+        ifcopenshell_ifc_instance_list_destroy(&product_handles);
     } else {
         printf("  SKIP: No IfcProduct instances for clash tests\n");
+        ifcopenshell_ifc_instance_list_destroy(&product_handles);
         ifcopenshell_clear_error();
     }
 
@@ -3883,7 +3765,6 @@ int main(int argc, char** argv) {
     test_create_shape();
     test_map_shape();
     test_conversion_result_shape_methods();
-    test_serialise_tesselate();
     test_cgal_functions();
     test_svg_functions();
     test_opaque_number_methods();

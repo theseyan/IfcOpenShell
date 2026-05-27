@@ -27,47 +27,35 @@ inline void set_error(const std::string& msg) { ifcopenshell::capi::set_last_err
 
 namespace {
 
-IfcUtil::IfcBaseClass* get_entity(const ifcopenshell_ifc_instance_t* instance) {
-    return instance ? instance->ptr : nullptr;
+bool is_a(express::Base e, const char* name) {
+    return e && e.declaration().is(name);
 }
 
-IfcParse::IfcFile* as_file(const ifcopenshell_ifc_file_t* file) {
-    return file ? file->ptr : nullptr;
+int32_t id_of(express::Base e) {
+    return e ? static_cast<int32_t>(e.id()) : 0;
 }
 
-bool is_a(IfcUtil::IfcBaseClass* e, const char* name) {
-    return e && e->declaration().is(name);
-}
-
-int32_t id_of(IfcUtil::IfcBaseClass* e) {
-    return e ? static_cast<int32_t>(e->id()) : 0;
-}
-
-IfcUtil::IfcBaseClass* read_ref(IfcUtil::IfcBaseClass* e, const char* attr) {
-    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(e);
-    if (!be) return nullptr;
-    auto* d = be->declaration().as_entity();
-    if (!d) return nullptr;
-    int idx = d->attribute_index(attr);
-    if (idx < 0) return nullptr;
-    try {
-        auto val = e->get_attribute_value(static_cast<size_t>(idx));
-        if (val.isNull()) return nullptr;
-        return (IfcUtil::IfcBaseClass*)val;
-    } catch (...) {
-        return nullptr;
-    }
-}
-
-std::string read_string(IfcUtil::IfcBaseClass* e, const char* attr) {
-    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(e);
-    if (!be) return {};
-    auto* d = be->declaration().as_entity();
+express::Base read_ref(express::Base e, const char* attr) {
+    auto* d = e ? e.declaration().as_entity() : nullptr;
     if (!d) return {};
     int idx = d->attribute_index(attr);
     if (idx < 0) return {};
     try {
-        auto val = e->get_attribute_value(static_cast<size_t>(idx));
+        auto val = e.get_attribute_value(static_cast<size_t>(idx));
+        if (val.isNull()) return {};
+        return static_cast<express::Base>(val);
+    } catch (...) {
+        return {};
+    }
+}
+
+std::string read_string(express::Base e, const char* attr) {
+    auto* d = e ? e.declaration().as_entity() : nullptr;
+    if (!d) return {};
+    int idx = d->attribute_index(attr);
+    if (idx < 0) return {};
+    try {
+        auto val = e.get_attribute_value(static_cast<size_t>(idx));
         if (val.isNull()) return {};
         return (std::string)val;
     } catch (...) {
@@ -75,34 +63,28 @@ std::string read_string(IfcUtil::IfcBaseClass* e, const char* attr) {
     }
 }
 
-std::vector<IfcUtil::IfcBaseClass*> read_ref_list(IfcUtil::IfcBaseClass* e, const char* attr) {
-    std::vector<IfcUtil::IfcBaseClass*> out;
-    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(e);
-    if (!be) return out;
-    auto* d = be->declaration().as_entity();
+std::vector<express::Base> read_ref_list(express::Base e, const char* attr) {
+    std::vector<express::Base> out;
+    auto* d = e ? e.declaration().as_entity() : nullptr;
     if (!d) return out;
     int idx = d->attribute_index(attr);
     if (idx < 0) return out;
     try {
-        auto val = e->get_attribute_value(static_cast<size_t>(idx));
+        auto val = e.get_attribute_value(static_cast<size_t>(idx));
         if (val.isNull()) return out;
-        auto agg = (aggregate_of_instance::ptr)val;
-        if (!agg) return out;
-        for (auto& item : *agg) out.push_back(item);
+        return static_cast<std::vector<express::Base>>(val);
     } catch (...) {}
     return out;
 }
 
 // Read a numeric attribute; returns default_val when null or missing.
-double read_double(IfcUtil::IfcBaseClass* e, const char* attr, double default_val = 0.0) {
-    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(e);
-    if (!be) return default_val;
-    auto* d = be->declaration().as_entity();
+double read_double(express::Base e, const char* attr, double default_val = 0.0) {
+    auto* d = e ? e.declaration().as_entity() : nullptr;
     if (!d) return default_val;
     int idx = d->attribute_index(attr);
     if (idx < 0) return default_val;
     try {
-        auto val = e->get_attribute_value(static_cast<size_t>(idx));
+        auto val = e.get_attribute_value(static_cast<size_t>(idx));
         if (val.isNull()) return default_val;
         return (double)val;
     } catch (...) {
@@ -115,37 +97,28 @@ bool str_eq_opt(const std::string& s, const char* want) {
     return s == want;
 }
 
-aggregate_of_instance::ptr make_instance_list(IfcParse::IfcFile* f, const std::vector<int32_t>& ids) {
-    aggregate_of_instance::ptr result(new aggregate_of_instance);
-    if (!f) return result;
-    for (int32_t id : ids) {
-        if (auto* e = f->instance_by_id(id)) result->push(e);
-    }
-    return result;
-}
-
-void collect_base_items(IfcUtil::IfcBaseClass* rep, std::vector<int32_t>& out, int depth = 0) {
+void collect_base_items(express::Base rep, std::vector<express::Base>& out, int depth = 0) {
     if (!rep || depth > 64) return;
     auto items = read_ref_list(rep, "Items");
-    std::vector<IfcUtil::IfcBaseClass*> queue(items.begin(), items.end());
+    std::vector<express::Base> queue(items.begin(), items.end());
     int guard = 0;
     while (!queue.empty() && guard++ < 100000) {
-        auto* item = queue.back();
+        auto item = queue.back();
         queue.pop_back();
         if (!item) continue;
         if (is_a(item, "IfcMappedItem")) {
-            auto* src = read_ref(item, "MappingSource");
+            auto src = read_ref(item, "MappingSource");
             if (!src) continue;
-            auto* mapped = read_ref(src, "MappedRepresentation");
+            auto mapped = read_ref(src, "MappedRepresentation");
             if (!mapped) continue;
             collect_base_items(mapped, out, depth + 1);
         } else if (is_a(item, "IfcBooleanResult")) {
-            auto* first = read_ref(item, "FirstOperand");
-            auto* second = read_ref(item, "SecondOperand");
+            auto first = read_ref(item, "FirstOperand");
+            auto second = read_ref(item, "SecondOperand");
             if (first) queue.push_back(first);
             if (second) queue.push_back(second);
         } else {
-            out.push_back(id_of(item));
+            out.push_back(item);
         }
     }
 }
@@ -155,23 +128,21 @@ void collect_base_items(IfcUtil::IfcBaseClass* rep, std::vector<int32_t>& out, i
 namespace ifcapi {
 namespace bindings {
 
-IfcUtil::IfcBaseClass* representation_get_context(
-    IfcParse::IfcFile* file,
+express::Base representation_get_context(
+    ifcopenshell::file* file,
     const char* context_type,
     const char* subcontext,
     const char* target_view)
 {
     auto* f = file;
-    if (!f) return nullptr;
+    if (!f) return {};
 
     bool use_sub = (subcontext && *subcontext) || (target_view && *target_view);
-    auto insts = f->instances_by_type(
-        std::string(use_sub ? "IfcGeometricRepresentationSubContext"
-                            : "IfcGeometricRepresentationContext"));
-    if (!insts) return 0;
+    auto* decl = f->schema()->declaration_by_name(
+        use_sub ? "IfcGeometricRepresentationSubContext" : "IfcGeometricRepresentationContext");
+    auto insts = f->instances_by_type(decl);
 
-    for (auto it = insts->begin(); it != insts->end(); ++it) {
-        auto* e = *it;
+    for (auto e : insts) {
         // If we asked only for a base context, exclude subcontexts.
         if (!use_sub && is_a(e, "IfcGeometricRepresentationSubContext")) continue;
 
@@ -186,57 +157,57 @@ IfcUtil::IfcBaseClass* representation_get_context(
         }
         return e;
     }
-    return nullptr;
+    return {};
 }
 
-IfcUtil::IfcBaseClass* representation_resolve(IfcUtil::IfcBaseClass* rep) {
-    auto* e = rep;
-    if (!e) return nullptr;
+express::Base representation_resolve(express::Base* rep) {
+    auto e = rep ? *rep : express::Base();
+    if (!e) return {};
 
     // Tekla 2023 workaround: a representation with a single IfcMappedItem whose
     // mapping source points to another representation is unwrapped.
     for (int guard = 0; guard < 64; ++guard) {
         auto items = read_ref_list(e, "Items");
         if (items.size() != 1 || !is_a(items[0], "IfcMappedItem")) break;
-        auto* src = read_ref(items[0], "MappingSource");
+        auto src = read_ref(items[0], "MappingSource");
         if (!src) break;
-        auto* mapped = read_ref(src, "MappedRepresentation");
+        auto mapped = read_ref(src, "MappedRepresentation");
         if (!mapped) break;
         e = mapped;
     }
     return e;
 }
 
-IfcUtil::IfcBaseClass* representation_get_product_representation(
-    IfcUtil::IfcBaseClass* element,
-    IfcUtil::IfcBaseClass* context,
+express::Base representation_get_product_representation(
+    express::Base* element,
+    express::Base* context,
     const char* context_type,
     const char* subcontext,
     const char* target_view)
 {
-    auto* e = element;
-    if (!e) return nullptr;
+    auto e = element ? *element : express::Base();
+    if (!e) return {};
 
-    std::vector<IfcUtil::IfcBaseClass*> reps;
+    std::vector<express::Base> reps;
     if (is_a(e, "IfcProduct")) {
-        auto* rep = read_ref(e, "Representation");
+        auto rep = read_ref(e, "Representation");
         if (rep) {
             reps = read_ref_list(rep, "Representations");
         }
     } else if (is_a(e, "IfcTypeProduct")) {
         auto maps = read_ref_list(e, "RepresentationMaps");
-        for (auto* m : maps) {
-            auto* r = read_ref(m, "MappedRepresentation");
+        for (auto m : maps) {
+            auto r = read_ref(m, "MappedRepresentation");
             if (r) reps.push_back(r);
         }
     }
 
-    auto* context_e = context;
-    for (auto* r : reps) {
-        auto* ctx = read_ref(r, "ContextOfItems");
+    auto context_e = context ? *context : express::Base();
+    for (auto r : reps) {
+        auto ctx = read_ref(r, "ContextOfItems");
         if (!ctx) continue;
 
-        if (context_e != nullptr) {
+        if (context_e) {
             if (ctx == context_e) return r;
             continue;
         }
@@ -256,22 +227,22 @@ IfcUtil::IfcBaseClass* representation_get_product_representation(
         if (!str_eq_opt(read_string(ctx, "ContextType"), context_type)) continue;
         return r;
     }
-    return nullptr;
+    return {};
 }
 
-aggregate_of_instance::ptr representation_resolve_base_items(IfcUtil::IfcBaseClass* representation)
+std::vector<express::Base> representation_resolve_base_items(express::Base* representation)
 {
-    auto* e = representation;
-    if (!e) return aggregate_of_instance::ptr(new aggregate_of_instance);
-    std::vector<int32_t> result;
+    auto e = representation ? *representation : express::Base();
+    if (!e) return {};
+    std::vector<express::Base> result;
     collect_base_items(e, result);
-    return make_instance_list(e->file_, result);
+    return result;
 }
 
-aggregate_of_instance::ptr representation_get_prioritised_contexts(IfcParse::IfcFile* file)
+std::vector<express::Base> representation_get_prioritised_contexts(ifcopenshell::file* file)
 {
     auto* f = file;
-    if (!f) return aggregate_of_instance::ptr(new aggregate_of_instance);
+    if (!f) return {};
 
     static const std::vector<std::string> TYPE_PRIORITY = {"Model", "Plan", "Annotation"};
     static const std::vector<std::string> IDENTIFIER_PRIORITY = {
@@ -297,13 +268,14 @@ aggregate_of_instance::ptr representation_get_prioritised_contexts(IfcParse::Ifc
         int id_p;
         int view_p;
         double scale;
+        express::Base entity;
     };
     std::vector<Entry> entries;
 
-    auto insts = f->instances_by_type(std::string("IfcGeometricRepresentationContext"));
-    if (insts) {
-        for (auto it = insts->begin(); it != insts->end(); ++it) {
-            auto* c = *it;
+    auto* decl = f->schema()->declaration_by_name("IfcGeometricRepresentationContext");
+    auto insts = f->instances_by_type(decl);
+    {
+        for (auto c : insts) {
             Entry e;
             e.id = id_of(c);
             e.type_p = score_in(TYPE_PRIORITY, read_string(c, "ContextType"));
@@ -314,6 +286,7 @@ aggregate_of_instance::ptr representation_get_prioritised_contexts(IfcParse::Ifc
             e.scale = is_a(c, "IfcGeometricRepresentationSubContext")
                           ? read_double(c, "TargetScale", 0.0)
                           : 0.0;
+            e.entity = c;
             entries.push_back(e);
         }
     }
@@ -326,10 +299,10 @@ aggregate_of_instance::ptr representation_get_prioritised_contexts(IfcParse::Ifc
         return a.scale > b.scale;
     });
 
-    std::vector<int32_t> ids;
-    ids.reserve(entries.size());
-    for (auto& e : entries) ids.push_back(e.id);
-    return make_instance_list(f, ids);
+    std::vector<express::Base> result;
+    result.reserve(entries.size());
+    for (auto& e : entries) result.push_back(e.entity);
+    return result;
 }
 
 } // namespace bindings

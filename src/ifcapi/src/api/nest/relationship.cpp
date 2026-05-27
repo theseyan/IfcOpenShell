@@ -30,102 +30,86 @@ inline void set_error(const std::string& msg) { ifcopenshell::capi::set_last_err
 
 // Find IfcRelNests where this entity is the RelatingObject (the whole).
 // IFC4+: inverse "IsNestedBy"; IFC2X3: filter "IsDecomposedBy" for IfcRelNests.
-static IfcUtil::IfcBaseClass* find_is_nested_by(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* entity) {
-    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(entity);
-    if (!be) return nullptr;
-    // IFC4+
-    try {
-        auto result = be->get_inverse("IsNestedBy");
-        if (result && result->size() > 0) return (*result)[0];
-    } catch (...) {}
+static express::Base find_is_nested_by(ifcopenshell::file* file, express::Base entity) {
+    auto result = ifcapi::detail::read_inverse_aggregate(entity, "IsNestedBy");
+    if (!result.empty()) return result.front();
     // IFC2X3: filter IsDecomposedBy for IfcRelNests
-    try {
-        auto result = be->get_inverse("IsDecomposedBy");
-        if (result) {
-            const auto* nests_decl = file->schema()->declaration_by_name("IfcRelNests");
-            for (size_t i = 0; i < result->size(); ++i) {
-                if ((*result)[i]->declaration().is(*nests_decl)) {
-                    return (*result)[i];
-                }
-            }
+    result = ifcapi::detail::read_inverse_aggregate(entity, "IsDecomposedBy");
+    const auto* nests_decl = file->schema()->declaration_by_name("IfcRelNests");
+    for (auto inverse : result) {
+        if (inverse && inverse.declaration().is(*nests_decl)) {
+            return inverse;
         }
-    } catch (...) {}
-    return nullptr;
+    }
+    return {};
 }
 
 // Find IfcRelNests where this entity is a nested child.
 // IFC4+: inverse "Nests"; IFC2X3: filter "Decomposes" for IfcRelNests.
-static IfcUtil::IfcBaseClass* find_nests(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* entity) {
-    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(entity);
-    if (!be) return nullptr;
-    // IFC4+
-    try {
-        auto result = be->get_inverse("Nests");
-        if (result && result->size() > 0) return (*result)[0];
-    } catch (...) {}
+static express::Base find_nests(ifcopenshell::file* file, express::Base entity) {
+    auto result = ifcapi::detail::read_inverse_aggregate(entity, "Nests");
+    if (!result.empty()) return result.front();
     // IFC2X3: filter Decomposes for IfcRelNests
-    try {
-        auto result = be->get_inverse("Decomposes");
-        if (result) {
-            const auto* nests_decl = file->schema()->declaration_by_name("IfcRelNests");
-            for (size_t i = 0; i < result->size(); ++i) {
-                if ((*result)[i]->declaration().is(*nests_decl)) {
-                    return (*result)[i];
-                }
-            }
+    result = ifcapi::detail::read_inverse_aggregate(entity, "Decomposes");
+    const auto* nests_decl = file->schema()->declaration_by_name("IfcRelNests");
+    for (auto inverse : result) {
+        if (inverse && inverse.declaration().is(*nests_decl)) {
+            return inverse;
         }
-    } catch (...) {}
-    return nullptr;
+    }
+    return {};
 }
 
 namespace ifcapi {
 namespace bindings {
 using namespace ifcapi::detail;
 
-IfcUtil::IfcBaseClass* nest_assign_object(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& objects,
-    IfcUtil::IfcBaseClass* relating_object,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+express::Base nest_assign_object(
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& objects,
+    express::Base* relating_object,
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
     if (!file || objects.empty()) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
 
     try {
-        auto* relating = relating_object;
+        auto relating = deref_or_empty(relating_object);
         if (!relating) {
             set_error("Relating object not found");
-            return nullptr;
+            return {};
         }
 
         // Maintain insertion order (nesting order matters in IFC).
-        std::vector<IfcUtil::IfcBaseClass*> objects_vec;
-        std::set<IfcUtil::IfcBaseClass*> objects_set;
-        for (auto* object : objects) {
-            auto* obj = const_cast<IfcUtil::IfcBaseClass*>(object);
-            if (obj && objects_set.insert(obj).second) {
-                objects_vec.push_back(obj);
+        std::vector<express::Base> objects_vec;
+        std::set<express::Base> objects_set;
+        for (auto object : objects) {
+            if (object && objects_set.insert(object).second) {
+                objects_vec.push_back(object);
             }
         }
-        if (objects_vec.empty()) return nullptr;
+        if (objects_vec.empty()) return {};
 
-        auto* existing_rel = find_is_nested_by(file, relating);
+        auto existing_rel = find_is_nested_by(file, relating);
+        auto owner_history_value = deref_or_empty(owner_history);
+        auto user_value = deref_or_empty(user);
+        auto application_value = deref_or_empty(application);
 
         const auto* nests_decl = file->schema()->declaration_by_name("IfcRelNests");
         auto* nests_entity_decl = nests_decl->as_entity();
         int related_idx = find_attr_index(nests_entity_decl, "RelatedObjects");
 
-        std::set<IfcUtil::IfcBaseClass*> previous_rels;
-        std::vector<IfcUtil::IfcBaseClass*> objects_to_change;
+        std::set<express::Base> previous_rels;
+        std::vector<express::Base> objects_to_change;
 
-        for (auto* obj : objects_vec) {
-            auto* cur_rel = find_nests(file, obj);
-            if (cur_rel == nullptr) {
+        for (auto obj : objects_vec) {
+            auto cur_rel = find_nests(file, obj);
+            if (!cur_rel) {
                 objects_to_change.push_back(obj);
             } else if (cur_rel != existing_rel) {
                 previous_rels.insert(cur_rel);
@@ -139,16 +123,11 @@ IfcUtil::IfcBaseClass* nest_assign_object(
 
         // Unassign from spatial containers.
         {
-            std::vector<const IfcUtil::IfcBaseClass*> contained_objects;
-            for (auto* obj : objects_to_change) {
-                auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(obj);
-                if (!be) continue;
-                try {
-                    auto inv = be->get_inverse("ContainedInStructure");
-                    if (inv && inv->size() > 0) {
-                        contained_objects.push_back(obj);
-                    }
-                } catch (...) {}
+            std::vector<express::Base> contained_objects;
+            for (auto obj : objects_to_change) {
+                if (!ifcapi::detail::read_inverse_aggregate(obj, "ContainedInStructure").empty()) {
+                    contained_objects.push_back(obj);
+                }
             }
             if (!contained_objects.empty()) {
                 spatial_unassign_container(file, contained_objects, user, application);
@@ -157,16 +136,14 @@ IfcUtil::IfcBaseClass* nest_assign_object(
 
         // Unassign from aggregates.
         {
-            std::vector<const IfcUtil::IfcBaseClass*> aggregate_objects(
-                objects_to_change.begin(), objects_to_change.end());
-            aggregate_unassign_object(file, aggregate_objects, user, application);
+            aggregate_unassign_object(file, objects_to_change, user, application);
         }
 
         // Remove from previous nest rels (preserving order).
-        for (auto* prev_rel : previous_rels) {
+        for (auto prev_rel : previous_rels) {
             auto related = get_ref_aggregate(prev_rel, related_idx);
-            std::vector<IfcUtil::IfcBaseClass*> remaining;
-            for (auto* e : related) {
+            std::vector<express::Base> remaining;
+            for (auto e : related) {
                 if (objects_set.find(e) == objects_set.end()) {
                     remaining.push_back(e);
                 }
@@ -175,75 +152,76 @@ IfcUtil::IfcBaseClass* nest_assign_object(
                 remove_with_history(file, prev_rel);
             } else {
                 set_ref_aggregate(prev_rel, related_idx, remaining);
-                update_owner_history(file, prev_rel, user, application);
+                update_owner_history(file, prev_rel, user_value, application_value);
             }
         }
 
         // Add to target nesting (preserving order).
         if (existing_rel) {
             auto current = get_ref_aggregate(existing_rel, related_idx);
-            std::set<IfcUtil::IfcBaseClass*> current_set(current.begin(), current.end());
-            for (auto* o : objects_vec) {
+            std::set<express::Base> current_set(current.begin(), current.end());
+            for (auto o : objects_vec) {
                 if (current_set.insert(o).second) {
                     current.push_back(o);
                 }
             }
             set_ref_aggregate(existing_rel, related_idx, current);
-            update_owner_history(file, existing_rel, user, application);
+            update_owner_history(file, existing_rel, user_value, application_value);
             return existing_rel;
         } else {
-            auto* rel = file->create(nests_decl);
+            auto rel = file->create(nests_decl);
             if (!rel) {
                 set_error("Failed to create IfcRelNests");
-                return nullptr;
+                return {};
             }
             int gi_idx = find_attr_index(nests_entity_decl, "GlobalId");
             if (gi_idx >= 0) {
-                rel->set_attribute_value(static_cast<size_t>(gi_idx), ifcapi::guid_new());
+                rel.set_attribute_value(static_cast<size_t>(gi_idx), ifcapi::guid_new());
             }
             int ro_idx = find_attr_index(nests_entity_decl, "RelatingObject");
             set_ref(rel, ro_idx, relating);
             int oh_idx = find_attr_index(nests_entity_decl, "OwnerHistory");
-            set_ref(rel, oh_idx, ensure_owner_history(file, owner_history, user, application));
+            set_ref(rel, oh_idx, ensure_owner_history(file, owner_history_value, user_value, application_value));
             set_ref_aggregate(rel, related_idx, objects_vec);
             return rel;
         }
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
 void nest_unassign_object(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& objects,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& objects,
+    express::Base* user,
+    express::Base* application)
 {
     if (!file || objects.empty()) return;
 
     try {
+        auto user_value = deref_or_empty(user);
+        auto application_value = deref_or_empty(application);
         const auto* nests_decl = file->schema()->declaration_by_name("IfcRelNests");
         auto* nests_entity_decl = nests_decl->as_entity();
         int related_idx = find_attr_index(nests_entity_decl, "RelatedObjects");
 
-        std::set<IfcUtil::IfcBaseClass*> objects_set;
-        for (auto* object : objects) {
-            auto* obj = const_cast<IfcUtil::IfcBaseClass*>(object);
-            if (obj) objects_set.insert(obj);
+        std::set<express::Base> objects_set;
+        for (auto object : objects) {
+            if (object) objects_set.insert(object);
         }
 
-        std::set<IfcUtil::IfcBaseClass*> rels;
-        for (auto* obj : objects_set) {
-            auto* rel = find_nests(file, obj);
+        std::set<express::Base> rels;
+        for (auto obj : objects_set) {
+            auto rel = find_nests(file, obj);
             if (rel) rels.insert(rel);
         }
 
-        for (auto* rel : rels) {
+        for (auto rel : rels) {
             auto related = get_ref_aggregate(rel, related_idx);
             // Preserve order while removing
-            std::vector<IfcUtil::IfcBaseClass*> remaining;
-            for (auto* e : related) {
+            std::vector<express::Base> remaining;
+            for (auto e : related) {
                 if (objects_set.find(e) == objects_set.end()) {
                     remaining.push_back(e);
                 }
@@ -252,7 +230,7 @@ void nest_unassign_object(
                 remove_with_history(file, rel);
             } else {
                 set_ref_aggregate(rel, related_idx, remaining);
-                update_owner_history(file, rel, user, application);
+                update_owner_history(file, rel, user_value, application_value);
             }
         }
     } catch (...) {}

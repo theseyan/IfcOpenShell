@@ -63,9 +63,9 @@ std::vector<std::vector<int>> reversed_schema(const std::vector<std::vector<int>
     return {panel_schema.rbegin(), panel_schema.rend()};
 }
 
-IfcUtil::IfcBaseClass* create_window_2d_representation(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* context,
+express::Base create_window_2d_representation(
+    ifcopenshell::file* file,
+    express::Base* context,
     const std::vector<std::vector<int>>& panel_schema,
     const std::vector<PanelProperties>& panels,
     const LiningProperties& lining,
@@ -74,7 +74,7 @@ IfcUtil::IfcBaseClass* create_window_2d_representation(
     double lining_thickness,
     double lining_offset)
 {
-    std::vector<IfcUtil::IfcBaseClass*> items_2d;
+    std::vector<express::Base> items_2d;
     const auto& top_row = panel_schema.back();
     std::vector<int> unique_values = top_row;
     std::sort(unique_values.begin(), unique_values.end());
@@ -90,7 +90,7 @@ IfcUtil::IfcBaseClass* create_window_2d_representation(
             continue;
         }
 
-        std::vector<IfcUtil::IfcBaseClass*> cur_panel_items;
+        std::vector<express::Base> cur_panel_items;
         std::vector<double> window_lining_thickness = {lining_thickness, lining_thickness};
         std::vector<bool> closed_lining = {true, true};
         const bool has_mullion = unique_cols > 1;
@@ -129,7 +129,7 @@ IfcUtil::IfcBaseClass* create_window_2d_representation(
             false));
 
         auto lining_shape = [&](double thickness, bool closed, bool mirror, double x_offset) {
-            IfcUtil::IfcBaseClass* shape = nullptr;
+            express::Base shape = {};
             if (ifcapi::detail::window_l_shape_check(lining_to_panel_offset_y_full, lining_depth, {x_offset}, {thickness})) {
                 shape = ifcapi::detail::polyline(
                     file,
@@ -154,7 +154,7 @@ IfcUtil::IfcBaseClass* create_window_2d_representation(
                     closed);
             }
             if (mirror) {
-                ifcapi::bindings::shape_builder_mirror(file, shape, {1.0, 0.0}, {panel_width / 2.0, 0.0}, false, {});
+                ifcapi::bindings::shape_builder_mirror(file, &shape, {1.0, 0.0}, {panel_width / 2.0, 0.0}, false, {});
             }
             return shape;
         };
@@ -164,7 +164,7 @@ IfcUtil::IfcBaseClass* create_window_2d_representation(
         cur_panel_items.push_back(lining_shape(
             window_lining_thickness[1], closed_lining[1], true, left_to_mullion ? current_offset_x : lining.lining_to_panel_offset_x));
 
-        std::vector<IfcUtil::IfcBaseClass*> frame_items;
+        std::vector<express::Base> frame_items;
         const std::vector<double> frame_position = {
             right_to_mullion ? current_offset_x : lining.lining_to_panel_offset_x,
             lining_to_panel_offset_y_full,
@@ -173,16 +173,16 @@ IfcUtil::IfcBaseClass* create_window_2d_representation(
         frame_width -= left_to_mullion ? current_offset_x : lining.lining_to_panel_offset_x;
         frame_width -= right_to_mullion ? current_offset_x : lining.lining_to_panel_offset_x;
 
-        auto* frame_vertical = ifcapi::detail::rectangle(file, {panel.frame_thickness, panel.frame_depth});
+        auto frame_vertical = ifcapi::detail::rectangle(file, {panel.frame_thickness, panel.frame_depth});
         frame_items.push_back(frame_vertical);
-        frame_items.push_back(ifcapi::bindings::shape_builder_mirror(file, frame_vertical, {1.0, 0.0}, {frame_width / 2.0, 0.0}, true, {}));
-        auto* frame_horizontal = ifcapi::detail::polyline(
+        frame_items.push_back(ifcapi::bindings::shape_builder_mirror(file, &frame_vertical, {1.0, 0.0}, {frame_width / 2.0, 0.0}, true, {}));
+        auto frame_horizontal = ifcapi::detail::polyline(
             file,
             {ifcapi::detail::v2(panel.frame_thickness, 0.0), ifcapi::detail::v2(frame_width - panel.frame_thickness, 0.0)},
             false);
         frame_items.push_back(frame_horizontal);
-        frame_items.push_back(ifcapi::bindings::shape_builder_translate(file, frame_horizontal, {0.0, panel.frame_depth}, true));
-        frame_items.push_back(ifcapi::bindings::shape_builder_translate(file, frame_horizontal, {0.0, panel.frame_depth / 2.0}, true));
+        frame_items.push_back(ifcapi::bindings::shape_builder_translate(file, &frame_horizontal, {0.0, panel.frame_depth}, true));
+        frame_items.push_back(ifcapi::bindings::shape_builder_translate(file, &frame_horizontal, {0.0, panel.frame_depth / 2.0}, true));
         ifcapi::detail::translate_items(file, frame_items, frame_position);
         ifcapi::detail::append_items(cur_panel_items, frame_items);
 
@@ -201,21 +201,21 @@ IfcUtil::IfcBaseClass* create_window_2d_representation(
 namespace ifcapi {
 namespace bindings {
 
-IfcUtil::IfcBaseClass* geometry_add_window_representation(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* context,
+express::Base geometry_add_window_representation(
+    ifcopenshell::file* file,
+    express::Base* context,
     double overall_height,
     double overall_width,
     const std::vector<std::vector<int>>& raw_panel_schema,
     const std::vector<double>& lining_property_values,
     const std::vector<std::vector<double>>& panel_property_values,
-    IfcUtil::IfcBaseClass* part_of_product,
+    express::Base* part_of_product,
     double glass_thickness)
 {
     ifcopenshell_clear_error();
     if (!file || !context) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
 
     try {
@@ -226,9 +226,9 @@ IfcUtil::IfcBaseClass* geometry_add_window_representation(
             throw std::runtime_error("Invalid panel schema");
         }
 
-        const std::string target_view = ifcapi::detail::read_string_attr(context, "TargetView");
+        const std::string target_view = ifcapi::detail::read_string_attr(ifcapi::detail::deref_or_empty(context), "TargetView");
         if (target_view == "ELEVATION_VIEW") {
-            auto* rect = ifcapi::detail::rectangle(file, {overall_width, 0.0, overall_height});
+            auto rect = ifcapi::detail::rectangle(file, {overall_width, 0.0, overall_height});
             return shape_builder_representation(file, context, {rect}, nullptr);
         }
 
@@ -262,10 +262,10 @@ IfcUtil::IfcBaseClass* geometry_add_window_representation(
 
         std::vector<double> accumulated_height(panel_schema[0].size(), 0.0);
         std::vector<int> built_panels;
-        std::vector<IfcUtil::IfcBaseClass*> window_items;
-        std::vector<IfcUtil::IfcBaseClass*> lining_items;
-        std::vector<IfcUtil::IfcBaseClass*> framing_items;
-        std::vector<IfcUtil::IfcBaseClass*> glazing_items;
+        std::vector<express::Base> window_items;
+        std::vector<express::Base> lining_items;
+        std::vector<express::Base> framing_items;
+        std::vector<express::Base> glazing_items;
 
         for (size_t row_i = 0; row_i < panel_schema.size(); ++row_i) {
             const auto& panel_row = panel_schema[row_i];
@@ -365,16 +365,16 @@ IfcUtil::IfcBaseClass* geometry_add_window_representation(
         }
 
         ifcapi::detail::translate_items(file, window_items, {0.0, lining_offset, 0.0});
-        auto* representation = shape_builder_representation(file, context, ifcapi::detail::const_refs(window_items), nullptr);
+        auto representation = shape_builder_representation(file, context, ifcapi::detail::const_refs(window_items), nullptr);
         if (part_of_product) {
-            geometry_add_shape_aspect(file, "Lining", ifcapi::detail::const_refs(lining_items), representation, part_of_product, nullptr, false);
-            geometry_add_shape_aspect(file, "Framing", ifcapi::detail::const_refs(framing_items), representation, part_of_product, nullptr, false);
-            geometry_add_shape_aspect(file, "Glazing", ifcapi::detail::const_refs(glazing_items), representation, part_of_product, nullptr, false);
+            geometry_add_shape_aspect(file, "Lining", ifcapi::detail::const_refs(lining_items), &representation, part_of_product, nullptr, false);
+            geometry_add_shape_aspect(file, "Framing", ifcapi::detail::const_refs(framing_items), &representation, part_of_product, nullptr, false);
+            geometry_add_shape_aspect(file, "Glazing", ifcapi::detail::const_refs(glazing_items), &representation, part_of_product, nullptr, false);
         }
         return representation;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 

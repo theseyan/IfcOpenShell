@@ -345,6 +345,22 @@ void set_instance_argument(express::Base* instance, size_t index, const T& value
     instance->set_attribute_value(index, value);
 }
 
+void set_instance_argument(express::Base* instance, size_t index, express::Base* value) {
+    if (value == nullptr) {
+        instance->unset_attribute_value(index);
+    } else {
+        instance->set_attribute_value(index, *value);
+    }
+}
+
+void set_instance_argument(express::Base* instance, size_t index, std::vector<express::Base>* value) {
+    if (value == nullptr) {
+        instance->unset_attribute_value(index);
+    } else {
+        instance->set_attribute_value(index, *value);
+    }
+}
+
 void unset_instance_argument(express::Base* instance, size_t index) {
     instance->unset_attribute_value(index);
 }
@@ -18590,6 +18606,23 @@ case ifcopenshell::aggregation_type::set_type:
 throw std::runtime_error("Unknown aggregation type.");
         }();
         *out_result = make_static_string(generated_result);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_instance_list_size(ifcopenshell_ifcparse_instance_list_t* self, size_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+        *out_result = static_cast<size_t>(self_cpp->size());
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

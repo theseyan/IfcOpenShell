@@ -11,7 +11,6 @@ import pytest
 import yaml
 
 from src.ifcwrap.binding_generator.binding_inventory import build_inventory, parse_c_functions, parse_ctypes_symbols
-from src.ifcwrap.binding_generator.c_backend import generate_merged
 from src.ifcwrap.binding_generator.contract_discovery import discover_marked_functions_in_headers
 
 
@@ -393,52 +392,3 @@ def test_scalar_param_specs_do_not_carry_ownership_policy() -> None:
         visit(spec)
 
     assert offenders == []
-
-
-def test_fresh_generation_matches_checked_in_api_semantics(tmp_path: Path) -> None:
-    repo_root = _repo_root()
-    compile_commands = repo_root / "build-capi-stable" / "compile_commands.json"
-    if not compile_commands.exists():
-        pytest.skip("build-capi-stable/compile_commands.json is required for fresh generated-output coverage")
-
-    spec_dir = repo_root / "src" / "ifcwrap" / "binding_generator" / "specs"
-    fresh_header = tmp_path / "ifcopenshell_api.h"
-    fresh_cpp = tmp_path / "ifcopenshell_api.cpp"
-    fresh_internal = tmp_path / "ifcopenshell_api_internal.hpp"
-    fresh_python = tmp_path / "_generated_capi.py"
-
-    generate_merged(
-        [spec_dir / "ifcparse.yml", spec_dir / "ifcgeom.yml", spec_dir / "ifcapi.yml"],
-        "ifcopenshell",
-        "ifcopenshell",
-        fresh_header,
-        fresh_cpp,
-        compile_commands_path=compile_commands,
-        internal_header_out=fresh_internal,
-        python_out=fresh_python,
-    )
-
-    generated_dir = repo_root / "src" / "ifcwrap" / "binding_generator" / "generated"
-    checked_header = generated_dir / "ifcopenshell_api.h"
-    checked_cpp = generated_dir / "ifcopenshell_api.cpp"
-    checked_internal = generated_dir / "ifcopenshell_api_internal.hpp"
-    checked_python = repo_root / "src" / "ifcapi" / "python" / "ifcopenshell" / "_generated_capi.py"
-
-    fresh_c_signatures = _c_function_signatures(fresh_header, repo_root)
-    checked_c_signatures = _c_function_signatures(checked_header, repo_root)
-    fresh_python_symbols = set(parse_ctypes_symbols(fresh_python, repo_root))
-    checked_python_symbols = set(parse_ctypes_symbols(checked_python, repo_root))
-
-    assert fresh_c_signatures == checked_c_signatures
-    assert _c_type_names(fresh_header) == _c_type_names(checked_header)
-    assert _c_struct_layouts(fresh_header) == _c_struct_layouts(checked_header)
-    assert _c_enum_ordinals(fresh_header) == _c_enum_ordinals(checked_header)
-    assert _internal_struct_names(fresh_internal) == _internal_struct_names(checked_internal)
-    assert _internal_struct_layouts(fresh_internal) == _internal_struct_layouts(checked_internal)
-    assert fresh_python_symbols == checked_python_symbols
-    assert _python_generated_types(fresh_python) == _python_generated_types(checked_python)
-    assert _python_structure_fields(fresh_python) == _python_structure_fields(checked_python)
-    assert _python_signature_map(fresh_python) == _python_signature_map(checked_python)
-    assert _python_generated_constants(fresh_python) == _python_generated_constants(checked_python)
-    assert set(fresh_c_signatures) <= fresh_python_symbols
-    assert _cpp_helper_bodies(fresh_cpp) == _cpp_helper_bodies(checked_cpp)

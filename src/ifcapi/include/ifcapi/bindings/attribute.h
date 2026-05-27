@@ -5,17 +5,12 @@
 
 #include "ifcapi/bindings/contract.h"
 
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
+#include "ifcparse/schema.h"
+
 #include <string>
 #include <vector>
-
-namespace IfcParse {
-class attribute;
-class IfcFile;
-}
-
-namespace IfcUtil {
-class IfcBaseClass;
-}
 
 struct ifcopenshell_pset_props_t;
 

@@ -1620,6 +1620,7 @@ FUNCTION_SIGNATURES = {
     "ifcopenshell_ifcparse_guess_file_type": (ctypes.c_bool, [ctypes.c_char_p, ctypes.POINTER(ctypes.c_int32)]),
     "ifcopenshell_ifcparse_instance_list_create_from_handles": (ctypes.c_bool, [ctypes.POINTER(ifcopenshell_ifc_instance_list_t), ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcparse_instance_list_get": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.c_size_t, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
+    "ifcopenshell_ifcparse_instance_list_size": (ctypes.c_bool, [ctypes.POINTER(_HandleStruct), ctypes.POINTER(ctypes.c_size_t)]),
     "ifcopenshell_ifcparse_make_aggregate": (ctypes.c_bool, [ctypes.c_int32, ctypes.POINTER(ctypes.c_int32)]),
     "ifcopenshell_ifcparse_new_file": (ctypes.c_bool, [ctypes.c_char_p, ctypes.c_int32, ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),
     "ifcopenshell_ifcparse_open": (ctypes.c_bool, [ctypes.c_char_p, ctypes.c_bool, ctypes.POINTER(ctypes.POINTER(_HandleStruct))]),

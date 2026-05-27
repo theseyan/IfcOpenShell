@@ -98,10 +98,9 @@ static size_t list_size(ifcopenshell_ifcparse_instance_list_t* list) {
     return result;
 }
 
-static ifcopenshell_ifcparse_instance_list_t* by_type(ifcopenshell_ifc_file_t* file, const char* ifc_class) {
-    ifcopenshell_ifcparse_instance_list_t* result = NULL;
+static ifcopenshell_ifc_instance_list_t by_type(ifcopenshell_ifc_file_t* file, const char* ifc_class) {
+    ifcopenshell_ifc_instance_list_t result = {0};
     ASSERT(ifcopenshell_ifc_file_by_type(file, ifc_class, &result), "by_type succeeds");
-    ASSERT(result != NULL, "by_type returns non-NULL");
     return result;
 }
 
@@ -316,13 +315,12 @@ static void test_pset_assign_unassign_and_unshare(void) {
     ASSERT(owned_list_get(&copied, 0) != NULL, "first copied pset exists");
     ASSERT(owned_list_get(&copied, 1) != NULL, "second copied pset exists");
 
-    ifcopenshell_ifcparse_instance_list_t* psets = by_type(file, "IfcPropertySet");
-    ASSERT(list_size(psets) == 3, "unshare leaves three property sets");
-    ifcopenshell_ifcparse_instance_list_destroy(psets);
-
-    ifcopenshell_ifcparse_instance_list_t* rels = by_type(file, "IfcRelDefinesByProperties");
-    ASSERT(list_size(rels) == 3, "unshare leaves one rel per pset");
-    ifcopenshell_ifcparse_instance_list_destroy(rels);
+    ifcopenshell_ifc_instance_list_t psets = by_type(file, "IfcPropertySet");
+    ASSERT(psets.size == 3, "unshare leaves three property sets");
+    ifcopenshell_ifc_instance_list_destroy(&psets);
+    ifcopenshell_ifc_instance_list_t rels = by_type(file, "IfcRelDefinesByProperties");
+    ASSERT(rels.size == 3, "unshare leaves one rel per pset");
+    ifcopenshell_ifc_instance_list_destroy(&rels);
     ifcopenshell_ifc_instance_list_destroy(&copied);
 
     for (size_t i = 0; i < 3; ++i) {
@@ -356,9 +354,9 @@ static void test_pset_type_assignment_and_remove(void) {
            "type-only pset_assign_pset succeeds");
     ASSERT(rel != NULL, "type-only assignment returns a nullable handle wrapper");
     ifcopenshell_ifc_instance_destroy(rel);
-    ifcopenshell_ifcparse_instance_list_t* type_rels = by_type(file, "IfcRelDefinesByProperties");
-    ASSERT(list_size(type_rels) == 0, "type-only assignment creates no occurrence relation");
-    ifcopenshell_ifcparse_instance_list_destroy(type_rels);
+    ifcopenshell_ifc_instance_list_t type_rels = by_type(file, "IfcRelDefinesByProperties");
+    ASSERT(type_rels.size == 0, "type-only assignment creates no occurrence relation");
+    ifcopenshell_ifc_instance_list_destroy(&type_rels);
 
     ifcopenshell_ifcparse_instance_list_t* type_psets = instance_list_argument(wall_type, 5);
     ASSERT(list_size(type_psets) == 1, "type assignment added one HasPropertySets item");
@@ -392,12 +390,12 @@ static void test_pset_type_assignment_and_remove(void) {
     ASSERT(ok, "edit pset for remove returns true");
     ASSERT(ifcopenshell_ifcapi_pset_props_free(props), "remove props_free succeeds");
     ASSERT(ifcopenshell_ifcapi_pset_remove_pset(file, wall, pset), "pset_remove_pset succeeds");
-    ifcopenshell_ifcparse_instance_list_t* psets = by_type(file, "IfcPropertySet");
-    ASSERT(list_size(psets) == 0, "remove pset purges pset");
-    ifcopenshell_ifcparse_instance_list_destroy(psets);
-    ifcopenshell_ifcparse_instance_list_t* props_left = by_type(file, "IfcPropertySingleValue");
-    ASSERT(list_size(props_left) == 0, "remove pset purges owned properties");
-    ifcopenshell_ifcparse_instance_list_destroy(props_left);
+    ifcopenshell_ifc_instance_list_t psets = by_type(file, "IfcPropertySet");
+    ASSERT(psets.size == 0, "remove pset purges pset");
+    ifcopenshell_ifc_instance_list_destroy(&psets);
+    ifcopenshell_ifc_instance_list_t props_left = by_type(file, "IfcPropertySingleValue");
+    ASSERT(props_left.size == 0, "remove pset purges owned properties");
+    ifcopenshell_ifc_instance_list_destroy(&props_left);
 
     ifcopenshell_ifc_instance_destroy(pset);
     ifcopenshell_ifc_instance_destroy(wall);
@@ -442,18 +440,18 @@ static void test_group_remove_with_pset(void) {
 
     ASSERT(ifcopenshell_ifcapi_group_remove_group(file, group), "group_remove_group succeeds");
 
-    ifcopenshell_ifcparse_instance_list_t* groups = by_type(file, "IfcGroup");
-    ASSERT(list_size(groups) == 0, "group removal purges group");
-    ifcopenshell_ifcparse_instance_list_destroy(groups);
-    ifcopenshell_ifcparse_instance_list_t* group_rels = by_type(file, "IfcRelAssignsToGroup");
-    ASSERT(list_size(group_rels) == 0, "group removal purges group relationships");
-    ifcopenshell_ifcparse_instance_list_destroy(group_rels);
-    ifcopenshell_ifcparse_instance_list_t* psets = by_type(file, "IfcPropertySet");
-    ASSERT(list_size(psets) == 0, "group removal purges group psets");
-    ifcopenshell_ifcparse_instance_list_destroy(psets);
-    ifcopenshell_ifcparse_instance_list_t* props_left = by_type(file, "IfcPropertySingleValue");
-    ASSERT(list_size(props_left) == 0, "group removal purges group pset properties");
-    ifcopenshell_ifcparse_instance_list_destroy(props_left);
+    ifcopenshell_ifc_instance_list_t groups = by_type(file, "IfcGroup");
+    ASSERT(groups.size == 0, "group removal purges group");
+    ifcopenshell_ifc_instance_list_destroy(&groups);
+    ifcopenshell_ifc_instance_list_t group_rels = by_type(file, "IfcRelAssignsToGroup");
+    ASSERT(group_rels.size == 0, "group removal purges group relationships");
+    ifcopenshell_ifc_instance_list_destroy(&group_rels);
+    ifcopenshell_ifc_instance_list_t psets = by_type(file, "IfcPropertySet");
+    ASSERT(psets.size == 0, "group removal purges group psets");
+    ifcopenshell_ifc_instance_list_destroy(&psets);
+    ifcopenshell_ifc_instance_list_t props_left = by_type(file, "IfcPropertySingleValue");
+    ASSERT(props_left.size == 0, "group removal purges group pset properties");
+    ifcopenshell_ifc_instance_list_destroy(&props_left);
 
     ifcopenshell_ifc_instance_destroy(pset);
     ifcopenshell_ifc_instance_destroy(group_rel);

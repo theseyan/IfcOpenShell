@@ -7,6 +7,7 @@
 #include "ifcapi/bindings/representation.h"
 #include "ifcapi/bindings/unit.h"
 #include "ifcapi/detail/attribute.h"
+#include "ifcapi/detail/copy.h"
 #include "ifcopenshell_api_internal.hpp"
 
 #include "ifcparse/express.h"
@@ -26,7 +27,7 @@
 
 namespace {
 
-IfcUtil::IfcBaseClass* create_entity(IfcParse::IfcFile* file, const std::string& name) {
+express::Base create_entity(ifcopenshell::file* file, const std::string& name) {
     if (!file) {
         throw std::invalid_argument("missing file");
     }
@@ -37,67 +38,39 @@ IfcUtil::IfcBaseClass* create_entity(IfcParse::IfcFile* file, const std::string&
     return file->create(declaration);
 }
 
-int attr_index(IfcUtil::IfcBaseClass* entity, const std::string& name) {
-    if (entity == nullptr) {
+int attr_index(express::Base entity, const std::string& name) {
+    auto declaration = entity ? entity.declaration().as_entity() : nullptr;
+    if (!declaration) {
         return -1;
     }
-    auto* base = dynamic_cast<IfcUtil::IfcBaseEntity*>(entity);
-    if (base == nullptr) {
-        return -1;
-    }
-    auto* declaration = base->declaration().as_entity();
-    if (declaration == nullptr) {
-        return -1;
-    }
-    auto attributes = declaration->all_attributes();
-    for (size_t i = 0; i < attributes.size(); ++i) {
-        if (attributes[i]->name() == name) {
-            return static_cast<int>(i);
-        }
-    }
-    return -1;
+    ptrdiff_t index = declaration->attribute_index(name.c_str());
+    return index < 0 ? -1 : static_cast<int>(index);
 }
 
 template <typename T>
-void set_attr(IfcUtil::IfcBaseClass* entity, const std::string& name, const T& value) {
+void set_attr(express::Base entity, const std::string& name, const T& value) {
     int index = attr_index(entity, name);
     if (index < 0) {
-        throw std::invalid_argument(entity->declaration().name() + " has no attribute " + name);
+        throw std::invalid_argument(entity.declaration().name() + " has no attribute " + name);
     }
-    entity->set_attribute_value(static_cast<size_t>(index), value);
+    entity.set_attribute_value(static_cast<size_t>(index), value);
 }
 
-void set_ref(IfcUtil::IfcBaseClass* entity, const std::string& name, IfcUtil::IfcBaseClass* value) {
+void set_ref(express::Base entity, const std::string& name, express::Base value) {
     int index = attr_index(entity, name);
     if (index < 0) {
-        throw std::invalid_argument(entity->declaration().name() + " has no attribute " + name);
+        throw std::invalid_argument(entity.declaration().name() + " has no attribute " + name);
     }
-    if (value == nullptr) {
-        entity->set_attribute_value(static_cast<size_t>(index), Blank{});
+    if (value) {
+        entity.set_attribute_value(static_cast<size_t>(index), value);
     } else {
-        entity->set_attribute_value(static_cast<size_t>(index), value);
+        entity.unset_attribute_value(static_cast<size_t>(index));
     }
 }
 
-void set_refs(
-    IfcUtil::IfcBaseClass* entity,
-    const std::string& name,
-    const std::vector<IfcUtil::IfcBaseClass*>& values)
+void set_refs(express::Base entity, const std::string& name, const std::vector<express::Base>& values)
 {
-    auto aggregate = aggregate_of_instance::ptr(new aggregate_of_instance());
-    for (auto* value : values) {
-        aggregate->push(value);
-    }
-    set_attr(entity, name, aggregate);
-}
-
-std::vector<IfcUtil::IfcBaseClass*> mutable_refs(const std::vector<const IfcUtil::IfcBaseClass*>& values) {
-    std::vector<IfcUtil::IfcBaseClass*> result;
-    result.reserve(values.size());
-    for (auto* value : values) {
-        result.push_back(const_cast<IfcUtil::IfcBaseClass*>(value));
-    }
-    return result;
+    set_attr(entity, name, values);
 }
 
 std::vector<int> one_based(const std::vector<int>& values) {
@@ -157,79 +130,79 @@ std::vector<double> normalized(const std::vector<double>& v) {
     return scale_vector(v, 1.0 / std::sqrt(length_sq));
 }
 
-IfcUtil::IfcBaseClass* cartesian_point(IfcParse::IfcFile* file, const std::vector<double>& coordinates) {
-    auto* point = create_entity(file, "IfcCartesianPoint");
+express::Base cartesian_point(ifcopenshell::file* file, const std::vector<double>& coordinates) {
+    auto point = create_entity(file, "IfcCartesianPoint");
     set_attr(point, "Coordinates", coordinates);
     return point;
 }
 
-IfcUtil::IfcBaseClass* direction(IfcParse::IfcFile* file, const std::vector<double>& ratios) {
-    auto* result = create_entity(file, "IfcDirection");
+express::Base direction(ifcopenshell::file* file, const std::vector<double>& ratios) {
+    auto result = create_entity(file, "IfcDirection");
     set_attr(result, "DirectionRatios", ratios);
     return result;
 }
 
-IfcUtil::IfcBaseClass* line_index(IfcParse::IfcFile* file, const std::vector<int>& indices) {
-    auto* result = create_entity(file, "IfcLineIndex");
-    result->set_attribute_value(0, indices);
+express::Base line_index(ifcopenshell::file* file, const std::vector<int>& indices) {
+    auto result = create_entity(file, "IfcLineIndex");
+    result.set_attribute_value(0, indices);
     return result;
 }
 
-IfcUtil::IfcBaseClass* arc_index(IfcParse::IfcFile* file, const std::vector<int>& indices) {
-    auto* result = create_entity(file, "IfcArcIndex");
-    result->set_attribute_value(0, indices);
+express::Base arc_index(ifcopenshell::file* file, const std::vector<int>& indices) {
+    auto result = create_entity(file, "IfcArcIndex");
+    result.set_attribute_value(0, indices);
     return result;
 }
 
-IfcUtil::IfcBaseClass* axis2_placement_3d(
-    IfcParse::IfcFile* file,
+express::Base axis2_placement_3d(
+    ifcopenshell::file* file,
     const std::vector<double>& position,
     const std::vector<double>& z_axis,
     const std::vector<double>& x_axis)
 {
-    auto* result = create_entity(file, "IfcAxis2Placement3D");
+    auto result = create_entity(file, "IfcAxis2Placement3D");
     set_ref(result, "Location", cartesian_point(file, position));
     set_ref(result, "Axis", direction(file, z_axis));
     set_ref(result, "RefDirection", direction(file, x_axis));
     return result;
 }
 
-IfcUtil::IfcBaseClass* axis2_placement_2d(
-    IfcParse::IfcFile* file,
+express::Base axis2_placement_2d(
+    ifcopenshell::file* file,
     const std::vector<double>& position,
     const std::vector<double>& x_direction,
     bool has_x_direction)
 {
-    auto* result = create_entity(file, "IfcAxis2Placement2D");
+    auto result = create_entity(file, "IfcAxis2Placement2D");
     set_ref(result, "Location", cartesian_point(file, position));
-    set_ref(result, "RefDirection", has_x_direction ? direction(file, x_direction) : nullptr);
+    set_ref(result, "RefDirection", has_x_direction ? direction(file, x_direction) : express::Base());
     return result;
 }
 
-IfcUtil::IfcBaseClass* vertex_point(IfcParse::IfcFile* file, const std::vector<double>& position) {
-    auto* vertex = create_entity(file, "IfcVertexPoint");
+express::Base vertex_point(ifcopenshell::file* file, const std::vector<double>& position) {
+    auto vertex = create_entity(file, "IfcVertexPoint");
     set_ref(vertex, "VertexGeometry", cartesian_point(file, position));
     return vertex;
 }
 
-IfcUtil::IfcBaseClass* face_impl(IfcParse::IfcFile* file, const std::vector<std::vector<double>>& points) {
-    std::vector<IfcUtil::IfcBaseClass*> vertices;
+express::Base face_impl(ifcopenshell::file* file, const std::vector<std::vector<double>>& points) {
+    std::vector<express::Base> vertices;
     vertices.reserve(points.size());
     for (const auto& point : points) {
         vertices.push_back(cartesian_point(file, point));
     }
-    auto* loop = create_entity(file, "IfcPolyLoop");
+    auto loop = create_entity(file, "IfcPolyLoop");
     set_refs(loop, "Polygon", vertices);
-    auto* bound = create_entity(file, "IfcFaceOuterBound");
+    auto bound = create_entity(file, "IfcFaceOuterBound");
     set_ref(bound, "Bound", loop);
     set_attr(bound, "Orientation", true);
-    auto* face = create_entity(file, "IfcFace");
+    auto face = create_entity(file, "IfcFace");
     set_refs(face, "Bounds", {bound});
     return face;
 }
 
-IfcUtil::IfcBaseClass* polyline_impl(
-    IfcParse::IfcFile* file,
+express::Base polyline_impl(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& input_points,
     bool closed,
     const std::vector<double>& position_offset,
@@ -247,7 +220,7 @@ IfcUtil::IfcBaseClass* polyline_impl(
     }
 
     if (file->schema()->name() == "IFC2X3") {
-        std::vector<IfcUtil::IfcBaseClass*> ifc_points;
+        std::vector<express::Base> ifc_points;
         ifc_points.reserve(points.size() + (closed && !points.empty() ? 1 : 0));
         for (const auto& point : points) {
             ifc_points.push_back(cartesian_point(file, point));
@@ -255,7 +228,7 @@ IfcUtil::IfcBaseClass* polyline_impl(
         if (closed && !ifc_points.empty()) {
             ifc_points.push_back(ifc_points.front());
         }
-        auto* result = create_entity(file, "IfcPolyline");
+        auto result = create_entity(file, "IfcPolyline");
         set_refs(result, "Points", ifc_points);
         return result;
     }
@@ -264,13 +237,13 @@ IfcUtil::IfcBaseClass* polyline_impl(
         throw std::invalid_argument("polyline requires at least one point");
     }
     const size_t dimensions = points.front().size();
-    auto* ifc_points = create_entity(file, dimensions == 2 ? "IfcCartesianPointList2D" : "IfcCartesianPointList3D");
+    auto ifc_points = create_entity(file, dimensions == 2 ? "IfcCartesianPointList2D" : "IfcCartesianPointList3D");
     if (dimensions != 2 && dimensions != 3) {
         throw std::invalid_argument("Point has unexpected number of dimensions - " + std::to_string(dimensions) + ".");
     }
     set_attr(ifc_points, "CoordList", points);
 
-    auto* result = create_entity(file, "IfcIndexedPolyCurve");
+    auto result = create_entity(file, "IfcIndexedPolyCurve");
     set_ref(result, "Points", ifc_points);
     if (!closed && arc_points.empty()) {
         return result;
@@ -301,7 +274,7 @@ IfcUtil::IfcBaseClass* polyline_impl(
         segments.push_back({static_cast<int>(points.size()), 1});
     }
 
-    std::vector<IfcUtil::IfcBaseClass*> ifc_segments;
+    std::vector<express::Base> ifc_segments;
     std::vector<int> current_line_segment;
     const size_t last_segment = segments.empty() ? 0 : segments.size() - 1;
     for (size_t i = 0; i < segments.size(); ++i) {
@@ -325,14 +298,14 @@ IfcUtil::IfcBaseClass* polyline_impl(
     return result;
 }
 
-IfcUtil::IfcBaseClass* indexed_polycurve_2d_impl(
-    IfcParse::IfcFile* file,
+express::Base indexed_polycurve_2d_impl(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& points,
     const std::vector<std::vector<int>>& segments)
 {
-    auto* point_list = create_entity(file, "IfcCartesianPointList2D");
+    auto point_list = create_entity(file, "IfcCartesianPointList2D");
     set_attr(point_list, "CoordList", points);
-    std::vector<IfcUtil::IfcBaseClass*> ifc_segments;
+    std::vector<express::Base> ifc_segments;
     ifc_segments.reserve(segments.size());
     for (const auto& segment : segments) {
         if (segment.size() == 2) {
@@ -341,32 +314,32 @@ IfcUtil::IfcBaseClass* indexed_polycurve_2d_impl(
             ifc_segments.push_back(arc_index(file, segment));
         }
     }
-    auto* result = create_entity(file, "IfcIndexedPolyCurve");
+    auto result = create_entity(file, "IfcIndexedPolyCurve");
     set_ref(result, "Points", point_list);
     set_refs(result, "Segments", ifc_segments);
     return result;
 }
 
-IfcUtil::IfcBaseClass* cartesian_point_list_3d(
-    IfcParse::IfcFile* file,
+express::Base cartesian_point_list_3d(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& points)
 {
-    auto* point_list = create_entity(file, "IfcCartesianPointList3D");
+    auto point_list = create_entity(file, "IfcCartesianPointList3D");
     set_attr(point_list, "CoordList", points);
     return point_list;
 }
 
-IfcUtil::IfcBaseClass* indexed_polygonal_face(IfcParse::IfcFile* file, const std::vector<int>& face) {
+express::Base indexed_polygonal_face(ifcopenshell::file* file, const std::vector<int>& face) {
     if (face.empty()) {
         throw std::invalid_argument("polygonal face loop must contain at least one index");
     }
-    auto* ifc_face = create_entity(file, "IfcIndexedPolygonalFace");
+    auto ifc_face = create_entity(file, "IfcIndexedPolygonalFace");
     set_attr(ifc_face, "CoordIndex", one_based(face));
     return ifc_face;
 }
 
-IfcUtil::IfcBaseClass* indexed_polygonal_face_with_voids(
-    IfcParse::IfcFile* file,
+express::Base indexed_polygonal_face_with_voids(
+    ifcopenshell::file* file,
     const std::vector<std::vector<int>>& loops)
 {
     if (loops.empty()) {
@@ -377,7 +350,7 @@ IfcUtil::IfcBaseClass* indexed_polygonal_face_with_voids(
             throw std::invalid_argument("polygonal face loop must contain at least one index");
         }
     }
-    auto* ifc_face = create_entity(file, "IfcIndexedPolygonalFaceWithVoids");
+    auto ifc_face = create_entity(file, "IfcIndexedPolygonalFaceWithVoids");
     set_attr(ifc_face, "CoordIndex", one_based(loops.front()));
     std::vector<std::vector<int>> inner;
     inner.reserve(loops.size() - 1);
@@ -388,21 +361,21 @@ IfcUtil::IfcBaseClass* indexed_polygonal_face_with_voids(
     return ifc_face;
 }
 
-IfcUtil::IfcBaseClass* faceted_brep_impl(
-    IfcParse::IfcFile* file,
+express::Base faceted_brep_impl(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& points,
     const std::vector<std::vector<int>>& faces)
 {
-    std::vector<IfcUtil::IfcBaseClass*> vertices;
+    std::vector<express::Base> vertices;
     vertices.reserve(points.size());
     for (const auto& point : points) {
         vertices.push_back(cartesian_point(file, point));
     }
 
-    std::vector<IfcUtil::IfcBaseClass*> ifc_faces;
+    std::vector<express::Base> ifc_faces;
     ifc_faces.reserve(faces.size());
     for (const auto& face : faces) {
-        std::vector<IfcUtil::IfcBaseClass*> loop_vertices;
+        std::vector<express::Base> loop_vertices;
         loop_vertices.reserve(face.size());
         for (int index : face) {
             if (index < 0 || static_cast<size_t>(index) >= vertices.size()) {
@@ -410,29 +383,29 @@ IfcUtil::IfcBaseClass* faceted_brep_impl(
             }
             loop_vertices.push_back(vertices[static_cast<size_t>(index)]);
         }
-        auto* loop = create_entity(file, "IfcPolyLoop");
+        auto loop = create_entity(file, "IfcPolyLoop");
         set_refs(loop, "Polygon", loop_vertices);
-        auto* bound = create_entity(file, "IfcFaceOuterBound");
+        auto bound = create_entity(file, "IfcFaceOuterBound");
         set_ref(bound, "Bound", loop);
         set_attr(bound, "Orientation", true);
-        auto* ifc_face = create_entity(file, "IfcFace");
+        auto ifc_face = create_entity(file, "IfcFace");
         set_refs(ifc_face, "Bounds", {bound});
         ifc_faces.push_back(ifc_face);
     }
 
-    auto* shell = create_entity(file, "IfcClosedShell");
+    auto shell = create_entity(file, "IfcClosedShell");
     set_refs(shell, "CfsFaces", ifc_faces);
-    auto* brep = create_entity(file, "IfcFacetedBrep");
+    auto brep = create_entity(file, "IfcFacetedBrep");
     set_ref(brep, "Outer", shell);
     return brep;
 }
 
-IfcUtil::IfcBaseClass* triangulated_face_set_impl(
-    IfcParse::IfcFile* file,
+express::Base triangulated_face_set_impl(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& points,
     const std::vector<std::vector<int>>& faces)
 {
-    auto* point_list = cartesian_point_list_3d(file, points);
+    auto point_list = cartesian_point_list_3d(file, points);
     std::vector<std::vector<int>> coord_index;
     coord_index.reserve(faces.size());
     for (const auto& face : faces) {
@@ -442,19 +415,19 @@ IfcUtil::IfcBaseClass* triangulated_face_set_impl(
         }
         coord_index.push_back(std::move(converted));
     }
-    auto* result = create_entity(file, "IfcTriangulatedFaceSet");
+    auto result = create_entity(file, "IfcTriangulatedFaceSet");
     set_ref(result, "Coordinates", point_list);
     set_attr(result, "CoordIndex", coord_index);
     return result;
 }
 
-IfcUtil::IfcBaseClass* polygonal_face_set_impl(
-    IfcParse::IfcFile* file,
+express::Base polygonal_face_set_impl(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& points,
     const std::vector<std::vector<std::vector<int>>>& faces)
 {
-    auto* point_list = cartesian_point_list_3d(file, points);
-    std::vector<IfcUtil::IfcBaseClass*> ifc_faces;
+    auto point_list = cartesian_point_list_3d(file, points);
+    std::vector<express::Base> ifc_faces;
     ifc_faces.reserve(faces.size());
     for (const auto& face : faces) {
         if (face.empty()) {
@@ -464,25 +437,25 @@ IfcUtil::IfcBaseClass* polygonal_face_set_impl(
             face.size() == 1 ? indexed_polygonal_face(file, face.front()) : indexed_polygonal_face_with_voids(file, face)
         );
     }
-    auto* result = create_entity(file, "IfcPolygonalFaceSet");
+    auto result = create_entity(file, "IfcPolygonalFaceSet");
     set_ref(result, "Coordinates", point_list);
     set_refs(result, "Faces", ifc_faces);
     return result;
 }
 
-bool is_a(IfcUtil::IfcBaseClass* entity, const char* name) {
-    return entity && entity->declaration().is(name);
+bool is_a(express::Base entity, const char* name) {
+    return entity && entity.declaration().is(name);
 }
 
 template <typename Predicate>
-bool all_items_are(const std::vector<IfcUtil::IfcBaseClass*>& items, Predicate predicate) {
-    return !items.empty() && std::all_of(items.begin(), items.end(), [&](auto* item) {
-        return item != nullptr && predicate(item);
+bool all_items_are(const std::vector<express::Base>& items, Predicate predicate) {
+    return !items.empty() && std::all_of(items.begin(), items.end(), [&](auto item) {
+        return item && predicate(item);
     });
 }
 
-int read_dim(IfcUtil::IfcBaseClass* entity) {
-    auto* decl = entity ? entity->declaration().as_entity() : nullptr;
+int read_dim(express::Base entity) {
+    auto decl = entity ? entity.declaration().as_entity() : nullptr;
     if (!decl) {
         return 0;
     }
@@ -491,49 +464,46 @@ int read_dim(IfcUtil::IfcBaseClass* entity) {
         return 0;
     }
     try {
-        auto value = entity->get_attribute_value(static_cast<size_t>(dim_idx));
+        auto value = entity.get_attribute_value(static_cast<size_t>(dim_idx));
         return value.isNull() ? 0 : static_cast<int>(value);
     } catch (...) {
         return 0;
     }
 }
 
-std::string guess_representation_type(const std::vector<IfcUtil::IfcBaseClass*>& items) {
-    if (all_items_are(items, [](auto* item) { return is_a(item, "IfcVertexPoint"); })) return "Vertex";
-    if (all_items_are(items, [](auto* item) { return is_a(item, "IfcEdge"); })) return "Edge";
-    if (all_items_are(items, [](auto* item) { return is_a(item, "IfcPath"); })) return "Path";
-    if (all_items_are(items, [](auto* item) { return is_a(item, "IfcFace"); })) return "Face";
-    if (all_items_are(items, [](auto* item) { return is_a(item, "IfcShell"); })) return "Shell";
-    if (all_items_are(items, [](auto* item) { return is_a(item, "IfcMappedItem"); })) return "MappedRepresentation";
-    if (all_items_are(items, [](auto* item) { return is_a(item, "IfcExtrudedAreaSolid") || is_a(item, "IfcRevolvedAreaSolid"); })) return "SweptSolid";
-    if (all_items_are(items, [](auto* item) {
+std::string guess_representation_type(const std::vector<express::Base>& items) {
+    if (all_items_are(items, [](auto item) { return is_a(item, "IfcVertexPoint"); })) return "Vertex";
+    if (all_items_are(items, [](auto item) { return is_a(item, "IfcEdge"); })) return "Edge";
+    if (all_items_are(items, [](auto item) { return is_a(item, "IfcPath"); })) return "Path";
+    if (all_items_are(items, [](auto item) { return is_a(item, "IfcFace"); })) return "Face";
+    if (all_items_are(items, [](auto item) { return is_a(item, "IfcShell"); })) return "Shell";
+    if (all_items_are(items, [](auto item) { return is_a(item, "IfcMappedItem"); })) return "MappedRepresentation";
+    if (all_items_are(items, [](auto item) { return is_a(item, "IfcExtrudedAreaSolid") || is_a(item, "IfcRevolvedAreaSolid"); })) return "SweptSolid";
+    if (all_items_are(items, [](auto item) {
             return is_a(item, "IfcSweptAreaSolid") || is_a(item, "IfcSweptDiskSolid") ||
                 is_a(item, "IfcSectionedSolidHorizontal");
         })) return "AdvancedSweptSolid";
-    if (all_items_are(items, [](auto* item) { return is_a(item, "IfcTessellatedItem"); })) return "Tessellation";
-    if (all_items_are(items, [](auto* item) {
+    if (all_items_are(items, [](auto item) { return is_a(item, "IfcTessellatedItem"); })) return "Tessellation";
+    if (all_items_are(items, [](auto item) {
             return is_a(item, "IfcBooleanResult") || is_a(item, "IfcCsgPrimitive3D") || is_a(item, "IfcCsgSolid");
         })) return "CSG";
-    if (all_items_are(items, [](auto* item) { return is_a(item, "IfcCurve") && read_dim(item) == 2; })) return "Curve2D";
-    if (all_items_are(items, [](auto* item) { return is_a(item, "IfcCurve") && read_dim(item) == 3; })) return "Curve3D";
-    if (all_items_are(items, [](auto* item) { return is_a(item, "IfcCurve"); })) return "Curve";
+    if (all_items_are(items, [](auto item) { return is_a(item, "IfcCurve") && read_dim(item) == 2; })) return "Curve2D";
+    if (all_items_are(items, [](auto item) { return is_a(item, "IfcCurve") && read_dim(item) == 3; })) return "Curve3D";
+    if (all_items_are(items, [](auto item) { return is_a(item, "IfcCurve"); })) return "Curve";
     return "";
 }
 
-std::string guess_representation_type(const std::vector<const IfcUtil::IfcBaseClass*>& items) {
-    return guess_representation_type(mutable_refs(items));
-}
 
-std::string read_string(IfcUtil::IfcBaseClass* entity, const char* attr);
+std::string read_string(express::Base entity, const char* attr);
 
-IfcUtil::IfcBaseClass* representation_impl(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* context,
-    const std::vector<const IfcUtil::IfcBaseClass*>& items,
+express::Base representation_impl(
+    ifcopenshell::file* file,
+    express::Base context,
+    const std::vector<express::Base>& items,
     const std::string& representation_type)
 {
     std::string rep_type = representation_type.empty() ? guess_representation_type(items) : representation_type;
-    auto* result = create_entity(
+    auto result = create_entity(
         file,
         rep_type == "Vertex" || rep_type == "Edge" || rep_type == "Path" || rep_type == "Face" || rep_type == "Shell"
             ? "IfcTopologyRepresentation"
@@ -547,37 +517,28 @@ IfcUtil::IfcBaseClass* representation_impl(
     if (!rep_type.empty()) {
         set_attr(result, "RepresentationType", rep_type);
     }
-    set_refs(result, "Items", mutable_refs(items));
+    set_refs(result, "Items", items);
     return result;
 }
 
-IfcUtil::IfcBaseClass* representation_impl(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* context,
-    const std::vector<IfcUtil::IfcBaseClass*>& items,
-    const std::string& representation_type)
-{
-    std::vector<const IfcUtil::IfcBaseClass*> const_items(items.begin(), items.end());
-    return representation_impl(file, context, const_items, representation_type);
-}
 
-IfcUtil::IfcBaseClass* read_ref(IfcUtil::IfcBaseClass* entity, const char* attr) {
-    int index = attr_index(entity, attr);
-    if (index < 0) return nullptr;
-    try {
-        auto value = entity->get_attribute_value(static_cast<size_t>(index));
-        if (value.isNull()) return nullptr;
-        return static_cast<IfcUtil::IfcBaseClass*>(value);
-    } catch (...) {
-        return nullptr;
-    }
-}
-
-std::string read_string(IfcUtil::IfcBaseClass* entity, const char* attr) {
+express::Base read_ref(express::Base entity, const char* attr) {
     int index = attr_index(entity, attr);
     if (index < 0) return {};
     try {
-        auto value = entity->get_attribute_value(static_cast<size_t>(index));
+        auto value = entity.get_attribute_value(static_cast<size_t>(index));
+        if (value.isNull()) return {};
+        return static_cast<express::Base>(value);
+    } catch (...) {
+        return {};
+    }
+}
+
+std::string read_string(express::Base entity, const char* attr) {
+    int index = attr_index(entity, attr);
+    if (index < 0) return {};
+    try {
+        auto value = entity.get_attribute_value(static_cast<size_t>(index));
         if (value.isNull()) return {};
         return static_cast<std::string>(value);
     } catch (...) {
@@ -585,11 +546,11 @@ std::string read_string(IfcUtil::IfcBaseClass* entity, const char* attr) {
     }
 }
 
-double read_double(IfcUtil::IfcBaseClass* entity, const char* attr) {
+double read_double(express::Base entity, const char* attr) {
     int index = attr_index(entity, attr);
     if (index < 0) return 0.0;
     try {
-        auto value = entity->get_attribute_value(static_cast<size_t>(index));
+        auto value = entity.get_attribute_value(static_cast<size_t>(index));
         if (value.isNull()) return 0.0;
         return static_cast<double>(value);
     } catch (...) {
@@ -597,11 +558,11 @@ double read_double(IfcUtil::IfcBaseClass* entity, const char* attr) {
     }
 }
 
-std::vector<double> read_double_list(IfcUtil::IfcBaseClass* entity, const char* attr) {
+std::vector<double> read_double_list(express::Base entity, const char* attr) {
     int index = attr_index(entity, attr);
     if (index < 0) return {};
     try {
-        auto value = entity->get_attribute_value(static_cast<size_t>(index));
+        auto value = entity.get_attribute_value(static_cast<size_t>(index));
         if (value.isNull()) return {};
         return static_cast<std::vector<double>>(value);
     } catch (...) {
@@ -609,11 +570,11 @@ std::vector<double> read_double_list(IfcUtil::IfcBaseClass* entity, const char* 
     }
 }
 
-std::vector<std::vector<double>> read_double_list_list(IfcUtil::IfcBaseClass* entity, const char* attr) {
+std::vector<std::vector<double>> read_double_list_list(express::Base entity, const char* attr) {
     int index = attr_index(entity, attr);
     if (index < 0) return {};
     try {
-        auto value = entity->get_attribute_value(static_cast<size_t>(index));
+        auto value = entity.get_attribute_value(static_cast<size_t>(index));
         if (value.isNull()) return {};
         return static_cast<std::vector<std::vector<double>>>(value);
     } catch (...) {
@@ -621,48 +582,41 @@ std::vector<std::vector<double>> read_double_list_list(IfcUtil::IfcBaseClass* en
     }
 }
 
-std::vector<IfcUtil::IfcBaseClass*> read_refs(IfcUtil::IfcBaseClass* entity, const char* attr) {
+std::vector<express::Base> read_refs(express::Base entity, const char* attr) {
     int index = attr_index(entity, attr);
     if (index < 0) return {};
     try {
-        auto value = entity->get_attribute_value(static_cast<size_t>(index));
+        auto value = entity.get_attribute_value(static_cast<size_t>(index));
         if (value.isNull()) return {};
-        auto aggregate = static_cast<aggregate_of_instance::ptr>(value);
-        std::vector<IfcUtil::IfcBaseClass*> result;
-        if (aggregate) {
-            for (auto& item : *aggregate) {
-                result.push_back(item);
-            }
-        }
-        return result;
+        return static_cast<std::vector<express::Base>>(value);
     } catch (...) {
         return {};
     }
 }
 
-std::vector<double> read_point_coordinates(IfcUtil::IfcBaseClass* point) {
+std::vector<double> read_point_coordinates(express::Base point) {
     return read_double_list(point, "Coordinates");
 }
 
-void set_point_coordinates(IfcUtil::IfcBaseClass* point, const std::vector<double>& coordinates) {
+void set_point_coordinates(express::Base point, const std::vector<double>& coordinates) {
     set_attr(point, "Coordinates", coordinates);
 }
 
-std::vector<std::vector<double>> polyline_coords(IfcUtil::IfcBaseClass* polyline) {
+std::vector<std::vector<double>> polyline_coords(express::Base polyline) {
     if (is_a(polyline, "IfcIndexedPolyCurve")) {
         return read_double_list_list(read_ref(polyline, "Points"), "CoordList");
     }
     if (is_a(polyline, "IfcPolyline")) {
         std::vector<std::vector<double>> result;
-        for (auto* point : read_refs(polyline, "Points")) {
+        for (auto point : read_refs(polyline, "Points")) {
             result.push_back(read_point_coordinates(point));
         }
         return result;
     }
-    throw std::invalid_argument(std::string(polyline ? polyline->declaration().name() : "<null>") + " is not a polyline");
+    throw std::invalid_argument(std::string(polyline ? polyline.declaration().name() : "<null>") + " is not a polyline");
 }
 
-void set_polyline_coords_impl(IfcUtil::IfcBaseClass* polyline, const std::vector<std::vector<double>>& coords) {
+void set_polyline_coords_impl(express::Base polyline, const std::vector<std::vector<double>>& coords) {
     if (is_a(polyline, "IfcIndexedPolyCurve")) {
         set_attr(read_ref(polyline, "Points"), "CoordList", coords);
         return;
@@ -677,7 +631,7 @@ void set_polyline_coords_impl(IfcUtil::IfcBaseClass* polyline, const std::vector
         }
         return;
     }
-    throw std::invalid_argument(std::string(polyline ? polyline->declaration().name() : "<null>") + " is not a polyline");
+    throw std::invalid_argument(std::string(polyline ? polyline.declaration().name() : "<null>") + " is not a polyline");
 }
 
 std::vector<double> rotate_point_2d(
@@ -897,15 +851,15 @@ double mep_transition_length_impl(
     return check_transition(true);
 }
 
-IfcUtil::IfcBaseClass* mep_profile(IfcUtil::IfcBaseClass* element) {
-    auto* material = ifcapi::bindings::element_get_material(element, true, false);
-    if (!is_a(material, "IfcMaterialProfileSet")) return nullptr;
+express::Base mep_profile(express::Base element) {
+    auto material = ifcapi::bindings::element_get_material(&element, true, false);
+    if (!is_a(material, "IfcMaterialProfileSet")) return {};
     auto profiles = read_refs(material, "MaterialProfiles");
-    if (profiles.size() != 1) return nullptr;
+    if (profiles.size() != 1) return {};
     return read_ref(profiles.front(), "Profile");
 }
 
-std::vector<double> mep_dim(IfcUtil::IfcBaseClass* profile, double depth) {
+std::vector<double> mep_dim(express::Base profile, double depth) {
     if (is_a(profile, "IfcRectangleProfileDef")) {
         return {read_double(profile, "XDim") / 2.0, read_double(profile, "YDim") / 2.0, depth};
     }
@@ -991,8 +945,8 @@ std::vector<std::vector<double>> add_offset(
     return points;
 }
 
-IfcUtil::IfcBaseClass* extrude_face_set_impl(
-    IfcParse::IfcFile* file,
+express::Base extrude_face_set_impl(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& points,
     double magnitude,
     const std::vector<double>& offset,
@@ -1022,102 +976,74 @@ IfcUtil::IfcBaseClass* extrude_face_set_impl(
     return polygonal_face_set_impl(file, all_points, faces);
 }
 
-IfcUtil::IfcBaseClass* placement_location(IfcUtil::IfcBaseClass* entity) {
-    auto* position = read_ref(entity, "Position");
+express::Base placement_location(express::Base entity) {
+    auto position = read_ref(entity, "Position");
     return read_ref(position, "Location");
 }
 
-std::vector<double> location_coordinates(IfcUtil::IfcBaseClass* entity) {
+std::vector<double> location_coordinates(express::Base entity) {
     return read_point_coordinates(placement_location(entity));
 }
 
-void set_location_coordinates(IfcUtil::IfcBaseClass* entity, const std::vector<double>& coordinates) {
+void set_location_coordinates(express::Base entity, const std::vector<double>& coordinates) {
     set_point_coordinates(placement_location(entity), coordinates);
 }
 
-IfcUtil::IfcBaseClass* deep_copy_entity(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* element,
-    std::unordered_map<unsigned, IfcUtil::IfcBaseClass*>& memo)
+express::Base deep_copy_entity(
+    ifcopenshell::file* file,
+    express::Base element,
+    std::unordered_map<unsigned, express::Base>& memo)
 {
-    if (!element) return nullptr;
-    auto id = element->id();
+    if (!element) {
+        return {};
+    }
+    auto id = element.id();
     if (id) {
         auto it = memo.find(id);
-        if (it != memo.end()) return it->second;
+        if (it != memo.end()) {
+            return it->second;
+        }
     }
-    auto* base = dynamic_cast<IfcUtil::IfcBaseEntity*>(element);
-    if (!base) return element;
-    const auto* declaration = base->declaration().as_entity();
-    if (!declaration) return element;
-    auto* result = file->create(declaration);
-    if (id) memo[id] = result;
+    const auto* declaration = element.declaration().as_entity();
+    if (!declaration) {
+        return element;
+    }
+    auto result = file->create(declaration);
+    if (id) {
+        memo[id] = result;
+    }
     auto attributes = declaration->all_attributes();
     for (size_t i = 0; i < attributes.size(); ++i) {
         try {
-            auto value = element->get_attribute_value(i);
-            if (value.isNull()) continue;
-            switch (value.type()) {
-                case IfcUtil::Argument_INT:
-                    result->set_attribute_value(i, static_cast<int>(value)); break;
-                case IfcUtil::Argument_BOOL:
-                    result->set_attribute_value(i, static_cast<bool>(value)); break;
-                case IfcUtil::Argument_LOGICAL:
-                    result->set_attribute_value(i, static_cast<boost::logic::tribool>(value)); break;
-                case IfcUtil::Argument_DOUBLE:
-                    result->set_attribute_value(i, static_cast<double>(value)); break;
-                case IfcUtil::Argument_STRING:
-                case IfcUtil::Argument_ENUMERATION:
-                    result->set_attribute_value(i, static_cast<std::string>(value)); break;
-                case IfcUtil::Argument_BINARY:
-                    result->set_attribute_value(i, static_cast<boost::dynamic_bitset<>>(value)); break;
-                case IfcUtil::Argument_ENTITY_INSTANCE:
-                    result->set_attribute_value(
-                        i,
-                        deep_copy_entity(file, static_cast<IfcUtil::IfcBaseClass*>(value), memo)
-                    );
-                    break;
-                case IfcUtil::Argument_AGGREGATE_OF_INT:
-                    result->set_attribute_value(i, static_cast<std::vector<int>>(value)); break;
-                case IfcUtil::Argument_AGGREGATE_OF_DOUBLE:
-                    result->set_attribute_value(i, static_cast<std::vector<double>>(value)); break;
-                case IfcUtil::Argument_AGGREGATE_OF_STRING:
-                    result->set_attribute_value(i, static_cast<std::vector<std::string>>(value)); break;
-                case IfcUtil::Argument_AGGREGATE_OF_BINARY:
-                    result->set_attribute_value(i, static_cast<std::vector<boost::dynamic_bitset<>>>(value)); break;
-                case IfcUtil::Argument_AGGREGATE_OF_ENTITY_INSTANCE: {
-                    auto aggregate = static_cast<aggregate_of_instance::ptr>(value);
-                    auto copied = aggregate_of_instance::ptr(new aggregate_of_instance());
-                    if (aggregate) {
-                        for (auto& item : *aggregate) {
-                            copied->push(deep_copy_entity(file, item, memo));
-                        }
-                    }
-                    result->set_attribute_value(i, copied);
-                    break;
+            auto value = element.get_attribute_value(i);
+            if (value.isNull()) {
+                continue;
+            }
+            if (value.type() == ifcopenshell::Argument_ENTITY_INSTANCE) {
+                result.set_attribute_value(i, deep_copy_entity(file, static_cast<express::Base>(value), memo));
+            } else if (value.type() == ifcopenshell::Argument_AGGREGATE_OF_ENTITY_INSTANCE) {
+                auto aggregate = static_cast<std::vector<express::Base>>(value);
+                std::vector<express::Base> copied;
+                copied.reserve(aggregate.size());
+                for (auto item : aggregate) {
+                    copied.push_back(deep_copy_entity(file, item, memo));
                 }
-                case IfcUtil::Argument_AGGREGATE_OF_AGGREGATE_OF_INT:
-                    result->set_attribute_value(i, static_cast<std::vector<std::vector<int>>>(value)); break;
-                case IfcUtil::Argument_AGGREGATE_OF_AGGREGATE_OF_DOUBLE:
-                    result->set_attribute_value(i, static_cast<std::vector<std::vector<double>>>(value)); break;
-                case IfcUtil::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE: {
-                    auto aggregate = static_cast<aggregate_of_aggregate_of_instance::ptr>(value);
-                    auto copied = aggregate_of_aggregate_of_instance::ptr(new aggregate_of_aggregate_of_instance());
-                    if (aggregate) {
-                        for (const auto& row : *aggregate) {
-                            std::vector<IfcUtil::IfcBaseClass*> copied_row;
-                            copied_row.reserve(row.size());
-                            for (auto* item : row) {
-                                copied_row.push_back(deep_copy_entity(file, item, memo));
-                            }
-                            copied->push(copied_row);
-                        }
+                result.set_attribute_value(i, copied);
+            } else if (value.type() == ifcopenshell::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE) {
+                auto aggregate = static_cast<std::vector<std::vector<express::Base>>>(value);
+                std::vector<std::vector<express::Base>> copied;
+                copied.reserve(aggregate.size());
+                for (const auto& row : aggregate) {
+                    std::vector<express::Base> copied_row;
+                    copied_row.reserve(row.size());
+                    for (auto item : row) {
+                        copied_row.push_back(deep_copy_entity(file, item, memo));
                     }
-                    result->set_attribute_value(i, copied);
-                    break;
+                    copied.push_back(copied_row);
                 }
-                default:
-                    break;
+                result.set_attribute_value(i, copied);
+            } else {
+                ifcapi::detail::copy_attribute_value(result, i, value);
             }
         } catch (...) {
         }
@@ -1125,9 +1051,9 @@ IfcUtil::IfcBaseClass* deep_copy_entity(
     return result;
 }
 
-IfcUtil::IfcBaseClass* translate_impl(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* item, const std::vector<double>& translation, bool create_copy) {
-    std::unordered_map<unsigned, IfcUtil::IfcBaseClass*> memo;
-    auto* result = create_copy ? deep_copy_entity(file, item, memo) : item;
+express::Base translate_impl(ifcopenshell::file* file, express::Base item, const std::vector<double>& translation, bool create_copy) {
+    std::unordered_map<unsigned, express::Base> memo;
+    auto result = create_copy ? deep_copy_entity(file, item, memo) : item;
     if (is_a(result, "IfcIndexedPolyCurve") || is_a(result, "IfcPolyline")) {
         auto coords = polyline_coords(result);
         for (auto& coord : coords) {
@@ -1137,14 +1063,14 @@ IfcUtil::IfcBaseClass* translate_impl(IfcParse::IfcFile* file, IfcUtil::IfcBaseC
     } else if (is_a(result, "IfcCircle") || is_a(result, "IfcExtrudedAreaSolid") || is_a(result, "IfcEllipse")) {
         set_location_coordinates(result, add_vectors(location_coordinates(result), translation));
     } else if (is_a(result, "IfcTessellatedFaceSet")) {
-        auto* coordinates = read_ref(result, "Coordinates");
+        auto coordinates = read_ref(result, "Coordinates");
         auto coords = read_double_list_list(coordinates, "CoordList");
         for (auto& coord : coords) {
             coord = add_vectors(coord, translation);
         }
         set_attr(coordinates, "CoordList", coords);
     } else if (is_a(result, "IfcShapeRepresentation")) {
-        for (auto* child : read_refs(result, "Items")) {
+        for (auto child : read_refs(result, "Items")) {
             translate_impl(file, child, translation, false);
         }
     } else if (is_a(result, "IfcTrimmedCurve")) {
@@ -1154,21 +1080,21 @@ IfcUtil::IfcBaseClass* translate_impl(IfcParse::IfcFile* file, IfcUtil::IfcBaseC
         if (!trim2.empty()) set_point_coordinates(trim2.front(), add_vectors(read_point_coordinates(trim2.front()), translation));
         translate_impl(file, read_ref(result, "BasisCurve"), translation, false);
     } else {
-        throw std::invalid_argument(result ? result->declaration().name() + " is not supported for translate() method." : "null is not supported for translate() method.");
+        throw std::invalid_argument(result ? result.declaration().name() + " is not supported for translate() method." : "null is not supported for translate() method.");
     }
     return result;
 }
 
-IfcUtil::IfcBaseClass* rotate_impl(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* item,
+express::Base rotate_impl(
+    ifcopenshell::file* file,
+    express::Base item,
     double angle,
     const std::vector<double>& pivot_point,
     bool counter_clockwise,
     bool create_copy)
 {
-    std::unordered_map<unsigned, IfcUtil::IfcBaseClass*> memo;
-    auto* result = create_copy ? deep_copy_entity(file, item, memo) : item;
+    std::unordered_map<unsigned, express::Base> memo;
+    auto result = create_copy ? deep_copy_entity(file, item, memo) : item;
     if (is_a(result, "IfcIndexedPolyCurve") || is_a(result, "IfcPolyline")) {
         auto coords = polyline_coords(result);
         for (auto& coord : coords) {
@@ -1185,24 +1111,24 @@ IfcUtil::IfcBaseClass* rotate_impl(
             rotated[2] = position[2];
         }
         set_location_coordinates(result, rotated);
-        auto* swept_area = read_ref(result, "SweptArea");
+        auto swept_area = read_ref(result, "SweptArea");
         rotate_impl(file, read_ref(swept_area, "OuterCurve"), angle, pivot_point, counter_clockwise, false);
     } else {
-        throw std::invalid_argument(result ? result->declaration().name() + " is not supported for rotate() method." : "null is not supported for rotate() method.");
+        throw std::invalid_argument(result ? result.declaration().name() + " is not supported for rotate() method." : "null is not supported for rotate() method.");
     }
     return result;
 }
 
-IfcUtil::IfcBaseClass* mirror_impl(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* item,
+express::Base mirror_impl(
+    ifcopenshell::file* file,
+    express::Base item,
     const std::vector<double>& mirror_axes,
     const std::vector<double>& mirror_point,
     bool create_copy,
     const std::vector<double>& placement_matrix)
 {
-    std::unordered_map<unsigned, IfcUtil::IfcBaseClass*> memo;
-    auto* result = create_copy ? deep_copy_entity(file, item, memo) : item;
+    std::unordered_map<unsigned, express::Base> memo;
+    auto result = create_copy ? deep_copy_entity(file, item, memo) : item;
     if (is_a(result, "IfcIndexedPolyCurve") || is_a(result, "IfcPolyline")) {
         auto coords = polyline_coords(result);
         for (auto& coord : coords) {
@@ -1223,7 +1149,8 @@ IfcUtil::IfcBaseClass* mirror_impl(
         }
         mirror_impl(file, read_ref(result, "BasisCurve"), mirror_axes, mirror_point, false, {});
     } else if (is_a(result, "IfcExtrudedAreaSolid")) {
-        const auto placement = mat3_from_matrix(ifcapi::bindings::placement_get_axis2placement(read_ref(result, "Position")));
+        auto result_position = read_ref(result, "Position");
+        const auto placement = mat3_from_matrix(ifcapi::bindings::placement_get_axis2placement(&result_position));
         auto position = location_coordinates(result);
         auto mirrored = mirror_point_2d(position, mirror_axes, mirror_point);
         if (position.size() > 2) {
@@ -1231,17 +1158,17 @@ IfcUtil::IfcBaseClass* mirror_impl(
             mirrored[2] = position[2];
         }
         set_location_coordinates(result, mirrored);
-        auto* swept_area = read_ref(result, "SweptArea");
-        auto* outer_curve = read_ref(swept_area, "OuterCurve");
+        auto swept_area = read_ref(result, "SweptArea");
+        auto outer_curve = read_ref(swept_area, "OuterCurve");
         translate_impl(file, outer_curve, std::vector<double>{position[0], position.size() > 1 ? position[1] : 0.0}, false);
         mirror_impl(file, outer_curve, mirror_axes, mirror_point, false, placement);
         translate_impl(file, outer_curve, std::vector<double>{-mirrored[0], mirrored.size() > 1 ? -mirrored[1] : 0.0}, false);
-        for (auto* inner_curve : read_refs(swept_area, "InnerCurves")) {
+        for (auto inner_curve : read_refs(swept_area, "InnerCurves")) {
             translate_impl(file, inner_curve, std::vector<double>{position[0], position.size() > 1 ? position[1] : 0.0}, false);
             mirror_impl(file, inner_curve, mirror_axes, mirror_point, false, placement);
             translate_impl(file, inner_curve, std::vector<double>{-mirrored[0], mirrored.size() > 1 ? -mirrored[1] : 0.0}, false);
         }
-        auto* direction_entity = read_ref(result, "ExtrudedDirection");
+        auto direction_entity = read_ref(result, "ExtrudedDirection");
         auto direction = read_double_list(direction_entity, "DirectionRatios");
         if (placement.empty()) {
             set_attr(direction_entity, "DirectionRatios", mirror_point_2d(direction, mirror_axes, {0.0, 0.0}));
@@ -1254,13 +1181,13 @@ IfcUtil::IfcBaseClass* mirror_impl(
             set_attr(direction_entity, "DirectionRatios", mat3_mul_vec3(mat3_inverse(placement), mirrored_direction));
         }
     } else {
-        throw std::invalid_argument(result ? result->declaration().name() + " is not supported for mirror() method." : "null is not supported for mirror() method.");
+        throw std::invalid_argument(result ? result.declaration().name() + " is not supported for mirror() method." : "null is not supported for mirror() method.");
     }
     return result;
 }
 
 template <typename Fn>
-IfcUtil::IfcBaseClass* wrap_shape_builder_errors(const char* name, Fn&& fn) {
+express::Base wrap_shape_builder_errors(const char* name, Fn&& fn) {
     try {
         return fn();
     } catch (const std::exception& ex) {
@@ -1275,12 +1202,12 @@ IfcUtil::IfcBaseClass* wrap_shape_builder_errors(const char* name, Fn&& fn) {
 namespace ifcapi {
 namespace bindings {
 
-IfcUtil::IfcBaseClass* shape_builder_mesh(
-    IfcParse::IfcFile* file,
+express::Base shape_builder_mesh(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& points,
     const std::vector<std::vector<int>>& faces)
 {
-    return wrap_shape_builder_errors("shape_builder_mesh", [&]() -> IfcUtil::IfcBaseClass* {
+    return wrap_shape_builder_errors("shape_builder_mesh", [&]() -> express::Base {
         if (file && file->schema()->name() == "IFC2X3") {
             return faceted_brep_impl(file, points, faces);
         }
@@ -1293,8 +1220,8 @@ IfcUtil::IfcBaseClass* shape_builder_mesh(
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_faceted_brep(
-    IfcParse::IfcFile* file,
+express::Base shape_builder_faceted_brep(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& points,
     const std::vector<std::vector<int>>& faces)
 {
@@ -1303,8 +1230,8 @@ IfcUtil::IfcBaseClass* shape_builder_faceted_brep(
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_triangulated_face_set(
-    IfcParse::IfcFile* file,
+express::Base shape_builder_triangulated_face_set(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& points,
     const std::vector<std::vector<int>>& faces)
 {
@@ -1313,8 +1240,8 @@ IfcUtil::IfcBaseClass* shape_builder_triangulated_face_set(
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_polygonal_face_set(
-    IfcParse::IfcFile* file,
+express::Base shape_builder_polygonal_face_set(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& points,
     const std::vector<std::vector<std::vector<int>>>& faces)
 {
@@ -1323,35 +1250,35 @@ IfcUtil::IfcBaseClass* shape_builder_polygonal_face_set(
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_vertex(IfcParse::IfcFile* file, const std::vector<double>& position)
+express::Base shape_builder_vertex(ifcopenshell::file* file, const std::vector<double>& position)
 {
     return wrap_shape_builder_errors("shape_builder_vertex", [&]() {
         return vertex_point(file, position);
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_edge(
-    IfcParse::IfcFile* file,
+express::Base shape_builder_edge(
+    ifcopenshell::file* file,
     const std::vector<double>& start,
     const std::vector<double>& end)
 {
     return wrap_shape_builder_errors("shape_builder_edge", [&]() {
-        auto* edge = create_entity(file, "IfcEdge");
+        auto edge = create_entity(file, "IfcEdge");
         set_ref(edge, "EdgeStart", vertex_point(file, start));
         set_ref(edge, "EdgeEnd", vertex_point(file, end));
         return edge;
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_face(IfcParse::IfcFile* file, const std::vector<std::vector<double>>& points)
+express::Base shape_builder_face(ifcopenshell::file* file, const std::vector<std::vector<double>>& points)
 {
     return wrap_shape_builder_errors("shape_builder_face", [&]() {
         return face_impl(file, points);
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_polyline(
-    IfcParse::IfcFile* file,
+express::Base shape_builder_polyline(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& points,
     bool closed,
     const std::vector<double>& position_offset,
@@ -1363,8 +1290,8 @@ IfcUtil::IfcBaseClass* shape_builder_polyline(
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_axis2_placement_3d(
-    IfcParse::IfcFile* file,
+express::Base shape_builder_axis2_placement_3d(
+    ifcopenshell::file* file,
     const std::vector<double>& position,
     const std::vector<double>& z_axis,
     const std::vector<double>& x_axis)
@@ -1374,8 +1301,8 @@ IfcUtil::IfcBaseClass* shape_builder_axis2_placement_3d(
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_axis2_placement_2d(
-    IfcParse::IfcFile* file,
+express::Base shape_builder_axis2_placement_2d(
+    ifcopenshell::file* file,
     const std::vector<double>& position,
     const std::vector<double>& x_direction,
     bool has_x_direction)
@@ -1385,21 +1312,21 @@ IfcUtil::IfcBaseClass* shape_builder_axis2_placement_2d(
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_circle(
-    IfcParse::IfcFile* file,
+express::Base shape_builder_circle(
+    ifcopenshell::file* file,
     const std::vector<double>& center,
     double radius)
 {
     return wrap_shape_builder_errors("shape_builder_circle", [&]() {
-        auto* result = create_entity(file, "IfcCircle");
+        auto result = create_entity(file, "IfcCircle");
         set_ref(result, "Position", axis2_placement_2d(file, center, {}, false));
         set_attr(result, "Radius", radius);
         return result;
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_plane(
-    IfcParse::IfcFile* file,
+express::Base shape_builder_plane(
+    ifcopenshell::file* file,
     const std::vector<double>& location,
     const std::vector<double>& normal)
 {
@@ -1410,52 +1337,52 @@ IfcUtil::IfcBaseClass* shape_builder_plane(
             std::fabs(std::round(normal[2] * 100.0) / 100.0 - 1.0) == 0.0) {
             arbitrary = {0.0, 1.0, 0.0};
         }
-        auto* result = create_entity(file, "IfcPlane");
+        auto result = create_entity(file, "IfcPlane");
         set_ref(result, "Position", axis2_placement_3d(file, location, normal, normalized(cross3(normal, arbitrary))));
         return result;
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_profile(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* outer_curve,
+express::Base shape_builder_profile(
+    ifcopenshell::file* file,
+    express::Base* outer_curve,
     const char* name,
-    const std::vector<const IfcUtil::IfcBaseClass*>& inner_curves,
+    const std::vector<express::Base>& inner_curves,
     const char* profile_type)
 {
     return wrap_shape_builder_errors("shape_builder_profile", [&]() {
-        auto* result = create_entity(file, inner_curves.empty() ? "IfcArbitraryClosedProfileDef" : "IfcArbitraryProfileDefWithVoids");
+        auto result = create_entity(file, inner_curves.empty() ? "IfcArbitraryClosedProfileDef" : "IfcArbitraryProfileDefWithVoids");
         set_attr(result, "ProfileType", std::string(profile_type && *profile_type ? profile_type : "AREA"));
         if (name && *name) {
             set_attr(result, "ProfileName", std::string(name));
         }
-        set_ref(result, "OuterCurve", outer_curve);
+        set_ref(result, "OuterCurve", ifcapi::detail::deref_or_empty(outer_curve));
         if (!inner_curves.empty()) {
-            set_refs(result, "InnerCurves", mutable_refs(inner_curves));
+            set_refs(result, "InnerCurves", inner_curves);
         }
         return result;
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_sphere(IfcParse::IfcFile* file, double radius, const std::vector<double>& center)
+express::Base shape_builder_sphere(ifcopenshell::file* file, double radius, const std::vector<double>& center)
 {
     return wrap_shape_builder_errors("shape_builder_sphere", [&]() {
-        auto* result = create_entity(file, "IfcSphere");
+        auto result = create_entity(file, "IfcSphere");
         set_ref(result, "Position", axis2_placement_3d(file, center, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}));
         set_attr(result, "Radius", radius);
         return result;
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_block(
-    IfcParse::IfcFile* file,
+express::Base shape_builder_block(
+    ifcopenshell::file* file,
     const std::vector<double>& position,
     double x_length,
     double y_length,
     double z_length)
 {
     return wrap_shape_builder_errors("shape_builder_block", [&]() {
-        auto* result = create_entity(file, "IfcBlock");
+        auto result = create_entity(file, "IfcBlock");
         set_ref(result, "Position", axis2_placement_3d(file, position, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}));
         set_attr(result, "XLength", x_length);
         set_attr(result, "YLength", y_length);
@@ -1464,22 +1391,22 @@ IfcUtil::IfcBaseClass* shape_builder_block(
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_half_space_solid(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* plane,
+express::Base shape_builder_half_space_solid(
+    ifcopenshell::file* file,
+    express::Base* plane,
     bool agreement_flag)
 {
     return wrap_shape_builder_errors("shape_builder_half_space_solid", [&]() {
-        auto* result = create_entity(file, "IfcHalfSpaceSolid");
-        set_ref(result, "BaseSurface", plane);
+        auto result = create_entity(file, "IfcHalfSpaceSolid");
+        set_ref(result, "BaseSurface", ifcapi::detail::deref_or_empty(plane));
         set_attr(result, "AgreementFlag", agreement_flag);
         return result;
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_extrude(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* profile_or_curve,
+express::Base shape_builder_extrude(
+    ifcopenshell::file* file,
+    express::Base* profile_or_curve,
     double magnitude,
     const std::vector<double>& position,
     const std::vector<double>& extrusion_vector,
@@ -1495,12 +1422,12 @@ IfcUtil::IfcBaseClass* shape_builder_extrude(
                 "Ref: https://ifc43-docs.standards.buildingsmart.org/IFC/RELEASE/IFC4x3/HTML/lexical/IfcPositiveLengthMeasure.htm#8.11.2.71.3-Formal-representation"
             );
         }
-        IfcUtil::IfcBaseClass* profile = profile_or_curve;
-        if (!is_a(profile_or_curve, "IfcProfileDef")) {
-            profile = shape_builder_profile(file, profile_or_curve, nullptr, {}, "AREA");
+        express::Base profile = ifcapi::detail::deref_or_empty(profile_or_curve);
+        if (!is_a(profile, "IfcProfileDef")) {
+            profile = shape_builder_profile(file, &profile, nullptr, {}, "AREA");
         }
         std::vector<double> z_axis = has_position_y_axis ? cross3(position_x_axis, position_y_axis) : position_z_axis;
-        auto* result = create_entity(file, "IfcExtrudedAreaSolid");
+        auto result = create_entity(file, "IfcExtrudedAreaSolid");
         set_ref(result, "SweptArea", profile);
         set_ref(result, "Position", axis2_placement_3d(file, position, z_axis, position_x_axis));
         set_ref(result, "ExtrudedDirection", direction(file, extrusion_vector));
@@ -1509,40 +1436,40 @@ IfcUtil::IfcBaseClass* shape_builder_extrude(
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_swept_disk_solid(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* path_curve,
+express::Base shape_builder_swept_disk_solid(
+    ifcopenshell::file* file,
+    express::Base* path_curve,
     double radius)
 {
     return wrap_shape_builder_errors("shape_builder_swept_disk_solid", [&]() {
-        auto* result = create_entity(file, "IfcSweptDiskSolid");
-        set_ref(result, "Directrix", path_curve);
+        auto result = create_entity(file, "IfcSweptDiskSolid");
+        set_ref(result, "Directrix", ifcapi::detail::deref_or_empty(path_curve));
         set_attr(result, "Radius", radius);
         return result;
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_representation(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* context,
-    const std::vector<const IfcUtil::IfcBaseClass*>& items,
+express::Base shape_builder_representation(
+    ifcopenshell::file* file,
+    express::Base* context,
+    const std::vector<express::Base>& items,
     const char* representation_type)
 {
     return wrap_shape_builder_errors("shape_builder_representation", [&]() {
-        return representation_impl(file, context, items, representation_type ? representation_type : "");
+        return representation_impl(file, ifcapi::detail::deref_or_empty(context), items, representation_type ? representation_type : "");
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_deep_copy(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* element)
+express::Base shape_builder_deep_copy(ifcopenshell::file* file, express::Base* element)
 {
     return wrap_shape_builder_errors("shape_builder_deep_copy", [&]() {
-        std::unordered_map<unsigned, IfcUtil::IfcBaseClass*> memo;
-        return deep_copy_entity(file, element, memo);
+        std::unordered_map<unsigned, express::Base> memo;
+        return deep_copy_entity(file, ifcapi::detail::deref_or_empty(element), memo);
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_curve_between_two_points(
-    IfcParse::IfcFile* file,
+express::Base shape_builder_curve_between_two_points(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& points)
 {
     return wrap_shape_builder_errors("shape_builder_curve_between_two_points", [&]() {
@@ -1557,8 +1484,8 @@ IfcUtil::IfcBaseClass* shape_builder_curve_between_two_points(
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_ellipse_curve(
-    IfcParse::IfcFile* file,
+express::Base shape_builder_ellipse_curve(
+    ifcopenshell::file* file,
     double x_axis_radius,
     double y_axis_radius,
     const std::vector<double>& position,
@@ -1567,7 +1494,7 @@ IfcUtil::IfcBaseClass* shape_builder_ellipse_curve(
     const std::vector<int>& trim_points_mask)
 {
     return wrap_shape_builder_errors("shape_builder_ellipse_curve", [&]() {
-        auto* ellipse = create_entity(file, "IfcEllipse");
+        auto ellipse = create_entity(file, "IfcEllipse");
         set_ref(ellipse, "Position", axis2_placement_2d(file, position, ref_x_direction, true));
         set_attr(ellipse, "SemiAxis1", x_axis_radius);
         set_attr(ellipse, "SemiAxis2", y_axis_radius);
@@ -1592,7 +1519,7 @@ IfcUtil::IfcBaseClass* shape_builder_ellipse_curve(
         if (trims.size() < 2) {
             throw std::invalid_argument("ellipse trimming requires two trim points");
         }
-        auto* result = create_entity(file, "IfcTrimmedCurve");
+        auto result = create_entity(file, "IfcTrimmedCurve");
         set_ref(result, "BasisCurve", ellipse);
         set_refs(result, "Trim1", {cartesian_point(file, trims[0])});
         set_refs(result, "Trim2", {cartesian_point(file, trims[1])});
@@ -1602,8 +1529,8 @@ IfcUtil::IfcBaseClass* shape_builder_ellipse_curve(
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_indexed_polycurve_2d(
-    IfcParse::IfcFile* file,
+express::Base shape_builder_indexed_polycurve_2d(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& points,
     const std::vector<std::vector<int>>& segments)
 {
@@ -1612,55 +1539,56 @@ IfcUtil::IfcBaseClass* shape_builder_indexed_polycurve_2d(
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_translate(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* item,
+express::Base shape_builder_translate(
+    ifcopenshell::file* file,
+    express::Base* item,
     const std::vector<double>& translation,
     bool create_copy)
 {
     return wrap_shape_builder_errors("shape_builder_translate", [&]() {
-        return translate_impl(file, item, translation, create_copy);
+        return translate_impl(file, ifcapi::detail::deref_or_empty(item), translation, create_copy);
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_rotate(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* item,
+express::Base shape_builder_rotate(
+    ifcopenshell::file* file,
+    express::Base* item,
     double angle,
     const std::vector<double>& pivot_point,
     bool counter_clockwise,
     bool create_copy)
 {
     return wrap_shape_builder_errors("shape_builder_rotate", [&]() {
-        return rotate_impl(file, item, angle, pivot_point, counter_clockwise, create_copy);
+        return rotate_impl(file, ifcapi::detail::deref_or_empty(item), angle, pivot_point, counter_clockwise, create_copy);
     });
 }
 
-IfcUtil::IfcBaseClass* shape_builder_mirror(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* item,
+express::Base shape_builder_mirror(
+    ifcopenshell::file* file,
+    express::Base* item,
     const std::vector<double>& mirror_axes,
     const std::vector<double>& mirror_point,
     bool create_copy,
     const std::vector<double>& placement_matrix)
 {
     return wrap_shape_builder_errors("shape_builder_mirror", [&]() {
-        return mirror_impl(file, item, mirror_axes, mirror_point, create_copy, placement_matrix);
+        return mirror_impl(file, ifcapi::detail::deref_or_empty(item), mirror_axes, mirror_point, create_copy, placement_matrix);
     });
 }
 
-std::vector<std::vector<double>> shape_builder_get_polyline_coords(IfcUtil::IfcBaseClass* polyline)
+std::vector<std::vector<double>> shape_builder_get_polyline_coords(express::Base* polyline)
 {
-    return polyline_coords(polyline);
+    return polyline_coords(ifcapi::detail::deref_or_empty(polyline));
 }
 
-IfcUtil::IfcBaseClass* shape_builder_set_polyline_coords(
-    IfcParse::IfcFile*,
-    IfcUtil::IfcBaseClass* polyline,
+express::Base shape_builder_set_polyline_coords(
+    ifcopenshell::file*,
+    express::Base* polyline,
     const std::vector<std::vector<double>>& coords)
 {
-    set_polyline_coords_impl(polyline, coords);
-    return polyline;
+    auto polyline_value = ifcapi::detail::deref_or_empty(polyline);
+    set_polyline_coords_impl(polyline_value, coords);
+    return polyline_value;
 }
 
 double shape_builder_mep_transition_calculate(
@@ -1689,9 +1617,9 @@ double shape_builder_mep_transition_length(
 }
 
 ShapeBuilderMepTransitionShapeResult shape_builder_mep_transition_shape(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* start_segment,
-    IfcUtil::IfcBaseClass* end_segment,
+    ifcopenshell::file* file,
+    express::Base* start_segment,
+    express::Base* end_segment,
     double start_length,
     double end_length,
     double angle,
@@ -1702,15 +1630,15 @@ ShapeBuilderMepTransitionShapeResult shape_builder_mep_transition_shape(
     result.end_length = end_length;
     result.angle = angle;
     result.profile_offset = profile_offset;
-    auto* start_profile = mep_profile(start_segment);
-    auto* end_profile = mep_profile(end_segment);
+    auto start_profile = mep_profile(ifcapi::detail::deref_or_empty(start_segment));
+    auto end_profile = mep_profile(ifcapi::detail::deref_or_empty(end_segment));
     if (!start_profile || !end_profile) return result;
     auto start_half_dim = mep_dim(start_profile, start_length);
     auto end_half_dim = mep_dim(end_profile, end_length);
     if (start_half_dim.empty() || end_half_dim.empty()) return result;
     double transition_length = mep_transition_length_impl(start_half_dim, end_half_dim, angle, profile_offset);
     if (!has_mep_result(transition_length)) return result;
-    std::vector<IfcUtil::IfcBaseClass*> items;
+    std::vector<express::Base> items;
     std::vector<double> start_offset = {0.0, 0.0, start_length};
     std::vector<double> end_offset = start_offset;
     end_offset[2] += transition_length;
@@ -1760,8 +1688,8 @@ ShapeBuilderMepTransitionShapeResult shape_builder_mep_transition_shape(
             end_offset[2] += transition_length;
         }
         const bool starting_with_circle = is_a(start_profile, "IfcCircleProfileDef");
-        auto* circle_profile = starting_with_circle ? start_profile : end_profile;
-        auto* rect_profile = starting_with_circle ? end_profile : start_profile;
+        auto circle_profile = starting_with_circle ? start_profile : end_profile;
+        auto rect_profile = starting_with_circle ? end_profile : start_profile;
         auto circle = circle_points(read_double(circle_profile, "Radius"));
         auto rect = rectangle_points(read_double(rect_profile, "XDim"), read_double(rect_profile, "YDim"));
         items.push_back(extrude_face_set_impl(file, starting_with_circle ? circle : rect, start_length, {}, true, false));
@@ -1787,7 +1715,7 @@ ShapeBuilderMepTransitionShapeResult shape_builder_mep_transition_shape(
         for (auto& face : transition_faces) faces.push_back({face});
     }
     items.push_back(polygonal_face_set_impl(file, points, faces));
-    auto* body = ifcapi::bindings::representation_get_context(file, "Model", "Body", "MODEL_VIEW");
+    auto body = ifcapi::bindings::representation_get_context(file, "Model", "Body", "MODEL_VIEW");
     result.representation = representation_impl(file, body, items, "Tesselation");
     result.has_result = true;
     result.transition_length = transition_length;
@@ -1796,8 +1724,8 @@ ShapeBuilderMepTransitionShapeResult shape_builder_mep_transition_shape(
 }
 
 ShapeBuilderMepBendShapeResult shape_builder_mep_bend_shape(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* segment,
+    ifcopenshell::file* file,
+    express::Base* segment,
     double start_length,
     double end_length,
     double angle,
@@ -1811,7 +1739,7 @@ ShapeBuilderMepBendShapeResult shape_builder_mep_bend_shape(
     result.radius = radius;
     result.angle = angle * 180.0 / 3.14159265358979323846;
     result.z_axis_sign = flip_z_axis ? -1 : 1;
-    auto* profile = mep_profile(segment);
+    auto profile = mep_profile(ifcapi::detail::deref_or_empty(segment));
     if (!profile) {
         throw std::invalid_argument("segment must have a single material profile");
     }
@@ -1838,17 +1766,17 @@ ShapeBuilderMepBendShapeResult shape_builder_mep_bend_shape(
     result.lateral_axis = lateral_axis;
     result.lateral_sign = lateral_sign;
     result.main_profile_dimension = profile_dim[static_cast<size_t>(lateral_axis)];
-    std::vector<IfcUtil::IfcBaseClass*> items;
+    std::vector<express::Base> items;
     std::vector<double> center = {0.0, 0.0, 0.0};
     center[static_cast<size_t>(lateral_axis)] = (radius + profile_dim[static_cast<size_t>(lateral_axis)]) * lateral_sign;
     const std::vector<double> theta_segments = {0.0, angle / 2.0, angle};
-    IfcUtil::IfcBaseClass* bend = nullptr;
+    express::Base bend = {};
     if (is_circular_profile) {
         auto points = bend_circle_points(theta_segments, radius + profile_dim[static_cast<size_t>(lateral_axis)], lateral_axis, lateral_sign, z_sign);
         points = add_offset(points, center);
         std::vector<double> offset = {0.0, 0.0, z_sign * start_length};
-        auto* bend_path = polyline_impl(file, points, false, offset, true, {1});
-        bend = shape_builder_swept_disk_solid(file, bend_path, profile_dim[static_cast<size_t>(lateral_axis)]);
+        auto bend_path = polyline_impl(file, points, false, offset, true, {1});
+        bend = shape_builder_swept_disk_solid(file, &bend_path, profile_dim[static_cast<size_t>(lateral_axis)]);
     } else {
         std::vector<std::vector<double>> points;
         std::vector<int> arc_points;
@@ -1867,17 +1795,17 @@ ShapeBuilderMepBendShapeResult shape_builder_mep_bend_shape(
         points = add_offset(points, center);
         auto offset = std::vector<double>{0.0, 0.0, z_sign * start_length};
         offset[static_cast<size_t>(non_lateral_axis)] = -profile_dim[static_cast<size_t>(non_lateral_axis)];
-        auto* profile_curve = polyline_impl(file, select_axes(points, lateral_axis, 2), true, {}, false, arc_points);
-        auto* bend_profile = shape_builder_profile(file, profile_curve, nullptr, {}, "AREA");
+        auto profile_curve = polyline_impl(file, select_axes(points, lateral_axis, 2), true, {}, false, arc_points);
+        auto bend_profile = shape_builder_profile(file, &profile_curve, nullptr, {}, "AREA");
         std::vector<double> z_axis = non_lateral_axis == 0 ? std::vector<double>{1.0, 0.0, 0.0} : std::vector<double>{0.0, 1.0, 0.0};
         std::vector<double> x_axis = non_lateral_axis == 0 ? std::vector<double>{0.0, 1.0, 0.0} : std::vector<double>{1.0, 0.0, 0.0};
         bend = shape_builder_extrude(
-            file, bend_profile, profile_dim[static_cast<size_t>(non_lateral_axis)] * 2.0, offset,
+            file, &bend_profile, profile_dim[static_cast<size_t>(non_lateral_axis)] * 2.0, offset,
             {0.0, 0.0, 1.0}, z_axis, x_axis, {}, false);
     }
     if (bend) items.push_back(bend);
     if (start_length != 0.0) {
-        items.push_back(shape_builder_extrude(file, profile, start_length, {}, {0.0, 0.0, z_sign}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {}, false));
+        items.push_back(shape_builder_extrude(file, &profile, start_length, {}, {0.0, 0.0, z_sign}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {}, false));
     }
     if (end_length != 0.0) {
         auto endpoint = bend_circle_points({angle}, radius + profile_dim[static_cast<size_t>(lateral_axis)], lateral_axis, lateral_sign, z_sign)[0];
@@ -1885,9 +1813,9 @@ ShapeBuilderMepBendShapeResult shape_builder_mep_bend_shape(
         endpoint[2] += start_length * z_sign;
         auto z_axis = bend_circle_tangent(angle, lateral_axis, lateral_sign, z_sign);
         std::vector<double> x_axis = lateral_axis == 0 ? cross3(z_axis, {0.0, 1.0, 0.0}) : std::vector<double>{1.0, 0.0, 0.0};
-        items.push_back(shape_builder_extrude(file, profile, end_length, endpoint, {0.0, 0.0, 1.0}, z_axis, x_axis, {}, false));
+        items.push_back(shape_builder_extrude(file, &profile, end_length, endpoint, {0.0, 0.0, 1.0}, z_axis, x_axis, {}, false));
     }
-    auto* body = ifcapi::bindings::representation_get_context(file, "Model", "Body", "MODEL_VIEW");
+    auto body = ifcapi::bindings::representation_get_context(file, "Model", "Body", "MODEL_VIEW");
     result.representation = representation_impl(file, body, items, "");
     return result;
 }

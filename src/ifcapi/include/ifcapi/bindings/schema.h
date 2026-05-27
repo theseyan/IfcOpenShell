@@ -5,15 +5,10 @@
 
 #include "ifcapi/bindings/contract.h"
 
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
+
 #include <string>
-
-namespace IfcParse {
-class IfcFile;
-}
-
-namespace IfcUtil {
-class IfcBaseClass;
-}
 
 namespace ifcapi {
 namespace bindings {

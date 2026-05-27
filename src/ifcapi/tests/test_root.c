@@ -137,12 +137,10 @@ static void test_file_ops(void) {
     ifcopenshell_ifcparse_attribute_value_destroy(name_value);
 
     /* by_type */
-    ifcopenshell_ifcparse_instance_list_t* walls = NULL;
+    ifcopenshell_ifc_instance_list_t walls = {0};
     ASSERT(ifcopenshell_ifc_file_by_type(f, "IfcWall", &walls), "by_type succeeds");
-    size_t count = 0;
-    ASSERT(ifcopenshell_ifcparse_instance_list_size(walls, &count), "by_type size succeeds");
-    ASSERT(count == 1, "by_type count is 1");
-    ifcopenshell_ifcparse_instance_list_destroy(walls);
+    ASSERT(walls.size == 1, "by_type count is 1");
+    ifcopenshell_ifc_instance_list_destroy(&walls);
 
     ifcopenshell_ifc_instance_destroy(wall);
     ifcopenshell_ifc_file_destroy(f);

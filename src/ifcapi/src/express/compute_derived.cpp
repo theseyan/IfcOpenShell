@@ -32,8 +32,8 @@ ifcopenshell_value_t* convert(const Value& v) {
         case Value::Tag::Str:
             return make_string(abi_value.as_string());
         case Value::Tag::Entity: {
-            auto* e = static_cast<IfcUtil::IfcBaseClass*>(abi_value.as_entity().ptr);
-            return e ? make_instance(e) : make_none();
+            auto* e = static_cast<::express::Base*>(abi_value.as_entity().ptr);
+            return e && *e ? make_instance(*e) : make_none();
         }
         case Value::Tag::List: {
             auto* out = make_list();
@@ -63,19 +63,17 @@ ifcopenshell_value_t* convert(const Value& v) {
 namespace ifcapi {
 namespace bindings {
 
-ifcopenshell_value_t* compute_derived(IfcUtil::IfcBaseClass* instance, const std::string& attr_name) {
-    if (!instance) return nullptr;
-    auto* e = instance;
-    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(e);
-    if (!be) return nullptr;
-    const auto* decl = be->declaration().as_entity();
+ifcopenshell_value_t* compute_derived(::express::Base* instance, const std::string& attr_name) {
+    if (!instance || !*instance) return nullptr;
+    auto& e = *instance;
+    const auto* decl = e.declaration().as_entity();
     if (!decl) return nullptr;
 
     auto fn = ifcapi::express::lookup_derived(decl, attr_name.c_str());
     if (!fn) return nullptr;
 
     ifcapi::express::EntityRef self_ref;
-    self_ref.ptr = static_cast<void*>(e);
+    self_ref.ptr = static_cast<void*>(instance);
 
     Value result;
     try {

@@ -6,14 +6,12 @@
 #include "ifcapi/bindings/contract.h"
 
 #include "ifcparse/express.h"
+#include "ifcparse/file.h"
 
 #include <string>
 #include <vector>
 
 struct ifcopenshell_pset_template_t;
-namespace IfcParse {
-class IfcFile;
-}
 
 namespace ifcapi {
 namespace bindings {

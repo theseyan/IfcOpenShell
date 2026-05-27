@@ -18,13 +18,13 @@
 
 namespace {
 
-std::vector<IfcUtil::IfcBaseClass*> get_inverse(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* entity) {
-    std::vector<IfcUtil::IfcBaseClass*> result;
-    if (!file || !entity || entity->id() == 0) {
+std::vector<express::Base> get_inverse(ifcopenshell::file* file, express::Base entity) {
+    std::vector<express::Base> result;
+    if (!file || !entity || entity.id() == 0) {
         return result;
     }
-    auto inverses = file->getInverse(entity->id(), nullptr, -1);
-    for (auto* inverse : *inverses) {
+    auto inverses = file->instances_by_reference(static_cast<int>(entity.id()));
+    for (auto inverse : inverses) {
         if (inverse) {
             result.push_back(inverse);
         }
@@ -32,18 +32,18 @@ std::vector<IfcUtil::IfcBaseClass*> get_inverse(IfcParse::IfcFile* file, IfcUtil
     return result;
 }
 
-IfcUtil::IfcBaseClass* get_resource(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* resource_time) {
-    for (auto* inverse : get_inverse(file, resource_time)) {
-        if (inverse->declaration().is("IfcResource")) {
+express::Base get_resource(ifcopenshell::file* file, express::Base resource_time) {
+    for (auto inverse : get_inverse(file, resource_time)) {
+        if (inverse.declaration().is("IfcResource")) {
             return inverse;
         }
     }
     throw std::runtime_error("IfcResourceTime is not assigned to a resource");
 }
 
-std::string metric_reference(IfcUtil::IfcBaseClass* metric, bool deep) {
+std::string metric_reference(express::Base metric, bool deep) {
     std::string path;
-    auto* ref = ifcapi::detail::read_ref_attr(metric, "ReferencePath");
+    auto ref = ifcapi::detail::read_ref_attr(metric, "ReferencePath");
     while (ref) {
         auto part = ifcapi::detail::read_string_attr(ref, "AttributeIdentifier");
         if (!deep) {
@@ -59,14 +59,14 @@ std::string metric_reference(IfcUtil::IfcBaseClass* metric, bool deep) {
     return path;
 }
 
-std::vector<IfcUtil::IfcBaseClass*> get_metric_constraints(IfcUtil::IfcBaseClass* resource, const std::string& attribute) {
-    std::vector<IfcUtil::IfcBaseClass*> metrics;
-    for (auto* rel : ifcapi::detail::read_ref_aggregate(resource, "HasAssociations")) {
-        if (!rel || !rel->declaration().is("IfcRelAssociatesConstraint")) {
+std::vector<express::Base> get_metric_constraints(express::Base resource, const std::string& attribute) {
+    std::vector<express::Base> metrics;
+    for (auto rel : ifcapi::detail::read_ref_aggregate(resource, "HasAssociations")) {
+        if (!rel || !rel.declaration().is("IfcRelAssociatesConstraint")) {
             continue;
         }
-        auto* constraint = ifcapi::detail::read_ref_attr(rel, "RelatingConstraint");
-        for (auto* metric : ifcapi::detail::read_ref_aggregate(constraint, "BenchmarkValues")) {
+        auto constraint = ifcapi::detail::read_ref_attr(rel, "RelatingConstraint");
+        for (auto metric : ifcapi::detail::read_ref_aggregate(constraint, "BenchmarkValues")) {
             if (metric_reference(metric, false) == attribute || metric_reference(metric, true) == attribute) {
                 metrics.push_back(metric);
             }
@@ -75,18 +75,18 @@ std::vector<IfcUtil::IfcBaseClass*> get_metric_constraints(IfcUtil::IfcBaseClass
     return metrics;
 }
 
-bool is_hard_constraint(IfcUtil::IfcBaseClass* metric) {
+bool is_hard_constraint(express::Base metric) {
     return metric && ifcapi::detail::read_string_attr(metric, "ConstraintGrade") == "HARD" &&
         ifcapi::detail::read_string_attr(metric, "Benchmark") == "EQUALTO";
 }
 
-IfcUtil::IfcBaseClass* get_task_assignment(IfcUtil::IfcBaseClass* resource) {
-    for (auto* rel : ifcapi::detail::read_ref_aggregate(resource, "HasAssignments")) {
-        if (rel && rel->declaration().is("IfcRelAssignsToProcess")) {
+express::Base get_task_assignment(express::Base resource) {
+    for (auto rel : ifcapi::detail::read_ref_aggregate(resource, "HasAssignments")) {
+        if (rel && rel.declaration().is("IfcRelAssignsToProcess")) {
             return ifcapi::detail::read_ref_attr(rel, "RelatingProcess");
         }
     }
-    return nullptr;
+    return {};
 }
 
 std::string format_fractional_seconds(int seconds, int microseconds, bool pad_seconds) {
@@ -139,7 +139,7 @@ std::string format_duration_value(const ifcapi_pset::Entry& entry) {
     return value;
 }
 
-void apply_resource_time_attr(IfcUtil::IfcBaseClass* resource_time, const ifcapi_pset::Entry& entry) {
+void apply_resource_time_attr(express::Base resource_time, const ifcapi_pset::Entry& entry) {
     if (entry.kind == ifcapi_pset::Kind::DATE || entry.kind == ifcapi_pset::Kind::DATETIME) {
         ifcapi::detail::write_string_attr(resource_time, entry.key.c_str(), format_date_time_value(entry));
     } else if (entry.kind == ifcapi_pset::Kind::DURATION) {
@@ -154,13 +154,14 @@ void apply_resource_time_attr(IfcUtil::IfcBaseClass* resource_time, const ifcapi
 namespace ifcapi {
 namespace bindings {
 
-void resource_edit_resource_time(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* resource_time, ifcopenshell_pset_props_t* attributes) {
+void resource_edit_resource_time(ifcopenshell::file* file, express::Base* resource_time_ptr, ifcopenshell_pset_props_t* attributes) {
     ifcopenshell_clear_error();
     try {
+        auto resource_time = ifcapi::detail::deref_or_empty(resource_time_ptr);
         if (!file || !resource_time) {
             throw std::runtime_error("resource_edit_resource_time requires a file and resource time");
         }
-        auto* resource = get_resource(file, resource_time);
+        auto resource = get_resource(file, resource_time);
         if (!attributes) {
             return;
         }
@@ -171,8 +172,8 @@ void resource_edit_resource_time(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass*
             }
             apply_resource_time_attr(resource_time, entry);
             if (entry.key == "ScheduleUsage" && !get_metric_constraints(resource, "Usage.ScheduleWork").empty()) {
-                if (auto* task = get_task_assignment(resource)) {
-                    sequence_calculate_task_duration(file, task);
+                if (auto task = get_task_assignment(resource)) {
+                    sequence_calculate_task_duration(file, &task);
                 }
             }
         }

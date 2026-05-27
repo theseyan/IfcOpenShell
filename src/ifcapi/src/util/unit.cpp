@@ -2,6 +2,7 @@
 
 #include "ifcapi/ifcapi.h"
 #include "ifcapi/bindings/unit.h"
+#include "ifcapi/detail/attribute.h"
 #include "entity_introspection.hpp"
 #include "ifcopenshell_api_internal.hpp"
 
@@ -257,14 +258,14 @@ char* dup_cstr(const std::string& s) {
 }
 
 // IfcConversionBasedUnit chain: keep unwrapping.
-double convert_value_for_unit(double value, IfcUtil::IfcBaseClass* unit, bool to_si) {
+double convert_value_for_unit(double value, express::Base unit, bool to_si) {
     if (!unit) return value;
-    while (unit && unit->declaration().is("IfcConversionBasedUnit")) {
-        auto* cf = ifcapi::get_entity_ref(unit, "ConversionFactor");
+    while (unit && unit.declaration().is("IfcConversionBasedUnit")) {
+        auto cf = ifcapi::detail::read_ref_attr(unit, "ConversionFactor");
         if (!cf) break;
-        if (auto* vc = ifcapi::get_entity_ref(cf, "ValueComponent")) {
+        if (auto vc = ifcapi::detail::read_ref_attr(cf, "ValueComponent")) {
             try {
-                auto v = vc->get_attribute_value(0);
+                auto v = vc.get_attribute_value(0);
                 if (!v.isNull()) {
                     double f = (double)v;
                     if (to_si) value *= f;
@@ -272,10 +273,10 @@ double convert_value_for_unit(double value, IfcUtil::IfcBaseClass* unit, bool to
                 }
             } catch (...) {}
         }
-        unit = ifcapi::get_entity_ref(cf, "UnitComponent");
+        unit = ifcapi::detail::read_ref_attr(cf, "UnitComponent");
     }
-    if (unit && unit->declaration().is("IfcSIUnit")) {
-        std::string prefix = ifcapi::get_string_attr(unit, "Prefix");
+    if (unit && unit.declaration().is("IfcSIUnit")) {
+        std::string prefix = ifcapi::detail::read_string_attr(unit, "Prefix");
         if (!prefix.empty()) {
             double m = prefix_multiplier(prefix);
             if (to_si) value *= m;
@@ -286,21 +287,20 @@ double convert_value_for_unit(double value, IfcUtil::IfcBaseClass* unit, bool to
 }
 
 // Resolve a measure class name from a wrapped value entity (e.g. IfcLengthMeasure).
-std::string entity_type_name(IfcUtil::IfcBaseClass* e) {
+std::string entity_type_name(express::Base e) {
     if (!e) return {};
-    return e->declaration().name();
+    return e.declaration().name();
 }
 
 // For IfcPhysicalSimpleQuantity, attribute index 3 holds the typed value (e.g. LengthValue).
 // Resolve its declared type's name (e.g. "IfcLengthMeasure").
-std::string simple_quantity_measure_class(IfcUtil::IfcBaseClass* e) {
-    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(e);
-    if (!be) return {};
-    auto* decl = be->declaration().as_entity();
+std::string simple_quantity_measure_class(express::Base e) {
+    if (!e) return {};
+    auto* decl = e.declaration().as_entity();
     if (!decl) return {};
     auto attrs = decl->all_attributes();
     if (attrs.size() <= 3) return {};
-    const IfcParse::parameter_type* pt = attrs[3]->type_of_attribute();
+    const ifcopenshell::parameter_type* pt = attrs[3]->type_of_attribute();
     while (pt) {
         auto* nt = pt->as_named_type();
         if (!nt) break;
@@ -326,25 +326,25 @@ std::string measure_to_unit_type(const std::string& measure_class) {
     return upper_str(s) + "UNIT";
 }
 
-IfcUtil::IfcBaseClass* unit_assignment_for(IfcParse::IfcFile* file) {
-    if (!file) return nullptr;
+express::Base unit_assignment_for(ifcopenshell::file* file) {
+    if (!file) return {};
     try {
         const auto* proj_decl = file->schema()->declaration_by_name("IfcProject");
         auto projects = file->instances_by_type(proj_decl);
-        if (!projects || projects->size() == 0) return nullptr;
-        return ifcapi::get_entity_ref((*projects)[0], "UnitsInContext");
+        if (projects.empty()) return {};
+        return ifcapi::detail::read_ref_attr(projects[0], "UnitsInContext");
     } catch (...) {
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* project_unit_for(IfcParse::IfcFile* file, const std::string& unit_type) {
-    auto* uia = unit_assignment_for(file);
-    if (!uia) return nullptr;
-    for (auto* unit : ifcapi::get_entity_list(uia, "Units")) {
-        if (ifcapi::get_string_attr(unit, "UnitType") == unit_type) return unit;
+express::Base project_unit_for(ifcopenshell::file* file, const std::string& unit_type) {
+    auto uia = unit_assignment_for(file);
+    if (!uia) return {};
+    for (auto unit : ifcapi::detail::read_ref_aggregate(uia, "Units")) {
+        if (ifcapi::detail::read_string_attr(unit, "UnitType") == unit_type) return unit;
     }
-    return nullptr;
+    return {};
 }
 
 }  // namespace
@@ -551,53 +551,57 @@ std::string unit_format_length(
     return std::string();
 }
 
-IfcUtil::IfcBaseClass* unit_get_unit_assignment(IfcParse::IfcFile* file) {
-    if (!file) return nullptr;
+express::Base unit_get_unit_assignment(ifcopenshell::file* file) {
+    if (!file) return {};
     return unit_assignment_for(file);
 }
 
-IfcUtil::IfcBaseClass* unit_get_project_unit(IfcParse::IfcFile* file, const std::string& unit_type) {
-    if (!file || unit_type.empty()) return nullptr;
+express::Base unit_get_project_unit(ifcopenshell::file* file, const std::string& unit_type) {
+    if (!file || unit_type.empty()) return {};
     return project_unit_for(file, unit_type);
 }
 
-std::string unit_get_full_unit_name(IfcUtil::IfcBaseClass* unit) {
+std::string unit_get_full_unit_name(express::Base* unit_ptr) {
+    auto unit = ifcapi::detail::deref_or_empty(unit_ptr);
     if (!unit) return std::string();
-    std::string prefix = ifcapi::get_string_attr(unit, "Prefix");
-    std::string name = upper_str(ifcapi::get_string_attr(unit, "Name"));
+    std::string prefix = ifcapi::detail::read_string_attr(unit, "Prefix");
+    std::string name = upper_str(ifcapi::detail::read_string_attr(unit, "Name"));
     return prefix + name;
 }
 
-std::string unit_get_unit_symbol(IfcUtil::IfcBaseClass* unit) {
+std::string unit_get_unit_symbol(express::Base* unit_ptr) {
+    auto unit = ifcapi::detail::deref_or_empty(unit_ptr);
     if (!unit) return std::string();
     std::string symbol;
-    if (unit->declaration().is("IfcSIUnit")) {
-        std::string prefix = ifcapi::get_string_attr(unit, "Prefix");
+    if (unit.declaration().is("IfcSIUnit")) {
+        std::string prefix = ifcapi::detail::read_string_attr(unit, "Prefix");
         const auto& ps = prefix_symbols_table();
         auto pit = ps.find(prefix);
         if (pit != ps.end()) symbol += pit->second;
     }
-    std::string name = ifcapi::get_string_attr(unit, "Name");
+    std::string name = ifcapi::detail::read_string_attr(unit, "Name");
     name = replace_all(name, "METER", "METRE");
     const auto& us = unit_symbols_table();
     auto uit = us.find(name);
     if (uit != us.end()) symbol += uit->second;
     else symbol += "?";
-    if (unit->declaration().is("IfcContextDependentUnit")) {
-        std::string ut = ifcapi::get_string_attr(unit, "UnitType");
+    if (unit.declaration().is("IfcContextDependentUnit")) {
+        std::string ut = ifcapi::detail::read_string_attr(unit, "UnitType");
         if (ut == "USERDEFINED") {
-            symbol = ifcapi::get_string_attr(unit, "Name");
+            symbol = ifcapi::detail::read_string_attr(unit, "Name");
         }
     }
     return symbol;
 }
 
-double unit_convert_unit(double value, IfcUtil::IfcBaseClass* from_unit, IfcUtil::IfcBaseClass* to_unit) {
+double unit_convert_unit(double value, express::Base* from_unit_ptr, express::Base* to_unit_ptr) {
+    auto from_unit = ifcapi::detail::deref_or_empty(from_unit_ptr);
+    auto to_unit = ifcapi::detail::deref_or_empty(to_unit_ptr);
     if (!from_unit || !to_unit) return value;
-    std::string from_prefix = ifcapi::get_string_attr(from_unit, "Prefix");
-    std::string from_name = ifcapi::get_string_attr(from_unit, "Name");
-    std::string to_prefix = ifcapi::get_string_attr(to_unit, "Prefix");
-    std::string to_name = ifcapi::get_string_attr(to_unit, "Name");
+    std::string from_prefix = ifcapi::detail::read_string_attr(from_unit, "Prefix");
+    std::string from_name = ifcapi::detail::read_string_attr(from_unit, "Name");
+    std::string to_prefix = ifcapi::detail::read_string_attr(to_unit, "Prefix");
+    std::string to_name = ifcapi::detail::read_string_attr(to_unit, "Name");
     return ifcapi::bindings::unit_convert(value, from_prefix, from_name, to_prefix, to_name);
 }
 
@@ -611,53 +615,53 @@ double unit_convert_unit(double value, IfcUtil::IfcBaseClass* from_unit, IfcUtil
 namespace {
 
 // Pull the first element of an aggregate attribute (or return nullptr).
-IfcUtil::IfcBaseClass* first_in_list(IfcUtil::IfcBaseClass* e, const char* attr) {
-    auto v = ifcapi::get_entity_list(e, attr);
-    return v.empty() ? nullptr : v.front();
+express::Base first_in_list(express::Base e, const char* attr) {
+    auto v = ifcapi::detail::read_ref_aggregate(e, attr);
+    return v.empty() ? express::Base() : v.front();
 }
 
 // Inspect a property/quantity and return either a directly-attached Unit or
 // the measure class name to look up against project defaults. This split lets
 // the Python wrapper route the project-default fallback through the cache-aware
 // get_project_unit helper.
-void resolve_property_unit_or_class(IfcUtil::IfcBaseClass* prop,
-                                    IfcUtil::IfcBaseClass** out_unit,
+void resolve_property_unit_or_class(express::Base prop,
+                                    express::Base* out_unit,
                                     std::string* out_measure_class) {
-    *out_unit = nullptr;
+    *out_unit = {};
     out_measure_class->clear();
     if (!prop) return;
 
-    if (auto* u = ifcapi::get_entity_ref(prop, "Unit")) { *out_unit = u; return; }
+    if (auto u = ifcapi::detail::read_ref_attr(prop, "Unit")) { *out_unit = u; return; }
 
-    auto& d = prop->declaration();
+    auto& d = prop.declaration();
     if (d.is("IfcPhysicalSimpleQuantity")) {
         *out_measure_class = simple_quantity_measure_class(prop);
     } else if (d.is("IfcPropertySingleValue")) {
-        if (auto* nv = ifcapi::get_entity_ref(prop, "NominalValue")) {
+        if (auto nv = ifcapi::detail::read_ref_attr(prop, "NominalValue")) {
             *out_measure_class = entity_type_name(nv);
         }
     } else if (d.is("IfcPropertyEnumeratedValue")) {
-        if (auto* ref = ifcapi::get_entity_ref(prop, "EnumerationReference")) {
-            if (auto* u = ifcapi::get_entity_ref(ref, "Unit")) { *out_unit = u; return; }
-            if (auto* v = first_in_list(ref, "EnumerationValues")) *out_measure_class = entity_type_name(v);
+        if (auto ref = ifcapi::detail::read_ref_attr(prop, "EnumerationReference")) {
+            if (auto u = ifcapi::detail::read_ref_attr(ref, "Unit")) { *out_unit = u; return; }
+            if (auto v = first_in_list(ref, "EnumerationValues")) *out_measure_class = entity_type_name(v);
         }
-        if (auto* v = first_in_list(prop, "EnumerationValues")) *out_measure_class = entity_type_name(v);
+        if (auto v = first_in_list(prop, "EnumerationValues")) *out_measure_class = entity_type_name(v);
     } else if (d.is("IfcPropertyListValue")) {
-        if (auto* v = first_in_list(prop, "ListValues")) *out_measure_class = entity_type_name(v);
+        if (auto v = first_in_list(prop, "ListValues")) *out_measure_class = entity_type_name(v);
     } else if (d.is("IfcPropertyBoundedValue")) {
-        IfcUtil::IfcBaseClass* v = ifcapi::get_entity_ref(prop, "UpperBoundValue");
-        if (!v) v = ifcapi::get_entity_ref(prop, "LowerBoundValue");
-        if (!v) v = ifcapi::get_entity_ref(prop, "SetPointValue");
+        auto v = ifcapi::detail::read_ref_attr(prop, "UpperBoundValue");
+        if (!v) v = ifcapi::detail::read_ref_attr(prop, "LowerBoundValue");
+        if (!v) v = ifcapi::detail::read_ref_attr(prop, "SetPointValue");
         if (v) *out_measure_class = entity_type_name(v);
     }
 }
 
-void resolve_table_side(IfcUtil::IfcBaseClass* prop, const char* unit_attr, const char* values_attr,
-                        IfcUtil::IfcBaseClass** out_unit, std::string* out_measure_class) {
-    *out_unit = ifcapi::get_entity_ref(prop, unit_attr);
+void resolve_table_side(express::Base prop, const char* unit_attr, const char* values_attr,
+                        express::Base* out_unit, std::string* out_measure_class) {
+    *out_unit = ifcapi::detail::read_ref_attr(prop, unit_attr);
     out_measure_class->clear();
     if (*out_unit) return;
-    if (auto* v = first_in_list(prop, values_attr)) {
+    if (auto v = first_in_list(prop, values_attr)) {
         *out_measure_class = entity_type_name(v);
     }
 }
@@ -667,52 +671,58 @@ void resolve_table_side(IfcUtil::IfcBaseClass* prop, const char* unit_attr, cons
 namespace ifcapi {
 namespace bindings {
 
-IfcUtil::IfcBaseClass* unit_resolve_property_unit(IfcUtil::IfcBaseClass* prop) {
-    IfcUtil::IfcBaseClass* unit = nullptr;
+express::Base unit_resolve_property_unit(express::Base* prop_ptr) {
+    auto prop = ifcapi::detail::deref_or_empty(prop_ptr);
+    express::Base unit;
     std::string mc;
     resolve_property_unit_or_class(prop, &unit, &mc);
     return unit;
 }
 
-std::string unit_resolve_property_measure_class(IfcUtil::IfcBaseClass* prop) {
-    IfcUtil::IfcBaseClass* unit = nullptr;
+std::string unit_resolve_property_measure_class(express::Base* prop_ptr) {
+    auto prop = ifcapi::detail::deref_or_empty(prop_ptr);
+    express::Base unit;
     std::string mc;
     resolve_property_unit_or_class(prop, &unit, &mc);
     return unit ? std::string() : mc;
 }
 
-IfcUtil::IfcBaseClass* unit_resolve_property_table_defining_unit(IfcUtil::IfcBaseClass* prop) {
-    IfcUtil::IfcBaseClass* u = nullptr;
+express::Base unit_resolve_property_table_defining_unit(express::Base* prop_ptr) {
+    auto prop = ifcapi::detail::deref_or_empty(prop_ptr);
+    express::Base u;
     std::string mc;
     resolve_table_side(prop, "DefiningUnit", "DefiningValues", &u, &mc);
     return u;
 }
 
-std::string unit_resolve_property_table_defining_measure_class(IfcUtil::IfcBaseClass* prop) {
-    IfcUtil::IfcBaseClass* u = nullptr;
+std::string unit_resolve_property_table_defining_measure_class(express::Base* prop_ptr) {
+    auto prop = ifcapi::detail::deref_or_empty(prop_ptr);
+    express::Base u;
     std::string mc;
     resolve_table_side(prop, "DefiningUnit", "DefiningValues", &u, &mc);
     return u ? std::string() : mc;
 }
 
-IfcUtil::IfcBaseClass* unit_resolve_property_table_defined_unit(IfcUtil::IfcBaseClass* prop) {
-    IfcUtil::IfcBaseClass* u = nullptr;
+express::Base unit_resolve_property_table_defined_unit(express::Base* prop_ptr) {
+    auto prop = ifcapi::detail::deref_or_empty(prop_ptr);
+    express::Base u;
     std::string mc;
     resolve_table_side(prop, "DefinedUnit", "DefinedValues", &u, &mc);
     return u;
 }
 
-std::string unit_resolve_property_table_defined_measure_class(IfcUtil::IfcBaseClass* prop) {
-    IfcUtil::IfcBaseClass* u = nullptr;
+std::string unit_resolve_property_table_defined_measure_class(express::Base* prop_ptr) {
+    auto prop = ifcapi::detail::deref_or_empty(prop_ptr);
+    express::Base u;
     std::string mc;
     resolve_table_side(prop, "DefinedUnit", "DefinedValues", &u, &mc);
     return u ? std::string() : mc;
 }
 
-double unit_calculate_unit_scale(IfcParse::IfcFile* file, const std::string& unit_type) {
+double unit_calculate_unit_scale(ifcopenshell::file* file, const std::string& unit_type) {
     if (!file) return 1.0;
     std::string want = unit_type.empty() ? "LENGTHUNIT" : unit_type;
-    auto* unit = project_unit_for(file, want);
+    auto unit = project_unit_for(file, want);
     if (!unit) return 1.0;
     return convert_value_for_unit(1.0, unit, /*to_si=*/true);
 }

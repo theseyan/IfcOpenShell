@@ -15,8 +15,11 @@
 #include <cctype>
 #include <cmath>
 #include <cstring>
+#include <memory>
 #include <unordered_map>
 #include <unordered_set>
+
+#include <boost/logic/tribool.hpp>
 
 namespace ifcapi {
 namespace express {
@@ -61,11 +64,30 @@ std::string lc_copy(std::string_view s) {
     return out;
 }
 
-std::string schema_name_for(const IfcUtil::IfcBaseClass* e,
-                            const IfcParse::declaration* d) {
+std::string schema_name_for(const ::express::Base* e,
+                            const ifcopenshell::declaration* d) {
     if (d && d->schema()) return d->schema()->name();
-    if (e && e->file_ && e->file_->schema()) return e->file_->schema()->name();
+    if (e && *e && e->file() && e->file()->schema()) return e->file()->schema()->name();
     return {};
+}
+
+std::unordered_map<uint32_t, std::unique_ptr<::express::Base>>& entity_ref_arena() {
+    thread_local std::unordered_map<uint32_t, std::unique_ptr<::express::Base>> arena;
+    return arena;
+}
+
+EntityRef make_entity_ref(const ::express::Base& e) {
+    EntityRef ref;
+    if (!e) return ref;
+    auto& arena = entity_ref_arena();
+    auto [it, inserted] = arena.emplace(e.identity(), nullptr);
+    if (inserted) it->second = std::make_unique<::express::Base>(e);
+    ref.ptr = it->second.get();
+    return ref;
+}
+
+::express::Base* as_base_handle(const EntityRef& ref) {
+    return static_cast<::express::Base*>(ref.ptr);
 }
 
 // O(n*m) but EXPRESS sets are tiny (cartesian-point coordinates etc.).
@@ -146,56 +168,78 @@ Value express_getitem(const Value& container, const Value& idx) {
 
 namespace {
 
-IfcUtil::IfcBaseClass* as_baseclass(const Value& v) {
+::express::Base* as_baseclass(const Value& v) {
     if (!v.is_entity()) return nullptr;
-    return static_cast<IfcUtil::IfcBaseClass*>(v.as_entity().ptr);
+    return as_base_handle(v.as_entity());
 }
 
-bool set_attr_from_value(IfcUtil::IfcBaseClass* e, size_t idx, const Value& v);
-bool is_scratch_entity(IfcUtil::IfcBaseClass* e);
+bool set_attr_from_value(::express::Base* e, size_t idx, const Value& v);
+bool is_scratch_entity(::express::Base* e);
 
 // Convert an IfcParse Argument to a Value. Recurses for aggregates.
-Value argument_to_value(const AttributeValue& a) {
+Value argument_to_value(const attribute_value& a) {
     if (a.isNull()) return Indeterminate{};
     switch (a.type()) {
-        case IfcUtil::Argument_BOOL:    return (bool)a;
-        case IfcUtil::Argument_LOGICAL: {
-            // EXPRESS LOGICAL: TRUE / FALSE / UNKNOWN. UNKNOWN -> INDETERMINATE.
-            // The C++ argument exposes it as an enum string in some kernels;
-            // fall back to bool extraction otherwise.
-            try { return (bool)a; } catch (...) { return Indeterminate{}; }
+        case ifcopenshell::Argument_BOOL:    return (bool)a;
+        case ifcopenshell::Argument_LOGICAL: {
+            boost::logic::tribool v = (boost::logic::tribool)a;
+            return boost::logic::indeterminate(v) ? Value(Indeterminate{}) : Value(static_cast<bool>(v));
         }
-        case IfcUtil::Argument_INT:     return static_cast<std::int64_t>((int)a);
-        case IfcUtil::Argument_DOUBLE:  return (double)a;
-        case IfcUtil::Argument_STRING:
-        case IfcUtil::Argument_ENUMERATION:
+        case ifcopenshell::Argument_INT:     return static_cast<std::int64_t>((int)a);
+        case ifcopenshell::Argument_DOUBLE:  return (double)a;
+        case ifcopenshell::Argument_STRING:
             return (std::string)a;
-        case IfcUtil::Argument_ENTITY_INSTANCE: {
-            EntityRef ref;
-            ref.ptr = static_cast<void*>((IfcUtil::IfcBaseClass*)a);
-            return ref;
+        case ifcopenshell::Argument_ENUMERATION: {
+            enumeration_reference er = (enumeration_reference)a;
+            return er.enumeration() ? std::string(er.value()) : std::string();
         }
-        case IfcUtil::Argument_AGGREGATE_OF_INT: {
+        case ifcopenshell::Argument_ENTITY_INSTANCE: {
+            return make_entity_ref((::express::Base)a);
+        }
+        case ifcopenshell::Argument_AGGREGATE_OF_INT: {
             auto out = std::make_shared<ListData>();
             for (auto i : (std::vector<int>)a) out->emplace_back(static_cast<std::int64_t>(i));
             return Value(ListPtr{std::move(out)});
         }
-        case IfcUtil::Argument_AGGREGATE_OF_DOUBLE: {
+        case ifcopenshell::Argument_AGGREGATE_OF_DOUBLE: {
             auto out = std::make_shared<ListData>();
             for (auto d : (std::vector<double>)a) out->emplace_back(d);
             return Value(ListPtr{std::move(out)});
         }
-        case IfcUtil::Argument_AGGREGATE_OF_STRING: {
+        case ifcopenshell::Argument_AGGREGATE_OF_STRING: {
             auto out = std::make_shared<ListData>();
             for (auto& s : (std::vector<std::string>)a) out->emplace_back(s);
             return Value(ListPtr{std::move(out)});
         }
-        case IfcUtil::Argument_AGGREGATE_OF_ENTITY_INSTANCE: {
+        case ifcopenshell::Argument_AGGREGATE_OF_ENTITY_INSTANCE: {
             auto out = std::make_shared<ListData>();
-            auto agg = (aggregate_of_instance::ptr)a;
-            if (agg) for (auto& it : *agg) {
-                EntityRef ref; ref.ptr = static_cast<void*>(it);
-                out->emplace_back(ref);
+            for (auto& it : (std::vector<::express::Base>)a) out->emplace_back(make_entity_ref(it));
+            return Value(ListPtr{std::move(out)});
+        }
+        case ifcopenshell::Argument_AGGREGATE_OF_AGGREGATE_OF_INT: {
+            auto out = std::make_shared<ListData>();
+            for (auto& inner : (std::vector<std::vector<int>>)a) {
+                auto row = std::make_shared<ListData>();
+                for (auto i : inner) row->emplace_back(static_cast<std::int64_t>(i));
+                out->emplace_back(Value(ListPtr{std::move(row)}));
+            }
+            return Value(ListPtr{std::move(out)});
+        }
+        case ifcopenshell::Argument_AGGREGATE_OF_AGGREGATE_OF_DOUBLE: {
+            auto out = std::make_shared<ListData>();
+            for (auto& inner : (std::vector<std::vector<double>>)a) {
+                auto row = std::make_shared<ListData>();
+                for (auto d : inner) row->emplace_back(d);
+                out->emplace_back(Value(ListPtr{std::move(row)}));
+            }
+            return Value(ListPtr{std::move(out)});
+        }
+        case ifcopenshell::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE: {
+            auto out = std::make_shared<ListData>();
+            for (auto& inner : (std::vector<std::vector<::express::Base>>)a) {
+                auto row = std::make_shared<ListData>();
+                for (auto& it : inner) row->emplace_back(make_entity_ref(it));
+                out->emplace_back(Value(ListPtr{std::move(row)}));
             }
             return Value(ListPtr{std::move(out)});
         }
@@ -221,10 +265,8 @@ Value express_getattr(const Value& v, std::string_view attr_name) {
         return Indeterminate{};
     }
     auto* e = as_baseclass(v);
-    if (!e) return Indeterminate{};
-    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(e);
-    if (!be) return Indeterminate{};
-    auto* d = be->declaration().as_entity();
+    if (!e || !*e) return Indeterminate{};
+    auto* d = e->declaration().as_entity();
     if (!d) return Indeterminate{};
     std::string name(attr_name);
 
@@ -248,7 +290,7 @@ Value express_getattr(const Value& v, std::string_view attr_name) {
     // returns -1 for them.
     DeriveFn fn = lookup_derived(d, name);
     if (fn) {
-        EntityRef self_ref; self_ref.ptr = static_cast<void*>(e);
+        EntityRef self_ref = make_entity_ref(*e);
         try { return fn(self_ref); } catch (...) { return Indeterminate{}; }
     }
     return Indeterminate{};
@@ -292,12 +334,12 @@ void register_derived(std::string_view schema_name,
 }
 
 DeriveFn lookup_derived(const void* decl_ptr, std::string_view attr_name) {
-    auto* d = static_cast<const IfcParse::entity*>(decl_ptr);
+    auto* d = static_cast<const ifcopenshell::entity*>(decl_ptr);
     if (!d) return nullptr;
     auto& reg = derived_registry();
     std::string schema_lc = lc_copy(d->schema() ? d->schema()->name() : std::string{});
     std::string attr_lc = lc_copy(attr_name);
-    const IfcParse::entity* cur = d;
+    const ifcopenshell::entity* cur = d;
     while (cur) {
         auto it = reg.find(DerivedKey{schema_lc, lc_copy(cur->name()), attr_lc});
         if (it != reg.end()) return it->second;
@@ -375,9 +417,9 @@ Value typeof_(const Value& v) {
         return Value(SetPtr{std::move(out)});
     }
     auto* e = as_baseclass(v);
-    if (!e) return Indeterminate{};
+    if (!e || !*e) return Indeterminate{};
     auto out = std::make_shared<SetData>();
-    const IfcParse::declaration* d = &e->declaration();
+    const ifcopenshell::declaration* d = &e->declaration();
     std::string schema = schema_name_for(e, d);
     // Lower-case schema for matching: EXPRESS typeof yields names like
     // "ifc4.ifccartesianpoint".
@@ -398,8 +440,8 @@ Value typeof_(const Value& v) {
 Value usedin(const Value& v, std::string_view qualified_attr) {
     if (v.is_indeterminate()) return Indeterminate{};
     auto* e = as_baseclass(v);
-    if (!e) return Indeterminate{};
-    auto* file = e->file_;
+    if (!e || !*e) return Indeterminate{};
+    auto* file = e->file();
     if (!file) {
         auto out = std::make_shared<SetData>();
         return Value(SetPtr{std::move(out)});
@@ -420,17 +462,15 @@ Value usedin(const Value& v, std::string_view qualified_attr) {
     }
     auto out = std::make_shared<SetData>();
     try {
-        auto inverses = file->getInverse(e->id(), nullptr, -1);
-        if (!inverses) return Value(SetPtr{std::move(out)});
-        for (auto& cand : *inverses) {
+        auto inverses = file->get_inverse(static_cast<int>(e->id()), nullptr, -1);
+        for (auto& cand_entity : inverses) {
+            ::express::Base cand = cand_entity;
             if (!cand) continue;
             // Filter by entity type if specified.
-            if (!entity_name.empty() && !cand->declaration().is(entity_name)) continue;
+            if (!entity_name.empty() && !cand.declaration().is(entity_name)) continue;
             // Verify the named attribute references our entity.
             if (!attr_name.empty()) {
-                auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(cand);
-                if (!be) continue;
-                auto* d = be->declaration().as_entity();
+                auto* d = cand.declaration().as_entity();
                 if (!d) continue;
                 int idx;
                 try { idx = static_cast<int>(d->attribute_index(attr_name)); }
@@ -438,21 +478,24 @@ Value usedin(const Value& v, std::string_view qualified_attr) {
                 if (idx < 0) continue;
                 bool matches = false;
                 try {
-                    auto av = cand->get_attribute_value(static_cast<size_t>(idx));
-                    if (av.type() == IfcUtil::Argument_ENTITY_INSTANCE) {
-                        matches = ((IfcUtil::IfcBaseClass*)av) == e;
-                    } else if (av.type() == IfcUtil::Argument_AGGREGATE_OF_ENTITY_INSTANCE) {
-                        auto agg = (aggregate_of_instance::ptr)av;
-                        if (agg) for (auto& m : *agg) if (m == e) { matches = true; break; }
+                    auto av = cand.get_attribute_value(static_cast<size_t>(idx));
+                    if (av.type() == ifcopenshell::Argument_ENTITY_INSTANCE) {
+                        matches = ((::express::Base)av) == *e;
+                    } else if (av.type() == ifcopenshell::Argument_AGGREGATE_OF_ENTITY_INSTANCE) {
+                        for (auto& m : (std::vector<::express::Base>)av) {
+                            if (m == *e) { matches = true; break; }
+                        }
                     }
                 } catch (...) {}
                 if (!matches) continue;
             }
-            EntityRef ref; ref.ptr = static_cast<void*>(cand);
-            // Dedupe on raw pointer.
+            EntityRef ref = make_entity_ref(cand);
+            if (!ref.ptr) continue;
             bool dup = false;
-            for (auto& it : *out)
-                if (it.is_entity() && it.as_entity().ptr == ref.ptr) { dup = true; break; }
+            for (auto& it : *out) {
+                auto* existing = it.is_entity() ? as_base_handle(it.as_entity()) : nullptr;
+                if (existing && *existing == cand) { dup = true; break; }
+            }
             if (!dup) out->emplace_back(ref);
         }
     } catch (...) {}
@@ -466,15 +509,12 @@ Value usedin(const Value& v, std::string_view qualified_attr) {
 Value file_by_type(IfcFile* file, const char* type_name) {
     auto out = std::make_shared<SetData>();
     if (!file || !type_name || !*type_name) return Value(SetPtr{std::move(out)});
-    auto* real = reinterpret_cast<IfcParse::IfcFile*>(file);
+    auto* real = reinterpret_cast<ifcopenshell::file*>(file);
     try {
         auto insts = real->instances_by_type(type_name);
-        if (insts) {
-            for (auto& it : *insts) {
-                if (!it) continue;
-                EntityRef ref; ref.ptr = static_cast<void*>(it);
-                out->emplace_back(ref);
-            }
+        for (auto& it : insts) {
+            if (!it) continue;
+            out->emplace_back(make_entity_ref(it));
         }
     } catch (...) {}
     return Value(SetPtr{std::move(out)});
@@ -504,34 +544,34 @@ namespace {
 // must outlive the call but cleaning them up between invocations is not
 // strictly necessary because rule code typically only allocates a few
 // per call.
-std::unordered_map<std::string, std::unique_ptr<IfcParse::IfcFile>>&
+std::unordered_map<std::string, std::unique_ptr<ifcopenshell::file>>&
 scratch_files_for_thread() {
-    thread_local std::unordered_map<std::string, std::unique_ptr<IfcParse::IfcFile>> map;
+    thread_local std::unordered_map<std::string, std::unique_ptr<ifcopenshell::file>> map;
     return map;
 }
 
-IfcParse::IfcFile* get_scratch_file(std::string_view schema_name) {
+ifcopenshell::file* get_scratch_file(std::string_view schema_name) {
     std::string key(schema_name);
     auto& map = scratch_files_for_thread();
     auto it = map.find(key);
     if (it != map.end()) return it->second.get();
-    const auto* schema = IfcParse::schema_by_name(key);
+    const auto* schema = ifcopenshell::schema_by_name(key);
     if (!schema) return nullptr;
-    auto file = std::make_unique<IfcParse::IfcFile>(schema);
+    auto file = std::make_unique<ifcopenshell::file>(schema);
     auto* raw = file.get();
     map.emplace(std::move(key), std::move(file));
     return raw;
 }
 
-bool set_attr_from_value(IfcUtil::IfcBaseClass* e, size_t idx, const Value& v);
+bool set_attr_from_value(::express::Base* e, size_t idx, const Value& v);
 
-bool is_scratch_entity(IfcUtil::IfcBaseClass* e) {
-    if (!e || !e->file_) return false;
+bool is_scratch_entity(::express::Base* e) {
+    if (!e || !*e || !e->file()) return false;
     const auto* decl = e->declaration().as_entity();
     std::string schema_name = schema_name_for(e, decl);
     if (schema_name.empty()) return false;
     auto* scratch = get_scratch_file(schema_name);
-    return scratch && e->file_ == scratch;
+    return scratch && e->file() == scratch;
 }
 
 using ProxyMaterializationCache = std::unordered_map<const EntityProxyData*, EntityRef>;
@@ -546,8 +586,8 @@ EntityRef materialize_proxy_impl(const Value& proxy_v, ProxyMaterializationCache
     std::string schema_name = px.schema_name;
     std::string type_name = px.type_name;
     if (px.base.ptr) {
-        auto* base = static_cast<IfcUtil::IfcBaseClass*>(px.base.ptr);
-        if (base) {
+        auto* base = as_base_handle(px.base);
+        if (base && *base) {
             const auto* decl = base->declaration().as_entity();
             if (decl) {
                 if (type_name.empty()) type_name = decl->name();
@@ -560,7 +600,7 @@ EntityRef materialize_proxy_impl(const Value& proxy_v, ProxyMaterializationCache
     auto* file = get_scratch_file(schema_name);
     if (!file || !file->schema()) return {};
 
-    const IfcParse::declaration* decl = nullptr;
+    const ifcopenshell::declaration* decl = nullptr;
     try {
         decl = file->schema()->declaration_by_name(type_name);
     } catch (...) {
@@ -569,7 +609,7 @@ EntityRef materialize_proxy_impl(const Value& proxy_v, ProxyMaterializationCache
     if (!decl || !decl->as_entity()) return {};
     auto* entity_decl = decl->as_entity();
 
-    IfcUtil::IfcBaseClass* entity = nullptr;
+    ::express::Base entity;
     try {
         entity = file->create(decl);
     } catch (...) {
@@ -577,8 +617,7 @@ EntityRef materialize_proxy_impl(const Value& proxy_v, ProxyMaterializationCache
     }
     if (!entity) return {};
 
-    EntityRef ref;
-    ref.ptr = static_cast<void*>(entity);
+    EntityRef ref = make_entity_ref(entity);
     cache.emplace(key, ref);
 
     for (size_t i = 0; i < entity_decl->attribute_count(); ++i) {
@@ -586,7 +625,7 @@ EntityRef materialize_proxy_impl(const Value& proxy_v, ProxyMaterializationCache
         if (!attr) continue;
         Value attr_value = materialize_impl(express_getattr(proxy_v, attr->name()), cache);
         if (attr_value.is_indeterminate()) continue;
-        if (!set_attr_from_value(entity, i, attr_value)) return {};
+        if (!set_attr_from_value(&entity, i, attr_value)) return {};
     }
     return ref;
 }
@@ -618,8 +657,9 @@ Value materialize_impl(const Value& v, ProxyMaterializationCache& cache) {
 // declared parameter type. Returns true on success. Unsupported / type
 // mismatched assignments silently fail (return false) — a rule that
 // needs the attribute will simply observe INDETERMINATE downstream.
-bool set_attr_from_value(IfcUtil::IfcBaseClass* e, size_t idx, const Value& v) {
+bool set_attr_from_value(::express::Base* e, size_t idx, const Value& v) {
     if (v.is_indeterminate()) return false;
+    if (!e || !*e) return false;
     try {
         switch (v.tag()) {
             case Value::Tag::Bool:   e->set_attribute_value(idx, v.as_bool()); return true;
@@ -627,9 +667,9 @@ bool set_attr_from_value(IfcUtil::IfcBaseClass* e, size_t idx, const Value& v) {
             case Value::Tag::Real:   e->set_attribute_value(idx, v.as_double()); return true;
             case Value::Tag::Str:    e->set_attribute_value(idx, v.as_string()); return true;
             case Value::Tag::Entity: {
-                auto* p = static_cast<IfcUtil::IfcBaseClass*>(v.as_entity().ptr);
-                if (p) e->set_attribute_value(idx, p);
-                return p != nullptr;
+                auto* p = as_base_handle(v.as_entity());
+                if (p && *p) e->set_attribute_value(idx, *p);
+                return p && *p;
             }
             case Value::Tag::List: {
                 const auto& l = v.as_list();
@@ -660,13 +700,55 @@ bool set_attr_from_value(IfcUtil::IfcBaseClass* e, size_t idx, const Value& v) {
                         return true;
                     }
                     case Value::Tag::Entity: {
-                        auto agg = aggregate_of_instance::ptr(new aggregate_of_instance());
+                        std::vector<::express::Base> out;
+                        out.reserve(l.size());
                         for (const auto& it : l) {
                             if (!it.is_entity()) return false;
-                            agg->push(static_cast<IfcUtil::IfcBaseClass*>(it.as_entity().ptr));
+                            auto* p = as_base_handle(it.as_entity());
+                            if (!p || !*p) return false;
+                            out.push_back(*p);
                         }
-                        e->set_attribute_value(idx, agg);
+                        e->set_attribute_value(idx, out);
                         return true;
+                    }
+                    case Value::Tag::List: {
+                        const auto& first = l[0].as_list();
+                        if (first.empty()) return false;
+                        if (first[0].is_number()) {
+                            std::vector<std::vector<double>> out;
+                            out.reserve(l.size());
+                            for (const auto& row_v : l) {
+                                if (!row_v.is_list()) return false;
+                                std::vector<double> row;
+                                row.reserve(row_v.as_list().size());
+                                for (const auto& item : row_v.as_list()) {
+                                    if (!item.is_number()) return false;
+                                    row.push_back(item.as_double());
+                                }
+                                out.push_back(std::move(row));
+                            }
+                            e->set_attribute_value(idx, out);
+                            return true;
+                        }
+                        if (first[0].is_entity()) {
+                            std::vector<std::vector<::express::Base>> out;
+                            out.reserve(l.size());
+                            for (const auto& row_v : l) {
+                                if (!row_v.is_list()) return false;
+                                std::vector<::express::Base> row;
+                                row.reserve(row_v.as_list().size());
+                                for (const auto& item : row_v.as_list()) {
+                                    if (!item.is_entity()) return false;
+                                    auto* p = as_base_handle(item.as_entity());
+                                    if (!p || !*p) return false;
+                                    row.push_back(*p);
+                                }
+                                out.push_back(std::move(row));
+                            }
+                            e->set_attribute_value(idx, out);
+                            return true;
+                        }
+                        return false;
                     }
                     default: return false;
                 }
@@ -688,11 +770,11 @@ Value make_entity(std::string_view schema_name,
     const auto* schema = file->schema();
     if (!schema) return Indeterminate{};
     std::string tn(type_name);
-    const IfcParse::declaration* decl;
+    const ifcopenshell::declaration* decl;
     try { decl = schema->declaration_by_name(tn); }
     catch (...) { return Indeterminate{}; }
     if (!decl || !decl->as_entity()) return Indeterminate{};
-    IfcUtil::IfcBaseClass* e;
+    ::express::Base e;
     try { e = file->create(decl); }
     catch (...) { return Indeterminate{}; }
     if (!e) return Indeterminate{};
@@ -705,11 +787,9 @@ Value make_entity(std::string_view schema_name,
         if (idx < 0) continue;
         Value attr_value = materialize_for_abi(kv.second);
         if (attr_value.is_indeterminate()) continue;
-        set_attr_from_value(e, static_cast<size_t>(idx), attr_value);
+        set_attr_from_value(&e, static_cast<size_t>(idx), attr_value);
     }
-    EntityRef ref;
-    ref.ptr = static_cast<void*>(e);
-    return ref;
+    return make_entity_ref(e);
 }
 
 Value materialize_for_abi(const Value& v) {

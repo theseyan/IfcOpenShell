@@ -23,45 +23,45 @@ namespace {
 
 constexpr double PI = 3.141592653589793238462643383279502884;
 
-IfcUtil::IfcBaseClass* create_entity(IfcParse::IfcFile* file, const char* ifc_class) {
+express::Base create_entity(ifcopenshell::file* file, const char* ifc_class) {
     return file->create(file->schema()->declaration_by_name(ifc_class));
 }
 
-bool is_ifc2x3(IfcParse::IfcFile* file) {
+bool is_ifc2x3(ifcopenshell::file* file) {
     return file && file->schema() && file->schema()->name() == "IFC2X3";
 }
 
-IfcUtil::IfcBaseClass* create_cartesian_point(IfcParse::IfcFile* file, const std::vector<double>& coordinates) {
-    auto* point = create_entity(file, "IfcCartesianPoint");
+express::Base create_cartesian_point(ifcopenshell::file* file, const std::vector<double>& coordinates) {
+    auto point = create_entity(file, "IfcCartesianPoint");
     ifcapi::detail::write_double_aggregate(point, "Coordinates", coordinates);
     return point;
 }
 
-IfcUtil::IfcBaseClass* create_direction(IfcParse::IfcFile* file, const std::vector<double>& ratios) {
-    auto* direction = create_entity(file, "IfcDirection");
+express::Base create_direction(ifcopenshell::file* file, const std::vector<double>& ratios) {
+    auto direction = create_entity(file, "IfcDirection");
     ifcapi::detail::write_double_aggregate(direction, "DirectionRatios", ratios);
     return direction;
 }
 
-IfcUtil::IfcBaseClass* create_axis2_placement_3d(
-    IfcParse::IfcFile* file,
+express::Base create_axis2_placement_3d(
+    ifcopenshell::file* file,
     const std::vector<double>& location,
     const std::vector<double>& axis,
     const std::vector<double>& ref_direction)
 {
-    auto* placement = create_entity(file, "IfcAxis2Placement3D");
+    auto placement = create_entity(file, "IfcAxis2Placement3D");
     ifcapi::detail::write_ref_attr(placement, "Location", create_cartesian_point(file, location));
     ifcapi::detail::write_ref_attr(placement, "Axis", create_direction(file, axis));
     ifcapi::detail::write_ref_attr(placement, "RefDirection", create_direction(file, ref_direction));
     return placement;
 }
 
-IfcUtil::IfcBaseClass* create_axis2_placement_2d(
-    IfcParse::IfcFile* file,
+express::Base create_axis2_placement_2d(
+    ifcopenshell::file* file,
     const std::vector<double>& location,
     const std::vector<double>& ref_direction)
 {
-    auto* placement = create_entity(file, "IfcAxis2Placement2D");
+    auto placement = create_entity(file, "IfcAxis2Placement2D");
     ifcapi::detail::write_ref_attr(placement, "Location", create_cartesian_point(file, location));
     ifcapi::detail::write_ref_attr(placement, "RefDirection", create_direction(file, ref_direction));
     return placement;
@@ -75,18 +75,15 @@ bool all_close(double a, double b, double c, double x, double y, double z) {
     return is_close(a, x) && is_close(b, y) && is_close(c, z);
 }
 
-std::vector<IfcUtil::IfcBaseClass*> geometric_contexts(IfcParse::IfcFile* file) {
-    std::vector<IfcUtil::IfcBaseClass*> result;
+std::vector<express::Base> geometric_contexts(ifcopenshell::file* file) {
+    std::vector<express::Base> result;
     if (!file || !file->schema()) {
         return result;
     }
     auto* declaration = file->schema()->declaration_by_name("IfcGeometricRepresentationContext");
     auto instances = file->instances_by_type(declaration);
-    if (!instances) {
-        return result;
-    }
-    for (auto* instance : *instances) {
-        if (instance && instance->declaration().name() == "IfcGeometricRepresentationContext") {
+    for (auto instance : instances) {
+        if (instance && instance.declaration().name() == "IfcGeometricRepresentationContext") {
             result.push_back(instance);
         }
     }
@@ -94,26 +91,26 @@ std::vector<IfcUtil::IfcBaseClass*> geometric_contexts(IfcParse::IfcFile* file) 
 }
 
 void add_ifc2x3_georeferencing(
-    IfcParse::IfcFile* file,
+    ifcopenshell::file* file,
     const std::string& name,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    express::Base owner_history,
+    express::Base user,
+    express::Base application)
 {
-    auto* project = ifcapi::detail::first_instance_by_type(file, "IfcProject");
+    auto project = ifcapi::detail::first_instance_by_type(file, "IfcProject");
     if (!project || ifcapi::detail::named_property_set(project, "ePSet_ProjectedCRS")) {
         return;
     }
 
-    auto* conversion = ifcapi::bindings::pset_add_pset(
-        file, project, "ePSet_MapConversion", owner_history, user, application, nullptr);
-    auto* crs = ifcapi::bindings::pset_add_pset(
-        file, project, "ePSet_ProjectedCRS", owner_history, user, application, nullptr);
+    auto conversion = ifcapi::bindings::pset_add_pset(
+        file, &project, "ePSet_MapConversion", &owner_history, &user, &application, nullptr);
+    auto crs = ifcapi::bindings::pset_add_pset(
+        file, &project, "ePSet_ProjectedCRS", &owner_history, &user, &application, nullptr);
 
     std::unique_ptr<ifcopenshell_pset_props_t, void (*)(ifcopenshell_pset_props_t*)> crs_props(
         ifcapi::bindings::pset_props_new(), ifcapi::bindings::pset_props_free);
     ifcapi::bindings::pset_props_set_typed_string(crs_props.get(), "Name", name, "IfcLabel");
-    if (!ifcapi::bindings::pset_edit_pset(file, crs, nullptr, crs_props.get(), nullptr, true)) {
+    if (!ifcapi::bindings::pset_edit_pset(file, &crs, nullptr, crs_props.get(), nullptr, true)) {
         return;
     }
 
@@ -122,42 +119,42 @@ void add_ifc2x3_georeferencing(
     ifcapi::bindings::pset_props_set_typed_double(conversion_props.get(), "Eastings", 0.0, "IfcLengthMeasure");
     ifcapi::bindings::pset_props_set_typed_double(conversion_props.get(), "Northings", 0.0, "IfcLengthMeasure");
     ifcapi::bindings::pset_props_set_typed_double(conversion_props.get(), "OrthogonalHeight", 0.0, "IfcLengthMeasure");
-    ifcapi::bindings::pset_edit_pset(file, conversion, nullptr, conversion_props.get(), nullptr, true);
+    ifcapi::bindings::pset_edit_pset(file, &conversion, nullptr, conversion_props.get(), nullptr, true);
 }
 
-void remove_ifc2x3_georeferencing(IfcParse::IfcFile* file) {
-    auto* project = ifcapi::detail::first_instance_by_type(file, "IfcProject");
+void remove_ifc2x3_georeferencing(ifcopenshell::file* file) {
+    auto project = ifcapi::detail::first_instance_by_type(file, "IfcProject");
     if (!project) {
         ifcapi::detail::set_error(ifcapi::detail::ERROR_RUNTIME, "No IfcProject found");
         return;
     }
-    if (auto* pset = ifcapi::detail::named_property_set(project, "ePSet_ProjectedCRS")) {
-        ifcapi::bindings::pset_remove_pset(file, project, pset);
+    if (auto pset = ifcapi::detail::named_property_set(project, "ePSet_ProjectedCRS")) {
+        ifcapi::bindings::pset_remove_pset(file, &project, &pset);
     }
-    if (auto* pset = ifcapi::detail::named_property_set(project, "ePSet_MapConversion")) {
-        ifcapi::bindings::pset_remove_pset(file, project, pset);
+    if (auto pset = ifcapi::detail::named_property_set(project, "ePSet_MapConversion")) {
+        ifcapi::bindings::pset_remove_pset(file, &project, &pset);
     }
 }
 
 void edit_ifc2x3_georeferencing(
-    IfcParse::IfcFile* file,
+    ifcopenshell::file* file,
     bool has_coordinate_operation,
     ifcopenshell_pset_props_t* coordinate_operation,
     bool has_projected_crs,
     ifcopenshell_pset_props_t* projected_crs)
 {
-    auto* project = ifcapi::detail::first_instance_by_type(file, "IfcProject");
+    auto project = ifcapi::detail::first_instance_by_type(file, "IfcProject");
     if (!project) {
         return;
     }
     if (has_projected_crs) {
-        if (auto* crs = ifcapi::detail::named_property_set(project, "ePSet_ProjectedCRS")) {
-            ifcapi::bindings::pset_edit_pset(file, crs, nullptr, projected_crs, nullptr, true);
+        if (auto crs = ifcapi::detail::named_property_set(project, "ePSet_ProjectedCRS")) {
+            ifcapi::bindings::pset_edit_pset(file, &crs, nullptr, projected_crs, nullptr, true);
         }
     }
     if (has_coordinate_operation) {
-        if (auto* conversion = ifcapi::detail::named_property_set(project, "ePSet_MapConversion")) {
-            ifcapi::bindings::pset_edit_pset(file, conversion, nullptr, coordinate_operation, nullptr, true);
+        if (auto conversion = ifcapi::detail::named_property_set(project, "ePSet_MapConversion")) {
+            ifcapi::bindings::pset_edit_pset(file, &conversion, nullptr, coordinate_operation, nullptr, true);
         }
     }
 }
@@ -168,17 +165,20 @@ namespace ifcapi {
 namespace bindings {
 
 void georeference_add_georeferencing(
-    IfcParse::IfcFile* file,
+    ifcopenshell::file* file,
     const std::string& ifc_class,
     const std::string& name,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
     try {
+        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
+        auto user_value = ifcapi::detail::deref_or_empty(user);
+        auto application_value = ifcapi::detail::deref_or_empty(application);
         if (is_ifc2x3(file)) {
-            add_ifc2x3_georeferencing(file, name, owner_history, user, application);
+            add_ifc2x3_georeferencing(file, name, owner_history_value, user_value, application_value);
             return;
         }
 
@@ -191,8 +191,8 @@ void georeference_add_georeferencing(
             georeference_remove_georeferencing(file);
         }
 
-        IfcUtil::IfcBaseClass* source_crs = nullptr;
-        for (auto* context : geometric_contexts(file)) {
+        express::Base source_crs = {};
+        for (auto context : geometric_contexts(file)) {
             if (ifcapi::detail::read_string_attr(context, "ContextType") == "Model") {
                 source_crs = context;
                 break;
@@ -202,11 +202,11 @@ void georeference_add_georeferencing(
             return;
         }
 
-        auto* projected_crs = create_entity(file, "IfcProjectedCRS");
+        auto projected_crs = create_entity(file, "IfcProjectedCRS");
         ifcapi::detail::write_string_attr(projected_crs, "Name", name);
 
         if (ifc_class == "IfcMapConversion" || ifc_class == "IfcMapConversionScaled") {
-            auto* conversion = create_entity(file, ifc_class.c_str());
+            auto conversion = create_entity(file, ifc_class.c_str());
             ifcapi::detail::write_ref_attr(conversion, "SourceCRS", source_crs);
             ifcapi::detail::write_ref_attr(conversion, "TargetCRS", projected_crs);
             ifcapi::detail::write_double_attr(conversion, "Eastings", 0.0);
@@ -218,21 +218,21 @@ void georeference_add_georeferencing(
                 ifcapi::detail::write_double_attr(conversion, "FactorZ", 1.0);
             }
         } else if (ifc_class == "IfcRigidOperation") {
-            auto* conversion = create_entity(file, ifc_class.c_str());
+            auto conversion = create_entity(file, ifc_class.c_str());
             ifcapi::detail::write_ref_attr(conversion, "SourceCRS", source_crs);
             ifcapi::detail::write_ref_attr(conversion, "TargetCRS", projected_crs);
             int first_idx = ifcapi::detail::attr_index_of(conversion, "FirstCoordinate");
             int second_idx = ifcapi::detail::attr_index_of(conversion, "SecondCoordinate");
-            auto* first_coordinate = ifcapi::detail::create_typed_double(file, "IfcLengthMeasure", 0.0);
-            auto* second_coordinate = ifcapi::detail::create_typed_double(file, "IfcLengthMeasure", 0.0);
+            auto first_coordinate = ifcapi::detail::create_typed_double(file, "IfcLengthMeasure", 0.0);
+            auto second_coordinate = ifcapi::detail::create_typed_double(file, "IfcLengthMeasure", 0.0);
             if (!first_coordinate || !second_coordinate) {
                 throw std::runtime_error("Failed to create IfcLengthMeasure for IfcRigidOperation coordinates");
             }
             if (first_idx >= 0) {
-                conversion->set_attribute_value(static_cast<size_t>(first_idx), first_coordinate);
+                conversion.set_attribute_value(static_cast<size_t>(first_idx), first_coordinate);
             }
             if (second_idx >= 0) {
-                conversion->set_attribute_value(static_cast<size_t>(second_idx), second_coordinate);
+                conversion.set_attribute_value(static_cast<size_t>(second_idx), second_coordinate);
             }
         }
     } catch (const std::exception& e) {
@@ -240,15 +240,15 @@ void georeference_add_georeferencing(
     }
 }
 
-void georeference_edit_true_north(IfcParse::IfcFile* file, bool has_true_north, double x, double y) {
+void georeference_edit_true_north(ifcopenshell::file* file, bool has_true_north, double x, double y) {
     ifcopenshell_clear_error();
     try {
-        for (auto* context : geometric_contexts(file)) {
-            auto* true_north = ifcapi::detail::read_ref_attr(context, "TrueNorth");
+        for (auto context : geometric_contexts(file)) {
+            auto true_north = ifcapi::detail::read_ref_attr(context, "TrueNorth");
             if (true_north && !has_true_north) {
-                ifcapi::detail::write_ref_attr(context, "TrueNorth", nullptr);
+                ifcapi::detail::write_ref_attr(context, "TrueNorth", {});
                 if (ifcapi::detail::total_inverses(file, true_north) == 0) {
-                    ifcapi::bindings::entity_remove_deep2(true_north);
+                    ifcapi::bindings::entity_remove_deep2(&true_north);
                 }
                 continue;
             }
@@ -270,7 +270,7 @@ void georeference_edit_true_north(IfcParse::IfcFile* file, bool has_true_north, 
 }
 
 void georeference_edit_georeferencing(
-    IfcParse::IfcFile* file,
+    ifcopenshell::file* file,
     bool has_coordinate_operation,
     ifcopenshell_pset_props_t* coordinate_operation,
     bool has_projected_crs,
@@ -302,7 +302,7 @@ void georeference_edit_georeferencing(
     }
 }
 
-void georeference_edit_wcs(IfcParse::IfcFile* file, double x, double y, double z, double rotation, bool is_si) {
+void georeference_edit_wcs(ifcopenshell::file* file, double x, double y, double z, double rotation, bool is_si) {
     ifcopenshell_clear_error();
     try {
         double unit_scale = ifcapi::bindings::unit_calculate_unit_scale(file, "LENGTHUNIT");
@@ -319,11 +319,11 @@ void georeference_edit_wcs(IfcParse::IfcFile* file, double x, double y, double z
             x = y = z = 0.0;
         }
 
-        for (auto* context : geometric_contexts(file)) {
-            auto* old_wcs = ifcapi::detail::read_ref_attr(context, "WorldCoordinateSystem");
-            auto dimension = static_cast<int>(context->get_attribute_value(
+        for (auto context : geometric_contexts(file)) {
+            auto old_wcs = ifcapi::detail::read_ref_attr(context, "WorldCoordinateSystem");
+            auto dimension = static_cast<int>(context.get_attribute_value(
                 static_cast<size_t>(ifcapi::detail::attr_index_of(context, "CoordinateSpaceDimension"))));
-            IfcUtil::IfcBaseClass* placement = nullptr;
+            express::Base placement = {};
             if (dimension == 3) {
                 const std::vector<double> xyz = is_si ? std::vector<double>{x / unit_scale, y / unit_scale, z / unit_scale}
                                                       : std::vector<double>{x, y, z};
@@ -336,7 +336,7 @@ void georeference_edit_wcs(IfcParse::IfcFile* file, double x, double y, double z
             if (placement) {
                 ifcapi::detail::write_ref_attr(context, "WorldCoordinateSystem", placement);
                 if (ifcapi::detail::total_inverses(file, old_wcs) == 0) {
-                    ifcapi::bindings::entity_remove_deep2(old_wcs);
+                    ifcapi::bindings::entity_remove_deep2(&old_wcs);
                 }
             }
         }
@@ -345,7 +345,7 @@ void georeference_edit_wcs(IfcParse::IfcFile* file, double x, double y, double z
     }
 }
 
-void georeference_remove_georeferencing(IfcParse::IfcFile* file) {
+void georeference_remove_georeferencing(ifcopenshell::file* file) {
     ifcopenshell_clear_error();
     try {
         if (is_ifc2x3(file)) {
@@ -355,16 +355,16 @@ void georeference_remove_georeferencing(IfcParse::IfcFile* file) {
 
         auto projected_crs_items = ifcapi::detail::instances_by_type(file, "IfcProjectedCRS");
         auto coordinate_operations = ifcapi::detail::instances_by_type(file, "IfcCoordinateOperation");
-        for (auto* projected_crs : projected_crs_items) {
-            auto* unit = ifcapi::detail::read_ref_attr(projected_crs, "MapUnit");
+        for (auto projected_crs : projected_crs_items) {
+            auto unit = ifcapi::detail::read_ref_attr(projected_crs, "MapUnit");
             if (unit && ifcapi::detail::total_inverses(file, unit) == 1) {
-                ifcapi::detail::write_ref_attr(projected_crs, "MapUnit", nullptr);
-                ifcapi::bindings::entity_remove_deep2(unit);
+                ifcapi::detail::write_ref_attr(projected_crs, "MapUnit", {});
+                ifcapi::bindings::entity_remove_deep2(&unit);
             }
-            file->removeEntity(projected_crs);
+            file->remove_entity(projected_crs);
         }
-        for (auto* coordinate_operation : coordinate_operations) {
-            file->removeEntity(coordinate_operation);
+        for (auto coordinate_operation : coordinate_operations) {
+            file->remove_entity(coordinate_operation);
         }
     } catch (const std::exception& e) {
         ifcapi::detail::set_error(e.what());

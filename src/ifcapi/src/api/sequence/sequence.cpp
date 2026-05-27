@@ -31,59 +31,60 @@ namespace {
 
 inline void set_error(const std::string& msg) { ifcopenshell::capi::set_last_error(msg); }
 
-IfcUtil::IfcBaseClass* create_entity(IfcParse::IfcFile* file, const char* ifc_class) {
+express::Base create_entity(ifcopenshell::file* file, const char* ifc_class) {
     return file->create(file->schema()->declaration_by_name(ifc_class));
 }
 
-bool is_ifc2x3(IfcParse::IfcFile* file) {
+bool is_ifc2x3(ifcopenshell::file* file) {
     return file && file->schema() && file->schema()->name() == "IFC2X3";
 }
 
-IfcUtil::IfcBaseClass* first_context(IfcParse::IfcFile* file) {
-    auto* context = ifcapi::detail::first_instance_by_type(file, "IfcContext");
+express::Base first_context(ifcopenshell::file* file) {
+    auto context = ifcapi::detail::first_instance_by_type(file, "IfcContext");
     if (!context) {
         throw std::runtime_error("No IfcContext found");
     }
     return context;
 }
 
-std::vector<const IfcUtil::IfcBaseClass*> one_const(IfcUtil::IfcBaseClass* item) {
-    return item ? std::vector<const IfcUtil::IfcBaseClass*>{item} : std::vector<const IfcUtil::IfcBaseClass*>{};
+std::vector<express::Base> one_const(express::Base item) {
+    return item ? std::vector<express::Base>{item} : std::vector<express::Base>{};
 }
 
-IfcUtil::IfcBaseClass* create_root_entity(
-    IfcParse::IfcFile* file,
+express::Base create_root_entity(
+    ifcopenshell::file* file,
     const char* ifc_class,
     const char* predefined_type,
     const char* name,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    express::Base owner_history,
+    express::Base user,
+    express::Base application)
 {
-    auto* history = ifcapi::detail::ensure_owner_history(file, owner_history, user, application);
-    auto* entity = ifcapi::bindings::root_create_entity(file, ifc_class, predefined_type, name, history);
+    auto history = ifcapi::detail::ensure_owner_history(file, owner_history, user, application);
+    auto entity = ifcapi::bindings::root_create_entity(
+        file, ifc_class, predefined_type, name, ifcapi::detail::nullable_ptr(history));
     if (!entity) {
         throw std::runtime_error(std::string("Failed to create ") + ifc_class);
     }
     return entity;
 }
 
-IfcUtil::IfcBaseClass* create_ifc_date_time(IfcParse::IfcFile* file, const std::string& value) {
+express::Base create_ifc_date_time(ifcopenshell::file* file, const std::string& value) {
     ifcapi::detail::sequence::DateTime parsed;
     if (!ifcapi::detail::sequence::parse_date_time(value, parsed)) {
         throw std::runtime_error("Invalid IfcDateTime value");
     }
-    auto* calendar_date = create_entity(file, "IfcCalendarDate");
+    auto calendar_date = create_entity(file, "IfcCalendarDate");
     ifcapi::detail::write_int_attr(calendar_date, "DayComponent", parsed.day);
     ifcapi::detail::write_int_attr(calendar_date, "MonthComponent", parsed.month);
     ifcapi::detail::write_int_attr(calendar_date, "YearComponent", parsed.year);
 
-    auto* local_time = create_entity(file, "IfcLocalTime");
+    auto local_time = create_entity(file, "IfcLocalTime");
     ifcapi::detail::write_int_attr(local_time, "HourComponent", parsed.hour);
     ifcapi::detail::write_int_attr(local_time, "MinuteComponent", parsed.minute);
     ifcapi::detail::write_double_attr(local_time, "SecondComponent", static_cast<double>(parsed.second));
 
-    auto* date_time = create_entity(file, "IfcDateAndTime");
+    auto date_time = create_entity(file, "IfcDateAndTime");
     ifcapi::detail::write_ref_attr(date_time, "DateComponent", calendar_date);
     ifcapi::detail::write_ref_attr(date_time, "TimeComponent", local_time);
     return date_time;
@@ -109,18 +110,18 @@ std::string current_ifc_datetime() {
 }
 
 ifcapi::bindings::SequenceDateTimeResult make_date_time_result(
-    IfcParse::IfcFile* file,
+    ifcopenshell::file* file,
     const std::string& value)
 {
     if (is_ifc2x3(file)) {
         return ifcapi::bindings::SequenceDateTimeResult{create_ifc_date_time(file, value), std::string(), true};
     }
-    return ifcapi::bindings::SequenceDateTimeResult{nullptr, value, false};
+    return ifcapi::bindings::SequenceDateTimeResult{{}, value, false};
 }
 
 void write_date_time_attr(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* entity,
+    ifcopenshell::file* file,
+    express::Base entity,
     const char* attribute,
     const std::string& value)
 {
@@ -131,51 +132,51 @@ void write_date_time_attr(
     }
 }
 
-IfcUtil::IfcBaseClass* find_assignment(
-    IfcUtil::IfcBaseClass* related_object,
+express::Base find_assignment(
+    express::Base related_object,
     const char* ifc_class,
     const char* relating_attr,
-    IfcUtil::IfcBaseClass* relating_object)
+    express::Base relating_object)
 {
-    for (auto* assignment : ifcapi::detail::read_inverse_aggregate(related_object, "HasAssignments")) {
-        if (assignment && assignment->declaration().is(ifc_class) &&
+    for (auto assignment : ifcapi::detail::read_inverse_aggregate(related_object, "HasAssignments")) {
+        if (assignment && assignment.declaration().is(ifc_class) &&
             ifcapi::detail::read_ref_attr(assignment, relating_attr) == relating_object) {
             return assignment;
         }
     }
-    return nullptr;
+    return {};
 }
 
-IfcUtil::IfcBaseClass* find_sequence(
-    IfcUtil::IfcBaseClass* relating_process,
-    IfcUtil::IfcBaseClass* related_process)
+express::Base find_sequence(
+    express::Base relating_process,
+    express::Base related_process)
 {
-    for (auto* rel : ifcapi::detail::read_inverse_aggregate(related_process, "IsSuccessorFrom")) {
+    for (auto rel : ifcapi::detail::read_inverse_aggregate(related_process, "IsSuccessorFrom")) {
         if (rel && ifcapi::detail::read_ref_attr(rel, "RelatingProcess") == relating_process) {
             return rel;
         }
     }
-    return nullptr;
+    return {};
 }
 
-IfcUtil::IfcBaseClass* assign_object_relationship(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relating_object,
-    IfcUtil::IfcBaseClass* related_object,
+express::Base assign_object_relationship(
+    ifcopenshell::file* file,
+    express::Base relating_object,
+    express::Base related_object,
     const char* relationship_class,
     const char* relating_attr,
     const char* relating_inverse,
     bool return_existing,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    express::Base owner_history,
+    express::Base user,
+    express::Base application)
 {
-    if (auto* existing = find_assignment(related_object, relationship_class, relating_attr, relating_object)) {
-        return return_existing ? existing : nullptr;
+    if (auto existing = find_assignment(related_object, relationship_class, relating_attr, relating_object)) {
+        return return_existing ? existing : express::Base();
     }
 
     auto relationships = ifcapi::detail::read_inverse_aggregate(relating_object, relating_inverse);
-    auto* rel = relationships.empty() ? nullptr : relationships.front();
+    auto rel = relationships.empty() ? express::Base() : relationships.front();
     if (rel) {
         auto related = ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects");
         related.push_back(related_object);
@@ -193,7 +194,7 @@ IfcUtil::IfcBaseClass* assign_object_relationship(
     return rel;
 }
 
-void apply_work_time_props(IfcUtil::IfcBaseClass* work_time, ifcopenshell_pset_props_t* props) {
+void apply_work_time_props(express::Base work_time, ifcopenshell_pset_props_t* props) {
     if (!props) return;
     for (const auto& entry : props->entries) {
         if (entry.key == "Start" || entry.key == "StartDate" || entry.key == "Finish" || entry.key == "FinishDate") {
@@ -209,23 +210,23 @@ void apply_work_time_props(IfcUtil::IfcBaseClass* work_time, ifcopenshell_pset_p
     }
 }
 
-IfcUtil::IfcBaseClass* unassign_object_relationship(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relating_object,
-    IfcUtil::IfcBaseClass* related_object,
+express::Base unassign_object_relationship(
+    ifcopenshell::file* file,
+    express::Base relating_object,
+    express::Base related_object,
     const char* relationship_class,
     const char* relating_attr,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    express::Base user,
+    express::Base application)
 {
-    auto* rel = find_assignment(related_object, relationship_class, relating_attr, relating_object);
+    auto rel = find_assignment(related_object, relationship_class, relating_attr, relating_object);
     if (!rel) {
-        return nullptr;
+        return {};
     }
     auto related = ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects");
     if (related.size() == 1) {
         ifcapi::detail::remove_with_history(file, rel);
-        return nullptr;
+        return {};
     }
     related.erase(std::remove(related.begin(), related.end(), related_object), related.end());
     ifcapi::detail::write_ref_aggregate(rel, "RelatedObjects", related);
@@ -233,7 +234,7 @@ IfcUtil::IfcBaseClass* unassign_object_relationship(
     return rel;
 }
 
-std::vector<IfcUtil::IfcBaseClass*> sequence_assignment(IfcUtil::IfcBaseClass* task, const char* sequence) {
+std::vector<express::Base> sequence_assignment(express::Base task, const char* sequence) {
     const char* relationship_attr = nullptr;
     if (std::string(sequence) == "successor") {
         relationship_attr = "IsPredecessorTo";
@@ -246,8 +247,8 @@ std::vector<IfcUtil::IfcBaseClass*> sequence_assignment(IfcUtil::IfcBaseClass* t
     if (!relationships.empty()) {
         return relationships;
     }
-    for (auto* rel : ifcapi::detail::read_inverse_aggregate(task, "Nests")) {
-        if (auto* parent = ifcapi::detail::read_ref_attr(rel, "RelatingObject")) {
+    for (auto rel : ifcapi::detail::read_inverse_aggregate(task, "Nests")) {
+        if (auto parent = ifcapi::detail::read_ref_attr(rel, "RelatingObject")) {
             auto result = sequence_assignment(parent, sequence);
             if (!result.empty()) {
                 return result;
@@ -257,30 +258,28 @@ std::vector<IfcUtil::IfcBaseClass*> sequence_assignment(IfcUtil::IfcBaseClass* t
     return {};
 }
 
-bool read_task_time_date(IfcUtil::IfcBaseClass* task, const char* attribute, ifcapi::detail::sequence::DateTime& result) {
-    auto* task_time = ifcapi::detail::read_ref_attr(task, "TaskTime");
+bool read_task_time_date(express::Base task, const char* attribute, ifcapi::detail::sequence::DateTime& result) {
+    auto task_time = ifcapi::detail::read_ref_attr(task, "TaskTime");
     return task_time && ifcapi::detail::sequence::read_date_attribute(task_time, attribute, result);
 }
 
-IfcUtil::IfcBaseClass* task_from_task_time(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* task_time) {
+express::Base task_from_task_time(ifcopenshell::file* file, express::Base task_time) {
     if (!file || !task_time) {
-        return nullptr;
+        return {};
     }
-    auto inverses = file->getInverse(task_time->id(), nullptr, -1);
-    if (!inverses) {
-        return nullptr;
-    }
-    for (auto* inverse : *inverses) {
-        if (inverse && inverse->declaration().is("IfcTask")) {
+    auto inverses = file->instances_by_reference(static_cast<int>(task_time.id()));
+
+    for (auto inverse : inverses) {
+        if (inverse && inverse.declaration().is("IfcTask")) {
             return inverse;
         }
     }
-    return nullptr;
+    return {};
 }
 
-ifcapi::detail::sequence::Duration read_task_duration(IfcUtil::IfcBaseClass* task) {
+ifcapi::detail::sequence::Duration read_task_duration(express::Base task) {
     ifcapi::detail::sequence::Duration result;
-    auto* task_time = ifcapi::detail::read_ref_attr(task, "TaskTime");
+    auto task_time = ifcapi::detail::read_ref_attr(task, "TaskTime");
     auto duration = task_time ? ifcapi::detail::read_optional_string_attr(task_time, "ScheduleDuration") : ifcapi::detail::OptionalString{};
     if (duration.has_value) {
         ifcapi::detail::sequence::parse_duration(duration.value, result);
@@ -288,22 +287,22 @@ ifcapi::detail::sequence::Duration read_task_duration(IfcUtil::IfcBaseClass* tas
     return result;
 }
 
-std::optional<double> read_double_like_attr(IfcUtil::IfcBaseClass* entity, const char* attr) {
+std::optional<double> read_double_like_attr(express::Base entity, const char* attr) {
     int idx = ifcapi::detail::attr_index_of(entity, attr);
     if (idx < 0) {
         return std::nullopt;
     }
-    auto value = entity->get_attribute_value(static_cast<size_t>(idx));
+    auto value = entity.get_attribute_value(static_cast<size_t>(idx));
     if (value.isNull()) {
         return std::nullopt;
     }
-    if (value.type() == IfcUtil::Argument_DOUBLE || value.type() == IfcUtil::Argument_INT) {
+    if (value.type() == ifcopenshell::Argument_DOUBLE || value.type() == ifcopenshell::Argument_INT) {
         return static_cast<double>(value);
     }
     return std::nullopt;
 }
 
-std::optional<std::string> read_typed_string_value(IfcUtil::IfcBaseClass* value) {
+std::optional<std::string> read_typed_string_value(express::Base value) {
     if (!value) {
         return std::nullopt;
     }
@@ -314,10 +313,10 @@ std::optional<std::string> read_typed_string_value(IfcUtil::IfcBaseClass* value)
     if (text.has_value) {
         return text.value;
     }
-    auto* declaration = value->declaration().as_entity();
+    auto* declaration = value.declaration().as_entity();
     if (!declaration || !declaration->all_attributes().empty()) {
-        auto arg = value->get_attribute_value(0);
-        if (!arg.isNull() && arg.type() == IfcUtil::Argument_STRING) {
+        auto arg = value.get_attribute_value(0);
+        if (!arg.isNull() && arg.type() == ifcopenshell::Argument_STRING) {
             return static_cast<std::string>(arg);
         }
     }
@@ -374,39 +373,39 @@ std::optional<double> duration_to_seconds(
     return (days + partial_days) * seconds_per_workday;
 }
 
-IfcUtil::IfcBaseClass* task_work_schedule(IfcUtil::IfcBaseClass* task) {
-    for (auto* rel : ifcapi::detail::read_inverse_aggregate(task, "HasAssignments")) {
-        auto* control = ifcapi::detail::read_ref_attr(rel, "RelatingControl");
-        if (rel && rel->declaration().is("IfcRelAssignsToControl") && control && control->declaration().is("IfcWorkSchedule")) {
+express::Base task_work_schedule(express::Base task) {
+    for (auto rel : ifcapi::detail::read_inverse_aggregate(task, "HasAssignments")) {
+        auto control = ifcapi::detail::read_ref_attr(rel, "RelatingControl");
+        if (rel && rel.declaration().is("IfcRelAssignsToControl") && control && control.declaration().is("IfcWorkSchedule")) {
             return control;
         }
     }
-    for (auto* rel : ifcapi::detail::read_inverse_aggregate(task, "Nests")) {
-        if (auto* parent = ifcapi::detail::read_ref_attr(rel, "RelatingObject")) {
+    for (auto rel : ifcapi::detail::read_inverse_aggregate(task, "Nests")) {
+        if (auto parent = ifcapi::detail::read_ref_attr(rel, "RelatingObject")) {
             return task_work_schedule(parent);
         }
     }
-    return nullptr;
+    return {};
 }
 
 std::optional<std::string> pset_property_string(
-    IfcUtil::IfcBaseClass* product,
+    express::Base product,
     const std::string& pset_name,
     const std::string& property_name)
 {
-    for (auto* rel : ifcapi::detail::read_inverse_aggregate(product, "IsDefinedBy")) {
-        if (!rel || !rel->declaration().is("IfcRelDefinesByProperties")) {
+    for (auto rel : ifcapi::detail::read_inverse_aggregate(product, "IsDefinedBy")) {
+        if (!rel || !rel.declaration().is("IfcRelDefinesByProperties")) {
             continue;
         }
-        auto* pset = ifcapi::detail::read_ref_attr(rel, "RelatingPropertyDefinition");
+        auto pset = ifcapi::detail::read_ref_attr(rel, "RelatingPropertyDefinition");
         if (!pset || ifcapi::detail::read_string_attr(pset, "Name") != pset_name) {
             continue;
         }
-        for (auto* property : ifcapi::detail::read_ref_aggregate(pset, "HasProperties")) {
+        for (auto property : ifcapi::detail::read_ref_aggregate(pset, "HasProperties")) {
             if (!property || ifcapi::detail::read_string_attr(property, "Name") != property_name) {
                 continue;
             }
-            auto* nominal = ifcapi::detail::read_ref_attr(property, "NominalValue");
+            auto nominal = ifcapi::detail::read_ref_attr(property, "NominalValue");
             if (!nominal) {
                 continue;
             }
@@ -419,9 +418,9 @@ std::optional<std::string> pset_property_string(
     return std::nullopt;
 }
 
-double seconds_per_workday(IfcUtil::IfcBaseClass* task) {
+double seconds_per_workday(express::Base task) {
     constexpr double default_seconds = 8.0 * 60.0 * 60.0;
-    auto* schedule = task_work_schedule(task);
+    auto schedule = task_work_schedule(task);
     if (!schedule) {
         return default_seconds;
     }
@@ -433,8 +432,8 @@ double seconds_per_workday(IfcUtil::IfcBaseClass* task) {
     return seconds.value_or(default_seconds);
 }
 
-double resource_duration_days(IfcUtil::IfcBaseClass* resource, double seconds_per_day) {
-    auto* usage = ifcapi::detail::read_ref_attr(resource, "Usage");
+double resource_duration_days(express::Base resource, double seconds_per_day) {
+    auto usage = ifcapi::detail::read_ref_attr(resource, "Usage");
     auto schedule_work = usage ? ifcapi::detail::read_optional_string_attr(usage, "ScheduleWork") : ifcapi::detail::OptionalString{};
     if (!schedule_work.has_value) {
         return 0.0;
@@ -451,11 +450,11 @@ double resource_duration_days(IfcUtil::IfcBaseClass* resource, double seconds_pe
     return std::ceil((*schedule_seconds / seconds_per_day) / schedule_usage);
 }
 
-double max_resource_usage_duration(IfcUtil::IfcBaseClass* task, double seconds_per_day) {
+double max_resource_usage_duration(express::Base task, double seconds_per_day) {
     double max_duration = 0.0;
-    for (auto* rel : ifcapi::detail::read_inverse_aggregate(task, "OperatesOn")) {
-        for (auto* related : ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects")) {
-            if (related && related->declaration().is("IfcConstructionResource")) {
+    for (auto rel : ifcapi::detail::read_inverse_aggregate(task, "OperatesOn")) {
+        for (auto related : ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects")) {
+            if (related && related.declaration().is("IfcConstructionResource")) {
                 double duration = resource_duration_days(related, seconds_per_day);
                 if (duration > max_duration) {
                     max_duration = duration;
@@ -466,11 +465,11 @@ double max_resource_usage_duration(IfcUtil::IfcBaseClass* task, double seconds_p
     return max_duration;
 }
 
-IfcUtil::IfcBaseClass* ensure_task_time(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* task) {
-    if (auto* task_time = ifcapi::detail::read_ref_attr(task, "TaskTime")) {
+express::Base ensure_task_time(ifcopenshell::file* file, express::Base task) {
+    if (auto task_time = ifcapi::detail::read_ref_attr(task, "TaskTime")) {
         return task_time;
     }
-    auto* task_time = create_entity(file, "IfcTaskTime");
+    auto task_time = create_entity(file, "IfcTaskTime");
     ifcapi::detail::write_ref_attr(task, "TaskTime", task_time);
     return task_time;
 }
@@ -486,7 +485,7 @@ bool prop_has_key(ifcopenshell_pset_props_t* props, const std::string& key) {
 
 const ifcapi_pset::Entry* prop_entry(ifcopenshell_pset_props_t* props, const std::string& key) {
     if (!props) {
-        return nullptr;
+        return {};
     }
     auto it = std::find_if(props->entries.begin(), props->entries.end(), [&](const auto& entry) {
         return entry.key == key;
@@ -537,8 +536,8 @@ void erase_prop_key(ifcopenshell_pset_props_t* props, const std::string& key) {
 }
 
 void normalize_task_time_dates(
-    IfcUtil::IfcBaseClass* task_time,
-    IfcUtil::IfcBaseClass* calendar,
+    express::Base task_time,
+    express::Base calendar,
     ifcopenshell_pset_props_t* props)
 {
     auto duration_type_entry = prop_entry(props, "DurationType");
@@ -567,7 +566,7 @@ void normalize_task_time_dates(
     }
 }
 
-void calculate_task_time_finish(IfcUtil::IfcBaseClass* task_time, IfcUtil::IfcBaseClass* calendar) {
+void calculate_task_time_finish(express::Base task_time, express::Base calendar) {
     ifcapi::detail::sequence::DateTime start;
     if (!ifcapi::detail::sequence::read_date_attribute(task_time, "ScheduleStart", start)) {
         return;
@@ -588,7 +587,7 @@ void calculate_task_time_finish(IfcUtil::IfcBaseClass* task_time, IfcUtil::IfcBa
     ifcapi::detail::write_string_attr(task_time, "ScheduleFinish", ifcapi::detail::sequence::format_date_time(finish));
 }
 
-void calculate_task_time_duration(IfcUtil::IfcBaseClass* task_time, IfcUtil::IfcBaseClass* calendar) {
+void calculate_task_time_duration(express::Base task_time, express::Base calendar) {
     ifcapi::detail::sequence::DateTime start;
     ifcapi::detail::sequence::DateTime finish;
     if (!ifcapi::detail::sequence::read_date_attribute(task_time, "ScheduleStart", start) ||
@@ -612,114 +611,105 @@ void calculate_task_time_duration(IfcUtil::IfcBaseClass* task_time, IfcUtil::Ifc
 }
 
 void remove_task_internal(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* task,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    ifcopenshell::file* file,
+    express::Base task,
+    express::Base user,
+    express::Base application);
 
 void remove_work_schedule_internal(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* work_schedule,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application);
+    ifcopenshell::file* file,
+    express::Base work_schedule,
+    express::Base user,
+    express::Base application);
 
-void remove_task_time(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* task_time) {
+void remove_task_time(ifcopenshell::file* file, express::Base task_time) {
     if (!task_time) {
         return;
     }
-    if (task_time->declaration().is("IfcTaskTimeRecurring")) {
-        if (auto* recurrence = ifcapi::detail::read_ref_attr(task_time, "Recurrence")) {
-            for (auto* time_period : ifcapi::detail::read_ref_aggregate(recurrence, "TimePeriods")) {
-                file->removeEntity(time_period);
+    if (task_time.declaration().is("IfcTaskTimeRecurring")) {
+        if (auto recurrence = ifcapi::detail::read_ref_attr(task_time, "Recurrence")) {
+            for (auto time_period : ifcapi::detail::read_ref_aggregate(recurrence, "TimePeriods")) {
+                file->remove_entity(time_period);
             }
-            file->removeEntity(recurrence);
+            file->remove_entity(recurrence);
         }
     }
-    file->removeEntity(task_time);
+    file->remove_entity(task_time);
 }
 
-IfcUtil::IfcBaseClass* deep_copy_entity(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* element,
-    std::unordered_map<unsigned, IfcUtil::IfcBaseClass*>& memo)
+express::Base deep_copy_entity(
+    ifcopenshell::file* file,
+    express::Base element,
+    std::unordered_map<unsigned, express::Base>& memo)
 {
     if (!element) {
-        return nullptr;
+        return {};
     }
-    auto id = element->id();
+    auto id = element.id();
     if (id) {
         auto it = memo.find(id);
         if (it != memo.end()) {
             return it->second;
         }
     }
-    auto* base = dynamic_cast<IfcUtil::IfcBaseEntity*>(element);
-    if (!base) {
-        return element;
-    }
-    const auto* declaration = base->declaration().as_entity();
+    const auto* declaration = element.declaration().as_entity();
     if (!declaration) {
         return element;
     }
-    auto* result = file->create(declaration);
+    auto result = file->create(declaration);
     if (id) {
         memo[id] = result;
     }
     auto attributes = declaration->all_attributes();
     for (size_t i = 0; i < attributes.size(); ++i) {
-        auto value = element->get_attribute_value(i);
+        auto value = element.get_attribute_value(i);
         if (value.isNull()) {
             continue;
         }
         if (attributes[i]->name() == "GlobalId") {
-            result->set_attribute_value(i, ifcapi::guid_new());
+            result.set_attribute_value(i, ifcapi::guid_new());
             continue;
         }
-        ifcapi::detail::copy_attribute_value(result, i, value);
-        if (value.type() == IfcUtil::Argument_ENTITY_INSTANCE) {
-            result->set_attribute_value(i, deep_copy_entity(file, static_cast<IfcUtil::IfcBaseClass*>(value), memo));
-        } else if (value.type() == IfcUtil::Argument_AGGREGATE_OF_ENTITY_INSTANCE) {
-            auto aggregate = static_cast<aggregate_of_instance::ptr>(value);
-            auto copied = aggregate_of_instance::ptr(new aggregate_of_instance());
-            if (aggregate) {
-                for (auto& item : *aggregate) {
-                    copied->push(deep_copy_entity(file, item, memo));
+        if (value.type() == ifcopenshell::Argument_ENTITY_INSTANCE) {
+            result.set_attribute_value(i, deep_copy_entity(file, static_cast<express::Base>(value), memo));
+        } else if (value.type() == ifcopenshell::Argument_AGGREGATE_OF_ENTITY_INSTANCE) {
+            auto aggregate = static_cast<std::vector<express::Base>>(value);
+            std::vector<express::Base> copied;
+            for (auto item : aggregate) copied.push_back(deep_copy_entity(file, item, memo));
+            result.set_attribute_value(i, copied);
+        } else if (value.type() == ifcopenshell::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE) {
+            auto aggregate = static_cast<std::vector<std::vector<express::Base>>>(value);
+            std::vector<std::vector<express::Base>> copied;
+            for (const auto& row : aggregate) {
+                std::vector<express::Base> copied_row;
+                copied_row.reserve(row.size());
+                for (auto item : row) {
+                    copied_row.push_back(deep_copy_entity(file, item, memo));
                 }
+                copied.push_back(copied_row);
             }
-            result->set_attribute_value(i, copied);
-        } else if (value.type() == IfcUtil::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE) {
-            auto aggregate = static_cast<aggregate_of_aggregate_of_instance::ptr>(value);
-            auto copied = aggregate_of_aggregate_of_instance::ptr(new aggregate_of_aggregate_of_instance());
-            if (aggregate) {
-                for (const auto& row : *aggregate) {
-                    std::vector<IfcUtil::IfcBaseClass*> copied_row;
-                    copied_row.reserve(row.size());
-                    for (auto* item : row) {
-                        copied_row.push_back(deep_copy_entity(file, item, memo));
-                    }
-                    copied->push(copied_row);
-                }
-            }
-            result->set_attribute_value(i, copied);
+            result.set_attribute_value(i, copied);
+        } else {
+            ifcapi::detail::copy_attribute_value(result, i, value);
         }
     }
     return result;
 }
 
-IfcUtil::IfcBaseClass* deep_copy_entity(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* element) {
-    std::unordered_map<unsigned, IfcUtil::IfcBaseClass*> memo;
+express::Base deep_copy_entity(ifcopenshell::file* file, express::Base element) {
+    std::unordered_map<unsigned, express::Base> memo;
     return deep_copy_entity(file, element, memo);
 }
 
 void create_object_reference(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relating_object,
-    IfcUtil::IfcBaseClass* related_object,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    ifcopenshell::file* file,
+    express::Base relating_object,
+    express::Base related_object,
+    express::Base owner_history,
+    express::Base user,
+    express::Base application)
 {
-    IfcUtil::IfcBaseClass* referenced_by = nullptr;
+    express::Base referenced_by = {};
     auto declares = ifcapi::detail::read_inverse_aggregate(relating_object, "Declares");
     if (!declares.empty()) {
         referenced_by = declares.front();
@@ -742,74 +732,77 @@ void create_object_reference(
 class DuplicateTask {
 public:
     DuplicateTask(
-        IfcParse::IfcFile* file,
-        IfcUtil::IfcBaseClass* owner_history,
-        IfcUtil::IfcBaseClass* user,
-        IfcUtil::IfcBaseClass* application)
+        ifcopenshell::file* file,
+        express::Base owner_history,
+        express::Base user,
+        express::Base application)
         : file_(file), owner_history_(owner_history), user_(user), application_(application) {}
 
-    ifcapi::bindings::SequenceDuplicateTaskResult execute(IfcUtil::IfcBaseClass* task) {
+    ifcapi::bindings::SequenceDuplicateTaskResult execute(express::Base task) {
         duplicate_task(task);
         copy_sequence_relationships();
         return {current_, duplicate_};
     }
 
 private:
-    IfcParse::IfcFile* file_;
-    IfcUtil::IfcBaseClass* owner_history_;
-    IfcUtil::IfcBaseClass* user_;
-    IfcUtil::IfcBaseClass* application_;
-    std::vector<IfcUtil::IfcBaseClass*> current_;
-    std::vector<IfcUtil::IfcBaseClass*> duplicate_;
+    ifcopenshell::file* file_;
+    express::Base owner_history_;
+    express::Base user_;
+    express::Base application_;
+    std::vector<express::Base> current_;
+    std::vector<express::Base> duplicate_;
 
-    IfcUtil::IfcBaseClass* duplicate_task(IfcUtil::IfcBaseClass* task) {
-        auto* new_task = deep_copy_entity(file_, task);
+    express::Base duplicate_task(express::Base task) {
+        auto new_task = deep_copy_entity(file_, task);
         current_.push_back(task);
         duplicate_.push_back(new_task);
         copy_indirect_attributes(task, new_task);
         return new_task;
     }
 
-    int current_index(IfcUtil::IfcBaseClass* task) const {
+    int current_index(express::Base task) const {
         auto it = std::find(current_.begin(), current_.end(), task);
         return it == current_.end() ? -1 : static_cast<int>(std::distance(current_.begin(), it));
     }
 
-    void copy_indirect_attributes(IfcUtil::IfcBaseClass* from_element, IfcUtil::IfcBaseClass* to_element) {
-        auto inverses = file_->getInverse(from_element->id(), nullptr, -1);
-        std::vector<IfcUtil::IfcBaseClass*> snapshot;
-        if (inverses) {
-            for (auto* inverse : *inverses) {
-                if (inverse) {
-                    snapshot.push_back(inverse);
-                }
+    void copy_indirect_attributes(express::Base from_element, express::Base to_element) {
+        auto inverses = file_->instances_by_reference(static_cast<int>(from_element.id()));
+        std::vector<express::Base> snapshot;
+        for (auto inverse : inverses) {
+            if (inverse) {
+                snapshot.push_back(inverse);
             }
         }
-        for (auto* inverse : snapshot) {
+        for (auto inverse : snapshot) {
             if (!ifcapi::detail::exists_in_file(file_, inverse)) {
                 continue;
             }
-            if (inverse->declaration().is("IfcRelDefinesByProperties")) {
-                auto* rel = ifcapi::detail::shallow_copy(file_, inverse);
+            if (inverse.declaration().is("IfcRelDefinesByProperties")) {
+                auto rel = ifcapi::detail::shallow_copy(file_, inverse);
                 ifcapi::detail::write_ref_aggregate(rel, "RelatedObjects", {to_element});
                 ifcapi::detail::write_ref_attr(
                     rel, "RelatingPropertyDefinition",
                     deep_copy_entity(file_, ifcapi::detail::read_ref_attr(inverse, "RelatingPropertyDefinition")));
-            } else if (inverse->declaration().is("IfcRelNests") &&
+            } else if (inverse.declaration().is("IfcRelNests") &&
                 ifcapi::detail::read_ref_attr(inverse, "RelatingObject") == from_element) {
-                std::vector<IfcUtil::IfcBaseClass*> new_tasks;
-                for (auto* nested_task : ifcapi::detail::read_ref_aggregate(inverse, "RelatedObjects")) {
+                std::vector<express::Base> new_tasks;
+                for (auto nested_task : ifcapi::detail::read_ref_aggregate(inverse, "RelatedObjects")) {
                     new_tasks.push_back(duplicate_task(nested_task));
                 }
                 if (!new_tasks.empty()) {
                     ifcapi::bindings::nest_assign_object(
-                        file_, ifcapi::detail::to_const_refs(new_tasks), to_element, owner_history_, user_, application_);
+                        file_,
+                        ifcapi::detail::to_const_refs(new_tasks),
+                        &to_element,
+                        ifcapi::detail::nullable_ptr(owner_history_),
+                        ifcapi::detail::nullable_ptr(user_),
+                        ifcapi::detail::nullable_ptr(application_));
                 }
-            } else if (inverse->declaration().is("IfcRelSequence") ||
-                (inverse->declaration().is("IfcRelAssignsToControl") &&
+            } else if (inverse.declaration().is("IfcRelSequence") ||
+                (inverse.declaration().is("IfcRelAssignsToControl") &&
                     ifcapi::detail::read_ref_attr(inverse, "RelatingControl") &&
-                    ifcapi::detail::read_ref_attr(inverse, "RelatingControl")->declaration().is("IfcWorkSchedule")) ||
-                inverse->declaration().is("IfcRelDefinesByObject")) {
+                    ifcapi::detail::read_ref_attr(inverse, "RelatingControl").declaration().is("IfcWorkSchedule")) ||
+                inverse.declaration().is("IfcRelDefinesByObject")) {
                 continue;
             } else {
                 copy_or_extend_inverse(inverse, from_element, to_element);
@@ -818,32 +811,28 @@ private:
     }
 
     void copy_or_extend_inverse(
-        IfcUtil::IfcBaseClass* inverse,
-        IfcUtil::IfcBaseClass* from_element,
-        IfcUtil::IfcBaseClass* to_element)
+        express::Base inverse,
+        express::Base from_element,
+        express::Base to_element)
     {
-        auto* decl = inverse->declaration().as_entity();
+        auto* decl = inverse.declaration().as_entity();
         if (!decl) {
             return;
         }
         auto attributes = decl->all_attributes();
         for (size_t i = 0; i < attributes.size(); ++i) {
-            auto value = inverse->get_attribute_value(i);
+            auto value = inverse.get_attribute_value(i);
             if (value.isNull()) {
                 continue;
             }
-            if (value.type() == IfcUtil::Argument_ENTITY_INSTANCE &&
-                static_cast<IfcUtil::IfcBaseClass*>(value) == from_element) {
-                auto* copied = ifcapi::detail::shallow_copy(file_, inverse);
-                copied->set_attribute_value(i, to_element);
-            } else if (value.type() == IfcUtil::Argument_AGGREGATE_OF_ENTITY_INSTANCE) {
-                auto aggregate = static_cast<aggregate_of_instance::ptr>(value);
-                if (!aggregate) {
-                    continue;
-                }
+            if (value.type() == ifcopenshell::Argument_ENTITY_INSTANCE &&
+                static_cast<express::Base>(value) == from_element) {
+                auto copied = ifcapi::detail::shallow_copy(file_, inverse);
+                copied.set_attribute_value(i, to_element);
+            } else if (value.type() == ifcopenshell::Argument_AGGREGATE_OF_ENTITY_INSTANCE) {
                 bool contains = false;
-                std::vector<IfcUtil::IfcBaseClass*> refs;
-                for (auto& item : *aggregate) {
+                std::vector<express::Base> refs;
+                for (auto item : static_cast<std::vector<express::Base>>(value)) {
                     refs.push_back(item);
                     if (item == from_element) {
                         contains = true;
@@ -859,18 +848,16 @@ private:
 
     void copy_sequence_relationships() {
         for (size_t i = 0; i < current_.size(); ++i) {
-            auto* original_task = current_[i];
-            auto* duplicated_task = duplicate_[i];
-            auto inverses = file_->getInverse(original_task->id(), nullptr, -1);
-            if (!inverses) {
-                continue;
-            }
-            for (auto* inverse : *inverses) {
-                if (!inverse || !inverse->declaration().is("IfcRelSequence")) {
+            auto original_task = current_[i];
+            auto duplicated_task = duplicate_[i];
+            auto inverses = file_->instances_by_reference(static_cast<int>(original_task.id()));
+
+            for (auto inverse : inverses) {
+                if (!inverse || !inverse.declaration().is("IfcRelSequence")) {
                     continue;
                 }
-                auto* relating_process = ifcapi::detail::read_ref_attr(inverse, "RelatingProcess");
-                auto* related_process = ifcapi::detail::read_ref_attr(inverse, "RelatedProcess");
+                auto relating_process = ifcapi::detail::read_ref_attr(inverse, "RelatingProcess");
+                auto related_process = ifcapi::detail::read_ref_attr(inverse, "RelatedProcess");
                 if (relating_process == original_task) {
                     relating_process = duplicated_task;
                 }
@@ -886,15 +873,15 @@ private:
                     relating_process = duplicate_[static_cast<size_t>(relating_index)];
                 }
                 if (relating_process && related_process) {
-                    auto* rel = ifcapi::bindings::sequence_assign_sequence(
+                    auto rel = ifcapi::bindings::sequence_assign_sequence(
                         file_,
-                        relating_process,
-                        related_process,
+                        &relating_process,
+                        &related_process,
                         ifcapi::detail::read_string_attr(inverse, "SequenceType"),
-                        owner_history_,
-                        user_,
-                        application_);
-                    if (auto* lag = ifcapi::detail::read_ref_attr(inverse, "TimeLag")) {
+                        ifcapi::detail::nullable_ptr(owner_history_),
+                        ifcapi::detail::nullable_ptr(user_),
+                        ifcapi::detail::nullable_ptr(application_));
+                    if (auto lag = ifcapi::detail::read_ref_attr(inverse, "TimeLag")) {
                         ifcapi::detail::write_ref_attr(rel, "TimeLag", deep_copy_entity(file_, lag));
                     }
                 }
@@ -904,9 +891,9 @@ private:
 };
 
 void remove_from_related_objects_or_relation(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* rel,
-    IfcUtil::IfcBaseClass* object)
+    ifcopenshell::file* file,
+    express::Base rel,
+    express::Base object)
 {
     auto related = ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects");
     if (related.size() <= 1) {
@@ -918,9 +905,9 @@ void remove_from_related_objects_or_relation(
 }
 
 void remove_rel_defines_by_object_or_unassign(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* rel,
-    IfcUtil::IfcBaseClass* object)
+    ifcopenshell::file* file,
+    express::Base rel,
+    express::Base object)
 {
     if (ifcapi::detail::read_ref_attr(rel, "RelatingObject") == object ||
         ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects").size() <= 1) {
@@ -933,15 +920,21 @@ void remove_rel_defines_by_object_or_unassign(
 }
 
 void remove_task_internal(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* task,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    ifcopenshell::file* file,
+    express::Base task,
+    express::Base user,
+    express::Base application)
 {
     if (!ifcapi::detail::exists_in_file(file, task)) {
         return;
     }
-    ifcapi::bindings::project_unassign_declaration(file, one_const(task), first_context(file), user, application);
+    auto context = first_context(file);
+    ifcapi::bindings::project_unassign_declaration(
+        file,
+        one_const(task),
+        &context,
+        ifcapi::detail::nullable_ptr(user),
+        ifcapi::detail::nullable_ptr(application));
 
     remove_task_time(file, ifcapi::detail::read_ref_attr(task, "TaskTime"));
 
@@ -949,52 +942,56 @@ void remove_task_internal(
     if (!nested_by.empty()) {
         auto subtasks = ifcapi::detail::read_ref_aggregate(nested_by.front(), "RelatedObjects");
         if (!subtasks.empty()) {
-            ifcapi::bindings::nest_unassign_object(file, ifcapi::detail::to_const_refs(subtasks), user, application);
-            for (auto* subtask : subtasks) {
+            ifcapi::bindings::nest_unassign_object(
+                file,
+                ifcapi::detail::to_const_refs(subtasks),
+                ifcapi::detail::nullable_ptr(user),
+                ifcapi::detail::nullable_ptr(application));
+            for (auto subtask : subtasks) {
                 remove_task_internal(file, subtask, user, application);
             }
         }
     }
     if (!ifcapi::detail::read_inverse_aggregate(task, "Nests").empty()) {
-        ifcapi::bindings::nest_unassign_object(file, one_const(task), user, application);
+        ifcapi::bindings::nest_unassign_object(
+            file, one_const(task), ifcapi::detail::nullable_ptr(user), ifcapi::detail::nullable_ptr(application));
     }
 
-    auto inverses = file->getInverse(task->id(), nullptr, -1);
-    std::vector<IfcUtil::IfcBaseClass*> snapshot;
-    if (inverses) {
-        for (auto* inverse : *inverses) {
-            if (inverse) {
-                snapshot.push_back(inverse);
-            }
+    auto inverses = file->instances_by_reference(static_cast<int>(task.id()));
+    std::vector<express::Base> snapshot;
+    for (auto inverse : inverses) {
+        if (inverse) {
+            snapshot.push_back(inverse);
         }
     }
-    for (auto* inverse : snapshot) {
+    for (auto inverse : snapshot) {
         if (!ifcapi::detail::exists_in_file(file, inverse)) {
             continue;
         }
-        if (inverse->declaration().is("IfcRelSequence")) {
+        if (inverse.declaration().is("IfcRelSequence")) {
             ifcapi::detail::remove_with_history(file, inverse);
-        } else if (inverse->declaration().is("IfcRelAssignsToControl")) {
-            auto* control = ifcapi::detail::read_ref_attr(inverse, "RelatingControl");
+        } else if (inverse.declaration().is("IfcRelAssignsToControl")) {
+            auto control = ifcapi::detail::read_ref_attr(inverse, "RelatingControl");
             if (control == task || ifcapi::detail::read_ref_aggregate(inverse, "RelatedObjects").size() <= 1) {
                 ifcapi::detail::remove_with_history(file, inverse);
             } else {
                 remove_from_related_objects_or_relation(file, inverse, task);
             }
-        } else if (inverse->declaration().is("IfcRelDefinesByProperties")) {
-            ifcapi::bindings::pset_remove_pset(file, task, ifcapi::detail::read_ref_attr(inverse, "RelatingPropertyDefinition"));
-        } else if (inverse->declaration().is("IfcRelAssignsToProcess")) {
+        } else if (inverse.declaration().is("IfcRelDefinesByProperties")) {
+            auto pset = ifcapi::detail::read_ref_attr(inverse, "RelatingPropertyDefinition");
+            ifcapi::bindings::pset_remove_pset(file, &task, &pset);
+        } else if (inverse.declaration().is("IfcRelAssignsToProcess")) {
             if (ifcapi::detail::read_ref_attr(inverse, "RelatingProcess") == task ||
                 ifcapi::detail::read_ref_aggregate(inverse, "RelatedObjects").size() <= 1) {
                 ifcapi::detail::remove_with_history(file, inverse);
             }
-        } else if (inverse->declaration().is("IfcRelAssignsToProduct")) {
+        } else if (inverse.declaration().is("IfcRelAssignsToProduct")) {
             if (ifcapi::detail::read_ref_attr(inverse, "RelatingProduct") == task) {
                 ifcapi::detail::remove_with_history(file, inverse);
             } else {
                 remove_from_related_objects_or_relation(file, inverse, task);
             }
-        } else if (inverse->declaration().is("IfcRelAssignsToObject")) {
+        } else if (inverse.declaration().is("IfcRelAssignsToObject")) {
             if (ifcapi::detail::read_ref_attr(inverse, "RelatingObject") == task) {
                 ifcapi::detail::remove_with_history(file, inverse);
             } else {
@@ -1007,102 +1004,130 @@ void remove_task_internal(
 }
 
 void remove_work_calendar_internal(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* work_calendar,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    ifcopenshell::file* file,
+    express::Base work_calendar,
+    express::Base user,
+    express::Base application)
 {
     if (!ifcapi::detail::exists_in_file(file, work_calendar)) {
         return;
     }
-    ifcapi::bindings::project_unassign_declaration(file, one_const(work_calendar), first_context(file), user, application);
-    for (auto* rel : ifcapi::detail::read_inverse_aggregate(work_calendar, "Controls")) {
+    auto context = first_context(file);
+    ifcapi::bindings::project_unassign_declaration(
+        file,
+        one_const(work_calendar),
+        &context,
+        ifcapi::detail::nullable_ptr(user),
+        ifcapi::detail::nullable_ptr(application));
+    for (auto rel : ifcapi::detail::read_inverse_aggregate(work_calendar, "Controls")) {
         if (!ifcapi::detail::exists_in_file(file, rel)) {
             continue;
         }
         auto related = ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects");
         ifcapi::bindings::control_unassign_control(
-            file, work_calendar, ifcapi::detail::to_const_refs(related), user, application);
+            file,
+            &work_calendar,
+            ifcapi::detail::to_const_refs(related),
+            ifcapi::detail::nullable_ptr(user),
+            ifcapi::detail::nullable_ptr(application));
     }
     auto working_times = ifcapi::detail::read_ref_aggregate(work_calendar, "WorkingTimes");
     auto exception_times = ifcapi::detail::read_ref_aggregate(work_calendar, "ExceptionTimes");
-    for (auto* work_time : working_times) {
+    for (auto work_time : working_times) {
         if (ifcapi::detail::exists_in_file(file, work_time)) {
-            ifcapi::bindings::sequence_remove_work_time(file, work_time);
+            ifcapi::bindings::sequence_remove_work_time(file, &work_time);
         }
     }
-    for (auto* work_time : exception_times) {
+    for (auto work_time : exception_times) {
         if (ifcapi::detail::exists_in_file(file, work_time)) {
-            ifcapi::bindings::sequence_remove_work_time(file, work_time);
+            ifcapi::bindings::sequence_remove_work_time(file, &work_time);
         }
     }
     ifcapi::detail::remove_with_history(file, work_calendar);
 }
 
 void remove_work_plan_internal(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* work_plan,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    ifcopenshell::file* file,
+    express::Base work_plan,
+    express::Base user,
+    express::Base application)
 {
     if (!ifcapi::detail::exists_in_file(file, work_plan)) {
         return;
     }
-    ifcapi::bindings::project_unassign_declaration(file, one_const(work_plan), first_context(file), user, application);
-    std::vector<IfcUtil::IfcBaseClass*> related_objects;
-    for (auto* rel : ifcapi::detail::read_inverse_aggregate(work_plan, "IsDecomposedBy")) {
+    auto context = first_context(file);
+    ifcapi::bindings::project_unassign_declaration(
+        file,
+        one_const(work_plan),
+        &context,
+        ifcapi::detail::nullable_ptr(user),
+        ifcapi::detail::nullable_ptr(application));
+    std::vector<express::Base> related_objects;
+    for (auto rel : ifcapi::detail::read_inverse_aggregate(work_plan, "IsDecomposedBy")) {
         auto related = ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects");
         related_objects.insert(related_objects.end(), related.begin(), related.end());
     }
     if (!related_objects.empty()) {
-        ifcapi::bindings::aggregate_unassign_object(file, ifcapi::detail::to_const_refs(related_objects), user, application);
+        ifcapi::bindings::aggregate_unassign_object(
+            file,
+            ifcapi::detail::to_const_refs(related_objects),
+            ifcapi::detail::nullable_ptr(user),
+            ifcapi::detail::nullable_ptr(application));
     }
     ifcapi::detail::remove_with_history(file, work_plan);
 }
 
 void remove_work_schedule_internal(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* work_schedule,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    ifcopenshell::file* file,
+    express::Base work_schedule,
+    express::Base user,
+    express::Base application)
 {
     if (!ifcapi::detail::exists_in_file(file, work_schedule)) {
         return;
     }
-    ifcapi::bindings::project_unassign_declaration(file, one_const(work_schedule), first_context(file), user, application);
+    auto context = first_context(file);
+    ifcapi::bindings::project_unassign_declaration(
+        file,
+        one_const(work_schedule),
+        &context,
+        ifcapi::detail::nullable_ptr(user),
+        ifcapi::detail::nullable_ptr(application));
 
-    for (auto* rel : ifcapi::detail::read_inverse_aggregate(work_schedule, "Declares")) {
+    for (auto rel : ifcapi::detail::read_inverse_aggregate(work_schedule, "Declares")) {
         auto related = ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects");
-        for (auto* nested_schedule : related) {
-            if (nested_schedule && nested_schedule->declaration().is("IfcWorkSchedule")) {
+        for (auto nested_schedule : related) {
+            if (nested_schedule && nested_schedule.declaration().is("IfcWorkSchedule")) {
                 remove_work_schedule_internal(file, nested_schedule, user, application);
             }
         }
     }
 
     if (!ifcapi::detail::read_inverse_aggregate(work_schedule, "Decomposes").empty()) {
-        ifcapi::bindings::aggregate_unassign_object(file, one_const(work_schedule), user, application);
+        ifcapi::bindings::aggregate_unassign_object(
+            file,
+            one_const(work_schedule),
+            ifcapi::detail::nullable_ptr(user),
+            ifcapi::detail::nullable_ptr(application));
     }
 
-    auto inverses = file->getInverse(work_schedule->id(), nullptr, -1);
-    std::vector<IfcUtil::IfcBaseClass*> snapshot;
-    if (inverses) {
-        for (auto* inverse : *inverses) {
-            if (inverse) {
-                snapshot.push_back(inverse);
-            }
+    auto inverses = file->instances_by_reference(static_cast<int>(work_schedule.id()));
+    std::vector<express::Base> snapshot;
+    for (auto inverse : inverses) {
+        if (inverse) {
+            snapshot.push_back(inverse);
         }
     }
-    for (auto* inverse : snapshot) {
+    for (auto inverse : snapshot) {
         if (!ifcapi::detail::exists_in_file(file, inverse)) {
             continue;
         }
-        if (inverse->declaration().is("IfcRelDefinesByObject")) {
+        if (inverse.declaration().is("IfcRelDefinesByObject")) {
             remove_rel_defines_by_object_or_unassign(file, inverse, work_schedule);
-        } else if (inverse->declaration().is("IfcRelAssignsToControl")) {
+        } else if (inverse.declaration().is("IfcRelAssignsToControl")) {
             auto related = ifcapi::detail::read_ref_aggregate(inverse, "RelatedObjects");
-            for (auto* related_object : related) {
-                if (related_object && related_object->declaration().is("IfcTask")) {
+            for (auto related_object : related) {
+                if (related_object && related_object.declaration().is("IfcTask")) {
                     remove_task_internal(file, related_object, user, application);
                 }
             }
@@ -1112,8 +1137,8 @@ void remove_work_schedule_internal(
     ifcapi::detail::remove_with_history(file, work_schedule);
 }
 
-int lag_time_days(IfcUtil::IfcBaseClass* lag_time) {
-    auto* value = ifcapi::detail::read_ref_attr(lag_time, "LagValue");
+int lag_time_days(express::Base lag_time) {
+    auto value = ifcapi::detail::read_ref_attr(lag_time, "LagValue");
     if (!value) {
         return 0;
     }
@@ -1124,10 +1149,10 @@ int lag_time_days(IfcUtil::IfcBaseClass* lag_time) {
     if (!text.has_value) {
         int idx = ifcapi::detail::attr_index_of(value, "wrappedValue");
         if (idx < 0) idx = 0;
-        auto* declaration = value->declaration().as_entity();
+        auto* declaration = value.declaration().as_entity();
         if (!declaration || static_cast<size_t>(idx) < declaration->all_attributes().size()) {
-            auto arg = value->get_attribute_value(static_cast<size_t>(idx));
-            if (!arg.isNull() && arg.type() == IfcUtil::Argument_STRING) {
+            auto arg = value.get_attribute_value(static_cast<size_t>(idx));
+            if (!arg.isNull() && arg.type() == ifcopenshell::Argument_STRING) {
                 text.has_value = true;
                 text.value = static_cast<std::string>(arg);
             }
@@ -1141,16 +1166,16 @@ int lag_time_days(IfcUtil::IfcBaseClass* lag_time) {
     return duration.days;
 }
 
-double lag_time_ratio(IfcUtil::IfcBaseClass* lag_time) {
-    auto* value = ifcapi::detail::read_ref_attr(lag_time, "LagValue");
+double lag_time_ratio(express::Base lag_time) {
+    auto value = ifcapi::detail::read_ref_attr(lag_time, "LagValue");
     if (!value) {
         return 0.0;
     }
     int idx = ifcapi::detail::attr_index_of(value, "wrappedValue");
     if (idx < 0) idx = 0;
-    auto* declaration = value->declaration().as_entity();
+    auto* declaration = value.declaration().as_entity();
     if (!declaration || static_cast<size_t>(idx) < declaration->all_attributes().size()) {
-        auto arg = value->get_attribute_value(static_cast<size_t>(idx));
+        auto arg = value.get_attribute_value(static_cast<size_t>(idx));
         if (!arg.isNull()) {
             return static_cast<double>(arg);
         }
@@ -1160,10 +1185,10 @@ double lag_time_ratio(IfcUtil::IfcBaseClass* lag_time) {
 
 struct ScheduleNode {
     int id = 0;
-    IfcUtil::IfcBaseClass* task = nullptr;
+    express::Base task = {};
     int duration = 0;
     std::string duration_type = "ELAPSEDTIME";
-    IfcUtil::IfcBaseClass* calendar = nullptr;
+    express::Base calendar = {};
     std::optional<ifcapi::detail::sequence::DateTime> early_start;
     std::optional<ifcapi::detail::sequence::DateTime> early_finish;
     std::optional<ifcapi::detail::sequence::DateTime> late_start;
@@ -1193,9 +1218,9 @@ ifcapi::detail::sequence::DateTime max_date(const std::vector<ifcapi::detail::se
 
 class RecalculateSchedule {
 public:
-    explicit RecalculateSchedule(IfcParse::IfcFile*) {}
+    explicit RecalculateSchedule(ifcopenshell::file*) {}
 
-    void execute(IfcUtil::IfcBaseClass* work_schedule) {
+    void execute(express::Base work_schedule) {
         work_schedule_ = work_schedule;
         build_network_graph();
         if (start_dates_.empty()) {
@@ -1245,7 +1270,7 @@ public:
 private:
     static constexpr int start_id = -1;
     static constexpr int finish_id = -2;
-    IfcUtil::IfcBaseClass* work_schedule_ = nullptr;
+    express::Base work_schedule_ = {};
     std::map<int, ScheduleNode> nodes_;
     std::vector<ScheduleEdge> edges_;
     std::vector<ifcapi::detail::sequence::DateTime> start_dates_;
@@ -1264,7 +1289,7 @@ private:
 
     const ScheduleEdge* edge_between(int from, int to) const {
         for (const auto& edge : edges_) if (edge.from == from && edge.to == to) return &edge;
-        return nullptr;
+        return {};
     }
 
     ifcapi::detail::sequence::DateTime offset_date(
@@ -1284,30 +1309,30 @@ private:
         ScheduleNode finish_node;
         finish_node.id = finish_id;
         nodes_[finish_id] = finish_node;
-        for (auto* rel : ifcapi::detail::read_inverse_aggregate(work_schedule_, "Controls")) {
-            for (auto* related : ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects")) {
-                if (related && related->declaration().is("IfcTask")) {
+        for (auto rel : ifcapi::detail::read_inverse_aggregate(work_schedule_, "Controls")) {
+            for (auto related : ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects")) {
+                if (related && related.declaration().is("IfcTask")) {
                     add_node(related);
                 }
             }
         }
     }
 
-    void add_node(IfcUtil::IfcBaseClass* task) {
+    void add_node(express::Base task) {
         auto nested_by = ifcapi::detail::read_inverse_aggregate(task, "IsNestedBy");
         if (!nested_by.empty()) {
-            for (auto* rel : nested_by) {
-                for (auto* child : ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects")) {
+            for (auto rel : nested_by) {
+                for (auto child : ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects")) {
                     add_node(child);
                 }
             }
             return;
         }
-        int id = task->id();
+        int id = task.id();
         ScheduleNode node;
         node.id = id;
         node.task = task;
-        auto* task_time = ifcapi::detail::read_ref_attr(task, "TaskTime");
+        auto task_time = ifcapi::detail::read_ref_attr(task, "TaskTime");
         if (task_time) {
             auto duration_text = ifcapi::detail::read_optional_string_attr(task_time, "ScheduleDuration");
             if (duration_text.has_value) {
@@ -1322,17 +1347,17 @@ private:
         nodes_[id] = node;
 
         std::vector<std::string> predecessor_types;
-        for (auto* rel : sequence_assignment(task, "predecessor")) {
-            auto* predecessor = ifcapi::detail::read_ref_attr(rel, "RelatingProcess");
+        for (auto rel : sequence_assignment(task, "predecessor")) {
+            auto predecessor = ifcapi::detail::read_ref_attr(rel, "RelatingProcess");
             if (!predecessor) continue;
             auto type = ifcapi::detail::read_string_attr(rel, "SequenceType");
             predecessor_types.push_back(type);
-            edges_.push_back(ScheduleEdge{static_cast<int>(predecessor->id()), id,
+            edges_.push_back(ScheduleEdge{static_cast<int>(predecessor.id()), id,
                 ifcapi::detail::read_ref_attr(rel, "TimeLag") ? lag_time_days(ifcapi::detail::read_ref_attr(rel, "TimeLag")) : 0,
                 sequence_type(type)});
         }
         std::vector<std::string> successor_types;
-        for (auto* rel : sequence_assignment(task, "successor")) {
+        for (auto rel : sequence_assignment(task, "successor")) {
             successor_types.push_back(ifcapi::detail::read_string_attr(rel, "SequenceType"));
         }
         if (predecessor_types.empty()) {
@@ -1545,12 +1570,12 @@ private:
             int id = item.first;
             if (id == start_id || id == finish_id) continue;
             auto& data = item.second;
-            auto* task_time = ifcapi::detail::read_ref_attr(data.task, "TaskTime");
+            auto task_time = ifcapi::detail::read_ref_attr(data.task, "TaskTime");
             if (!task_time) continue;
             ifcapi::detail::write_string_attr(task_time, "FreeFloat", ifcapi::detail::sequence::format_duration(data.free_float.value_or(ifcapi::detail::sequence::Duration{})));
             ifcapi::detail::write_string_attr(task_time, "TotalFloat", ifcapi::detail::sequence::format_duration(data.total_float));
             int critical_idx = ifcapi::detail::attr_index_of(task_time, "IsCritical");
-            if (critical_idx >= 0) task_time->set_attribute_value(static_cast<size_t>(critical_idx), data.total_float.days == 0);
+            if (critical_idx >= 0) task_time.set_attribute_value(static_cast<size_t>(critical_idx), data.total_float.days == 0);
             if (data.early_start) ifcapi::detail::write_string_attr(task_time, "EarlyStart", ifcapi::detail::sequence::format_date_time(*data.early_start));
             if (data.early_finish) ifcapi::detail::write_string_attr(task_time, "EarlyFinish", ifcapi::detail::sequence::format_date_time(*data.early_finish));
             if (data.late_start) ifcapi::detail::write_string_attr(task_time, "LateStart", ifcapi::detail::sequence::format_date_time(*data.late_start));
@@ -1561,12 +1586,12 @@ private:
 
 class CascadeSchedule {
 public:
-    explicit CascadeSchedule(IfcParse::IfcFile*) {}
+    explicit CascadeSchedule(ifcopenshell::file*) {}
 
-    void execute(IfcUtil::IfcBaseClass* task) { cascade_task(task, true, {}); }
+    void execute(express::Base task) { cascade_task(task, true, {}); }
 
 private:
-    IfcUtil::IfcBaseClass* calendar(IfcUtil::IfcBaseClass* task) {
+    express::Base calendar(express::Base task) {
         return ifcapi::detail::sequence::derive_calendar(task);
     }
 
@@ -1574,18 +1599,18 @@ private:
         const ifcapi::detail::sequence::DateTime& date,
         int days,
         const std::string& duration_type,
-        IfcUtil::IfcBaseClass* calendar)
+        express::Base calendar)
     {
         ifcapi::detail::sequence::Duration duration;
         duration.days = days;
         return ifcapi::detail::sequence::offset_date(date, duration, duration_type, calendar);
     }
 
-    void cascade_task(IfcUtil::IfcBaseClass* task, bool is_first_task, std::vector<IfcUtil::IfcBaseClass*> task_sequence) {
+    void cascade_task(express::Base task, bool is_first_task, std::vector<express::Base> task_sequence) {
         if (std::find(task_sequence.begin(), task_sequence.end(), task) != task_sequence.end()) {
             throw std::runtime_error("Recursive tasks found. Could not cascade schedule.");
         }
-        auto* task_time = ifcapi::detail::read_ref_attr(task, "TaskTime");
+        auto task_time = ifcapi::detail::read_ref_attr(task, "TaskTime");
         if (!task_time) {
             return;
         }
@@ -1594,14 +1619,14 @@ private:
         std::vector<ifcapi::detail::sequence::DateTime> finishes;
         std::vector<ifcapi::detail::sequence::DateTime> starts;
 
-        for (auto* rel : sequence_assignment(task, "predecessor")) {
-            auto* predecessor = ifcapi::detail::read_ref_attr(rel, "RelatingProcess");
+        for (auto rel : sequence_assignment(task, "predecessor")) {
+            auto predecessor = ifcapi::detail::read_ref_attr(rel, "RelatingProcess");
             if (!predecessor) {
                 continue;
             }
             auto predecessor_duration = read_task_duration(predecessor);
             auto type = ifcapi::detail::read_string_attr(rel, "SequenceType");
-            auto* lag_time = ifcapi::detail::read_ref_attr(rel, "TimeLag");
+            auto lag_time = ifcapi::detail::read_ref_attr(rel, "TimeLag");
             auto duration_type = std::string("WORKTIME");
             if (lag_time) {
                 duration_type = ifcapi::detail::read_string_attr(lag_time, "DurationType");
@@ -1612,8 +1637,8 @@ private:
                 if (!read_task_time_date(predecessor, "ScheduleFinish", finish)) continue;
                 int days = predecessor_duration.days == 0 ? 0 : 1;
                 if (lag_time) {
-                    auto* value = ifcapi::detail::read_ref_attr(lag_time, "LagValue");
-                    days += value && value->declaration().is("IfcDuration")
+                    auto value = ifcapi::detail::read_ref_attr(lag_time, "LagValue");
+                    days += value && value.declaration().is("IfcDuration")
                         ? lag_time_days(lag_time)
                         : static_cast<int>(predecessor_duration.days * lag_time_ratio(lag_time));
                 }
@@ -1627,8 +1652,8 @@ private:
                 ifcapi::detail::sequence::DateTime start;
                 if (!read_task_time_date(predecessor, "ScheduleStart", start)) continue;
                 if (lag_time) {
-                    auto* value = ifcapi::detail::read_ref_attr(lag_time, "LagValue");
-                    int days = value && value->declaration().is("IfcDuration")
+                    auto value = ifcapi::detail::read_ref_attr(lag_time, "LagValue");
+                    int days = value && value.declaration().is("IfcDuration")
                         ? lag_time_days(lag_time)
                         : static_cast<int>(predecessor_duration.days * lag_time_ratio(lag_time));
                     starts.push_back(offset_date(start, days, duration_type, calendar(task)));
@@ -1640,8 +1665,8 @@ private:
                 ifcapi::detail::sequence::DateTime finish;
                 if (!read_task_time_date(predecessor, "ScheduleFinish", finish)) continue;
                 if (lag_time) {
-                    auto* value = ifcapi::detail::read_ref_attr(lag_time, "LagValue");
-                    int days = value && value->declaration().is("IfcDuration")
+                    auto value = ifcapi::detail::read_ref_attr(lag_time, "LagValue");
+                    int days = value && value.declaration().is("IfcDuration")
                         ? lag_time_days(lag_time)
                         : static_cast<int>(predecessor_duration.days * lag_time_ratio(lag_time));
                     finishes.push_back(offset_date(finish, days, duration_type, calendar(task)));
@@ -1654,8 +1679,8 @@ private:
                 if (!read_task_time_date(predecessor, "ScheduleStart", start)) continue;
                 int days = -1;
                 if (lag_time) {
-                    auto* value = ifcapi::detail::read_ref_attr(lag_time, "LagValue");
-                    days += value && value->declaration().is("IfcDuration")
+                    auto value = ifcapi::detail::read_ref_attr(lag_time, "LagValue");
+                    days += value && value.declaration().is("IfcDuration")
                         ? lag_time_days(lag_time)
                         : static_cast<int>(predecessor_duration.days * lag_time_ratio(lag_time));
                 }
@@ -1671,21 +1696,21 @@ private:
         apply_dates(task, task_time, duration, starts, finishes, is_first_task);
 
         task_sequence.push_back(task);
-        for (auto* rel : ifcapi::detail::read_inverse_aggregate(task, "IsPredecessorTo")) {
-            if (auto* related = ifcapi::detail::read_ref_attr(rel, "RelatedProcess")) {
+        for (auto rel : ifcapi::detail::read_inverse_aggregate(task, "IsPredecessorTo")) {
+            if (auto related = ifcapi::detail::read_ref_attr(rel, "RelatedProcess")) {
                 cascade_task(related, false, task_sequence);
             }
         }
-        for (auto* rel : ifcapi::detail::read_inverse_aggregate(task, "IsNestedBy")) {
-            for (auto* nested_task : ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects")) {
+        for (auto rel : ifcapi::detail::read_inverse_aggregate(task, "IsNestedBy")) {
+            for (auto nested_task : ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects")) {
                 cascade_task(nested_task, false, task_sequence);
             }
         }
     }
 
     void apply_dates(
-        IfcUtil::IfcBaseClass* task,
-        IfcUtil::IfcBaseClass* task_time,
+        express::Base task,
+        express::Base task_time,
         const ifcapi::detail::sequence::Duration& duration,
         const std::vector<ifcapi::detail::sequence::DateTime>& starts,
         const std::vector<ifcapi::detail::sequence::DateTime>& finishes,
@@ -1746,19 +1771,20 @@ private:
 namespace ifcapi {
 namespace bindings {
 
-SequenceDateTimeResult sequence_add_date_time(IfcParse::IfcFile* file, const std::string& date_time) {
+SequenceDateTimeResult sequence_add_date_time(ifcopenshell::file* file, const std::string& date_time) {
     ifcopenshell_clear_error();
     return make_date_time_result(file, date_time);
 }
 
-void sequence_calculate_task_duration(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* task) {
+void sequence_calculate_task_duration(ifcopenshell::file* file, express::Base* task) {
     ifcopenshell_clear_error();
     try {
-        double duration = max_resource_usage_duration(task, seconds_per_workday(task));
+        auto task_value = ifcapi::detail::deref_or_empty(task);
+        double duration = max_resource_usage_duration(task_value, seconds_per_workday(task_value));
         if (duration <= 0.0) {
             return;
         }
-        auto* task_time = ensure_task_time(file, task);
+        auto task_time = ensure_task_time(file, task_value);
         ifcapi::detail::write_string_attr(task_time, "ScheduleDuration", "P" + std::to_string(static_cast<int>(duration)) + "D");
     } catch (const std::exception& e) {
         set_error(e.what());
@@ -1766,34 +1792,35 @@ void sequence_calculate_task_duration(IfcParse::IfcFile* file, IfcUtil::IfcBaseC
 }
 
 void sequence_edit_task_time(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* task_time,
+    ifcopenshell::file* file,
+    express::Base* task_time,
     ifcopenshell_pset_props_t* attributes)
 {
     ifcopenshell_clear_error();
     try {
-        auto* task = task_from_task_time(file, task_time);
-        auto* calendar = task ? ifcapi::detail::sequence::derive_calendar(task) : nullptr;
+        auto task_time_value = ifcapi::detail::deref_or_empty(task_time);
+        auto task = task_from_task_time(file, task_time_value);
+        auto calendar = task ? ifcapi::detail::sequence::derive_calendar(task) : express::Base();
         if (prop_is_truthy(attributes, "ScheduleDuration") && prop_has_key(attributes, "ScheduleFinish")) {
             erase_prop_key(attributes, "ScheduleFinish");
         }
-        normalize_task_time_dates(task_time, calendar, attributes);
+        normalize_task_time_dates(task_time_value, calendar, attributes);
 
-        ifcapi::detail::apply_attribute_props(task_time, attributes);
+        ifcapi::detail::apply_attribute_props(task_time_value, attributes);
 
         if (prop_has_key(attributes, "ScheduleDuration") &&
-            !ifcapi::detail::is_attr_null(task_time, "ScheduleDuration") &&
-            !ifcapi::detail::is_attr_null(task_time, "ScheduleStart")) {
-            calculate_task_time_finish(task_time, calendar);
+            !ifcapi::detail::is_attr_null(task_time_value, "ScheduleDuration") &&
+            !ifcapi::detail::is_attr_null(task_time_value, "ScheduleStart")) {
+            calculate_task_time_finish(task_time_value, calendar);
         } else if (prop_is_truthy(attributes, "ScheduleStart") &&
-            !ifcapi::detail::is_attr_null(task_time, "ScheduleDuration")) {
-            calculate_task_time_finish(task_time, calendar);
+            !ifcapi::detail::is_attr_null(task_time_value, "ScheduleDuration")) {
+            calculate_task_time_finish(task_time_value, calendar);
         } else if (prop_is_truthy(attributes, "ScheduleFinish") &&
-            !ifcapi::detail::is_attr_null(task_time, "ScheduleStart")) {
-            calculate_task_time_duration(task_time, calendar);
+            !ifcapi::detail::is_attr_null(task_time_value, "ScheduleStart")) {
+            calculate_task_time_duration(task_time_value, calendar);
         }
 
-        if (task && !ifcapi::detail::is_attr_null(task_time, "ScheduleDuration") &&
+        if (task && !ifcapi::detail::is_attr_null(task_time_value, "ScheduleDuration") &&
             (prop_has_key(attributes, "ScheduleStart") ||
                 prop_has_key(attributes, "ScheduleFinish") ||
                 prop_has_key(attributes, "ScheduleDuration"))) {
@@ -1805,92 +1832,119 @@ void sequence_edit_task_time(
 }
 
 SequenceDuplicateTaskResult sequence_duplicate_task(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* task,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    ifcopenshell::file* file,
+    express::Base* task,
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
     try {
-        return DuplicateTask(file, owner_history, user, application).execute(task);
+        auto task_value = ifcapi::detail::deref_or_empty(task);
+        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
+        auto user_value = ifcapi::detail::deref_or_empty(user);
+        auto application_value = ifcapi::detail::deref_or_empty(application);
+        return DuplicateTask(file, owner_history_value, user_value, application_value).execute(task_value);
     } catch (const std::exception& e) {
         set_error(e.what());
         return {};
     }
 }
 
-IfcUtil::IfcBaseClass* sequence_copy_work_schedule(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* work_schedule,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+express::Base sequence_copy_work_schedule(
+    ifcopenshell::file* file,
+    express::Base* work_schedule,
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
     try {
-        auto* new_schedule = ifcapi::detail::shallow_copy(file, work_schedule);
-        for (auto* rel : ifcapi::detail::read_inverse_aggregate(work_schedule, "Controls")) {
-            for (auto* task : ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects")) {
-                auto duplicated = DuplicateTask(file, owner_history, user, application).execute(task).duplicate;
+        auto work_schedule_value = ifcapi::detail::deref_or_empty(work_schedule);
+        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
+        auto user_value = ifcapi::detail::deref_or_empty(user);
+        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto new_schedule = ifcapi::detail::shallow_copy(file, work_schedule_value);
+        for (auto rel : ifcapi::detail::read_inverse_aggregate(work_schedule_value, "Controls")) {
+            for (auto task : ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects")) {
+                auto duplicated = DuplicateTask(file, owner_history_value, user_value, application_value).execute(task).duplicate;
                 if (!duplicated.empty()) {
                     ifcapi::bindings::control_assign_control(
-                        file, new_schedule, one_const(duplicated.front()), owner_history, user, application);
+                        file,
+                        &new_schedule,
+                        one_const(duplicated.front()),
+                        ifcapi::detail::nullable_ptr(owner_history_value),
+                        ifcapi::detail::nullable_ptr(user_value),
+                        ifcapi::detail::nullable_ptr(application_value));
                 }
             }
         }
         return new_schedule;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
 void sequence_create_baseline(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* work_schedule,
+    ifcopenshell::file* file,
+    express::Base* work_schedule,
     const char* name,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
     try {
-        if (ifcapi::detail::read_string_attr(work_schedule, "PredefinedType") != "PLANNED") {
+        auto work_schedule_value = ifcapi::detail::deref_or_empty(work_schedule);
+        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
+        auto user_value = ifcapi::detail::deref_or_empty(user);
+        auto application_value = ifcapi::detail::deref_or_empty(application);
+        if (ifcapi::detail::read_string_attr(work_schedule_value, "PredefinedType") != "PLANNED") {
             return;
         }
         const auto now = current_ifc_datetime();
-        auto* baseline = sequence_add_work_schedule(
+        auto baseline = sequence_add_work_schedule(
             file,
-            ifcapi::detail::read_string_attr(work_schedule, "Name"),
+            ifcapi::detail::read_string_attr(work_schedule_value, "Name"),
             "BASELINE",
             nullptr,
             now,
             now,
             nullptr,
             nullptr,
-            owner_history,
-            user,
-            application);
+            ifcapi::detail::nullable_ptr(owner_history_value),
+            ifcapi::detail::nullable_ptr(user_value),
+            ifcapi::detail::nullable_ptr(application_value));
         if (name) {
             ifcapi::detail::write_string_attr(baseline, "Name", name);
         } else {
             ifcapi::detail::write_blank_attr(baseline, "Name");
         }
-        create_object_reference(file, work_schedule, baseline, owner_history, user, application);
-        for (auto* rel : ifcapi::detail::read_inverse_aggregate(work_schedule, "Controls")) {
-            for (auto* task : ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects")) {
-                if (!task || !task->declaration().is("IfcTask")) {
+        create_object_reference(file, work_schedule_value, baseline, owner_history_value, user_value, application_value);
+        for (auto rel : ifcapi::detail::read_inverse_aggregate(work_schedule_value, "Controls")) {
+            for (auto task : ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects")) {
+                if (!task || !task.declaration().is("IfcTask")) {
                     continue;
                 }
-                auto duplicated = DuplicateTask(file, owner_history, user, application).execute(task);
+                auto duplicated = DuplicateTask(file, owner_history_value, user_value, application_value).execute(task);
                 if (!duplicated.duplicate.empty()) {
                     ifcapi::bindings::control_assign_control(
-                        file, baseline, one_const(duplicated.duplicate.front()), owner_history, user, application);
+                        file,
+                        &baseline,
+                        one_const(duplicated.duplicate.front()),
+                        ifcapi::detail::nullable_ptr(owner_history_value),
+                        ifcapi::detail::nullable_ptr(user_value),
+                        ifcapi::detail::nullable_ptr(application_value));
                 }
                 for (size_t i = 0; i < duplicated.current.size() && i < duplicated.duplicate.size(); ++i) {
                     create_object_reference(
-                        file, duplicated.current[i], duplicated.duplicate[i], owner_history, user, application);
+                        file,
+                        duplicated.current[i],
+                        duplicated.duplicate[i],
+                        owner_history_value,
+                        user_value,
+                        application_value);
                 }
             }
         }
@@ -1899,38 +1953,44 @@ void sequence_create_baseline(
     }
 }
 
-IfcUtil::IfcBaseClass* sequence_add_task_time(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* task,
+express::Base sequence_add_task_time(
+    ifcopenshell::file* file,
+    express::Base* task,
     bool is_recurring)
 {
     ifcopenshell_clear_error();
     try {
-        auto* task_time = create_entity(file, is_recurring ? "IfcTaskTimeRecurring" : "IfcTaskTime");
-        ifcapi::detail::write_ref_attr(task, "TaskTime", task_time);
+        auto task_value = ifcapi::detail::deref_or_empty(task);
+        auto task_time = create_entity(file, is_recurring ? "IfcTaskTimeRecurring" : "IfcTaskTime");
+        ifcapi::detail::write_ref_attr(task_value, "TaskTime", task_time);
         return task_time;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* sequence_add_task(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* work_schedule,
-    IfcUtil::IfcBaseClass* parent_task,
+express::Base sequence_add_task(
+    ifcopenshell::file* file,
+    express::Base* work_schedule,
+    express::Base* parent_task,
     const char* name,
     const char* description,
     const char* identification,
     const std::string& predefined_type,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
     try {
-        auto* task = create_root_entity(
-            file, "IfcTask", predefined_type.c_str(), name, owner_history, user, application);
+        auto work_schedule_value = ifcapi::detail::deref_or_empty(work_schedule);
+        auto parent_task_value = ifcapi::detail::deref_or_empty(parent_task);
+        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
+        auto user_value = ifcapi::detail::deref_or_empty(user);
+        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto task = create_root_entity(
+            file, "IfcTask", predefined_type.c_str(), name, owner_history_value, user_value, application_value);
         if (description) {
             ifcapi::detail::write_string_attr(task, "Description", description);
         }
@@ -1939,15 +1999,25 @@ IfcUtil::IfcBaseClass* sequence_add_task(
         }
         int milestone_idx = ifcapi::detail::attr_index_of(task, "IsMilestone");
         if (milestone_idx >= 0) {
-            task->set_attribute_value(static_cast<size_t>(milestone_idx), false);
+            task.set_attribute_value(static_cast<size_t>(milestone_idx), false);
         }
-        if (work_schedule) {
+        if (work_schedule_value) {
             ifcapi::bindings::control_assign_control(
-                file, work_schedule, one_const(task), owner_history, user, application);
-        } else if (parent_task) {
-            auto* rel = ifcapi::bindings::nest_assign_object(
-                file, one_const(task), parent_task, owner_history, user, application);
-            auto parent_identification = ifcapi::detail::read_optional_string_attr(parent_task, "Identification");
+                file,
+                &work_schedule_value,
+                one_const(task),
+                ifcapi::detail::nullable_ptr(owner_history_value),
+                ifcapi::detail::nullable_ptr(user_value),
+                ifcapi::detail::nullable_ptr(application_value));
+        } else if (parent_task_value) {
+            auto rel = ifcapi::bindings::nest_assign_object(
+                file,
+                one_const(task),
+                &parent_task_value,
+                ifcapi::detail::nullable_ptr(owner_history_value),
+                ifcapi::detail::nullable_ptr(user_value),
+                ifcapi::detail::nullable_ptr(application_value));
+            auto parent_identification = ifcapi::detail::read_optional_string_attr(parent_task_value, "Identification");
             if (!is_ifc2x3(file) && rel && parent_identification.has_value) {
                 auto related = ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects");
                 ifcapi::detail::write_string_attr(
@@ -1957,407 +2027,477 @@ IfcUtil::IfcBaseClass* sequence_add_task(
         return task;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* sequence_add_work_calendar(
-    IfcParse::IfcFile* file,
+express::Base sequence_add_work_calendar(
+    ifcopenshell::file* file,
     const std::string& name,
     const std::string& predefined_type,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
     try {
-        auto* work_calendar = create_root_entity(
-            file, "IfcWorkCalendar", predefined_type.c_str(), name.c_str(), owner_history, user, application);
+        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
+        auto user_value = ifcapi::detail::deref_or_empty(user);
+        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto work_calendar = create_root_entity(
+            file, "IfcWorkCalendar", predefined_type.c_str(), name.c_str(), owner_history_value, user_value, application_value);
+        auto context = first_context(file);
         ifcapi::bindings::project_assign_declaration(
-            file, one_const(work_calendar), first_context(file), owner_history, user, application);
+            file,
+            one_const(work_calendar),
+            &context,
+            ifcapi::detail::nullable_ptr(owner_history_value),
+            ifcapi::detail::nullable_ptr(user_value),
+            ifcapi::detail::nullable_ptr(application_value));
         return work_calendar;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* sequence_add_work_plan(
-    IfcParse::IfcFile* file,
+express::Base sequence_add_work_plan(
+    ifcopenshell::file* file,
     const char* name,
     const std::string& predefined_type,
     const std::string& creation_date,
     const std::string& start_time,
-    IfcUtil::IfcBaseClass* creator_person,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    express::Base* creator_person,
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
     try {
-        auto* work_plan = create_root_entity(
-            file, "IfcWorkPlan", predefined_type.c_str(), name, owner_history, user, application);
+        auto creator_person_value = ifcapi::detail::deref_or_empty(creator_person);
+        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
+        auto user_value = ifcapi::detail::deref_or_empty(user);
+        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto work_plan = create_root_entity(
+            file, "IfcWorkPlan", predefined_type.c_str(), name, owner_history_value, user_value, application_value);
         write_date_time_attr(file, work_plan, "CreationDate", creation_date);
-        if (creator_person) {
-            ifcapi::detail::write_ref_aggregate(work_plan, "Creators", {creator_person});
+        if (creator_person_value) {
+            ifcapi::detail::write_ref_aggregate(work_plan, "Creators", {creator_person_value});
         }
         write_date_time_attr(file, work_plan, "StartTime", start_time);
         if (!is_ifc2x3(file)) {
+            auto context = first_context(file);
             ifcapi::bindings::project_assign_declaration(
-                file, one_const(work_plan), first_context(file), owner_history, user, application);
+                file,
+                one_const(work_plan),
+                &context,
+                ifcapi::detail::nullable_ptr(owner_history_value),
+                ifcapi::detail::nullable_ptr(user_value),
+                ifcapi::detail::nullable_ptr(application_value));
         }
         return work_plan;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* sequence_add_work_schedule(
-    IfcParse::IfcFile* file,
+express::Base sequence_add_work_schedule(
+    ifcopenshell::file* file,
     const std::string& name,
     const std::string& predefined_type,
     const char* object_type,
     const std::string& creation_date,
     const std::string& start_time,
-    IfcUtil::IfcBaseClass* work_plan,
-    IfcUtil::IfcBaseClass* creator_person,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    express::Base* work_plan,
+    express::Base* creator_person,
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
     try {
-        auto* work_schedule = create_root_entity(
-            file, "IfcWorkSchedule", predefined_type.c_str(), name.c_str(), owner_history, user, application);
+        auto work_plan_value = ifcapi::detail::deref_or_empty(work_plan);
+        auto creator_person_value = ifcapi::detail::deref_or_empty(creator_person);
+        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
+        auto user_value = ifcapi::detail::deref_or_empty(user);
+        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto work_schedule = create_root_entity(
+            file, "IfcWorkSchedule", predefined_type.c_str(), name.c_str(), owner_history_value, user_value, application_value);
         write_date_time_attr(file, work_schedule, "CreationDate", creation_date);
-        if (creator_person) {
-            ifcapi::detail::write_ref_aggregate(work_schedule, "Creators", {creator_person});
+        if (creator_person_value) {
+            ifcapi::detail::write_ref_aggregate(work_schedule, "Creators", {creator_person_value});
         }
         write_date_time_attr(file, work_schedule, "StartTime", start_time);
         if (object_type) {
             ifcapi::detail::write_string_attr(work_schedule, "ObjectType", object_type);
         }
-        if (work_plan) {
+        if (work_plan_value) {
             ifcapi::bindings::aggregate_assign_object(
-                file, one_const(work_schedule), work_plan, owner_history, user, application);
+                file,
+                one_const(work_schedule),
+                &work_plan_value,
+                ifcapi::detail::nullable_ptr(owner_history_value),
+                ifcapi::detail::nullable_ptr(user_value),
+                ifcapi::detail::nullable_ptr(application_value));
         } else if (!is_ifc2x3(file)) {
+            auto context = first_context(file);
             ifcapi::bindings::project_assign_declaration(
-                file, one_const(work_schedule), first_context(file), owner_history, user, application);
+                file,
+                one_const(work_schedule),
+                &context,
+                ifcapi::detail::nullable_ptr(owner_history_value),
+                ifcapi::detail::nullable_ptr(user_value),
+                ifcapi::detail::nullable_ptr(application_value));
         }
         return work_schedule;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* sequence_add_work_time(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* work_calendar,
+express::Base sequence_add_work_time(
+    ifcopenshell::file* file,
+    express::Base* work_calendar,
     const std::string& time_type)
 {
     ifcopenshell_clear_error();
     try {
-        auto* work_time = create_entity(file, "IfcWorkTime");
+        auto work_calendar_value = ifcapi::detail::deref_or_empty(work_calendar);
+        auto work_time = create_entity(file, "IfcWorkTime");
         if (time_type == "WorkingTimes") {
-            auto working_times = ifcapi::detail::read_ref_aggregate(work_calendar, "WorkingTimes");
+            auto working_times = ifcapi::detail::read_ref_aggregate(work_calendar_value, "WorkingTimes");
             working_times.push_back(work_time);
-            ifcapi::detail::write_ref_aggregate(work_calendar, "WorkingTimes", working_times);
+            ifcapi::detail::write_ref_aggregate(work_calendar_value, "WorkingTimes", working_times);
         } else if (time_type == "ExceptionTimes") {
-            auto exception_times = ifcapi::detail::read_ref_aggregate(work_calendar, "ExceptionTimes");
+            auto exception_times = ifcapi::detail::read_ref_aggregate(work_calendar_value, "ExceptionTimes");
             exception_times.push_back(work_time);
-            ifcapi::detail::write_ref_aggregate(work_calendar, "ExceptionTimes", exception_times);
+            ifcapi::detail::write_ref_aggregate(work_calendar_value, "ExceptionTimes", exception_times);
         }
         return work_time;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* sequence_add_time_period(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* recurrence_pattern,
+express::Base sequence_add_time_period(
+    ifcopenshell::file* file,
+    express::Base* recurrence_pattern,
     const char* start_time,
     const char* end_time)
 {
     ifcopenshell_clear_error();
     try {
-        auto* time_period = create_entity(file, "IfcTimePeriod");
+        auto recurrence_pattern_value = ifcapi::detail::deref_or_empty(recurrence_pattern);
+        auto time_period = create_entity(file, "IfcTimePeriod");
         if (start_time) {
             ifcapi::detail::write_string_attr(time_period, "StartTime", start_time);
         }
         if (end_time) {
             ifcapi::detail::write_string_attr(time_period, "EndTime", end_time);
         }
-        auto time_periods = ifcapi::detail::read_ref_aggregate(recurrence_pattern, "TimePeriods");
+        auto time_periods = ifcapi::detail::read_ref_aggregate(recurrence_pattern_value, "TimePeriods");
         time_periods.push_back(time_period);
-        ifcapi::detail::write_ref_aggregate(recurrence_pattern, "TimePeriods", time_periods);
+        ifcapi::detail::write_ref_aggregate(recurrence_pattern_value, "TimePeriods", time_periods);
         return time_period;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* sequence_assign_sequence(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relating_process,
-    IfcUtil::IfcBaseClass* related_process,
+express::Base sequence_assign_sequence(
+    ifcopenshell::file* file,
+    express::Base* relating_process,
+    express::Base* related_process,
     const std::string& sequence_type,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
     try {
-        if (auto* existing = find_sequence(relating_process, related_process)) {
+        auto relating_process_value = ifcapi::detail::deref_or_empty(relating_process);
+        auto related_process_value = ifcapi::detail::deref_or_empty(related_process);
+        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
+        auto user_value = ifcapi::detail::deref_or_empty(user);
+        auto application_value = ifcapi::detail::deref_or_empty(application);
+        if (auto existing = find_sequence(relating_process_value, related_process_value)) {
             return existing;
         }
-        auto* rel = create_entity(file, "IfcRelSequence");
+        auto rel = create_entity(file, "IfcRelSequence");
         ifcapi::detail::write_string_attr(rel, "GlobalId", ifcapi::guid_new());
         ifcapi::detail::write_ref_attr(
-            rel, "OwnerHistory", ifcapi::detail::ensure_owner_history(file, owner_history, user, application));
-        ifcapi::detail::write_ref_attr(rel, "RelatingProcess", relating_process);
-        ifcapi::detail::write_ref_attr(rel, "RelatedProcess", related_process);
+            rel, "OwnerHistory", ifcapi::detail::ensure_owner_history(file, owner_history_value, user_value, application_value));
+        ifcapi::detail::write_ref_attr(rel, "RelatingProcess", relating_process_value);
+        ifcapi::detail::write_ref_attr(rel, "RelatedProcess", related_process_value);
         ifcapi::detail::write_enum_attr(rel, "SequenceType", sequence_type);
-        CascadeSchedule(file).execute(relating_process);
+        CascadeSchedule(file).execute(relating_process_value);
         return rel;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* sequence_assign_lag_time(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* rel_sequence,
+express::Base sequence_assign_lag_time(
+    ifcopenshell::file* file,
+    express::Base* rel_sequence,
     const std::string& lag_value,
     const std::string& duration_type)
 {
     ifcopenshell_clear_error();
     try {
-        auto* duration = ifcapi::detail::create_typed_string(file, "IfcDuration", lag_value);
-        auto* lag_time = create_entity(file, "IfcLagTime");
+        auto rel_sequence_value = ifcapi::detail::deref_or_empty(rel_sequence);
+        auto duration = ifcapi::detail::create_typed_string(file, "IfcDuration", lag_value);
+        auto lag_time = create_entity(file, "IfcLagTime");
         ifcapi::detail::write_enum_attr(lag_time, "DurationType", duration_type);
         ifcapi::detail::write_ref_attr(lag_time, "LagValue", duration);
-        if (rel_sequence && rel_sequence->declaration().is("IfcRelSequence")) {
-            auto* current_lag_time = ifcapi::detail::read_ref_attr(rel_sequence, "TimeLag");
+        if (rel_sequence_value && rel_sequence_value.declaration().is("IfcRelSequence")) {
+            auto current_lag_time = ifcapi::detail::read_ref_attr(rel_sequence_value, "TimeLag");
             if (current_lag_time && ifcapi::detail::total_inverses(file, current_lag_time) == 1) {
-                file->removeEntity(current_lag_time);
+                file->remove_entity(current_lag_time);
             }
         }
-        ifcapi::detail::write_ref_attr(rel_sequence, "TimeLag", lag_time);
+        ifcapi::detail::write_ref_attr(rel_sequence_value, "TimeLag", lag_time);
         return lag_time;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* sequence_assign_process(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relating_process,
-    IfcUtil::IfcBaseClass* related_object,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+express::Base sequence_assign_process(
+    ifcopenshell::file* file,
+    express::Base* relating_process,
+    express::Base* related_object,
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
     try {
+        auto relating_process_value = ifcapi::detail::deref_or_empty(relating_process);
+        auto related_object_value = ifcapi::detail::deref_or_empty(related_object);
+        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
+        auto user_value = ifcapi::detail::deref_or_empty(user);
+        auto application_value = ifcapi::detail::deref_or_empty(application);
         return assign_object_relationship(
             file,
-            relating_process,
-            related_object,
+            relating_process_value,
+            related_object_value,
             "IfcRelAssignsToProcess",
             "RelatingProcess",
             "OperatesOn",
             false,
-            owner_history,
-            user,
-            application);
+            owner_history_value,
+            user_value,
+            application_value);
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* sequence_assign_product(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relating_product,
-    IfcUtil::IfcBaseClass* related_object,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+express::Base sequence_assign_product(
+    ifcopenshell::file* file,
+    express::Base* relating_product,
+    express::Base* related_object,
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
     try {
+        auto relating_product_value = ifcapi::detail::deref_or_empty(relating_product);
+        auto related_object_value = ifcapi::detail::deref_or_empty(related_object);
+        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
+        auto user_value = ifcapi::detail::deref_or_empty(user);
+        auto application_value = ifcapi::detail::deref_or_empty(application);
         return assign_object_relationship(
             file,
-            relating_product,
-            related_object,
+            relating_product_value,
+            related_object_value,
             "IfcRelAssignsToProduct",
             "RelatingProduct",
             "ReferencedBy",
             true,
-            owner_history,
-            user,
-            application);
+            owner_history_value,
+            user_value,
+            application_value);
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* sequence_assign_work_plan(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* work_schedule,
-    IfcUtil::IfcBaseClass* work_plan,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+express::Base sequence_assign_work_plan(
+    ifcopenshell::file* file,
+    express::Base* work_schedule,
+    express::Base* work_plan,
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
     try {
+        auto work_schedule_value = ifcapi::detail::deref_or_empty(work_schedule);
+        auto work_plan_value = ifcapi::detail::deref_or_empty(work_plan);
+        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
+        auto user_value = ifcapi::detail::deref_or_empty(user);
+        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto context = first_context(file);
         ifcapi::bindings::project_unassign_declaration(
-            file, one_const(work_schedule), first_context(file), user, application);
+            file,
+            one_const(work_schedule_value),
+            &context,
+            ifcapi::detail::nullable_ptr(user_value),
+            ifcapi::detail::nullable_ptr(application_value));
         return ifcapi::bindings::aggregate_assign_object(
-            file, one_const(work_schedule), work_plan, owner_history, user, application);
+            file,
+            one_const(work_schedule_value),
+            &work_plan_value,
+            ifcapi::detail::nullable_ptr(owner_history_value),
+            ifcapi::detail::nullable_ptr(user_value),
+            ifcapi::detail::nullable_ptr(application_value));
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* sequence_assign_recurrence_pattern(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* parent,
+express::Base sequence_assign_recurrence_pattern(
+    ifcopenshell::file* file,
+    express::Base* parent,
     const std::string& recurrence_type)
 {
     ifcopenshell_clear_error();
     try {
-        auto* recurrence = create_entity(file, "IfcRecurrencePattern");
+        auto parent_value = ifcapi::detail::deref_or_empty(parent);
+        auto recurrence = create_entity(file, "IfcRecurrencePattern");
         ifcapi::detail::write_enum_attr(recurrence, "RecurrenceType", recurrence_type);
-        if (parent && parent->declaration().is("IfcWorkTime")) {
-            auto* old_recurrence = ifcapi::detail::read_ref_attr(parent, "RecurrencePattern");
+        if (parent_value && parent_value.declaration().is("IfcWorkTime")) {
+            auto old_recurrence = ifcapi::detail::read_ref_attr(parent_value, "RecurrencePattern");
             if (old_recurrence && ifcapi::detail::total_inverses(file, old_recurrence) == 1) {
-                file->removeEntity(old_recurrence);
+                file->remove_entity(old_recurrence);
             }
-            ifcapi::detail::write_ref_attr(parent, "RecurrencePattern", recurrence);
-        } else if (parent && parent->declaration().is("IfcTaskTimeRecurring")) {
-            auto* old_recurrence = ifcapi::detail::read_ref_attr(parent, "Recurrence");
+            ifcapi::detail::write_ref_attr(parent_value, "RecurrencePattern", recurrence);
+        } else if (parent_value && parent_value.declaration().is("IfcTaskTimeRecurring")) {
+            auto old_recurrence = ifcapi::detail::read_ref_attr(parent_value, "Recurrence");
             if (old_recurrence && ifcapi::detail::total_inverses(file, old_recurrence) == 1) {
-                file->removeEntity(old_recurrence);
+                file->remove_entity(old_recurrence);
             }
-            ifcapi::detail::write_ref_attr(parent, "Recurrence", recurrence);
+            ifcapi::detail::write_ref_attr(parent_value, "Recurrence", recurrence);
         }
         return recurrence;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-void sequence_cascade_schedule(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* task) {
+void sequence_cascade_schedule(ifcopenshell::file* file, express::Base* task) {
     ifcopenshell_clear_error();
     try {
-        CascadeSchedule(file).execute(task);
+        CascadeSchedule(file).execute(ifcapi::detail::deref_or_empty(task));
     } catch (const std::exception& e) {
         set_error(e.what());
     }
 }
 
-void sequence_recalculate_schedule(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* work_schedule) {
+void sequence_recalculate_schedule(ifcopenshell::file* file, express::Base* work_schedule) {
     ifcopenshell_clear_error();
     try {
-        RecalculateSchedule(file).execute(work_schedule);
+        RecalculateSchedule(file).execute(ifcapi::detail::deref_or_empty(work_schedule));
     } catch (const std::exception& e) {
         set_error(e.what());
     }
 }
 
-void sequence_edit_lag_time(IfcUtil::IfcBaseClass* lag_time, ifcopenshell_pset_props_t* attributes) {
+void sequence_edit_lag_time(express::Base* lag_time, ifcopenshell_pset_props_t* attributes) {
     ifcopenshell_clear_error();
     try {
-        ifcapi::detail::apply_attribute_props(lag_time, attributes);
+        ifcapi::detail::apply_attribute_props(ifcapi::detail::deref_or_empty(lag_time), attributes);
     } catch (const std::exception& e) {
         ifcapi::detail::set_error(e.what());
     }
 }
 
-void sequence_edit_sequence(IfcUtil::IfcBaseClass* rel_sequence, ifcopenshell_pset_props_t* attributes) {
+void sequence_edit_sequence(express::Base* rel_sequence, ifcopenshell_pset_props_t* attributes) {
     ifcopenshell_clear_error();
     try {
-        ifcapi::detail::apply_attribute_props(rel_sequence, attributes);
+        ifcapi::detail::apply_attribute_props(ifcapi::detail::deref_or_empty(rel_sequence), attributes);
     } catch (const std::exception& e) {
         ifcapi::detail::set_error(e.what());
     }
 }
 
-void sequence_edit_task(IfcUtil::IfcBaseClass* task, ifcopenshell_pset_props_t* attributes) {
+void sequence_edit_task(express::Base* task, ifcopenshell_pset_props_t* attributes) {
     ifcopenshell_clear_error();
     try {
-        ifcapi::detail::apply_attribute_props(task, attributes);
+        ifcapi::detail::apply_attribute_props(ifcapi::detail::deref_or_empty(task), attributes);
     } catch (const std::exception& e) {
         ifcapi::detail::set_error(e.what());
     }
 }
 
-void sequence_edit_recurrence_pattern(IfcUtil::IfcBaseClass* recurrence_pattern, ifcopenshell_pset_props_t* attributes) {
+void sequence_edit_recurrence_pattern(express::Base* recurrence_pattern, ifcopenshell_pset_props_t* attributes) {
     ifcopenshell_clear_error();
     try {
-        ifcapi::detail::apply_attribute_props(recurrence_pattern, attributes);
+        ifcapi::detail::apply_attribute_props(ifcapi::detail::deref_or_empty(recurrence_pattern), attributes);
     } catch (const std::exception& e) {
         ifcapi::detail::set_error(e.what());
     }
 }
 
-void sequence_edit_work_calendar(IfcUtil::IfcBaseClass* work_calendar, ifcopenshell_pset_props_t* attributes) {
+void sequence_edit_work_calendar(express::Base* work_calendar, ifcopenshell_pset_props_t* attributes) {
     ifcopenshell_clear_error();
     try {
-        ifcapi::detail::apply_attribute_props(work_calendar, attributes);
+        ifcapi::detail::apply_attribute_props(ifcapi::detail::deref_or_empty(work_calendar), attributes);
     } catch (const std::exception& e) {
         ifcapi::detail::set_error(e.what());
     }
 }
 
-void sequence_edit_work_plan(IfcUtil::IfcBaseClass* work_plan, ifcopenshell_pset_props_t* attributes) {
+void sequence_edit_work_plan(express::Base* work_plan, ifcopenshell_pset_props_t* attributes) {
     ifcopenshell_clear_error();
     try {
-        ifcapi::detail::apply_attribute_props(work_plan, attributes);
+        ifcapi::detail::apply_attribute_props(ifcapi::detail::deref_or_empty(work_plan), attributes);
     } catch (const std::exception& e) {
         ifcapi::detail::set_error(e.what());
     }
 }
 
-void sequence_edit_work_schedule(IfcUtil::IfcBaseClass* work_schedule, ifcopenshell_pset_props_t* attributes) {
+void sequence_edit_work_schedule(express::Base* work_schedule, ifcopenshell_pset_props_t* attributes) {
     ifcopenshell_clear_error();
     try {
-        ifcapi::detail::apply_attribute_props(work_schedule, attributes);
+        ifcapi::detail::apply_attribute_props(ifcapi::detail::deref_or_empty(work_schedule), attributes);
     } catch (const std::exception& e) {
         ifcapi::detail::set_error(e.what());
     }
 }
 
-void sequence_edit_work_time(IfcUtil::IfcBaseClass* work_time, ifcopenshell_pset_props_t* attributes) {
+void sequence_edit_work_time(express::Base* work_time, ifcopenshell_pset_props_t* attributes) {
     ifcopenshell_clear_error();
     try {
-        apply_work_time_props(work_time, attributes);
+        apply_work_time_props(ifcapi::detail::deref_or_empty(work_time), attributes);
     } catch (const std::exception& e) {
         ifcapi::detail::set_error(e.what());
     }
 }
 
-void sequence_unassign_lag_time(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* rel_sequence) {
+void sequence_unassign_lag_time(ifcopenshell::file* file, express::Base* rel_sequence) {
     ifcopenshell_clear_error();
     try {
-        auto* current_lag_time = ifcapi::detail::read_ref_attr(rel_sequence, "TimeLag");
+        auto rel_sequence_value = ifcapi::detail::deref_or_empty(rel_sequence);
+        auto current_lag_time = ifcapi::detail::read_ref_attr(rel_sequence_value, "TimeLag");
         if (!current_lag_time) return;
         if (ifcapi::detail::total_inverses(file, current_lag_time) == 1) {
-            file->removeEntity(current_lag_time);
+            file->remove_entity(current_lag_time);
         } else {
-            ifcapi::detail::write_ref_attr(rel_sequence, "TimeLag", nullptr);
+            ifcapi::detail::write_ref_attr(rel_sequence_value, "TimeLag", express::Base());
         }
     } catch (const std::exception& e) {
         set_error(e.what());
@@ -2365,147 +2505,183 @@ void sequence_unassign_lag_time(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* 
 }
 
 void sequence_unassign_sequence(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relating_process,
-    IfcUtil::IfcBaseClass* related_process)
+    ifcopenshell::file* file,
+    express::Base* relating_process,
+    express::Base* related_process)
 {
     ifcopenshell_clear_error();
     try {
-        auto rels = ifcapi::detail::read_inverse_aggregate(related_process, "IsSuccessorFrom");
-        for (auto* rel : rels) {
-            if (rel && ifcapi::detail::read_ref_attr(rel, "RelatingProcess") == relating_process) {
+        auto relating_process_value = ifcapi::detail::deref_or_empty(relating_process);
+        auto related_process_value = ifcapi::detail::deref_or_empty(related_process);
+        auto rels = ifcapi::detail::read_inverse_aggregate(related_process_value, "IsSuccessorFrom");
+        for (auto rel : rels) {
+            if (rel && ifcapi::detail::read_ref_attr(rel, "RelatingProcess") == relating_process_value) {
                 ifcapi::detail::remove_with_history(file, rel);
             }
         }
-        CascadeSchedule(file).execute(related_process);
+        CascadeSchedule(file).execute(related_process_value);
     } catch (const std::exception& e) {
         set_error(e.what());
     }
 }
 
-IfcUtil::IfcBaseClass* sequence_unassign_process(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relating_process,
-    IfcUtil::IfcBaseClass* related_object,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+express::Base sequence_unassign_process(
+    ifcopenshell::file* file,
+    express::Base* relating_process,
+    express::Base* related_object,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
     try {
+        auto relating_process_value = ifcapi::detail::deref_or_empty(relating_process);
+        auto related_object_value = ifcapi::detail::deref_or_empty(related_object);
+        auto user_value = ifcapi::detail::deref_or_empty(user);
+        auto application_value = ifcapi::detail::deref_or_empty(application);
         return unassign_object_relationship(
-            file, relating_process, related_object, "IfcRelAssignsToProcess", "RelatingProcess", user, application);
+            file,
+            relating_process_value,
+            related_object_value,
+            "IfcRelAssignsToProcess",
+            "RelatingProcess",
+            user_value,
+            application_value);
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-IfcUtil::IfcBaseClass* sequence_unassign_product(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* relating_product,
-    IfcUtil::IfcBaseClass* related_object,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+express::Base sequence_unassign_product(
+    ifcopenshell::file* file,
+    express::Base* relating_product,
+    express::Base* related_object,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
     try {
+        auto relating_product_value = ifcapi::detail::deref_or_empty(relating_product);
+        auto related_object_value = ifcapi::detail::deref_or_empty(related_object);
+        auto user_value = ifcapi::detail::deref_or_empty(user);
+        auto application_value = ifcapi::detail::deref_or_empty(application);
         return unassign_object_relationship(
-            file, relating_product, related_object, "IfcRelAssignsToProduct", "RelatingProduct", user, application);
+            file,
+            relating_product_value,
+            related_object_value,
+            "IfcRelAssignsToProduct",
+            "RelatingProduct",
+            user_value,
+            application_value);
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-void sequence_unassign_recurrence_pattern(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* recurrence_pattern) {
+void sequence_unassign_recurrence_pattern(ifcopenshell::file* file, express::Base* recurrence_pattern) {
     ifcopenshell_clear_error();
     try {
-        auto time_periods = ifcapi::detail::read_ref_aggregate(recurrence_pattern, "TimePeriods");
-        for (auto* time_period : time_periods) {
-            file->removeEntity(time_period);
+        auto recurrence_pattern_value = ifcapi::detail::deref_or_empty(recurrence_pattern);
+        auto time_periods = ifcapi::detail::read_ref_aggregate(recurrence_pattern_value, "TimePeriods");
+        for (auto time_period : time_periods) {
+            file->remove_entity(time_period);
         }
-        file->removeEntity(recurrence_pattern);
+        file->remove_entity(recurrence_pattern_value);
     } catch (const std::exception& e) {
         set_error(e.what());
     }
 }
 
-void sequence_remove_time_period(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* time_period) {
+void sequence_remove_time_period(ifcopenshell::file* file, express::Base* time_period) {
     ifcopenshell_clear_error();
     try {
-        file->removeEntity(time_period);
+        file->remove_entity(ifcapi::detail::deref_or_empty(time_period));
     } catch (const std::exception& e) {
         set_error(e.what());
     }
 }
 
-void sequence_remove_work_time(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* work_time) {
+void sequence_remove_work_time(ifcopenshell::file* file, express::Base* work_time) {
     ifcopenshell_clear_error();
     try {
-        if (auto* recurrence_pattern = ifcapi::detail::read_ref_attr(work_time, "RecurrencePattern")) {
+        auto work_time_value = ifcapi::detail::deref_or_empty(work_time);
+        if (auto recurrence_pattern = ifcapi::detail::read_ref_attr(work_time_value, "RecurrencePattern")) {
             auto time_periods = ifcapi::detail::read_ref_aggregate(recurrence_pattern, "TimePeriods");
-            for (auto* time_period : time_periods) {
-                file->removeEntity(time_period);
+            for (auto time_period : time_periods) {
+                file->remove_entity(time_period);
             }
-            file->removeEntity(recurrence_pattern);
+            file->remove_entity(recurrence_pattern);
         }
-        file->removeEntity(work_time);
+        file->remove_entity(work_time_value);
     } catch (const std::exception& e) {
         set_error(e.what());
     }
 }
 
 void sequence_remove_task(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* task,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    ifcopenshell::file* file,
+    express::Base* task,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
     try {
-        remove_task_internal(file, task, user, application);
+        auto task_value = ifcapi::detail::deref_or_empty(task);
+        auto user_value = ifcapi::detail::deref_or_empty(user);
+        auto application_value = ifcapi::detail::deref_or_empty(application);
+        remove_task_internal(file, task_value, user_value, application_value);
     } catch (const std::exception& e) {
         set_error(e.what());
     }
 }
 
 void sequence_remove_work_calendar(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* work_calendar,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    ifcopenshell::file* file,
+    express::Base* work_calendar,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
     try {
-        remove_work_calendar_internal(file, work_calendar, user, application);
+        auto work_calendar_value = ifcapi::detail::deref_or_empty(work_calendar);
+        auto user_value = ifcapi::detail::deref_or_empty(user);
+        auto application_value = ifcapi::detail::deref_or_empty(application);
+        remove_work_calendar_internal(file, work_calendar_value, user_value, application_value);
     } catch (const std::exception& e) {
         set_error(e.what());
     }
 }
 
 void sequence_remove_work_plan(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* work_plan,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    ifcopenshell::file* file,
+    express::Base* work_plan,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
     try {
-        remove_work_plan_internal(file, work_plan, user, application);
+        auto work_plan_value = ifcapi::detail::deref_or_empty(work_plan);
+        auto user_value = ifcapi::detail::deref_or_empty(user);
+        auto application_value = ifcapi::detail::deref_or_empty(application);
+        remove_work_plan_internal(file, work_plan_value, user_value, application_value);
     } catch (const std::exception& e) {
         set_error(e.what());
     }
 }
 
 void sequence_remove_work_schedule(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* work_schedule,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    ifcopenshell::file* file,
+    express::Base* work_schedule,
+    express::Base* user,
+    express::Base* application)
 {
     ifcopenshell_clear_error();
     try {
-        remove_work_schedule_internal(file, work_schedule, user, application);
+        auto work_schedule_value = ifcapi::detail::deref_or_empty(work_schedule);
+        auto user_value = ifcapi::detail::deref_or_empty(user);
+        auto application_value = ifcapi::detail::deref_or_empty(application);
+        remove_work_schedule_internal(file, work_schedule_value, user_value, application_value);
     } catch (const std::exception& e) {
         set_error(e.what());
     }

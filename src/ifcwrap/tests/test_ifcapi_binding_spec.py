@@ -28,24 +28,25 @@ def _core_handles() -> dict[str, HandleSpec]:
     return {
         "file": HandleSpec(
             name="file",
-            cpp_type="IfcParse::IfcFile",
+            cpp_type="ifcopenshell::file",
             c_type="ifcopenshell_ifc_file_t",
             destructor="delete",
             ptr_type="raw",
         ),
         "instance": HandleSpec(
             name="instance",
-            cpp_type="IfcUtil::IfcBaseClass",
+            cpp_type="express::Base",
             c_type="ifcopenshell_ifc_instance_t",
-            destructor="delete",
-            ptr_type="raw",
+            destructor="none",
+            ptr_type="value",
+            empty_check="!static_cast<bool>({value})",
         ),
         "instance_list": HandleSpec(
             name="instance_list",
-            cpp_type="aggregate_of_instance",
+            cpp_type="std::vector<express::Base>",
             c_type="ifcopenshell_ifcparse_instance_list_t",
-            destructor="delete",
-            ptr_type="shared_ptr",
+            destructor="none",
+            ptr_type="value",
         ),
     }
 
@@ -152,18 +153,20 @@ c_prefix: ifcopenshell_ifcparse
 public_headers: []
 handles:
   - name: file
-    cpp_type: IfcParse::IfcFile
+    cpp_type: ifcopenshell::file
     c_type: ifcopenshell_ifc_file_t
     destructor: delete
   - name: instance
-    cpp_type: IfcUtil::IfcBaseClass
+    cpp_type: express::Base
     c_type: ifcopenshell_ifc_instance_t
-    destructor: delete
+    destructor: none
+    ptr_type: value
+    empty_check: "!static_cast<bool>({value})"
   - name: instance_list
-    cpp_type: aggregate_of_instance
+    cpp_type: std::vector<express::Base>
     c_type: ifcopenshell_ifcparse_instance_list_t
-    destructor: delete
-    ptr_type: shared_ptr
+    destructor: none
+    ptr_type: value
 functions:
   - expose_as: instance_identity
     implementation:

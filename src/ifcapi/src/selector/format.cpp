@@ -42,7 +42,7 @@ inline std::string unescape_quoted_token(const std::string& raw) {
 
 inline bool parse_double(const std::string& s, double& out) {
     if (s.empty()) return false;
-    char* end = nullptr;
+    char* end = {};
     out = std::strtod(s.c_str(), &end);
     return end != s.c_str();
 }
@@ -79,7 +79,7 @@ std::string val_to_string(const Val* v);
 inline std::string list_join(const Val* lst, const std::string& sep) {
     std::string out;
     bool first = true;
-    for (auto* item : lst->list_val) {
+    for (auto item : lst->list_val) {
         if (!first) out += sep;
         first = false;
         out += val_to_string(item);
@@ -100,7 +100,7 @@ std::string val_to_string(const Val* v) {
         case IFCSEL_VALUE_INSTANCE: {
             if (v->inst_val) {
                 std::ostringstream os;
-                os << "#" << v->inst_val->id() << "=" << v->inst_val->declaration().name();
+                os << "#" << v->inst_val.id() << "=" << v->inst_val.declaration().name();
                 return os.str();
             }
             return "None";
@@ -109,7 +109,7 @@ std::string val_to_string(const Val* v) {
         case IFCSEL_VALUE_DICT: {
             std::string out = "{";
             bool first = true;
-            for (auto& kv : v->dict_val) {
+            for (auto kv : v->dict_val) {
                 if (!first) out += ", ";
                 first = false;
                 out += kv.first + ": " + val_to_string(kv.second);
@@ -291,7 +291,7 @@ inline std::string apply_decimal_thousand(const std::string& s,
 
 class FormatEvaluator {
 public:
-    FormatEvaluator(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* element)
+    FormatEvaluator(ifcopenshell::file* file, express::Base element)
         : file_(file), element_(element) {}
 
     Val* eval(const ifcopenshell_selector_node_t* node) {
@@ -385,8 +385,8 @@ public:
     }
 
 private:
-    IfcParse::IfcFile* file_ = nullptr;
-    IfcUtil::IfcBaseClass* element_ = nullptr;
+    ifcopenshell::file* file_ = {};
+    express::Base element_ = {};
 
     /* ---- helpers ---- */
 
@@ -433,9 +433,9 @@ private:
         /* VARIABLE → QUERY_PATH → ANON token containing inner query text. */
         if (!element_) return make_none();
         if (ifcopenshell_selector_node_child_count(node) == 0) return make_none();
-        auto* qp = ifcopenshell_selector_node_child(node, 0);
+        auto qp = ifcopenshell_selector_node_child(node, 0);
         if (!qp || ifcopenshell_selector_node_child_count(qp) == 0) return make_none();
-        auto* tok = ifcopenshell_selector_node_child(qp, 0);
+        auto tok = ifcopenshell_selector_node_child(qp, 0);
         std::string query = strip_ws(token_text(tok));
         if (query.empty()) return make_none();
 
@@ -464,7 +464,7 @@ private:
         return eval_unary_str(node, [](std::string s){
             /* Python's str.title(): every word boundary capitalised. */
             bool prev_alpha = false;
-            for (auto& c : s) {
+            for (auto c : s) {
                 unsigned char uc = static_cast<unsigned char>(c);
                 if (std::isalpha(uc)) {
                     c = prev_alpha ? static_cast<char>(std::tolower(uc))
@@ -555,7 +555,7 @@ private:
 
     Val* eval_boolean(const ifcopenshell_selector_node_t* node) {
         if (ifcopenshell_selector_node_child_count(node) == 0) return make_bool(true);
-        auto* tok = ifcopenshell_selector_node_child(node, 0);
+        auto tok = ifcopenshell_selector_node_child(node, 0);
         if (ifcopenshell_selector_node_kind(tok) == IFCSEL_TOKEN_TRUE)  return make_bool(true);
         if (ifcopenshell_selector_node_kind(tok) == IFCSEL_TOKEN_FALSE) return make_bool(false);
         std::string txt = token_text(tok);
@@ -681,7 +681,7 @@ private:
             output_unit = (out_u == "inch") ? "inch" : "foot";
         }
         if (nc > idx) {
-            auto* maybe_bool = ifcopenshell_selector_node_child(node, idx);
+            auto maybe_bool = ifcopenshell_selector_node_child(node, idx);
             if (ifcopenshell_selector_node_kind(maybe_bool) == IFCSEL_NODE_BOOLEAN) {
                 Val* bv = eval(maybe_bool);
                 suppress_zero_inches = bv && bv->kind == IFCSEL_VALUE_BOOL ? bv->b_val : true;
@@ -708,10 +708,11 @@ namespace ifcapi {
 namespace bindings {
 
 std::optional<std::string> selector_format(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* instance,
+    ifcopenshell::file* file,
+    express::Base* instance_ptr,
     const std::string& query)
 {
+    auto instance = ifcapi::detail::deref_or_empty(instance_ptr);
     ifcopenshell_selector_node_t* ast = selector_parse_format(query);
     if (!ast) {
         return std::nullopt;
@@ -736,8 +737,8 @@ std::optional<std::string> selector_format(
 
 ifcopenshell_selector_keys_t* selector_parse_keys(const std::string& query) {
     ifcopenshell_selector_node_t* ast = selector_parse_get_element(query);
-    if (!ast) return nullptr;
-    auto* h = new ifcopenshell_selector_keys_t();
+    if (!ast) return {};
+    auto h = new ifcopenshell_selector_keys_t();
     h->entries = extract_keys(ast);
     ifcopenshell_selector_node_free(ast);
     return h;

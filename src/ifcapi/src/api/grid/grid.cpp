@@ -18,20 +18,16 @@
 namespace {
 inline void set_error(const std::string& msg) { ifcopenshell::capi::set_last_error(msg); }
 
-IfcUtil::IfcBaseClass* owning_grid(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* grid_axis) {
-    if (!file || !grid_axis || grid_axis->id() == 0) {
-        return nullptr;
+express::Base owning_grid(ifcopenshell::file* file, express::Base grid_axis) {
+    if (!file || !grid_axis || grid_axis.id() == 0) {
+        return {};
     }
-    auto inverses = file->getInverse(grid_axis->id(), nullptr, -1);
-    if (!inverses) {
-        return nullptr;
-    }
-    for (auto* inverse : *inverses) {
-        if (inverse && inverse->declaration().is("IfcGrid")) {
+    for (auto inverse : file->instances_by_reference(static_cast<int>(grid_axis.id()))) {
+        if (inverse && inverse.declaration().is("IfcGrid")) {
             return inverse;
         }
     }
-    return nullptr;
+    return {};
 }
 
 std::vector<double> normalise_point(const std::vector<double>& point) {
@@ -49,12 +45,12 @@ std::vector<double> apply_matrix(const double* matrix, const std::vector<double>
     };
 }
 
-IfcUtil::IfcBaseClass* create_axis_polyline(
-    IfcParse::IfcFile* file,
+express::Base create_axis_polyline(
+    ifcopenshell::file* file,
     const std::vector<double>& p1,
     const std::vector<double>& p2)
 {
-    auto* polyline = file->create(file->schema()->declaration_by_name("IfcPolyline"));
+    auto polyline = file->create(file->schema()->declaration_by_name("IfcPolyline"));
     ifcapi::detail::write_ref_aggregate(polyline, "Points", {
         ifcapi::detail::create_cartesian_point(file, {p1[0], p1[1]}),
         ifcapi::detail::create_cartesian_point(file, {p2[0], p2[1]}),
@@ -66,57 +62,60 @@ IfcUtil::IfcBaseClass* create_axis_polyline(
 namespace ifcapi {
 namespace bindings {
 
-IfcUtil::IfcBaseClass* grid_create_grid_axis(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* grid,
+express::Base grid_create_grid_axis(
+    ifcopenshell::file* file,
+    express::Base* grid,
     const std::string& axis_tag,
     bool same_sense,
     const std::string& uvw_axes)
 {
     ifcopenshell_clear_error();
     try {
-        if (!file || !grid) return nullptr;
-        int axes_idx = ifcapi::detail::attr_index_of(grid, uvw_axes.c_str());
+        auto grid_value = ifcapi::detail::deref_or_empty(grid);
+        if (!file || !grid_value) return {};
+        int axes_idx = ifcapi::detail::attr_index_of(grid_value, uvw_axes.c_str());
         if (axes_idx < 0) {
             set_error("Invalid grid axis aggregate");
-            return nullptr;
+            return {};
         }
-        auto* axis = file->create(file->schema()->declaration_by_name("IfcGridAxis"));
+        auto axis = file->create(file->schema()->declaration_by_name("IfcGridAxis"));
         ifcapi::detail::write_string_attr(axis, "AxisTag", axis_tag);
         if (int same_sense_idx = ifcapi::detail::attr_index_of(axis, "SameSense"); same_sense_idx >= 0) {
-            axis->set_attribute_value(static_cast<size_t>(same_sense_idx), same_sense);
+            axis.set_attribute_value(static_cast<size_t>(same_sense_idx), same_sense);
         }
-        auto axes = ifcapi::detail::read_ref_aggregate(grid, uvw_axes.c_str());
+        auto axes = ifcapi::detail::read_ref_aggregate(grid_value, uvw_axes.c_str());
         axes.push_back(axis);
-        ifcapi::detail::set_ref_aggregate(grid, axes_idx, axes);
+        ifcapi::detail::set_ref_aggregate(grid_value, axes_idx, axes);
         return axis;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 
-void grid_remove_grid_axis(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* axis) {
+void grid_remove_grid_axis(ifcopenshell::file* file, express::Base* axis) {
     ifcopenshell_clear_error();
     try {
-        auto* axis_curve = ifcapi::detail::read_ref_attr(axis, "AxisCurve");
-        file->removeEntity(axis);
-        if (axis_curve) entity_remove_deep2(axis_curve);
+        auto axis_value = ifcapi::detail::deref_or_empty(axis);
+        auto axis_curve = ifcapi::detail::read_ref_attr(axis_value, "AxisCurve");
+        file->remove_entity(axis_value);
+        if (axis_curve) entity_remove_deep2(&axis_curve);
     } catch (const std::exception& e) {
         set_error(e.what());
     }
 }
 
 void grid_create_axis_curve(
-    IfcParse::IfcFile* file,
+    ifcopenshell::file* file,
     const std::vector<double>& p1,
     const std::vector<double>& p2,
-    IfcUtil::IfcBaseClass* grid_axis,
+    express::Base* grid_axis,
     bool is_si)
 {
     ifcopenshell_clear_error();
     try {
-        if (!file || !grid_axis) {
+        auto grid_axis_value = ifcapi::detail::deref_or_empty(grid_axis);
+        if (!file || !grid_axis_value) {
             throw std::runtime_error("grid_create_axis_curve requires a file and grid axis");
         }
         auto point1 = normalise_point(p1);
@@ -127,13 +126,13 @@ void grid_create_axis_curve(
                 *value /= unit_scale;
             }
         }
-        auto* grid = owning_grid(file, grid_axis);
+        auto grid = owning_grid(file, grid_axis_value);
         if (!grid) {
             throw std::runtime_error("Unable to find owning IfcGrid for grid axis");
         }
         double matrix[16];
         ifcapi::identity4(matrix);
-        if (auto* placement = ifcapi::detail::read_ref_attr(grid, "ObjectPlacement")) {
+        if (auto placement = ifcapi::detail::read_ref_attr(grid, "ObjectPlacement")) {
             if (!ifcapi::compute_local_placement(placement, matrix)) {
                 throw std::runtime_error("Unable to compute grid placement matrix");
             }
@@ -145,10 +144,10 @@ void grid_create_axis_curve(
         point1 = apply_matrix(inverse, point1);
         point2 = apply_matrix(inverse, point2);
 
-        auto* existing_curve = ifcapi::detail::read_ref_attr(grid_axis, "AxisCurve");
-        ifcapi::detail::write_ref_attr(grid_axis, "AxisCurve", create_axis_polyline(file, point1, point2));
+        auto existing_curve = ifcapi::detail::read_ref_attr(grid_axis_value, "AxisCurve");
+        ifcapi::detail::write_ref_attr(grid_axis_value, "AxisCurve", create_axis_polyline(file, point1, point2));
         if (existing_curve) {
-            entity_remove_deep2(existing_curve);
+            entity_remove_deep2(&existing_curve);
         }
     } catch (const std::exception& e) {
         set_error(e.what());

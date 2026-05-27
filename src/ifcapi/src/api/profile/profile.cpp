@@ -21,20 +21,20 @@
 
 namespace {
 
-bool is_ifc2x3(IfcParse::IfcFile* file) {
+bool is_ifc2x3(ifcopenshell::file* file) {
     return file && file->schema() && file->schema()->name() == "IFC2X3";
 }
 
-std::vector<IfcUtil::IfcBaseClass*> direct_entity_attributes(IfcUtil::IfcBaseClass* entity) {
-    std::vector<IfcUtil::IfcBaseClass*> result;
-    auto* declaration = entity ? entity->declaration().as_entity() : nullptr;
+std::vector<express::Base> direct_entity_attributes(express::Base entity) {
+    std::vector<express::Base> result;
+    auto* declaration = entity ? entity.declaration().as_entity() : nullptr;
     if (!entity || !declaration) return result;
     auto attrs = declaration->all_attributes();
     for (size_t i = 0; i < attrs.size(); ++i) {
         try {
-            auto value = entity->get_attribute_value(i);
-            if (!value.isNull() && value.type() == IfcUtil::Argument_ENTITY_INSTANCE) {
-                result.push_back(static_cast<IfcUtil::IfcBaseClass*>(value));
+            auto value = entity.get_attribute_value(i);
+            if (!value.isNull() && value.type() == ifcopenshell::Argument_ENTITY_INSTANCE) {
+                result.push_back(static_cast<express::Base>(value));
             }
         } catch (...) {
         }
@@ -42,32 +42,30 @@ std::vector<IfcUtil::IfcBaseClass*> direct_entity_attributes(IfcUtil::IfcBaseCla
     return result;
 }
 
-std::vector<IfcUtil::IfcBaseClass*> profile_psets(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* profile) {
-    std::vector<IfcUtil::IfcBaseClass*> result;
+std::vector<express::Base> profile_psets(ifcopenshell::file* file, express::Base profile) {
+    std::vector<express::Base> result;
     if (!file || !profile) return result;
     if (is_ifc2x3(file)) {
         const auto* declaration = file->schema()->declaration_by_name("IfcProfileProperties");
         auto instances = file->instances_by_type(declaration);
-        if (!instances) return result;
-        for (auto* pset : *instances) {
+        for (auto pset : instances) {
             if (ifcapi::detail::read_ref_attr(pset, "ProfileDefinition") == profile) {
                 result.push_back(pset);
             }
         }
         return result;
     }
-    auto inverses = file->getInverse(profile->id(), nullptr, -1);
-    if (!inverses) return result;
-    for (auto* inverse : *inverses) {
-        if (inverse && inverse->declaration().is("IfcProfileProperties")) {
+    auto inverses = file->instances_by_reference(static_cast<int>(profile.id()));
+    for (auto inverse : inverses) {
+        if (inverse && inverse.declaration().is("IfcProfileProperties")) {
             result.push_back(inverse);
         }
     }
     return result;
 }
 
-IfcUtil::IfcBaseClass* create_arbitrary_profile_curve(
-    IfcParse::IfcFile* file,
+express::Base create_arbitrary_profile_curve(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& points,
     bool force_3d_point_list = false)
 {
@@ -83,26 +81,26 @@ IfcUtil::IfcBaseClass* create_arbitrary_profile_curve(
 namespace ifcapi {
 namespace bindings {
 
-IfcUtil::IfcBaseClass* profile_add_parameterized_profile(
-    IfcParse::IfcFile* file,
+express::Base profile_add_parameterized_profile(
+    ifcopenshell::file* file,
     const std::string& ifc_class,
     const std::string& profile_type)
 {
     const auto* declaration = file->schema()->declaration_by_name(ifc_class);
-    auto* result = file->create(declaration);
+    auto result = file->create(declaration);
     ifcapi::detail::write_string_attr(result, "ProfileType", profile_type);
     return result;
 }
 
-IfcUtil::IfcBaseClass* profile_add_arbitrary_profile(
-    IfcParse::IfcFile* file,
+express::Base profile_add_arbitrary_profile(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& profile,
     const char* name,
     bool has_name)
 {
     auto points = ifcapi::detail::convert_si_to_project_units(file, profile);
-    auto* curve = create_arbitrary_profile_curve(file, points);
-    auto* result = file->create(file->schema()->declaration_by_name("IfcArbitraryClosedProfileDef"));
+    auto curve = create_arbitrary_profile_curve(file, points);
+    auto result = file->create(file->schema()->declaration_by_name("IfcArbitraryClosedProfileDef"));
     ifcapi::detail::write_string_attr(result, "ProfileType", "AREA");
     if (has_name) {
         ifcapi::detail::write_string_attr(result, "ProfileName", name ? name : "");
@@ -111,21 +109,21 @@ IfcUtil::IfcBaseClass* profile_add_arbitrary_profile(
     return result;
 }
 
-IfcUtil::IfcBaseClass* profile_add_arbitrary_profile_with_voids(
-    IfcParse::IfcFile* file,
+express::Base profile_add_arbitrary_profile_with_voids(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& outer_profile,
     const std::vector<std::vector<std::vector<double>>>& inner_profiles,
     const char* name,
     bool has_name)
 {
     auto outer_points = ifcapi::detail::convert_si_to_project_units(file, outer_profile);
-    auto* outer_curve = create_arbitrary_profile_curve(file, outer_points, !is_ifc2x3(file));
-    std::vector<IfcUtil::IfcBaseClass*> inner_curves;
+    auto outer_curve = create_arbitrary_profile_curve(file, outer_points, !is_ifc2x3(file));
+    std::vector<express::Base> inner_curves;
     for (const auto& inner_profile : inner_profiles) {
         auto inner_points = ifcapi::detail::convert_si_to_project_units(file, inner_profile);
         inner_curves.push_back(create_arbitrary_profile_curve(file, inner_points));
     }
-    auto* result = file->create(file->schema()->declaration_by_name("IfcArbitraryProfileDefWithVoids"));
+    auto result = file->create(file->schema()->declaration_by_name("IfcArbitraryProfileDefWithVoids"));
     ifcapi::detail::write_string_attr(result, "ProfileType", "AREA");
     if (has_name) {
         ifcapi::detail::write_string_attr(result, "ProfileName", name ? name : "");
@@ -135,16 +133,17 @@ IfcUtil::IfcBaseClass* profile_add_arbitrary_profile_with_voids(
     return result;
 }
 
-IfcUtil::IfcBaseClass* profile_copy_profile(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* profile)
+express::Base profile_copy_profile(
+    ifcopenshell::file* file,
+    express::Base* profile_ptr)
 {
-    auto* new_profile = shape_builder_deep_copy(file, profile);
-    auto inverses = file->getInverse(profile->id(), nullptr, -1);
-    if (inverses) {
-        for (auto* inverse : *inverses) {
-            if (!inverse || !inverse->declaration().is("IfcProfileProperties")) continue;
-            auto* new_pset = ifcapi::detail::shallow_copy(file, inverse);
+    auto profile = ifcapi::detail::deref_or_empty(profile_ptr);
+    auto new_profile = shape_builder_deep_copy(file, &profile);
+    auto inverses = file->instances_by_reference(static_cast<int>(profile.id()));
+    {
+        for (auto inverse : inverses) {
+            if (!inverse || !inverse.declaration().is("IfcProfileProperties")) continue;
+            auto new_pset = ifcapi::detail::shallow_copy(file, inverse);
             ifcapi::detail::write_ref_attr(new_pset, "ProfileDefinition", new_profile);
         }
     }
@@ -152,10 +151,11 @@ IfcUtil::IfcBaseClass* profile_copy_profile(
 }
 
 void profile_edit_profile(
-    IfcUtil::IfcBaseClass* profile,
+    express::Base* profile_ptr,
     ifcopenshell_pset_props_t* attributes)
 {
     ifcopenshell_clear_error();
+    auto profile = ifcapi::detail::deref_or_empty(profile_ptr);
     if (!profile || !attributes) {
         ifcapi::detail::set_error("Invalid arguments");
         return;
@@ -168,17 +168,18 @@ void profile_edit_profile(
 }
 
 void profile_remove_profile(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* profile)
+    ifcopenshell::file* file,
+    express::Base* profile_ptr)
 {
+    auto profile = ifcapi::detail::deref_or_empty(profile_ptr);
     auto subelements = direct_entity_attributes(profile);
     auto psets = profile_psets(file, profile);
-    for (auto* pset : psets) {
-        pset_remove_pset(file, profile, pset);
+    for (auto pset : psets) {
+        pset_remove_pset(file, &profile, &pset);
     }
-    file->removeEntity(profile);
-    for (auto* subelement : subelements) {
-        entity_remove_deep2(subelement);
+    file->remove_entity(profile);
+    for (auto subelement : subelements) {
+        entity_remove_deep2(&subelement);
     }
 }
 

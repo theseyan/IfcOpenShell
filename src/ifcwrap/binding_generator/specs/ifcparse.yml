@@ -2334,6 +2334,14 @@ methods:
         }
         throw std::runtime_error("Unknown aggregation type.");
 
+  - kind: method
+    receiver: instance_list
+    cpp_name: size
+    expose_as: size
+    returns:
+      kind: size
+    params: []
+
   - kind: adapter_method
     receiver: instance_list
     cpp_name: get

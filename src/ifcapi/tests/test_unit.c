@@ -37,10 +37,9 @@ static size_t list_size(ifcopenshell_ifcparse_instance_list_t* list) {
     return result;
 }
 
-static ifcopenshell_ifcparse_instance_list_t* by_type(ifcopenshell_ifc_file_t* file, const char* ifc_class) {
-    ifcopenshell_ifcparse_instance_list_t* result = NULL;
+static ifcopenshell_ifc_instance_list_t by_type(ifcopenshell_ifc_file_t* file, const char* ifc_class) {
+    ifcopenshell_ifc_instance_list_t result = {0};
     ASSERT(ifcopenshell_ifc_file_by_type(file, ifc_class, &result), "by_type succeeds");
-    ASSERT(result != NULL, "by_type returns non-NULL");
     return result;
 }
 
@@ -92,9 +91,9 @@ static void test_unit_creation(void) {
     ASSERT(derived != NULL, "derived unit is non-NULL");
     assert_instance_is(derived, "IfcDerivedUnit", "created derived unit is IfcDerivedUnit");
 
-    ifcopenshell_ifcparse_instance_list_t* derived_elements = by_type(file, "IfcDerivedUnitElement");
-    ASSERT(list_size(derived_elements) == 2, "derived unit creates one element per component unit");
-    ifcopenshell_ifcparse_instance_list_destroy(derived_elements);
+    ifcopenshell_ifc_instance_list_t derived_elements = by_type(file, "IfcDerivedUnitElement");
+    ASSERT(derived_elements.size == 2, "derived unit creates one element per component unit");
+    ifcopenshell_ifc_instance_list_destroy(&derived_elements);
 
     ifcopenshell_ifc_instance_destroy(derived);
     ifcopenshell_ifc_instance_destroy(time);
@@ -145,12 +144,12 @@ static void test_unit_unassign_and_remove(void) {
     ifcopenshell_ifcparse_instance_list_destroy(kept_units);
 
     ASSERT(ifcopenshell_ifcapi_unit_remove_unit(file, area), "unit_remove_unit succeeds");
-    ifcopenshell_ifcparse_instance_list_t* assignments = by_type(file, "IfcUnitAssignment");
-    ASSERT(list_size(assignments) == 0, "removing last assigned unit removes assignment");
-    ifcopenshell_ifcparse_instance_list_destroy(assignments);
-    ifcopenshell_ifcparse_instance_list_t* si_units = by_type(file, "IfcSIUnit");
-    ASSERT(list_size(si_units) == 1, "unit_remove_unit purges only the selected unit");
-    ifcopenshell_ifcparse_instance_list_destroy(si_units);
+    ifcopenshell_ifc_instance_list_t assignments = by_type(file, "IfcUnitAssignment");
+    ASSERT(assignments.size == 0, "removing last assigned unit removes assignment");
+    ifcopenshell_ifc_instance_list_destroy(&assignments);
+    ifcopenshell_ifc_instance_list_t si_units = by_type(file, "IfcSIUnit");
+    ASSERT(si_units.size == 1, "unit_remove_unit purges only the selected unit");
+    ifcopenshell_ifc_instance_list_destroy(&si_units);
 
     ifcopenshell_ifc_instance_destroy(assignment);
     ifcopenshell_ifc_instance_destroy(project);

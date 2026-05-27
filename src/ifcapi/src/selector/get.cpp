@@ -11,17 +11,18 @@ void value_free(ifcopenshell_value_t* value) {
 }
 
 ifcopenshell_value_t* selector_get_element_value(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* element,
+    ifcopenshell::file* file,
+    express::Base* element_ptr,
     const std::string& query)
 {
+    auto element = ifcapi::detail::deref_or_empty(element_ptr);
     if (!element) {
         ifcopenshell::capi::set_last_error("get_element_value: null argument");
-        return nullptr;
+        return {};
     }
 
     ifcopenshell_selector_node_t* ast = selector_parse_get_element(query);
-    if (!ast) return nullptr;
+    if (!ast) return {};
 
     std::vector<KeyEntry> keys = extract_keys(ast);
     selector_node_free(ast);
@@ -30,10 +31,10 @@ ifcopenshell_value_t* selector_get_element_value(
         return get_element_value_impl(file, element, keys);
     } catch (const std::exception& ex) {
         ifcopenshell::capi::set_last_error(ex.what());
-        return nullptr;
+        return {};
     } catch (...) {
         ifcopenshell::capi::set_last_error("get_element_value: unknown exception");
-        return nullptr;
+        return {};
     }
 }
 
@@ -57,8 +58,8 @@ std::string value_as_string(const ifcopenshell_value_t* value) {
     return (value && value->kind == IFCSEL_VALUE_STRING) ? value->s_val : std::string();
 }
 
-IfcUtil::IfcBaseClass* value_as_instance(const ifcopenshell_value_t* value) {
-    return (value && value->kind == IFCSEL_VALUE_INSTANCE) ? value->inst_val : nullptr;
+express::Base value_as_instance(const ifcopenshell_value_t* value) {
+    return (value && value->kind == IFCSEL_VALUE_INSTANCE) ? value->inst_val : express::Base();
 }
 
 size_t value_list_size(const ifcopenshell_value_t* value) {
@@ -66,7 +67,7 @@ size_t value_list_size(const ifcopenshell_value_t* value) {
 }
 
 const ifcopenshell_value_t* value_list_at(const ifcopenshell_value_t* value, size_t index) {
-    if (!value || value->kind != IFCSEL_VALUE_LIST || index >= value->list_val.size()) return nullptr;
+    if (!value || value->kind != IFCSEL_VALUE_LIST || index >= value->list_val.size()) return {};
     return value->list_val[index];
 }
 
@@ -80,7 +81,7 @@ std::string value_dict_key_at(const ifcopenshell_value_t* value, size_t index) {
 }
 
 const ifcopenshell_value_t* value_dict_value_at(const ifcopenshell_value_t* value, size_t index) {
-    if (!value || value->kind != IFCSEL_VALUE_DICT || index >= value->dict_val.size()) return nullptr;
+    if (!value || value->kind != IFCSEL_VALUE_DICT || index >= value->dict_val.size()) return {};
     return value->dict_val[index].second;
 }
 

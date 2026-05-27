@@ -86,12 +86,12 @@ inline bool invert4(const double* m, double* out) {
 
 // Recursive evaluation of an IfcLocalPlacement chain. Returns identity for null /
 // non-LocalPlacement input.
-bool compute_local_placement(IfcUtil::IfcBaseClass* e, double* out);
+bool compute_local_placement(express::Base e, double* out);
 
 // Evaluation of IfcAxis2Placement2D / 3D / Linear / IfcAxis1Placement.
 // Returns false (identity output) for unsupported subtypes (e.g. LinearPlacement
 // using IfcPointByDistanceExpression locations).
-bool compute_axis2placement(IfcUtil::IfcBaseClass* e, double* out);
+bool compute_axis2placement(express::Base e, double* out);
 
 }  // namespace ifcapi
 

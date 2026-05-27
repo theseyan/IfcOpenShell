@@ -29,45 +29,31 @@ inline void set_error(const std::string& msg) { ifcopenshell::capi::set_last_err
 
 // Find the IfcRelDefinesByType that the given type is the RelatingType of.
 // For IFC2X3, the inverse is "ObjectTypeOf"; for IFC4+, it is "Types".
-static IfcUtil::IfcBaseClass* find_types_rel(IfcUtil::IfcBaseClass* relating_type) {
-    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(relating_type);
-    if (!be) return nullptr;
+static express::Base find_types_rel(express::Base relating_type) {
     // Try IFC4+ "Types" first, then IFC2X3 "ObjectTypeOf"
     for (const char* inverse_name : {"Types", "ObjectTypeOf"}) {
-        try {
-            auto result = be->get_inverse(inverse_name);
-            if (result && result->size() > 0) return (*result)[0];
-        } catch (...) {}
+        auto result = ifcapi::detail::read_inverse_aggregate(relating_type, inverse_name);
+        if (!result.empty()) return result.front();
     }
-    return nullptr;
+    return {};
 }
 
 // Find the IfcRelDefinesByType that the element is typed by.
 // For IFC4+: inverse "IsTypedBy"; for IFC2X3: filter "IsDefinedBy" for IfcRelDefinesByType.
-static IfcUtil::IfcBaseClass* find_element_type_rel(IfcParse::IfcFile* file, IfcUtil::IfcBaseClass* element) {
-    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(element);
-    if (!be) return nullptr;
-
-    // IFC4+: IsTypedBy
-    try {
-        auto result = be->get_inverse("IsTypedBy");
-        if (result && result->size() > 0) return (*result)[0];
-    } catch (...) {}
+static express::Base find_element_type_rel(ifcopenshell::file* file, express::Base element) {
+    auto result = ifcapi::detail::read_inverse_aggregate(element, "IsTypedBy");
+    if (!result.empty()) return result.front();
 
     // IFC2X3: IsDefinedBy, filter for IfcRelDefinesByType
-    try {
-        auto result = be->get_inverse("IsDefinedBy");
-        if (result) {
-            const auto* rdt_decl = file->schema()->declaration_by_name("IfcRelDefinesByType");
-            for (size_t i = 0; i < result->size(); ++i) {
-                if ((*result)[i]->declaration().is(*rdt_decl)) {
-                    return (*result)[i];
-                }
-            }
+    result = ifcapi::detail::read_inverse_aggregate(element, "IsDefinedBy");
+    const auto* rdt_decl = file->schema()->declaration_by_name("IfcRelDefinesByType");
+    for (auto inverse : result) {
+        if (inverse && inverse.declaration().is(*rdt_decl)) {
+            return inverse;
         }
-    } catch (...) {}
+    }
 
-    return nullptr;
+    return {};
 }
 
 namespace {
@@ -77,80 +63,75 @@ using namespace ifcapi::detail;
 // type already declares a non-NOTDEFINED PredefinedType (avoids "double
 // typing"; see ifcopenshell issue 7006).
 void clear_predefined_type_on_objects(
-    const std::set<IfcUtil::IfcBaseClass*>& objects_set,
-    IfcUtil::IfcBaseClass* relating_type)
+    const std::set<express::Base>& objects_set,
+    express::Base relating_type)
 {
-    auto* be = dynamic_cast<IfcUtil::IfcBaseEntity*>(relating_type);
-    if (!be) return;
-    auto* d = be->declaration().as_entity();
+    auto* d = relating_type ? relating_type.declaration().as_entity() : nullptr;
     if (!d) return;
     int pdt_idx = d->attribute_index("PredefinedType");
     if (pdt_idx < 0) return;
     std::string predefined;
     try {
-        auto v = relating_type->get_attribute_value(static_cast<size_t>(pdt_idx));
+        auto v = relating_type.get_attribute_value(static_cast<size_t>(pdt_idx));
         if (v.isNull()) return;
         predefined = (std::string)v;
     } catch (...) { return; }
     if (predefined.empty() || predefined == "NOTDEFINED") return;
 
-    for (auto* obj : objects_set) {
-        auto* obe = dynamic_cast<IfcUtil::IfcBaseEntity*>(obj);
-        if (!obe) continue;
-        auto* od = obe->declaration().as_entity();
+    for (auto obj : objects_set) {
+        auto* od = obj ? obj.declaration().as_entity() : nullptr;
         if (!od) continue;
         int ot_idx = od->attribute_index("ObjectType");
         if (ot_idx >= 0) {
-            try { obj->set_attribute_value(static_cast<size_t>(ot_idx), Blank{}); } catch (...) {}
+            try { obj.unset_attribute_value(static_cast<size_t>(ot_idx)); } catch (...) {}
         }
         int p_idx = od->attribute_index("PredefinedType");
         if (p_idx >= 0) {
-            try { obj->set_attribute_value(static_cast<size_t>(p_idx), Blank{}); } catch (...) {}
+            try { obj.unset_attribute_value(static_cast<size_t>(p_idx)); } catch (...) {}
         }
     }
 }
 
-IfcUtil::IfcBaseClass* assign_type_core(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& objects,
-    IfcUtil::IfcBaseClass* relating_type,
+express::Base assign_type_core(
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& objects,
+    express::Base relating_type,
     bool should_map_representations,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    express::Base owner_history,
+    express::Base user,
+    express::Base application)
 {
     ifcopenshell_clear_error();
     if (!file || objects.empty()) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
 
     try {
-        auto* relating_type_e = relating_type;
+        auto relating_type_e = relating_type;
         if (!relating_type_e) {
             set_error("Relating type not found");
-            return nullptr;
+            return {};
         }
 
-        std::set<IfcUtil::IfcBaseClass*> objects_set;
-        for (auto* object : objects) {
-            auto* obj = const_cast<IfcUtil::IfcBaseClass*>(object);
-            if (obj) objects_set.insert(obj);
+        std::set<express::Base> objects_set;
+        for (auto object : objects) {
+            if (object) objects_set.insert(object);
         }
-        if (objects_set.empty()) return nullptr;
+        if (objects_set.empty()) return {};
 
-        auto* existing_rel = find_types_rel(relating_type_e);
+        auto existing_rel = find_types_rel(relating_type_e);
 
         const auto* rdt_decl = file->schema()->declaration_by_name("IfcRelDefinesByType");
         auto* rdt_entity_decl = rdt_decl->as_entity();
         int related_idx = find_attr_index(rdt_entity_decl, "RelatedObjects");
 
-        std::set<IfcUtil::IfcBaseClass*> previous_rels;
-        std::vector<IfcUtil::IfcBaseClass*> objects_to_change;
+        std::set<express::Base> previous_rels;
+        std::vector<express::Base> objects_to_change;
 
-        for (auto* obj : objects_set) {
-            auto* cur_rel = find_element_type_rel(file, obj);
-            if (cur_rel == nullptr) {
+        for (auto obj : objects_set) {
+            auto cur_rel = find_element_type_rel(file, obj);
+            if (!cur_rel) {
                 objects_to_change.push_back(obj);
             } else if (cur_rel != existing_rel) {
                 previous_rels.insert(cur_rel);
@@ -163,10 +144,10 @@ IfcUtil::IfcBaseClass* assign_type_core(
         }
 
         // Remove from previous type relationships.
-        for (auto* prev_rel : previous_rels) {
+        for (auto prev_rel : previous_rels) {
             auto related = get_ref_aggregate(prev_rel, related_idx);
-            std::vector<IfcUtil::IfcBaseClass*> remaining;
-            for (auto* e : related) {
+            std::vector<express::Base> remaining;
+            for (auto e : related) {
                 if (objects_set.find(e) == objects_set.end()) {
                     remaining.push_back(e);
                 }
@@ -179,54 +160,52 @@ IfcUtil::IfcBaseClass* assign_type_core(
             }
         }
 
-        IfcUtil::IfcBaseClass* result_rel = nullptr;
+        express::Base result_rel;
 
         // Add to target type relationship.
         if (existing_rel) {
             auto current = get_ref_aggregate(existing_rel, related_idx);
-            std::set<IfcUtil::IfcBaseClass*> current_set(current.begin(), current.end());
-            for (auto* o : objects_set) current_set.insert(o);
-            std::vector<IfcUtil::IfcBaseClass*> merged(current_set.begin(), current_set.end());
+            std::set<express::Base> current_set(current.begin(), current.end());
+            for (auto o : objects_set) current_set.insert(o);
+            std::vector<express::Base> merged(current_set.begin(), current_set.end());
             set_ref_aggregate(existing_rel, related_idx, merged);
             update_owner_history(file, existing_rel, user, application);
             result_rel = existing_rel;
         } else {
-            auto* rel = file->create(rdt_decl);
+            auto rel = file->create(rdt_decl);
             if (!rel) {
                 set_error("Failed to create IfcRelDefinesByType");
-                return nullptr;
+                return {};
             }
             int gi_idx = find_attr_index(rdt_entity_decl, "GlobalId");
             if (gi_idx >= 0) {
-                rel->set_attribute_value(static_cast<size_t>(gi_idx), ifcapi::guid_new());
+                rel.set_attribute_value(static_cast<size_t>(gi_idx), ifcapi::guid_new());
             }
             int rt_idx = find_attr_index(rdt_entity_decl, "RelatingType");
             set_ref(rel, rt_idx, relating_type_e);
             int oh_idx = find_attr_index(rdt_entity_decl, "OwnerHistory");
             set_ref(rel, oh_idx, ensure_owner_history(file, owner_history, user, application));
-            std::vector<IfcUtil::IfcBaseClass*> objs(objects_set.begin(), objects_set.end());
+            std::vector<express::Base> objs(objects_set.begin(), objects_set.end());
             set_ref_aggregate(rel, related_idx, objs);
             result_rel = rel;
         }
 
         if (should_map_representations) {
             // Propagate IfcRepresentationMaps onto each newly-assigned object.
-            auto* rt_be = dynamic_cast<IfcUtil::IfcBaseEntity*>(relating_type_e);
-            if (rt_be) {
-                int rm_idx = rt_be->declaration().as_entity()->attribute_index("RepresentationMaps");
+            if (relating_type_e) {
+                int rm_idx = relating_type_e.declaration().as_entity()->attribute_index("RepresentationMaps");
                 bool has_maps = false;
                 if (rm_idx >= 0) {
                     try {
-                        auto v = relating_type_e->get_attribute_value(static_cast<size_t>(rm_idx));
+                        auto v = relating_type_e.get_attribute_value(static_cast<size_t>(rm_idx));
                         if (!v.isNull()) {
-                            auto agg = (aggregate_of_instance::ptr)v;
-                            has_maps = agg && agg->size() > 0;
+                            has_maps = !static_cast<std::vector<express::Base>>(v).empty();
                         }
                     } catch (...) {}
                 }
                 if (has_maps) {
-                    for (auto* obj : objects_to_change) {
-                        ifcapi::bindings::type_map_type_representations(file, obj, relating_type_e);
+                    for (auto obj : objects_to_change) {
+                        ifcapi::bindings::type_map_type_representations(file, &obj, &relating_type_e);
                     }
                 }
             }
@@ -237,7 +216,7 @@ IfcUtil::IfcBaseClass* assign_type_core(
         return result_rel;
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 }  // namespace
@@ -245,34 +224,38 @@ IfcUtil::IfcBaseClass* assign_type_core(
 namespace ifcapi {
 namespace bindings {
 
-IfcUtil::IfcBaseClass* type_assign_type(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& objects,
-    IfcUtil::IfcBaseClass* relating_type,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+express::Base type_assign_type(
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& objects,
+    express::Base* relating_type,
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
 {
-    return assign_type_core(file, objects, relating_type, true, owner_history, user, application);
+    return assign_type_core(
+        file, objects, deref_or_empty(relating_type), true, deref_or_empty(owner_history),
+        deref_or_empty(user), deref_or_empty(application));
 }
 
-IfcUtil::IfcBaseClass* type_assign_type_ex(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& objects,
-    IfcUtil::IfcBaseClass* relating_type,
+express::Base type_assign_type_ex(
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& objects,
+    express::Base* relating_type,
     bool should_map_representations,
-    IfcUtil::IfcBaseClass* owner_history,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    express::Base* owner_history,
+    express::Base* user,
+    express::Base* application)
 {
-    return assign_type_core(file, objects, relating_type, should_map_representations, owner_history, user, application);
+    return assign_type_core(
+        file, objects, deref_or_empty(relating_type), should_map_representations, deref_or_empty(owner_history),
+        deref_or_empty(user), deref_or_empty(application));
 }
 
 void type_unassign_type(
-    IfcParse::IfcFile* file,
-    const std::vector<const IfcUtil::IfcBaseClass*>& objects,
-    IfcUtil::IfcBaseClass* user,
-    IfcUtil::IfcBaseClass* application)
+    ifcopenshell::file* file,
+    const std::vector<express::Base>& objects,
+    express::Base* user,
+    express::Base* application)
 {
     if (!file || objects.empty()) return;
 
@@ -281,22 +264,23 @@ void type_unassign_type(
         auto* rdt_entity_decl = rdt_decl->as_entity();
         int related_idx = find_attr_index(rdt_entity_decl, "RelatedObjects");
 
-        std::set<IfcUtil::IfcBaseClass*> objects_set;
-        for (auto* object : objects) {
-            auto* obj = const_cast<IfcUtil::IfcBaseClass*>(object);
-            if (obj) objects_set.insert(obj);
+        auto user_value = deref_or_empty(user);
+        auto application_value = deref_or_empty(application);
+        std::set<express::Base> objects_set;
+        for (auto object : objects) {
+            if (object) objects_set.insert(object);
         }
 
-        std::set<IfcUtil::IfcBaseClass*> rels;
-        for (auto* obj : objects_set) {
-            auto* rel = find_element_type_rel(file, obj);
+        std::set<express::Base> rels;
+        for (auto obj : objects_set) {
+            auto rel = find_element_type_rel(file, obj);
             if (rel) rels.insert(rel);
         }
 
-        for (auto* rel : rels) {
+        for (auto rel : rels) {
             auto related = get_ref_aggregate(rel, related_idx);
-            std::vector<IfcUtil::IfcBaseClass*> remaining;
-            for (auto* e : related) {
+            std::vector<express::Base> remaining;
+            for (auto e : related) {
                 if (objects_set.find(e) == objects_set.end()) {
                     remaining.push_back(e);
                 }
@@ -305,7 +289,7 @@ void type_unassign_type(
                 remove_with_history(file, rel);
             } else {
                 set_ref_aggregate(rel, related_idx, remaining);
-                update_owner_history(file, rel, user, application);
+                update_owner_history(file, rel, user_value, application_value);
             }
         }
     } catch (...) {}

@@ -24,7 +24,7 @@ struct FilterValue {
     std::regex regex_pat;
 };
 
-using ElemSet = std::unordered_set<IfcUtil::IfcBaseClass*>;
+using ElemSet = std::unordered_set<express::Base>;
 
 /* --- AST node shortcuts --- */
 
@@ -46,16 +46,16 @@ static const ifcopenshell_selector_node_t* find_child(
     const ifcopenshell_selector_node_t* parent, ifcsel_node_kind kind)
 {
     for (size_t i = 0; i < ncount(parent); ++i) {
-        auto* c = nchild(parent, i);
+        auto c = nchild(parent, i);
         if (c && nkind(c) == kind) return c;
     }
-    return nullptr;
+    return {};
 }
 
 /* Get the text of the first token child (for class names, GlobalIds, etc.) */
 static std::string first_token_text(const ifcopenshell_selector_node_t* node) {
     if (!node || ncount(node) == 0) return "";
-    auto* tok = nchild(node, 0);
+    auto tok = nchild(node, 0);
     const char* txt = ntext(tok);
     return txt ? txt : "";
 }
@@ -66,7 +66,7 @@ static ParsedComparison extract_comparison(const ifcopenshell_selector_node_t* c
     ParsedComparison result;
     if (!comp_node || ncount(comp_node) == 0) return result;
 
-    const auto* first = nchild(comp_node, 0);
+    auto first = nchild(comp_node, 0);
     if (nkind(first) == IFCSEL_NODE_NOT) {
         result.is_negated = true;
         if (ncount(comp_node) < 2) return result;
@@ -109,7 +109,7 @@ static FilterValue extract_filter_value(const ifcopenshell_selector_node_t* val_
     FilterValue fv;
     if (!val_node || ncount(val_node) == 0) return fv;
 
-    const auto* child = nchild(val_node, 0);
+    const auto child = nchild(val_node, 0);
     if (!child) return fv;
 
     switch (nkind(child)) {
@@ -169,7 +169,7 @@ static bool compare_base(const Val* elem_val,
 {
     /* LIST: recurse, any match */
     if (elem_val && elem_val->kind == IFCSEL_VALUE_LIST) {
-        for (auto* item : elem_val->list_val) {
+        for (auto item : elem_val->list_val) {
             /* Build a ParsedComparison with is_negated=false for recursion */
             ParsedComparison sub; sub.base_op = base_op; sub.is_negated = false;
             if (compare_full(item, sub, fv)) return true;
@@ -249,7 +249,7 @@ static bool compare_full(const Val* elem_val,
                          const FilterValue& fv)
 {
     if (elem_val && elem_val->kind == IFCSEL_VALUE_LIST) {
-        for (auto* item : elem_val->list_val)
+        for (auto item : elem_val->list_val)
             if (compare_full(item, cmp, fv)) return true;
         return false;
     }
@@ -272,7 +272,7 @@ struct NoneVal : Val {
 /* Populate elements with all default elements (IfcProduct + IfcTypeProduct),
    or with base_elements if provided.  Only does so once. */
 static void ensure_default_elements(
-    IfcParse::IfcFile* file,
+    ifcopenshell::file* file,
     const ElemSet* base,
     ElemSet& elements,
     bool& has_additive)
@@ -284,11 +284,11 @@ static void ensure_default_elements(
     } else {
         try {
             auto prods = file->instances_by_type("IfcProduct");
-            if (prods) for (auto* e : *prods) if (e) elements.insert(e);
+            for (auto e : prods) if (e) elements.insert(e);
         } catch (...) {}
         try {
             auto types = file->instances_by_type("IfcTypeProduct");
-            if (types) for (auto* e : *types) if (e) elements.insert(e);
+            for (auto e : types) if (e) elements.insert(e);
         } catch (...) {}
     }
 }
@@ -299,7 +299,7 @@ static void ensure_default_elements(
 
 /* ENTITY facet: adds or removes elements by IFC class */
 static void apply_entity_facet(
-    IfcParse::IfcFile* file,
+    ifcopenshell::file* file,
     const ElemSet* base,
     const ifcopenshell_selector_node_t* entity_node,
     ElemSet& elements,
@@ -309,7 +309,7 @@ static void apply_entity_facet(
 
     bool is_not = (ncount(entity_node) > 0 &&
                    nkind(nchild(entity_node, 0)) == IFCSEL_NODE_NOT);
-    const auto* class_node = is_not ? nchild(entity_node, 1) : nchild(entity_node, 0);
+    const auto class_node = is_not ? nchild(entity_node, 1) : nchild(entity_node, 0);
     if (!class_node) return;
 
     /* class_node is IFCSEL_NODE_IFC_CLASS; its first child is the text token */
@@ -319,22 +319,22 @@ static void apply_entity_facet(
     if (base) {
         if (is_not) {
             for (auto it = elements.begin(); it != elements.end(); ) {
-                if ((*it)->declaration().is(class_name.c_str())) it = elements.erase(it);
+                if ((*it).declaration().is(class_name.c_str())) it = elements.erase(it);
                 else ++it;
             }
         } else {
-            for (auto* e : *base)
-                if (e && e->declaration().is(class_name.c_str()))
+            for (auto e : *base)
+                if (e && e.declaration().is(class_name.c_str()))
                     elements.insert(e);
         }
     } else {
         try {
             auto entities = file->instances_by_type(class_name);
-            if (!entities) return;
+            if (entities.empty()) return;
             if (is_not) {
-                for (auto* e : *entities) if (e) elements.erase(e);
+                for (auto e : entities) if (e) elements.erase(e);
             } else {
-                for (auto* e : *entities) if (e) elements.insert(e);
+                for (auto e : entities) if (e) elements.insert(e);
             }
         } catch (...) {}
     }
@@ -342,7 +342,7 @@ static void apply_entity_facet(
 
 /* INSTANCE facet: adds or removes element by GlobalId */
 static void apply_instance_facet(
-    IfcParse::IfcFile* file,
+    ifcopenshell::file* file,
     ifcopenshell_ifc_file_t* file_h,
     const ElemSet* base,
     const ifcopenshell_selector_node_t* inst_node,
@@ -353,7 +353,7 @@ static void apply_instance_facet(
 
     bool is_not = (ncount(inst_node) > 0 &&
                    nkind(nchild(inst_node, 0)) == IFCSEL_NODE_NOT);
-    const auto* guid_node = is_not ? nchild(inst_node, 1) : nchild(inst_node, 0);
+    const auto guid_node = is_not ? nchild(inst_node, 1) : nchild(inst_node, 0);
     if (!guid_node) return;
 
     std::string guid = first_token_text(guid_node);
@@ -367,16 +367,13 @@ static void apply_instance_facet(
                 else ++it;
             }
         } else {
-            for (auto* e : *base) {
+            for (auto e : *base) {
                 if (e && get_string_attr(e, "GlobalId") == guid)
                     elements.insert(e);
             }
         }
     } else {
-        ifcopenshell_ifc_instance_t* h = nullptr;
-        if (!ifcopenshell_ifc_file_by_guid(file_h, guid.c_str(), &h) || !h) return;
-        auto* e = h->ptr;
-        ifcopenshell_ifc_instance_destroy(h);
+        auto e = file ? file->instance_by_guid(guid) : express::Base();
         if (!e) return;
         if (is_not) elements.erase(e);
         else elements.insert(e);
@@ -388,9 +385,9 @@ static void apply_attribute_facet(
     const ifcopenshell_selector_node_t* attr_node,
     ElemSet& elements)
 {
-    const auto* name_node  = find_child(attr_node, IFCSEL_NODE_ATTRIBUTE_NAME);
-    const auto* comp_node  = find_child(attr_node, IFCSEL_NODE_COMPARISON);
-    const auto* value_node = find_child(attr_node, IFCSEL_NODE_VALUE);
+    const auto name_node  = find_child(attr_node, IFCSEL_NODE_ATTRIBUTE_NAME);
+    const auto comp_node  = find_child(attr_node, IFCSEL_NODE_COMPARISON);
+    const auto value_node = find_child(attr_node, IFCSEL_NODE_VALUE);
     if (!name_node || !comp_node || !value_node) return;
 
     std::string attr_name = first_token_text(name_node);
@@ -398,8 +395,8 @@ static void apply_attribute_facet(
     FilterValue fv = extract_filter_value(value_node);
 
     ElemSet result;
-    for (auto* e : elements) {
-        Val* elem_val = nullptr;
+    for (auto e : elements) {
+        Val* elem_val = {};
         if (attr_name == "PredefinedType") {
             elem_val = resolve_predefined_type(e);
         } else {
@@ -418,16 +415,16 @@ static void apply_type_facet(
     const ifcopenshell_selector_node_t* type_node,
     ElemSet& elements)
 {
-    const auto* comp_node  = find_child(type_node, IFCSEL_NODE_COMPARISON);
-    const auto* value_node = find_child(type_node, IFCSEL_NODE_VALUE);
+    const auto comp_node  = find_child(type_node, IFCSEL_NODE_COMPARISON);
+    const auto value_node = find_child(type_node, IFCSEL_NODE_VALUE);
     if (!comp_node || !value_node) return;
 
     ParsedComparison cmp = extract_comparison(comp_node);
     FilterValue fv = extract_filter_value(value_node);
 
     ElemSet result;
-    for (auto* e : elements) {
-        auto* type_e = ifcapi::bindings::element_get_type(e);
+    for (auto e : elements) {
+        auto type_e = ifcapi::bindings::element_get_type(&e);
 
         bool match;
         if (!type_e) {
@@ -448,28 +445,28 @@ static void apply_type_facet(
 }
 
 /* MATERIAL facet: filters by material name or category */
-static std::vector<IfcUtil::IfcBaseClass*> expand_to_materials(IfcUtil::IfcBaseClass* mat) {
-    std::vector<IfcUtil::IfcBaseClass*> result;
+static std::vector<express::Base> expand_to_materials(express::Base mat) {
+    std::vector<express::Base> result;
     if (!mat) return result;
     if (entity_is_a(mat, "IfcMaterial")) {
         result.push_back(mat);
     } else if (entity_is_a(mat, "IfcMaterialLayerSet")) {
-        for (auto* lay : get_entity_list(mat, "MaterialLayers")) {
-            auto* m = get_entity_ref(lay, "Material");
+        for (auto lay : get_entity_list(mat, "MaterialLayers")) {
+            auto m = get_entity_ref(lay, "Material");
             if (m) result.push_back(m);
         }
     } else if (entity_is_a(mat, "IfcMaterialProfileSet")) {
-        for (auto* pr : get_entity_list(mat, "MaterialProfiles")) {
-            auto* m = get_entity_ref(pr, "Material");
+        for (auto pr : get_entity_list(mat, "MaterialProfiles")) {
+            auto m = get_entity_ref(pr, "Material");
             if (m) result.push_back(m);
         }
     } else if (entity_is_a(mat, "IfcMaterialConstituentSet")) {
-        for (auto* co : get_entity_list(mat, "MaterialConstituents")) {
-            auto* m = get_entity_ref(co, "Material");
+        for (auto co : get_entity_list(mat, "MaterialConstituents")) {
+            auto m = get_entity_ref(co, "Material");
             if (m) result.push_back(m);
         }
     } else if (entity_is_a(mat, "IfcMaterialList")) {
-        for (auto* m : get_entity_list(mat, "Materials"))
+        for (auto m : get_entity_list(mat, "Materials"))
             result.push_back(m);
     }
     return result;
@@ -479,16 +476,16 @@ static void apply_material_facet(
     const ifcopenshell_selector_node_t* mat_node,
     ElemSet& elements)
 {
-    const auto* comp_node  = find_child(mat_node, IFCSEL_NODE_COMPARISON);
-    const auto* value_node = find_child(mat_node, IFCSEL_NODE_VALUE);
+    const auto comp_node  = find_child(mat_node, IFCSEL_NODE_COMPARISON);
+    const auto value_node = find_child(mat_node, IFCSEL_NODE_VALUE);
     if (!comp_node || !value_node) return;
 
     ParsedComparison cmp = extract_comparison(comp_node);
     FilterValue fv = extract_filter_value(value_node);
 
     ElemSet result;
-    for (auto* e : elements) {
-        auto* mat = ifcapi::bindings::element_get_material(e, true, true);
+    for (auto e : elements) {
+        auto mat = ifcapi::bindings::element_get_material(&e, true, true);
         auto materials = expand_to_materials(mat);
 
         bool filter_result;
@@ -499,7 +496,7 @@ static void apply_material_facet(
             /* For each material, OR together Name and Category matches.
              * For non-equals operators the final result is inverted. */
             bool any_triggered = false;
-            for (auto* m : materials) {
+            for (auto m : materials) {
                 std::string name = get_string_attr(m, "Name");
                 StringVal nv(name);
                 if (compare_full(name.empty() ? nullptr : static_cast<Val*>(&nv), cmp, fv))
@@ -523,10 +520,10 @@ static void apply_property_facet(
     const ifcopenshell_selector_node_t* prop_facet_node,
     ElemSet& elements)
 {
-    const auto* pset_node  = find_child(prop_facet_node, IFCSEL_NODE_PSET);
-    const auto* prop_node  = find_child(prop_facet_node, IFCSEL_NODE_PROP);
-    const auto* comp_node  = find_child(prop_facet_node, IFCSEL_NODE_COMPARISON);
-    const auto* value_node = find_child(prop_facet_node, IFCSEL_NODE_VALUE);
+    const auto pset_node  = find_child(prop_facet_node, IFCSEL_NODE_PSET);
+    const auto prop_node  = find_child(prop_facet_node, IFCSEL_NODE_PROP);
+    const auto comp_node  = find_child(prop_facet_node, IFCSEL_NODE_COMPARISON);
+    const auto value_node = find_child(prop_facet_node, IFCSEL_NODE_VALUE);
     if (!pset_node || !prop_node || !comp_node || !value_node) return;
 
     FilterValue pset_fv = extract_filter_value(pset_node);
@@ -538,7 +535,7 @@ static void apply_property_facet(
     bool prop_is_regex = (prop_fv.kind == FilterValue::REGEX);
 
     ElemSet result;
-    for (auto* e : elements) {
+    for (auto e : elements) {
         auto psets = get_all_psets(e);
 
         /* prop_found: whether we reached a prop match (and should use comparison_result).
@@ -558,8 +555,8 @@ static void apply_property_facet(
                 if (kv.first != pset_fv.str) { delete kv.second; continue; }
                 /* Pset found: look up prop (nullptr → None) */
                 prop_found = true;
-                Val* prop_val = nullptr;
-                for (auto& pv : kv.second->dict_val)
+                Val* prop_val = {};
+                for (auto pv : kv.second->dict_val)
                     if (pv.first == prop_fv.str) { prop_val = pv.second; break; }
                 comparison_result = compare_full(prop_val, cmp, fv);
                 delete kv.second;
@@ -571,7 +568,7 @@ static void apply_property_facet(
             for (size_t pi = 0; pi < psets.size(); ++pi) {
                 auto& kv = psets[pi];
                 if (kv.first != pset_fv.str) { delete kv.second; continue; }
-                for (auto& pv : kv.second->dict_val) {
+                for (auto pv : kv.second->dict_val) {
                     if (regex_match_start(pv.first, prop_fv.regex_pat)) {
                         prop_found = true;
                         comparison_result = compare_full(pv.second, cmp, fv);
@@ -587,8 +584,8 @@ static void apply_property_facet(
             for (size_t pi = 0; pi < psets.size(); ++pi) {
                 auto& kv = psets[pi];
                 if (!regex_match_start(kv.first, pset_fv.regex_pat)) { delete kv.second; continue; }
-                Val* prop_val = nullptr;
-                for (auto& pv : kv.second->dict_val)
+                Val* prop_val = {};
+                for (auto pv : kv.second->dict_val)
                     if (pv.first == prop_fv.str) { prop_val = pv.second; break; }
                 if (prop_val) {
                     prop_found = true;
@@ -604,7 +601,7 @@ static void apply_property_facet(
             for (size_t pi = 0; pi < psets.size(); ++pi) {
                 auto& kv = psets[pi];
                 if (!regex_match_start(kv.first, pset_fv.regex_pat)) { delete kv.second; continue; }
-                for (auto& pv : kv.second->dict_val) {
+                for (auto pv : kv.second->dict_val) {
                     if (regex_match_start(pv.first, prop_fv.regex_pat)) {
                         prop_found = true;
                         comparison_result = compare_full(pv.second, cmp, fv);
@@ -628,19 +625,19 @@ static void apply_classification_facet(
     const ifcopenshell_selector_node_t* cls_node,
     ElemSet& elements)
 {
-    const auto* comp_node  = find_child(cls_node, IFCSEL_NODE_COMPARISON);
-    const auto* value_node = find_child(cls_node, IFCSEL_NODE_VALUE);
+    const auto comp_node  = find_child(cls_node, IFCSEL_NODE_COMPARISON);
+    const auto value_node = find_child(cls_node, IFCSEL_NODE_VALUE);
     if (!comp_node || !value_node) return;
 
     ParsedComparison cmp = extract_comparison(comp_node);
     FilterValue fv = extract_filter_value(value_node);
 
     ElemSet result;
-    for (auto* e : elements) {
-        std::vector<IfcUtil::IfcBaseClass*> refs;
-        for (auto* rel : get_inverse_list(e, "HasAssociations")) {
+    for (auto e : elements) {
+        std::vector<express::Base> refs;
+        for (auto rel : get_inverse_list(e, "HasAssociations")) {
             if (!entity_is_a(rel, "IfcRelAssociatesClassification")) continue;
-            auto* ref = get_entity_ref(rel, "RelatingClassification");
+            auto ref = get_entity_ref(rel, "RelatingClassification");
             if (ref) refs.push_back(ref);
         }
 
@@ -649,7 +646,7 @@ static void apply_classification_facet(
             filter_result = compare_full(nullptr, cmp, fv);
         } else {
             bool any_triggered = false;
-            for (auto* ref : refs) {
+            for (auto ref : refs) {
                 std::string ref_name = get_string_attr(ref, "Name");
                 StringVal nv(ref_name);
                 if (compare_full(ref_name.empty() ? nullptr : static_cast<Val*>(&nv), cmp, fv))
@@ -670,12 +667,12 @@ static void apply_classification_facet(
 }
 
 /* LOCATION facet: checks the spatial container tree */
-static std::vector<IfcUtil::IfcBaseClass*> get_container_tree(IfcUtil::IfcBaseClass* container) {
-    std::vector<IfcUtil::IfcBaseClass*> tree;
+static std::vector<express::Base> get_container_tree(express::Base container) {
+    std::vector<express::Base> tree;
     while (container) {
         if (entity_is_a(container, "IfcProject")) break;
         tree.push_back(container);
-        container = ifcapi::bindings::element_get_aggregate(container);
+        container = ifcapi::bindings::element_get_aggregate(&container);
     }
     return tree;
 }
@@ -684,8 +681,8 @@ static void apply_location_facet(
     const ifcopenshell_selector_node_t* loc_node,
     ElemSet& elements)
 {
-    const auto* comp_node  = find_child(loc_node, IFCSEL_NODE_COMPARISON);
-    const auto* value_node = find_child(loc_node, IFCSEL_NODE_VALUE);
+    const auto comp_node  = find_child(loc_node, IFCSEL_NODE_COMPARISON);
+    const auto value_node = find_child(loc_node, IFCSEL_NODE_VALUE);
     if (!comp_node || !value_node) return;
 
     ParsedComparison cmp = extract_comparison(comp_node);
@@ -695,13 +692,13 @@ static void apply_location_facet(
     ParsedComparison inner_cmp; /* is_negated=false, base_op=EQ */
 
     ElemSet result;
-    for (auto* e : elements) {
+    for (auto e : elements) {
         /* Get direct spatial container */
-        auto* container = ifcapi::bindings::element_get_container(e, false, nullptr);
+        auto container = ifcapi::bindings::element_get_container(&e, false, nullptr);
 
         /* Fall back to aggregate parent if no spatial container */
         if (!container) {
-            container = ifcapi::bindings::element_get_aggregate(e);
+            container = ifcapi::bindings::element_get_aggregate(&e);
         }
 
         auto containers = get_container_tree(container);
@@ -711,7 +708,7 @@ static void apply_location_facet(
             filter_result = compare_full(nullptr, cmp, fv);
         } else {
             bool any_match = false;
-            for (auto* c : containers) {
+            for (auto c : containers) {
                 std::string cname = get_string_attr(c, "Name");
                 std::string cguid = get_string_attr(c, "GlobalId");
                 StringVal nv(cname), gv(cguid);
@@ -732,8 +729,8 @@ static void apply_group_facet(
     const ifcopenshell_selector_node_t* grp_node,
     ElemSet& elements)
 {
-    const auto* comp_node  = find_child(grp_node, IFCSEL_NODE_COMPARISON);
-    const auto* value_node = find_child(grp_node, IFCSEL_NODE_VALUE);
+    const auto comp_node  = find_child(grp_node, IFCSEL_NODE_COMPARISON);
+    const auto value_node = find_child(grp_node, IFCSEL_NODE_VALUE);
     if (!comp_node || !value_node) return;
 
     ParsedComparison cmp = extract_comparison(comp_node);
@@ -742,11 +739,11 @@ static void apply_group_facet(
     ParsedComparison inner_cmp; /* is_negated=false, EQ */
 
     ElemSet result;
-    for (auto* e : elements) {
+    for (auto e : elements) {
         bool any_match = false;
-        for (auto* rel : get_inverse_list(e, "HasAssignments")) {
+        for (auto rel : get_inverse_list(e, "HasAssignments")) {
             if (!entity_is_a(rel, "IfcRelAssignsToGroup")) continue;
-            auto* grp = get_entity_ref(rel, "RelatingGroup");
+            auto grp = get_entity_ref(rel, "RelatingGroup");
             if (!grp) continue;
 
             std::string gname = get_string_attr(grp, "Name");
@@ -765,12 +762,12 @@ static void apply_group_facet(
 
 /* PARENT facet */
 static void apply_parent_facet(
-    IfcParse::IfcFile* file,
+    ifcopenshell::file* file,
     const ifcopenshell_selector_node_t* parent_node,
     ElemSet& elements)
 {
-    const auto* comp_node  = find_child(parent_node, IFCSEL_NODE_COMPARISON);
-    const auto* value_node = find_child(parent_node, IFCSEL_NODE_VALUE);
+    const auto comp_node  = find_child(parent_node, IFCSEL_NODE_COMPARISON);
+    const auto value_node = find_child(parent_node, IFCSEL_NODE_VALUE);
     if (!comp_node || !value_node) return;
 
     ParsedComparison cmp = extract_comparison(comp_node);
@@ -779,7 +776,7 @@ static void apply_parent_facet(
     /* Collect matching parents */
     ElemSet parents;
 
-    auto check_parent = [&](IfcUtil::IfcBaseClass* parent) {
+    auto check_parent = [&](express::Base parent) {
         if (!parent) return;
         std::string pname = get_string_attr(parent, "Name");
         std::string pguid = get_string_attr(parent, "GlobalId");
@@ -791,50 +788,50 @@ static void apply_parent_facet(
 
     try {
         auto rels = file->instances_by_type("IfcRelAggregates");
-        if (rels) for (auto* rel : *rels) {
-            auto* p = get_entity_ref(rel, "RelatingObject");
+        for (auto rel : rels) {
+            auto p = get_entity_ref(rel, "RelatingObject");
             check_parent(p);
         }
     } catch (...) {}
 
     try {
         auto rels = file->instances_by_type("IfcRelContainedInSpatialStructure");
-        if (rels) for (auto* rel : *rels) {
-            auto* p = get_entity_ref(rel, "RelatingStructure");
+        for (auto rel : rels) {
+            auto p = get_entity_ref(rel, "RelatingStructure");
             check_parent(p);
         }
     } catch (...) {}
 
     try {
         auto rels = file->instances_by_type("IfcRelNests");
-        if (rels) for (auto* rel : *rels) {
-            auto* p = get_entity_ref(rel, "RelatingObject");
+        for (auto rel : rels) {
+            auto p = get_entity_ref(rel, "RelatingObject");
             check_parent(p);
         }
     } catch (...) {}
 
     try {
         auto rels = file->instances_by_type("IfcRelVoidsElement");
-        if (rels) for (auto* rel : *rels) {
-            auto* p = get_entity_ref(rel, "RelatingBuildingElement");
+        for (auto rel : rels) {
+            auto p = get_entity_ref(rel, "RelatingBuildingElement");
             check_parent(p);
         }
     } catch (...) {}
 
     try {
         auto rels = file->instances_by_type("IfcRelFillsElement");
-        if (rels) for (auto* rel : *rels) {
-            auto* p = get_entity_ref(rel, "RelatingOpeningElement");
+        for (auto rel : rels) {
+            auto p = get_entity_ref(rel, "RelatingOpeningElement");
             check_parent(p);
         }
     } catch (...) {}
 
     /* Get all children of matched parents */
     ElemSet children;
-    for (auto* parent : parents) {
-        auto decomposed = ifcapi::bindings::element_get_decomposition(parent, true);
-        if (decomposed) {
-            for (auto& child : *decomposed)
+    for (auto parent : parents) {
+        auto decomposed = ifcapi::bindings::element_get_decomposition(&parent, true);
+        if (!decomposed.empty()) {
+            for (auto child : decomposed)
                 if (child) children.insert(child);
         }
     }
@@ -844,10 +841,10 @@ static void apply_parent_facet(
 
     ElemSet result;
     if (cmp.is_negated) {
-        for (auto* e : elements)
+        for (auto e : elements)
             if (related.find(e) == related.end()) result.insert(e);
     } else {
-        for (auto* e : elements)
+        for (auto e : elements)
             if (related.find(e) != related.end()) result.insert(e);
     }
     elements = std::move(result);
@@ -855,13 +852,13 @@ static void apply_parent_facet(
 
 /* QUERY facet: evaluates a key-path query and compares the result */
 static void apply_query_facet(
-    IfcParse::IfcFile* file,
+    ifcopenshell::file* file,
     const ifcopenshell_selector_node_t* qfacet_node,
     ElemSet& elements)
 {
-    const auto* keys_node  = find_child(qfacet_node, IFCSEL_NODE_KEYS);
-    const auto* comp_node  = find_child(qfacet_node, IFCSEL_NODE_COMPARISON);
-    const auto* value_node = find_child(qfacet_node, IFCSEL_NODE_VALUE);
+    const auto keys_node  = find_child(qfacet_node, IFCSEL_NODE_KEYS);
+    const auto comp_node  = find_child(qfacet_node, IFCSEL_NODE_COMPARISON);
+    const auto value_node = find_child(qfacet_node, IFCSEL_NODE_VALUE);
     if (!keys_node || !comp_node || !value_node) return;
 
     /* The keys node holds a simple value (string path like "type.Name") */
@@ -880,7 +877,7 @@ static void apply_query_facet(
     ifcopenshell_selector_node_free(ast);
 
     ElemSet result;
-    for (auto* e : elements) {
+    for (auto e : elements) {
         Val* elem_val = get_element_value_impl(file, e, keys);
         bool match = compare_full(elem_val, cmp, fv);
         delete elem_val;
@@ -894,7 +891,7 @@ static void apply_query_facet(
  * ==================================================================== */
 
 static void process_facet(
-    IfcParse::IfcFile* file,
+    ifcopenshell::file* file,
     ifcopenshell_ifc_file_t* file_h,
     const ElemSet* base,
     const ifcopenshell_selector_node_t* facet_child,
@@ -950,7 +947,7 @@ static void process_facet(
 }
 
 static ElemSet process_facet_list(
-    IfcParse::IfcFile* file,
+    ifcopenshell::file* file,
     ifcopenshell_ifc_file_t* file_h,
     const ElemSet* base,
     const ifcopenshell_selector_node_t* fl_node)
@@ -959,12 +956,12 @@ static ElemSet process_facet_list(
     bool has_additive = false;
 
     for (size_t i = 0; i < ncount(fl_node); ++i) {
-        const auto* facet_node = nchild(fl_node, i);
+        const auto facet_node = nchild(fl_node, i);
         if (!facet_node || nkind(facet_node) != IFCSEL_NODE_FACET) continue;
 
         /* A FACET node has one child: the actual facet type node */
         if (ncount(facet_node) == 0) continue;
-        const auto* facet_child = nchild(facet_node, 0);
+        const auto facet_child = nchild(facet_node, 0);
         if (!facet_child) continue;
 
         process_facet(file, file_h, base, facet_child, elements, has_additive);
@@ -974,7 +971,7 @@ static ElemSet process_facet_list(
 
 /* Walk start → filter_group → facet_list; return union of all facet-list results. */
 static ElemSet filter_elements_impl(
-    IfcParse::IfcFile* file,
+    ifcopenshell::file* file,
     ifcopenshell_ifc_file_t* file_h,
     const ElemSet* base,
     const ifcopenshell_selector_node_t* ast)
@@ -1004,39 +1001,39 @@ static ElemSet filter_elements_impl(
 namespace ifcapi {
 namespace bindings {
 
-ifcopenshell_value_t* selector_filter_all(IfcParse::IfcFile* file, const std::string& query)
+ifcopenshell_value_t* selector_filter_all(ifcopenshell::file* file, const std::string& query)
 {
     return selector_filter_elements(file, query, {});
 }
 
 ifcopenshell_value_t* selector_filter_elements(
-    IfcParse::IfcFile* file,
+    ifcopenshell::file* file,
     const std::string& query,
-    const std::vector<const IfcUtil::IfcBaseClass*>& elements)
+    const std::vector<express::Base>& elements)
 {
     if (!file) {
         ifcopenshell::capi::set_last_error("filter_elements: null argument");
-        return nullptr;
+        return {};
     }
     if (query.empty()) {
         /* Empty query: return provided elements or empty list */
-        auto* result = make_list();
-        for (auto* element : elements)
+        auto result = make_list();
+        for (auto element : elements)
             if (element)
-                result->list_val.push_back(make_instance(const_cast<IfcUtil::IfcBaseClass*>(element)));
+                result->list_val.push_back(make_instance(element));
         return result;
     }
 
     ifcopenshell_selector_node_t* ast = selector_parse_filter(query);
-    if (!ast) return nullptr;
+    if (!ast) return {};
 
     /* Build base set from supplied elements array (or nullptr for whole-file) */
     ElemSet base_set;
-    const ElemSet* base_ptr = nullptr;
+    const ElemSet* base_ptr = {};
     if (!elements.empty()) {
-        for (auto* element : elements)
+        for (auto element : elements)
             if (element)
-                base_set.insert(const_cast<IfcUtil::IfcBaseClass*>(element));
+                base_set.insert(element);
         base_ptr = &base_set;
     }
 
@@ -1047,17 +1044,17 @@ ifcopenshell_value_t* selector_filter_elements(
     } catch (const std::exception& ex) {
         selector_node_free(ast);
         ifcopenshell::capi::set_last_error(ex.what());
-        return nullptr;
+        return {};
     } catch (...) {
         selector_node_free(ast);
         ifcopenshell::capi::set_last_error("filter_elements: unknown exception");
-        return nullptr;
+        return {};
     }
 
     selector_node_free(ast);
 
-    auto* out = make_list();
-    for (auto* e : result_set)
+    auto out = make_list();
+    for (auto e : result_set)
         out->list_val.push_back(make_instance(e));
     return out;
 }

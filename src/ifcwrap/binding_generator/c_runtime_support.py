@@ -336,6 +336,22 @@ void set_instance_argument(express::Base* instance, size_t index, const T& value
     instance->set_attribute_value(index, value);
 }}
 
+void set_instance_argument(express::Base* instance, size_t index, express::Base* value) {{
+    if (value == nullptr) {{
+        instance->unset_attribute_value(index);
+    }} else {{
+        instance->set_attribute_value(index, *value);
+    }}
+}}
+
+void set_instance_argument(express::Base* instance, size_t index, std::vector<express::Base>* value) {{
+    if (value == nullptr) {{
+        instance->unset_attribute_value(index);
+    }} else {{
+        instance->set_attribute_value(index, *value);
+    }}
+}}
+
 void unset_instance_argument(express::Base* instance, size_t index) {{
     instance->unset_attribute_value(index);
 }}

@@ -29,9 +29,9 @@ std::vector<double> xy_yx_orthogonal(const std::vector<double>& direction) {
     return ifcapi::detail::np_normalized(ifcapi::detail::np_to_3d({direction.at(1), -direction.at(0)}));
 }
 
-IfcUtil::IfcBaseClass* extrude_support_disk(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* circle,
+express::Base extrude_support_disk(
+    ifcopenshell::file* file,
+    express::Base circle,
     double depth,
     const std::vector<double>& position,
     double angle)
@@ -39,7 +39,7 @@ IfcUtil::IfcBaseClass* extrude_support_disk(
     const double rotated = -angle;
     return ifcapi::bindings::shape_builder_extrude(
         file,
-        circle,
+        &circle,
         depth,
         position,
         {0.0, 0.0, -1.0},
@@ -49,8 +49,8 @@ IfcUtil::IfcBaseClass* extrude_support_disk(
         false);
 }
 
-std::vector<IfcUtil::IfcBaseClass*> add_support_on_point(
-    IfcParse::IfcFile* file,
+std::vector<express::Base> add_support_on_point(
+    ifcopenshell::file* file,
     const std::vector<double>& point,
     const std::vector<double>& railing_direction,
     double support_length,
@@ -68,11 +68,11 @@ std::vector<IfcUtil::IfcBaseClass*> add_support_on_point(
             ifcapi::detail::vec_mul(z_down, support_length * std::sin(PI / 4.0))),
         ifcapi::detail::vec_add(arc_center, ifcapi::detail::vec_mul(z_down, support_length)),
     };
-    auto* polyline = ifcapi::bindings::shape_builder_polyline(file, support_points, false, {}, false, {1});
-    auto* solid = ifcapi::bindings::shape_builder_swept_disk_solid(file, polyline, support_radius);
-    auto* disk_circle = ifcapi::bindings::shape_builder_circle(file, {}, support_disk_radius);
+    auto polyline = ifcapi::bindings::shape_builder_polyline(file, support_points, false, {}, false, {1});
+    auto solid = ifcapi::bindings::shape_builder_swept_disk_solid(file, &polyline, support_radius);
+    auto disk_circle = ifcapi::bindings::shape_builder_circle(file, {}, support_disk_radius);
     const double angle = ifcapi::detail::np_angle_signed({0.0, 1.0}, {ortho_dir[0], ortho_dir[1]});
-    auto* disk = extrude_support_disk(file, disk_circle, support_disk_depth, support_points.back(), angle);
+    auto disk = extrude_support_disk(file, disk_circle, support_disk_depth, support_points.back(), angle);
     return {solid, disk};
 }
 
@@ -148,8 +148,8 @@ std::vector<std::vector<double>> add_arcs_on_turning_points(
     return output;
 }
 
-std::vector<IfcUtil::IfcBaseClass*> create_supports_items(
-    IfcParse::IfcFile* file,
+std::vector<express::Base> create_supports_items(
+    ifcopenshell::file* file,
     const std::vector<std::vector<double>>& railing_coords,
     bool manual_supports,
     double support_spacing,
@@ -158,7 +158,7 @@ std::vector<IfcUtil::IfcBaseClass*> create_supports_items(
     double support_disk_radius,
     double support_disk_depth)
 {
-    std::vector<IfcUtil::IfcBaseClass*> supports;
+    std::vector<express::Base> supports;
     std::vector<std::vector<double>> simplified = {railing_coords.front()};
     auto prev_dir = ifcapi::detail::np_normalized(ifcapi::detail::vec_sub(railing_coords[1], railing_coords[0]));
     for (size_t i = 1; i < railing_coords.size() - 1; ++i) {
@@ -306,9 +306,9 @@ std::vector<int> get_arc_indices(
 namespace ifcapi {
 namespace bindings {
 
-IfcUtil::IfcBaseClass* geometry_add_railing_representation(
-    IfcParse::IfcFile* file,
-    IfcUtil::IfcBaseClass* context,
+express::Base geometry_add_railing_representation(
+    ifcopenshell::file* file,
+    express::Base* context,
     const std::vector<std::vector<double>>& input_railing_path,
     bool use_manual_supports,
     double support_spacing,
@@ -322,14 +322,14 @@ IfcUtil::IfcBaseClass* geometry_add_railing_representation(
     ifcopenshell_clear_error();
     if (!file || !context) {
         set_error("Invalid arguments");
-        return nullptr;
+        return {};
     }
     try {
         if (input_railing_path.size() < 2) {
             throw std::runtime_error("Railing path requires at least two points");
         }
         std::vector<std::vector<double>> arc_points;
-        std::vector<IfcUtil::IfcBaseClass*> items;
+        std::vector<express::Base> items;
         const auto z_down = ifcapi::detail::v3(0.0, 0.0, -1.0);
         const double railing_radius = railing_diameter / 2.0;
         const double height = input_height - railing_radius;
@@ -358,12 +358,12 @@ IfcUtil::IfcBaseClass* geometry_add_railing_representation(
             add_cap(railing_coords, arc_points, terminal_type, terminal_radius, clear_width, height, true);
             add_cap(railing_coords, arc_points, terminal_type, terminal_radius, clear_width, height, false);
         }
-        auto* path = ifcapi::bindings::shape_builder_polyline(file, railing_coords, false, {}, false, get_arc_indices(railing_coords, arc_points));
-        items.push_back(ifcapi::bindings::shape_builder_swept_disk_solid(file, path, railing_radius));
+        auto path = ifcapi::bindings::shape_builder_polyline(file, railing_coords, false, {}, false, get_arc_indices(railing_coords, arc_points));
+        items.push_back(ifcapi::bindings::shape_builder_swept_disk_solid(file, &path, railing_radius));
         return shape_builder_representation(file, context, ifcapi::detail::const_refs(items), "SolidModel");
     } catch (const std::exception& e) {
         set_error(e.what());
-        return nullptr;
+        return {};
     }
 }
 

@@ -20,7 +20,7 @@ def test_load_ifcparse_authored_spec() -> None:
     assert spec.c_prefix == "ifcopenshell_ifcparse"
     assert spec.discovery is not None
     assert "file" in spec.handles
-    assert spec.handles["file"].cpp_type == "IfcParse::IfcFile"
+    assert spec.handles["file"].cpp_type == "ifcopenshell::file"
     assert "entity" in spec.handles
     assert "attribute" in spec.handles
     assert "inverse_attribute" in spec.handles
@@ -120,14 +120,18 @@ def test_ifcparse_authored_spec_captures_ownership_and_adapter_rules() -> None:
     assert calls["ifcopenshell_ifcparse_version"].returns.ownership == "static"
     assert calls["ifcopenshell_ifcparse_schema_names"].returns.kind == "string"
     assert calls["ifcopenshell_ifcparse_schema_names"].returns.sequence_depth == 1
-    assert calls["ifcopenshell_ifcparse_traverse"].returns.handle == "instance_list"
+    assert calls["ifcopenshell_ifcparse_traverse"].returns.handle == "instance"
+    assert calls["ifcopenshell_ifcparse_traverse"].returns.sequence_depth == 1
     assert calls["ifcopenshell_ifcparse_schema_by_name"].returns.handle == "schema"
     assert calls["ifcopenshell_ifc_file_by_id"].returns.ownership == "borrowed"
     assert calls["ifcopenshell_ifc_file_by_id"].params[0].type.kind == "int32"
     assert isinstance(calls["ifcopenshell_ifc_file_get_total_inverses_by_id"].policy_operation, DirectMethodPolicyOp)
-    assert calls["ifcopenshell_ifc_file_instances_by_reference"].returns.handle == "instance_list"
-    assert calls["ifcopenshell_ifc_file_by_type"].returns.handle == "instance_list"
-    assert calls["ifcopenshell_ifc_file_by_type_excl_subtypes"].returns.handle == "instance_list"
+    assert calls["ifcopenshell_ifc_file_instances_by_reference"].returns.handle == "instance"
+    assert calls["ifcopenshell_ifc_file_instances_by_reference"].returns.sequence_depth == 1
+    assert calls["ifcopenshell_ifc_file_by_type"].returns.handle == "instance"
+    assert calls["ifcopenshell_ifc_file_by_type"].returns.sequence_depth == 1
+    assert calls["ifcopenshell_ifc_file_by_type_excl_subtypes"].returns.handle == "instance"
+    assert calls["ifcopenshell_ifc_file_by_type_excl_subtypes"].returns.sequence_depth == 1
     assert calls["ifcopenshell_ifc_file_create"].returns.handle == "instance"
     assert calls["ifcopenshell_ifc_file_add"].returns.handle == "instance"
     assert calls["ifcopenshell_ifc_file_entity_names"].returns.kind == "uint32"
