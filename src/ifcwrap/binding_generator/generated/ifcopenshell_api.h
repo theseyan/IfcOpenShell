@@ -676,6 +676,9 @@ bool ifcopenshell_ifcapi_group_assign_group(ifcopenshell_ifc_file_t* file, const
 bool ifcopenshell_ifcapi_group_remove_group(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* group);
 bool ifcopenshell_ifcapi_group_unassign_group(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* products, ifcopenshell_ifc_instance_t* group, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
 bool ifcopenshell_ifcapi_group_update_group_products(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* group, const ifcopenshell_ifc_instance_list_t* products, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcapi_guid_compress(const char* uuid_hex, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcapi_guid_expand(const char* guid, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcapi_guid_new(ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcapi_layer_add_layer(ifcopenshell_ifc_file_t* file, const char* name, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_layer_add_layer_with_style(ifcopenshell_ifc_file_t* file, const char* name, ifcopenshell_logical_t on, ifcopenshell_logical_t frozen, ifcopenshell_logical_t blocked, const ifcopenshell_ifc_instance_list_t* styles, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_layer_assign_layer(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* items, ifcopenshell_ifc_instance_t* layer);
@@ -979,9 +982,6 @@ bool ifcopenshell_ifcapi_value_new_int(int64_t value, ifcopenshell_ifcapi_value_
 bool ifcopenshell_ifcapi_value_new_list(ifcopenshell_ifcapi_value_t** out_result);
 bool ifcopenshell_ifcapi_value_new_none(ifcopenshell_ifcapi_value_t** out_result);
 bool ifcopenshell_ifcapi_value_new_string(const char* value, ifcopenshell_ifcapi_value_t** out_result);
-bool ifcopenshell_ifcapi_guid_new(ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifcapi_guid_compress(const char* uuid_hex, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifcapi_guid_expand(const char* guid, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifc_file_create(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_declaration_t* declaration, int32_t instance_id, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifc_file_get_inverses_by_declaration(ifcopenshell_ifc_file_t* self, int32_t instance_id, ifcopenshell_ifc_declaration_t* declaration, int32_t attribute_index, ifcopenshell_ifc_instance_list_t* out_result);
 bool ifcopenshell_ifc_file_by_type(ifcopenshell_ifc_file_t* self, const char* type_name, ifcopenshell_ifc_instance_list_t* out_result);

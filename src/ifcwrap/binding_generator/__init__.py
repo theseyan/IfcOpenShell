@@ -10,7 +10,19 @@ from .clang_discovery import (
     discover_public_methods_with_compile_commands,
 )
 from .authored_spec import DiscoveryDiagnostic, load_authored_spec, load_merged_specs
-from .c_backend import generate, generate_merged
+from .cpp_spec_frontend import (
+    CppSpecFunction,
+    CppSpecHandle,
+    CppSpecResultStruct,
+    discover_cpp_spec_contract_headers,
+    discover_cpp_spec_functions,
+    discover_cpp_spec_handles,
+    discover_cpp_spec_result_structs,
+    lower_cpp_spec_functions_to_calls,
+    lower_cpp_spec_handles_to_specs,
+    lower_cpp_spec_result_structs_to_specs,
+)
+from .c_backend import generate, generate_cpp_specs, generate_merged
 from .source_inventory import (
     SourceCallableInventory,
     SourceClassInventory,
@@ -35,7 +47,18 @@ __all__ = [
     "discover_namespace_functions_with_compile_commands",
     "discover_namespace_functions_with_synthetic_source",
     "DiscoveryDiagnostic",
+    "CppSpecFunction",
+    "CppSpecHandle",
+    "CppSpecResultStruct",
+    "discover_cpp_spec_contract_headers",
+    "discover_cpp_spec_functions",
+    "discover_cpp_spec_handles",
+    "discover_cpp_spec_result_structs",
+    "lower_cpp_spec_functions_to_calls",
+    "lower_cpp_spec_handles_to_specs",
+    "lower_cpp_spec_result_structs_to_specs",
     "generate",
+    "generate_cpp_specs",
     "generate_merged",
     "load_authored_spec",
     "load_merged_specs",

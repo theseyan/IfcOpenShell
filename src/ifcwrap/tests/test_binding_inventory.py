@@ -12,6 +12,7 @@ import yaml
 
 from src.ifcwrap.binding_generator.binding_inventory import build_inventory, parse_c_functions, parse_ctypes_symbols
 from src.ifcwrap.binding_generator.contract_discovery import discover_marked_functions_in_headers
+from src.ifcwrap.binding_generator.cpp_spec_frontend import discover_cpp_spec_contract_headers
 
 
 _C_TYPEDEF_RE = re.compile(r"\btypedef\s+(?:struct|enum)\s+(ifcopenshell_[A-Za-z0-9_]+_t)\b")
@@ -38,14 +39,6 @@ _SCALAR_PARAM_KINDS = {"bool", "double", "int32", "logical", "size", "string", "
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[3]
-
-
-def _resolve_ifcapi_public_header(repo_root: Path, header: str) -> Path:
-    for include_root in (repo_root / "src/ifcapi/include", repo_root / "src/ifcapi/src"):
-        candidate = include_root / header
-        if candidate.exists():
-            return candidate
-    raise FileNotFoundError(header)
 
 
 def _c_function_signatures(path: Path, repo_root: Path) -> dict[str, tuple[str, str]]:
@@ -196,21 +189,20 @@ def _cpp_helper_bodies(path: Path) -> dict[str, str]:
 
 def test_ifcapi_contract_discovery_uses_marked_public_headers() -> None:
     repo_root = _repo_root()
-    spec_path = repo_root / "src/ifcwrap/binding_generator/specs/ifcapi.yml"
-    spec = yaml.safe_load(spec_path.read_text(encoding="utf-8"))
-    headers = [
-        _resolve_ifcapi_public_header(repo_root, header)
-        for header in spec["public_headers"]
-        if header.startswith("ifcapi/bindings/")
-    ]
+    spec_path = repo_root / "src/ifcwrap/binding_generator/specs/cpp/ifcapi.hpp"
+    headers = discover_cpp_spec_contract_headers(
+        spec_path,
+        (
+            repo_root / "src",
+            repo_root / "src/ifcwrap",
+            repo_root / "src/ifcapi/include",
+            repo_root / "src/ifcapi/src",
+        ),
+    )
 
     marked_names = {function.name for function in discover_marked_functions_in_headers(headers)}
-    function_blocks = spec["discover"]["functions"]
-    assert len(function_blocks) == 1
-    assert function_blocks[0]["namespace"] == "ifcapi::bindings"
-    assert "translation_unit" not in function_blocks[0]
-    assert "include" not in function_blocks[0]
-    assert set(function_blocks[0].get("type_overrides", {})) <= marked_names
+    assert "element_get_type" in marked_names
+    assert "value_new_string" in marked_names
 
 
 def test_parse_c_functions_handles_exported_multiline_declarations(tmp_path: Path) -> None:

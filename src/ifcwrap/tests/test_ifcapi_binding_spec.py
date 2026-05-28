@@ -2,19 +2,85 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+import shlex
 
-import yaml
 import pytest
 
-from src.ifcwrap.binding_generator.authored_spec import HandleSpec, load_authored_spec, load_merged_specs
+from src.ifcwrap.binding_generator.authored_spec import (
+    HandleSpec,
+    MergedBindingSpec,
+    load_merged_specs,
+)
 from src.ifcwrap.binding_generator.binding_ir import DirectCallOp, lower_binding_spec
+from src.ifcwrap.binding_generator.c_backend import _merge_cpp_specs
 from src.ifcwrap.binding_generator.host_metadata import build_host_metadata
 from src.ifcwrap.binding_generator.python_ctypes_backend import render_python_ctypes
 
 
 def _spec_dir() -> Path:
     return Path(__file__).resolve().parents[1] / "binding_generator" / "specs"
+
+
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[3]
+
+
+def _cpp_specs() -> list[Path]:
+    return [_spec_dir() / "cpp" / "ifcapi.hpp"]
+
+
+def _cpp_discovery_include_dirs() -> tuple[Path, ...]:
+    root = _repo_root()
+    include_dirs = [
+        root / "src",
+        root / "src" / "ifcwrap",
+        root / "src" / "ifcapi" / "include",
+        root / "src" / "ifcapi" / "src",
+    ]
+    commands = json.loads(_compile_commands().read_text(encoding="utf-8"))
+    for command in commands:
+        if "ifcopenshell_api.cpp" not in str(command.get("file", "")):
+            continue
+        args = command.get("arguments") or shlex.split(command["command"])
+        for index, arg in enumerate(args):
+            include_dir = None
+            if arg in {"-I", "-isystem"} and index + 1 < len(args):
+                include_dir = args[index + 1]
+            elif arg.startswith("-I"):
+                include_dir = arg[2:]
+            elif arg.startswith("-isystem") and len(arg) > len("-isystem"):
+                include_dir = arg[len("-isystem") :]
+            if include_dir:
+                path = Path(include_dir)
+                if path not in include_dirs:
+                    include_dirs.append(path)
+        break
+    return tuple(include_dirs)
+
+
+def _merge_ifcapi_guid_cpp_spec(merged):
+    return _merge_cpp_specs(
+        merged,
+        _cpp_specs(),
+        "ifcapi::bindings",
+        "ifcopenshell_ifcapi",
+        None,
+        discovery_include_dirs=_cpp_discovery_include_dirs(),
+    )
+
+
+def _ifcapi_merged_with_core_handles() -> MergedBindingSpec:
+    return MergedBindingSpec(
+        module="ifcopenshell",
+        c_prefix="ifcopenshell",
+        public_headers=(),
+        handles=_core_handles(),
+        result_structs={},
+        functions=(),
+        methods=(),
+    )
 
 
 def _compile_commands() -> Path:
@@ -52,32 +118,15 @@ def _core_handles() -> dict[str, HandleSpec]:
 
 
 def test_ifcapi_spec_imports_core_handles_without_redefining_them() -> None:
-    spec_path = _spec_dir() / "ifcapi.yml"
-    raw_spec = yaml.safe_load(spec_path.read_text(encoding="utf-8"))
-
-    raw_handle_names = {handle["name"] for handle in raw_spec.get("handles", [])}
-    assert raw_handle_names == {"value"}
-    assert "instance" not in raw_handle_names
-    assert "instance_list" not in raw_handle_names
-    assert raw_spec["imports"] == [{"slice": "ifcparse", "handles": ["file", "instance", "instance_list"]}]
-    assert not any(
-        str(function.get("cpp_name", "")).startswith("ifcapi::bindings::")
-        for function in raw_spec.get("functions", [])
-    )
-
-    spec = load_authored_spec(spec_path, existing_handles=_core_handles(), compile_commands_path=_compile_commands())
-    assert spec.slice == "ifcapi"
-    assert "ifcapi/bindings/element.h" in spec.public_headers
-    assert "ifcapi/bindings/entity.h" in spec.public_headers
-    assert "ifcapi/bindings/shape.h" in spec.public_headers
-    assert "ifcapi/bindings/unit.h" in spec.public_headers
-    assert "ifcapi/bindings/value.h" in spec.public_headers
+    spec = _merge_ifcapi_guid_cpp_spec(_ifcapi_merged_with_core_handles())
+    assert "ifcwrap/binding_generator/specs/cpp/ifcapi.hpp" in spec.public_headers
     assert spec.handles["value"].c_type == "ifcopenshell_ifcapi_value_t"
     assert spec.handles["value"].destructor == "function:ifcapi::bindings::value_free"
+    assert spec.result_structs["ifcopenshell_sequence_duplicate_task_result_t"].c_type == (
+        "ifcopenshell_sequence_duplicate_task_result_t"
+    )
+
     assert {
-        "ifcopenshell_ifcapi_guid_new",
-        "ifcopenshell_ifcapi_guid_compress",
-        "ifcopenshell_ifcapi_guid_expand",
         "ifcopenshell_ifcapi_element_get_type",
         "ifcopenshell_ifcapi_element_get_aggregate",
         "ifcopenshell_ifcapi_element_get_nest",
@@ -107,13 +156,18 @@ def test_ifcapi_spec_imports_core_handles_without_redefining_them() -> None:
     }.issubset({call.c_name for call in spec.functions})
     calls = {call.c_name: call for call in spec.functions}
     assert calls["ifcopenshell_ifcapi_value_new_string"].returns.ownership == "owned"
+    guid_calls = {call.c_name: call for call in spec.functions if call.c_name.startswith("ifcopenshell_ifcapi_guid_")}
+    assert set(guid_calls) == {
+        "ifcopenshell_ifcapi_guid_new",
+        "ifcopenshell_ifcapi_guid_compress",
+        "ifcopenshell_ifcapi_guid_expand",
+    }
+    assert guid_calls["ifcopenshell_ifcapi_guid_new"].returns.ownership == "owned"
 
 
 def test_ifcapi_spec_lowers_to_host_binding_metadata() -> None:
-    spec_path = _spec_dir() / "ifcapi.yml"
-    ir = lower_binding_spec(
-        load_authored_spec(spec_path, existing_handles=_core_handles(), compile_commands_path=_compile_commands())
-    )
+    merged = _merge_ifcapi_guid_cpp_spec(_ifcapi_merged_with_core_handles())
+    ir = lower_binding_spec(merged)
     calls = {call.c_name: call for call in ir.functions}
 
     get_container = calls["ifcopenshell_ifcapi_element_get_container"]
@@ -217,15 +271,17 @@ functions:
     )
 
     merged = load_merged_specs(
-        [core_spec, geom_spec, _spec_dir() / "ifcapi.yml"],
+        [core_spec, geom_spec],
         module="ifcopenshell",
         c_prefix="ifcopenshell",
         compile_commands_path=_compile_commands(),
     )
+    merged = _merge_ifcapi_guid_cpp_spec(merged)
     ir = lower_binding_spec(merged)
     calls = {call.c_name: call for call in (*ir.functions, *ir.methods)}
 
     assert "ifcopenshell_ifcparse_instance_identity" in calls
     assert "ifcopenshell_ifcgeom_instance_visible" in calls
+    assert "ifcopenshell_ifcapi_guid_new" in calls
     assert "ifcopenshell_ifcapi_element_get_container" in calls
     assert calls["ifcopenshell_ifcapi_element_get_container"].params[0].type.handle == "instance"

@@ -30,7 +30,8 @@ if(BUILD_IFCCAPI)
     set(IFCPARSE_CAPI_GENERATED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/generated")
     set(IFCPARSE_CAPI_SPEC "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/ifcparse.yml")
     set(IFCGEOM_CAPI_SPEC "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/ifcgeom.yml")
-    set(IFCAPI_CAPI_SPEC "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/ifcapi.yml")
+    set(IFCAPI_CAPI_CPP_SPEC "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/cpp/ifcapi.hpp")
+    set(IFCAPI_CAPI_CPP_SPEC_MACROS "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/cpp/spec_macros.h")
     set(IFCPARSE_CAPI_GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/c_backend.py")
     
     # Unified API files
@@ -140,7 +141,9 @@ if(BUILD_IFCCAPI)
                 ${Python_EXECUTABLE} "${IFCPARSE_CAPI_GENERATOR}"
                 --spec "${IFCPARSE_CAPI_SPEC}"
                 --spec "${IFCGEOM_CAPI_SPEC}"
-                --spec "${IFCAPI_CAPI_SPEC}"
+                --cpp-spec "${IFCAPI_CAPI_CPP_SPEC}"
+                --cpp-spec-namespace "ifcapi::bindings"
+                --cpp-spec-c-prefix "ifcopenshell_ifcapi"
                 --header-out "${UNIFIED_CAPI_HEADER}"
                 --cpp-out "${UNIFIED_CAPI_CPP}"
                 --python-out "${UNIFIED_CAPI_PYTHON_CTYPES}"
@@ -151,7 +154,8 @@ if(BUILD_IFCCAPI)
             DEPENDS
                 "${IFCPARSE_CAPI_SPEC}"
                 "${IFCGEOM_CAPI_SPEC}"
-                "${IFCAPI_CAPI_SPEC}"
+                "${IFCAPI_CAPI_CPP_SPEC}"
+                "${IFCAPI_CAPI_CPP_SPEC_MACROS}"
                 "${IFCPARSE_CAPI_GENERATOR}"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/authored_spec.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/__init__.py"
@@ -166,6 +170,7 @@ if(BUILD_IFCCAPI)
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/c_type_rendering.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/clang_discovery.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/contract_discovery.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/cpp_spec_frontend.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/debug.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/host_metadata.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/policy_ir.py"

@@ -7944,6 +7944,55 @@ bool ifcopenshell_ifcapi_group_update_group_products(ifcopenshell_ifc_file_t* fi
     }
 }
 
+bool ifcopenshell_ifcapi_guid_compress(const char* uuid_hex, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (uuid_hex == nullptr) { throw std::runtime_error("Parameter \"uuid_hex\" must not be null"); }
+    std::string uuid_hex_cpp(uuid_hex);
+        *out_result = make_string(ifcapi::bindings::guid_compress(uuid_hex_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_guid_expand(const char* guid, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (guid == nullptr) { throw std::runtime_error("Parameter \"guid\" must not be null"); }
+    std::string guid_cpp(guid);
+        *out_result = make_string(ifcapi::bindings::guid_expand(guid_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcapi_guid_new(ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+        *out_result = make_string(ifcapi::bindings::guid_new());
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_layer_add_layer(ifcopenshell_ifc_file_t* file, const char* name, ifcopenshell_ifc_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
@@ -14083,55 +14132,6 @@ bool ifcopenshell_ifcapi_value_new_string(const char* value, ifcopenshell_ifcapi
     if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
     std::string value_cpp(value);
         *out_result = new ifcopenshell_ifcapi_value_t{ifcapi::bindings::value_new_string(value_cpp), true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcapi_guid_new(ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        *out_result = make_string(ifcapi::guid_new());
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcapi_guid_compress(const char* uuid_hex, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (uuid_hex == nullptr) { throw std::runtime_error("Parameter \"uuid_hex\" must not be null"); }
-    std::string uuid_hex_cpp(uuid_hex);
-        *out_result = make_string(ifcapi::guid_compress(uuid_hex_cpp));
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcapi_guid_expand(const char* guid, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (guid == nullptr) { throw std::runtime_error("Parameter \"guid\" must not be null"); }
-    std::string guid_cpp(guid);
-        *out_result = make_string(ifcapi::guid_expand(guid_cpp));
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
