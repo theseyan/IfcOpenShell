@@ -42,8 +42,6 @@ typed C access.
   Spec loading, validation, and normalization into generator calls.
 - `c_backend.py`
   C header and C++ glue generation.
-- `audit_ifcparse_parity.py`
-  SWIG-vs-generated parity audit for `IfcParse`.
 
 ## Build Integration
 

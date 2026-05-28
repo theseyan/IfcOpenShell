@@ -21,14 +21,6 @@ _RECORD_KINDS = {"CXXRecordDecl", "ClassTemplateSpecializationDecl"}
 _TYPE_PREFIXES = ("class ", "struct ", "union ", "enum ")
 _EXTERNAL_NAMESPACE_PREFIXES = ("std::", "boost::", "Eigen::", "po::")
 _SKIP_QUALIFIED_ROOTS = frozenset({"Eigen", "boost", "ifcopenshell", "po", "std"})
-_SKIP_RESOLUTION_TYPES = frozenset(
-    {
-        "IfcParse::IfcFile",
-        "IfcUtil::IfcBaseClass",
-        "aggregate_of_instance",
-        "aggregate_of_instance::ptr",
-    }
-)
 _BUILTIN_TYPE_NAMES = {
     "bool",
     "char",
@@ -80,9 +72,7 @@ def _is_external_qualified_type(text: str) -> bool:
 
 def _should_skip_clang_type_resolution(text: str) -> bool:
     normalized = text.strip()
-    if re.fullmatch(r"ifcopenshell_[A-Za-z0-9_]+_t", normalized):
-        return True
-    return normalized in _SKIP_RESOLUTION_TYPES
+    return bool(re.fullmatch(r"ifcopenshell_[A-Za-z0-9_]+_t", normalized))
 
 
 def _has_skipped_qualified_root(text: str) -> bool:

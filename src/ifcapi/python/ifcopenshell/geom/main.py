@@ -73,7 +73,7 @@ SERIALIZER_SETTING = Literal[
     "separate-z-up-node",
 ]
 GEOMETRY_LIBRARY = Literal[
-    "cgal", "cgal-simple", "opencascade", "hybrid-cgal-simple-opencascade"
+    "cgal", "cgal-simple", "manifold", "opencascade", "hybrid-cgal-simple-opencascade"
 ]
 
 
@@ -1041,7 +1041,7 @@ def create_shape(
     settings_obj,
     inst,
     repr=None,  # noqa: A002 - mirrors upstream signature
-    geometry_library: str = "opencascade",
+    geometry_library: GEOMETRY_LIBRARY = "opencascade",
 ):
     """Compute geometry for ``inst`` (and optionally ``repr``).
 
@@ -1176,7 +1176,7 @@ class iterator:
         num_threads: int = 1,
         include=None,
         exclude=None,
-        geometry_library: str = "opencascade",
+        geometry_library: GEOMETRY_LIBRARY = "opencascade",
     ):
         if not isinstance(settings_obj, settings):
             raise TypeError("iterator: settings argument must be ifcopenshell.geom.settings")
@@ -1361,7 +1361,7 @@ def iterate(
     with_progress: bool = False,
     cache=None,
     serializer_settings=None,
-    geometry_library: str = "opencascade",
+    geometry_library: GEOMETRY_LIBRARY = "opencascade",
 ):
     """Yield geometry from ``file_or_filename`` element by element.
 
