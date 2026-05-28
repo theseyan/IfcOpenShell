@@ -4748,12 +4748,8 @@ bool ifcopenshell_ifcgeom_create_epeck_from_int(int32_t value, ifcopenshell_ifcg
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        #if defined(IFOPSH_WITH_CGAL)
-        auto result_value = std::unique_ptr<IfcGeom::OpaqueNumber>(static_cast<IfcGeom::OpaqueNumber*>(new ifcopenshell::geometry::NumberEpeck(value)));
+        auto result_value = std::unique_ptr<IfcGeom::OpaqueNumber>(static_cast<IfcGeom::OpaqueNumber*>(new IfcGeom::NumberNativeDouble(value)));
         *out_result = new ifcopenshell_ifcgeom_opaque_number_t{result_value.release(), true};
-#else
-        throw std::runtime_error("ifcopenshell_ifcgeom_create_epeck_from_int requires IFOPSH_WITH_CGAL");
-#endif
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -4768,12 +4764,8 @@ bool ifcopenshell_ifcgeom_create_epeck_from_double(double value, ifcopenshell_if
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        #if defined(IFOPSH_WITH_CGAL)
-        auto result_value = std::unique_ptr<IfcGeom::OpaqueNumber>(static_cast<IfcGeom::OpaqueNumber*>(new ifcopenshell::geometry::NumberEpeck(value)));
+        auto result_value = std::unique_ptr<IfcGeom::OpaqueNumber>(static_cast<IfcGeom::OpaqueNumber*>(new IfcGeom::NumberNativeDouble(value)));
         *out_result = new ifcopenshell_ifcgeom_opaque_number_t{result_value.release(), true};
-#else
-        throw std::runtime_error("ifcopenshell_ifcgeom_create_epeck_from_double requires IFOPSH_WITH_CGAL");
-#endif
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -4791,13 +4783,7 @@ bool ifcopenshell_ifcgeom_create_epeck_from_string(const char* value, ifcopenshe
     if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
     std::string value_cpp(value);
         auto generated_result = [&]() {
-#ifdef IFOPSH_WITH_CGAL
-return new ifcopenshell::geometry::NumberEpeck(typename CGAL::Epeck::FT::ET(std::string(value_cpp)));
-#else
-(void)value_cpp;
-throw std::runtime_error("create_epeck requires IFOPSH_WITH_CGAL");
-return (IfcGeom::OpaqueNumber*)nullptr;
-#endif
+return new IfcGeom::NumberNativeDouble(std::stod(value_cpp));
         }();
         auto result_value = std::unique_ptr<IfcGeom::OpaqueNumber>(generated_result);
         *out_result = new ifcopenshell_ifcgeom_opaque_number_t{result_value.release(), true};
@@ -4818,24 +4804,35 @@ bool ifcopenshell_ifcgeom_nary_union(const ifcopenshell_ifcgeom_conversion_resul
     if (shapes == nullptr) { throw std::runtime_error("Parameter \"shapes\" must not be null"); }
     auto shapes_cpp = to_cpp_ifcgeom_conversion_result_shape_list(shapes);
         auto generated_result = [&]() {
-#ifdef IFOPSH_WITH_CGAL
-std::vector<const CGAL::Nef_polyhedron_3<CGAL::Epeck>*> nefs;
+IfcGeom::ConversionResultShape* result = nullptr;
+std::string backend_id;
+auto identity = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::matrix4>();
 for (auto* shape : shapes_cpp) {
-    auto* cgs = dynamic_cast<ifcopenshell::geometry::CgalShape*>(const_cast<IfcGeom::ConversionResultShape*>(shape));
-    if (cgs) {
-        nefs.push_back(&cgs->nef());
+    if (!shape) {
+        continue;
+    }
+    const auto element_backend_id = std::string(shape->backend_id());
+    if (!result) {
+        result = shape->moved(identity);
+        backend_id = element_backend_id;
+    } else {
+        if (element_backend_id != backend_id) {
+            delete result;
+            throw std::runtime_error("nary_union requires shapes from the same geometry backend");
+        }
+        auto* next = result->add(const_cast<IfcGeom::ConversionResultShape*>(shape));
+        if (!next) {
+            delete result;
+            throw std::runtime_error("nary_union failed for backend " + backend_id);
+        }
+        delete result;
+        result = next;
     }
 }
-CGAL::Nef_nary_union_3<CGAL::Nef_polyhedron_3<CGAL::Epeck>> accum;
-for (auto* n : nefs) {
-    accum.add_polyhedron(*n);
+if (!result) {
+    throw std::runtime_error("nary_union requires at least one shape");
 }
-return new ifcopenshell::geometry::CgalShape(accum.get_union());
-#else
-(void)shapes_cpp;
-throw std::runtime_error("nary_union requires IFOPSH_WITH_CGAL");
-return (IfcGeom::ConversionResultShape*)nullptr;
-#endif
+return result;
         }();
         auto result_value = std::unique_ptr<IfcGeom::ConversionResultShape>(generated_result);
         *out_result = new ifcopenshell_ifcgeom_conversion_result_shape_t{result_value.release(), true};
@@ -24048,18 +24045,30 @@ bool ifcopenshell_ifcgeom_conversion_result_shape_serialize_obj(ifcopenshell_ifc
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         auto generated_result = [&]() {
-#ifdef IFOPSH_WITH_CGAL
 std::ostringstream result;
-auto* cgs = dynamic_cast<ifcopenshell::geometry::CgalShape*>(self_cpp);
-if (!cgs) {
-    throw std::runtime_error("serialize_obj is only available for CGAL conversion result shapes");
+ifcopenshell::geometry::Settings settings;
+std::unique_ptr<IfcGeom::Representation::Triangulation> triangulation(self_cpp->Triangulate(settings));
+
+for (auto it = triangulation->verts().begin(); it != triangulation->verts().end();) {
+    result << "v " << *(it++) << " " << *(it++) << " " << *(it++) << "\n";
 }
-write_to_obj(cgs->nef(), result, std::numeric_limits<size_t>::max());
+for (auto it = triangulation->normals().begin(); it != triangulation->normals().end();) {
+    result << "vn " << *(it++) << " " << *(it++) << " " << *(it++) << "\n";
+}
+
+const bool has_normals = !triangulation->normals().empty();
+for (auto it = triangulation->faces().begin(); it != triangulation->faces().end();) {
+    const auto v1 = *(it++) + 1;
+    const auto v2 = *(it++) + 1;
+    const auto v3 = *(it++) + 1;
+    if (has_normals) {
+        result << "f " << v1 << "//" << v1 << " " << v2 << "//" << v2 << " " << v3 << "//" << v3 << "\n";
+    } else {
+        result << "f " << v1 << " " << v2 << " " << v3 << "\n";
+    }
+}
+
 return result.str();
-#else
-throw std::runtime_error("serialize_obj requires IFOPSH_WITH_CGAL");
-return std::string();
-#endif
         }();
         *out_result = make_string(generated_result);
         return true;
@@ -24078,16 +24087,9 @@ bool ifcopenshell_ifcgeom_conversion_result_shape_convex_tag(ifcopenshell_ifcgeo
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         [&]() {
-#ifdef IFOPSH_WITH_CGAL
-auto* cgs = dynamic_cast<ifcopenshell::geometry::CgalShape*>(self_cpp);
-if (!cgs) {
-    throw std::runtime_error("convex_tag is only available for CGAL conversion result shapes");
-}
-cgs->convex_tag() = value;
-#else
+(void)self_cpp;
 (void)value;
-throw std::runtime_error("convex_tag requires IFOPSH_WITH_CGAL");
-#endif
+throw std::runtime_error("convex_tag is not available through the generic conversion result interface");
         }();
         return true;
     } catch (const std::exception& e) {

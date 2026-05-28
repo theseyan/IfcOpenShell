@@ -51,7 +51,6 @@
 #include <BRepTools_ShapeSet.hxx>
 #include "taxonomy.h"
 #include "hybrid_kernel.h"
-#include "kernels/cgal/CgalConversionResult.h"
 #include "Converter.h"
 #include "abstract_mapping.h"
 #include "function_item_evaluator.h"

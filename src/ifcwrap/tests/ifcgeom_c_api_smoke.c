@@ -2727,17 +2727,17 @@ static void test_conversion_result_shape_methods(void) {
     printf("  ConversionResultShape new methods: PASS\n");
 }
 
-/* Test CGAL-only functions (should fail gracefully without CGAL) */
+/* Test geometry helper functions that mirror SWIG's generic wrapper surface. */
 static void test_cgal_functions(void) {
-    printf("Testing CGAL function stubs...\n");
+    printf("Testing geometry helper functions...\n");
 
     /* create_epeck_from_int */
     ifcopenshell_ifcgeom_opaque_number_t* num = NULL;
     bool ok = ifcopenshell_ifcgeom_create_epeck_from_int(42, &num);
     if (!ok) {
-        printf("  create_epeck_from_int: correctly failed (no CGAL)\n");
+        printf("  create_epeck_from_int: failed\n");
     } else {
-        printf("  create_epeck_from_int: returned value (CGAL available)\n");
+        printf("  create_epeck_from_int: returned value\n");
         ifcopenshell_ifcgeom_opaque_number_destroy(num);
     }
 
@@ -2745,9 +2745,9 @@ static void test_cgal_functions(void) {
     num = NULL;
     ok = ifcopenshell_ifcgeom_create_epeck_from_double(3.14, &num);
     if (!ok) {
-        printf("  create_epeck_from_double: correctly failed (no CGAL)\n");
+        printf("  create_epeck_from_double: failed\n");
     } else {
-        printf("  create_epeck_from_double: returned value (CGAL available)\n");
+        printf("  create_epeck_from_double: returned value\n");
         ifcopenshell_ifcgeom_opaque_number_destroy(num);
     }
 
@@ -2755,9 +2755,9 @@ static void test_cgal_functions(void) {
     num = NULL;
     ok = ifcopenshell_ifcgeom_create_epeck_from_string("1/3", &num);
     if (!ok) {
-        printf("  create_epeck_from_string: correctly failed (no CGAL)\n");
+        printf("  create_epeck_from_string: failed\n");
     } else {
-        printf("  create_epeck_from_string: returned value (CGAL available)\n");
+        printf("  create_epeck_from_string: returned value\n");
         ifcopenshell_ifcgeom_opaque_number_destroy(num);
     }
 
@@ -2774,7 +2774,7 @@ static void test_cgal_functions(void) {
         ifcopenshell_ifcgeom_conversion_result_shape_destroy(union_result);
     }
 
-    printf("  CGAL function stubs: PASS\n");
+    printf("  Geometry helper functions: PASS\n");
 }
 
 /* Test SVG functions */
@@ -2825,20 +2825,20 @@ static void test_svg_functions(void) {
     printf("  SVG functions: PASS\n");
 }
 
-/* Test opaque_number handle methods (requires CGAL for creation) */
+/* Test opaque_number handle methods. */
 static void test_opaque_number_methods(void) {
     printf("Testing opaque_number methods...\n");
 
-    /* Try to create a number - will fail without CGAL */
+    /* Try to create a number. */
     ifcopenshell_ifcgeom_opaque_number_t* a = NULL;
     bool ok = ifcopenshell_ifcgeom_create_epeck_from_int(10, &a);
     if (!ok) {
-        printf("  SKIP: opaque_number methods (no CGAL)\n");
+        printf("  SKIP: opaque_number methods (number creation failed)\n");
         printf("  Opaque number methods: PASS\n");
         return;
     }
 
-    /* If we have CGAL, test all operations */
+    /* Test all operations */
     ifcopenshell_ifcgeom_opaque_number_t* b = NULL;
     ifcopenshell_ifcgeom_create_epeck_from_int(3, &b);
 

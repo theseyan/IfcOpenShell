@@ -27,7 +27,6 @@ public_headers:
   - <BRepTools_ShapeSet.hxx>
   - taxonomy.h
   - hybrid_kernel.h
-  - kernels/cgal/CgalConversionResult.h
   - Converter.h
   - abstract_mapping.h
   - function_item_evaluator.h
@@ -1813,29 +1812,27 @@ functions:
             ifcopenshell::geometry::impl::mapping_implementations().construct(instance_cpp->file(), *settings_cpp));
         return mapping->map(*instance_cpp);
 
-  # create_epeck_from_int: Create CGAL exact precision number from integer
+  # create_epeck_from_int: SWIG-compatible opaque number from integer
   - kind: constructor
     expose_as: create_epeck_from_int
     handle: opaque_number
-    cpp_class: "ifcopenshell::geometry::NumberEpeck"
-    compile_guard: IFOPSH_WITH_CGAL
+    cpp_class: "IfcGeom::NumberNativeDouble"
     params:
       - name: value
         type:
           kind: int32
 
-  # create_epeck_from_double: Create CGAL exact precision number from double
+  # create_epeck_from_double: SWIG-compatible opaque number from double
   - kind: constructor
     expose_as: create_epeck_from_double
     handle: opaque_number
-    cpp_class: "ifcopenshell::geometry::NumberEpeck"
-    compile_guard: IFOPSH_WITH_CGAL
+    cpp_class: "IfcGeom::NumberNativeDouble"
     params:
       - name: value
         type:
           kind: double
 
-  # create_epeck_from_string: Create CGAL exact precision number from string
+  # create_epeck_from_string: SWIG-compatible opaque number from string
   - kind: adapter_function
     expose_as: create_epeck_from_string
     returns:
@@ -1849,15 +1846,9 @@ functions:
     implementation:
       kind: inline_cpp
       body: |
-        #ifdef IFOPSH_WITH_CGAL
-        return new ifcopenshell::geometry::NumberEpeck(typename CGAL::Epeck::FT::ET(std::string(value_cpp)));
-        #else
-        (void)value_cpp;
-        throw std::runtime_error("create_epeck requires IFOPSH_WITH_CGAL");
-        return (IfcGeom::OpaqueNumber*)nullptr;
-        #endif
+        return new IfcGeom::NumberNativeDouble(std::stod(value_cpp));
 
-  # nary_union: N-ary boolean union of CGAL shapes
+  # nary_union: N-ary boolean union through the generic conversion-result interface
   - kind: adapter_function
     expose_as: nary_union
     returns:
@@ -1872,24 +1863,35 @@ functions:
     implementation:
       kind: inline_cpp
       body: |
-        #ifdef IFOPSH_WITH_CGAL
-        std::vector<const CGAL::Nef_polyhedron_3<CGAL::Epeck>*> nefs;
+        IfcGeom::ConversionResultShape* result = nullptr;
+        std::string backend_id;
+        auto identity = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::matrix4>();
         for (auto* shape : shapes_cpp) {
-            auto* cgs = dynamic_cast<ifcopenshell::geometry::CgalShape*>(const_cast<IfcGeom::ConversionResultShape*>(shape));
-            if (cgs) {
-                nefs.push_back(&cgs->nef());
+            if (!shape) {
+                continue;
+            }
+            const auto element_backend_id = std::string(shape->backend_id());
+            if (!result) {
+                result = shape->moved(identity);
+                backend_id = element_backend_id;
+            } else {
+                if (element_backend_id != backend_id) {
+                    delete result;
+                    throw std::runtime_error("nary_union requires shapes from the same geometry backend");
+                }
+                auto* next = result->add(const_cast<IfcGeom::ConversionResultShape*>(shape));
+                if (!next) {
+                    delete result;
+                    throw std::runtime_error("nary_union failed for backend " + backend_id);
+                }
+                delete result;
+                result = next;
             }
         }
-        CGAL::Nef_nary_union_3<CGAL::Nef_polyhedron_3<CGAL::Epeck>> accum;
-        for (auto* n : nefs) {
-            accum.add_polyhedron(*n);
+        if (!result) {
+            throw std::runtime_error("nary_union requires at least one shape");
         }
-        return new ifcopenshell::geometry::CgalShape(accum.get_union());
-        #else
-        (void)shapes_cpp;
-        throw std::runtime_error("nary_union requires IFOPSH_WITH_CGAL");
-        return (IfcGeom::ConversionResultShape*)nullptr;
-        #endif
+        return result;
 
   # svg_to_line_segments: Parse SVG data into line segments
   - kind: adapter_function
@@ -2813,18 +2815,30 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        #ifdef IFOPSH_WITH_CGAL
         std::ostringstream result;
-        auto* cgs = dynamic_cast<ifcopenshell::geometry::CgalShape*>(self_cpp);
-        if (!cgs) {
-            throw std::runtime_error("serialize_obj is only available for CGAL conversion result shapes");
+        ifcopenshell::geometry::Settings settings;
+        std::unique_ptr<IfcGeom::Representation::Triangulation> triangulation(self_cpp->Triangulate(settings));
+
+        for (auto it = triangulation->verts().begin(); it != triangulation->verts().end();) {
+            result << "v " << *(it++) << " " << *(it++) << " " << *(it++) << "\n";
         }
-        write_to_obj(cgs->nef(), result, std::numeric_limits<size_t>::max());
+        for (auto it = triangulation->normals().begin(); it != triangulation->normals().end();) {
+            result << "vn " << *(it++) << " " << *(it++) << " " << *(it++) << "\n";
+        }
+
+        const bool has_normals = !triangulation->normals().empty();
+        for (auto it = triangulation->faces().begin(); it != triangulation->faces().end();) {
+            const auto v1 = *(it++) + 1;
+            const auto v2 = *(it++) + 1;
+            const auto v3 = *(it++) + 1;
+            if (has_normals) {
+                result << "f " << v1 << "//" << v1 << " " << v2 << "//" << v2 << " " << v3 << "//" << v3 << "\n";
+            } else {
+                result << "f " << v1 << " " << v2 << " " << v3 << "\n";
+            }
+        }
+
         return result.str();
-        #else
-        throw std::runtime_error("serialize_obj requires IFOPSH_WITH_CGAL");
-        return std::string();
-        #endif
 
   - kind: adapter_method
     receiver: conversion_result_shape
@@ -2838,16 +2852,9 @@ methods:
     implementation:
       kind: inline_cpp
       body: |
-        #ifdef IFOPSH_WITH_CGAL
-        auto* cgs = dynamic_cast<ifcopenshell::geometry::CgalShape*>(self_cpp);
-        if (!cgs) {
-            throw std::runtime_error("convex_tag is only available for CGAL conversion result shapes");
-        }
-        cgs->convex_tag() = value;
-        #else
+        (void)self_cpp;
         (void)value;
-        throw std::runtime_error("convex_tag requires IFOPSH_WITH_CGAL");
-        #endif
+        throw std::runtime_error("convex_tag is not available through the generic conversion result interface");
 
   - kind: adapter_method
     receiver: conversion_result_shape
