@@ -16,7 +16,8 @@ class MarkedFunction:
 
 
 _COMMENT_RE = re.compile(r"//.*?$|/\*.*?\*/", re.MULTILINE | re.DOTALL)
-_ANNOTATIONS = frozenset({"IFCAPI_OWNED", "IFCAPI_COPY", "IFCAPI_NULLABLE"})
+_ANNOTATIONS = frozenset({"IFCAPI_OWNED", "IFCAPI_COPY", "IFCAPI_STATIC", "IFCAPI_NULLABLE"})
+_ANNOTATION_CALLS = ("IFCAPI_HANDLE_PARAM", "IFCAPI_HANDLE_RESULT")
 
 
 def _strip_comments(text: str) -> str:
@@ -54,11 +55,11 @@ def _leading_annotations(text: str) -> tuple[frozenset[str], str]:
     annotations: list[str] = []
     rest = text.strip()
     while True:
-        match = re.match(r"(?P<token>IFCAPI_[A-Z_]+)\b", rest)
+        match = re.match(r"(?P<token>IFCAPI_[A-Z_]+(?:\s*\([^)]*\))?)(?=\s|$)", rest)
         if match is None:
             break
-        token = match.group("token")
-        if token not in _ANNOTATIONS:
+        token = " ".join(match.group("token").split())
+        if token not in _ANNOTATIONS and not any(token.startswith(f"{name}(") for name in _ANNOTATION_CALLS):
             break
         annotations.append(token)
         rest = rest[match.end() :].strip()

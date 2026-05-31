@@ -21,6 +21,12 @@ class DirectMethodPolicyOp:
 
 
 @dataclass(frozen=True)
+class SpecMethodFunctionPolicyOp:
+    cpp_name: str
+    receiver_cpp_type: str
+
+
+@dataclass(frozen=True)
 class DirectFieldPolicyOp:
     field_name: str
 
@@ -152,6 +158,7 @@ class VariantSetPolicyOp:
 PolicyOperation = (
     DirectFunctionPolicyOp
     | DirectMethodPolicyOp
+    | SpecMethodFunctionPolicyOp
     | DirectFieldPolicyOp
     | ValueHandleFieldPolicyOp
     | ConstructorPolicyOp

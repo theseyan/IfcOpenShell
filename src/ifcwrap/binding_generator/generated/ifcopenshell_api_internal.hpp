@@ -56,6 +56,7 @@
 #include "function_item_evaluator.h"
 #include "Serialization/Serialization.h"
 #include "../svgfill/src/svgfill.h"
+#include "ifcwrap/binding_generator/specs/cpp/ifcparse.hpp"
 #include "ifcwrap/binding_generator/specs/cpp/ifcapi.hpp"
 
 struct ifcopenshell_ifc_file_t {
@@ -155,6 +156,11 @@ struct ifcopenshell_ifcparse_attribute_value_t {
 
 struct ifcopenshell_ifcparse_instance_list_t {
     std::vector<express::Base> value;
+};
+
+struct ifcopenshell_ifcapi_value_t {
+    ifcopenshell_value_t* ptr;
+    bool owned;
 };
 
 struct ifcopenshell_ifcgeom_taxonomy_item_t {
@@ -381,11 +387,6 @@ struct ifcopenshell_ifcgeom_svgfill_polygon_t {
 
 struct ifcopenshell_ifcgeom_function_item_evaluator_t {
     ifcopenshell::geometry::function_item_evaluator* ptr;
-    bool owned;
-};
-
-struct ifcopenshell_ifcapi_value_t {
-    ifcopenshell_value_t* ptr;
     bool owned;
 };
 

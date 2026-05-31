@@ -29,6 +29,7 @@ try:
         OptionalGetPolicyOp,
         OptionalHasPolicyOp,
         PointerPresencePolicyOp,
+        SpecMethodFunctionPolicyOp,
         TaxonomyMakeFactoryPolicyOp,
         ValueHandleFieldPolicyOp,
         VariantGetPolicyOp,
@@ -58,6 +59,7 @@ except ImportError:  # pragma: no cover - script execution fallback
         OptionalGetPolicyOp,
         OptionalHasPolicyOp,
         PointerPresencePolicyOp,
+        SpecMethodFunctionPolicyOp,
         TaxonomyMakeFactoryPolicyOp,
         ValueHandleFieldPolicyOp,
         VariantGetPolicyOp,
@@ -72,6 +74,12 @@ SourceBindingSpec = Union[AuthoredBindingSpec, MergedBindingSpec]
 @dataclass(frozen=True)
 class DirectCallOp:
     cpp_name: str
+
+
+@dataclass(frozen=True)
+class SpecMethodFunctionCallOp:
+    cpp_name: str
+    receiver_cpp_type: str
 
 
 @dataclass(frozen=True)
@@ -197,6 +205,7 @@ class InlineImplementationOp:
 
 OperationIR = Union[
     DirectCallOp,
+    SpecMethodFunctionCallOp,
     FieldGetOp,
     ValueHandleFieldGetOp,
     PointerPresenceCheckOp,
@@ -257,6 +266,11 @@ def _lower_policy_operation(call: CallSpec, operation: object) -> OperationIR:
         if operation.cpp_name is None:
             raise ValueError(f"{call.c_name} is missing cpp_name")
         return DirectCallOp(cpp_name=operation.cpp_name)
+    if isinstance(operation, SpecMethodFunctionPolicyOp):
+        return SpecMethodFunctionCallOp(
+            cpp_name=operation.cpp_name,
+            receiver_cpp_type=operation.receiver_cpp_type,
+        )
     if isinstance(operation, DirectFieldPolicyOp):
         return FieldGetOp(
             field_name=operation.field_name,

@@ -25,15 +25,15 @@ typedef enum ifcopenshell_logical_t {
     IFCOPENSHELL_LOGICAL_TRUE = 1
 } ifcopenshell_logical_t;
 
-typedef struct ifcopenshell_string_list_t {
-    ifcopenshell_string_t* items;
-    size_t size;
-} ifcopenshell_string_list_t;
-
 typedef struct ifcopenshell_double_list_t {
     double* items;
     size_t size;
 } ifcopenshell_double_list_t;
+
+typedef struct ifcopenshell_string_list_t {
+    ifcopenshell_string_t* items;
+    size_t size;
+} ifcopenshell_string_list_t;
 
 typedef struct ifcopenshell_int32_list_t {
     int32_t* items;
@@ -45,15 +45,20 @@ typedef struct ifcopenshell_double_list_list_t {
     size_t size;
 } ifcopenshell_double_list_list_t;
 
-typedef struct ifcopenshell_double_list_list_list_t {
-    ifcopenshell_double_list_list_t* items;
-    size_t size;
-} ifcopenshell_double_list_list_list_t;
-
 typedef struct ifcopenshell_int32_list_list_t {
     ifcopenshell_int32_list_t* items;
     size_t size;
 } ifcopenshell_int32_list_list_t;
+
+typedef struct ifcopenshell_uint32_list_t {
+    uint32_t* items;
+    size_t size;
+} ifcopenshell_uint32_list_t;
+
+typedef struct ifcopenshell_double_list_list_list_t {
+    ifcopenshell_double_list_list_t* items;
+    size_t size;
+} ifcopenshell_double_list_list_list_t;
 
 typedef struct ifcopenshell_int32_list_list_list_t {
     ifcopenshell_int32_list_list_t* items;
@@ -75,11 +80,6 @@ typedef struct ifcopenshell_bool_list_t {
     size_t size;
 } ifcopenshell_bool_list_t;
 
-typedef struct ifcopenshell_uint32_list_t {
-    uint32_t* items;
-    size_t size;
-} ifcopenshell_uint32_list_t;
-
 typedef struct ifcopenshell_uint8_list_t {
     uint8_t* items;
     size_t size;
@@ -87,17 +87,19 @@ typedef struct ifcopenshell_uint8_list_t {
 
 void ifcopenshell_string_destroy(ifcopenshell_string_t* value);
 
-void ifcopenshell_string_list_destroy(ifcopenshell_string_list_t* value);
-
 void ifcopenshell_double_list_destroy(ifcopenshell_double_list_t* value);
+
+void ifcopenshell_string_list_destroy(ifcopenshell_string_list_t* value);
 
 void ifcopenshell_int32_list_destroy(ifcopenshell_int32_list_t* value);
 
 void ifcopenshell_double_list_list_destroy(ifcopenshell_double_list_list_t* value);
 
-void ifcopenshell_double_list_list_list_destroy(ifcopenshell_double_list_list_list_t* value);
-
 void ifcopenshell_int32_list_list_destroy(ifcopenshell_int32_list_list_t* value);
+
+void ifcopenshell_uint32_list_destroy(ifcopenshell_uint32_list_t* value);
+
+void ifcopenshell_double_list_list_list_destroy(ifcopenshell_double_list_list_list_t* value);
 
 void ifcopenshell_int32_list_list_list_destroy(ifcopenshell_int32_list_list_list_t* value);
 
@@ -106,8 +108,6 @@ void ifcopenshell_int32_list_list_list_list_destroy(ifcopenshell_int32_list_list
 void ifcopenshell_int64_list_destroy(ifcopenshell_int64_list_t* value);
 
 void ifcopenshell_bool_list_destroy(ifcopenshell_bool_list_t* value);
-
-void ifcopenshell_uint32_list_destroy(ifcopenshell_uint32_list_t* value);
 
 void ifcopenshell_uint8_list_destroy(ifcopenshell_uint8_list_t* value);
 
@@ -134,6 +134,7 @@ typedef struct ifcopenshell_ifc_attribute_t ifcopenshell_ifc_attribute_t;
 typedef struct ifcopenshell_ifc_inverse_attribute_t ifcopenshell_ifc_inverse_attribute_t;
 typedef struct ifcopenshell_ifcparse_attribute_value_t ifcopenshell_ifcparse_attribute_value_t;
 typedef struct ifcopenshell_ifcparse_instance_list_t ifcopenshell_ifcparse_instance_list_t;
+typedef struct ifcopenshell_ifcapi_value_t ifcopenshell_ifcapi_value_t;
 typedef struct ifcopenshell_ifcgeom_taxonomy_item_t ifcopenshell_ifcgeom_taxonomy_item_t;
 typedef struct ifcopenshell_ifcgeom_taxonomy_matrix4_t ifcopenshell_ifcgeom_taxonomy_matrix4_t;
 typedef struct ifcopenshell_ifcgeom_taxonomy_point3_t ifcopenshell_ifcgeom_taxonomy_point3_t;
@@ -185,12 +186,7 @@ typedef struct ifcopenshell_ifcgeom_conversion_result_shape_t ifcopenshell_ifcge
 typedef struct ifcopenshell_ifcgeom_opaque_number_t ifcopenshell_ifcgeom_opaque_number_t;
 typedef struct ifcopenshell_ifcgeom_svgfill_polygon_t ifcopenshell_ifcgeom_svgfill_polygon_t;
 typedef struct ifcopenshell_ifcgeom_function_item_evaluator_t ifcopenshell_ifcgeom_function_item_evaluator_t;
-typedef struct ifcopenshell_ifcapi_value_t ifcopenshell_ifcapi_value_t;
 
-typedef struct ifcopenshell_ifc_instance_list_t {
-    ifcopenshell_ifc_instance_t** items;
-    size_t size;
-} ifcopenshell_ifc_instance_list_t;
 typedef struct ifcopenshell_ifcgeom_conversion_result_shape_list_t {
     ifcopenshell_ifcgeom_conversion_result_shape_t** items;
     size_t size;
@@ -199,6 +195,10 @@ typedef struct ifcopenshell_ifcgeom_svgfill_polygon_list_t {
     ifcopenshell_ifcgeom_svgfill_polygon_t** items;
     size_t size;
 } ifcopenshell_ifcgeom_svgfill_polygon_list_t;
+typedef struct ifcopenshell_ifc_instance_list_t {
+    ifcopenshell_ifc_instance_t** items;
+    size_t size;
+} ifcopenshell_ifc_instance_list_t;
 typedef struct ifcopenshell_ifc_file_list_t {
     ifcopenshell_ifc_file_t** items;
     size_t size;
@@ -243,10 +243,6 @@ typedef struct ifcopenshell_ifcgeom_element_list_t {
     ifcopenshell_ifcgeom_element_t** items;
     size_t size;
 } ifcopenshell_ifcgeom_element_list_t;
-typedef struct ifcopenshell_ifc_instance_list_list_t {
-    ifcopenshell_ifc_instance_list_t* items;
-    size_t size;
-} ifcopenshell_ifc_instance_list_list_t;
 typedef struct ifcopenshell_ifcgeom_conversion_result_shape_list_list_t {
     ifcopenshell_ifcgeom_conversion_result_shape_list_t* items;
     size_t size;
@@ -255,6 +251,10 @@ typedef struct ifcopenshell_ifcgeom_svgfill_polygon_list_list_t {
     ifcopenshell_ifcgeom_svgfill_polygon_list_t* items;
     size_t size;
 } ifcopenshell_ifcgeom_svgfill_polygon_list_list_t;
+typedef struct ifcopenshell_ifc_instance_list_list_t {
+    ifcopenshell_ifc_instance_list_t* items;
+    size_t size;
+} ifcopenshell_ifc_instance_list_list_t;
 typedef struct ifcopenshell_ifc_file_list_list_t {
     ifcopenshell_ifc_file_list_t* items;
     size_t size;
@@ -368,6 +368,7 @@ void ifcopenshell_ifc_attribute_destroy(ifcopenshell_ifc_attribute_t* handle);
 void ifcopenshell_ifc_inverse_attribute_destroy(ifcopenshell_ifc_inverse_attribute_t* handle);
 void ifcopenshell_ifcparse_attribute_value_destroy(ifcopenshell_ifcparse_attribute_value_t* handle);
 void ifcopenshell_ifcparse_instance_list_destroy(ifcopenshell_ifcparse_instance_list_t* handle);
+void ifcopenshell_ifcapi_value_destroy(ifcopenshell_ifcapi_value_t* handle);
 void ifcopenshell_ifcgeom_taxonomy_item_destroy(ifcopenshell_ifcgeom_taxonomy_item_t* handle);
 void ifcopenshell_ifcgeom_taxonomy_matrix4_destroy(ifcopenshell_ifcgeom_taxonomy_matrix4_t* handle);
 void ifcopenshell_ifcgeom_taxonomy_point3_destroy(ifcopenshell_ifcgeom_taxonomy_point3_t* handle);
@@ -419,10 +420,9 @@ void ifcopenshell_ifcgeom_conversion_result_shape_destroy(ifcopenshell_ifcgeom_c
 void ifcopenshell_ifcgeom_opaque_number_destroy(ifcopenshell_ifcgeom_opaque_number_t* handle);
 void ifcopenshell_ifcgeom_svgfill_polygon_destroy(ifcopenshell_ifcgeom_svgfill_polygon_t* handle);
 void ifcopenshell_ifcgeom_function_item_evaluator_destroy(ifcopenshell_ifcgeom_function_item_evaluator_t* handle);
-void ifcopenshell_ifcapi_value_destroy(ifcopenshell_ifcapi_value_t* handle);
-void ifcopenshell_ifc_instance_list_destroy(ifcopenshell_ifc_instance_list_t* value);
 void ifcopenshell_ifcgeom_conversion_result_shape_list_destroy(ifcopenshell_ifcgeom_conversion_result_shape_list_t* value);
 void ifcopenshell_ifcgeom_svgfill_polygon_list_destroy(ifcopenshell_ifcgeom_svgfill_polygon_list_t* value);
+void ifcopenshell_ifc_instance_list_destroy(ifcopenshell_ifc_instance_list_t* value);
 void ifcopenshell_ifc_file_list_destroy(ifcopenshell_ifc_file_list_t* value);
 void ifcopenshell_ifc_declaration_list_destroy(ifcopenshell_ifc_declaration_list_t* value);
 void ifcopenshell_ifc_entity_list_destroy(ifcopenshell_ifc_entity_list_t* value);
@@ -434,9 +434,9 @@ void ifcopenshell_ifc_inverse_attribute_list_destroy(ifcopenshell_ifc_inverse_at
 void ifcopenshell_ifcgeom_taxonomy_style_list_destroy(ifcopenshell_ifcgeom_taxonomy_style_list_t* value);
 void ifcopenshell_ifcgeom_taxonomy_item_list_destroy(ifcopenshell_ifcgeom_taxonomy_item_list_t* value);
 void ifcopenshell_ifcgeom_element_list_destroy(ifcopenshell_ifcgeom_element_list_t* value);
-void ifcopenshell_ifc_instance_list_list_destroy(ifcopenshell_ifc_instance_list_list_t* value);
 void ifcopenshell_ifcgeom_conversion_result_shape_list_list_destroy(ifcopenshell_ifcgeom_conversion_result_shape_list_list_t* value);
 void ifcopenshell_ifcgeom_svgfill_polygon_list_list_destroy(ifcopenshell_ifcgeom_svgfill_polygon_list_list_t* value);
+void ifcopenshell_ifc_instance_list_list_destroy(ifcopenshell_ifc_instance_list_list_t* value);
 void ifcopenshell_ifc_file_list_list_destroy(ifcopenshell_ifc_file_list_list_t* value);
 void ifcopenshell_ifc_declaration_list_list_destroy(ifcopenshell_ifc_declaration_list_list_t* value);
 void ifcopenshell_ifc_entity_list_list_destroy(ifcopenshell_ifc_entity_list_list_t* value);
@@ -449,42 +449,6 @@ void ifcopenshell_ifcgeom_taxonomy_style_list_list_destroy(ifcopenshell_ifcgeom_
 void ifcopenshell_ifcgeom_taxonomy_item_list_list_destroy(ifcopenshell_ifcgeom_taxonomy_item_list_list_t* value);
 void ifcopenshell_ifcgeom_element_list_list_destroy(ifcopenshell_ifcgeom_element_list_list_t* value);
 
-bool ifcopenshell_ifcparse_argument_type_to_string(int32_t type, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifcparse_clear_schemas(void);
-bool ifcopenshell_ifcparse_escape_xml(const char* text);
-bool ifcopenshell_ifcparse_from_parameter_type(ifcopenshell_ifc_parameter_type_t* parameter_type, int32_t* out_result);
-bool ifcopenshell_ifcparse_guess_file_type(const char* path, int32_t* out_result);
-bool ifcopenshell_ifcparse_make_aggregate(int32_t element_type, int32_t* out_result);
-bool ifcopenshell_ifcparse_register_schema(ifcopenshell_ifc_schema_t* schema);
-bool ifcopenshell_ifcparse_sanitate_material_name(const char* material_name);
-bool ifcopenshell_ifcparse_schema_by_name(const char* schema_name, ifcopenshell_ifc_schema_t** out_result);
-bool ifcopenshell_ifcparse_schema_names(ifcopenshell_string_list_t* out_result);
-bool ifcopenshell_ifcparse_schema_plugin_registration_symbol(ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifcparse_si_prefix_to_value(const char* prefix, double* out_result);
-bool ifcopenshell_ifcparse_traverse(ifcopenshell_ifc_instance_t* instance, int32_t max_depth, ifcopenshell_ifc_instance_list_t* out_result);
-bool ifcopenshell_ifcparse_traverse_breadth_first(ifcopenshell_ifc_instance_t* instance, int32_t max_depth, ifcopenshell_ifc_instance_list_t* out_result);
-bool ifcopenshell_ifcparse_unescape_xml(const char* text);
-bool ifcopenshell_ifcparse_valid_binary_string(const char* binary_string, bool* out_result);
-bool ifcopenshell_ifcparse_open(const char* path, bool readonly, ifcopenshell_ifc_file_t** out_result);
-bool ifcopenshell_ifcparse_open_bypass(const char* path, const ifcopenshell_string_list_t* type_names, ifcopenshell_ifc_file_t** out_result);
-bool ifcopenshell_ifcparse_new_file(const char* schema_identifier, int32_t file_type, const char* path, ifcopenshell_ifc_file_t** out_result);
-bool ifcopenshell_ifcparse_read_memory(void* data, int32_t length, ifcopenshell_ifc_file_t** out_result);
-bool ifcopenshell_ifcparse_stream(ifcopenshell_ifc_instance_streamer_t** out_result);
-bool ifcopenshell_ifcparse_stream_from_path(const char* path, bool mmap, ifcopenshell_ifc_instance_streamer_t** out_result);
-bool ifcopenshell_ifcparse_stream_from_string(const char* data, ifcopenshell_ifc_instance_streamer_t** out_result);
-bool ifcopenshell_ifcparse_version(ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifcparse_set_feature(const char* name, bool value);
-bool ifcopenshell_ifcparse_get_feature(const char* name, bool* out_result);
-bool ifcopenshell_ifcparse_get_log(ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifcparse_turn_on_detailed_logging(void);
-bool ifcopenshell_ifcparse_turn_off_detailed_logging(void);
-bool ifcopenshell_ifcparse_instance_list_create_from_handles(const ifcopenshell_ifc_instance_list_t* instances, ifcopenshell_ifcparse_instance_list_t** out_result);
-bool ifcopenshell_ifcparse_set_log_format_json(void);
-bool ifcopenshell_ifcparse_set_log_format_text(void);
-bool ifcopenshell_ifcparse_get_si_equivalent(ifcopenshell_ifc_instance_t* named_unit, double* out_result);
-bool ifcopenshell_ifcparse_get_info_cpp(ifcopenshell_ifc_instance_t* instance, bool include_identifier, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifcparse_operator_token_ptr(size_t start, const char* data, int32_t* out_result);
-bool ifcopenshell_ifcparse_general_token_ptr(size_t start, const char* token, int32_t* out_result);
 bool ifcopenshell_ifcgeom_create_xml_serializer(ifcopenshell_ifc_file_t* file, const char* filename, ifcopenshell_ifcgeom_serializer_t** out_result);
 bool ifcopenshell_ifcgeom_create_tree(ifcopenshell_ifcgeom_tree_t** out_result);
 bool ifcopenshell_ifcgeom_create_tree_from_file(ifcopenshell_ifc_file_t* file, ifcopenshell_ifcgeom_tree_t** out_result);
@@ -542,6 +506,131 @@ bool ifcopenshell_ifcgeom_convert_loop_to_function_item(ifcopenshell_ifcgeom_tax
 bool ifcopenshell_ifcgeom_create_function_item_evaluator(ifcopenshell_ifcgeom_settings_t* settings, ifcopenshell_ifcgeom_taxonomy_item_t* fn_item, ifcopenshell_ifcgeom_function_item_evaluator_t** out_result);
 bool ifcopenshell_ifcgeom_taxonomy_function_item_start(ifcopenshell_ifcgeom_taxonomy_item_t* item, double* out_result);
 bool ifcopenshell_ifcgeom_taxonomy_function_item_end(ifcopenshell_ifcgeom_taxonomy_item_t* item, double* out_result);
+bool ifcopenshell_ifc_file_add_entity(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t* instance, uint32_t id, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcparse_argument_type_to_string(int32_t type, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifc_type_declaration_argument_types(ifcopenshell_ifc_type_declaration_t* self, ifcopenshell_string_list_t* out_result);
+bool ifcopenshell_ifc_enumeration_argument_types(ifcopenshell_ifc_enumeration_t* self, ifcopenshell_string_list_t* out_result);
+bool ifcopenshell_ifc_entity_argument_types(ifcopenshell_ifc_entity_t* self, ifcopenshell_string_list_t* out_result);
+bool ifcopenshell_ifcparse_attribute_value_as_bool(ifcopenshell_ifcparse_attribute_value_t* self, bool* out_result);
+bool ifcopenshell_ifcparse_attribute_value_as_double(ifcopenshell_ifcparse_attribute_value_t* self, double* out_result);
+bool ifcopenshell_ifcparse_attribute_value_as_double_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_double_list_t* out_result);
+bool ifcopenshell_ifcparse_attribute_value_as_double_list_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_double_list_list_t* out_result);
+bool ifcopenshell_ifcparse_attribute_value_as_enumeration_index(ifcopenshell_ifcparse_attribute_value_t* self, size_t* out_result);
+bool ifcopenshell_ifcparse_attribute_value_as_enumeration_type(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_ifc_enumeration_t** out_result);
+bool ifcopenshell_ifcparse_attribute_value_as_enumeration_value(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcparse_attribute_value_as_instance(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcparse_attribute_value_as_instance_id_list_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_int32_list_list_t* out_result);
+bool ifcopenshell_ifcparse_attribute_value_as_instance_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_ifcparse_instance_list_t** out_result);
+bool ifcopenshell_ifcparse_attribute_value_as_int32(ifcopenshell_ifcparse_attribute_value_t* self, int32_t* out_result);
+bool ifcopenshell_ifcparse_attribute_value_as_int32_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_int32_list_t* out_result);
+bool ifcopenshell_ifcparse_attribute_value_as_int32_list_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_int32_list_list_t* out_result);
+bool ifcopenshell_ifcparse_attribute_value_as_string(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcparse_attribute_value_as_string_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_string_list_t* out_result);
+bool ifcopenshell_ifc_instance_class_name(ifcopenshell_ifc_instance_t* self, bool with_schema, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcparse_clear_schemas(void);
+bool ifcopenshell_ifc_file_create_entity_by_name(ifcopenshell_ifc_file_t* self, const char* type_name, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifc_file_create_entity_by_name_with_id(ifcopenshell_ifc_file_t* self, const char* type_name, uint32_t id, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifc_file_entity_names(ifcopenshell_ifc_file_t* self, ifcopenshell_uint32_list_t* out_result);
+bool ifcopenshell_ifcparse_escape_xml(const char* text);
+bool ifcopenshell_ifc_file_file_pointer(ifcopenshell_ifc_file_t* self, size_t* out_result);
+bool ifcopenshell_ifc_instance_file_pointer(ifcopenshell_ifc_instance_t* self, size_t* out_result);
+bool ifcopenshell_ifcparse_from_parameter_type(ifcopenshell_ifc_parameter_type_t* parameter_type, int32_t* out_result);
+bool ifcopenshell_ifcparse_general_token_ptr(size_t start, const char* token, int32_t* out_result);
+bool ifcopenshell_ifcparse_instance_list_get(ifcopenshell_ifcparse_instance_list_t* self, size_t index, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifc_instance_get_argument_by_name(ifcopenshell_ifc_instance_t* self, const char* name, ifcopenshell_ifcparse_attribute_value_t** out_result);
+bool ifcopenshell_ifc_instance_get_argument_index(ifcopenshell_ifc_instance_t* self, const char* name, uint32_t* out_result);
+bool ifcopenshell_ifc_instance_get_argument_name(ifcopenshell_ifc_instance_t* self, uint32_t index, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifc_instance_get_argument_type(ifcopenshell_ifc_instance_t* self, uint32_t index, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifc_instance_get_attribute_category(ifcopenshell_ifc_instance_t* self, const char* name, int32_t* out_result);
+bool ifcopenshell_ifc_instance_get_attribute_names(ifcopenshell_ifc_instance_t* self, ifcopenshell_string_list_t* out_result);
+bool ifcopenshell_ifc_instance_get_attribute_value(ifcopenshell_ifc_instance_t* self, size_t index, ifcopenshell_ifcparse_attribute_value_t** out_result);
+bool ifcopenshell_ifcparse_get_feature(const char* name, bool* out_result);
+bool ifcopenshell_ifcparse_get_info_cpp(ifcopenshell_ifc_instance_t* instance, bool include_identifier, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifc_file_get_inverse(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t* instance, ifcopenshell_ifcparse_instance_list_t** out_result);
+bool ifcopenshell_ifc_instance_get_inverse(ifcopenshell_ifc_instance_t* self, const char* name, ifcopenshell_ifcparse_instance_list_t** out_result);
+bool ifcopenshell_ifc_instance_get_inverse_attribute_by_name(ifcopenshell_ifc_instance_t* self, const char* name, ifcopenshell_ifcparse_instance_list_t** out_result);
+bool ifcopenshell_ifc_instance_get_inverse_attribute_names(ifcopenshell_ifc_instance_t* self, ifcopenshell_string_list_t* out_result);
+bool ifcopenshell_ifc_file_get_inverse_indices(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t* instance, ifcopenshell_int32_list_t* out_result);
+bool ifcopenshell_ifcparse_get_log(ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcparse_get_si_equivalent(ifcopenshell_ifc_instance_t* named_unit, double* out_result);
+bool ifcopenshell_ifc_file_get_total_inverses(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t* instance, int32_t* out_result);
+bool ifcopenshell_ifc_file_get_unit(ifcopenshell_ifc_file_t* self, const char* unit_type, double* out_result);
+bool ifcopenshell_ifc_file_good(ifcopenshell_ifc_file_t* self, int32_t* out_result);
+bool ifcopenshell_ifcparse_guess_file_type(const char* path, int32_t* out_result);
+bool ifcopenshell_ifc_file_header(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_header_t** out_result);
+bool ifcopenshell_ifc_file_header_file_description(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifc_file_header_file_name(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifc_file_header_file_schema(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t** out_result);
+bool ifcopenshell_ifcparse_instance_list_create_from_handles(const ifcopenshell_ifc_instance_list_t* instances, ifcopenshell_ifcparse_instance_list_t** out_result);
+bool ifcopenshell_ifc_instance_streamer_inverses(ifcopenshell_ifc_instance_streamer_t* self, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifc_instance_is_a(ifcopenshell_ifc_instance_t* self, const char* declaration_name, bool* out_result);
+bool ifcopenshell_ifcparse_attribute_value_is_null(ifcopenshell_ifcparse_attribute_value_t* self, bool* out_result);
+bool ifcopenshell_ifc_file_key_value_store_iter(ifcopenshell_ifc_file_t* self, const char* prefix, ifcopenshell_string_list_t* out_result);
+bool ifcopenshell_ifc_file_key_value_store_query(ifcopenshell_ifc_file_t* self, const char* key, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifc_parameter_type_kind(ifcopenshell_ifc_parameter_type_t* self, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifc_simple_type_kind(ifcopenshell_ifc_simple_type_t* self, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifc_aggregation_type_kind(ifcopenshell_ifc_aggregation_type_t* self, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcparse_make_aggregate(int32_t element_type, int32_t* out_result);
+bool ifcopenshell_ifcparse_new_file(const char* schema_identifier, int32_t file_type, const char* path, ifcopenshell_ifc_file_t** out_result);
+bool ifcopenshell_ifcparse_open(const char* path, bool readonly, ifcopenshell_ifc_file_t** out_result);
+bool ifcopenshell_ifcparse_open_bypass(const char* path, const ifcopenshell_string_list_t* type_names, ifcopenshell_ifc_file_t** out_result);
+bool ifcopenshell_ifcparse_operator_token_ptr(size_t start, const char* data, int32_t* out_result);
+bool ifcopenshell_ifc_instance_streamer_read_instance_py(ifcopenshell_ifc_instance_streamer_t* self, bool type_as_declaration_instance, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcparse_read_memory(void* data, int32_t length, ifcopenshell_ifc_file_t** out_result);
+bool ifcopenshell_ifc_instance_streamer_references(ifcopenshell_ifc_instance_streamer_t* self, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcparse_register_schema(ifcopenshell_ifc_schema_t* schema);
+bool ifcopenshell_ifcparse_sanitate_material_name(const char* material_name);
+bool ifcopenshell_ifcparse_schema_by_name(const char* schema_name, ifcopenshell_ifc_schema_t** out_result);
+bool ifcopenshell_ifc_file_schema_name(ifcopenshell_ifc_file_t* self, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcparse_schema_names(ifcopenshell_string_list_t* out_result);
+bool ifcopenshell_ifcparse_schema_plugin_registration_symbol(ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifc_select_type_select_list_names(ifcopenshell_ifc_select_type_t* self, ifcopenshell_string_list_t* out_result);
+bool ifcopenshell_ifc_instance_set_argument_as_aggregate_of_aggregate_of_entity_instance(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_int32_list_list_t* value);
+bool ifcopenshell_ifc_instance_set_argument_bool(ifcopenshell_ifc_instance_t* self, size_t index, bool value);
+bool ifcopenshell_ifc_instance_set_argument_double(ifcopenshell_ifc_instance_t* self, size_t index, double value);
+bool ifcopenshell_ifc_instance_set_argument_double_list(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_double_list_t* value);
+bool ifcopenshell_ifc_instance_set_argument_double_list_list(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_double_list_list_t* value);
+bool ifcopenshell_ifc_instance_set_argument_enumeration(ifcopenshell_ifc_instance_t* self, size_t index, ifcopenshell_ifc_enumeration_t* enumeration, size_t enumeration_index);
+bool ifcopenshell_ifc_instance_set_argument_enumeration_by_name(ifcopenshell_ifc_instance_t* self, size_t index, const char* value, bool* out_result);
+bool ifcopenshell_ifc_instance_set_argument_instance(ifcopenshell_ifc_instance_t* self, size_t index, ifcopenshell_ifc_instance_t* value);
+bool ifcopenshell_ifc_instance_set_argument_instance_list(ifcopenshell_ifc_instance_t* self, size_t index, ifcopenshell_ifcparse_instance_list_t* value);
+bool ifcopenshell_ifc_instance_set_argument_int32(ifcopenshell_ifc_instance_t* self, size_t index, int32_t value);
+bool ifcopenshell_ifc_instance_set_argument_int32_list(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_int32_list_t* value);
+bool ifcopenshell_ifc_instance_set_argument_int32_list_list(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_int32_list_list_t* value);
+bool ifcopenshell_ifc_instance_set_argument_logical(ifcopenshell_ifc_instance_t* self, size_t index, int32_t value);
+bool ifcopenshell_ifc_instance_set_argument_string(ifcopenshell_ifc_instance_t* self, size_t index, const char* value);
+bool ifcopenshell_ifc_instance_set_argument_string_list(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_string_list_t* value);
+bool ifcopenshell_ifc_instance_set_attribute_value(ifcopenshell_ifc_instance_t* self, const char* name, ifcopenshell_ifcparse_attribute_value_t* value);
+bool ifcopenshell_ifcparse_set_feature(const char* name, bool value);
+bool ifcopenshell_ifcparse_set_log_format_json(void);
+bool ifcopenshell_ifcparse_set_log_format_text(void);
+bool ifcopenshell_ifcparse_si_prefix_to_value(const char* prefix, double* out_result);
+bool ifcopenshell_ifcparse_attribute_value_size(ifcopenshell_ifcparse_attribute_value_t* self, size_t* out_result);
+bool ifcopenshell_ifcparse_instance_list_size(ifcopenshell_ifcparse_instance_list_t* self, size_t* out_result);
+bool ifcopenshell_ifc_instance_streamer_status(ifcopenshell_ifc_instance_streamer_t* self, int32_t* out_result);
+bool ifcopenshell_ifc_file_storage_mode(ifcopenshell_ifc_file_t* self, int32_t* out_result);
+bool ifcopenshell_ifcparse_stream(ifcopenshell_ifc_instance_streamer_t** out_result);
+bool ifcopenshell_ifcparse_stream_from_path(const char* path, bool mmap, ifcopenshell_ifc_instance_streamer_t** out_result);
+bool ifcopenshell_ifcparse_stream_from_string(const char* data, ifcopenshell_ifc_instance_streamer_t** out_result);
+bool ifcopenshell_ifc_file_to_string(ifcopenshell_ifc_file_t* self, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifc_instance_to_string(ifcopenshell_ifc_instance_t* self, bool valid_spf, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifcparse_traverse(ifcopenshell_ifc_instance_t* instance, int32_t max_depth, ifcopenshell_ifc_instance_list_t* out_result);
+bool ifcopenshell_ifcparse_traverse_breadth_first(ifcopenshell_ifc_instance_t* instance, int32_t max_depth, ifcopenshell_ifc_instance_list_t* out_result);
+bool ifcopenshell_ifcparse_turn_off_detailed_logging(void);
+bool ifcopenshell_ifcparse_turn_on_detailed_logging(void);
+bool ifcopenshell_ifcparse_attribute_value_type(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifc_aggregation_type_type_of_aggregation(ifcopenshell_ifc_aggregation_type_t* self, int32_t* out_result);
+bool ifcopenshell_ifc_inverse_attribute_type_of_aggregation(ifcopenshell_ifc_inverse_attribute_t* self, int32_t* out_result);
+bool ifcopenshell_ifc_aggregation_type_type_of_aggregation_string(ifcopenshell_ifc_aggregation_type_t* self, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifc_inverse_attribute_type_of_aggregation_string(ifcopenshell_ifc_inverse_attribute_t* self, ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifc_file_types(ifcopenshell_ifc_file_t* self, ifcopenshell_string_list_t* out_result);
+bool ifcopenshell_ifcparse_unescape_xml(const char* text);
+bool ifcopenshell_ifc_instance_unset_argument(ifcopenshell_ifc_instance_t* self, size_t index);
+bool ifcopenshell_ifc_instance_unset_attribute_value(ifcopenshell_ifc_instance_t* self, const char* name);
+bool ifcopenshell_ifcparse_valid_binary_string(const char* binary_string, bool* out_result);
+bool ifcopenshell_ifcparse_version(ifcopenshell_string_t* out_result);
+bool ifcopenshell_ifc_file_write(ifcopenshell_ifc_file_t* self, const char* path);
+bool ifcopenshell_ifc_header_write(ifcopenshell_ifc_header_t* self, ifcopenshell_string_t* out_result);
 bool ifcopenshell_ifcapi_aggregate_assign_object(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* products, ifcopenshell_ifc_instance_t* relating_object, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_aggregate_unassign_object(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* products, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
 bool ifcopenshell_ifcapi_attribute_edit_attributes(ifcopenshell_ifc_file_t* file, ifcopenshell_ifc_instance_t* product, void* attributes, bool sync_predefined_type, bool update_owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application);
@@ -1111,95 +1200,6 @@ bool ifcopenshell_ifc_instance_streamer_bypassed_instances(ifcopenshell_ifc_inst
 bool ifcopenshell_ifc_instance_streamer_has_semicolon(ifcopenshell_ifc_instance_streamer_t* self, bool* out_result);
 bool ifcopenshell_ifc_instance_streamer_push_page(ifcopenshell_ifc_instance_streamer_t* self, const char* page_data);
 bool ifcopenshell_ifc_instance_streamer_semicolon_count(ifcopenshell_ifc_instance_streamer_t* self, size_t* out_result);
-bool ifcopenshell_ifc_file_write(ifcopenshell_ifc_file_t* self, const char* path);
-bool ifcopenshell_ifc_file_storage_mode(ifcopenshell_ifc_file_t* self, int32_t* out_result);
-bool ifcopenshell_ifc_file_create_entity_by_name(ifcopenshell_ifc_file_t* self, const char* type_name, ifcopenshell_ifc_instance_t** out_result);
-bool ifcopenshell_ifc_file_create_entity_by_name_with_id(ifcopenshell_ifc_file_t* self, const char* type_name, uint32_t id, ifcopenshell_ifc_instance_t** out_result);
-bool ifcopenshell_ifc_file_add_entity(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t* instance, uint32_t id, ifcopenshell_ifc_instance_t** out_result);
-bool ifcopenshell_ifc_file_schema_name(ifcopenshell_ifc_file_t* self, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifc_file_get_inverse(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t* instance, ifcopenshell_ifcparse_instance_list_t** out_result);
-bool ifcopenshell_ifc_file_get_total_inverses(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t* instance, int32_t* out_result);
-bool ifcopenshell_ifc_file_types(ifcopenshell_ifc_file_t* self, ifcopenshell_string_list_t* out_result);
-bool ifcopenshell_ifc_file_to_string(ifcopenshell_ifc_file_t* self, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifc_file_entity_names(ifcopenshell_ifc_file_t* self, ifcopenshell_uint32_list_t* out_result);
-bool ifcopenshell_ifc_file_file_pointer(ifcopenshell_ifc_file_t* self, size_t* out_result);
-bool ifcopenshell_ifc_file_get_inverse_indices(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t* instance, ifcopenshell_int32_list_t* out_result);
-bool ifcopenshell_ifc_file_good(ifcopenshell_ifc_file_t* self, int32_t* out_result);
-bool ifcopenshell_ifc_file_get_unit(ifcopenshell_ifc_file_t* self, const char* unit_type, double* out_result);
-bool ifcopenshell_ifc_file_key_value_store_query(ifcopenshell_ifc_file_t* self, const char* key, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifc_file_key_value_store_iter(ifcopenshell_ifc_file_t* self, const char* prefix, ifcopenshell_string_list_t* out_result);
-bool ifcopenshell_ifc_instance_file_pointer(ifcopenshell_ifc_instance_t* self, size_t* out_result);
-bool ifcopenshell_ifc_instance_get_argument_index(ifcopenshell_ifc_instance_t* self, const char* name, uint32_t* out_result);
-bool ifcopenshell_ifc_instance_get_argument_name(ifcopenshell_ifc_instance_t* self, uint32_t index, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifc_instance_get_attribute_category(ifcopenshell_ifc_instance_t* self, const char* name, int32_t* out_result);
-bool ifcopenshell_ifc_instance_set_attribute_value(ifcopenshell_ifc_instance_t* self, const char* name, ifcopenshell_ifcparse_attribute_value_t* value);
-bool ifcopenshell_ifc_instance_unset_attribute_value(ifcopenshell_ifc_instance_t* self, const char* name);
-bool ifcopenshell_ifc_instance_get_inverse(ifcopenshell_ifc_instance_t* self, const char* name, ifcopenshell_ifcparse_instance_list_t** out_result);
-bool ifcopenshell_ifc_instance_get_attribute_value(ifcopenshell_ifc_instance_t* self, size_t index, ifcopenshell_ifcparse_attribute_value_t** out_result);
-bool ifcopenshell_ifc_instance_get_argument_by_name(ifcopenshell_ifc_instance_t* self, const char* name, ifcopenshell_ifcparse_attribute_value_t** out_result);
-bool ifcopenshell_ifc_instance_get_argument_type(ifcopenshell_ifc_instance_t* self, uint32_t index, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifc_instance_to_string(ifcopenshell_ifc_instance_t* self, bool valid_spf, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifc_instance_class_name(ifcopenshell_ifc_instance_t* self, bool with_schema, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifc_instance_is_a(ifcopenshell_ifc_instance_t* self, const char* declaration_name, bool* out_result);
-bool ifcopenshell_ifc_instance_get_attribute_names(ifcopenshell_ifc_instance_t* self, ifcopenshell_string_list_t* out_result);
-bool ifcopenshell_ifc_instance_get_inverse_attribute_names(ifcopenshell_ifc_instance_t* self, ifcopenshell_string_list_t* out_result);
-bool ifcopenshell_ifc_instance_get_inverse_attribute_by_name(ifcopenshell_ifc_instance_t* self, const char* name, ifcopenshell_ifcparse_instance_list_t** out_result);
-bool ifcopenshell_ifc_instance_unset_argument(ifcopenshell_ifc_instance_t* self, size_t index);
-bool ifcopenshell_ifc_instance_set_argument_bool(ifcopenshell_ifc_instance_t* self, size_t index, bool value);
-bool ifcopenshell_ifc_instance_set_argument_int32(ifcopenshell_ifc_instance_t* self, size_t index, int32_t value);
-bool ifcopenshell_ifc_instance_set_argument_double(ifcopenshell_ifc_instance_t* self, size_t index, double value);
-bool ifcopenshell_ifc_instance_set_argument_string(ifcopenshell_ifc_instance_t* self, size_t index, const char* value);
-bool ifcopenshell_ifc_instance_set_argument_instance(ifcopenshell_ifc_instance_t* self, size_t index, ifcopenshell_ifc_instance_t* value);
-bool ifcopenshell_ifc_instance_set_argument_instance_list(ifcopenshell_ifc_instance_t* self, size_t index, ifcopenshell_ifcparse_instance_list_t* value);
-bool ifcopenshell_ifc_instance_set_argument_int32_list(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_int32_list_t* value);
-bool ifcopenshell_ifc_instance_set_argument_double_list(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_double_list_t* value);
-bool ifcopenshell_ifc_instance_set_argument_string_list(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_string_list_t* value);
-bool ifcopenshell_ifc_instance_set_argument_int32_list_list(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_int32_list_list_t* value);
-bool ifcopenshell_ifc_instance_set_argument_double_list_list(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_double_list_list_t* value);
-bool ifcopenshell_ifc_instance_set_argument_logical(ifcopenshell_ifc_instance_t* self, size_t index, int32_t value);
-bool ifcopenshell_ifc_instance_set_argument_as_aggregate_of_aggregate_of_entity_instance(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_int32_list_list_t* value);
-bool ifcopenshell_ifc_instance_set_argument_enumeration(ifcopenshell_ifc_instance_t* self, size_t index, ifcopenshell_ifc_enumeration_t* enumeration, size_t enumeration_index);
-bool ifcopenshell_ifc_instance_set_argument_enumeration_by_name(ifcopenshell_ifc_instance_t* self, size_t index, const char* value, bool* out_result);
-bool ifcopenshell_ifcparse_attribute_value_is_null(ifcopenshell_ifcparse_attribute_value_t* self, bool* out_result);
-bool ifcopenshell_ifcparse_attribute_value_type(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifcparse_attribute_value_size(ifcopenshell_ifcparse_attribute_value_t* self, size_t* out_result);
-bool ifcopenshell_ifcparse_attribute_value_as_int32(ifcopenshell_ifcparse_attribute_value_t* self, int32_t* out_result);
-bool ifcopenshell_ifcparse_attribute_value_as_bool(ifcopenshell_ifcparse_attribute_value_t* self, bool* out_result);
-bool ifcopenshell_ifcparse_attribute_value_as_double(ifcopenshell_ifcparse_attribute_value_t* self, double* out_result);
-bool ifcopenshell_ifcparse_attribute_value_as_int32_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_int32_list_t* out_result);
-bool ifcopenshell_ifcparse_attribute_value_as_double_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_double_list_t* out_result);
-bool ifcopenshell_ifcparse_attribute_value_as_int32_list_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_int32_list_list_t* out_result);
-bool ifcopenshell_ifcparse_attribute_value_as_instance_id_list_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_int32_list_list_t* out_result);
-bool ifcopenshell_ifcparse_attribute_value_as_double_list_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_double_list_list_t* out_result);
-bool ifcopenshell_ifcparse_attribute_value_as_string_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_string_list_t* out_result);
-bool ifcopenshell_ifcparse_attribute_value_as_string(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifcparse_attribute_value_as_instance(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_ifc_instance_t** out_result);
-bool ifcopenshell_ifcparse_attribute_value_as_instance_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_ifcparse_instance_list_t** out_result);
-bool ifcopenshell_ifcparse_attribute_value_as_enumeration_value(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifcparse_attribute_value_as_enumeration_index(ifcopenshell_ifcparse_attribute_value_t* self, size_t* out_result);
-bool ifcopenshell_ifcparse_attribute_value_as_enumeration_type(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_ifc_enumeration_t** out_result);
-bool ifcopenshell_ifc_file_header(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_header_t** out_result);
-bool ifcopenshell_ifc_file_header_file_description(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t** out_result);
-bool ifcopenshell_ifc_file_header_file_name(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t** out_result);
-bool ifcopenshell_ifc_file_header_file_schema(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t** out_result);
-bool ifcopenshell_ifc_header_write(ifcopenshell_ifc_header_t* self, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifc_select_type_select_list_names(ifcopenshell_ifc_select_type_t* self, ifcopenshell_string_list_t* out_result);
-bool ifcopenshell_ifc_type_declaration_argument_types(ifcopenshell_ifc_type_declaration_t* self, ifcopenshell_string_list_t* out_result);
-bool ifcopenshell_ifc_enumeration_argument_types(ifcopenshell_ifc_enumeration_t* self, ifcopenshell_string_list_t* out_result);
-bool ifcopenshell_ifc_parameter_type_kind(ifcopenshell_ifc_parameter_type_t* self, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifc_simple_type_kind(ifcopenshell_ifc_simple_type_t* self, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifc_aggregation_type_type_of_aggregation(ifcopenshell_ifc_aggregation_type_t* self, int32_t* out_result);
-bool ifcopenshell_ifc_aggregation_type_type_of_aggregation_string(ifcopenshell_ifc_aggregation_type_t* self, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifc_inverse_attribute_type_of_aggregation(ifcopenshell_ifc_inverse_attribute_t* self, int32_t* out_result);
-bool ifcopenshell_ifc_inverse_attribute_type_of_aggregation_string(ifcopenshell_ifc_inverse_attribute_t* self, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifc_entity_argument_types(ifcopenshell_ifc_entity_t* self, ifcopenshell_string_list_t* out_result);
-bool ifcopenshell_ifc_instance_streamer_status(ifcopenshell_ifc_instance_streamer_t* self, int32_t* out_result);
-bool ifcopenshell_ifc_instance_streamer_references(ifcopenshell_ifc_instance_streamer_t* self, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifc_instance_streamer_inverses(ifcopenshell_ifc_instance_streamer_t* self, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifc_instance_streamer_read_instance_py(ifcopenshell_ifc_instance_streamer_t* self, bool type_as_declaration_instance, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifc_aggregation_type_kind(ifcopenshell_ifc_aggregation_type_t* self, ifcopenshell_string_t* out_result);
-bool ifcopenshell_ifcparse_instance_list_size(ifcopenshell_ifcparse_instance_list_t* self, size_t* out_result);
-bool ifcopenshell_ifcparse_instance_list_get(ifcopenshell_ifcparse_instance_list_t* self, size_t index, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcgeom_triangulation_edges(ifcopenshell_ifcgeom_triangulation_t* self, ifcopenshell_int32_list_t* out_result);
 bool ifcopenshell_ifcgeom_triangulation_edges_item_ids(ifcopenshell_ifcgeom_triangulation_t* self, ifcopenshell_int32_list_t* out_result);
 bool ifcopenshell_ifcgeom_triangulation_faces(ifcopenshell_ifcgeom_triangulation_t* self, ifcopenshell_int32_list_t* out_result);

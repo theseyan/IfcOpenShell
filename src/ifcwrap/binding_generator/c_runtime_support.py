@@ -371,4 +371,227 @@ void set_instance_attribute_from_attribute_value(express::Base* instance, size_t
         }}
     }});
 }}
-}} // namespace"""
+}} // namespace
+
+namespace ifcopenshell {{
+namespace capi {{
+
+void set_feature(const std::string& name, bool value) {{
+    if (name == "use_attribute_value_derived") {{
+        feature_use_attribute_value_derived = value;
+        return;
+    }}
+    throw std::runtime_error("Invalid feature specification");
+}}
+
+bool get_feature(const std::string& name) {{
+    if (name == "use_attribute_value_derived") {{
+        return feature_use_attribute_value_derived;
+    }}
+    throw std::runtime_error("Invalid feature specification");
+}}
+
+std::string get_log() {{
+    ensure_log_stream_initialized();
+    std::string log = ifcopenshell_log_stream.str();
+    ifcopenshell_log_stream.str("");
+    ifcopenshell_log_stream.clear();
+    return log;
+}}
+
+void turn_on_detailed_logging() {{
+    logger::set_output(&std::cout, &std::cout);
+    logger::verbosity(logger::LOG_DEBUG);
+}}
+
+void turn_off_detailed_logging() {{
+    ensure_log_stream_initialized();
+    logger::set_output(nullptr, &ifcopenshell_log_stream);
+    logger::verbosity(logger::LOG_WARNING);
+}}
+
+void set_log_format_json() {{
+    ensure_log_stream_initialized();
+    ifcopenshell_log_stream.str("");
+    ifcopenshell_log_stream.clear();
+    logger::output_format(logger::FMT_JSON);
+}}
+
+void set_log_format_text() {{
+    ensure_log_stream_initialized();
+    ifcopenshell_log_stream.str("");
+    ifcopenshell_log_stream.clear();
+    logger::output_format(logger::FMT_PLAIN);
+}}
+
+std::string get_info_cpp(const express::Base& instance, bool include_identifier) {{
+    return instance_to_info_json_string(instance, include_identifier);
+}}
+
+std::string streamer_references(ifcopenshell::instance_streamer<>* streamer) {{
+    return unresolved_references_to_json_string(streamer->references(), nullptr);
+}}
+
+std::string streamer_inverses(ifcopenshell::instance_streamer<>* streamer) {{
+    return inverses_to_json_string(streamer->inverses());
+}}
+
+std::string streamer_read_instance_json(ifcopenshell::instance_streamer<>* streamer, bool type_as_declaration_instance) {{
+    return instance_stream_read_instance_json(streamer, type_as_declaration_instance);
+}}
+
+void unset_instance_argument_value(express::Base& instance, size_t index) {{
+    ::unset_instance_argument(&instance, index);
+}}
+
+void unset_instance_argument(express::Base& instance, size_t index) {{
+    ::unset_instance_argument(&instance, index);
+}}
+
+ifcopenshell::argument_type instance_attribute_type(const express::Base& instance, unsigned index) {{
+    return ::helper_fn_attribute_type(&instance, index);
+}}
+
+void set_instance_attribute_from_attribute_value(express::Base& instance, size_t index, const attribute_value& value) {{
+    ::set_instance_attribute_from_attribute_value(&instance, index, value);
+}}
+
+void set_instance_argument_bool(express::Base& instance, size_t index, bool value) {{
+    set_instance_argument(&instance, index, value);
+}}
+
+void set_instance_argument_int32(express::Base& instance, size_t index, int value) {{
+    set_instance_argument(&instance, index, value);
+}}
+
+void set_instance_argument_double(express::Base& instance, size_t index, double value) {{
+    set_instance_argument(&instance, index, value);
+}}
+
+void set_instance_argument_string(express::Base& instance, size_t index, const std::string& value) {{
+    set_instance_argument(&instance, index, value);
+}}
+
+void set_instance_argument_instance(express::Base& instance, size_t index, express::Base* value) {{
+    set_instance_argument(&instance, index, value);
+}}
+
+void set_instance_argument_instance_list(express::Base& instance, size_t index, std::vector<express::Base>* value) {{
+    set_instance_argument(&instance, index, value);
+}}
+
+void set_instance_argument_int32_list(express::Base& instance, size_t index, const std::vector<int>& value) {{
+    set_instance_argument(&instance, index, value);
+}}
+
+void set_instance_argument_double_list(express::Base& instance, size_t index, const std::vector<double>& value) {{
+    set_instance_argument(&instance, index, value);
+}}
+
+void set_instance_argument_string_list(express::Base& instance, size_t index, const std::vector<std::string>& value) {{
+    set_instance_argument(&instance, index, value);
+}}
+
+void set_instance_argument_int32_list_list(express::Base& instance, size_t index, const std::vector<std::vector<int>>& value) {{
+    set_instance_argument(&instance, index, value);
+}}
+
+void set_instance_argument_double_list_list(express::Base& instance, size_t index, const std::vector<std::vector<double>>& value) {{
+    set_instance_argument(&instance, index, value);
+}}
+
+void set_instance_argument_logical(express::Base& instance, size_t index, int value) {{
+    ifcopenshell::argument_type arg_type = helper_fn_attribute_type(&instance, static_cast<unsigned>(index));
+    if (arg_type != ifcopenshell::Argument_LOGICAL) {{
+        throw ifcopenshell::exception("Attribute not set");
+    }}
+    boost::logic::tribool logical_value;
+    if (value == 0) {{
+        logical_value = false;
+    }} else if (value == 1) {{
+        logical_value = true;
+    }} else if (value == -1) {{
+        logical_value = boost::logic::indeterminate;
+    }} else {{
+        throw ifcopenshell::exception("Logical value must be -1, 0, or 1");
+    }}
+    set_instance_argument(&instance, index, logical_value);
+}}
+
+void set_instance_argument_aggregate_of_aggregate_of_entity_instance(
+    express::Base& instance,
+    size_t index,
+    const std::vector<std::vector<int>>& value
+) {{
+    ifcopenshell::argument_type arg_type = helper_fn_attribute_type(&instance, static_cast<unsigned>(index));
+    if (arg_type != ifcopenshell::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE) {{
+        throw ifcopenshell::exception("Attribute not set");
+    }}
+    if (instance.file() == nullptr) {{
+        throw ifcopenshell::exception("Instance is not attached to a file.");
+    }}
+    std::vector<std::vector<express::Base>> aggregate;
+    for (const auto& group : value) {{
+        std::vector<express::Base> instances;
+        instances.reserve(group.size());
+        for (int identifier : group) {{
+            auto resolved = instance.file()->instance_by_id(identifier);
+            if (!resolved) {{
+                throw ifcopenshell::exception("Unable to resolve instance id " + std::to_string(identifier));
+            }}
+            instances.push_back(resolved);
+        }}
+        aggregate.push_back(std::move(instances));
+    }}
+    set_instance_argument(&instance, index, aggregate);
+}}
+
+void set_instance_argument_enumeration(
+    express::Base& instance,
+    size_t index,
+    const ifcopenshell::enumeration_type* enumeration,
+    size_t enumeration_index
+) {{
+    set_instance_argument(&instance, index, enumeration_reference(enumeration, enumeration_index));
+}}
+
+bool set_instance_argument_enumeration_by_name(express::Base& instance, size_t index, const std::string& value) {{
+    auto* entity_decl = instance.declaration().as_entity();
+    if (entity_decl == nullptr) {{
+        return false;
+    }}
+    const auto attrs = entity_decl->all_attributes();
+    if (index >= attrs.size()) {{
+        return false;
+    }}
+    const ifcopenshell::parameter_type* parameter_type = attrs[index]->type_of_attribute();
+    const ifcopenshell::enumeration_type* enumeration = nullptr;
+    while (parameter_type != nullptr) {{
+        auto* named = parameter_type->as_named_type();
+        if (named == nullptr) {{
+            break;
+        }}
+        auto* declaration = named->declared_type();
+        if ((enumeration = declaration->as_enumeration_type()) != nullptr) {{
+            break;
+        }}
+        auto* type_declaration = declaration->as_type_declaration();
+        if (type_declaration == nullptr) {{
+            break;
+        }}
+        parameter_type = type_declaration->declared_type();
+    }}
+    if (enumeration == nullptr) {{
+        return false;
+    }}
+    const auto& items = enumeration->enumeration_items();
+    auto it = std::find(items.begin(), items.end(), value);
+    if (it == items.end()) {{
+        throw ifcopenshell::exception("'" + value + "' is not a valid value for enumeration " + enumeration->name());
+    }}
+    set_instance_argument(&instance, index, enumeration_reference(enumeration, static_cast<size_t>(std::distance(items.begin(), it))));
+    return true;
+}}
+
+}} // namespace capi
+}} // namespace ifcopenshell"""

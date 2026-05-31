@@ -1,0 +1,1046 @@
+// This file was generated with the assistance of an AI coding tool.
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+#ifndef IFCWRAP_BINDING_GENERATOR_IFCPARSE_SPEC_HPP
+#define IFCWRAP_BINDING_GENERATOR_IFCPARSE_SPEC_HPP
+
+#include "spec_macros.h"
+
+#include "argument.h"
+#include "argument_type.h"
+#include "file.h"
+#include "parse.h"
+#include "schema.h"
+#include "si_prefix.h"
+#include "utils.h"
+
+#include <algorithm>
+#include <cstdint>
+#include <cstddef>
+#include <fstream>
+#include <iterator>
+#include <memory>
+#include <sstream>
+#include <string>
+#include <type_traits>
+#include <vector>
+
+IFCAPI_HANDLE(file, ifcopenshell::file, delete) struct ifcopenshell_ifc_file_t;
+IFCAPI_HANDLE(instance_streamer, ifcopenshell::instance_streamer<>, delete) struct ifcopenshell_ifc_instance_streamer_t;
+IFCAPI_HANDLE(instance, express::Base, none, value, "!static_cast<bool>({value})") struct ifcopenshell_ifc_instance_t;
+IFCAPI_HANDLE(header, ifcopenshell::spf_header, none) struct ifcopenshell_ifc_header_t;
+IFCAPI_HANDLE(file_description, Header_section_schema::file_description, none, value, "!static_cast<bool>({value})") struct ifcopenshell_ifc_file_description_t;
+IFCAPI_HANDLE(file_name, Header_section_schema::file_name, none, value, "!static_cast<bool>({value})") struct ifcopenshell_ifc_file_name_t;
+IFCAPI_HANDLE(file_schema, Header_section_schema::file_schema, none, value, "!static_cast<bool>({value})") struct ifcopenshell_ifc_file_schema_t;
+IFCAPI_HANDLE(declaration, ifcopenshell::declaration, none) struct ifcopenshell_ifc_declaration_t;
+IFCAPI_HANDLE(type_declaration, ifcopenshell::type_declaration, none) struct ifcopenshell_ifc_type_declaration_t;
+IFCAPI_HANDLE(select_type, ifcopenshell::select_type, none) struct ifcopenshell_ifc_select_type_t;
+IFCAPI_HANDLE(schema, ifcopenshell::schema_definition, none) struct ifcopenshell_ifc_schema_t;
+IFCAPI_HANDLE(enumeration, ifcopenshell::enumeration_type, none) struct ifcopenshell_ifc_enumeration_t;
+IFCAPI_HANDLE(parameter_type, ifcopenshell::parameter_type, none) struct ifcopenshell_ifc_parameter_type_t;
+IFCAPI_HANDLE(named_type, ifcopenshell::named_type, none) struct ifcopenshell_ifc_named_type_t;
+IFCAPI_HANDLE(simple_type, ifcopenshell::simple_type, none) struct ifcopenshell_ifc_simple_type_t;
+IFCAPI_HANDLE(aggregation_type, ifcopenshell::aggregation_type, none) struct ifcopenshell_ifc_aggregation_type_t;
+IFCAPI_HANDLE(entity, ifcopenshell::entity, none) struct ifcopenshell_ifc_entity_t;
+IFCAPI_HANDLE(attribute, ifcopenshell::attribute, none) struct ifcopenshell_ifc_attribute_t;
+IFCAPI_HANDLE(inverse_attribute, ifcopenshell::inverse_attribute, none) struct ifcopenshell_ifc_inverse_attribute_t;
+IFCAPI_HANDLE(attribute_value, attribute_value, none, value) struct ifcopenshell_ifcparse_attribute_value_t;
+IFCAPI_HANDLE(instance_list, std::vector<express::Base>, none, value) struct ifcopenshell_ifcparse_instance_list_t;
+
+namespace ifcopenshell::capi {
+
+void set_feature(const std::string& name, bool value);
+bool get_feature(const std::string& name);
+std::string get_log();
+void turn_on_detailed_logging();
+void turn_off_detailed_logging();
+void set_log_format_json();
+void set_log_format_text();
+std::string get_info_cpp(const express::Base& instance, bool include_identifier);
+std::string streamer_references(ifcopenshell::instance_streamer<>* streamer);
+std::string streamer_inverses(ifcopenshell::instance_streamer<>* streamer);
+std::string streamer_read_instance_json(ifcopenshell::instance_streamer<>* streamer, bool type_as_declaration_instance);
+void unset_instance_argument_value(express::Base& instance, size_t index);
+void set_instance_argument_bool(express::Base& instance, size_t index, bool value);
+void set_instance_argument_int32(express::Base& instance, size_t index, int value);
+void set_instance_argument_double(express::Base& instance, size_t index, double value);
+void set_instance_argument_string(express::Base& instance, size_t index, const std::string& value);
+void set_instance_argument_instance(express::Base& instance, size_t index, express::Base* value);
+void set_instance_argument_instance_list(express::Base& instance, size_t index, std::vector<express::Base>* value);
+void set_instance_argument_int32_list(express::Base& instance, size_t index, const std::vector<int>& value);
+void set_instance_argument_double_list(express::Base& instance, size_t index, const std::vector<double>& value);
+void set_instance_argument_string_list(express::Base& instance, size_t index, const std::vector<std::string>& value);
+void set_instance_argument_int32_list_list(express::Base& instance, size_t index, const std::vector<std::vector<int>>& value);
+void set_instance_argument_double_list_list(express::Base& instance, size_t index, const std::vector<std::vector<double>>& value);
+void set_instance_argument_logical(express::Base& instance, size_t index, int value);
+void set_instance_argument_aggregate_of_aggregate_of_entity_instance(
+    express::Base& instance,
+    size_t index,
+    const std::vector<std::vector<int>>& value
+);
+void set_instance_argument_enumeration(
+    express::Base& instance,
+    size_t index,
+    const ifcopenshell::enumeration_type* enumeration,
+    size_t enumeration_index
+);
+bool set_instance_argument_enumeration_by_name(express::Base& instance, size_t index, const std::string& value);
+void set_instance_attribute_from_attribute_value(express::Base& instance, size_t index, const attribute_value& value);
+void unset_instance_argument(express::Base& instance, size_t index);
+ifcopenshell::argument_type instance_attribute_type(const express::Base& instance, unsigned index);
+
+} // namespace ifcopenshell::capi
+
+namespace ifcparse::bindings {
+
+inline std::vector<express::Base> to_base_vector(const std::vector<express::Entity>& entities) {
+    std::vector<express::Base> result;
+    result.reserve(entities.size());
+    for (const auto& entity : entities) {
+        result.push_back(entity);
+    }
+    return result;
+}
+
+IFCAPI_EXPORT IFCAPI_COPY const char* argument_type_to_string(int type) {
+    return ifcopenshell::argument_type_to_string(static_cast<ifcopenshell::argument_type>(type));
+}
+
+IFCAPI_EXPORT void clear_schemas() {
+    ifcopenshell::clear_schemas();
+}
+
+IFCAPI_EXPORT void escape_xml(std::string text) {
+    ifcopenshell::escape_xml(text);
+}
+
+IFCAPI_EXPORT int from_parameter_type(const ifcopenshell::parameter_type* parameter_type) {
+    return static_cast<int>(ifcopenshell::from_parameter_type(parameter_type));
+}
+
+IFCAPI_EXPORT int guess_file_type(const std::string& path) {
+    return static_cast<int>(ifcopenshell::guess_file_type(path));
+}
+
+IFCAPI_EXPORT int make_aggregate(int element_type) {
+    return static_cast<int>(ifcopenshell::make_aggregate(static_cast<ifcopenshell::argument_type>(element_type)));
+}
+
+IFCAPI_EXPORT void register_schema(ifcopenshell::schema_definition* schema) {
+    ifcopenshell::register_schema(schema);
+}
+
+IFCAPI_EXPORT void sanitate_material_name(std::string material_name) {
+    ifcopenshell::sanitate_material_name(material_name);
+}
+
+IFCAPI_EXPORT const ifcopenshell::schema_definition* schema_by_name(const std::string& schema_name) {
+    return ifcopenshell::schema_by_name(schema_name);
+}
+
+IFCAPI_EXPORT std::vector<std::string> schema_names() {
+    return ifcopenshell::schema_names();
+}
+
+IFCAPI_EXPORT IFCAPI_COPY const char* schema_plugin_registration_symbol() {
+    return ifcopenshell::schema_plugin_registration_symbol();
+}
+
+IFCAPI_EXPORT double si_prefix_to_value(const std::string& prefix) {
+    return ifcopenshell::si_prefix_to_value(prefix);
+}
+
+IFCAPI_EXPORT std::vector<express::Base> traverse(const express::Base& instance, int max_depth) {
+    return ifcopenshell::traverse(instance, max_depth);
+}
+
+IFCAPI_EXPORT std::vector<express::Base> traverse_breadth_first(const express::Base& instance, int max_depth) {
+    return ifcopenshell::traverse_breadth_first(instance, max_depth);
+}
+
+IFCAPI_EXPORT void unescape_xml(std::string text) {
+    ifcopenshell::unescape_xml(text);
+}
+
+IFCAPI_EXPORT bool valid_binary_string(const std::string& binary_string) {
+    return ifcopenshell::valid_binary_string(binary_string);
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED ifcopenshell::file* open(const std::string& path, bool readonly) {
+    {
+        std::ifstream probe(path.c_str());
+        if (!probe.good()) {
+            throw std::runtime_error(std::string("File does not exist or is not readable: ") + path);
+        }
+    }
+    auto file = std::make_unique<ifcopenshell::file>(path, ifcopenshell::FT_AUTODETECT, readonly);
+    if (!file->good()) {
+        throw std::runtime_error(std::string("Failed to open IFC file: ") + path);
+    }
+    return file.release();
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED ifcopenshell::file* open_bypass(
+    const std::string& path,
+    const std::vector<std::string>& type_names
+) {
+    auto file = std::make_unique<ifcopenshell::file>(ifcopenshell::uninitialized_tag{});
+    for (const auto& type_name : type_names) {
+        file->bypass_type(type_name);
+    }
+    if (!file->initialize(path)) {
+        throw std::runtime_error(std::string("Failed to open IFC file: ") + path);
+    }
+    return file.release();
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED ifcopenshell::file* new_file(
+    const std::string& schema_identifier,
+    int file_type,
+    const std::string& path
+) {
+    const ifcopenshell::schema_definition* schema = ifcopenshell::schema_by_name(schema_identifier);
+    return new ifcopenshell::file(schema, static_cast<ifcopenshell::filetype>(file_type), path);
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED ifcopenshell::file* read_memory(const void* data, int length) {
+    if (length < 0) {
+        throw std::runtime_error("length is negative");
+    }
+    auto file = std::make_unique<ifcopenshell::file>(const_cast<void*>(data), static_cast<int>(length));
+    if (!file->good()) {
+        throw std::runtime_error("Failed to parse IFC data from string");
+    }
+    return file.release();
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED ifcopenshell::instance_streamer<>* stream() {
+    return new ifcopenshell::instance_streamer<>();
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED ifcopenshell::instance_streamer<>* stream_from_path(
+    const std::string& path,
+    bool mmap
+) {
+#ifdef USE_MMAP
+    return new ifcopenshell::instance_streamer<>(path, mmap);
+#else
+    (void)mmap;
+    return new ifcopenshell::instance_streamer<>(path, false);
+#endif
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED ifcopenshell::instance_streamer<>* stream_from_string(const std::string& data) {
+    return new ifcopenshell::instance_streamer<>((void*)data.data(), static_cast<int>(data.size()));
+}
+
+IFCAPI_EXPORT IFCAPI_STATIC const char* version() {
+    return IFCOPENSHELL_VERSION;
+}
+
+IFCAPI_EXPORT double get_si_equivalent(const express::Base& named_unit) {
+    if (!named_unit.declaration().is("IfcNamedUnit")) {
+        throw ifcopenshell::exception("Instance is not an IfcNamedUnit.");
+    }
+    double scale = 1.0;
+    express::Base si_unit;
+    if (named_unit.declaration().is("IfcConversionBasedUnit")) {
+        auto factor = static_cast<express::Base>(named_unit.get_attribute_value(
+            named_unit.declaration().as_entity()->attribute_index("ConversionFactor")));
+        auto value_component = static_cast<express::Base>(factor.get_attribute_value(
+            factor.declaration().as_entity()->attribute_index("ValueComponent")));
+        auto unit_component = static_cast<express::Base>(factor.get_attribute_value(
+            factor.declaration().as_entity()->attribute_index("UnitComponent")));
+        scale = static_cast<double>(value_component.get_attribute_value(0));
+        if (unit_component.declaration().is("IfcSIUnit")) {
+            si_unit = unit_component;
+        }
+    } else if (named_unit.declaration().is("IfcSIUnit")) {
+        si_unit = named_unit;
+    }
+    if (si_unit) {
+        attribute_value prefix = si_unit.get_attribute_value(
+            si_unit.declaration().as_entity()->attribute_index("Prefix"));
+        if (!prefix.isNull()) {
+            scale *= ifcopenshell::si_prefix_to_value(static_cast<std::string>(prefix));
+        }
+    } else {
+        scale = 0.0;
+    }
+    return scale;
+}
+
+IFCAPI_EXPORT void set_feature(const std::string& name, bool value) {
+    ifcopenshell::capi::set_feature(name, value);
+}
+
+IFCAPI_EXPORT bool get_feature(const std::string& name) {
+    return ifcopenshell::capi::get_feature(name);
+}
+
+IFCAPI_EXPORT IFCAPI_COPY std::string get_log() {
+    return ifcopenshell::capi::get_log();
+}
+
+IFCAPI_EXPORT void turn_on_detailed_logging() {
+    ifcopenshell::capi::turn_on_detailed_logging();
+}
+
+IFCAPI_EXPORT void turn_off_detailed_logging() {
+    ifcopenshell::capi::turn_off_detailed_logging();
+}
+
+IFCAPI_EXPORT void set_log_format_json() {
+    ifcopenshell::capi::set_log_format_json();
+}
+
+IFCAPI_EXPORT void set_log_format_text() {
+    ifcopenshell::capi::set_log_format_text();
+}
+
+IFCAPI_EXPORT IFCAPI_COPY std::string get_info_cpp(const express::Base& instance, bool include_identifier) {
+    return ifcopenshell::capi::get_info_cpp(instance, include_identifier);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(file) void write(ifcopenshell::file& self, const std::string& path) {
+    std::ofstream stream(ifcopenshell::path::from_utf8(path).c_str());
+    if (!stream.good()) {
+        throw std::runtime_error("Failed to write to path: '" + path + "', check folder and file permissions.");
+    }
+    stream << self;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(file) int storage_mode(ifcopenshell::file& self) {
+    return std::visit([](auto& storage) -> int {
+        using T = std::decay_t<decltype(storage)>;
+        if constexpr (std::is_same_v<T, ifcopenshell::impl::in_memory_file_storage>) {
+            return 0;
+        } else if constexpr (std::is_same_v<T, ifcopenshell::impl::rocks_db_file_storage>) {
+            return 1;
+        }
+        return -1;
+    }, self.storage_);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(file) express::Base create_entity_by_name(ifcopenshell::file& self, const std::string& type_name) {
+    const auto* schema = self.schema();
+    const auto* decl = schema->declaration_by_name(type_name);
+    if (!decl || (!decl->as_entity() && !decl->as_type_declaration() && !decl->as_enumeration_type())) {
+        throw std::runtime_error("Declaration is not creatable");
+    }
+    auto entity = self.create(decl);
+    if (!entity) {
+        throw std::runtime_error("Failed to create entity");
+    }
+    return entity;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(file) express::Base create_entity_by_name_with_id(
+    ifcopenshell::file& self,
+    const std::string& type_name,
+    std::uint32_t id
+) {
+    const auto* schema = self.schema();
+    const auto* decl = schema->declaration_by_name(type_name);
+    if (!decl || !decl->as_entity()) {
+        throw std::runtime_error("Type declaration is not an entity");
+    }
+    auto entity = self.create(decl, static_cast<int>(id));
+    if (!entity) {
+        throw std::runtime_error("Failed to create entity with id");
+    }
+    return entity;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(file) express::Base add_entity(
+    ifcopenshell::file& self,
+    const express::Base& instance,
+    std::uint32_t id
+) {
+    auto added = self.add_entity(instance, id == 0 ? -1 : static_cast<int>(id));
+    if (!added) {
+        throw std::runtime_error("Failed to add entity");
+    }
+    return added;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(file) std::string schema_name(ifcopenshell::file& self) {
+    if (self.schema() == nullptr) {
+        return std::string();
+    }
+    return self.schema()->name();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(file) int get_total_inverses(ifcopenshell::file& self, const express::Base& instance) {
+    auto entity = instance.as<express::Entity>();
+    if (entity) {
+        return self.get_total_inverses(entity.id());
+    }
+    throw ifcopenshell::exception("Only entities with ids are supported for get_total_inverses.");
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(file) std::vector<std::string> types(ifcopenshell::file& self) {
+    const size_t n = std::distance(self.types_begin(), self.types_end());
+    std::vector<std::string> type_names;
+    type_names.reserve(n);
+    std::transform(self.types_begin(), self.types_end(), std::back_inserter(type_names), [](const ifcopenshell::declaration* decl) {
+        return decl->name();
+    });
+    return type_names;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(file) std::string to_string(ifcopenshell::file& self) {
+    std::ostringstream stream;
+    stream << self;
+    return stream.str();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(file) std::vector<unsigned int> entity_names(ifcopenshell::file& self) {
+    std::vector<unsigned int> ids;
+    ids.reserve(std::distance(self.begin(), self.end()));
+    for (auto it = self.begin(); it != self.end(); ++it) {
+        ids.push_back(it->first);
+    }
+    return ids;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(file) std::size_t file_pointer(ifcopenshell::file& self) {
+    return reinterpret_cast<std::size_t>(&self);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(file) std::vector<int> get_inverse_indices(ifcopenshell::file& self, const express::Base& instance) {
+    auto entity = instance.as<express::Entity>();
+    if (entity) {
+        return self.get_inverse_indices_by_id(entity.id());
+    }
+    throw ifcopenshell::exception("Only entities with ids are supported for get_inverse_indices.");
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(file) int good(ifcopenshell::file& self) {
+    return static_cast<int>(self.good().value());
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(file) double get_unit(ifcopenshell::file& self, const std::string& unit_type) {
+    return self.get_unit(unit_type).second;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(file) std::string key_value_store_query(ifcopenshell::file& self, const std::string& key) {
+    auto* storage = std::visit([](auto& value) -> const ifcopenshell::impl::rocks_db_file_storage* {
+        using T = std::decay_t<decltype(value)>;
+        if constexpr (std::is_same_v<T, ifcopenshell::impl::rocks_db_file_storage>) {
+            return &value;
+        }
+        return nullptr;
+    }, self.storage_);
+    if (!storage) {
+        return std::string();
+    }
+#ifdef IFOPSH_WITH_ROCKSDB
+    std::string value;
+    if (storage->db->Get(storage->ropts, key, &value) != rocksdb::Status::OK()) {
+        return std::string();
+    }
+    return value;
+#else
+    return std::string();
+#endif
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(file) std::vector<std::string> key_value_store_iter(ifcopenshell::file& self, const std::string& prefix) {
+    std::vector<std::string> values;
+    auto* storage = std::visit([](auto& value) -> const ifcopenshell::impl::rocks_db_file_storage* {
+        using T = std::decay_t<decltype(value)>;
+        if constexpr (std::is_same_v<T, ifcopenshell::impl::rocks_db_file_storage>) {
+            return &value;
+        }
+        return nullptr;
+    }, self.storage_);
+    if (!storage) {
+        return values;
+    }
+#ifdef IFOPSH_WITH_ROCKSDB
+    std::unique_ptr<rocksdb::Iterator> iterator(storage->db->NewIterator(storage->ropts));
+    const rocksdb::Slice prefix_slice(prefix);
+    for (iterator->Seek(prefix); iterator->Valid() && iterator->key().starts_with(prefix_slice); iterator->Next()) {
+        values.push_back(iterator->key().ToString());
+    }
+#endif
+    return values;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance_streamer) int status(ifcopenshell::instance_streamer<>* self) {
+    return static_cast<int>(static_cast<ifcopenshell::file_open_status::file_open_enum>(self->status()));
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance_streamer) std::string references(ifcopenshell::instance_streamer<>* self) {
+    return ifcopenshell::capi::streamer_references(self);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance_streamer) std::string inverses(ifcopenshell::instance_streamer<>* self) {
+    return ifcopenshell::capi::streamer_inverses(self);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance_streamer) std::string read_instance_py(
+    ifcopenshell::instance_streamer<>* self,
+    bool type_as_declaration_instance
+) {
+    return ifcopenshell::capi::streamer_read_instance_json(self, type_as_declaration_instance);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) std::size_t file_pointer(const express::Base& self) {
+    return reinterpret_cast<std::size_t>(self.file());
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) unsigned int get_argument_index(const express::Base& self, const std::string& name) {
+    if (self.declaration().as_entity()) {
+        return static_cast<unsigned int>(self.declaration().as_entity()->attribute_index(name));
+    }
+    if (name == "wrappedValue") {
+        return 0u;
+    }
+    throw ifcopenshell::exception(name + " not found on " + self.declaration().name());
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) std::string get_argument_name(const express::Base& self, unsigned int index) {
+    if (self.declaration().as_entity()) {
+        return self.declaration().as_entity()->attribute_by_index(index)->name();
+    }
+    if (index == 0u) {
+        return std::string("wrappedValue");
+    }
+    throw ifcopenshell::exception(std::to_string(index) + " out of bounds on " + self.declaration().name());
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) int get_attribute_category(const express::Base& self, const std::string& name) {
+    if (!self.declaration().as_entity()) {
+        return name == "wrappedValue" ? 1 : 0;
+    }
+    for (const auto* attr : self.declaration().as_entity()->all_attributes()) {
+        if (attr->name() == name) {
+            return 1;
+        }
+    }
+    for (const auto* attr : self.declaration().as_entity()->all_inverse_attributes()) {
+        if (attr->name() == name) {
+            return 2;
+        }
+    }
+    return 0;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) void unset_argument(express::Base& self, std::size_t index) {
+    ifcopenshell::capi::unset_instance_argument_value(self, index);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) void set_argument_bool(express::Base& self, std::size_t index, bool value) {
+    ifcopenshell::capi::set_instance_argument_bool(self, index, value);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) void set_argument_int32(express::Base& self, std::size_t index, int value) {
+    ifcopenshell::capi::set_instance_argument_int32(self, index, value);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) void set_argument_double(express::Base& self, std::size_t index, double value) {
+    ifcopenshell::capi::set_instance_argument_double(self, index, value);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) void set_argument_string(express::Base& self, std::size_t index, const std::string& value) {
+    ifcopenshell::capi::set_instance_argument_string(self, index, value);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) void set_argument_instance(express::Base& self, std::size_t index, express::Base* value) {
+    ifcopenshell::capi::set_instance_argument_instance(self, index, value);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) void set_argument_instance_list(
+    express::Base& self,
+    std::size_t index,
+    IFCAPI_HANDLE_PARAM(instance_list) std::vector<express::Base>* value
+) {
+    ifcopenshell::capi::set_instance_argument_instance_list(self, index, value);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) void set_argument_int32_list(
+    express::Base& self,
+    std::size_t index,
+    const std::vector<int>& value
+) {
+    ifcopenshell::capi::set_instance_argument_int32_list(self, index, value);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) void set_argument_double_list(
+    express::Base& self,
+    std::size_t index,
+    const std::vector<double>& value
+) {
+    ifcopenshell::capi::set_instance_argument_double_list(self, index, value);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) void set_argument_string_list(
+    express::Base& self,
+    std::size_t index,
+    const std::vector<std::string>& value
+) {
+    ifcopenshell::capi::set_instance_argument_string_list(self, index, value);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) void set_argument_int32_list_list(
+    express::Base& self,
+    std::size_t index,
+    const std::vector<std::vector<int>>& value
+) {
+    ifcopenshell::capi::set_instance_argument_int32_list_list(self, index, value);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) void set_argument_double_list_list(
+    express::Base& self,
+    std::size_t index,
+    const std::vector<std::vector<double>>& value
+) {
+    ifcopenshell::capi::set_instance_argument_double_list_list(self, index, value);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) void set_argument_logical(express::Base& self, std::size_t index, int value) {
+    ifcopenshell::capi::set_instance_argument_logical(self, index, value);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) void set_argument_as_aggregate_of_aggregate_of_entity_instance(
+    express::Base& self,
+    std::size_t index,
+    const std::vector<std::vector<int>>& value
+) {
+    ifcopenshell::capi::set_instance_argument_aggregate_of_aggregate_of_entity_instance(self, index, value);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) void set_argument_enumeration(
+    express::Base& self,
+    std::size_t index,
+    const ifcopenshell::enumeration_type* enumeration,
+    std::size_t enumeration_index
+) {
+    ifcopenshell::capi::set_instance_argument_enumeration(self, index, enumeration, enumeration_index);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) bool set_argument_enumeration_by_name(
+    express::Base& self,
+    std::size_t index,
+    const std::string& value
+) {
+    return ifcopenshell::capi::set_instance_argument_enumeration_by_name(self, index, value);
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std::vector<express::Base> instance_list_create_from_handles(
+    const std::vector<express::Base>& instances
+) {
+    std::vector<express::Base> agg;
+    agg.reserve(instances.size());
+    for (const auto& inst : instances) {
+        if (inst) {
+            agg.push_back(inst);
+        }
+    }
+    return agg;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(file) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std::vector<express::Base> get_inverse(
+    ifcopenshell::file* self,
+    express::Base* instance
+) {
+    auto entity = instance->as<express::Entity>();
+    if (entity) {
+        return to_base_vector(self->get_inverse(entity.id(), 0, -1));
+    }
+    throw ifcopenshell::exception("Only entities with ids are supported for get_inverse.");
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(file) ifcopenshell::spf_header* header(ifcopenshell::file* self) {
+    return &self->header();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(file) IFCAPI_NULLABLE express::Base header_file_description(ifcopenshell::file* self) {
+    return self->header().file_description();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(file) IFCAPI_NULLABLE express::Base header_file_name(ifcopenshell::file* self) {
+    return self->header().file_name();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(file) IFCAPI_NULLABLE express::Base header_file_schema(ifcopenshell::file* self) {
+    return self->header().file_schema();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) void set_attribute_value(
+    express::Base& self,
+    const std::string& name,
+    attribute_value& value
+) {
+    if (!self.declaration().as_entity()) {
+        if (name != "wrappedValue") {
+            throw ifcopenshell::exception(name + " not found on " + self.declaration().name());
+        }
+        ifcopenshell::capi::set_instance_attribute_from_attribute_value(self, 0u, value);
+        return;
+    }
+    const auto index = self.declaration().as_entity()->attribute_index(name);
+    if (index < 0) {
+        throw ifcopenshell::exception(name + " not found on " + self.declaration().name());
+    }
+    ifcopenshell::capi::set_instance_attribute_from_attribute_value(self, static_cast<size_t>(index), value);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) void unset_attribute_value(express::Base& self, const std::string& name) {
+    if (!self.declaration().as_entity()) {
+        if (name != "wrappedValue") {
+            throw ifcopenshell::exception(name + " not found on " + self.declaration().name());
+        }
+        ifcopenshell::capi::unset_instance_argument(self, 0u);
+        return;
+    }
+    const auto index = self.declaration().as_entity()->attribute_index(name);
+    if (index < 0) {
+        throw ifcopenshell::exception(name + " not found on " + self.declaration().name());
+    }
+    ifcopenshell::capi::unset_instance_argument(self, static_cast<size_t>(index));
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std::vector<express::Base> get_inverse(
+    express::Base& self,
+    const std::string& name
+) {
+    if (self.declaration().as_entity()) {
+        return to_base_vector(self.as<express::Entity>().get_inverse(name));
+    }
+    throw ifcopenshell::exception(name + " not found on " + self.declaration().name());
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) IFCAPI_OWNED attribute_value get_attribute_value(
+    express::Base& self,
+    std::size_t index
+) {
+    return self.get_attribute_value(index);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) IFCAPI_OWNED attribute_value get_argument_by_name(
+    express::Base& self,
+    const std::string& name
+) {
+    auto* entity = self.declaration().as_entity();
+    if (!entity) {
+        throw std::runtime_error("Attribute '" + name + "' not found on entity named " + self.declaration().name());
+    }
+    auto index = entity->attribute_index(name);
+    if (index == -1) {
+        throw std::runtime_error("Attribute '" + name + "' not found on entity named " + self.declaration().name());
+    }
+    return self.get_attribute_value(static_cast<unsigned>(index));
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) IFCAPI_STATIC const char* get_argument_type(express::Base& self, unsigned int index) {
+    return ifcopenshell::argument_type_to_string(ifcopenshell::capi::instance_attribute_type(self, index));
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) std::string to_string(express::Base& self, bool valid_spf) {
+    std::ostringstream oss;
+    self.to_string(oss, valid_spf);
+    return oss.str();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) std::string class_name(express::Base& self, bool with_schema) {
+    auto name = self.declaration().name();
+    if (with_schema) {
+        name = self.declaration().schema()->name() + "." + name;
+    }
+    return name;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) bool is_a(express::Base& self, const std::string& declaration_name) {
+    return self.declaration().is(declaration_name);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) std::vector<std::string> get_attribute_names(express::Base& self) {
+    if (!self.declaration().as_entity()) {
+        return std::vector<std::string>(1, "wrappedValue");
+    }
+    const auto attrs = self.declaration().as_entity()->all_attributes();
+    std::vector<std::string> names;
+    names.reserve(attrs.size());
+    for (const auto* attr : attrs) {
+        names.push_back(attr->name());
+    }
+    return names;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) std::vector<std::string> get_inverse_attribute_names(express::Base& self) {
+    if (!self.declaration().as_entity()) {
+        return std::vector<std::string>();
+    }
+    const auto attrs = self.declaration().as_entity()->all_inverse_attributes();
+    std::vector<std::string> names;
+    names.reserve(attrs.size());
+    for (const auto* attr : attrs) {
+        names.push_back(attr->name());
+    }
+    return names;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std::vector<express::Base> get_inverse_attribute_by_name(
+    express::Base& self,
+    const std::string& name
+) {
+    auto entity = self.as<express::Entity>();
+    if (entity) {
+        return to_base_vector(entity.get_inverse(name));
+    }
+    throw ifcopenshell::exception("Only entities with ids are supported for inverse attributes.");
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(attribute_value) bool is_null(attribute_value& self) {
+    return self.isNull();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(attribute_value) IFCAPI_STATIC const char* type(attribute_value& self) {
+    return ifcopenshell::argument_type_to_string(self.type());
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(attribute_value) std::size_t size(attribute_value& self) {
+    return self.size();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(attribute_value) int as_int32(attribute_value& self) {
+    return static_cast<int>(self);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(attribute_value) bool as_bool(attribute_value& self) {
+    return static_cast<bool>(self);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(attribute_value) double as_double(attribute_value& self) {
+    return static_cast<double>(self);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(attribute_value) std::vector<int> as_int32_list(attribute_value& self) {
+    return static_cast<std::vector<int>>(self);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(attribute_value) std::vector<double> as_double_list(attribute_value& self) {
+    return static_cast<std::vector<double>>(self);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(attribute_value) std::vector<std::vector<int>> as_int32_list_list(attribute_value& self) {
+    return static_cast<std::vector<std::vector<int>>>(self);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(attribute_value) std::vector<std::vector<int>> as_instance_id_list_list(attribute_value& self) {
+    if (self.isNull() || self.type() != ifcopenshell::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE) {
+        throw ifcopenshell::exception("Attribute is not an aggregate of aggregate of entity instance");
+    }
+    auto aggregate = static_cast<std::vector<std::vector<express::Base>>>(self);
+    std::vector<std::vector<int>> result;
+    result.reserve(aggregate.size());
+    for (const auto& group : aggregate) {
+        std::vector<int> row;
+        row.reserve(group.size());
+        for (const auto& instance : group) {
+            if (!instance) {
+                throw ifcopenshell::exception("Aggregate contains a null entity instance");
+            }
+            row.push_back(static_cast<int>(instance.id()));
+        }
+        result.push_back(std::move(row));
+    }
+    return result;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(attribute_value) std::vector<std::vector<double>> as_double_list_list(attribute_value& self) {
+    return static_cast<std::vector<std::vector<double>>>(self);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(attribute_value) std::vector<std::string> as_string_list(attribute_value& self) {
+    return static_cast<std::vector<std::string>>(self);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(attribute_value) std::string as_string(attribute_value& self) {
+    return static_cast<std::string>(self);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(attribute_value) IFCAPI_NULLABLE express::Base as_instance(attribute_value& self) {
+    return static_cast<express::Base>(self);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(attribute_value) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std::vector<express::Base> as_instance_list(
+    attribute_value& self
+) {
+    return static_cast<std::vector<express::Base>>(self);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(attribute_value) std::string as_enumeration_value(attribute_value& self) {
+    return std::string(static_cast<enumeration_reference>(self).value());
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(attribute_value) std::size_t as_enumeration_index(attribute_value& self) {
+    return static_cast<enumeration_reference>(self).index();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(attribute_value) IFCAPI_NULLABLE ifcopenshell::enumeration_type* as_enumeration_type(attribute_value& self) {
+    return const_cast<ifcopenshell::enumeration_type*>(static_cast<enumeration_reference>(self).enumeration());
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(header) std::string write(ifcopenshell::spf_header* self) {
+    std::ostringstream stream;
+    self->write(stream);
+    return stream.str();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(select_type) std::vector<std::string> select_list_names(ifcopenshell::select_type* self) {
+    std::vector<std::string> names;
+    names.reserve(self->select_list().size());
+    for (const auto* decl : self->select_list()) {
+        names.push_back(decl->name());
+    }
+    return names;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(type_declaration) std::vector<std::string> argument_types(ifcopenshell::type_declaration* self) {
+    std::vector<std::string> result;
+    auto argument_type = ifcopenshell::Argument_UNKNOWN;
+    auto* declared_type = self->declared_type();
+    if (declared_type != nullptr) {
+        argument_type = ifcopenshell::from_parameter_type(declared_type);
+    }
+    result.push_back(ifcopenshell::argument_type_to_string(argument_type));
+    return result;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(enumeration) std::vector<std::string> argument_types(ifcopenshell::enumeration_type* self) {
+    return std::vector<std::string>{ifcopenshell::argument_type_to_string(ifcopenshell::Argument_STRING)};
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(parameter_type) IFCAPI_STATIC const char* kind(ifcopenshell::parameter_type* self) {
+    if (self->as_named_type()) {
+        return "NAMED";
+    }
+    if (self->as_simple_type()) {
+        return "SIMPLE";
+    }
+    if (self->as_aggregation_type()) {
+        return "AGGREGATION";
+    }
+    throw std::runtime_error("Unknown parameter type.");
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(simple_type) IFCAPI_STATIC const char* kind(ifcopenshell::simple_type* self) {
+    switch (self->declared_type()) {
+    case ifcopenshell::simple_type::binary_type:
+        return "BINARY";
+    case ifcopenshell::simple_type::boolean_type:
+        return "BOOLEAN";
+    case ifcopenshell::simple_type::integer_type:
+        return "INTEGER";
+    case ifcopenshell::simple_type::logical_type:
+        return "LOGICAL";
+    case ifcopenshell::simple_type::number_type:
+        return "NUMBER";
+    case ifcopenshell::simple_type::real_type:
+        return "REAL";
+    case ifcopenshell::simple_type::string_type:
+        return "STRING";
+    case ifcopenshell::simple_type::datatype_COUNT:
+        break;
+    }
+    throw std::runtime_error("Unknown simple type.");
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(aggregation_type) int type_of_aggregation(ifcopenshell::aggregation_type* self) {
+    return static_cast<int>(self->type_of_aggregation());
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(aggregation_type) IFCAPI_STATIC const char* type_of_aggregation_string(
+    ifcopenshell::aggregation_type* self
+) {
+    switch (self->type_of_aggregation()) {
+    case ifcopenshell::aggregation_type::array_type:
+        return "array";
+    case ifcopenshell::aggregation_type::bag_type:
+        return "bag";
+    case ifcopenshell::aggregation_type::list_type:
+        return "list";
+    case ifcopenshell::aggregation_type::set_type:
+        return "set";
+    }
+    throw std::runtime_error("Unknown aggregation type.");
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(inverse_attribute) int type_of_aggregation(ifcopenshell::inverse_attribute* self) {
+    return static_cast<int>(self->type_of_aggregation());
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(inverse_attribute) IFCAPI_STATIC const char* type_of_aggregation_string(
+    ifcopenshell::inverse_attribute* self
+) {
+    switch (self->type_of_aggregation()) {
+    case ifcopenshell::inverse_attribute::bag_type:
+        return "bag";
+    case ifcopenshell::inverse_attribute::set_type:
+        return "set";
+    case ifcopenshell::inverse_attribute::unspecified_type:
+        return "";
+    }
+    throw std::runtime_error("Unknown inverse aggregation type.");
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(entity) std::vector<std::string> argument_types(ifcopenshell::entity* self) {
+    std::vector<std::string> result;
+    size_t index = 0;
+    for (const auto* attr : self->all_attributes()) {
+        auto argument_type = ifcopenshell::Argument_UNKNOWN;
+        auto* parameter_type = attr->type_of_attribute();
+        if (self->derived()[index++]) {
+            argument_type = ifcopenshell::Argument_DERIVED;
+        } else if (parameter_type != nullptr) {
+            argument_type = ifcopenshell::from_parameter_type(parameter_type);
+        }
+        result.push_back(ifcopenshell::argument_type_to_string(argument_type));
+    }
+    return result;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(aggregation_type) IFCAPI_STATIC const char* kind(ifcopenshell::aggregation_type* self) {
+    switch (self->type_of_aggregation()) {
+    case ifcopenshell::aggregation_type::array_type:
+        return "ARRAY";
+    case ifcopenshell::aggregation_type::bag_type:
+        return "BAG";
+    case ifcopenshell::aggregation_type::list_type:
+        return "LIST";
+    case ifcopenshell::aggregation_type::set_type:
+        return "SET";
+    }
+    throw std::runtime_error("Unknown aggregation type.");
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance_list) std::size_t size(std::vector<express::Base>& self) {
+    return self.size();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(instance_list) IFCAPI_NULLABLE express::Base get(
+    std::vector<express::Base>& self,
+    std::size_t index
+) {
+    if (index >= self.size()) {
+        throw std::out_of_range("Instance list index out of range.");
+    }
+    return self[static_cast<int>(index)];
+}
+
+IFCAPI_EXPORT int operator_token_ptr(std::size_t start, const std::string& data) {
+    const char value = data.empty() ? '$' : data.front();
+    return static_cast<int>(ifcopenshell::token(start, value).type);
+}
+
+IFCAPI_EXPORT int general_token_ptr(std::size_t start, const std::string& token) {
+    return static_cast<int>(ifcopenshell::token(start, ifcopenshell::token::Token_STRING, token).type);
+}
+
+} // namespace ifcparse::bindings
+
+#endif // IFCWRAP_BINDING_GENERATOR_IFCPARSE_SPEC_HPP

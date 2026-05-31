@@ -137,6 +137,7 @@ try:
         ScalarSemanticType,
         SequenceSemanticType,
         StringSemanticType,
+        UnsupportedSemanticType,
         VoidSemanticType,
         analyze_cpp_type,
         semantic_leaf_type,
@@ -151,6 +152,7 @@ except ImportError:  # pragma: no cover - script execution fallback
         ScalarSemanticType,
         SequenceSemanticType,
         StringSemanticType,
+        UnsupportedSemanticType,
         VoidSemanticType,
         analyze_cpp_type,
         semantic_leaf_type,
@@ -1947,6 +1949,16 @@ def _infer_type(
                 sequence_spec = _lower_generic_sequence_type(reparsed_sequence, handles=handles, ownership=ownership)
         if sequence_spec is not None:
             return sequence_spec
+    if (
+        isinstance(semantic, UnsupportedSemanticType)
+        and semantic.reason == "opaque void pointer/reference"
+        and semantic.cpp_type.strip().startswith("const void")
+    ):
+        return TypeSpec(
+            kind="opaque_ptr",
+            cpp_type=_cpp_type_storage(cpp_type),
+            nullable=nullable_pointers and _normalize_cpp_type(semantic.cpp_type).endswith("*"),
+        )
 
     msg = f"Unsupported discovered type '{_cpp_type_debug(cpp_type)}'"
     raise ValueError(msg)
@@ -4321,6 +4333,7 @@ def load_merged_specs(
     discovery_include_dirs: tuple[Path, ...] = (),
     discovery_defines: tuple[str, ...] = (),
     discovery_clang_args: tuple[str, ...] = (),
+    existing_handles: dict[str, HandleSpec] | None = None,
 ) -> MergedBindingSpec:
     """Load multiple binding specs and merge them into a unified spec.
     
@@ -4331,7 +4344,7 @@ def load_merged_specs(
         "spec.merge.start",
         f"specs={len(spec_paths)} module={module} compile_commands={debug_path(compile_commands_path)}",
     )
-    all_handles: dict[str, HandleSpec] = {}
+    all_handles: dict[str, HandleSpec] = dict(existing_handles or {})
     all_headers: list[str] = []
     all_result_structs: dict[str, ResultStructSpec] = {}
     all_functions: list[CallSpec] = []

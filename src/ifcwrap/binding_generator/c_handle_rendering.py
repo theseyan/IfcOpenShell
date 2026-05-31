@@ -41,7 +41,12 @@ def _wrap_handle_expr(type_spec: TypeSpec, expr: str, spec: BindingIR) -> str:
     if handle.ptr_type == "value":
         normalized_cpp_type = _normalize_cpp_type(type_spec.cpp_type)
         if handle.cpp_type.startswith("std::vector<"):
-            return f"new {handle.c_type}{{{handle.cpp_type}({expr}.begin(), {expr}.end())}}"
+            if normalized_cpp_type == _normalize_cpp_type(handle.cpp_type):
+                return f"new {handle.c_type}{{{expr}}}"
+            return (
+                f"new {handle.c_type}{{([&]() {{ auto tmp = {expr}; "
+                f"return {handle.cpp_type}(tmp.begin(), tmp.end()); }})()}}"
+            )
         return f"new {handle.c_type}{{{expr}}}"
     normalized_cpp_type = _normalize_cpp_type(type_spec.cpp_type)
     if normalized_cpp_type.startswith("std::unique_ptr<"):

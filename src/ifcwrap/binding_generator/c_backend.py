@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Union
+from typing import Sequence, Union
 
 try:
     from .authored_spec import AuthoredBindingSpec, MergedBindingSpec, load_authored_spec, load_merged_specs
@@ -11,6 +12,7 @@ try:
         BindingIR,
         lower_binding_spec,
     )
+    from .binding_model import HandleSpec
     from .c_call_rendering import _render_call_impl, _render_result_assignment
     from .c_sequence_helpers import (
         _render_common_type_impls,
@@ -45,6 +47,7 @@ except ImportError:  # pragma: no cover - script execution fallback
         BindingIR,
         lower_binding_spec,
     )
+    from binding_model import HandleSpec
     from c_call_rendering import _render_call_impl, _render_result_assignment
     from c_sequence_helpers import (
         _render_common_type_impls,
@@ -78,6 +81,61 @@ except ImportError:  # pragma: no cover - script execution fallback
 SourceBindingSpec = Union[AuthoredBindingSpec, MergedBindingSpec]
 
 
+@dataclass(frozen=True)
+class CppSpecConfig:
+    path: Path
+    namespace: str
+    c_prefix: str | None = None
+
+
+def _normalize_repeated_cpp_option(
+    values: str | Sequence[str] | None,
+    count: int,
+    *,
+    option_name: str,
+    required: bool,
+) -> tuple[str | None, ...]:
+    if isinstance(values, str):
+        normalized: tuple[str, ...] = (values,)
+    else:
+        normalized = tuple(values or ())
+    if not normalized:
+        if required:
+            msg = f"{option_name} is required when cpp_spec_paths are provided"
+            raise ValueError(msg)
+        return (None,) * count
+    if len(normalized) == 1:
+        return normalized * count
+    if len(normalized) != count:
+        msg = f"{option_name} must be provided once or exactly once per --cpp-spec"
+        raise ValueError(msg)
+    return normalized
+
+
+def _cpp_spec_configs(
+    spec_paths: Sequence[Path],
+    namespaces: str | Sequence[str] | None,
+    c_prefixes: str | Sequence[str] | None,
+) -> tuple[CppSpecConfig, ...]:
+    namespace_values = _normalize_repeated_cpp_option(
+        namespaces,
+        len(spec_paths),
+        option_name="cpp_spec_namespace",
+        required=True,
+    )
+    c_prefix_values = _normalize_repeated_cpp_option(
+        c_prefixes,
+        len(spec_paths),
+        option_name="cpp_spec_c_prefix",
+        required=False,
+    )
+    return tuple(
+        CppSpecConfig(path=path, namespace=namespace, c_prefix=c_prefix)
+        for path, namespace, c_prefix in zip(spec_paths, namespace_values, c_prefix_values)
+        if namespace is not None
+    )
+
+
 def _cpp_spec_public_header(spec_path: Path, include_dirs: tuple[Path, ...]) -> str:
     resolved = spec_path.resolve()
     for include_dir in include_dirs:
@@ -90,9 +148,7 @@ def _cpp_spec_public_header(spec_path: Path, include_dirs: tuple[Path, ...]) -> 
 
 def _merge_cpp_specs(
     base: MergedBindingSpec,
-    spec_paths: list[Path],
-    namespace: str,
-    c_prefix: str | None,
+    configs: Sequence[CppSpecConfig],
     compile_commands_path: Path | None,
     *,
     discovery_include_dirs: tuple[Path, ...] = (),
@@ -100,7 +156,7 @@ def _merge_cpp_specs(
     discovery_clang_args: tuple[str, ...] = (),
 ) -> MergedBindingSpec:
     environment = _cpp_spec_environment(
-        compile_commands_path,
+        None,
         discovery_include_dirs=discovery_include_dirs,
         discovery_defines=discovery_defines,
         discovery_clang_args=discovery_clang_args,
@@ -110,18 +166,18 @@ def _merge_cpp_specs(
     calls = list(base.functions)
     existing_c_names = {call.c_name for call in (*base.functions, *base.methods)}
     public_headers = list(base.public_headers)
-    for spec_path in spec_paths:
-        public_header = _cpp_spec_public_header(spec_path, discovery_include_dirs)
+    for config in configs:
+        public_header = _cpp_spec_public_header(config.path, discovery_include_dirs)
         if public_header not in public_headers:
             public_headers.append(public_header)
 
-        for handle_name, handle in lower_cpp_spec_handles_to_specs(discover_cpp_spec_handles(spec_path)).items():
+        for handle_name, handle in lower_cpp_spec_handles_to_specs(discover_cpp_spec_handles(config.path)).items():
             if handle_name in handles and handles[handle_name] != handle:
                 msg = f"C++ spec handle '{handle_name}' is declared with conflicting metadata"
                 raise ValueError(msg)
             handles[handle_name] = handle
         for struct_name, struct in lower_cpp_spec_result_structs_to_specs(
-            discover_cpp_spec_result_structs(spec_path, namespace),
+            discover_cpp_spec_result_structs(config.path, config.namespace),
             handles,
         ).items():
             if struct_name in result_structs and result_structs[struct_name] != struct:
@@ -131,13 +187,13 @@ def _merge_cpp_specs(
         for call in lower_cpp_spec_functions_to_calls(
             discover_cpp_spec_functions(
                 environment,
-                spec_path,
-                namespace,
-                contract_headers=discover_cpp_spec_contract_headers(spec_path, discovery_include_dirs),
+                config.path,
+                config.namespace,
+                contract_headers=discover_cpp_spec_contract_headers(config.path, discovery_include_dirs),
             ),
             handles,
             result_structs,
-            c_prefix=c_prefix,
+            c_prefix=config.c_prefix,
         ):
             if call.c_name in existing_c_names:
                 msg = f"C++ spec export '{call.c_name}' duplicates an existing generated C symbol"
@@ -323,14 +379,22 @@ def generate_merged(
     discovery_defines: tuple[str, ...] = (),
     discovery_clang_args: tuple[str, ...] = (),
     cpp_spec_paths: list[Path] | None = None,
-    cpp_spec_namespace: str | None = None,
-    cpp_spec_c_prefix: str | None = None,
+    cpp_spec_namespace: str | Sequence[str] | None = None,
+    cpp_spec_c_prefix: str | Sequence[str] | None = None,
 ) -> None:
     """Generate bindings from multiple specs merged together."""
     debug_log(
         "c_backend.generate_merged.start",
         f"specs={len(spec_paths)} header_out={debug_path(header_out)} cpp_out={debug_path(cpp_out)} internal_header_out={debug_path(internal_header_out)} compile_commands={debug_path(compile_commands_path)}",
     )
+    cpp_spec_configs = _cpp_spec_configs(cpp_spec_paths, cpp_spec_namespace, cpp_spec_c_prefix) if cpp_spec_paths else ()
+    cpp_spec_handles: dict[str, HandleSpec] = {}
+    for config in cpp_spec_configs:
+        for handle_name, handle in lower_cpp_spec_handles_to_specs(discover_cpp_spec_handles(config.path)).items():
+            if handle_name in cpp_spec_handles and cpp_spec_handles[handle_name] != handle:
+                msg = f"C++ spec handle '{handle_name}' is declared with conflicting metadata"
+                raise ValueError(msg)
+            cpp_spec_handles[handle_name] = handle
     merged_spec = load_merged_specs(
         spec_paths,
         module,
@@ -339,16 +403,12 @@ def generate_merged(
         discovery_include_dirs=discovery_include_dirs,
         discovery_defines=discovery_defines,
         discovery_clang_args=discovery_clang_args,
+        existing_handles=cpp_spec_handles,
     )
-    if cpp_spec_paths:
-        if cpp_spec_namespace is None:
-            msg = "cpp_spec_namespace is required when cpp_spec_paths are provided"
-            raise ValueError(msg)
+    if cpp_spec_configs:
         merged_spec = _merge_cpp_specs(
             merged_spec,
-            cpp_spec_paths,
-            cpp_spec_namespace,
-            cpp_spec_c_prefix,
+            cpp_spec_configs,
             compile_commands_path,
             discovery_include_dirs=discovery_include_dirs,
             discovery_defines=discovery_defines,
@@ -388,7 +448,7 @@ def _cpp_spec_environment(
 
 def generate_cpp_specs(
     spec_paths: list[Path],
-    namespace: str,
+    namespace: str | Sequence[str],
     module: str,
     c_prefix: str,
     header_out: Path,
@@ -399,11 +459,12 @@ def generate_cpp_specs(
     discovery_include_dirs: tuple[Path, ...] = (),
     discovery_defines: tuple[str, ...] = (),
     discovery_clang_args: tuple[str, ...] = (),
-    function_c_prefix: str | None = None,
+    function_c_prefix: str | Sequence[str] | None = None,
 ) -> None:
     """Generate bindings from explicit C++ spec translation units."""
+    configs = _cpp_spec_configs(spec_paths, namespace, function_c_prefix)
     environment = _cpp_spec_environment(
-        compile_commands_path,
+        None,
         discovery_include_dirs=discovery_include_dirs,
         discovery_defines=discovery_defines,
         discovery_clang_args=discovery_clang_args,
@@ -411,39 +472,43 @@ def generate_cpp_specs(
     handles = {}
     result_structs = {}
     calls = []
-    for spec_path in spec_paths:
-        for handle_name, handle in lower_cpp_spec_handles_to_specs(discover_cpp_spec_handles(spec_path)).items():
+    existing_c_names: set[str] = set()
+    for config in configs:
+        for handle_name, handle in lower_cpp_spec_handles_to_specs(discover_cpp_spec_handles(config.path)).items():
             if handle_name in handles and handles[handle_name] != handle:
                 msg = f"C++ spec handle '{handle_name}' is declared with conflicting metadata"
                 raise ValueError(msg)
             handles[handle_name] = handle
         for struct_name, struct in lower_cpp_spec_result_structs_to_specs(
-            discover_cpp_spec_result_structs(spec_path, namespace),
+            discover_cpp_spec_result_structs(config.path, config.namespace),
             handles,
         ).items():
             if struct_name in result_structs and result_structs[struct_name] != struct:
                 msg = f"C++ spec result struct '{struct_name}' is declared with conflicting metadata"
                 raise ValueError(msg)
             result_structs[struct_name] = struct
-        calls.extend(
-            lower_cpp_spec_functions_to_calls(
-                discover_cpp_spec_functions(
-                    environment,
-                    spec_path,
-                    namespace,
-                    contract_headers=discover_cpp_spec_contract_headers(spec_path, discovery_include_dirs),
-                ),
-                handles,
-                result_structs,
-                c_prefix=function_c_prefix,
-            )
-        )
+        for call in lower_cpp_spec_functions_to_calls(
+            discover_cpp_spec_functions(
+                environment,
+                config.path,
+                config.namespace,
+                contract_headers=discover_cpp_spec_contract_headers(config.path, discovery_include_dirs),
+            ),
+            handles,
+            result_structs,
+            c_prefix=config.c_prefix,
+        ):
+            if call.c_name in existing_c_names:
+                msg = f"C++ spec export '{call.c_name}' duplicates an existing generated C symbol"
+                raise ValueError(msg)
+            existing_c_names.add(call.c_name)
+            calls.append(call)
 
     spec = lower_binding_spec(
         SimpleNamespace(
             module=module,
             c_prefix=c_prefix,
-            public_headers=tuple(_cpp_spec_public_header(path, discovery_include_dirs) for path in spec_paths),
+            public_headers=tuple(_cpp_spec_public_header(config.path, discovery_include_dirs) for config in configs),
             public_header_plugins={},
             handles=handles,
             result_structs=result_structs,
@@ -480,16 +545,22 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--cpp-spec-namespace",
         type=str,
-        default=None,
-        help="Namespace containing exported C++ spec functions when using --cpp-spec.",
+        action="append",
+        default=[],
+        help=(
+            "Namespace containing exported C++ spec functions when using --cpp-spec. "
+            "Provide once for all C++ specs or once per --cpp-spec."
+        ),
     )
     parser.add_argument(
         "--cpp-spec-c-prefix",
         type=str,
-        default=None,
+        action="append",
+        default=[],
         help=(
             "Optional C symbol prefix to apply to C++ spec function names. "
-            "If omitted, C++ spec function names are used as exact C symbols."
+            "If omitted, C++ spec function names are used as exact C symbols. "
+            "Provide once for all C++ specs or once per --cpp-spec."
         ),
     )
     parser.add_argument("--header-out", type=Path, required=True, help="Output path for the generated C header.")
@@ -549,7 +620,7 @@ def _build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = _build_parser().parse_args()
     if args.cpp_spec and not args.spec:
-        if args.cpp_spec_namespace is None:
+        if not args.cpp_spec_namespace:
             msg = "--cpp-spec-namespace is required with --cpp-spec"
             raise ValueError(msg)
         generate_cpp_specs(
@@ -586,7 +657,7 @@ def main() -> int:
         )
     else:
         # Multiple specs - merge them
-        if args.cpp_spec and args.cpp_spec_namespace is None:
+        if args.cpp_spec and not args.cpp_spec_namespace:
             msg = "--cpp-spec-namespace is required with --cpp-spec"
             raise ValueError(msg)
         generate_merged(

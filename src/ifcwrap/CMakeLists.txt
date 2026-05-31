@@ -30,6 +30,7 @@ if(BUILD_IFCCAPI)
     set(IFCPARSE_CAPI_GENERATED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/generated")
     set(IFCPARSE_CAPI_SPEC "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/ifcparse.yml")
     set(IFCGEOM_CAPI_SPEC "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/ifcgeom.yml")
+    set(IFCPARSE_CAPI_CPP_SPEC "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/cpp/ifcparse.hpp")
     set(IFCAPI_CAPI_CPP_SPEC "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/cpp/ifcapi.hpp")
     set(IFCAPI_CAPI_CPP_SPEC_MACROS "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/cpp/spec_macros.h")
     set(IFCPARSE_CAPI_GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/c_backend.py")
@@ -141,8 +142,11 @@ if(BUILD_IFCCAPI)
                 ${Python_EXECUTABLE} "${IFCPARSE_CAPI_GENERATOR}"
                 --spec "${IFCPARSE_CAPI_SPEC}"
                 --spec "${IFCGEOM_CAPI_SPEC}"
+                --cpp-spec "${IFCPARSE_CAPI_CPP_SPEC}"
                 --cpp-spec "${IFCAPI_CAPI_CPP_SPEC}"
+                --cpp-spec-namespace "ifcparse::bindings"
                 --cpp-spec-namespace "ifcapi::bindings"
+                --cpp-spec-c-prefix "ifcopenshell_ifcparse"
                 --cpp-spec-c-prefix "ifcopenshell_ifcapi"
                 --header-out "${UNIFIED_CAPI_HEADER}"
                 --cpp-out "${UNIFIED_CAPI_CPP}"
@@ -154,6 +158,7 @@ if(BUILD_IFCCAPI)
             DEPENDS
                 "${IFCPARSE_CAPI_SPEC}"
                 "${IFCGEOM_CAPI_SPEC}"
+                "${IFCPARSE_CAPI_CPP_SPEC}"
                 "${IFCAPI_CAPI_CPP_SPEC}"
                 "${IFCAPI_CAPI_CPP_SPEC_MACROS}"
                 "${IFCPARSE_CAPI_GENERATOR}"

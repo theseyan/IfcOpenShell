@@ -14,7 +14,7 @@ from src.ifcwrap.binding_generator.authored_spec import (
     load_merged_specs,
 )
 from src.ifcwrap.binding_generator.binding_ir import DirectCallOp, lower_binding_spec
-from src.ifcwrap.binding_generator.c_backend import _merge_cpp_specs
+from src.ifcwrap.binding_generator.c_backend import CppSpecConfig, _merge_cpp_specs
 from src.ifcwrap.binding_generator.host_metadata import build_host_metadata
 from src.ifcwrap.binding_generator.python_ctypes_backend import render_python_ctypes
 
@@ -63,9 +63,10 @@ def _cpp_discovery_include_dirs() -> tuple[Path, ...]:
 def _merge_ifcapi_guid_cpp_spec(merged):
     return _merge_cpp_specs(
         merged,
-        _cpp_specs(),
-        "ifcapi::bindings",
-        "ifcopenshell_ifcapi",
+        tuple(
+            CppSpecConfig(path=path, namespace="ifcapi::bindings", c_prefix="ifcopenshell_ifcapi")
+            for path in _cpp_specs()
+        ),
         None,
         discovery_include_dirs=_cpp_discovery_include_dirs(),
     )

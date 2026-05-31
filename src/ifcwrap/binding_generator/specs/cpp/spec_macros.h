@@ -5,9 +5,13 @@
 #define IFCWRAP_BINDING_GENERATOR_SPEC_MACROS_H
 
 #define IFCAPI_EXPORT inline
+#define IFCAPI_METHOD(receiver)
 #define IFCAPI_OWNED
 #define IFCAPI_COPY
+#define IFCAPI_STATIC
 #define IFCAPI_NULLABLE
+#define IFCAPI_HANDLE_PARAM(handle)
+#define IFCAPI_HANDLE_RESULT(handle)
 #define IFCAPI_HANDLE(cpp_type, destructor, ...)
 #define IFCAPI_RESULT_STRUCT(...)
 

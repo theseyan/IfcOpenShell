@@ -382,36 +382,228 @@ void set_instance_attribute_from_attribute_value(express::Base* instance, size_t
 }
 } // namespace
 
-template <typename Value>
-static ifcopenshell_ifc_instance_list_t make_ifc_instance_list(const std::vector<Value>& values) {
-    auto** items = values.empty() ? nullptr : new ifcopenshell_ifc_instance_t*[values.size()];
-    size_t initialized = 0;
-    try {
-        for (size_t i = 0; i < values.size(); ++i) {
-            items[i] = new ifcopenshell_ifc_instance_t{express::Base(values[i])};
-            ++initialized;
-        }
-    } catch (...) {
-        for (size_t j = 0; j < initialized; ++j) { delete items[j]; }
-        delete[] items;
-        throw;
+namespace ifcopenshell {
+namespace capi {
+
+void set_feature(const std::string& name, bool value) {
+    if (name == "use_attribute_value_derived") {
+        feature_use_attribute_value_derived = value;
+        return;
     }
-    return ifcopenshell_ifc_instance_list_t{items, values.size()};
+    throw std::runtime_error("Invalid feature specification");
 }
 
-static std::vector<express::Base> to_cpp_ifc_instance_list(const ifcopenshell_ifc_instance_list_t* values) {
-    validate_list_items("ifc_instance_list", values->items, values->size);
-    std::vector<express::Base> result;
-    result.reserve(values->size);
-    for (size_t i = 0; i < values->size; ++i) {
-        auto* item = values->items[i];
-        if (item == nullptr) {
-            throw std::runtime_error("handle_list contains an invalid handle");
-        }
-        result.push_back(item->value);
+bool get_feature(const std::string& name) {
+    if (name == "use_attribute_value_derived") {
+        return feature_use_attribute_value_derived;
     }
-    return result;
+    throw std::runtime_error("Invalid feature specification");
 }
+
+std::string get_log() {
+    ensure_log_stream_initialized();
+    std::string log = ifcopenshell_log_stream.str();
+    ifcopenshell_log_stream.str("");
+    ifcopenshell_log_stream.clear();
+    return log;
+}
+
+void turn_on_detailed_logging() {
+    logger::set_output(&std::cout, &std::cout);
+    logger::verbosity(logger::LOG_DEBUG);
+}
+
+void turn_off_detailed_logging() {
+    ensure_log_stream_initialized();
+    logger::set_output(nullptr, &ifcopenshell_log_stream);
+    logger::verbosity(logger::LOG_WARNING);
+}
+
+void set_log_format_json() {
+    ensure_log_stream_initialized();
+    ifcopenshell_log_stream.str("");
+    ifcopenshell_log_stream.clear();
+    logger::output_format(logger::FMT_JSON);
+}
+
+void set_log_format_text() {
+    ensure_log_stream_initialized();
+    ifcopenshell_log_stream.str("");
+    ifcopenshell_log_stream.clear();
+    logger::output_format(logger::FMT_PLAIN);
+}
+
+std::string get_info_cpp(const express::Base& instance, bool include_identifier) {
+    return instance_to_info_json_string(instance, include_identifier);
+}
+
+std::string streamer_references(ifcopenshell::instance_streamer<>* streamer) {
+    return unresolved_references_to_json_string(streamer->references(), nullptr);
+}
+
+std::string streamer_inverses(ifcopenshell::instance_streamer<>* streamer) {
+    return inverses_to_json_string(streamer->inverses());
+}
+
+std::string streamer_read_instance_json(ifcopenshell::instance_streamer<>* streamer, bool type_as_declaration_instance) {
+    return instance_stream_read_instance_json(streamer, type_as_declaration_instance);
+}
+
+void unset_instance_argument_value(express::Base& instance, size_t index) {
+    ::unset_instance_argument(&instance, index);
+}
+
+void unset_instance_argument(express::Base& instance, size_t index) {
+    ::unset_instance_argument(&instance, index);
+}
+
+ifcopenshell::argument_type instance_attribute_type(const express::Base& instance, unsigned index) {
+    return ::helper_fn_attribute_type(&instance, index);
+}
+
+void set_instance_attribute_from_attribute_value(express::Base& instance, size_t index, const attribute_value& value) {
+    ::set_instance_attribute_from_attribute_value(&instance, index, value);
+}
+
+void set_instance_argument_bool(express::Base& instance, size_t index, bool value) {
+    set_instance_argument(&instance, index, value);
+}
+
+void set_instance_argument_int32(express::Base& instance, size_t index, int value) {
+    set_instance_argument(&instance, index, value);
+}
+
+void set_instance_argument_double(express::Base& instance, size_t index, double value) {
+    set_instance_argument(&instance, index, value);
+}
+
+void set_instance_argument_string(express::Base& instance, size_t index, const std::string& value) {
+    set_instance_argument(&instance, index, value);
+}
+
+void set_instance_argument_instance(express::Base& instance, size_t index, express::Base* value) {
+    set_instance_argument(&instance, index, value);
+}
+
+void set_instance_argument_instance_list(express::Base& instance, size_t index, std::vector<express::Base>* value) {
+    set_instance_argument(&instance, index, value);
+}
+
+void set_instance_argument_int32_list(express::Base& instance, size_t index, const std::vector<int>& value) {
+    set_instance_argument(&instance, index, value);
+}
+
+void set_instance_argument_double_list(express::Base& instance, size_t index, const std::vector<double>& value) {
+    set_instance_argument(&instance, index, value);
+}
+
+void set_instance_argument_string_list(express::Base& instance, size_t index, const std::vector<std::string>& value) {
+    set_instance_argument(&instance, index, value);
+}
+
+void set_instance_argument_int32_list_list(express::Base& instance, size_t index, const std::vector<std::vector<int>>& value) {
+    set_instance_argument(&instance, index, value);
+}
+
+void set_instance_argument_double_list_list(express::Base& instance, size_t index, const std::vector<std::vector<double>>& value) {
+    set_instance_argument(&instance, index, value);
+}
+
+void set_instance_argument_logical(express::Base& instance, size_t index, int value) {
+    ifcopenshell::argument_type arg_type = helper_fn_attribute_type(&instance, static_cast<unsigned>(index));
+    if (arg_type != ifcopenshell::Argument_LOGICAL) {
+        throw ifcopenshell::exception("Attribute not set");
+    }
+    boost::logic::tribool logical_value;
+    if (value == 0) {
+        logical_value = false;
+    } else if (value == 1) {
+        logical_value = true;
+    } else if (value == -1) {
+        logical_value = boost::logic::indeterminate;
+    } else {
+        throw ifcopenshell::exception("Logical value must be -1, 0, or 1");
+    }
+    set_instance_argument(&instance, index, logical_value);
+}
+
+void set_instance_argument_aggregate_of_aggregate_of_entity_instance(
+    express::Base& instance,
+    size_t index,
+    const std::vector<std::vector<int>>& value
+) {
+    ifcopenshell::argument_type arg_type = helper_fn_attribute_type(&instance, static_cast<unsigned>(index));
+    if (arg_type != ifcopenshell::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE) {
+        throw ifcopenshell::exception("Attribute not set");
+    }
+    if (instance.file() == nullptr) {
+        throw ifcopenshell::exception("Instance is not attached to a file.");
+    }
+    std::vector<std::vector<express::Base>> aggregate;
+    for (const auto& group : value) {
+        std::vector<express::Base> instances;
+        instances.reserve(group.size());
+        for (int identifier : group) {
+            auto resolved = instance.file()->instance_by_id(identifier);
+            if (!resolved) {
+                throw ifcopenshell::exception("Unable to resolve instance id " + std::to_string(identifier));
+            }
+            instances.push_back(resolved);
+        }
+        aggregate.push_back(std::move(instances));
+    }
+    set_instance_argument(&instance, index, aggregate);
+}
+
+void set_instance_argument_enumeration(
+    express::Base& instance,
+    size_t index,
+    const ifcopenshell::enumeration_type* enumeration,
+    size_t enumeration_index
+) {
+    set_instance_argument(&instance, index, enumeration_reference(enumeration, enumeration_index));
+}
+
+bool set_instance_argument_enumeration_by_name(express::Base& instance, size_t index, const std::string& value) {
+    auto* entity_decl = instance.declaration().as_entity();
+    if (entity_decl == nullptr) {
+        return false;
+    }
+    const auto attrs = entity_decl->all_attributes();
+    if (index >= attrs.size()) {
+        return false;
+    }
+    const ifcopenshell::parameter_type* parameter_type = attrs[index]->type_of_attribute();
+    const ifcopenshell::enumeration_type* enumeration = nullptr;
+    while (parameter_type != nullptr) {
+        auto* named = parameter_type->as_named_type();
+        if (named == nullptr) {
+            break;
+        }
+        auto* declaration = named->declared_type();
+        if ((enumeration = declaration->as_enumeration_type()) != nullptr) {
+            break;
+        }
+        auto* type_declaration = declaration->as_type_declaration();
+        if (type_declaration == nullptr) {
+            break;
+        }
+        parameter_type = type_declaration->declared_type();
+    }
+    if (enumeration == nullptr) {
+        return false;
+    }
+    const auto& items = enumeration->enumeration_items();
+    auto it = std::find(items.begin(), items.end(), value);
+    if (it == items.end()) {
+        throw ifcopenshell::exception("'" + value + "' is not a valid value for enumeration " + enumeration->name());
+    }
+    set_instance_argument(&instance, index, enumeration_reference(enumeration, static_cast<size_t>(std::distance(items.begin(), it))));
+    return true;
+}
+
+} // namespace capi
+} // namespace ifcopenshell
 
 static ifcopenshell_ifcgeom_conversion_result_shape_list_t make_ifcgeom_conversion_result_shape_list(const std::vector<IfcGeom::ConversionResultShape*>& values) {
     auto** items = values.empty() ? nullptr : new ifcopenshell_ifcgeom_conversion_result_shape_t*[values.size()];
@@ -533,6 +725,37 @@ static std::vector<const svgfill::polygon_2*> to_cpp_ifcgeom_svgfill_polygon_lis
             throw std::runtime_error("handle_list contains an invalid handle");
         }
         result.push_back(item->ptr);
+    }
+    return result;
+}
+
+template <typename Value>
+static ifcopenshell_ifc_instance_list_t make_ifc_instance_list(const std::vector<Value>& values) {
+    auto** items = values.empty() ? nullptr : new ifcopenshell_ifc_instance_t*[values.size()];
+    size_t initialized = 0;
+    try {
+        for (size_t i = 0; i < values.size(); ++i) {
+            items[i] = new ifcopenshell_ifc_instance_t{express::Base(values[i])};
+            ++initialized;
+        }
+    } catch (...) {
+        for (size_t j = 0; j < initialized; ++j) { delete items[j]; }
+        delete[] items;
+        throw;
+    }
+    return ifcopenshell_ifc_instance_list_t{items, values.size()};
+}
+
+static std::vector<express::Base> to_cpp_ifc_instance_list(const ifcopenshell_ifc_instance_list_t* values) {
+    validate_list_items("ifc_instance_list", values->items, values->size);
+    std::vector<express::Base> result;
+    result.reserve(values->size);
+    for (size_t i = 0; i < values->size; ++i) {
+        auto* item = values->items[i];
+        if (item == nullptr) {
+            throw std::runtime_error("handle_list contains an invalid handle");
+        }
+        result.push_back(item->value);
     }
     return result;
 }
@@ -1154,24 +1377,6 @@ static std::vector<const IfcGeom::Element*> to_cpp_ifcgeom_element_list(const if
     }
     return result;
 }
-static ifcopenshell_ifc_instance_list_list_t make_ifc_instance_list_list(const std::vector<std::vector<express::Base>>& values) {
-    auto* items = values.empty() ? nullptr : new ifcopenshell_ifc_instance_list_t[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {
-        items[i] = make_ifc_instance_list(values[i]);
-    }
-    return ifcopenshell_ifc_instance_list_list_t{items, values.size()};
-}
-
-static std::vector<std::vector<express::Base>> to_cpp_ifc_instance_list_list(const ifcopenshell_ifc_instance_list_list_t* values) {
-    validate_list_items("ifc_instance_list_list", values->items, values->size);
-    std::vector<std::vector<express::Base>> result;
-    result.reserve(values->size);
-    for (size_t i = 0; i < values->size; ++i) {
-        result.push_back(to_cpp_ifc_instance_list(&values->items[i]));
-    }
-    return result;
-}
-
 static ifcopenshell_ifcgeom_conversion_result_shape_list_list_t make_ifcgeom_conversion_result_shape_list_list(const std::vector<std::vector<IfcGeom::ConversionResultShape*>>& values) {
     auto* items = values.empty() ? nullptr : new ifcopenshell_ifcgeom_conversion_result_shape_list_t[values.size()];
     for (size_t i = 0; i < values.size(); ++i) {
@@ -1220,6 +1425,24 @@ static std::vector<std::vector<const svgfill::polygon_2*>> to_cpp_ifcgeom_svgfil
     result.reserve(values->size);
     for (size_t i = 0; i < values->size; ++i) {
         result.push_back(to_cpp_ifcgeom_svgfill_polygon_list(&values->items[i]));
+    }
+    return result;
+}
+
+static ifcopenshell_ifc_instance_list_list_t make_ifc_instance_list_list(const std::vector<std::vector<express::Base>>& values) {
+    auto* items = values.empty() ? nullptr : new ifcopenshell_ifc_instance_list_t[values.size()];
+    for (size_t i = 0; i < values.size(); ++i) {
+        items[i] = make_ifc_instance_list(values[i]);
+    }
+    return ifcopenshell_ifc_instance_list_list_t{items, values.size()};
+}
+
+static std::vector<std::vector<express::Base>> to_cpp_ifc_instance_list_list(const ifcopenshell_ifc_instance_list_list_t* values) {
+    validate_list_items("ifc_instance_list_list", values->items, values->size);
+    std::vector<std::vector<express::Base>> result;
+    result.reserve(values->size);
+    for (size_t i = 0; i < values->size; ++i) {
+        result.push_back(to_cpp_ifc_instance_list(&values->items[i]));
     }
     return result;
 }
@@ -1506,21 +1729,21 @@ void ifcopenshell_string_destroy(ifcopenshell_string_t* value) {
     value->owned = false;
 }
 
-void ifcopenshell_string_list_destroy(ifcopenshell_string_list_t* value) {
+void ifcopenshell_double_list_destroy(ifcopenshell_double_list_t* value) {
     if (value == nullptr || value->items == nullptr) {
         return;
-    }
-    for (size_t i = 0; i < value->size; ++i) {
-        ifcopenshell_string_destroy(&value->items[i]);
     }
     delete[] value->items;
     value->items = nullptr;
     value->size = 0;
 }
 
-void ifcopenshell_double_list_destroy(ifcopenshell_double_list_t* value) {
+void ifcopenshell_string_list_destroy(ifcopenshell_string_list_t* value) {
     if (value == nullptr || value->items == nullptr) {
         return;
+    }
+    for (size_t i = 0; i < value->size; ++i) {
+        ifcopenshell_string_destroy(&value->items[i]);
     }
     delete[] value->items;
     value->items = nullptr;
@@ -1548,24 +1771,33 @@ void ifcopenshell_double_list_list_destroy(ifcopenshell_double_list_list_t* valu
     value->size = 0;
 }
 
-void ifcopenshell_double_list_list_list_destroy(ifcopenshell_double_list_list_list_t* value) {
-    if (value == nullptr || value->items == nullptr) {
-        return;
-    }
-    for (size_t i = 0; i < value->size; ++i) {
-        ifcopenshell_double_list_list_destroy(&value->items[i]);
-    }
-    delete[] value->items;
-    value->items = nullptr;
-    value->size = 0;
-}
-
 void ifcopenshell_int32_list_list_destroy(ifcopenshell_int32_list_list_t* value) {
     if (value == nullptr || value->items == nullptr) {
         return;
     }
     for (size_t i = 0; i < value->size; ++i) {
         ifcopenshell_int32_list_destroy(&value->items[i]);
+    }
+    delete[] value->items;
+    value->items = nullptr;
+    value->size = 0;
+}
+
+void ifcopenshell_uint32_list_destroy(ifcopenshell_uint32_list_t* value) {
+    if (value == nullptr || value->items == nullptr) {
+        return;
+    }
+    delete[] value->items;
+    value->items = nullptr;
+    value->size = 0;
+}
+
+void ifcopenshell_double_list_list_list_destroy(ifcopenshell_double_list_list_list_t* value) {
+    if (value == nullptr || value->items == nullptr) {
+        return;
+    }
+    for (size_t i = 0; i < value->size; ++i) {
+        ifcopenshell_double_list_list_destroy(&value->items[i]);
     }
     delete[] value->items;
     value->items = nullptr;
@@ -1614,7 +1846,7 @@ void ifcopenshell_bool_list_destroy(ifcopenshell_bool_list_t* value) {
     value->size = 0;
 }
 
-void ifcopenshell_uint32_list_destroy(ifcopenshell_uint32_list_t* value) {
+void ifcopenshell_uint8_list_destroy(ifcopenshell_uint8_list_t* value) {
     if (value == nullptr || value->items == nullptr) {
         return;
     }
@@ -1623,13 +1855,20 @@ void ifcopenshell_uint32_list_destroy(ifcopenshell_uint32_list_t* value) {
     value->size = 0;
 }
 
-void ifcopenshell_uint8_list_destroy(ifcopenshell_uint8_list_t* value) {
-    if (value == nullptr || value->items == nullptr) {
-        return;
+static ifcopenshell_double_list_t make_double_list(const std::vector<double>& values) {
+    auto* items = values.empty() ? nullptr : new double[values.size()];
+    for (size_t i = 0; i < values.size(); ++i) {
+        items[i] = values[i];
     }
-    delete[] value->items;
-    value->items = nullptr;
-    value->size = 0;
+    return ifcopenshell_double_list_t{items, values.size()};
+}
+
+static std::vector<double> to_cpp_double_list(const ifcopenshell_double_list_t* value) {
+    validate_list_items("double_list", value->items, value->size);
+    if (value->size == 0) {
+        return {};
+    }
+    return std::vector<double>(value->items, value->items + value->size);
 }
 
 static ifcopenshell_string_list_t make_string_list(const std::vector<std::string>& values) {
@@ -1662,22 +1901,6 @@ static std::vector<std::string> to_cpp_string_list(const ifcopenshell_string_lis
         result.emplace_back(item.data == nullptr ? "" : item.data, item.size);
     }
     return result;
-}
-
-static ifcopenshell_double_list_t make_double_list(const std::vector<double>& values) {
-    auto* items = values.empty() ? nullptr : new double[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {
-        items[i] = values[i];
-    }
-    return ifcopenshell_double_list_t{items, values.size()};
-}
-
-static std::vector<double> to_cpp_double_list(const ifcopenshell_double_list_t* value) {
-    validate_list_items("double_list", value->items, value->size);
-    if (value->size == 0) {
-        return {};
-    }
-    return std::vector<double>(value->items, value->items + value->size);
 }
 
 static ifcopenshell_int32_list_t make_int32_list(const std::vector<int>& values) {
@@ -1714,24 +1937,6 @@ static std::vector<std::vector<double>> to_cpp_double_list_list(const ifcopenshe
     return result;
 }
 
-static ifcopenshell_double_list_list_list_t make_double_list_list_list(const std::vector<std::vector<std::vector<double>>>& values) {
-    auto* items = values.empty() ? nullptr : new ifcopenshell_double_list_list_t[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {
-        items[i] = make_double_list_list(values[i]);
-    }
-    return ifcopenshell_double_list_list_list_t{items, values.size()};
-}
-
-static std::vector<std::vector<std::vector<double>>> to_cpp_double_list_list_list(const ifcopenshell_double_list_list_list_t* value) {
-    validate_list_items("double_list_list_list", value->items, value->size);
-    std::vector<std::vector<std::vector<double>>> result;
-    result.reserve(value->size);
-    for (size_t i = 0; i < value->size; ++i) {
-        result.push_back(to_cpp_double_list_list(&value->items[i]));
-    }
-    return result;
-}
-
 static ifcopenshell_int32_list_list_t make_int32_list_list(const std::vector<std::vector<int>>& values) {
     auto* items = values.empty() ? nullptr : new ifcopenshell_int32_list_t[values.size()];
     for (size_t i = 0; i < values.size(); ++i) {
@@ -1746,6 +1951,40 @@ static std::vector<std::vector<int>> to_cpp_int32_list_list(const ifcopenshell_i
     result.reserve(value->size);
     for (size_t i = 0; i < value->size; ++i) {
         result.push_back(to_cpp_int32_list(&value->items[i]));
+    }
+    return result;
+}
+
+static ifcopenshell_uint32_list_t make_uint32_list(const std::vector<unsigned int>& values) {
+    auto* items = values.empty() ? nullptr : new uint32_t[values.size()];
+    for (size_t i = 0; i < values.size(); ++i) {
+        items[i] = static_cast<uint32_t>(values[i]);
+    }
+    return ifcopenshell_uint32_list_t{items, values.size()};
+}
+
+static std::vector<unsigned int> to_cpp_uint32_list(const ifcopenshell_uint32_list_t* value) {
+    validate_list_items("uint32_list", value->items, value->size);
+    if (value->size == 0) {
+        return {};
+    }
+    return std::vector<unsigned int>(value->items, value->items + value->size);
+}
+
+static ifcopenshell_double_list_list_list_t make_double_list_list_list(const std::vector<std::vector<std::vector<double>>>& values) {
+    auto* items = values.empty() ? nullptr : new ifcopenshell_double_list_list_t[values.size()];
+    for (size_t i = 0; i < values.size(); ++i) {
+        items[i] = make_double_list_list(values[i]);
+    }
+    return ifcopenshell_double_list_list_list_t{items, values.size()};
+}
+
+static std::vector<std::vector<std::vector<double>>> to_cpp_double_list_list_list(const ifcopenshell_double_list_list_list_t* value) {
+    validate_list_items("double_list_list_list", value->items, value->size);
+    std::vector<std::vector<std::vector<double>>> result;
+    result.reserve(value->size);
+    for (size_t i = 0; i < value->size; ++i) {
+        result.push_back(to_cpp_double_list_list(&value->items[i]));
     }
     return result;
 }
@@ -1818,22 +2057,6 @@ static std::vector<bool> to_cpp_bool_list(const ifcopenshell_bool_list_t* value)
         result.push_back(value->items[i]);
     }
     return result;
-}
-
-static ifcopenshell_uint32_list_t make_uint32_list(const std::vector<unsigned int>& values) {
-    auto* items = values.empty() ? nullptr : new uint32_t[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {
-        items[i] = static_cast<uint32_t>(values[i]);
-    }
-    return ifcopenshell_uint32_list_t{items, values.size()};
-}
-
-static std::vector<unsigned int> to_cpp_uint32_list(const ifcopenshell_uint32_list_t* value) {
-    validate_list_items("uint32_list", value->items, value->size);
-    if (value->size == 0) {
-        return {};
-    }
-    return std::vector<unsigned int>(value->items, value->items + value->size);
 }
 
 static ifcopenshell_uint8_list_t make_uint8_list(const std::vector<uint8_t>& values) {
@@ -2011,6 +2234,14 @@ void ifcopenshell_ifcparse_instance_list_destroy(ifcopenshell_ifcparse_instance_
     if (handle == nullptr) {
         return;
     }
+    delete handle;
+}
+
+void ifcopenshell_ifcapi_value_destroy(ifcopenshell_ifcapi_value_t* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    if (handle->owned && handle->ptr) { ifcapi::bindings::value_free(handle->ptr); }
     delete handle;
 }
 
@@ -2418,28 +2649,6 @@ void ifcopenshell_ifcgeom_function_item_evaluator_destroy(ifcopenshell_ifcgeom_f
     if (handle->owned && handle->ptr) { delete handle->ptr; }
     delete handle;
 }
-
-void ifcopenshell_ifcapi_value_destroy(ifcopenshell_ifcapi_value_t* handle) {
-    if (handle == nullptr) {
-        return;
-    }
-    if (handle->owned && handle->ptr) { ifcapi::bindings::value_free(handle->ptr); }
-    delete handle;
-}
-void ifcopenshell_ifc_instance_list_destroy(ifcopenshell_ifc_instance_list_t* value) {
-    if (value == nullptr || value->items == nullptr) {
-        return;
-    }
-    for (size_t i = 0; i < value->size; ++i) {
-        if (value->items[i] != nullptr) {
-            ifcopenshell_ifc_instance_destroy(value->items[i]);
-        }
-    }
-    delete[] value->items;
-    value->items = nullptr;
-    value->size = 0;
-}
-
 void ifcopenshell_ifcgeom_conversion_result_shape_list_destroy(ifcopenshell_ifcgeom_conversion_result_shape_list_t* value) {
     if (value == nullptr || value->items == nullptr) {
         return;
@@ -2461,6 +2670,20 @@ void ifcopenshell_ifcgeom_svgfill_polygon_list_destroy(ifcopenshell_ifcgeom_svgf
     for (size_t i = 0; i < value->size; ++i) {
         if (value->items[i] != nullptr) {
             ifcopenshell_ifcgeom_svgfill_polygon_destroy(value->items[i]);
+        }
+    }
+    delete[] value->items;
+    value->items = nullptr;
+    value->size = 0;
+}
+
+void ifcopenshell_ifc_instance_list_destroy(ifcopenshell_ifc_instance_list_t* value) {
+    if (value == nullptr || value->items == nullptr) {
+        return;
+    }
+    for (size_t i = 0; i < value->size; ++i) {
+        if (value->items[i] != nullptr) {
+            ifcopenshell_ifc_instance_destroy(value->items[i]);
         }
     }
     delete[] value->items;
@@ -2621,18 +2844,6 @@ void ifcopenshell_ifcgeom_element_list_destroy(ifcopenshell_ifcgeom_element_list
     value->items = nullptr;
     value->size = 0;
 }
-void ifcopenshell_ifc_instance_list_list_destroy(ifcopenshell_ifc_instance_list_list_t* value) {
-    if (value == nullptr || value->items == nullptr) {
-        return;
-    }
-    for (size_t i = 0; i < value->size; ++i) {
-        ifcopenshell_ifc_instance_list_destroy(&value->items[i]);
-    }
-    delete[] value->items;
-    value->items = nullptr;
-    value->size = 0;
-}
-
 void ifcopenshell_ifcgeom_conversion_result_shape_list_list_destroy(ifcopenshell_ifcgeom_conversion_result_shape_list_list_t* value) {
     if (value == nullptr || value->items == nullptr) {
         return;
@@ -2651,6 +2862,18 @@ void ifcopenshell_ifcgeom_svgfill_polygon_list_list_destroy(ifcopenshell_ifcgeom
     }
     for (size_t i = 0; i < value->size; ++i) {
         ifcopenshell_ifcgeom_svgfill_polygon_list_destroy(&value->items[i]);
+    }
+    delete[] value->items;
+    value->items = nullptr;
+    value->size = 0;
+}
+
+void ifcopenshell_ifc_instance_list_list_destroy(ifcopenshell_ifc_instance_list_list_t* value) {
+    if (value == nullptr || value->items == nullptr) {
+        return;
+    }
+    for (size_t i = 0; i < value->size; ++i) {
+        ifcopenshell_ifc_instance_list_destroy(&value->items[i]);
     }
     delete[] value->items;
     value->items = nullptr;
@@ -2787,740 +3010,6 @@ void ifcopenshell_ifcgeom_element_list_list_destroy(ifcopenshell_ifcgeom_element
     delete[] value->items;
     value->items = nullptr;
     value->size = 0;
-}
-
-bool ifcopenshell_ifcparse_argument_type_to_string(int32_t type, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    auto type_cpp = static_cast<ifcopenshell::argument_type>(type);
-        *out_result = make_string(ifcopenshell::argument_type_to_string(type_cpp));
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_clear_schemas(void) {
-    try {
-        ifcopenshell_clear_error();
-        ifcopenshell::clear_schemas();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_escape_xml(const char* text) {
-    try {
-        ifcopenshell_clear_error();
-    if (text == nullptr) { throw std::runtime_error("Parameter \"text\" must not be null"); }
-    std::string text_cpp(text);
-        ifcopenshell::escape_xml(text_cpp);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_from_parameter_type(ifcopenshell_ifc_parameter_type_t* parameter_type, int32_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (parameter_type == nullptr || parameter_type->ptr == nullptr) { throw std::runtime_error("Handle parameter \"parameter_type\" is invalid"); }
-    auto parameter_type_cpp = parameter_type->ptr;
-        *out_result = static_cast<int32_t>(ifcopenshell::from_parameter_type(parameter_type_cpp));
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_guess_file_type(const char* path, int32_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (path == nullptr) { throw std::runtime_error("Parameter \"path\" must not be null"); }
-    std::string path_cpp(path);
-        *out_result = static_cast<int32_t>(ifcopenshell::guess_file_type(path_cpp));
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_make_aggregate(int32_t element_type, int32_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    auto element_type_cpp = static_cast<ifcopenshell::argument_type>(element_type);
-        *out_result = static_cast<int32_t>(ifcopenshell::make_aggregate(element_type_cpp));
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_register_schema(ifcopenshell_ifc_schema_t* schema) {
-    try {
-        ifcopenshell_clear_error();
-    if (schema == nullptr || schema->ptr == nullptr) { throw std::runtime_error("Handle parameter \"schema\" is invalid"); }
-    auto schema_cpp = schema->ptr;
-        ifcopenshell::register_schema(schema_cpp);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_sanitate_material_name(const char* material_name) {
-    try {
-        ifcopenshell_clear_error();
-    if (material_name == nullptr) { throw std::runtime_error("Parameter \"material_name\" must not be null"); }
-    std::string material_name_cpp(material_name);
-        ifcopenshell::sanitate_material_name(material_name_cpp);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_schema_by_name(const char* schema_name, ifcopenshell_ifc_schema_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (schema_name == nullptr) { throw std::runtime_error("Parameter \"schema_name\" must not be null"); }
-    std::string schema_name_cpp(schema_name);
-        *out_result = new ifcopenshell_ifc_schema_t{const_cast<ifcopenshell::schema_definition*>(ifcopenshell::schema_by_name(schema_name_cpp)), false};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_schema_names(ifcopenshell_string_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        *out_result = make_string_list(ifcopenshell::schema_names());
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_schema_plugin_registration_symbol(ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        *out_result = make_string(ifcopenshell::schema_plugin_registration_symbol());
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_si_prefix_to_value(const char* prefix, double* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (prefix == nullptr) { throw std::runtime_error("Parameter \"prefix\" must not be null"); }
-    std::string prefix_cpp(prefix);
-        *out_result = static_cast<double>(ifcopenshell::si_prefix_to_value(prefix_cpp));
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_traverse(ifcopenshell_ifc_instance_t* instance, int32_t max_depth, ifcopenshell_ifc_instance_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
-    const auto& instance_cpp = instance->value;
-    auto max_depth_cpp = static_cast<int>(max_depth);
-        *out_result = make_ifc_instance_list(ifcopenshell::traverse(instance_cpp, max_depth_cpp));
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_traverse_breadth_first(ifcopenshell_ifc_instance_t* instance, int32_t max_depth, ifcopenshell_ifc_instance_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
-    const auto& instance_cpp = instance->value;
-    auto max_depth_cpp = static_cast<int>(max_depth);
-        *out_result = make_ifc_instance_list(ifcopenshell::traverse_breadth_first(instance_cpp, max_depth_cpp));
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_unescape_xml(const char* text) {
-    try {
-        ifcopenshell_clear_error();
-    if (text == nullptr) { throw std::runtime_error("Parameter \"text\" must not be null"); }
-    std::string text_cpp(text);
-        ifcopenshell::unescape_xml(text_cpp);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_valid_binary_string(const char* binary_string, bool* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (binary_string == nullptr) { throw std::runtime_error("Parameter \"binary_string\" must not be null"); }
-    std::string binary_string_cpp(binary_string);
-        *out_result = ifcopenshell::valid_binary_string(binary_string_cpp);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_open(const char* path, bool readonly, ifcopenshell_ifc_file_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (path == nullptr) { throw std::runtime_error("Parameter \"path\" must not be null"); }
-    std::string path_cpp(path);
-        auto generated_result = [&]() {
-{
-    std::ifstream probe(path_cpp.c_str());
-    if (!probe.good()) {
-        throw std::runtime_error(std::string("File does not exist or is not readable: ") + path_cpp);
-    }
-}
-auto file = std::make_unique<ifcopenshell::file>(path_cpp, ifcopenshell::FT_AUTODETECT, readonly);
-if (!file->good()) {
-    throw std::runtime_error(std::string("Failed to open IFC file: ") + path_cpp);
-}
-return file.release();
-        }();
-        auto result_value = std::unique_ptr<ifcopenshell::file>(generated_result);
-        *out_result = new ifcopenshell_ifc_file_t{result_value.release(), true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_open_bypass(const char* path, const ifcopenshell_string_list_t* type_names, ifcopenshell_ifc_file_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (path == nullptr) { throw std::runtime_error("Parameter \"path\" must not be null"); }
-    std::string path_cpp(path);
-    if (type_names == nullptr) { throw std::runtime_error("Parameter \"type_names\" must not be null"); }
-    auto type_names_cpp = to_cpp_string_list(type_names);
-        auto generated_result = [&]() {
-auto file = std::make_unique<ifcopenshell::file>(ifcopenshell::uninitialized_tag{});
-for (const auto& type_name : type_names_cpp) {
-    file->bypass_type(type_name);
-}
-if (!file->initialize(path_cpp)) {
-    throw std::runtime_error(std::string("Failed to open IFC file: ") + path_cpp);
-}
-return file.release();
-        }();
-        auto result_value = std::unique_ptr<ifcopenshell::file>(generated_result);
-        *out_result = new ifcopenshell_ifc_file_t{result_value.release(), true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_new_file(const char* schema_identifier, int32_t file_type, const char* path, ifcopenshell_ifc_file_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (schema_identifier == nullptr) { throw std::runtime_error("Parameter \"schema_identifier\" must not be null"); }
-    std::string schema_identifier_cpp(schema_identifier);
-    if (path == nullptr) { throw std::runtime_error("Parameter \"path\" must not be null"); }
-    std::string path_cpp(path);
-        auto generated_result = [&]() {
-const ifcopenshell::schema_definition* schema = ifcopenshell::schema_by_name(schema_identifier_cpp);
-return new ifcopenshell::file(schema, static_cast<ifcopenshell::filetype>(file_type), path_cpp);
-        }();
-        auto result_value = std::unique_ptr<ifcopenshell::file>(generated_result);
-        *out_result = new ifcopenshell_ifc_file_t{result_value.release(), true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_read_memory(void* data, int32_t length, ifcopenshell_ifc_file_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (data == nullptr) { throw std::runtime_error("Parameter \"data\" must not be null"); }
-    auto data_cpp = static_cast<const void*>(data);
-        auto generated_result = [&]() {
-if (length < 0) {
-    throw std::runtime_error("length is negative");
-}
-auto file = std::make_unique<ifcopenshell::file>(const_cast<void*>(data_cpp), static_cast<int>(length));
-if (!file->good()) {
-    throw std::runtime_error("Failed to parse IFC data from string");
-}
-return file.release();
-        }();
-        auto result_value = std::unique_ptr<ifcopenshell::file>(generated_result);
-        *out_result = new ifcopenshell_ifc_file_t{result_value.release(), true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_stream(ifcopenshell_ifc_instance_streamer_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        auto generated_result = [&]() {
-return new ifcopenshell::instance_streamer<>();
-        }();
-        auto result_value = std::unique_ptr<ifcopenshell::instance_streamer<>>(generated_result);
-        *out_result = new ifcopenshell_ifc_instance_streamer_t{result_value.release(), true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_stream_from_path(const char* path, bool mmap, ifcopenshell_ifc_instance_streamer_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (path == nullptr) { throw std::runtime_error("Parameter \"path\" must not be null"); }
-    std::string path_cpp(path);
-        auto generated_result = [&]() {
-#ifdef USE_MMAP
-return new ifcopenshell::instance_streamer<>(path_cpp, mmap);
-#else
-(void)mmap;
-return new ifcopenshell::instance_streamer<>(path_cpp, false);
-#endif
-        }();
-        auto result_value = std::unique_ptr<ifcopenshell::instance_streamer<>>(generated_result);
-        *out_result = new ifcopenshell_ifc_instance_streamer_t{result_value.release(), true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_stream_from_string(const char* data, ifcopenshell_ifc_instance_streamer_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (data == nullptr) { throw std::runtime_error("Parameter \"data\" must not be null"); }
-    std::string data_cpp(data);
-        auto generated_result = [&]() {
-return new ifcopenshell::instance_streamer<>((void*)data_cpp.data(), static_cast<int>(data_cpp.size()));
-        }();
-        auto result_value = std::unique_ptr<ifcopenshell::instance_streamer<>>(generated_result);
-        *out_result = new ifcopenshell_ifc_instance_streamer_t{result_value.release(), true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_version(ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        auto generated_result = [&]() {
-return IFCOPENSHELL_VERSION;
-        }();
-        *out_result = make_static_string(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_set_feature(const char* name, bool value) {
-    try {
-        ifcopenshell_clear_error();
-    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
-    std::string name_cpp(name);
-        [&]() {
-if (name_cpp == "use_attribute_value_derived") {
-    feature_use_attribute_value_derived = value;
-    return;
-}
-throw std::runtime_error("Invalid feature specification");
-        }();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_get_feature(const char* name, bool* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
-    std::string name_cpp(name);
-        auto generated_result = [&]() {
-if (name_cpp == "use_attribute_value_derived") {
-    return feature_use_attribute_value_derived;
-}
-throw std::runtime_error("Invalid feature specification");
-        }();
-        *out_result = generated_result;
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_get_log(ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        auto generated_result = [&]() {
-ensure_log_stream_initialized();
-std::string log = ifcopenshell_log_stream.str();
-ifcopenshell_log_stream.str("");
-ifcopenshell_log_stream.clear();
-return log;
-        }();
-        *out_result = make_string(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_turn_on_detailed_logging(void) {
-    try {
-        ifcopenshell_clear_error();
-        [&]() {
-logger::set_output(&std::cout, &std::cout);
-logger::verbosity(logger::LOG_DEBUG);
-        }();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_turn_off_detailed_logging(void) {
-    try {
-        ifcopenshell_clear_error();
-        [&]() {
-ensure_log_stream_initialized();
-logger::set_output(nullptr, &ifcopenshell_log_stream);
-logger::verbosity(logger::LOG_WARNING);
-        }();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_instance_list_create_from_handles(const ifcopenshell_ifc_instance_list_t* instances, ifcopenshell_ifcparse_instance_list_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (instances == nullptr) { throw std::runtime_error("Parameter \"instances\" must not be null"); }
-    auto instances_cpp = to_cpp_ifc_instance_list(instances);
-        auto generated_result = [&]() {
-std::vector<express::Base> agg;
-agg.reserve(instances_cpp.size());
-for (const auto& inst : instances_cpp) {
-    if (inst) {
-        agg.push_back(inst);
-    }
-}
-return agg;
-        }();
-        *out_result = new ifcopenshell_ifcparse_instance_list_t{std::vector<express::Base>(generated_result.begin(), generated_result.end())};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_set_log_format_json(void) {
-    try {
-        ifcopenshell_clear_error();
-        [&]() {
-ensure_log_stream_initialized();
-ifcopenshell_log_stream.str("");
-ifcopenshell_log_stream.clear();
-logger::output_format(logger::FMT_JSON);
-        }();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_set_log_format_text(void) {
-    try {
-        ifcopenshell_clear_error();
-        [&]() {
-ensure_log_stream_initialized();
-ifcopenshell_log_stream.str("");
-ifcopenshell_log_stream.clear();
-logger::output_format(logger::FMT_PLAIN);
-        }();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_get_si_equivalent(ifcopenshell_ifc_instance_t* named_unit, double* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (named_unit == nullptr) { throw std::runtime_error("Handle parameter \"named_unit\" must not be null"); }
-    auto named_unit_cpp = &named_unit->value;
-        auto generated_result = [&]() {
-if (!named_unit_cpp->declaration().is("IfcNamedUnit")) {
-    throw ifcopenshell::exception("Instance is not an IfcNamedUnit.");
-}
-double scale = 1.0;
-express::Base si_unit;
-if (named_unit_cpp->declaration().is("IfcConversionBasedUnit")) {
-    auto factor = static_cast<express::Base>(named_unit_cpp->get_attribute_value(
-        named_unit_cpp->declaration().as_entity()->attribute_index("ConversionFactor")));
-    auto value_component = static_cast<express::Base>(factor.get_attribute_value(
-        factor.declaration().as_entity()->attribute_index("ValueComponent")));
-    auto unit_component = static_cast<express::Base>(factor.get_attribute_value(
-        factor.declaration().as_entity()->attribute_index("UnitComponent")));
-    scale = static_cast<double>(value_component.get_attribute_value(0));
-    if (unit_component.declaration().is("IfcSIUnit")) {
-        si_unit = unit_component;
-    }
-} else if (named_unit_cpp->declaration().is("IfcSIUnit")) {
-    si_unit = *named_unit_cpp;
-}
-if (si_unit) {
-    attribute_value prefix = si_unit.get_attribute_value(
-        si_unit.declaration().as_entity()->attribute_index("Prefix"));
-    if (!prefix.isNull()) {
-        scale *= ifcopenshell::si_prefix_to_value(static_cast<std::string>(prefix));
-    }
-} else {
-    scale = 0.0;
-}
-return scale;
-        }();
-        *out_result = static_cast<double>(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_get_info_cpp(ifcopenshell_ifc_instance_t* instance, bool include_identifier, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
-    auto instance_cpp = &instance->value;
-        auto generated_result = [&]() {
-return instance_to_info_json_string(*instance_cpp, include_identifier);
-        }();
-        *out_result = make_string(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_operator_token_ptr(size_t start, const char* data, int32_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (data == nullptr) { throw std::runtime_error("Parameter \"data\" must not be null"); }
-    std::string data_cpp(data);
-        auto generated_result = [&]() {
-const char value = data_cpp.empty() ? '$' : data_cpp.front();
-return static_cast<int>(ifcopenshell::token(start, value).type);
-        }();
-        *out_result = static_cast<int32_t>(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_general_token_ptr(size_t start, const char* token, int32_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (token == nullptr) { throw std::runtime_error("Parameter \"token\" must not be null"); }
-    std::string token_cpp(token);
-        auto generated_result = [&]() {
-return static_cast<int>(ifcopenshell::token(start, ifcopenshell::token::Token_STRING, token_cpp).type);
-        }();
-        *out_result = static_cast<int32_t>(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
 }
 
 bool ifcopenshell_ifcgeom_create_xml_serializer(ifcopenshell_ifc_file_t* file, const char* filename, ifcopenshell_ifcgeom_serializer_t** out_result) {
@@ -5138,6 +4627,2249 @@ if (!fn) {
 return fn->end();
         }();
         *out_result = static_cast<double>(generated_result);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_file_add_entity(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t* instance, uint32_t id, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+    if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
+    const auto& instance_cpp = instance->value;
+    auto id_cpp = static_cast<unsigned int>(id);
+        *out_result = new ifcopenshell_ifc_instance_t{ifcparse::bindings::add_entity(*self_cpp, instance_cpp, id_cpp)};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_argument_type_to_string(int32_t type, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    auto type_cpp = static_cast<int>(type);
+        *out_result = make_string(ifcparse::bindings::argument_type_to_string(type_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_type_declaration_argument_types(ifcopenshell_ifc_type_declaration_t* self, ifcopenshell_string_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = make_string_list(ifcparse::bindings::argument_types(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_enumeration_argument_types(ifcopenshell_ifc_enumeration_t* self, ifcopenshell_string_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = make_string_list(ifcparse::bindings::argument_types(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_entity_argument_types(ifcopenshell_ifc_entity_t* self, ifcopenshell_string_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = make_string_list(ifcparse::bindings::argument_types(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_attribute_value_as_bool(ifcopenshell_ifcparse_attribute_value_t* self, bool* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto& self_cpp = self->value;
+        *out_result = ifcparse::bindings::as_bool(self_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_attribute_value_as_double(ifcopenshell_ifcparse_attribute_value_t* self, double* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto& self_cpp = self->value;
+        *out_result = static_cast<double>(ifcparse::bindings::as_double(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_attribute_value_as_double_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_double_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto& self_cpp = self->value;
+        *out_result = make_double_list(ifcparse::bindings::as_double_list(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_attribute_value_as_double_list_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_double_list_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto& self_cpp = self->value;
+        *out_result = make_double_list_list(ifcparse::bindings::as_double_list_list(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_attribute_value_as_enumeration_index(ifcopenshell_ifcparse_attribute_value_t* self, size_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto& self_cpp = self->value;
+        *out_result = static_cast<size_t>(ifcparse::bindings::as_enumeration_index(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_attribute_value_as_enumeration_type(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_ifc_enumeration_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto& self_cpp = self->value;
+        *out_result = new ifcopenshell_ifc_enumeration_t{ifcparse::bindings::as_enumeration_type(self_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_attribute_value_as_enumeration_value(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto& self_cpp = self->value;
+        *out_result = make_string(ifcparse::bindings::as_enumeration_value(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_attribute_value_as_instance(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto& self_cpp = self->value;
+        auto result_value = ifcparse::bindings::as_instance(self_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_ifc_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_attribute_value_as_instance_id_list_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_int32_list_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto& self_cpp = self->value;
+        *out_result = make_int32_list_list(ifcparse::bindings::as_instance_id_list_list(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_attribute_value_as_instance_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_ifcparse_instance_list_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto& self_cpp = self->value;
+        *out_result = new ifcopenshell_ifcparse_instance_list_t{ifcparse::bindings::as_instance_list(self_cpp)};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_attribute_value_as_int32(ifcopenshell_ifcparse_attribute_value_t* self, int32_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto& self_cpp = self->value;
+        *out_result = static_cast<int32_t>(ifcparse::bindings::as_int32(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_attribute_value_as_int32_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_int32_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto& self_cpp = self->value;
+        *out_result = make_int32_list(ifcparse::bindings::as_int32_list(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_attribute_value_as_int32_list_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_int32_list_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto& self_cpp = self->value;
+        *out_result = make_int32_list_list(ifcparse::bindings::as_int32_list_list(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_attribute_value_as_string(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto& self_cpp = self->value;
+        *out_result = make_string(ifcparse::bindings::as_string(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_attribute_value_as_string_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_string_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto& self_cpp = self->value;
+        *out_result = make_string_list(ifcparse::bindings::as_string_list(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_class_name(ifcopenshell_ifc_instance_t* self, bool with_schema, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    auto with_schema_cpp = static_cast<bool>(with_schema);
+        *out_result = make_string(ifcparse::bindings::class_name(*self_cpp, with_schema_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_clear_schemas(void) {
+    try {
+        ifcopenshell_clear_error();
+        ifcparse::bindings::clear_schemas();
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_file_create_entity_by_name(ifcopenshell_ifc_file_t* self, const char* type_name, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+    if (type_name == nullptr) { throw std::runtime_error("Parameter \"type_name\" must not be null"); }
+    std::string type_name_cpp(type_name);
+        *out_result = new ifcopenshell_ifc_instance_t{ifcparse::bindings::create_entity_by_name(*self_cpp, type_name_cpp)};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_file_create_entity_by_name_with_id(ifcopenshell_ifc_file_t* self, const char* type_name, uint32_t id, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+    if (type_name == nullptr) { throw std::runtime_error("Parameter \"type_name\" must not be null"); }
+    std::string type_name_cpp(type_name);
+    auto id_cpp = static_cast<unsigned int>(id);
+        *out_result = new ifcopenshell_ifc_instance_t{ifcparse::bindings::create_entity_by_name_with_id(*self_cpp, type_name_cpp, id_cpp)};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_file_entity_names(ifcopenshell_ifc_file_t* self, ifcopenshell_uint32_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = make_uint32_list(ifcparse::bindings::entity_names(*self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_escape_xml(const char* text) {
+    try {
+        ifcopenshell_clear_error();
+    if (text == nullptr) { throw std::runtime_error("Parameter \"text\" must not be null"); }
+    std::string text_cpp(text);
+        ifcparse::bindings::escape_xml(text_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_file_file_pointer(ifcopenshell_ifc_file_t* self, size_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = static_cast<size_t>(ifcparse::bindings::file_pointer(*self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_file_pointer(ifcopenshell_ifc_instance_t* self, size_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+        *out_result = static_cast<size_t>(ifcparse::bindings::file_pointer(*self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_from_parameter_type(ifcopenshell_ifc_parameter_type_t* parameter_type, int32_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (parameter_type == nullptr || parameter_type->ptr == nullptr) { throw std::runtime_error("Handle parameter \"parameter_type\" is invalid"); }
+    auto parameter_type_cpp = parameter_type->ptr;
+        *out_result = static_cast<int32_t>(ifcparse::bindings::from_parameter_type(parameter_type_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_general_token_ptr(size_t start, const char* token, int32_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    auto start_cpp = static_cast<size_t>(start);
+    if (token == nullptr) { throw std::runtime_error("Parameter \"token\" must not be null"); }
+    std::string token_cpp(token);
+        *out_result = static_cast<int32_t>(ifcparse::bindings::general_token_ptr(start_cpp, token_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_instance_list_get(ifcopenshell_ifcparse_instance_list_t* self, size_t index, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    auto index_cpp = static_cast<size_t>(index);
+        auto result_value = ifcparse::bindings::get(*self_cpp, index_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_ifc_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_get_argument_by_name(ifcopenshell_ifc_instance_t* self, const char* name, ifcopenshell_ifcparse_attribute_value_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
+    std::string name_cpp(name);
+        *out_result = new ifcopenshell_ifcparse_attribute_value_t{ifcparse::bindings::get_argument_by_name(*self_cpp, name_cpp)};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_get_argument_index(ifcopenshell_ifc_instance_t* self, const char* name, uint32_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
+    std::string name_cpp(name);
+        *out_result = static_cast<uint32_t>(ifcparse::bindings::get_argument_index(*self_cpp, name_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_get_argument_name(ifcopenshell_ifc_instance_t* self, uint32_t index, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    auto index_cpp = static_cast<unsigned int>(index);
+        *out_result = make_string(ifcparse::bindings::get_argument_name(*self_cpp, index_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_get_argument_type(ifcopenshell_ifc_instance_t* self, uint32_t index, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    auto index_cpp = static_cast<unsigned int>(index);
+        *out_result = make_static_string(ifcparse::bindings::get_argument_type(*self_cpp, index_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_get_attribute_category(ifcopenshell_ifc_instance_t* self, const char* name, int32_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
+    std::string name_cpp(name);
+        *out_result = static_cast<int32_t>(ifcparse::bindings::get_attribute_category(*self_cpp, name_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_get_attribute_names(ifcopenshell_ifc_instance_t* self, ifcopenshell_string_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+        *out_result = make_string_list(ifcparse::bindings::get_attribute_names(*self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_get_attribute_value(ifcopenshell_ifc_instance_t* self, size_t index, ifcopenshell_ifcparse_attribute_value_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    auto index_cpp = static_cast<size_t>(index);
+        *out_result = new ifcopenshell_ifcparse_attribute_value_t{ifcparse::bindings::get_attribute_value(*self_cpp, index_cpp)};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_get_feature(const char* name, bool* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
+    std::string name_cpp(name);
+        *out_result = ifcparse::bindings::get_feature(name_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_get_info_cpp(ifcopenshell_ifc_instance_t* instance, bool include_identifier, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
+    const auto& instance_cpp = instance->value;
+    auto include_identifier_cpp = static_cast<bool>(include_identifier);
+        *out_result = make_string(ifcparse::bindings::get_info_cpp(instance_cpp, include_identifier_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_file_get_inverse(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t* instance, ifcopenshell_ifcparse_instance_list_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+    if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
+    auto instance_cpp = &instance->value;
+        *out_result = new ifcopenshell_ifcparse_instance_list_t{ifcparse::bindings::get_inverse(self_cpp, instance_cpp)};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_get_inverse(ifcopenshell_ifc_instance_t* self, const char* name, ifcopenshell_ifcparse_instance_list_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
+    std::string name_cpp(name);
+        *out_result = new ifcopenshell_ifcparse_instance_list_t{ifcparse::bindings::get_inverse(*self_cpp, name_cpp)};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_get_inverse_attribute_by_name(ifcopenshell_ifc_instance_t* self, const char* name, ifcopenshell_ifcparse_instance_list_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
+    std::string name_cpp(name);
+        *out_result = new ifcopenshell_ifcparse_instance_list_t{ifcparse::bindings::get_inverse_attribute_by_name(*self_cpp, name_cpp)};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_get_inverse_attribute_names(ifcopenshell_ifc_instance_t* self, ifcopenshell_string_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+        *out_result = make_string_list(ifcparse::bindings::get_inverse_attribute_names(*self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_file_get_inverse_indices(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t* instance, ifcopenshell_int32_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+    if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
+    const auto& instance_cpp = instance->value;
+        *out_result = make_int32_list(ifcparse::bindings::get_inverse_indices(*self_cpp, instance_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_get_log(ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+        *out_result = make_string(ifcparse::bindings::get_log());
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_get_si_equivalent(ifcopenshell_ifc_instance_t* named_unit, double* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (named_unit == nullptr) { throw std::runtime_error("Handle parameter \"named_unit\" must not be null"); }
+    const auto& named_unit_cpp = named_unit->value;
+        *out_result = static_cast<double>(ifcparse::bindings::get_si_equivalent(named_unit_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_file_get_total_inverses(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t* instance, int32_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+    if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
+    const auto& instance_cpp = instance->value;
+        *out_result = static_cast<int32_t>(ifcparse::bindings::get_total_inverses(*self_cpp, instance_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_file_get_unit(ifcopenshell_ifc_file_t* self, const char* unit_type, double* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+    if (unit_type == nullptr) { throw std::runtime_error("Parameter \"unit_type\" must not be null"); }
+    std::string unit_type_cpp(unit_type);
+        *out_result = static_cast<double>(ifcparse::bindings::get_unit(*self_cpp, unit_type_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_file_good(ifcopenshell_ifc_file_t* self, int32_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = static_cast<int32_t>(ifcparse::bindings::good(*self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_guess_file_type(const char* path, int32_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (path == nullptr) { throw std::runtime_error("Parameter \"path\" must not be null"); }
+    std::string path_cpp(path);
+        *out_result = static_cast<int32_t>(ifcparse::bindings::guess_file_type(path_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_file_header(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_header_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = new ifcopenshell_ifc_header_t{ifcparse::bindings::header(self_cpp), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_file_header_file_description(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        auto result_value = ifcparse::bindings::header_file_description(self_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_ifc_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_file_header_file_name(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        auto result_value = ifcparse::bindings::header_file_name(self_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_ifc_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_file_header_file_schema(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        auto result_value = ifcparse::bindings::header_file_schema(self_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_ifc_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_instance_list_create_from_handles(const ifcopenshell_ifc_instance_list_t* instances, ifcopenshell_ifcparse_instance_list_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (instances == nullptr) { throw std::runtime_error("Parameter \"instances\" must not be null"); }
+    auto instances_cpp = to_cpp_ifc_instance_list(instances);
+        *out_result = new ifcopenshell_ifcparse_instance_list_t{ifcparse::bindings::instance_list_create_from_handles(instances_cpp)};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_streamer_inverses(ifcopenshell_ifc_instance_streamer_t* self, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = make_string(ifcparse::bindings::inverses(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_is_a(ifcopenshell_ifc_instance_t* self, const char* declaration_name, bool* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    if (declaration_name == nullptr) { throw std::runtime_error("Parameter \"declaration_name\" must not be null"); }
+    std::string declaration_name_cpp(declaration_name);
+        *out_result = ifcparse::bindings::is_a(*self_cpp, declaration_name_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_attribute_value_is_null(ifcopenshell_ifcparse_attribute_value_t* self, bool* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto& self_cpp = self->value;
+        *out_result = ifcparse::bindings::is_null(self_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_file_key_value_store_iter(ifcopenshell_ifc_file_t* self, const char* prefix, ifcopenshell_string_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+    if (prefix == nullptr) { throw std::runtime_error("Parameter \"prefix\" must not be null"); }
+    std::string prefix_cpp(prefix);
+        *out_result = make_string_list(ifcparse::bindings::key_value_store_iter(*self_cpp, prefix_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_file_key_value_store_query(ifcopenshell_ifc_file_t* self, const char* key, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+    if (key == nullptr) { throw std::runtime_error("Parameter \"key\" must not be null"); }
+    std::string key_cpp(key);
+        *out_result = make_string(ifcparse::bindings::key_value_store_query(*self_cpp, key_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_parameter_type_kind(ifcopenshell_ifc_parameter_type_t* self, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = make_static_string(ifcparse::bindings::kind(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_simple_type_kind(ifcopenshell_ifc_simple_type_t* self, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = make_static_string(ifcparse::bindings::kind(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_aggregation_type_kind(ifcopenshell_ifc_aggregation_type_t* self, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = make_static_string(ifcparse::bindings::kind(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_make_aggregate(int32_t element_type, int32_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    auto element_type_cpp = static_cast<int>(element_type);
+        *out_result = static_cast<int32_t>(ifcparse::bindings::make_aggregate(element_type_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_new_file(const char* schema_identifier, int32_t file_type, const char* path, ifcopenshell_ifc_file_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (schema_identifier == nullptr) { throw std::runtime_error("Parameter \"schema_identifier\" must not be null"); }
+    std::string schema_identifier_cpp(schema_identifier);
+    auto file_type_cpp = static_cast<int>(file_type);
+    if (path == nullptr) { throw std::runtime_error("Parameter \"path\" must not be null"); }
+    std::string path_cpp(path);
+        auto result_value = std::unique_ptr<ifcopenshell::file>(ifcparse::bindings::new_file(schema_identifier_cpp, file_type_cpp, path_cpp));
+        *out_result = new ifcopenshell_ifc_file_t{result_value.release(), true};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_open(const char* path, bool readonly, ifcopenshell_ifc_file_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (path == nullptr) { throw std::runtime_error("Parameter \"path\" must not be null"); }
+    std::string path_cpp(path);
+    auto readonly_cpp = static_cast<bool>(readonly);
+        auto result_value = std::unique_ptr<ifcopenshell::file>(ifcparse::bindings::open(path_cpp, readonly_cpp));
+        *out_result = new ifcopenshell_ifc_file_t{result_value.release(), true};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_open_bypass(const char* path, const ifcopenshell_string_list_t* type_names, ifcopenshell_ifc_file_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (path == nullptr) { throw std::runtime_error("Parameter \"path\" must not be null"); }
+    std::string path_cpp(path);
+    if (type_names == nullptr) { throw std::runtime_error("Parameter \"type_names\" must not be null"); }
+    auto type_names_cpp = to_cpp_string_list(type_names);
+        auto result_value = std::unique_ptr<ifcopenshell::file>(ifcparse::bindings::open_bypass(path_cpp, type_names_cpp));
+        *out_result = new ifcopenshell_ifc_file_t{result_value.release(), true};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_operator_token_ptr(size_t start, const char* data, int32_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    auto start_cpp = static_cast<size_t>(start);
+    if (data == nullptr) { throw std::runtime_error("Parameter \"data\" must not be null"); }
+    std::string data_cpp(data);
+        *out_result = static_cast<int32_t>(ifcparse::bindings::operator_token_ptr(start_cpp, data_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_streamer_read_instance_py(ifcopenshell_ifc_instance_streamer_t* self, bool type_as_declaration_instance, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+    auto type_as_declaration_instance_cpp = static_cast<bool>(type_as_declaration_instance);
+        *out_result = make_string(ifcparse::bindings::read_instance_py(self_cpp, type_as_declaration_instance_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_read_memory(void* data, int32_t length, ifcopenshell_ifc_file_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (data == nullptr) { throw std::runtime_error("Parameter \"data\" must not be null"); }
+    auto data_cpp = static_cast<const void*>(data);
+    auto length_cpp = static_cast<int>(length);
+        auto result_value = std::unique_ptr<ifcopenshell::file>(ifcparse::bindings::read_memory(data_cpp, length_cpp));
+        *out_result = new ifcopenshell_ifc_file_t{result_value.release(), true};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_streamer_references(ifcopenshell_ifc_instance_streamer_t* self, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = make_string(ifcparse::bindings::references(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_register_schema(ifcopenshell_ifc_schema_t* schema) {
+    try {
+        ifcopenshell_clear_error();
+    if (schema == nullptr || schema->ptr == nullptr) { throw std::runtime_error("Handle parameter \"schema\" is invalid"); }
+    auto schema_cpp = schema->ptr;
+        ifcparse::bindings::register_schema(schema_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_sanitate_material_name(const char* material_name) {
+    try {
+        ifcopenshell_clear_error();
+    if (material_name == nullptr) { throw std::runtime_error("Parameter \"material_name\" must not be null"); }
+    std::string material_name_cpp(material_name);
+        ifcparse::bindings::sanitate_material_name(material_name_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_schema_by_name(const char* schema_name, ifcopenshell_ifc_schema_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (schema_name == nullptr) { throw std::runtime_error("Parameter \"schema_name\" must not be null"); }
+    std::string schema_name_cpp(schema_name);
+        *out_result = new ifcopenshell_ifc_schema_t{const_cast<ifcopenshell::schema_definition*>(ifcparse::bindings::schema_by_name(schema_name_cpp)), false};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_file_schema_name(ifcopenshell_ifc_file_t* self, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = make_string(ifcparse::bindings::schema_name(*self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_schema_names(ifcopenshell_string_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+        *out_result = make_string_list(ifcparse::bindings::schema_names());
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_schema_plugin_registration_symbol(ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+        *out_result = make_string(ifcparse::bindings::schema_plugin_registration_symbol());
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_select_type_select_list_names(ifcopenshell_ifc_select_type_t* self, ifcopenshell_string_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = make_string_list(ifcparse::bindings::select_list_names(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_set_argument_as_aggregate_of_aggregate_of_entity_instance(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_int32_list_list_t* value) {
+    try {
+        ifcopenshell_clear_error();
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    auto index_cpp = static_cast<size_t>(index);
+    if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
+    auto value_cpp = to_cpp_int32_list_list(value);
+        ifcparse::bindings::set_argument_as_aggregate_of_aggregate_of_entity_instance(*self_cpp, index_cpp, value_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_set_argument_bool(ifcopenshell_ifc_instance_t* self, size_t index, bool value) {
+    try {
+        ifcopenshell_clear_error();
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    auto index_cpp = static_cast<size_t>(index);
+    auto value_cpp = static_cast<bool>(value);
+        ifcparse::bindings::set_argument_bool(*self_cpp, index_cpp, value_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_set_argument_double(ifcopenshell_ifc_instance_t* self, size_t index, double value) {
+    try {
+        ifcopenshell_clear_error();
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    auto index_cpp = static_cast<size_t>(index);
+    auto value_cpp = static_cast<double>(value);
+        ifcparse::bindings::set_argument_double(*self_cpp, index_cpp, value_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_set_argument_double_list(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_double_list_t* value) {
+    try {
+        ifcopenshell_clear_error();
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    auto index_cpp = static_cast<size_t>(index);
+    if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
+    auto value_cpp = to_cpp_double_list(value);
+        ifcparse::bindings::set_argument_double_list(*self_cpp, index_cpp, value_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_set_argument_double_list_list(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_double_list_list_t* value) {
+    try {
+        ifcopenshell_clear_error();
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    auto index_cpp = static_cast<size_t>(index);
+    if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
+    auto value_cpp = to_cpp_double_list_list(value);
+        ifcparse::bindings::set_argument_double_list_list(*self_cpp, index_cpp, value_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_set_argument_enumeration(ifcopenshell_ifc_instance_t* self, size_t index, ifcopenshell_ifc_enumeration_t* enumeration, size_t enumeration_index) {
+    try {
+        ifcopenshell_clear_error();
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    auto index_cpp = static_cast<size_t>(index);
+    if (enumeration == nullptr || enumeration->ptr == nullptr) { throw std::runtime_error("Handle parameter \"enumeration\" is invalid"); }
+    auto enumeration_cpp = enumeration->ptr;
+    auto enumeration_index_cpp = static_cast<size_t>(enumeration_index);
+        ifcparse::bindings::set_argument_enumeration(*self_cpp, index_cpp, enumeration_cpp, enumeration_index_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_set_argument_enumeration_by_name(ifcopenshell_ifc_instance_t* self, size_t index, const char* value, bool* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    auto index_cpp = static_cast<size_t>(index);
+    if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
+    std::string value_cpp(value);
+        *out_result = ifcparse::bindings::set_argument_enumeration_by_name(*self_cpp, index_cpp, value_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_set_argument_instance(ifcopenshell_ifc_instance_t* self, size_t index, ifcopenshell_ifc_instance_t* value) {
+    try {
+        ifcopenshell_clear_error();
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    auto index_cpp = static_cast<size_t>(index);
+    if (value == nullptr) { throw std::runtime_error("Handle parameter \"value\" must not be null"); }
+    auto value_cpp = &value->value;
+        ifcparse::bindings::set_argument_instance(*self_cpp, index_cpp, value_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_set_argument_instance_list(ifcopenshell_ifc_instance_t* self, size_t index, ifcopenshell_ifcparse_instance_list_t* value) {
+    try {
+        ifcopenshell_clear_error();
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    auto index_cpp = static_cast<size_t>(index);
+    if (value == nullptr) { throw std::runtime_error("Handle parameter \"value\" must not be null"); }
+    auto value_cpp = &value->value;
+        ifcparse::bindings::set_argument_instance_list(*self_cpp, index_cpp, value_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_set_argument_int32(ifcopenshell_ifc_instance_t* self, size_t index, int32_t value) {
+    try {
+        ifcopenshell_clear_error();
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    auto index_cpp = static_cast<size_t>(index);
+    auto value_cpp = static_cast<int>(value);
+        ifcparse::bindings::set_argument_int32(*self_cpp, index_cpp, value_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_set_argument_int32_list(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_int32_list_t* value) {
+    try {
+        ifcopenshell_clear_error();
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    auto index_cpp = static_cast<size_t>(index);
+    if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
+    auto value_cpp = to_cpp_int32_list(value);
+        ifcparse::bindings::set_argument_int32_list(*self_cpp, index_cpp, value_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_set_argument_int32_list_list(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_int32_list_list_t* value) {
+    try {
+        ifcopenshell_clear_error();
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    auto index_cpp = static_cast<size_t>(index);
+    if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
+    auto value_cpp = to_cpp_int32_list_list(value);
+        ifcparse::bindings::set_argument_int32_list_list(*self_cpp, index_cpp, value_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_set_argument_logical(ifcopenshell_ifc_instance_t* self, size_t index, int32_t value) {
+    try {
+        ifcopenshell_clear_error();
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    auto index_cpp = static_cast<size_t>(index);
+    auto value_cpp = static_cast<int>(value);
+        ifcparse::bindings::set_argument_logical(*self_cpp, index_cpp, value_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_set_argument_string(ifcopenshell_ifc_instance_t* self, size_t index, const char* value) {
+    try {
+        ifcopenshell_clear_error();
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    auto index_cpp = static_cast<size_t>(index);
+    if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
+    std::string value_cpp(value);
+        ifcparse::bindings::set_argument_string(*self_cpp, index_cpp, value_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_set_argument_string_list(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_string_list_t* value) {
+    try {
+        ifcopenshell_clear_error();
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    auto index_cpp = static_cast<size_t>(index);
+    if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
+    auto value_cpp = to_cpp_string_list(value);
+        ifcparse::bindings::set_argument_string_list(*self_cpp, index_cpp, value_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_set_attribute_value(ifcopenshell_ifc_instance_t* self, const char* name, ifcopenshell_ifcparse_attribute_value_t* value) {
+    try {
+        ifcopenshell_clear_error();
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
+    std::string name_cpp(name);
+    if (value == nullptr) { throw std::runtime_error("Handle parameter \"value\" must not be null"); }
+    auto value_cpp = value->value;
+        ifcparse::bindings::set_attribute_value(*self_cpp, name_cpp, value_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_set_feature(const char* name, bool value) {
+    try {
+        ifcopenshell_clear_error();
+    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
+    std::string name_cpp(name);
+    auto value_cpp = static_cast<bool>(value);
+        ifcparse::bindings::set_feature(name_cpp, value_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_set_log_format_json(void) {
+    try {
+        ifcopenshell_clear_error();
+        ifcparse::bindings::set_log_format_json();
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_set_log_format_text(void) {
+    try {
+        ifcopenshell_clear_error();
+        ifcparse::bindings::set_log_format_text();
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_si_prefix_to_value(const char* prefix, double* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (prefix == nullptr) { throw std::runtime_error("Parameter \"prefix\" must not be null"); }
+    std::string prefix_cpp(prefix);
+        *out_result = static_cast<double>(ifcparse::bindings::si_prefix_to_value(prefix_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_attribute_value_size(ifcopenshell_ifcparse_attribute_value_t* self, size_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto& self_cpp = self->value;
+        *out_result = static_cast<size_t>(ifcparse::bindings::size(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_instance_list_size(ifcopenshell_ifcparse_instance_list_t* self, size_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+        *out_result = static_cast<size_t>(ifcparse::bindings::size(*self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_streamer_status(ifcopenshell_ifc_instance_streamer_t* self, int32_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = static_cast<int32_t>(ifcparse::bindings::status(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_file_storage_mode(ifcopenshell_ifc_file_t* self, int32_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = static_cast<int32_t>(ifcparse::bindings::storage_mode(*self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_stream(ifcopenshell_ifc_instance_streamer_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+        auto result_value = std::unique_ptr<ifcopenshell::instance_streamer<>>(ifcparse::bindings::stream());
+        *out_result = new ifcopenshell_ifc_instance_streamer_t{result_value.release(), true};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_stream_from_path(const char* path, bool mmap, ifcopenshell_ifc_instance_streamer_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (path == nullptr) { throw std::runtime_error("Parameter \"path\" must not be null"); }
+    std::string path_cpp(path);
+    auto mmap_cpp = static_cast<bool>(mmap);
+        auto result_value = std::unique_ptr<ifcopenshell::instance_streamer<>>(ifcparse::bindings::stream_from_path(path_cpp, mmap_cpp));
+        *out_result = new ifcopenshell_ifc_instance_streamer_t{result_value.release(), true};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_stream_from_string(const char* data, ifcopenshell_ifc_instance_streamer_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (data == nullptr) { throw std::runtime_error("Parameter \"data\" must not be null"); }
+    std::string data_cpp(data);
+        auto result_value = std::unique_ptr<ifcopenshell::instance_streamer<>>(ifcparse::bindings::stream_from_string(data_cpp));
+        *out_result = new ifcopenshell_ifc_instance_streamer_t{result_value.release(), true};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_file_to_string(ifcopenshell_ifc_file_t* self, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = make_string(ifcparse::bindings::to_string(*self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_to_string(ifcopenshell_ifc_instance_t* self, bool valid_spf, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    auto valid_spf_cpp = static_cast<bool>(valid_spf);
+        *out_result = make_string(ifcparse::bindings::to_string(*self_cpp, valid_spf_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_traverse(ifcopenshell_ifc_instance_t* instance, int32_t max_depth, ifcopenshell_ifc_instance_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
+    const auto& instance_cpp = instance->value;
+    auto max_depth_cpp = static_cast<int>(max_depth);
+        *out_result = make_ifc_instance_list(ifcparse::bindings::traverse(instance_cpp, max_depth_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_traverse_breadth_first(ifcopenshell_ifc_instance_t* instance, int32_t max_depth, ifcopenshell_ifc_instance_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
+    const auto& instance_cpp = instance->value;
+    auto max_depth_cpp = static_cast<int>(max_depth);
+        *out_result = make_ifc_instance_list(ifcparse::bindings::traverse_breadth_first(instance_cpp, max_depth_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_turn_off_detailed_logging(void) {
+    try {
+        ifcopenshell_clear_error();
+        ifcparse::bindings::turn_off_detailed_logging();
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_turn_on_detailed_logging(void) {
+    try {
+        ifcopenshell_clear_error();
+        ifcparse::bindings::turn_on_detailed_logging();
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_attribute_value_type(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto& self_cpp = self->value;
+        *out_result = make_static_string(ifcparse::bindings::type(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_aggregation_type_type_of_aggregation(ifcopenshell_ifc_aggregation_type_t* self, int32_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = static_cast<int32_t>(ifcparse::bindings::type_of_aggregation(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_inverse_attribute_type_of_aggregation(ifcopenshell_ifc_inverse_attribute_t* self, int32_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = static_cast<int32_t>(ifcparse::bindings::type_of_aggregation(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_aggregation_type_type_of_aggregation_string(ifcopenshell_ifc_aggregation_type_t* self, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = make_static_string(ifcparse::bindings::type_of_aggregation_string(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_inverse_attribute_type_of_aggregation_string(ifcopenshell_ifc_inverse_attribute_t* self, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = make_static_string(ifcparse::bindings::type_of_aggregation_string(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_file_types(ifcopenshell_ifc_file_t* self, ifcopenshell_string_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = make_string_list(ifcparse::bindings::types(*self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_unescape_xml(const char* text) {
+    try {
+        ifcopenshell_clear_error();
+    if (text == nullptr) { throw std::runtime_error("Parameter \"text\" must not be null"); }
+    std::string text_cpp(text);
+        ifcparse::bindings::unescape_xml(text_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_unset_argument(ifcopenshell_ifc_instance_t* self, size_t index) {
+    try {
+        ifcopenshell_clear_error();
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    auto index_cpp = static_cast<size_t>(index);
+        ifcparse::bindings::unset_argument(*self_cpp, index_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_instance_unset_attribute_value(ifcopenshell_ifc_instance_t* self, const char* name) {
+    try {
+        ifcopenshell_clear_error();
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = &self->value;
+    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
+    std::string name_cpp(name);
+        ifcparse::bindings::unset_attribute_value(*self_cpp, name_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_valid_binary_string(const char* binary_string, bool* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (binary_string == nullptr) { throw std::runtime_error("Parameter \"binary_string\" must not be null"); }
+    std::string binary_string_cpp(binary_string);
+        *out_result = ifcparse::bindings::valid_binary_string(binary_string_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_version(ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+        *out_result = make_static_string(ifcparse::bindings::version());
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_file_write(ifcopenshell_ifc_file_t* self, const char* path) {
+    try {
+        ifcopenshell_clear_error();
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+    if (path == nullptr) { throw std::runtime_error("Parameter \"path\" must not be null"); }
+    std::string path_cpp(path);
+        ifcparse::bindings::write(*self_cpp, path_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifc_header_write(ifcopenshell_ifc_header_t* self, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto* self_cpp = self->ptr;
+        *out_result = make_string(ifcparse::bindings::write(self_cpp));
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -10439,7 +12171,7 @@ bool ifcopenshell_ifcapi_selector_keys_get(void* keys, size_t index, ifcopenshel
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     auto keys_cpp = static_cast<ifcopenshell_selector_keys_t*>(keys);
-    auto index_cpp = static_cast<unsigned long>(index);
+    auto index_cpp = static_cast<size_t>(index);
         *out_result = make_string(ifcapi::bindings::selector_keys_get(keys_cpp, index_cpp));
         return true;
     } catch (const std::exception& e) {
@@ -10456,7 +12188,7 @@ bool ifcopenshell_ifcapi_selector_keys_is_regex(void* keys, size_t index, bool* 
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     auto keys_cpp = static_cast<ifcopenshell_selector_keys_t*>(keys);
-    auto index_cpp = static_cast<unsigned long>(index);
+    auto index_cpp = static_cast<size_t>(index);
         *out_result = ifcapi::bindings::selector_keys_is_regex(keys_cpp, index_cpp);
         return true;
     } catch (const std::exception& e) {
@@ -10473,7 +12205,7 @@ bool ifcopenshell_ifcapi_selector_node_child(void* node, size_t index, void** ou
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     auto node_cpp = static_cast<const ifcopenshell_selector_node_t*>(node);
-    auto index_cpp = static_cast<unsigned long>(index);
+    auto index_cpp = static_cast<size_t>(index);
         *out_result = static_cast<void*>(ifcapi::bindings::selector_node_child(node_cpp, index_cpp));
         return true;
     } catch (const std::exception& e) {
@@ -13914,7 +15646,7 @@ bool ifcopenshell_ifcapi_value_dict_key_at(ifcopenshell_ifcapi_value_t* value, s
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (value == nullptr || value->ptr == nullptr) { throw std::runtime_error("Handle parameter \"value\" is invalid"); }
     auto value_cpp = value->ptr;
-    auto index_cpp = static_cast<unsigned long>(index);
+    auto index_cpp = static_cast<size_t>(index);
         *out_result = make_string(ifcapi::bindings::value_dict_key_at(value_cpp, index_cpp));
         return true;
     } catch (const std::exception& e) {
@@ -13949,7 +15681,7 @@ bool ifcopenshell_ifcapi_value_dict_value_at(ifcopenshell_ifcapi_value_t* value,
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (value == nullptr || value->ptr == nullptr) { throw std::runtime_error("Handle parameter \"value\" is invalid"); }
     auto value_cpp = value->ptr;
-    auto index_cpp = static_cast<unsigned long>(index);
+    auto index_cpp = static_cast<size_t>(index);
         *out_result = new ifcopenshell_ifcapi_value_t{const_cast<ifcopenshell_value_t*>(ifcapi::bindings::value_dict_value_at(value_cpp, index_cpp)), false};
         return true;
     } catch (const std::exception& e) {
@@ -14002,7 +15734,7 @@ bool ifcopenshell_ifcapi_value_list_at(ifcopenshell_ifcapi_value_t* value, size_
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (value == nullptr || value->ptr == nullptr) { throw std::runtime_error("Handle parameter \"value\" is invalid"); }
     auto value_cpp = value->ptr;
-    auto index_cpp = static_cast<unsigned long>(index);
+    auto index_cpp = static_cast<size_t>(index);
         *out_result = new ifcopenshell_ifcapi_value_t{const_cast<ifcopenshell_value_t*>(ifcapi::bindings::value_list_at(value_cpp, index_cpp)), false};
         return true;
     } catch (const std::exception& e) {
@@ -14709,7 +16441,7 @@ bool ifcopenshell_ifc_instance_get_argument(ifcopenshell_ifc_instance_t* self, s
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = &self->value;
-    auto attribute_index_cpp = static_cast<unsigned long>(attribute_index);
+    auto attribute_index_cpp = static_cast<size_t>(attribute_index);
         *out_result = new ifcopenshell_ifcparse_attribute_value_t{self_cpp->get_attribute_value(attribute_index_cpp)};
         return true;
     } catch (const std::exception& e) {
@@ -14782,7 +16514,7 @@ bool ifcopenshell_ifc_schema_declaration_by_index(ifcopenshell_ifc_schema_t* sel
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
-    auto declaration_index_cpp = static_cast<unsigned long>(declaration_index);
+    auto declaration_index_cpp = static_cast<size_t>(declaration_index);
         *out_result = new ifcopenshell_ifc_declaration_t{const_cast<ifcopenshell::declaration*>(self_cpp->declaration_by_name(declaration_index_cpp)), false};
         return true;
     } catch (const std::exception& e) {
@@ -15195,7 +16927,7 @@ bool ifcopenshell_ifc_enumeration_lookup_enum_value(ifcopenshell_ifc_enumeration
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
-    auto i_cpp = static_cast<unsigned long>(i);
+    auto i_cpp = static_cast<size_t>(i);
         *out_result = make_string(self_cpp->lookup_enum_value(i_cpp));
         return true;
     } catch (const std::exception& e) {
@@ -16055,7 +17787,7 @@ bool ifcopenshell_ifc_entity_attribute_by_index(ifcopenshell_ifc_entity_t* self,
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
-    auto index_cpp = static_cast<unsigned long>(index);
+    auto index_cpp = static_cast<size_t>(index);
         *out_result = new ifcopenshell_ifc_attribute_t{const_cast<ifcopenshell::attribute*>(self_cpp->attribute_by_index(index_cpp)), false};
         return true;
     } catch (const std::exception& e) {
@@ -16437,2217 +18169,6 @@ bool ifcopenshell_ifc_instance_streamer_semicolon_count(ifcopenshell_ifc_instanc
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<size_t>(self_cpp->semicolon_count());
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_file_write(ifcopenshell_ifc_file_t* self, const char* path) {
-    try {
-        ifcopenshell_clear_error();
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-    if (path == nullptr) { throw std::runtime_error("Parameter \"path\" must not be null"); }
-    std::string path_cpp(path);
-        [&]() {
-std::ofstream stream(ifcopenshell::path::from_utf8(path_cpp).c_str());
-if (!stream.good()) {
-    throw std::runtime_error("Failed to write to path: '" + path_cpp + "', check folder and file permissions.");
-}
-stream << (*self_cpp);
-        }();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_file_storage_mode(ifcopenshell_ifc_file_t* self, int32_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-return std::visit([](auto& storage) -> int {
-    using T = std::decay_t<decltype(storage)>;
-    if constexpr (std::is_same_v<T, ifcopenshell::impl::in_memory_file_storage>) {
-        return 0;
-    } else if constexpr (std::is_same_v<T, ifcopenshell::impl::rocks_db_file_storage>) {
-        return 1;
-    }
-    return -1;
-}, self_cpp->storage_);
-        }();
-        *out_result = static_cast<int32_t>(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_file_create_entity_by_name(ifcopenshell_ifc_file_t* self, const char* type_name, ifcopenshell_ifc_instance_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-    if (type_name == nullptr) { throw std::runtime_error("Parameter \"type_name\" must not be null"); }
-    std::string type_name_cpp(type_name);
-        auto generated_result = [&]() {
-const auto* schema = self_cpp->schema();
-const auto* decl = schema->declaration_by_name(type_name_cpp);
-if (!decl || (!decl->as_entity() && !decl->as_type_declaration() && !decl->as_enumeration_type())) {
-    throw std::runtime_error("Declaration is not creatable");
-}
-auto entity = self_cpp->create(decl);
-if (!entity) {
-    throw std::runtime_error("Failed to create entity");
-}
-return entity;
-        }();
-        *out_result = new ifcopenshell_ifc_instance_t{generated_result};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_file_create_entity_by_name_with_id(ifcopenshell_ifc_file_t* self, const char* type_name, uint32_t id, ifcopenshell_ifc_instance_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-    if (type_name == nullptr) { throw std::runtime_error("Parameter \"type_name\" must not be null"); }
-    std::string type_name_cpp(type_name);
-        auto generated_result = [&]() {
-const auto* schema = self_cpp->schema();
-const auto* decl = schema->declaration_by_name(type_name_cpp);
-if (!decl || !decl->as_entity()) {
-    throw std::runtime_error("Type declaration is not an entity");
-}
-auto entity = self_cpp->create(decl, static_cast<int>(id));
-if (!entity) {
-    throw std::runtime_error("Failed to create entity with id");
-}
-return entity;
-        }();
-        *out_result = new ifcopenshell_ifc_instance_t{generated_result};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_file_add_entity(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t* instance, uint32_t id, ifcopenshell_ifc_instance_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-    if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
-    auto instance_cpp = &instance->value;
-        auto generated_result = [&]() {
-auto added = self_cpp->add_entity(*instance_cpp, id == 0 ? -1 : static_cast<int>(id));
-if (!added) {
-    throw std::runtime_error("Failed to add entity");
-}
-return added;
-        }();
-        *out_result = new ifcopenshell_ifc_instance_t{generated_result};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_file_schema_name(ifcopenshell_ifc_file_t* self, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-if (self_cpp->schema() == nullptr) {
-    return std::string();
-}
-return self_cpp->schema()->name();
-        }();
-        *out_result = make_string(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_file_get_inverse(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t* instance, ifcopenshell_ifcparse_instance_list_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-    if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
-    auto instance_cpp = &instance->value;
-        auto generated_result = [&]() {
-auto entity = instance_cpp->as<express::Entity>();
-if (entity) {
-    return self_cpp->get_inverse(entity.id(), 0, -1);
-}
-throw ifcopenshell::exception("Only entities with ids are supported for get_inverse.");
-        }();
-        *out_result = new ifcopenshell_ifcparse_instance_list_t{std::vector<express::Base>(generated_result.begin(), generated_result.end())};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_file_get_total_inverses(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t* instance, int32_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-    if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
-    auto instance_cpp = &instance->value;
-        auto generated_result = [&]() {
-auto entity = instance_cpp->as<express::Entity>();
-if (entity) {
-    return self_cpp->get_total_inverses(entity.id());
-}
-throw ifcopenshell::exception("Only entities with ids are supported for get_total_inverses.");
-        }();
-        *out_result = static_cast<int32_t>(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_file_types(ifcopenshell_ifc_file_t* self, ifcopenshell_string_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-const size_t n = std::distance(self_cpp->types_begin(), self_cpp->types_end());
-std::vector<std::string> types;
-types.reserve(n);
-std::transform(self_cpp->types_begin(), self_cpp->types_end(), std::back_inserter(types), [](const ifcopenshell::declaration* decl) {
-    return decl->name();
-});
-return types;
-        }();
-        *out_result = make_string_list(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_file_to_string(ifcopenshell_ifc_file_t* self, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-std::ostringstream stream;
-stream << (*self_cpp);
-return stream.str();
-        }();
-        *out_result = make_string(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_file_entity_names(ifcopenshell_ifc_file_t* self, ifcopenshell_uint32_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-std::vector<unsigned int> ids;
-ids.reserve(std::distance(self_cpp->begin(), self_cpp->end()));
-for (auto it = self_cpp->begin(); it != self_cpp->end(); ++it) {
-    ids.push_back(it->first);
-}
-return ids;
-        }();
-        *out_result = make_uint32_list(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_file_file_pointer(ifcopenshell_ifc_file_t* self, size_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-return reinterpret_cast<size_t>(self_cpp);
-        }();
-        *out_result = static_cast<size_t>(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_file_get_inverse_indices(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t* instance, ifcopenshell_int32_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-    if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
-    auto instance_cpp = &instance->value;
-        auto generated_result = [&]() {
-auto entity = instance_cpp->as<express::Entity>();
-if (entity) {
-    return self_cpp->get_inverse_indices_by_id(entity.id());
-}
-throw ifcopenshell::exception("Only entities with ids are supported for get_inverse_indices.");
-        }();
-        *out_result = make_int32_list(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_file_good(ifcopenshell_ifc_file_t* self, int32_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-return static_cast<int>(self_cpp->good().value());
-        }();
-        *out_result = static_cast<int32_t>(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_file_get_unit(ifcopenshell_ifc_file_t* self, const char* unit_type, double* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-    if (unit_type == nullptr) { throw std::runtime_error("Parameter \"unit_type\" must not be null"); }
-    std::string unit_type_cpp(unit_type);
-        auto generated_result = [&]() {
-return self_cpp->get_unit(unit_type_cpp).second;
-        }();
-        *out_result = static_cast<double>(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_file_key_value_store_query(ifcopenshell_ifc_file_t* self, const char* key, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-    if (key == nullptr) { throw std::runtime_error("Parameter \"key\" must not be null"); }
-    std::string key_cpp(key);
-        auto generated_result = [&]() {
-auto* storage = std::visit([](auto& value) -> const ifcopenshell::impl::rocks_db_file_storage* {
-    using T = std::decay_t<decltype(value)>;
-    if constexpr (std::is_same_v<T, ifcopenshell::impl::rocks_db_file_storage>) {
-        return &value;
-    }
-    return nullptr;
-}, self_cpp->storage_);
-if (!storage) {
-    return std::string();
-}
-#ifdef IFOPSH_WITH_ROCKSDB
-std::string value;
-if (storage->db->Get(storage->ropts, key_cpp, &value) != rocksdb::Status::OK()) {
-    return std::string();
-}
-return value;
-#else
-return std::string();
-#endif
-        }();
-        *out_result = make_string(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_file_key_value_store_iter(ifcopenshell_ifc_file_t* self, const char* prefix, ifcopenshell_string_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-    if (prefix == nullptr) { throw std::runtime_error("Parameter \"prefix\" must not be null"); }
-    std::string prefix_cpp(prefix);
-        auto generated_result = [&]() {
-std::vector<std::string> values;
-auto* storage = std::visit([](auto& value) -> const ifcopenshell::impl::rocks_db_file_storage* {
-    using T = std::decay_t<decltype(value)>;
-    if constexpr (std::is_same_v<T, ifcopenshell::impl::rocks_db_file_storage>) {
-        return &value;
-    }
-    return nullptr;
-}, self_cpp->storage_);
-if (!storage) {
-    return values;
-}
-#ifdef IFOPSH_WITH_ROCKSDB
-std::unique_ptr<rocksdb::Iterator> iterator(storage->db->NewIterator(storage->ropts));
-const rocksdb::Slice prefix_slice(prefix_cpp);
-for (iterator->Seek(prefix_cpp); iterator->Valid() && iterator->key().starts_with(prefix_slice); iterator->Next()) {
-    values.push_back(iterator->key().ToString());
-}
-#endif
-return values;
-        }();
-        *out_result = make_string_list(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_file_pointer(ifcopenshell_ifc_instance_t* self, size_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-        auto generated_result = [&]() {
-return reinterpret_cast<size_t>(self_cpp->file());
-        }();
-        *out_result = static_cast<size_t>(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_get_argument_index(ifcopenshell_ifc_instance_t* self, const char* name, uint32_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
-    std::string name_cpp(name);
-        auto generated_result = [&]() {
-if (self_cpp->declaration().as_entity()) {
-    return static_cast<unsigned int>(self_cpp->declaration().as_entity()->attribute_index(name_cpp));
-}
-if (name_cpp == "wrappedValue") {
-    return 0u;
-}
-throw ifcopenshell::exception(name_cpp + " not found on " + self_cpp->declaration().name());
-        }();
-        *out_result = static_cast<uint32_t>(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_get_argument_name(ifcopenshell_ifc_instance_t* self, uint32_t index, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-        auto generated_result = [&]() {
-if (self_cpp->declaration().as_entity()) {
-    return self_cpp->declaration().as_entity()->attribute_by_index(index)->name();
-}
-if (index == 0u) {
-    return std::string("wrappedValue");
-}
-throw ifcopenshell::exception(std::to_string(index) + " out of bounds on " + self_cpp->declaration().name());
-        }();
-        *out_result = make_string(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_get_attribute_category(ifcopenshell_ifc_instance_t* self, const char* name, int32_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
-    std::string name_cpp(name);
-        auto generated_result = [&]() {
-if (!self_cpp->declaration().as_entity()) {
-    return name_cpp == "wrappedValue" ? 1 : 0;
-}
-for (const auto* attr : self_cpp->declaration().as_entity()->all_attributes()) {
-    if (attr->name() == name_cpp) {
-        return 1;
-    }
-}
-for (const auto* attr : self_cpp->declaration().as_entity()->all_inverse_attributes()) {
-    if (attr->name() == name_cpp) {
-        return 2;
-    }
-}
-return 0;
-        }();
-        *out_result = static_cast<int32_t>(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_set_attribute_value(ifcopenshell_ifc_instance_t* self, const char* name, ifcopenshell_ifcparse_attribute_value_t* value) {
-    try {
-        ifcopenshell_clear_error();
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
-    std::string name_cpp(name);
-    if (value == nullptr) { throw std::runtime_error("Handle parameter \"value\" must not be null"); }
-    auto value_cpp = value->value;
-        [&]() {
-if (!self_cpp->declaration().as_entity()) {
-    if (name_cpp != "wrappedValue") {
-        throw ifcopenshell::exception(name_cpp + " not found on " + self_cpp->declaration().name());
-    }
-    set_instance_attribute_from_attribute_value(self_cpp, 0u, value_cpp);
-    return;
-}
-const auto index = self_cpp->declaration().as_entity()->attribute_index(name_cpp);
-if (index < 0) {
-    throw ifcopenshell::exception(name_cpp + " not found on " + self_cpp->declaration().name());
-}
-set_instance_attribute_from_attribute_value(self_cpp, static_cast<size_t>(index), value_cpp);
-        }();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_unset_attribute_value(ifcopenshell_ifc_instance_t* self, const char* name) {
-    try {
-        ifcopenshell_clear_error();
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
-    std::string name_cpp(name);
-        [&]() {
-if (!self_cpp->declaration().as_entity()) {
-    if (name_cpp != "wrappedValue") {
-        throw ifcopenshell::exception(name_cpp + " not found on " + self_cpp->declaration().name());
-    }
-    unset_instance_argument(self_cpp, 0u);
-    return;
-}
-const auto index = self_cpp->declaration().as_entity()->attribute_index(name_cpp);
-if (index < 0) {
-    throw ifcopenshell::exception(name_cpp + " not found on " + self_cpp->declaration().name());
-}
-unset_instance_argument(self_cpp, static_cast<size_t>(index));
-        }();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_get_inverse(ifcopenshell_ifc_instance_t* self, const char* name, ifcopenshell_ifcparse_instance_list_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
-    std::string name_cpp(name);
-        auto generated_result = [&]() {
-if (self_cpp->declaration().as_entity()) {
-    return self_cpp->as<express::Entity>().get_inverse(name_cpp);
-}
-throw ifcopenshell::exception(name_cpp + " not found on " + self_cpp->declaration().name());
-        }();
-        *out_result = new ifcopenshell_ifcparse_instance_list_t{std::vector<express::Base>(generated_result.begin(), generated_result.end())};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_get_attribute_value(ifcopenshell_ifc_instance_t* self, size_t index, ifcopenshell_ifcparse_attribute_value_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-        auto generated_result = [&]() {
-return self_cpp->get_attribute_value(index);
-        }();
-        *out_result = new ifcopenshell_ifcparse_attribute_value_t{generated_result};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_get_argument_by_name(ifcopenshell_ifc_instance_t* self, const char* name, ifcopenshell_ifcparse_attribute_value_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
-    std::string name_cpp(name);
-        auto generated_result = [&]() {
-auto* entity = self_cpp->declaration().as_entity();
-if (!entity) {
-    throw std::runtime_error("Attribute '" + name_cpp + "' not found on entity named " + self_cpp->declaration().name());
-}
-auto index = entity->attribute_index(name_cpp);
-if (index == -1) {
-    throw std::runtime_error("Attribute '" + name_cpp + "' not found on entity named " + self_cpp->declaration().name());
-}
-return self_cpp->get_attribute_value(static_cast<unsigned>(index));
-        }();
-        *out_result = new ifcopenshell_ifcparse_attribute_value_t{generated_result};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_get_argument_type(ifcopenshell_ifc_instance_t* self, uint32_t index, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-        auto generated_result = [&]() {
-return ifcopenshell::argument_type_to_string(helper_fn_attribute_type(self_cpp, index));
-        }();
-        *out_result = make_static_string(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_to_string(ifcopenshell_ifc_instance_t* self, bool valid_spf, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-        auto generated_result = [&]() {
-std::ostringstream oss;
-self_cpp->to_string(oss, valid_spf);
-return oss.str();
-        }();
-        *out_result = make_string(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_class_name(ifcopenshell_ifc_instance_t* self, bool with_schema, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-        auto generated_result = [&]() {
-auto name = self_cpp->declaration().name();
-if (with_schema) {
-    name = self_cpp->declaration().schema()->name() + "." + name;
-}
-return name;
-        }();
-        *out_result = make_string(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_is_a(ifcopenshell_ifc_instance_t* self, const char* declaration_name, bool* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-    if (declaration_name == nullptr) { throw std::runtime_error("Parameter \"declaration_name\" must not be null"); }
-    std::string declaration_name_cpp(declaration_name);
-        auto generated_result = [&]() {
-return self_cpp->declaration().is(declaration_name_cpp);
-        }();
-        *out_result = generated_result;
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_get_attribute_names(ifcopenshell_ifc_instance_t* self, ifcopenshell_string_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-        auto generated_result = [&]() {
-if (!self_cpp->declaration().as_entity()) {
-    return std::vector<std::string>(1, "wrappedValue");
-}
-const auto attrs = self_cpp->declaration().as_entity()->all_attributes();
-std::vector<std::string> names;
-names.reserve(attrs.size());
-for (const auto* attr : attrs) {
-    names.push_back(attr->name());
-}
-return names;
-        }();
-        *out_result = make_string_list(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_get_inverse_attribute_names(ifcopenshell_ifc_instance_t* self, ifcopenshell_string_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-        auto generated_result = [&]() {
-if (!self_cpp->declaration().as_entity()) {
-    return std::vector<std::string>();
-}
-const auto attrs = self_cpp->declaration().as_entity()->all_inverse_attributes();
-std::vector<std::string> names;
-names.reserve(attrs.size());
-for (const auto* attr : attrs) {
-    names.push_back(attr->name());
-}
-return names;
-        }();
-        *out_result = make_string_list(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_get_inverse_attribute_by_name(ifcopenshell_ifc_instance_t* self, const char* name, ifcopenshell_ifcparse_instance_list_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
-    std::string name_cpp(name);
-        auto generated_result = [&]() {
-auto entity = self_cpp->as<express::Entity>();
-if (entity) {
-    return entity.get_inverse(name_cpp);
-}
-throw ifcopenshell::exception("Only entities with ids are supported for inverse attributes.");
-        }();
-        *out_result = new ifcopenshell_ifcparse_instance_list_t{std::vector<express::Base>(generated_result.begin(), generated_result.end())};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_unset_argument(ifcopenshell_ifc_instance_t* self, size_t index) {
-    try {
-        ifcopenshell_clear_error();
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-        [&]() {
-unset_instance_argument(self_cpp, index);
-        }();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_set_argument_bool(ifcopenshell_ifc_instance_t* self, size_t index, bool value) {
-    try {
-        ifcopenshell_clear_error();
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-        [&]() {
-set_instance_argument(self_cpp, index, value);
-        }();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_set_argument_int32(ifcopenshell_ifc_instance_t* self, size_t index, int32_t value) {
-    try {
-        ifcopenshell_clear_error();
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-        [&]() {
-set_instance_argument(self_cpp, index, static_cast<int>(value));
-        }();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_set_argument_double(ifcopenshell_ifc_instance_t* self, size_t index, double value) {
-    try {
-        ifcopenshell_clear_error();
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-        [&]() {
-set_instance_argument(self_cpp, index, value);
-        }();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_set_argument_string(ifcopenshell_ifc_instance_t* self, size_t index, const char* value) {
-    try {
-        ifcopenshell_clear_error();
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-    if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
-    std::string value_cpp(value);
-        [&]() {
-set_instance_argument(self_cpp, index, value_cpp);
-        }();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_set_argument_instance(ifcopenshell_ifc_instance_t* self, size_t index, ifcopenshell_ifc_instance_t* value) {
-    try {
-        ifcopenshell_clear_error();
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-    if (value == nullptr) { throw std::runtime_error("Handle parameter \"value\" must not be null"); }
-    auto value_cpp = &value->value;
-        [&]() {
-set_instance_argument(self_cpp, index, value_cpp);
-        }();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_set_argument_instance_list(ifcopenshell_ifc_instance_t* self, size_t index, ifcopenshell_ifcparse_instance_list_t* value) {
-    try {
-        ifcopenshell_clear_error();
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-    if (value == nullptr) { throw std::runtime_error("Handle parameter \"value\" must not be null"); }
-    auto value_cpp = &value->value;
-        [&]() {
-set_instance_argument(self_cpp, index, value_cpp);
-        }();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_set_argument_int32_list(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_int32_list_t* value) {
-    try {
-        ifcopenshell_clear_error();
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-    if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
-    auto value_cpp = to_cpp_int32_list(value);
-        [&]() {
-set_instance_argument(self_cpp, index, value_cpp);
-        }();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_set_argument_double_list(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_double_list_t* value) {
-    try {
-        ifcopenshell_clear_error();
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-    if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
-    auto value_cpp = to_cpp_double_list(value);
-        [&]() {
-set_instance_argument(self_cpp, index, value_cpp);
-        }();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_set_argument_string_list(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_string_list_t* value) {
-    try {
-        ifcopenshell_clear_error();
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-    if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
-    auto value_cpp = to_cpp_string_list(value);
-        [&]() {
-set_instance_argument(self_cpp, index, value_cpp);
-        }();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_set_argument_int32_list_list(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_int32_list_list_t* value) {
-    try {
-        ifcopenshell_clear_error();
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-    if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
-    auto value_cpp = to_cpp_int32_list_list(value);
-        [&]() {
-set_instance_argument(self_cpp, index, value_cpp);
-        }();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_set_argument_double_list_list(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_double_list_list_t* value) {
-    try {
-        ifcopenshell_clear_error();
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-    if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
-    auto value_cpp = to_cpp_double_list_list(value);
-        [&]() {
-set_instance_argument(self_cpp, index, value_cpp);
-        }();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_set_argument_logical(ifcopenshell_ifc_instance_t* self, size_t index, int32_t value) {
-    try {
-        ifcopenshell_clear_error();
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-        [&]() {
-ifcopenshell::argument_type arg_type = helper_fn_attribute_type(self_cpp, static_cast<unsigned>(index));
-if (arg_type != ifcopenshell::Argument_LOGICAL) {
-    throw ifcopenshell::exception("Attribute not set");
-}
-boost::logic::tribool logical_value;
-if (value == 0) {
-    logical_value = false;
-} else if (value == 1) {
-    logical_value = true;
-} else if (value == -1) {
-    logical_value = boost::logic::indeterminate;
-} else {
-    throw ifcopenshell::exception("Logical value must be -1, 0, or 1");
-}
-set_instance_argument(self_cpp, index, logical_value);
-        }();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_set_argument_as_aggregate_of_aggregate_of_entity_instance(ifcopenshell_ifc_instance_t* self, size_t index, const ifcopenshell_int32_list_list_t* value) {
-    try {
-        ifcopenshell_clear_error();
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-    if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
-    auto value_cpp = to_cpp_int32_list_list(value);
-        [&]() {
-ifcopenshell::argument_type arg_type = helper_fn_attribute_type(self_cpp, static_cast<unsigned>(index));
-if (arg_type != ifcopenshell::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE) {
-    throw ifcopenshell::exception("Attribute not set");
-}
-if (self_cpp->file() == nullptr) {
-    throw ifcopenshell::exception("Instance is not attached to a file.");
-}
-std::vector<std::vector<express::Base>> aggregate;
-for (const auto& group : value_cpp) {
-    std::vector<express::Base> instances;
-    instances.reserve(group.size());
-    for (int identifier : group) {
-        auto instance = self_cpp->file()->instance_by_id(identifier);
-        if (!instance) {
-            throw ifcopenshell::exception("Unable to resolve instance id " + std::to_string(identifier));
-        }
-        instances.push_back(instance);
-    }
-    aggregate.push_back(std::move(instances));
-}
-set_instance_argument(self_cpp, index, aggregate);
-        }();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_set_argument_enumeration(ifcopenshell_ifc_instance_t* self, size_t index, ifcopenshell_ifc_enumeration_t* enumeration, size_t enumeration_index) {
-    try {
-        ifcopenshell_clear_error();
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-    if (enumeration == nullptr || enumeration->ptr == nullptr) { throw std::runtime_error("Handle parameter \"enumeration\" is invalid"); }
-    auto enumeration_cpp = enumeration->ptr;
-        [&]() {
-set_instance_argument(self_cpp, index, enumeration_reference(enumeration_cpp, enumeration_index));
-        }();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_set_argument_enumeration_by_name(ifcopenshell_ifc_instance_t* self, size_t index, const char* value, bool* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-    if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
-    std::string value_cpp(value);
-        auto generated_result = [&]() {
-auto* entity_decl = self_cpp->declaration().as_entity();
-if (entity_decl == nullptr) {
-    return false;
-}
-const auto attrs = entity_decl->all_attributes();
-if (index >= attrs.size()) {
-    return false;
-}
-const ifcopenshell::parameter_type* parameter_type = attrs[index]->type_of_attribute();
-const ifcopenshell::enumeration_type* enumeration = nullptr;
-while (parameter_type != nullptr) {
-    auto* named = parameter_type->as_named_type();
-    if (named == nullptr) {
-        break;
-    }
-    auto* declaration = named->declared_type();
-    if ((enumeration = declaration->as_enumeration_type()) != nullptr) {
-        break;
-    }
-    auto* type_declaration = declaration->as_type_declaration();
-    if (type_declaration == nullptr) {
-        break;
-    }
-    parameter_type = type_declaration->declared_type();
-}
-if (enumeration == nullptr) {
-    return false;
-}
-const auto& items = enumeration->enumeration_items();
-auto it = std::find(items.begin(), items.end(), value_cpp);
-if (it == items.end()) {
-    throw ifcopenshell::exception("'" + value_cpp + "' is not a valid value for enumeration " + enumeration->name());
-}
-set_instance_argument(self_cpp, index, enumeration_reference(enumeration, static_cast<size_t>(std::distance(items.begin(), it))));
-return true;
-        }();
-        *out_result = generated_result;
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_attribute_value_is_null(ifcopenshell_ifcparse_attribute_value_t* self, bool* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto& self_cpp = self->value;
-        auto generated_result = [&]() {
-return self_cpp.isNull();
-        }();
-        *out_result = generated_result;
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_attribute_value_type(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto& self_cpp = self->value;
-        auto generated_result = [&]() {
-return ifcopenshell::argument_type_to_string(self_cpp.type());
-        }();
-        *out_result = make_static_string(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_attribute_value_size(ifcopenshell_ifcparse_attribute_value_t* self, size_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto& self_cpp = self->value;
-        auto generated_result = [&]() {
-return self_cpp.size();
-        }();
-        *out_result = static_cast<size_t>(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_attribute_value_as_int32(ifcopenshell_ifcparse_attribute_value_t* self, int32_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto& self_cpp = self->value;
-        auto generated_result = [&]() {
-return static_cast<int>(self_cpp);
-        }();
-        *out_result = static_cast<int32_t>(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_attribute_value_as_bool(ifcopenshell_ifcparse_attribute_value_t* self, bool* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto& self_cpp = self->value;
-        auto generated_result = [&]() {
-return static_cast<bool>(self_cpp);
-        }();
-        *out_result = generated_result;
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_attribute_value_as_double(ifcopenshell_ifcparse_attribute_value_t* self, double* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto& self_cpp = self->value;
-        auto generated_result = [&]() {
-return static_cast<double>(self_cpp);
-        }();
-        *out_result = static_cast<double>(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_attribute_value_as_int32_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_int32_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto& self_cpp = self->value;
-        auto generated_result = [&]() {
-return static_cast<std::vector<int>>(self_cpp);
-        }();
-        *out_result = make_int32_list(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_attribute_value_as_double_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_double_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto& self_cpp = self->value;
-        auto generated_result = [&]() {
-return static_cast<std::vector<double>>(self_cpp);
-        }();
-        *out_result = make_double_list(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_attribute_value_as_int32_list_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_int32_list_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto& self_cpp = self->value;
-        auto generated_result = [&]() {
-return static_cast<std::vector<std::vector<int>>>(self_cpp);
-        }();
-        *out_result = make_int32_list_list(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_attribute_value_as_instance_id_list_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_int32_list_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto& self_cpp = self->value;
-        auto generated_result = [&]() {
-if (self_cpp.isNull() || self_cpp.type() != ifcopenshell::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE) {
-    throw ifcopenshell::exception("Attribute is not an aggregate of aggregate of entity instance");
-}
-auto aggregate = static_cast<std::vector<std::vector<express::Base>>>(self_cpp);
-std::vector<std::vector<int>> result;
-result.reserve(aggregate.size());
-for (const auto& group : aggregate) {
-    std::vector<int> row;
-    row.reserve(group.size());
-    for (const auto& instance : group) {
-        if (!instance) {
-            throw ifcopenshell::exception("Aggregate contains a null entity instance");
-        }
-        row.push_back(static_cast<int>(instance.id()));
-    }
-    result.push_back(std::move(row));
-}
-return result;
-        }();
-        *out_result = make_int32_list_list(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_attribute_value_as_double_list_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_double_list_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto& self_cpp = self->value;
-        auto generated_result = [&]() {
-return static_cast<std::vector<std::vector<double>>>(self_cpp);
-        }();
-        *out_result = make_double_list_list(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_attribute_value_as_string_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_string_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto& self_cpp = self->value;
-        auto generated_result = [&]() {
-return static_cast<std::vector<std::string>>(self_cpp);
-        }();
-        *out_result = make_string_list(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_attribute_value_as_string(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto& self_cpp = self->value;
-        auto generated_result = [&]() {
-return static_cast<std::string>(self_cpp);
-        }();
-        *out_result = make_string(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_attribute_value_as_instance(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_ifc_instance_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto& self_cpp = self->value;
-        auto generated_result = [&]() {
-return static_cast<express::Base>(self_cpp);
-        }();
-        auto result_value = generated_result;
-        if (!static_cast<bool>(result_value)) {
-            *out_result = nullptr;
-        } else {
-            *out_result = new ifcopenshell_ifc_instance_t{std::move(result_value)};
-        }
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_attribute_value_as_instance_list(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_ifcparse_instance_list_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto& self_cpp = self->value;
-        auto generated_result = [&]() {
-return static_cast<std::vector<express::Base>>(self_cpp);
-        }();
-        *out_result = new ifcopenshell_ifcparse_instance_list_t{std::vector<express::Base>(generated_result.begin(), generated_result.end())};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_attribute_value_as_enumeration_value(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto& self_cpp = self->value;
-        auto generated_result = [&]() {
-return std::string(static_cast<enumeration_reference>(self_cpp).value());
-        }();
-        *out_result = make_string(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_attribute_value_as_enumeration_index(ifcopenshell_ifcparse_attribute_value_t* self, size_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto& self_cpp = self->value;
-        auto generated_result = [&]() {
-return static_cast<enumeration_reference>(self_cpp).index();
-        }();
-        *out_result = static_cast<size_t>(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_attribute_value_as_enumeration_type(ifcopenshell_ifcparse_attribute_value_t* self, ifcopenshell_ifc_enumeration_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto& self_cpp = self->value;
-        auto generated_result = [&]() {
-return const_cast<ifcopenshell::enumeration_type*>(static_cast<enumeration_reference>(self_cpp).enumeration());
-        }();
-        *out_result = new ifcopenshell_ifc_enumeration_t{generated_result, false};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_file_header(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_header_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-return &self_cpp->header();
-        }();
-        *out_result = new ifcopenshell_ifc_header_t{generated_result, false};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_file_header_file_description(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-return self_cpp->header().file_description();
-        }();
-        auto result_value = generated_result;
-        if (!static_cast<bool>(result_value)) {
-            *out_result = nullptr;
-        } else {
-            *out_result = new ifcopenshell_ifc_instance_t{std::move(result_value)};
-        }
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_file_header_file_name(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-return self_cpp->header().file_name();
-        }();
-        auto result_value = generated_result;
-        if (!static_cast<bool>(result_value)) {
-            *out_result = nullptr;
-        } else {
-            *out_result = new ifcopenshell_ifc_instance_t{std::move(result_value)};
-        }
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_file_header_file_schema(ifcopenshell_ifc_file_t* self, ifcopenshell_ifc_instance_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-return self_cpp->header().file_schema();
-        }();
-        auto result_value = generated_result;
-        if (!static_cast<bool>(result_value)) {
-            *out_result = nullptr;
-        } else {
-            *out_result = new ifcopenshell_ifc_instance_t{std::move(result_value)};
-        }
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_header_write(ifcopenshell_ifc_header_t* self, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-std::ostringstream stream;
-self_cpp->write(stream);
-return stream.str();
-        }();
-        *out_result = make_string(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_select_type_select_list_names(ifcopenshell_ifc_select_type_t* self, ifcopenshell_string_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-std::vector<std::string> names;
-names.reserve(self_cpp->select_list().size());
-for (const auto* decl : self_cpp->select_list()) {
-    names.push_back(decl->name());
-}
-return names;
-        }();
-        *out_result = make_string_list(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_type_declaration_argument_types(ifcopenshell_ifc_type_declaration_t* self, ifcopenshell_string_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-std::vector<std::string> result;
-auto argument_type = ifcopenshell::Argument_UNKNOWN;
-auto* declared_type = self_cpp->declared_type();
-if (declared_type != nullptr) {
-    argument_type = ifcopenshell::from_parameter_type(declared_type);
-}
-result.push_back(ifcopenshell::argument_type_to_string(argument_type));
-return result;
-        }();
-        *out_result = make_string_list(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_enumeration_argument_types(ifcopenshell_ifc_enumeration_t* self, ifcopenshell_string_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-return std::vector<std::string>{ifcopenshell::argument_type_to_string(ifcopenshell::Argument_STRING)};
-        }();
-        *out_result = make_string_list(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_parameter_type_kind(ifcopenshell_ifc_parameter_type_t* self, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-if (self_cpp->as_named_type()) {
-    return "NAMED";
-}
-if (self_cpp->as_simple_type()) {
-    return "SIMPLE";
-}
-if (self_cpp->as_aggregation_type()) {
-    return "AGGREGATION";
-}
-throw std::runtime_error("Unknown parameter type.");
-        }();
-        *out_result = make_static_string(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_simple_type_kind(ifcopenshell_ifc_simple_type_t* self, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-switch (self_cpp->declared_type()) {
-case ifcopenshell::simple_type::binary_type:
-    return "BINARY";
-case ifcopenshell::simple_type::boolean_type:
-    return "BOOLEAN";
-case ifcopenshell::simple_type::integer_type:
-    return "INTEGER";
-case ifcopenshell::simple_type::logical_type:
-    return "LOGICAL";
-case ifcopenshell::simple_type::number_type:
-    return "NUMBER";
-case ifcopenshell::simple_type::real_type:
-    return "REAL";
-case ifcopenshell::simple_type::string_type:
-    return "STRING";
-case ifcopenshell::simple_type::datatype_COUNT:
-    break;
-}
-throw std::runtime_error("Unknown simple type.");
-        }();
-        *out_result = make_static_string(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_aggregation_type_type_of_aggregation(ifcopenshell_ifc_aggregation_type_t* self, int32_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-return static_cast<int>(self_cpp->type_of_aggregation());
-        }();
-        *out_result = static_cast<int32_t>(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_aggregation_type_type_of_aggregation_string(ifcopenshell_ifc_aggregation_type_t* self, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-switch (self_cpp->type_of_aggregation()) {
-case ifcopenshell::aggregation_type::array_type:
-    return "array";
-case ifcopenshell::aggregation_type::bag_type:
-    return "bag";
-case ifcopenshell::aggregation_type::list_type:
-    return "list";
-case ifcopenshell::aggregation_type::set_type:
-    return "set";
-}
-throw std::runtime_error("Unknown aggregation type.");
-        }();
-        *out_result = make_static_string(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_inverse_attribute_type_of_aggregation(ifcopenshell_ifc_inverse_attribute_t* self, int32_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-return static_cast<int>(self_cpp->type_of_aggregation());
-        }();
-        *out_result = static_cast<int32_t>(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_inverse_attribute_type_of_aggregation_string(ifcopenshell_ifc_inverse_attribute_t* self, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-switch (self_cpp->type_of_aggregation()) {
-case ifcopenshell::inverse_attribute::bag_type:
-    return "bag";
-case ifcopenshell::inverse_attribute::set_type:
-    return "set";
-case ifcopenshell::inverse_attribute::unspecified_type:
-    return "";
-}
-throw std::runtime_error("Unknown inverse aggregation type.");
-        }();
-        *out_result = make_static_string(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_entity_argument_types(ifcopenshell_ifc_entity_t* self, ifcopenshell_string_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-std::vector<std::string> result;
-size_t index = 0;
-for (const auto* attr : self_cpp->all_attributes()) {
-    auto argument_type = ifcopenshell::Argument_UNKNOWN;
-    auto* parameter_type = attr->type_of_attribute();
-    if (self_cpp->derived()[index++]) {
-        argument_type = ifcopenshell::Argument_DERIVED;
-    } else if (parameter_type != nullptr) {
-        argument_type = ifcopenshell::from_parameter_type(parameter_type);
-    }
-    result.push_back(ifcopenshell::argument_type_to_string(argument_type));
-}
-return result;
-        }();
-        *out_result = make_string_list(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_streamer_status(ifcopenshell_ifc_instance_streamer_t* self, int32_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-return static_cast<int>(static_cast<ifcopenshell::file_open_status::file_open_enum>(self_cpp->status()));
-        }();
-        *out_result = static_cast<int32_t>(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_streamer_references(ifcopenshell_ifc_instance_streamer_t* self, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-return unresolved_references_to_json_string(self_cpp->references(), nullptr);
-        }();
-        *out_result = make_string(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_streamer_inverses(ifcopenshell_ifc_instance_streamer_t* self, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-return inverses_to_json_string(self_cpp->inverses());
-        }();
-        *out_result = make_string(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_instance_streamer_read_instance_py(ifcopenshell_ifc_instance_streamer_t* self, bool type_as_declaration_instance, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-return instance_stream_read_instance_json(self_cpp, type_as_declaration_instance);
-        }();
-        *out_result = make_string(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifc_aggregation_type_kind(ifcopenshell_ifc_aggregation_type_t* self, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto generated_result = [&]() {
-switch (self_cpp->type_of_aggregation()) {
-case ifcopenshell::aggregation_type::array_type:
-    return "ARRAY";
-case ifcopenshell::aggregation_type::bag_type:
-    return "BAG";
-case ifcopenshell::aggregation_type::list_type:
-    return "LIST";
-case ifcopenshell::aggregation_type::set_type:
-    return "SET";
-}
-throw std::runtime_error("Unknown aggregation type.");
-        }();
-        *out_result = make_static_string(generated_result);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_instance_list_size(ifcopenshell_ifcparse_instance_list_t* self, size_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-        *out_result = static_cast<size_t>(self_cpp->size());
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcparse_instance_list_get(ifcopenshell_ifcparse_instance_list_t* self, size_t index, ifcopenshell_ifc_instance_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = &self->value;
-        auto generated_result = [&]() {
-if (index >= self_cpp->size()) {
-    throw std::out_of_range("Instance list index out of range.");
-}
-return (*self_cpp)[static_cast<int>(index)];
-        }();
-        auto result_value = generated_result;
-        if (!static_cast<bool>(result_value)) {
-            *out_result = nullptr;
-        } else {
-            *out_result = new ifcopenshell_ifc_instance_t{std::move(result_value)};
-        }
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -23357,7 +22878,7 @@ if (!entity) {
 }
 return self_cpp->select(entity, completely_within, extend);
         }();
-        *out_result = new ifcopenshell_ifcparse_instance_list_t{std::vector<express::Base>(generated_result.begin(), generated_result.end())};
+        *out_result = new ifcopenshell_ifcparse_instance_list_t{([&]() { auto tmp = generated_result; return std::vector<express::Base>(tmp.begin(), tmp.end()); })()};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -23377,7 +22898,7 @@ bool ifcopenshell_ifcgeom_tree_select_point(ifcopenshell_ifcgeom_tree_t* self, d
         auto generated_result = [&]() {
 return self_cpp->select(IfcGeom::tree_point{x, y, z}, extend);
         }();
-        *out_result = new ifcopenshell_ifcparse_instance_list_t{std::vector<express::Base>(generated_result.begin(), generated_result.end())};
+        *out_result = new ifcopenshell_ifcparse_instance_list_t{([&]() { auto tmp = generated_result; return std::vector<express::Base>(tmp.begin(), tmp.end()); })()};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -23399,7 +22920,7 @@ bool ifcopenshell_ifcgeom_tree_select_brep_element(ifcopenshell_ifcgeom_tree_t* 
         auto generated_result = [&]() {
 return self_cpp->select(element_cpp, completely_within, extend);
         }();
-        *out_result = new ifcopenshell_ifcparse_instance_list_t{std::vector<express::Base>(generated_result.begin(), generated_result.end())};
+        *out_result = new ifcopenshell_ifcparse_instance_list_t{([&]() { auto tmp = generated_result; return std::vector<express::Base>(tmp.begin(), tmp.end()); })()};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -23423,7 +22944,7 @@ bool ifcopenshell_ifcgeom_tree_select_shape_serialization(ifcopenshell_ifcgeom_t
 throw std::runtime_error("Selecting from shape serialization is not supported by the current ifcgeom tree API");
 return std::vector<express::Base>();
         }();
-        *out_result = new ifcopenshell_ifcparse_instance_list_t{std::vector<express::Base>(generated_result.begin(), generated_result.end())};
+        *out_result = new ifcopenshell_ifcparse_instance_list_t{([&]() { auto tmp = generated_result; return std::vector<express::Base>(tmp.begin(), tmp.end()); })()};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -23444,7 +22965,7 @@ bool ifcopenshell_ifcgeom_tree_select_box_point(ifcopenshell_ifcgeom_tree_t* sel
 (void)extend;
 return self_cpp->select_box(IfcGeom::tree_point{x, y, z});
         }();
-        *out_result = new ifcopenshell_ifcparse_instance_list_t{std::vector<express::Base>(generated_result.begin(), generated_result.end())};
+        *out_result = new ifcopenshell_ifcparse_instance_list_t{([&]() { auto tmp = generated_result; return std::vector<express::Base>(tmp.begin(), tmp.end()); })()};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -23470,7 +22991,7 @@ if (!entity) {
 }
 return self_cpp->select_box(entity, completely_within, extend);
         }();
-        *out_result = new ifcopenshell_ifcparse_instance_list_t{std::vector<express::Base>(generated_result.begin(), generated_result.end())};
+        *out_result = new ifcopenshell_ifcparse_instance_list_t{([&]() { auto tmp = generated_result; return std::vector<express::Base>(tmp.begin(), tmp.end()); })()};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -23490,7 +23011,7 @@ bool ifcopenshell_ifcgeom_tree_select_box_bounds(ifcopenshell_ifcgeom_tree_t* se
         auto generated_result = [&]() {
 return self_cpp->select_box(IfcGeom::tree_box{{IfcGeom::tree_point{xmin, ymin, zmin}, IfcGeom::tree_point{xmax, ymax, zmax}}}, completely_within);
         }();
-        *out_result = new ifcopenshell_ifcparse_instance_list_t{std::vector<express::Base>(generated_result.begin(), generated_result.end())};
+        *out_result = new ifcopenshell_ifcparse_instance_list_t{([&]() { auto tmp = generated_result; return std::vector<express::Base>(tmp.begin(), tmp.end()); })()};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

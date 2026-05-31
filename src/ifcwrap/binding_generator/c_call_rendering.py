@@ -26,6 +26,7 @@ try:
         OptionalGetOp,
         OptionalPresenceCheckOp,
         PointerPresenceCheckOp,
+        SpecMethodFunctionCallOp,
         StaticCastOp,
         TaxonomyMakeFactoryOp,
         ValueHandleFieldGetOp,
@@ -73,6 +74,7 @@ except ImportError:  # pragma: no cover - script execution fallback
         OptionalGetOp,
         OptionalPresenceCheckOp,
         PointerPresenceCheckOp,
+        SpecMethodFunctionCallOp,
         StaticCastOp,
         TaxonomyMakeFactoryOp,
         ValueHandleFieldGetOp,
@@ -258,6 +260,8 @@ def _render_param_prelude(param: ParamSpec, spec: BindingIR) -> str:
             f"    }}"
         )
     if kind in _SCALAR_TYPE_MAP and type_spec.cpp_type is not None:
+        if kind == "size":
+            return f"    auto {param.name}_cpp = static_cast<size_t>({param.name});"
         return f"    auto {param.name}_cpp = static_cast<{type_spec.cpp_type}>({param.name});"
     if kind == "string":
         if type_spec.nullable:
@@ -469,6 +473,17 @@ def _call_expr_args(call: CallIR) -> str:
     )
 
 
+def _receiver_arg_expr(receiver_cpp_type: str, receiver_handle: object) -> str:
+    normalized = _normalize_cpp_type(receiver_cpp_type)
+    while normalized.startswith("const "):
+        normalized = normalized[len("const ") :].strip()
+    if normalized.endswith("*"):
+        return "&self_cpp" if getattr(receiver_handle, "name", None) == "attribute_value" else "self_cpp"
+    if getattr(receiver_handle, "name", None) == "attribute_value":
+        return "self_cpp"
+    return "*self_cpp"
+
+
 def _render_call_impl(call: CallIR, spec: BindingIR) -> str:
     params = [f"{_cpp_param_type(param, spec)} {param.name}" for param in call.params]
     if call.returns.kind != "void":
@@ -527,6 +542,15 @@ def _render_call_impl(call: CallIR, spec: BindingIR) -> str:
     if isinstance(op, DirectCallOp):
         call_target = f"self_cpp->{op.cpp_name}" if call.receiver is not None else op.cpp_name
         expr = f"{call_target}({_call_expr_args(call)})"
+        body_line = _render_result_assignment(call, spec, expr)
+    elif isinstance(op, SpecMethodFunctionCallOp):
+        if call.receiver is None:
+            raise ValueError(f"{call.c_name} has a spec-method operation without a receiver")
+        args = [_receiver_arg_expr(op.receiver_cpp_type, spec.handles[call.receiver])]
+        call_args = _call_expr_args(call)
+        if call_args:
+            args.append(call_args)
+        expr = f"{op.cpp_name}({', '.join(args)})"
         body_line = _render_result_assignment(call, spec, expr)
     elif isinstance(op, FieldGetOp):
         expr = f"self_cpp->{op.field_name}"
