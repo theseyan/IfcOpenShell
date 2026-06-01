@@ -66,11 +66,46 @@ std::vector<express::Base> without_set(
 {
     std::vector<express::Base> result;
     for (const auto& value : values) {
-        if (removed.find(value) == removed.end()) {
+        bool keep = false;
+        try {
+            keep = removed.find(value) == removed.end();
+        } catch (...) {
+            // Skip deleted instance references that may still be present
+            // in aggregate snapshots while relationships are being mutated.
+        }
+        if (keep) {
             result.push_back(value);
         }
     }
     return result;
+}
+
+std::set<express::Base> collect_previous_rels_for_aggregate(
+    const std::set<express::Base>& products_set,
+    express::Base existing_rel)
+{
+    std::set<express::Base> previous_rels;
+    for (const auto& product : products_set) {
+        auto cur_rel = find_decomposes(product);
+        if (cur_rel && !ifcapi::detail::same_instance(cur_rel, existing_rel)) {
+            previous_rels.insert(cur_rel);
+        }
+    }
+    return previous_rels;
+}
+
+std::set<express::Base> collect_previous_rels_for_spatial(
+    const std::set<express::Base>& products_set,
+    express::Base existing_rel)
+{
+    std::set<express::Base> previous_rels;
+    for (const auto& product : products_set) {
+        auto cur_rel = find_contained_in_structure(product);
+        if (cur_rel && !ifcapi::detail::same_instance(cur_rel, existing_rel)) {
+            previous_rels.insert(cur_rel);
+        }
+    }
+    return previous_rels;
 }
 
 express::Base create_relationship(
@@ -123,7 +158,6 @@ express::Base aggregate_assign_object(
         }
 
         auto existing_rel = find_is_decomposed_by(relating);
-        std::set<express::Base> previous_rels;
         std::vector<express::Base> products_without_aggregates;
         std::vector<express::Base> products_to_change;
 
@@ -132,8 +166,7 @@ express::Base aggregate_assign_object(
             if (!cur_rel) {
                 products_without_aggregates.push_back(product);
                 products_to_change.push_back(product);
-            } else if (cur_rel != existing_rel) {
-                previous_rels.insert(cur_rel);
+            } else if (!ifcapi::detail::same_instance(cur_rel, existing_rel)) {
                 products_to_change.push_back(product);
             }
         }
@@ -164,6 +197,7 @@ express::Base aggregate_assign_object(
             }
         }
 
+        auto previous_rels = collect_previous_rels_for_aggregate(products_set, existing_rel);
         for (auto prev_rel : previous_rels) {
             auto remaining = without_set(ifcapi::detail::read_ref_aggregate(prev_rel, "RelatedObjects"), products_set);
             if (remaining.empty()) {
@@ -275,7 +309,6 @@ express::Base spatial_assign_container(
         }
 
         auto existing_rel = find_contains_elements(structure);
-        std::set<express::Base> previous_rels;
         std::vector<express::Base> products_without_containers;
         std::vector<express::Base> products_to_change;
 
@@ -284,8 +317,7 @@ express::Base spatial_assign_container(
             if (!cur_rel) {
                 products_without_containers.push_back(product);
                 products_to_change.push_back(product);
-            } else if (cur_rel != existing_rel) {
-                previous_rels.insert(cur_rel);
+            } else if (!ifcapi::detail::same_instance(cur_rel, existing_rel)) {
                 products_to_change.push_back(product);
             }
         }
@@ -316,6 +348,7 @@ express::Base spatial_assign_container(
             }
         }
 
+        auto previous_rels = collect_previous_rels_for_spatial(products_set, existing_rel);
         for (auto prev_rel : previous_rels) {
             auto remaining = without_set(ifcapi::detail::read_ref_aggregate(prev_rel, "RelatedElements"), products_set);
             if (remaining.empty()) {

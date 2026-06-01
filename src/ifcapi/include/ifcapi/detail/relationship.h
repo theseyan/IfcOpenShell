@@ -17,6 +17,17 @@ inline express::Base* nullable_ptr(express::Base& value) {
     return value ? &value : nullptr;
 }
 
+inline bool same_instance(express::Base left, express::Base right) {
+    if (!left || !right) {
+        return !left && !right;
+    }
+    try {
+        return left.file() == right.file() && left.id() == right.id();
+    } catch (...) {
+        return false;
+    }
+}
+
 inline express::Base ensure_owner_history(
     ifcopenshell::file* file,
     express::Base owner_history,

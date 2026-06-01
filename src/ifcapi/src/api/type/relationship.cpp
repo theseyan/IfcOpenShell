@@ -56,6 +56,21 @@ static express::Base find_element_type_rel(ifcopenshell::file* file, express::Ba
     return {};
 }
 
+static std::set<express::Base> collect_previous_type_rels(
+    ifcopenshell::file* file,
+    const std::set<express::Base>& objects_set,
+    express::Base existing_rel)
+{
+    std::set<express::Base> previous_rels;
+    for (auto obj : objects_set) {
+        auto rel = find_element_type_rel(file, obj);
+        if (rel && !ifcapi::detail::same_instance(rel, existing_rel)) {
+            previous_rels.insert(rel);
+        }
+    }
+    return previous_rels;
+}
+
 namespace {
 using namespace ifcapi::detail;
 
@@ -126,15 +141,13 @@ express::Base assign_type_core(
         auto* rdt_entity_decl = rdt_decl->as_entity();
         int related_idx = find_attr_index(rdt_entity_decl, "RelatedObjects");
 
-        std::set<express::Base> previous_rels;
         std::vector<express::Base> objects_to_change;
 
         for (auto obj : objects_set) {
             auto cur_rel = find_element_type_rel(file, obj);
             if (!cur_rel) {
                 objects_to_change.push_back(obj);
-            } else if (cur_rel != existing_rel) {
-                previous_rels.insert(cur_rel);
+            } else if (!ifcapi::detail::same_instance(cur_rel, existing_rel)) {
                 objects_to_change.push_back(obj);
             }
         }
@@ -144,6 +157,7 @@ express::Base assign_type_core(
         }
 
         // Remove from previous type relationships.
+        auto previous_rels = collect_previous_type_rels(file, objects_set, existing_rel);
         for (auto prev_rel : previous_rels) {
             auto related = get_ref_aggregate(prev_rel, related_idx);
             std::vector<express::Base> remaining;

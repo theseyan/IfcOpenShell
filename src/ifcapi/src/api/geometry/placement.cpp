@@ -50,9 +50,10 @@ size_t total_inverses(ifcopenshell::file* file, express::Base e) {
 // single-reference and aggregate-of-references attributes).
 bool relation_relates_to(express::Base relation, const char* attr, express::Base product) {
     if (!relation || !product) return false;
-    if (get_entity_ref(relation, attr) == product) return true;
+    auto direct_ref = get_entity_ref(relation, attr);
+    if (direct_ref && direct_ref == product) return true;
     for (const auto& item : get_entity_list(relation, attr)) {
-        if (item == product) return true;
+        if (item && item == product) return true;
     }
     return false;
 }
