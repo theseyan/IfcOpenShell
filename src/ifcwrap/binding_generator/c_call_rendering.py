@@ -9,6 +9,7 @@ try:
     from .binding_ir import (
         ArrayElementFieldOp,
         BindingIR,
+        BoolOutParamCallOp,
         CallIR,
         CcomponentsAccessorOp,
         ChildrenAddOp,
@@ -57,6 +58,7 @@ except ImportError:  # pragma: no cover - script execution fallback
     from binding_ir import (
         ArrayElementFieldOp,
         BindingIR,
+        BoolOutParamCallOp,
         CallIR,
         CcomponentsAccessorOp,
         ChildrenAddOp,
@@ -152,6 +154,9 @@ def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
             )
         return f"*out_result = {helper}({expr});"
     if kind in _BUFFER_TYPE_MAP:
+        normalized_cpp_type = _normalize_cpp_type(type_spec.cpp_type)
+        if normalized_cpp_type.endswith("*"):
+            return f"*out_result = {expr};"
         return f"*out_result = ({expr}).data();"
     if kind == "handle":
         if type_spec.sequence_depth == 1:
@@ -174,6 +179,8 @@ def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
             and handle.destructor == "delete"
         ):
             normalized_cpp_type = _normalize_cpp_type(type_spec.cpp_type)
+            if normalized_cpp_type == _normalize_cpp_type(handle.cpp_type):
+                return f"*out_result = new {handle.c_type}{{new {handle.cpp_type}({expr}), true}};"
             if not normalized_cpp_type.startswith("std::unique_ptr<"):
                 return (
                     f"auto result_value = std::unique_ptr<{handle.cpp_type}>({expr});\n"
@@ -473,6 +480,24 @@ def _call_expr_args(call: CallIR) -> str:
     )
 
 
+def _render_bool_out_param_assignment(call: CallIR, op: BoolOutParamCallOp) -> str:
+    if call.returns.kind not in _SCALAR_TYPE_MAP:
+        raise ValueError(f"{call.c_name} bool out-param lowering only supports scalar return types")
+    out_name = "result_value"
+    cpp_type = op.out_param_cpp_type.rstrip("&").strip()
+    args = [f"{p.name}_cpp" if _uses_cpp_arg_name(p.type) else p.name for p in call.params]
+    args.append(out_name)
+    call_expr = f"self_cpp->{op.cpp_name}({', '.join(args)})" if call.receiver is not None else f"{op.cpp_name}({', '.join(args)})"
+    assign = _SCALAR_TYPE_MAP[call.returns.kind][2].format(expr=out_name)
+    lines = [f"{cpp_type} {out_name}{{}};", f"if ({call_expr}) {{", f"    {assign}", "} else {"]
+    if call.returns.kind == "double":
+        lines.append("    *out_result = std::numeric_limits<double>::quiet_NaN();")
+    else:
+        lines.append(f'    throw std::runtime_error("{op.cpp_name} failed");')
+    lines.append("}")
+    return "\n        ".join(lines)
+
+
 def _receiver_arg_expr(receiver_cpp_type: str, receiver_handle: object) -> str:
     normalized = _normalize_cpp_type(receiver_cpp_type)
     while normalized.startswith("const "):
@@ -552,6 +577,8 @@ def _render_call_impl(call: CallIR, spec: BindingIR) -> str:
             args.append(call_args)
         expr = f"{op.cpp_name}({', '.join(args)})"
         body_line = _render_result_assignment(call, spec, expr)
+    elif isinstance(op, BoolOutParamCallOp):
+        body_line = _render_bool_out_param_assignment(call, op)
     elif isinstance(op, FieldGetOp):
         expr = f"self_cpp->{op.field_name}"
         if op.array_element_cpp_type is not None:

@@ -58,6 +58,7 @@
 #include "../svgfill/src/svgfill.h"
 #include "ifcwrap/binding_generator/specs/cpp/ifcparse.hpp"
 #include "ifcwrap/binding_generator/specs/cpp/ifcapi.hpp"
+#include "ifcwrap/binding_generator/specs/cpp/ifcgeom.hpp"
 
 struct ifcopenshell_ifc_file_t {
     ifcopenshell::file* ptr;
@@ -161,118 +162,6 @@ struct ifcopenshell_ifcparse_instance_list_t {
 struct ifcopenshell_ifcapi_value_t {
     ifcopenshell_value_t* ptr;
     bool owned;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_item_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::item> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_matrix4_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::matrix4> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_point3_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::point3> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_direction3_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::direction3> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_style_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::style> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_colour_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::colour> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_line_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::line> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_circle_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::circle> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_ellipse_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::ellipse> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_bspline_curve_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::bspline_curve> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_offset_curve_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::offset_curve> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_edge_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::edge> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_loop_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::loop> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_face_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::face> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_shell_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::shell> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_solid_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::solid> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_plane_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::plane> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_cylinder_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::cylinder> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_sphere_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::sphere> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_torus_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::torus> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_bspline_surface_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::bspline_surface> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_collection_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::collection> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_loft_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::loft> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_extrusion_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::extrusion> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_revolve_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::revolve> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_sweep_along_curve_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::sweep_along_curve> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_node_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::node> ptr;
-};
-
-struct ifcopenshell_ifcgeom_taxonomy_boolean_result_t {
-    std::shared_ptr<ifcopenshell::geometry::taxonomy::boolean_result> ptr;
 };
 
 struct ifcopenshell_ifcgeom_iterator_t {
@@ -388,6 +277,118 @@ struct ifcopenshell_ifcgeom_svgfill_polygon_t {
 struct ifcopenshell_ifcgeom_function_item_evaluator_t {
     ifcopenshell::geometry::function_item_evaluator* ptr;
     bool owned;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_item_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::item> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_matrix4_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::matrix4> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_point3_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::point3> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_direction3_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::direction3> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_style_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::style> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_colour_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::colour> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_line_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::line> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_circle_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::circle> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_ellipse_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::ellipse> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_bspline_curve_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::bspline_curve> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_offset_curve_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::offset_curve> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_edge_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::edge> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_loop_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::loop> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_face_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::face> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_shell_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::shell> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_solid_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::solid> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_plane_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::plane> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_cylinder_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::cylinder> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_sphere_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::sphere> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_torus_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::torus> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_bspline_surface_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::bspline_surface> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_collection_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::collection> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_loft_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::loft> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_extrusion_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::extrusion> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_revolve_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::revolve> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_sweep_along_curve_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::sweep_along_curve> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_node_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::node> ptr;
+};
+
+struct ifcopenshell_ifcgeom_taxonomy_boolean_result_t {
+    std::shared_ptr<ifcopenshell::geometry::taxonomy::boolean_result> ptr;
 };
 
 namespace ifcopenshell {

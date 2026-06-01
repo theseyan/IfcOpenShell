@@ -164,6 +164,7 @@ def _merge_cpp_specs(
     handles = dict(base.handles)
     result_structs = dict(base.result_structs)
     calls = list(base.functions)
+    methods = list(base.methods)
     existing_c_names = {call.c_name for call in (*base.functions, *base.methods)}
     public_headers = list(base.public_headers)
     for config in configs:
@@ -196,10 +197,14 @@ def _merge_cpp_specs(
             c_prefix=config.c_prefix,
         ):
             if call.c_name in existing_c_names:
-                msg = f"C++ spec export '{call.c_name}' duplicates an existing generated C symbol"
-                raise ValueError(msg)
-            existing_c_names.add(call.c_name)
-            calls.append(call)
+                calls = [existing for existing in calls if existing.c_name != call.c_name]
+                methods = [existing for existing in methods if existing.c_name != call.c_name]
+            else:
+                existing_c_names.add(call.c_name)
+            if call.receiver is None:
+                calls.append(call)
+            else:
+                methods.append(call)
 
     return MergedBindingSpec(
         module=base.module,
@@ -208,7 +213,7 @@ def _merge_cpp_specs(
         handles=handles,
         result_structs=result_structs,
         functions=tuple(calls),
-        methods=base.methods,
+        methods=tuple(methods),
         discovery_diagnostics=base.discovery_diagnostics,
     )
 
@@ -282,6 +287,7 @@ def _render_cpp(spec: BindingIR, header_name: str) -> str:
 #include <cstring>
 #include <fstream>
 #include <iterator>
+#include <limits>
 #include <memory>
 #include <new>
 #include <set>

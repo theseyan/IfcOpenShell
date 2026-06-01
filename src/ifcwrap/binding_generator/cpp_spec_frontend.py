@@ -152,7 +152,7 @@ def discover_cpp_spec_handles(
         if len(args) not in {2, 3, 4, 5}:
             msg = f"{marker} expects cpp_type/destructor, optional handle name, optional ptr_type, and optional empty_check"
             raise ValueError(msg)
-        if len(args) >= 3 and re.fullmatch(r"[A-Za-z_]\w*", args[0]) and args[2] not in {"raw", "shared_ptr", "value"}:
+        if len(args) >= 3 and re.fullmatch(r"[A-Za-z_]\w*", args[0]):
             handle_name = args[0]
             cpp_type = args[1]
             destructor = args[2]
@@ -464,6 +464,20 @@ def _apply_return_annotations(
     handles: dict[str, HandleSpec],
 ) -> TypeSpec:
     annotated = _apply_type_annotations(type_spec, annotations)
+    if "IFCAPI_DOUBLE_BUFFER" in annotations:
+        annotated = TypeSpec(
+            kind="double_buffer",
+            ownership=annotated.ownership,
+            nullable=annotated.nullable,
+            cpp_type=annotated.cpp_type,
+        )
+    if "IFCAPI_INT32_BUFFER" in annotations:
+        annotated = TypeSpec(
+            kind="int32_buffer",
+            ownership=annotated.ownership,
+            nullable=annotated.nullable,
+            cpp_type=annotated.cpp_type,
+        )
     handle_name = _handle_annotation(annotations, "IFCAPI_HANDLE_RESULT")
     if handle_name is None:
         return annotated

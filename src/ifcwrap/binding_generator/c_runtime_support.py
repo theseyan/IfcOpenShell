@@ -441,11 +441,11 @@ std::string streamer_read_instance_json(ifcopenshell::instance_streamer<>* strea
 }}
 
 void unset_instance_argument_value(express::Base& instance, size_t index) {{
-    ::unset_instance_argument(&instance, index);
+    instance.set_attribute_value(index, blank{{}});
 }}
 
 void unset_instance_argument(express::Base& instance, size_t index) {{
-    ::unset_instance_argument(&instance, index);
+    instance.set_attribute_value(index, blank{{}});
 }}
 
 ifcopenshell::argument_type instance_attribute_type(const express::Base& instance, unsigned index) {{

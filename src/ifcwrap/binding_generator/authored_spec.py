@@ -41,6 +41,7 @@ try:
     from .policy_ir import (
         ArrayElementFieldPolicyOp,
         AsItemCastPolicyOp,
+        BoolOutParamPolicyOp,
         ChildrenAddPolicyOp,
         ChildrenAtPolicyOp,
         ChildrenCountPolicyOp,
@@ -69,6 +70,7 @@ except ImportError:  # pragma: no cover - script execution fallback
     from policy_ir import (
         ArrayElementFieldPolicyOp,
         AsItemCastPolicyOp,
+        BoolOutParamPolicyOp,
         ChildrenAddPolicyOp,
         ChildrenAtPolicyOp,
         ChildrenCountPolicyOp,
@@ -1942,6 +1944,15 @@ def _infer_type(
         if opaque_spec is not None:
             return opaque_spec
     if isinstance(semantic, SequenceSemanticType):
+        for handle_name, handle in handles.items():
+            if _cpp_type_names_match(handle.cpp_type, semantic.cpp_type):
+                normalized = _normalize_cpp_type(semantic.cpp_type)
+                return TypeSpec(
+                    kind="handle",
+                    handle=handle_name,
+                    ownership="owned" if not normalized.endswith("&") and not normalized.endswith("*") else ownership,
+                    cpp_type=_cpp_type_storage(cpp_type),
+                )
         sequence_spec = _lower_generic_sequence_type(semantic, handles=handles, ownership=ownership)
         if sequence_spec is None:
             reparsed_sequence = analyze_cpp_type(semantic.cpp_type)
@@ -1989,6 +2000,41 @@ def _infer_param_type(cpp_type: str | DiscoveredCppType, handles: dict[str, Hand
     except ValueError as exc:
         msg = str(exc).replace("Unsupported discovered type", "Unsupported discovered parameter type")
         raise ValueError(msg) from exc
+
+
+def _is_nonconst_lvalue_ref(cpp_type: DiscoveredCppType) -> bool:
+    return cpp_type.is_lvalue_reference and not cpp_type.is_const
+
+
+def _bool_out_param_signature(
+    discovered: DiscoveredMethod | DiscoveredFunction,
+    handles: dict[str, HandleSpec],
+) -> tuple[TypeSpec, tuple[ParamSpec, ...], BoolOutParamPolicyOp] | None:
+    if _normalize_cpp_type(discovered.return_cpp_type) != "bool" or len(discovered.params) != 1:
+        return None
+    out_param = discovered.params[0]
+    if not _is_nonconst_lvalue_ref(out_param.cpp_type_ref):
+        return None
+    returns = _infer_param_type(out_param.cpp_type_ref, handles)
+    if returns.kind not in {"bool", "int32", "int64", "uint32", "size", "double"} or returns.sequence_depth:
+        return None
+    return (
+        TypeSpec(kind=returns.kind, cpp_type=returns.cpp_type),
+        tuple(),
+        BoolOutParamPolicyOp(cpp_name=discovered.cpp_name, out_param_cpp_type=out_param.cpp_type),
+    )
+
+
+def _direct_method_policy_operation(
+    discovered: DiscoveredMethod,
+    handles: dict[str, HandleSpec],
+    override: DiscoveryTypeOverrideSpec | None,
+) -> object:
+    if override is None:
+        bool_out_param = _bool_out_param_signature(discovered, handles)
+        if bool_out_param is not None:
+            return bool_out_param[2]
+    return DirectMethodPolicyOp(cpp_name=discovered.cpp_name)
 
 
 def _apply_method_type_override(
@@ -2080,6 +2126,11 @@ def _infer_method_signature(
     enum_types_as_int32: frozenset[str],
     override: DiscoveryTypeOverrideSpec | None,
 ) -> tuple[TypeSpec, tuple[ParamSpec, ...]]:
+    if override is None:
+        bool_out_param = _bool_out_param_signature(discovered, handles)
+        if bool_out_param is not None:
+            return bool_out_param[0], bool_out_param[1]
+
     if override is not None and _override_supplies_kind(override.returns):
         returns = _merge_type_override(
             TypeSpec(kind=override.returns.kind, cpp_type=_cpp_type_storage(discovered.return_type_ref)),
@@ -2834,16 +2885,17 @@ def _discover_method_calls(
                 msg = f"Unable to discover method '{overload_spec.cpp_name}' on handle '{item.handle}'"
                 raise ValueError(msg)
             discovered = _select_overload(overloads, overload_spec)
+            override = _resolve_type_override(
+                item.type_overrides,
+                discovered,
+                overloads,
+                context=f"Class discovery for handle '{item.handle}'",
+            )
             returns, params = _infer_method_signature(
                 discovered,
                 handles=handles,
                 enum_types_as_int32=item.enum_types_as_int32,
-                override=_resolve_type_override(
-                    item.type_overrides,
-                    discovered,
-                    overloads,
-                    context=f"Class discovery for handle '{item.handle}'",
-                ),
+                override=override,
             )
             call = CallSpec(
                 expose_as=overload_spec.expose_as,
@@ -2851,7 +2903,7 @@ def _discover_method_calls(
                 receiver=item.handle,
                 returns=returns,
                 params=params,
-                policy_operation=DirectMethodPolicyOp(cpp_name=discovered.cpp_name),
+                policy_operation=_direct_method_policy_operation(discovered, handles, override),
             )
             existing = calls_by_c_name.get(call.c_name)
             if call.c_name in reserved_c_names:
@@ -2900,16 +2952,17 @@ def _discover_method_calls(
 
             discovered = overloads[0]
             try:
+                override = _resolve_type_override(
+                    item.type_overrides,
+                    discovered,
+                    overloads,
+                    context=f"Class discovery for handle '{item.handle}'",
+                )
                 returns, params = _infer_method_signature(
                     discovered,
                     handles=handles,
                     enum_types_as_int32=item.enum_types_as_int32,
-                    override=_resolve_type_override(
-                        item.type_overrides,
-                        discovered,
-                        overloads,
-                        context=f"Class discovery for handle '{item.handle}'",
-                    ),
+                    override=override,
                 )
             except ValueError as exc:
                 if item.include_all and not is_explicit:
@@ -2933,7 +2986,7 @@ def _discover_method_calls(
                 receiver=item.handle,
                 returns=returns,
                 params=params,
-                policy_operation=DirectMethodPolicyOp(cpp_name=discovered.cpp_name),
+                policy_operation=_direct_method_policy_operation(discovered, handles, override),
             )
             existing = calls_by_c_name.get(call.c_name)
             if call.c_name in reserved_c_names:
@@ -4266,6 +4319,27 @@ def load_authored_spec(
         accessors = _parse_handle_list_accessors(
             mapping.get("list_accessors"),
             context=f"{context}.list_accessors",
+            known_handles=known_handles,
+        )
+        if accessors is None:
+            continue
+        accessor_methods_list.extend(
+            _handle_list_accessor_calls(
+                list_handle_name=handle_name,
+                accessors=accessors,
+                handles=handles,
+            )
+        )
+    for index, item in enumerate(_expect_list(root.get("handle_list_accessors", []), "handle_list_accessors")):
+        context = f"handle_list_accessors[{index}]"
+        mapping = _expect_mapping(item, context)
+        handle_name = _expect_str(mapping.get("list_handle"), f"{context}.list_handle")
+        if handle_name not in handles:
+            msg = f"{context}.list_handle refers to unknown handle '{handle_name}'"
+            raise ValueError(msg)
+        accessors = _parse_handle_list_accessors(
+            mapping,
+            context=context,
             known_handles=known_handles,
         )
         if accessors is None:

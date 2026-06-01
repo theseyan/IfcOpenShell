@@ -10,8 +10,10 @@ from textwrap import dedent
 import pytest
 
 from src.ifcwrap.binding_generator.authored_spec import load_authored_spec, load_merged_specs
+from src.ifcwrap.binding_generator.binding_model import HandleSpec
 from src.ifcwrap.binding_generator.c_backend import generate, generate_merged
 from src.ifcwrap.binding_generator.policy_ir import (
+    BoolOutParamPolicyOp,
     ChildrenAddPolicyOp,
     ConstructorPolicyOp,
     DirectFieldPolicyOp,
@@ -445,6 +447,46 @@ def test_handle_list_accessors_generate_count_and_at_methods(tmp_path: Path) -> 
     assert 'throw std::out_of_range("Result index out of range");' in cpp
     assert "auto result_value = std::unique_ptr<Demo::Result>(new Demo::Result((*results_cpp)[index]));" in cpp
     assert "*out_result = new ifcopenshell_demo_result_t{result_value.release(), true};" in cpp
+
+
+def test_top_level_handle_list_accessors_for_cpp_spec_handles(tmp_path: Path) -> None:
+    spec_path = tmp_path / "cpp_handle_list_accessors.yml"
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - demo.h
+            handle_list_accessors:
+              - list_handle: result_list
+                receiver: tree
+                list_param: results
+                item_handle: result
+                count_as: result_count
+                at_as: result_at
+                out_of_range_message: Result index out of range
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    existing_handles = {
+        "tree": HandleSpec("tree", "Demo::Tree", "ifcopenshell_demo_tree_t", "delete"),
+        "result_list": HandleSpec(
+            "result_list", "std::vector<Demo::Result>", "ifcopenshell_demo_result_list_t", "delete"
+        ),
+        "result": HandleSpec("result", "Demo::Result", "ifcopenshell_demo_result_t", "delete"),
+    }
+    spec = load_authored_spec(spec_path, existing_handles=existing_handles)
+
+    methods = {call.c_name: call for call in spec.methods}
+    assert set(methods) == {"ifcopenshell_demo_tree_result_count", "ifcopenshell_demo_tree_result_at"}
+    assert methods["ifcopenshell_demo_tree_result_count"].params[0].type.handle == "result_list"
+    assert methods["ifcopenshell_demo_tree_result_at"].returns.handle == "result"
 
 
 def test_method_at_accessors_generate_indexed_method_items(tmp_path: Path) -> None:
@@ -1752,6 +1794,72 @@ def test_generate_synthetic_autodiscovery_features(tmp_path: Path) -> None:
     assert "self_cpp->set(name_cpp, Demo::Settings::value_variant_t(static_cast<int64_t>(value)));" in generated_cpp
     assert "self_cpp->set(name_cpp, Demo::Settings::value_variant_t(value_cpp));" in generated_cpp
     assert "const auto& v = self_cpp->ccomponents();" in generated_cpp
+
+
+def test_autodiscovery_lowers_bool_double_reference_out_params(tmp_path: Path) -> None:
+    header = tmp_path / "out_param_sample.h"
+    source = tmp_path / "out_param_sample.cpp"
+    spec_path = tmp_path / "out_param_sample.yml"
+
+    header.write_text(
+        dedent(
+            """
+            namespace Demo {
+            struct Shape {
+            public:
+                bool calculate_volume(double& value) const { value = 12.5; return true; }
+            };
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "out_param_sample.h"\n', encoding="utf-8")
+    compile_commands = _write_compile_commands(tmp_path, source)
+
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - out_param_sample.h
+            handles:
+              - name: shape
+                cpp_type: Demo::Shape
+                c_type: ifcopenshell_demo_shape_t
+                destructor: delete
+            discover:
+              include_dir: .
+              classes:
+                - handle: shape
+                  translation_unit: out_param_sample.cpp
+                  include_all: true
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    call = {call.c_name: call for call in spec.methods}["ifcopenshell_demo_shape_calculate_volume"]
+    assert call.returns.kind == "double"
+    assert call.params == ()
+    assert isinstance(call.policy_operation, BoolOutParamPolicyOp)
+
+    header_out = tmp_path / "demo_api.h"
+    cpp_out = tmp_path / "demo_api.cpp"
+    generate(spec_path, header_out, cpp_out, compile_commands_path=compile_commands)
+
+    generated_header = header_out.read_text(encoding="utf-8")
+    generated_cpp = cpp_out.read_text(encoding="utf-8")
+    assert "bool ifcopenshell_demo_shape_calculate_volume(ifcopenshell_demo_shape_t* self, double* out_result);" in generated_header
+    assert "double result_value{};" in generated_cpp
+    assert "if (self_cpp->calculate_volume(result_value))" in generated_cpp
+    assert "std::numeric_limits<double>::quiet_NaN()" in generated_cpp
 
 
 def test_autodiscovery_supports_enum_methods(tmp_path: Path) -> None:

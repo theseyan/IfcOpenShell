@@ -37,6 +37,15 @@ def _wrap_handle_expr(type_spec: TypeSpec, expr: str, spec: BindingIR) -> str:
     handle = spec.handles[type_spec.handle]
     owned = "true" if type_spec.ownership == "owned" else "false"
     if handle.ptr_type == "shared_ptr":
+        normalized_cpp_type = _normalize_cpp_type(type_spec.cpp_type)
+        normalized_handle_type = _normalize_cpp_type(handle.cpp_type)
+        if (
+            "shared_ptr" not in normalized_handle_type
+            and "shared_ptr" not in normalized_cpp_type
+            and "::ptr" not in normalized_cpp_type
+            and normalized_cpp_type.endswith("&")
+        ):
+            return f"new {handle.c_type}{{std::make_shared<{handle.cpp_type}>({expr})}}"
         return f"new {handle.c_type}{{{expr}}}"
     if handle.ptr_type == "value":
         normalized_cpp_type = _normalize_cpp_type(type_spec.cpp_type)

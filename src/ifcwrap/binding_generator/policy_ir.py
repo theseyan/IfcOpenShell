@@ -27,6 +27,12 @@ class SpecMethodFunctionPolicyOp:
 
 
 @dataclass(frozen=True)
+class BoolOutParamPolicyOp:
+    cpp_name: str
+    out_param_cpp_type: str
+
+
+@dataclass(frozen=True)
 class DirectFieldPolicyOp:
     field_name: str
 

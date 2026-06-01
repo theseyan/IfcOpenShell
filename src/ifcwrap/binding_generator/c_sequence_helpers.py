@@ -523,11 +523,14 @@ def _render_handle_list_list_destroy_impl(handle: HandleSpec) -> str:
 
 
 def _used_handle_list_handles(spec: BindingIR) -> tuple[HandleSpec, ...]:
+    opaque_handle_c_types = {handle.c_type for handle in spec.handles.values()}
     seen: set[str] = set()
     handles: list[HandleSpec] = []
     for call in (*spec.functions, *spec.methods):
         if call.returns.kind == "handle" and call.returns.sequence_depth > 0:
             handle_name = call.returns.handle
+            if _handle_list_c_type(spec.handles[handle_name]) in opaque_handle_c_types:
+                continue
             if handle_name not in seen:
                 seen.add(handle_name)
                 handles.append(spec.handles[handle_name])
@@ -535,6 +538,8 @@ def _used_handle_list_handles(spec: BindingIR) -> tuple[HandleSpec, ...]:
             if param.type.kind != "handle" or param.type.sequence_depth == 0:
                 continue
             handle_name = param.type.handle
+            if _handle_list_c_type(spec.handles[handle_name]) in opaque_handle_c_types:
+                continue
             if handle_name in seen:
                 continue
             seen.add(handle_name)

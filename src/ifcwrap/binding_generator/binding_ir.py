@@ -12,6 +12,7 @@ try:
     from .policy_ir import (
         ArrayElementFieldPolicyOp,
         AsItemCastPolicyOp,
+        BoolOutParamPolicyOp,
         ChildrenAddPolicyOp,
         ChildrenAtPolicyOp,
         ChildrenCountPolicyOp,
@@ -42,6 +43,7 @@ except ImportError:  # pragma: no cover - script execution fallback
     from policy_ir import (
         ArrayElementFieldPolicyOp,
         AsItemCastPolicyOp,
+        BoolOutParamPolicyOp,
         ChildrenAddPolicyOp,
         ChildrenAtPolicyOp,
         ChildrenCountPolicyOp,
@@ -80,6 +82,12 @@ class DirectCallOp:
 class SpecMethodFunctionCallOp:
     cpp_name: str
     receiver_cpp_type: str
+
+
+@dataclass(frozen=True)
+class BoolOutParamCallOp:
+    cpp_name: str
+    out_param_cpp_type: str
 
 
 @dataclass(frozen=True)
@@ -206,6 +214,7 @@ class InlineImplementationOp:
 OperationIR = Union[
     DirectCallOp,
     SpecMethodFunctionCallOp,
+    BoolOutParamCallOp,
     FieldGetOp,
     ValueHandleFieldGetOp,
     PointerPresenceCheckOp,
@@ -270,6 +279,11 @@ def _lower_policy_operation(call: CallSpec, operation: object) -> OperationIR:
         return SpecMethodFunctionCallOp(
             cpp_name=operation.cpp_name,
             receiver_cpp_type=operation.receiver_cpp_type,
+        )
+    if isinstance(operation, BoolOutParamPolicyOp):
+        return BoolOutParamCallOp(
+            cpp_name=operation.cpp_name,
+            out_param_cpp_type=operation.out_param_cpp_type,
         )
     if isinstance(operation, DirectFieldPolicyOp):
         return FieldGetOp(

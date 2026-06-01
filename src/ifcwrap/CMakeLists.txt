@@ -32,6 +32,7 @@ if(BUILD_IFCCAPI)
     set(IFCGEOM_CAPI_SPEC "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/ifcgeom.yml")
     set(IFCPARSE_CAPI_CPP_SPEC "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/cpp/ifcparse.hpp")
     set(IFCAPI_CAPI_CPP_SPEC "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/cpp/ifcapi.hpp")
+    set(IFCGEOM_CAPI_CPP_SPEC "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/cpp/ifcgeom.hpp")
     set(IFCAPI_CAPI_CPP_SPEC_MACROS "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/cpp/spec_macros.h")
     set(IFCPARSE_CAPI_GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/c_backend.py")
     
@@ -144,10 +145,13 @@ if(BUILD_IFCCAPI)
                 --spec "${IFCGEOM_CAPI_SPEC}"
                 --cpp-spec "${IFCPARSE_CAPI_CPP_SPEC}"
                 --cpp-spec "${IFCAPI_CAPI_CPP_SPEC}"
+                --cpp-spec "${IFCGEOM_CAPI_CPP_SPEC}"
                 --cpp-spec-namespace "ifcparse::bindings"
                 --cpp-spec-namespace "ifcapi::bindings"
+                --cpp-spec-namespace "ifcgeom::bindings"
                 --cpp-spec-c-prefix "ifcopenshell_ifcparse"
                 --cpp-spec-c-prefix "ifcopenshell_ifcapi"
+                --cpp-spec-c-prefix "ifcopenshell_ifcgeom"
                 --header-out "${UNIFIED_CAPI_HEADER}"
                 --cpp-out "${UNIFIED_CAPI_CPP}"
                 --python-out "${UNIFIED_CAPI_PYTHON_CTYPES}"
@@ -160,6 +164,7 @@ if(BUILD_IFCCAPI)
                 "${IFCGEOM_CAPI_SPEC}"
                 "${IFCPARSE_CAPI_CPP_SPEC}"
                 "${IFCAPI_CAPI_CPP_SPEC}"
+                "${IFCGEOM_CAPI_CPP_SPEC}"
                 "${IFCAPI_CAPI_CPP_SPEC_MACROS}"
                 "${IFCPARSE_CAPI_GENERATOR}"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/authored_spec.py"
