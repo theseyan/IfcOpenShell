@@ -510,9 +510,11 @@ express::Base representation_impl(
             : "IfcShapeRepresentation"
     );
     set_ref(result, "ContextOfItems", context);
-    auto context_identifier = ifcapi::detail::read_optional_string_attr(context, "ContextIdentifier");
-    if (context_identifier.has_value) {
-        set_attr(result, "RepresentationIdentifier", context_identifier.value);
+    if (context) {
+        auto context_identifier = ifcapi::detail::read_optional_string_attr(context, "ContextIdentifier");
+        if (context_identifier.has_value) {
+            set_attr(result, "RepresentationIdentifier", context_identifier.value);
+        }
     }
     if (!rep_type.empty()) {
         set_attr(result, "RepresentationType", rep_type);

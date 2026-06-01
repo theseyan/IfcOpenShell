@@ -464,7 +464,7 @@ private:
         return eval_unary_str(node, [](std::string s){
             /* Python's str.title(): every word boundary capitalised. */
             bool prev_alpha = false;
-            for (auto c : s) {
+            for (auto& c : s) {
                 unsigned char uc = static_cast<unsigned char>(c);
                 if (std::isalpha(uc)) {
                     c = prev_alpha ? static_cast<char>(std::tolower(uc))
