@@ -112,7 +112,7 @@ void write_ref_list(express::Base e, const char* attr,
     int idx = attr_index_of(e, attr);
     if (idx < 0) return;
     if (refs.empty()) {
-        e.unset_attribute_value(static_cast<size_t>(idx));
+        e.set_attribute_value(static_cast<size_t>(idx), blank{});
         return;
     }
     e.set_attribute_value(static_cast<size_t>(idx), refs);
@@ -141,7 +141,7 @@ void write_ref(express::Base e, const char* attr, express::Base ref) {
     int idx = attr_index_of(e, attr);
     if (idx < 0) return;
     if (!ref) {
-        e.unset_attribute_value(static_cast<size_t>(idx));
+        e.set_attribute_value(static_cast<size_t>(idx), blank{});
         return;
     }
     e.set_attribute_value(static_cast<size_t>(idx), ref);
@@ -208,7 +208,7 @@ void write_optional_string(express::Base entity, const char* attr, const char* v
     if (has_value) {
         entity.set_attribute_value(static_cast<size_t>(idx), std::string(value ? value : ""));
     } else {
-        entity.unset_attribute_value(static_cast<size_t>(idx));
+        entity.set_attribute_value(static_cast<size_t>(idx), blank{});
     }
 }
 
@@ -2536,7 +2536,7 @@ bool geometry_validate_type(
         std::string representation_type = guess_representation_type(read_ref_list(representation, "Items"));
         if (representation_type.empty()) {
             int idx = attr_index_of(representation, "RepresentationType");
-            if (idx >= 0) representation.unset_attribute_value(static_cast<size_t>(idx));
+            if (idx >= 0) representation.set_attribute_value(static_cast<size_t>(idx), blank{});
             return false;
         }
         write_string(representation, "RepresentationType", representation_type);
@@ -2941,7 +2941,7 @@ void unassign_type_representation(ifcopenshell::file* file,
     for (auto rm : rep_maps) if (rm != matching) remaining.push_back(rm);
     if (remaining.empty()) {
         int idx = attr_index_of(type_product, "RepresentationMaps");
-        if (idx >= 0) type_product.unset_attribute_value(static_cast<size_t>(idx));
+        if (idx >= 0) type_product.set_attribute_value(static_cast<size_t>(idx), blank{});
     } else {
         write_ref_list(type_product, "RepresentationMaps", remaining);
     }

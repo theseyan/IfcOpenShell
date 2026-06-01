@@ -50,7 +50,7 @@ express::Base resolve_type(ifcopenshell::file* file, const express::Base& elemen
         return element;
     }
 
-    if (!is_ifc2x3(file)) {
+    if (!is_ifc2x3(file) && is_a(element, "IfcObject")) {
         auto inv = get_inverse(element, "IsTypedBy");
         return inv.empty() ? express::Base() : read_ref(inv.front(), "RelatingType");
     }

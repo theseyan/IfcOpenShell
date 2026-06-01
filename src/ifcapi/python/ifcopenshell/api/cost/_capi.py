@@ -85,15 +85,9 @@ def call_handle(file: ifcopenshell.file, fn, *args):
 
 def call_handle_list(file: ifcopenshell.file, fn, *args) -> list[ifcopenshell.entity_instance]:
     lib = get_lib()
-    out = _generated_capi.ifcopenshell_ifc_instance_list_t()
+    out = ctypes.POINTER(_generated_capi._HandleStruct)()
     _generated_capi.status_or_raise(lib, fn(*args, ctypes.byref(out)), f"{fn.__name__} failed")
-    handles = _generated_capi.move_handle_list(
-        lib,
-        out,
-        lib.ifcopenshell_ifc_instance_list_destroy,
-        ctypes.POINTER(_generated_capi.ifcopenshell_ifc_instance_t),
-    )
-    return [ifcopenshell.entity_instance(file, ctypes.cast(handle, ctypes.c_void_p).value) for handle in handles if handle]
+    return ifcopenshell._take_instance_list(file, out)
 
 
 def call_status(fn, *args) -> None:

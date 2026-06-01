@@ -327,7 +327,7 @@ void apply_set_predefined_type(ifcopenshell::file* /*file*/, express::Base eleme
         try { element.set_attribute_value((size_t)idx, std::string("NOTDEFINED")); } catch (...) {}
         int t_idx = ifcapi::find_attr_idx(element, type_attr_name);
         if (t_idx >= 0) {
-            try { element.unset_attribute_value((size_t)t_idx); } catch (...) {}
+            try { element.set_attribute_value((size_t)t_idx, blank{}); } catch (...) {}
         }
         return;
     }
@@ -570,7 +570,7 @@ void setattr_with_cast(ifcopenshell::file* file, express::Base e,
     std::string dts = dt ? dt : "";
 
     auto try_set_none = [&]() {
-        try { e.unset_attribute_value((size_t)idx); } catch (...) {}
+        try { e.set_attribute_value((size_t)idx, blank{}); } catch (...) {}
     };
 
     if (val_is_none(value)) {

@@ -96,23 +96,25 @@ def _file_list_arg(files: list[ifcopenshell.file]) -> _generated_capi.ifcopenshe
 
 
 def _take_template_instances(
-    value: _generated_capi.ifcopenshell_ifc_instance_list_t,
+    handle,
     template_files_by_ptr: dict[int, ifcopenshell.file] | None = None,
 ) -> list[entity_instance]:
+    if not handle:
+        return []
     lib = _get_lib()
-    handles = _generated_capi.move_handle_list(
-        lib,
-        value,
-        lib.ifcopenshell_ifc_instance_list_destroy,
-        ctypes.POINTER(_generated_capi.ifcopenshell_ifc_instance_t),
-    )
-    result = []
-    for handle in handles:
-        if not handle:
-            continue
-        handle_value = ctypes.cast(handle, ctypes.c_void_p).value
-        result.append(entity_instance(_template_file_for_handle(handle_value, template_files_by_ptr), handle_value))
-    return result
+    size = ctypes.c_size_t(0)
+    try:
+        if not lib.ifcopenshell_ifcparse_instance_list_size(handle, ctypes.byref(size)):
+            return []
+        result = []
+        for i in range(size.value):
+            out = ctypes.POINTER(_generated_capi._HandleStruct)()
+            if lib.ifcopenshell_ifcparse_instance_list_get(handle, i, ctypes.byref(out)) and out:
+                handle_value = ctypes.cast(out, ctypes.c_void_p).value
+                result.append(entity_instance(_template_file_for_handle(handle_value, template_files_by_ptr), handle_value))
+        return result
+    finally:
+        lib.ifcopenshell_ifcparse_instance_list_destroy(handle)
 
 
 def get_template(schema_identiier: str) -> "PsetQto":
@@ -198,7 +200,7 @@ class PsetQto:
         """Get applicable property set templates."""
         if self._native_ptr is not None:
             lib = _get_lib()
-            out = _generated_capi.ifcopenshell_ifc_instance_list_t()
+            out = ctypes.POINTER(_generated_capi._HandleStruct)()
             _generated_capi.status_or_raise(
                 lib,
                 lib.ifcopenshell_ifcapi_pset_template_get_applicable(

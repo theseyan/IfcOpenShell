@@ -264,6 +264,9 @@ def _get_lib():
             "ifcopenshell_ifc_instance_streamer_push_page",
             "ifcopenshell_ifc_instance_streamer_read_instance_py",
             "ifcopenshell_ifc_instance_streamer_semicolon_count",
+            "ifcopenshell_ifcparse_instance_list_size",
+            "ifcopenshell_ifcparse_instance_list_get",
+            "ifcopenshell_ifcparse_instance_list_destroy",
         ),
     )
 

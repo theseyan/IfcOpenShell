@@ -64,7 +64,7 @@ void set_ref(express::Base entity, const std::string& name, express::Base value)
     if (value) {
         entity.set_attribute_value(static_cast<size_t>(index), value);
     } else {
-        entity.unset_attribute_value(static_cast<size_t>(index));
+        entity.set_attribute_value(static_cast<size_t>(index), blank{});
     }
 }
 

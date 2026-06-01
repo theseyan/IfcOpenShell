@@ -60,7 +60,7 @@ def unshare_pset(
     lib = _capi.get_lib()
     owner_history, user, application = _capi.owner_context(file)
     product_list = _capi.instance_list(products)
-    out = _generated_capi.ifcopenshell_ifc_instance_list_t()
+    out = ctypes.POINTER(_generated_capi._HandleStruct)()
     _generated_capi.status_or_raise(
         lib,
         lib.ifcopenshell_ifcapi_pset_unshare_pset(
@@ -74,10 +74,4 @@ def unshare_pset(
         ),
         "Failed to unshare property set",
     )
-    handles = _generated_capi.move_handle_list(
-        lib,
-        out,
-        lib.ifcopenshell_ifc_instance_list_destroy,
-        ctypes.POINTER(_generated_capi.ifcopenshell_ifc_instance_t),
-    )
-    return [ifcopenshell.entity_instance(file, ctypes.cast(handle, ctypes.c_void_p).value) for handle in handles if handle]
+    return ifcopenshell._take_instance_list(file, out)

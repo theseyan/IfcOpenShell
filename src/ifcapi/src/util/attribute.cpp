@@ -81,7 +81,7 @@ bool optional_truthy(const ifcapi::detail::OptionalString& value) {
 void unset_attr(express::Base entity, const char* name) {
     int idx = ifcapi::detail::attr_index_of(entity, name);
     if (idx >= 0) {
-        entity.unset_attribute_value(static_cast<size_t>(idx));
+        entity.set_attribute_value(static_cast<size_t>(idx), blank{});
     }
 }
 

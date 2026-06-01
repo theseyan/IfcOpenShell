@@ -99,7 +99,7 @@ inline void set_entity_ref(express::Base e, const char* attr, express::Base v) {
         was_set = !cur.isNull();
     } catch (...) {}
     if (was_set) {
-        try { e.unset_attribute_value(static_cast<size_t>(idx)); } catch (...) {}
+        try { e.set_attribute_value(static_cast<size_t>(idx), blank{}); } catch (...) {}
     }
 }
 

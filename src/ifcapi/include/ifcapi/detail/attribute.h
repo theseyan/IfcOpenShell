@@ -113,12 +113,24 @@ class entity_view {
         if (idx < 0) {
             return false;
         }
-        entity_.unset_attribute_value(static_cast<size_t>(idx));
+        entity_.set_attribute_value(static_cast<size_t>(idx), blank{});
         return true;
     }
 
     std::vector<express::Entity> inverse(const char* name) const {
-        return entity_ ? entity_.get_inverse(name) : std::vector<express::Entity>();
+        if (!entity_) {
+            return {};
+        }
+        const auto* decl = declaration();
+        if (!decl) {
+            return {};
+        }
+        for (const auto* attr : decl->all_inverse_attributes()) {
+            if (attr->name() == name) {
+                return entity_.get_inverse(name);
+            }
+        }
+        return {};
     }
 };
 
