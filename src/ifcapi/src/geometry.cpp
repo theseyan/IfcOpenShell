@@ -69,9 +69,13 @@ inline int attr_index(const ifcopenshell::entity* d, const char* name) {
 }
 
 inline int attr_index_of(express::Base e, const char* name) {
-    auto be = as_entity(e);
-    if (!be) return -1;
-    return attr_index(be.declaration().as_entity(), name);
+    try {
+        auto be = as_entity(e);
+        if (!be) return -1;
+        return attr_index(be.declaration().as_entity(), name);
+    } catch (...) {
+        return -1;
+    }
 }
 
 express::Base read_ref(express::Base e, const char* attr) {
@@ -148,7 +152,11 @@ void write_ref(express::Base e, const char* attr, express::Base ref) {
 }
 
 inline bool is_a(express::Base e, const char* name) {
-    return e && e.declaration().is(name);
+    try {
+        return e && e.declaration().is(name);
+    } catch (...) {
+        return false;
+    }
 }
 
 inline express::Base* entity_ptr(express::Base& entity) {
@@ -2492,7 +2500,7 @@ bool geometry_validate_type(
             if (is_a(item, "IfcBooleanResult")) {
                 has_boolean = true;
             }
-            if (item != preferred_item &&
+            if ((!preferred_item || item != preferred_item) &&
                 (is_a(item, "IfcBooleanResult") || is_a(item, "IfcCsgPrimitive3D") ||
                  is_a(item, "IfcHalfSpaceSolid") || is_a(item, "IfcSolidModel") ||
                  is_a(item, "IfcTessellatedFaceSet"))) {
@@ -2503,7 +2511,9 @@ bool geometry_validate_type(
         if (!has_boolean) {
             std::string result = guess_representation_type(items);
             if (!result.empty()) {
-                write_string(representation, "RepresentationType", result);
+                if (read_string(representation, "RepresentationType") != result) {
+                    write_string(representation, "RepresentationType", result);
+                }
                 return true;
             }
             return false;
@@ -2528,7 +2538,10 @@ bool geometry_validate_type(
                 std::remove_if(
                     items.begin(),
                     items.end(),
-                    [&](express::Base item) { return ifcapi::detail::contains_ref(remaining_items, item); }),
+                    [&](express::Base item) {
+                        return !ifcapi::detail::same_instance(item, preferred_item) &&
+                            ifcapi::detail::contains_ref(remaining_items, item);
+                    }),
                 items.end());
             write_ref_list(representation, "Items", items);
         }
@@ -2539,7 +2552,9 @@ bool geometry_validate_type(
             if (idx >= 0) representation.set_attribute_value(static_cast<size_t>(idx), blank{});
             return false;
         }
-        write_string(representation, "RepresentationType", representation_type);
+        if (read_string(representation, "RepresentationType") != representation_type) {
+            write_string(representation, "RepresentationType", representation_type);
+        }
         return representation_type == "CSG";
     } catch (const std::exception& e) {
         set_error(e.what());
@@ -2639,19 +2654,19 @@ express::Base geometry_connect_element(
         std::vector<express::Base> incompatible_connections;
         std::unordered_set<express::Base> seen;
         for (auto rel : inverse_refs(relating_element, "ConnectedFrom")) {
-            if (is_a(rel, "IfcRelConnectsElements") && read_ref(rel, "RelatingElement") == related_element) {
+            if (is_a(rel, "IfcRelConnectsElements") && ifcapi::detail::same_instance(read_ref(rel, "RelatingElement"), related_element)) {
                 append_unique_connection(incompatible_connections, seen, rel);
             }
         }
         for (auto rel : inverse_refs(related_element, "ConnectedTo")) {
-            if (is_a(rel, "IfcRelConnectsElements") && read_ref(rel, "RelatedElement") == relating_element) {
+            if (is_a(rel, "IfcRelConnectsElements") && ifcapi::detail::same_instance(read_ref(rel, "RelatedElement"), relating_element)) {
                 append_unique_connection(incompatible_connections, seen, rel);
             }
         }
         remove_connections_with_history(file, incompatible_connections);
 
         for (auto rel : inverse_refs(relating_element, "ConnectedTo")) {
-            if (is_a(rel, "IfcRelConnectsElements") && read_ref(rel, "RelatedElement") == related_element) {
+            if (is_a(rel, "IfcRelConnectsElements") && ifcapi::detail::same_instance(read_ref(rel, "RelatedElement"), related_element)) {
                 write_optional_string(rel, "Description", description, has_description);
                 return rel;
             }
@@ -2689,22 +2704,22 @@ void geometry_disconnect_element(
         std::vector<express::Base> incompatible_connections;
         std::unordered_set<express::Base> seen;
         for (auto rel : inverse_refs(relating_element, "ConnectedTo")) {
-            if (is_a(rel, "IfcRelConnectsElements") && read_ref(rel, "RelatedElement") == related_element) {
+            if (is_a(rel, "IfcRelConnectsElements") && ifcapi::detail::same_instance(read_ref(rel, "RelatedElement"), related_element)) {
                 append_unique_connection(incompatible_connections, seen, rel);
             }
         }
         for (auto rel : inverse_refs(relating_element, "ConnectedFrom")) {
-            if (is_a(rel, "IfcRelConnectsElements") && read_ref(rel, "RelatingElement") == related_element) {
+            if (is_a(rel, "IfcRelConnectsElements") && ifcapi::detail::same_instance(read_ref(rel, "RelatingElement"), related_element)) {
                 append_unique_connection(incompatible_connections, seen, rel);
             }
         }
         for (auto rel : inverse_refs(related_element, "ConnectedTo")) {
-            if (is_a(rel, "IfcRelConnectsElements") && read_ref(rel, "RelatedElement") == relating_element) {
+            if (is_a(rel, "IfcRelConnectsElements") && ifcapi::detail::same_instance(read_ref(rel, "RelatedElement"), relating_element)) {
                 append_unique_connection(incompatible_connections, seen, rel);
             }
         }
         for (auto rel : inverse_refs(related_element, "ConnectedFrom")) {
-            if (is_a(rel, "IfcRelConnectsElements") && read_ref(rel, "RelatingElement") == relating_element) {
+            if (is_a(rel, "IfcRelConnectsElements") && ifcapi::detail::same_instance(read_ref(rel, "RelatingElement"), relating_element)) {
                 append_unique_connection(incompatible_connections, seen, rel);
             }
         }
@@ -2743,7 +2758,7 @@ express::Base geometry_connect_path(
             if (!is_a(rel, "IfcRelConnectsPathElements")) {
                 continue;
             }
-            if (read_ref(rel, "RelatedElement") == related_element ||
+            if (ifcapi::detail::same_instance(read_ref(rel, "RelatedElement"), related_element) ||
                 (is_terminal_connection(read_string(rel, "RelatingConnectionType")) &&
                     read_string(rel, "RelatingConnectionType") == relating_type)) {
                 append_unique_connection(incompatible_connections, seen, rel);
@@ -2767,7 +2782,7 @@ express::Base geometry_connect_path(
             if (!is_a(rel, "IfcRelConnectsPathElements")) {
                 continue;
             }
-            if (read_ref(rel, "RelatedElement") == relating_element ||
+            if (ifcapi::detail::same_instance(read_ref(rel, "RelatedElement"), relating_element) ||
                 (is_terminal_connection(read_string(rel, "RelatingConnectionType")) &&
                     read_string(rel, "RelatingConnectionType") == related_type)) {
                 append_unique_connection(incompatible_connections, seen, rel);
@@ -2828,7 +2843,7 @@ void geometry_disconnect_path(
             }
         } else if (related_element) {
             for (auto rel : inverse_refs(relating_element, "ConnectedTo")) {
-                if (is_a(rel, "IfcRelConnectsPathElements") && read_ref(rel, "RelatedElement") == related_element) {
+                if (is_a(rel, "IfcRelConnectsPathElements") && ifcapi::detail::same_instance(read_ref(rel, "RelatedElement"), related_element)) {
                     append_unique_connection(connections, seen, rel);
                 }
             }

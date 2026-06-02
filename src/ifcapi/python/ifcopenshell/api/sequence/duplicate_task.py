@@ -67,18 +67,6 @@ def duplicate_task(
         _capi.instance_handle(user),
         _capi.instance_handle(application),
     )
-    current = [
-        ifcopenshell.entity_instance(file, ctypes.cast(handle, ctypes.c_void_p).value)
-        for handle in _generated_capi.move_handle_list(
-            lib, result.current, lib.ifcopenshell_ifc_instance_list_destroy, ctypes.POINTER(_generated_capi.ifcopenshell_ifc_instance_t)
-        )
-        if handle
-    ]
-    duplicate = [
-        ifcopenshell.entity_instance(file, ctypes.cast(handle, ctypes.c_void_p).value)
-        for handle in _generated_capi.move_handle_list(
-            lib, result.duplicate, lib.ifcopenshell_ifc_instance_list_destroy, ctypes.POINTER(_generated_capi.ifcopenshell_ifc_instance_t)
-        )
-        if handle
-    ]
+    current = ifcopenshell._take_instance_list(file, result.current)
+    duplicate = ifcopenshell._take_instance_list(file, result.duplicate)
     return current, duplicate

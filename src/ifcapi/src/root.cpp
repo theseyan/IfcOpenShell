@@ -30,7 +30,11 @@ inline void set_error(const char* msg) { ifcopenshell::capi::set_last_error(msg)
 inline void set_error(const std::string& msg) { ifcopenshell::capi::set_last_error(msg); }
 
 bool is_instance(const express::Base& entity, const char* ifc_class) {
-    return entity && entity.declaration().is(ifc_class);
+    try {
+        return entity && entity.declaration().is(ifc_class);
+    } catch (...) {
+        return false;
+    }
 }
 
 std::vector<express::Base> inverse_entities(ifcopenshell::file* file, const express::Base& entity) {
@@ -44,7 +48,11 @@ express::Base entity_by_id(ifcopenshell::file* file, int id) {
     if (!file || id <= 0) {
         return {};
     }
-    return file->instance_by_id(static_cast<int>(id));
+    try {
+        return file->instance_by_id(static_cast<int>(id));
+    } catch (...) {
+        return {};
+    }
 }
 
 std::vector<express::Base> single_ref(const express::Base& entity) {
@@ -154,7 +162,7 @@ void root_remove_product_impl(
                 ifcapi::detail::nullable_ptr(user),
                 ifcapi::detail::nullable_ptr(application));
         } else if (is_instance(inverse, "IfcRelDefinesByType")) {
-            if (ifcapi::detail::read_ref_attr(inverse, "RelatingType") == product) {
+            if (ifcapi::detail::same_instance(ifcapi::detail::read_ref_attr(inverse, "RelatingType"), product)) {
                 auto related = ifcapi::detail::read_ref_aggregate(inverse, "RelatedObjects");
                 ifcapi::bindings::type_unassign_type(
                     file,
@@ -176,7 +184,7 @@ void root_remove_product_impl(
             is_instance(inverse, "IfcRelServicesBuildings")) {
             ifcapi::detail::remove_with_history(file, inverse);
         } else if (is_instance(inverse, "IfcRelNests")) {
-            if (ifcapi::detail::read_ref_attr(inverse, "RelatingObject") == product) {
+            if (ifcapi::detail::same_instance(ifcapi::detail::read_ref_attr(inverse, "RelatingObject"), product)) {
                 auto related = ifcapi::detail::read_ref_aggregate(inverse, "RelatedObjects");
                 for (auto subelement : related) {
                     if (is_instance(subelement, "IfcDistributionPort")) {
@@ -189,18 +197,18 @@ void root_remove_product_impl(
                 }
             } else {
                 auto related = ifcapi::detail::read_ref_aggregate(inverse, "RelatedObjects");
-                if (related.size() == 1 && related.front() == product) {
+                if (related.size() == 1 && ifcapi::detail::same_instance(related.front(), product)) {
                     ifcapi::detail::remove_with_history(file, inverse);
                 }
             }
         } else if (is_instance(inverse, "IfcRelAggregates")) {
             auto related = ifcapi::detail::read_ref_aggregate(inverse, "RelatedObjects");
-            if (ifcapi::detail::read_ref_attr(inverse, "RelatingObject") == product || related.size() == 1) {
+            if (ifcapi::detail::same_instance(ifcapi::detail::read_ref_attr(inverse, "RelatingObject"), product) || related.size() == 1) {
                 ifcapi::detail::remove_with_history(file, inverse);
             }
         } else if (is_instance(inverse, "IfcRelContainedInSpatialStructure")) {
             auto related = ifcapi::detail::read_ref_aggregate(inverse, "RelatedElements");
-            if (ifcapi::detail::read_ref_attr(inverse, "RelatingStructure") == product || related.size() == 1) {
+            if (ifcapi::detail::same_instance(ifcapi::detail::read_ref_attr(inverse, "RelatingStructure"), product) || related.size() == 1) {
                 ifcapi::detail::remove_with_history(file, inverse);
             }
         } else if (is_instance(inverse, "IfcRelConnectsElements")) {
@@ -210,18 +218,18 @@ void root_remove_product_impl(
                 auto realizing = ifcapi::detail::read_ref_aggregate(inverse, "RealizingElements");
                 bool has_other_realizing = false;
                 for (auto element : realizing) {
-                    if (element != product) {
+                    if (!ifcapi::detail::same_instance(element, product)) {
                         has_other_realizing = true;
                         break;
                     }
                 }
-                if (product != relating && product != related && has_other_realizing) {
+                if (!ifcapi::detail::same_instance(product, relating) && !ifcapi::detail::same_instance(product, related) && has_other_realizing) {
                     continue;
                 }
             }
             ifcapi::detail::remove_with_history(file, inverse);
         } else if (is_instance(inverse, "IfcRelConnectsPortToElement")) {
-            if (ifcapi::detail::read_ref_attr(inverse, "RelatedElement") == product) {
+            if (ifcapi::detail::same_instance(ifcapi::detail::read_ref_attr(inverse, "RelatedElement"), product)) {
                 if (auto port = ifcapi::detail::read_ref_attr(inverse, "RelatingPort")) {
                     root_remove_product_impl(file, port, user, application);
                 }
@@ -229,12 +237,12 @@ void root_remove_product_impl(
                 if (inverse) {
                     ifcapi::detail::remove_with_history(file, inverse);
                 }
-            } else if (ifcapi::detail::read_ref_attr(inverse, "RelatingPort") == product) {
+            } else if (ifcapi::detail::same_instance(ifcapi::detail::read_ref_attr(inverse, "RelatingPort"), product)) {
                 ifcapi::detail::remove_with_history(file, inverse);
             }
         } else if (is_instance(inverse, "IfcRelConnectsPorts")) {
-            if (product != ifcapi::detail::read_ref_attr(inverse, "RelatingPort") &&
-                product != ifcapi::detail::read_ref_attr(inverse, "RelatedPort")) {
+            if (!ifcapi::detail::same_instance(product, ifcapi::detail::read_ref_attr(inverse, "RelatingPort")) &&
+                !ifcapi::detail::same_instance(product, ifcapi::detail::read_ref_attr(inverse, "RelatedPort"))) {
                 continue;
             }
             ifcapi::detail::remove_with_history(file, inverse);
@@ -244,14 +252,14 @@ void root_remove_product_impl(
             }
         } else if (is_instance(inverse, "IfcRelAssignsToProduct")) {
             auto related = ifcapi::detail::read_ref_aggregate(inverse, "RelatedObjects");
-            if (ifcapi::detail::read_ref_attr(inverse, "RelatingProduct") == product ||
-                (related.size() == 1 && related.front() == product)) {
+            if (ifcapi::detail::same_instance(ifcapi::detail::read_ref_attr(inverse, "RelatingProduct"), product) ||
+                (related.size() == 1 && ifcapi::detail::same_instance(related.front(), product))) {
                 ifcapi::detail::remove_with_history(file, inverse);
             }
         } else if (is_instance(inverse, "IfcRelFlowControlElements")) {
             auto related = ifcapi::detail::read_ref_aggregate(inverse, "RelatedControlElements");
-            if (ifcapi::detail::read_ref_attr(inverse, "RelatingFlowElement") == product ||
-                (related.size() == 1 && related.front() == product)) {
+            if (ifcapi::detail::same_instance(ifcapi::detail::read_ref_attr(inverse, "RelatingFlowElement"), product) ||
+                (related.size() == 1 && ifcapi::detail::same_instance(related.front(), product))) {
                 ifcapi::detail::remove_with_history(file, inverse);
             }
         }

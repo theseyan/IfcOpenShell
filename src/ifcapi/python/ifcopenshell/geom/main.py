@@ -72,6 +72,16 @@ SERIALIZER_SETTING = Literal[
     "base-uri", "use-element-names", "use-element-guids", "use-element-step-ids",
     "use-element-types", "y-up", "ecef", "digits", "wkt-use-section",
     "separate-z-up-node",
+    "bounds", "scale", "center",
+    "section-ref", "elevation-ref", "elevation-ref-guid",
+    "auto-section", "auto-elevation",
+    "draw-storey-heights", "profile-threshold", "storey-height-line-length",
+    "svg-xmlns", "svg-poly", "svg-prefilter",
+    "svg-unify-inputs", "svg-segment-projection", "svg-subtract-before",
+    "svg-write-poly", "svg-project", "svg-without-storeys",
+    "svg-no-css", "svg-mirror-y", "svg-mirror-x",
+    "door-arcs", "section-height", "section-height-from-storeys",
+    "print-space-names", "print-space-areas", "space-name-transform",
 ]
 GEOMETRY_LIBRARY = Literal[
     "cgal", "cgal-simple", "manifold", "opencascade", "hybrid-cgal-simple-opencascade"

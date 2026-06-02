@@ -24,11 +24,19 @@ bool is_ifc4x3(ifcopenshell::file* file) {
 }
 
 bool is_a(express::Base entity, const char* ifc_class) {
-    return entity && entity.declaration().is(ifc_class);
+    try {
+        return entity && entity.declaration().is(ifc_class);
+    } catch (...) {
+        return false;
+    }
 }
 
 std::string exact_class_name(express::Base entity) {
-    return entity ? entity.declaration().name() : std::string();
+    try {
+        return entity ? entity.declaration().name() : std::string();
+    } catch (...) {
+        return {};
+    }
 }
 
 express::Base create_entity(ifcopenshell::file* file, const char* ifc_class) {
@@ -58,7 +66,7 @@ size_t total_inverses(ifcopenshell::file* file, express::Base entity) {
 
 bool aggregate_is_singleton(express::Base entity, const char* attr, express::Base value) {
     auto values = ifcapi::detail::read_ref_aggregate(entity, attr);
-    return values.size() == 1 && values.front() == value;
+    return values.size() == 1 && ifcapi::detail::same_instance(values.front(), value);
 }
 
 void append_ref(express::Base entity, const char* attr, express::Base value) {
@@ -316,7 +324,7 @@ void owner_remove_organisation(ifcopenshell::file* file, express::Base* organisa
     }
     for (auto inverse : inverse_entities(file, organisation_value)) {
         if (is_a(inverse, "IfcOrganizationRelationship")) {
-            if (ifcapi::detail::read_ref_attr(inverse, "RelatingOrganization") == organisation_value
+            if (ifcapi::detail::same_instance(ifcapi::detail::read_ref_attr(inverse, "RelatingOrganization"), organisation_value)
                 || aggregate_is_singleton(inverse, "RelatedOrganizations", organisation_value)) {
                 file->remove_entity(inverse);
             }

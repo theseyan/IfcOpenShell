@@ -53,6 +53,21 @@ express::Base first_representation(express::Base annotation) {
     return representations.empty() ? express::Base() : representations.front();
 }
 
+express::Base world_coordinate_system(express::Base context) {
+    std::set<int> seen;
+    while (context && is_a(context, "IfcGeometricRepresentationSubContext")) {
+        auto parent = ifcapi::detail::read_ref_attr(context, "ParentContext");
+        if (!parent || !seen.insert(parent.id()).second) {
+            break;
+        }
+        context = parent;
+    }
+    if (!context) {
+        return {};
+    }
+    return ifcapi::detail::read_ref_attr(context, "WorldCoordinateSystem");
+}
+
 express::Base first_item(express::Base annotation) {
     auto items = ifcapi::detail::read_ref_aggregate(first_representation(annotation), "Items");
     return items.empty() ? express::Base() : items.front();
@@ -99,7 +114,7 @@ express::Base cogo_add_survey_point(
         ifcapi::detail::write_ref_attr(
             annotation,
             "ObjectPlacement",
-            ifcapi::detail::read_ref_attr(context, "WorldCoordinateSystem"));
+            world_coordinate_system(context));
         ifcapi::detail::write_ref_attr(annotation, "Representation", representation);
         ifcapi::detail::write_enum_attr(annotation, "PredefinedType", "SURVEY");
 

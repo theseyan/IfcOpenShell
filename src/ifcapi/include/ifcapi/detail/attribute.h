@@ -30,7 +30,7 @@ class entity_view {
 
   public:
     entity_view() = default;
-    entity_view(const express::Base& entity) : entity_(entity.as<express::Entity>()) {}
+    entity_view(const express::Base& entity) : entity_(entity ? entity.as<express::Entity>() : express::Entity()) {}
     entity_view(const express::Entity& entity) : entity_(entity) {}
 
     explicit operator bool() const { return static_cast<bool>(entity_); }

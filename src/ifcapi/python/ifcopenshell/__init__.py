@@ -715,11 +715,25 @@ class file:
             raise RuntimeError(f"Failed to create entity '{type_name}': {msg}")
         h = ctypes.cast(out, ctypes.c_void_p).value
         entity = entity_instance(self, h)
+        initializes_global_id = (
+            (args and args[0] is not None and entity.attribute_name(0) == "GlobalId")
+            or ("GlobalId" in kwargs and kwargs["GlobalId"] is not None)
+        )
         # Suspend transaction recording while populating attributes — the
         # creation itself already captures the full attribute payload.
         active_transaction = self.transaction
         if args or kwargs:
             self.transaction = None
+        if initializes_global_id:
+            target_global_id = kwargs.get("GlobalId", args[0] if args else None)
+            entity.GlobalId = ""
+            get_log()
+            if target_global_id:
+                try:
+                    self.by_guid(target_global_id)
+                    W._LOG_BUFFER.append(f"Overwriting existing entity for GlobalId {target_global_id}")
+                except RuntimeError:
+                    pass
         try:
             for i, arg in enumerate(args):
                 if arg is not None:
