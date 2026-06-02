@@ -284,7 +284,6 @@ discover:
   classes:
     - handle: triangulation
       translation_unit: IfcGeomRepresentation.cpp
-      include_all: true
       exclude:
         - addFace
         - addEdge
@@ -316,7 +315,6 @@ discover:
 
     - handle: iterator
       translation_unit: Iterator.cpp
-      include_all: true
       exclude:
         - filters
         - process_finished_rep
@@ -327,34 +325,28 @@ discover:
 
     - handle: brep_representation
       translation_unit: IfcGeomRepresentation.cpp
-      include_all: true
       include_inherited_methods: true
 
     - handle: element
       translation_unit: Iterator.cpp
-      include_all: true
       exclude:
         - SetParents
 
     - handle: brep_element
       translation_unit: Iterator.cpp
-      include_all: true
       exclude:
         - geometry_pointer
 
     - handle: triangulation_element
       translation_unit: Iterator.cpp
-      include_all: true
       exclude:
         - geometry_pointer
 
     - handle: serialized_element
       translation_unit: Iterator.cpp
-      include_all: true
 
     - handle: conversion_result_shape
       translation_unit: ConversionResult.cpp
-      include_all: true
       exclude:
         - Triangulate
         - Serialize
@@ -406,11 +398,9 @@ discover:
 
     - handle: serialization
       translation_unit: IfcGeomRepresentation.cpp
-      include_all: true
 
     - handle: geometry_serializer
       translation_unit: ../serializers/WavefrontObjSerializer.cpp
-      include_all: true
       include_inherited_methods: true
       exclude:
         - geometry_settings
@@ -483,7 +473,6 @@ discover:
 
     - handle: taxonomy_style
       translation_unit: Iterator.cpp
-      include_all: true
       discover_fields: true
       exclude:
         - instance
@@ -641,7 +630,6 @@ discover:
 
     - handle: opaque_number
       translation_unit: ConversionResult.cpp
-      include_all: true
       exclude:
         - clone_
       binary_operators:
@@ -657,14 +645,12 @@ discover:
 
     - handle: serializer
       translation_unit: GeometrySerializer.h
-      include_all: true
       rename:
         writeHeader: write_header
         setFile: set_file
 
     - handle: settings
       translation_unit: Iterator.cpp
-      include_all: true
       include_inherited_methods: true
       exclude:
         - define_options
@@ -692,7 +678,6 @@ discover:
 
     - handle: serializer_settings
       translation_unit: ../serializers/WavefrontObjSerializer.cpp
-      include_all: true
       include_inherited_methods: true
       exclude:
         - define_options
@@ -711,13 +696,11 @@ discover:
 
     - handle: buffer
       translation_unit: ../serializers/WavefrontObjSerializer.cpp
-      include_all: true
       exclude:
         - filename
 
     - handle: taxonomy_item
       translation_unit: Iterator.cpp
-      include_all: true
       exclude:
         - clone_
         - reverse
@@ -726,7 +709,6 @@ discover:
 
     - handle: tree
       translation_unit: kernels/opencascade/boolean_utils.cpp
-      include_all: true
       exclude:
         - add_element
         - add_file
