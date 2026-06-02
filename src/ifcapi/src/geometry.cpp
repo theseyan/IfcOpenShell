@@ -152,11 +152,8 @@ void write_ref(express::Base e, const char* attr, express::Base ref) {
 }
 
 inline bool is_a(express::Base e, const char* name) {
-    try {
-        return e && e.declaration().is(name);
-    } catch (...) {
-        return false;
-    }
+    auto d = e.data_weak().lock();
+    return d && d->declaration()->is(name);
 }
 
 inline express::Base* entity_ptr(express::Base& entity) {

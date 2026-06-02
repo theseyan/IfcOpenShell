@@ -18,14 +18,12 @@ inline express::Base* nullable_ptr(express::Base& value) {
 }
 
 inline bool same_instance(express::Base left, express::Base right) {
-    if (!left || !right) {
-        return !left && !right;
+    auto l = left.data_weak().lock();
+    auto r = right.data_weak().lock();
+    if (!l || !r) {
+        return !l && !r;
     }
-    try {
-        return left.file() == right.file() && left.id() == right.id();
-    } catch (...) {
-        return false;
-    }
+    return l->file() == r->file() && l->id() == r->id();
 }
 
 inline express::Base ensure_owner_history(

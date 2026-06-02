@@ -30,11 +30,8 @@ inline void set_error(const char* msg) { ifcopenshell::capi::set_last_error(msg)
 inline void set_error(const std::string& msg) { ifcopenshell::capi::set_last_error(msg); }
 
 bool is_instance(const express::Base& entity, const char* ifc_class) {
-    try {
-        return entity && entity.declaration().is(ifc_class);
-    } catch (...) {
-        return false;
-    }
+    auto d = entity.data_weak().lock();
+    return d && d->declaration()->is(ifc_class);
 }
 
 std::vector<express::Base> inverse_entities(ifcopenshell::file* file, const express::Base& entity) {
