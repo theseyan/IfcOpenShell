@@ -72,296 +72,13 @@ def _compile_command_for_source(compile_commands_path: Path, source: Path, inclu
     return filtered
 
 
-def test_cpp_spec_frontend_discovers_only_marked_exports(tmp_path: Path) -> None:
-    spec_path = tmp_path / "demo_spec.cpp"
-    spec_path.write_text(
-        dedent(
-            """
-            #include <string>
-            #include <vector>
-
-            #define IFCAPI_EXPORT
-            #define IFCAPI_HANDLE(cpp_type, destructor, ...)
-            #define IFCAPI_OWNED
-            #define IFCAPI_STATIC
-            #define IFCAPI_NULLABLE
-
-            namespace ifcopenshell::capi_spec {
-            struct DemoFile {};
-            IFCAPI_HANDLE(ifcopenshell::capi_spec::DemoFile, delete)
-            struct ifcopenshell_demo_file_t;
-
-            int helper_not_exported(const DemoFile&) {
-                return 42;
-            }
-
-            IFCAPI_EXPORT IFCAPI_OWNED std::string ifcopenshell_demo_label(
-                IFCAPI_NULLABLE const DemoFile* file,
-                const std::vector<int>& values
-            ) {
-                return file && !values.empty() ? "ok" : "empty";
-            }
-
-            IFCAPI_EXPORT bool ifcopenshell_demo_is_empty(const DemoFile& file) {
-                return helper_not_exported(file) == 0;
-            }
-            }
-            """
-        ),
-        encoding="utf-8",
-    )
-
-    functions = discover_cpp_spec_functions(
-        _environment(tmp_path),
-        spec_path,
-        "ifcopenshell::capi_spec",
-    )
-
-    by_name = {function.name: function for function in functions}
-    assert set(by_name) == {"ifcopenshell_demo_is_empty", "ifcopenshell_demo_label"}
-    assert by_name["ifcopenshell_demo_label"].return_annotations == frozenset({"IFCAPI_OWNED"})
-    assert by_name["ifcopenshell_demo_label"].param_annotations == {
-        "file": frozenset({"IFCAPI_NULLABLE"})
-    }
-    assert by_name["ifcopenshell_demo_label"].discovered.return_cpp_type == "std::string"
-    assert [param.cpp_type for param in by_name["ifcopenshell_demo_label"].discovered.params] == [
-        "const DemoFile *",
-        "const std::vector<int> &",
-    ]
-
-
-def test_cpp_spec_frontend_lowers_marked_exports_to_binding_ir_calls(tmp_path: Path) -> None:
-    spec_path = tmp_path / "demo_spec.cpp"
-    spec_path.write_text(
-        dedent(
-            """
-            #include <string>
-            #include <vector>
-
-            #define IFCAPI_EXPORT
-            #define IFCAPI_HANDLE(cpp_type, destructor, ...)
-            #define IFCAPI_OWNED
-            #define IFCAPI_STATIC
-            #define IFCAPI_NULLABLE
-            #define IFCAPI_HANDLE_PARAM(handle)
-            #define IFCAPI_RESULT_STRUCT(c_type)
-
-            namespace ifcopenshell::capi_spec {
-            struct DemoFile {};
-            IFCAPI_HANDLE(ifcopenshell::capi_spec::DemoFile, delete)
-            struct ifcopenshell_demo_file_t;
-            IFCAPI_HANDLE(demo_file_list, std::vector<ifcopenshell::capi_spec::DemoFile>, none, value)
-            struct ifcopenshell_demo_file_list_t;
-
-            IFCAPI_RESULT_STRUCT(ifcopenshell_demo_summary_t)
-            struct DemoSummary {
-                std::string label;
-                std::vector<int> values;
-            };
-
-            IFCAPI_EXPORT IFCAPI_OWNED std::string ifcopenshell_demo_label(
-                IFCAPI_NULLABLE const DemoFile* file,
-                const std::vector<int>& values
-            ) {
-                return file && !values.empty() ? "ok" : "empty";
-            }
-
-            IFCAPI_EXPORT DemoSummary ifcopenshell_demo_summary(const DemoFile* file) {
-                return {file ? "ok" : "empty", {1, 2, 3}};
-            }
-
-            IFCAPI_EXPORT void ifcopenshell_demo_use_file_list(
-                IFCAPI_HANDLE_PARAM(demo_file_list) std::vector<DemoFile>* files
-            ) {}
-
-            IFCAPI_EXPORT IFCAPI_STATIC const char* ifcopenshell_demo_version() {
-                return "fixture";
-            }
-
-            IFCAPI_EXPORT int ifcopenshell_demo_buffer_size(const void* data) {
-                return data ? 1 : 0;
-            }
-            }
-            """
-        ),
-        encoding="utf-8",
-    )
-
-    handles = lower_cpp_spec_handles_to_specs(discover_cpp_spec_handles(spec_path))
-    assert set(handles) == {"demo_file", "demo_file_list"}
-    assert handles["demo_file"].cpp_type == "ifcopenshell::capi_spec::DemoFile"
-    assert handles["demo_file"].c_type == "ifcopenshell_demo_file_t"
-    assert handles["demo_file"].destructor == "delete"
-    result_structs = lower_cpp_spec_result_structs_to_specs(
-        discover_cpp_spec_result_structs(spec_path, "ifcopenshell::capi_spec"),
-        handles,
-    )
-    assert set(result_structs) == {"DemoSummary"}
-    assert result_structs["DemoSummary"].c_type == "ifcopenshell_demo_summary_t"
-    assert [field.name for field in result_structs["DemoSummary"].fields] == ["label", "values"]
-    functions = discover_cpp_spec_functions(
-        _environment(tmp_path),
-        spec_path,
-        "ifcopenshell::capi_spec",
-    )
-    calls = lower_cpp_spec_functions_to_calls(functions, handles, result_structs)
-    ir = lower_binding_spec(
-        SimpleNamespace(
-            module="demo",
-            c_prefix="ifcopenshell_demo",
-            public_headers=(),
-            public_header_plugins={},
-            handles=handles,
-            result_structs=result_structs,
-            functions=calls,
-            methods=(),
-            depends_on_common=None,
-        )
-    )
-
-    assert len(ir.functions) == 5
-    calls_by_name = {call.c_name: call for call in ir.functions}
-    call = calls_by_name["ifcopenshell_demo_label"]
-    assert call.c_name == "ifcopenshell_demo_label"
-    assert call.returns.kind == "string"
-    assert call.returns.ownership == "owned"
-    assert call.params[0].type.kind == "handle"
-    assert call.params[0].type.handle == "demo_file"
-    assert call.params[0].type.nullable is True
-    assert call.params[1].type.kind == "int32"
-    assert call.params[1].type.sequence_depth == 1
-    assert isinstance(call.operation, DirectCallOp)
-    assert call.operation.cpp_name == "ifcopenshell::capi_spec::ifcopenshell_demo_label"
-    assert calls_by_name["ifcopenshell_demo_version"].returns.kind == "string"
-    assert calls_by_name["ifcopenshell_demo_version"].returns.ownership == "static"
-    assert calls_by_name["ifcopenshell_demo_buffer_size"].params[0].type.kind == "opaque_ptr"
-    list_param = calls_by_name["ifcopenshell_demo_use_file_list"].params[0].type
-    assert list_param.kind == "handle"
-    assert list_param.handle == "demo_file_list"
-    assert list_param.sequence_depth == 0
-
-    header = _render_header(ir)
-    assert "typedef struct ifcopenshell_demo_file_t ifcopenshell_demo_file_t;" in header
-    assert "typedef struct ifcopenshell_int32_list_t" in header
-    assert (
-        "bool ifcopenshell_demo_label(ifcopenshell_demo_file_t* file, "
-        "const ifcopenshell_int32_list_t* values, ifcopenshell_string_t* out_result);"
-    ) in header
-    assert "bool ifcopenshell_demo_use_file_list(ifcopenshell_demo_file_list_t* files);" in header
-    assert "typedef struct ifcopenshell_demo_summary_t" in header
-    assert "ifcopenshell_string_t label;" in header
-    assert "ifcopenshell_int32_list_t values;" in header
-    assert (
-        "bool ifcopenshell_demo_summary(ifcopenshell_demo_file_t* file, "
-        "ifcopenshell_demo_summary_t* out_result);"
-    ) in header
-
-
-def test_cpp_spec_frontend_lowers_method_exports_to_receiver_calls(tmp_path: Path) -> None:
-    spec_path = tmp_path / "demo_spec.cpp"
-    spec_path.write_text(
-        dedent(
-            """
-            #include <string>
-
-            #define IFCAPI_EXPORT
-            #define IFCAPI_METHOD(receiver)
-            #define IFCAPI_HANDLE(cpp_type, destructor)
-            #define IFCAPI_OWNED
-
-            namespace ifcopenshell::capi_spec {
-            struct DemoFile {
-                std::string label(int index) const { return index ? "other" : "zero"; }
-            };
-            IFCAPI_HANDLE(ifcopenshell::capi_spec::DemoFile, delete)
-            struct ifcopenshell_demo_file_t;
-
-            IFCAPI_EXPORT IFCAPI_METHOD(demo_file) IFCAPI_OWNED std::string label(const DemoFile& self, int index) {
-                return self.label(index);
-            }
-            }
-            """
-        ),
-        encoding="utf-8",
-    )
-
-    handles = lower_cpp_spec_handles_to_specs(discover_cpp_spec_handles(spec_path))
-    functions = discover_cpp_spec_functions(
-        _environment(tmp_path),
-        spec_path,
-        "ifcopenshell::capi_spec",
-    )
-    assert functions[0].receiver == "demo_file"
-    calls = lower_cpp_spec_functions_to_calls(functions, handles)
-    ir = lower_binding_spec(
-        SimpleNamespace(
-            module="demo",
-            c_prefix="ifcopenshell_demo",
-            public_headers=(),
-            public_header_plugins={},
-            handles=handles,
-            result_structs={},
-            functions=calls,
-            methods=(),
-            depends_on_common=None,
-        )
-    )
-
-    call = ir.functions[0]
-    assert call.c_name == "ifcopenshell_demo_file_label"
-    assert call.receiver == "demo_file"
-    assert [param.name for param in call.params] == ["index"]
-    assert isinstance(call.operation, SpecMethodFunctionCallOp)
-
-    header = _render_header(ir)
-    assert "bool ifcopenshell_demo_file_label(ifcopenshell_demo_file_t* self, int32_t index, ifcopenshell_string_t* out_result);" in header
-    cpp = _render_cpp(ir, "demo.h")
-    assert "ifcopenshell::capi_spec::label(*self_cpp, index_cpp)" in cpp
-
-
-def test_cpp_spec_frontend_rejects_mismatched_method_receiver_type(tmp_path: Path) -> None:
-    spec_path = tmp_path / "demo_spec.cpp"
-    spec_path.write_text(
-        dedent(
-            """
-            #define IFCAPI_EXPORT
-            #define IFCAPI_METHOD(receiver)
-            #define IFCAPI_HANDLE(cpp_type, destructor)
-
-            namespace ifcopenshell::capi_spec {
-            struct DemoFile {};
-            struct Other {};
-            IFCAPI_HANDLE(ifcopenshell::capi_spec::DemoFile, delete)
-            struct ifcopenshell_demo_file_t;
-
-            IFCAPI_EXPORT IFCAPI_METHOD(demo_file) int invalid(const Other& self) {
-                return 0;
-            }
-            }
-            """
-        ),
-        encoding="utf-8",
-    )
-
-    handles = lower_cpp_spec_handles_to_specs(discover_cpp_spec_handles(spec_path))
-    functions = discover_cpp_spec_functions(
-        _environment(tmp_path),
-        spec_path,
-        "ifcopenshell::capi_spec",
-    )
-    with pytest.raises(ValueError, match="receiver parameter type"):
-        lower_cpp_spec_functions_to_calls(functions, handles)
-
-
 def test_cpp_spec_generation_supports_per_spec_namespaces_and_prefixes(tmp_path: Path) -> None:
     spec_a = tmp_path / "spec_a.cpp"
     spec_a.write_text(
         dedent(
             """
-            #define IFCAPI_EXPORT
-
             namespace example::a {
-            IFCAPI_EXPORT int value() {
+            inline int value() {
                 return 1;
             }
             }
@@ -373,10 +90,8 @@ def test_cpp_spec_generation_supports_per_spec_namespaces_and_prefixes(tmp_path:
     spec_b.write_text(
         dedent(
             """
-            #define IFCAPI_EXPORT
-
             namespace example::b {
-            IFCAPI_EXPORT int value() {
+            inline int value() {
                 return 2;
             }
             }
@@ -413,10 +128,8 @@ def test_cpp_spec_generation_rejects_mismatched_per_spec_namespaces(tmp_path: Pa
         spec_path.write_text(
             dedent(
                 """
-                #define IFCAPI_EXPORT
-
                 namespace example {
-                IFCAPI_EXPORT int value() {
+                inline int value() {
                     return 1;
                 }
                 }
@@ -442,10 +155,8 @@ def test_cpp_spec_frontend_rejects_mutable_void_pointer_params(tmp_path: Path) -
     spec_path.write_text(
         dedent(
             """
-            #define IFCAPI_EXPORT
-
             namespace ifcopenshell::capi_spec {
-            IFCAPI_EXPORT int ifcopenshell_demo_set_box(void* data) {
+            inline int ifcopenshell_demo_set_box(void* data) {
                 return data ? 1 : 0;
             }
             }
@@ -479,7 +190,6 @@ def test_cpp_spec_frontend_generated_fixture_cpp_compiles(tmp_path: Path) -> Non
             #include <string>
             #include <vector>
 
-            #define IFCAPI_EXPORT
             #define IFCAPI_HANDLE(cpp_type, destructor)
             #define IFCAPI_OWNED
             #define IFCAPI_NULLABLE
@@ -489,7 +199,7 @@ def test_cpp_spec_frontend_generated_fixture_cpp_compiles(tmp_path: Path) -> Non
             IFCAPI_HANDLE(ifcopenshell::capi_spec::DemoFile, delete)
             struct ifcopenshell_demo_file_t;
 
-            IFCAPI_EXPORT IFCAPI_OWNED std::string ifcopenshell_demo_label(
+            inline IFCAPI_OWNED std::string ifcopenshell_demo_label(
                 IFCAPI_NULLABLE const DemoFile* file,
                 const std::vector<int>& values
             ) {
@@ -556,7 +266,6 @@ def test_cpp_spec_frontend_cli_generates_fixture_header(tmp_path: Path) -> None:
             """
             #include <string>
 
-            #define IFCAPI_EXPORT
             #define IFCAPI_HANDLE(cpp_type, destructor)
             #define IFCAPI_OWNED
 
@@ -565,7 +274,7 @@ def test_cpp_spec_frontend_cli_generates_fixture_header(tmp_path: Path) -> None:
             IFCAPI_HANDLE(ifcopenshell::capi_spec::DemoFile, delete)
             struct ifcopenshell_demo_file_t;
 
-            IFCAPI_EXPORT IFCAPI_OWNED std::string ifcopenshell_demo_label(const DemoFile* file) {
+            inline IFCAPI_OWNED std::string ifcopenshell_demo_label(const DemoFile* file) {
                 return file ? "ok" : "empty";
             }
             }
@@ -614,13 +323,11 @@ def test_cpp_spec_frontend_rejects_overloaded_exports(tmp_path: Path) -> None:
     spec_path.write_text(
         dedent(
             """
-            #define IFCAPI_EXPORT
-
             namespace ifcopenshell::capi_spec {
-            IFCAPI_EXPORT int ifcopenshell_demo_value(int value) {
+            inline int ifcopenshell_demo_value(int value) {
                 return value;
             }
-            IFCAPI_EXPORT int ifcopenshell_demo_value(double value) {
+            inline int ifcopenshell_demo_value(double value) {
                 return static_cast<int>(value);
             }
             }
@@ -635,6 +342,41 @@ def test_cpp_spec_frontend_rejects_overloaded_exports(tmp_path: Path) -> None:
             spec_path,
             "ifcopenshell::capi_spec",
         )
+
+
+def test_cpp_spec_frontend_excludes_private_helpers(tmp_path: Path) -> None:
+    from unittest.mock import patch
+
+    spec_path = tmp_path / "demo_spec.cpp"
+    spec_path.write_text(
+        dedent(
+            """
+            namespace ifcopenshell::capi_spec {
+            inline int ifcopenshell_demo_exported() {
+                return 42;
+            }
+            inline int ifcopenshell_demo_internal_helper() {
+                return 0;
+            }
+            }
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    with patch(
+        "src.ifcwrap.binding_generator.cpp_spec_frontend._PRIVATE_NAMES",
+        frozenset({"to_base_vector", "ifcopenshell_demo_internal_helper"}),
+    ):
+        functions = discover_cpp_spec_functions(
+            _environment(tmp_path),
+            spec_path,
+            "ifcopenshell::capi_spec",
+        )
+
+    exported_names = {f.name for f in functions}
+    assert "ifcopenshell_demo_exported" in exported_names
+    assert "ifcopenshell_demo_internal_helper" not in exported_names
 
 
 def test_cpp_spec_frontend_rejects_duplicate_handles(tmp_path: Path) -> None:

@@ -248,38 +248,42 @@ def _param_type_decl(param: str) -> str:
     return param[: param.rfind(name)].strip() if name else param.strip()
 
 
-def _discover_marked_spec_signatures(
+_PRIVATE_NAMES = frozenset({"to_base_vector"})
+
+def _discover_spec_signatures(
     source: Path,
-    marker: str,
+    selected_names: set[str],
 ) -> dict[str, tuple[CppSpecSignature, ...]]:
     text = _strip_comments(source.read_text(encoding="utf-8"))
-    marker_re = re.escape(marker)
-    signature_re = re.compile(
-        rf"\b{marker_re}\s+"
-        r"(?P<annotations>(?:IFCAPI_\w+(?:\([^)]*\))?\s+)*)"
-        r"(?P<return_decl>[\w:<>~,\s*&()]+?)\s+"
-        r"(?P<name>[A-Za-z_]\w*)\s*\("
-        r"(?P<params>[^;{}]*)\)\s*(?:[;{])",
-        re.DOTALL,
-    )
     signatures: dict[str, list[CppSpecSignature]] = {}
-    for match in signature_re.finditer(text):
-        name = match.group("name")
-        return_decl = f"{match.group('annotations')}{match.group('return_decl')}"
-        receiver, return_decl = _method_receiver_from_return_decl(return_decl)
-        if name in signatures and (receiver is None or any(item[2] == receiver for item in signatures[name])):
-            msg = f"C++ spec export '{name}' is declared more than once; exported spec functions must be unique"
-            raise ValueError(msg)
-        return_annotations, _ = _leading_annotations(return_decl)
-        param_annotations: dict[str, frozenset[str]] = {}
-        first_param_type = None
-        for param in _split_params(match.group("params")):
-            annotations, rest = _leading_annotations(param)
-            if first_param_type is None:
-                first_param_type = _param_type_decl(rest)
-            if annotations:
-                param_annotations[_param_name(rest)] = annotations
-        signatures.setdefault(name, []).append((return_annotations, param_annotations, receiver, first_param_type))
+    for name in selected_names:
+        if name in _PRIVATE_NAMES:
+            continue
+        signature_re = re.compile(
+            r"(?P<annotations>(?:IFCAPI_\w+(?:\([^)]*\))?\s+)*)"
+            r"(?P<return_decl>[\w:<>~,\s*&()]+?)\s+"
+            + re.escape(name) +
+            r"\s*\("
+            r"(?P<params>[^;{}]*)\)\s*\{",
+            re.DOTALL,
+        )
+        for match in signature_re.finditer(text):
+            return_decl = f"{match.group('annotations')}{match.group('return_decl')}"
+            return_decl = re.sub(r"^\s*inline\s+", "", return_decl.strip())
+            receiver, return_decl = _method_receiver_from_return_decl(return_decl)
+            if name in signatures and (receiver is None or any(item[2] == receiver for item in signatures[name])):
+                msg = f"C++ spec export '{name}' is declared more than once; exported spec functions must be unique"
+                raise ValueError(msg)
+            return_annotations, _ = _leading_annotations(return_decl)
+            param_annotations: dict[str, frozenset[str]] = {}
+            first_param_type = None
+            for param in _split_params(match.group("params")):
+                annotations, rest = _leading_annotations(param)
+                if first_param_type is None:
+                    first_param_type = _param_type_decl(rest)
+                if annotations:
+                    param_annotations[_param_name(rest)] = annotations
+            signatures.setdefault(name, []).append((return_annotations, param_annotations, receiver, first_param_type))
     return {name: tuple(entries) for name, entries in signatures.items()}
 
 
@@ -311,36 +315,36 @@ def discover_cpp_spec_functions(
     translation_unit: Path,
     namespace: str,
     *,
-    marker: str = "IFCAPI_EXPORT",
     contract_headers: tuple[Path, ...] = (),
 ) -> tuple[CppSpecFunction, ...]:
-    """Discover explicitly exported functions from a C++ binding spec translation unit."""
-    marked = _discover_marked_spec_signatures(translation_unit, marker)
+    discovered = discover_namespace_functions(
+        environment,
+        translation_unit,
+        namespace,
+    )
+
+    spec_sigs = _discover_spec_signatures(translation_unit, set(discovered.keys()))
+
+    combined = dict(spec_sigs)
     for function in discover_marked_functions_in_headers(contract_headers):
-        if function.name in marked:
+        if function.name in combined:
             msg = (
                 f"C++ spec export '{function.name}' is declared more than once; "
                 "exported spec functions must be unique"
             )
             raise ValueError(msg)
-        marked[function.name] = ((function.return_annotations, function.param_annotations, None, None),)
-    if not marked:
-        msg = f"No {marker} functions were found in C++ spec '{translation_unit}'"
+        combined[function.name] = ((function.return_annotations, function.param_annotations, None, None),)
+    if not combined:
+        msg = f"No exported functions were found in C++ spec '{translation_unit}'"
         raise ValueError(msg)
 
-    discovered = discover_namespace_functions(
-        environment,
-        translation_unit,
-        namespace,
-        selected_names=marked.keys(),
-    )
     result: list[CppSpecFunction] = []
-    for name in sorted(marked):
+    for name in sorted(combined):
         overloads = discovered.get(name, ())
         if not overloads:
-            msg = f"C++ spec export '{name}' was marked but not discovered by Clang"
+            msg = f"C++ spec export '{name}' was found in spec but not discovered by Clang"
             raise ValueError(msg)
-        for return_annotations, param_annotations, receiver, first_param_type in marked[name]:
+        for return_annotations, param_annotations, receiver, first_param_type in combined[name]:
             selected_overloads = overloads
             if len(overloads) != 1 and first_param_type is not None:
                 selected_overloads = tuple(

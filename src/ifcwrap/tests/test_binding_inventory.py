@@ -210,8 +210,7 @@ def test_parse_c_functions_handles_exported_multiline_declarations(tmp_path: Pat
     header.write_text(
         dedent(
             """
-            #define IFCAPI_EXPORT
-            IFCAPI_EXPORT struct ifcopenshell_ifc_instance_t*
+            struct ifcopenshell_ifc_instance_t*
             ifcopenshell_file_create_entity(
                 ifcopenshell_ifc_file_t* file,
                 const char* type_name);
@@ -277,7 +276,7 @@ def test_build_inventory_reports_generated_highlevel_and_duplicate_concepts(tmp_
     highlevel_dir = tmp_path / "src" / "ifcapi" / "include" / "ifcapi"
     highlevel_dir.mkdir(parents=True)
     (highlevel_dir / "ifcapi.h").write_text(
-        "IFCAPI_EXPORT int32_t ifcopenshell_file_by_type("
+        "int32_t ifcopenshell_file_by_type("
         "const ifcopenshell_ifc_file_t* file, const char* type, void** out);\n",
         encoding="utf-8",
     )

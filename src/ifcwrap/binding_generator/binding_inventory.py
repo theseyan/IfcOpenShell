@@ -15,7 +15,6 @@ _C_FUNCTION_RE = re.compile(
     r"""
     (?:^|\n)\s*
     (?!\#)
-    (?:IFCAPI_EXPORT\s+)?
     (?P<return_type>(?:struct\s+)?[A-Za-z_][A-Za-z0-9_:\s\*]*?)
     \s+
     (?P<name>ifcopenshell_[A-Za-z0-9_]+)
