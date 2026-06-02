@@ -252,12 +252,11 @@ void RocksDbSerializer::write_streaming_() {
 				}
 
 				auto val = inst.get_attribute_value(0);
-				// @todo if statement?
-				// if (val.array_.storage_ptr->size() > 0) {
+				if (val.size() > 0) {
 					val.apply_visitor([&](const auto& t) {
 						rocks_db_attribute_storage{}.set(&storage, &inst.declaration(), inst.identity(), 0, t);
 					});
-				// }
+				}
 
 				// @nb we also need to delete them
 				// not anymore, as they are now registered as unique_ptr in the in_memory_file_storage
