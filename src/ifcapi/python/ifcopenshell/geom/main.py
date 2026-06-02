@@ -10,6 +10,7 @@ the legacy ``ifcopenshell_wrapper`` extension.
 from __future__ import annotations
 
 import ctypes
+import os
 from collections.abc import Iterable
 from ctypes import POINTER, byref, c_bool, c_char_p, c_double, c_int32, c_size_t
 from typing import Any, Literal, Optional, Union
@@ -2114,10 +2115,9 @@ class serializers:
 
     @staticmethod
     def rocksdb(file_or_filename, rocksdb_filename):
-        return _make_file_serializer(
-            "ifcopenshell_ifcgeom_create_rocksdb_serializer",
-            file_or_filename, rocksdb_filename,
-        )
+        if not isinstance(file_or_filename, (str, bytes, os.PathLike)):
+            raise TypeError("rocksdb serializer requires an input filename")
+        return serializers.rocksdb_streaming(file_or_filename, rocksdb_filename)
 
     @staticmethod
     def rocksdb_streaming(input_filename, rocksdb_filename, stream: bool = True):
@@ -2127,7 +2127,6 @@ class serializers:
         if not bind().ifcopenshell_ifcgeom_create_rocksdb_serializer_streaming(
             str(input_filename).encode("utf-8"),
             str(rocksdb_filename).encode("utf-8"),
-            bool(stream),
             byref(out),
         ):
             raise RuntimeError(_last_error("rocksdb_serializer_streaming failed"))
