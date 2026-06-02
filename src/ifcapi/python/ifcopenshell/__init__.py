@@ -724,17 +724,17 @@ class file:
         active_transaction = self.transaction
         if args or kwargs:
             self.transaction = None
-        if initializes_global_id:
-            target_global_id = kwargs.get("GlobalId", args[0] if args else None)
-            entity.GlobalId = ""
-            get_log()
-            if target_global_id:
-                try:
-                    self.by_guid(target_global_id)
-                    W._LOG_BUFFER.append(f"Overwriting existing entity for GlobalId {target_global_id}")
-                except RuntimeError:
-                    pass
         try:
+            if initializes_global_id:
+                target_global_id = kwargs.get("GlobalId", args[0] if args else None)
+                entity.GlobalId = ""
+                get_log()
+                if target_global_id:
+                    try:
+                        self.by_guid(target_global_id)
+                        W._LOG_BUFFER.append(f"Overwriting existing entity for GlobalId {target_global_id}")
+                    except RuntimeError:
+                        pass
             for i, arg in enumerate(args):
                 if arg is not None:
                     entity[i] = arg
