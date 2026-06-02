@@ -2236,22 +2236,23 @@ void ifcopenshell::impl::in_memory_file_storage::read_from_stream(Reader* s, con
                 } else {
                     auto& storage = byid_[p.first.name_];
                     auto attr_index = p.first.index_;
+                    auto actual_storage = storage;
                     
                     if (storage->template has_attribute_value<express::Base>(attr_index)) {
                         express::Base inst = storage->get_attribute_value(attr_index);
                         if (!inst.declaration().as_entity()) {
                             // Probably a case of IfcPropertySetDefinitionSet, divert storage of reference to the simply type instance
 #ifdef IFOPSH_SAFE_INSTANCE
-                            storage = inst.data_weak().lock();
+                            actual_storage = inst.data_weak().lock();
 #else
-                            storage = inst.data_weak();
+                            actual_storage = inst.data_weak();
 #endif
                             attr_index = 0;
                         }
                     }
 
-                    if (storage->template has_attribute_value<blank>(attr_index)) {
-                        storage->set_attribute_value(attr_index, express::Base(it->second));
+                    if (actual_storage->template has_attribute_value<blank>(attr_index)) {
+                        actual_storage->set_attribute_value(attr_index, express::Base(it->second));
                     } else {
                         logger::error("Duplicate definition for instance reference");
                     }
@@ -2280,22 +2281,23 @@ void ifcopenshell::impl::in_memory_file_storage::read_from_stream(Reader* s, con
 
             auto& storage = byid_[p.first.name_];
             auto attr_index = p.first.index_;
+            auto actual_storage = storage;
             
             if (storage->template has_attribute_value<express::Base>(attr_index)) {
                 express::Base inst = storage->get_attribute_value(attr_index);
                 if (!inst.declaration().as_entity()) {
                     // Probably a case of IfcPropertySetDefinitionSet, divert storage of reference to the simply type instance
 #ifdef IFOPSH_SAFE_INSTANCE
-                    storage = inst.data_weak().lock();
+                    actual_storage = inst.data_weak().lock();
 #else
-                    storage = inst.data_weak();
+                    actual_storage = inst.data_weak();
 #endif
                     attr_index = 0;
                 }
             }
 
-            if (storage->template has_attribute_value<blank>(attr_index)) {
-                storage->set_attribute_value(attr_index, instances);
+            if (actual_storage->template has_attribute_value<blank>(attr_index)) {
+                actual_storage->set_attribute_value(attr_index, instances);
             } else {
                 logger::error("Duplicate definition for instance reference");
             }
@@ -2322,22 +2324,23 @@ void ifcopenshell::impl::in_memory_file_storage::read_from_stream(Reader* s, con
 
             auto& storage = byid_[p.first.name_];
             auto attr_index = p.first.index_;
+            auto actual_storage = storage;
             
             if (storage->template has_attribute_value<express::Base>(attr_index)) {
                 express::Base inst = storage->get_attribute_value(attr_index);
                 if (!inst.declaration().as_entity()) {
                     // Probably a case of IfcPropertySetDefinitionSet, divert storage of reference to the simply type instance
 #ifdef IFOPSH_SAFE_INSTANCE
-                    storage = inst.data_weak().lock();
+                    actual_storage = inst.data_weak().lock();
 #else
-                    storage = inst.data_weak();
+                    actual_storage = inst.data_weak();
 #endif
                     attr_index = 0;
                 }
             }
 
-            if (storage->template has_attribute_value<blank>(attr_index)) {
-                storage->set_attribute_value(attr_index, instances);
+            if (actual_storage->template has_attribute_value<blank>(attr_index)) {
+                actual_storage->set_attribute_value(attr_index, instances);
             } else {
                 logger::error("Duplicate definition for instance reference");
             }
