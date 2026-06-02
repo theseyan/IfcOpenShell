@@ -86,6 +86,7 @@ class CppSpecConfig:
     path: Path
     namespace: str
     c_prefix: str | None = None
+    handle_c_prefix: str | None = None
 
 
 def _normalize_repeated_cpp_option(
@@ -116,6 +117,7 @@ def _cpp_spec_configs(
     spec_paths: Sequence[Path],
     namespaces: str | Sequence[str] | None,
     c_prefixes: str | Sequence[str] | None,
+    handle_c_prefixes: str | Sequence[str] | None = None,
 ) -> tuple[CppSpecConfig, ...]:
     namespace_values = _normalize_repeated_cpp_option(
         namespaces,
@@ -129,9 +131,22 @@ def _cpp_spec_configs(
         option_name="cpp_spec_c_prefix",
         required=False,
     )
+    handle_c_prefix_values = _normalize_repeated_cpp_option(
+        handle_c_prefixes,
+        len(spec_paths),
+        option_name="cpp_spec_handle_c_prefix",
+        required=False,
+    )
     return tuple(
-        CppSpecConfig(path=path, namespace=namespace, c_prefix=c_prefix)
-        for path, namespace, c_prefix in zip(spec_paths, namespace_values, c_prefix_values)
+        CppSpecConfig(
+            path=path,
+            namespace=namespace,
+            c_prefix=c_prefix,
+            handle_c_prefix=handle_c_prefix or c_prefix,
+        )
+        for path, namespace, c_prefix, handle_c_prefix in zip(
+            spec_paths, namespace_values, c_prefix_values, handle_c_prefix_values
+        )
         if namespace is not None
     )
 
@@ -172,7 +187,7 @@ def _merge_cpp_specs(
         if public_header not in public_headers:
             public_headers.append(public_header)
 
-        for handle_name, handle in lower_cpp_spec_handles_to_specs(discover_cpp_spec_handles(config.path)).items():
+        for handle_name, handle in lower_cpp_spec_handles_to_specs(discover_cpp_spec_handles(config.path, c_prefix=config.handle_c_prefix)).items():
             if handle_name in handles and handles[handle_name] != handle:
                 msg = f"C++ spec handle '{handle_name}' is declared with conflicting metadata"
                 raise ValueError(msg)
@@ -387,16 +402,17 @@ def generate_merged(
     cpp_spec_paths: list[Path] | None = None,
     cpp_spec_namespace: str | Sequence[str] | None = None,
     cpp_spec_c_prefix: str | Sequence[str] | None = None,
+    cpp_spec_handle_c_prefix: str | Sequence[str] | None = None,
 ) -> None:
     """Generate bindings from multiple specs merged together."""
     debug_log(
         "c_backend.generate_merged.start",
         f"specs={len(spec_paths)} header_out={debug_path(header_out)} cpp_out={debug_path(cpp_out)} internal_header_out={debug_path(internal_header_out)} compile_commands={debug_path(compile_commands_path)}",
     )
-    cpp_spec_configs = _cpp_spec_configs(cpp_spec_paths, cpp_spec_namespace, cpp_spec_c_prefix) if cpp_spec_paths else ()
+    cpp_spec_configs = _cpp_spec_configs(cpp_spec_paths, cpp_spec_namespace, cpp_spec_c_prefix, cpp_spec_handle_c_prefix) if cpp_spec_paths else ()
     cpp_spec_handles: dict[str, HandleSpec] = {}
     for config in cpp_spec_configs:
-        for handle_name, handle in lower_cpp_spec_handles_to_specs(discover_cpp_spec_handles(config.path)).items():
+        for handle_name, handle in lower_cpp_spec_handles_to_specs(discover_cpp_spec_handles(config.path, c_prefix=config.handle_c_prefix)).items():
             if handle_name in cpp_spec_handles and cpp_spec_handles[handle_name] != handle:
                 msg = f"C++ spec handle '{handle_name}' is declared with conflicting metadata"
                 raise ValueError(msg)
@@ -466,9 +482,10 @@ def generate_cpp_specs(
     discovery_defines: tuple[str, ...] = (),
     discovery_clang_args: tuple[str, ...] = (),
     function_c_prefix: str | Sequence[str] | None = None,
+    handle_c_prefix: str | Sequence[str] | None = None,
 ) -> None:
     """Generate bindings from explicit C++ spec translation units."""
-    configs = _cpp_spec_configs(spec_paths, namespace, function_c_prefix)
+    configs = _cpp_spec_configs(spec_paths, namespace, function_c_prefix, handle_c_prefix)
     environment = _cpp_spec_environment(
         None,
         discovery_include_dirs=discovery_include_dirs,
@@ -480,7 +497,7 @@ def generate_cpp_specs(
     calls = []
     existing_c_names: set[str] = set()
     for config in configs:
-        for handle_name, handle in lower_cpp_spec_handles_to_specs(discover_cpp_spec_handles(config.path)).items():
+        for handle_name, handle in lower_cpp_spec_handles_to_specs(discover_cpp_spec_handles(config.path, c_prefix=config.handle_c_prefix)).items():
             if handle_name in handles and handles[handle_name] != handle:
                 msg = f"C++ spec handle '{handle_name}' is declared with conflicting metadata"
                 raise ValueError(msg)
@@ -569,6 +586,17 @@ def _build_parser() -> argparse.ArgumentParser:
             "Provide once for all C++ specs or once per --cpp-spec."
         ),
     )
+    parser.add_argument(
+        "--cpp-spec-handle-c-prefix",
+        type=str,
+        action="append",
+        default=[],
+        help=(
+            "Optional C type prefix for handle struct names. "
+            "Defaults to --cpp-spec-c-prefix if not specified. "
+            "Provide once for all C++ specs or once per --cpp-spec."
+        ),
+    )
     parser.add_argument("--header-out", type=Path, required=True, help="Output path for the generated C header.")
     parser.add_argument("--cpp-out", type=Path, required=True, help="Output path for the generated C++ glue source.")
     parser.add_argument(
@@ -643,6 +671,7 @@ def main() -> int:
             discovery_defines=tuple(args.discovery_define),
             discovery_clang_args=tuple(args.discovery_clang_arg),
             function_c_prefix=args.cpp_spec_c_prefix,
+            handle_c_prefix=args.cpp_spec_handle_c_prefix,
         )
         return 0
     if not args.spec:
@@ -681,6 +710,7 @@ def main() -> int:
             cpp_spec_paths=args.cpp_spec,
             cpp_spec_namespace=args.cpp_spec_namespace,
             cpp_spec_c_prefix=args.cpp_spec_c_prefix,
+            cpp_spec_handle_c_prefix=args.cpp_spec_handle_c_prefix,
         )
     return 0
 

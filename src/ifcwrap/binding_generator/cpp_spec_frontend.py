@@ -133,6 +133,7 @@ def discover_cpp_spec_handles(
     translation_unit: Path,
     *,
     marker: str = "IFCAPI_HANDLE",
+    c_prefix: str | None = None,
 ) -> tuple[CppSpecHandle, ...]:
     """Discover explicitly declared C ABI handles from a C++ binding spec translation unit."""
     text = translation_unit.read_text(encoding="utf-8")
@@ -140,15 +141,6 @@ def discover_cpp_spec_handles(
     seen_c_types: set[str] = set()
     for raw_args, end in _find_macro_invocations(text, marker):
         args = _split_macro_args(raw_args)
-        c_type_match = re.match(
-            r"\s*(?:struct|class)\s+(?P<c_type>ifcopenshell_[A-Za-z0-9_]+_t)\s*;",
-            text[end:],
-            re.DOTALL,
-        )
-        if c_type_match is None:
-            msg = f"{marker} must be followed by an ifcopenshell_*_t struct/class declaration"
-            raise ValueError(msg)
-        c_type = c_type_match.group("c_type")
         if len(args) not in {2, 3, 4, 5}:
             msg = f"{marker} expects cpp_type/destructor, optional handle name, optional ptr_type, and optional empty_check"
             raise ValueError(msg)
@@ -158,11 +150,32 @@ def discover_cpp_spec_handles(
             destructor = args[2]
             ptr_type = args[3] if len(args) >= 4 else "raw"
             empty_check = _strip_string_literal(args[4]) if len(args) == 5 else None
+            c_type_match = re.match(
+                r"\s*(?:struct|class)\s+(?P<c_type>ifcopenshell_[A-Za-z0-9_]+_t)\s*;",
+                text[end:],
+                re.DOTALL,
+            )
+            if c_prefix is not None:
+                c_type = c_type_match.group("c_type") if c_type_match is not None else f"{c_prefix}_{handle_name}_t"
+            elif c_type_match is not None:
+                c_type = c_type_match.group("c_type")
+            else:
+                msg = f"{marker} must be followed by an ifcopenshell_*_t struct/class declaration"
+                raise ValueError(msg)
         else:
+            c_type_match = re.match(
+                r"\s*(?:struct|class)\s+(?P<c_type>ifcopenshell_[A-Za-z0-9_]+_t)\s*;",
+                text[end:],
+                re.DOTALL,
+            )
+            if c_type_match is None:
+                msg = f"{marker} must be followed by an ifcopenshell_*_t struct/class declaration"
+                raise ValueError(msg)
+            c_type = c_type_match.group("c_type")
             handle_name = _handle_name_from_c_type(c_type)
             cpp_type = args[0]
             destructor = args[1]
-            ptr_type = args[2] if len(args) == 3 else "raw"
+            ptr_type = args[2] if len(args) >= 3 else "raw"
             empty_check = _strip_string_literal(args[3]) if len(args) == 4 else None
         if c_type in seen_c_types:
             msg = f"C++ spec handle '{c_type}' is declared more than once"

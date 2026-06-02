@@ -32,58 +32,58 @@
 #include <utility>
 #include <vector>
 
-IFCAPI_HANDLE(iterator, IfcGeom::Iterator, delete) struct ifcopenshell_ifcgeom_iterator_t;
-IFCAPI_HANDLE(settings, ifcopenshell::geometry::Settings, delete) struct ifcopenshell_ifcgeom_settings_t;
-IFCAPI_HANDLE(serializer_settings, ifcopenshell::geometry::SerializerSettings, delete) struct ifcopenshell_ifcgeom_serializer_settings_t;
-IFCAPI_HANDLE(geometry_serializer, GeometrySerializer, delete) struct ifcopenshell_ifcgeom_geometry_serializer_t;
-IFCAPI_HANDLE(serializer, Serializer, delete) struct ifcopenshell_ifcgeom_serializer_t;
-IFCAPI_HANDLE(buffer, stream_or_filename, delete) struct ifcopenshell_ifcgeom_buffer_t;
-IFCAPI_HANDLE(tree, IfcGeom::tree, delete) struct ifcopenshell_ifcgeom_tree_t;
-IFCAPI_HANDLE(tree_clash_list, std::vector<IfcGeom::clash>, delete) struct ifcopenshell_ifcgeom_tree_clash_list_t;
-IFCAPI_HANDLE(tree_clash, IfcGeom::clash, delete) struct ifcopenshell_ifcgeom_tree_clash_t;
-IFCAPI_HANDLE(tree_ray_intersection_list, std::vector<IfcGeom::ray_intersection_result>, delete) struct ifcopenshell_ifcgeom_tree_ray_intersection_list_t;
-IFCAPI_HANDLE(tree_ray_intersection, IfcGeom::ray_intersection_result, delete) struct ifcopenshell_ifcgeom_tree_ray_intersection_t;
-IFCAPI_HANDLE(transformation, IfcGeom::Transformation, delete) struct ifcopenshell_ifcgeom_transformation_t;
-IFCAPI_HANDLE(element, IfcGeom::Element, delete) struct ifcopenshell_ifcgeom_element_t;
-IFCAPI_HANDLE(brep_element, IfcGeom::BRepElement, delete) struct ifcopenshell_ifcgeom_brep_element_t;
-IFCAPI_HANDLE(triangulation_element, IfcGeom::TriangulationElement, delete) struct ifcopenshell_ifcgeom_triangulation_element_t;
-IFCAPI_HANDLE(serialized_element, IfcGeom::SerializedElement, delete) struct ifcopenshell_ifcgeom_serialized_element_t;
-IFCAPI_HANDLE(triangulation, IfcGeom::Representation::Triangulation, none) struct ifcopenshell_ifcgeom_triangulation_t;
-IFCAPI_HANDLE(brep_representation, IfcGeom::Representation::BRep, none) struct ifcopenshell_ifcgeom_brep_representation_t;
-IFCAPI_HANDLE(serialization, IfcGeom::Representation::Serialization, none) struct ifcopenshell_ifcgeom_serialization_t;
-IFCAPI_HANDLE(conversion_result_shape, IfcGeom::ConversionResultShape, delete) struct ifcopenshell_ifcgeom_conversion_result_shape_t;
-IFCAPI_HANDLE(opaque_number, IfcGeom::OpaqueNumber, delete) struct ifcopenshell_ifcgeom_opaque_number_t;
-IFCAPI_HANDLE(svgfill_polygon, svgfill::polygon_2, delete) struct ifcopenshell_ifcgeom_svgfill_polygon_t;
-IFCAPI_HANDLE(function_item_evaluator, ifcopenshell::geometry::function_item_evaluator, delete) struct ifcopenshell_ifcgeom_function_item_evaluator_t;
+IFCAPI_HANDLE(iterator, IfcGeom::Iterator, delete)
+IFCAPI_HANDLE(settings, ifcopenshell::geometry::Settings, delete)
+IFCAPI_HANDLE(serializer_settings, ifcopenshell::geometry::SerializerSettings, delete)
+IFCAPI_HANDLE(geometry_serializer, GeometrySerializer, delete)
+IFCAPI_HANDLE(serializer, Serializer, delete)
+IFCAPI_HANDLE(buffer, stream_or_filename, delete)
+IFCAPI_HANDLE(tree, IfcGeom::tree, delete)
+IFCAPI_HANDLE(tree_clash_list, std::vector<IfcGeom::clash>, delete)
+IFCAPI_HANDLE(tree_clash, IfcGeom::clash, delete)
+IFCAPI_HANDLE(tree_ray_intersection_list, std::vector<IfcGeom::ray_intersection_result>, delete)
+IFCAPI_HANDLE(tree_ray_intersection, IfcGeom::ray_intersection_result, delete)
+IFCAPI_HANDLE(transformation, IfcGeom::Transformation, delete)
+IFCAPI_HANDLE(element, IfcGeom::Element, delete)
+IFCAPI_HANDLE(brep_element, IfcGeom::BRepElement, delete)
+IFCAPI_HANDLE(triangulation_element, IfcGeom::TriangulationElement, delete)
+IFCAPI_HANDLE(serialized_element, IfcGeom::SerializedElement, delete)
+IFCAPI_HANDLE(triangulation, IfcGeom::Representation::Triangulation, none)
+IFCAPI_HANDLE(brep_representation, IfcGeom::Representation::BRep, none)
+IFCAPI_HANDLE(serialization, IfcGeom::Representation::Serialization, none)
+IFCAPI_HANDLE(conversion_result_shape, IfcGeom::ConversionResultShape, delete)
+IFCAPI_HANDLE(opaque_number, IfcGeom::OpaqueNumber, delete)
+IFCAPI_HANDLE(svgfill_polygon, svgfill::polygon_2, delete)
+IFCAPI_HANDLE(function_item_evaluator, ifcopenshell::geometry::function_item_evaluator, delete)
 
-IFCAPI_HANDLE(taxonomy_item, ifcopenshell::geometry::taxonomy::item, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_item_t;
-IFCAPI_HANDLE(taxonomy_matrix4, ifcopenshell::geometry::taxonomy::matrix4, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_matrix4_t;
-IFCAPI_HANDLE(taxonomy_point3, ifcopenshell::geometry::taxonomy::point3, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_point3_t;
-IFCAPI_HANDLE(taxonomy_direction3, ifcopenshell::geometry::taxonomy::direction3, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_direction3_t;
-IFCAPI_HANDLE(taxonomy_style, ifcopenshell::geometry::taxonomy::style, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_style_t;
-IFCAPI_HANDLE(taxonomy_colour, ifcopenshell::geometry::taxonomy::colour, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_colour_t;
-IFCAPI_HANDLE(taxonomy_line, ifcopenshell::geometry::taxonomy::line, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_line_t;
-IFCAPI_HANDLE(taxonomy_circle, ifcopenshell::geometry::taxonomy::circle, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_circle_t;
-IFCAPI_HANDLE(taxonomy_ellipse, ifcopenshell::geometry::taxonomy::ellipse, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_ellipse_t;
-IFCAPI_HANDLE(taxonomy_bspline_curve, ifcopenshell::geometry::taxonomy::bspline_curve, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_bspline_curve_t;
-IFCAPI_HANDLE(taxonomy_offset_curve, ifcopenshell::geometry::taxonomy::offset_curve, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_offset_curve_t;
-IFCAPI_HANDLE(taxonomy_edge, ifcopenshell::geometry::taxonomy::edge, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_edge_t;
-IFCAPI_HANDLE(taxonomy_loop, ifcopenshell::geometry::taxonomy::loop, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_loop_t;
-IFCAPI_HANDLE(taxonomy_face, ifcopenshell::geometry::taxonomy::face, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_face_t;
-IFCAPI_HANDLE(taxonomy_shell, ifcopenshell::geometry::taxonomy::shell, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_shell_t;
-IFCAPI_HANDLE(taxonomy_solid, ifcopenshell::geometry::taxonomy::solid, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_solid_t;
-IFCAPI_HANDLE(taxonomy_plane, ifcopenshell::geometry::taxonomy::plane, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_plane_t;
-IFCAPI_HANDLE(taxonomy_cylinder, ifcopenshell::geometry::taxonomy::cylinder, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_cylinder_t;
-IFCAPI_HANDLE(taxonomy_sphere, ifcopenshell::geometry::taxonomy::sphere, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_sphere_t;
-IFCAPI_HANDLE(taxonomy_torus, ifcopenshell::geometry::taxonomy::torus, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_torus_t;
-IFCAPI_HANDLE(taxonomy_bspline_surface, ifcopenshell::geometry::taxonomy::bspline_surface, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_bspline_surface_t;
-IFCAPI_HANDLE(taxonomy_collection, ifcopenshell::geometry::taxonomy::collection, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_collection_t;
-IFCAPI_HANDLE(taxonomy_loft, ifcopenshell::geometry::taxonomy::loft, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_loft_t;
-IFCAPI_HANDLE(taxonomy_extrusion, ifcopenshell::geometry::taxonomy::extrusion, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_extrusion_t;
-IFCAPI_HANDLE(taxonomy_revolve, ifcopenshell::geometry::taxonomy::revolve, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_revolve_t;
-IFCAPI_HANDLE(taxonomy_sweep_along_curve, ifcopenshell::geometry::taxonomy::sweep_along_curve, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_sweep_along_curve_t;
-IFCAPI_HANDLE(taxonomy_node, ifcopenshell::geometry::taxonomy::node, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_node_t;
-IFCAPI_HANDLE(taxonomy_boolean_result, ifcopenshell::geometry::taxonomy::boolean_result, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_boolean_result_t;
+IFCAPI_HANDLE(taxonomy_item, ifcopenshell::geometry::taxonomy::item, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_matrix4, ifcopenshell::geometry::taxonomy::matrix4, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_point3, ifcopenshell::geometry::taxonomy::point3, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_direction3, ifcopenshell::geometry::taxonomy::direction3, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_style, ifcopenshell::geometry::taxonomy::style, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_colour, ifcopenshell::geometry::taxonomy::colour, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_line, ifcopenshell::geometry::taxonomy::line, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_circle, ifcopenshell::geometry::taxonomy::circle, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_ellipse, ifcopenshell::geometry::taxonomy::ellipse, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_bspline_curve, ifcopenshell::geometry::taxonomy::bspline_curve, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_offset_curve, ifcopenshell::geometry::taxonomy::offset_curve, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_edge, ifcopenshell::geometry::taxonomy::edge, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_loop, ifcopenshell::geometry::taxonomy::loop, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_face, ifcopenshell::geometry::taxonomy::face, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_shell, ifcopenshell::geometry::taxonomy::shell, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_solid, ifcopenshell::geometry::taxonomy::solid, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_plane, ifcopenshell::geometry::taxonomy::plane, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_cylinder, ifcopenshell::geometry::taxonomy::cylinder, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_sphere, ifcopenshell::geometry::taxonomy::sphere, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_torus, ifcopenshell::geometry::taxonomy::torus, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_bspline_surface, ifcopenshell::geometry::taxonomy::bspline_surface, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_collection, ifcopenshell::geometry::taxonomy::collection, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_loft, ifcopenshell::geometry::taxonomy::loft, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_extrusion, ifcopenshell::geometry::taxonomy::extrusion, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_revolve, ifcopenshell::geometry::taxonomy::revolve, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_sweep_along_curve, ifcopenshell::geometry::taxonomy::sweep_along_curve, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_node, ifcopenshell::geometry::taxonomy::node, shared_ptr, shared_ptr)
+IFCAPI_HANDLE(taxonomy_boolean_result, ifcopenshell::geometry::taxonomy::boolean_result, shared_ptr, shared_ptr)
 
 namespace ifcgeom::bindings {
 

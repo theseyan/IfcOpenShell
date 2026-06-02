@@ -25,25 +25,25 @@
 #include <type_traits>
 #include <vector>
 
-IFCAPI_HANDLE(file, ifcopenshell::file, delete) struct ifcopenshell_ifc_file_t;
-IFCAPI_HANDLE(instance_streamer, ifcopenshell::instance_streamer<>, delete) struct ifcopenshell_ifc_instance_streamer_t;
-IFCAPI_HANDLE(instance, express::Base, none, value, "!static_cast<bool>({value})") struct ifcopenshell_ifc_instance_t;
-IFCAPI_HANDLE(header, ifcopenshell::spf_header, none) struct ifcopenshell_ifc_header_t;
-IFCAPI_HANDLE(file_description, Header_section_schema::file_description, none, value, "!static_cast<bool>({value})") struct ifcopenshell_ifc_file_description_t;
-IFCAPI_HANDLE(file_name, Header_section_schema::file_name, none, value, "!static_cast<bool>({value})") struct ifcopenshell_ifc_file_name_t;
-IFCAPI_HANDLE(file_schema, Header_section_schema::file_schema, none, value, "!static_cast<bool>({value})") struct ifcopenshell_ifc_file_schema_t;
-IFCAPI_HANDLE(declaration, ifcopenshell::declaration, none) struct ifcopenshell_ifc_declaration_t;
-IFCAPI_HANDLE(type_declaration, ifcopenshell::type_declaration, none) struct ifcopenshell_ifc_type_declaration_t;
-IFCAPI_HANDLE(select_type, ifcopenshell::select_type, none) struct ifcopenshell_ifc_select_type_t;
-IFCAPI_HANDLE(schema, ifcopenshell::schema_definition, none) struct ifcopenshell_ifc_schema_t;
-IFCAPI_HANDLE(enumeration, ifcopenshell::enumeration_type, none) struct ifcopenshell_ifc_enumeration_t;
-IFCAPI_HANDLE(parameter_type, ifcopenshell::parameter_type, none) struct ifcopenshell_ifc_parameter_type_t;
-IFCAPI_HANDLE(named_type, ifcopenshell::named_type, none) struct ifcopenshell_ifc_named_type_t;
-IFCAPI_HANDLE(simple_type, ifcopenshell::simple_type, none) struct ifcopenshell_ifc_simple_type_t;
-IFCAPI_HANDLE(aggregation_type, ifcopenshell::aggregation_type, none) struct ifcopenshell_ifc_aggregation_type_t;
-IFCAPI_HANDLE(entity, ifcopenshell::entity, none) struct ifcopenshell_ifc_entity_t;
-IFCAPI_HANDLE(attribute, ifcopenshell::attribute, none) struct ifcopenshell_ifc_attribute_t;
-IFCAPI_HANDLE(inverse_attribute, ifcopenshell::inverse_attribute, none) struct ifcopenshell_ifc_inverse_attribute_t;
+IFCAPI_HANDLE(file, ifcopenshell::file, delete)
+IFCAPI_HANDLE(instance_streamer, ifcopenshell::instance_streamer<>, delete)
+IFCAPI_HANDLE(instance, express::Base, none, value, "!static_cast<bool>({value})")
+IFCAPI_HANDLE(header, ifcopenshell::spf_header, none)
+IFCAPI_HANDLE(file_description, Header_section_schema::file_description, none, value, "!static_cast<bool>({value})")
+IFCAPI_HANDLE(file_name, Header_section_schema::file_name, none, value, "!static_cast<bool>({value})")
+IFCAPI_HANDLE(file_schema, Header_section_schema::file_schema, none, value, "!static_cast<bool>({value})")
+IFCAPI_HANDLE(declaration, ifcopenshell::declaration, none)
+IFCAPI_HANDLE(type_declaration, ifcopenshell::type_declaration, none)
+IFCAPI_HANDLE(select_type, ifcopenshell::select_type, none)
+IFCAPI_HANDLE(schema, ifcopenshell::schema_definition, none)
+IFCAPI_HANDLE(enumeration, ifcopenshell::enumeration_type, none)
+IFCAPI_HANDLE(parameter_type, ifcopenshell::parameter_type, none)
+IFCAPI_HANDLE(named_type, ifcopenshell::named_type, none)
+IFCAPI_HANDLE(simple_type, ifcopenshell::simple_type, none)
+IFCAPI_HANDLE(aggregation_type, ifcopenshell::aggregation_type, none)
+IFCAPI_HANDLE(entity, ifcopenshell::entity, none)
+IFCAPI_HANDLE(attribute, ifcopenshell::attribute, none)
+IFCAPI_HANDLE(inverse_attribute, ifcopenshell::inverse_attribute, none)
 IFCAPI_HANDLE(attribute_value, attribute_value, none, value) struct ifcopenshell_ifcparse_attribute_value_t;
 IFCAPI_HANDLE(instance_list, std::vector<express::Base>, none, value) struct ifcopenshell_ifcparse_instance_list_t;
 

@@ -60,7 +60,6 @@ std::string guid_expand(const std::string& guid);
 } // namespace ifcapi
 
 IFCAPI_HANDLE(value, ifcopenshell_value_t, function:ifcapi::bindings::value_free)
-struct ifcopenshell_ifcapi_value_t;
 
 namespace ifcapi::bindings {
 

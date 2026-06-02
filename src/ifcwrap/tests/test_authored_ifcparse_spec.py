@@ -51,7 +51,7 @@ def _load_ifcparse_authored():
         compile_commands_path=require_repo_compile_commands(
             "compile_commands.json is required for AST-backed spec tests"
         ),
-        existing_handles=lower_cpp_spec_handles_to_specs(discover_cpp_spec_handles(cpp_path)),
+        existing_handles=lower_cpp_spec_handles_to_specs(discover_cpp_spec_handles(cpp_path, c_prefix="ifcopenshell_ifc")),
     )
 
 
@@ -64,11 +64,11 @@ def _load_ifcparse_merged():
         compile_commands_path=require_repo_compile_commands(
             "compile_commands.json is required for AST-backed spec tests"
         ),
-        existing_handles=lower_cpp_spec_handles_to_specs(discover_cpp_spec_handles(cpp_path)),
+        existing_handles=lower_cpp_spec_handles_to_specs(discover_cpp_spec_handles(cpp_path, c_prefix="ifcopenshell_ifc")),
     )
     return _merge_cpp_specs(
         base,
-        (CppSpecConfig(path=cpp_path, namespace="ifcparse::bindings", c_prefix="ifcopenshell_ifcparse"),),
+        (CppSpecConfig(path=cpp_path, namespace="ifcparse::bindings", c_prefix="ifcopenshell_ifcparse", handle_c_prefix="ifcopenshell_ifc"),),
         None,
         discovery_include_dirs=_ifcparse_include_dirs(),
     )
@@ -138,12 +138,12 @@ def test_ifcparse_authored_spec_captures_ownership_and_adapter_rules() -> None:
     assert calls["ifcopenshell_ifc_file_by_id"].returns.ownership == "borrowed"
     assert calls["ifcopenshell_ifc_file_by_id"].params[0].type.kind == "int32"
     assert isinstance(calls["ifcopenshell_ifc_file_get_total_inverses_by_id"].policy_operation, DirectMethodPolicyOp)
-    assert calls["ifcopenshell_ifc_file_instances_by_reference"].returns.handle == "instance"
-    assert calls["ifcopenshell_ifc_file_instances_by_reference"].returns.sequence_depth == 1
-    assert calls["ifcopenshell_ifc_file_by_type"].returns.handle == "instance"
-    assert calls["ifcopenshell_ifc_file_by_type"].returns.sequence_depth == 1
-    assert calls["ifcopenshell_ifc_file_by_type_excl_subtypes"].returns.handle == "instance"
-    assert calls["ifcopenshell_ifc_file_by_type_excl_subtypes"].returns.sequence_depth == 1
+    assert calls["ifcopenshell_ifc_file_instances_by_reference"].returns.handle == "instance_list"
+    assert calls["ifcopenshell_ifc_file_instances_by_reference"].returns.sequence_depth == 0
+    assert calls["ifcopenshell_ifc_file_by_type"].returns.handle == "instance_list"
+    assert calls["ifcopenshell_ifc_file_by_type"].returns.sequence_depth == 0
+    assert calls["ifcopenshell_ifc_file_by_type_excl_subtypes"].returns.handle == "instance_list"
+    assert calls["ifcopenshell_ifc_file_by_type_excl_subtypes"].returns.sequence_depth == 0
     assert calls["ifcopenshell_ifc_file_create"].returns.handle == "instance"
     assert calls["ifcopenshell_ifc_file_add"].returns.handle == "instance"
     assert calls["ifcopenshell_ifc_file_header"].returns.handle == "header"

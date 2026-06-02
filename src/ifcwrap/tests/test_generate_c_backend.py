@@ -114,6 +114,7 @@ def test_generate_ifcparse_c_backend_with_compile_commands_when_available(tmp_pa
         cpp_spec_paths=[cpp_spec],
         cpp_spec_namespace="ifcparse::bindings",
         cpp_spec_c_prefix="ifcopenshell_ifcparse",
+        cpp_spec_handle_c_prefix="ifcopenshell_ifc",
     )
 
     header = header_out.read_text(encoding="utf-8")
