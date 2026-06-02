@@ -1,0 +1,1224 @@
+// This file was generated with the assistance of an AI coding tool.
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+#ifndef IFCWRAP_BINDING_GENERATOR_IFCGEOM_SPEC_HPP
+#define IFCWRAP_BINDING_GENERATOR_IFCGEOM_SPEC_HPP
+
+#include "spec_macros.h"
+
+#include "ifcparse/express.h"
+#include "ifcparse/file.h"
+
+#include "ifc_geom_api.h"
+#include "Iterator.h"
+#include "Converter.h"
+#include "kernel_registry.h"
+#include "tree.h"
+#include "taxonomy.h"
+#include "function_item_evaluator.h"
+#include "../svgfill/src/svgfill.h"
+
+#include <Eigen/Dense>
+
+#include <algorithm>
+#include <cctype>
+#include <limits>
+#include <memory>
+#include <optional>
+#include <set>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
+
+IFCAPI_HANDLE(iterator, IfcGeom::Iterator, delete) struct ifcopenshell_ifcgeom_iterator_t;
+IFCAPI_HANDLE(settings, ifcopenshell::geometry::Settings, delete) struct ifcopenshell_ifcgeom_settings_t;
+IFCAPI_HANDLE(serializer_settings, ifcopenshell::geometry::SerializerSettings, delete) struct ifcopenshell_ifcgeom_serializer_settings_t;
+IFCAPI_HANDLE(geometry_serializer, GeometrySerializer, delete) struct ifcopenshell_ifcgeom_geometry_serializer_t;
+IFCAPI_HANDLE(serializer, Serializer, delete) struct ifcopenshell_ifcgeom_serializer_t;
+IFCAPI_HANDLE(buffer, stream_or_filename, delete) struct ifcopenshell_ifcgeom_buffer_t;
+IFCAPI_HANDLE(tree, IfcGeom::tree, delete) struct ifcopenshell_ifcgeom_tree_t;
+IFCAPI_HANDLE(tree_clash_list, std::vector<IfcGeom::clash>, delete) struct ifcopenshell_ifcgeom_tree_clash_list_t;
+IFCAPI_HANDLE(tree_clash, IfcGeom::clash, delete) struct ifcopenshell_ifcgeom_tree_clash_t;
+IFCAPI_HANDLE(tree_ray_intersection_list, std::vector<IfcGeom::ray_intersection_result>, delete) struct ifcopenshell_ifcgeom_tree_ray_intersection_list_t;
+IFCAPI_HANDLE(tree_ray_intersection, IfcGeom::ray_intersection_result, delete) struct ifcopenshell_ifcgeom_tree_ray_intersection_t;
+IFCAPI_HANDLE(transformation, IfcGeom::Transformation, delete) struct ifcopenshell_ifcgeom_transformation_t;
+IFCAPI_HANDLE(element, IfcGeom::Element, delete) struct ifcopenshell_ifcgeom_element_t;
+IFCAPI_HANDLE(brep_element, IfcGeom::BRepElement, delete) struct ifcopenshell_ifcgeom_brep_element_t;
+IFCAPI_HANDLE(triangulation_element, IfcGeom::TriangulationElement, delete) struct ifcopenshell_ifcgeom_triangulation_element_t;
+IFCAPI_HANDLE(serialized_element, IfcGeom::SerializedElement, delete) struct ifcopenshell_ifcgeom_serialized_element_t;
+IFCAPI_HANDLE(triangulation, IfcGeom::Representation::Triangulation, none) struct ifcopenshell_ifcgeom_triangulation_t;
+IFCAPI_HANDLE(brep_representation, IfcGeom::Representation::BRep, none) struct ifcopenshell_ifcgeom_brep_representation_t;
+IFCAPI_HANDLE(serialization, IfcGeom::Representation::Serialization, none) struct ifcopenshell_ifcgeom_serialization_t;
+IFCAPI_HANDLE(conversion_result_shape, IfcGeom::ConversionResultShape, delete) struct ifcopenshell_ifcgeom_conversion_result_shape_t;
+IFCAPI_HANDLE(opaque_number, IfcGeom::OpaqueNumber, delete) struct ifcopenshell_ifcgeom_opaque_number_t;
+IFCAPI_HANDLE(svgfill_polygon, svgfill::polygon_2, delete) struct ifcopenshell_ifcgeom_svgfill_polygon_t;
+IFCAPI_HANDLE(function_item_evaluator, ifcopenshell::geometry::function_item_evaluator, delete) struct ifcopenshell_ifcgeom_function_item_evaluator_t;
+
+IFCAPI_HANDLE(taxonomy_item, ifcopenshell::geometry::taxonomy::item, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_item_t;
+IFCAPI_HANDLE(taxonomy_matrix4, ifcopenshell::geometry::taxonomy::matrix4, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_matrix4_t;
+IFCAPI_HANDLE(taxonomy_point3, ifcopenshell::geometry::taxonomy::point3, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_point3_t;
+IFCAPI_HANDLE(taxonomy_direction3, ifcopenshell::geometry::taxonomy::direction3, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_direction3_t;
+IFCAPI_HANDLE(taxonomy_style, ifcopenshell::geometry::taxonomy::style, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_style_t;
+IFCAPI_HANDLE(taxonomy_colour, ifcopenshell::geometry::taxonomy::colour, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_colour_t;
+IFCAPI_HANDLE(taxonomy_line, ifcopenshell::geometry::taxonomy::line, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_line_t;
+IFCAPI_HANDLE(taxonomy_circle, ifcopenshell::geometry::taxonomy::circle, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_circle_t;
+IFCAPI_HANDLE(taxonomy_ellipse, ifcopenshell::geometry::taxonomy::ellipse, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_ellipse_t;
+IFCAPI_HANDLE(taxonomy_bspline_curve, ifcopenshell::geometry::taxonomy::bspline_curve, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_bspline_curve_t;
+IFCAPI_HANDLE(taxonomy_offset_curve, ifcopenshell::geometry::taxonomy::offset_curve, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_offset_curve_t;
+IFCAPI_HANDLE(taxonomy_edge, ifcopenshell::geometry::taxonomy::edge, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_edge_t;
+IFCAPI_HANDLE(taxonomy_loop, ifcopenshell::geometry::taxonomy::loop, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_loop_t;
+IFCAPI_HANDLE(taxonomy_face, ifcopenshell::geometry::taxonomy::face, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_face_t;
+IFCAPI_HANDLE(taxonomy_shell, ifcopenshell::geometry::taxonomy::shell, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_shell_t;
+IFCAPI_HANDLE(taxonomy_solid, ifcopenshell::geometry::taxonomy::solid, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_solid_t;
+IFCAPI_HANDLE(taxonomy_plane, ifcopenshell::geometry::taxonomy::plane, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_plane_t;
+IFCAPI_HANDLE(taxonomy_cylinder, ifcopenshell::geometry::taxonomy::cylinder, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_cylinder_t;
+IFCAPI_HANDLE(taxonomy_sphere, ifcopenshell::geometry::taxonomy::sphere, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_sphere_t;
+IFCAPI_HANDLE(taxonomy_torus, ifcopenshell::geometry::taxonomy::torus, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_torus_t;
+IFCAPI_HANDLE(taxonomy_bspline_surface, ifcopenshell::geometry::taxonomy::bspline_surface, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_bspline_surface_t;
+IFCAPI_HANDLE(taxonomy_collection, ifcopenshell::geometry::taxonomy::collection, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_collection_t;
+IFCAPI_HANDLE(taxonomy_loft, ifcopenshell::geometry::taxonomy::loft, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_loft_t;
+IFCAPI_HANDLE(taxonomy_extrusion, ifcopenshell::geometry::taxonomy::extrusion, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_extrusion_t;
+IFCAPI_HANDLE(taxonomy_revolve, ifcopenshell::geometry::taxonomy::revolve, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_revolve_t;
+IFCAPI_HANDLE(taxonomy_sweep_along_curve, ifcopenshell::geometry::taxonomy::sweep_along_curve, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_sweep_along_curve_t;
+IFCAPI_HANDLE(taxonomy_node, ifcopenshell::geometry::taxonomy::node, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_node_t;
+IFCAPI_HANDLE(taxonomy_boolean_result, ifcopenshell::geometry::taxonomy::boolean_result, shared_ptr, shared_ptr) struct ifcopenshell_ifcgeom_taxonomy_boolean_result_t;
+
+namespace ifcgeom::bindings {
+
+inline std::vector<express::Base> to_base_vector(const std::vector<express::Entity>& entities) {
+    std::vector<express::Base> result;
+    result.reserve(entities.size());
+    for (const auto& entity : entities) {
+        result.emplace_back(entity);
+    }
+    return result;
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED IfcGeom::Iterator* create_iterator(
+    const std::string& geometry_library_cpp,
+    ifcopenshell::geometry::Settings* settings_cpp,
+    ifcopenshell::file* file_cpp,
+    int num_threads
+) {
+    auto* settings_ptr = settings_cpp;
+    auto kernel = ifcopenshell::geometry::kernels::construct(file_cpp, geometry_library_cpp, *settings_ptr);
+    return new IfcGeom::Iterator(std::move(kernel), *settings_ptr, file_cpp, num_threads);
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED IfcGeom::Iterator* create_iterator_with_include_exclude(
+    const std::string& geometry_library_cpp,
+    ifcopenshell::geometry::Settings* settings_cpp,
+    ifcopenshell::file* file_cpp,
+    const std::vector<std::string>& elems_cpp,
+    bool include,
+    int num_threads
+) {
+    auto* settings_ptr = settings_cpp;
+    auto kernel = ifcopenshell::geometry::kernels::construct(file_cpp, geometry_library_cpp, *settings_ptr);
+    std::set<std::string> elems_set(elems_cpp.begin(), elems_cpp.end());
+    IfcGeom::entity_filter ef{include, false, elems_set};
+    return new IfcGeom::Iterator(std::move(kernel), *settings_ptr, file_cpp, {ef}, num_threads);
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED IfcGeom::Iterator* create_iterator_with_include_exclude_globalid(
+    const std::string& geometry_library_cpp,
+    ifcopenshell::geometry::Settings* settings_cpp,
+    ifcopenshell::file* file_cpp,
+    const std::vector<std::string>& elems_cpp,
+    bool include,
+    int num_threads
+) {
+    auto* settings_ptr = settings_cpp;
+    auto kernel = ifcopenshell::geometry::kernels::construct(file_cpp, geometry_library_cpp, *settings_ptr);
+    std::set<std::string> elems_set(elems_cpp.begin(), elems_cpp.end());
+    IfcGeom::attribute_filter af;
+    af.attribute_name = "GlobalId";
+    af.populate(elems_set);
+    af.include = include;
+    return new IfcGeom::Iterator(std::move(kernel), *settings_ptr, file_cpp, {af}, num_threads);
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED IfcGeom::Iterator* create_iterator_with_include_exclude_id(
+    const std::string& geometry_library_cpp,
+    ifcopenshell::geometry::Settings* settings_cpp,
+    ifcopenshell::file* file_cpp,
+    const std::vector<int>& elems_cpp,
+    bool include,
+    int num_threads
+) {
+    auto* settings_ptr = settings_cpp;
+    auto kernel = ifcopenshell::geometry::kernels::construct(file_cpp, geometry_library_cpp, *settings_ptr);
+    std::set<int> elems_set(elems_cpp.begin(), elems_cpp.end());
+    IfcGeom::instance_id_filter af(include, false, elems_set);
+    return new IfcGeom::Iterator(std::move(kernel), *settings_ptr, file_cpp, {af}, num_threads);
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED ifcopenshell::geometry::taxonomy::direction3::ptr taxonomy_create_direction3(
+    double x,
+    double y,
+    double z
+) {
+    Eigen::Vector3d direction(x, y, z);
+    if (direction.squaredNorm() <= 1.e-12) {
+        throw std::runtime_error("Direction vector must be non-zero");
+    }
+    return ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::direction3>(direction);
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED ifcopenshell::geometry::taxonomy::line::ptr taxonomy_create_line(
+    double origin_x,
+    double origin_y,
+    double origin_z,
+    double dir_x,
+    double dir_y,
+    double dir_z
+) {
+    Eigen::Vector3d origin(origin_x, origin_y, origin_z);
+    Eigen::Vector3d direction(dir_x, dir_y, dir_z);
+    if (direction.squaredNorm() <= 1.e-12) {
+        throw std::runtime_error("Direction vector must be non-zero");
+    }
+    auto value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::line>();
+    value->matrix = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::matrix4>(origin, direction);
+    return value;
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED ifcopenshell::geometry::taxonomy::circle::ptr taxonomy_create_circle(
+    double origin_x,
+    double origin_y,
+    double origin_z,
+    double dir_x,
+    double dir_y,
+    double dir_z,
+    double radius
+) {
+    if (radius <= 0.) {
+        throw std::runtime_error("Radius must be > 0");
+    }
+    Eigen::Vector3d origin(origin_x, origin_y, origin_z);
+    Eigen::Vector3d direction(dir_x, dir_y, dir_z);
+    if (direction.squaredNorm() <= 1.e-12) {
+        throw std::runtime_error("Direction vector must be non-zero");
+    }
+    auto value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::circle>();
+    value->matrix = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::matrix4>(origin, direction);
+    value->radius = radius;
+    return value;
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED ifcopenshell::geometry::taxonomy::ellipse::ptr taxonomy_create_ellipse(
+    double origin_x,
+    double origin_y,
+    double origin_z,
+    double dir_x,
+    double dir_y,
+    double dir_z,
+    double radius1,
+    double radius2
+) {
+    if (radius1 <= 0. || radius2 <= 0.) {
+        throw std::runtime_error("Radii must be > 0");
+    }
+    Eigen::Vector3d origin(origin_x, origin_y, origin_z);
+    Eigen::Vector3d direction(dir_x, dir_y, dir_z);
+    if (direction.squaredNorm() <= 1.e-12) {
+        throw std::runtime_error("Direction vector must be non-zero");
+    }
+    auto value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::ellipse>();
+    value->matrix = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::matrix4>(origin, direction);
+    value->radius = radius1;
+    value->radius2 = radius2;
+    return value;
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED ifcopenshell::geometry::taxonomy::plane::ptr taxonomy_create_plane(
+    double origin_x,
+    double origin_y,
+    double origin_z,
+    double dir_x,
+    double dir_y,
+    double dir_z
+) {
+    Eigen::Vector3d origin(origin_x, origin_y, origin_z);
+    Eigen::Vector3d direction(dir_x, dir_y, dir_z);
+    if (direction.squaredNorm() <= 1.e-12) {
+        throw std::runtime_error("Direction vector must be non-zero");
+    }
+    auto value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::plane>();
+    value->matrix = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::matrix4>(origin, direction);
+    return value;
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED ifcopenshell::geometry::taxonomy::cylinder::ptr taxonomy_create_cylinder(
+    double origin_x,
+    double origin_y,
+    double origin_z,
+    double dir_x,
+    double dir_y,
+    double dir_z,
+    double radius
+) {
+    if (radius <= 0.) {
+        throw std::runtime_error("Radius must be > 0");
+    }
+    Eigen::Vector3d origin(origin_x, origin_y, origin_z);
+    Eigen::Vector3d direction(dir_x, dir_y, dir_z);
+    if (direction.squaredNorm() <= 1.e-12) {
+        throw std::runtime_error("Direction vector must be non-zero");
+    }
+    auto value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::cylinder>();
+    value->matrix = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::matrix4>(origin, direction);
+    value->radius = radius;
+    return value;
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED ifcopenshell::geometry::taxonomy::sphere::ptr taxonomy_create_sphere(
+    double origin_x,
+    double origin_y,
+    double origin_z,
+    double dir_x,
+    double dir_y,
+    double dir_z,
+    double radius
+) {
+    if (radius <= 0.) {
+        throw std::runtime_error("Radius must be > 0");
+    }
+    Eigen::Vector3d origin(origin_x, origin_y, origin_z);
+    Eigen::Vector3d direction(dir_x, dir_y, dir_z);
+    if (direction.squaredNorm() <= 1.e-12) {
+        throw std::runtime_error("Direction vector must be non-zero");
+    }
+    auto value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::sphere>();
+    value->matrix = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::matrix4>(origin, direction);
+    value->radius = radius;
+    return value;
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED ifcopenshell::geometry::taxonomy::torus::ptr taxonomy_create_torus(
+    double origin_x,
+    double origin_y,
+    double origin_z,
+    double dir_x,
+    double dir_y,
+    double dir_z,
+    double radius1,
+    double radius2
+) {
+    if (radius1 <= 0. || radius2 <= 0.) {
+        throw std::runtime_error("Radii must be > 0");
+    }
+    Eigen::Vector3d origin(origin_x, origin_y, origin_z);
+    Eigen::Vector3d direction(dir_x, dir_y, dir_z);
+    if (direction.squaredNorm() <= 1.e-12) {
+        throw std::runtime_error("Direction vector must be non-zero");
+    }
+    auto value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::torus>();
+    value->matrix = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::matrix4>(origin, direction);
+    value->radius1 = radius1;
+    value->radius2 = radius2;
+    return value;
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED ifcopenshell::geometry::taxonomy::solid::ptr taxonomy_create_box(
+    double dx,
+    double dy,
+    double dz
+) {
+    if (dx <= 0. || dy <= 0. || dz <= 0.) {
+        throw std::runtime_error("Box dimensions must be > 0");
+    }
+    return ifcopenshell::geometry::create_box(dx, dy, dz);
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED ifcopenshell::geometry::taxonomy::extrusion::ptr taxonomy_create_extrusion(
+    const ifcopenshell::geometry::taxonomy::item::ptr& basis_cpp,
+    const ifcopenshell::geometry::taxonomy::direction3::ptr& direction_cpp,
+    double depth
+) {
+    auto basis_value = ifcopenshell::geometry::taxonomy::dcast<ifcopenshell::geometry::taxonomy::item>(basis_cpp);
+    if (!basis_value) {
+        throw std::runtime_error("Basis item is invalid");
+    }
+    if (depth <= 0.) {
+        throw std::runtime_error("Extrusion depth must be > 0");
+    }
+    auto value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::extrusion>(
+        ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::matrix4>(),
+        basis_value,
+        direction_cpp,
+        depth
+    );
+    return value;
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED ifcopenshell::geometry::taxonomy::revolve::ptr taxonomy_create_revolve(
+    const ifcopenshell::geometry::taxonomy::item::ptr& basis_cpp,
+    const ifcopenshell::geometry::taxonomy::point3::ptr& axis_origin_cpp,
+    const ifcopenshell::geometry::taxonomy::direction3::ptr& direction_cpp,
+    double angle
+) {
+    auto basis_value = ifcopenshell::geometry::taxonomy::dcast<ifcopenshell::geometry::taxonomy::item>(basis_cpp);
+    if (!basis_value) {
+        throw std::runtime_error("Basis item is invalid");
+    }
+    auto value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::revolve>(
+        ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::matrix4>(),
+        basis_value,
+        axis_origin_cpp,
+        direction_cpp,
+        std::optional<double>(angle)
+    );
+    return value;
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED ifcopenshell::geometry::taxonomy::sweep_along_curve::ptr taxonomy_create_sweep_along_curve(
+    const ifcopenshell::geometry::taxonomy::face::ptr& basis_face_cpp,
+    const ifcopenshell::geometry::taxonomy::item::ptr& directrix_cpp,
+    const ifcopenshell::geometry::taxonomy::direction3::ptr& reference_direction_cpp
+) {
+    auto directrix_value = ifcopenshell::geometry::taxonomy::dcast<ifcopenshell::geometry::taxonomy::item>(directrix_cpp);
+    if (!directrix_value) {
+        throw std::runtime_error("Directrix item is invalid");
+    }
+    auto value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::sweep_along_curve>(
+        ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::matrix4>(),
+        basis_face_cpp,
+        directrix_value,
+        reference_direction_cpp
+    );
+    return value;
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED IfcGeom::Element* create_shape(
+    ifcopenshell::geometry::Settings* settings_cpp,
+    express::Base* instance_cpp,
+    IFCAPI_NULLABLE express::Base* representation_cpp,
+    IFCAPI_NULLABLE const char* geometry_library_str
+) {
+    ifcopenshell::file* file = instance_cpp->file();
+    if (!file) {
+        throw std::runtime_error("Instance has no associated file");
+    }
+    std::string geom_lib = geometry_library_str ? std::string(geometry_library_str) : "opencascade";
+    ifcopenshell::geometry::Converter kernel(
+        ifcopenshell::geometry::kernels::construct(file, geom_lib, *settings_cpp),
+        file, *settings_cpp);
+
+    auto entity = instance_cpp->as<express::Entity>();
+    if (!entity) {
+        throw std::runtime_error("Instance is not an entity");
+    }
+
+    if (entity.declaration().is("IfcProduct")) {
+        express::Base ifc_representation = representation_cpp ? *representation_cpp : express::Base();
+        if (!ifc_representation) {
+            auto prod_rep_attr = entity.get("Representation");
+            if (prod_rep_attr.isNull()) {
+                throw ifcopenshell::exception("Representation is NULL");
+            }
+            auto prod_rep = static_cast<express::Base>(prod_rep_attr);
+            auto prod_rep_entity = prod_rep.as<express::Entity>();
+            auto reps_attr = prod_rep_entity.get("Representations");
+            auto reps = static_cast<std::vector<express::Base>>(reps_attr);
+            if (reps.empty()) {
+                throw ifcopenshell::exception("No suitable IfcRepresentation found");
+            }
+
+            bool is_curves = settings_cpp->get<ifcopenshell::geometry::settings::OutputDimensionality>().get()
+                == ifcopenshell::geometry::settings::CURVES;
+
+            for (auto it = reps.begin(); it != reps.end(); ++it) {
+                auto rep_entity = it->as<express::Entity>();
+                if (!rep_entity) continue;
+                auto id_attr = rep_entity.get("RepresentationIdentifier");
+                if (id_attr.isNull()) continue;
+                std::string rep_id = (std::string)id_attr;
+                if (!is_curves) {
+                    if (rep_id == "Body" || rep_id == "Facetation") {
+                        ifc_representation = *it;
+                        break;
+                    }
+                } else if (rep_id == "Plan" || rep_id == "Axis") {
+                    ifc_representation = *it;
+                    break;
+                }
+            }
+
+            if (!ifc_representation) {
+                for (auto it = reps.begin(); it != reps.end(); ++it) {
+                    auto rep_entity = it->as<express::Entity>();
+                    if (!rep_entity) continue;
+                    auto ctx_attr = rep_entity.get("ContextOfItems");
+                    if (ctx_attr.isNull()) continue;
+                    auto ctx = static_cast<express::Base>(ctx_attr).as<express::Entity>();
+                    if (!ctx) continue;
+                    auto ct_attr = ctx.get("ContextType");
+                    if (ct_attr.isNull()) continue;
+                    std::string context_type = (std::string)ct_attr;
+                    std::transform(context_type.begin(), context_type.end(), context_type.begin(), ::tolower);
+                    std::set<std::string> valid_types;
+                    if (!is_curves) {
+                        valid_types = {"model", "design", "model view", "detail view"};
+                    } else {
+                        valid_types = {"plan"};
+                    }
+                    if (valid_types.count(context_type)) {
+                        ifc_representation = *it;
+                    }
+                }
+            }
+
+            if (!ifc_representation) {
+                ifc_representation = *reps.begin();
+            }
+        } else if (!ifc_representation.declaration().is("IfcRepresentation")) {
+            throw ifcopenshell::exception("Supplied representation not of type IfcRepresentation");
+        }
+
+        auto rep_entity = ifc_representation.as<express::Entity>();
+        IfcGeom::BRepElement* brep = kernel.create_brep_for_representation_and_product(rep_entity, entity);
+        if (!brep) {
+            throw ifcopenshell::exception("Failed to process shape");
+        }
+
+        auto output_type = settings_cpp->get<ifcopenshell::geometry::settings::IteratorOutput>().get();
+        if (output_type == ifcopenshell::geometry::settings::SERIALIZED) {
+            IfcGeom::Element* result = new IfcGeom::SerializedElement(*brep);
+            delete brep;
+            return result;
+        }
+        if (output_type == ifcopenshell::geometry::settings::TRIANGULATED) {
+            IfcGeom::Element* result = new IfcGeom::TriangulationElement(*brep);
+            delete brep;
+            return result;
+        }
+        return static_cast<IfcGeom::Element*>(brep);
+    } else if (
+        entity.declaration().is("IfcRepresentationItem") ||
+        entity.declaration().is("IfcRepresentation") ||
+        entity.declaration().is("IfcProfileDef")
+    ) {
+        IfcGeom::ConversionResults shapes;
+        try {
+            shapes = kernel.convert(*instance_cpp);
+        } catch (...) {
+            throw ifcopenshell::exception("Failed to process representation item");
+        }
+        if (shapes.empty()) {
+            throw ifcopenshell::exception(
+                std::string("kernel.convert produced no shapes for ") +
+                entity.declaration().name() + " #" + std::to_string(entity.id())
+            );
+        }
+        auto brep_rep = boost::shared_ptr<IfcGeom::Representation::BRep>(
+            new IfcGeom::Representation::BRep(
+                kernel.settings(), entity.declaration().name(), std::to_string(entity.id()), shapes
+            )
+        );
+
+        auto output_type = settings_cpp->get<ifcopenshell::geometry::settings::IteratorOutput>().get();
+        auto identity = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::matrix4>();
+        express::Entity null_product;
+        auto* brep_elem = new IfcGeom::BRepElement(
+            entity.id(),
+            -1,
+            entity.declaration().name(),
+            entity.declaration().name(),
+            std::string(),
+            std::string(),
+            identity,
+            brep_rep,
+            null_product
+        );
+        if (output_type == ifcopenshell::geometry::settings::SERIALIZED) {
+            IfcGeom::Element* result = new IfcGeom::SerializedElement(*brep_elem);
+            delete brep_elem;
+            return result;
+        }
+        if (output_type == ifcopenshell::geometry::settings::TRIANGULATED) {
+            IfcGeom::Element* result = new IfcGeom::TriangulationElement(*brep_elem);
+            delete brep_elem;
+            return result;
+        }
+        return static_cast<IfcGeom::Element*>(brep_elem);
+    }
+
+    throw ifcopenshell::exception("Unsupported instance type for create_shape. Use map_shape for placements.");
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED ifcopenshell::geometry::taxonomy::item::ptr map_shape(
+    ifcopenshell::geometry::Settings* settings_cpp,
+    express::Base* instance_cpp
+) {
+    if (instance_cpp->file() == nullptr) {
+        throw std::runtime_error("Unable to map instance without file");
+    }
+    std::unique_ptr<ifcopenshell::geometry::abstract_mapping> mapping(
+        ifcopenshell::geometry::impl::mapping_implementations().construct(instance_cpp->file(), *settings_cpp)
+    );
+    return mapping->map(*instance_cpp);
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED IfcGeom::OpaqueNumber* create_epeck_from_int(int value) {
+    return new IfcGeom::NumberNativeDouble(value);
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED IfcGeom::OpaqueNumber* create_epeck_from_double(double value) {
+    return new IfcGeom::NumberNativeDouble(value);
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED IfcGeom::OpaqueNumber* create_epeck_from_string(const std::string& value_cpp) {
+    return new IfcGeom::NumberNativeDouble(std::stod(value_cpp));
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED IfcGeom::ConversionResultShape* nary_union(
+    const std::vector<const IfcGeom::ConversionResultShape*>& shapes_cpp
+) {
+    IfcGeom::ConversionResultShape* result = nullptr;
+    std::string backend_id;
+    auto identity = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::matrix4>();
+    for (auto* shape : shapes_cpp) {
+        if (!shape) {
+            continue;
+        }
+        const auto element_backend_id = std::string(shape->backend_id());
+        if (!result) {
+            result = shape->moved(identity);
+            backend_id = element_backend_id;
+        } else {
+            if (element_backend_id != backend_id) {
+                delete result;
+                throw std::runtime_error("nary_union requires shapes from the same geometry backend");
+            }
+            auto* next = result->add(const_cast<IfcGeom::ConversionResultShape*>(shape));
+            if (!next) {
+                delete result;
+                throw std::runtime_error("nary_union failed for backend " + backend_id);
+            }
+            delete result;
+            result = next;
+        }
+    }
+    if (!result) {
+        throw std::runtime_error("nary_union requires at least one shape");
+    }
+    return result;
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED std::string svg_to_line_segments(
+    const std::string& svg_data_cpp,
+    IFCAPI_NULLABLE const char* class_name_str
+) {
+#ifdef IFOPSH_WITH_CGAL
+    std::vector<std::vector<svgfill::line_segment_2>> segments;
+    std::optional<std::string> cn;
+    if (class_name_str) cn = std::string(class_name_str);
+    if (!svgfill::svg_to_line_segments(std::string(svg_data_cpp), cn, segments)) {
+        throw std::runtime_error("Failed to read SVG");
+    }
+    std::ostringstream oss;
+    oss << "[";
+    for (size_t g = 0; g < segments.size(); ++g) {
+        if (g > 0) oss << ",";
+        oss << "[";
+        for (size_t s = 0; s < segments[g].size(); ++s) {
+            if (s > 0) oss << ",";
+            oss << "[[" << segments[g][s][0][0] << "," << segments[g][s][0][1]
+                << "],[" << segments[g][s][1][0] << "," << segments[g][s][1][1] << "]]";
+        }
+        oss << "]";
+    }
+    oss << "]";
+    return oss.str();
+#else
+    (void)svg_data_cpp;
+    (void)class_name_str;
+    throw std::runtime_error("svg_to_line_segments requires IFOPSH_WITH_CGAL");
+#endif
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED std::vector<const svgfill::polygon_2*> svg_to_polygons(
+    const std::string& svg_data_cpp,
+    IFCAPI_NULLABLE const char* class_name_str
+) {
+#ifdef IFOPSH_WITH_CGAL
+    std::vector<svgfill::polygon_2> polygons;
+    std::optional<std::string> cn;
+    if (class_name_str) cn = std::string(class_name_str);
+    if (!svgfill::svg_to_polygons(std::string(svg_data_cpp), cn, polygons)) {
+        throw std::runtime_error("Failed to read SVG");
+    }
+    std::vector<const svgfill::polygon_2*> result;
+    for (auto& p : polygons) {
+        result.push_back(new svgfill::polygon_2(p));
+    }
+    return result;
+#else
+    (void)svg_data_cpp;
+    (void)class_name_str;
+    throw std::runtime_error("svg_to_polygons requires IFOPSH_WITH_CGAL");
+#endif
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED std::vector<const svgfill::polygon_2*> arrange_polygons(
+    const std::vector<const svgfill::polygon_2*>& polygons_cpp
+) {
+#ifdef IFOPSH_WITH_CGAL
+    std::vector<svgfill::polygon_2> input;
+    for (auto* p : polygons_cpp) {
+        input.push_back(*p);
+    }
+    std::vector<svgfill::polygon_2> arranged;
+    if (!svgfill::arrange_polygons(svgfill::arrange_polygon_settings(), input, arranged)) {
+        throw std::runtime_error("Failed to arrange polygons");
+    }
+    std::vector<const svgfill::polygon_2*> result;
+    for (auto& p : arranged) {
+        result.push_back(new svgfill::polygon_2(p));
+    }
+    return result;
+#else
+    (void)polygons_cpp;
+    throw std::runtime_error("arrange_polygons requires IFOPSH_WITH_CGAL");
+#endif
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED std::vector<const svgfill::polygon_2*> line_segments_to_polygons(
+    int solver,
+    double eps,
+    const std::string& segments_json_cpp
+) {
+#ifdef IFOPSH_WITH_CGAL
+    std::vector<std::vector<svgfill::line_segment_2>> segments;
+    std::string s(segments_json_cpp);
+    size_t pos = 0;
+    auto skip_ws = [&]() { while (pos < s.size() && isspace(s[pos])) pos++; };
+    auto expect = [&](char c) { skip_ws(); if (pos < s.size() && s[pos] == c) { pos++; return true; } return false; };
+    auto parse_double = [&]() -> double {
+        skip_ws();
+        size_t end;
+        double v = std::stod(s.substr(pos), &end);
+        pos += end;
+        return v;
+    };
+    if (expect('[')) {
+        do {
+            skip_ws();
+            if (s[pos] == ']') break;
+            std::vector<svgfill::line_segment_2> group;
+            if (expect('[')) {
+                do {
+                    skip_ws();
+                    if (s[pos] == ']') break;
+                    svgfill::line_segment_2 seg;
+                    expect('['); expect('[');
+                    seg[0][0] = parse_double(); expect(',');
+                    seg[0][1] = parse_double();
+                    expect(']'); expect(','); expect('[');
+                    seg[1][0] = parse_double(); expect(',');
+                    seg[1][1] = parse_double();
+                    expect(']'); expect(']');
+                    group.push_back(seg);
+                } while (expect(','));
+                expect(']');
+            }
+            segments.push_back(group);
+        } while (expect(','));
+        expect(']');
+    }
+    std::vector<std::vector<svgfill::polygon_2>> polygon_groups;
+    if (!svgfill::line_segments_to_polygons(static_cast<svgfill::solver>(solver), eps, segments, polygon_groups)) {
+        throw std::runtime_error("Failed to process line segments");
+    }
+    std::vector<const svgfill::polygon_2*> result;
+    for (auto& group : polygon_groups) {
+        for (auto& p : group) {
+            result.push_back(new svgfill::polygon_2(p));
+        }
+    }
+    return result;
+#else
+    (void)solver;
+    (void)eps;
+    (void)segments_json_cpp;
+    throw std::runtime_error("line_segments_to_polygons requires IFOPSH_WITH_CGAL");
+#endif
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED ifcopenshell::geometry::taxonomy::item::ptr convert_loop_to_function_item(
+    const ifcopenshell::geometry::taxonomy::item::ptr& loop_item_cpp
+) {
+    auto loop = ifcopenshell::geometry::taxonomy::dcast<ifcopenshell::geometry::taxonomy::loop>(loop_item_cpp);
+    if (!loop) {
+        throw std::runtime_error("Input is not a taxonomy loop");
+    }
+    auto result = ifcopenshell::geometry::convert_loop_to_function_item(loop);
+    if (!result) {
+        throw std::runtime_error("Failed to convert loop to function_item");
+    }
+    return result;
+}
+
+IFCAPI_EXPORT IFCAPI_OWNED ifcopenshell::geometry::function_item_evaluator* create_function_item_evaluator(
+    ifcopenshell::geometry::Settings* settings_cpp,
+    const ifcopenshell::geometry::taxonomy::item::ptr& fn_item_cpp
+) {
+    auto fn = ifcopenshell::geometry::taxonomy::dcast<ifcopenshell::geometry::taxonomy::function_item>(fn_item_cpp);
+    if (!fn) {
+        throw std::runtime_error("Input is not a taxonomy function_item");
+    }
+    return new ifcopenshell::geometry::function_item_evaluator(*settings_cpp, fn);
+}
+
+IFCAPI_EXPORT double taxonomy_function_item_start(const ifcopenshell::geometry::taxonomy::item::ptr& item_cpp) {
+    auto fn = ifcopenshell::geometry::taxonomy::dcast<ifcopenshell::geometry::taxonomy::function_item>(item_cpp);
+    if (!fn) {
+        throw std::runtime_error("Input is not a taxonomy function_item");
+    }
+    return fn->start();
+}
+
+IFCAPI_EXPORT double taxonomy_function_item_end(const ifcopenshell::geometry::taxonomy::item::ptr& item_cpp) {
+    auto fn = ifcopenshell::geometry::taxonomy::dcast<ifcopenshell::geometry::taxonomy::function_item>(item_cpp);
+    if (!fn) {
+        throw std::runtime_error("Input is not a taxonomy function_item");
+    }
+    return fn->end();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std::vector<express::Base> select_element(
+    IfcGeom::tree* self,
+    express::Base* instance,
+    bool completely_within,
+    double extend
+) {
+    auto entity = instance->as<express::Entity>();
+    if (!entity) {
+        throw std::runtime_error("Instance should be an IfcProduct entity");
+    }
+    return to_base_vector(self->select(entity, completely_within, extend));
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std::vector<express::Base> select_point(
+    IfcGeom::tree* self,
+    double x,
+    double y,
+    double z,
+    double extend
+) {
+    return to_base_vector(self->select(IfcGeom::tree_point{x, y, z}, extend));
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std::vector<express::Base> select_brep_element(
+    IfcGeom::tree* self,
+    const IfcGeom::BRepElement* element,
+    bool completely_within,
+    double extend
+) {
+    return to_base_vector(self->select(element, completely_within, extend));
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std::vector<express::Base> select_shape_serialization(
+    IfcGeom::tree* self,
+    const std::string& shape_serialization,
+    bool completely_within,
+    double extend
+) {
+    (void)self;
+    (void)shape_serialization;
+    (void)completely_within;
+    (void)extend;
+    throw std::runtime_error("Selecting from shape serialization is not supported by the current ifcgeom tree API");
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std::vector<express::Base> select_box_point(
+    IfcGeom::tree* self,
+    double x,
+    double y,
+    double z,
+    double extend
+) {
+    (void)extend;
+    return to_base_vector(self->select_box(IfcGeom::tree_point{x, y, z}));
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std::vector<express::Base> select_box_element(
+    IfcGeom::tree* self,
+    express::Base* instance,
+    bool completely_within,
+    double extend
+) {
+    auto entity = instance->as<express::Entity>();
+    if (!entity) {
+        throw std::runtime_error("Instance should be an IfcProduct entity");
+    }
+    return to_base_vector(self->select_box(entity, completely_within, extend));
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std::vector<express::Base> select_box_bounds(
+    IfcGeom::tree* self,
+    double xmin,
+    double ymin,
+    double zmin,
+    double xmax,
+    double ymax,
+    double zmax,
+    bool completely_within
+) {
+    return to_base_vector(
+        self->select_box(IfcGeom::tree_box{{IfcGeom::tree_point{xmin, ymin, zmin}, IfcGeom::tree_point{xmax, ymax, zmax}}}, completely_within));
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(tree_ray_intersection_list) std::vector<IfcGeom::ray_intersection_result>* select_ray(
+    IfcGeom::tree* self,
+    double origin_x,
+    double origin_y,
+    double origin_z,
+    double dir_x,
+    double dir_y,
+    double dir_z,
+    double length
+) {
+    return new std::vector<IfcGeom::ray_intersection_result>(
+        self->select_ray(
+            IfcGeom::tree_point{origin_x, origin_y, origin_z},
+            IfcGeom::tree_point{dir_x, dir_y, dir_z},
+            length));
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(tree_ray_intersection) express::Base instance(IfcGeom::ray_intersection_result* self) {
+    return self->instance;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(iterator) IfcGeom::TriangulationElement* get_as_triangulation_element(IfcGeom::Iterator* self) {
+    IfcGeom::Element* elem = self->get();
+    auto* tri = dynamic_cast<IfcGeom::TriangulationElement*>(elem);
+    if (!tri) {
+        throw std::runtime_error("Current element is not a TriangulationElement");
+    }
+    return tri;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(iterator) IfcGeom::BRepElement* get_as_brep_element(IfcGeom::Iterator* self) {
+    IfcGeom::Element* elem = self->get();
+    auto* brep = dynamic_cast<IfcGeom::BRepElement*>(elem);
+    if (!brep) {
+        throw std::runtime_error("Current element is not a BRepElement");
+    }
+    return brep;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(iterator) IfcGeom::SerializedElement* get_as_serialized_element(IfcGeom::Iterator* self) {
+    IfcGeom::Element* elem = self->get();
+    auto* serialized = dynamic_cast<IfcGeom::SerializedElement*>(elem);
+    if (!serialized) {
+        throw std::runtime_error("Current element is not a SerializedElement");
+    }
+    return serialized;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(iterator) bool next(IfcGeom::Iterator* self) {
+    return static_cast<bool>(self->next());
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(element) IFCAPI_DOUBLE_BUFFER const double* transformation_buffer(const IfcGeom::Element* self) {
+    return self->transformation().data()->ccomponents().data();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(element) std::size_t transformation_buffer_size(const IfcGeom::Element* self) {
+    return 16;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(brep_element) double calc_volume(const IfcGeom::BRepElement* self) {
+    double v;
+    if (self->geometry().calculate_volume(v)) {
+        return v;
+    }
+    return std::numeric_limits<double>::quiet_NaN();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(brep_element) double calc_surface_area(const IfcGeom::BRepElement* self) {
+    double v;
+    if (self->geometry().calculate_surface_area(v)) {
+        return v;
+    }
+    return std::numeric_limits<double>::quiet_NaN();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(brep_representation) IFCAPI_OWNED IfcGeom::ConversionResultShape* as_compound(
+    const IfcGeom::Representation::BRep* self,
+    bool force_meters
+) {
+    return self->as_compound(force_meters);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(conversion_result_shape) std::string serialize(IfcGeom::ConversionResultShape* self) {
+    ifcopenshell::geometry::taxonomy::matrix4 identity;
+    std::string result;
+    self->Serialize(identity, result);
+    return result;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(conversion_result_shape) std::string serialize_obj(IfcGeom::ConversionResultShape* self) {
+    std::ostringstream result;
+    ifcopenshell::geometry::Settings settings;
+    std::unique_ptr<IfcGeom::Representation::Triangulation> triangulation(self->Triangulate(settings));
+
+    for (auto it = triangulation->verts().begin(); it != triangulation->verts().end();) {
+        result << "v " << *(it++) << " " << *(it++) << " " << *(it++) << "\n";
+    }
+    for (auto it = triangulation->normals().begin(); it != triangulation->normals().end();) {
+        result << "vn " << *(it++) << " " << *(it++) << " " << *(it++) << "\n";
+    }
+
+    const bool has_normals = !triangulation->normals().empty();
+    for (auto it = triangulation->faces().begin(); it != triangulation->faces().end();) {
+        const auto v1 = *(it++) + 1;
+        const auto v2 = *(it++) + 1;
+        const auto v3 = *(it++) + 1;
+        if (has_normals) {
+            result << "f " << v1 << "//" << v1 << " " << v2 << "//" << v2 << " " << v3 << "//" << v3 << "\n";
+        } else {
+            result << "f " << v1 << " " << v2 << " " << v3 << "\n";
+        }
+    }
+    return result.str();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(conversion_result_shape) void convex_tag(IfcGeom::ConversionResultShape* self, bool value) {
+    (void)self;
+    (void)value;
+    throw std::runtime_error("convex_tag is not available through the generic conversion result interface");
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(conversion_result_shape) double area(IfcGeom::ConversionResultShape* self) {
+    auto* result = self->area();
+    double val = result->to_double();
+    delete result;
+    return val;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(conversion_result_shape) double volume(IfcGeom::ConversionResultShape* self) {
+    auto* result = self->volume();
+    double val = result->to_double();
+    delete result;
+    return val;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(conversion_result_shape) double length(IfcGeom::ConversionResultShape* self) {
+    auto* result = self->length();
+    double val = result->to_double();
+    delete result;
+    return val;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(triangulation) IFCAPI_DOUBLE_BUFFER const std::vector<double>& verts_buffer(const IfcGeom::Representation::Triangulation* self) {
+    return self->verts();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(triangulation) IFCAPI_INT32_BUFFER const std::vector<int>& faces_buffer(const IfcGeom::Representation::Triangulation* self) {
+    return self->faces();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(triangulation) IFCAPI_DOUBLE_BUFFER const std::vector<double>& normals_buffer(const IfcGeom::Representation::Triangulation* self) {
+    return self->normals();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(triangulation) IFCAPI_INT32_BUFFER const std::vector<int>& edges_buffer(const IfcGeom::Representation::Triangulation* self) {
+    return self->edges();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(triangulation) IFCAPI_INT32_BUFFER const std::vector<int>& material_ids_buffer(const IfcGeom::Representation::Triangulation* self) {
+    return self->material_ids();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(triangulation) IFCAPI_INT32_BUFFER const std::vector<int>& item_ids_buffer(const IfcGeom::Representation::Triangulation* self) {
+    return self->item_ids();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(triangulation) IFCAPI_INT32_BUFFER const std::vector<int>& edges_item_ids_buffer(const IfcGeom::Representation::Triangulation* self) {
+    return self->edges_item_ids();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(triangulation) IFCAPI_DOUBLE_BUFFER const std::vector<double>& uvs_buffer(const IfcGeom::Representation::Triangulation* self) {
+    return self->uvs();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(triangulation) std::vector<double> colors_buffer(const IfcGeom::Representation::Triangulation* self) {
+    std::vector<double> clrs;
+    clrs.reserve(self->materials().size() * 4);
+    for (auto& mptr : self->materials()) {
+        auto& m = *mptr;
+        if (m.diffuse) {
+            clrs.push_back(m.diffuse.ccomponents()[0]);
+            clrs.push_back(m.diffuse.ccomponents()[1]);
+            clrs.push_back(m.diffuse.ccomponents()[2]);
+        } else {
+            clrs.push_back(0.);
+            clrs.push_back(0.);
+            clrs.push_back(0.);
+        }
+        if (m.has_transparency()) {
+            clrs.push_back(1. - m.transparency);
+        } else {
+            clrs.push_back(1.);
+        }
+    }
+    return clrs;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(triangulation) std::size_t colors_buffer_size(const IfcGeom::Representation::Triangulation* self) {
+    return self->materials().size() * 4;
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(taxonomy_style) std::size_t instance_id(ifcopenshell::geometry::taxonomy::style* self) {
+    if (!self->instance) {
+        return static_cast<std::size_t>(0);
+    }
+    auto entity = self->instance.as<express::Entity>();
+    if (!entity) {
+        return static_cast<std::size_t>(0);
+    }
+    return static_cast<std::size_t>(entity.id());
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(taxonomy_bspline_surface) std::size_t control_point_row_count(
+    ifcopenshell::geometry::taxonomy::bspline_surface* self
+) {
+    return self->control_points.size();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(taxonomy_bspline_surface) std::size_t control_point_col_count_at(
+    ifcopenshell::geometry::taxonomy::bspline_surface* self,
+    std::size_t row
+) {
+    if (row >= self->control_points.size()) {
+        throw std::runtime_error("B-spline surface control-point row out of bounds");
+    }
+    return self->control_points[row].size();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(taxonomy_bspline_surface) ifcopenshell::geometry::taxonomy::point3::ptr control_point_at(
+    ifcopenshell::geometry::taxonomy::bspline_surface* self,
+    std::size_t row,
+    std::size_t col
+) {
+    if (row >= self->control_points.size()) {
+        throw std::runtime_error("B-spline surface control-point row out of bounds");
+    }
+    if (col >= self->control_points[row].size()) {
+        throw std::runtime_error("B-spline surface control-point column out of bounds");
+    }
+    return self->control_points[row][col];
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(taxonomy_bspline_surface) bool has_weights(ifcopenshell::geometry::taxonomy::bspline_surface* self) {
+    return static_cast<bool>(self->weights);
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(taxonomy_bspline_surface) std::size_t weight_row_count(
+    ifcopenshell::geometry::taxonomy::bspline_surface* self
+) {
+    if (!self->weights) {
+        throw std::runtime_error("B-spline surface weights are not set");
+    }
+    return self->weights->size();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(taxonomy_bspline_surface) std::size_t weight_col_count_at(
+    ifcopenshell::geometry::taxonomy::bspline_surface* self,
+    std::size_t row
+) {
+    if (!self->weights) {
+        throw std::runtime_error("B-spline surface weights are not set");
+    }
+    if (row >= self->weights->size()) {
+        throw std::runtime_error("B-spline surface weight row out of bounds");
+    }
+    return (*self->weights)[row].size();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(taxonomy_bspline_surface) double weight_at(
+    ifcopenshell::geometry::taxonomy::bspline_surface* self,
+    std::size_t row,
+    std::size_t col
+) {
+    if (!self->weights) {
+        throw std::runtime_error("B-spline surface weights are not set");
+    }
+    if (row >= self->weights->size()) {
+        throw std::runtime_error("B-spline surface weight row out of bounds");
+    }
+    if (col >= (*self->weights)[row].size()) {
+        throw std::runtime_error("B-spline surface weight column out of bounds");
+    }
+    return (*self->weights)[row][col];
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(svgfill_polygon) std::size_t boundary_size(svgfill::polygon_2* self) {
+    return self->boundary.size();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(svgfill_polygon) std::vector<double> boundary_point(
+    svgfill::polygon_2* self,
+    std::size_t index
+) {
+    if (index >= self->boundary.size()) {
+        throw std::runtime_error("Index out of bounds");
+    }
+    return {self->boundary[index][0], self->boundary[index][1]};
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(svgfill_polygon) std::size_t inner_boundary_count(svgfill::polygon_2* self) {
+    return self->inner_boundaries.size();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(svgfill_polygon) std::size_t inner_boundary_size(
+    svgfill::polygon_2* self,
+    std::size_t boundary_index
+) {
+    if (boundary_index >= self->inner_boundaries.size()) {
+        throw std::runtime_error("Index out of bounds");
+    }
+    return self->inner_boundaries[boundary_index].size();
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(svgfill_polygon) std::vector<double> inner_boundary_point(
+    svgfill::polygon_2* self,
+    std::size_t boundary_index,
+    std::size_t point_index
+) {
+    if (boundary_index >= self->inner_boundaries.size()) {
+        throw std::runtime_error("Boundary index out of bounds");
+    }
+    if (point_index >= self->inner_boundaries[boundary_index].size()) {
+        throw std::runtime_error("Point index out of bounds");
+    }
+    const auto& pt = self->inner_boundaries[boundary_index][point_index];
+    return {pt[0], pt[1]};
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(svgfill_polygon) std::vector<double> point_inside(svgfill::polygon_2* self) {
+    return {self->point_inside[0], self->point_inside[1]};
+}
+
+IFCAPI_EXPORT IFCAPI_METHOD(function_item_evaluator) std::vector<double> evaluate_at(
+    ifcopenshell::geometry::function_item_evaluator* self,
+    double u
+) {
+    Eigen::Matrix4d mat = self->evaluate(u);
+    std::vector<double> result(16);
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            result[i * 4 + j] = mat(i, j);
+        }
+    }
+    return result;
+}
+
+} // namespace ifcgeom::bindings
+
+#endif // IFCWRAP_BINDING_GENERATOR_IFCGEOM_SPEC_HPP
