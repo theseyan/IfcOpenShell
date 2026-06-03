@@ -283,20 +283,28 @@ def _discover_spec_signatures(
         for match in signature_re.finditer(text):
             return_decl = f"{match.group('annotations')}{match.group('return_decl')}"
             return_decl = re.sub(r"^\s*inline\s+", "", return_decl.strip())
-            receiver, return_decl = _method_receiver_from_return_decl(return_decl)
-            if name in signatures and (receiver is None or any(item[2] == receiver for item in signatures[name])):
-                msg = f"C++ spec export '{name}' is declared more than once; exported spec functions must be unique"
-                raise ValueError(msg)
             return_annotations, _ = _leading_annotations(return_decl)
             param_annotations: dict[str, frozenset[str]] = {}
             first_param_type = None
+            first_param_name = None
             for param in _split_params(match.group("params")):
                 annotations, rest = _leading_annotations(param)
                 if first_param_type is None:
                     first_param_type = _param_type_decl(rest)
+                    first_param_name = _param_name(rest)
                 if annotations:
                     param_annotations[_param_name(rest)] = annotations
-            signatures.setdefault(name, []).append((return_annotations, param_annotations, receiver, first_param_type))
+            if first_param_name == "self":
+                if name in signatures and any(
+                    item[3] == first_param_type for item in signatures[name]
+                ):
+                    msg = f"C++ spec export '{name}' is declared more than once; exported spec functions must be unique"
+                    raise ValueError(msg)
+            else:
+                if name in signatures:
+                    msg = f"C++ spec export '{name}' is declared more than once; exported spec functions must be unique"
+                    raise ValueError(msg)
+            signatures.setdefault(name, []).append((return_annotations, param_annotations, None, first_param_type))
     return {name: tuple(entries) for name, entries in signatures.items()}
 
 
@@ -382,12 +390,6 @@ def discover_cpp_spec_functions(
     return tuple(result)
 
 
-def _method_receiver_from_return_decl(return_decl: str) -> tuple[str | None, str]:
-    match = re.match(r"\s*IFCAPI_METHOD\s*\((?P<receiver>[A-Za-z_]\w*)\)\s*(?P<rest>.*)", return_decl, re.DOTALL)
-    if match is None:
-        return None, return_decl
-    return match.group("receiver"), match.group("rest")
-
 
 def _receiver_c_name(handle: HandleSpec, expose_as: str) -> str:
     receiver = handle.c_type.removeprefix("ifcopenshell_").removesuffix("_t")
@@ -432,47 +434,12 @@ def _apply_type_annotations(type_spec: TypeSpec, annotations: frozenset[str]) ->
     )
 
 
-def _handle_annotation(annotations: frozenset[str], macro: str) -> str | None:
-    matches = [
-        annotation
-        for annotation in annotations
-        if annotation.startswith(f"{macro}(") and annotation.endswith(")")
-    ]
-    if not matches:
-        return None
-    if len(matches) != 1:
-        msg = f"C++ spec declaration has more than one {macro} annotation"
-        raise ValueError(msg)
-    handle = matches[0][len(f"{macro}(") : -1].strip()
-    if not re.fullmatch(r"[A-Za-z_]\w*", handle):
-        msg = f"Invalid {macro} handle name: {handle!r}"
-        raise ValueError(msg)
-    return handle
-
-
-def _with_handle_override(type_spec: TypeSpec, handle_name: str, handles: dict[str, HandleSpec], context: str) -> TypeSpec:
-    if handle_name not in handles:
-        msg = f"C++ spec {context} declares unknown handle override '{handle_name}'"
-        raise ValueError(msg)
-    return TypeSpec(
-        kind="handle",
-        handle=handle_name,
-        ownership=type_spec.ownership,
-        nullable=type_spec.nullable,
-        cpp_type=type_spec.cpp_type,
-    )
-
-
 def _apply_param_annotations(
     type_spec: TypeSpec,
     annotations: frozenset[str],
     handles: dict[str, HandleSpec],
 ) -> TypeSpec:
-    annotated = _apply_type_annotations(type_spec, annotations)
-    handle_name = _handle_annotation(annotations, "IFCAPI_HANDLE_PARAM")
-    if handle_name is None:
-        return annotated
-    return _with_handle_override(annotated, handle_name, handles, "parameter")
+    return _apply_type_annotations(type_spec, annotations)
 
 
 def _apply_return_annotations(
@@ -480,25 +447,7 @@ def _apply_return_annotations(
     annotations: frozenset[str],
     handles: dict[str, HandleSpec],
 ) -> TypeSpec:
-    annotated = _apply_type_annotations(type_spec, annotations)
-    if "IFCAPI_DOUBLE_BUFFER" in annotations:
-        annotated = TypeSpec(
-            kind="double_buffer",
-            ownership=annotated.ownership,
-            nullable=annotated.nullable,
-            cpp_type=annotated.cpp_type,
-        )
-    if "IFCAPI_INT32_BUFFER" in annotations:
-        annotated = TypeSpec(
-            kind="int32_buffer",
-            ownership=annotated.ownership,
-            nullable=annotated.nullable,
-            cpp_type=annotated.cpp_type,
-        )
-    handle_name = _handle_annotation(annotations, "IFCAPI_HANDLE_RESULT")
-    if handle_name is None:
-        return annotated
-    return _with_handle_override(annotated, handle_name, handles, "return")
+    return _apply_type_annotations(type_spec, annotations)
 
 
 def lower_cpp_spec_functions_to_calls(
@@ -517,9 +466,77 @@ def lower_cpp_spec_functions_to_calls(
             function.return_annotations,
             handles,
         )
+
+        if "IFCAPI_DOUBLE_BUFFER" not in function.return_annotations:
+            return_type_ref = discovered.return_type_ref
+            is_const_ref = (
+                hasattr(return_type_ref, 'is_const') and return_type_ref.is_const
+                and hasattr(return_type_ref, 'is_lvalue_reference') and return_type_ref.is_lvalue_reference
+            )
+            is_const_ptr = (
+                hasattr(return_type_ref, 'is_const') and return_type_ref.is_const
+                and hasattr(return_type_ref, 'is_lvalue_reference') and not return_type_ref.is_lvalue_reference
+                and hasattr(return_type_ref, 'pointer_depth') and return_type_ref.pointer_depth > 0
+            )
+            if returns.kind == "double" and returns.sequence_depth == 1 and is_const_ref:
+                returns = TypeSpec(
+                    kind="double_buffer",
+                    ownership=returns.ownership,
+                    nullable=returns.nullable,
+                    cpp_type=returns.cpp_type,
+                )
+            elif is_const_ptr:
+                normalized = " ".join(returns.cpp_type.replace(" *", "*").replace(" &", "&").split())
+                normalized = normalized.replace("const ", "").strip()
+                if normalized == "double*":
+                    returns = TypeSpec(
+                        kind="double_buffer",
+                        ownership=returns.ownership,
+                        nullable=returns.nullable,
+                        cpp_type=returns.cpp_type,
+                    )
+        if "IFCAPI_HANDLE_RESULT" not in function.return_annotations and returns.kind == "handle":
+            return_type_raw = discovered.return_type_ref
+            cpp_norm = return_type_raw.normalized_spelling or return_type_raw.spelling
+            cpp_norm = " ".join(cpp_norm.replace(" *", "*").replace(" &", "&").split())
+            cpp_norm = re.sub(r"\bconst\b\s*", "", cpp_norm).strip()
+            if "*" in cpp_norm:
+                stripped = cpp_norm.removesuffix("*").removesuffix("&").strip()
+                if stripped and stripped != cpp_norm:
+                    for handle_name, handle in handles.items():
+                        handle_norm = " ".join(handle.cpp_type.replace(" *", "*").replace(" &", "&").split())
+                        handle_norm = re.sub(r"\bconst\b\s*", "", handle_norm).strip()
+                        if handle_norm == stripped:
+                            returns = TypeSpec(
+                                kind="handle",
+                                handle=handle_name,
+                                ownership=returns.ownership,
+                                nullable=returns.nullable,
+                                cpp_type=returns.cpp_type,
+                            )
+                            break
         discovered_params = discovered.params
         receiver_cpp_type = None
-        if function.receiver is not None:
+        receiver = function.receiver
+        if receiver is None:
+            if discovered_params and discovered_params[0].name == "self":
+                first_param = discovered_params[0]
+                first_type = first_param.cpp_type_ref
+                first_canonical = _canonical_cpp_type(first_type)
+                for handle_name, handle in handles.items():
+                    if _canonical_cpp_type(handle.cpp_type) == first_canonical:
+                        receiver = handle_name
+                        break
+                if receiver is None:
+                    msg = (
+                        f"C++ spec method export '{function.name}' has first parameter 'self' "
+                        f"with type '{first_type.normalized_spelling or first_type.spelling}' "
+                        f"that does not match any known handle"
+                    )
+                    raise ValueError(msg)
+                receiver_cpp_type = first_type.normalized_spelling or first_type.spelling
+                discovered_params = discovered_params[1:]
+        elif function.receiver is not None:
             if function.receiver not in handles:
                 msg = f"C++ spec export '{function.name}' declares unknown receiver handle '{function.receiver}'"
                 raise ValueError(msg)
@@ -538,14 +555,38 @@ def lower_cpp_spec_functions_to_calls(
             discovered_params = discovered_params[1:]
         params = []
         for param in discovered_params:
+            param_ann = function.param_annotations.get(param.name, frozenset())
+            param_type = _apply_param_annotations(
+                _infer_param_type(param.cpp_type_ref, handles),
+                param_ann,
+                handles,
+            )
+            if (
+                param_type.kind == "handle"
+                and "IFCAPI_HANDLE_PARAM" not in param_ann
+            ):
+                cpp_type_raw = param.cpp_type_ref.normalized_spelling or param.cpp_type_ref.spelling
+                cpp_norm = " ".join(cpp_type_raw.replace(" *", "*").replace(" &", "&").split())
+                cpp_norm = re.sub(r"\bconst\b\s*", "", cpp_norm).strip()
+                if "*" in cpp_norm:
+                    stripped = cpp_norm.removesuffix("*").removesuffix("&").strip()
+                    if stripped and stripped != cpp_norm:
+                        for handle_name, handle in handles.items():
+                            handle_norm = " ".join(handle.cpp_type.replace(" *", "*").replace(" &", "&").split())
+                            handle_norm = re.sub(r"\bconst\b\s*", "", handle_norm).strip()
+                            if handle_norm == stripped:
+                                param_type = TypeSpec(
+                                    kind="handle",
+                                    handle=handle_name,
+                                    ownership=param_type.ownership,
+                                    nullable=param_type.nullable,
+                                    cpp_type=param_type.cpp_type,
+                                )
+                                break
             params.append(
                 ParamSpec(
                     name=param.name,
-                    type=_apply_param_annotations(
-                        _infer_param_type(param.cpp_type_ref, handles),
-                        function.param_annotations.get(param.name, frozenset()),
-                        handles,
-                    ),
+                    type=param_type,
                 )
             )
         cpp_name = f"{function.namespace}::{discovered.cpp_name}"
@@ -553,11 +594,11 @@ def lower_cpp_spec_functions_to_calls(
             CallSpec(
                 expose_as=function.name,
                 c_name=(
-                    _receiver_c_name(handles[function.receiver], function.name)
-                    if function.receiver is not None
+                    _receiver_c_name(handles[receiver], function.name)
+                    if receiver is not None
                     else f"{c_prefix}_{function.name}" if c_prefix else function.name
                 ),
-                receiver=function.receiver,
+                receiver=receiver,
                 returns=returns,
                 params=tuple(params),
                 policy_operation=(

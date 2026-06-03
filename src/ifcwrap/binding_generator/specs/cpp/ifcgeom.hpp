@@ -789,7 +789,7 @@ inline double taxonomy_function_item_end(const ifcopenshell::geometry::taxonomy:
     return fn->end();
 }
 
-inline IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std::vector<express::Base> select_element(
+inline IFCAPI_OWNED std::vector<express::Base> select_element(
     IfcGeom::tree* self,
     express::Base* instance,
     bool completely_within,
@@ -802,7 +802,7 @@ inline IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std:
     return to_base_vector(self->select(entity, completely_within, extend));
 }
 
-inline IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std::vector<express::Base> select_point(
+inline IFCAPI_OWNED std::vector<express::Base> select_point(
     IfcGeom::tree* self,
     double x,
     double y,
@@ -812,7 +812,7 @@ inline IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std:
     return to_base_vector(self->select(IfcGeom::tree_point{x, y, z}, extend));
 }
 
-inline IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std::vector<express::Base> select_brep_element(
+inline IFCAPI_OWNED std::vector<express::Base> select_brep_element(
     IfcGeom::tree* self,
     const IfcGeom::BRepElement* element,
     bool completely_within,
@@ -821,7 +821,7 @@ inline IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std:
     return to_base_vector(self->select(element, completely_within, extend));
 }
 
-inline IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std::vector<express::Base> select_shape_serialization(
+inline IFCAPI_OWNED std::vector<express::Base> select_shape_serialization(
     IfcGeom::tree* self,
     const std::string& shape_serialization,
     bool completely_within,
@@ -834,7 +834,7 @@ inline IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std:
     throw std::runtime_error("Selecting from shape serialization is not supported by the current ifcgeom tree API");
 }
 
-inline IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std::vector<express::Base> select_box_point(
+inline IFCAPI_OWNED std::vector<express::Base> select_box_point(
     IfcGeom::tree* self,
     double x,
     double y,
@@ -845,7 +845,7 @@ inline IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std:
     return to_base_vector(self->select_box(IfcGeom::tree_point{x, y, z}));
 }
 
-inline IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std::vector<express::Base> select_box_element(
+inline IFCAPI_OWNED std::vector<express::Base> select_box_element(
     IfcGeom::tree* self,
     express::Base* instance,
     bool completely_within,
@@ -858,7 +858,7 @@ inline IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std:
     return to_base_vector(self->select_box(entity, completely_within, extend));
 }
 
-inline IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std::vector<express::Base> select_box_bounds(
+inline IFCAPI_OWNED std::vector<express::Base> select_box_bounds(
     IfcGeom::tree* self,
     double xmin,
     double ymin,
@@ -872,7 +872,7 @@ inline IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(instance_list) std:
         self->select_box(IfcGeom::tree_box{{IfcGeom::tree_point{xmin, ymin, zmin}, IfcGeom::tree_point{xmax, ymax, zmax}}}, completely_within));
 }
 
-inline IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(tree_ray_intersection_list) std::vector<IfcGeom::ray_intersection_result>* select_ray(
+inline IFCAPI_OWNED std::vector<IfcGeom::ray_intersection_result>* select_ray(
     IfcGeom::tree* self,
     double origin_x,
     double origin_y,
@@ -889,11 +889,11 @@ inline IFCAPI_METHOD(tree) IFCAPI_OWNED IFCAPI_HANDLE_RESULT(tree_ray_intersecti
             length));
 }
 
-inline IFCAPI_METHOD(tree_ray_intersection) express::Base instance(IfcGeom::ray_intersection_result* self) {
+inline express::Base instance(IfcGeom::ray_intersection_result* self) {
     return self->instance;
 }
 
-inline IFCAPI_METHOD(iterator) IfcGeom::TriangulationElement* get_as_triangulation_element(IfcGeom::Iterator* self) {
+inline IfcGeom::TriangulationElement* get_as_triangulation_element(IfcGeom::Iterator* self) {
     IfcGeom::Element* elem = self->get();
     auto* tri = dynamic_cast<IfcGeom::TriangulationElement*>(elem);
     if (!tri) {
@@ -902,7 +902,7 @@ inline IFCAPI_METHOD(iterator) IfcGeom::TriangulationElement* get_as_triangulati
     return tri;
 }
 
-inline IFCAPI_METHOD(iterator) IfcGeom::BRepElement* get_as_brep_element(IfcGeom::Iterator* self) {
+inline IfcGeom::BRepElement* get_as_brep_element(IfcGeom::Iterator* self) {
     IfcGeom::Element* elem = self->get();
     auto* brep = dynamic_cast<IfcGeom::BRepElement*>(elem);
     if (!brep) {
@@ -911,7 +911,7 @@ inline IFCAPI_METHOD(iterator) IfcGeom::BRepElement* get_as_brep_element(IfcGeom
     return brep;
 }
 
-inline IFCAPI_METHOD(iterator) IfcGeom::SerializedElement* get_as_serialized_element(IfcGeom::Iterator* self) {
+inline IfcGeom::SerializedElement* get_as_serialized_element(IfcGeom::Iterator* self) {
     IfcGeom::Element* elem = self->get();
     auto* serialized = dynamic_cast<IfcGeom::SerializedElement*>(elem);
     if (!serialized) {
@@ -920,19 +920,19 @@ inline IFCAPI_METHOD(iterator) IfcGeom::SerializedElement* get_as_serialized_ele
     return serialized;
 }
 
-inline IFCAPI_METHOD(iterator) bool next(IfcGeom::Iterator* self) {
+inline bool next(IfcGeom::Iterator* self) {
     return static_cast<bool>(self->next());
 }
 
-inline IFCAPI_METHOD(element) IFCAPI_DOUBLE_BUFFER const double* transformation_buffer(const IfcGeom::Element* self) {
+inline const double* transformation_buffer(const IfcGeom::Element* self) {
     return self->transformation().data()->ccomponents().data();
 }
 
-inline IFCAPI_METHOD(element) std::size_t transformation_buffer_size(const IfcGeom::Element* self) {
+inline std::size_t transformation_buffer_size(const IfcGeom::Element* self) {
     return 16;
 }
 
-inline IFCAPI_METHOD(brep_element) double calc_volume(const IfcGeom::BRepElement* self) {
+inline double calc_volume(const IfcGeom::BRepElement* self) {
     double v;
     if (self->geometry().calculate_volume(v)) {
         return v;
@@ -940,7 +940,7 @@ inline IFCAPI_METHOD(brep_element) double calc_volume(const IfcGeom::BRepElement
     return std::numeric_limits<double>::quiet_NaN();
 }
 
-inline IFCAPI_METHOD(brep_element) double calc_surface_area(const IfcGeom::BRepElement* self) {
+inline double calc_surface_area(const IfcGeom::BRepElement* self) {
     double v;
     if (self->geometry().calculate_surface_area(v)) {
         return v;
@@ -948,21 +948,21 @@ inline IFCAPI_METHOD(brep_element) double calc_surface_area(const IfcGeom::BRepE
     return std::numeric_limits<double>::quiet_NaN();
 }
 
-inline IFCAPI_METHOD(brep_representation) IFCAPI_OWNED IfcGeom::ConversionResultShape* as_compound(
+inline IFCAPI_OWNED IfcGeom::ConversionResultShape* as_compound(
     const IfcGeom::Representation::BRep* self,
     bool force_meters
 ) {
     return self->as_compound(force_meters);
 }
 
-inline IFCAPI_METHOD(conversion_result_shape) std::string serialize(IfcGeom::ConversionResultShape* self) {
+inline std::string serialize(IfcGeom::ConversionResultShape* self) {
     ifcopenshell::geometry::taxonomy::matrix4 identity;
     std::string result;
     self->Serialize(identity, result);
     return result;
 }
 
-inline IFCAPI_METHOD(conversion_result_shape) std::string serialize_obj(IfcGeom::ConversionResultShape* self) {
+inline std::string serialize_obj(IfcGeom::ConversionResultShape* self) {
     std::ostringstream result;
     ifcopenshell::geometry::Settings settings;
     std::unique_ptr<IfcGeom::Representation::Triangulation> triangulation(self->Triangulate(settings));
@@ -988,66 +988,66 @@ inline IFCAPI_METHOD(conversion_result_shape) std::string serialize_obj(IfcGeom:
     return result.str();
 }
 
-inline IFCAPI_METHOD(conversion_result_shape) void convex_tag(IfcGeom::ConversionResultShape* self, bool value) {
+inline void convex_tag(IfcGeom::ConversionResultShape* self, bool value) {
     (void)self;
     (void)value;
     throw std::runtime_error("convex_tag is not available through the generic conversion result interface");
 }
 
-inline IFCAPI_METHOD(conversion_result_shape) double area(IfcGeom::ConversionResultShape* self) {
+inline double area(IfcGeom::ConversionResultShape* self) {
     auto* result = self->area();
     double val = result->to_double();
     delete result;
     return val;
 }
 
-inline IFCAPI_METHOD(conversion_result_shape) double volume(IfcGeom::ConversionResultShape* self) {
+inline double volume(IfcGeom::ConversionResultShape* self) {
     auto* result = self->volume();
     double val = result->to_double();
     delete result;
     return val;
 }
 
-inline IFCAPI_METHOD(conversion_result_shape) double length(IfcGeom::ConversionResultShape* self) {
+inline double length(IfcGeom::ConversionResultShape* self) {
     auto* result = self->length();
     double val = result->to_double();
     delete result;
     return val;
 }
 
-inline IFCAPI_METHOD(triangulation) IFCAPI_DOUBLE_BUFFER const std::vector<double>& verts_buffer(const IfcGeom::Representation::Triangulation* self) {
+inline const std::vector<double>& verts_buffer(const IfcGeom::Representation::Triangulation* self) {
     return self->verts();
 }
 
-inline IFCAPI_METHOD(triangulation) IFCAPI_INT32_BUFFER const std::vector<int>& faces_buffer(const IfcGeom::Representation::Triangulation* self) {
+inline const std::vector<int>& faces_buffer(const IfcGeom::Representation::Triangulation* self) {
     return self->faces();
 }
 
-inline IFCAPI_METHOD(triangulation) IFCAPI_DOUBLE_BUFFER const std::vector<double>& normals_buffer(const IfcGeom::Representation::Triangulation* self) {
+inline const std::vector<double>& normals_buffer(const IfcGeom::Representation::Triangulation* self) {
     return self->normals();
 }
 
-inline IFCAPI_METHOD(triangulation) IFCAPI_INT32_BUFFER const std::vector<int>& edges_buffer(const IfcGeom::Representation::Triangulation* self) {
+inline const std::vector<int>& edges_buffer(const IfcGeom::Representation::Triangulation* self) {
     return self->edges();
 }
 
-inline IFCAPI_METHOD(triangulation) IFCAPI_INT32_BUFFER const std::vector<int>& material_ids_buffer(const IfcGeom::Representation::Triangulation* self) {
+inline const std::vector<int>& material_ids_buffer(const IfcGeom::Representation::Triangulation* self) {
     return self->material_ids();
 }
 
-inline IFCAPI_METHOD(triangulation) IFCAPI_INT32_BUFFER const std::vector<int>& item_ids_buffer(const IfcGeom::Representation::Triangulation* self) {
+inline const std::vector<int>& item_ids_buffer(const IfcGeom::Representation::Triangulation* self) {
     return self->item_ids();
 }
 
-inline IFCAPI_METHOD(triangulation) IFCAPI_INT32_BUFFER const std::vector<int>& edges_item_ids_buffer(const IfcGeom::Representation::Triangulation* self) {
+inline const std::vector<int>& edges_item_ids_buffer(const IfcGeom::Representation::Triangulation* self) {
     return self->edges_item_ids();
 }
 
-inline IFCAPI_METHOD(triangulation) IFCAPI_DOUBLE_BUFFER const std::vector<double>& uvs_buffer(const IfcGeom::Representation::Triangulation* self) {
+inline const std::vector<double>& uvs_buffer(const IfcGeom::Representation::Triangulation* self) {
     return self->uvs();
 }
 
-inline IFCAPI_METHOD(triangulation) std::vector<double> colors_buffer(const IfcGeom::Representation::Triangulation* self) {
+inline std::vector<double> colors_buffer(const IfcGeom::Representation::Triangulation* self) {
     std::vector<double> clrs;
     clrs.reserve(self->materials().size() * 4);
     for (auto& mptr : self->materials()) {
@@ -1070,11 +1070,11 @@ inline IFCAPI_METHOD(triangulation) std::vector<double> colors_buffer(const IfcG
     return clrs;
 }
 
-inline IFCAPI_METHOD(triangulation) std::size_t colors_buffer_size(const IfcGeom::Representation::Triangulation* self) {
+inline std::size_t colors_buffer_size(const IfcGeom::Representation::Triangulation* self) {
     return self->materials().size() * 4;
 }
 
-inline IFCAPI_METHOD(taxonomy_style) std::size_t instance_id(ifcopenshell::geometry::taxonomy::style* self) {
+inline std::size_t instance_id(ifcopenshell::geometry::taxonomy::style* self) {
     if (!self->instance) {
         return static_cast<std::size_t>(0);
     }
@@ -1085,13 +1085,13 @@ inline IFCAPI_METHOD(taxonomy_style) std::size_t instance_id(ifcopenshell::geome
     return static_cast<std::size_t>(entity.id());
 }
 
-inline IFCAPI_METHOD(taxonomy_bspline_surface) std::size_t control_point_row_count(
+inline std::size_t control_point_row_count(
     ifcopenshell::geometry::taxonomy::bspline_surface* self
 ) {
     return self->control_points.size();
 }
 
-inline IFCAPI_METHOD(taxonomy_bspline_surface) std::size_t control_point_col_count_at(
+inline std::size_t control_point_col_count_at(
     ifcopenshell::geometry::taxonomy::bspline_surface* self,
     std::size_t row
 ) {
@@ -1101,7 +1101,7 @@ inline IFCAPI_METHOD(taxonomy_bspline_surface) std::size_t control_point_col_cou
     return self->control_points[row].size();
 }
 
-inline IFCAPI_METHOD(taxonomy_bspline_surface) ifcopenshell::geometry::taxonomy::point3::ptr control_point_at(
+inline ifcopenshell::geometry::taxonomy::point3::ptr control_point_at(
     ifcopenshell::geometry::taxonomy::bspline_surface* self,
     std::size_t row,
     std::size_t col
@@ -1115,11 +1115,11 @@ inline IFCAPI_METHOD(taxonomy_bspline_surface) ifcopenshell::geometry::taxonomy:
     return self->control_points[row][col];
 }
 
-inline IFCAPI_METHOD(taxonomy_bspline_surface) bool has_weights(ifcopenshell::geometry::taxonomy::bspline_surface* self) {
+inline bool has_weights(ifcopenshell::geometry::taxonomy::bspline_surface* self) {
     return static_cast<bool>(self->weights);
 }
 
-inline IFCAPI_METHOD(taxonomy_bspline_surface) std::size_t weight_row_count(
+inline std::size_t weight_row_count(
     ifcopenshell::geometry::taxonomy::bspline_surface* self
 ) {
     if (!self->weights) {
@@ -1128,7 +1128,7 @@ inline IFCAPI_METHOD(taxonomy_bspline_surface) std::size_t weight_row_count(
     return self->weights->size();
 }
 
-inline IFCAPI_METHOD(taxonomy_bspline_surface) std::size_t weight_col_count_at(
+inline std::size_t weight_col_count_at(
     ifcopenshell::geometry::taxonomy::bspline_surface* self,
     std::size_t row
 ) {
@@ -1141,7 +1141,7 @@ inline IFCAPI_METHOD(taxonomy_bspline_surface) std::size_t weight_col_count_at(
     return (*self->weights)[row].size();
 }
 
-inline IFCAPI_METHOD(taxonomy_bspline_surface) double weight_at(
+inline double weight_at(
     ifcopenshell::geometry::taxonomy::bspline_surface* self,
     std::size_t row,
     std::size_t col
@@ -1158,11 +1158,11 @@ inline IFCAPI_METHOD(taxonomy_bspline_surface) double weight_at(
     return (*self->weights)[row][col];
 }
 
-inline IFCAPI_METHOD(svgfill_polygon) std::size_t boundary_size(svgfill::polygon_2* self) {
+inline std::size_t boundary_size(svgfill::polygon_2* self) {
     return self->boundary.size();
 }
 
-inline IFCAPI_METHOD(svgfill_polygon) std::vector<double> boundary_point(
+inline std::vector<double> boundary_point(
     svgfill::polygon_2* self,
     std::size_t index
 ) {
@@ -1172,11 +1172,11 @@ inline IFCAPI_METHOD(svgfill_polygon) std::vector<double> boundary_point(
     return {self->boundary[index][0], self->boundary[index][1]};
 }
 
-inline IFCAPI_METHOD(svgfill_polygon) std::size_t inner_boundary_count(svgfill::polygon_2* self) {
+inline std::size_t inner_boundary_count(svgfill::polygon_2* self) {
     return self->inner_boundaries.size();
 }
 
-inline IFCAPI_METHOD(svgfill_polygon) std::size_t inner_boundary_size(
+inline std::size_t inner_boundary_size(
     svgfill::polygon_2* self,
     std::size_t boundary_index
 ) {
@@ -1186,7 +1186,7 @@ inline IFCAPI_METHOD(svgfill_polygon) std::size_t inner_boundary_size(
     return self->inner_boundaries[boundary_index].size();
 }
 
-inline IFCAPI_METHOD(svgfill_polygon) std::vector<double> inner_boundary_point(
+inline std::vector<double> inner_boundary_point(
     svgfill::polygon_2* self,
     std::size_t boundary_index,
     std::size_t point_index
@@ -1201,11 +1201,11 @@ inline IFCAPI_METHOD(svgfill_polygon) std::vector<double> inner_boundary_point(
     return {pt[0], pt[1]};
 }
 
-inline IFCAPI_METHOD(svgfill_polygon) std::vector<double> point_inside(svgfill::polygon_2* self) {
+inline std::vector<double> point_inside(svgfill::polygon_2* self) {
     return {self->point_inside[0], self->point_inside[1]};
 }
 
-inline IFCAPI_METHOD(function_item_evaluator) std::vector<double> evaluate_at(
+inline std::vector<double> evaluate_at(
     ifcopenshell::geometry::function_item_evaluator* self,
     double u
 ) {

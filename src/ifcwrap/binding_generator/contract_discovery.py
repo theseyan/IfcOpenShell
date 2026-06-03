@@ -21,10 +21,8 @@ _ANNOTATIONS = frozenset({
     "IFCAPI_COPY",
     "IFCAPI_STATIC",
     "IFCAPI_NULLABLE",
-    "IFCAPI_DOUBLE_BUFFER",
-    "IFCAPI_INT32_BUFFER",
 })
-_ANNOTATION_CALLS = ("IFCAPI_HANDLE_PARAM", "IFCAPI_HANDLE_RESULT")
+_ANNOTATION_CALLS: tuple[str, ...] = ()
 
 
 def _strip_comments(text: str) -> str:
