@@ -2,12 +2,9 @@ from .clang_discovery import (
     CompilationConfig,
     DiscoveryEnvironment,
     discover_namespace_functions,
-    discover_namespace_functions_with_compile_commands,
     discover_namespace_functions_with_synthetic_source,
     discover_public_fields,
-    discover_public_fields_with_compile_commands,
     discover_public_methods,
-    discover_public_methods_with_compile_commands,
 )
 from .authored_spec import DiscoveryDiagnostic, load_authored_spec, load_merged_specs
 from .cpp_spec_frontend import (
@@ -40,11 +37,8 @@ __all__ = [
     "CompilationConfig",
     "DiscoveryEnvironment",
     "discover_public_fields",
-    "discover_public_fields_with_compile_commands",
     "discover_public_methods",
-    "discover_public_methods_with_compile_commands",
     "discover_namespace_functions",
-    "discover_namespace_functions_with_compile_commands",
     "discover_namespace_functions_with_synthetic_source",
     "DiscoveryDiagnostic",
     "CppSpecFunction",

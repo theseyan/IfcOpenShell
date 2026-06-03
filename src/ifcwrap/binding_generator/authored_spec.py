@@ -3635,14 +3635,11 @@ def _resolve_compilation_include_dirs(
 def _discovery_environment(
     spec_path: Path,
     discovery: DiscoverySpec,
-    compile_commands_path: Path | None,
     *,
     discovery_include_dirs: tuple[Path, ...] = (),
     discovery_defines: tuple[str, ...] = (),
     discovery_clang_args: tuple[str, ...] = (),
 ) -> DiscoveryEnvironment:
-    if compile_commands_path is not None:
-        return DiscoveryEnvironment(compile_commands_path=compile_commands_path)
     include_dir = (spec_path.parent / discovery.include_dir).resolve()
     if not include_dir.exists():
         msg = f"discover.include_dir '{discovery.include_dir}' does not exist for '{spec_path}'"
@@ -4207,7 +4204,6 @@ def _discover_constructor_calls(
 
 def load_authored_spec(
     path: Path,
-    compile_commands_path: Path | None = None,
     existing_handles: dict[str, HandleSpec] | None = None,
     discovery_include_dirs: tuple[Path, ...] = (),
     discovery_defines: tuple[str, ...] = (),
@@ -4217,13 +4213,12 @@ def load_authored_spec(
     
     Args:
         path: Path to the YAML spec file.
-        compile_commands_path: Optional path to compile_commands.json for AST discovery.
         existing_handles: Optional dict of handles from previously loaded specs.
                          These will be available for reference in this spec.
     """
     debug_log(
         "spec.load.start",
-        f"path={debug_path(path)} compile_commands={debug_path(compile_commands_path)} existing_handles={len(existing_handles or {})}",
+        f"path={debug_path(path)} existing_handles={len(existing_handles or {})}",
     )
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     root = _expect_mapping(raw, "binding spec")
@@ -4326,7 +4321,6 @@ def load_authored_spec(
         _discovery_environment(
             path,
             discovery,
-            compile_commands_path,
             discovery_include_dirs=discovery_include_dirs,
             discovery_defines=discovery_defines,
             discovery_clang_args=discovery_clang_args,
@@ -4448,7 +4442,6 @@ def load_merged_specs(
     spec_paths: list[Path],
     module: str,
     c_prefix: str,
-    compile_commands_path: Path | None = None,
     discovery_include_dirs: tuple[Path, ...] = (),
     discovery_defines: tuple[str, ...] = (),
     discovery_clang_args: tuple[str, ...] = (),
@@ -4461,7 +4454,7 @@ def load_merged_specs(
     """
     debug_log(
         "spec.merge.start",
-        f"specs={len(spec_paths)} module={module} compile_commands={debug_path(compile_commands_path)}",
+        f"specs={len(spec_paths)} module={module}",
     )
     all_handles: dict[str, HandleSpec] = dict(existing_handles or {})
     all_headers: list[str] = []
@@ -4475,7 +4468,6 @@ def load_merged_specs(
         # Load each spec - later specs can reference handles from earlier ones
         spec = load_authored_spec(
             spec_path,
-            compile_commands_path=compile_commands_path,
             existing_handles=all_handles.copy(),  # Pass accumulated handles
             discovery_include_dirs=discovery_include_dirs,
             discovery_defines=discovery_defines,

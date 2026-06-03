@@ -18,7 +18,7 @@ from src.ifcwrap.binding_generator import (
 from src.ifcwrap.binding_generator.semantic_types import RecordSemanticType, ScalarSemanticType
 
 
-def test_source_inventory_discovers_classes_and_namespaces_without_compile_commands(tmp_path: Path) -> None:
+def test_source_inventory_discovers_classes_and_namespaces(tmp_path: Path) -> None:
     compiler = shutil.which("clang++")
     if compiler is None:
         pytest.skip("clang++ is not available")
@@ -100,7 +100,7 @@ def _boost_include_dir() -> Path | None:
     return None
 
 
-def test_source_inventory_discovers_datamodel_v1_core_types_without_compile_commands() -> None:
+def test_source_inventory_discovers_datamodel_v1_core_types() -> None:
     compiler = shutil.which("clang++")
     if compiler is None:
         pytest.skip("clang++ is not available")

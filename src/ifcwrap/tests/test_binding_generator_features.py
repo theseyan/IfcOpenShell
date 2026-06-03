@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 import shutil
 from textwrap import dedent
@@ -26,25 +25,8 @@ from src.ifcwrap.binding_generator.policy_ir import (
 )
 
 
-def _write_compile_commands(tmp_path: Path, source: Path) -> Path:
-    compiler = shutil.which("clang++")
-    if compiler is None:
-        pytest.skip("clang++ is not available")
-
-    compile_commands = tmp_path / "compile_commands.json"
-    compile_commands.write_text(
-        json.dumps(
-            [
-                {
-                    "directory": str(tmp_path),
-                    "command": f"{compiler} -std=c++17 -I {tmp_path} -c {source}",
-                    "file": str(source),
-                }
-            ]
-        ),
-        encoding="utf-8",
-    )
-    return compile_commands
+def _discovery_include_dirs(tmp_path: Path) -> tuple[Path, ...]:
+    return (tmp_path,)
 
 
 def test_load_merged_specs_resolves_cross_slice_handles(tmp_path: Path) -> None:
@@ -410,9 +392,9 @@ def test_guarded_constructor_discovery_uses_fallback_signature_when_unavailable(
         + "\n",
         encoding="utf-8",
     )
-    _write_compile_commands(tmp_path, include_dir / "optional.hpp")
+    _discovery_include_dirs(tmp_path)
 
-    spec = load_authored_spec(spec_path, compile_commands_path=tmp_path / "compile_commands.json")
+    spec = load_authored_spec(spec_path, discovery_include_dirs=_discovery_include_dirs(tmp_path))
     assert len(spec.functions) == 1
     call = spec.functions[0]
     assert call.c_name == "ifcopenshell_demo_create_optional_serializer"
@@ -421,7 +403,7 @@ def test_guarded_constructor_discovery_uses_fallback_signature_when_unavailable(
 
     header_out = tmp_path / "demo_api.h"
     cpp_out = tmp_path / "demo_api.cpp"
-    generate(spec_path, header_out, cpp_out, compile_commands_path=tmp_path / "compile_commands.json")
+    generate(spec_path, header_out, cpp_out, discovery_include_dirs=_discovery_include_dirs(tmp_path))
     cpp = cpp_out.read_text(encoding="utf-8")
     assert "#if defined(WITH_DEMO_OPTIONAL)" in cpp
     assert "new Demo::OptionalSerializer(filename_cpp, settings_cpp)" in cpp
@@ -589,9 +571,9 @@ def test_method_at_accessors_generate_indexed_method_items(tmp_path: Path) -> No
         + "\n",
         encoding="utf-8",
     )
-    _write_compile_commands(tmp_path, include_dir / "demo.hpp")
+    _discovery_include_dirs(tmp_path)
 
-    spec = load_authored_spec(spec_path, compile_commands_path=tmp_path / "compile_commands.json")
+    spec = load_authored_spec(spec_path, discovery_include_dirs=_discovery_include_dirs(tmp_path))
     assert len(spec.methods) == 1
     call = spec.methods[0]
     assert call.c_name == "ifcopenshell_demo_tree_style_at"
@@ -601,7 +583,7 @@ def test_method_at_accessors_generate_indexed_method_items(tmp_path: Path) -> No
 
     header_out = tmp_path / "demo_api.h"
     cpp_out = tmp_path / "demo_api.cpp"
-    generate(spec_path, header_out, cpp_out, compile_commands_path=tmp_path / "compile_commands.json")
+    generate(spec_path, header_out, cpp_out, discovery_include_dirs=_discovery_include_dirs(tmp_path))
     cpp = cpp_out.read_text(encoding="utf-8")
     assert "const auto& items = self_cpp->styles();" in cpp
     assert 'throw std::runtime_error("Style index out of range");' in cpp
@@ -643,7 +625,7 @@ def test_discovery_supports_public_constructors(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     source.write_text('#include "constructors.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
     spec_path.write_text(
         dedent(
             """
@@ -687,7 +669,7 @@ def test_discovery_supports_public_constructors(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.functions}
 
     xml_call = calls["ifcopenshell_demo_create_xml_serializer"]
@@ -700,7 +682,7 @@ def test_discovery_supports_public_constructors(tmp_path: Path) -> None:
 
     header_out = tmp_path / "demo_api.h"
     cpp_out = tmp_path / "demo_api.cpp"
-    generate(spec_path, header_out, cpp_out, compile_commands_path=compile_commands)
+    generate(spec_path, header_out, cpp_out, discovery_include_dirs=discovery_dirs)
 
     generated_cpp = cpp_out.read_text(encoding="utf-8")
     assert "new Demo::XmlSerializer(file_cpp, filename_cpp)" in generated_cpp
@@ -725,7 +707,7 @@ def test_discovery_supports_implicit_default_constructors(tmp_path: Path) -> Non
         encoding="utf-8",
     )
     source.write_text('#include "constructors.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
     spec_path.write_text(
         dedent(
             """
@@ -753,12 +735,12 @@ def test_discovery_supports_implicit_default_constructors(tmp_path: Path) -> Non
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     call = next(call for call in spec.functions if call.c_name == "ifcopenshell_demo_create_settings")
     assert call.params == ()
 
     cpp_out = tmp_path / "demo_api.cpp"
-    generate(spec_path, tmp_path / "demo_api.h", cpp_out, compile_commands_path=compile_commands)
+    generate(spec_path, tmp_path / "demo_api.h", cpp_out, discovery_include_dirs=discovery_dirs)
     generated_cpp = cpp_out.read_text(encoding="utf-8")
     assert "new Demo::Settings()" in generated_cpp
 
@@ -785,7 +767,7 @@ def test_constructor_discovery_requires_params_for_overloaded_constructors(tmp_p
         encoding="utf-8",
     )
     source.write_text('#include "constructors.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
     spec_path.write_text(
         dedent(
             """
@@ -814,7 +796,7 @@ def test_constructor_discovery_requires_params_for_overloaded_constructors(tmp_p
     )
 
     with pytest.raises(ValueError, match="constructor params are required when overloads are present"):
-        load_authored_spec(spec_path, compile_commands_path=compile_commands)
+        load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
 
 
 def test_constructor_discovery_reports_missing_source_constructors(tmp_path: Path) -> None:
@@ -837,7 +819,7 @@ def test_constructor_discovery_reports_missing_source_constructors(tmp_path: Pat
         encoding="utf-8",
     )
     source.write_text('#include "constructors.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
     spec_path.write_text(
         dedent(
             """
@@ -866,7 +848,7 @@ def test_constructor_discovery_reports_missing_source_constructors(tmp_path: Pat
     )
 
     with pytest.raises(ValueError, match="no public constructors are available"):
-        load_authored_spec(spec_path, compile_commands_path=compile_commands)
+        load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
 
 
 def test_constructor_discovery_rejects_guarded_factories_without_fallback_params(tmp_path: Path) -> None:
@@ -900,7 +882,7 @@ def test_constructor_discovery_rejects_guarded_factories_without_fallback_params
     )
 
     with pytest.raises(ValueError, match="compile_guard requires params"):
-        load_authored_spec(spec_path, compile_commands_path=tmp_path / "compile_commands.json")
+        load_authored_spec(spec_path, discovery_include_dirs=_discovery_include_dirs(tmp_path))
 
 
 def test_discovery_supports_taxonomy_make_factories(tmp_path: Path) -> None:
@@ -949,7 +931,7 @@ def test_discovery_supports_taxonomy_make_factories(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     source.write_text('#include "taxonomy.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
     spec_path.write_text(
         dedent(
             """
@@ -1063,7 +1045,7 @@ def test_discovery_supports_taxonomy_make_factories(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     call = next(call for call in spec.functions if call.c_name == "ifcopenshell_demo_taxonomy_create_node")
     assert isinstance(call.policy_operation, TaxonomyMakeFactoryPolicyOp)
     assert call.params == ()
@@ -1088,7 +1070,7 @@ def test_discovery_supports_taxonomy_make_factories(tmp_path: Path) -> None:
     assert [param.name for param in offset_call.params] == ["basis", "reference", "offset"]
 
     cpp_out = tmp_path / "demo_api.cpp"
-    generate(spec_path, tmp_path / "demo_api.h", cpp_out, compile_commands_path=compile_commands)
+    generate(spec_path, tmp_path / "demo_api.h", cpp_out, discovery_include_dirs=discovery_dirs)
     generated_cpp = cpp_out.read_text(encoding="utf-8")
     assert (
         "ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::node>()"
@@ -1120,7 +1102,7 @@ def test_taxonomy_make_factories_require_shared_ptr_handles(tmp_path: Path) -> N
 
     header.write_text("namespace Demo { struct Node {}; }\n", encoding="utf-8")
     source.write_text('#include "taxonomy.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
     spec_path.write_text(
         dedent(
             """
@@ -1150,7 +1132,7 @@ def test_taxonomy_make_factories_require_shared_ptr_handles(tmp_path: Path) -> N
     )
 
     with pytest.raises(ValueError, match="taxonomy_make requires a shared_ptr handle"):
-        load_authored_spec(spec_path, compile_commands_path=compile_commands)
+        load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
 
 
 def test_discovery_rejects_stale_constructor_signature(tmp_path: Path) -> None:
@@ -1174,7 +1156,7 @@ def test_discovery_rejects_stale_constructor_signature(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     source.write_text('#include "constructors.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
     spec_path.write_text(
         dedent(
             """
@@ -1209,7 +1191,7 @@ def test_discovery_rejects_stale_constructor_signature(tmp_path: Path) -> None:
     )
 
     with pytest.raises(ValueError, match=r"unable to resolve constructor.*available: Demo::Tree"):
-        load_authored_spec(spec_path, compile_commands_path=compile_commands)
+        load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
 
 
 def test_load_authored_spec_infers_simple_call_kinds(tmp_path: Path) -> None:
@@ -1670,7 +1652,7 @@ def test_generate_synthetic_autodiscovery_features(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     source.write_text('#include "sample.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -1756,7 +1738,7 @@ def test_generate_synthetic_autodiscovery_features(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in (*spec.functions, *spec.methods)}
 
     expected_calls = {
@@ -1802,7 +1784,7 @@ def test_generate_synthetic_autodiscovery_features(tmp_path: Path) -> None:
 
     header_out = tmp_path / "demo_api.h"
     cpp_out = tmp_path / "demo_api.cpp"
-    generate(spec_path, header_out, cpp_out, compile_commands_path=compile_commands)
+    generate(spec_path, header_out, cpp_out, discovery_include_dirs=discovery_dirs)
 
     generated_header = header_out.read_text(encoding="utf-8")
     generated_cpp = cpp_out.read_text(encoding="utf-8")
@@ -1859,7 +1841,7 @@ def test_autodiscovery_lowers_bool_double_reference_out_params(tmp_path: Path) -
         encoding="utf-8",
     )
     source.write_text('#include "out_param_sample.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -1887,7 +1869,7 @@ def test_autodiscovery_lowers_bool_double_reference_out_params(tmp_path: Path) -
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     call = {call.c_name: call for call in spec.methods}["ifcopenshell_demo_shape_calculate_volume"]
     assert call.returns.kind == "double"
     assert call.params == ()
@@ -1895,7 +1877,7 @@ def test_autodiscovery_lowers_bool_double_reference_out_params(tmp_path: Path) -
 
     header_out = tmp_path / "demo_api.h"
     cpp_out = tmp_path / "demo_api.cpp"
-    generate(spec_path, header_out, cpp_out, compile_commands_path=compile_commands)
+    generate(spec_path, header_out, cpp_out, discovery_include_dirs=discovery_dirs)
 
     generated_header = header_out.read_text(encoding="utf-8")
     generated_cpp = cpp_out.read_text(encoding="utf-8")
@@ -1928,7 +1910,7 @@ def test_autodiscovery_supports_enum_methods(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     source.write_text('#include "enum_sample.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -1958,7 +1940,7 @@ def test_autodiscovery_supports_enum_methods(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.methods}
 
     assert calls["ifcopenshell_demo_widget_mode"].returns.kind == "int32"
@@ -1968,7 +1950,7 @@ def test_autodiscovery_supports_enum_methods(tmp_path: Path) -> None:
 
     header_out = tmp_path / "enum_api.h"
     cpp_out = tmp_path / "enum_api.cpp"
-    generate(spec_path, header_out, cpp_out, compile_commands_path=compile_commands)
+    generate(spec_path, header_out, cpp_out, discovery_include_dirs=discovery_dirs)
 
     generated_cpp = cpp_out.read_text(encoding="utf-8")
     assert "auto next_cpp = static_cast<Demo::Mode>(next);" in generated_cpp
@@ -2042,7 +2024,7 @@ def test_autodiscovery_supports_sets_and_opaque_coordinates(tmp_path: Path) -> N
         encoding="utf-8",
     )
     source.write_text('#include "containers.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -2093,7 +2075,7 @@ def test_autodiscovery_supports_sets_and_opaque_coordinates(tmp_path: Path) -> N
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.methods}
 
     assert calls["ifcopenshell_demo_widget_set_names"].params[0].type.kind == "string"
@@ -2111,7 +2093,7 @@ def test_autodiscovery_supports_sets_and_opaque_coordinates(tmp_path: Path) -> N
 
     header_out = tmp_path / "containers_api.h"
     cpp_out = tmp_path / "containers_api.cpp"
-    generate(spec_path, header_out, cpp_out, compile_commands_path=compile_commands)
+    generate(spec_path, header_out, cpp_out, discovery_include_dirs=discovery_dirs)
 
     generated_cpp = cpp_out.read_text(encoding="utf-8")
     assert "std::set<std::string> names_cpp(names_vec.begin(), names_vec.end());" in generated_cpp
@@ -2145,7 +2127,7 @@ def test_autodiscovery_supports_nested_vectors(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     source.write_text('#include "nested_vectors.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -2177,7 +2159,7 @@ def test_autodiscovery_supports_nested_vectors(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.methods}
 
     assert calls["ifcopenshell_demo_widget_set_faces"].params[0].type.kind == "int32"
@@ -2193,7 +2175,7 @@ def test_autodiscovery_supports_nested_vectors(tmp_path: Path) -> None:
 
     header_out = tmp_path / "nested_vectors_api.h"
     cpp_out = tmp_path / "nested_vectors_api.cpp"
-    generate(spec_path, header_out, cpp_out, compile_commands_path=compile_commands)
+    generate(spec_path, header_out, cpp_out, discovery_include_dirs=discovery_dirs)
 
     generated_cpp = cpp_out.read_text(encoding="utf-8")
     assert "auto faces_cpp = to_cpp_int32_list_list(faces);" in generated_cpp
@@ -2237,7 +2219,7 @@ def test_autodiscovery_supports_nested_namespace_functions(tmp_path: Path) -> No
         + "\n",
         encoding="utf-8",
     )
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -2266,7 +2248,7 @@ def test_autodiscovery_supports_nested_namespace_functions(tmp_path: Path) -> No
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.functions}
 
     assert calls["ifcopenshell_demo_nested_count"].policy_operation.cpp_name == "ifcapi::bindings::nested_count"
@@ -2276,14 +2258,14 @@ def test_autodiscovery_supports_nested_namespace_functions(tmp_path: Path) -> No
 
     header_out = tmp_path / "bindings_api.h"
     cpp_out = tmp_path / "bindings_api.cpp"
-    generate(spec_path, header_out, cpp_out, compile_commands_path=compile_commands)
+    generate(spec_path, header_out, cpp_out, discovery_include_dirs=discovery_dirs)
 
     generated_cpp = cpp_out.read_text(encoding="utf-8")
     assert "ifcapi::bindings::nested_count(name_cpp)" in generated_cpp
     assert "ifcapi::bindings::qualified_scale(value_cpp)" in generated_cpp
 
 
-def test_authored_spec_discovery_uses_explicit_compilation_without_compile_commands(tmp_path: Path) -> None:
+def test_authored_spec_discovery_uses_explicit_compilation(tmp_path: Path) -> None:
     compiler = shutil.which("clang++")
     if compiler is None:
         pytest.skip("clang++ is not available")
@@ -2332,7 +2314,7 @@ def test_authored_spec_discovery_uses_explicit_compilation_without_compile_comma
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=None)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=())
     calls = {call.c_name: call for call in spec.functions}
 
     assert calls["ifcopenshell_demo_nested_count"].policy_operation.cpp_name == "ifcapi::bindings::nested_count"
@@ -2340,13 +2322,13 @@ def test_authored_spec_discovery_uses_explicit_compilation_without_compile_comma
 
     header_out = tmp_path / "bindings_api.h"
     cpp_out = tmp_path / "bindings_api.cpp"
-    generate(spec_path, header_out, cpp_out, compile_commands_path=None)
+    generate(spec_path, header_out, cpp_out, discovery_include_dirs=())
 
     generated_cpp = cpp_out.read_text(encoding="utf-8")
     assert "ifcapi::bindings::nested_count(name_cpp)" in generated_cpp
 
 
-def test_authored_spec_discovery_accepts_global_include_dirs_without_compile_commands(tmp_path: Path) -> None:
+def test_authored_spec_discovery_accepts_global_include_dirs(tmp_path: Path) -> None:
     compiler = shutil.which("clang++")
     if compiler is None:
         pytest.skip("clang++ is not available")
@@ -2399,7 +2381,6 @@ def test_authored_spec_discovery_accepts_global_include_dirs_without_compile_com
 
     spec = load_authored_spec(
         spec_path,
-        compile_commands_path=None,
         discovery_include_dirs=(dependency_dir,),
     )
     calls = {call.c_name: call for call in spec.functions}
@@ -2411,7 +2392,6 @@ def test_authored_spec_discovery_accepts_global_include_dirs_without_compile_com
         spec_path,
         header_out,
         cpp_out,
-        compile_commands_path=None,
         discovery_include_dirs=(dependency_dir,),
     )
     assert "int32_t value" in header_out.read_text(encoding="utf-8")
@@ -2556,7 +2536,7 @@ def test_discovery_type_overrides_can_target_canonical_overload_signature(tmp_pa
         encoding="utf-8",
     )
     source.write_text('#include "overloaded.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -2595,7 +2575,7 @@ def test_discovery_type_overrides_can_target_canonical_overload_signature(tmp_pa
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.methods}
 
     assert calls["ifcopenshell_demo_overloaded_value"].returns.kind == "double"
@@ -2623,7 +2603,7 @@ def test_discovery_rejects_name_scoped_type_override_for_overloaded_member(tmp_p
         encoding="utf-8",
     )
     source.write_text('#include "overloaded.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -2663,7 +2643,7 @@ def test_discovery_rejects_name_scoped_type_override_for_overloaded_member(tmp_p
     )
 
     with pytest.raises(ValueError, match="canonical signature keys"):
-        load_authored_spec(spec_path, compile_commands_path=compile_commands)
+        load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
 
 
 def test_autodiscovery_uses_marked_contract_when_translation_unit_is_omitted(tmp_path: Path) -> None:
@@ -2697,7 +2677,7 @@ def test_autodiscovery_uses_marked_contract_when_translation_unit_is_omitted(tmp
         encoding="utf-8",
     )
     source.write_text("int reference() { return 0; }\n", encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -2727,7 +2707,7 @@ def test_autodiscovery_uses_marked_contract_when_translation_unit_is_omitted(tmp
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.functions}
 
     assert set(calls) == {
@@ -2767,7 +2747,7 @@ def test_contract_discovery_rejects_unmarked_policy(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     source.write_text("int reference() { return 0; }\n", encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -2793,7 +2773,7 @@ def test_contract_discovery_rejects_unmarked_policy(tmp_path: Path) -> None:
     )
 
     with pytest.raises(ValueError, match="type overrides for unmarked functions"):
-        load_authored_spec(spec_path, compile_commands_path=compile_commands)
+        load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
 
 
 def test_contract_discovery_rejects_duplicate_header_policy(tmp_path: Path) -> None:
@@ -2817,7 +2797,7 @@ def test_contract_discovery_rejects_duplicate_header_policy(tmp_path: Path) -> N
         encoding="utf-8",
     )
     source.write_text("int reference() { return 0; }\n", encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -2848,7 +2828,7 @@ def test_contract_discovery_rejects_duplicate_header_policy(tmp_path: Path) -> N
     )
 
     with pytest.raises(ValueError, match="duplicate return policy"):
-        load_authored_spec(spec_path, compile_commands_path=compile_commands)
+        load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
 
 
 def test_contract_discovery_rejects_duplicate_parameter_policy(tmp_path: Path) -> None:
@@ -2872,7 +2852,7 @@ def test_contract_discovery_rejects_duplicate_parameter_policy(tmp_path: Path) -
         encoding="utf-8",
     )
     source.write_text("int reference() { return 0; }\n", encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -2904,7 +2884,7 @@ def test_contract_discovery_rejects_duplicate_parameter_policy(tmp_path: Path) -
     )
 
     with pytest.raises(ValueError, match="duplicate parameter policy"):
-        load_authored_spec(spec_path, compile_commands_path=compile_commands)
+        load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
 
 
 def test_contract_discovery_rejects_missing_public_header(tmp_path: Path) -> None:
@@ -2912,7 +2892,7 @@ def test_contract_discovery_rejects_missing_public_header(tmp_path: Path) -> Non
     spec_path = tmp_path / "bindings.yml"
 
     source.write_text("int reference() { return 0; }\n", encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -2934,7 +2914,7 @@ def test_contract_discovery_rejects_missing_public_header(tmp_path: Path) -> Non
     )
 
     with pytest.raises(FileNotFoundError, match="missing_bindings.h"):
-        load_authored_spec(spec_path, compile_commands_path=compile_commands)
+        load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
 
 
 def test_namespace_function_discovery_rejects_stale_type_override(tmp_path: Path) -> None:
@@ -2954,7 +2934,7 @@ def test_namespace_function_discovery_rejects_stale_type_override(tmp_path: Path
         encoding="utf-8",
     )
     source.write_text('#include "bindings.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -2983,7 +2963,7 @@ def test_namespace_function_discovery_rejects_stale_type_override(tmp_path: Path
     )
 
     with pytest.raises(ValueError, match="type overrides for unknown functions"):
-        load_authored_spec(spec_path, compile_commands_path=compile_commands)
+        load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
 
 
 def test_autodiscovery_treats_char_pointer_params_as_nullable_strings(tmp_path: Path) -> None:
@@ -3004,7 +2984,7 @@ def test_autodiscovery_treats_char_pointer_params_as_nullable_strings(tmp_path: 
         encoding="utf-8",
     )
     source.write_text('#include <string>\n#include "nullable_strings.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -3029,7 +3009,7 @@ def test_autodiscovery_treats_char_pointer_params_as_nullable_strings(tmp_path: 
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.functions}
 
     assert calls["ifcopenshell_demo_maybe_named"].params[0].type.kind == "string"
@@ -3039,7 +3019,7 @@ def test_autodiscovery_treats_char_pointer_params_as_nullable_strings(tmp_path: 
 
     header_out = tmp_path / "nullable_strings_api.h"
     cpp_out = tmp_path / "nullable_strings_api.cpp"
-    generate(spec_path, header_out, cpp_out, compile_commands_path=compile_commands)
+    generate(spec_path, header_out, cpp_out, discovery_include_dirs=discovery_dirs)
     generated_cpp = cpp_out.read_text(encoding="utf-8")
     assert "Demo::maybe_named(name)" in generated_cpp
     assert "std::string name_cpp(name);" in generated_cpp
@@ -3068,7 +3048,7 @@ def test_namespace_function_discovery_infers_result_struct_returns(tmp_path: Pat
         encoding="utf-8",
     )
     source.write_text('#include "result_structs.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -3101,7 +3081,7 @@ def test_namespace_function_discovery_infers_result_struct_returns(tmp_path: Pat
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.functions}
 
     assert calls["ifcopenshell_demo_make_pair_result"].returns.kind == "struct"
@@ -3129,7 +3109,7 @@ def test_namespace_function_discovery_infers_tribool_as_logical(tmp_path: Path) 
         encoding="utf-8",
     )
     source.write_text('#include "logical.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -3153,7 +3133,7 @@ def test_namespace_function_discovery_infers_tribool_as_logical(tmp_path: Path) 
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.functions}
 
     assert calls["ifcopenshell_demo_set_flags"].params[0].type.kind == "logical"
@@ -3178,7 +3158,7 @@ def test_namespace_function_discovery_infers_unknown_raw_pointers_as_opaque(tmp_
         encoding="utf-8",
     )
     source.write_text('#include "opaque.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -3208,7 +3188,7 @@ def test_namespace_function_discovery_infers_unknown_raw_pointers_as_opaque(tmp_
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.functions}
 
     assert calls["ifcopenshell_demo_create_options"].returns.kind == "opaque_ptr"
@@ -3220,7 +3200,7 @@ def test_namespace_function_discovery_infers_unknown_raw_pointers_as_opaque(tmp_
 
     header_out = tmp_path / "opaque_api.h"
     cpp_out = tmp_path / "opaque_api.cpp"
-    generate(spec_path, header_out, cpp_out, compile_commands_path=compile_commands)
+    generate(spec_path, header_out, cpp_out, discovery_include_dirs=discovery_dirs)
     generated_cpp = cpp_out.read_text(encoding="utf-8")
     assert 'Parameter "options" must not be null' not in generated_cpp
     assert "auto options_cpp = static_cast<Options*>(options);" in generated_cpp
@@ -3254,7 +3234,7 @@ def test_autodiscovery_supports_shared_ptr_handle_vectors(tmp_path: Path) -> Non
         encoding="utf-8",
     )
     source.write_text('#include "shared_ptr_vectors.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -3289,7 +3269,7 @@ def test_autodiscovery_supports_shared_ptr_handle_vectors(tmp_path: Path) -> Non
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.methods}
 
     assert calls["ifcopenshell_demo_widget_set_children"].params[0].type.kind == "handle"
@@ -3302,7 +3282,7 @@ def test_autodiscovery_supports_shared_ptr_handle_vectors(tmp_path: Path) -> Non
 
     header_out = tmp_path / "shared_ptr_vectors_api.h"
     cpp_out = tmp_path / "shared_ptr_vectors_api.cpp"
-    generate(spec_path, header_out, cpp_out, compile_commands_path=compile_commands)
+    generate(spec_path, header_out, cpp_out, discovery_include_dirs=discovery_dirs)
 
     generated_cpp = cpp_out.read_text(encoding="utf-8")
     assert "auto children_cpp = to_cpp_demo_child_list(children);" in generated_cpp
@@ -3341,7 +3321,7 @@ def test_autodiscovery_supports_boost_shared_ptr_handles(tmp_path: Path) -> None
         encoding="utf-8",
     )
     source.write_text('#include "boost_shared_ptr_handles.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -3376,7 +3356,7 @@ def test_autodiscovery_supports_boost_shared_ptr_handles(tmp_path: Path) -> None
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.methods}
 
     assert calls["ifcopenshell_demo_widget_set_collection"].params[0].type.kind == "handle"
@@ -3410,7 +3390,7 @@ def test_autodiscovery_supports_unique_ptr_handles(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     source.write_text('#include "unique_ptr_handles.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -3444,7 +3424,7 @@ def test_autodiscovery_supports_unique_ptr_handles(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.methods}
 
     assert calls["ifcopenshell_demo_widget_take_child"].returns.kind == "handle"
@@ -3456,7 +3436,7 @@ def test_autodiscovery_supports_unique_ptr_handles(tmp_path: Path) -> None:
 
     header_out = tmp_path / "unique_ptr_handles_api.h"
     cpp_out = tmp_path / "unique_ptr_handles_api.cpp"
-    generate(spec_path, header_out, cpp_out, compile_commands_path=compile_commands)
+    generate(spec_path, header_out, cpp_out, discovery_include_dirs=discovery_dirs)
     generated_cpp = cpp_out.read_text(encoding="utf-8")
 
     assert "*out_result = new ifcopenshell_demo_child_t{self_cpp->take_child().release(), true};" in generated_cpp
@@ -3491,7 +3471,7 @@ def test_autodiscovery_matches_shared_ptr_handles_by_qualified_suffix(tmp_path: 
         encoding="utf-8",
     )
     source.write_text('#include "qualified_shared_ptr_suffix.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -3525,7 +3505,7 @@ def test_autodiscovery_matches_shared_ptr_handles_by_qualified_suffix(tmp_path: 
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.methods}
 
     assert calls["ifcopenshell_demo_evaluator_evaluate"].returns.kind == "handle"
@@ -3598,7 +3578,7 @@ def test_autodiscovery_supports_opaque_coordinate_vectors(tmp_path: Path) -> Non
         encoding="utf-8",
     )
     source.write_text('#include "opaque_coordinate_vectors.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -3666,7 +3646,7 @@ def test_autodiscovery_supports_opaque_coordinate_vectors(tmp_path: Path) -> Non
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.methods}
 
     assert calls["ifcopenshell_demo_widget_set_planes"].params[0].type.kind == "double"
@@ -3676,7 +3656,7 @@ def test_autodiscovery_supports_opaque_coordinate_vectors(tmp_path: Path) -> Non
 
     header_out = tmp_path / "opaque_coordinate_vectors_api.h"
     cpp_out = tmp_path / "opaque_coordinate_vectors_api.cpp"
-    generate(spec_path, header_out, cpp_out, compile_commands_path=compile_commands)
+    generate(spec_path, header_out, cpp_out, discovery_include_dirs=discovery_dirs)
 
     generated_cpp = cpp_out.read_text(encoding="utf-8")
     assert "auto planes_cpp = to_cpp_double_list_list(planes);" in generated_cpp
@@ -3710,7 +3690,7 @@ def test_autodiscovery_supports_uint8_vectors(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     source.write_text('#include "uint8_vectors.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -3740,7 +3720,7 @@ def test_autodiscovery_supports_uint8_vectors(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.methods}
 
     assert calls["ifcopenshell_demo_widget_set_bytes"].params[0].type.kind == "uint8"
@@ -3751,7 +3731,7 @@ def test_autodiscovery_supports_uint8_vectors(tmp_path: Path) -> None:
 
     header_out = tmp_path / "uint8_vectors_api.h"
     cpp_out = tmp_path / "uint8_vectors_api.cpp"
-    generate(spec_path, header_out, cpp_out, compile_commands_path=compile_commands)
+    generate(spec_path, header_out, cpp_out, discovery_include_dirs=discovery_dirs)
 
     generated_header = header_out.read_text(encoding="utf-8")
     generated_cpp = cpp_out.read_text(encoding="utf-8")
@@ -3787,7 +3767,7 @@ def test_autodiscovery_matches_handles_via_base_classes(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     source.write_text('#include "base_handle_match.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -3820,7 +3800,7 @@ def test_autodiscovery_matches_handles_via_base_classes(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.methods}
 
     assert calls["ifcopenshell_demo_widget_product"].returns.kind == "handle"
@@ -3853,7 +3833,7 @@ def test_autodiscovery_supports_handle_list_list(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     source.write_text('#include "handle_list_list.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -3886,7 +3866,7 @@ def test_autodiscovery_supports_handle_list_list(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.methods}
     assert calls["ifcopenshell_demo_container_groups"].returns.kind == "handle"
     assert calls["ifcopenshell_demo_container_groups"].returns.sequence_depth == 2
@@ -3894,7 +3874,7 @@ def test_autodiscovery_supports_handle_list_list(tmp_path: Path) -> None:
 
     header_out = tmp_path / "handle_list_list_api.h"
     cpp_out = tmp_path / "handle_list_list_api.cpp"
-    generate(spec_path, header_out, cpp_out, compile_commands_path=compile_commands)
+    generate(spec_path, header_out, cpp_out, discovery_include_dirs=discovery_dirs)
 
     generated_header = header_out.read_text(encoding="utf-8")
     generated_cpp = cpp_out.read_text(encoding="utf-8")
@@ -3938,7 +3918,7 @@ def test_autodiscovery_supports_instance_aggregate_aggregate_ptr(tmp_path: Path)
         encoding="utf-8",
     )
     source.write_text('#include "aggregate_ptr.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -3977,7 +3957,7 @@ def test_autodiscovery_supports_instance_aggregate_aggregate_ptr(tmp_path: Path)
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.methods}
     assert calls["ifcopenshell_demo_iterator_get_task_products"].returns.kind == "handle"
     assert calls["ifcopenshell_demo_iterator_get_task_products"].returns.sequence_depth == 2
@@ -4005,7 +3985,7 @@ def test_autodiscovery_supports_int32_list_list_list(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     source.write_text('#include "triple_int_vectors.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -4034,14 +4014,14 @@ def test_autodiscovery_supports_int32_list_list_list(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.methods}
     assert calls["ifcopenshell_demo_mesh_polyhedral_faces_with_holes"].returns.kind == "int32"
     assert calls["ifcopenshell_demo_mesh_polyhedral_faces_with_holes"].returns.sequence_depth == 3
 
     header_out = tmp_path / "triple_int_vectors_api.h"
     cpp_out = tmp_path / "triple_int_vectors_api.cpp"
-    generate(spec_path, header_out, cpp_out, compile_commands_path=compile_commands)
+    generate(spec_path, header_out, cpp_out, discovery_include_dirs=discovery_dirs)
 
     generated_header = header_out.read_text(encoding="utf-8")
     generated_cpp = cpp_out.read_text(encoding="utf-8")
@@ -4089,7 +4069,7 @@ def test_load_authored_spec_reports_discovery_diagnostics(tmp_path: Path) -> Non
         encoding="utf-8",
     )
     source.write_text('#include "diagnostics.h"\n', encoding="utf-8")
-    compile_commands = _write_compile_commands(tmp_path, source)
+    discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
         dedent(
@@ -4119,7 +4099,7 @@ def test_load_authored_spec_reports_discovery_diagnostics(tmp_path: Path) -> Non
         encoding="utf-8",
     )
 
-    spec = load_authored_spec(spec_path, compile_commands_path=compile_commands)
+    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in (*spec.functions, *spec.methods)}
 
     assert "ifcopenshell_demo_diagnostics_ok" in calls

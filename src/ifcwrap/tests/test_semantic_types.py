@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 import shutil
 
 import pytest
 
-from src.ifcwrap.binding_generator.clang_discovery import discover_public_fields_with_compile_commands
+from src.ifcwrap.binding_generator.clang_discovery import (
+    CompilationConfig,
+    DiscoveryEnvironment,
+    discover_public_fields,
+)
 from src.ifcwrap.binding_generator.semantic_types import (
     OptionalSemanticType,
     RecordSemanticType,
@@ -55,7 +58,6 @@ def test_analyze_cpp_type_parses_shared_ptr_aliases_from_discovery(tmp_path: Pat
 
     header = tmp_path / "shared_ptr_alias.h"
     source = tmp_path / "shared_ptr_alias.cpp"
-    compile_commands = tmp_path / "compile_commands.json"
 
     header.write_text(
         """
@@ -75,20 +77,11 @@ struct Holder {
         encoding="utf-8",
     )
     source.write_text('#include "shared_ptr_alias.h"\n', encoding="utf-8")
-    compile_commands.write_text(
-        json.dumps(
-            [
-                {
-                    "directory": str(tmp_path),
-                    "command": f"{compiler} -std=c++17 -I {tmp_path} -c {source}",
-                    "file": str(source),
-                }
-            ]
-        ),
-        encoding="utf-8",
-    )
 
-    fields = discover_public_fields_with_compile_commands(compile_commands, source, "Demo::Holder")
+    environment = DiscoveryEnvironment(
+        compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)
+    )
+    fields = discover_public_fields(environment, source, "Demo::Holder")
     semantic = analyze_cpp_type(fields["axis"].cpp_type_ref)
 
     assert isinstance(semantic, RecordSemanticType)

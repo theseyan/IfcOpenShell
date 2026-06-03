@@ -7,7 +7,7 @@ legacy SWIG-only binding flow for `IfcParse`.
 
 - The generator is source-driven for direct bindings.
   It reads real C++ declarations through Clang AST data using
-  `compile_commands.json`.
+  `--discovery-include-dir` flags for include path resolution.
 - The binding definition file is policy-oriented, not a full hand-written API
   inventory.
   For `IfcParse`, the main input is
@@ -37,7 +37,7 @@ typed C access.
 - `specs/ifcparse.yml`
   Binding policy for the `IfcParse` slice.
 - `clang_discovery.py`
-  Clang AST discovery driven by `compile_commands.json`.
+  Clang AST discovery driven by `--discovery-include-dir` flags.
 - `authored_spec.py`
   Spec loading, validation, and normalization into generator calls.
 - `c_backend.py`
@@ -49,8 +49,8 @@ typed C access.
   Builds the checked-in generated `IfcParse` C API.
 - `IFCCAPI_REGENERATE_BINDINGS=ON`
   Developer-only regeneration mode.
-  This regenerates the checked-in C API from `specs/ifcparse.yml` using the
-  active build's `compile_commands.json`.
+  This regenerates the checked-in C API from `specs/ifcparse.yml` using
+  `--discovery-include-dir` flags from the CMake build.
 - `IFCWRAP_BINDGEN_JOBS=<N>`
   Optional generator-only concurrency for independent Clang discovery jobs.
   CMake's `--parallel` flag still only controls CMake build scheduling; it does

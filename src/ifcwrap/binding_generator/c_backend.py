@@ -164,14 +164,12 @@ def _cpp_spec_public_header(spec_path: Path, include_dirs: tuple[Path, ...]) -> 
 def _merge_cpp_specs(
     base: MergedBindingSpec,
     configs: Sequence[CppSpecConfig],
-    compile_commands_path: Path | None,
     *,
     discovery_include_dirs: tuple[Path, ...] = (),
     discovery_defines: tuple[str, ...] = (),
     discovery_clang_args: tuple[str, ...] = (),
 ) -> MergedBindingSpec:
     environment = _cpp_spec_environment(
-        None,
         discovery_include_dirs=discovery_include_dirs,
         discovery_defines=discovery_defines,
         discovery_clang_args=discovery_clang_args,
@@ -353,7 +351,6 @@ def generate(
     spec_path: Path,
     header_out: Path,
     cpp_out: Path,
-    compile_commands_path: Path | None = None,
     internal_header_out: Path | None = None,
     python_out: Path | None = None,
     discovery_include_dirs: tuple[Path, ...] = (),
@@ -362,12 +359,11 @@ def generate(
 ) -> None:
     debug_log(
         "c_backend.generate.start",
-        f"spec={debug_path(spec_path)} header_out={debug_path(header_out)} cpp_out={debug_path(cpp_out)} internal_header_out={debug_path(internal_header_out)} compile_commands={debug_path(compile_commands_path)}",
+        f"spec={debug_path(spec_path)} header_out={debug_path(header_out)} cpp_out={debug_path(cpp_out)} internal_header_out={debug_path(internal_header_out)}",
     )
     spec = lower_binding_spec(
         load_authored_spec(
             spec_path,
-            compile_commands_path=compile_commands_path,
             discovery_include_dirs=discovery_include_dirs,
             discovery_defines=discovery_defines,
             discovery_clang_args=discovery_clang_args,
@@ -393,7 +389,6 @@ def generate_merged(
     c_prefix: str,
     header_out: Path,
     cpp_out: Path,
-    compile_commands_path: Path | None = None,
     internal_header_out: Path | None = None,
     python_out: Path | None = None,
     discovery_include_dirs: tuple[Path, ...] = (),
@@ -407,7 +402,7 @@ def generate_merged(
     """Generate bindings from multiple specs merged together."""
     debug_log(
         "c_backend.generate_merged.start",
-        f"specs={len(spec_paths)} header_out={debug_path(header_out)} cpp_out={debug_path(cpp_out)} internal_header_out={debug_path(internal_header_out)} compile_commands={debug_path(compile_commands_path)}",
+        f"specs={len(spec_paths)} header_out={debug_path(header_out)} cpp_out={debug_path(cpp_out)} internal_header_out={debug_path(internal_header_out)}",
     )
     cpp_spec_configs = _cpp_spec_configs(cpp_spec_paths, cpp_spec_namespace, cpp_spec_c_prefix, cpp_spec_handle_c_prefix) if cpp_spec_paths else ()
     cpp_spec_handles: dict[str, HandleSpec] = {}
@@ -421,7 +416,6 @@ def generate_merged(
         spec_paths,
         module,
         c_prefix,
-        compile_commands_path=compile_commands_path,
         discovery_include_dirs=discovery_include_dirs,
         discovery_defines=discovery_defines,
         discovery_clang_args=discovery_clang_args,
@@ -431,7 +425,6 @@ def generate_merged(
         merged_spec = _merge_cpp_specs(
             merged_spec,
             cpp_spec_configs,
-            compile_commands_path,
             discovery_include_dirs=discovery_include_dirs,
             discovery_defines=discovery_defines,
             discovery_clang_args=discovery_clang_args,
@@ -452,14 +445,12 @@ def generate_merged(
 
 
 def _cpp_spec_environment(
-    compile_commands_path: Path | None,
     *,
     discovery_include_dirs: tuple[Path, ...] = (),
     discovery_defines: tuple[str, ...] = (),
     discovery_clang_args: tuple[str, ...] = (),
 ) -> DiscoveryEnvironment:
     return DiscoveryEnvironment(
-        compile_commands_path=compile_commands_path,
         compilation=CompilationConfig(
             include_dirs=discovery_include_dirs,
             defines=discovery_defines,
@@ -475,7 +466,6 @@ def generate_cpp_specs(
     c_prefix: str,
     header_out: Path,
     cpp_out: Path,
-    compile_commands_path: Path | None = None,
     internal_header_out: Path | None = None,
     python_out: Path | None = None,
     discovery_include_dirs: tuple[Path, ...] = (),
@@ -487,7 +477,6 @@ def generate_cpp_specs(
     """Generate bindings from explicit C++ spec translation units."""
     configs = _cpp_spec_configs(spec_paths, namespace, function_c_prefix, handle_c_prefix)
     environment = _cpp_spec_environment(
-        None,
         discovery_include_dirs=discovery_include_dirs,
         discovery_defines=discovery_defines,
         discovery_clang_args=discovery_clang_args,
@@ -612,29 +601,23 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional output path for generated Python ctypes glue.",
     )
     parser.add_argument(
-        "--compile-commands",
-        type=Path,
-        default=None,
-        help="Optional compile_commands.json override for AST-backed source discovery.",
-    )
-    parser.add_argument(
         "--discovery-include-dir",
         type=Path,
         action="append",
         default=[],
-        help="Additional deterministic include directory for no-compile-commands AST discovery.",
+        help="Additional include directory for AST discovery.",
     )
     parser.add_argument(
         "--discovery-define",
         action="append",
         default=[],
-        help="Additional preprocessor definition for no-compile-commands AST discovery, without the -D prefix.",
+        help="Additional preprocessor definition for AST discovery, without the -D prefix.",
     )
     parser.add_argument(
         "--discovery-clang-arg",
         action="append",
         default=[],
-        help="Additional raw Clang argument for no-compile-commands AST discovery.",
+        help="Additional raw Clang argument for AST discovery.",
     )
     parser.add_argument(
         "--module",
@@ -664,7 +647,6 @@ def main() -> int:
             args.c_prefix,
             args.header_out,
             args.cpp_out,
-            compile_commands_path=args.compile_commands,
             internal_header_out=args.internal_header_out,
             python_out=args.python_out,
             discovery_include_dirs=tuple(args.discovery_include_dir),
@@ -683,7 +665,6 @@ def main() -> int:
             args.spec[0],
             args.header_out,
             args.cpp_out,
-            compile_commands_path=args.compile_commands,
             internal_header_out=args.internal_header_out,
             python_out=args.python_out,
             discovery_include_dirs=tuple(args.discovery_include_dir),
@@ -701,7 +682,6 @@ def main() -> int:
             args.c_prefix,
             args.header_out,
             args.cpp_out,
-            compile_commands_path=args.compile_commands,
             internal_header_out=args.internal_header_out,
             python_out=args.python_out,
             discovery_include_dirs=tuple(args.discovery_include_dir),

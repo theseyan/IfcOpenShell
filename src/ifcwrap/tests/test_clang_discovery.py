@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 import shutil
 
@@ -13,22 +12,19 @@ from src.ifcwrap.binding_generator.clang_discovery import (
     TranslationUnitIndex,
     _ast_filter_for_lookup,
     discover_namespace_functions,
-    discover_namespace_functions_with_compile_commands,
     discover_namespace_functions_with_synthetic_source,
+    discover_public_fields,
     discover_public_methods,
-    discover_public_fields_with_compile_commands,
-    discover_public_methods_with_compile_commands,
 )
 
 
-def test_discover_public_methods_with_compile_commands(tmp_path: Path) -> None:
+def test_discover_public_methods_with_discovery_environment(tmp_path: Path) -> None:
     compiler = shutil.which("clang++")
     if compiler is None:
         pytest.skip("clang++ is not available")
 
     header = tmp_path / "sample.h"
     source = tmp_path / "sample.cpp"
-    compile_commands = tmp_path / "compile_commands.json"
 
     header.write_text(
         """
@@ -54,20 +50,8 @@ void hop(const std::string& guid);
         encoding="utf-8",
     )
     source.write_text('#include "sample.h"\n', encoding="utf-8")
-    compile_commands.write_text(
-        json.dumps(
-            [
-                {
-                    "directory": str(tmp_path),
-                    "command": f"{compiler} -std=c++17 -I {tmp_path} -c {source}",
-                    "file": str(source),
-                }
-            ]
-        ),
-        encoding="utf-8",
-    )
 
-    methods = discover_public_methods_with_compile_commands(compile_commands, source, "Foo")
+    methods = discover_public_methods(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Foo")
 
     assert set(methods) == {"bar", "baz", "qux"}
     assert len(methods["bar"]) == 1
@@ -86,10 +70,10 @@ void hop(const std::string& guid);
     assert [param.cpp_type for param in methods["qux"][0].params] == ["int"]
     assert [param.cpp_type for param in methods["qux"][1].params] == ["const std::string &"]
 
-    qualified_methods = discover_public_methods_with_compile_commands(compile_commands, source, "Demo::Foo")
+    qualified_methods = discover_public_methods(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Demo::Foo")
     assert set(qualified_methods) == {"bar", "baz", "qux"}
 
-    functions = discover_namespace_functions_with_compile_commands(compile_commands, source, "Demo")
+    functions = discover_namespace_functions(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Demo")
     assert set(functions) == {"walk", "hop"}
     assert len(functions["walk"]) == 1
     assert functions["walk"][0].return_cpp_type == "int"
@@ -104,7 +88,6 @@ def test_discover_namespace_functions_with_nested_qualified_namespace(tmp_path: 
 
     header = tmp_path / "bindings.h"
     source = tmp_path / "bindings.cpp"
-    compile_commands = tmp_path / "compile_commands.json"
 
     header.write_text(
         """
@@ -130,20 +113,8 @@ double qualified_scale(double value) { return value; }
         + "\n",
         encoding="utf-8",
     )
-    compile_commands.write_text(
-        json.dumps(
-            [
-                {
-                    "directory": str(tmp_path),
-                    "command": f"{compiler} -std=c++17 -I {tmp_path} -c {source}",
-                    "file": str(source),
-                }
-            ]
-        ),
-        encoding="utf-8",
-    )
 
-    functions = discover_namespace_functions_with_compile_commands(compile_commands, source, "ifcapi::bindings")
+    functions = discover_namespace_functions(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "ifcapi::bindings")
 
     assert set(functions) == {"nested_count", "qualified_scale"}
     assert functions["nested_count"][0].return_cpp_type == "int"
@@ -159,7 +130,6 @@ def test_discover_namespace_functions_with_synthetic_contract_source(tmp_path: P
     header_a = tmp_path / "contract_a.h"
     header_b = tmp_path / "contract_b.h"
     source = tmp_path / "reference.cpp"
-    compile_commands = tmp_path / "compile_commands.json"
 
     header_a.write_text(
         """
@@ -182,21 +152,9 @@ double contract_scale(double value);
         encoding="utf-8",
     )
     source.write_text("int reference() { return 0; }\n", encoding="utf-8")
-    compile_commands.write_text(
-        json.dumps(
-            [
-                {
-                    "directory": str(tmp_path),
-                    "command": f"{compiler} -std=c++17 -I {tmp_path} -c {source}",
-                    "file": str(source),
-                }
-            ]
-        ),
-        encoding="utf-8",
-    )
 
     functions = discover_namespace_functions_with_synthetic_source(
-        compile_commands,
+        DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)),
         f'#include "{header_a.as_posix()}"\n#include "{header_b.as_posix()}"\n',
         "ifcapi::bindings",
         selected_names={"contract_count", "contract_scale"},
@@ -208,7 +166,7 @@ double contract_scale(double value);
     assert functions["contract_scale"][0].return_cpp_type == "double"
 
 
-def test_discovery_uses_explicit_compilation_without_compile_commands(tmp_path: Path) -> None:
+def test_discovery_uses_explicit_compilation(tmp_path: Path) -> None:
     compiler = shutil.which("clang++")
     if compiler is None:
         pytest.skip("clang++ is not available")
@@ -247,7 +205,7 @@ int walk(int steps);
     assert functions["walk"][0].params[0].cpp_type == "int"
 
 
-def test_synthetic_contract_discovery_uses_explicit_compilation_without_compile_commands(tmp_path: Path) -> None:
+def test_synthetic_contract_discovery_uses_explicit_compilation(tmp_path: Path) -> None:
     compiler = shutil.which("clang++")
     if compiler is None:
         pytest.skip("clang++ is not available")
@@ -565,7 +523,6 @@ def test_discover_public_fields_with_inheritance(tmp_path: Path) -> None:
 
     header = tmp_path / "fields.h"
     source = tmp_path / "fields.cpp"
-    compile_commands = tmp_path / "compile_commands.json"
 
     header.write_text(
         """
@@ -600,35 +557,21 @@ public:
         encoding="utf-8",
     )
     source.write_text('#include "fields.h"\n', encoding="utf-8")
-    compile_commands.write_text(
-        json.dumps(
-            [
-                {
-                    "directory": str(tmp_path),
-                    "command": f"{compiler} -std=c++17 -I {tmp_path} -c {source}",
-                    "file": str(source),
-                }
-            ]
-        ),
-        encoding="utf-8",
-    )
 
-    own_fields = discover_public_fields_with_compile_commands(compile_commands, source, "Derived")
+    own_fields = discover_public_fields(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Derived")
     assert set(own_fields) == {"axis"}
     assert own_fields["axis"].cpp_type == "Node::ptr"
     assert own_fields["axis"].cpp_type_ref.desugared_spelling == "std::shared_ptr<Demo::Node>"
     assert own_fields["axis"].cpp_type_ref.base_name == "std::shared_ptr"
     assert own_fields["axis"].cpp_type_ref.template_args[0].base_name == "Demo::Node"
 
-    inherited_fields = discover_public_fields_with_compile_commands(
-        compile_commands, source, "Derived", include_inherited=True
+    inherited_fields = discover_public_fields(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Derived", include_inherited=True
     )
     assert set(inherited_fields) == {"axis", "inherited"}
     assert inherited_fields["inherited"].cpp_type == "int"
     assert inherited_fields["inherited"].cpp_type_ref.canonical_spelling == "int"
 
-    qualified_inherited_fields = discover_public_fields_with_compile_commands(
-        compile_commands, source, "Demo::Derived", include_inherited=True
+    qualified_inherited_fields = discover_public_fields(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Demo::Derived", include_inherited=True
     )
     assert set(qualified_inherited_fields) == {"axis", "inherited"}
 
@@ -640,7 +583,6 @@ def test_discover_cpp_types_marks_enums(tmp_path: Path) -> None:
 
     header = tmp_path / "enums.h"
     source = tmp_path / "enums.cpp"
-    compile_commands = tmp_path / "compile_commands.json"
 
     header.write_text(
         """
@@ -657,20 +599,8 @@ struct Widget {
         encoding="utf-8",
     )
     source.write_text('#include "enums.h"\n', encoding="utf-8")
-    compile_commands.write_text(
-        json.dumps(
-            [
-                {
-                    "directory": str(tmp_path),
-                    "command": f"{compiler} -std=c++17 -I {tmp_path} -c {source}",
-                    "file": str(source),
-                }
-            ]
-        ),
-        encoding="utf-8",
-    )
 
-    methods = discover_public_methods_with_compile_commands(compile_commands, source, "Demo::Widget")
+    methods = discover_public_methods(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Demo::Widget")
 
     assert methods["mode"][0].return_type_ref.is_enum
     assert methods["mode"][0].return_type_ref.base_name == "Mode"
@@ -684,7 +614,6 @@ def test_discover_cpp_types_marks_typedef_enums(tmp_path: Path) -> None:
 
     header = tmp_path / "typedef_enums.h"
     source = tmp_path / "typedef_enums.cpp"
-    compile_commands = tmp_path / "compile_commands.json"
 
     header.write_text(
         """
@@ -703,20 +632,8 @@ struct SimpleType {
         encoding="utf-8",
     )
     source.write_text('#include "typedef_enums.h"\n', encoding="utf-8")
-    compile_commands.write_text(
-        json.dumps(
-            [
-                {
-                    "directory": str(tmp_path),
-                    "command": f"{compiler} -std=c++17 -I {tmp_path} -c {source}",
-                    "file": str(source),
-                }
-            ]
-        ),
-        encoding="utf-8",
-    )
 
-    methods = discover_public_methods_with_compile_commands(compile_commands, source, "Demo::SimpleType")
+    methods = discover_public_methods(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Demo::SimpleType")
 
     assert methods["declared_type"][0].return_type_ref.is_enum
     assert methods["declared_type"][0].return_type_ref.enum_qualified_name == "Demo::SimpleType::data_type"
@@ -729,7 +646,6 @@ def test_discover_cpp_types_marks_enum_fields_under_skipped_root(tmp_path: Path)
 
     header = tmp_path / "enum_fields.h"
     source = tmp_path / "enum_fields.cpp"
-    compile_commands = tmp_path / "compile_commands.json"
 
     header.write_text(
         """
@@ -746,20 +662,8 @@ struct Widget {
         encoding="utf-8",
     )
     source.write_text('#include "enum_fields.h"\n', encoding="utf-8")
-    compile_commands.write_text(
-        json.dumps(
-            [
-                {
-                    "directory": str(tmp_path),
-                    "command": f"{compiler} -std=c++17 -I {tmp_path} -c {source}",
-                    "file": str(source),
-                }
-            ]
-        ),
-        encoding="utf-8",
-    )
 
-    fields = discover_public_fields_with_compile_commands(compile_commands, source, "ifcopenshell::demo::Widget")
+    fields = discover_public_fields(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "ifcopenshell::demo::Widget")
 
     assert fields["mode"].cpp_type_ref.is_enum
     assert fields["mode"].cpp_type_ref.enum_qualified_name == "ifcopenshell::demo::Widget::Mode"
@@ -772,7 +676,6 @@ def test_discovery_avoids_unscoped_and_std_ast_filters(tmp_path: Path, monkeypat
 
     header = tmp_path / "scoped.h"
     source = tmp_path / "scoped.cpp"
-    compile_commands = tmp_path / "compile_commands.json"
 
     header.write_text(
         """
@@ -793,18 +696,6 @@ struct Container {
         encoding="utf-8",
     )
     source.write_text('#include "scoped.h"\n', encoding="utf-8")
-    compile_commands.write_text(
-        json.dumps(
-            [
-                {
-                    "directory": str(tmp_path),
-                    "command": f"{compiler} -std=c++17 -I {tmp_path} -c {source}",
-                    "file": str(source),
-                }
-            ]
-        ),
-        encoding="utf-8",
-    )
 
     seen_filters: list[str] = []
     original = TranslationUnitIndex._run_ast_dump
@@ -815,7 +706,7 @@ struct Container {
 
     monkeypatch.setattr(TranslationUnitIndex, "_run_ast_dump", _recording_run_ast_dump)
 
-    methods = discover_public_methods_with_compile_commands(compile_commands, source, "Demo::Container")
+    methods = discover_public_methods(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Demo::Container")
 
     assert methods["inner"][0].return_type_ref.storage_spelling == "Outer::Inner"
     assert methods["name"][0].return_type_ref.storage_spelling == "const std::string&"
@@ -830,7 +721,6 @@ def test_discovery_avoids_lowercase_bare_type_filters(tmp_path: Path, monkeypatc
 
     header = tmp_path / "lowercase.h"
     source = tmp_path / "lowercase.cpp"
-    compile_commands = tmp_path / "compile_commands.json"
 
     header.write_text(
         """
@@ -846,18 +736,6 @@ struct schema_definition {
         encoding="utf-8",
     )
     source.write_text('#include "lowercase.h"\n', encoding="utf-8")
-    compile_commands.write_text(
-        json.dumps(
-            [
-                {
-                    "directory": str(tmp_path),
-                    "command": f"{compiler} -std=c++17 -I {tmp_path} -c {source}",
-                    "file": str(source),
-                }
-            ]
-        ),
-        encoding="utf-8",
-    )
 
     seen_filters: list[str] = []
     original = TranslationUnitIndex._run_ast_dump
@@ -868,7 +746,7 @@ struct schema_definition {
 
     monkeypatch.setattr(TranslationUnitIndex, "_run_ast_dump", _recording_run_ast_dump)
 
-    methods = discover_public_methods_with_compile_commands(compile_commands, source, "Demo::schema_definition")
+    methods = discover_public_methods(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Demo::schema_definition")
 
     assert methods["declared"][0].return_type_ref.storage_spelling == "Demo::declaration"
     assert "declaration" not in seen_filters
@@ -881,7 +759,6 @@ def test_discovery_avoids_bare_ptr_and_it_alias_filters(tmp_path: Path, monkeypa
 
     header = tmp_path / "aliases.h"
     source = tmp_path / "aliases.cpp"
-    compile_commands = tmp_path / "compile_commands.json"
 
     header.write_text(
         """
@@ -902,18 +779,6 @@ public:
         encoding="utf-8",
     )
     source.write_text('#include "aliases.h"\n', encoding="utf-8")
-    compile_commands.write_text(
-        json.dumps(
-            [
-                {
-                    "directory": str(tmp_path),
-                    "command": f"{compiler} -std=c++17 -I {tmp_path} -c {source}",
-                    "file": str(source),
-                }
-            ]
-        ),
-        encoding="utf-8",
-    )
 
     seen_filters: list[str] = []
     original = TranslationUnitIndex._run_ast_dump
@@ -924,8 +789,8 @@ public:
 
     monkeypatch.setattr(TranslationUnitIndex, "_run_ast_dump", _recording_run_ast_dump)
 
-    fields = discover_public_fields_with_compile_commands(compile_commands, source, "Demo::Derived")
-    methods = discover_public_methods_with_compile_commands(compile_commands, source, "Demo::Derived")
+    fields = discover_public_fields(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Demo::Derived")
+    methods = discover_public_methods(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Demo::Derived")
 
     assert fields["axis"].cpp_type_ref.desugared_spelling == "std::shared_ptr<Demo::Derived>"
     assert methods["index"][0].return_cpp_type == "it"

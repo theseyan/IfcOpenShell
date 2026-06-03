@@ -2,31 +2,21 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-import shlex
 import shutil
 import subprocess
 import sys
-from types import SimpleNamespace
 from textwrap import dedent
 
 import pytest
 
-from src.ifcwrap.binding_generator.binding_ir import DirectCallOp, SpecMethodFunctionCallOp, lower_binding_spec
-from src.ifcwrap.binding_generator.c_backend import _render_cpp, generate_cpp_specs
-from src.ifcwrap.binding_generator.c_header_rendering import _render_header
-from src.ifcwrap.binding_generator.c_internal_header import _render_internal_header
+from src.ifcwrap.binding_generator.c_backend import generate_cpp_specs
 from src.ifcwrap.binding_generator.clang_discovery import CompilationConfig, DiscoveryEnvironment
 from src.ifcwrap.binding_generator.cpp_spec_frontend import (
     discover_cpp_spec_functions,
     discover_cpp_spec_handles,
-    discover_cpp_spec_result_structs,
     lower_cpp_spec_functions_to_calls,
-    lower_cpp_spec_handles_to_specs,
-    lower_cpp_spec_result_structs_to_specs,
 )
-from src.ifcwrap.tests._binding_generator_test_utils import find_repo_compile_commands
 
 
 def _environment(tmp_path: Path) -> DiscoveryEnvironment:
@@ -40,36 +30,6 @@ def _environment(tmp_path: Path) -> DiscoveryEnvironment:
             working_directory=tmp_path,
         )
     )
-
-
-def _compile_command_for_source(compile_commands_path: Path, source: Path, include_dir: Path) -> list[str]:
-    commands = json.loads(compile_commands_path.read_text(encoding="utf-8"))
-    command = next(
-        (
-            item
-            for item in commands
-            if str(item.get("file", "")).endswith(".cpp") and "ifcopenshell_api" in str(item.get("file", ""))
-        ),
-        next(item for item in commands if str(item.get("file", "")).endswith(".cpp")),
-    )
-    args = list(command.get("arguments") or shlex.split(command["command"]))
-    reference_file = str(command["file"])
-    filtered = [args[0], "-fsyntax-only", "-I", str(include_dir)]
-    skip_next = False
-    for arg in args[1:]:
-        if skip_next:
-            skip_next = False
-            continue
-        if arg in {"-c", "-o"}:
-            skip_next = arg == "-o"
-            continue
-        if arg.startswith("-o"):
-            continue
-        if arg == reference_file:
-            continue
-        filtered.append(arg)
-    filtered.append(str(source))
-    return filtered
 
 
 def test_cpp_spec_generation_supports_per_spec_namespaces_and_prefixes(tmp_path: Path) -> None:
@@ -173,90 +133,6 @@ def test_cpp_spec_frontend_rejects_mutable_void_pointer_params(tmp_path: Path) -
 
     with pytest.raises(ValueError, match="Unsupported discovered parameter type 'void \\*'"):
         lower_cpp_spec_functions_to_calls(functions, {})
-
-
-def test_cpp_spec_frontend_generated_fixture_cpp_compiles(tmp_path: Path) -> None:
-    compiler = shutil.which("clang++")
-    if compiler is None:
-        pytest.skip("clang++ is not available")
-    compile_commands = find_repo_compile_commands()
-    if compile_commands is None:
-        pytest.skip("compile_commands.json is required for generated C++ fixture compilation")
-
-    spec_path = tmp_path / "demo_spec.cpp"
-    spec_path.write_text(
-        dedent(
-            """
-            #include <string>
-            #include <vector>
-
-            #define IFCAPI_HANDLE(cpp_type, destructor)
-            #define IFCAPI_OWNED
-            #define IFCAPI_NULLABLE
-
-            namespace ifcopenshell::capi_spec {
-            struct DemoFile {};
-            IFCAPI_HANDLE(ifcopenshell::capi_spec::DemoFile, delete)
-            struct ifcopenshell_demo_file_t;
-
-            inline IFCAPI_OWNED std::string ifcopenshell_demo_label(
-                IFCAPI_NULLABLE const DemoFile* file,
-                const std::vector<int>& values
-            ) {
-                return file && !values.empty() ? "ok" : "empty";
-            }
-            }
-            """
-        ),
-        encoding="utf-8",
-    )
-    handles = lower_cpp_spec_handles_to_specs(discover_cpp_spec_handles(spec_path))
-    calls = lower_cpp_spec_functions_to_calls(
-        discover_cpp_spec_functions(_environment(tmp_path), spec_path, "ifcopenshell::capi_spec"),
-        handles,
-    )
-    ir = lower_binding_spec(
-        SimpleNamespace(
-            module="demo",
-            c_prefix="ifcopenshell_demo",
-            public_headers=(spec_path.name,),
-            public_header_plugins={},
-            handles=handles,
-            result_structs={},
-            functions=calls,
-            methods=(),
-            depends_on_common=None,
-        )
-    )
-
-    header_path = tmp_path / "demo_api.h"
-    internal_header_path = tmp_path / "demo_api_internal.hpp"
-    cpp_path = tmp_path / "demo_api.cpp"
-    header_path.write_text(_render_header(ir), encoding="utf-8")
-    internal_header_path.write_text(_render_internal_header(ir, header_path.name), encoding="utf-8")
-    cpp_path.write_text(
-        dedent(
-            """
-            #include "argument_type.h"
-            #include "express.h"
-            #include "file.h"
-            #include "instance_data.h"
-            #include "logger.h"
-            #include "storage.h"
-            #include <boost/logic/tribool.hpp>
-            """
-        )
-        + _render_cpp(ir, header_path.name),
-        encoding="utf-8",
-    )
-
-    result = subprocess.run(
-        _compile_command_for_source(compile_commands, cpp_path, tmp_path),
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode == 0, result.stderr
 
 
 def test_cpp_spec_frontend_cli_generates_fixture_header(tmp_path: Path) -> None:
