@@ -22,6 +22,7 @@ discover:
   include_dir: ../../../ifcparse
   class_defaults:
     include_all: true
+    translation_unit: schema.cpp
   function_defaults:
     include_all: true
   classes:
@@ -81,7 +82,6 @@ discover:
       rename:
         get_attribute_value: get_argument
     - handle: schema
-      translation_unit: schema.cpp
       exclude:
         - declaration_by_name
         - instantiate
@@ -95,7 +95,6 @@ discover:
           params:
             - size_t
     - handle: declaration
-      translation_unit: schema.cpp
       exclude:
         - is
       overloads:
@@ -104,20 +103,15 @@ discover:
           params:
             - const std::string &
     - handle: type_declaration
-      translation_unit: schema.cpp
     - handle: select_type
-      translation_unit: schema.cpp
     - handle: enumeration
-      translation_unit: schema.cpp
     - handle: parameter_type
-      translation_unit: schema.cpp
       include_all: false
       include:
         - as_aggregation_type
         - as_named_type
         - as_simple_type
     - handle: named_type
-      translation_unit: schema.cpp
       exclude:
         - is
       overloads:
@@ -126,9 +120,7 @@ discover:
           params:
             - const std::string &
     - handle: simple_type
-      translation_unit: schema.cpp
     - handle: aggregation_type
-      translation_unit: schema.cpp
       exclude:
         - type_of_aggregation
     - handle: header
@@ -159,7 +151,6 @@ discover:
     - handle: file_schema
       translation_unit: schemas/Header_section_schema.cpp
     - handle: entity
-      translation_unit: schema.cpp
       exclude:
         - attribute_index
       overloads:
@@ -168,9 +159,7 @@ discover:
           params:
             - const std::string &
     - handle: attribute
-      translation_unit: schema.cpp
     - handle: inverse_attribute
-      translation_unit: schema.cpp
       exclude:
         - type_of_aggregation
     - handle: instance_streamer

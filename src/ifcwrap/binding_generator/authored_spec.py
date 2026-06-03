@@ -1068,6 +1068,7 @@ def _parse_discovery(
     *,
     context: str,
     known_handles: set[str],
+    handles: dict[str, HandleSpec],
     known_result_structs: set[str] | None = None,
 ) -> DiscoverySpec | None:
     known_result_structs = known_result_structs or set()
@@ -1109,6 +1110,12 @@ def _parse_discovery(
 
     class_include_all_default = default_include_all(class_defaults, f"{context}.class_defaults")
     function_include_all_default = default_include_all(function_defaults, f"{context}.function_defaults")
+    class_translation_unit_default_raw = class_defaults.get("translation_unit")
+    class_translation_unit_default = (
+        _expect_str(class_translation_unit_default_raw, f"{context}.class_defaults.translation_unit")
+        if class_translation_unit_default_raw is not None
+        else None
+    )
 
     def parse_overloads(raw_overloads: Any, overload_context: str) -> tuple[DiscoveryOverloadSpec, ...]:
         overloads: list[DiscoveryOverloadSpec] = []
@@ -1128,11 +1135,30 @@ def _parse_discovery(
     for index, item in enumerate(_expect_list(mapping.get("classes", []), f"{context}.classes")):
         item_context = f"{context}.classes[{index}]"
         item_mapping = _expect_mapping(item, item_context)
-        handle = _expect_str(item_mapping.get("handle"), f"{item_context}.handle")
+        handle_raw = item_mapping.get("handle")
+        cpp_class_raw = item_mapping.get("class")
+        cpp_class = (
+            _expect_str(cpp_class_raw, f"{item_context}.class")
+            if cpp_class_raw is not None
+            else None
+        )
+        if handle_raw is not None:
+            handle = _expect_str(handle_raw, f"{item_context}.handle")
+        elif cpp_class is not None:
+            handle = _resolve_discovery_class_handle(cpp_class, handles, context=f"{item_context}.class")
+        else:
+            msg = f"{item_context} must specify handle or class"
+            raise ValueError(msg)
         if handle not in known_handles:
             msg = f"{item_context}.handle refers to unknown handle '{handle}'"
             raise ValueError(msg)
-        translation_unit = _expect_str(item_mapping.get("translation_unit"), f"{item_context}.translation_unit")
+        if cpp_class is not None:
+            resolved_handle = _resolve_discovery_class_handle(cpp_class, handles, context=f"{item_context}.class")
+            if resolved_handle != handle:
+                msg = f"{item_context}.class '{cpp_class}' resolves to handle '{resolved_handle}', not '{handle}'"
+                raise ValueError(msg)
+        translation_unit_raw = item_mapping.get("translation_unit", class_translation_unit_default)
+        translation_unit = _expect_str(translation_unit_raw, f"{item_context}.translation_unit")
         include_all = item_mapping.get("include_all", class_include_all_default)
         if not isinstance(include_all, bool):
             msg = f"{item_context}.include_all must be a boolean"
@@ -1784,6 +1810,24 @@ def _find_handle_for_cpp_type(cpp_type: str | DiscoveredCppType, handles: dict[s
                 if _cpp_type_names_match(handle.cpp_type, inner):
                     return handle_name
     return None
+
+
+def _resolve_discovery_class_handle(cpp_type: str, handles: dict[str, HandleSpec], *, context: str) -> str:
+    matches = [
+        handle_name
+        for handle_name, handle in handles.items()
+        if _cpp_type_names_match(handle.cpp_type, cpp_type)
+    ]
+    if not matches:
+        handle = _find_handle_for_cpp_type(cpp_type, handles)
+        if handle is not None:
+            return handle
+        msg = f"{context} does not match any registered handle C++ type"
+        raise ValueError(msg)
+    if len(matches) > 1:
+        msg = f"{context} matches multiple registered handles: {', '.join(matches)}"
+        raise ValueError(msg)
+    return matches[0]
 
 
 def _type_spec_from_record_semantic(
@@ -4275,6 +4319,7 @@ def load_authored_spec(
         root.get("discover"),
         context="discover",
         known_handles=known_handles,
+        handles=handles,
         known_result_structs=known_result_structs,
     )
     discovery_environment = (

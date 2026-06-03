@@ -53,6 +53,7 @@ discover:
   include_dir: ../../../ifcgeom
   class_defaults:
     include_all: true
+    translation_unit: Iterator.cpp
   functions:
     - namespace: ifcopenshell::geometry
       translation_unit: function_item_evaluator.cpp
@@ -314,7 +315,6 @@ discover:
           exception: std::runtime_error
 
     - handle: iterator
-      translation_unit: Iterator.cpp
       exclude:
         - filters
         - process_finished_rep
@@ -328,22 +328,18 @@ discover:
       include_inherited_methods: true
 
     - handle: element
-      translation_unit: Iterator.cpp
       exclude:
         - SetParents
 
     - handle: brep_element
-      translation_unit: Iterator.cpp
       exclude:
         - geometry_pointer
 
     - handle: triangulation_element
-      translation_unit: Iterator.cpp
       exclude:
         - geometry_pointer
 
     - handle: serialized_element
-      translation_unit: Iterator.cpp
 
     - handle: conversion_result_shape
       translation_unit: ConversionResult.cpp
@@ -429,7 +425,6 @@ discover:
             - "const IfcGeom::BRepElement *"
 
     - handle: taxonomy_circle
-      translation_unit: Iterator.cpp
       include_all: false
       discover_fields: true
       include_inherited_fields: true
@@ -439,7 +434,6 @@ discover:
         - surface_style
 
     - handle: taxonomy_line
-      translation_unit: Iterator.cpp
       include_all: false
       discover_fields: true
       include_inherited_fields: true
@@ -450,7 +444,6 @@ discover:
         - surface_style
 
     - handle: taxonomy_plane
-      translation_unit: Iterator.cpp
       include_all: false
       discover_fields: true
       include_inherited_fields: true
@@ -460,7 +453,6 @@ discover:
         - surface_style
 
     - handle: taxonomy_ellipse
-      translation_unit: Iterator.cpp
       include_all: false
       discover_fields: true
       include_inherited_fields: true
@@ -472,7 +464,6 @@ discover:
         - surface_style
 
     - handle: taxonomy_style
-      translation_unit: Iterator.cpp
       discover_fields: true
       exclude:
         - instance
@@ -486,7 +477,6 @@ discover:
         - print
 
     - handle: taxonomy_sphere
-      translation_unit: Iterator.cpp
       include_all: false
       discover_fields: true
       include_inherited_fields: true
@@ -496,7 +486,6 @@ discover:
         - surface_style
 
     - handle: taxonomy_torus
-      translation_unit: Iterator.cpp
       include_all: false
       discover_fields: true
       include_inherited_fields: true
@@ -506,7 +495,6 @@ discover:
         - surface_style
 
     - handle: taxonomy_cylinder
-      translation_unit: Iterator.cpp
       include_all: false
       discover_fields: true
       include_inherited_fields: true
@@ -516,7 +504,6 @@ discover:
         - surface_style
 
     - handle: taxonomy_extrusion
-      translation_unit: Iterator.cpp
       include_all: false
       discover_fields: true
       include_inherited_fields: true
@@ -526,13 +513,11 @@ discover:
         - surface_style
 
     - handle: taxonomy_offset_curve
-      translation_unit: Iterator.cpp
       include_all: false
       discover_fields: true
       discover_as_item: true
 
     - handle: taxonomy_revolve
-      translation_unit: Iterator.cpp
       include_all: false
       discover_fields: true
       include_inherited_fields: true
@@ -543,7 +528,6 @@ discover:
         - surface_style
 
     - handle: taxonomy_bspline_curve
-      translation_unit: Iterator.cpp
       include_all: false
       discover_fields: true
       discover_as_item: true
@@ -554,7 +538,6 @@ discover:
         cpp_field: control_points
 
     - handle: taxonomy_sweep_along_curve
-      translation_unit: Iterator.cpp
       include_all: false
       discover_fields: true
       include_inherited_fields: true
@@ -565,7 +548,6 @@ discover:
         - surface_style
 
     - handle: taxonomy_face
-      translation_unit: Iterator.cpp
       include_all: false
       discover_fields: true
       discover_as_item: true
@@ -574,7 +556,6 @@ discover:
       discover_children: true
 
     - handle: taxonomy_loft
-      translation_unit: Iterator.cpp
       include_all: false
       discover_fields: true
       discover_has_fields: true
@@ -586,24 +567,20 @@ discover:
         add_cast_cpp_type: "ifcopenshell::geometry::taxonomy::geom_item"
 
     - handle: taxonomy_loop
-      translation_unit: Iterator.cpp
       include_all: false
       discover_children: true
 
     - handle: taxonomy_shell
-      translation_unit: Iterator.cpp
       include_all: false
       discover_children: true
 
     - handle: taxonomy_solid
-      translation_unit: Iterator.cpp
       include_all: false
       extra_fields:
         matrix: "matrix4::ptr"
       discover_children: true
 
     - handle: taxonomy_collection
-      translation_unit: Iterator.cpp
       include_all: false
       discover_children:
         element_handle: taxonomy_item
@@ -611,7 +588,6 @@ discover:
         add_cast_cpp_type: "ifcopenshell::geometry::taxonomy::geom_item"
 
     - handle: taxonomy_boolean_result
-      translation_unit: Iterator.cpp
       include_all: false
       discover_fields: true
       discover_children:
@@ -620,7 +596,6 @@ discover:
         add_cast_cpp_type: "ifcopenshell::geometry::taxonomy::geom_item"
 
     - handle: taxonomy_bspline_surface
-      translation_unit: Iterator.cpp
       include_all: false
       discover_as_item: true
       array_pair_fields:
@@ -650,7 +625,6 @@ discover:
         setFile: set_file
 
     - handle: settings
-      translation_unit: Iterator.cpp
       include_inherited_methods: true
       exclude:
         - define_options
@@ -700,7 +674,6 @@ discover:
         - filename
 
     - handle: taxonomy_item
-      translation_unit: Iterator.cpp
       exclude:
         - clone_
         - reverse
@@ -752,31 +725,26 @@ discover:
         - instance
 
     - handle: taxonomy_point3
-      translation_unit: Iterator.cpp
       include_all: false
       ccomponents_accessor:
         expose_as: get_data
 
     - handle: taxonomy_direction3
-      translation_unit: Iterator.cpp
       include_all: false
       ccomponents_accessor:
         expose_as: get_data
 
     - handle: taxonomy_matrix4
-      translation_unit: Iterator.cpp
       include_all: false
       ccomponents_accessor:
         expose_as: get_data
 
     - handle: taxonomy_colour
-      translation_unit: Iterator.cpp
       include_all: false
       ccomponents_accessor:
         expose_as: get_data
 
     - handle: transformation
-      translation_unit: Iterator.cpp
       include_all: false
       ccomponents_accessor:
         expose_as: matrix

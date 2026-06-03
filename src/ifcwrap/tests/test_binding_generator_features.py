@@ -124,6 +124,49 @@ def test_load_merged_specs_resolves_cross_slice_handles(tmp_path: Path) -> None:
     ) in header
 
 
+def test_discovery_class_defaults_and_cpp_class_handle_resolution(tmp_path: Path) -> None:
+    spec_path = tmp_path / "demo.yml"
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers: []
+            discover:
+              include_dir: .
+              class_defaults:
+                include_all: false
+                translation_unit: demo.cpp
+              classes:
+                - class: Demo::Widget
+                  extra_fields:
+                    value: int
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    spec = load_authored_spec(
+        spec_path,
+        existing_handles={
+            "widget": HandleSpec(
+                name="widget",
+                cpp_type="Demo::Widget",
+                c_type="ifcopenshell_demo_widget_t",
+                destructor="delete",
+            )
+        },
+    )
+
+    assert spec.discovery is not None
+    assert spec.discovery.classes[0].handle == "widget"
+    assert spec.discovery.classes[0].translation_unit == "demo.cpp"
+    assert any(call.receiver == "widget" and call.expose_as == "value" for call in spec.methods)
+
+
 def test_constructor_handle_args_require_and_follow_cpp_type_passing_policy(tmp_path: Path) -> None:
     spec_path = tmp_path / "constructors.yml"
     spec_path.write_text(
