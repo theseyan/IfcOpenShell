@@ -22786,13 +22786,13 @@ bool ifcopenshell_ifcgeom_conversion_result_shape_convex_tag(ifcopenshell_ifcgeo
     }
 }
 
-bool ifcopenshell_ifcgeom_triangulation_edges_buffer(ifcopenshell_ifcgeom_triangulation_t* self, ifcopenshell_int32_list_t* out_result) {
+bool ifcopenshell_ifcgeom_triangulation_edges_buffer(ifcopenshell_ifcgeom_triangulation_t* self, const int32_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
-        *out_result = make_int32_list(ifcgeom::bindings::edges_buffer(self_cpp));
+        *out_result = (ifcgeom::bindings::edges_buffer(self_cpp)).data();
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -22803,13 +22803,13 @@ bool ifcopenshell_ifcgeom_triangulation_edges_buffer(ifcopenshell_ifcgeom_triang
     }
 }
 
-bool ifcopenshell_ifcgeom_triangulation_edges_item_ids_buffer(ifcopenshell_ifcgeom_triangulation_t* self, ifcopenshell_int32_list_t* out_result) {
+bool ifcopenshell_ifcgeom_triangulation_edges_item_ids_buffer(ifcopenshell_ifcgeom_triangulation_t* self, const int32_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
-        *out_result = make_int32_list(ifcgeom::bindings::edges_item_ids_buffer(self_cpp));
+        *out_result = (ifcgeom::bindings::edges_item_ids_buffer(self_cpp)).data();
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -22838,13 +22838,13 @@ bool ifcopenshell_ifcgeom_function_item_evaluator_evaluate_at(ifcopenshell_ifcge
     }
 }
 
-bool ifcopenshell_ifcgeom_triangulation_faces_buffer(ifcopenshell_ifcgeom_triangulation_t* self, ifcopenshell_int32_list_t* out_result) {
+bool ifcopenshell_ifcgeom_triangulation_faces_buffer(ifcopenshell_ifcgeom_triangulation_t* self, const int32_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
-        *out_result = make_int32_list(ifcgeom::bindings::faces_buffer(self_cpp));
+        *out_result = (ifcgeom::bindings::faces_buffer(self_cpp)).data();
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -23011,13 +23011,13 @@ bool ifcopenshell_ifcgeom_taxonomy_style_instance_id(ifcopenshell_ifcgeom_taxono
     }
 }
 
-bool ifcopenshell_ifcgeom_triangulation_item_ids_buffer(ifcopenshell_ifcgeom_triangulation_t* self, ifcopenshell_int32_list_t* out_result) {
+bool ifcopenshell_ifcgeom_triangulation_item_ids_buffer(ifcopenshell_ifcgeom_triangulation_t* self, const int32_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
-        *out_result = make_int32_list(ifcgeom::bindings::item_ids_buffer(self_cpp));
+        *out_result = (ifcgeom::bindings::item_ids_buffer(self_cpp)).data();
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -23045,13 +23045,13 @@ bool ifcopenshell_ifcgeom_conversion_result_shape_length(ifcopenshell_ifcgeom_co
     }
 }
 
-bool ifcopenshell_ifcgeom_triangulation_material_ids_buffer(ifcopenshell_ifcgeom_triangulation_t* self, ifcopenshell_int32_list_t* out_result) {
+bool ifcopenshell_ifcgeom_triangulation_material_ids_buffer(ifcopenshell_ifcgeom_triangulation_t* self, const int32_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
-        *out_result = make_int32_list(ifcgeom::bindings::material_ids_buffer(self_cpp));
+        *out_result = (ifcgeom::bindings::material_ids_buffer(self_cpp)).data();
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
