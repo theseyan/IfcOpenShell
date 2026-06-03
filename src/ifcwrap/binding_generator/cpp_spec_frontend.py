@@ -485,12 +485,26 @@ def lower_cpp_spec_functions_to_calls(
                     nullable=returns.nullable,
                     cpp_type=returns.cpp_type,
                 )
+            elif returns.kind == "int32" and returns.sequence_depth == 1 and is_const_ref:
+                returns = TypeSpec(
+                    kind="int32_buffer",
+                    ownership=returns.ownership,
+                    nullable=returns.nullable,
+                    cpp_type=returns.cpp_type,
+                )
             elif is_const_ptr:
                 normalized = " ".join(returns.cpp_type.replace(" *", "*").replace(" &", "&").split())
                 normalized = normalized.replace("const ", "").strip()
                 if normalized == "double*":
                     returns = TypeSpec(
                         kind="double_buffer",
+                        ownership=returns.ownership,
+                        nullable=returns.nullable,
+                        cpp_type=returns.cpp_type,
+                    )
+                elif normalized == "int32_t*":
+                    returns = TypeSpec(
+                        kind="int32_buffer",
                         ownership=returns.ownership,
                         nullable=returns.nullable,
                         cpp_type=returns.cpp_type,

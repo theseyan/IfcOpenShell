@@ -519,17 +519,14 @@ def _bulk_int_array(handle: HandleP, size_fn: str, buf_fn: str):
         if np is not None:
             return np.empty(0, dtype=np.int32)
         return []
-    value = ifcopenshell_int32_list_t()
-    if not getattr(bind(), buf_fn)(handle, byref(value)) or not value.items:
+    ptr = POINTER(c_int32)()
+    if not getattr(bind(), buf_fn)(handle, byref(ptr)) or not ptr:
         if np is not None:
             return np.empty(0, dtype=np.int32)
         return []
-    try:
-        if np is not None:
-            return np.ctypeslib.as_array(value.items, shape=(int(value.size),)).copy()
-        return list(value.items[: int(value.size)])
-    finally:
-        getattr(bind(), "ifcopenshell_int32_list_destroy")(byref(value))
+    if np is not None:
+        return np.ctypeslib.as_array(ptr, shape=(int(n.value),)).copy()
+    return list(ptr[: int(n.value)])
 
 
 def _as_tuple(arr):
