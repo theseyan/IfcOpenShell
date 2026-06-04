@@ -186,7 +186,7 @@ def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
                     f"auto result_value = std::unique_ptr<{handle.cpp_type}>({expr});\n"
                     f"        *out_result = new {handle.c_type}{{result_value.release(), true}};"
                 )
-        if handle.ptr_type == "value" and type_spec.nullable:
+        if handle.ptr_type == "value" and (type_spec.nullable or getattr(handle, "empty_check", None)):
             return (
                 f"auto result_value = {expr};\n"
                 f"        if ({_value_handle_empty_expr(handle, 'result_value')}) {{\n"
