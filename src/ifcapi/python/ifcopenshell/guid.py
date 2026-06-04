@@ -47,10 +47,7 @@ cf. <https://technical.buildingsmart.org/resources/ifcimplementationguidance/ifc
 # IMPORTS
 # ----------------------------------------------------------------
 
-import ctypes
-
-import ifcopenshell
-from ifcopenshell import _generated_capi
+from . import _ifcopenshell_capi as _capi
 
 # ----------------------------------------------------------------
 # EXPORTS
@@ -63,27 +60,6 @@ __all__ = [
     "split",
 ]
 
-_BOUND = False
-
-
-def _get_lib() -> ctypes.CDLL:
-    global _BOUND
-    lib = ifcopenshell._get_lib()
-    if not _BOUND:
-        _generated_capi.bind(
-            lib,
-            names=(
-                "ifcopenshell_ifcapi_guid_compress",
-                "ifcopenshell_ifcapi_guid_expand",
-                "ifcopenshell_ifcapi_guid_new",
-                "ifcopenshell_string_destroy",
-                "ifcopenshell_last_error_kind",
-                "ifcopenshell_last_error_message",
-            ),
-        )
-        _BOUND = True
-    return lib
-
 # ----------------------------------------------------------------
 # METHODS
 # ----------------------------------------------------------------
@@ -95,13 +71,7 @@ def compress(uuid: str, /) -> str:
 
     See <https://technical.buildingsmart.org/resources/ifcimplementationguidance/ifc-guid>
     """
-    lib = _get_lib()
-    return _generated_capi.call_string_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_guid_compress,
-        ifcopenshell.get_log() or "ifcopenshell_ifcapi_guid_compress",
-        _generated_capi.encode_string(uuid),
-    )
+    return _capi.guid_compress(uuid)
 
 
 def expand(guid: str, /) -> str:
@@ -110,13 +80,7 @@ def expand(guid: str, /) -> str:
 
     See <https://technical.buildingsmart.org/resources/ifcimplementationguidance/ifc-guid>
     """
-    lib = _get_lib()
-    return _generated_capi.call_string_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_guid_expand,
-        ifcopenshell.get_log() or "ifcopenshell_ifcapi_guid_expand",
-        _generated_capi.encode_string(guid),
-    )
+    return _capi.guid_expand(guid)
 
 
 def split(uuid: str, /) -> str:
@@ -141,9 +105,4 @@ def new() -> str:
     """
     Generates a random UUID and compresses it to a Base 64 IFC GUID.
     """
-    lib = _get_lib()
-    return _generated_capi.call_string_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_guid_new,
-        ifcopenshell.get_log() or "ifcopenshell_ifcapi_guid_new",
-    )
+    return _capi.guid_new()
