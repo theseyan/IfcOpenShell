@@ -18,7 +18,6 @@
 
 from __future__ import annotations
 
-import ctypes
 from math import cos, radians
 from typing import TYPE_CHECKING, Literal, Optional, Union
 
@@ -28,10 +27,10 @@ import shapely
 import shapely.ops
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
 import ifcopenshell.util.element
 import ifcopenshell.util.placement
 import ifcopenshell.util.representation
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 if TYPE_CHECKING:
 
@@ -49,33 +48,6 @@ MatrixType = npt.NDArray[np.float64]
 
 tol = 1e-6
 
-_BOUND = False
-
-
-def _get_lib() -> ctypes.CDLL:
-    global _BOUND
-    lib = ifcopenshell._get_lib()
-    if not _BOUND:
-        _generated_capi.bind(
-            lib,
-            names=(
-                "ifcopenshell_ifcapi_shape_is_x",
-                "ifcopenshell_last_error_kind",
-                "ifcopenshell_last_error_message",
-            ),
-        )
-        _BOUND = True
-    return lib
-
-
-# NOTE: See IfcGeomRepresentation.h for W.Triangulation buffer types.
-
-# NOTE: For functions that return a single scalar ensure to use .item() to
-# return the Python float instead of numpy float
-# as it's less intrusive (doesn't promote numpy arrays on interactions),
-# doesn't fail saving to IFC
-# and precise enough anyway (internally Python floats are doubles).
-
 
 def is_x(value: float, x: float, tolerance: Optional[float] = None) -> bool:
     """Checks whether a value is equivalent to X given a tolerance
@@ -87,18 +59,10 @@ def is_x(value: float, x: float, tolerance: Optional[float] = None) -> bool:
     """
     if tolerance is None:
         tolerance = tol
-    lib = _get_lib()
-    return bool(
-        _generated_capi.call_scalar_or_raise(
-            lib,
-            lib.ifcopenshell_ifcapi_shape_is_x,
-            ctypes.c_bool,
-            ifcopenshell.get_log() or "ifcopenshell_ifcapi_shape_is_x",
-            value,
-            x,
-            tolerance,
-        )
-    )
+    result = _capi.ifcopenshell_ifcapi_shape_is_x(value, x, tolerance)
+    if result is None:
+        raise RuntimeError(_capi.last_error_message() or "ifcopenshell_ifcapi_shape_is_x failed")
+    return bool(result)
 
 
 def get_volume(geometry: W.Triangulation) -> float:

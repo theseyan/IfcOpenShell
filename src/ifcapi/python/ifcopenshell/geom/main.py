@@ -9,28 +9,15 @@ the legacy ``ifcopenshell_wrapper`` extension.
 
 from __future__ import annotations
 
-import ctypes
 import os
 from collections.abc import Iterable
-from ctypes import POINTER, byref, c_bool, c_char_p, c_double, c_int32, c_size_t
 from typing import Any, Literal, Optional, Union
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
-from . import _capi
 from ._capi import (
-    HandleP,
     _OwnedHandle,
-    bind,
-    ifcopenshell_double_list_t,
-    ifcopenshell_ifcgeom_element_list_t,
-    ifcopenshell_ifcgeom_taxonomy_style_list_t,
-    ifcopenshell_int32_list_list_list_t,
-    ifcopenshell_int32_list_list_t,
-    ifcopenshell_int32_list_t,
-    ifcopenshell_string_list_t,
-    ifcopenshell_string_t,
     take_double_list,
     take_int_list,
     to_double_list,
@@ -114,7 +101,7 @@ class settings_mixin:
     :class:`serializer_settings`."""
 
     _settings_kind: str = "settings"
-    _h: HandleP
+    _h: Any
 
     @staticmethod
     def name(k: str) -> str:
@@ -125,73 +112,52 @@ class settings_mixin:
         return k.upper().replace("-", "_")
 
     def _fn(self, suffix: str):
-        return getattr(bind(), f"ifcopenshell_ifcgeom_{self._settings_kind}_{suffix}")
+        return getattr(_capi, f"geom_{self._settings_kind}_{suffix}")
 
     def get_type(self, name: str) -> str:
-        result = _generated_capi.call_string(
-            bind(),
-            self._fn("get_type"),
-            self._h,
-            self.name(name).encode("utf-8"),
-            value_type=ifcopenshell_string_t,
-        )
+        result = self._fn("get_type")(self._h, self.name(name))
         if result is None:
             raise RuntimeError(f"Unknown setting: {name}")
         return result
 
     def setting_names(self) -> tuple[str, ...]:
-        names = _generated_capi.call_string_list(
-            bind(), self._fn("setting_names"), self._h, value_type=ifcopenshell_string_list_t
-        )
+        names = self._fn("setting_names")(self._h)
         if names is None:
             raise RuntimeError("Failed to enumerate setting names")
+        names = tuple(names)
         if isinstance(self, settings) and "use-python-opencascade" not in names:
             names = names + ("use-python-opencascade",)
         return names
 
     def _get_typed(self, name: str) -> Any:
         ty = self.get_type(name)
-        nm = self.name(name).encode("utf-8")
+        nm = self.name(name)
         h = self._h
         if ty == "bool":
-            result = _generated_capi.call_scalar(self._fn("get_bool"), c_bool, h, nm)
-            return bool(result) if result is not None else None
+            return bool(self._fn("get_bool")(h, nm))
         if ty == "int":
-            result = _generated_capi.call_scalar(self._fn("get_int"), c_int32, h, nm)
-            return int(result) if result is not None else None
+            return int(self._fn("get_int")(h, nm))
         if ty == "double":
-            result = _generated_capi.call_scalar(self._fn("get_double"), c_double, h, nm)
-            return float(result) if result is not None else None
+            return float(self._fn("get_double")(h, nm))
         if ty == "std::string":
-            return (
-                _generated_capi.call_string(
-                    bind(), self._fn("get_string"), h, nm, value_type=ifcopenshell_string_t
-                )
-                or ""
-            )
+            return self._fn("get_string")(h, nm) or ""
         if ty.startswith("std::set<int"):
-            lst = ifcopenshell_int32_list_t()
-            if self._fn("get_int_set")(h, nm, byref(lst)):
-                return take_int_list(lst)
-            return []
+            return list(self._fn("get_int_set")(h, nm))
         if ty == "std::set<std::string>":
-            result = _generated_capi.call_string_list(
-                bind(), self._fn("get_string_set"), h, nm, value_type=ifcopenshell_string_list_t
-            )
+            result = self._fn("get_string_set")(h, nm)
             return list(result) if result is not None else []
         if ty == "std::vector<double>":
-            lst = ifcopenshell_double_list_t()
-            if self._fn("get_double_list")(h, nm, byref(lst)):
-                return take_double_list(lst)
-            return []
-        result = _generated_capi.call_scalar(self._fn("get_int"), c_int32, h, nm)
-        if result is not None:
-            return int(result)
-        result = _generated_capi.call_string(
-            bind(), self._fn("get_string"), h, nm, value_type=ifcopenshell_string_t
-        )
-        if result is not None:
-            return result
+            return list(self._fn("get_double_list")(h, nm))
+        try:
+            return int(self._fn("get_int")(h, nm))
+        except Exception:
+            pass
+        try:
+            result = self._fn("get_string")(h, nm)
+            if result is not None:
+                return result
+        except Exception:
+            pass
         raise RuntimeError(f"Unsupported setting type for {name!r}: {ty}")
 
     def _set_typed(self, name: str, value: Any) -> None:
@@ -199,42 +165,34 @@ class settings_mixin:
             ty = self.get_type(name)
         except RuntimeError:
             raise RuntimeError(f"Unknown setting: {name}")
-        nm = self.name(name).encode("utf-8")
+        nm = self.name(name)
         h = self._h
         if ty == "bool":
-            if not self._fn("set_bool")(h, nm, c_bool(bool(value))):
-                raise RuntimeError(f"Failed to set {name}")
+            self._fn("set_bool")(h, nm, bool(value))
             return
         if ty == "int":
-            if not self._fn("set_int")(h, nm, c_int32(int(value))):
-                raise RuntimeError(f"Failed to set {name}")
+            self._fn("set_int")(h, nm, int(value))
             return
         if ty == "double":
-            if not self._fn("set_double")(h, nm, c_double(float(value))):
-                raise RuntimeError(f"Failed to set {name}")
+            self._fn("set_double")(h, nm, float(value))
             return
         if ty == "std::string":
-            v = value if isinstance(value, (bytes, bytearray)) else str(value).encode("utf-8")
-            if not self._fn("set_string")(h, nm, c_char_p(v)):
-                raise RuntimeError(f"Failed to set {name}")
+            self._fn("set_string")(h, nm, str(value))
             return
         if ty.startswith("std::set<int"):
-            lst = to_int_list(value)
-            if not self._fn("set_int_set")(h, nm, byref(lst)):
-                raise RuntimeError(f"Failed to set {name}")
+            self._fn("set_int_set")(h, nm, to_int_list(value))
             return
         if ty == "std::set<std::string>":
-            lst = to_string_list(value)
-            if not self._fn("set_string_set")(h, nm, byref(lst)):
-                raise RuntimeError(f"Failed to set {name}")
+            self._fn("set_string_set")(h, nm, to_string_list(value))
             return
         if ty == "std::vector<double>":
-            lst = to_double_list(value)
-            if not self._fn("set_double_list")(h, nm, byref(lst)):
-                raise RuntimeError(f"Failed to set {name}")
+            self._fn("set_double_list")(h, nm, to_double_list(value))
             return
-        if self._fn("set_int")(h, nm, c_int32(int(value))):
+        try:
+            self._fn("set_int")(h, nm, int(value))
             return
+        except Exception:
+            pass
         raise RuntimeError(f"Unsupported setting type for {name!r}: {ty}")
 
     def set(self, k: str, v: Any) -> None:
@@ -313,14 +271,11 @@ class settings(settings_mixin, _OwnedHandle):
     """Geometry settings - wraps ``ifcopenshell_ifcgeom_settings_t``."""
 
     _settings_kind = "settings"
-    _destroy_fn_name = "ifcopenshell_ifcgeom_settings_destroy"
+    _destroy_fn_name = "geom_settings_destroy"
     use_python_opencascade = False
 
     def __init__(self, **kwargs: Any):
-        lib = bind()
-        out = HandleP()
-        if not lib.ifcopenshell_ifcgeom_create_settings(byref(out)):
-            raise RuntimeError("Failed to create geometry settings")
+        out = _capi.geom_create_settings()
         _OwnedHandle.__init__(self, out)
         for k, v in kwargs.items():
             self.set(getattr(self, k), v)
@@ -330,13 +285,10 @@ class serializer_settings(settings_mixin, _OwnedHandle):
     """Serializer settings - wraps ``ifcopenshell_ifcgeom_serializer_settings_t``."""
 
     _settings_kind = "serializer_settings"
-    _destroy_fn_name = "ifcopenshell_ifcgeom_serializer_settings_destroy"
+    _destroy_fn_name = "geom_serializer_settings_destroy"
 
     def __init__(self, **kwargs: Any):
-        lib = bind()
-        out = HandleP()
-        if not lib.ifcopenshell_ifcgeom_create_serializer_settings(byref(out)):
-            raise RuntimeError("Failed to create serializer settings")
+        out = _capi.geom_create_serializer_settings()
         _OwnedHandle.__init__(self, out)
         for k, v in kwargs.items():
             self.set(getattr(self, k), v)
@@ -347,36 +299,40 @@ class serializer_settings(settings_mixin, _OwnedHandle):
 # ---------------------------------------------------------------------------
 
 
-def _string_attr(handle: HandleP, fn_name: str) -> str:
-    return (
-        _generated_capi.call_string(
-            bind(), getattr(bind(), fn_name), handle, value_type=ifcopenshell_string_t
-        )
-        or ""
-    )
+def _string_attr(handle, fn_name: str) -> str:
+    fn = getattr(_capi, fn_name)
+    return fn(handle) or ""
 
 
-def _int_attr(handle: HandleP, fn_name: str) -> int:
-    result = _generated_capi.call_scalar(getattr(bind(), fn_name), c_int32, handle)
-    return int(result) if result is not None else 0
+def _int_attr(handle, fn_name: str) -> int:
+    fn = getattr(_capi, fn_name)
+    return int(fn(handle))
 
 
-def _take_handle_list(lst, destroy_fn_name: str, wrap_cls):
-    """Move-construct Python wrappers from a heap handle-list."""
-    return [wrap_cls(handle) if handle else wrap_cls(None) for handle in _generated_capi.move_handle_list(bind(), lst, destroy_fn_name, HandleP)]
+def _take_handle_list(lst, wrap_cls):
+    """Move-construct Python wrappers from a handle list."""
+    return [wrap_cls(handle) if handle else wrap_cls(None) for handle in lst]
+
+
+def _to_numpy(data, dtype):
+    """Convert a list to numpy array if numpy is available."""
+    if not data:
+        if np is not None:
+            return np.empty(0, dtype=dtype)
+        return []
+    if np is not None:
+        return np.asarray(data, dtype=dtype)
+    return list(data)
 
 
 class Transformation(_OwnedHandle):
     """Wraps ``ifcopenshell_ifcgeom_transformation_t``."""
 
-    _destroy_fn_name = "ifcopenshell_ifcgeom_transformation_destroy"
+    _destroy_fn_name = "geom_transformation_destroy"
 
     def matrix(self):
         """Return the row-major 4x4 transformation matrix as a flat list/numpy."""
-        out = ifcopenshell_double_list_t()
-        if not bind().ifcopenshell_ifcgeom_transformation_matrix(self._h, byref(out)):
-            raise RuntimeError("Failed to read transformation matrix")
-        data = take_double_list(out)
+        data = _capi.geom_transformation_matrix(self._h)
         if np is not None:
             arr = np.asarray(data, dtype=np.float64)
             return arr.reshape(4, 4) if arr.size == 16 else arr
@@ -410,13 +366,10 @@ class PlacementTransformation:
 class TaxonomyColour(_OwnedHandle):
     """RGBA colour (3 or 4 doubles)."""
 
-    _destroy_fn_name = "ifcopenshell_ifcgeom_taxonomy_colour_destroy"
+    _destroy_fn_name = "geom_taxonomy_colour_destroy"
 
     def get_data(self) -> list[float]:
-        out = ifcopenshell_double_list_t()
-        if not bind().ifcopenshell_ifcgeom_taxonomy_colour_get_data(self._h, byref(out)):
-            return []
-        return take_double_list(out)
+        return list(_capi.geom_taxonomy_colour_get_data(self._h))
 
     def __iter__(self):
         return iter(self.get_data())
@@ -428,61 +381,44 @@ class TaxonomyColour(_OwnedHandle):
 class TaxonomyStyle(_OwnedHandle):
     """A material/style entry (``ifcopenshell_ifcgeom_taxonomy_style_t``)."""
 
-    _destroy_fn_name = "ifcopenshell_ifcgeom_taxonomy_style_destroy"
+    _destroy_fn_name = "geom_taxonomy_style_destroy"
 
     def name(self) -> str:
-        return _string_attr(self._h, "ifcopenshell_ifcgeom_taxonomy_style_name")
+        return _string_attr(self._h, "geom_taxonomy_style_name")
 
     def has_specularity(self) -> bool:
-        v = c_bool()
-        return bool(
-            bind().ifcopenshell_ifcgeom_taxonomy_style_has_specularity(self._h, byref(v))
-            and v.value
-        )
+        return bool(_capi.geom_taxonomy_style_has_specularity(self._h))
 
     def has_transparency(self) -> bool:
-        v = c_bool()
-        return bool(
-            bind().ifcopenshell_ifcgeom_taxonomy_style_has_transparency(self._h, byref(v))
-            and v.value
-        )
+        return bool(_capi.geom_taxonomy_style_has_transparency(self._h))
 
     def specularity(self) -> float:
-        v = c_double()
-        bind().ifcopenshell_ifcgeom_taxonomy_style_specularity(self._h, byref(v))
-        return float(v.value)
+        return float(_capi.geom_taxonomy_style_specularity(self._h))
 
     def transparency(self) -> float:
-        v = c_double()
-        bind().ifcopenshell_ifcgeom_taxonomy_style_transparency(self._h, byref(v))
-        return float(v.value)
+        return float(_capi.geom_taxonomy_style_transparency(self._h))
 
     def use_surface_color(self) -> bool:
-        v = c_bool()
-        return bool(
-            bind().ifcopenshell_ifcgeom_taxonomy_style_use_surface_color(self._h, byref(v))
-            and v.value
-        )
+        return bool(_capi.geom_taxonomy_style_use_surface_color(self._h))
 
     def _colour(self, fn_name: str) -> Optional[TaxonomyColour]:
-        out = HandleP()
-        if not getattr(bind(), fn_name)(self._h, byref(out)) or not out:
+        fn = getattr(_capi, fn_name)
+        out = fn(self._h)
+        if not out:
             return None
         return TaxonomyColour(out)
 
     def diffuse(self):
-        return self._colour("ifcopenshell_ifcgeom_taxonomy_style_diffuse")
+        return self._colour("geom_taxonomy_style_diffuse")
 
     def specular(self):
-        return self._colour("ifcopenshell_ifcgeom_taxonomy_style_specular")
+        return self._colour("geom_taxonomy_style_specular")
 
     def surface(self):
-        return self._colour("ifcopenshell_ifcgeom_taxonomy_style_surface")
+        return self._colour("geom_taxonomy_style_surface")
 
     def instance_id(self) -> int:
-        v = c_size_t()
-        bind().ifcopenshell_ifcgeom_taxonomy_style_instance_id(self._h, byref(v))
-        return int(v.value)
+        return int(_capi.geom_taxonomy_style_instance_id(self._h))
 
     @property
     def diffuse_colour(self):
@@ -495,38 +431,6 @@ class TaxonomyStyle(_OwnedHandle):
 
 # Backwards-compatibility alias used by upstream Python tests.
 SurfaceStyle = TaxonomyStyle
-
-
-def _bulk_double_array(handle: HandleP, size_fn: str, buf_fn: str):
-    n = c_size_t()
-    if not getattr(bind(), size_fn)(handle, byref(n)) or n.value == 0:
-        if np is not None:
-            return np.empty(0, dtype=np.float64)
-        return []
-    ptr = POINTER(c_double)()
-    if not getattr(bind(), buf_fn)(handle, byref(ptr)) or not ptr:
-        if np is not None:
-            return np.empty(0, dtype=np.float64)
-        return []
-    if np is not None:
-        return np.ctypeslib.as_array(ptr, shape=(int(n.value),)).copy()
-    return list(ptr[: int(n.value)])
-
-
-def _bulk_int_array(handle: HandleP, size_fn: str, buf_fn: str):
-    n = c_size_t()
-    if not getattr(bind(), size_fn)(handle, byref(n)) or n.value == 0:
-        if np is not None:
-            return np.empty(0, dtype=np.int32)
-        return []
-    ptr = POINTER(c_int32)()
-    if not getattr(bind(), buf_fn)(handle, byref(ptr)) or not ptr:
-        if np is not None:
-            return np.empty(0, dtype=np.int32)
-        return []
-    if np is not None:
-        return np.ctypeslib.as_array(ptr, shape=(int(n.value),)).copy()
-    return list(ptr[: int(n.value)])
 
 
 def _as_tuple(arr):
@@ -547,7 +451,7 @@ def _as_tuple(arr):
 class Triangulation(_OwnedHandle):
     """Triangulated geometry data (``ifcopenshell_ifcgeom_triangulation_t``)."""
 
-    _destroy_fn_name = "ifcopenshell_ifcgeom_triangulation_destroy"
+    _destroy_fn_name = "geom_triangulation_destroy"
 
     @property
     def id(self) -> str:
@@ -563,11 +467,7 @@ class Triangulation(_OwnedHandle):
 
     @property
     def verts_buffer(self):
-        return _bulk_double_array(
-            self._h,
-            "ifcopenshell_ifcgeom_triangulation_verts_buffer_size",
-            "ifcopenshell_ifcgeom_triangulation_verts_buffer",
-        )
+        return _to_numpy(_capi.geom_triangulation_verts(self._h), np.float64 if np is not None else None)
 
     @property
     def verts(self):
@@ -575,11 +475,7 @@ class Triangulation(_OwnedHandle):
 
     @property
     def faces_buffer(self):
-        return _bulk_int_array(
-            self._h,
-            "ifcopenshell_ifcgeom_triangulation_faces_buffer_size",
-            "ifcopenshell_ifcgeom_triangulation_faces_buffer",
-        )
+        return _to_numpy(_capi.geom_triangulation_faces(self._h), np.int32 if np is not None else None)
 
     @property
     def faces(self):
@@ -590,11 +486,7 @@ class Triangulation(_OwnedHandle):
 
     @property
     def normals_buffer(self):
-        return _bulk_double_array(
-            self._h,
-            "ifcopenshell_ifcgeom_triangulation_normals_buffer_size",
-            "ifcopenshell_ifcgeom_triangulation_normals_buffer",
-        )
+        return _to_numpy(_capi.geom_triangulation_normals(self._h), np.float64 if np is not None else None)
 
     @property
     def normals(self):
@@ -602,11 +494,7 @@ class Triangulation(_OwnedHandle):
 
     @property
     def edges_buffer(self):
-        return _bulk_int_array(
-            self._h,
-            "ifcopenshell_ifcgeom_triangulation_edges_buffer_size",
-            "ifcopenshell_ifcgeom_triangulation_edges_buffer",
-        )
+        return _to_numpy(_capi.geom_triangulation_edges_buffer(self._h), np.int32 if np is not None else None)
 
     @property
     def edges(self):
@@ -614,11 +502,7 @@ class Triangulation(_OwnedHandle):
 
     @property
     def material_ids_buffer(self):
-        return _bulk_int_array(
-            self._h,
-            "ifcopenshell_ifcgeom_triangulation_material_ids_buffer_size",
-            "ifcopenshell_ifcgeom_triangulation_material_ids_buffer",
-        )
+        return _to_numpy(_capi.geom_triangulation_material_ids_buffer(self._h), np.int32 if np is not None else None)
 
     @property
     def material_ids(self):
@@ -626,27 +510,15 @@ class Triangulation(_OwnedHandle):
 
     @property
     def item_ids_buffer(self):
-        return _bulk_int_array(
-            self._h,
-            "ifcopenshell_ifcgeom_triangulation_item_ids_buffer_size",
-            "ifcopenshell_ifcgeom_triangulation_item_ids_buffer",
-        )
+        return _to_numpy(_capi.geom_triangulation_item_ids_buffer(self._h), np.int32 if np is not None else None)
 
     @property
     def uvs_buffer(self):
-        return _bulk_double_array(
-            self._h,
-            "ifcopenshell_ifcgeom_triangulation_uvs_buffer_size",
-            "ifcopenshell_ifcgeom_triangulation_uvs_buffer",
-        )
+        return _to_numpy(_capi.geom_triangulation_uvs(self._h), np.float64 if np is not None else None)
 
     @property
     def edges_item_ids_buffer(self):
-        return _bulk_int_array(
-            self._h,
-            "ifcopenshell_ifcgeom_triangulation_edges_item_ids_buffer_size",
-            "ifcopenshell_ifcgeom_triangulation_edges_item_ids_buffer",
-        )
+        return _to_numpy(_capi.geom_triangulation_edges_item_ids_buffer(self._h), np.int32 if np is not None else None)
 
     @property
     def edges_item_ids(self):
@@ -662,10 +534,9 @@ class Triangulation(_OwnedHandle):
 
     @property
     def colors(self):
-        out = ifcopenshell_double_list_t()
-        if not bind().ifcopenshell_ifcgeom_triangulation_colors_buffer(self._h, byref(out)):
+        data = _capi.geom_triangulation_colors_buffer(self._h)
+        if not data:
             return [] if np is None else np.empty(0, dtype=np.float64)
-        data = take_double_list(out)
         if np is not None:
             return np.asarray(data, dtype=np.float64)
         return data
@@ -673,19 +544,15 @@ class Triangulation(_OwnedHandle):
     # ---- materials ---------------------------------------------------
 
     def material_count(self) -> int:
-        v = c_size_t()
-        bind().ifcopenshell_ifcgeom_triangulation_material_count(self._h, byref(v))
-        return int(v.value)
+        return int(_capi.geom_triangulation_material_count(self._h))
 
     @property
     def materials(self) -> list[TaxonomyStyle]:
         n = self.material_count()
         out = []
         for i in range(n):
-            h = HandleP()
-            if not bind().ifcopenshell_ifcgeom_triangulation_material_at(
-                self._h, c_size_t(i), byref(h)
-            ) or not h:
+            h = _capi.geom_triangulation_material_at(self._h, i)
+            if not h:
                 out.append(None)  # type: ignore[arg-type]
             else:
                 out.append(TaxonomyStyle(h))
@@ -694,104 +561,74 @@ class Triangulation(_OwnedHandle):
     # ---- polyhedral face accessors ----------------------------------
 
     def polyhedral_faces_without_holes(self) -> list[list[list[int]]]:
-        out = ifcopenshell_int32_list_list_t()
-        if not bind().ifcopenshell_ifcgeom_triangulation_polyhedral_faces_without_holes(
-            self._h, byref(out)
-        ):
+        data = _capi.geom_triangulation_polyhedral_faces_without_holes(self._h)
+        if not data:
             return []
-        return [list(row) for row in _generated_capi.take_int32_list_list(bind(), out)]
+        return [list(row) for row in data]
 
     def polyhedral_faces_with_holes(self) -> list[list[list[int]]]:
-        out = ifcopenshell_int32_list_list_list_t()
-        if not bind().ifcopenshell_ifcgeom_triangulation_polyhedral_faces_with_holes(
-            self._h, byref(out)
-        ):
+        data = _capi.geom_triangulation_polyhedral_faces_with_holes(self._h)
+        if not data:
             return []
         return [
             [list(inner) for inner in outer]
-            for outer in _generated_capi.take_int32_list_list_list(bind(), out)
+            for outer in data
         ]
 
 
 class BRepRepresentation(_OwnedHandle):
     """``ifcopenshell_ifcgeom_brep_representation_t``."""
 
-    _destroy_fn_name = "ifcopenshell_ifcgeom_brep_representation_destroy"
+    _destroy_fn_name = "geom_brep_representation_destroy"
 
     @property
     def entity(self) -> str:
-        return _string_attr(self._h, "ifcopenshell_ifcgeom_brep_representation_entity")
+        return _string_attr(self._h, "geom_brep_representation_entity")
 
     @property
     def id(self) -> str:
-        return _string_attr(self._h, "ifcopenshell_ifcgeom_brep_representation_id")
+        return _string_attr(self._h, "geom_brep_representation_id")
 
     @property
     def size(self) -> int:
-        return _int_attr(self._h, "ifcopenshell_ifcgeom_brep_representation_size")
+        return _int_attr(self._h, "geom_brep_representation_size")
 
     def item_id(self, i: int) -> int:
-        v = c_int32()
-        bind().ifcopenshell_ifcgeom_brep_representation_item_id(
-            self._h, c_int32(i), byref(v)
-        )
-        return int(v.value)
+        return int(_capi.geom_brep_representation_item_id(self._h, i))
 
     @property
     def settings(self):
-        out = HandleP()
-        if not bind().ifcopenshell_ifcgeom_brep_representation_settings(
-            self._h, byref(out)
-        ) or not out:
+        out = _capi.geom_brep_representation_settings(self._h)
+        if not out:
             return None
-        # Wrap as a settings object without ownership - underlying lifetime
-        # is managed by the BRep representation.
         s = settings.__new__(settings)
         _OwnedHandle.__init__(s, out)
         s._destroy_fn_name = None  # type: ignore[attr-defined]
         return s
 
     def calculate_volume(self) -> float:
-        v = c_double()
-        bind().ifcopenshell_ifcgeom_brep_representation_calculate_volume(
-            self._h, byref(v)
-        )
-        return float(v.value)
+        return float(_capi.geom_brep_representation_calculate_volume(self._h))
 
     def calculate_surface_area(self) -> float:
-        v = c_double()
-        bind().ifcopenshell_ifcgeom_brep_representation_calculate_surface_area(
-            self._h, byref(v)
-        )
-        return float(v.value)
+        return float(_capi.geom_brep_representation_calculate_surface_area(self._h))
 
 
 class Serialization(_OwnedHandle):
     """``ifcopenshell_ifcgeom_serialization_t`` - serialised BRep payload."""
 
-    _destroy_fn_name = "ifcopenshell_ifcgeom_serialization_destroy"
+    _destroy_fn_name = "geom_serialization_destroy"
 
     @property
     def brep_data(self) -> str:
-        return _string_attr(self._h, "ifcopenshell_ifcgeom_serialization_brep_data")
+        return _string_attr(self._h, "geom_serialization_brep_data")
 
     @property
     def surface_style_ids(self) -> list[int]:
-        out = ifcopenshell_int32_list_t()
-        if not bind().ifcopenshell_ifcgeom_serialization_surface_style_ids(
-            self._h, byref(out)
-        ):
-            return []
-        return take_int_list(out)
+        return take_int_list(_capi.geom_serialization_surface_style_ids(self._h))
 
     @property
     def surface_styles(self) -> list[float]:
-        out = ifcopenshell_double_list_t()
-        if not bind().ifcopenshell_ifcgeom_serialization_surface_styles(
-            self._h, byref(out)
-        ):
-            return []
-        return take_double_list(out)
+        return take_double_list(_capi.geom_serialization_surface_styles(self._h))
 
 
 class Element(_OwnedHandle):
@@ -801,80 +638,69 @@ class Element(_OwnedHandle):
     :class:`SerializedElement`) add a typed ``geometry`` accessor.
     """
 
-    _destroy_fn_name = "ifcopenshell_ifcgeom_element_destroy"
+    _destroy_fn_name = "geom_element_destroy"
 
     # ---- common attributes ------------------------------------------
     @property
     def context(self) -> str:
-        return _string_attr(self._h, "ifcopenshell_ifcgeom_element_context")
+        return _string_attr(self._h, "geom_element_context")
 
     @property
     def guid(self) -> str:
-        return _string_attr(self._h, "ifcopenshell_ifcgeom_element_guid")
+        return _string_attr(self._h, "geom_element_guid")
 
     @property
     def id(self) -> int:
-        return _int_attr(self._h, "ifcopenshell_ifcgeom_element_id")
+        return _int_attr(self._h, "geom_element_id")
 
     @property
     def name(self) -> str:
-        return _string_attr(self._h, "ifcopenshell_ifcgeom_element_name")
+        return _string_attr(self._h, "geom_element_name")
 
     @property
     def parent_id(self) -> int:
-        return _int_attr(self._h, "ifcopenshell_ifcgeom_element_parent_id")
+        return _int_attr(self._h, "geom_element_parent_id")
 
     @property
     def type(self) -> str:
-        return _string_attr(self._h, "ifcopenshell_ifcgeom_element_type")
+        return _string_attr(self._h, "geom_element_type")
 
     @property
     def unique_id(self) -> str:
-        return _string_attr(self._h, "ifcopenshell_ifcgeom_element_unique_id")
+        return _string_attr(self._h, "geom_element_unique_id")
 
     @property
-    def parents(self) -> list["Element"]:
-        out = ifcopenshell_ifcgeom_element_list_t()
-        if not bind().ifcopenshell_ifcgeom_element_parents(self._h, byref(out)):
+    def parents(self) -> list[Element]:
+        out = _capi.geom_element_parents(self._h)
+        if not out:
             return []
-        return _take_handle_list(out, "ifcopenshell_ifcgeom_element_list_destroy", Element)
+        return _take_handle_list(out, Element)
 
     @property
     def transformation(self) -> Transformation:
-        out = HandleP()
-        if not bind().ifcopenshell_ifcgeom_element_transformation(
-            self._h, byref(out)
-        ) or not out:
+        out = _capi.geom_element_transformation(self._h)
+        if not out:
             return Transformation(None)
         return Transformation(out)
 
     @property
     def transformation_buffer(self):
         """Direct access to the row-major transformation matrix as numpy array."""
-        n = c_size_t()
-        if not bind().ifcopenshell_ifcgeom_element_transformation_buffer_size(
-            self._h, byref(n)
-        ) or n.value == 0:
-            if np is not None:
-                return np.empty(0, dtype=np.float64)
-            return []
-        ptr = POINTER(c_double)()
-        if not bind().ifcopenshell_ifcgeom_element_transformation_buffer(
-            self._h, byref(ptr)
-        ) or not ptr:
+        data = _capi.geom_element_transformation_buffer(self._h)
+        if not data:
             if np is not None:
                 return np.empty(0, dtype=np.float64)
             return []
         if np is not None:
-            arr = np.ctypeslib.as_array(ptr, shape=(int(n.value),)).copy()
+            arr = np.asarray(data, dtype=np.float64)
             return arr.reshape(4, 4) if arr.size == 16 else arr
-        return list(ptr[: int(n.value)])
+        return data
 
     @property
     def product(self):
         """Return the underlying ``IfcProduct`` entity_instance."""
-        out = HandleP()
-        if not bind().ifcopenshell_ifcgeom_element_product(self._h, byref(out)) or not out:
+        out = _capi.geom_element_product(self._h)
+        if not out:
             return None
         return _wrap_product_instance(out)
 
@@ -882,48 +708,40 @@ class Element(_OwnedHandle):
 class BRepElement(Element):
     """Element holding a BRep representation (``...brep_element_t``)."""
 
-    _destroy_fn_name = "ifcopenshell_ifcgeom_brep_element_destroy"
+    _destroy_fn_name = "geom_brep_element_destroy"
 
     @property
     def geometry(self) -> BRepRepresentation:
-        out = HandleP()
-        if not bind().ifcopenshell_ifcgeom_brep_element_geometry(
-            self._h, byref(out)
-        ) or not out:
+        out = _capi.geom_brep_element_geometry(self._h)
+        if not out:
             return BRepRepresentation(None)
         return BRepRepresentation(out)
 
     def calc_volume(self) -> float:
-        v = c_double()
-        bind().ifcopenshell_ifcgeom_brep_element_calc_volume(self._h, byref(v))
-        return float(v.value)
+        return float(_capi.geom_brep_element_calc_volume(self._h))
 
     def calc_surface_area(self) -> float:
-        v = c_double()
-        bind().ifcopenshell_ifcgeom_brep_element_calc_surface_area(self._h, byref(v))
-        return float(v.value)
+        return float(_capi.geom_brep_element_calc_surface_area(self._h))
 
     def calculate_projected_surface_area(
         self, along_x: float = 1.0, along_y: float = 0.0, along_z: float = 0.0
     ) -> bool:
-        v = c_bool()
-        bind().ifcopenshell_ifcgeom_brep_element_calculate_projected_surface_area(
-            self._h, c_double(along_x), c_double(along_y), c_double(along_z), byref(v)
+        return bool(
+            _capi.geom_brep_element_calculate_projected_surface_area(
+                self._h, float(along_x), float(along_y), float(along_z)
+            )
         )
-        return bool(v.value)
 
 
 class TriangulationElement(Element):
     """Element holding triangulated mesh data (``...triangulation_element_t``)."""
 
-    _destroy_fn_name = "ifcopenshell_ifcgeom_triangulation_element_destroy"
+    _destroy_fn_name = "geom_triangulation_element_destroy"
 
     @property
     def geometry(self) -> Triangulation:
-        out = HandleP()
-        if not bind().ifcopenshell_ifcgeom_triangulation_element_geometry(
-            self._h, byref(out)
-        ) or not out:
+        out = _capi.geom_triangulation_element_geometry(self._h)
+        if not out:
             return Triangulation(None)
         geometry = Triangulation(out)
         geometry._element_owner = self
@@ -933,35 +751,24 @@ class TriangulationElement(Element):
 class SerializedElement(Element):
     """Element holding a STEP-serialised BRep payload (``...serialized_element_t``)."""
 
-    _destroy_fn_name = "ifcopenshell_ifcgeom_serialized_element_destroy"
+    _destroy_fn_name = "geom_serialized_element_destroy"
 
     @property
     def geometry(self) -> Serialization:
-        out = HandleP()
-        if not bind().ifcopenshell_ifcgeom_serialized_element_geometry(
-            self._h, byref(out)
-        ) or not out:
+        out = _capi.geom_serialized_element_geometry(self._h)
+        if not out:
             return Serialization(None)
         return Serialization(out)
 
 
 def _wrap_product_instance(h):
-    """Adopt an ``ifcopenshell_ifc_instance_t*`` (raw ``int``/``c_void_p`` /
-    ``POINTER(_HandleStruct)``) and return an
+    """Adopt an ``ifcopenshell_ifc_instance_t`` native handle and return an
     :class:`ifcopenshell.entity_instance` rooted in the owning file."""
-    from ifcopenshell.entity_instance import entity_instance
-    from ifcopenshell import _borrow_file_ptr, _instance_file_ptr
-
     if h is None:
         return None
-    if isinstance(h, ctypes.c_void_p):
-        h = h.value
-    elif hasattr(h, "contents") or isinstance(h, _capi._HandleStruct):
-        # Raw address of the handle struct itself (NOT its inner ``ptr``
-        # field, which would be the underlying C++ object).
-        h = ctypes.cast(h, ctypes.c_void_p).value
-    if not h:
-        return None
+    from ifcopenshell import _borrow_file_ptr, _instance_file_ptr
+    from ifcopenshell.entity_instance import entity_instance
+
     file_ptr = _instance_file_ptr(h)
     f = _borrow_file_ptr(file_ptr) if file_ptr else None
     return entity_instance(f, h)
@@ -1017,9 +824,7 @@ map_shape = None  # type: ignore[assignment]
 
 
 def _instance_handle(inst):
-    """Return a generated C-API handle pointer for an entity_instance."""
-    from ifcopenshell.geom._capi import HandleP
-
+    """Return a generated C-API handle for an entity_instance."""
     if inst is None:
         return None
     h = getattr(inst, "_handle", None)
@@ -1027,11 +832,7 @@ def _instance_handle(inst):
         h = getattr(getattr(inst, "wrapped_data", None), "_handle", None)
     if h is None:
         raise TypeError(f"create_shape: expected entity_instance, got {type(inst).__name__}")
-    if isinstance(h, HandleP):
-        return h
-    if isinstance(h, ctypes.c_void_p):
-        return ctypes.cast(h, HandleP) if h.value else HandleP()
-    return ctypes.cast(ctypes.c_void_p(h), HandleP) if h else HandleP()
+    return h
 
 
 def _result_geometry_type(settings_obj):
@@ -1082,28 +883,17 @@ def create_shape(
 
     inst_h = _instance_handle(inst)
     repr_h = _instance_handle(repr) if repr is not None else None
-    out = HandleP()
-    lib = bind()
-    if not lib.ifcopenshell_ifcgeom_create_shape(
+    out = _capi.geom_create_shape(
         settings_obj._h,
         inst_h,
         repr_h,
-        (geometry_library or "opencascade").encode("utf-8"),
-        byref(out),
-    ):
-        from ifcopenshell import _get_lib
-
-        err = _get_lib().ifcopenshell_last_error_message()
-        msg = err.decode("utf-8") if err else "Unknown error"
-        raise RuntimeError(f"Failed to create shape: {msg}")
+        geometry_library or "opencascade",
+    )
 
     cls = _result_geometry_type(settings_obj)
     elem = cls.__new__(cls)
     _OwnedHandle.__init__(elem, out)
 
-    # For IfcProduct inputs upstream returns the full Element wrapper; for
-    # bare representations / items / profiles it returns just the geometry
-    # payload. The discriminator is the entity classification.
     is_product = False
     try:
         is_product = bool(inst.is_a("IfcProduct"))
@@ -1121,21 +911,14 @@ def map_shape(settings_obj, inst):
     if not isinstance(settings_obj, settings):
         raise TypeError("map_shape: settings argument must be ifcopenshell.geom.settings")
     inst_h = _instance_handle(inst)
-    out = HandleP()
-    lib = bind()
-    if not lib.ifcopenshell_ifcgeom_map_shape(settings_obj._h, inst_h, byref(out)):
-        from ifcopenshell import _get_lib
-
-        err = _get_lib().ifcopenshell_last_error_message()
-        msg = err.decode("utf-8") if err else "Unknown error"
-        raise RuntimeError(f"Failed to map shape: {msg}")
+    out = _capi.geom_map_shape(settings_obj._h, inst_h)
     return TaxonomyItem(out)
 
 
 class TaxonomyItem(_OwnedHandle):
     """Opaque wrapper over ``ifcopenshell_ifcgeom_taxonomy_item_t``."""
 
-    _destroy_fn_name = "ifcopenshell_ifcgeom_taxonomy_item_destroy"
+    _destroy_fn_name = "geom_taxonomy_item_destroy"
 iterate = None  # type: ignore[assignment]  # populated below
 consume_iterator = None  # type: ignore[assignment]
 make_shape_function = None  # type: ignore[assignment]  # populated below
@@ -1144,31 +927,26 @@ tesselate = None  # type: ignore[assignment]
 
 
 def _file_native_ptr(file_or_filename):
-    """Resolve ``file_or_filename`` to a generated file handle pointer and
-    return ``(ptr, owning_file)``.
+    """Resolve ``file_or_filename`` to a native file handle and
+    return ``(handle, owning_file)``.
 
     The owning file is returned so callers can keep it alive for the
     lifetime of the iterator (the C iterator borrows from the file).
     """
     import ifcopenshell as _io
-    from ifcopenshell.geom._capi import HandleP
 
     if isinstance(file_or_filename, str):
         f = _io.open(file_or_filename)
     else:
         f = file_or_filename
-    ptr = getattr(f, "_ptr", None)
-    if ptr is None:
-        ptr = getattr(getattr(f, "wrapped_data", None), "_ptr", None)
-    if ptr is None:
+    handle = getattr(f, "_handle", None)
+    if handle is None:
+        handle = getattr(getattr(f, "wrapped_data", None), "_handle", None)
+    if handle is None:
         raise TypeError(
             f"iterate: expected ifcopenshell.file or path, got {type(file_or_filename).__name__}"
         )
-    if isinstance(ptr, HandleP):
-        return ptr, f
-    if isinstance(ptr, ctypes.c_void_p):
-        return (ctypes.cast(ptr, HandleP) if ptr.value else HandleP()), f
-    return (ctypes.cast(ctypes.c_void_p(ptr), HandleP) if ptr else HandleP()), f
+    return handle, f
 
 
 class iterator:
@@ -1197,14 +975,11 @@ class iterator:
         self.settings = settings_obj
         file_ptr, self.file = _file_native_ptr(file_or_filename)
 
-        lib = bind()
-        out = HandleP()
-        gl = (geometry_library or "opencascade").encode("utf-8")
+        gl = geometry_library or "opencascade"
 
         if include is None and exclude is None:
-            ok = lib.ifcopenshell_ifcgeom_create_iterator(
-                gl, settings_obj._h, file_ptr,
-                c_int32(int(num_threads)), byref(out),
+            out = _capi.geom_create_iterator(
+                gl, settings_obj._h, file_ptr, int(num_threads),
             )
         else:
             spec = include if exclude is None else exclude
@@ -1216,125 +991,74 @@ class iterator:
                     raise ValueError(
                         "include/exclude must be aggregates of IfcProduct entity_instance values"
                     )
-                ids = ifcopenshell_int32_list_t()
-                arr = (c_int32 * len(spec_list))(*(x.id() for x in spec_list))
-                ids.items = arr
-                ids.size = len(spec_list)
-                ok = lib.ifcopenshell_ifcgeom_create_iterator_with_include_exclude_id(
+                ids = [x.id() for x in spec_list]
+                out = _capi.geom_create_iterator_with_include_exclude_id(
                     gl, settings_obj._h, file_ptr,
-                    byref(ids), c_bool(include_flag),
-                    c_int32(int(num_threads)), byref(out),
+                    ids, bool(include_flag), int(num_threads),
                 )
             else:
-                str_list = to_string_list([str(x) for x in spec_list])
-                # NOTE: do NOT call ifcopenshell_string_list_destroy on a
-                # Python-built string list - it would `delete[]` ctypes-owned
-                # memory. Lifetime is extended via str_list._keep until ``ok``
-                # returns; the C side only borrows the strings.
-                ok = lib.ifcopenshell_ifcgeom_create_iterator_with_include_exclude(
+                str_list = [str(x) for x in spec_list]
+                out = _capi.geom_create_iterator_with_include_exclude(
                     gl, settings_obj._h, file_ptr,
-                    byref(str_list), c_bool(include_flag),
-                    c_int32(int(num_threads)), byref(out),
+                    str_list, bool(include_flag), int(num_threads),
                 )
-                self._str_list_anchor = str_list  # type: ignore[attr-defined]
 
-        if not ok or not out:
-            from ifcopenshell import _get_lib as _gl
-
-            err = _gl().ifcopenshell_last_error_message()
-            msg = err.decode("utf-8") if err else "Unknown error"
-            raise RuntimeError(f"Failed to create iterator: {msg}")
         self._h = out
 
     def __del__(self):
         try:
             if getattr(self, "_h", None):
-                bind().ifcopenshell_ifcgeom_iterator_destroy(self._h)
+                _capi.geom_iterator_destroy(self._h)
                 self._h = None
         except Exception:
             pass
 
     def initialize(self) -> bool:
-        v = c_bool(False)
-        if not bind().ifcopenshell_ifcgeom_iterator_initialize(self._h, byref(v)):
-            return False
-        return bool(v.value)
+        return bool(_capi.geom_iterator_initialize(self._h))
 
     def next(self) -> bool:
-        v = c_bool(False)
-        if not bind().ifcopenshell_ifcgeom_iterator_next(self._h, byref(v)):
-            return False
-        return bool(v.value)
+        return bool(_capi.geom_iterator_next(self._h))
 
     def progress(self) -> int:
-        v = c_int32(0)
-        bind().ifcopenshell_ifcgeom_iterator_progress(self._h, byref(v))
-        return int(v.value)
+        return int(_capi.geom_iterator_progress(self._h))
 
     def compute_bounds(self, with_geometry: bool = False) -> None:
-        bind().ifcopenshell_ifcgeom_iterator_compute_bounds(self._h, c_bool(with_geometry))
+        _capi.geom_iterator_compute_bounds(self._h, bool(with_geometry))
 
     def unit_magnitude(self) -> float:
-        v = c_double(0.0)
-        bind().ifcopenshell_ifcgeom_iterator_unit_magnitude(self._h, byref(v))
-        return float(v.value)
+        return float(_capi.geom_iterator_unit_magnitude(self._h))
 
     def unit_name(self) -> str:
-        return (
-            _generated_capi.call_string(
-                bind(), bind().ifcopenshell_ifcgeom_iterator_unit_name, self._h, value_type=ifcopenshell_string_t
-            )
-            or ""
-        )
+        return _capi.geom_iterator_unit_name(self._h) or ""
 
     def get_log(self) -> str:
-        return (
-            _generated_capi.call_string(
-                bind(), bind().ifcopenshell_ifcgeom_iterator_get_log, self._h, value_type=ifcopenshell_string_t
-            )
-            or ""
-        )
+        return _capi.geom_iterator_get_log(self._h) or ""
 
     def had_error_processing_elements(self) -> bool:
-        v = c_bool(False)
-        bind().ifcopenshell_ifcgeom_iterator_had_error_processing_elements(self._h, byref(v))
-        return bool(v.value)
+        return bool(_capi.geom_iterator_had_error_processing_elements(self._h))
 
     def get(self):
         """Return the current element as the appropriate :class:`Element`
         subclass, mirroring the iterator-output configuration."""
-        out = HandleP()
         cls = _result_geometry_type(self.settings)
         if cls is TriangulationElement:
-            ok = bind().ifcopenshell_ifcgeom_iterator_get_as_triangulation_element(
-                self._h, byref(out)
-            )
+            out = _capi.geom_iterator_get_as_triangulation_element(self._h)
         elif cls is SerializedElement:
-            ok = bind().ifcopenshell_ifcgeom_iterator_get_as_serialized_element(
-                self._h, byref(out)
-            )
+            out = _capi.geom_iterator_get_as_serialized_element(self._h)
         else:
-            ok = bind().ifcopenshell_ifcgeom_iterator_get_as_brep_element(
-                self._h, byref(out)
-            )
-        if not ok or not out:
-            from ifcopenshell import _get_lib as _gl
-
-            err = _gl().ifcopenshell_last_error_message()
-            msg = err.decode("utf-8") if err else "Unknown error"
-            raise RuntimeError(f"Failed to read iterator element: {msg}")
+            out = _capi.geom_iterator_get_as_brep_element(self._h)
+        if not out:
+            raise RuntimeError(_last_error("Failed to read iterator element"))
         elem = cls.__new__(cls)
         _OwnedHandle.__init__(elem, out)
-        # Iterator owns the underlying element; suppress destroy on the
-        # Python wrapper to avoid double free.
         elem._destroy_fn_name = None
         return wrap_shape_creation(self.settings, elem)
 
     def get_native(self):
         """Return the current element as a :class:`BRepElement` regardless
         of the iterator-output setting."""
-        out = HandleP()
-        if not bind().ifcopenshell_ifcgeom_iterator_get_native(self._h, byref(out)) or not out:
+        out = _capi.geom_iterator_get_native(self._h)
+        if not out:
             return None
         elem = BRepElement.__new__(BRepElement)
         _OwnedHandle.__init__(elem, out)
@@ -1386,8 +1110,6 @@ def iterate(
             raise ValueError(
                 "iterate(): serializer_settings must be provided when cache is set"
             )
-        # Force-attach an HDF5 cache serializer to the iterator so cached
-        # entries are reused / written.
         hdf5_cache = serializers.hdf5(cache, settings_obj, serializer_settings)
     else:
         hdf5_cache = None
@@ -1410,49 +1132,33 @@ CLASH_TYPE_ITEMS = ("protrusion", "pierce", "collision", "clearance")
 
 
 def _last_error(prefix: str) -> str:
-    from ifcopenshell import _get_lib as _gl
-    err = _gl().ifcopenshell_last_error_message()
-    msg = err.decode("utf-8") if err else "Unknown error"
+    err = _capi.last_error_message()
+    msg = err if err else "Unknown error"
     return f"{prefix}: {msg}"
 
 
-def _instance_list_from(items) -> "ctypes.c_void_p":
-    """Build a native ``ifcopenshell_ifcparse_instance_list_t*`` from a
+def _instance_list_from(items):
+    """Build a native ``ifcopenshell_ifcparse_instance_list_t`` from a
     Python iterable of :class:`entity_instance`. Caller owns the returned
-    handle and must destroy it with
-    ``ifcopenshell_ifcparse_instance_list_destroy``."""
-    lib = bind()
-    items = list(items)
-    arr = (HandleP * len(items))(*[_instance_handle(x) for x in items])
-    handle_list = _capi.ifcopenshell_ifc_instance_list_t()
-    handle_list.items = arr
-    handle_list.size = len(items)
-    out = HandleP()
-    if not lib.ifcopenshell_ifcparse_instance_list_create_from_handles(byref(handle_list), byref(out)) or not out:
-        raise RuntimeError(_last_error("Failed to build instance list"))
-    return out
+    handle and must destroy it with ``instance_list_destroy``."""
+    handles = [_instance_handle(x) for x in items]
+    return _capi.instance_list_create_from_handles(handles)
 
 
 def _instance_list_to_python(list_handle) -> list:
-    """Consume an ``ifcopenshell_ifcparse_instance_list_t*`` (taking
+    """Consume an ``ifcopenshell_ifcparse_instance_list_t`` (taking
     ownership) and return the contained instances as Python
     ``entity_instance`` objects."""
-    lib = bind()
     try:
-        n = c_size_t(0)
-        if not lib.ifcopenshell_ifcparse_instance_list_size(list_handle, byref(n)):
-            raise RuntimeError(_last_error("instance_list_size failed"))
+        n = _capi.instance_list_size(list_handle)
         result = []
-        for i in range(int(n.value)):
-            inst = HandleP()
-            if not lib.ifcopenshell_ifcparse_instance_list_get(
-                list_handle, c_size_t(i), byref(inst)
-            ) or not inst:
-                continue
-            result.append(_wrap_product_instance(inst))
+        for i in range(n):
+            inst = _capi.instance_list_get(list_handle, i)
+            if inst:
+                result.append(_wrap_product_instance(inst))
         return result
     finally:
-        lib.ifcopenshell_ifcparse_instance_list_destroy(list_handle)
+        _capi.instance_list_destroy(list_handle)
 
 
 class clash:
@@ -1462,31 +1168,18 @@ class clash:
     __slots__ = ("_h", "a", "b", "clash_type", "distance", "p1", "p2")
 
     def __init__(self, h):
-        lib = bind()
         self._h = h
-        a = HandleP()
-        b = HandleP()
-        ct = c_int32(0)
-        d = c_double(0.0)
-        p1 = ifcopenshell_double_list_t()
-        p2 = ifcopenshell_double_list_t()
-        lib.ifcopenshell_ifcgeom_tree_clash_a(h, byref(a))
-        lib.ifcopenshell_ifcgeom_tree_clash_b(h, byref(b))
-        lib.ifcopenshell_ifcgeom_tree_clash_type(h, byref(ct))
-        lib.ifcopenshell_ifcgeom_tree_clash_distance(h, byref(d))
-        lib.ifcopenshell_ifcgeom_tree_clash_p1(h, byref(p1))
-        lib.ifcopenshell_ifcgeom_tree_clash_p2(h, byref(p2))
-        self.a = _wrap_product_instance(a)
-        self.b = _wrap_product_instance(b)
-        self.clash_type = int(ct.value)
-        self.distance = float(d.value)
-        self.p1 = tuple(take_double_list(p1))
-        self.p2 = tuple(take_double_list(p2))
+        self.a = _wrap_product_instance(_capi.geom_tree_clash_a(h))
+        self.b = _wrap_product_instance(_capi.geom_tree_clash_b(h))
+        self.clash_type = int(_capi.geom_tree_clash_type(h))
+        self.distance = float(_capi.geom_tree_clash_distance(h))
+        self.p1 = tuple(take_double_list(_capi.geom_tree_clash_p1(h)))
+        self.p2 = tuple(take_double_list(_capi.geom_tree_clash_p2(h)))
 
     def __del__(self):
         try:
             if self._h:
-                bind().ifcopenshell_ifcgeom_tree_clash_destroy(self._h)
+                _capi.geom_tree_clash_destroy(self._h)
                 self._h = None
         except Exception:
             pass
@@ -1501,34 +1194,19 @@ class ray_intersection:
     )
 
     def __init__(self, h):
-        lib = bind()
         self._h = h
-        inst = HandleP()
-        d = c_double(0.0)
-        dp = c_double(0.0)
-        rd = c_double(0.0)
-        si = c_int32(0)
-        pos = ifcopenshell_double_list_t()
-        nrm = ifcopenshell_double_list_t()
-        lib.ifcopenshell_ifcgeom_tree_ray_intersection_instance(h, byref(inst))
-        lib.ifcopenshell_ifcgeom_tree_ray_intersection_distance(h, byref(d))
-        lib.ifcopenshell_ifcgeom_tree_ray_intersection_dot_product(h, byref(dp))
-        lib.ifcopenshell_ifcgeom_tree_ray_intersection_ray_distance(h, byref(rd))
-        lib.ifcopenshell_ifcgeom_tree_ray_intersection_style_index(h, byref(si))
-        lib.ifcopenshell_ifcgeom_tree_ray_intersection_position(h, byref(pos))
-        lib.ifcopenshell_ifcgeom_tree_ray_intersection_normal(h, byref(nrm))
-        self.instance = _wrap_product_instance(inst)
-        self.distance = float(d.value)
-        self.dot_product = float(dp.value)
-        self.ray_distance = float(rd.value)
-        self.style_index = int(si.value)
-        self.position = tuple(take_double_list(pos))
-        self.normal = tuple(take_double_list(nrm))
+        self.instance = _wrap_product_instance(_capi.geom_tree_ray_intersection_instance(h))
+        self.distance = float(_capi.geom_tree_ray_intersection_distance(h))
+        self.dot_product = float(_capi.geom_tree_ray_intersection_dot_product(h))
+        self.ray_distance = float(_capi.geom_tree_ray_intersection_ray_distance(h))
+        self.style_index = int(_capi.geom_tree_ray_intersection_style_index(h))
+        self.position = tuple(take_double_list(_capi.geom_tree_ray_intersection_position(h)))
+        self.normal = tuple(take_double_list(_capi.geom_tree_ray_intersection_normal(h)))
 
     def __del__(self):
         try:
             if self._h:
-                bind().ifcopenshell_ifcgeom_tree_ray_intersection_destroy(self._h)
+                _capi.geom_tree_ray_intersection_destroy(self._h)
                 self._h = None
         except Exception:
             pass
@@ -1543,30 +1221,21 @@ class tree:
     """
 
     def __init__(self, file=None, settings_obj: Optional[settings] = None):
-        lib = bind()
-        out = HandleP()
         if file is None:
-            ok = lib.ifcopenshell_ifcgeom_create_tree(byref(out))
+            out = _capi.geom_create_tree()
         else:
             file_ptr, self._file_anchor = _file_native_ptr(file)
             if settings_obj is None:
-                ok = lib.ifcopenshell_ifcgeom_create_tree_from_file(
-                    file_ptr, byref(out)
-                )
+                out = _capi.geom_create_tree_from_file(file_ptr)
             else:
-                ok = lib.ifcopenshell_ifcgeom_create_tree_from_file_with_settings(
-                    file_ptr, settings_obj._h, byref(out)
-                )
-        if not ok or not out:
-            raise RuntimeError(_last_error("Failed to create tree"))
+                out = _capi.geom_create_tree_from_file_with_settings(file_ptr, settings_obj._h)
         self._h = out
-        # Anchor refs to keep dependencies alive.
         self._iter_anchors: list = []
 
     def __del__(self):
         try:
             if getattr(self, "_h", None):
-                bind().ifcopenshell_ifcgeom_tree_destroy(self._h)
+                _capi.geom_tree_destroy(self._h)
                 self._h = None
         except Exception:
             pass
@@ -1580,16 +1249,12 @@ class tree:
             raise TypeError("add_file: settings argument must be ifcopenshell.geom.settings")
         file_ptr, anchor = _file_native_ptr(file)
         self._file_anchor = anchor
-        if not bind().ifcopenshell_ifcgeom_tree_add_file(
-            self._h, file_ptr, settings_obj._h
-        ):
-            raise RuntimeError(_last_error("tree.add_file failed"))
+        _capi.geom_tree_add_file(self._h, file_ptr, settings_obj._h)
 
-    def add_iterator(self, it: "iterator") -> None:
+    def add_iterator(self, it: iterator) -> None:
         if not isinstance(it, iterator):
             raise TypeError("add_iterator: argument must be ifcopenshell.geom.iterator")
-        if not bind().ifcopenshell_ifcgeom_tree_add_iterator(self._h, it._h):
-            raise RuntimeError(_last_error("tree.add_iterator failed"))
+        _capi.geom_tree_add_iterator(self._h, it._h)
         self._iter_anchors.append(it)
 
     # ------------------------------------------------------------------
@@ -1598,13 +1263,11 @@ class tree:
 
     @property
     def enable_face_styles(self) -> bool:
-        v = c_bool(False)
-        bind().ifcopenshell_ifcgeom_tree_enable_face_styles(self._h, byref(v))
-        return bool(v.value)
+        return bool(_capi.geom_tree_enable_face_styles(self._h))
 
     @enable_face_styles.setter
     def enable_face_styles(self, value: bool) -> None:
-        bind().ifcopenshell_ifcgeom_tree_set_enable_face_styles(self._h, c_bool(bool(value)))
+        _capi.geom_tree_set_enable_face_styles(self._h, bool(value))
 
     # ------------------------------------------------------------------
     # Selection.
@@ -1627,43 +1290,39 @@ class tree:
         """
         from ifcopenshell.entity_instance import entity_instance
 
-        lib = bind()
-        out = HandleP()
         pt = self._unwrap_point(value)
         if pt is not None:
-            ok = lib.ifcopenshell_ifcgeom_tree_select_point(
-                self._h, c_double(pt[0]), c_double(pt[1]), c_double(pt[2]),
-                c_double(extend), byref(out),
+            out = _capi.geom_tree_select_point(
+                self._h, float(pt[0]), float(pt[1]), float(pt[2]),
+                float(extend),
             )
         elif isinstance(value, entity_instance):
-            ok = lib.ifcopenshell_ifcgeom_tree_select_element(
+            out = _capi.geom_tree_select_element(
                 self._h, _instance_handle(value),
-                c_bool(bool(completely_within)), c_double(extend), byref(out),
+                bool(completely_within), float(extend),
             )
         else:
             raise TypeError(
                 f"tree.select: expected entity_instance or 3-tuple, got {type(value).__name__}"
             )
-        if not ok or not out:
+        if not out:
             raise RuntimeError(_last_error("tree.select failed"))
         return _instance_list_to_python(out)
 
     def select_box(self, value, completely_within: bool = False, extend: Optional[float] = None):
         from ifcopenshell.entity_instance import entity_instance
 
-        lib = bind()
-        out = HandleP()
         pt = self._unwrap_point(value)
         if pt is not None:
-            ok = lib.ifcopenshell_ifcgeom_tree_select_box_point(
-                self._h, c_double(pt[0]), c_double(pt[1]), c_double(pt[2]),
-                c_double(-1.0e-5 if extend is None else extend), byref(out),
+            out = _capi.geom_tree_select_box_point(
+                self._h, float(pt[0]), float(pt[1]), float(pt[2]),
+                float(-1.0e-5 if extend is None else extend),
             )
         elif isinstance(value, entity_instance):
-            ok = lib.ifcopenshell_ifcgeom_tree_select_box_element(
+            out = _capi.geom_tree_select_box_element(
                 self._h, _instance_handle(value),
-                c_bool(bool(completely_within)),
-                c_double(-1.0e-5 if extend is None else extend), byref(out),
+                bool(completely_within),
+                float(-1.0e-5 if extend is None else extend),
             )
         elif (isinstance(value, (list, tuple)) and len(value) == 6) or (
             isinstance(value, (list, tuple)) and len(value) == 2
@@ -1673,30 +1332,30 @@ class tree:
                 lo, hi = value
             else:
                 lo, hi = value[:3], value[3:]
-            ok = lib.ifcopenshell_ifcgeom_tree_select_box_bounds(
+            out = _capi.geom_tree_select_box_bounds(
                 self._h,
-                c_double(lo[0]), c_double(lo[1]), c_double(lo[2]),
-                c_double(hi[0]), c_double(hi[1]), c_double(hi[2]),
-                c_bool(bool(completely_within)), byref(out),
+                float(lo[0]), float(lo[1]), float(lo[2]),
+                float(hi[0]), float(hi[1]), float(hi[2]),
+                bool(completely_within),
             )
         else:
             raise TypeError(
                 "tree.select_box: expected entity_instance, 3-tuple or 6-tuple bounds"
             )
-        if not ok or not out:
+        if not out:
             raise RuntimeError(_last_error("tree.select_box failed"))
         return _instance_list_to_python(out)
 
     def select_ray(self, origin, direction, length: float = 1000.0):
         ox, oy, oz = (float(x) for x in origin)
         dx, dy, dz = (float(x) for x in direction)
-        out = HandleP()
-        if not bind().ifcopenshell_ifcgeom_tree_select_ray(
+        out = _capi.geom_tree_select_ray(
             self._h,
-            c_double(ox), c_double(oy), c_double(oz),
-            c_double(dx), c_double(dy), c_double(dz),
-            c_double(length), byref(out),
-        ) or not out:
+            float(ox), float(oy), float(oz),
+            float(dx), float(dy), float(dz),
+            float(length),
+        )
+        if not out:
             raise RuntimeError(_last_error("tree.select_ray failed"))
         return self._collect_ray_intersections(out)
 
@@ -1705,44 +1364,28 @@ class tree:
     # ------------------------------------------------------------------
 
     def _collect_clashes(self, list_handle):
-        lib = bind()
         try:
-            n = c_size_t(0)
-            if not lib.ifcopenshell_ifcgeom_tree_clash_count(
-                self._h, list_handle, byref(n)
-            ):
-                raise RuntimeError(_last_error("tree clash count failed"))
+            n = _capi.geom_tree_clash_count(self._h, list_handle)
             results: list = []
-            for i in range(int(n.value)):
-                ch = HandleP()
-                if not lib.ifcopenshell_ifcgeom_tree_clash_at(
-                    self._h, list_handle, c_size_t(i), byref(ch)
-                ) or not ch:
-                    continue
-                results.append(clash(ch))
+            for i in range(n):
+                ch = _capi.geom_tree_clash_at(self._h, list_handle, i)
+                if ch:
+                    results.append(clash(ch))
             return tuple(results)
         finally:
-            lib.ifcopenshell_ifcgeom_tree_clash_list_destroy(list_handle)
+            _capi.geom_tree_clash_list_destroy(list_handle)
 
     def _collect_ray_intersections(self, list_handle):
-        lib = bind()
         try:
-            n = c_size_t(0)
-            if not lib.ifcopenshell_ifcgeom_tree_ray_intersection_count(
-                self._h, list_handle, byref(n)
-            ):
-                raise RuntimeError(_last_error("ray intersection count failed"))
+            n = _capi.geom_tree_ray_intersection_count(self._h, list_handle)
             results: list = []
-            for i in range(int(n.value)):
-                rh = HandleP()
-                if not lib.ifcopenshell_ifcgeom_tree_ray_intersection_at(
-                    self._h, list_handle, c_size_t(i), byref(rh)
-                ) or not rh:
-                    continue
-                results.append(ray_intersection(rh))
+            for i in range(n):
+                rh = _capi.geom_tree_ray_intersection_at(self._h, list_handle, i)
+                if rh:
+                    results.append(ray_intersection(rh))
             return tuple(results)
         finally:
-            lib.ifcopenshell_ifcgeom_tree_ray_intersection_list_destroy(list_handle)
+            _capi.geom_tree_ray_intersection_list_destroy(list_handle)
 
     def clash_intersection_many(
         self,
@@ -1753,17 +1396,16 @@ class tree:
     ):
         a_list = _instance_list_from(set_a)
         b_list = _instance_list_from(set_b)
-        out = HandleP()
         try:
-            ok = bind().ifcopenshell_ifcgeom_tree_clash_intersection_many(
+            out = _capi.geom_tree_clash_intersection_many(
                 self._h, a_list, b_list,
-                c_double(tolerance), c_bool(bool(check_all)), byref(out),
+                float(tolerance), bool(check_all),
             )
-            if not ok or not out:
+            if not out:
                 raise RuntimeError(_last_error("clash_intersection_many failed"))
         finally:
-            bind().ifcopenshell_ifcparse_instance_list_destroy(a_list)
-            bind().ifcopenshell_ifcparse_instance_list_destroy(b_list)
+            _capi.instance_list_destroy(a_list)
+            _capi.instance_list_destroy(b_list)
         return self._collect_clashes(out)
 
     def clash_collision_many(
@@ -1774,16 +1416,15 @@ class tree:
     ):
         a_list = _instance_list_from(set_a)
         b_list = _instance_list_from(set_b)
-        out = HandleP()
         try:
-            ok = bind().ifcopenshell_ifcgeom_tree_clash_collision_many(
-                self._h, a_list, b_list, c_bool(bool(allow_touching)), byref(out),
+            out = _capi.geom_tree_clash_collision_many(
+                self._h, a_list, b_list, bool(allow_touching),
             )
-            if not ok or not out:
+            if not out:
                 raise RuntimeError(_last_error("clash_collision_many failed"))
         finally:
-            bind().ifcopenshell_ifcparse_instance_list_destroy(a_list)
-            bind().ifcopenshell_ifcparse_instance_list_destroy(b_list)
+            _capi.instance_list_destroy(a_list)
+            _capi.instance_list_destroy(b_list)
         return self._collect_clashes(out)
 
     def clash_clearance_many(
@@ -1795,17 +1436,16 @@ class tree:
     ):
         a_list = _instance_list_from(set_a)
         b_list = _instance_list_from(set_b)
-        out = HandleP()
         try:
-            ok = bind().ifcopenshell_ifcgeom_tree_clash_clearance_many(
+            out = _capi.geom_tree_clash_clearance_many(
                 self._h, a_list, b_list,
-                c_double(clearance), c_bool(bool(check_all)), byref(out),
+                float(clearance), bool(check_all),
             )
-            if not ok or not out:
+            if not out:
                 raise RuntimeError(_last_error("clash_clearance_many failed"))
         finally:
-            bind().ifcopenshell_ifcparse_instance_list_destroy(a_list)
-            bind().ifcopenshell_ifcparse_instance_list_destroy(b_list)
+            _capi.instance_list_destroy(a_list)
+            _capi.instance_list_destroy(b_list)
         return self._collect_clashes(out)
 
     @staticmethod
@@ -1826,40 +1466,23 @@ class buffer(_OwnedHandle):
     construct explicitly via this wrapper.
     """
 
-    _destroy_fn_name = "ifcopenshell_ifcgeom_buffer_destroy"
+    _destroy_fn_name = "geom_buffer_destroy"
 
     def __init__(self, filename: str | None = None):
-        from ifcopenshell.geom._capi import bind, HandleP
-        from ctypes import byref
-        out = HandleP()
-        lib = bind()
         if filename is None:
-            ok = lib.ifcopenshell_ifcgeom_create_buffer(byref(out))
+            out = _capi.geom_create_buffer()
         else:
-            ok = lib.ifcopenshell_ifcgeom_create_buffer_from_filename(
-                str(filename).encode("utf-8"), byref(out)
-            )
-        if not ok or not out:
-            raise RuntimeError(_last_error("buffer creation failed"))
+            out = _capi.geom_create_buffer_from_filename(str(filename))
         super().__init__(out)
 
     def get_value(self) -> str:
-        from ifcopenshell.geom._capi import bind, ifcopenshell_string_t
-
-        result = _generated_capi.call_string(
-            bind(), bind().ifcopenshell_ifcgeom_buffer_get_value, self._h, value_type=ifcopenshell_string_t
-        )
+        result = _capi.geom_buffer_get_value(self._h)
         if result is None:
             raise RuntimeError(_last_error("buffer.get_value failed"))
         return result
 
     def is_ready(self) -> bool:
-        from ifcopenshell.geom._capi import bind
-        from ctypes import c_bool, byref
-        out = c_bool(False)
-        if not bind().ifcopenshell_ifcgeom_buffer_is_ready(self._h, byref(out)):
-            raise RuntimeError(_last_error("buffer.is_ready failed"))
-        return bool(out.value)
+        return bool(_capi.geom_buffer_is_ready(self._h))
 
 
 def transform_string(value):
@@ -1875,14 +1498,11 @@ def transform_string(value):
 
 
 def _serializer_handle(s):
-    """Coerce a :class:`buffer`/handle/None into a raw ``HandleP``."""
-    from ifcopenshell.geom._capi import HandleP
+    """Coerce a :class:`buffer`/handle/None into a native handle."""
     if s is None:
-        return HandleP()
+        return None
     if isinstance(s, _OwnedHandle):
         return s._h
-    if isinstance(s, HandleP):
-        return s
     raise TypeError(f"expected buffer/serializer handle, got {type(s).__name__}")
 
 
@@ -1901,16 +1521,14 @@ class _SerializerBase(_OwnedHandle):
 
     def _fn_prefix(self) -> str:
         return (
-            "ifcopenshell_ifcgeom_geometry_serializer_"
+            "geom_geometry_serializer_"
             if self._writes_geometry
-            else "ifcopenshell_ifcgeom_serializer_"
+            else "geom_serializer_"
         )
 
     def _call(self, suffix, *args):
-        from ifcopenshell.geom._capi import bind
-        fn = getattr(bind(), self._fn_prefix() + suffix)
-        if not fn(self._h, *args):
-            raise RuntimeError(_last_error(self._fn_prefix() + suffix + " failed"))
+        fn = getattr(_capi, self._fn_prefix() + suffix)
+        fn(self._h, *args)
 
     def writeHeader(self) -> None:
         self._call("write_header")
@@ -1928,13 +1546,8 @@ class _SerializerBase(_OwnedHandle):
     set_file = setFile
 
     def ready(self) -> bool:
-        from ifcopenshell.geom._capi import bind
-        from ctypes import c_bool, byref
-        out = c_bool(False)
-        fn = getattr(bind(), self._fn_prefix() + "ready")
-        if not fn(self._h, byref(out)):
-            raise RuntimeError(_last_error(self._fn_prefix() + "ready failed"))
-        return bool(out.value)
+        fn = getattr(_capi, self._fn_prefix() + "ready")
+        return bool(fn(self._h))
 
 
 class GeometrySerializer(_SerializerBase):
@@ -1944,7 +1557,7 @@ class GeometrySerializer(_SerializerBase):
     collada, hdf5, ttl, iges, step).
     """
 
-    _destroy_fn_name = "ifcopenshell_ifcgeom_geometry_serializer_destroy"
+    _destroy_fn_name = "geom_geometry_serializer_destroy"
     _writes_geometry = True
 
     def write(self, element) -> None:
@@ -1959,21 +1572,15 @@ class GeometrySerializer(_SerializerBase):
             )
 
     def isTesselated(self) -> bool:
-        from ifcopenshell.geom._capi import bind
-        from ctypes import c_bool, byref
-        out = c_bool(False)
-        if not bind().ifcopenshell_ifcgeom_geometry_serializer_is_tesselated(
-            self._h, byref(out)
-        ):
-            raise RuntimeError(_last_error("is_tesselated failed"))
-        return bool(out.value)
+        fn = getattr(_capi, "geom_geometry_serializer_is_tesselated")
+        return bool(fn(self._h))
 
     is_tesselated = isTesselated
 
     def setUnitNameAndMagnitude(self, name: str, magnitude: float) -> None:
         self._call(
             "set_unit_name_and_magnitude",
-            str(name).encode("utf-8"),
+            str(name),
             float(magnitude),
         )
 
@@ -1983,53 +1590,35 @@ class GeometrySerializer(_SerializerBase):
 class Serializer(_SerializerBase):
     """Wraps ``ifcopenshell_ifcgeom_serializer_t`` (xml/json/rocksdb)."""
 
-    _destroy_fn_name = "ifcopenshell_ifcgeom_serializer_destroy"
+    _destroy_fn_name = "geom_serializer_destroy"
     _writes_geometry = False
 
 
 def _make_buffer_serializer(create_fn_name, output_args, geometry_settings, ser_settings):
     """Create a buffer-backed :class:`GeometrySerializer`."""
-    from ifcopenshell.geom._capi import bind, HandleP
-    from ctypes import byref
-    out = HandleP()
     args = [_serializer_handle(b) for b in output_args]
     args += [_serializer_handle(geometry_settings), _serializer_handle(ser_settings)]
-    args.append(byref(out))
-    fn = getattr(bind(), create_fn_name)
-    if not fn(*args):
-        raise RuntimeError(_last_error(create_fn_name + " failed"))
+    fn = getattr(_capi, create_fn_name)
+    out = fn(*args)
     return GeometrySerializer(out, _keep=(output_args, geometry_settings, ser_settings))
 
 
 def _make_filename_serializer(create_fn_name, filename, geometry_settings, ser_settings):
     """Create a filename-backed :class:`GeometrySerializer`."""
-    from ifcopenshell.geom._capi import bind, HandleP
-    from ctypes import byref
-    out = HandleP()
-    fn = getattr(bind(), create_fn_name)
-    if not fn(
-        str(filename).encode("utf-8"),
+    fn = getattr(_capi, create_fn_name)
+    out = fn(
+        str(filename),
         _serializer_handle(geometry_settings),
         _serializer_handle(ser_settings),
-        byref(out),
-    ):
-        raise RuntimeError(_last_error(create_fn_name + " failed"))
+    )
     return GeometrySerializer(out, _keep=(geometry_settings, ser_settings))
 
 
 def _make_file_serializer(create_fn_name, file_or_filename, output_filename):
     """Create a base :class:`Serializer` (xml/json/rocksdb) bound to a file."""
-    from ifcopenshell.geom._capi import bind, HandleP
-    from ctypes import byref
     ptr, owner = _file_native_ptr(file_or_filename)
-    out = HandleP()
-    fn = getattr(bind(), create_fn_name)
-    if not fn(
-        ptr,
-        str(output_filename).encode("utf-8"),
-        byref(out),
-    ):
-        raise RuntimeError(_last_error(create_fn_name + " failed"))
+    fn = getattr(_capi, create_fn_name)
+    out = fn(ptr, str(output_filename))
     return Serializer(out, _keep=(owner,))
 
 
@@ -2047,7 +1636,7 @@ class serializers:
     @staticmethod
     def obj(out_filename, mtl_filename, geometry_settings, settings):
         return _make_buffer_serializer(
-            "ifcopenshell_ifcgeom_create_obj_serializer",
+            "geom_create_obj_serializer",
             [transform_string(out_filename), transform_string(mtl_filename)],
             geometry_settings,
             settings,
@@ -2056,7 +1645,7 @@ class serializers:
     @staticmethod
     def svg(out_filename, geometry_settings, settings):
         return _make_buffer_serializer(
-            "ifcopenshell_ifcgeom_create_svg_serializer",
+            "geom_create_svg_serializer",
             [transform_string(out_filename)],
             geometry_settings,
             settings,
@@ -2065,7 +1654,7 @@ class serializers:
     @staticmethod
     def ttl(out_filename, geometry_settings, settings):
         return _make_buffer_serializer(
-            "ifcopenshell_ifcgeom_create_ttl_serializer",
+            "geom_create_ttl_serializer",
             [transform_string(out_filename)],
             geometry_settings,
             settings,
@@ -2074,49 +1663,49 @@ class serializers:
     @staticmethod
     def gltf(out_filename, geometry_settings, settings):
         return _make_filename_serializer(
-            "ifcopenshell_ifcgeom_create_gltf_serializer",
+            "geom_create_gltf_serializer",
             out_filename, geometry_settings, settings,
         )
 
     @staticmethod
     def iges(out_filename, geometry_settings, settings):
         return _make_filename_serializer(
-            "ifcopenshell_ifcgeom_create_iges_serializer",
+            "geom_create_iges_serializer",
             out_filename, geometry_settings, settings,
         )
 
     @staticmethod
     def step(out_filename, geometry_settings, settings):
         return _make_filename_serializer(
-            "ifcopenshell_ifcgeom_create_step_serializer",
+            "geom_create_step_serializer",
             out_filename, geometry_settings, settings,
         )
 
     @staticmethod
     def collada(out_filename, geometry_settings, settings):
         return _make_filename_serializer(
-            "ifcopenshell_ifcgeom_create_collada_serializer",
+            "geom_create_collada_serializer",
             out_filename, geometry_settings, settings,
         )
 
     @staticmethod
     def hdf5(out_filename, geometry_settings, settings):
         return _make_filename_serializer(
-            "ifcopenshell_ifcgeom_create_hdf_serializer",
+            "geom_create_hdf_serializer",
             out_filename, geometry_settings, settings,
         )
 
     @staticmethod
     def xml(file_or_filename, out_filename):
         return _make_file_serializer(
-            "ifcopenshell_ifcgeom_create_xml_serializer",
+            "geom_create_xml_serializer",
             file_or_filename, out_filename,
         )
 
     @staticmethod
     def json(file_or_filename, out_filename):
         return _make_file_serializer(
-            "ifcopenshell_ifcgeom_create_json_serializer",
+            "geom_create_json_serializer",
             file_or_filename, out_filename,
         )
 
@@ -2128,15 +1717,10 @@ class serializers:
 
     @staticmethod
     def rocksdb_streaming(input_filename, rocksdb_filename, stream: bool = True):
-        from ifcopenshell.geom._capi import bind, HandleP
-        from ctypes import byref
-        out = HandleP()
-        if not bind().ifcopenshell_ifcgeom_create_rocksdb_serializer_streaming(
-            str(input_filename).encode("utf-8"),
-            str(rocksdb_filename).encode("utf-8"),
-            byref(out),
-        ):
-            raise RuntimeError(_last_error("rocksdb_serializer_streaming failed"))
+        out = _capi.geom_create_rocksdb_serializer_streaming(
+            str(input_filename),
+            str(rocksdb_filename),
+        )
         return Serializer(out)
 
     @classmethod
@@ -2179,17 +1763,12 @@ def _schema_name_of(inst) -> str:
 
 
 def _wrap_serialise_result(h):
-    """Promote a returned ``ifcopenshell_ifc_instance_t*`` to an
+    """Promote a returned ``ifcopenshell_ifc_instance_t`` to an
     :class:`entity_instance` (or ``None``)."""
     if not h:
         return None
-    if isinstance(h, ctypes.POINTER(ctypes.c_int)):  # NULL guard
-        return None
-    addr = ctypes.cast(h, ctypes.c_void_p).value
-    if not addr:
-        return None
     from ifcopenshell.entity_instance import entity_instance
-    return entity_instance(addr)
+    return entity_instance(h)
 
 
 def serialise(schema, string_or_shape, advanced: bool = True):
@@ -2199,8 +1778,6 @@ def serialise(schema, string_or_shape, advanced: bool = True):
     ``TopoDS_Shape`` only when OCC is available (matches upstream
     semantics).
     """
-    from ifcopenshell.geom._capi import bind, HandleP
-    from ctypes import byref
     if has_occ:
         try:
             from OCC.Core import TopoDS  # type: ignore[import-not-found]
@@ -2209,14 +1786,11 @@ def serialise(schema, string_or_shape, advanced: bool = True):
                 string_or_shape = _utils.serialize_shape(string_or_shape)
         except ImportError:
             pass
-    out = HandleP()
-    if not bind().ifcopenshell_ifcgeom_serialise(
-        str(schema).encode("utf-8"),
-        str(string_or_shape).encode("utf-8"),
+    out = _capi.geom_serialise(
+        str(schema),
+        str(string_or_shape),
         bool(advanced),
-        byref(out),
-    ):
-        raise RuntimeError(_last_error("serialise failed"))
+    )
     return _wrap_serialise_result(out)
 
 
@@ -2225,8 +1799,6 @@ def tesselate(schema, string_or_shape, deflection: float):
 
     Wraps :c:func:`ifcopenshell_ifcgeom_tesselate`.
     """
-    from ifcopenshell.geom._capi import bind, HandleP
-    from ctypes import byref
     if has_occ:
         try:
             from OCC.Core import TopoDS  # type: ignore[import-not-found]
@@ -2235,14 +1807,11 @@ def tesselate(schema, string_or_shape, deflection: float):
                 string_or_shape = _utils.serialize_shape(string_or_shape)
         except ImportError:
             pass
-    out = HandleP()
-    if not bind().ifcopenshell_ifcgeom_tesselate(
-        str(schema).encode("utf-8"),
-        str(string_or_shape).encode("utf-8"),
+    out = _capi.geom_tesselate(
+        str(schema),
+        str(string_or_shape),
         float(deflection),
-        byref(out),
-    ):
-        raise RuntimeError(_last_error("tesselate failed"))
+    )
     return _wrap_serialise_result(out)
 
 
@@ -2259,16 +1828,43 @@ def make_shape_function(fn):
 
 
 __all__ = [
-    "SETTING", "SERIALIZER_SETTING", "GEOMETRY_LIBRARY",
-    "NATIVE", "TRIANGULATED", "SERIALIZED",
-    "ShapeType", "ShapeElementType",
-    "missing_setting", "settings_mixin", "settings", "serializer_settings",
-    "Element", "BRepElement", "TriangulationElement", "SerializedElement",
-    "Triangulation", "BRepRepresentation", "Serialization",
-    "Transformation", "TaxonomyStyle", "TaxonomyColour", "SurfaceStyle",
-    "has_occ", "wrap_shape_creation",
-    "create_shape", "map_shape", "iterate", "consume_iterator",
-    "make_shape_function", "iterator", "tree", "serializers",
-    "transform_string", "buffer", "GeometrySerializer", "Serializer",
-    "serialise", "tesselate",
+    "GEOMETRY_LIBRARY",
+    "NATIVE",
+    "SERIALIZED",
+    "SERIALIZER_SETTING",
+    "SETTING",
+    "TRIANGULATED",
+    "BRepElement",
+    "BRepRepresentation",
+    "Element",
+    "GeometrySerializer",
+    "Serialization",
+    "SerializedElement",
+    "Serializer",
+    "ShapeElementType",
+    "ShapeType",
+    "SurfaceStyle",
+    "TaxonomyColour",
+    "TaxonomyStyle",
+    "Transformation",
+    "Triangulation",
+    "TriangulationElement",
+    "buffer",
+    "consume_iterator",
+    "create_shape",
+    "has_occ",
+    "iterate",
+    "iterator",
+    "make_shape_function",
+    "map_shape",
+    "missing_setting",
+    "serialise",
+    "serializer_settings",
+    "serializers",
+    "settings",
+    "settings_mixin",
+    "tesselate",
+    "transform_string",
+    "tree",
+    "wrap_shape_creation",
 ]

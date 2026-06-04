@@ -2,16 +2,14 @@
 
 """Utility functions for IFC units."""
 
-import ctypes
 from collections.abc import Generator
 from math import pi
 from typing import Literal, Optional, Union
 
 import ifcopenshell
 import ifcopenshell.ifcopenshell_wrapper as ifcopenshell_wrapper
-from ifcopenshell import _generated_capi
-from ifcopenshell.entity_instance import _generated_instance_handle_ptr, entity_instance
-
+from ifcopenshell import _ifcopenshell_capi as _capi
+from ifcopenshell.entity_instance import entity_instance
 
 prefixes = {
     "EXA": 1e18, "PETA": 1e15, "TERA": 1e12, "GIGA": 1e9,
@@ -223,187 +221,64 @@ MEASURE_CLASS = Literal[
 
 
 # ---------------------------------------------------------------------------
-# ctypes binding to libifcopenshell_capi.
-# ---------------------------------------------------------------------------
-
-_lib_configured = False
-
-
-def _configure(lib) -> None:
-    global _lib_configured
-    if _lib_configured:
-        return
-    _generated_capi.bind(
-        lib,
-        names=(
-            "ifcopenshell_ifcapi_unit_get_prefix",
-            "ifcopenshell_ifcapi_unit_get_prefix_multiplier",
-            "ifcopenshell_ifcapi_unit_get_unit_name",
-            "ifcopenshell_ifcapi_unit_get_unit_name_universal",
-            "ifcopenshell_ifcapi_unit_get_measure_class",
-            "ifcopenshell_ifcapi_unit_get_measure_unit_type",
-            "ifcopenshell_ifcapi_unit_get_symbol_measure_class",
-            "ifcopenshell_ifcapi_unit_get_symbol_quantity_class",
-            "ifcopenshell_ifcapi_unit_get_si_dimensions",
-            "ifcopenshell_ifcapi_unit_get_named_dimensions",
-            "ifcopenshell_ifcapi_unit_convert",
-            "ifcopenshell_ifcapi_unit_format_length",
-            "ifcopenshell_ifcapi_unit_get_unit_assignment",
-            "ifcopenshell_ifcapi_unit_get_project_unit",
-            "ifcopenshell_ifcapi_unit_get_full_unit_name",
-            "ifcopenshell_ifcapi_unit_get_unit_symbol",
-            "ifcopenshell_ifcapi_unit_convert_unit",
-            "ifcopenshell_ifcapi_unit_resolve_property_unit",
-            "ifcopenshell_ifcapi_unit_resolve_property_measure_class",
-            "ifcopenshell_ifcapi_unit_resolve_property_table_defining_unit",
-            "ifcopenshell_ifcapi_unit_resolve_property_table_defining_measure_class",
-            "ifcopenshell_ifcapi_unit_resolve_property_table_defined_unit",
-            "ifcopenshell_ifcapi_unit_resolve_property_table_defined_measure_class",
-            "ifcopenshell_ifcapi_unit_calculate_unit_scale",
-            "ifcopenshell_string_destroy",
-            "ifcopenshell_int32_list_destroy",
-        ),
-    )
-
-    _lib_configured = True
-
-
-def _enc(s):
-    return _generated_capi.encode_string(s)
-
-
-def _call_generated_string(lib, name, value):
-    return _call_generated_string_args(lib, name, _enc(value) or b"")
-
-
-def _call_generated_string_args(lib, name, *args):
-    return _generated_capi.call_string_or_raise(lib, getattr(lib, name), ifcopenshell.get_log() or name, *args)
-
-
-def _call_generated_int_tuple(lib, name, value):
-    return _generated_capi.call_int32_list_or_raise(
-        lib, getattr(lib, name), ifcopenshell.get_log() or name, _enc(value) or b""
-    )
-
-
-def _call_generated_instance(lib, file_obj, name, *args):
-    handle = _generated_capi.call_handle_or_raise(
-        lib,
-        getattr(lib, name),
-        ifcopenshell.get_log() or name,
-        *args,
-        destroy=lib.ifcopenshell_ifc_instance_destroy,
-        handle_pointer_type=ctypes.POINTER(_generated_capi.ifcopenshell_ifc_instance_t),
-    )
-    return _take_instance(lib, file_obj, handle)
-
-
-def _take_instance(lib, file_obj, handle):
-    if not handle:
-        return None
-    return entity_instance(file_obj, handle)
-
-
-def _file_ptr(ifc_file):
-    return getattr(ifc_file, "_ptr", None)
-
-
-def _generated_file_handle(ifc_file):
-    ptr = _file_ptr(ifc_file)
-    return ifcopenshell._ifc_file_handle_ptr(ptr) if ptr else None
-
-
-# ---------------------------------------------------------------------------
 # Pure-string helpers.
 # ---------------------------------------------------------------------------
 
 def get_prefix(text):
     if not text:
         return None
-    lib = ifcopenshell._get_lib()
-    _configure(lib)
-    return _call_generated_string(lib, "ifcopenshell_ifcapi_unit_get_prefix", text) or None
+    return _capi.ifcopenshell_ifcapi_unit_get_prefix(text) or None
 
 
 def get_prefix_multiplier(text):
-    lib = ifcopenshell._get_lib()
-    _configure(lib)
-    return _generated_capi.call_scalar_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_unit_get_prefix_multiplier,
-        ctypes.c_double,
-        ifcopenshell.get_log() or "ifcopenshell_ifcapi_unit_get_prefix_multiplier",
-        _enc(text) or b"",
-    )
+    return _capi.ifcopenshell_ifcapi_unit_get_prefix_multiplier(text)
 
 
 def get_unit_name(text: str) -> Union[str, None]:
     """Get unit name from str, if unit is in SI."""
     if text is None:
         return None
-    lib = ifcopenshell._get_lib()
-    _configure(lib)
-    return _call_generated_string(lib, "ifcopenshell_ifcapi_unit_get_unit_name", text) or None
+    return _capi.ifcopenshell_ifcapi_unit_get_unit_name(text) or None
 
 
 def get_unit_name_universal(text: str) -> Union[str, None]:
     if text is None:
         return None
-    lib = ifcopenshell._get_lib()
-    _configure(lib)
-    return _call_generated_string(lib, "ifcopenshell_ifcapi_unit_get_unit_name_universal", text) or None
+    return _capi.ifcopenshell_ifcapi_unit_get_unit_name_universal(text) or None
 
 
 def get_si_dimensions(name):
-    lib = ifcopenshell._get_lib()
-    _configure(lib)
-    return _call_generated_int_tuple(lib, "ifcopenshell_ifcapi_unit_get_si_dimensions", name)
+    return tuple(_capi.ifcopenshell_ifcapi_unit_get_si_dimensions(name))
 
 
 def get_named_dimensions(name):
-    lib = ifcopenshell._get_lib()
-    _configure(lib)
-    return _call_generated_int_tuple(lib, "ifcopenshell_ifcapi_unit_get_named_dimensions", name)
+    return tuple(_capi.ifcopenshell_ifcapi_unit_get_named_dimensions(name))
 
 
 def get_unit_measure_class(unit_type: str) -> MEASURE_CLASS:
-    lib = ifcopenshell._get_lib()
-    _configure(lib)
-    return _call_generated_string(lib, "ifcopenshell_ifcapi_unit_get_measure_class", unit_type)
+    return _capi.ifcopenshell_ifcapi_unit_get_measure_class(unit_type)
 
 
 def get_measure_unit_type(measure_class: MEASURE_CLASS) -> str:
-    lib = ifcopenshell._get_lib()
-    _configure(lib)
-    return _call_generated_string(lib, "ifcopenshell_ifcapi_unit_get_measure_unit_type", measure_class)
+    return _capi.ifcopenshell_ifcapi_unit_get_measure_unit_type(measure_class)
 
 
 def get_symbol_measure_class(symbol: Optional[str] = None) -> MEASURE_CLASS:
-    lib = ifcopenshell._get_lib()
-    _configure(lib)
-    return _call_generated_string(lib, "ifcopenshell_ifcapi_unit_get_symbol_measure_class", symbol or "")
+    return _capi.ifcopenshell_ifcapi_unit_get_symbol_measure_class(symbol or "")
 
 
 def get_symbol_quantity_class(symbol: Optional[str] = None) -> QUANTITY_CLASS:
-    lib = ifcopenshell._get_lib()
-    _configure(lib)
-    return _call_generated_string(lib, "ifcopenshell_ifcapi_unit_get_symbol_quantity_class", symbol or "")
+    return _capi.ifcopenshell_ifcapi_unit_get_symbol_quantity_class(symbol or "")
 
 
 def convert(value: float, from_prefix: Optional[str], from_unit: str,
             to_prefix: Optional[str], to_unit: str) -> float:
-    lib = ifcopenshell._get_lib()
-    _configure(lib)
-    return _generated_capi.call_scalar_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_unit_convert,
-        ctypes.c_double,
-        ifcopenshell.get_log() or "ifcopenshell_ifcapi_unit_convert",
+    return _capi.ifcopenshell_ifcapi_unit_convert(
         float(value),
-        _enc(from_prefix) or b"",
-        _enc(from_unit) or b"",
-        _enc(to_prefix) or b"",
-        _enc(to_unit) or b"",
+        from_prefix or "",
+        from_unit,
+        to_prefix or "",
+        to_unit,
     )
 
 
@@ -416,19 +291,14 @@ def format_length(
     input_unit: Literal["foot", "inch"] = "foot",
     output_unit: Literal["foot", "inch"] = "foot",
 ) -> str:
-    lib = ifcopenshell._get_lib()
-    _configure(lib)
-    result = _generated_capi.call_string_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_unit_format_length,
-        ifcopenshell.get_log() or "ifcopenshell_ifcapi_unit_format_length",
+    result = _capi.ifcopenshell_ifcapi_unit_format_length(
         float(value),
         float(precision),
         int(decimal_places),
         bool(suppress_zero_inches),
-        _enc(unit_system) or b"",
-        _enc(input_unit) or b"",
-        _enc(output_unit) or b"",
+        unit_system,
+        input_unit,
+        output_unit,
     )
     return result or None
 
@@ -440,11 +310,8 @@ def format_length(
 def get_unit_assignment(ifc_file) -> Union[entity_instance, None]:
     if ifc_file is None:
         return None
-    lib = ifcopenshell._get_lib()
-    _configure(lib)
-    return _call_generated_instance(
-        lib, ifc_file, "ifcopenshell_ifcapi_unit_get_unit_assignment", _generated_file_handle(ifc_file)
-    )
+    handle = _capi.ifcopenshell_ifcapi_unit_get_unit_assignment(ifc_file._handle)
+    return entity_instance(ifc_file, handle) if handle else None
 
 
 def cache_units(ifc_file) -> None:
@@ -474,44 +341,27 @@ def get_project_unit(ifc_file, unit_type: str, use_cache: bool = False) -> Union
         cache_units(ifc_file)
     if units := ifc_file.units:
         return units.get(unit_type, None)
-    lib = ifcopenshell._get_lib()
-    _configure(lib)
-    return _call_generated_instance(
-        lib, ifc_file, "ifcopenshell_ifcapi_unit_get_project_unit", _generated_file_handle(ifc_file), _enc(unit_type) or b""
-    )
+    handle = _capi.ifcopenshell_ifcapi_unit_get_project_unit(ifc_file._handle, unit_type)
+    return entity_instance(ifc_file, handle) if handle else None
 
 
 def get_full_unit_name(unit) -> str:
     if unit is None:
         return ""
-    lib = ifcopenshell._get_lib()
-    _configure(lib)
-    return _call_generated_string_args(
-        lib, "ifcopenshell_ifcapi_unit_get_full_unit_name", _generated_instance_handle_ptr(unit._handle)
-    ) or ""
+    return _capi.ifcopenshell_ifcapi_unit_get_full_unit_name(unit._handle) or ""
 
 
 def get_unit_symbol(unit) -> str:
     if unit is None:
         return ""
-    lib = ifcopenshell._get_lib()
-    _configure(lib)
-    return _call_generated_string_args(
-        lib, "ifcopenshell_ifcapi_unit_get_unit_symbol", _generated_instance_handle_ptr(unit._handle)
-    ) or ""
+    return _capi.ifcopenshell_ifcapi_unit_get_unit_symbol(unit._handle) or ""
 
 
 def convert_unit(value: float, from_unit, to_unit) -> float:
-    lib = ifcopenshell._get_lib()
-    _configure(lib)
-    return _generated_capi.call_scalar_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_unit_convert_unit,
-        ctypes.c_double,
-        ifcopenshell.get_log() or "ifcopenshell_ifcapi_unit_convert_unit",
+    return _capi.ifcopenshell_ifcapi_unit_convert_unit(
         float(value),
-        _generated_instance_handle_ptr(from_unit._handle) if from_unit is not None else None,
-        _generated_instance_handle_ptr(to_unit._handle) if to_unit is not None else None,
+        from_unit._handle if from_unit is not None else None,
+        to_unit._handle if to_unit is not None else None,
     )
 
 
@@ -519,16 +369,11 @@ def get_property_unit(prop, ifc_file, use_cache: bool = False) -> Union[entity_i
     """Resolve the unit of a property/quantity, falling back to project default."""
     if prop is None:
         return None
-    lib = ifcopenshell._get_lib()
-    _configure(lib)
     target = ifc_file if ifc_file is not None else prop.file
-    prop_handle = _generated_instance_handle_ptr(prop._handle)
-    unit = _call_generated_instance(lib, target, "ifcopenshell_ifcapi_unit_resolve_property_unit", prop_handle)
-    if unit is not None:
-        return unit
-    measure_class = _call_generated_string_args(
-        lib, "ifcopenshell_ifcapi_unit_resolve_property_measure_class", prop_handle
-    )
+    handle = _capi.ifcopenshell_ifcapi_unit_resolve_property_unit(prop._handle)
+    if handle:
+        return entity_instance(target, handle)
+    measure_class = _capi.ifcopenshell_ifcapi_unit_resolve_property_measure_class(prop._handle)
     if not measure_class:
         return None
     unit_type = get_measure_unit_type(measure_class)
@@ -540,16 +385,13 @@ def get_property_unit(prop, ifc_file, use_cache: bool = False) -> Union[entity_i
 def get_property_table_unit(prop, ifc_file, use_cache: bool = False) -> dict:
     if prop is None:
         return {"DefiningUnit": None, "DefinedUnit": None}
-    lib = ifcopenshell._get_lib()
-    _configure(lib)
     target = ifc_file if ifc_file is not None else prop.file
-    prop_handle = _generated_instance_handle_ptr(prop._handle)
 
-    def _resolve(unit_name, measure_class_name):
-        unit = _call_generated_instance(lib, target, unit_name, prop_handle)
-        if unit is not None:
-            return unit
-        mc = _call_generated_string_args(lib, measure_class_name, prop_handle)
+    def _resolve(unit_fn, measure_class_fn):
+        handle = unit_fn(prop._handle)
+        if handle:
+            return entity_instance(target, handle)
+        mc = measure_class_fn(prop._handle)
         if not mc:
             return None
         ut = get_measure_unit_type(mc)
@@ -557,12 +399,12 @@ def get_property_table_unit(prop, ifc_file, use_cache: bool = False) -> dict:
 
     return {
         "DefiningUnit": _resolve(
-            "ifcopenshell_ifcapi_unit_resolve_property_table_defining_unit",
-            "ifcopenshell_ifcapi_unit_resolve_property_table_defining_measure_class",
+            _capi.ifcopenshell_ifcapi_unit_resolve_property_table_defining_unit,
+            _capi.ifcopenshell_ifcapi_unit_resolve_property_table_defining_measure_class,
         ),
         "DefinedUnit": _resolve(
-            "ifcopenshell_ifcapi_unit_resolve_property_table_defined_unit",
-            "ifcopenshell_ifcapi_unit_resolve_property_table_defined_measure_class",
+            _capi.ifcopenshell_ifcapi_unit_resolve_property_table_defined_unit,
+            _capi.ifcopenshell_ifcapi_unit_resolve_property_table_defined_measure_class,
         ),
     }
 
@@ -577,16 +419,7 @@ def calculate_unit_scale(ifc_file, unit_type: str = "LENGTHUNIT") -> float:
         .enumeration_items()
     ):
         raise ValueError(f"Unit type {unit_type!r} does not name a valid type")
-    lib = ifcopenshell._get_lib()
-    _configure(lib)
-    return _generated_capi.call_scalar_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_unit_calculate_unit_scale,
-        ctypes.c_double,
-        ifcopenshell.get_log() or "ifcopenshell_ifcapi_unit_calculate_unit_scale",
-        _generated_file_handle(ifc_file),
-        _enc(unit_type) or b"",
-    )
+    return _capi.ifcopenshell_ifcapi_unit_calculate_unit_scale(ifc_file._handle, unit_type)
 
 
 # ---------------------------------------------------------------------------

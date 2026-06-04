@@ -19,43 +19,15 @@
 import json
 import os
 import time
-import ctypes
 from typing import Any, Literal, Union
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.entity_instance import _generated_instance_handle_ptr
 import ifcopenshell.ifcopenshell_wrapper as ifcopenshell_wrapper
 import ifcopenshell.util.attribute
-
-# This is highly experimental and incomplete, however, it may work for simple datasets.
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 cwd = os.path.dirname(os.path.realpath(__file__))
 IFC_SCHEMA = Literal["IFC2X3", "IFC4", "IFC4X3"]
-_schema_lib_configured = False
-
-
-def _configure_schema_lib(lib) -> None:
-    global _schema_lib_configured
-    if _schema_lib_configured:
-        return
-    _generated_capi.bind(
-        lib,
-        names=(
-            "ifcopenshell_ifcapi_schema_reassign_class",
-            "ifcopenshell_ifc_instance_destroy",
-            "ifcopenshell_last_error_kind",
-            "ifcopenshell_last_error_message",
-        ),
-    )
-    _schema_lib_configured = True
-
-
-def _generated_file_handle(file):
-    ptr = getattr(file, "_ptr", None)
-    if not ptr:
-        return None
-    return ctypes.cast(ctypes.c_void_p(ptr), ctypes.POINTER(_generated_capi._HandleStruct))
 
 
 def get_fallback_schema(version: str) -> IFC_SCHEMA:
@@ -200,31 +172,19 @@ def reassign_class(
     if not ifc_file:
         ifc_file = element.file
 
-    lib = ifcopenshell._get_lib()
-    _configure_schema_lib(lib)
-    try:
-        handle = _generated_capi.call_handle_or_raise(
-            lib,
-            lib.ifcopenshell_ifcapi_schema_reassign_class,
-            "",
-            _generated_file_handle(ifc_file),
-            _generated_instance_handle_ptr(element._handle),
-            _generated_capi.encode_string(new_class),
-            destroy=lib.ifcopenshell_ifc_instance_destroy,
-        )
-    except ValueError as e:
-        raise ValueError(
-            f"Class of {element} could not be changed to {new_class} as the class does not exist in schema {ifc_file.schema_identifier}."
-        ) from e
+    handle = _capi.ifcopenshell_ifcapi_schema_reassign_class(
+        ifc_file._handle,
+        element._handle,
+        new_class,
+    )
     if not handle:
-        error_kind = _generated_capi.last_error_kind(lib)
-        if error_kind == _generated_capi.IFCOPENSHELL_ERROR_VALUE:
+        error_kind = _capi.last_error_kind()
+        if error_kind == _capi.IFCOPENSHELL_ERROR_VALUE:
             raise ValueError(
                 f"Class of {element} could not be changed to {new_class} as the class does not exist in schema {ifc_file.schema_identifier}."
             )
-        if error_kind != _generated_capi.IFCOPENSHELL_ERROR_NONE:
-            exc = _generated_capi.exception_for_error_kind(error_kind)
-            raise exc(_generated_capi.last_error(lib, f"Class of {element} could not be changed to {new_class}."))
+        if error_kind != _capi.IFCOPENSHELL_ERROR_NONE:
+            raise RuntimeError(_capi.last_error_message() or f"Class of {element} could not be changed to {new_class}.")
         raise RuntimeError(f"Class of {element} could not be changed to {new_class}.")
     return ifcopenshell.entity_instance(ifc_file, handle)
 

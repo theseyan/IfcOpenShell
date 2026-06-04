@@ -18,15 +18,13 @@
 
 from collections import namedtuple
 from collections.abc import Callable, Generator, Sequence
-import ctypes
 from typing import Any, Literal, Optional, Union, overload
 
 import ifcopenshell
 import ifcopenshell.guid
 import ifcopenshell.util.element
 import ifcopenshell.util.representation
-from ifcopenshell import _generated_capi
-from ifcopenshell.entity_instance import _generated_instance_handle_ptr
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 MATERIAL_TYPE = Literal[
     "IfcMaterial",
@@ -41,92 +39,36 @@ MATERIAL_TYPE = Literal[
 PrioritisedLayer = namedtuple("PrioritisedLayer", "priority material thickness")
 PrioritisedProfile = namedtuple("PrioritisedProfile", "priority material profile")
 
-_element_lib_configured = False
 
-
-def _configure_element_lib(lib) -> None:
-    global _element_lib_configured
-    if _element_lib_configured:
-        return
-    _generated_capi.bind(
-        lib,
-        names=(
-            "ifcopenshell_ifcapi_element_get_type",
-            "ifcopenshell_ifcapi_element_get_aggregate",
-            "ifcopenshell_ifcapi_element_get_nest",
-            "ifcopenshell_ifcapi_element_get_container",
-            "ifcopenshell_ifcapi_element_get_parent",
-            "ifcopenshell_ifcapi_element_get_material",
-            "ifcopenshell_ifcapi_element_get_types",
-            "ifcopenshell_ifcapi_element_get_shape_aspects",
-            "ifcopenshell_ifcapi_element_get_groups",
-            "ifcopenshell_ifcapi_element_get_controls",
-            "ifcopenshell_ifcapi_element_get_parts",
-            "ifcopenshell_ifcapi_element_get_contained",
-            "ifcopenshell_ifcapi_element_get_referenced_structures",
-            "ifcopenshell_ifcapi_element_get_structure_referenced_elements",
-            "ifcopenshell_ifcapi_element_get_openings",
-            "ifcopenshell_ifcapi_element_get_filled_void",
-            "ifcopenshell_ifcapi_element_get_voided_element",
-            "ifcopenshell_ifcapi_element_is_userdefined_type",
-            "ifcopenshell_ifcapi_element_get_referenced_elements",
-            "ifcopenshell_ifcapi_element_get_elements_by_material",
-            "ifcopenshell_ifcapi_element_get_elements_by_style",
-            "ifcopenshell_ifcapi_element_get_elements_by_representation",
-            "ifcopenshell_ifcapi_element_get_elements_by_profile",
-            "ifcopenshell_ifcapi_element_get_elements_by_layer",
-            "ifcopenshell_ifcapi_element_get_layers",
-            "ifcopenshell_ifcapi_element_get_styles",
-            "ifcopenshell_ifcapi_element_get_decomposition",
-            "ifcopenshell_ifcapi_element_get_pset_ids",
-            "ifcopenshell_ifcapi_element_remove_deep",
-            "ifcopenshell_ifcapi_element_replace_element",
-            "ifcopenshell_ifcapi_entity_remove_deep2_ex",
-            "ifcopenshell_ifcparse_instance_list_destroy",
-            "ifcopenshell_ifcparse_instance_list_get",
-            "ifcopenshell_ifcparse_instance_list_size",
-            "ifcopenshell_ifc_instance_destroy",
-            "ifcopenshell_last_error_kind",
-            "ifcopenshell_last_error_message",
-        ),
-    )
-    _element_lib_configured = True
+def _take_instance_list(file_obj, instance_list):
+    if not instance_list:
+        return []
+    try:
+        size = _capi.instance_list_size(instance_list)
+        return [
+            ifcopenshell.entity_instance(
+                file_obj, _capi.instance_list_get(instance_list, i)
+            )
+            for i in range(size)
+        ]
+    finally:
+        _capi.instance_list_destroy(instance_list)
 
 
 def _call_element_instance(element: ifcopenshell.entity_instance, name: str, *args):
-    lib = ifcopenshell._get_lib()
-    _configure_element_lib(lib)
-    handle = _generated_capi.call_handle(
-        lib,
-        getattr(lib, name),
-        _generated_instance_handle_ptr(element._handle),
-        *args,
-        destroy=lib.ifcopenshell_ifc_instance_destroy,
-        handle_pointer_type=ctypes.POINTER(_generated_capi.ifcopenshell_ifc_instance_t),
-    )
+    handle = getattr(_capi, name)(element._handle, *args)
     return ifcopenshell.entity_instance(element.file, handle) if handle else None
 
 
 def _call_element_instance_list(
     element: ifcopenshell.entity_instance, name: str, *args
 ) -> list[ifcopenshell.entity_instance]:
-    lib = ifcopenshell._get_lib()
-    _configure_element_lib(lib)
-    out = ctypes.POINTER(_generated_capi.ifcopenshell_ifcparse_instance_list_t)()
-    if not getattr(lib, name)(_generated_instance_handle_ptr(element._handle), *args, ctypes.byref(out)):
-        return []
-    return ifcopenshell._take_instance_list(element.file, out)
+    out = getattr(_capi, name)(element._handle, *args)
+    return _take_instance_list(element.file, out)
 
 
 def _call_element_bool(element: ifcopenshell.entity_instance, name: str) -> bool:
-    lib = ifcopenshell._get_lib()
-    _configure_element_lib(lib)
-    result = _generated_capi.call_scalar(
-        getattr(lib, name),
-        ctypes.c_bool,
-        _generated_instance_handle_ptr(element._handle),
-    )
-    return bool(result)
+    return bool(getattr(_capi, name)(element._handle))
 
 
 def _get_pset_definitions(
@@ -146,14 +88,10 @@ def _get_pset_definitions(
 
 def _instance_list_arg(
     entities: Sequence[ifcopenshell.entity_instance],
-) -> _generated_capi.ifcopenshell_ifc_instance_list_t:
-    handles = [_generated_instance_handle_ptr(entity._handle) for entity in entities]
-    items = (ctypes.POINTER(_generated_capi._HandleStruct) * len(handles))(*handles)
-    result = _generated_capi.ifcopenshell_ifc_instance_list_t()
-    result.items = items
-    result.size = len(items)
-    result._keepalive = (items, handles)  # type: ignore[attr-defined]
-    return result
+):
+    return _capi.instance_list_create_from_handles(
+        [entity._handle for entity in entities]
+    )
 
 
 def get_pset(
@@ -191,7 +129,9 @@ def get_pset(
     """
     definitions = [
         definition
-        for definition in _get_pset_definitions(element, psets_only, qtos_only, should_inherit)
+        for definition in _get_pset_definitions(
+            element, psets_only, qtos_only, should_inherit
+        )
         if definition.Name == name
     ]
     if not definitions:
@@ -211,7 +151,11 @@ def get_pset(
 
 
 def get_psets(
-    element: ifcopenshell.entity_instance, psets_only=False, qtos_only=False, should_inherit=True, verbose=False
+    element: ifcopenshell.entity_instance,
+    psets_only=False,
+    qtos_only=False,
+    should_inherit=True,
+    verbose=False,
 ) -> dict[str, dict[str, Any]]:
     """Retrieve property sets, their related properties' names & values and ids.
 
@@ -235,8 +179,12 @@ def get_psets(
         psets_and_qtos = ifcopenshell.util.element.get_psets(element)
     """
     psets = {}
-    for definition in _get_pset_definitions(element, psets_only, qtos_only, should_inherit):
-        psets.setdefault(definition.Name, {}).update(get_property_definition(definition, verbose=verbose))
+    for definition in _get_pset_definitions(
+        element, psets_only, qtos_only, should_inherit
+    ):
+        psets.setdefault(definition.Name, {}).update(
+            get_property_definition(definition, verbose=verbose)
+        )
     return psets
 
 
@@ -245,11 +193,17 @@ def get_property_definition(
     definition: Optional[ifcopenshell.entity_instance], prop: None = None, verbose=False
 ) -> dict[str, Any]: ...
 @overload
-def get_property_definition(definition: Optional[ifcopenshell.entity_instance], prop: str, verbose=False) -> Any: ...
-@overload
-def get_property_definition(definition: None, prop: None = None, verbose: bool = False) -> None: ...
 def get_property_definition(
-    definition: Optional[ifcopenshell.entity_instance], prop: Optional[str] = None, verbose=False
+    definition: Optional[ifcopenshell.entity_instance], prop: str, verbose=False
+) -> Any: ...
+@overload
+def get_property_definition(
+    definition: None, prop: None = None, verbose: bool = False
+) -> None: ...
+def get_property_definition(
+    definition: Optional[ifcopenshell.entity_instance],
+    prop: Optional[str] = None,
+    verbose=False,
 ) -> Union[Any, dict[str, Any]]:
     """if prop name is not provided in `prop`, will return dict of all available properties
     otherwise will return the value of the specified `prop`.
@@ -264,7 +218,9 @@ def get_property_definition(
             return get_quantity(definition.Quantities, prop, verbose=verbose)
         elif ifc_class == "IfcPropertySet":
             return get_property(definition.HasProperties, prop, verbose=verbose)
-        elif ifc_class == "IfcMaterialProperties" or ifc_class == "IfcProfileProperties":
+        elif (
+            ifc_class == "IfcMaterialProperties" or ifc_class == "IfcProfileProperties"
+        ):
             # IfcExtendedProperties
             return get_property(definition.Properties, prop, verbose=verbose)
         elif ifc_class == "IfcExtendedMaterialProperties":
@@ -303,7 +259,11 @@ def get_property_definition(
 
 
 @overload
-def get_quantity(quantities: list[ifcopenshell.entity_instance], name: str, verbose: Literal[False] = False) -> Any: ...
+def get_quantity(
+    quantities: list[ifcopenshell.entity_instance],
+    name: str,
+    verbose: Literal[False] = False,
+) -> Any: ...
 @overload
 def get_quantity(
     quantities: list[ifcopenshell.entity_instance], name: str, verbose: Literal[True]
@@ -319,7 +279,11 @@ def get_quantity(
             # 3 IfcPhysicalSimpleQuantity.XXXValue
             result = quantity[3]
         elif quantity.is_a("IfcPhysicalComplexQuantity"):
-            data = {k: v for k, v in quantity.get_info().items() if v is not None and k != "Name"}
+            data = {
+                k: v
+                for k, v in quantity.get_info().items()
+                if v is not None and k != "Name"
+            }
             data["properties"] = get_quantities(quantity.HasQuantities, verbose=verbose)
             del data["HasQuantities"]
             result = data
@@ -353,7 +317,11 @@ def get_quantities(
                     "value": results[quantity_name],
                 }
         elif quantity.is_a("IfcPhysicalComplexQuantity"):
-            data = {k: v for k, v in quantity.get_info().items() if v is not None and k != "Name"}
+            data = {
+                k: v
+                for k, v in quantity.get_info().items()
+                if v is not None and k != "Name"
+            }
             data["properties"] = get_quantities(quantity.HasQuantities, verbose=verbose)
             del data["HasQuantities"]
             results[quantity_name] = data
@@ -367,7 +335,11 @@ def get_quantities(
 
 
 @overload
-def get_property(properties: list[ifcopenshell.entity_instance], name: str, verbose: Literal[False] = False) -> Any: ...
+def get_property(
+    properties: list[ifcopenshell.entity_instance],
+    name: str,
+    verbose: Literal[False] = False,
+) -> Any: ...
 @overload
 def get_property(
     properties: list[ifcopenshell.entity_instance], name: str, verbose: Literal[True]
@@ -397,7 +369,11 @@ def get_property(
         elif prop.is_a("IfcPropertyTableValue"):
             result = prop.get_info()
         elif prop.is_a("IfcComplexProperty"):
-            data = {k: v for k, v in prop.get_info().items() if v is not None and k != "Name"}
+            data = {
+                k: v
+                for k, v in prop.get_info().items()
+                if v is not None and k != "Name"
+            }
             data["properties"] = get_properties(prop.HasProperties, verbose=verbose)
             del data["HasProperties"]
             result = data
@@ -435,7 +411,9 @@ def get_properties(
                 }
         elif ifc_class == "IfcPropertyEnumeratedValue":
             # 2 IfcPropertyEnumeratedValue.EnumerationValues
-            results[prop_name] = [v.wrappedValue for v in values] if (values := prop[2]) else None
+            results[prop_name] = (
+                [v.wrappedValue for v in values] if (values := prop[2]) else None
+            )
             if verbose:
                 results[prop_name] = {
                     "id": prop.id(),
@@ -444,7 +422,9 @@ def get_properties(
                 }
         elif ifc_class == "IfcPropertyListValue":
             # 2 IfcPropertyListValue.ListValues
-            results[prop_name] = [v.wrappedValue for v in values] if (values := prop[2]) else None
+            results[prop_name] = (
+                [v.wrappedValue for v in values] if (values := prop[2]) else None
+            )
             if verbose:
                 results[prop_name] = {
                     "id": prop.id(),
@@ -471,20 +451,34 @@ def get_properties(
                     "value": results[prop_name],
                 }
         elif ifc_class == "IfcComplexProperty":
-            data = {k: v for k, v in prop.get_info().items() if v is not None and k != "Name"}
+            data = {
+                k: v
+                for k, v in prop.get_info().items()
+                if v is not None and k != "Name"
+            }
             data["properties"] = get_properties(prop.HasProperties, verbose=verbose)
             del data["HasProperties"]
             results[prop_name] = data
             if verbose:
-                results[prop_name] = {"id": data["id"], "class": data["type"], "value": results[prop_name]}
+                results[prop_name] = {
+                    "id": data["id"],
+                    "class": data["type"],
+                    "value": results[prop_name],
+                }
     return results
 
 
-def get_elements_by_pset(pset: ifcopenshell.entity_instance) -> set[ifcopenshell.entity_instance]:
+def get_elements_by_pset(
+    pset: ifcopenshell.entity_instance,
+) -> set[ifcopenshell.entity_instance]:
     """Retrieve the elements (or element types) that are using the provided property set."""
     is_ifc2x3 = pset.file.schema == "IFC2X3"
     elements = set()
-    if pset.is_a("IfcPropertySet") or pset.is_a("IfcPreDefinedPropertySet") or pset.is_a("IfcElementQuantity"):
+    if (
+        pset.is_a("IfcPropertySet")
+        or pset.is_a("IfcPreDefinedPropertySet")
+        or pset.is_a("IfcElementQuantity")
+    ):
         rels = pset.PropertyDefinitionOf if is_ifc2x3 else pset.DefinesOccurrence
         for rel in rels:
             elements.update(rel.RelatedObjects)
@@ -499,7 +493,9 @@ def get_elements_by_pset(pset: ifcopenshell.entity_instance) -> set[ifcopenshell
     return elements
 
 
-def get_element_mass_density(element: ifcopenshell.entity_instance) -> Union[float, None]:
+def get_element_mass_density(
+    element: ifcopenshell.entity_instance,
+) -> Union[float, None]:
     """Calculate object mass density based on material's Pset_MaterialCommon.MassDensity.
 
     :param element: IFC element entity.
@@ -518,7 +514,9 @@ def get_element_mass_density(element: ifcopenshell.entity_instance) -> Union[flo
         return
 
     if material.is_a("IfcMaterial"):
-        material_mass_density = ifcopenshell.util.element.get_pset(material, "Pset_MaterialCommon", "MassDensity")
+        material_mass_density = ifcopenshell.util.element.get_pset(
+            material, "Pset_MaterialCommon", "MassDensity"
+        )
         return material_mass_density
 
     if material.is_a("IfcMaterialLayerSetUsage"):
@@ -597,10 +595,14 @@ def is_userdefined_type(element: ifcopenshell.entity_instance) -> bool:
         element = ifcopenshell.by_type("IfcWall")[0]
         is_userdefined_type = ifcopenshell.util.element.is_userdefined_type(element)
     """
-    return _call_element_bool(element, "ifcopenshell_ifcapi_element_is_userdefined_type")
+    return _call_element_bool(
+        element, "ifcopenshell_ifcapi_element_is_userdefined_type"
+    )
 
 
-def get_type(element: ifcopenshell.entity_instance) -> Union[ifcopenshell.entity_instance, None]:
+def get_type(
+    element: ifcopenshell.entity_instance,
+) -> Union[ifcopenshell.entity_instance, None]:
     """Retrieves the construction type element of an element occurrence.
 
     Note: `get_type(type_element) == type_element`.
@@ -712,7 +714,9 @@ def get_materials(
         element = ifcopenshell.by_type("IfcWall")[0]
         materials = ifcopenshell.util.element.get_materials(element)
     """
-    material = get_material(element, should_skip_usage=True, should_inherit=should_inherit)
+    material = get_material(
+        element, should_skip_usage=True, should_inherit=should_inherit
+    )
     if not material:
         return []
     elif material.is_a("IfcMaterial"):
@@ -729,7 +733,9 @@ def get_materials(
         assert False, f"Unexpected material type: {material.is_a()}"
 
 
-def get_styles(element: ifcopenshell.entity_instance) -> list[ifcopenshell.entity_instance]:
+def get_styles(
+    element: ifcopenshell.entity_instance,
+) -> list[ifcopenshell.entity_instance]:
     """Retrieves the styles used in an element's representation.
 
     Styles may be retreived from the material or the body representation.
@@ -744,7 +750,9 @@ def get_styles(element: ifcopenshell.entity_instance) -> list[ifcopenshell.entit
         wall = file.by_type("IfcWall")[0]
         styles = ifcopenshell.util.element.get_styles(wall)
     """
-    return _call_element_instance_list(element, "ifcopenshell_ifcapi_element_get_styles")
+    return _call_element_instance_list(
+        element, "ifcopenshell_ifcapi_element_get_styles"
+    )
 
 
 # TODO: ifc_file argument is unnecessary for some methods now
@@ -770,7 +778,11 @@ def get_elements_by_material(
     """
     if not ifc_file:
         ifc_file = material.file
-    return set(_call_element_instance_list(material, "ifcopenshell_ifcapi_element_get_elements_by_material"))
+    return set(
+        _call_element_instance_list(
+            material, "ifcopenshell_ifcapi_element_get_elements_by_material"
+        )
+    )
 
 
 def get_elements_by_style(
@@ -791,11 +803,16 @@ def get_elements_by_style(
     """
     if not ifc_file:
         ifc_file = style.file
-    return set(_call_element_instance_list(style, "ifcopenshell_ifcapi_element_get_elements_by_style"))
+    return set(
+        _call_element_instance_list(
+            style, "ifcopenshell_ifcapi_element_get_elements_by_style"
+        )
+    )
 
 
 def get_elements_by_representation(
-    ifc_file: Union[ifcopenshell.file, None], representation: ifcopenshell.entity_instance
+    ifc_file: Union[ifcopenshell.file, None],
+    representation: ifcopenshell.entity_instance,
 ) -> set[ifcopenshell.entity_instance]:
     """Gets all elements using a geometric representation
 
@@ -813,11 +830,15 @@ def get_elements_by_representation(
     if not ifc_file:
         ifc_file = representation.file
     return set(
-        _call_element_instance_list(representation, "ifcopenshell_ifcapi_element_get_elements_by_representation")
+        _call_element_instance_list(
+            representation, "ifcopenshell_ifcapi_element_get_elements_by_representation"
+        )
     )
 
 
-def get_elements_by_profile(profile: ifcopenshell.entity_instance) -> set[ifcopenshell.entity_instance]:
+def get_elements_by_profile(
+    profile: ifcopenshell.entity_instance,
+) -> set[ifcopenshell.entity_instance]:
     """Get all elements using provided IfcProfileDef.
 
     Skip elements that have the profile in IfcMaterialProfileSet
@@ -826,7 +847,11 @@ def get_elements_by_profile(profile: ifcopenshell.entity_instance) -> set[ifcope
     :param profile: IfcProfileDef:
     :return: The elements using the profile.
     """
-    return set(_call_element_instance_list(profile, "ifcopenshell_ifcapi_element_get_elements_by_profile"))
+    return set(
+        _call_element_instance_list(
+            profile, "ifcopenshell_ifcapi_element_get_elements_by_profile"
+        )
+    )
 
 
 def get_elements_by_layer(
@@ -840,7 +865,11 @@ def get_elements_by_layer(
     """
     if not ifc_file:
         ifc_file = layer.file
-    return set(_call_element_instance_list(layer, "ifcopenshell_ifcapi_element_get_elements_by_layer"))
+    return set(
+        _call_element_instance_list(
+            layer, "ifcopenshell_ifcapi_element_get_elements_by_layer"
+        )
+    )
 
 
 def get_layers(
@@ -864,11 +893,15 @@ def get_layers(
     """
     if not ifc_file:
         ifc_file = element.file
-    return _call_element_instance_list(element, "ifcopenshell_ifcapi_element_get_layers")
+    return _call_element_instance_list(
+        element, "ifcopenshell_ifcapi_element_get_layers"
+    )
 
 
 def get_container(
-    element: ifcopenshell.entity_instance, should_get_direct: bool = False, ifc_class: Optional[str] = None
+    element: ifcopenshell.entity_instance,
+    should_get_direct: bool = False,
+    ifc_class: Optional[str] = None,
 ) -> Union[ifcopenshell.entity_instance, None]:
     """
     Retrieves the spatial structure container of an element.
@@ -894,11 +927,13 @@ def get_container(
         element,
         "ifcopenshell_ifcapi_element_get_container",
         bool(should_get_direct),
-        _generated_capi.encode_string(ifc_class) if ifc_class else None,
+        ifc_class,
     )
 
 
-def get_referenced_structures(element: ifcopenshell.entity_instance) -> list[ifcopenshell.entity_instance]:
+def get_referenced_structures(
+    element: ifcopenshell.entity_instance,
+) -> list[ifcopenshell.entity_instance]:
     """Retreives a list of referenced spatial elements
 
     Typically useful for multistorey elements, such as columns or facade
@@ -915,10 +950,14 @@ def get_referenced_structures(element: ifcopenshell.entity_instance) -> list[ifc
         element = file.by_type("IfcWall")[0]
         print(ifcopenshell.util.element.get_referenced_structures(element))
     """
-    return _call_element_instance_list(element, "ifcopenshell_ifcapi_element_get_referenced_structures")
+    return _call_element_instance_list(
+        element, "ifcopenshell_ifcapi_element_get_referenced_structures"
+    )
 
 
-def get_structure_referenced_elements(structure: ifcopenshell.entity_instance) -> set[ifcopenshell.entity_instance]:
+def get_structure_referenced_elements(
+    structure: ifcopenshell.entity_instance,
+) -> set[ifcopenshell.entity_instance]:
     """Retreives a set of elements referenced by a structure
 
     :param structure: IfcSpatialElement
@@ -931,10 +970,16 @@ def get_structure_referenced_elements(structure: ifcopenshell.entity_instance) -
         element = file.by_type("IfcBuildingStorey")[0]
         print(ifcopenshell.util.element.get_structure_referenced_elements(element))
     """
-    return set(_call_element_instance_list(structure, "ifcopenshell_ifcapi_element_get_structure_referenced_elements"))
+    return set(
+        _call_element_instance_list(
+            structure, "ifcopenshell_ifcapi_element_get_structure_referenced_elements"
+        )
+    )
 
 
-def get_decomposition(element: ifcopenshell.entity_instance, is_recursive=True) -> set[ifcopenshell.entity_instance]:
+def get_decomposition(
+    element: ifcopenshell.entity_instance, is_recursive=True
+) -> set[ifcopenshell.entity_instance]:
     """
     Retrieves all subelements of an element based on the spatial decomposition
     hierarchy. This includes all subspaces and elements contained in subspaces,
@@ -985,7 +1030,9 @@ def get_grouped_by(
     return results
 
 
-def get_groups(element: ifcopenshell.entity_instance) -> list[ifcopenshell.entity_instance]:
+def get_groups(
+    element: ifcopenshell.entity_instance,
+) -> list[ifcopenshell.entity_instance]:
     """
     Retrieves the groups of an element.
 
@@ -999,10 +1046,14 @@ def get_groups(element: ifcopenshell.entity_instance) -> list[ifcopenshell.entit
         wall = file.by_type("IfcWall")[0]
         group = ifcopenshell.util.element.get_groups(element)[0]
     """
-    return _call_element_instance_list(element, "ifcopenshell_ifcapi_element_get_groups")
+    return _call_element_instance_list(
+        element, "ifcopenshell_ifcapi_element_get_groups"
+    )
 
 
-def get_controls(element: ifcopenshell.entity_instance) -> Generator[ifcopenshell.entity_instance]:
+def get_controls(
+    element: ifcopenshell.entity_instance,
+) -> Generator[ifcopenshell.entity_instance]:
     """
     Retrieves the controls of an element.
 
@@ -1016,7 +1067,9 @@ def get_controls(element: ifcopenshell.entity_instance) -> Generator[ifcopenshel
         task = file.by_type("IfcTask")[0]
         control = ifcopenshell.util.element.get_controls(task)[0]
     """
-    yield from _call_element_instance_list(element, "ifcopenshell_ifcapi_element_get_controls")
+    yield from _call_element_instance_list(
+        element, "ifcopenshell_ifcapi_element_get_controls"
+    )
 
 
 def get_parent(
@@ -1062,7 +1115,9 @@ def get_parent(
     return None
 
 
-def get_filled_void(element: ifcopenshell.entity_instance) -> Union[ifcopenshell.entity_instance, None]:
+def get_filled_void(
+    element: ifcopenshell.entity_instance,
+) -> Union[ifcopenshell.entity_instance, None]:
     """If the element is filling a void, get the void
 
     Examples include windows and doors which fill a opening inside a wall.
@@ -1077,10 +1132,14 @@ def get_filled_void(element: ifcopenshell.entity_instance) -> Union[ifcopenshell
         window = file.by_type("IfcWindow")[0]
         opening = ifcopenshell.util.element.get_filled_void(window)
     """
-    return _call_element_instance(element, "ifcopenshell_ifcapi_element_get_filled_void")
+    return _call_element_instance(
+        element, "ifcopenshell_ifcapi_element_get_filled_void"
+    )
 
 
-def get_voided_element(element: ifcopenshell.entity_instance) -> Union[ifcopenshell.entity_instance, None]:
+def get_voided_element(
+    element: ifcopenshell.entity_instance,
+) -> Union[ifcopenshell.entity_instance, None]:
     """For an opening, get the building element that the opening is voiding
 
     For all valid models, this should never return None.
@@ -1095,10 +1154,14 @@ def get_voided_element(element: ifcopenshell.entity_instance) -> Union[ifcopensh
         opening = file.by_type("IfcOpeningElement")[0]
         element = ifcopenshell.util.element.get_voided_element(opening)
     """
-    return _call_element_instance(element, "ifcopenshell_ifcapi_element_get_voided_element")
+    return _call_element_instance(
+        element, "ifcopenshell_ifcapi_element_get_voided_element"
+    )
 
 
-def get_aggregate(element: ifcopenshell.entity_instance) -> Union[ifcopenshell.entity_instance, None]:
+def get_aggregate(
+    element: ifcopenshell.entity_instance,
+) -> Union[ifcopenshell.entity_instance, None]:
     """
     Retrieves the aggregate parent of an element.
 
@@ -1115,7 +1178,9 @@ def get_aggregate(element: ifcopenshell.entity_instance) -> Union[ifcopenshell.e
     return _call_element_instance(element, "ifcopenshell_ifcapi_element_get_aggregate")
 
 
-def get_nest(element: ifcopenshell.entity_instance) -> Union[ifcopenshell.entity_instance, None]:
+def get_nest(
+    element: ifcopenshell.entity_instance,
+) -> Union[ifcopenshell.entity_instance, None]:
     """
     Retrieves the nest parent of an element.
 
@@ -1132,7 +1197,9 @@ def get_nest(element: ifcopenshell.entity_instance) -> Union[ifcopenshell.entity
     return _call_element_instance(element, "ifcopenshell_ifcapi_element_get_nest")
 
 
-def get_parts(element: ifcopenshell.entity_instance) -> list[ifcopenshell.entity_instance]:
+def get_parts(
+    element: ifcopenshell.entity_instance,
+) -> list[ifcopenshell.entity_instance]:
     """
     Retrieves the parts of an element that have an aggregation relationship.
 
@@ -1149,7 +1216,9 @@ def get_parts(element: ifcopenshell.entity_instance) -> list[ifcopenshell.entity
     return _call_element_instance_list(element, "ifcopenshell_ifcapi_element_get_parts")
 
 
-def get_contained(element: ifcopenshell.entity_instance) -> list[ifcopenshell.entity_instance]:
+def get_contained(
+    element: ifcopenshell.entity_instance,
+) -> list[ifcopenshell.entity_instance]:
     """
     Retrieves the contained elements of spatial element.
 
@@ -1163,7 +1232,9 @@ def get_contained(element: ifcopenshell.entity_instance) -> list[ifcopenshell.en
         element = file.by_type("IfcBuildingStorey")[0]
         elements = ifcopenshell.util.element.get_contained(element)
     """
-    return _call_element_instance_list(element, "ifcopenshell_ifcapi_element_get_contained")
+    return _call_element_instance_list(
+        element, "ifcopenshell_ifcapi_element_get_contained"
+    )
 
 
 def get_components(
@@ -1201,7 +1272,9 @@ def get_components(
     return [e for e in objects if not e.is_a("IfcPort")]
 
 
-ReferenceData = namedtuple("ReferenceData", "inverse_attribute, rel_class, relating_element_attribute")
+ReferenceData = namedtuple(
+    "ReferenceData", "inverse_attribute, rel_class, relating_element_attribute"
+)
 
 # References below are omitted because they do not introduce
 # any additional referenced objects besides the objects
@@ -1216,17 +1289,29 @@ REFERENCE_TYPES: dict[str, ReferenceData] = {
         "IfcRelAssociatesClassification",
         "RelatingClassification",
     ),
-    "IfcDocumentReference": ReferenceData("DocumentRefForObjects", "IfcRelAssociatesDocument", "RelatingDocument"),
-    "IfcLibraryReference": ReferenceData("LibraryRefForObjects", "IfcRelAssociatesLibrary", "RelatingLibrary"),
-    "IfcClassification": ReferenceData(
-        "ClassificationForObjects", "IfcRelAssociatesClassification", "RelatingClassification"
+    "IfcDocumentReference": ReferenceData(
+        "DocumentRefForObjects", "IfcRelAssociatesDocument", "RelatingDocument"
     ),
-    "IfcDocumentInformation": ReferenceData("DocumentInfoForObjects", "IfcRelAssociatesDocument", "RelatingDocument"),
-    "IfcLibraryInformation": ReferenceData("LibraryInfoForObjects", "IfcRelAssociatesLibrary", "RelatingLibrary"),
+    "IfcLibraryReference": ReferenceData(
+        "LibraryRefForObjects", "IfcRelAssociatesLibrary", "RelatingLibrary"
+    ),
+    "IfcClassification": ReferenceData(
+        "ClassificationForObjects",
+        "IfcRelAssociatesClassification",
+        "RelatingClassification",
+    ),
+    "IfcDocumentInformation": ReferenceData(
+        "DocumentInfoForObjects", "IfcRelAssociatesDocument", "RelatingDocument"
+    ),
+    "IfcLibraryInformation": ReferenceData(
+        "LibraryInfoForObjects", "IfcRelAssociatesLibrary", "RelatingLibrary"
+    ),
 }
 
 
-def get_referenced_elements(reference: ifcopenshell.entity_instance) -> set[ifcopenshell.entity_instance]:
+def get_referenced_elements(
+    reference: ifcopenshell.entity_instance,
+) -> set[ifcopenshell.entity_instance]:
     """Get all elements with assigned `reference`
 
     :param reference: IfcExternalReference/IfcExternalInformation subtype reference
@@ -1240,26 +1325,29 @@ def get_referenced_elements(reference: ifcopenshell.entity_instance) -> set[ifco
         elements = ifcopenshell.util.element.get_referenced_elements(reference)
     """
 
-    return set(_call_element_instance_list(reference, "ifcopenshell_ifcapi_element_get_referenced_elements"))
-
-
-def replace_element(element: ifcopenshell.entity_instance, replacement: ifcopenshell.entity_instance) -> None:
-    lib = ifcopenshell._get_lib()
-    _configure_element_lib(lib)
-    _generated_capi.status_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_element_replace_element(
-            _generated_instance_handle_ptr(element._handle),
-            _generated_instance_handle_ptr(replacement._handle),
-        ),
-        ifcopenshell.get_log() or "ifcopenshell_ifcapi_element_replace_element",
+    return set(
+        _call_element_instance_list(
+            reference, "ifcopenshell_ifcapi_element_get_referenced_elements"
+        )
     )
 
 
-def replace_attribute(element: ifcopenshell.entity_instance, old: Any, new: Any) -> None:
+def replace_element(
+    element: ifcopenshell.entity_instance, replacement: ifcopenshell.entity_instance
+) -> None:
+    _capi.ifcopenshell_ifcapi_element_replace_element(
+        element._handle, replacement._handle
+    )
+
+
+def replace_attribute(
+    element: ifcopenshell.entity_instance, old: Any, new: Any
+) -> None:
     for i, attribute_value in enumerate(element):
         if has_element_reference(attribute_value, old):
-            element[i] = element.walk(lambda v: v == old, lambda v: new, attribute_value)
+            element[i] = element.walk(
+                lambda v: v == old, lambda v: new, attribute_value
+            )
 
 
 def has_element_reference(value: Any, element: ifcopenshell.entity_instance) -> bool:
@@ -1271,23 +1359,18 @@ def has_element_reference(value: Any, element: ifcopenshell.entity_instance) -> 
     return value == element
 
 
-def remove_deep(ifc_file: Union[ifcopenshell.file, None], element: ifcopenshell.entity_instance) -> None:
+def remove_deep(
+    ifc_file: Union[ifcopenshell.file, None], element: ifcopenshell.entity_instance
+) -> None:
     """Recursively purges a subgraph safely.
 
     Do not use, use remove_deep2() instead.
     """
-    # @todo maybe some sort of try-finally mechanism.
     if not ifc_file:
         ifc_file = element.file
     ifc_file.batch()
     try:
-        lib = ifcopenshell._get_lib()
-        _configure_element_lib(lib)
-        _generated_capi.status_or_raise(
-            lib,
-            lib.ifcopenshell_ifcapi_element_remove_deep(_generated_instance_handle_ptr(element._handle)),
-            ifcopenshell.get_log() or "ifcopenshell_ifcapi_element_remove_deep",
-        )
+        _capi.ifcopenshell_ifcapi_element_remove_deep(element._handle)
     finally:
         ifc_file.unbatch()
 
@@ -1441,19 +1524,15 @@ def remove_deep2(
         ifc_file.to_delete.update(to_delete)
         return
 
-    lib = ifcopenshell._get_lib()
-    _configure_element_lib(lib)
     also_consider_list = _instance_list_arg(also_consider)
     do_not_delete_list = _instance_list_arg(tuple(do_not_delete))
-    _generated_capi.status_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_entity_remove_deep2_ex(
-            _generated_instance_handle_ptr(element._handle),
-            ctypes.byref(also_consider_list),
-            ctypes.byref(do_not_delete_list),
-        ),
-        ifcopenshell.get_log() or "ifcopenshell_ifcapi_entity_remove_deep2_ex",
-    )
+    try:
+        _capi.ifcopenshell_ifcapi_entity_remove_deep2_ex(
+            element._handle, also_consider_list, do_not_delete_list
+        )
+    finally:
+        _capi.instance_list_destroy(also_consider_list)
+        _capi.instance_list_destroy(do_not_delete_list)
 
 
 def copy(
@@ -1532,7 +1611,11 @@ def copy_deep(
                     copied_entities=copied_entities,
                     exclude_callback=exclude_callback,
                 )
-        elif isinstance(attribute, tuple) and attribute and isinstance(attribute[0], ifcopenshell.entity_instance):
+        elif (
+            isinstance(attribute, tuple)
+            and attribute
+            and isinstance(attribute[0], ifcopenshell.entity_instance)
+        ):
             if exclude and any([attribute[0].is_a(e) for e in exclude]):
                 pass
             elif exclude_callback and exclude_callback(attribute[0]):
@@ -1575,7 +1658,9 @@ def has_property(product: ifcopenshell.entity_instance, property_name: str) -> b
     return any(property_name in quantities.keys() for quantities in qtos.values())
 
 
-def get_openings(element: ifcopenshell.entity_instance) -> Generator[ifcopenshell.entity_instance, None, None]:
+def get_openings(
+    element: ifcopenshell.entity_instance,
+) -> Generator[ifcopenshell.entity_instance, None, None]:
     """Get element openings as IfcRelVoidsElements.
 
     Use `.RelatedOpeningElement` to get the opening element.
@@ -1583,7 +1668,9 @@ def get_openings(element: ifcopenshell.entity_instance) -> Generator[ifcopenshel
     :param element: IfcElement.
     :return: Generator of IfcRelVoidsElements.
     """
-    yield from _call_element_instance_list(element, "ifcopenshell_ifcapi_element_get_openings")
+    yield from _call_element_instance_list(
+        element, "ifcopenshell_ifcapi_element_get_openings"
+    )
 
 
 def has_openings(element: ifcopenshell.entity_instance) -> bool:
@@ -1595,7 +1682,9 @@ def has_openings(element: ifcopenshell.entity_instance) -> bool:
     return bool(next(get_openings(element), False))
 
 
-def get_material_layers(element: ifcopenshell.entity_instance) -> list[PrioritisedLayer]:
+def get_material_layers(
+    element: ifcopenshell.entity_instance,
+) -> list[PrioritisedLayer]:
     """
     Retrieves all material layers assigned to an element.
     :param element: The IFC element
@@ -1610,12 +1699,16 @@ def get_material_layers(element: ifcopenshell.entity_instance) -> list[Prioritis
     if not material or not material.is_a("IfcMaterialLayerSet"):
         return []
     return [
-        PrioritisedLayer(getattr(layer, "Priority", 0) or 0, layer.Material, layer.LayerThickness)
+        PrioritisedLayer(
+            getattr(layer, "Priority", 0) or 0, layer.Material, layer.LayerThickness
+        )
         for layer in material.MaterialLayers
     ]
 
 
-def get_material_profiles(element: ifcopenshell.entity_instance) -> list[PrioritisedProfile]:
+def get_material_profiles(
+    element: ifcopenshell.entity_instance,
+) -> list[PrioritisedProfile]:
     """
     Retrieves all material profiles assigned to an element.
 
@@ -1634,7 +1727,9 @@ def get_material_profiles(element: ifcopenshell.entity_instance) -> list[Priorit
         return []
     return [
         PrioritisedProfile(
-            getattr(material_profile, "Priority", 0) or 0, material_profile.Material, material_profile.Profile
+            getattr(material_profile, "Priority", 0) or 0,
+            material_profile.Material,
+            material_profile.Profile,
         )
         for material_profile in material.MaterialProfiles
     ]

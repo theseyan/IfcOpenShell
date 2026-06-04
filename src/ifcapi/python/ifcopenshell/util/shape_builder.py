@@ -19,7 +19,6 @@
 from __future__ import annotations
 
 import collections.abc
-import ctypes
 from collections.abc import Sequence
 from itertools import chain
 from math import cos, pi, radians
@@ -29,10 +28,9 @@ import numpy as np
 import numpy.typing as npt
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.entity_instance import _generated_instance_handle_ptr
 import ifcopenshell.util.placement
 import ifcopenshell.util.representation
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 PRECISION = 1.0e-5
 
@@ -41,7 +39,9 @@ if TYPE_CHECKING:
     # NOTE: mathutils is never used at runtime in ifcopenshell,
     # only for type checking to ensure methods are compatible with
     # Blender vectors.
-    from mathutils import Vector  # pyright: ignore[reportMissingImports]  # ty:ignore[unresolved-import]
+    from mathutils import (
+        Vector,  # pyright: ignore[reportMissingImports]  # ty:ignore[unresolved-import]
+    )
 
     # Support both numpy arrays and python sequences as inputs.
     VectorType = Union[Sequence[float], Vector, np.ndarray]
@@ -51,63 +51,8 @@ else:
 
 SequenceOfVectors = Union[Sequence[VectorType], np.ndarray]
 
-_SHAPE_BUILDER_SYMBOLS = (
-    "ifcopenshell_ifc_instance_destroy",
-    "ifcopenshell_ifcapi_shape_builder_axis2_placement_2d",
-    "ifcopenshell_ifcapi_shape_builder_axis2_placement_3d",
-    "ifcopenshell_ifcapi_shape_builder_block",
-    "ifcopenshell_ifcapi_shape_builder_circle",
-    "ifcopenshell_ifcapi_shape_builder_curve_between_two_points",
-    "ifcopenshell_ifcapi_shape_builder_deep_copy",
-    "ifcopenshell_ifcapi_shape_builder_edge",
-    "ifcopenshell_ifcapi_shape_builder_ellipse_curve",
-    "ifcopenshell_ifcapi_shape_builder_extrude",
-    "ifcopenshell_ifcapi_shape_builder_faceted_brep",
-    "ifcopenshell_ifcapi_shape_builder_face",
-    "ifcopenshell_ifcapi_shape_builder_get_polyline_coords",
-    "ifcopenshell_ifcapi_shape_builder_half_space_solid",
-    "ifcopenshell_ifcapi_shape_builder_indexed_polycurve_2d",
-    "ifcopenshell_ifcapi_shape_builder_mesh",
-    "ifcopenshell_ifcapi_shape_builder_plane",
-    "ifcopenshell_ifcapi_shape_builder_polyline",
-    "ifcopenshell_ifcapi_shape_builder_polygonal_face_set",
-    "ifcopenshell_ifcapi_shape_builder_profile",
-    "ifcopenshell_ifcapi_shape_builder_representation",
-    "ifcopenshell_ifcapi_shape_builder_rotate",
-    "ifcopenshell_ifcapi_shape_builder_sphere",
-    "ifcopenshell_ifcapi_shape_builder_swept_disk_solid",
-    "ifcopenshell_ifcapi_shape_builder_set_polyline_coords",
-    "ifcopenshell_ifcapi_shape_builder_translate",
-    "ifcopenshell_ifcapi_shape_builder_triangulated_face_set",
-    "ifcopenshell_ifcapi_shape_builder_vertex",
-    "ifcopenshell_ifcapi_shape_builder_mirror",
-    "ifcopenshell_ifcapi_shape_builder_mep_transition_calculate",
-    "ifcopenshell_ifcapi_shape_builder_mep_transition_length",
-    "ifcopenshell_ifcapi_shape_builder_mep_transition_shape",
-    "ifcopenshell_ifcapi_shape_builder_mep_bend_shape",
-)
-_shape_builder_lib_configured = False
-
-
-def _shape_builder_lib():
-    global _shape_builder_lib_configured
-    lib = ifcopenshell._get_lib()
-    if not _shape_builder_lib_configured:
-        _generated_capi.bind(lib, names=_SHAPE_BUILDER_SYMBOLS)
-        _shape_builder_lib_configured = True
-    return lib
-
-
 def _native_entity(file: ifcopenshell.file, symbol: str, *args) -> ifcopenshell.entity_instance:
-    lib = _shape_builder_lib()
-    handle = _generated_capi.call_handle_or_raise(
-        lib,
-        getattr(lib, symbol),
-        symbol,
-        _generated_instance_handle_ptr(file._ptr),
-        *args,
-        handle_pointer_type=ctypes.POINTER(_generated_capi.ifcopenshell_ifc_instance_t),
-    )
+    handle = getattr(_capi, symbol)(file._handle, *args)
     if handle is None:
         raise RuntimeError(f"{symbol} returned a null Ifc instance handle")
     return ifcopenshell.entity_instance(file, handle)
@@ -116,40 +61,31 @@ def _native_entity(file: ifcopenshell.file, symbol: str, *args) -> ifcopenshell.
 def _native_entity_from_struct_handle(
     file: ifcopenshell.file, handle, symbol: str
 ) -> ifcopenshell.entity_instance:
-    lib = _shape_builder_lib()
-    handle_value = _generated_capi.take_nullable_handle(
-        lib, handle, destroy=lib.ifcopenshell_ifc_instance_destroy
-    )
-    if handle_value is None:
+    if handle is None:
         raise RuntimeError(f"{symbol} returned a null Ifc instance handle")
-    return ifcopenshell.entity_instance(file, handle_value)
+    return ifcopenshell.entity_instance(file, handle)
 
 
-def _native_points(points: SequenceOfVectors) -> _generated_capi.ifcopenshell_double_list_list_t:
-    return _generated_capi.make_double_list_list(ifc_safe_vector_type(points))
+def _native_points(points: SequenceOfVectors) -> SequenceOfVectors:
+    return points
 
 
-def _native_vector(vector: VectorType) -> _generated_capi.ifcopenshell_double_list_t:
-    return _generated_capi.make_double_list(ifc_safe_vector_type(vector))
+def _native_vector(vector: VectorType) -> VectorType:
+    return vector
 
 
-def _native_instance_list(values: Sequence[ifcopenshell.entity_instance]) -> _generated_capi.ifcopenshell_ifc_instance_list_t:
-    handles = [_generated_instance_handle_ptr(value._handle) for value in values]
-    items = (ctypes.POINTER(_generated_capi._HandleStruct) * len(handles))(*handles)
-    result = _generated_capi.ifcopenshell_ifc_instance_list_t()
-    result.items = items
-    result.size = len(items)
-    result._keepalive = (items, handles)  # type: ignore[attr-defined]
-    return result
+def _native_instance_list(values: Sequence[ifcopenshell.entity_instance]) -> _capi.IfcOpenshellIfcparseInstanceList:
+    handles = [value._handle for value in values]
+    return _capi.instance_list_create_from_handles(handles)
 
 
-def _native_faces(faces: Sequence[Sequence[int]]) -> _generated_capi.ifcopenshell_int32_list_list_t:
-    return _generated_capi.make_int32_list_list(faces)
+def _native_faces(faces: Sequence[Sequence[int]]) -> Sequence[Sequence[int]]:
+    return faces
 
 
 def _native_polygonal_faces(
     faces: Sequence[Union[Sequence[int], Sequence[Sequence[int]]]]
-) -> _generated_capi.ifcopenshell_int32_list_list_list_t:
+) -> list[Union[Sequence[int], Sequence[Sequence[int]]]]:
     def is_sequence_of_ints(x):
         return isinstance(x, Sequence) and not isinstance(x, (str, bytes)) and all(isinstance(el, int) for el in x)
 
@@ -159,9 +95,13 @@ def _native_polygonal_faces(
     if not all(is_sequence_of_ints(f) or is_sequence_of_sequence_of_ints(f) for f in faces):
         raise ValueError("Expected a sequence of int or sequence of sequence of int for each face")
 
-    return _generated_capi.make_int32_list_list_list(
-        [[face] if is_sequence_of_ints(face) else face for face in faces]  # type: ignore[list-item]
-    )
+    return [[face] if is_sequence_of_ints(face) else face for face in faces]  # type: ignore[list-item]
+
+
+def _struct_field(value: Any, name: str, index: int) -> Any:
+    if hasattr(value, name):
+        return getattr(value, name)
+    return value[index]
 
 
 def V(*args: Union[float, int, VectorType, SequenceOfVectors]) -> npt.NDArray[np.float64]:
@@ -457,7 +397,7 @@ class ShapeBuilder:
             bool(closed),
             _native_vector(position_offset if position_offset is not None else ()),
             position_offset is not None,
-            _generated_capi.make_int32_list(arc_points),
+            arc_points,
         )
 
     @staticmethod
@@ -622,7 +562,7 @@ class ShapeBuilder:
             _native_vector(position),
             _native_points(trim_points),
             _native_vector(ref_x_direction),
-            _generated_capi.make_int32_list(trim_points_mask),
+            trim_points_mask,
         )
 
     def profile(
@@ -663,10 +603,10 @@ class ShapeBuilder:
         return _native_entity(
             self.file,
             "ifcopenshell_ifcapi_shape_builder_profile",
-            _generated_instance_handle_ptr(outer_curve._handle),
-            _generated_capi.encode_string(name) if name is not None else None,
+            outer_curve._handle,
+            name,
             _native_instance_list(inner_curves),
-            _generated_capi.encode_string(profile_type) if profile_type is not None else None,
+            profile_type,
         )
 
     def translate(
@@ -694,7 +634,7 @@ class ShapeBuilder:
                 _native_entity(
                     self.file,
                     "ifcopenshell_ifcapi_shape_builder_translate",
-                    _generated_instance_handle_ptr(c._handle),
+                    c._handle,
                     _native_vector(translation),
                     bool(create_copy),
                 )
@@ -751,7 +691,7 @@ class ShapeBuilder:
                 _native_entity(
                     self.file,
                     "ifcopenshell_ifcapi_shape_builder_rotate",
-                    _generated_instance_handle_ptr(c._handle),
+                    c._handle,
                     float(angle),
                     _native_vector(pivot_point),
                     bool(counter_clockwise),
@@ -918,7 +858,7 @@ class ShapeBuilder:
                     _native_entity(
                         self.file,
                         "ifcopenshell_ifcapi_shape_builder_mirror",
-                        _generated_instance_handle_ptr(curve_or_item_el._handle),
+                        curve_or_item_el._handle,
                         _native_vector(mirror_axes),
                         _native_vector(mirror_point),
                         bool(create_copy),
@@ -982,7 +922,7 @@ class ShapeBuilder:
         return _native_entity(
             self.file,
             "ifcopenshell_ifcapi_shape_builder_half_space_solid",
-            _generated_instance_handle_ptr(plane._handle),
+            plane._handle,
             bool(agreement_flag),
         )
 
@@ -1015,7 +955,7 @@ class ShapeBuilder:
         return _native_entity(
             self.file,
             "ifcopenshell_ifcapi_shape_builder_extrude",
-            _generated_instance_handle_ptr(profile_or_curve._handle),
+            profile_or_curve._handle,
             float(magnitude),
             _native_vector(position),
             _native_vector(extrusion_vector),
@@ -1045,7 +985,7 @@ class ShapeBuilder:
         return _native_entity(
             self.file,
             "ifcopenshell_ifcapi_shape_builder_swept_disk_solid",
-            _generated_instance_handle_ptr(path_curve._handle),
+            path_curve._handle,
             float(radius),
         )
 
@@ -1084,9 +1024,9 @@ class ShapeBuilder:
         return _native_entity(
             self.file,
             "ifcopenshell_ifcapi_shape_builder_representation",
-            _generated_instance_handle_ptr(context._handle),
+            context._handle,
             _native_instance_list(items),
-            _generated_capi.encode_string(representation_type) if representation_type is not None else None,
+            representation_type,
         )
 
     def deep_copy(self, element: ifcopenshell.entity_instance) -> ifcopenshell.entity_instance:
@@ -1098,7 +1038,7 @@ class ShapeBuilder:
         return _native_entity(
             self.file,
             "ifcopenshell_ifcapi_shape_builder_deep_copy",
-            _generated_instance_handle_ptr(element._handle),
+            element._handle,
         )
 
     # UTILITIES
@@ -1160,13 +1100,7 @@ class ShapeBuilder:
         :param polyline: An ``IfcIndexedPolyCurve`` or ``IfcPolyline`` entity.
         :return: Numpy array of the polyline's point coordinates.
         """
-        lib = _shape_builder_lib()
-        coords = _generated_capi.call_double_list_list_or_raise(
-            lib,
-            lib.ifcopenshell_ifcapi_shape_builder_get_polyline_coords,
-            f"Unsupported polyline type: {polyline.is_a()}",
-            _generated_instance_handle_ptr(polyline._handle),
-        )
+        coords = _capi.ifcopenshell_ifcapi_shape_builder_get_polyline_coords(polyline._handle)
         return np.array(coords)
 
     def set_polyline_coords(self, polyline: ifcopenshell.entity_instance, coords: SequenceOfVectors) -> None:
@@ -1179,7 +1113,7 @@ class ShapeBuilder:
         _native_entity(
             self.file,
             "ifcopenshell_ifcapi_shape_builder_set_polyline_coords",
-            _generated_instance_handle_ptr(polyline._handle),
+            polyline._handle,
             _native_points(coords),
         )
 
@@ -1541,33 +1475,27 @@ class ShapeBuilder:
         :return: A tuple of Model/Body/MODEL_VIEW IfcRepresentation and dictionary of transition shape data.
             Or (None, None) if there was an error in the process.
         """
-        lib = _shape_builder_lib()
-        value = _generated_capi.call_struct_or_raise(
-            lib,
-            lib.ifcopenshell_ifcapi_shape_builder_mep_transition_shape,
-            _generated_capi.ifcopenshell_shape_builder_mep_transition_shape_result_t,
-            "shape_builder_mep_transition_shape failed",
-            _generated_instance_handle_ptr(self.file._ptr),
-            _generated_instance_handle_ptr(start_segment._handle),
-            _generated_instance_handle_ptr(end_segment._handle),
+        value = _capi.ifcopenshell_ifcapi_shape_builder_mep_transition_shape(
+            self.file._handle,
+            start_segment._handle,
+            end_segment._handle,
             float(start_length),
             float(end_length),
             float(angle),
             _native_vector(profile_offset),
         )
-        if not value.has_result:
+        if not _struct_field(value, "has_result", 1):
             return None, None
         representation = _native_entity_from_struct_handle(
-            self.file, value.representation, "shape_builder_mep_transition_shape"
+            self.file, _struct_field(value, "representation", 0), "shape_builder_mep_transition_shape"
         )
-        native_profile_offset = _generated_capi.take_double_list(lib, value.profile_offset)
         return representation, {
-            "start_length": value.start_length,
-            "end_length": value.end_length,
-            "angle": value.angle,
-            "profile_offset": native_profile_offset,
-            "transition_length": value.transition_length,
-            "full_transition_length": value.full_transition_length,
+            "start_length": _struct_field(value, "start_length", 2),
+            "end_length": _struct_field(value, "end_length", 3),
+            "angle": _struct_field(value, "angle", 4),
+            "profile_offset": _struct_field(value, "profile_offset", 5),
+            "transition_length": _struct_field(value, "transition_length", 6),
+            "full_transition_length": _struct_field(value, "full_transition_length", 7),
         }
 
     # TODO: move to separate shape_builder method
@@ -1594,12 +1522,7 @@ class ShapeBuilder:
         :return: Transition length in project length units, or ``None`` if no valid length exists
             for the given angle and offset.
         """
-        lib = _shape_builder_lib()
-        result = _generated_capi.call_scalar_or_raise(
-            lib,
-            lib.ifcopenshell_ifcapi_shape_builder_mep_transition_length,
-            ctypes.c_double,
-            "shape_builder_mep_transition_length failed",
+        result = _capi.ifcopenshell_ifcapi_shape_builder_mep_transition_length(
             _native_vector(start_half_dim),
             _native_vector(end_half_dim),
             float(angle),
@@ -1635,12 +1558,7 @@ class ShapeBuilder:
         :return: Transition length (if ``angle`` was given) or transition angle in degrees
             (if ``length`` was given), or ``None`` if the geometry is not feasible.
         """
-        lib = _shape_builder_lib()
-        result = _generated_capi.call_scalar_or_raise(
-            lib,
-            lib.ifcopenshell_ifcapi_shape_builder_mep_transition_calculate,
-            ctypes.c_double,
-            "shape_builder_mep_transition_calculate failed",
+        result = _capi.ifcopenshell_ifcapi_shape_builder_mep_transition_calculate(
             _native_vector(start_half_dim),
             _native_vector(end_half_dim),
             _native_vector(offset),
@@ -1678,14 +1596,9 @@ class ShapeBuilder:
             there is an option to flip it if bend is going by start segment Z- axis.
         :return: tuple of Model/Body/MODEL_VIEW IfcRepresentation and dictionary of transition shape data
         """
-        lib = _shape_builder_lib()
-        value = _generated_capi.call_struct_or_raise(
-            lib,
-            lib.ifcopenshell_ifcapi_shape_builder_mep_bend_shape,
-            _generated_capi.ifcopenshell_shape_builder_mep_bend_shape_result_t,
-            "shape_builder_mep_bend_shape failed",
-            _generated_instance_handle_ptr(self.file._ptr),
-            _generated_instance_handle_ptr(segment._handle),
+        value = _capi.ifcopenshell_ifcapi_shape_builder_mep_bend_shape(
+            self.file._handle,
+            segment._handle,
             float(start_length),
             float(end_length),
             float(angle),
@@ -1694,15 +1607,15 @@ class ShapeBuilder:
             bool(flip_z_axis),
         )
         representation = _native_entity_from_struct_handle(
-            self.file, value.representation, "shape_builder_mep_bend_shape"
+            self.file, _struct_field(value, "representation", 0), "shape_builder_mep_bend_shape"
         )
         return representation, {
-            "start_length": value.start_length,
-            "end_length": value.end_length,
-            "radius": value.radius,
-            "angle": value.angle,
-            "lateral_axis": value.lateral_axis,
-            "lateral_sign": value.lateral_sign,
-            "z_axis_sign": value.z_axis_sign,
-            "main_profile_dimension": value.main_profile_dimension,
+            "start_length": _struct_field(value, "start_length", 1),
+            "end_length": _struct_field(value, "end_length", 2),
+            "radius": _struct_field(value, "radius", 3),
+            "angle": _struct_field(value, "angle", 4),
+            "lateral_axis": _struct_field(value, "lateral_axis", 5),
+            "lateral_sign": _struct_field(value, "lateral_sign", 6),
+            "z_axis_sign": _struct_field(value, "z_axis_sign", 7),
+            "main_profile_dimension": _struct_field(value, "main_profile_dimension", 8),
         }

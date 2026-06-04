@@ -16,42 +16,11 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ctypes
 from typing import Optional
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.entity_instance import _generated_instance_handle_ptr
 import ifcopenshell.util.element
-
-_classification_lib_configured = False
-
-
-def _configure_classification_lib(lib) -> None:
-    global _classification_lib_configured
-    if _classification_lib_configured:
-        return
-    _generated_capi.bind(
-        lib,
-        names=(
-            "ifcopenshell_ifcapi_classification_get_references",
-            "ifcopenshell_ifcparse_instance_list_destroy",
-            "ifcopenshell_ifcparse_instance_list_get",
-            "ifcopenshell_ifcparse_instance_list_size",
-        ),
-    )
-    _classification_lib_configured = True
-
-
-def _call_classification_instance_list(
-    element: ifcopenshell.entity_instance, name: str, *args
-) -> list[ifcopenshell.entity_instance]:
-    lib = ifcopenshell._get_lib()
-    _configure_classification_lib(lib)
-    out = ctypes.POINTER(_generated_capi.ifcopenshell_ifcparse_instance_list_t)()
-    if not getattr(lib, name)(_generated_instance_handle_ptr(element._handle), *args, ctypes.byref(out)):
-        return []
-    return ifcopenshell._take_instance_list(element.file, out)
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def get_references(element: ifcopenshell.entity_instance, should_inherit=True) -> set[ifcopenshell.entity_instance]:
@@ -61,11 +30,8 @@ def get_references(element: ifcopenshell.entity_instance, should_inherit=True) -
         from the type. Classifications can be overriden per system.
     :return: A set of IfcClassificationReference
     """
-    return set(
-        _call_classification_instance_list(
-            element, "ifcopenshell_ifcapi_classification_get_references", bool(should_inherit)
-        )
-    )
+    out = _capi.ifcopenshell_ifcapi_classification_get_references(element._handle, bool(should_inherit))
+    return set(ifcopenshell._take_instance_list(element.file, out))
 
 
 def get_classification(reference: ifcopenshell.entity_instance) -> ifcopenshell.entity_instance:

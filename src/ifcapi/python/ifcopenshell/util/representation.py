@@ -17,18 +17,16 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 from collections.abc import Generator, Sequence
-import ctypes
 from typing import Literal, Optional, TypedDict, Union
 
 import numpy as np
 import numpy.typing as npt
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.entity_instance import _generated_instance_handle_ptr
 import ifcopenshell.util.placement
 import ifcopenshell.util.representation
 import ifcopenshell.util.shape
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 CONTEXT_TYPE = Literal["Model", "Plan", "NotDefined"]
 REPRESENTATION_IDENTIFIER = Literal[
@@ -58,61 +56,12 @@ TARGET_VIEW = Literal[
 ]
 
 
-_BOUND = False
-_BIND_NAMES = (
-    "ifcopenshell_ifcapi_representation_get_context",
-    "ifcopenshell_ifcapi_representation_get_prioritised_contexts",
-    "ifcopenshell_ifcapi_representation_get_product_representation",
-    "ifcopenshell_ifcapi_representation_resolve",
-    "ifcopenshell_ifcapi_representation_resolve_base_items",
-    "ifcopenshell_ifc_instance_destroy",
-    "ifcopenshell_ifcparse_instance_list_destroy",
-    "ifcopenshell_ifcparse_instance_list_get",
-    "ifcopenshell_ifcparse_instance_list_size",
-    "ifcopenshell_last_error_kind",
-    "ifcopenshell_last_error_message",
-)
-
-
-def _get_lib() -> ctypes.CDLL:
-    global _BOUND
-    lib = ifcopenshell._get_lib()
-    if not _BOUND:
-        _generated_capi.bind(lib, names=_BIND_NAMES)
-        _BOUND = True
-    return lib
-
-
-def _file_handle(ifc_file: ifcopenshell.file):
-    return ifcopenshell._ifc_file_handle_ptr(ifc_file._ptr)
-
-
-def _instance_handle(entity: ifcopenshell.entity_instance | None):
-    return _generated_instance_handle_ptr(entity._handle) if entity is not None else None
-
-
-def _encode_optional(value: str | None):
-    return _generated_capi.encode_string(value) if value else None
-
-
-def _call_representation_handle(file: ifcopenshell.file, fn, *args):
-    lib = _get_lib()
-    handle = _generated_capi.call_handle_or_raise(
-        lib,
-        fn,
-        ifcopenshell.get_log() or fn.__name__,
-        *args,
-        destroy=lib.ifcopenshell_ifc_instance_destroy,
-        handle_pointer_type=ctypes.POINTER(_generated_capi.ifcopenshell_ifc_instance_t),
-    )
+def _wrap_handle(file: ifcopenshell.file, handle):
     return ifcopenshell.entity_instance(file, handle) if handle else None
 
 
-def _call_representation_list(file: ifcopenshell.file, fn, *args) -> list[ifcopenshell.entity_instance]:
-    lib = _get_lib()
-    out = ctypes.POINTER(_generated_capi.ifcopenshell_ifcparse_instance_list_t)()
-    _generated_capi.status_or_raise(lib, fn(*args, ctypes.byref(out)), ifcopenshell.get_log() or fn.__name__)
-    return ifcopenshell._take_instance_list(file, out)
+def _wrap_list(file: ifcopenshell.file, handles) -> list[ifcopenshell.entity_instance]:
+    return [ifcopenshell.entity_instance(file, h) for h in handles]
 
 
 def get_context(
@@ -127,15 +76,13 @@ def get_context(
     :param subcontext: A ContextIdentifier string, or any if left blank.
     :param target_view: A TargetView string, or any if left blank.
     """
-    lib = _get_lib()
-    return _call_representation_handle(
-        ifc_file,
-        lib.ifcopenshell_ifcapi_representation_get_context,
-        _file_handle(ifc_file),
-        _encode_optional(context),
-        _encode_optional(subcontext),
-        _encode_optional(target_view),
+    handle = _capi.ifcopenshell_ifcapi_representation_get_context(
+        ifc_file._handle,
+        context,
+        subcontext,
+        target_view,
     )
+    return _wrap_handle(ifc_file, handle)
 
 
 def is_representation_of_context(
@@ -201,18 +148,16 @@ def get_representation(
     :param target_view: A TargetView string, or any if left blank.
     :return: The first IfcShapeRepresentation matching the criteria.
     """
-    lib = _get_lib()
-    context_handle = _instance_handle(context) if isinstance(context, ifcopenshell.entity_instance) else None
+    context_handle = context._handle if isinstance(context, ifcopenshell.entity_instance) else None
     context_type = None if isinstance(context, ifcopenshell.entity_instance) else context
-    return _call_representation_handle(
-        element.file,
-        lib.ifcopenshell_ifcapi_representation_get_product_representation,
-        _instance_handle(element),
+    handle = _capi.ifcopenshell_ifcapi_representation_get_product_representation(
+        element._handle,
         context_handle,
-        _encode_optional(context_type),
-        _encode_optional(subcontext),
-        _encode_optional(target_view),
+        context_type,
+        subcontext,
+        target_view,
     )
+    return _wrap_handle(element.file, handle)
 
 
 def guess_type(items: Sequence[ifcopenshell.entity_instance]) -> Union[str, None]:
@@ -372,12 +317,8 @@ def resolve_representation(representation: ifcopenshell.entity_instance) -> ifco
     :param representation: IfcRepresentation
     :return: Representation resolved from mappings
     """
-    lib = _get_lib()
-    return _call_representation_handle(
-        representation.file,
-        lib.ifcopenshell_ifcapi_representation_resolve,
-        _instance_handle(representation),
-    )
+    handle = _capi.ifcopenshell_ifcapi_representation_resolve(representation._handle)
+    return _wrap_handle(representation.file, handle)
 
 
 class ResolvedItemDict(TypedDict):
@@ -406,12 +347,8 @@ def resolve_base_items(
     representation: ifcopenshell.entity_instance,
 ) -> Generator[ifcopenshell.entity_instance, None, None]:
     """Resolve representation to it's base items resolving mapped items and boolean results to it's operands."""
-    lib = _get_lib()
-    yield from _call_representation_list(
-        representation.file,
-        lib.ifcopenshell_ifcapi_representation_resolve_base_items,
-        _instance_handle(representation),
-    )
+    handles = _capi.ifcopenshell_ifcapi_representation_resolve_base_items(representation._handle)
+    yield from _wrap_list(representation.file, handles)
 
 
 def get_prioritised_contexts(ifc_file: ifcopenshell.file) -> list[ifcopenshell.entity_instance]:
@@ -429,12 +366,8 @@ def get_prioritised_contexts(ifc_file: ifcopenshell.file) -> list[ifcopenshell.e
     :return: A list of IfcGeometricRepresentationContext (or SubContext) from
         high priority to low priority.
     """
-    lib = _get_lib()
-    return _call_representation_list(
-        ifc_file,
-        lib.ifcopenshell_ifcapi_representation_get_prioritised_contexts,
-        _file_handle(ifc_file),
-    )
+    handles = _capi.ifcopenshell_ifcapi_representation_get_prioritised_contexts(ifc_file._handle)
+    return _wrap_list(ifc_file, handles)
 
 
 def get_part_of_product(
