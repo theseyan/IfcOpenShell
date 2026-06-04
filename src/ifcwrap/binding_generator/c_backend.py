@@ -46,7 +46,6 @@ try:
         lower_cpp_spec_result_structs_to_specs,
     )
     from .debug import debug_log, debug_path
-    from .python_ctypes_backend import generate_python_ctypes
     from .python_extension_backend import generate_python_extension
 except ImportError:  # pragma: no cover - script execution fallback
     from authored_spec import (
@@ -87,7 +86,6 @@ except ImportError:  # pragma: no cover - script execution fallback
         lower_cpp_spec_result_structs_to_specs,
     )
     from debug import debug_log, debug_path
-    from python_ctypes_backend import generate_python_ctypes
     from python_extension_backend import generate_python_extension
 
 # Type alias for spec types
@@ -365,7 +363,6 @@ def generate(
     header_out: Path,
     cpp_out: Path,
     internal_header_out: Path | None = None,
-    python_out: Path | None = None,
     python_extension_out: Path | None = None,
     discovery_include_dirs: tuple[Path, ...] = (),
     discovery_defines: tuple[str, ...] = (),
@@ -391,9 +388,6 @@ def generate(
         internal_header_out = cpp_out.with_name(header_out.stem + "_internal.hpp")
     internal_header_out.parent.mkdir(parents=True, exist_ok=True)
     internal_header_out.write_text(_render_internal_header(spec, header_out.name), encoding="utf-8")
-    if python_out is not None:
-        python_out.parent.mkdir(parents=True, exist_ok=True)
-        generate_python_ctypes(spec, python_out, generic_handles=True)
     if python_extension_out is not None:
         generate_python_extension(spec, python_extension_out, api_header_path=header_out)
     debug_log("c_backend.generate.done", f"spec={debug_path(spec_path)}")
@@ -406,7 +400,6 @@ def generate_merged(
     header_out: Path,
     cpp_out: Path,
     internal_header_out: Path | None = None,
-    python_out: Path | None = None,
     python_extension_out: Path | None = None,
     discovery_include_dirs: tuple[Path, ...] = (),
     discovery_defines: tuple[str, ...] = (),
@@ -455,9 +448,6 @@ def generate_merged(
         internal_header_out = cpp_out.with_name(header_out.stem + "_internal.hpp")
     internal_header_out.parent.mkdir(parents=True, exist_ok=True)
     internal_header_out.write_text(_render_internal_header(spec, header_out.name), encoding="utf-8")
-    if python_out is not None:
-        python_out.parent.mkdir(parents=True, exist_ok=True)
-        generate_python_ctypes(spec, python_out, generic_handles=True)
     if python_extension_out is not None:
         generate_python_extension(spec, python_extension_out, api_header_path=header_out)
     debug_log("c_backend.generate_merged.done", f"module={module}")
@@ -486,7 +476,6 @@ def generate_cpp_specs(
     header_out: Path,
     cpp_out: Path,
     internal_header_out: Path | None = None,
-    python_out: Path | None = None,
     python_extension_out: Path | None = None,
     discovery_include_dirs: tuple[Path, ...] = (),
     discovery_defines: tuple[str, ...] = (),
@@ -557,9 +546,6 @@ def generate_cpp_specs(
         internal_header_out = cpp_out.with_name(header_out.stem + "_internal.hpp")
     internal_header_out.parent.mkdir(parents=True, exist_ok=True)
     internal_header_out.write_text(_render_internal_header(spec, header_out.name), encoding="utf-8")
-    if python_out is not None:
-        python_out.parent.mkdir(parents=True, exist_ok=True)
-        generate_python_ctypes(spec, python_out, generic_handles=True)
     if python_extension_out is not None:
         generate_python_extension(spec, python_extension_out, api_header_path=header_out)
     debug_log("c_backend.generate_cpp_specs.done", f"specs={len(spec_paths)} module={module}")
@@ -617,12 +603,6 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional output path for the internal C++ header that exposes handle struct definitions and error helpers. Defaults to <cpp-out-dir>/<header-stem>_internal.hpp.",
     )
     parser.add_argument(
-        "--python-out",
-        type=Path,
-        default=None,
-        help="Optional output path for generated Python ctypes glue.",
-    )
-    parser.add_argument(
         "--python-extension-out",
         type=Path,
         default=None,
@@ -676,7 +656,6 @@ def main() -> int:
             args.header_out,
             args.cpp_out,
             internal_header_out=args.internal_header_out,
-            python_out=args.python_out,
             python_extension_out=args.python_extension_out,
             discovery_include_dirs=tuple(args.discovery_include_dir),
             discovery_defines=tuple(args.discovery_define),
@@ -695,7 +674,6 @@ def main() -> int:
             args.header_out,
             args.cpp_out,
             internal_header_out=args.internal_header_out,
-            python_out=args.python_out,
             python_extension_out=args.python_extension_out,
             discovery_include_dirs=tuple(args.discovery_include_dir),
             discovery_defines=tuple(args.discovery_define),
@@ -713,7 +691,6 @@ def main() -> int:
             args.header_out,
             args.cpp_out,
             internal_header_out=args.internal_header_out,
-            python_out=args.python_out,
             python_extension_out=args.python_extension_out,
             discovery_include_dirs=tuple(args.discovery_include_dir),
             discovery_defines=tuple(args.discovery_define),

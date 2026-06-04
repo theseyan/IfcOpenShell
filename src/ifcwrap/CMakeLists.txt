@@ -40,7 +40,6 @@ if(BUILD_IFCCAPI)
     set(UNIFIED_CAPI_HEADER "${IFCPARSE_CAPI_GENERATED_DIR}/ifcopenshell_api.h")
     set(UNIFIED_CAPI_CPP "${IFCPARSE_CAPI_GENERATED_DIR}/ifcopenshell_api.cpp")
     set(UNIFIED_CAPI_INTERNAL_HEADER "${IFCPARSE_CAPI_GENERATED_DIR}/ifcopenshell_api_internal.hpp")
-    set(UNIFIED_CAPI_PYTHON_CTYPES "${CMAKE_CURRENT_SOURCE_DIR}/../ifcapi/python/ifcopenshell/_generated_capi.py")
     set(UNIFIED_CAPI_PYTHON_EXTENSION "${IFCPARSE_CAPI_GENERATED_DIR}/ifcopenshell_capi_py.cpp")
 
     if(IFCCAPI_REGENERATE_BINDINGS)
@@ -139,7 +138,6 @@ if(BUILD_IFCCAPI)
                 "${UNIFIED_CAPI_HEADER}"
                 "${UNIFIED_CAPI_CPP}"
                 "${UNIFIED_CAPI_INTERNAL_HEADER}"
-                "${UNIFIED_CAPI_PYTHON_CTYPES}"
                 "${UNIFIED_CAPI_PYTHON_EXTENSION}"
             COMMAND
                 ${Python_EXECUTABLE} "${IFCPARSE_CAPI_GENERATOR}"
@@ -159,7 +157,6 @@ if(BUILD_IFCCAPI)
                 --cpp-spec-handle-c-prefix ""
                 --header-out "${UNIFIED_CAPI_HEADER}"
                 --cpp-out "${UNIFIED_CAPI_CPP}"
-                --python-out "${UNIFIED_CAPI_PYTHON_CTYPES}"
                 --python-extension-out "${UNIFIED_CAPI_PYTHON_EXTENSION}"
                 ${IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS}
                 ${IFCPARSE_CAPI_DISCOVERY_DEFINE_ARGS}
@@ -190,7 +187,6 @@ if(BUILD_IFCCAPI)
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/debug.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/host_metadata.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/policy_ir.py"
-                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/python_ctypes_backend.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/python_extension_backend.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/semantic_types.py"
             VERBATIM
@@ -201,7 +197,6 @@ if(BUILD_IFCCAPI)
                 "${UNIFIED_CAPI_HEADER}"
                 "${UNIFIED_CAPI_CPP}"
                 "${UNIFIED_CAPI_INTERNAL_HEADER}"
-                "${UNIFIED_CAPI_PYTHON_CTYPES}"
                 "${UNIFIED_CAPI_PYTHON_EXTENSION}"
         )
     endif()
@@ -210,7 +205,7 @@ if(BUILD_IFCCAPI)
     # bundles the high-level handwritten layer from src/ifcapi as well).
     if(EXISTS "${UNIFIED_CAPI_HEADER}" AND EXISTS "${UNIFIED_CAPI_CPP}")
         # Build the unified C API as a SHARED library so that consumers (any
-        # language: C, Zig, Rust, Python via ctypes) get a single distribution
+        # language: C, Zig, Rust, Python) get a single distribution
         # exposing both the autogen low-level surface and the optional
         # handwritten high-level surface, sharing the same opaque handle types.
         # A separate static archive is also produced (BUILD_IFCCAPI_STATIC)

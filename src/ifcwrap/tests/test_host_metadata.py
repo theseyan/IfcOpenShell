@@ -10,7 +10,7 @@ from src.ifcwrap.binding_generator.binding_ir import lower_binding_spec
 from src.ifcwrap.binding_generator.host_metadata import build_host_metadata
 
 
-def test_host_metadata_derives_ctypes_relevant_layouts_and_signatures(tmp_path: Path) -> None:
+def test_host_metadata_derives_layouts_and_signatures(tmp_path: Path) -> None:
     spec_path = tmp_path / "demo.yml"
     spec_path.write_text(
         dedent(
