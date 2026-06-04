@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.unit import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def remove_unit(file: ifcopenshell.file, unit: ifcopenshell.entity_instance) -> None:
@@ -40,9 +39,4 @@ def remove_unit(file: ifcopenshell.file, unit: ifcopenshell.entity_instance) -> 
         # Yeah maybe not.
         ifcopenshell.api.unit.remove_unit(model, unit=unit)
     """
-    lib = _capi.get_lib()
-    _generated_capi.status_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_unit_remove_unit(_capi.file_handle(file), _capi.instance_handle(unit)),
-        "Failed to remove unit",
-    )
+    _capi.ifcopenshell_ifcapi_unit_remove_unit(file._handle, unit._handle)

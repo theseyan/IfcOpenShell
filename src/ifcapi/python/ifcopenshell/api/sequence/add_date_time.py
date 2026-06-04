@@ -21,8 +21,7 @@ from typing import Union
 
 import ifcopenshell
 import ifcopenshell.util.date
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.sequence import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def add_date_time(file: ifcopenshell.file, dt: datetime) -> Union[str, ifcopenshell.entity_instance]:
@@ -47,28 +46,14 @@ def add_date_time(file: ifcopenshell.file, dt: datetime) -> Union[str, ifcopensh
         print(datetime_ifc)
 
     """
-
     dt_str = ifcopenshell.util.date.datetime2ifc(dt, "IfcDateTime")
     assert isinstance(dt_str, str)
-    lib = _capi.get_lib()
-    result = _generated_capi.call_struct_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_sequence_add_date_time,
-        _generated_capi.ifcopenshell_sequence_date_time_result_t,
-        "sequence_add_date_time failed",
-        _capi.file_handle(file),
-        _generated_capi.encode_string(dt_str),
-    )
+    result = _capi.ifcopenshell_ifcapi_sequence_add_date_time(file._handle, dt_str)
     if result.is_entity:
-        _generated_capi.take_string(lib, result.date_time_string)
-        handle = _generated_capi.take_nullable_handle(
-            lib,
-            result.date_time,
-            destroy=lib.ifcopenshell_ifc_instance_destroy,
-        )
+        handle = result.date_time
         if handle:
             return ifcopenshell.entity_instance(file, handle)
-        _generated_capi.raise_last_error(lib, "sequence_add_date_time failed")
-    value = _generated_capi.take_string(lib, result.date_time_string)
+        raise RuntimeError(_capi.last_error_message() or "sequence_add_date_time failed")
+    value = result.date_time_string
     assert isinstance(value, str)
     return value

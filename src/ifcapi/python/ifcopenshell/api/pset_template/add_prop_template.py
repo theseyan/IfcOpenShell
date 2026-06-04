@@ -19,8 +19,7 @@
 from typing import Optional
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.pset_template import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def add_prop_template(
@@ -85,17 +84,14 @@ def add_prop_template(
             name="ChemicalType", description="The class of chemical spillage.",
             primary_measure_type="IfcLabel")
     """
-    lib = _capi.get_lib()
-    handle = _generated_capi.call_handle_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_pset_template_add_prop_template,
-        "Failed to add property template",
-        _capi.file_handle(file),
-        _capi.instance_handle(pset_template),
-        _generated_capi.encode_string(name),
-        _capi.optional_string(description),
-        _capi.optional_string(template_type),
-        _capi.optional_string(primary_measure_type),
-        destroy=lib.ifcopenshell_ifc_instance_destroy,
+    handle = _capi.ifcopenshell_ifcapi_pset_template_add_prop_template(
+        file._handle,
+        pset_template._handle,
+        name,
+        description,
+        template_type,
+        primary_measure_type,
     )
-    return _capi.wrap_handle(file, handle)
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    raise RuntimeError(_capi.last_error_message() or "Failed to add property template")

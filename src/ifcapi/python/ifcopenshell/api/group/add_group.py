@@ -19,8 +19,8 @@
 from typing import Optional
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api import _relationship_capi
+import ifcopenshell.api.owner.settings
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def add_group(
@@ -46,16 +46,16 @@ def add_group(
 
         ifcopenshell.api.group.add_group(model, name="Unit 1A")
     """
-
-    lib = _relationship_capi.get_lib()
-    owner_history, user, application = _relationship_capi.owner_context(file)
-    return _relationship_capi.call_handle(
-        file,
-        lib.ifcopenshell_ifcapi_group_add_group,
-        _relationship_capi.file_handle(file),
-        _generated_capi.encode_string(name),
-        _generated_capi.encode_string(description) if description is not None else None,
-        _relationship_capi.instance_handle(owner_history),
-        _relationship_capi.instance_handle(user),
-        _relationship_capi.instance_handle(application),
+    user = ifcopenshell.api.owner.settings.get_user(file)
+    application = ifcopenshell.api.owner.settings.get_application(file)
+    handle = _capi.ifcopenshell_ifcapi_group_add_group(
+        file._handle,
+        name,
+        description,
+        None,
+        user._handle if user is not None else None,
+        application._handle if application is not None else None,
     )
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    raise RuntimeError(_capi.last_error_message() or "Failed to add group")

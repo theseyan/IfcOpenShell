@@ -16,11 +16,9 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ctypes
-
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.sequence import _capi
+import ifcopenshell.api.owner.settings
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 # TODO: inconsistent name with other copy_xxx api methods.
@@ -54,18 +52,14 @@ def duplicate_task(
         original_tasks, duplicated_tasks = ifcopenshell.api.sequence.duplicate_task(original_task)
         print(duplicated_tasks[0])  # A copy of ``original_task``.
     """
-    lib = _capi.get_lib()
-    owner_history, user, application = _capi.owner_context(file)
-    result = _generated_capi.call_struct_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_sequence_duplicate_task,
-        _generated_capi.ifcopenshell_sequence_duplicate_task_result_t,
-        "sequence_duplicate_task failed",
-        _capi.file_handle(file),
-        _capi.instance_handle(task),
-        _capi.instance_handle(owner_history),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+    user = ifcopenshell.api.owner.settings.get_user(file)
+    application = ifcopenshell.api.owner.settings.get_application(file)
+    result = _capi.ifcopenshell_ifcapi_sequence_duplicate_task(
+        file._handle,
+        task._handle,
+        None,
+        user._handle if user is not None else None,
+        application._handle if application is not None else None,
     )
     current = ifcopenshell._take_instance_list(file, result.current)
     duplicate = ifcopenshell._take_instance_list(file, result.duplicate)

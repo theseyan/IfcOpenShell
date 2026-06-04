@@ -17,9 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ctypes
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.geometry import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def map_type_representations(
@@ -82,13 +80,8 @@ def map_type_representations(
         # ifcopenshell.api.type.map_type_representations(model,
         #     related_object=furniture, relating_type=furniture_type)
     """
-    lib = _capi.get_lib()
-    _generated_capi.call_scalar_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_type_map_type_representations,
-        ctypes.c_bool,
-        ifcopenshell.get_log() or "ifcopenshell_ifcapi_type_map_type_representations",
-        _capi.file_handle(file),
-        _capi.instance_handle(related_object),
-        _capi.instance_handle(relating_type),
+    _capi.ifcopenshell_ifcapi_type_map_type_representations(
+        file._handle,
+        related_object._handle,
+        relating_type._handle,
     )

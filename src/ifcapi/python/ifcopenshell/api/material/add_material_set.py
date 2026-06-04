@@ -15,11 +15,11 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
+
 from typing import Literal
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.material import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 MATERIAL_SET_TYPE = Literal[
     "IfcMaterialLayerSet",
@@ -112,12 +112,7 @@ def add_material_set(
         # Great! Let's assign our material set to our wall type.
         ifcopenshell.api.material.assign_material(model, products=[wall_type], material=material_set)
     """
-    lib = _capi.get_lib()
-    return _capi.call_handle(
-        file,
-        lib.ifcopenshell_ifcapi_material_add_material_set,
-        "Failed to add material set",
-        _capi.file_handle(file),
-        _generated_capi.encode_string(name),
-        _generated_capi.encode_string(set_type),
-    )
+    handle = _capi.ifcopenshell_ifcapi_material_add_material_set(file._handle, name, set_type)
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    raise RuntimeError(_capi.last_error_message() or "Failed to add material set")

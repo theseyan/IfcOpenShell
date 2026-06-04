@@ -1,5 +1,5 @@
 # IfcOpenShell - IFC toolkit and geometry engine
-# Copyright (C) 2022 Dion Moult <dion@thinkmoult.com>
+# Copyright (C) 2021 Dion Moult <dion@thinkmoult.com>
 #
 # This file is part of IfcOpenShell.
 #
@@ -20,8 +20,8 @@
 from typing import Literal
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.owner import _capi
+import ifcopenshell.api.owner.settings
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 ACTOR_TYPE = Literal["IfcActor", "IfcOccupant"]
 
@@ -65,16 +65,16 @@ def add_actor(
         # Assign that organisation to a newly created actor
         actor = ifcopenshell.api.owner.add_actor(model, actor=organisation)
     """
-    lib = _capi.get_lib()
-    owner_history, user, application = _capi.owner_context(file)
-    return _capi.call_handle(
-        file,
-        lib.ifcopenshell_ifcapi_owner_add_actor,
-        "Failed to add actor",
-        _capi.file_handle(file),
-        _capi.instance_handle(actor),
-        _generated_capi.encode_string(ifc_class or "IfcActor"),
-        _capi.instance_handle(owner_history),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+    user = ifcopenshell.api.owner.settings.get_user(file)
+    application = ifcopenshell.api.owner.settings.get_application(file)
+    handle = _capi.ifcopenshell_ifcapi_owner_add_actor(
+        file._handle,
+        actor._handle,
+        ifc_class or "IfcActor",
+        None,
+        user._handle if user is not None else None,
+        application._handle if application is not None else None,
     )
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    raise RuntimeError(_capi.last_error_message() or "Failed to add actor")

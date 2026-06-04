@@ -17,9 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ctypes
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.pset import _capi
+import ifcopenshell.api.owner.settings
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def unshare_pset(
@@ -56,22 +55,15 @@ def unshare_pset(
         assert new_pset != pset
         assert ifcopenshell.util.element.get_elements_by_pset(new_pset) == {element2}
     """
-
-    lib = _capi.get_lib()
-    owner_history, user, application = _capi.owner_context(file)
-    product_list = _capi.instance_list(products)
-    out = ctypes.POINTER(_generated_capi._HandleStruct)()
-    _generated_capi.status_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_pset_unshare_pset(
-            _capi.file_handle(file),
-            product_list,
-            _capi.instance_handle(pset),
-            _capi.instance_handle(owner_history),
-            _capi.instance_handle(user),
-            _capi.instance_handle(application),
-            ctypes.byref(out),
-        ),
-        "Failed to unshare property set",
+    user = ifcopenshell.api.owner.settings.get_user(file)
+    application = ifcopenshell.api.owner.settings.get_application(file)
+    product_list = [e._handle for e in products]
+    out = _capi.ifcopenshell_ifcapi_pset_unshare_pset(
+        file._handle,
+        product_list,
+        pset._handle,
+        None,
+        user._handle if user is not None else None,
+        application._handle if application is not None else None,
     )
     return ifcopenshell._take_instance_list(file, out)

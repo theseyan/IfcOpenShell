@@ -19,8 +19,7 @@
 from typing import Optional
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.profile import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 from ifcopenshell.util.shape_builder import SequenceOfVectors
 
 
@@ -52,15 +51,10 @@ def add_arbitrary_profile(
             profile=[(0., 0.), (.01, 0.), (.01, .1), (0., .1), (0., 0.)],
             name="SK01 Profile")
     """
-    lib = _capi.get_lib()
-    handle = _generated_capi.call_handle_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_profile_add_arbitrary_profile,
-        "Failed to add arbitrary profile",
-        _capi.file_handle(file),
-        _capi.double_list_list(profile),
-        _capi.string(name) if name is not None else None,
-        name is not None,
-        destroy=lib.ifcopenshell_ifc_instance_destroy,
+    outer = [list(v) for v in profile]
+    handle = _capi.ifcopenshell_ifcapi_profile_add_arbitrary_profile(
+        file._handle, outer, name, name is not None
     )
-    return _capi.wrap_handle(file, handle)
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    raise RuntimeError(_capi.last_error_message() or "Failed to add arbitrary profile")

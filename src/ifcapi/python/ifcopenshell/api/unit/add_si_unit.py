@@ -19,8 +19,7 @@
 from typing import Optional
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.unit import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def add_si_unit(
@@ -58,14 +57,7 @@ def add_si_unit(
         # Make it our default units, if we are doing a metric building
         ifcopenshell.api.unit.assign_unit(model, units=[length, area])
     """
-    lib = _capi.get_lib()
-    handle = _generated_capi.call_handle_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_unit_add_si_unit,
-        "Failed to add SI unit",
-        _capi.file_handle(file),
-        _generated_capi.encode_string(unit_type),
-        _capi.optional_string(prefix),
-        destroy=lib.ifcopenshell_ifc_instance_destroy,
-    )
-    return _capi.wrap_handle(file, handle)
+    handle = _capi.ifcopenshell_ifcapi_unit_add_si_unit(file._handle, unit_type, prefix)
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    raise RuntimeError(_capi.last_error_message() or "Failed to add SI unit")

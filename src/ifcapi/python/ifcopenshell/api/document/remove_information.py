@@ -18,8 +18,7 @@
 
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.document import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def remove_information(file: ifcopenshell.file, information: ifcopenshell.entity_instance) -> None:
@@ -39,13 +38,4 @@ def remove_information(file: ifcopenshell.file, information: ifcopenshell.entity
         # ... and remove it!
         ifcopenshell.api.document.remove_information(model, information=document)
     """
-
-    lib = _capi.get_lib()
-    _generated_capi.status_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_document_remove_information(
-            _capi.file_handle(file),
-            _capi.instance_handle(information),
-        ),
-        "Failed to remove document information",
-    )
+    _capi.ifcopenshell_ifcapi_document_remove_information(file._handle, information._handle)

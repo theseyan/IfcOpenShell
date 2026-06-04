@@ -15,11 +15,9 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
-import ctypes
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.unit import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def add_context_dependent_unit(
@@ -57,16 +55,9 @@ def add_context_dependent_unit(
         # Boxes of things
         ifcopenshell.api.unit.add_context_dependent_unit(model, name="BOXES")
     """
-    lib = _capi.get_lib()
-    dimensions_list = _generated_capi.make_int64_list(dimensions)
-    handle = _generated_capi.call_handle_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_unit_add_context_dependent_unit,
-        "Failed to add context dependent unit",
-        _capi.file_handle(file),
-        _generated_capi.encode_string(unit_type),
-        _generated_capi.encode_string(name),
-        ctypes.byref(dimensions_list),
-        destroy=lib.ifcopenshell_ifc_instance_destroy,
+    handle = _capi.ifcopenshell_ifcapi_unit_add_context_dependent_unit(
+        file._handle, unit_type, name, list(dimensions)
     )
-    return _capi.wrap_handle(file, handle)
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    raise RuntimeError(_capi.last_error_message() or "Failed to add context dependent unit")

@@ -15,9 +15,9 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
+
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.constraint import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def remove_metric(file: ifcopenshell.file, metric: ifcopenshell.entity_instance) -> None:
@@ -39,12 +39,4 @@ def remove_metric(file: ifcopenshell.file, metric: ifcopenshell.entity_instance)
         ifcopenshell.api.constraint.remove_metric(model,
             metric=metric)
     """
-    lib = _capi.get_lib()
-    _generated_capi.status_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_constraint_remove_metric(
-            _capi.file_handle(file),
-            _capi.instance_handle(metric),
-        ),
-        "Failed to remove metric",
-    )
+    _capi.ifcopenshell_ifcapi_constraint_remove_metric(file._handle, metric._handle)

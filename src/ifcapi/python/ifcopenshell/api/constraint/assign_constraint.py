@@ -19,8 +19,8 @@
 from typing import Union
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.constraint import _capi
+import ifcopenshell.api.owner.settings
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def assign_constraint(
@@ -44,19 +44,17 @@ def assign_constraint(
     :return: The new or updated IfcRelAssociatesConstraint relationship
         or `None` if `products` was an empty list.
     """
-    lib = _capi.get_lib()
-    owner_history, user, application = _capi.owner_context(file)
-    product_list = _capi.instance_list(products)
-    handle = _generated_capi.call_handle_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_constraint_assign_constraint,
-        "Failed to assign constraint",
-        _capi.file_handle(file),
+    user = ifcopenshell.api.owner.settings.get_user(file)
+    application = ifcopenshell.api.owner.settings.get_application(file)
+    product_list = [e._handle for e in products]
+    handle = _capi.ifcopenshell_ifcapi_constraint_assign_constraint(
+        file._handle,
         product_list,
-        _capi.instance_handle(constraint),
-        _capi.instance_handle(owner_history),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
-        destroy=lib.ifcopenshell_ifc_instance_destroy,
+        constraint._handle,
+        None,
+        user._handle if user is not None else None,
+        application._handle if application is not None else None,
     )
-    return _capi.wrap_handle(file, handle)
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    raise RuntimeError(_capi.last_error_message() or "Failed to assign constraint")

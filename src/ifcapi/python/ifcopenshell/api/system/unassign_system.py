@@ -17,8 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ctypes
-from ifcopenshell.api.system import _capi
+import ifcopenshell.api.owner.settings
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def unassign_system(
@@ -49,15 +49,13 @@ def unassign_system(
         # Not anymore!
         ifcopenshell.api.system.unassign_system(model, products=[duct], system=system)
     """
-    lib = _capi.get_lib()
-    _, user, application = _capi.owner_context(file)
-    product_list = _capi.instance_list(products)
-    _capi.call_status(
-        lib.ifcopenshell_ifcapi_system_unassign_system,
-        "Failed to unassign system",
-        _capi.file_handle(file),
-        ctypes.byref(product_list),
-        _capi.instance_handle(system),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+    user = ifcopenshell.api.owner.settings.get_user(file)
+    application = ifcopenshell.api.owner.settings.get_application(file)
+    product_list = [e._handle for e in products]
+    _capi.ifcopenshell_ifcapi_system_unassign_system(
+        file._handle,
+        product_list,
+        system._handle,
+        user._handle if user is not None else None,
+        application._handle if application is not None else None,
     )

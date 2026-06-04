@@ -19,8 +19,8 @@
 from typing import Union
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.project import _capi
+import ifcopenshell.api.owner.settings
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def assign_declaration(
@@ -84,20 +84,17 @@ def assign_declaration(
         # All done, just for fun let's save our asset library to disk for later use.
         library.write("/path/to/my-library.ifc")
     """
-
-    lib = _capi.get_lib()
-    owner_history, user, application = _capi.owner_context(file)
-    definition_list = _capi.instance_list(definitions)
-    handle = _generated_capi.call_handle_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_project_assign_declaration,
-        "Failed to assign declaration",
-        _capi.file_handle(file),
+    user = ifcopenshell.api.owner.settings.get_user(file)
+    application = ifcopenshell.api.owner.settings.get_application(file)
+    definition_list = [e._handle for e in definitions]
+    handle = _capi.ifcopenshell_ifcapi_project_assign_declaration(
+        file._handle,
         definition_list,
-        _capi.instance_handle(relating_context),
-        _capi.instance_handle(owner_history),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
-        destroy=lib.ifcopenshell_ifc_instance_destroy,
+        relating_context._handle,
+        None,
+        user._handle if user is not None else None,
+        application._handle if application is not None else None,
     )
-    return _capi.wrap_handle(file, handle)
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    raise RuntimeError(_capi.last_error_message() or "Failed to assign declaration")

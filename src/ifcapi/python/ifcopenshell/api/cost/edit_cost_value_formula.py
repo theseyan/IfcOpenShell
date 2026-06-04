@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.cost import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def edit_cost_value_formula(file: ifcopenshell.file, cost_value: ifcopenshell.entity_instance, formula: str) -> None:
@@ -45,10 +44,4 @@ def edit_cost_value_formula(file: ifcopenshell.file, cost_value: ifcopenshell.en
         ifcopenshell.api.cost.edit_cost_value_formula(model, cost_value=value,
             formula="5000 * 1.19")
     """
-    lib = _capi.get_lib()
-    _capi.call_status(
-        lib.ifcopenshell_ifcapi_cost_edit_cost_value_formula,
-        _capi.file_handle(file),
-        _capi.instance_handle(cost_value),
-        _generated_capi.encode_string(formula or ""),
-    )
+    _capi.ifcopenshell_ifcapi_cost_edit_cost_value_formula(file._handle, cost_value._handle, formula or "")

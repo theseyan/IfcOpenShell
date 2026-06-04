@@ -19,9 +19,9 @@
 from typing import Optional, Union
 
 import ifcopenshell
+import ifcopenshell.api.owner.settings
 import ifcopenshell.util.element
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.material import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def assign_material(
@@ -142,21 +142,19 @@ def assign_material(
         ifcopenshell.api.geometry.assign_representation(model, product=wall, representation=body)
         ifcopenshell.api.geometry.edit_object_placement(model, product=wall)
     """
-    lib = _capi.get_lib()
-    owner_history, user, application = _capi.owner_context(file)
-    product_list = _capi.instance_list(products)
-    rels = _capi.call_handle_list(
-        file,
-        lib.ifcopenshell_ifcapi_material_assign_material,
-        "Failed to assign material",
-        _capi.file_handle(file),
+    user = ifcopenshell.api.owner.settings.get_user(file)
+    application = ifcopenshell.api.owner.settings.get_application(file)
+    product_list = [e._handle for e in products]
+    rels = _capi.ifcopenshell_ifcapi_material_assign_material(
+        file._handle,
         product_list,
-        _generated_capi.encode_string(type),
-        _capi.instance_handle(material),
-        _capi.instance_handle(owner_history),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+        type,
+        material._handle if material is not None else None,
+        None,
+        user._handle if user is not None else None,
+        application._handle if application is not None else None,
     )
     if not rels:
         return None
-    return rels[0] if len(rels) == 1 else rels
+    result = [ifcopenshell.entity_instance(file, h) for h in rels]
+    return result[0] if len(result) == 1 else result

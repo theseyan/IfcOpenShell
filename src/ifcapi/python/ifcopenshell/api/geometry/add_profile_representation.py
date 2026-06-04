@@ -20,8 +20,7 @@ from typing import Any, Literal, Optional, Union, get_args
 
 import ifcopenshell.util.element
 import ifcopenshell.util.unit
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.geometry import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 from ifcopenshell.util.data import Clipping
 
 VECTOR_3D = tuple[float, float, float]
@@ -170,12 +169,8 @@ class Usecase:
         return self.file.createIfcCartesianPoint((0.0, 0.0, 0.0))
 
     def get_profile_extents(self) -> tuple[float, float]:
-        lib = _capi.get_lib()
-        extents = _generated_capi.call_double_list_or_raise(
-            lib,
-            lib.ifcopenshell_ifcapi_geometry_profile_extents,
-            ifcopenshell.get_log() or "ifcopenshell_ifcapi_geometry_profile_extents",
-            _capi.file_handle(self.file),
-            _capi.instance_handle(self.profile),
+        extents = _capi.ifcopenshell_ifcapi_geometry_profile_extents(
+            self.file._handle,
+            self.profile._handle,
         )
         return extents[0], extents[1]

@@ -19,8 +19,8 @@
 from typing import Optional
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.system import _capi
+import ifcopenshell.api.owner.settings
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def connect_port(
@@ -94,17 +94,15 @@ def connect_port(
         # NOTDEFINED.
         ifcopenshell.api.system.connect_port(model, port1=duct_port2, port2=fitting_port1)
     """
-    lib = _capi.get_lib()
-    owner_history, user, application = _capi.owner_context(file)
-    _capi.call_status(
-        lib.ifcopenshell_ifcapi_system_connect_port,
-        "Failed to connect port",
-        _capi.file_handle(file),
-        _capi.instance_handle(port1),
-        _capi.instance_handle(port2),
-        _generated_capi.encode_string(direction),
-        _capi.instance_handle(element),
-        _capi.instance_handle(owner_history),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+    user = ifcopenshell.api.owner.settings.get_user(file)
+    application = ifcopenshell.api.owner.settings.get_application(file)
+    _capi.ifcopenshell_ifcapi_system_connect_port(
+        file._handle,
+        port1._handle,
+        port2._handle,
+        direction,
+        element._handle if element is not None else None,
+        None,
+        user._handle if user is not None else None,
+        application._handle if application is not None else None,
     )

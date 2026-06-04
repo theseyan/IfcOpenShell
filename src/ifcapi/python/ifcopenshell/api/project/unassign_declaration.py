@@ -17,8 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.project import _capi
+import ifcopenshell.api.owner.settings
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def unassign_declaration(
@@ -52,17 +52,13 @@ def unassign_declaration(
         # Remove the library from our project
         ifcopenshell.api.project.unassign_declaration(library, definitions=[context], relating_context=root)
     """
-    lib = _capi.get_lib()
-    _, user, application = _capi.owner_context(file)
-    definition_list = _capi.instance_list(definitions)
-    _generated_capi.status_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_project_unassign_declaration(
-            _capi.file_handle(file),
-            definition_list,
-            _capi.instance_handle(relating_context),
-            _capi.instance_handle(user),
-            _capi.instance_handle(application),
-        ),
-        "Failed to unassign declaration",
+    user = ifcopenshell.api.owner.settings.get_user(file)
+    application = ifcopenshell.api.owner.settings.get_application(file)
+    definition_list = [e._handle for e in definitions]
+    _capi.ifcopenshell_ifcapi_project_unassign_declaration(
+        file._handle,
+        definition_list,
+        relating_context._handle,
+        user._handle if user is not None else None,
+        application._handle if application is not None else None,
     )

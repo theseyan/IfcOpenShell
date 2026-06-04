@@ -15,11 +15,11 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
+
 from typing import Optional
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.material import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def add_material(
@@ -80,13 +80,12 @@ def add_material(
         # "Style" has been specified.
         ifcopenshell.api.material.assign_material(model, products=[concrete_bench], material=concrete)
     """
-    lib = _capi.get_lib()
-    return _capi.call_handle(
-        file,
-        lib.ifcopenshell_ifcapi_material_add_material,
-        "Failed to add material",
-        _capi.file_handle(file),
-        _generated_capi.encode_string(name) if name is not None else None,
-        _generated_capi.encode_string(category) if category is not None else None,
-        _generated_capi.encode_string(description) if description is not None else None,
+    handle = _capi.ifcopenshell_ifcapi_material_add_material(
+        file._handle,
+        name,
+        category,
+        description,
     )
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    raise RuntimeError(_capi.last_error_message() or "Failed to add material")

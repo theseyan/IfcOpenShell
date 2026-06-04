@@ -19,8 +19,7 @@
 from typing import Optional
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.owner import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def add_application(
@@ -54,17 +53,16 @@ def add_application(
 
         application = ifcopenshell.api.owner.add_application(model)
     """
-    lib = _capi.get_lib()
-    return _capi.call_handle(
-        file,
-        lib.ifcopenshell_ifcapi_owner_add_application,
-        "Failed to add application",
-        _capi.file_handle(file),
-        _capi.instance_handle(application_developer),
-        _generated_capi.encode_string(version or ifcopenshell.version),
-        _generated_capi.encode_string(application_full_name),
-        _generated_capi.encode_string(application_identifier),
+    handle = _capi.ifcopenshell_ifcapi_owner_add_application(
+        file._handle,
+        application_developer._handle if application_developer is not None else None,
+        version or ifcopenshell.version,
+        application_full_name,
+        application_identifier,
         None,
         None,
         None,
     )
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    raise RuntimeError(_capi.last_error_message() or "Failed to add application")

@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.pset import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def unassign_pset(
@@ -47,10 +46,5 @@ def unassign_pset(
         assert ifcopenshell.util.element.get_elements_by_pset(pset) == {element1}
 
     """
-    lib = _capi.get_lib()
-    product_list = _capi.instance_list(products)
-    _generated_capi.status_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_pset_unassign_pset(_capi.file_handle(file), product_list, _capi.instance_handle(pset)),
-        "Failed to unassign property set",
-    )
+    product_list = [e._handle for e in products]
+    _capi.ifcopenshell_ifcapi_pset_unassign_pset(file._handle, product_list, pset._handle)

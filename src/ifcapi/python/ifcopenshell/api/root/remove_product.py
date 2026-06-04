@@ -18,9 +18,7 @@
 
 import ifcopenshell
 import ifcopenshell.api.owner.settings
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.root.create_entity import _bind
-from ifcopenshell.entity_instance import _generated_instance_handle_ptr
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def remove_product(file: ifcopenshell.file, product: ifcopenshell.entity_instance) -> None:
@@ -56,16 +54,11 @@ def remove_product(file: ifcopenshell.file, product: ifcopenshell.entity_instanc
         # No we don't.
         ifcopenshell.api.root.remove_product(model, product=wall)
     """
-    lib = _bind()
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
-    _generated_capi.status_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_root_remove_product(
-            ifcopenshell._ifc_file_handle_ptr(file._ptr),
-            _generated_instance_handle_ptr(product._handle),
-            _generated_instance_handle_ptr(user._handle) if user is not None else None,
-            _generated_instance_handle_ptr(application._handle) if application is not None else None,
-        ),
-        ifcopenshell.get_log() or "ifcopenshell_ifcapi_root_remove_product",
+    _capi.ifcopenshell_ifcapi_root_remove_product(
+        file._handle,
+        product._handle,
+        user._handle if user is not None else None,
+        application._handle if application is not None else None,
     )

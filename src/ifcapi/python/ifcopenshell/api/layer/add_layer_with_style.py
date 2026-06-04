@@ -15,15 +15,24 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
+
 from collections.abc import Sequence
 from typing import Literal, Union
-import ctypes
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.layer import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 IfcLogical = Union[bool, Literal["UNKNOWN"]]
+
+
+def _logical_value(value):
+    if value is True:
+        return _capi.IFCOPENSHELL_LOGICAL_TRUE
+    if value is False:
+        return _capi.IFCOPENSHELL_LOGICAL_FALSE
+    if value == "UNKNOWN":
+        return _capi.IFCOPENSHELL_LOGICAL_UNKNOWN
+    raise ValueError('Logical value must be True, False, or "UNKNOWN"')
 
 
 def add_layer_with_style(
@@ -54,18 +63,15 @@ def add_layer_with_style(
             stlyes=[curve_style]
         )
     """
-    lib = _capi.get_lib()
-    style_list = _capi.instance_list(styles)
-    handle = _generated_capi.call_handle_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_layer_add_layer_with_style,
-        "Failed to add styled layer",
-        _capi.file_handle(file),
-        _generated_capi.encode_string(name),
-        _capi.logical_value(on),
-        _capi.logical_value(frozen),
-        _capi.logical_value(blocked),
-        ctypes.byref(style_list),
-        destroy=lib.ifcopenshell_ifc_instance_destroy,
+    style_list = [e._handle for e in styles]
+    handle = _capi.ifcopenshell_ifcapi_layer_add_layer_with_style(
+        file._handle,
+        name,
+        _logical_value(on),
+        _logical_value(frozen),
+        _logical_value(blocked),
+        style_list,
     )
-    return _capi.wrap_handle(file, handle)
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    raise RuntimeError(_capi.last_error_message() or "Failed to add styled layer")

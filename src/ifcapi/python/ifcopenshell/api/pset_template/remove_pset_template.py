@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.pset_template import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def remove_pset_template(file: ifcopenshell.file, pset_template: ifcopenshell.entity_instance) -> None:
@@ -40,9 +39,4 @@ def remove_pset_template(file: ifcopenshell.file, pset_template: ifcopenshell.en
         # Let's remove the template.
         ifcopenshell.api.pset_template.remove_pset_template(model, pset_template=template)
     """
-    lib = _capi.get_lib()
-    _generated_capi.status_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_pset_template_remove_pset_template(_capi.instance_handle(pset_template)),
-        "Failed to remove property set template",
-    )
+    _capi.ifcopenshell_ifcapi_pset_template_remove_pset_template(pset_template._handle)

@@ -15,11 +15,11 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
+
 from typing import Optional
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.material import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def add_constituent(
@@ -87,13 +87,12 @@ def add_constituent(
         # aluminium and glass.
         ifcopenshell.api.material.assign_material(model, products=[window_type], material=material_set)
     """
-    lib = _capi.get_lib()
-    return _capi.call_handle(
-        file,
-        lib.ifcopenshell_ifcapi_material_add_constituent,
-        "Failed to add material constituent",
-        _capi.file_handle(file),
-        _capi.instance_handle(constituent_set),
-        _capi.instance_handle(material),
-        _generated_capi.encode_string(name) if name is not None else None,
+    handle = _capi.ifcopenshell_ifcapi_material_add_constituent(
+        file._handle,
+        constituent_set._handle,
+        material._handle,
+        name,
     )
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    raise RuntimeError(_capi.last_error_message() or "Failed to add material constituent")

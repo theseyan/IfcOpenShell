@@ -17,37 +17,10 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 from typing import Optional
-import ctypes
 
 import ifcopenshell
 import ifcopenshell.api.owner
-from ifcopenshell import _generated_capi
-from ifcopenshell.entity_instance import _generated_instance_handle_ptr
-
-
-_BOUND = False
-
-
-def _bind() -> ctypes.CDLL:
-    global _BOUND
-    lib = ifcopenshell._get_lib()
-    if not _BOUND:
-        _generated_capi.bind(
-            lib,
-            names=(
-                "ifcopenshell_ifcapi_root_create_entity",
-                "ifcopenshell_ifcapi_root_remove_product",
-                "ifcopenshell_ifc_instance_destroy",
-                "ifcopenshell_last_error_kind",
-                "ifcopenshell_last_error_message",
-            ),
-        )
-        _BOUND = True
-    return lib
-
-
-def _encode_optional(value: str | None):
-    return _generated_capi.encode_string(value) if value else None
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def create_entity(
@@ -93,20 +66,14 @@ def create_entity(
         # We have a wall type.
         ifcopenshell.api.root.create_entity(model, ifc_class="IfcWallType")
     """
-    lib = _bind()
     owner_history = ifcopenshell.api.owner.create_owner_history(file)
-    handle = _generated_capi.call_handle_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_root_create_entity,
-        ifcopenshell.get_log() or "ifcopenshell_ifcapi_root_create_entity",
-        ifcopenshell._ifc_file_handle_ptr(file._ptr),
-        _generated_capi.encode_string(ifc_class),
-        _encode_optional(predefined_type),
-        _encode_optional(name),
-        _generated_instance_handle_ptr(owner_history._handle) if owner_history is not None else None,
-        destroy=lib.ifcopenshell_ifc_instance_destroy,
-        handle_pointer_type=ctypes.POINTER(_generated_capi.ifcopenshell_ifc_instance_t),
+    handle = _capi.root_create_entity(
+        file._handle,
+        ifc_class,
+        predefined_type,
+        name,
+        owner_history._handle if owner_history is not None else None,
     )
     if handle:
         return ifcopenshell.entity_instance(file, handle)
-    _generated_capi.raise_last_error(lib, "Failed to create entity")
+    raise RuntimeError(_capi.last_error_message() or "Failed to create entity")

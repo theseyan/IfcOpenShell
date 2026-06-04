@@ -20,23 +20,7 @@ from typing import Union
 
 import ifcopenshell
 import ifcopenshell.api.owner.settings
-from ifcopenshell import _generated_capi
-from ifcopenshell.entity_instance import _generated_instance_handle_ptr
-
-
-_BOUND = False
-
-
-def _bind():
-    global _BOUND
-    lib = ifcopenshell._get_lib()
-    if not _BOUND:
-        _generated_capi.bind(
-            lib,
-            names=("ifcopenshell_ifcapi_owner_update_owner_history", "ifcopenshell_ifc_instance_destroy"),
-        )
-        _BOUND = True
-    return lib
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def update_owner_history(
@@ -80,15 +64,10 @@ def update_owner_history(
     application = ifcopenshell.api.owner.settings.get_application(file)
     if not application:
         return
-
-    lib = _bind()
-    handle = _generated_capi.call_handle(
-        lib,
-        lib.ifcopenshell_ifcapi_owner_update_owner_history,
-        _generated_instance_handle_ptr(file._ptr),
-        _generated_instance_handle_ptr(element._handle),
-        _generated_instance_handle_ptr(user._handle),
-        _generated_instance_handle_ptr(application._handle),
-        destroy=lib.ifcopenshell_ifc_instance_destroy,
+    handle = _capi.ifcopenshell_ifcapi_owner_update_owner_history(
+        file._handle,
+        element._handle,
+        user._handle,
+        application._handle,
     )
     return ifcopenshell.entity_instance(file, handle) if handle else None

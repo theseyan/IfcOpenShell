@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.pset import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def remove_pset(
@@ -43,11 +42,4 @@ def remove_pset(
         # Remove it!
         ifcopenshell.api.pset.remove_pset(model, product=wall_type, pset=pset)
     """
-    lib = _capi.get_lib()
-    _generated_capi.status_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_pset_remove_pset(
-            _capi.file_handle(file), _capi.instance_handle(product), _capi.instance_handle(pset)
-        ),
-        "Failed to remove property set",
-    )
+    _capi.ifcopenshell_ifcapi_pset_remove_pset(file._handle, product._handle, pset._handle)

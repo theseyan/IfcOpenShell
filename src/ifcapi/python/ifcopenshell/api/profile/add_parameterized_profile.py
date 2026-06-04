@@ -15,13 +15,9 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
-from typing import Literal
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.profile import _capi
-
-ProfileType = Literal["AREA", "CURVE"]
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def add_parameterized_profile(
@@ -49,14 +45,7 @@ def add_parameterized_profile(
             ifc_class="IfcCircleProfileDef")
         circle.Radius = 1.
     """
-    lib = _capi.get_lib()
-    handle = _generated_capi.call_handle_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_profile_add_parameterized_profile,
-        "Failed to add parameterized profile",
-        _capi.file_handle(file),
-        _generated_capi.encode_string(ifc_class),
-        _generated_capi.encode_string(profile_type),
-        destroy=lib.ifcopenshell_ifc_instance_destroy,
-    )
-    return _capi.wrap_handle(file, handle)
+    handle = _capi.ifcopenshell_ifcapi_profile_add_parameterized_profile(file._handle, ifc_class, profile_type)
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    raise RuntimeError(_capi.last_error_message() or "Failed to add parameterized profile")

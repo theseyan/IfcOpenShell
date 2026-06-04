@@ -19,8 +19,8 @@
 from typing import Optional
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.document import _capi
+import ifcopenshell.api.owner.settings
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def add_information(
@@ -56,17 +56,15 @@ def add_information(
             attributes={"Identification": "A-GA-6100", "Name": "Overall Plan",
             "Location": "A-GA-6100 - Overall Plan.pdf"})
     """
-    lib = _capi.get_lib()
-    owner_history, user, application = _capi.owner_context(file)
-    handle = _generated_capi.call_handle_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_document_add_information,
-        "Failed to add document information",
-        _capi.file_handle(file),
-        _capi.instance_handle(parent),
-        _capi.instance_handle(owner_history),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
-        destroy=lib.ifcopenshell_ifc_instance_destroy,
+    user = ifcopenshell.api.owner.settings.get_user(file)
+    application = ifcopenshell.api.owner.settings.get_application(file)
+    handle = _capi.ifcopenshell_ifcapi_document_add_information(
+        file._handle,
+        parent._handle if parent is not None else None,
+        None,
+        user._handle if user is not None else None,
+        application._handle if application is not None else None,
     )
-    return _capi.wrap_handle(file, handle)
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    raise RuntimeError(_capi.last_error_message() or "Failed to add document information")

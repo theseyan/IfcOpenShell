@@ -20,23 +20,7 @@ from typing import Union
 
 import ifcopenshell
 import ifcopenshell.api.owner.settings
-from ifcopenshell import _generated_capi
-from ifcopenshell.entity_instance import _generated_instance_handle_ptr
-
-
-_BOUND = False
-
-
-def _bind():
-    global _BOUND
-    lib = ifcopenshell._get_lib()
-    if not _BOUND:
-        _generated_capi.bind(
-            lib,
-            names=("ifcopenshell_ifcapi_owner_create_owner_history", "ifcopenshell_ifc_instance_destroy"),
-        )
-        _BOUND = True
-    return lib
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def create_owner_history(file: ifcopenshell.file) -> Union[ifcopenshell.entity_instance, None]:
@@ -113,20 +97,15 @@ def create_owner_history(file: ifcopenshell.file) -> Union[ifcopenshell.entity_i
         # element.OwnerHistory = ifcopenshell.api.owner.create_owner_history(model)
         space = ifcopenshell.api.root.create_entity(model, ifc_class="IfcSpace")
     """
-
     user = ifcopenshell.api.owner.settings.get_user(file)
     if file.schema != "IFC2X3" and not user:
         return
     application = ifcopenshell.api.owner.settings.get_application(file)
     if file.schema != "IFC2X3" and not application:
         return
-    lib = _bind()
-    handle = _generated_capi.call_handle(
-        lib,
-        lib.ifcopenshell_ifcapi_owner_create_owner_history,
-        _generated_instance_handle_ptr(file._ptr),
-        _generated_instance_handle_ptr(user._handle) if user is not None else None,
-        _generated_instance_handle_ptr(application._handle) if application is not None else None,
-        destroy=lib.ifcopenshell_ifc_instance_destroy,
+    handle = _capi.ifcopenshell_ifcapi_owner_create_owner_history(
+        file._handle,
+        user._handle if user is not None else None,
+        application._handle if application is not None else None,
     )
     return ifcopenshell.entity_instance(file, handle) if handle else None

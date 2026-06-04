@@ -15,11 +15,11 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
+
 from typing import Optional
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.style import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def add_style(
@@ -58,13 +58,11 @@ def add_style(
         # Create a new surface style
         style = ifcopenshell.api.style.add_style(model)
     """
-
-    lib = _capi.get_lib()
-    return _capi.call_handle(
-        file,
-        lib.ifcopenshell_ifcapi_style_add_style,
-        "Failed to add style",
-        _capi.file_handle(file),
-        _generated_capi.encode_string(name) if name is not None else None,
-        _generated_capi.encode_string(ifc_class),
+    handle = _capi.ifcopenshell_ifcapi_style_add_style(
+        file._handle,
+        name,
+        ifc_class,
     )
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    raise RuntimeError(_capi.last_error_message() or "Failed to add style")

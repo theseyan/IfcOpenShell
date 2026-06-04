@@ -19,8 +19,8 @@
 from typing import Union
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.pset import _capi
+import ifcopenshell.api.owner.settings
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def assign_pset(
@@ -58,19 +58,17 @@ def assign_pset(
         # Pset is now assigned to the type.
         assert ifcopenshell.util.element.get_elements_by_pset(type_pset) == {element_type}
     """
-    lib = _capi.get_lib()
-    owner_history, user, application = _capi.owner_context(file)
-    product_list = _capi.instance_list(products)
-    handle = _generated_capi.call_handle_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_pset_assign_pset,
-        "Failed to assign property set",
-        _capi.file_handle(file),
+    user = ifcopenshell.api.owner.settings.get_user(file)
+    application = ifcopenshell.api.owner.settings.get_application(file)
+    product_list = [e._handle for e in products]
+    handle = _capi.ifcopenshell_ifcapi_pset_assign_pset(
+        file._handle,
         product_list,
-        _capi.instance_handle(pset),
-        _capi.instance_handle(owner_history),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
-        destroy=lib.ifcopenshell_ifc_instance_destroy,
+        pset._handle,
+        None,
+        user._handle if user is not None else None,
+        application._handle if application is not None else None,
     )
-    return ifcopenshell.entity_instance(file, handle) if handle else None
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    return None

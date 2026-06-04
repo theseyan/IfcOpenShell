@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.constraint import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def add_objective(file: ifcopenshell.file) -> ifcopenshell.entity_instance:
@@ -43,12 +42,7 @@ def add_objective(file: ifcopenshell.file) -> ifcopenshell.entity_instance:
         # Note: the objective right now is purely qualitative and for
         # information purposes. You may wish to add quantiative metrics.
     """
-    lib = _capi.get_lib()
-    handle = _generated_capi.call_handle_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_constraint_add_objective,
-        "Failed to add objective",
-        _capi.file_handle(file),
-        destroy=lib.ifcopenshell_ifc_instance_destroy,
-    )
-    return _capi.wrap_handle(file, handle)
+    handle = _capi.ifcopenshell_ifcapi_constraint_add_objective(file._handle)
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    raise RuntimeError(_capi.last_error_message() or "Failed to add objective")

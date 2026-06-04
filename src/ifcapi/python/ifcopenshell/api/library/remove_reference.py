@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.library import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def remove_reference(file: ifcopenshell.file, reference: ifcopenshell.entity_instance) -> None:
@@ -39,12 +38,4 @@ def remove_reference(file: ifcopenshell.file, reference: ifcopenshell.entity_ins
         # Let's change our mind and remove it.
         ifcopenshell.api.library.remove_reference(model, reference=reference)
     """
-    lib = _capi.get_lib()
-    _generated_capi.status_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_library_remove_reference(
-            _capi.file_handle(file),
-            _capi.instance_handle(reference),
-        ),
-        "Failed to remove library reference",
-    )
+    _capi.ifcopenshell_ifcapi_library_remove_reference(file._handle, reference._handle)

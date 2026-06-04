@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.layer import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def add_layer(file: ifcopenshell.file, name: str = "Unnamed") -> ifcopenshell.entity_instance:
@@ -43,13 +42,7 @@ def add_layer(file: ifcopenshell.file, name: str = "Unnamed") -> ifcopenshell.en
 
         ifcopenshell.api.layer.add_layer(model, name="AI-WALL-FULL-DIMS-N")
     """
-    lib = _capi.get_lib()
-    handle = _generated_capi.call_handle_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_layer_add_layer,
-        "Failed to add layer",
-        _capi.file_handle(file),
-        _generated_capi.encode_string(name),
-        destroy=lib.ifcopenshell_ifc_instance_destroy,
-    )
-    return _capi.wrap_handle(file, handle)
+    handle = _capi.ifcopenshell_ifcapi_layer_add_layer(file._handle, name)
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    raise RuntimeError(_capi.last_error_message() or "Failed to add layer")

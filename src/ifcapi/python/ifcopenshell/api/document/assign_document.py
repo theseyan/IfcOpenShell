@@ -19,8 +19,8 @@
 from typing import Union
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.document import _capi
+import ifcopenshell.api.owner.settings
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def assign_document(
@@ -62,20 +62,17 @@ def assign_document(
         # Let's imagine storey represents an IfcBuildingStorey for the ground floor
         ifcopenshell.api.document.assign_document(model, products=[storey], document=reference)
     """
-
-    lib = _capi.get_lib()
-    owner_history, user, application = _capi.owner_context(file)
-    product_list = _capi.instance_list(products)
-    handle = _generated_capi.call_handle_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_document_assign_document,
-        "Failed to assign document",
-        _capi.file_handle(file),
+    user = ifcopenshell.api.owner.settings.get_user(file)
+    application = ifcopenshell.api.owner.settings.get_application(file)
+    product_list = [e._handle for e in products]
+    handle = _capi.ifcopenshell_ifcapi_document_assign_document(
+        file._handle,
         product_list,
-        _capi.instance_handle(document),
-        _capi.instance_handle(owner_history),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
-        destroy=lib.ifcopenshell_ifc_instance_destroy,
+        document._handle,
+        None,
+        user._handle if user is not None else None,
+        application._handle if application is not None else None,
     )
-    return _capi.wrap_handle(file, handle)
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    raise RuntimeError(_capi.last_error_message() or "Failed to assign document")

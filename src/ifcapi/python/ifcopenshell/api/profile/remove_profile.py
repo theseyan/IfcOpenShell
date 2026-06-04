@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.profile import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def remove_profile(file: ifcopenshell.file, profile: ifcopenshell.entity_instance) -> None:
@@ -35,9 +34,4 @@ def remove_profile(file: ifcopenshell.file, profile: ifcopenshell.entity_instanc
         circle = 1.
         ifcopenshell.api.profile.remove_profile(model, profile=circle)
     """
-    lib = _capi.get_lib()
-    _generated_capi.status_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_profile_remove_profile(_capi.file_handle(file), _capi.instance_handle(profile)),
-        "Failed to remove profile",
-    )
+    _capi.ifcopenshell_ifcapi_profile_remove_profile(file._handle, profile._handle)

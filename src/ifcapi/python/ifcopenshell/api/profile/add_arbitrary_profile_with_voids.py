@@ -19,8 +19,7 @@
 from typing import Optional
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.profile import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 from ifcopenshell.util.shape_builder import SequenceOfVectors
 
 
@@ -61,16 +60,11 @@ def add_arbitrary_profile_with_voids(
             inner_profiles=[[(0.1, 0.1), (0.3, 0.1), (0.3, 0.3), (0.1, 0.3), (0.1, 0.1)]],
             name="SK01 Hole Profile")
     """
-    lib = _capi.get_lib()
-    handle = _generated_capi.call_handle_or_raise(
-        lib,
-        lib.ifcopenshell_ifcapi_profile_add_arbitrary_profile_with_voids,
-        "Failed to add arbitrary profile with voids",
-        _capi.file_handle(file),
-        _capi.double_list_list(outer_profile),
-        _capi.double_list_list_list(inner_profiles),
-        _capi.string(name) if name is not None else None,
-        name is not None,
-        destroy=lib.ifcopenshell_ifc_instance_destroy,
+    outer = [list(v) for v in outer_profile]
+    inners = [[list(v) for v in inner] for inner in inner_profiles]
+    handle = _capi.ifcopenshell_ifcapi_profile_add_arbitrary_profile_with_voids(
+        file._handle, outer, inners, name, name is not None
     )
-    return _capi.wrap_handle(file, handle)
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    raise RuntimeError(_capi.last_error_message() or "Failed to add arbitrary profile with voids")

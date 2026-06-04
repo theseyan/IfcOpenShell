@@ -15,11 +15,11 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
+
 from typing import Literal
 
 import ifcopenshell
-from ifcopenshell import _generated_capi
-from ifcopenshell.api.owner import _capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 ADDRESS_TYPE = Literal["IfcPostalAddress", "IfcTelecomAddress"]
 
@@ -66,12 +66,7 @@ def add_address(
             "ElectronicMailAddresses": ["bobthebuilder@example.com"],
             "WWWHomePageURL": "https://thinkmoult.com"})
     """
-    lib = _capi.get_lib()
-    return _capi.call_handle(
-        file,
-        lib.ifcopenshell_ifcapi_owner_add_address,
-        "Failed to add address",
-        _capi.file_handle(file),
-        _capi.instance_handle(assigned_object),
-        _generated_capi.encode_string(ifc_class),
-    )
+    handle = _capi.ifcopenshell_ifcapi_owner_add_address(file._handle, assigned_object._handle, ifc_class)
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    raise RuntimeError(_capi.last_error_message() or "Failed to add address")
