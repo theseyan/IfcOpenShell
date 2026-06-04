@@ -88,6 +88,17 @@ def _wrapper_name(c_name: str) -> str:
     return f"py_{c_name}"
 
 
+def _destroy_method_name(c_type: str) -> str:
+    name = _snake_name(c_type)
+    if name.startswith("ifcgeom_"):
+        return "geom_" + name[len("ifcgeom_") :] + "_destroy"
+    for prefix in ("ifcparse_", "ifcapi_", "ifc_"):
+        if name.startswith(prefix):
+            name = name[len(prefix) :]
+            break
+    return f"{name}_destroy"
+
+
 _PREFIXES = sorted(
     [
         "ifcopenshell_ifcparse_",
@@ -126,6 +137,53 @@ def _discover_all_handle_types(api_header_path: Path) -> dict[str, HostStructMet
 def _render_handle_type_decl(handle: HostStructMetadata) -> str:
     py_name = _py_type_name(handle.c_type)
     destroy = handle.destroy_function or f"ifcopenshell_{_snake_name(handle.c_type)}_destroy"
+    sequence_support = ""
+    type_sequence_field = ""
+    if handle.c_type == "ifcopenshell_ifcparse_instance_list_t":
+        sequence_support = f"""
+static Py_ssize_t {py_name}_len(PyObject *self_obj) {{
+    size_t result = 0;
+    if (!ifcopenshell_ifcparse_instance_list_size((ifcopenshell_ifcparse_instance_list_t *)(({py_name}Object *)self_obj)->handle, &result)) {{
+        raise_last_error("ifcopenshell_ifcparse_instance_list_size failed");
+        return -1;
+    }}
+    if (result > (size_t)PY_SSIZE_T_MAX) {{
+        PyErr_SetString(PyExc_OverflowError, "instance list is too large");
+        return -1;
+    }}
+    return (Py_ssize_t)result;
+}}
+
+static PyObject *{py_name}_item(PyObject *self_obj, Py_ssize_t index) {{
+    Py_ssize_t size = {py_name}_len(self_obj);
+    if (size < 0) return NULL;
+    if (index < 0) index += size;
+    if (index < 0 || index >= size) {{
+        PyErr_SetString(PyExc_IndexError, "instance list index out of range");
+        return NULL;
+    }}
+    ifcopenshell_ifc_instance_t *handle = NULL;
+    if (!ifcopenshell_ifcparse_instance_list_get((ifcopenshell_ifcparse_instance_list_t *)(({py_name}Object *)self_obj)->handle, (size_t)index, &handle)) {{
+        raise_last_error("ifcopenshell_ifcparse_instance_list_get failed");
+        return NULL;
+    }}
+    if (!handle) Py_RETURN_NONE;
+    IfcOpenshellIfcInstanceObject *result = (IfcOpenshellIfcInstanceObject *)IfcOpenshellIfcInstanceType.tp_alloc(&IfcOpenshellIfcInstanceType, 0);
+    if (!result) {{
+        ifcopenshell_ifc_instance_destroy(handle);
+        return NULL;
+    }}
+    result->handle = handle;
+    result->owned = 1;
+    return (PyObject *)result;
+}}
+
+static PySequenceMethods {py_name}_sequence_methods = {{
+    .sq_length = {py_name}_len,
+    .sq_item = {py_name}_item,
+}};
+"""
+        type_sequence_field = f"    .tp_as_sequence = &{py_name}_sequence_methods,\n"
     return f"""\
 typedef struct {{
     PyObject_HEAD
@@ -156,16 +214,46 @@ static int {py_name}_init({py_name}Object *self, PyObject *args, PyObject *kwds)
     return -1;
 }}
 
-static PyTypeObject {py_name}Type = {{
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "{py_name}", sizeof({py_name}Object), 0, (destructor){py_name}_dealloc,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
-    "Opaque handle to {handle.c_type}",
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    (initproc){py_name}_init, 0, {py_name}_new, 0,
+static PyMemberDef {py_name}_members[] = {{
+    {{"_handle_ptr", T_PYSSIZET, offsetof({py_name}Object, handle), READONLY, "Raw C pointer"}},
+    {{"handle", T_PYSSIZET, offsetof({py_name}Object, handle), READONLY, "Raw C pointer"}},
+    {{"owned", T_INT, offsetof({py_name}Object, owned), READONLY, "Ownership flag"}},
+    {{NULL}}
 }};
 
+{sequence_support}
+
+static PyTypeObject {py_name}Type = {{
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "{py_name}",
+    .tp_basicsize = sizeof({py_name}Object),
+    .tp_dealloc = (destructor){py_name}_dealloc,
+{type_sequence_field}    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    .tp_doc = "Opaque handle to {handle.c_type}",
+    .tp_init = (initproc){py_name}_init,
+    .tp_new = {py_name}_new,
+    .tp_members = {py_name}_members,
+}};
+
+"""
+
+
+def _render_destroy_wrapper(handle: HostStructMetadata) -> str:
+    py_name = _py_type_name(handle.c_type)
+    destroy = handle.destroy_function or f"ifcopenshell_{_snake_name(handle.c_type)}_destroy"
+    wrapper = f"py_{_destroy_method_name(handle.c_type)}"
+    return f"""\
+static PyObject *{wrapper}(PyObject *self, PyObject *args) {{
+    PyObject *arg_obj = NULL;
+    if (!PyArg_ParseTuple(args, "O!", &{py_name}Type, &arg_obj)) return NULL;
+    {py_name}Object *obj = ({py_name}Object *)arg_obj;
+    if (obj->handle) {{
+        {destroy}(({handle.c_type} *)obj->handle);
+        obj->handle = NULL;
+        obj->owned = 0;
+    }}
+    Py_RETURN_NONE;
+}}
 """
 
 
@@ -454,14 +542,23 @@ def _param_parse(param: HostParamMetadata, handles: dict[str, HostStructMetadata
     elif pointer_depth == 1 and base in {h.c_type for h in handles.values()}:
         py_name = _py_type_name(base)
         declarations.append(f"    PyObject *arg_{name}_obj = NULL;")
-        fmt = "O" if param.nullable else "O!"
-        if param.nullable:
-            parse_args.append(f"&arg_{name}_obj")
+        if base == "ifcopenshell_ifcparse_instance_list_t" and not param.nullable and name != "self":
+            declarations.append(f"    ifcopenshell_ifc_instance_list_t arg_{name}_items = {{0}};")
             declarations.append(f"    {base} *arg_{name} = NULL;")
+            fmt = "O"
+            parse_args.append(f"&arg_{name}_obj")
             call_args.append(f"arg_{name}")
+            cleanup.append(f"    ifcopenshell_ifcparse_instance_list_destroy(arg_{name});")
+            cleanup.append(f"    free_input_ifc_instance_list(&arg_{name}_items);")
         else:
-            parse_args.extend([f"&{py_name}Type", f"&arg_{name}_obj"])
-            call_args.append(f"({base} *)(({py_name}Object *)arg_{name}_obj)->handle")
+            fmt = "O" if param.nullable else "O!"
+            if param.nullable:
+                parse_args.append(f"&arg_{name}_obj")
+                declarations.append(f"    {base} *arg_{name} = NULL;")
+                call_args.append(f"arg_{name}")
+            else:
+                parse_args.extend([f"&{py_name}Type", f"&arg_{name}_obj"])
+                call_args.append(f"({base} *)(({py_name}Object *)arg_{name}_obj)->handle")
     elif pointer_depth == 1 and re.fullmatch(r"ifcopenshell_.*_list_t", base):
         declarations.append(f"    PyObject *arg_{name}_obj = NULL;")
         declarations.append(f"    {base} arg_{name} = {{0}};")
@@ -570,6 +667,17 @@ def _render_function_wrapper(function: HostFunctionMetadata, metadata: HostBindi
         if param.role == "out_result":
             continue
         base, pointer_depth = _base_pointer_type(param.c_type)
+        if f"    ifcopenshell_ifc_instance_list_t arg_{param.name}_items = {{0}};" in declarations:
+            input_make.append(
+                f"    if (!make_input_ifc_instance_list(arg_{param.name}_obj, &arg_{param.name}_items)) {{\n"
+                f"        goto __cleanup;\n"
+                f"    }}\n"
+                f"    if (!ifcopenshell_ifcparse_instance_list_create_from_handles(&arg_{param.name}_items, &arg_{param.name})) {{\n"
+                f"        raise_last_error(\"ifcopenshell_ifcparse_instance_list_create_from_handles failed\");\n"
+                f"        goto __cleanup;\n"
+                f"    }}"
+            )
+            continue
         if (
             pointer_depth == 1
             and re.fullmatch(r"ifcopenshell_.*_list_t", base)
@@ -615,13 +723,24 @@ def render_python_extension(metadata: HostBindingMetadata, api_header_path: Path
         handles = discovered
     sorted_handles = sorted(handles.values(), key=lambda item: item.c_type)
     handle_decls = "\n".join(_render_handle_type_decl(handle) for handle in sorted_handles)
+    destroy_wrappers = "\n".join(_render_destroy_wrapper(handle) for handle in sorted_handles)
     wrap_decls = "\n".join(_render_wrap_handle(handle) for handle in sorted_handles)
     input_helpers = _render_input_sequence_helpers(metadata, handles)
     value_converters = _render_value_converters(metadata, handles)
     wrappers = "\n".join(_render_function_wrapper(function, metadata, handles) for function in metadata.functions.values())
     methods = "\n".join(
+        [
+            f'    {{"{_destroy_method_name(handle.c_type)}", py_{_destroy_method_name(handle.c_type)}, METH_VARARGS, "Destroy {handle.c_type}"}},'
+            for handle in sorted_handles
+        ]
+        + [
         f'    {{"{_method_name(function.c_name, metadata.c_prefix)}", {_wrapper_name(function.c_name)}, METH_VARARGS, "Wrap {function.c_name}"}},'
         for function in metadata.functions.values()
+        ]
+        + [
+        f'    {{"{function.c_name}", {_wrapper_name(function.c_name)}, METH_VARARGS, "Wrap {function.c_name}"}},'
+        for function in metadata.functions.values()
+        ]
     )
     type_ready = "\n".join(f"    if (PyType_Ready(&{_py_type_name(h.c_type)}Type) < 0) return NULL;" for h in sorted_handles)
     add_types = "\n".join(
@@ -636,6 +755,8 @@ def render_python_extension(metadata: HostBindingMetadata, api_header_path: Path
 // This file was generated by IfcOpenShell's binding generator. Do not edit manually.
 
 #include <Python.h>
+#include <stddef.h>
+#include "structmember.h"
 #include "ifcopenshell_api.h"
 
 static PyObject *raise_last_error(const char *fallback) {{
@@ -654,6 +775,7 @@ static PyObject *raise_last_error(const char *fallback) {{
 }}
 
 {handle_decls}
+{destroy_wrappers}
 {wrap_decls}
 {input_helpers}
 {value_converters}

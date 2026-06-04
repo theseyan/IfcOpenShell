@@ -90,6 +90,10 @@ AI-generated, identify them.
 - **Cosmetic changes**: Do not reformat, rename, or reorganize code that is
   unrelated to your change.
 
+## Git Rules
+
+- **NEVER run `git add -A` or `git add .`** — the repository has many unrelated uncommitted files. Always list each file explicitly in `git add`.
+
 ## Commit Messages
 
 - The **subject line** must be **50 characters or less**.
