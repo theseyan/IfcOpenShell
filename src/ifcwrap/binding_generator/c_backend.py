@@ -1,19 +1,29 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Sequence, Union
+from typing import Union
 
 try:
-    from .authored_spec import AuthoredBindingSpec, MergedBindingSpec, load_authored_spec, load_merged_specs
+    from .authored_spec import (
+        AuthoredBindingSpec,
+        MergedBindingSpec,
+        load_authored_spec,
+        load_merged_specs,
+    )
     from .binding_ir import (
         BindingIR,
         lower_binding_spec,
     )
     from .binding_model import HandleSpec
     from .c_call_rendering import _render_call_impl, _render_result_assignment
+    from .c_handle_rendering import _destroy_body, _handle_storage_type
+    from .c_header_rendering import _render_header
+    from .c_internal_header import _render_internal_header
+    from .c_runtime_support import _render_cpp_support_runtime
     from .c_sequence_helpers import (
         _render_common_type_impls,
         _render_handle_list_destroy_impl,
@@ -25,14 +35,10 @@ try:
         _used_handle_list_handles,
         _used_scalar_sequence_kinds,
     )
-    from .c_handle_rendering import _destroy_body, _handle_storage_type
-    from .c_header_rendering import _render_header
-    from .c_internal_header import _render_internal_header
-    from .c_runtime_support import _render_cpp_support_runtime
     from .clang_discovery import CompilationConfig, DiscoveryEnvironment
     from .cpp_spec_frontend import (
-        discover_cpp_spec_functions,
         discover_cpp_spec_contract_headers,
+        discover_cpp_spec_functions,
         discover_cpp_spec_handles,
         discover_cpp_spec_result_structs,
         lower_cpp_spec_functions_to_calls,
@@ -41,14 +47,24 @@ try:
     )
     from .debug import debug_log, debug_path
     from .python_ctypes_backend import generate_python_ctypes
+    from .python_extension_backend import generate_python_extension
 except ImportError:  # pragma: no cover - script execution fallback
-    from authored_spec import AuthoredBindingSpec, MergedBindingSpec, load_authored_spec, load_merged_specs
+    from authored_spec import (
+        AuthoredBindingSpec,
+        MergedBindingSpec,
+        load_authored_spec,
+        load_merged_specs,
+    )
     from binding_ir import (
         BindingIR,
         lower_binding_spec,
     )
     from binding_model import HandleSpec
     from c_call_rendering import _render_call_impl, _render_result_assignment
+    from c_handle_rendering import _destroy_body, _handle_storage_type
+    from c_header_rendering import _render_header
+    from c_internal_header import _render_internal_header
+    from c_runtime_support import _render_cpp_support_runtime
     from c_sequence_helpers import (
         _render_common_type_impls,
         _render_handle_list_destroy_impl,
@@ -60,14 +76,10 @@ except ImportError:  # pragma: no cover - script execution fallback
         _used_handle_list_handles,
         _used_scalar_sequence_kinds,
     )
-    from c_handle_rendering import _destroy_body, _handle_storage_type
-    from c_header_rendering import _render_header
-    from c_internal_header import _render_internal_header
-    from c_runtime_support import _render_cpp_support_runtime
     from clang_discovery import CompilationConfig, DiscoveryEnvironment
     from cpp_spec_frontend import (
-        discover_cpp_spec_functions,
         discover_cpp_spec_contract_headers,
+        discover_cpp_spec_functions,
         discover_cpp_spec_handles,
         discover_cpp_spec_result_structs,
         lower_cpp_spec_functions_to_calls,
@@ -76,6 +88,7 @@ except ImportError:  # pragma: no cover - script execution fallback
     )
     from debug import debug_log, debug_path
     from python_ctypes_backend import generate_python_ctypes
+    from python_extension_backend import generate_python_extension
 
 # Type alias for spec types
 SourceBindingSpec = Union[AuthoredBindingSpec, MergedBindingSpec]
@@ -353,6 +366,7 @@ def generate(
     cpp_out: Path,
     internal_header_out: Path | None = None,
     python_out: Path | None = None,
+    python_extension_out: Path | None = None,
     discovery_include_dirs: tuple[Path, ...] = (),
     discovery_defines: tuple[str, ...] = (),
     discovery_clang_args: tuple[str, ...] = (),
@@ -380,6 +394,8 @@ def generate(
     if python_out is not None:
         python_out.parent.mkdir(parents=True, exist_ok=True)
         generate_python_ctypes(spec, python_out, generic_handles=True)
+    if python_extension_out is not None:
+        generate_python_extension(spec, python_extension_out, api_header_path=header_out)
     debug_log("c_backend.generate.done", f"spec={debug_path(spec_path)}")
 
 
@@ -391,6 +407,7 @@ def generate_merged(
     cpp_out: Path,
     internal_header_out: Path | None = None,
     python_out: Path | None = None,
+    python_extension_out: Path | None = None,
     discovery_include_dirs: tuple[Path, ...] = (),
     discovery_defines: tuple[str, ...] = (),
     discovery_clang_args: tuple[str, ...] = (),
@@ -441,6 +458,8 @@ def generate_merged(
     if python_out is not None:
         python_out.parent.mkdir(parents=True, exist_ok=True)
         generate_python_ctypes(spec, python_out, generic_handles=True)
+    if python_extension_out is not None:
+        generate_python_extension(spec, python_extension_out, api_header_path=header_out)
     debug_log("c_backend.generate_merged.done", f"module={module}")
 
 
@@ -468,6 +487,7 @@ def generate_cpp_specs(
     cpp_out: Path,
     internal_header_out: Path | None = None,
     python_out: Path | None = None,
+    python_extension_out: Path | None = None,
     discovery_include_dirs: tuple[Path, ...] = (),
     discovery_defines: tuple[str, ...] = (),
     discovery_clang_args: tuple[str, ...] = (),
@@ -540,6 +560,8 @@ def generate_cpp_specs(
     if python_out is not None:
         python_out.parent.mkdir(parents=True, exist_ok=True)
         generate_python_ctypes(spec, python_out, generic_handles=True)
+    if python_extension_out is not None:
+        generate_python_extension(spec, python_extension_out, api_header_path=header_out)
     debug_log("c_backend.generate_cpp_specs.done", f"specs={len(spec_paths)} module={module}")
 
 
@@ -601,6 +623,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional output path for generated Python ctypes glue.",
     )
     parser.add_argument(
+        "--python-extension-out",
+        type=Path,
+        default=None,
+        help="Optional output path for generated CPython C extension source.",
+    )
+    parser.add_argument(
         "--discovery-include-dir",
         type=Path,
         action="append",
@@ -649,6 +677,7 @@ def main() -> int:
             args.cpp_out,
             internal_header_out=args.internal_header_out,
             python_out=args.python_out,
+            python_extension_out=args.python_extension_out,
             discovery_include_dirs=tuple(args.discovery_include_dir),
             discovery_defines=tuple(args.discovery_define),
             discovery_clang_args=tuple(args.discovery_clang_arg),
@@ -667,6 +696,7 @@ def main() -> int:
             args.cpp_out,
             internal_header_out=args.internal_header_out,
             python_out=args.python_out,
+            python_extension_out=args.python_extension_out,
             discovery_include_dirs=tuple(args.discovery_include_dir),
             discovery_defines=tuple(args.discovery_define),
             discovery_clang_args=tuple(args.discovery_clang_arg),
@@ -684,6 +714,7 @@ def main() -> int:
             args.cpp_out,
             internal_header_out=args.internal_header_out,
             python_out=args.python_out,
+            python_extension_out=args.python_extension_out,
             discovery_include_dirs=tuple(args.discovery_include_dir),
             discovery_defines=tuple(args.discovery_define),
             discovery_clang_args=tuple(args.discovery_clang_arg),

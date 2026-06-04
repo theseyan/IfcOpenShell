@@ -41,6 +41,7 @@ if(BUILD_IFCCAPI)
     set(UNIFIED_CAPI_CPP "${IFCPARSE_CAPI_GENERATED_DIR}/ifcopenshell_api.cpp")
     set(UNIFIED_CAPI_INTERNAL_HEADER "${IFCPARSE_CAPI_GENERATED_DIR}/ifcopenshell_api_internal.hpp")
     set(UNIFIED_CAPI_PYTHON_CTYPES "${CMAKE_CURRENT_SOURCE_DIR}/../ifcapi/python/ifcopenshell/_generated_capi.py")
+    set(UNIFIED_CAPI_PYTHON_EXTENSION "${IFCPARSE_CAPI_GENERATED_DIR}/ifcopenshell_capi_py.cpp")
 
     if(IFCCAPI_REGENERATE_BINDINGS)
         if(NOT ${PYTHON_EXECUTABLE} STREQUAL "")
@@ -139,6 +140,7 @@ if(BUILD_IFCCAPI)
                 "${UNIFIED_CAPI_CPP}"
                 "${UNIFIED_CAPI_INTERNAL_HEADER}"
                 "${UNIFIED_CAPI_PYTHON_CTYPES}"
+                "${UNIFIED_CAPI_PYTHON_EXTENSION}"
             COMMAND
                 ${Python_EXECUTABLE} "${IFCPARSE_CAPI_GENERATOR}"
                 --spec "${IFCPARSE_CAPI_SPEC}"
@@ -158,6 +160,7 @@ if(BUILD_IFCCAPI)
                 --header-out "${UNIFIED_CAPI_HEADER}"
                 --cpp-out "${UNIFIED_CAPI_CPP}"
                 --python-out "${UNIFIED_CAPI_PYTHON_CTYPES}"
+                --python-extension-out "${UNIFIED_CAPI_PYTHON_EXTENSION}"
                 ${IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS}
                 ${IFCPARSE_CAPI_DISCOVERY_DEFINE_ARGS}
                 --module ifcopenshell
@@ -188,6 +191,7 @@ if(BUILD_IFCCAPI)
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/host_metadata.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/policy_ir.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/python_ctypes_backend.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/python_extension_backend.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/semantic_types.py"
             VERBATIM
         )
@@ -198,6 +202,7 @@ if(BUILD_IFCCAPI)
                 "${UNIFIED_CAPI_CPP}"
                 "${UNIFIED_CAPI_INTERNAL_HEADER}"
                 "${UNIFIED_CAPI_PYTHON_CTYPES}"
+                "${UNIFIED_CAPI_PYTHON_EXTENSION}"
         )
     endif()
 
@@ -264,6 +269,25 @@ if(BUILD_IFCCAPI)
         endif()
         target_include_directories(ifcparse_capi_smoke PRIVATE "${IFCPARSE_CAPI_GENERATED_DIR}")
         target_compile_definitions(ifcparse_capi_smoke PRIVATE $<$<BOOL:${WITH_ROCKSDB}>:IFOPSH_WITH_ROCKSDB>)
+
+        # CPython C extension module (_ifcopenshell_capi)
+        if(EXISTS "${UNIFIED_CAPI_PYTHON_EXTENSION}")
+            find_package(Python COMPONENTS Development.Module QUIET)
+            if(Python_Development.Module_FOUND)
+                Python_add_library(_ifcopenshell_capi MODULE "${UNIFIED_CAPI_PYTHON_EXTENSION}" WITH_SOABI)
+                target_link_libraries(_ifcopenshell_capi PRIVATE ifcopenshell_capi)
+                target_include_directories(_ifcopenshell_capi PRIVATE "${IFCPARSE_CAPI_GENERATED_DIR}")
+                set_target_properties(_ifcopenshell_capi PROPERTIES
+                    OUTPUT_NAME "_ifcopenshell_capi"
+                    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../ifcapi/python/ifcopenshell"
+                )
+                if(TARGET ifcopenshell_capi_codegen)
+                    add_dependencies(_ifcopenshell_capi ifcopenshell_capi_codegen)
+                endif()
+            else()
+                message(STATUS "Python Development.Module not found - skipping _ifcopenshell_capi extension build")
+            endif()
+        endif()
     else()
         message(STATUS "Unified C API not built - generated files not found at ${UNIFIED_CAPI_HEADER}")
     endif()
