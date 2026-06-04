@@ -2,30 +2,21 @@
 
 from __future__ import annotations
 
-import ctypes
-from typing import List, Optional, Set, Tuple
-
 from ifcopenshell import (
-    _get_lib,
-    _enc,
-    _generated_capi,
-    ATTR_NULL,
-    ATTR_STRING,
-    ATTR_INT,
-    ATTR_DOUBLE,
-    ATTR_BOOL,
-    ATTR_ENUM,
-    ATTR_REFERENCE,
     ATTR_AGGREGATE,
+    ATTR_BOOL,
     ATTR_DERIVED,
+    ATTR_DOUBLE,
+    ATTR_ENUM,
+    ATTR_INT,
+    ATTR_NULL,
+    ATTR_REFERENCE,
+    ATTR_STRING,
     ATTR_UNKNOWN,
 )
-from ifcopenshell._value_api import configure_value_lib, value_to_python
 
+from . import _ifcopenshell_capi as _capi
 
-_derived_lib_configured = False
-_attribute_value_lib_configured = False
-_entity_string_helpers_configured = False
 _MISSING = object()
 
 _ATTRIBUTE_VALUE_TYPES = {
@@ -50,90 +41,62 @@ _ATTRIBUTE_VALUE_TYPES = {
 }
 
 
-def _instance_handle_ptr(handle):
-    if not handle:
-        return None
-    from . import ifcopenshell_wrapper as W
-
-    return ctypes.cast(ctypes.c_void_p(handle), W._HandleStructP)
-
-
-def _empty_handle_ptr():
-    from . import ifcopenshell_wrapper as W
-
-    return W._HandleStructP()
-
-
-def _generated_instance_handle_ptr(handle):
-    if not handle:
-        return None
-    from ifcopenshell import _generated_capi
-
-    return ctypes.cast(ctypes.c_void_p(handle), ctypes.POINTER(_generated_capi._HandleStruct))
-
-
-def _configure_entity_string_helpers(lib) -> None:
-    global _entity_string_helpers_configured
-    if _entity_string_helpers_configured:
-        return
-    _generated_capi.bind(
-        lib,
-        names=(
-            "ifcopenshell_string_destroy",
-            "ifcopenshell_string_list_destroy",
-            "ifcopenshell_ifc_instance_to_string",
-            "ifcopenshell_ifc_instance_get_attribute_names",
-            "ifcopenshell_ifc_instance_get_inverse_attribute_names",
-        ),
-    )
-    _entity_string_helpers_configured = True
-
-
 def _instance_type_name(handle) -> str:
-    from . import ifcopenshell_wrapper as W
-
-    return W.instance_declaration(handle).name()
+    return _capi.declaration_name(_capi.instance_declaration(handle))
 
 
 def _instance_to_string(handle, valid_spf: bool) -> str:
-    lib = _get_lib()
-    _configure_entity_string_helpers(lib)
-    return _generated_capi.call_string(
-        lib, lib.ifcopenshell_ifc_instance_to_string, _instance_handle_ptr(handle), valid_spf
-    ) or ""
+    return _capi.instance_to_string(handle, valid_spf) or ""
 
 
 def _instance_attribute_names(handle) -> tuple[str, ...]:
-    lib = _get_lib()
-    _configure_entity_string_helpers(lib)
-    return _generated_capi.call_string_list(
-        lib, lib.ifcopenshell_ifc_instance_get_attribute_names, _instance_handle_ptr(handle)
-    ) or ()
+    return _capi.instance_get_attribute_names(handle) or ()
 
 
 def _instance_inverse_attribute_names(handle) -> tuple[str, ...]:
-    lib = _get_lib()
-    _configure_entity_string_helpers(lib)
-    return _generated_capi.call_string_list(
-        lib, lib.ifcopenshell_ifc_instance_get_inverse_attribute_names, _instance_handle_ptr(handle)
-    ) or ()
+    return _capi.instance_get_inverse_attribute_names(handle) or ()
 
 
-def _take_attribute_value_type(lib, attribute_value) -> str:
-    _configure_entity_string_helpers(lib)
-    return _generated_capi.call_string(lib, lib.ifcopenshell_ifcparse_attribute_value_type, attribute_value) or ""
+def _generated_instance_handle_ptr(handle):
+    return handle
 
 
-def _attribute_type_from_value(lib, attribute_value) -> int:
-    out = ctypes.c_bool(False)
-    if lib.ifcopenshell_ifcparse_attribute_value_is_null(attribute_value, ctypes.byref(out)) and out.value:
+def _attribute_value_to_python(av, file_obj):
+    """Convert an attribute value handle to a Python value."""
+    if _capi.attribute_value_is_null(av):
+        return None
+    value_type = _capi.attribute_value_type(av) or ""
+    if value_type == "ENUMERATION":
+        return _capi.attribute_value_as_enumeration_value(av)
+    if value_type in ("STRING", "BINARY"):
+        return _capi.attribute_value_as_string(av)
+    if value_type == "ENTITY INSTANCE":
+        return entity_instance(file_obj, _capi.attribute_value_as_instance(av))
+    if value_type == "INT":
+        return int(_capi.attribute_value_as_int32(av))
+    if value_type in ("BOOL", "LOGICAL"):
+        return bool(_capi.attribute_value_as_bool(av))
+    if value_type == "DOUBLE":
+        return float(_capi.attribute_value_as_double(av))
+    if value_type == "AGGREGATE OF INT":
+        return _capi.attribute_value_as_int32_list(av)
+    if value_type == "AGGREGATE OF DOUBLE":
+        return _capi.attribute_value_as_double_list(av)
+    if value_type == "AGGREGATE OF ENTITY INSTANCE":
+        return tuple(entity_instance(file_obj, item) for item in _capi.attribute_value_as_instance_list(av))
+    if value_type in ("AGGREGATE OF STRING", "AGGREGATE OF BINARY"):
+        return _capi.attribute_value_as_string_list(av)
+    return None
+
+
+def _take_attribute_value_type(attribute_value) -> str:
+    return _capi.attribute_value_type(attribute_value) or ""
+
+
+def _attribute_type_from_value(attribute_value) -> int:
+    if _capi.attribute_value_is_null(attribute_value):
         return ATTR_NULL
-    return _ATTRIBUTE_VALUE_TYPES.get(_take_attribute_value_type(lib, attribute_value), ATTR_UNKNOWN)
-
-
-def _make_string_list(values):
-    out = _generated_capi.make_string_list(values)
-    return out, out._keepalive  # type: ignore[attr-defined]
+    return _ATTRIBUTE_VALUE_TYPES.get(_take_attribute_value_type(attribute_value), ATTR_UNKNOWN)
 
 
 def register_schema_attributes(schema) -> None:
@@ -147,64 +110,7 @@ def register_schema_attributes(schema) -> None:
     tuple(schema.declarations())
 
 
-_Int32List = _generated_capi.ifcopenshell_int32_list_t
-_Int32ListList = _generated_capi.ifcopenshell_int32_list_list_t
-_DoubleList = _generated_capi.ifcopenshell_double_list_t
-_DoubleListList = _generated_capi.ifcopenshell_double_list_list_t
-
-
-def _configure_derived_lib(lib) -> None:
-    """Bind ctypes signatures for the generated value/DERIVE facade."""
-    global _derived_lib_configured
-    if _derived_lib_configured:
-        return
-    configure_value_lib(lib)
-    _derived_lib_configured = True
-
-
-def _configure_attribute_value_lib(lib) -> None:
-    """Bind ctypes signatures for the autogen AttributeValue ABI."""
-    global _attribute_value_lib_configured
-    if _attribute_value_lib_configured:
-        return
-    _generated_capi.bind(
-        lib,
-        names=(
-            "ifcopenshell_double_list_destroy",
-            "ifcopenshell_double_list_list_destroy",
-            "ifcopenshell_ifc_instance_get_argument",
-            "ifcopenshell_ifc_instance_set_argument_as_aggregate_of_aggregate_of_entity_instance",
-            "ifcopenshell_ifc_instance_set_argument_double_list",
-            "ifcopenshell_ifc_instance_set_argument_double_list_list",
-            "ifcopenshell_ifc_instance_set_argument_int32_list",
-            "ifcopenshell_ifc_instance_set_argument_int32_list_list",
-            "ifcopenshell_ifc_instance_set_argument_string_list",
-            "ifcopenshell_ifcparse_attribute_value_as_bool",
-            "ifcopenshell_ifcparse_attribute_value_as_double",
-            "ifcopenshell_ifcparse_attribute_value_as_double_list",
-            "ifcopenshell_ifcparse_attribute_value_as_double_list_list",
-            "ifcopenshell_ifcparse_attribute_value_as_enumeration_value",
-            "ifcopenshell_ifcparse_attribute_value_as_instance",
-            "ifcopenshell_ifcparse_attribute_value_as_instance_list",
-            "ifcopenshell_ifcparse_attribute_value_as_int32",
-            "ifcopenshell_ifcparse_attribute_value_as_int32_list",
-            "ifcopenshell_ifcparse_attribute_value_as_int32_list_list",
-            "ifcopenshell_ifcparse_attribute_value_as_string",
-            "ifcopenshell_ifcparse_attribute_value_as_string_list",
-            "ifcopenshell_ifcparse_attribute_value_destroy",
-            "ifcopenshell_ifcparse_attribute_value_is_null",
-            "ifcopenshell_ifcparse_attribute_value_type",
-            "ifcopenshell_ifcparse_instance_list_destroy",
-            "ifcopenshell_ifcparse_instance_list_get",
-            "ifcopenshell_ifcparse_instance_list_size",
-            "ifcopenshell_int32_list_destroy",
-            "ifcopenshell_int32_list_list_destroy",
-        ),
-    )
-    _attribute_value_lib_configured = True
-
-
-def _should_unpack_inverse(file_obj: "file", type_name: str, attr_name: str) -> bool:
+def _should_unpack_inverse(file_obj: file, type_name: str, attr_name: str) -> bool:
     try:
         import ifcopenshell.settings as settings
         if not settings.unpack_non_aggregate_inverses:
@@ -226,28 +132,25 @@ def _should_unpack_inverse(file_obj: "file", type_name: str, attr_name: str) -> 
 class entity_instance:
     """Wraps a native IFC entity identified by file pointer and STEP ID."""
 
-    def __init__(self, file_obj: "file", handle):
+    def __init__(self, file_obj: file, handle):
         """Wrap a native ifcopenshell_ifc_instance_t* handle.
 
-        ``handle`` is a c_void_p value (int) returned from a C API call.
+        ``handle`` is a native _ifcopenshell_capi handle returned from a C API call.
         Ownership of the handle is transferred to this instance.
         """
         self._file = file_obj
-        if isinstance(handle, ctypes.c_void_p):
-            handle = handle.value
-        self._handle = handle or 0
+        self._handle = handle
 
     def __del__(self):
         try:
             if self._handle:
-                lib = _get_lib()
-                lib.ifcopenshell_ifc_instance_destroy(_instance_handle_ptr(self._handle))
-                self._handle = 0
+                _capi.instance_destroy(self._handle)
+                self._handle = None
         except Exception:
             pass
 
     @property
-    def file(self) -> "file":
+    def file(self) -> file:
         return self._file
 
     @property
@@ -262,11 +165,7 @@ class entity_instance:
     def id(self) -> int:
         if not self._handle:
             return 0
-        lib = _get_lib()
-        out = ctypes.c_uint32(0)
-        if lib.ifcopenshell_ifc_instance_id(_instance_handle_ptr(self._handle), ctypes.byref(out)):
-            return int(out.value)
-        return 0
+        return int(_capi.instance_id(self._handle))
 
     def identity(self) -> tuple:
         """Stable identity key for this instance (parity with SWIG wrapped_data.identity()).
@@ -277,22 +176,13 @@ class entity_instance:
         return (id(self._file), self.id(), self.is_a())
 
     def is_a(self, type_name=None):
-        lib = _get_lib()
         if type_name is None:
             return _instance_type_name(self._handle)
         if isinstance(type_name, bool) and type_name:
             schema = self._file.schema
             name = _instance_type_name(self._handle)
             return f"{schema}.{name}" if name else ""
-        from . import ifcopenshell_wrapper as W
-
-        W._bind()
-        out = ctypes.c_bool(False)
-        if not lib.ifcopenshell_ifc_instance_is_a(
-            _instance_handle_ptr(self._handle), _enc(type_name), ctypes.byref(out)
-        ):
-            return False
-        return bool(out.value)
+        return bool(_capi.instance_is_a(self._handle, type_name))
 
     def is_entity(self) -> bool:
         return True
@@ -304,26 +194,23 @@ class entity_instance:
         so header-section entities (which live in `Header_section_schema` rather
         than the file's IFC schema) are also resolvable.
         """
-        from . import ifcopenshell_wrapper as W
-        return W.instance_declaration(self._handle)
+        return _capi.instance_declaration(self._handle)
 
     def attribute_name(self, index: int) -> str:
         names = _instance_attribute_names(self._handle)
         return names[index] if 0 <= index < len(names) else ""
 
     def attribute_type(self, attr) -> str:
-        lib = _get_lib()
         if isinstance(attr, int):
             attr = self.attribute_name(attr)
-        _configure_attribute_value_lib(lib)
-        av = _empty_handle_ptr()
         atype = ATTR_UNKNOWN
         idx = self._attr_index(attr)
-        if idx >= 0 and lib.ifcopenshell_ifc_instance_get_argument(_instance_handle_ptr(self._handle), idx, ctypes.byref(av)) and av:
+        if idx >= 0:
+            av = _capi.instance_get_argument(self._handle, idx)
             try:
-                atype = _attribute_type_from_value(lib, av)
+                atype = _attribute_type_from_value(av)
             finally:
-                lib.ifcopenshell_ifcparse_attribute_value_destroy(av)
+                _capi.attribute_value_destroy(av)
         _type_names = {
             ATTR_NULL: "NULL", ATTR_STRING: "STRING", ATTR_INT: "INT",
             ATTR_DOUBLE: "DOUBLE", ATTR_BOOL: "BOOL", ATTR_ENUM: "ENUMERATION",
@@ -333,7 +220,6 @@ class entity_instance:
         return _type_names.get(atype, "UNKNOWN")
 
     def get_info(self, include_identifier=True, recursive=False, return_type=dict, ignore=(), scalar_only=False):
-        lib = _get_lib()
         info = return_type()
         if include_identifier:
             info["id"] = self.id()
@@ -431,19 +317,16 @@ class entity_instance:
             wrapped = self._get_wrapped_value()
             if wrapped is not _MISSING:
                 return wrapped
-        lib = _get_lib()
         h = self._handle
-        attr = _enc(name)
 
         # Try direct attribute first.
         if name in _instance_attribute_names(h):
-            _configure_attribute_value_lib(lib)
-            av = _empty_handle_ptr()
             atype = ATTR_UNKNOWN
             idx = self._attr_index(name)
-            if lib.ifcopenshell_ifc_instance_get_argument(_instance_handle_ptr(h), idx, ctypes.byref(av)) and av:
+            av = _capi.instance_get_argument(h, idx)
+            if av:
                 try:
-                    atype = _attribute_type_from_value(lib, av)
+                    atype = _attribute_type_from_value(av)
                     if atype == ATTR_NULL:
                         if self._is_schema_derived(name):
                             derived = self._get_derived(name)
@@ -451,20 +334,20 @@ class entity_instance:
                                 return derived
                         return None
                     if atype == ATTR_AGGREGATE:
-                        return self._get_aggregate(h, attr, name)
+                        return self._get_aggregate(h, name)
                     if atype == ATTR_REFERENCE:
                         typed_value = self._get_typed_value(name)
                         if typed_value is not None:
                             return typed_value
-                        ref = self._attribute_value_to_python(lib, av, "entity")
+                        ref = self._attribute_value_to_python(av, "entity")
                         if ref is not _MISSING:
                             return ref
                     elif atype != ATTR_AGGREGATE:
-                        value = self._attribute_value_to_python(lib, av, "")
+                        value = self._attribute_value_to_python(av, "")
                         if value is not _MISSING:
                             return value
                 finally:
-                    lib.ifcopenshell_ifcparse_attribute_value_destroy(av)
+                    _capi.attribute_value_destroy(av)
             if atype == ATTR_DERIVED:
                 from . import ifcopenshell_wrapper as W
 
@@ -475,18 +358,11 @@ class entity_instance:
 
         # Try inverse attribute (e.g. IsDecomposedBy, Decomposes, ContainedInStructure).
         if name in _instance_inverse_attribute_names(h):
-            from ifcopenshell import _take_instance_list
-            from . import ifcopenshell_wrapper as W
-
-            out = W._HandleStructP()
-            if lib.ifcopenshell_ifc_instance_get_inverse_attribute_by_name(
-                _instance_handle_ptr(h), _enc(attr), ctypes.byref(out)
-            ):
-                result = tuple(_take_instance_list(self._file, out))
-                if result:
-                    if _should_unpack_inverse(self._file, self.is_a(), name):
-                        return result[0]
-                    return result
+            result = tuple(entity_instance(self._file, item) for item in _capi.instance_get_inverse_attribute_by_name(h, name))
+            if result:
+                if _should_unpack_inverse(self._file, self.is_a(), name):
+                    return result[0]
+                return result
             return tuple()
 
         # Try computed derived attributes before giving up
@@ -514,44 +390,34 @@ class entity_instance:
         except Exception:
             return _MISSING
 
-        lib = _get_lib()
-        _configure_attribute_value_lib(lib)
-        av = _empty_handle_ptr()
-        if not lib.ifcopenshell_ifc_instance_get_argument(_instance_handle_ptr(self._handle), 0, ctypes.byref(av)) or not av:
+        av = _capi.instance_get_argument(self._handle, 0)
+        if not av:
             return _MISSING
         try:
-            wrapped = self._attribute_value_to_python(lib, av, primitive)
+            wrapped = self._attribute_value_to_python(av, primitive)
             return None if wrapped is _MISSING else wrapped
         finally:
-            lib.ifcopenshell_ifcparse_attribute_value_destroy(av)
+            _capi.attribute_value_destroy(av)
 
     def _set_wrapped_value(self, value):
         """Set the sole payload of a native type-declaration instance."""
         if not self._handle:
             raise AttributeError("wrappedValue")
-        lib = _get_lib()
-        _configure_attribute_value_lib(lib)
-        handle = _instance_handle_ptr(self._handle)
         idx = 0
         if value is None:
-            if not lib.ifcopenshell_ifc_instance_unset_argument(handle, idx):
-                raise RuntimeError("Failed to unset wrappedValue")
+            _capi.instance_unset_argument(self._handle, idx)
             return
         if isinstance(value, bool):
-            if not lib.ifcopenshell_ifc_instance_set_argument_bool(handle, idx, value):
-                raise RuntimeError("Failed to set wrappedValue")
+            _capi.instance_set_argument_bool(self._handle, idx, value)
             return
         if isinstance(value, int):
-            if not lib.ifcopenshell_ifc_instance_set_argument_int32(handle, idx, value):
-                raise RuntimeError("Failed to set wrappedValue")
+            _capi.instance_set_argument_int32(self._handle, idx, value)
             return
         if isinstance(value, float):
-            if not lib.ifcopenshell_ifc_instance_set_argument_double(handle, idx, value):
-                raise RuntimeError("Failed to set wrappedValue")
+            _capi.instance_set_argument_double(self._handle, idx, value)
             return
         if isinstance(value, str):
-            if not lib.ifcopenshell_ifc_instance_set_argument_string(handle, idx, _enc(value)):
-                raise RuntimeError("Failed to set wrappedValue")
+            _capi.instance_set_argument_string(self._handle, idx, value)
             return
         if isinstance(value, (list, tuple)):
             try:
@@ -564,108 +430,52 @@ class entity_instance:
                 raise TypeError(f"Cannot set wrappedValue to {type(value)}")
             elem_kind = kind[1]
             if elem_kind in ("real", "number"):
-                values = _generated_capi.make_double_list(value)
-                if not lib.ifcopenshell_ifc_instance_set_argument_double_list(handle, idx, ctypes.byref(values)):
-                    raise RuntimeError("Failed to set wrappedValue")
+                _capi.instance_set_argument_double_list(self._handle, idx, value)
                 return
             if elem_kind == "integer":
-                values = _generated_capi.make_int32_list(value)
-                if not lib.ifcopenshell_ifc_instance_set_argument_int32_list(handle, idx, ctypes.byref(values)):
-                    raise RuntimeError("Failed to set wrappedValue")
+                _capi.instance_set_argument_int32_list(self._handle, idx, value)
                 return
             if elem_kind == "boolean":
-                values = _generated_capi.make_int32_list(int(bool(v)) for v in value)
-                if not lib.ifcopenshell_ifc_instance_set_argument_int32_list(handle, idx, ctypes.byref(values)):
-                    raise RuntimeError("Failed to set wrappedValue")
+                _capi.instance_set_argument_int32_list(self._handle, idx, [int(bool(v)) for v in value])
                 return
             if elem_kind in ("string", "binary"):
-                values, keepalive = _make_string_list(value)
-                if not lib.ifcopenshell_ifc_instance_set_argument_string_list(handle, idx, ctypes.byref(values)):
-                    raise RuntimeError("Failed to set wrappedValue")
+                _capi.instance_set_argument_string_list(self._handle, idx, value)
                 return
         raise TypeError(f"Cannot set wrappedValue to {type(value)}")
 
-    def _attribute_value_to_python(self, lib, av, primitive):
-        from . import ifcopenshell_wrapper as W
-
-        is_null = ctypes.c_bool(False)
-        if lib.ifcopenshell_ifcparse_attribute_value_is_null(av, ctypes.byref(is_null)) and is_null.value:
+    def _attribute_value_to_python(self, av, primitive):
+        if _capi.attribute_value_is_null(av):
             return None
 
-        value_type = W.ifcopenshell_string_t()
-        if lib.ifcopenshell_ifcparse_attribute_value_type(av, ctypes.byref(value_type)):
-            value_type = W._take_string(value_type)
-        else:
-            value_type = ""
-
-        def take_string(fn):
-            s = W.ifcopenshell_string_t()
-            if not fn(av, ctypes.byref(s)):
-                return _MISSING
-            return W._take_string(s)
+        value_type = _capi.attribute_value_type(av) or ""
 
         if value_type == "ENUMERATION":
-            return take_string(lib.ifcopenshell_ifcparse_attribute_value_as_enumeration_value)
+            return _capi.attribute_value_as_enumeration_value(av)
         if value_type in ("STRING", "BINARY"):
-            val = take_string(lib.ifcopenshell_ifcparse_attribute_value_as_string)
-            if val is not _MISSING:
-                return val
+            return _capi.attribute_value_as_string(av)
         if primitive == "entity" or value_type == "ENTITY INSTANCE":
-            from . import ifcopenshell_wrapper as W
-
-            out = W._HandleStructP()
-            if lib.ifcopenshell_ifcparse_attribute_value_as_instance(av, ctypes.byref(out)) and out:
-                return entity_instance(self._file, ctypes.cast(out, ctypes.c_void_p).value)
+            return entity_instance(self._file, _capi.attribute_value_as_instance(av))
         if primitive == "integer" or value_type == "INT":
-            out = ctypes.c_int32(0)
-            if lib.ifcopenshell_ifcparse_attribute_value_as_int32(av, ctypes.byref(out)):
-                return int(out.value)
+            return int(_capi.attribute_value_as_int32(av))
         if primitive == "boolean" or value_type in ("BOOL", "LOGICAL"):
-            out = ctypes.c_bool(False)
-            if lib.ifcopenshell_ifcparse_attribute_value_as_bool(av, ctypes.byref(out)):
-                return bool(out.value)
+            return bool(_capi.attribute_value_as_bool(av))
         if primitive == "float" or value_type == "DOUBLE":
-            out = ctypes.c_double(0.0)
-            if lib.ifcopenshell_ifcparse_attribute_value_as_double(av, ctypes.byref(out)):
-                return float(out.value)
+            return float(_capi.attribute_value_as_double(av))
         if primitive in ("string", "binary", "enum"):
-            val = take_string(lib.ifcopenshell_ifcparse_attribute_value_as_string)
-            if val is not _MISSING:
-                return val
+            return _capi.attribute_value_as_string(av)
         if isinstance(primitive, tuple) and primitive[0] in ("list", "array", "set"):
-            return self._attribute_value_list_to_python(lib, av, primitive[1], value_type)
+            return self._attribute_value_list_to_python(av, primitive[1], value_type)
         return _MISSING
 
-    def _attribute_value_list_to_python(self, lib, av, primitive, value_type):
-        from . import ifcopenshell_wrapper as W
-
+    def _attribute_value_list_to_python(self, av, primitive, value_type):
         if primitive == "integer" or value_type == "AGGREGATE OF INT":
-            out = _Int32List()
-            if lib.ifcopenshell_ifcparse_attribute_value_as_int32_list(av, ctypes.byref(out)):
-                return _generated_capi.take_int32_list(lib, out)
+            return _capi.attribute_value_as_int32_list(av)
         if primitive == "float" or value_type == "AGGREGATE OF DOUBLE":
-            out = _DoubleList()
-            if lib.ifcopenshell_ifcparse_attribute_value_as_double_list(av, ctypes.byref(out)):
-                return _generated_capi.take_double_list(lib, out)
+            return _capi.attribute_value_as_double_list(av)
         if primitive == "entity" or value_type == "AGGREGATE OF ENTITY INSTANCE":
-            out = W._HandleStructP()
-            if lib.ifcopenshell_ifcparse_attribute_value_as_instance_list(av, ctypes.byref(out)) and out:
-                try:
-                    size = ctypes.c_size_t(0)
-                    if not lib.ifcopenshell_ifcparse_instance_list_size(out, ctypes.byref(size)):
-                        return _MISSING
-                    result = []
-                    for i in range(size.value):
-                        item = W._HandleStructP()
-                        if lib.ifcopenshell_ifcparse_instance_list_get(out, i, ctypes.byref(item)) and item:
-                            result.append(entity_instance(self._file, ctypes.cast(item, ctypes.c_void_p).value))
-                    return tuple(result)
-                finally:
-                    lib.ifcopenshell_ifcparse_instance_list_destroy(out)
+            return tuple(entity_instance(self._file, item) for item in _capi.attribute_value_as_instance_list(av))
         if primitive in ("string", "binary", "enum") or value_type in ("AGGREGATE OF STRING", "AGGREGATE OF BINARY"):
-            result = _generated_capi.call_string_list(lib, lib.ifcopenshell_ifcparse_attribute_value_as_string_list, av)
-            if result is not None:
-                return result
+            return _capi.attribute_value_as_string_list(av)
         return _MISSING
 
     def _get_derived(self, name):
@@ -674,29 +484,21 @@ class entity_instance:
         or when the rule evaluates to INDETERMINATE."""
         if not self._handle:
             return None
-
-        lib = _get_lib()
-        _configure_derived_lib(lib)
-        from ifcopenshell import _generated_capi
-
-        ptr = ctypes.POINTER(_generated_capi._HandleStruct)()
-        if not lib.ifcopenshell_ifcapi_compute_derived(
-            _generated_instance_handle_ptr(self._handle), _enc(name), ctypes.byref(ptr)
-        ):
-            return None
-        if not ptr:
-            return None
         try:
-            return value_to_python(lib, ptr, self)
-        finally:
-            lib.ifcopenshell_ifcapi_value_destroy(ptr)
+            av = _capi.compute_derived(self._handle, name)
+            if av is None:
+                return None
+            try:
+                return _attribute_value_to_python(av, self._file)
+            finally:
+                _capi.value_destroy(av)
+        except Exception:
+            return None
 
-    def _get_aggregate(self, h, attr, name):
+    def _get_aggregate(self, h, name):
         """Read an aggregate attribute, returning a Python tuple.
 
         Codec is selected from the schema-declared element type."""
-        lib = _get_lib()
-
         pt = self._declared_attribute_primitive(name)
         elem_kind = None
         nested_double = False
@@ -722,15 +524,16 @@ class entity_instance:
             elem_kind = "select"
 
         def read_generated_list(primitive):
-            _configure_attribute_value_lib(lib)
-            av = _empty_handle_ptr()
             idx = self._attr_index(name)
-            if idx < 0 or not lib.ifcopenshell_ifc_instance_get_argument(_instance_handle_ptr(h), idx, ctypes.byref(av)) or not av:
+            if idx < 0:
+                return _MISSING
+            av = _capi.instance_get_argument(h, idx)
+            if not av:
                 return _MISSING
             try:
-                return self._attribute_value_list_to_python(lib, av, primitive, _take_attribute_value_type(lib, av))
+                return self._attribute_value_list_to_python(av, primitive, _take_attribute_value_type(av))
             finally:
-                lib.ifcopenshell_ifcparse_attribute_value_destroy(av)
+                _capi.attribute_value_destroy(av)
 
         if elem_kind == "entity":
             result = read_generated_list("entity")
@@ -771,37 +574,30 @@ class entity_instance:
         raise TypeError(f"Unsupported aggregate element type for '{name}': {pt!r}")
 
     def _get_aggregate_ref_list_list(self, name):
-        lib = _get_lib()
-        _configure_attribute_value_lib(lib)
-
-        av = _empty_handle_ptr()
-        idx = self._attr_index(name)
-        if idx < 0 or not lib.ifcopenshell_ifc_instance_get_argument(_instance_handle_ptr(self._handle), idx, ctypes.byref(av)) or not av:
-            return None
-        try:
-            out = _Int32ListList()
-            if not lib.ifcopenshell_ifcparse_attribute_value_as_instance_id_list_list(av, ctypes.byref(out)):
-                return None
-            return tuple(tuple(self._file.by_id(entity_id) for entity_id in row) for row in _generated_capi.take_int32_list_list(lib, out))
-        finally:
-            lib.ifcopenshell_ifcparse_attribute_value_destroy(av)
-
-    def _get_typed_value(self, name):
-        lib = _get_lib()
-        _configure_attribute_value_lib(lib)
         idx = self._attr_index(name)
         if idx < 0:
             return None
-        av = _empty_handle_ptr()
-        if not lib.ifcopenshell_ifc_instance_get_argument(_instance_handle_ptr(self._handle), idx, ctypes.byref(av)) or not av:
+        av = _capi.instance_get_argument(self._handle, idx)
+        if not av:
             return None
         try:
-            typed_handle = _empty_handle_ptr()
-            if not lib.ifcopenshell_ifcparse_attribute_value_as_instance(av, ctypes.byref(typed_handle)) or not typed_handle:
+            return tuple(tuple(self._file.by_id(entity_id) for entity_id in row) for row in _capi.attribute_value_as_instance_id_list_list(av))
+        finally:
+            _capi.attribute_value_destroy(av)
+
+    def _get_typed_value(self, name):
+        idx = self._attr_index(name)
+        if idx < 0:
+            return None
+        av = _capi.instance_get_argument(self._handle, idx)
+        if not av:
+            return None
+        try:
+            typed_handle = _capi.attribute_value_as_instance(av)
+            if not typed_handle:
                 return None
-            type_name = _instance_type_name(ctypes.cast(typed_handle, ctypes.c_void_p).value)
+            type_name = _instance_type_name(typed_handle)
             if not type_name:
-                lib.ifcopenshell_ifc_instance_destroy(typed_handle)
                 return None
             try:
                 from ifcopenshell import _resolve_typed_value_kind
@@ -810,45 +606,36 @@ class entity_instance:
             except Exception:
                 typed_value_kind = ("unknown",)
             if typed_value_kind[0] == "unknown":
-                lib.ifcopenshell_ifc_instance_destroy(typed_handle)
                 return None
-            return entity_instance(self._file, ctypes.cast(typed_handle, ctypes.c_void_p).value)
+            return entity_instance(self._file, typed_handle)
         finally:
-            lib.ifcopenshell_ifcparse_attribute_value_destroy(av)
+            _capi.attribute_value_destroy(av)
 
     def _get_aggregate_int_list_list(self, name):
         """Read LIST OF LIST OF INTEGER via autogen attribute_value_as_int32_list_list."""
-        lib = _get_lib()
-        _configure_attribute_value_lib(lib)
-
-        av = _empty_handle_ptr()
         idx = self._attr_index(name)
-        if idx < 0 or not lib.ifcopenshell_ifc_instance_get_argument(_instance_handle_ptr(self._handle), idx, ctypes.byref(av)) or not av:
+        if idx < 0:
+            return None
+        av = _capi.instance_get_argument(self._handle, idx)
+        if not av:
             return None
         try:
-            out = _Int32ListList()
-            if not lib.ifcopenshell_ifcparse_attribute_value_as_int32_list_list(av, ctypes.byref(out)):
-                return None
-            return _generated_capi.take_int32_list_list(lib, out)
+            return _capi.attribute_value_as_int32_list_list(av)
         finally:
-            lib.ifcopenshell_ifcparse_attribute_value_destroy(av)
+            _capi.attribute_value_destroy(av)
 
     def _get_aggregate_double_list_list(self, name):
         """Read LIST OF LIST OF REAL via autogen attribute_value_as_double_list_list."""
-        lib = _get_lib()
-        _configure_attribute_value_lib(lib)
-
-        av = _empty_handle_ptr()
         idx = self._attr_index(name)
-        if idx < 0 or not lib.ifcopenshell_ifc_instance_get_argument(_instance_handle_ptr(self._handle), idx, ctypes.byref(av)) or not av:
+        if idx < 0:
+            return None
+        av = _capi.instance_get_argument(self._handle, idx)
+        if not av:
             return None
         try:
-            out = _DoubleListList()
-            if not lib.ifcopenshell_ifcparse_attribute_value_as_double_list_list(av, ctypes.byref(out)):
-                return None
-            return _generated_capi.take_double_list_list(lib, out)
+            return _capi.attribute_value_as_double_list_list(av)
         finally:
-            lib.ifcopenshell_ifcparse_attribute_value_destroy(av)
+            _capi.attribute_value_destroy(av)
 
     def __setattr__(self, name, value):
         if name.startswith("_"):
@@ -857,18 +644,14 @@ class entity_instance:
         if name == "wrappedValue" and self._is_wrapped_value_instance():
             self._set_wrapped_value(value)
             return
-        lib = _get_lib()
         h = self._handle
-        attr = _enc(name)
 
         if name not in _instance_attribute_names(h):
             super().__setattr__(name, value)
             return
 
         value = self._coerce_to_declared_type(name, value)
-        _configure_attribute_value_lib(lib)
         idx = self._attr_index(name)
-        handle = _instance_handle_ptr(h)
 
         # Record the edit before mutation so the transaction captures the
         # pre-image. Only entities that belong to a file (id != 0) are tracked.
@@ -882,31 +665,22 @@ class entity_instance:
                     pass
 
         if value is None:
-            lib.ifcopenshell_ifc_instance_unset_argument(handle, idx)
+            _capi.instance_unset_argument(h, idx)
         elif isinstance(value, bool):
-            lib.ifcopenshell_ifc_instance_set_argument_bool(handle, idx, value)
+            _capi.instance_set_argument_bool(h, idx, value)
         elif isinstance(value, int):
-            lib.ifcopenshell_ifc_instance_set_argument_int32(handle, idx, value)
+            _capi.instance_set_argument_int32(h, idx, value)
         elif isinstance(value, float):
-            lib.ifcopenshell_ifc_instance_set_argument_double(handle, idx, value)
+            _capi.instance_set_argument_double(h, idx, value)
         elif isinstance(value, entity_instance):
-            lib.ifcopenshell_ifc_instance_set_argument_instance(handle, idx, _instance_handle_ptr(value._handle))
+            _capi.instance_set_argument_instance(h, idx, value._handle)
         elif isinstance(value, str):
-            lib.ifcopenshell_clear_error()
-            was_enum = ctypes.c_bool(False)
-            if not lib.ifcopenshell_ifc_instance_set_argument_enumeration_by_name(
-                handle, idx, _enc(value), ctypes.byref(was_enum)
-            ):
-                err = lib.ifcopenshell_last_error_message()
-                if err:
-                    msg = err.decode("utf-8", errors="replace")
-                    lib.ifcopenshell_clear_error()
-                    raise RuntimeError(msg)
-                raise RuntimeError(f"Failed to set attribute '{name}'")
-            if not was_enum.value:
-                lib.ifcopenshell_ifc_instance_set_argument_string(handle, idx, _enc(value))
+            if self._declared_attribute_primitive(name) == "enum":
+                _capi.instance_set_argument_enumeration_by_name(h, idx, value)
+            else:
+                _capi.instance_set_argument_string(h, idx, value)
         elif isinstance(value, (list, tuple)):
-            self._set_aggregate(h, attr, name, value)
+            self._set_aggregate(h, name, value)
         else:
             raise TypeError(f"Cannot set attribute '{name}' to {type(value)}")
 
@@ -990,14 +764,12 @@ class entity_instance:
             return None
         return None
 
-    def _set_aggregate(self, h, attr, name, items):
+    def _set_aggregate(self, h, name, items):
         """Write a Python list to an aggregate attribute.
 
         Codec is chosen from the schema-declared element type whenever
         possible; the value-driven path is only taken when no declaration
         is available (e.g. derived attributes)."""
-        lib = _get_lib()
-
         pt = self._declared_attribute_primitive(name)
         elem_kind = None
         nested_double = False
@@ -1018,33 +790,13 @@ class entity_instance:
             elem_kind = pt
 
         def set_generated_instance_list(values):
-            from ifcopenshell import _generated_capi
-
             idx = self._attr_index(name)
             if idx < 0:
                 raise TypeError(f"Unknown attribute '{name}'")
-            handle_ptrs = None
-            if values:
-                handle_ptrs = (ctypes.POINTER(_generated_capi._HandleStruct) * len(values))()
-                for i, value in enumerate(values):
-                    if not isinstance(value, entity_instance):
-                        raise TypeError(f"Cannot set aggregate '{name}' with {type(value)}")
-                    handle_ptrs[i] = _generated_instance_handle_ptr(value._handle)
-            input_list = _generated_capi.ifcopenshell_ifc_instance_list_t(handle_ptrs, len(values))
-            instance_list = ctypes.POINTER(_generated_capi._HandleStruct)()
-            if not lib.ifcopenshell_ifcparse_instance_list_create_from_handles(
-                ctypes.byref(input_list), ctypes.byref(instance_list)
-            ):
-                err = lib.ifcopenshell_last_error_message()
-                raise RuntimeError(err.decode("utf-8", errors="replace") if err else f"Failed to create aggregate '{name}'")
-            try:
-                if not lib.ifcopenshell_ifc_instance_set_argument_instance_list(
-                    _generated_instance_handle_ptr(h), idx, instance_list
-                ):
-                    err = lib.ifcopenshell_last_error_message()
-                    raise RuntimeError(err.decode("utf-8", errors="replace") if err else f"Failed to set aggregate '{name}'")
-            finally:
-                lib.ifcopenshell_ifcparse_instance_list_destroy(instance_list)
+            for value in values:
+                if not isinstance(value, entity_instance):
+                    raise TypeError(f"Cannot set aggregate '{name}' with {type(value)}")
+            _capi.instance_set_argument_instance_list(h, idx, [value._handle for value in values])
 
         first = items[0] if items else None
         if first is None and isinstance(pt, tuple) and len(pt) == 2 and isinstance(pt[1], tuple) and pt[1][0] == "select":
@@ -1054,15 +806,10 @@ class entity_instance:
             idx = self._attr_index(name)
             if idx < 0:
                 raise TypeError(f"Unknown attribute '{name}'")
-            ll = _generated_capi.make_double_list_list(items) if nested_double else _generated_capi.make_int32_list_list(items)
-            sym = (
-                lib.ifcopenshell_ifc_instance_set_argument_double_list_list
-                if nested_double
-                else lib.ifcopenshell_ifc_instance_set_argument_int32_list_list
-            )
-            ok = sym(_instance_handle_ptr(h), idx, ctypes.byref(ll))
-            if not ok:
-                raise RuntimeError(f"Failed to set nested aggregate '{name}'")
+            if nested_double:
+                _capi.instance_set_argument_double_list_list(h, idx, items)
+            else:
+                _capi.instance_set_argument_int32_list_list(h, idx, items)
             return
 
         if nested_entity:
@@ -1077,13 +824,7 @@ class entity_instance:
                         raise TypeError(f"Cannot set nested aggregate '{name}' with {type(v)}")
                     ids.append(v.id())
                 id_rows.append(ids)
-            ll = _generated_capi.make_int32_list_list(id_rows)
-            ok = lib.ifcopenshell_ifc_instance_set_argument_as_aggregate_of_aggregate_of_entity_instance(
-                _instance_handle_ptr(h), idx, ctypes.byref(ll)
-            )
-            if not ok:
-                err = lib.ifcopenshell_last_error_message()
-                raise RuntimeError(err.decode("utf-8", errors="replace") if err else f"Failed to set nested aggregate '{name}'")
+            _capi.instance_set_argument_as_aggregate_of_aggregate_of_entity_instance(h, idx, id_rows)
             return
 
         if isinstance(first, entity_instance):
@@ -1091,26 +832,16 @@ class entity_instance:
             return
 
         idx = self._attr_index(name)
-        handle = _instance_handle_ptr(h)
-        _configure_attribute_value_lib(lib)
         if elem_kind == "entity":
             set_generated_instance_list(items)
         elif elem_kind == "float":
-            values = _generated_capi.make_double_list(items)
-            if not lib.ifcopenshell_ifc_instance_set_argument_double_list(handle, idx, ctypes.byref(values)):
-                raise RuntimeError(f"Failed to set aggregate '{name}'")
+            _capi.instance_set_argument_double_list(h, idx, items)
         elif elem_kind == "integer":
-            values = _generated_capi.make_int32_list(items)
-            if not lib.ifcopenshell_ifc_instance_set_argument_int32_list(handle, idx, ctypes.byref(values)):
-                raise RuntimeError(f"Failed to set aggregate '{name}'")
+            _capi.instance_set_argument_int32_list(h, idx, items)
         elif elem_kind == "boolean":
-            values = _generated_capi.make_int32_list(int(bool(v)) for v in items)
-            if not lib.ifcopenshell_ifc_instance_set_argument_int32_list(handle, idx, ctypes.byref(values)):
-                raise RuntimeError(f"Failed to set aggregate '{name}'")
+            _capi.instance_set_argument_int32_list(h, idx, [int(bool(v)) for v in items])
         elif elem_kind in ("string", "enum", "binary"):
-            values, keepalive = _make_string_list(items)
-            if not lib.ifcopenshell_ifc_instance_set_argument_string_list(handle, idx, ctypes.byref(values)):
-                raise RuntimeError(f"Failed to set aggregate '{name}'")
+            _capi.instance_set_argument_string_list(h, idx, items)
         else:
             raise TypeError(f"Cannot set aggregate '{name}' with declared primitive {pt!r}")
 
