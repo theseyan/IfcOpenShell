@@ -15,7 +15,7 @@ def copy_representation(
     context_identifier: str = "Body",
 ) -> Optional[ifcopenshell.entity_instance]:
     """Copy a geometric representation from one element to another."""
-    handle = _capi.ifcopenshell_ifcapi_geometry_copy_representation(
+    handle = _capi.geometry_copy_representation(
         file._handle,
         source._handle,
         target._handle,

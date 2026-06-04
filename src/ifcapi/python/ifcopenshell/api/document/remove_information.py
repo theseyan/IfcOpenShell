@@ -38,4 +38,4 @@ def remove_information(file: ifcopenshell.file, information: ifcopenshell.entity
         # ... and remove it!
         ifcopenshell.api.document.remove_information(model, information=document)
     """
-    _capi.ifcopenshell_ifcapi_document_remove_information(file._handle, information._handle)
+    _capi.document_remove_information(file._handle, information._handle)

@@ -36,4 +36,4 @@ def remove_library(file: ifcopenshell.file, library: ifcopenshell.entity_instanc
         library = ifcopenshell.api.library.add_library(model, name="Brickschema")
         ifcopenshell.api.library.remove_library(model, library=library)
     """
-    _capi.ifcopenshell_ifcapi_library_remove_library(file._handle, library._handle)
+    _capi.library_remove_library(file._handle, library._handle)

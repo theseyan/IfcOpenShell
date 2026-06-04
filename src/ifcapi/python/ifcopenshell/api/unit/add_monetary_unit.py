@@ -41,7 +41,7 @@ def add_monetary_unit(file: ifcopenshell.file, currency: str = "DOLLARYDOO") -> 
         # Make it our default currency
         ifcopenshell.api.unit.assign_unit(model, units=[zwl])
     """
-    handle = _capi.ifcopenshell_ifcapi_unit_add_monetary_unit(file._handle, currency)
+    handle = _capi.unit_add_monetary_unit(file._handle, currency)
     if handle:
         return ifcopenshell.entity_instance(file, handle)
     raise RuntimeError(_capi.last_error_message() or "Failed to add monetary unit")

@@ -34,4 +34,4 @@ def remove_profile(file: ifcopenshell.file, profile: ifcopenshell.entity_instanc
         circle = 1.
         ifcopenshell.api.profile.remove_profile(model, profile=circle)
     """
-    _capi.ifcopenshell_ifcapi_profile_remove_profile(file._handle, profile._handle)
+    _capi.profile_remove_profile(file._handle, profile._handle)

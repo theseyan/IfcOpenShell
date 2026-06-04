@@ -36,4 +36,4 @@ def remove_group(file: ifcopenshell.file, group: ifcopenshell.entity_instance) -
         group = ifcopenshell.api.group.add_group(model, name="Unit 1A")
         ifcopenshell.api.group.remove_group(model, group=group)
     """
-    _capi.ifcopenshell_ifcapi_group_remove_group(file._handle, group._handle)
+    _capi.group_remove_group(file._handle, group._handle)

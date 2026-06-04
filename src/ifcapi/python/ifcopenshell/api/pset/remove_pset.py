@@ -42,4 +42,4 @@ def remove_pset(
         # Remove it!
         ifcopenshell.api.pset.remove_pset(model, product=wall_type, pset=pset)
     """
-    _capi.ifcopenshell_ifcapi_pset_remove_pset(file._handle, product._handle, pset._handle)
+    _capi.pset_remove_pset(file._handle, product._handle, pset._handle)

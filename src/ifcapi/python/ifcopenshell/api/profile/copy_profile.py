@@ -38,7 +38,7 @@ def copy_profile(file: ifcopenshell.file, profile: ifcopenshell.entity_instance)
         # Let's duplicate the rectangle profile
         profile_copy = ifcopenshell.api.profile.copy_profile(model, profile=profile)
     """
-    handle = _capi.ifcopenshell_ifcapi_profile_copy_profile(file._handle, profile._handle)
+    handle = _capi.profile_copy_profile(file._handle, profile._handle)
     if handle:
         return ifcopenshell.entity_instance(file, handle)
     raise RuntimeError(_capi.last_error_message() or "Failed to copy profile")

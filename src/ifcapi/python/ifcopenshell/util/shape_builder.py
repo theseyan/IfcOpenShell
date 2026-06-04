@@ -1100,7 +1100,7 @@ class ShapeBuilder:
         :param polyline: An ``IfcIndexedPolyCurve`` or ``IfcPolyline`` entity.
         :return: Numpy array of the polyline's point coordinates.
         """
-        coords = _capi.ifcopenshell_ifcapi_shape_builder_get_polyline_coords(polyline._handle)
+        coords = _capi.shape_builder_get_polyline_coords(polyline._handle)
         return np.array(coords)
 
     def set_polyline_coords(self, polyline: ifcopenshell.entity_instance, coords: SequenceOfVectors) -> None:
@@ -1475,7 +1475,7 @@ class ShapeBuilder:
         :return: A tuple of Model/Body/MODEL_VIEW IfcRepresentation and dictionary of transition shape data.
             Or (None, None) if there was an error in the process.
         """
-        value = _capi.ifcopenshell_ifcapi_shape_builder_mep_transition_shape(
+        value = _capi.shape_builder_mep_transition_shape(
             self.file._handle,
             start_segment._handle,
             end_segment._handle,
@@ -1522,7 +1522,7 @@ class ShapeBuilder:
         :return: Transition length in project length units, or ``None`` if no valid length exists
             for the given angle and offset.
         """
-        result = _capi.ifcopenshell_ifcapi_shape_builder_mep_transition_length(
+        result = _capi.shape_builder_mep_transition_length(
             _native_vector(start_half_dim),
             _native_vector(end_half_dim),
             float(angle),
@@ -1558,7 +1558,7 @@ class ShapeBuilder:
         :return: Transition length (if ``angle`` was given) or transition angle in degrees
             (if ``length`` was given), or ``None`` if the geometry is not feasible.
         """
-        result = _capi.ifcopenshell_ifcapi_shape_builder_mep_transition_calculate(
+        result = _capi.shape_builder_mep_transition_calculate(
             _native_vector(start_half_dim),
             _native_vector(end_half_dim),
             _native_vector(offset),
@@ -1596,7 +1596,7 @@ class ShapeBuilder:
             there is an option to flip it if bend is going by start segment Z- axis.
         :return: tuple of Model/Body/MODEL_VIEW IfcRepresentation and dictionary of transition shape data
         """
-        value = _capi.ifcopenshell_ifcapi_shape_builder_mep_bend_shape(
+        value = _capi.shape_builder_mep_bend_shape(
             self.file._handle,
             segment._handle,
             float(start_length),

@@ -56,7 +56,7 @@ def remove_product(file: ifcopenshell.file, product: ifcopenshell.entity_instanc
     """
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
-    _capi.ifcopenshell_ifcapi_root_remove_product(
+    _capi.root_remove_product(
         file._handle,
         product._handle,
         user._handle if user is not None else None,

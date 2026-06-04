@@ -55,7 +55,7 @@ def unassign_declaration(
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
     definition_list = [e._handle for e in definitions]
-    _capi.ifcopenshell_ifcapi_project_unassign_declaration(
+    _capi.project_unassign_declaration(
         file._handle,
         definition_list,
         relating_context._handle,

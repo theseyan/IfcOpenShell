@@ -27,7 +27,7 @@ def add_metric_reference(
     Adds a chain of references to a metric. The reference path is a string of the form "attribute.attribute.attribute"
     Used to reference a value of an attribute of an instance through a metric objective entity.
     """
-    out = _capi.ifcopenshell_ifcapi_constraint_add_metric_reference(
+    out = _capi.constraint_add_metric_reference(
         file._handle, metric._handle, reference_path
     )
     return ifcopenshell._take_instance_list(file, out)

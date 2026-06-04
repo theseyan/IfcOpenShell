@@ -64,7 +64,7 @@ def add_layer_with_style(
         )
     """
     style_list = [e._handle for e in styles]
-    handle = _capi.ifcopenshell_ifcapi_layer_add_layer_with_style(
+    handle = _capi.layer_add_layer_with_style(
         file._handle,
         name,
         _logical_value(on),

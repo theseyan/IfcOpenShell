@@ -48,7 +48,7 @@ def add_group(
     """
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
-    handle = _capi.ifcopenshell_ifcapi_group_add_group(
+    handle = _capi.group_add_group(
         file._handle,
         name,
         description,

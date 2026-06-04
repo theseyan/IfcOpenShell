@@ -39,4 +39,4 @@ def remove_metric(file: ifcopenshell.file, metric: ifcopenshell.entity_instance)
         ifcopenshell.api.constraint.remove_metric(model,
             metric=metric)
     """
-    _capi.ifcopenshell_ifcapi_constraint_remove_metric(file._handle, metric._handle)
+    _capi.constraint_remove_metric(file._handle, metric._handle)

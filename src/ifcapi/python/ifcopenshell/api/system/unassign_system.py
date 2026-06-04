@@ -52,7 +52,7 @@ def unassign_system(
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
     product_list = [e._handle for e in products]
-    _capi.ifcopenshell_ifcapi_system_unassign_system(
+    _capi.system_unassign_system(
         file._handle,
         product_list,
         system._handle,

@@ -95,7 +95,7 @@ def add_pset_template(
             name="HighVoltage", description="Whether there is a risk of high voltage.",
             primary_measure_type="IfcBoolean")
     """
-    handle = _capi.ifcopenshell_ifcapi_pset_template_add_pset_template(
+    handle = _capi.pset_template_add_pset_template(
         file._handle, name, template_type, applicable_entity
     )
     if handle:

@@ -54,7 +54,7 @@ def duplicate_task(
     """
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
-    result = _capi.ifcopenshell_ifcapi_sequence_duplicate_task(
+    result = _capi.sequence_duplicate_task(
         file._handle,
         task._handle,
         None,

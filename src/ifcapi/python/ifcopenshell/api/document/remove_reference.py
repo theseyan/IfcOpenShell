@@ -36,4 +36,4 @@ def remove_reference(file: ifcopenshell.file, reference: ifcopenshell.entity_ins
         reference = ifcopenshell.api.document.add_reference(model, information=document)
         ifcopenshell.api.document.remove_reference(model, reference=reference)
     """
-    _capi.ifcopenshell_ifcapi_document_remove_reference(file._handle, reference._handle)
+    _capi.document_remove_reference(file._handle, reference._handle)

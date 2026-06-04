@@ -169,7 +169,7 @@ class Usecase:
         return self.file.createIfcCartesianPoint((0.0, 0.0, 0.0))
 
     def get_profile_extents(self) -> tuple[float, float]:
-        extents = _capi.ifcopenshell_ifcapi_geometry_profile_extents(
+        extents = _capi.geometry_profile_extents(
             self.file._handle,
             self.profile._handle,
         )

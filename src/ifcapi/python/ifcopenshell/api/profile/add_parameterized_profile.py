@@ -45,7 +45,7 @@ def add_parameterized_profile(
             ifc_class="IfcCircleProfileDef")
         circle.Radius = 1.
     """
-    handle = _capi.ifcopenshell_ifcapi_profile_add_parameterized_profile(file._handle, ifc_class, profile_type)
+    handle = _capi.profile_add_parameterized_profile(file._handle, ifc_class, profile_type)
     if handle:
         return ifcopenshell.entity_instance(file, handle)
     raise RuntimeError(_capi.last_error_message() or "Failed to add parameterized profile")

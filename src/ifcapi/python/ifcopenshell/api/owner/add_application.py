@@ -53,7 +53,7 @@ def add_application(
 
         application = ifcopenshell.api.owner.add_application(model)
     """
-    handle = _capi.ifcopenshell_ifcapi_owner_add_application(
+    handle = _capi.owner_add_application(
         file._handle,
         application_developer._handle if application_developer is not None else None,
         version or ifcopenshell.version,

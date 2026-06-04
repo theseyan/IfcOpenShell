@@ -92,11 +92,11 @@ class PsetQto:
         self._template_keepalive: tuple[ifcopenshell.file, ...] = ()
         self._template_files_by_ptr: dict[int, ifcopenshell.file] = {}
         if not templates:
-            self._native_ptr = _capi.ifcopenshell_ifcapi_pset_template_get_template(schema)
+            self._native_ptr = _capi.pset_template_get_template(schema)
             self.templates = []
         else:
             file_handles = [f._handle for f in templates]
-            self._native_ptr = _capi.ifcopenshell_ifcapi_pset_template_create_from_files(schema, file_handles)
+            self._native_ptr = _capi.pset_template_create_from_files(schema, file_handles)
             self._owns_native_ptr = True
             self._template_keepalive = tuple(templates)
             self.templates = templates
@@ -106,7 +106,7 @@ class PsetQto:
         if self._native_ptr is None or not self._owns_native_ptr:
             return
         try:
-            _capi.ifcopenshell_ifcapi_pset_template_free(self._native_ptr)
+            _capi.pset_template_free(self._native_ptr)
         except Exception:
             pass
 
@@ -121,7 +121,7 @@ class PsetQto:
     ) -> list[entity_instance]:
         """Get applicable property set templates."""
         if self._native_ptr is not None:
-            handles = _capi.ifcopenshell_ifcapi_pset_template_get_applicable(
+            handles = _capi.pset_template_get_applicable(
                 self._native_ptr,
                 ifc_class or None,
                 predefined_type or None,
@@ -166,7 +166,7 @@ class PsetQto:
         """Return names instead of objects for other use eg. enum"""
         if self._native_ptr is not None:
             return list(
-                _capi.ifcopenshell_ifcapi_pset_template_get_applicable_names(
+                _capi.pset_template_get_applicable_names(
                     self._native_ptr,
                     ifc_class or None,
                     predefined_type or None,
@@ -243,7 +243,7 @@ class PsetQto:
     @lru_cache
     def get_by_name(self, name: str) -> Optional[entity_instance]:
         if self._native_ptr is not None:
-            handle = _capi.ifcopenshell_ifcapi_pset_template_get_by_name(self._native_ptr, name)
+            handle = _capi.pset_template_get_by_name(self._native_ptr, name)
             return _wrap_template_instance(handle, self._template_files_by_ptr)
         for template in self.templates:
             for prop_set in template.by_type("IfcPropertySetTemplate"):
@@ -254,7 +254,7 @@ class PsetQto:
     def is_templated(self, name: str) -> bool:
         if self._native_ptr is not None:
             return bool(
-                _capi.ifcopenshell_ifcapi_pset_template_is_templated(self._native_ptr, name)
+                _capi.pset_template_is_templated(self._native_ptr, name)
             )
         return bool(self.get_by_name(name))
 
@@ -262,7 +262,7 @@ class PsetQto:
 def get_pset_template_type(pset_template: entity_instance) -> Literal["PSET", "QTO", None]:
     """Get the type of the pset template.
     If type is mixed or not defined, return None."""
-    pset_type = _capi.ifcopenshell_ifcapi_pset_template_pset_type(pset_template._handle)
+    pset_type = _capi.pset_template_pset_type(pset_template._handle)
     if pset_type:
         return pset_type  # type: ignore[return-value]
 

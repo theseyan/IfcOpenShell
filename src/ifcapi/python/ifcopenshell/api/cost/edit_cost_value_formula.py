@@ -44,4 +44,4 @@ def edit_cost_value_formula(file: ifcopenshell.file, cost_value: ifcopenshell.en
         ifcopenshell.api.cost.edit_cost_value_formula(model, cost_value=value,
             formula="5000 * 1.19")
     """
-    _capi.ifcopenshell_ifcapi_cost_edit_cost_value_formula(file._handle, cost_value._handle, formula or "")
+    _capi.cost_edit_cost_value_formula(file._handle, cost_value._handle, formula or "")

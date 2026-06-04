@@ -58,7 +58,7 @@ def add_information(
     """
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
-    handle = _capi.ifcopenshell_ifcapi_document_add_information(
+    handle = _capi.document_add_information(
         file._handle,
         parent._handle if parent is not None else None,
         None,

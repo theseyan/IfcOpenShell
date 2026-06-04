@@ -59,7 +59,7 @@ def is_x(value: float, x: float, tolerance: Optional[float] = None) -> bool:
     """
     if tolerance is None:
         tolerance = tol
-    result = _capi.ifcopenshell_ifcapi_shape_is_x(value, x, tolerance)
+    result = _capi.shape_is_x(value, x, tolerance)
     if result is None:
         raise RuntimeError(_capi.last_error_message() or "ifcopenshell_ifcapi_shape_is_x failed")
     return bool(result)

@@ -12,7 +12,7 @@ def add_qto(file, product, name):
     owner_history = ifcopenshell.api.owner.create_owner_history(file)
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
-    handle = _capi.ifcopenshell_ifcapi_pset_add_qto(
+    handle = _capi.pset_add_qto(
         file._handle,
         product._handle,
         name,

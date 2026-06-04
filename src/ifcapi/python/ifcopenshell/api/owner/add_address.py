@@ -66,7 +66,7 @@ def add_address(
             "ElectronicMailAddresses": ["bobthebuilder@example.com"],
             "WWWHomePageURL": "https://thinkmoult.com"})
     """
-    handle = _capi.ifcopenshell_ifcapi_owner_add_address(file._handle, assigned_object._handle, ifc_class)
+    handle = _capi.owner_add_address(file._handle, assigned_object._handle, ifc_class)
     if handle:
         return ifcopenshell.entity_instance(file, handle)
     raise RuntimeError(_capi.last_error_message() or "Failed to add address")

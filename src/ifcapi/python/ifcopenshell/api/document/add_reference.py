@@ -62,7 +62,7 @@ def add_reference(file: ifcopenshell.file, information: ifcopenshell.entity_inst
         ifcopenshell.api.document.edit_reference(model,
             reference=reference2, attributes={"Identification": "2.1.15"})
     """
-    handle = _capi.ifcopenshell_ifcapi_document_add_reference(file._handle, information._handle)
+    handle = _capi.document_add_reference(file._handle, information._handle)
     if handle:
         return ifcopenshell.entity_instance(file, handle)
     raise RuntimeError(_capi.last_error_message() or "Failed to add document reference")

@@ -44,7 +44,7 @@ def add_system(file: ifcopenshell.file, ifc_class: str = "IfcDistributionSystem"
         system = ifcopenshell.api.system.add_system(model)
     """
     owner_history = ifcopenshell.api.owner.create_owner_history(file)
-    handle = _capi.ifcopenshell_ifcapi_system_add_system(
+    handle = _capi.system_add_system(
         file._handle,
         ifc_class,
         owner_history._handle if owner_history is not None else None,

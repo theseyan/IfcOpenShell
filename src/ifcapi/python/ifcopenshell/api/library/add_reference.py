@@ -49,7 +49,7 @@ def add_reference(file: ifcopenshell.file, library: ifcopenshell.entity_instance
         ifcopenshell.api.library.edit_reference(model,
             reference=reference, attributes={"Identification": "http://example.org/digitaltwin#AHU01"})
     """
-    handle = _capi.ifcopenshell_ifcapi_library_add_reference(file._handle, library._handle)
+    handle = _capi.library_add_reference(file._handle, library._handle)
     if handle:
         return ifcopenshell.entity_instance(file, handle)
     raise RuntimeError(_capi.last_error_message() or "Failed to add library reference")

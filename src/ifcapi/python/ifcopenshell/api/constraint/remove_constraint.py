@@ -39,4 +39,4 @@ def remove_constraint(file: ifcopenshell.file, constraint: ifcopenshell.entity_i
         ifcopenshell.api.constraint.remove_constraint(model,
             constraint=objective)
     """
-    _capi.ifcopenshell_ifcapi_constraint_remove_constraint(file._handle, constraint._handle)
+    _capi.constraint_remove_constraint(file._handle, constraint._handle)

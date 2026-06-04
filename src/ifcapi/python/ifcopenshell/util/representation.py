@@ -76,7 +76,7 @@ def get_context(
     :param subcontext: A ContextIdentifier string, or any if left blank.
     :param target_view: A TargetView string, or any if left blank.
     """
-    handle = _capi.ifcopenshell_ifcapi_representation_get_context(
+    handle = _capi.representation_get_context(
         ifc_file._handle,
         context,
         subcontext,
@@ -150,7 +150,7 @@ def get_representation(
     """
     context_handle = context._handle if isinstance(context, ifcopenshell.entity_instance) else None
     context_type = None if isinstance(context, ifcopenshell.entity_instance) else context
-    handle = _capi.ifcopenshell_ifcapi_representation_get_product_representation(
+    handle = _capi.representation_get_product_representation(
         element._handle,
         context_handle,
         context_type,
@@ -317,7 +317,7 @@ def resolve_representation(representation: ifcopenshell.entity_instance) -> ifco
     :param representation: IfcRepresentation
     :return: Representation resolved from mappings
     """
-    handle = _capi.ifcopenshell_ifcapi_representation_resolve(representation._handle)
+    handle = _capi.representation_resolve(representation._handle)
     return _wrap_handle(representation.file, handle)
 
 
@@ -347,7 +347,7 @@ def resolve_base_items(
     representation: ifcopenshell.entity_instance,
 ) -> Generator[ifcopenshell.entity_instance, None, None]:
     """Resolve representation to it's base items resolving mapped items and boolean results to it's operands."""
-    handles = _capi.ifcopenshell_ifcapi_representation_resolve_base_items(representation._handle)
+    handles = _capi.representation_resolve_base_items(representation._handle)
     yield from _wrap_list(representation.file, handles)
 
 
@@ -366,7 +366,7 @@ def get_prioritised_contexts(ifc_file: ifcopenshell.file) -> list[ifcopenshell.e
     :return: A list of IfcGeometricRepresentationContext (or SubContext) from
         high priority to low priority.
     """
-    handles = _capi.ifcopenshell_ifcapi_representation_get_prioritised_contexts(ifc_file._handle)
+    handles = _capi.representation_get_prioritised_contexts(ifc_file._handle)
     return _wrap_list(ifc_file, handles)
 
 

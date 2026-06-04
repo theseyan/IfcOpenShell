@@ -62,7 +62,7 @@ def add_arbitrary_profile_with_voids(
     """
     outer = [list(v) for v in outer_profile]
     inners = [[list(v) for v in inner] for inner in inner_profiles]
-    handle = _capi.ifcopenshell_ifcapi_profile_add_arbitrary_profile_with_voids(
+    handle = _capi.profile_add_arbitrary_profile_with_voids(
         file._handle, outer, inners, name, name is not None
     )
     if handle:

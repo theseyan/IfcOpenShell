@@ -17,7 +17,7 @@ def edit_pset(file, pset, name=None, properties=None, pset_template=None, should
     props_handle = build_props(properties or {})
     template_handle = pset_template._handle if pset_template is not None else None
     try:
-        ok = _capi.ifcopenshell_ifcapi_pset_edit_pset(
+        ok = _capi.pset_edit_pset(
             file._handle,
             pset._handle,
             name,

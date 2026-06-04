@@ -57,7 +57,7 @@ def add_library(file: ifcopenshell.file, name: str) -> ifcopenshell.entity_insta
 
         ifcopenshell.api.library.add_library(model, name="Brickschema")
     """
-    handle = _capi.ifcopenshell_ifcapi_library_add_library(file._handle, name)
+    handle = _capi.library_add_library(file._handle, name)
     if handle:
         return ifcopenshell.entity_instance(file, handle)
     raise RuntimeError(_capi.last_error_message() or "Failed to add library")

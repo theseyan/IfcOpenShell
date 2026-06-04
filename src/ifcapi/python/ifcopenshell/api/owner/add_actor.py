@@ -67,7 +67,7 @@ def add_actor(
     """
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
-    handle = _capi.ifcopenshell_ifcapi_owner_add_actor(
+    handle = _capi.owner_add_actor(
         file._handle,
         actor._handle,
         ifc_class or "IfcActor",

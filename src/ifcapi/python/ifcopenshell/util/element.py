@@ -1335,7 +1335,7 @@ def get_referenced_elements(
 def replace_element(
     element: ifcopenshell.entity_instance, replacement: ifcopenshell.entity_instance
 ) -> None:
-    _capi.ifcopenshell_ifcapi_element_replace_element(
+    _capi.element_replace_element(
         element._handle, replacement._handle
     )
 
@@ -1370,7 +1370,7 @@ def remove_deep(
         ifc_file = element.file
     ifc_file.batch()
     try:
-        _capi.ifcopenshell_ifcapi_element_remove_deep(element._handle)
+        _capi.element_remove_deep(element._handle)
     finally:
         ifc_file.unbatch()
 
@@ -1527,7 +1527,7 @@ def remove_deep2(
     also_consider_list = _instance_list_arg(also_consider)
     do_not_delete_list = _instance_list_arg(tuple(do_not_delete))
     try:
-        _capi.ifcopenshell_ifcapi_entity_remove_deep2_ex(
+        _capi.entity_remove_deep2_ex(
             element._handle, also_consider_list, do_not_delete_list
         )
     finally:

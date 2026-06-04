@@ -39,4 +39,4 @@ def remove_pset_template(file: ifcopenshell.file, pset_template: ifcopenshell.en
         # Let's remove the template.
         ifcopenshell.api.pset_template.remove_pset_template(model, pset_template=template)
     """
-    _capi.ifcopenshell_ifcapi_pset_template_remove_pset_template(pset_template._handle)
+    _capi.pset_template_remove_pset_template(pset_template._handle)

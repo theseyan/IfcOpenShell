@@ -80,7 +80,7 @@ def add_material(
         # "Style" has been specified.
         ifcopenshell.api.material.assign_material(model, products=[concrete_bench], material=concrete)
     """
-    handle = _capi.ifcopenshell_ifcapi_material_add_material(
+    handle = _capi.material_add_material(
         file._handle,
         name,
         category,

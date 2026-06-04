@@ -84,7 +84,7 @@ def add_prop_template(
             name="ChemicalType", description="The class of chemical spillage.",
             primary_measure_type="IfcLabel")
     """
-    handle = _capi.ifcopenshell_ifcapi_pset_template_add_prop_template(
+    handle = _capi.pset_template_add_prop_template(
         file._handle,
         pset_template._handle,
         name,

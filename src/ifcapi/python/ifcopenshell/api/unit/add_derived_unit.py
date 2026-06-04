@@ -68,7 +68,7 @@ def add_derived_unit(
     named_units = list(attributes)
     units = [e._handle for e in named_units]
     exponents = [attributes[named_unit] for named_unit in named_units]
-    handle = _capi.ifcopenshell_ifcapi_unit_add_derived_unit(
+    handle = _capi.unit_add_derived_unit(
         file._handle, unit_type, userdefinedtype, units, exponents
     )
     if handle:

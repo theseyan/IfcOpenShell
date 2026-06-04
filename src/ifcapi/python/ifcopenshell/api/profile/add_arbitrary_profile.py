@@ -52,7 +52,7 @@ def add_arbitrary_profile(
             name="SK01 Profile")
     """
     outer = [list(v) for v in profile]
-    handle = _capi.ifcopenshell_ifcapi_profile_add_arbitrary_profile(
+    handle = _capi.profile_add_arbitrary_profile(
         file._handle, outer, name, name is not None
     )
     if handle:

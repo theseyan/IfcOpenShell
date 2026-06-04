@@ -64,4 +64,4 @@ def assign_layer(
         ifcopenshell.api.layer.assign_layer(model, items=[representation.Items[0]], layer=layer)
     """
     item_list = [e._handle for e in items]
-    _capi.ifcopenshell_ifcapi_layer_assign_layer(file._handle, item_list, layer._handle)
+    _capi.layer_assign_layer(file._handle, item_list, layer._handle)

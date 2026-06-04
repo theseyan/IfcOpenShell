@@ -15,7 +15,7 @@ def add_pset(file, product, name, ifc2x3_subclass=None):
     application = ifcopenshell.api.owner.settings.get_application(file)
     props_handle = build_props({})
     try:
-        handle = _capi.ifcopenshell_ifcapi_pset_add_pset(
+        handle = _capi.pset_add_pset(
             file._handle,
             product._handle,
             name,

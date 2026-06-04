@@ -54,7 +54,7 @@ def unassign_document(
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
     product_list = [e._handle for e in products]
-    _capi.ifcopenshell_ifcapi_document_unassign_document(
+    _capi.document_unassign_document(
         file._handle,
         product_list,
         document._handle,

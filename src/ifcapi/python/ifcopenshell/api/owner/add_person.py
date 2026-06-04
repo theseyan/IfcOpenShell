@@ -44,7 +44,7 @@ def add_person(
         ifcopenshell.api.owner.add_person(model,
             identification="bobthebuilder", family_name="Thebuilder", given_name="Bob")
     """
-    handle = _capi.ifcopenshell_ifcapi_owner_add_person(file._handle, identification, family_name, given_name)
+    handle = _capi.owner_add_person(file._handle, identification, family_name, given_name)
     if handle:
         return ifcopenshell.entity_instance(file, handle)
     raise RuntimeError(_capi.last_error_message() or "Failed to add person")

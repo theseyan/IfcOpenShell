@@ -42,7 +42,7 @@ def add_layer(file: ifcopenshell.file, name: str = "Unnamed") -> ifcopenshell.en
 
         ifcopenshell.api.layer.add_layer(model, name="AI-WALL-FULL-DIMS-N")
     """
-    handle = _capi.ifcopenshell_ifcapi_layer_add_layer(file._handle, name)
+    handle = _capi.layer_add_layer(file._handle, name)
     if handle:
         return ifcopenshell.entity_instance(file, handle)
     raise RuntimeError(_capi.last_error_message() or "Failed to add layer")

@@ -58,7 +58,7 @@ def add_style(
         # Create a new surface style
         style = ifcopenshell.api.style.add_style(model)
     """
-    handle = _capi.ifcopenshell_ifcapi_style_add_style(
+    handle = _capi.style_add_style(
         file._handle,
         name,
         ifc_class,

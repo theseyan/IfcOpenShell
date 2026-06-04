@@ -61,7 +61,7 @@ def assign_pset(
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
     product_list = [e._handle for e in products]
-    handle = _capi.ifcopenshell_ifcapi_pset_assign_pset(
+    handle = _capi.pset_assign_pset(
         file._handle,
         product_list,
         pset._handle,

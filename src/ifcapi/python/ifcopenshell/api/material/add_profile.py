@@ -92,7 +92,7 @@ def add_profile(
         # Great! Let's assign our material set to our beam type.
         ifcopenshell.api.material.assign_material(model, products=[beam_type], material=material_set)
     """
-    handle = _capi.ifcopenshell_ifcapi_material_add_profile(
+    handle = _capi.material_add_profile(
         file._handle,
         profile_set._handle,
         material._handle if material is not None else None,

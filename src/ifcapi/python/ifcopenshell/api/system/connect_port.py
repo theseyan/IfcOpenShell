@@ -96,7 +96,7 @@ def connect_port(
     """
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
-    _capi.ifcopenshell_ifcapi_system_connect_port(
+    _capi.system_connect_port(
         file._handle,
         port1._handle,
         port2._handle,

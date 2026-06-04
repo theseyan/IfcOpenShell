@@ -60,7 +60,7 @@ def assign_reference(
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
     product_list = [e._handle for e in products]
-    handle = _capi.ifcopenshell_ifcapi_library_assign_reference(
+    handle = _capi.library_assign_reference(
         file._handle,
         product_list,
         reference._handle,

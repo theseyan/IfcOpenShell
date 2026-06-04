@@ -42,7 +42,7 @@ def add_objective(file: ifcopenshell.file) -> ifcopenshell.entity_instance:
         # Note: the objective right now is purely qualitative and for
         # information purposes. You may wish to add quantiative metrics.
     """
-    handle = _capi.ifcopenshell_ifcapi_constraint_add_objective(file._handle)
+    handle = _capi.constraint_add_objective(file._handle)
     if handle:
         return ifcopenshell.entity_instance(file, handle)
     raise RuntimeError(_capi.last_error_message() or "Failed to add objective")

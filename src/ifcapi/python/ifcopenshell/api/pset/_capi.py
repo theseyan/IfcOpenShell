@@ -18,7 +18,7 @@ def _call(fn_name: str, *args):
 
 
 def _new_props():
-    return _capi.ifcopenshell_ifcapi_pset_props_new()
+    return _capi.pset_props_new()
 
 
 def _add_entry(props, key, value):

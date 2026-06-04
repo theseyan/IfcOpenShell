@@ -39,7 +39,7 @@ def add_metric(file: ifcopenshell.file, objective: ifcopenshell.entity_instance)
         metric = ifcopenshell.api.constraint.add_metric(model,
             objective=objective)
     """
-    handle = _capi.ifcopenshell_ifcapi_constraint_add_metric(file._handle, objective._handle)
+    handle = _capi.constraint_add_metric(file._handle, objective._handle)
     if handle:
         return ifcopenshell.entity_instance(file, handle)
     raise RuntimeError(_capi.last_error_message() or "Failed to add metric")

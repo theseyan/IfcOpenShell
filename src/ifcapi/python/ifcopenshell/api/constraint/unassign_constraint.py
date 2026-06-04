@@ -38,7 +38,7 @@ def unassign_constraint(
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
     product_list = [e._handle for e in products]
-    _capi.ifcopenshell_ifcapi_constraint_unassign_constraint(
+    _capi.constraint_unassign_constraint(
         file._handle,
         product_list,
         constraint._handle,

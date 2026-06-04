@@ -43,7 +43,7 @@ def add_organisation(
         organisation = ifcopenshell.api.owner.add_organisation(model,
             identification="AWB", name="Architects Without Ballpens")
     """
-    handle = _capi.ifcopenshell_ifcapi_owner_add_organisation(file._handle, identification, name)
+    handle = _capi.owner_add_organisation(file._handle, identification, name)
     if handle:
         return ifcopenshell.entity_instance(file, handle)
     raise RuntimeError(_capi.last_error_message() or "Failed to add organisation")

@@ -47,4 +47,4 @@ def unassign_pset(
 
     """
     product_list = [e._handle for e in products]
-    _capi.ifcopenshell_ifcapi_pset_unassign_pset(file._handle, product_list, pset._handle)
+    _capi.pset_unassign_pset(file._handle, product_list, pset._handle)

@@ -55,7 +55,7 @@ def add_context_dependent_unit(
         # Boxes of things
         ifcopenshell.api.unit.add_context_dependent_unit(model, name="BOXES")
     """
-    handle = _capi.ifcopenshell_ifcapi_unit_add_context_dependent_unit(
+    handle = _capi.unit_add_context_dependent_unit(
         file._handle, unit_type, name, list(dimensions)
     )
     if handle:

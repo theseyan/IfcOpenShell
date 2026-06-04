@@ -58,7 +58,7 @@ def unassign_reference(
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
     product_list = [e._handle for e in products]
-    _capi.ifcopenshell_ifcapi_library_unassign_reference(
+    _capi.library_unassign_reference(
         file._handle,
         reference._handle,
         product_list,

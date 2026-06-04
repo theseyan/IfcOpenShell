@@ -57,7 +57,7 @@ def add_si_unit(
         # Make it our default units, if we are doing a metric building
         ifcopenshell.api.unit.assign_unit(model, units=[length, area])
     """
-    handle = _capi.ifcopenshell_ifcapi_unit_add_si_unit(file._handle, unit_type, prefix)
+    handle = _capi.unit_add_si_unit(file._handle, unit_type, prefix)
     if handle:
         return ifcopenshell.entity_instance(file, handle)
     raise RuntimeError(_capi.last_error_message() or "Failed to add SI unit")

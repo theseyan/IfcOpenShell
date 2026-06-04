@@ -30,7 +30,7 @@ def get_references(element: ifcopenshell.entity_instance, should_inherit=True) -
         from the type. Classifications can be overriden per system.
     :return: A set of IfcClassificationReference
     """
-    out = _capi.ifcopenshell_ifcapi_classification_get_references(element._handle, bool(should_inherit))
+    out = _capi.classification_get_references(element._handle, bool(should_inherit))
     return set(ifcopenshell._take_instance_list(element.file, out))
 
 

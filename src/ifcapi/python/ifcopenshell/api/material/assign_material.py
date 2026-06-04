@@ -145,7 +145,7 @@ def assign_material(
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
     product_list = [e._handle for e in products]
-    rels = _capi.ifcopenshell_ifcapi_material_assign_material(
+    rels = _capi.material_assign_material(
         file._handle,
         product_list,
         type,

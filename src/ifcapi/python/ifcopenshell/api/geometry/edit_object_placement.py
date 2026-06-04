@@ -28,7 +28,7 @@ def edit_object_placement(file, product=None, matrix=None, is_si=True, should_tr
         arr = np.ascontiguousarray(np.asarray(matrix, dtype=np.float64).reshape(4, 4))
         matrix_values = arr.reshape(16).tolist()
 
-    handle = _capi.ifcopenshell_ifcapi_geometry_edit_object_placement(
+    handle = _capi.geometry_edit_object_placement(
         file._handle,
         product._handle,
         matrix_values,

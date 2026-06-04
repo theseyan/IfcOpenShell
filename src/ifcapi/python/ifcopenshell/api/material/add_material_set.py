@@ -112,7 +112,7 @@ def add_material_set(
         # Great! Let's assign our material set to our wall type.
         ifcopenshell.api.material.assign_material(model, products=[wall_type], material=material_set)
     """
-    handle = _capi.ifcopenshell_ifcapi_material_add_material_set(file._handle, name, set_type)
+    handle = _capi.material_add_material_set(file._handle, name, set_type)
     if handle:
         return ifcopenshell.entity_instance(file, handle)
     raise RuntimeError(_capi.last_error_message() or "Failed to add material set")

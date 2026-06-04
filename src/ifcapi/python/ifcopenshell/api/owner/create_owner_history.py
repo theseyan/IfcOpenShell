@@ -103,7 +103,7 @@ def create_owner_history(file: ifcopenshell.file) -> Union[ifcopenshell.entity_i
     application = ifcopenshell.api.owner.settings.get_application(file)
     if file.schema != "IFC2X3" and not application:
         return
-    handle = _capi.ifcopenshell_ifcapi_owner_create_owner_history(
+    handle = _capi.owner_create_owner_history(
         file._handle,
         user._handle if user is not None else None,
         application._handle if application is not None else None,

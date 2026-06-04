@@ -46,4 +46,4 @@ def unassign_unit(file: ifcopenshell.file, units: Optional[list[ifcopenshell.ent
         ifcopenshell.api.unit.unassign_unit(model, units=[area])
     """
     unit_list = [e._handle for e in (units or [])]
-    _capi.ifcopenshell_ifcapi_unit_unassign_unit(file._handle, unit_list)
+    _capi.unit_unassign_unit(file._handle, unit_list)

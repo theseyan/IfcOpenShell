@@ -64,7 +64,7 @@ def update_owner_history(
     application = ifcopenshell.api.owner.settings.get_application(file)
     if not application:
         return
-    handle = _capi.ifcopenshell_ifcapi_owner_update_owner_history(
+    handle = _capi.owner_update_owner_history(
         file._handle,
         element._handle,
         user._handle,

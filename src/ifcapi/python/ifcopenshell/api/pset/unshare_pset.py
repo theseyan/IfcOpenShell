@@ -58,7 +58,7 @@ def unshare_pset(
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
     product_list = [e._handle for e in products]
-    out = _capi.ifcopenshell_ifcapi_pset_unshare_pset(
+    out = _capi.pset_unshare_pset(
         file._handle,
         product_list,
         pset._handle,

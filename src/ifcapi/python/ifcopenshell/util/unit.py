@@ -227,53 +227,53 @@ MEASURE_CLASS = Literal[
 def get_prefix(text):
     if not text:
         return None
-    return _capi.ifcopenshell_ifcapi_unit_get_prefix(text) or None
+    return _capi.unit_get_prefix(text) or None
 
 
 def get_prefix_multiplier(text):
-    return _capi.ifcopenshell_ifcapi_unit_get_prefix_multiplier(text)
+    return _capi.unit_get_prefix_multiplier(text)
 
 
 def get_unit_name(text: str) -> Union[str, None]:
     """Get unit name from str, if unit is in SI."""
     if text is None:
         return None
-    return _capi.ifcopenshell_ifcapi_unit_get_unit_name(text) or None
+    return _capi.unit_get_unit_name(text) or None
 
 
 def get_unit_name_universal(text: str) -> Union[str, None]:
     if text is None:
         return None
-    return _capi.ifcopenshell_ifcapi_unit_get_unit_name_universal(text) or None
+    return _capi.unit_get_unit_name_universal(text) or None
 
 
 def get_si_dimensions(name):
-    return tuple(_capi.ifcopenshell_ifcapi_unit_get_si_dimensions(name))
+    return tuple(_capi.unit_get_si_dimensions(name))
 
 
 def get_named_dimensions(name):
-    return tuple(_capi.ifcopenshell_ifcapi_unit_get_named_dimensions(name))
+    return tuple(_capi.unit_get_named_dimensions(name))
 
 
 def get_unit_measure_class(unit_type: str) -> MEASURE_CLASS:
-    return _capi.ifcopenshell_ifcapi_unit_get_measure_class(unit_type)
+    return _capi.unit_get_measure_class(unit_type)
 
 
 def get_measure_unit_type(measure_class: MEASURE_CLASS) -> str:
-    return _capi.ifcopenshell_ifcapi_unit_get_measure_unit_type(measure_class)
+    return _capi.unit_get_measure_unit_type(measure_class)
 
 
 def get_symbol_measure_class(symbol: Optional[str] = None) -> MEASURE_CLASS:
-    return _capi.ifcopenshell_ifcapi_unit_get_symbol_measure_class(symbol or "")
+    return _capi.unit_get_symbol_measure_class(symbol or "")
 
 
 def get_symbol_quantity_class(symbol: Optional[str] = None) -> QUANTITY_CLASS:
-    return _capi.ifcopenshell_ifcapi_unit_get_symbol_quantity_class(symbol or "")
+    return _capi.unit_get_symbol_quantity_class(symbol or "")
 
 
 def convert(value: float, from_prefix: Optional[str], from_unit: str,
             to_prefix: Optional[str], to_unit: str) -> float:
-    return _capi.ifcopenshell_ifcapi_unit_convert(
+    return _capi.unit_convert(
         float(value),
         from_prefix or "",
         from_unit,
@@ -291,7 +291,7 @@ def format_length(
     input_unit: Literal["foot", "inch"] = "foot",
     output_unit: Literal["foot", "inch"] = "foot",
 ) -> str:
-    result = _capi.ifcopenshell_ifcapi_unit_format_length(
+    result = _capi.unit_format_length(
         float(value),
         float(precision),
         int(decimal_places),
@@ -310,7 +310,7 @@ def format_length(
 def get_unit_assignment(ifc_file) -> Union[entity_instance, None]:
     if ifc_file is None:
         return None
-    handle = _capi.ifcopenshell_ifcapi_unit_get_unit_assignment(ifc_file._handle)
+    handle = _capi.unit_get_unit_assignment(ifc_file._handle)
     return entity_instance(ifc_file, handle) if handle else None
 
 
@@ -341,24 +341,24 @@ def get_project_unit(ifc_file, unit_type: str, use_cache: bool = False) -> Union
         cache_units(ifc_file)
     if units := ifc_file.units:
         return units.get(unit_type, None)
-    handle = _capi.ifcopenshell_ifcapi_unit_get_project_unit(ifc_file._handle, unit_type)
+    handle = _capi.unit_get_project_unit(ifc_file._handle, unit_type)
     return entity_instance(ifc_file, handle) if handle else None
 
 
 def get_full_unit_name(unit) -> str:
     if unit is None:
         return ""
-    return _capi.ifcopenshell_ifcapi_unit_get_full_unit_name(unit._handle) or ""
+    return _capi.unit_get_full_unit_name(unit._handle) or ""
 
 
 def get_unit_symbol(unit) -> str:
     if unit is None:
         return ""
-    return _capi.ifcopenshell_ifcapi_unit_get_unit_symbol(unit._handle) or ""
+    return _capi.unit_get_unit_symbol(unit._handle) or ""
 
 
 def convert_unit(value: float, from_unit, to_unit) -> float:
-    return _capi.ifcopenshell_ifcapi_unit_convert_unit(
+    return _capi.unit_convert_unit(
         float(value),
         from_unit._handle if from_unit is not None else None,
         to_unit._handle if to_unit is not None else None,
@@ -370,10 +370,10 @@ def get_property_unit(prop, ifc_file, use_cache: bool = False) -> Union[entity_i
     if prop is None:
         return None
     target = ifc_file if ifc_file is not None else prop.file
-    handle = _capi.ifcopenshell_ifcapi_unit_resolve_property_unit(prop._handle)
+    handle = _capi.unit_resolve_property_unit(prop._handle)
     if handle:
         return entity_instance(target, handle)
-    measure_class = _capi.ifcopenshell_ifcapi_unit_resolve_property_measure_class(prop._handle)
+    measure_class = _capi.unit_resolve_property_measure_class(prop._handle)
     if not measure_class:
         return None
     unit_type = get_measure_unit_type(measure_class)
@@ -399,12 +399,12 @@ def get_property_table_unit(prop, ifc_file, use_cache: bool = False) -> dict:
 
     return {
         "DefiningUnit": _resolve(
-            _capi.ifcopenshell_ifcapi_unit_resolve_property_table_defining_unit,
-            _capi.ifcopenshell_ifcapi_unit_resolve_property_table_defining_measure_class,
+            _capi.unit_resolve_property_table_defining_unit,
+            _capi.unit_resolve_property_table_defining_measure_class,
         ),
         "DefinedUnit": _resolve(
-            _capi.ifcopenshell_ifcapi_unit_resolve_property_table_defined_unit,
-            _capi.ifcopenshell_ifcapi_unit_resolve_property_table_defined_measure_class,
+            _capi.unit_resolve_property_table_defined_unit,
+            _capi.unit_resolve_property_table_defined_measure_class,
         ),
     }
 
@@ -419,7 +419,7 @@ def calculate_unit_scale(ifc_file, unit_type: str = "LENGTHUNIT") -> float:
         .enumeration_items()
     ):
         raise ValueError(f"Unit type {unit_type!r} does not name a valid type")
-    return _capi.ifcopenshell_ifcapi_unit_calculate_unit_scale(ifc_file._handle, unit_type)
+    return _capi.unit_calculate_unit_scale(ifc_file._handle, unit_type)
 
 
 # ---------------------------------------------------------------------------

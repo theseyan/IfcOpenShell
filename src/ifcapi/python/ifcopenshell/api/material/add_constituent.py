@@ -87,7 +87,7 @@ def add_constituent(
         # aluminium and glass.
         ifcopenshell.api.material.assign_material(model, products=[window_type], material=material_set)
     """
-    handle = _capi.ifcopenshell_ifcapi_material_add_constituent(
+    handle = _capi.material_add_constituent(
         file._handle,
         constituent_set._handle,
         material._handle,

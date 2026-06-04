@@ -80,7 +80,7 @@ def map_type_representations(
         # ifcopenshell.api.type.map_type_representations(model,
         #     related_object=furniture, relating_type=furniture_type)
     """
-    _capi.ifcopenshell_ifcapi_type_map_type_representations(
+    _capi.type_map_type_representations(
         file._handle,
         related_object._handle,
         relating_type._handle,

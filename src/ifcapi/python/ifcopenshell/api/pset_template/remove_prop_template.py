@@ -43,4 +43,4 @@ def remove_prop_template(file: ifcopenshell.file, prop_template: ifcopenshell.en
         # Let's remove the second one.
         ifcopenshell.api.pset_template.remove_prop_template(model, prop_template=prop2)
     """
-    _capi.ifcopenshell_ifcapi_pset_template_remove_prop_template(prop_template._handle)
+    _capi.pset_template_remove_prop_template(prop_template._handle)

@@ -34,13 +34,13 @@ def _matrix_from_values(values: Optional[Iterable[float]], *, fallback: str) -> 
 
 def a2p(o: Iterable[float], z: Iterable[float], x: Iterable[float]) -> MatrixType:
     """Build a 4x4 transformation matrix from origin, Z axis, and X axis."""
-    values = _capi.ifcopenshell_ifcapi_placement_a2p(list(o), list(z), list(x))
+    values = _capi.placement_a2p(list(o), list(z), list(x))
     return _matrix_from_values(values, fallback="a2p failed to compute a 4x4 placement matrix")
 
 
 def get_axis2placement(placement: ifcopenshell.entity_instance) -> MatrixType:
     """Parse an IfcAxis2Placement (2D, 3D, Linear, or 1D) into a 4x4 matrix."""
-    matrix_values = _capi.ifcopenshell_ifcapi_placement_get_axis2placement(placement._handle)
+    matrix_values = _capi.placement_get_axis2placement(placement._handle)
     if matrix_values and len(matrix_values) == 16:
         return _matrix_from_values(matrix_values, fallback="Failed to compute axis placement matrix")
     # Fallback for IfcAxis2PlacementLinear with IfcPointByDistanceExpression.
@@ -82,7 +82,7 @@ def get_local_placement(placement: Optional[ifcopenshell.entity_instance] = None
 
 def get_cartesiantransformationoperator3d(inst: ifcopenshell.entity_instance) -> MatrixType:
     """Parse an IfcCartesianTransformationOperator3D into a 4x4 matrix."""
-    values = _capi.ifcopenshell_ifcapi_placement_get_cartesian_xform_3d(inst._handle)
+    values = _capi.placement_get_cartesian_xform_3d(inst._handle)
     return _matrix_from_values(values, fallback="get_cartesiantransformationoperator3d failed to compute a 4x4 matrix")
 
 
@@ -91,7 +91,7 @@ def get_mappeditem_transformation(item: ifcopenshell.entity_instance) -> Optiona
 
     Returns ``None`` if the mapping target is 2D (not yet supported natively).
     """
-    matrix_values = _capi.ifcopenshell_ifcapi_placement_get_mappeditem_xform(item._handle)
+    matrix_values = _capi.placement_get_mappeditem_xform(item._handle)
     if not matrix_values or len(matrix_values) != 16:
         return None
     return _matrix_from_values(matrix_values, fallback="Failed to compute mapped item transformation matrix")
@@ -99,7 +99,7 @@ def get_mappeditem_transformation(item: ifcopenshell.entity_instance) -> Optiona
 
 def get_storey_elevation(storey: ifcopenshell.entity_instance) -> float:
     """Return the Z elevation of an IfcBuildingStorey."""
-    result = _capi.ifcopenshell_ifcapi_placement_get_storey_elevation(storey._handle)
+    result = _capi.placement_get_storey_elevation(storey._handle)
     return float(result if result is not None else 0.0)
 
 
@@ -107,5 +107,5 @@ def rotation(angle: float, axis: Literal["X", "Y", "Z"], is_degrees: bool = True
     """Build a 4x4 rotation matrix around a principal axis."""
     theta = float(np.radians(angle) if is_degrees else angle)
     axis_byte = axis.encode("ascii")[:1] if isinstance(axis, str) else bytes([axis])[:1]
-    values = _capi.ifcopenshell_ifcapi_placement_rotation(theta, axis_byte)
+    values = _capi.placement_rotation(theta, axis_byte)
     return _matrix_from_values(values, fallback="rotation failed to compute a 4x4 placement matrix")

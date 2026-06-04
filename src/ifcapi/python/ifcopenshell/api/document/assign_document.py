@@ -65,7 +65,7 @@ def assign_document(
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
     product_list = [e._handle for e in products]
-    handle = _capi.ifcopenshell_ifcapi_document_assign_document(
+    handle = _capi.document_assign_document(
         file._handle,
         product_list,
         document._handle,

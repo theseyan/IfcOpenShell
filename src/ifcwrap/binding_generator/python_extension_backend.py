@@ -72,6 +72,13 @@ def _base_pointer_type(c_type: str) -> tuple[str, int]:
     return normalized.removeprefix("const ").strip(), pointer_depth
 
 
+def _pointee_type(c_type: str) -> str:
+    normalized = _normalize_c_type(c_type)
+    while normalized.endswith("*"):
+        normalized = normalized[:-1].strip()
+    return normalized
+
+
 def _py_type_name(c_type: str) -> str:
     parts = _snake_name(c_type).split("_")
     return "IfcOpenshell" + "".join(part.capitalize() for part in parts if part)
@@ -178,8 +185,8 @@ def _list_leaf_type(c_type: str) -> str:
         current = prev
 
 
-def _is_sequence(struct: HostStructMetadata) -> bool:
-    return struct.kind in {"sequence", "handle_sequence"}
+def _is_sequence(struct: HostStructMetadata | None) -> bool:
+    return struct is not None and struct.kind in {"sequence", "handle_sequence"}
 
 
 def _render_sequence_converter(struct: HostStructMetadata) -> str:
@@ -231,7 +238,7 @@ static PyObject *convert_{name}({c_type} *value, int owned) {{
 """
 
 
-def _render_result_struct_converter(struct: HostStructMetadata, handles: dict[str, HostStructMetadata]) -> str:
+def _render_result_struct_converter(struct: HostStructMetadata, handles: dict[str, HostStructMetadata], owned: int = 1) -> str:
     assignments = []
     for index, field in enumerate(struct.fields):
         assignments.append(f"    item = {_convert_expr(field.c_type, f'value->{field.name}', handles, owned=owned)};")
@@ -443,7 +450,7 @@ def _param_parse(param: HostParamMetadata, handles: dict[str, HostStructMetadata
         decl, fmt, _ = _SCALAR_DECLS[c_type]
         declarations.append(f"    {decl} arg_{name} = 0;")
         parse_args.append(f"&arg_{name}")
-        call_args.append(f"({c_type})arg_{name}" if c_type == "size_t" else f"arg_{name}")
+        call_args.append(f"({c_type})arg_{name}" if c_type in {"ifcopenshell_logical_t", "size_t"} else f"arg_{name}")
     elif pointer_depth == 1 and base in {h.c_type for h in handles.values()}:
         py_name = _py_type_name(base)
         declarations.append(f"    PyObject *arg_{name}_obj = NULL;")
@@ -524,11 +531,11 @@ def _render_function_wrapper(function: HostFunctionMetadata, metadata: HostBindi
         for i, op in enumerate(out_params):
             out_base, out_depth = _base_pointer_type(op.c_type)
             if out_depth == 1:
-                out_decls.append(f"    {out_base} result_{i} = {{0}};")
+                out_decls.append(f"    {_pointee_type(op.c_type)} result_{i} = {{0}};")
                 call_args.append(f"&result_{i}")
                 result_items.append(_convert_expr(out_base, f"result_{i}", handles, owned=owned))
             elif out_depth == 2:
-                out_decls.append(f"    {out_base} *result_{i} = NULL;")
+                out_decls.append(f"    {_pointee_type(op.c_type)} *result_{i} = NULL;")
                 call_args.append(f"&result_{i}")
                 result_items.append(_convert_expr(out_base + "*", f"result_{i}", handles, owned=owned))
             else:
@@ -541,11 +548,11 @@ def _render_function_wrapper(function: HostFunctionMetadata, metadata: HostBindi
     elif out_param is not None:
         out_base, out_depth = _base_pointer_type(out_param.c_type)
         if out_depth == 1:
-            out_decl = f"    {out_base} result = {{0}};"
+            out_decl = f"    {_pointee_type(out_param.c_type)} result = {{0}};"
             call_args.append("&result")
             result_assign = f"    __py_result = {_convert_expr(out_base, 'result', handles, owned=owned)};"
         elif out_depth == 2:
-            out_decl = f"    {out_base} *result = NULL;"
+            out_decl = f"    {_pointee_type(out_param.c_type)} *result = NULL;"
             call_args.append("&result")
             result_assign = f"    __py_result = {_convert_expr(out_base + '*', 'result', handles, owned=owned)};"
         else:
@@ -563,7 +570,11 @@ def _render_function_wrapper(function: HostFunctionMetadata, metadata: HostBindi
         if param.role == "out_result":
             continue
         base, pointer_depth = _base_pointer_type(param.c_type)
-        if pointer_depth == 1 and re.fullmatch(r"ifcopenshell_.*_list_t", base):
+        if (
+            pointer_depth == 1
+            and re.fullmatch(r"ifcopenshell_.*_list_t", base)
+            and f"    {base} arg_{param.name} = {{0}};" in declarations
+        ):
             input_make.append(
                 f"    if (!make_input_{_snake_name(base)}(arg_{param.name}_obj, &arg_{param.name})) {{\n"
                 f"        goto __cleanup;\n"
@@ -578,12 +589,13 @@ def _render_function_wrapper(function: HostFunctionMetadata, metadata: HostBindi
     return f"""\
 static PyObject *{_wrapper_name(function.c_name)}(PyObject *self, PyObject *args) {{
     PyObject *__py_result = NULL;
+    bool ok = false;
 {chr(10).join(declarations)}
 {out_decl}
 {parse_block}{conversion_block}
 {input_make_block}
     {metadata.error_functions['clear_error']}();
-    bool ok = {call};
+    ok = {call};
     if (!ok) {{
         raise_last_error("{function.c_name} failed");
         goto __cleanup;

@@ -17,7 +17,7 @@ def edit_qto(file, qto, name=None, properties=None, pset_template=None):
     props_handle = build_props(properties or {})
     template_handle = pset_template._handle if pset_template is not None else None
     try:
-        ok = _capi.ifcopenshell_ifcapi_pset_edit_qto(
+        ok = _capi.pset_edit_qto(
             file._handle,
             qto._handle,
             name,

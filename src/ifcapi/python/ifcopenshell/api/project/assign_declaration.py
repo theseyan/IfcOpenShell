@@ -87,7 +87,7 @@ def assign_declaration(
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
     definition_list = [e._handle for e in definitions]
-    handle = _capi.ifcopenshell_ifcapi_project_assign_declaration(
+    handle = _capi.project_assign_declaration(
         file._handle,
         definition_list,
         relating_context._handle,

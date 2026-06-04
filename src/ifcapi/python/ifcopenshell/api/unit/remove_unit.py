@@ -39,4 +39,4 @@ def remove_unit(file: ifcopenshell.file, unit: ifcopenshell.entity_instance) -> 
         # Yeah maybe not.
         ifcopenshell.api.unit.remove_unit(model, unit=unit)
     """
-    _capi.ifcopenshell_ifcapi_unit_remove_unit(file._handle, unit._handle)
+    _capi.unit_remove_unit(file._handle, unit._handle)

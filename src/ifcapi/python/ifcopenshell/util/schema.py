@@ -172,7 +172,7 @@ def reassign_class(
     if not ifc_file:
         ifc_file = element.file
 
-    handle = _capi.ifcopenshell_ifcapi_schema_reassign_class(
+    handle = _capi.schema_reassign_class(
         ifc_file._handle,
         element._handle,
         new_class,

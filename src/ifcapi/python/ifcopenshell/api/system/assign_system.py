@@ -58,7 +58,7 @@ def assign_system(
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
     product_list = [e._handle for e in products]
-    handle = _capi.ifcopenshell_ifcapi_system_assign_system(
+    handle = _capi.system_assign_system(
         file._handle,
         product_list,
         system._handle,

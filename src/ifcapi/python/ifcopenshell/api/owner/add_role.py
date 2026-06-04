@@ -47,7 +47,7 @@ def add_role(
             identification="AWB", name="Architects Without Ballpens")
         ifcopenshell.api.owner.add_role(model, assigned_object=organisation, role="ARCHITECT")
     """
-    handle = _capi.ifcopenshell_ifcapi_owner_add_role(file._handle, assigned_object._handle, role)
+    handle = _capi.owner_add_role(file._handle, assigned_object._handle, role)
     if handle:
         return ifcopenshell.entity_instance(file, handle)
     raise RuntimeError(_capi.last_error_message() or "Failed to add role")
