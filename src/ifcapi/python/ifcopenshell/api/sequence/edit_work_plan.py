@@ -57,7 +57,7 @@ def edit_work_plan(
     props = pset_capi.build_props(converted_attributes)
     try:
         _capi.call_status(
-            _capi.get_lib().ifcopenshell_ifcapi_sequence_edit_work_plan,
+            "sequence_edit_work_plan",
             _capi.instance_handle(work_plan),
             props,
         )

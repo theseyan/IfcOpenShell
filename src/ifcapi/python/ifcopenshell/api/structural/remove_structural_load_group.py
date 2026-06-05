@@ -26,9 +26,8 @@ def remove_structural_load_group(file: ifcopenshell.file, load_group: ifcopenshe
     :param load_group: The IfcStructuralLoadGroup to remove.
     :return: None
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_structural_remove_structural_load_group,
+        "structural_remove_structural_load_group",
         _capi.file_handle(file),
         _capi.instance_handle(load_group),
     )

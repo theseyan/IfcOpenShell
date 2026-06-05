@@ -59,9 +59,8 @@ def assign_cost_value(
         # Now the cost item has the same rate as the one from the schedule of rate's item
         ifcopenshell.api.cost.assign_cost_value(model, cost_item=item, cost_rate=rate)
     """
-    lib = _capi.get_lib()
     return _capi.call_status(
-        lib.ifcopenshell_ifcapi_cost_assign_cost_value,
+        "cost_assign_cost_value",
         _capi.file_handle(file),
         _capi.instance_handle(cost_item),
         _capi.instance_handle(cost_rate),

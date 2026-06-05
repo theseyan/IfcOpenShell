@@ -49,10 +49,9 @@ def add_structural_boundary_condition(
 
         ifcopenshell.api.structural.add_structural_boundary_condition(model, connection=connection)
     """
-    lib = _capi.get_lib()
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_structural_add_structural_boundary_condition,
+        "structural_add_structural_boundary_condition",
         _capi.file_handle(file),
         _capi.string(name) if name is not None else None,
         name is not None,

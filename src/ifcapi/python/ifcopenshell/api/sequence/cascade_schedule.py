@@ -105,7 +105,7 @@ def cascade_schedule(file: ifcopenshell.file, task: ifcopenshell.entity_instance
     """
     try:
         _capi.call_status(
-            _capi.get_lib().ifcopenshell_ifcapi_sequence_cascade_schedule,
+            "sequence_cascade_schedule",
             _capi.file_handle(file),
             _capi.instance_handle(task),
         )

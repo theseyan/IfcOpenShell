@@ -64,7 +64,7 @@ def edit_work_time(
     props = pset_capi.build_props(converted_attributes)
     try:
         _capi.call_status(
-            _capi.get_lib().ifcopenshell_ifcapi_sequence_edit_work_time,
+            "sequence_edit_work_time",
             _capi.instance_handle(work_time),
             props,
         )

@@ -37,9 +37,8 @@ def remove_cost_schedule(file: ifcopenshell.file, cost_schedule: ifcopenshell.en
         item = ifcopenshell.api.cost.add_cost_item(model, cost_schedule=schedule)
         ifcopenshell.api.cost.remove_cost_schedule(model, cost_schedule=schedule)
     """
-    lib = _capi.get_lib()
     return _capi.call_status(
-        lib.ifcopenshell_ifcapi_cost_remove_cost_schedule,
+        "cost_remove_cost_schedule",
         _capi.file_handle(file),
         _capi.instance_handle(cost_schedule),
     )

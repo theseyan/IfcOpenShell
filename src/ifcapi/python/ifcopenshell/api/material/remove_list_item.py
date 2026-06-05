@@ -52,9 +52,8 @@ def remove_list_item(
         # Let's remove the glass
         ifcopenshell.api.material.remove_list_item(model, material_list=material_set, material_index=1)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_material_remove_list_item,
+        "material_remove_list_item",
         "Failed to remove material list item",
         _capi.file_handle(file),
         _capi.instance_handle(material_list),

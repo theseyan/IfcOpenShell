@@ -67,7 +67,7 @@ def add_work_plan(
     owner_history, user_context, application = _capi.owner_context(file)
     return _capi.call_handle(
         file,
-        _capi.get_lib().ifcopenshell_ifcapi_sequence_add_work_plan,
+        "sequence_add_work_plan",
         _capi.file_handle(file),
         _capi.string(name) if name is not None else None,
         _capi.string(predefined_type),

@@ -54,7 +54,7 @@ def create_baseline(
     """
     owner_history, user, application = _capi.owner_context(file)
     _capi.call_status(
-        _capi.get_lib().ifcopenshell_ifcapi_sequence_create_baseline,
+        "sequence_create_baseline",
         _capi.file_handle(file),
         _capi.instance_handle(work_schedule),
         _capi.string(name) if name is not None else None,

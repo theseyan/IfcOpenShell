@@ -36,9 +36,8 @@ def assign_survey_point(annotation: entity_instance, survey_point: entity_instan
         annotation = ifcopenshell.api.cogo.add_survey_point(file,file.createIfcCartesianPoint(4000.0,3500.0)))
         ifcopenshell.api.cogo.assign_surve_point(annotation,file.createIfcCartesianPoint(4000.0,3500.0,100.0))
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_cogo_assign_survey_point,
+        "cogo_assign_survey_point",
         _capi.instance_handle(annotation),
         _capi.instance_handle(survey_point),
     )

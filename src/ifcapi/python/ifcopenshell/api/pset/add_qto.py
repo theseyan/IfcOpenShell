@@ -5,6 +5,7 @@
 import ifcopenshell
 import ifcopenshell.api.owner.settings
 from ifcopenshell import _ifcopenshell_capi as _capi
+from ifcopenshell._capi_utils import raise_last_error
 
 
 def add_qto(file, product, name):
@@ -22,6 +23,4 @@ def add_qto(file, product, name):
     )
     if handle:
         return ifcopenshell.entity_instance(file, handle)
-    if _capi.last_error_kind() == _capi.IFCOPENSHELL_ERROR_NONE:
-        return None
-    raise RuntimeError(_capi.last_error_message() or f"Failed to add quantity set '{name}'")
+    raise_last_error(f"Failed to add quantity set '{name}'")

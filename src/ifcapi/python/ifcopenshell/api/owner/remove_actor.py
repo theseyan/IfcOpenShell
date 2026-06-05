@@ -42,9 +42,8 @@ def remove_actor(file: ifcopenshell.file, actor: ifcopenshell.entity_instance) -
         # Actually we need ballpens on this project
         ifcopenshell.api.owner.remove_actor(model, actor=actor)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_owner_remove_actor,
+        "owner_remove_actor",
         "Failed to remove actor",
         _capi.file_handle(file),
         _capi.instance_handle(actor),

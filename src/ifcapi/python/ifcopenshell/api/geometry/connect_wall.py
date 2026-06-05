@@ -30,10 +30,9 @@ def connect_wall(
     is_atpath: bool = False,
 ) -> Optional[ifcopenshell.entity_instance]:
     owner_history, user, application = _capi.owner_context(file)
-    lib = _capi.get_lib()
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_geometry_connect_wall,
+        "geometry_connect_wall",
         _capi.file_handle(file),
         _capi.instance_handle(wall1),
         _capi.instance_handle(wall2),

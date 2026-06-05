@@ -35,11 +35,10 @@ def copy_cost_schedule(
         schedule = ifcopenshell.api.cost.add_cost_schedule(model)
         new_schedule = ifcopenshell.api.cost.copy_cost_schedule(schedule)
     """
-    lib = _capi.get_lib()
     owner_history, user, application = _capi.owner_context(file)
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_cost_copy_cost_schedule,
+        "cost_copy_cost_schedule",
         _capi.file_handle(file),
         _capi.instance_handle(cost_schedule),
         _capi.instance_handle(owner_history),

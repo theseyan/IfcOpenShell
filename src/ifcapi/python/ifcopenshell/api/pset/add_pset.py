@@ -5,6 +5,7 @@
 import ifcopenshell
 import ifcopenshell.api.owner.settings
 from ifcopenshell import _ifcopenshell_capi as _capi
+from ifcopenshell._capi_utils import raise_last_error
 from ifcopenshell.api.pset._capi import build_props, free_props
 
 
@@ -28,4 +29,4 @@ def add_pset(file, product, name, ifc2x3_subclass=None):
         free_props(props_handle)
     if handle:
         return ifcopenshell.entity_instance(file, handle)
-    raise RuntimeError(_capi.last_error_message() or f"Failed to add property set '{name}'")
+    raise_last_error(f"Failed to add property set '{name}'")

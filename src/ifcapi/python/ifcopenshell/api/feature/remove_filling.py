@@ -50,9 +50,8 @@ def remove_filling(file: ifcopenshell.file, element: ifcopenshell.entity_instanc
         # Not anymore!
         ifcopenshell.api.feature.remove_filling(model, element=door)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_feature_remove_filling,
+        "feature_remove_filling",
         "Failed to remove filling",
         _capi.file_handle(file),
         _capi.instance_handle(element),

@@ -86,13 +86,11 @@ def reference_structure(
             model, products=[column], relating_structure=storey3
         )
     """
-
-    lib = _relationship_capi.get_lib()
     owner_history, user, application = _relationship_capi.owner_context(file)
     product_list = _relationship_capi.instance_list(products)
     return _relationship_capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_spatial_reference_structure,
+        "spatial_reference_structure",
         _relationship_capi.file_handle(file),
         _relationship_capi.instance_list_ptr(product_list),
         _relationship_capi.instance_handle(relating_structure),

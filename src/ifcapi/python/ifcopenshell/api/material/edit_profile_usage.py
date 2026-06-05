@@ -114,9 +114,8 @@ class Usecase:
 
         props = pset_capi.build_props(attributes)
         try:
-            lib = _capi.get_lib()
             _capi.call_status(
-                lib.ifcopenshell_ifcapi_material_edit_profile_usage,
+                "material_edit_profile_usage",
                 "material_edit_profile_usage failed",
                 _capi.file_handle(self.file),
                 _capi.instance_handle(usage),

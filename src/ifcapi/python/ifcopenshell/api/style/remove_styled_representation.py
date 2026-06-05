@@ -35,9 +35,8 @@ def remove_styled_representation(file: ifcopenshell.file, representation: ifcope
         # Remove a styled representation
         ifcopenshell.api.style.remove_styled_representation(model, representation=representation)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_style_remove_styled_representation,
+        "style_remove_styled_representation",
         "Failed to remove styled representation",
         _capi.file_handle(file),
         _capi.instance_handle(representation),

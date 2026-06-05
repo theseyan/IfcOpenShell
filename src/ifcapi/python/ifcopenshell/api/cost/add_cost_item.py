@@ -55,11 +55,10 @@ def add_cost_item(
         # Alternatively you may add them as subitems
         item2 = ifcopenshell.api.cost.add_cost_item(model, cost_item=item1)
     """
-    lib = _capi.get_lib()
     owner_history, user, application = _capi.owner_context(file)
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_cost_add_cost_item,
+        "cost_add_cost_item",
         _capi.file_handle(file),
         _capi.instance_handle(cost_schedule),
         _capi.instance_handle(cost_item),

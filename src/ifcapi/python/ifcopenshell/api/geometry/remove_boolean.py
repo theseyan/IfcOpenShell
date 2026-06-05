@@ -34,9 +34,8 @@ def remove_boolean(file: ifcopenshell.file, item: ifcopenshell.entity_instance) 
         IfcRepresentationItem that is participating in one or more boolean
         results (in which case all are removed).
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_geometry_remove_boolean,
+        "geometry_remove_boolean",
         _capi.file_handle(file),
         _capi.instance_handle(item),
     )

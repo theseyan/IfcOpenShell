@@ -58,7 +58,7 @@ def unassign_process(
     _, user, application = _capi.owner_context(file)
     return _capi.call_handle(
         file,
-        _capi.get_lib().ifcopenshell_ifcapi_sequence_unassign_process,
+        "sequence_unassign_process",
         _capi.file_handle(file),
         _capi.instance_handle(relating_process),
         _capi.instance_handle(related_object),

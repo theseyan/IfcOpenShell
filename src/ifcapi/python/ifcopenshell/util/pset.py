@@ -92,15 +92,23 @@ class PsetQto:
         self._template_keepalive: tuple[ifcopenshell.file, ...] = ()
         self._template_files_by_ptr: dict[int, ifcopenshell.file] = {}
         if not templates:
-            self._native_ptr = _capi.pset_template_get_template(schema)
-            self.templates = []
-        else:
-            file_handles = [f._handle for f in templates]
-            self._native_ptr = _capi.pset_template_create_from_files(schema, file_handles)
-            self._owns_native_ptr = True
-            self._template_keepalive = tuple(templates)
-            self.templates = templates
-            self._template_files_by_ptr = {template.file_pointer(): template for template in self._template_keepalive}
+            folder_path = pathlib.Path(__file__).parent.absolute()
+            schema_dir = str(folder_path.joinpath("schema"))
+            _capi.pset_template_set_template_dir(schema_dir)
+            path = str(folder_path.joinpath("schema", self.templates_path[schema]))
+            ifc_file: ifcopenshell.file = ifcopenshell.open(path)
+            templates = [ifc_file]
+            # See bug 3583. Backport this change from IFC4X3.
+            if schema == "IFC4":
+                for element in templates[0].by_type("IfcPropertySetTemplate"):
+                    if element.TemplateType == "QTO_OCCURRENCEDRIVEN":
+                        element.TemplateType = "QTO_TYPEDRIVENOVERRIDE"
+        file_handles = [f._handle for f in templates]
+        self._native_ptr = _capi.pset_template_create_from_files(schema, file_handles)
+        self._owns_native_ptr = True
+        self._template_keepalive = tuple(templates)
+        self.templates = templates
+        self._template_files_by_ptr = {template.file_pointer(): template for template in self._template_keepalive}
 
     def __del__(self) -> None:
         if self._native_ptr is None or not self._owns_native_ptr:

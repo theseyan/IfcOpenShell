@@ -28,11 +28,10 @@ def connect_element(
     related_element: ifcopenshell.entity_instance,
     description: Optional[str] = None,
 ) -> ifcopenshell.entity_instance:
-    lib = _capi.get_lib()
     user, application = _capi.owner_user_application(file)
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_geometry_connect_element,
+        "geometry_connect_element",
         _capi.file_handle(file),
         _capi.instance_handle(relating_element),
         _capi.instance_handle(related_element),

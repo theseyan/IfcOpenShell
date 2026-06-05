@@ -39,9 +39,8 @@ def remove_role(file: ifcopenshell.file, role: ifcopenshell.entity_instance) -> 
         # After running this, the organisation will have no role again
         ifcopenshell.api.owner.remove_role(model, role=role)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_owner_remove_role,
+        "owner_remove_role",
         "Failed to remove role",
         _capi.file_handle(file),
         _capi.instance_handle(role),

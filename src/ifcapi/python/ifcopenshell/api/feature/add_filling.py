@@ -98,10 +98,9 @@ def add_filling(
         # The door will now fill the opening.
         ifcopenshell.api.feature.add_filling(model, opening=opening, element=door)
     """
-    lib = _capi.get_lib()
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_feature_add_filling,
+        "feature_add_filling",
         "Failed to add filling",
         _capi.file_handle(file),
         _capi.instance_handle(opening),

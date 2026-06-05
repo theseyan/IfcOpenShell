@@ -120,10 +120,9 @@ def add_railing_representation(
 
     if railing_type != "WALL_MOUNTED_HANDRAIL":
         raise Exception('Only "WALL_MOUNTED_HANDRAIL" railing_type is supported at the moment.')
-    lib = _capi.get_lib()
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_geometry_add_railing_representation,
+        "geometry_add_railing_representation",
         _capi.file_handle(file),
         _capi.instance_handle(context),
         _capi.double_list_list(settings["railing_path"]),

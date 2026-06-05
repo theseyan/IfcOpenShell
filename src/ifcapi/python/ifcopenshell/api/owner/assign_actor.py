@@ -70,11 +70,10 @@ def assign_actor(
         ifcopenshell.api.owner.assign_actor(model,
             relating_actor=manufacturer, related_object=pump_type)
     """
-    lib = _capi.get_lib()
     owner_history, user, application = _capi.owner_context(file)
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_owner_assign_actor,
+        "owner_assign_actor",
         "Failed to assign actor",
         _capi.file_handle(file),
         _capi.instance_handle(relating_actor),

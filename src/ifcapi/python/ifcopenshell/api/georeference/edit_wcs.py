@@ -57,9 +57,8 @@ def edit_wcs(
         # This is the simplest scenario, resetting the WCS to 0,0,0 with no rotation (recommended)
         ifcopenshell.api.georeference.edit_wcs(model)
     """
-    lib = _relationship_capi.get_lib()
     _relationship_capi.call_status(
-        lib.ifcopenshell_ifcapi_georeference_edit_wcs,
+        "georeference_edit_wcs",
         _relationship_capi.file_handle(file),
         x,
         y,

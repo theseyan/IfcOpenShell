@@ -65,7 +65,7 @@ def edit_sequence(
     props = pset_capi.build_props(attributes)
     try:
         _capi.call_status(
-            _capi.get_lib().ifcopenshell_ifcapi_sequence_edit_sequence,
+            "sequence_edit_sequence",
             _capi.instance_handle(rel_sequence),
             props,
         )

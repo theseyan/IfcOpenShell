@@ -55,9 +55,8 @@ def remove_layer(
         # one one side such as to line a services riser.
         ifcopenshell.api.material.remove_layer(model, layer=layer3)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_material_remove_layer,
+        "material_remove_layer",
         "Failed to remove material layer",
         _capi.file_handle(file),
         _capi.instance_handle(layer),

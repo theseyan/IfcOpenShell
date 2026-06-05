@@ -27,10 +27,9 @@ def add_footprint_representation(
     # A list of IFC curves to include in the curve set
     curves: list[ifcopenshell.entity_instance],
 ) -> ifcopenshell.entity_instance:
-    lib = _capi.get_lib()
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_geometry_add_footprint_representation,
+        "geometry_add_footprint_representation",
         _capi.file_handle(file),
         _capi.instance_handle(context),
         _capi.instance_list(curves),

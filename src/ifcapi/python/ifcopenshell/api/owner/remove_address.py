@@ -39,9 +39,8 @@ def remove_address(file: ifcopenshell.file, address: ifcopenshell.entity_instanc
         # Change our mind and delete it
         ifcopenshell.api.owner.remove_address(model, address=address)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_owner_remove_address,
+        "owner_remove_address",
         "Failed to remove address",
         _capi.file_handle(file),
         _capi.instance_handle(address),

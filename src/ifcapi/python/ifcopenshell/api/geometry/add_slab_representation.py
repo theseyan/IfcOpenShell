@@ -73,11 +73,9 @@ def add_slab_representation(
             clipping_kinds.append(0)
             clipping_locations.append(clipping.location)
             clipping_normals.append(clipping.normal)
-
-    lib = _capi.get_lib()
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_geometry_add_slab_representation,
+        "geometry_add_slab_representation",
         _capi.file_handle(file),
         _capi.instance_handle(context),
         depth,

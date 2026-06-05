@@ -58,7 +58,7 @@ def edit_recurrence_pattern(
     props = pset_capi.build_props(attributes)
     try:
         _capi.call_status(
-            _capi.get_lib().ifcopenshell_ifcapi_sequence_edit_recurrence_pattern,
+            "sequence_edit_recurrence_pattern",
             _capi.instance_handle(recurrence_pattern),
             props,
         )

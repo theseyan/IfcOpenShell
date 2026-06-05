@@ -69,12 +69,11 @@ def assign_control(
         ifcopenshell.api.control.assign_control(model,
             relating_control=cost_item, related_objects=[wall])
     """
-    lib = _relationship_capi.get_lib()
     owner_history, user, application = _relationship_capi.owner_context(file)
     object_list = _relationship_capi.instance_list(related_objects)
     return _relationship_capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_control_assign_control,
+        "control_assign_control",
         _relationship_capi.file_handle(file),
         _relationship_capi.instance_handle(relating_control),
         _relationship_capi.instance_list_ptr(object_list),

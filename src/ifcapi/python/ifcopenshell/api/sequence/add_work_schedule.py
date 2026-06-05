@@ -80,7 +80,7 @@ def add_work_schedule(
     owner_history, user_context, application = _capi.owner_context(file)
     return _capi.call_handle(
         file,
-        _capi.get_lib().ifcopenshell_ifcapi_sequence_add_work_schedule,
+        "sequence_add_work_schedule",
         _capi.file_handle(file),
         _capi.string(name),
         _capi.string(predefined_type),

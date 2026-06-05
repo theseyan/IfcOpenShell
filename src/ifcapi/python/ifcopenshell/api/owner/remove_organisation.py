@@ -37,9 +37,8 @@ def remove_organisation(file: ifcopenshell.file, organisation: ifcopenshell.enti
             identification="AWB", name="Architects Without Ballpens")
         ifcopenshell.api.owner.remove_organisation(model, organisation=organisation)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_owner_remove_organisation,
+        "owner_remove_organisation",
         "Failed to remove organisation",
         _capi.file_handle(file),
         _capi.instance_handle(organisation),

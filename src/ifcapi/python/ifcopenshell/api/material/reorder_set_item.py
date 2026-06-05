@@ -54,9 +54,8 @@ def reorder_set_item(
         ifcopenshell.api.material.reorder_set_item(model,
             material_set=material_set, old_index=0, new_index=1)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_material_reorder_set_item,
+        "material_reorder_set_item",
         "Failed to reorder material set item",
         _capi.file_handle(file),
         _capi.instance_handle(material_set),

@@ -45,13 +45,11 @@ def assign_group(
     """
     if not products:
         return
-
-    lib = _relationship_capi.get_lib()
     owner_history, user, application = _relationship_capi.owner_context(file)
     product_list = _relationship_capi.instance_list(products)
     return _relationship_capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_group_assign_group,
+        "group_assign_group",
         _relationship_capi.file_handle(file),
         _relationship_capi.instance_list_ptr(product_list),
         _relationship_capi.instance_handle(group),

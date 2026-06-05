@@ -51,10 +51,9 @@ def unassign_actor(
         ifcopenshell.api.owner.unassign_actor(model,
             relating_actor=manufacturer, related_object=pump_type)
     """
-    lib = _capi.get_lib()
     _, user, application = _capi.owner_context(file)
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_owner_unassign_actor,
+        "owner_unassign_actor",
         "Failed to unassign actor",
         _capi.file_handle(file),
         _capi.instance_handle(relating_actor),

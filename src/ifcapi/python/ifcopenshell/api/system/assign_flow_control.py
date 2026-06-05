@@ -48,11 +48,10 @@ def assign_flow_control(
             model, related_flow_control=flow_control, relating_flow_element=flow_element
         )
     """
-    lib = _capi.get_lib()
     owner_history, user, application = _capi.owner_context(file)
     return _capi.call_nullable_handle(
         file,
-        lib.ifcopenshell_ifcapi_system_assign_flow_control,
+        "system_assign_flow_control",
         _capi.file_handle(file),
         _capi.instance_handle(relating_flow_element),
         _capi.instance_handle(related_flow_control),

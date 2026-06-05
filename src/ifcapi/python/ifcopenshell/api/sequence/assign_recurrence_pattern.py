@@ -108,7 +108,7 @@ def assign_recurrence_pattern(
     """
     return _capi.call_handle(
         file,
-        _capi.get_lib().ifcopenshell_ifcapi_sequence_assign_recurrence_pattern,
+        "sequence_assign_recurrence_pattern",
         _capi.file_handle(file),
         _capi.instance_handle(parent),
         _capi.string(recurrence_type),

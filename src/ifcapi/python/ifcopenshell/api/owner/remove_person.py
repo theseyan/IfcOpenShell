@@ -39,9 +39,8 @@ def remove_person(file: ifcopenshell.file, person: ifcopenshell.entity_instance)
             identification="bobthebuilder", family_name="Thebuilder", given_name="Bob")
         ifcopenshell.api.owner.remove_person(model, person=person)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_owner_remove_person,
+        "owner_remove_person",
         "Failed to remove person",
         _capi.file_handle(file),
         _capi.instance_handle(person),

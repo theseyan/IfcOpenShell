@@ -17,11 +17,10 @@ def clip_solid(
     element: Optional[ifcopenshell.entity_instance] = None,
 ) -> ifcopenshell.entity_instance:
     """Clip a solid with a half-space plane, returning an IfcBooleanClippingResult."""
-    lib = _capi.get_lib()
     owner_history, user, application = _capi.owner_context(file)
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_geometry_clip_solid,
+        "geometry_clip_solid",
         _capi.file_handle(file),
         _capi.instance_handle(item),
         _capi.double_list(location),

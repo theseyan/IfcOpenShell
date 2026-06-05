@@ -117,9 +117,6 @@ def add_reference(
             products=[wall_type], classification=classification,
             reference=reference)
     """
-    if reference is None:
-        return _native_add_reference(file, products, None, identification, name, classification)
-
     usecase = Usecase()
     usecase.file = file
     usecase.settings = {
@@ -141,12 +138,11 @@ def _native_add_reference(
     name: Union[str, None],
     classification: Union[ifcopenshell.entity_instance, None],
 ) -> Union[ifcopenshell.entity_instance, None]:
-    lib = _relationship_capi.get_lib()
     owner_history, user, application = _relationship_capi.owner_context(file)
     product_list = _relationship_capi.instance_list(products)
     return _relationship_capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_classification_add_reference,
+        "classification_add_reference",
         _relationship_capi.file_handle(file),
         _relationship_capi.instance_list_ptr(product_list),
         _relationship_capi.instance_handle(reference),

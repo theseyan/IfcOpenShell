@@ -74,9 +74,8 @@ def edit_surface_style(
     """
     props = pset_capi.build_props(attributes)
     try:
-        lib = _capi.get_lib()
         _capi.call_status(
-            lib.ifcopenshell_ifcapi_style_edit_surface_style,
+            "style_edit_surface_style",
             "Failed to edit surface style",
             _capi.file_handle(file),
             _capi.instance_handle(style),

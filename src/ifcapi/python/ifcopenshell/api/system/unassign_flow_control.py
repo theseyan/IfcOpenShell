@@ -48,10 +48,9 @@ def unassign_flow_control(
             relating_control=flow_control, related_object=flow_element
         )
     """
-    lib = _capi.get_lib()
     _, user, application = _capi.owner_context(file)
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_system_unassign_flow_control,
+        "system_unassign_flow_control",
         "Failed to unassign flow control",
         _capi.file_handle(file),
         _capi.instance_handle(relating_flow_element),

@@ -44,11 +44,10 @@ def remove_feature(file: ifcopenshell.file, feature: ifcopenshell.entity_instanc
         # Remove it. This brings us back to a valid model.
         ifcopenshell.api.feature.remove_feature(model, feature=feature)
     """
-    lib = _capi.get_lib()
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_feature_remove_feature,
+        "feature_remove_feature",
         "Failed to remove feature",
         _capi.file_handle(file),
         _capi.instance_handle(feature),

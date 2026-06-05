@@ -58,11 +58,10 @@ def assign_product(
         ifcopenshell.api.drawing.assign_product(model,
             relating_product=furniture, related_object=annotation)
     """
-    lib = _relationship_capi.get_lib()
     owner_history, user, application = _relationship_capi.owner_context(file)
     return _relationship_capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_drawing_assign_product,
+        "drawing_assign_product",
         _relationship_capi.file_handle(file),
         _relationship_capi.instance_handle(relating_product),
         _relationship_capi.instance_handle(related_object),

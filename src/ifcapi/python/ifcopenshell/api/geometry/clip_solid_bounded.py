@@ -19,11 +19,10 @@ def clip_solid_bounded(
     element: Optional[ifcopenshell.entity_instance] = None,
 ) -> ifcopenshell.entity_instance:
     """Clip a solid with a polygonally bounded half-space, returning an IfcBooleanClippingResult."""
-    lib = _capi.get_lib()
     owner_history, user, application = _capi.owner_context(file)
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_geometry_clip_solid_bounded,
+        "geometry_clip_solid_bounded",
         _capi.file_handle(file),
         _capi.instance_handle(item),
         _capi.double_list(location),

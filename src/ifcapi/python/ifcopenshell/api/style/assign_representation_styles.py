@@ -101,11 +101,10 @@ def assign_representation_styles(
         ifcopenshell.api.style.assign_representation_styles(model,
             shape_representation=representation, styles=[style])
     """
-    lib = _capi.get_lib()
     style_list = _capi.instance_list(styles or [])
     return _capi.call_handle_list(
         file,
-        lib.ifcopenshell_ifcapi_style_assign_representation_styles,
+        "style_assign_representation_styles",
         "Failed to assign representation styles",
         _capi.file_handle(file),
         _capi.instance_handle(shape_representation),

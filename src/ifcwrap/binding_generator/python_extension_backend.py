@@ -328,14 +328,21 @@ static PyObject *convert_{name}({c_type} *value, int owned) {{
 
 def _render_result_struct_converter(struct: HostStructMetadata, handles: dict[str, HostStructMetadata], owned: int = 1) -> str:
     assignments = []
-    for index, field in enumerate(struct.fields):
+    for field in struct.fields:
         assignments.append(f"    item = {_convert_expr(field.c_type, f'value->{field.name}', handles, owned=owned)};")
         assignments.append("    if (!item) { Py_DECREF(result); return NULL; }")
-        assignments.append(f"    PyTuple_SET_ITEM(result, {index}, item);")
+        assignments.append(
+            f"    if (PyObject_SetAttrString(result, \"{field.name}\", item) < 0) {{ Py_DECREF(item); Py_DECREF(result); return NULL; }}"
+        )
+        assignments.append("    Py_DECREF(item);")
     body = "\n".join(assignments)
     return f"""\
 static PyObject *convert_{_snake_name(struct.c_type)}({struct.c_type} *value, int owned) {{
-    PyObject *result = PyTuple_New({len(struct.fields)});
+    if (!SimpleNamespaceType) {{
+        PyErr_SetString(PyExc_RuntimeError, \"types.SimpleNamespace is not available\");
+        return NULL;
+    }}
+    PyObject *result = PyObject_CallNoArgs(SimpleNamespaceType);
     if (!result) return NULL;
     PyObject *item = NULL;
 {body}
@@ -520,7 +527,9 @@ static int make_input_{name}(PyObject *obj, {struct.c_type} *out) {{
 """
 
 
-def _param_parse(param: HostParamMetadata, handles: dict[str, HostStructMetadata]) -> tuple[list[str], list[str], list[str], str]:
+def _param_parse(
+    param: HostParamMetadata, handles: dict[str, HostStructMetadata]
+) -> tuple[list[str], list[str], list[str], str, list[str], list[str]]:
     c_type = _normalize_c_type(param.c_type)
     base, pointer_depth = _base_pointer_type(c_type)
     name = param.name
@@ -528,6 +537,7 @@ def _param_parse(param: HostParamMetadata, handles: dict[str, HostStructMetadata
     parse_args: list[str] = []
     call_args: list[str] = []
     cleanup: list[str] = []
+    setup: list[str] = []
     fmt = ""
     if c_type in {"const char*", "char*"}:
         declarations.append(f"    const char *arg_{name} = NULL;")
@@ -551,14 +561,15 @@ def _param_parse(param: HostParamMetadata, handles: dict[str, HostStructMetadata
             cleanup.append(f"    ifcopenshell_ifcparse_instance_list_destroy(arg_{name});")
             cleanup.append(f"    free_input_ifc_instance_list(&arg_{name}_items);")
         else:
-            fmt = "O" if param.nullable else "O!"
-            if param.nullable:
-                parse_args.append(f"&arg_{name}_obj")
-                declarations.append(f"    {base} *arg_{name} = NULL;")
-                call_args.append(f"arg_{name}")
-            else:
-                parse_args.extend([f"&{py_name}Type", f"&arg_{name}_obj"])
-                call_args.append(f"({base} *)(({py_name}Object *)arg_{name}_obj)->handle")
+            fmt = "O"
+            parse_args.append(f"&arg_{name}_obj")
+            declarations.append(f"    {base} *arg_{name} = NULL;")
+            call_args.append(f"arg_{name}")
+            setup.append(
+                f"    if (!extract_handle(arg_{name}_obj, &{py_name}Type, \"{py_name}\", (void **)&arg_{name}, {1 if param.nullable else 0})) {{\n"
+                f"        goto __cleanup;\n"
+                f"    }}"
+            )
     elif pointer_depth == 1 and re.fullmatch(r"ifcopenshell_.*_list_t", base):
         declarations.append(f"    PyObject *arg_{name}_obj = NULL;")
         declarations.append(f"    {base} arg_{name} = {{0}};")
@@ -568,9 +579,24 @@ def _param_parse(param: HostParamMetadata, handles: dict[str, HostStructMetadata
         cleanup.append(f"    free_input_{_snake_name(base)}(&arg_{name});")
     elif pointer_depth > 0 and base == "void":
         declarations.append(f"    PyObject *arg_{name}_obj = NULL;")
+        declarations.append(f"    Py_buffer arg_{name}_view = {{0}};")
+        declarations.append(f"    void *arg_{name} = NULL;")
+        declarations.append(f"    int arg_{name}_has_view = 0;")
         fmt = "O"
         parse_args.append(f"&arg_{name}_obj")
-        call_args.append(f"PyCapsule_IsValid(arg_{name}_obj, NULL) ? PyCapsule_GetPointer(arg_{name}_obj, NULL) : (void *)arg_{name}_obj")
+        call_args.append(f"arg_{name}")
+        setup.append(
+            f"    if (PyCapsule_IsValid(arg_{name}_obj, NULL)) {{\n"
+            f"        arg_{name} = PyCapsule_GetPointer(arg_{name}_obj, NULL);\n"
+            f"    }} else if (PyObject_GetBuffer(arg_{name}_obj, &arg_{name}_view, PyBUF_SIMPLE) == 0) {{\n"
+            f"        arg_{name} = arg_{name}_view.buf;\n"
+            f"        arg_{name}_has_view = 1;\n"
+            f"    }} else {{\n"
+            f"        PyErr_SetString(PyExc_TypeError, \"Expected a capsule or buffer-compatible object\");\n"
+            f"        goto __cleanup;\n"
+            f"    }}"
+        )
+        cleanup.append(f"    if (arg_{name}_has_view) PyBuffer_Release(&arg_{name}_view);")
     elif c_type in {"const double*", "const int32_t*"}:
         declarations.append(f"    Py_buffer arg_{name}_view = {{0}};")
         fmt = "y*"
@@ -579,7 +605,7 @@ def _param_parse(param: HostParamMetadata, handles: dict[str, HostStructMetadata
         cleanup.append(f"    PyBuffer_Release(&arg_{name}_view);")
     else:
         raise ValueError(f"Unsupported C parameter type for extension backend: {param.c_type}")
-    return declarations, parse_args, call_args, fmt, cleanup
+    return declarations, parse_args, call_args, fmt, cleanup, setup
 
 
 def _render_function_wrapper(function: HostFunctionMetadata, metadata: HostBindingMetadata, handles: dict[str, HostStructMetadata]) -> str:
@@ -587,6 +613,7 @@ def _render_function_wrapper(function: HostFunctionMetadata, metadata: HostBindi
     parse_args: list[str] = []
     call_args: list[str] = []
     cleanup: list[str] = []
+    setup: list[str] = []
     format_parts: list[str] = []
     out_params = [p for p in function.params if p.role == "out_result"]
     out_param = out_params[0] if out_params else None
@@ -594,7 +621,7 @@ def _render_function_wrapper(function: HostFunctionMetadata, metadata: HostBindi
     for param in function.params:
         if param.role == "out_result":
             continue
-        decl, args, calls, fmt, clean = _param_parse(param, handles)
+        decl, args, calls, fmt, clean, param_setup = _param_parse(param, handles)
         declarations.extend(decl)
         parse_args.extend(args)
         call_args.extend(calls)
@@ -603,22 +630,16 @@ def _render_function_wrapper(function: HostFunctionMetadata, metadata: HostBindi
             optional_inserted = True
         format_parts.append(fmt)
         cleanup.extend(clean)
-    nullable_handle_assignments = []
-    for param in function.params:
-        if param.role == "out_result" or not param.nullable:
-            continue
-        base, pointer_depth = _base_pointer_type(param.c_type)
-        if pointer_depth == 1 and base in {h.c_type for h in handles.values()}:
-            py_name = _py_type_name(base)
-            nullable_handle_assignments.append(
-                f"    if (arg_{param.name}_obj != Py_None) {{\n"
-                f"        if (!PyObject_TypeCheck(arg_{param.name}_obj, &{py_name}Type)) {{\n"
-                f"            PyErr_SetString(PyExc_TypeError, \"Expected {py_name} or None\");\n"
-                f"            goto __cleanup;\n"
-                f"        }}\n"
-                f"        arg_{param.name} = ({base} *)(({py_name}Object *)arg_{param.name}_obj)->handle;\n"
-                f"    }}"
-            )
+        setup.extend(param_setup)
+    null_result_check = ""
+    if out_param is not None:
+        out_base, out_depth = _base_pointer_type(out_param.c_type)
+        if out_depth == 2:
+            null_result_check = f"""    if (result == nullptr && {metadata.error_functions['last_error_kind']}() != 0) {{
+        raise_last_error("{function.c_name} failed");
+        goto __cleanup;
+    }}
+"""
     out_decl = ""
     result_assign = ""
     owned = 0 if function.returns.ownership in ("borrowed", "static") else 1
@@ -661,7 +682,8 @@ def _render_function_wrapper(function: HostFunctionMetadata, metadata: HostBindi
         parse_block = f"    if (!PyArg_ParseTuple(args, \"{fmt}\", {', '.join(parse_args)})) return NULL;\n"
     else:
         parse_block = '    if (!PyArg_ParseTuple(args, "")) return NULL;\n'
-    conversion_block = "\n".join(nullable_handle_assignments)
+    conversion_block = ""
+    setup_block = "\n".join(setup)
     input_make = []
     for param in function.params:
         if param.role == "out_result":
@@ -701,6 +723,7 @@ static PyObject *{_wrapper_name(function.c_name)}(PyObject *self, PyObject *args
 {chr(10).join(declarations)}
 {out_decl}
 {parse_block}{conversion_block}
+{setup_block}
 {input_make_block}
     {metadata.error_functions['clear_error']}();
     ok = {call};
@@ -708,7 +731,7 @@ static PyObject *{_wrapper_name(function.c_name)}(PyObject *self, PyObject *args
         raise_last_error("{function.c_name} failed");
         goto __cleanup;
     }}
-{result_assign}
+{null_result_check}{result_assign}
 __cleanup:
 {cleanup_block}    return __py_result;
 }}
@@ -756,6 +779,7 @@ def render_python_extension(metadata: HostBindingMetadata, api_header_path: Path
 
 #include <Python.h>
 #include <stddef.h>
+#include <string.h>
 #include "structmember.h"
 #include "ifcopenshell_api.h"
 
@@ -772,6 +796,58 @@ static PyObject *raise_last_error(const char *fallback) {{
     }}
     PyErr_SetString(exc, (msg && msg[0]) ? msg : fallback);
     return NULL;
+}}
+
+typedef struct {{
+    PyObject_HEAD
+    void *handle;
+    int owned;
+}} IfcOpenshellGenericHandleObject;
+
+static PyObject *SimpleNamespaceType = NULL;
+
+static int is_declaration_family_name(const char *name) {{
+    return name && (
+        strcmp(name, "IfcOpenshellIfcDeclaration") == 0 ||
+        strcmp(name, "IfcOpenshellIfcEntity") == 0 ||
+        strcmp(name, "IfcOpenshellIfcEnumeration") == 0 ||
+        strcmp(name, "IfcOpenshellIfcSelectType") == 0 ||
+        strcmp(name, "IfcOpenshellIfcTypeDeclaration") == 0
+    );
+}}
+
+static int is_ifcgeom_element_family_name(const char *name) {{
+    return name && (
+        strcmp(name, "IfcOpenshellIfcgeomElement") == 0 ||
+        strcmp(name, "IfcOpenshellIfcgeomBrepElement") == 0 ||
+        strcmp(name, "IfcOpenshellIfcgeomTriangulationElement") == 0 ||
+        strcmp(name, "IfcOpenshellIfcgeomSerializedElement") == 0
+    );
+}}
+
+static int handle_names_are_compatible(const char *actual, const char *expected) {{
+    if (!actual || !expected) return 0;
+    if (strcmp(actual, expected) == 0) return 1;
+    if (is_declaration_family_name(actual) && is_declaration_family_name(expected)) return 1;
+    if (is_ifcgeom_element_family_name(actual) && is_ifcgeom_element_family_name(expected)) return 1;
+    return 0;
+}}
+
+static int extract_handle(PyObject *obj, PyTypeObject *expected, const char *expected_name, void **out, int nullable) {{
+    if (nullable && obj == Py_None) {{
+        *out = NULL;
+        return 1;
+    }}
+    if (!obj) {{
+        PyErr_SetString(PyExc_TypeError, "Expected a handle object");
+        return 0;
+    }}
+    if (!PyObject_TypeCheck(obj, expected) && !handle_names_are_compatible(Py_TYPE(obj)->tp_name, expected_name)) {{
+        PyErr_Format(PyExc_TypeError, nullable ? "Expected %s or None" : "Expected %s", expected_name);
+        return 0;
+    }}
+    *out = ((IfcOpenshellGenericHandleObject *)obj)->handle;
+    return 1;
 }}
 
 {handle_decls}
@@ -820,6 +896,17 @@ PyMODINIT_FUNC PyInit__ifcopenshell_capi(void) {{
 {type_ready}
     PyObject *m = PyModule_Create(&moduledef);
     if (!m) return NULL;
+    PyObject *types_module = PyImport_ImportModule("types");
+    if (!types_module) {{
+        Py_DECREF(m);
+        return NULL;
+    }}
+    SimpleNamespaceType = PyObject_GetAttrString(types_module, "SimpleNamespace");
+    Py_DECREF(types_module);
+    if (!SimpleNamespaceType) {{
+        Py_DECREF(m);
+        return NULL;
+    }}
 {add_types}
     PyModule_AddIntConstant(m, "IFCOPENSHELL_ERROR_NONE", 0);
     PyModule_AddIntConstant(m, "IFCOPENSHELL_ERROR_RUNTIME", 1);
@@ -835,6 +922,81 @@ PyMODINIT_FUNC PyInit__ifcopenshell_capi(void) {{
 """
 
 
+def render_capi_utils() -> str:
+    return """\
+# Auto-generated by python_extension_backend.py. Do not edit.
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+from __future__ import annotations
+
+import ifcopenshell
+from . import _ifcopenshell_capi as _capi
+
+
+def file_handle(file):
+    return file._handle
+
+
+def instance_handle(entity):
+    return entity._handle if entity is not None else None
+
+
+def instance_list(entities):
+    return [entity._handle for entity in entities]
+
+
+def wrap_handle(file, handle):
+    return ifcopenshell.entity_instance(file, handle) if handle else None
+
+
+_ERROR_KIND_TO_EXC = {
+    _capi.IFCOPENSHELL_ERROR_VALUE: ValueError,
+    _capi.IFCOPENSHELL_ERROR_TYPE: TypeError,
+    _capi.IFCOPENSHELL_ERROR_NOT_IMPLEMENTED: NotImplementedError,
+    _capi.IFCOPENSHELL_ERROR_KEY: KeyError,
+}
+
+
+def raise_last_error(default_msg):
+    msg = _capi.last_error_message() or default_msg
+    kind = _capi.last_error_kind()
+    raise _ERROR_KIND_TO_EXC.get(kind, RuntimeError)(msg)
+
+
+def call_handle(file, fn_name, *args, nullable=False, message=None):
+    fn = getattr(_capi, fn_name)
+    handle = fn(*args)
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    if nullable and _capi.last_error_kind() == _capi.IFCOPENSHELL_ERROR_NONE:
+        return None
+    raise_last_error(message or f"{fn_name} failed")
+
+
+def call_status(fn_name, *args):
+    getattr(_capi, fn_name)(*args)
+
+
+def call_handle_list(file, fn_name, *args):
+    handles = getattr(_capi, fn_name)(*args)
+    return [ifcopenshell.entity_instance(file, h) for h in handles]
+
+
+def owner_context(file):
+    import ifcopenshell.api.owner.settings
+
+    return (
+        None,
+        ifcopenshell.api.owner.settings.get_user(file),
+        ifcopenshell.api.owner.settings.get_application(file),
+    )
+"""
+
+
 def generate_python_extension(ir: BindingIR, output_path: Path, api_header_path: Path | None = None) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(render_python_extension(build_host_metadata(ir), api_header_path=api_header_path), encoding="utf-8")
+    # Also generate the shared _capi_utils.py alongside the C++ extension.
+    capi_utils_path = output_path.parent.parent.parent.parent / "ifcapi" / "python" / "ifcopenshell" / "_capi_utils.py"
+    capi_utils_path.parent.mkdir(parents=True, exist_ok=True)
+    capi_utils_path.write_text(render_capi_utils(), encoding="utf-8")

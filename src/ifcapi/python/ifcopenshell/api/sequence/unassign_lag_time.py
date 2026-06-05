@@ -57,7 +57,7 @@ def unassign_lag_time(file: ifcopenshell.file, rel_sequence: ifcopenshell.entity
         ifcopenshell.api.sequence.unassign_lag_time(model, rel_sequence=sequence)
     """
     _capi.call_status(
-        _capi.get_lib().ifcopenshell_ifcapi_sequence_unassign_lag_time,
+        "sequence_unassign_lag_time",
         _capi.file_handle(file),
         _capi.instance_handle(rel_sequence),
     )

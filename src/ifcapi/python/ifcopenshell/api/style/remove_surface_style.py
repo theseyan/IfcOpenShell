@@ -43,10 +43,8 @@ def remove_surface_style(file: ifcopenshell.file, style: ifcopenshell.entity_ins
         # Remove the shading item
         ifcopenshell.api.style.remove_surface_style(model, style=shading)
     """
-
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_style_remove_surface_style,
+        "style_remove_surface_style",
         "Failed to remove surface style",
         _capi.file_handle(file),
         _capi.instance_handle(style),

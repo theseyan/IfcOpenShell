@@ -4,32 +4,29 @@
 from __future__ import annotations
 
 import ifcopenshell
+from ifcopenshell._capi_utils import (
+    call_handle as _call_handle,
+)
+from ifcopenshell._capi_utils import (
+    call_status as _call_status,
+)
+from ifcopenshell._capi_utils import (
+    file_handle,
+    instance_handle,
+    wrap_handle,
+)
 
 from ... import _ifcopenshell_capi as _capi
-
-
-def file_handle(file: ifcopenshell.file):
-    return file._handle
-
-
-def instance_handle(entity: ifcopenshell.entity_instance | None):
-    return entity._handle if entity is not None else None
 
 
 def nullable_string(value: str | None) -> str | None:
     return value
 
 
-def wrap_handle(file: ifcopenshell.file, handle):
-    return ifcopenshell.entity_instance(file, handle) if handle else None
-
-
+# --- module-specific adapter: message-style signatures ---
 def call_handle(file: ifcopenshell.file, fn_name: str, message: str, *args):
-    fn = getattr(_capi, fn_name)
-    handle = fn(*args)
-    return wrap_handle(file, handle)
+    return _call_handle(file, fn_name, *args, message=message, nullable=True)
 
 
 def call_status(fn_name: str, message: str, *args) -> None:
-    fn = getattr(_capi, fn_name)
-    fn(*args)
+    _call_status(fn_name, *args)

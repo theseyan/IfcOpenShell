@@ -48,12 +48,10 @@ def add_boolean(
         operations (based on the order of second items). If nothing was
         created, the list will be empty.
     """
-
-    lib = _capi.get_lib()
     second_item_list = _capi.instance_list(second_items)
     return _capi.call_handle_list(
         file,
-        lib.ifcopenshell_ifcapi_geometry_add_boolean,
+        "geometry_add_boolean",
         _capi.file_handle(file),
         _capi.instance_handle(first_item),
         second_item_list,

@@ -47,9 +47,8 @@ def edit_structural_boundary_condition(
     """
     props = pset_capi.build_props(attributes)
     try:
-        lib = _capi.get_lib()
         _capi.call_status(
-            lib.ifcopenshell_ifcapi_structural_edit_structural_boundary_condition,
+            "structural_edit_structural_boundary_condition",
             _capi.file_handle(file),
             _capi.instance_handle(condition),
             props,

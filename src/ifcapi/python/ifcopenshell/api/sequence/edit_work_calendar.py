@@ -48,7 +48,7 @@ def edit_work_calendar(
     props = pset_capi.build_props(attributes)
     try:
         _capi.call_status(
-            _capi.get_lib().ifcopenshell_ifcapi_sequence_edit_work_calendar,
+            "sequence_edit_work_calendar",
             _capi.instance_handle(work_calendar),
             props,
         )

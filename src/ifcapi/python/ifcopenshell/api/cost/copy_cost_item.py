@@ -47,10 +47,9 @@ def copy_cost_item(
 
 
     """
-    lib = _capi.get_lib()
     copied = _capi.call_handle_list(
         file,
-        lib.ifcopenshell_ifcapi_cost_copy_cost_item,
+        "cost_copy_cost_item",
         _capi.file_handle(file),
         _capi.instance_handle(cost_item),
     )

@@ -25,9 +25,8 @@ def remove_structural_load(file: ifcopenshell.file, structural_load: ifcopenshel
     :param structural_load: The IfcStructuralLoad to remove.
     :return: None
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_structural_remove_structural_load,
+        "structural_remove_structural_load",
         _capi.file_handle(file),
         _capi.instance_handle(structural_load),
     )

@@ -90,10 +90,9 @@ class Usecase:
     def execute(self, classification: Union[str, ifcopenshell.entity_instance]) -> ifcopenshell.entity_instance:
         self.classification = classification
         if isinstance(self.classification, str):
-            lib = _relationship_capi.get_lib()
             return _relationship_capi.call_handle(
                 self.file,
-                lib.ifcopenshell_ifcapi_classification_add_classification,
+                "classification_add_classification",
                 _relationship_capi.file_handle(self.file),
                 _relationship_capi.string(self.classification),
             )

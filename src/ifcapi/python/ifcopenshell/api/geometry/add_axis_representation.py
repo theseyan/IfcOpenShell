@@ -71,11 +71,10 @@ def add_axis_representation(
         axis = ifcopenshell.api.geometry.add_axis_representation(model,
             context=context, axis=[(0.0, 0.0), (1.0, 0.0)])
     """
-    lib = _capi.get_lib()
     axis_list = _capi.double_list_list(axis or [])
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_geometry_add_axis_representation,
+        "geometry_add_axis_representation",
         _capi.file_handle(file),
         _capi.instance_handle(context),
         axis_list,

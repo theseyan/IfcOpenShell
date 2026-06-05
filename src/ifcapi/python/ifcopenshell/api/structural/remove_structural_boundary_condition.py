@@ -35,9 +35,8 @@ def remove_structural_boundary_condition(
     """
     if connection is None:
         assert boundary_condition, "Either connection or boundary_condition must be provided."
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_structural_remove_structural_boundary_condition,
+        "structural_remove_structural_boundary_condition",
         _capi.file_handle(file),
         _capi.instance_handle(connection),
         _capi.instance_handle(boundary_condition),

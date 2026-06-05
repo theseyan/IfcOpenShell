@@ -38,9 +38,8 @@ def remove_cost_item(file: ifcopenshell.file, cost_item: ifcopenshell.entity_ins
         item = ifcopenshell.api.cost.add_cost_item(model, cost_schedule=schedule)
         ifcopenshell.api.cost.remove_cost_item(model, cost_item=item)
     """
-    lib = _capi.get_lib()
     return _capi.call_status(
-        lib.ifcopenshell_ifcapi_cost_remove_cost_item,
+        "cost_remove_cost_item",
         _capi.file_handle(file),
         _capi.instance_handle(cost_item),
     )

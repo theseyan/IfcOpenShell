@@ -77,7 +77,7 @@ def calculate_task_duration(file: ifcopenshell.file, task: ifcopenshell.entity_i
         ifcopenshell.api.sequence.calculate_task_duration(model, task=task)
     """
     _capi.call_status(
-        _capi.get_lib().ifcopenshell_ifcapi_sequence_calculate_task_duration,
+        "sequence_calculate_task_duration",
         _capi.file_handle(file),
         _capi.instance_handle(task),
     )

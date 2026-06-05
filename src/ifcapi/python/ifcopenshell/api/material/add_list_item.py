@@ -78,9 +78,8 @@ def add_list_item(
         # aluminium and glass.
         ifcopenshell.api.material.assign_material(model, products=[window_type], material=material_set)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_material_add_list_item,
+        "material_add_list_item",
         "Failed to add material list item",
         _capi.file_handle(file),
         _capi.instance_handle(material_list),

@@ -12,8 +12,6 @@ from . import _ifcopenshell_capi as _capi
 _SIMPLE_NAMES = {0: "binary", 1: "boolean", 2: "integer", 3: "logical", 4: "number", 5: "real", 6: "string"}
 _AGG_NAMES = {0: "array", 1: "bag", 2: "list", 3: "set"}
 _INV_AGG_NAMES = {0: "bag", 1: "set", 2: ""}
-
-
 class _Handle:
     __slots__ = ("_h",)
     _destroy_fn_name: Optional[str] = None
@@ -59,32 +57,31 @@ def _wrap_optional(h, ctor):
 def _wrap_decl(h):
     if not h:
         return None
-    for capi_fn, ctor in (
-        (_capi.declaration_as_entity, entity),
-        (_capi.declaration_as_type_declaration, type_declaration),
-        (_capi.declaration_as_select_type, select_type),
-        (_capi.declaration_as_enumeration_type, enumeration_type),
-    ):
-        typed = capi_fn(h)
-        if typed:
-            _capi.declaration_destroy(h)
-            return ctor(typed)
+    # Determine the most specific type by probing as_* casts.
+    # The C extension accepts any declaration-family handle type for
+    # any declaration-family function via handle_names_are_compatible(),
+    # so we only need to store the typed handle.
+    e = _capi.declaration_as_entity(h)
+    if e:
+        _capi.declaration_destroy(h)
+        return entity(e)
+    e = _capi.declaration_as_enumeration_type(h)
+    if e:
+        _capi.declaration_destroy(h)
+        return enumeration_type(e)
+    e = _capi.declaration_as_select_type(h)
+    if e:
+        _capi.declaration_destroy(h)
+        return select_type(e)
+    e = _capi.declaration_as_type_declaration(h)
+    if e:
+        _capi.declaration_destroy(h)
+        return type_declaration(e)
     return declaration(h)
 
 
 def _wrap_parameter_type(h):
-    if not h:
-        return None
-    for capi_fn, ctor in (
-        (_capi.parameter_type_as_named_type, named_type),
-        (_capi.parameter_type_as_simple_type, simple_type),
-        (_capi.parameter_type_as_aggregation_type, aggregation_type),
-    ):
-        typed = capi_fn(h)
-        if typed:
-            _capi.parameter_type_destroy(h)
-            return ctor(typed)
-    return parameter_type(h)
+    return parameter_type(h) if h else None
 
 
 class parameter_type(_Handle):
@@ -117,6 +114,11 @@ class named_type(parameter_type):
 
     def __repr__(self) -> str:
         d = self.declared_type()
+        if d is not None:
+            for cast in (d.as_type_declaration, d.as_select_type, d.as_enumeration_type):
+                typed = cast()
+                if typed is not None:
+                    return repr(typed)
         return repr(d) if d is not None else "<?>"
 
     __str__ = __repr__
@@ -181,16 +183,28 @@ class declaration(_Handle):
         raise AttributeError(name)
 
     def as_entity(self) -> Optional[entity]:
-        return _wrap_optional(_capi.declaration_as_entity(self._h), entity)
+        h = _capi.declaration_as_entity(self._h)
+        if h:
+            return entity(h)
+        return None
 
     def as_type_declaration(self) -> Optional[type_declaration]:
-        return _wrap_optional(_capi.declaration_as_type_declaration(self._h), type_declaration)
+        h = _capi.declaration_as_type_declaration(self._h)
+        if h:
+            return type_declaration(h)
+        return None
 
     def as_select_type(self) -> Optional[select_type]:
-        return _wrap_optional(_capi.declaration_as_select_type(self._h), select_type)
+        h = _capi.declaration_as_select_type(self._h)
+        if h:
+            return select_type(h)
+        return None
 
     def as_enumeration_type(self) -> Optional[enumeration_type]:
-        return _wrap_optional(_capi.declaration_as_enumeration_type(self._h), enumeration_type)
+        h = _capi.declaration_as_enumeration_type(self._h)
+        if h:
+            return enumeration_type(h)
+        return None
 
     def schema(self) -> Optional[schema_definition]:
         return _wrap_optional(_capi.declaration_schema(self._h), schema_definition)
@@ -205,14 +219,19 @@ class declaration(_Handle):
 class entity(declaration):
     _destroy_fn_name = "entity_destroy"
 
+    def _wrap_entity_decl(self, h):
+        if not h:
+            return None
+        return entity(h)
+
     def is_abstract(self) -> bool:
         return bool(_capi.entity_is_abstract(self._h))
 
     def supertype(self) -> Optional[entity]:
-        return _wrap_optional(_capi.entity_supertype(self._h), entity)
+        return self._wrap_entity_decl(_capi.entity_supertype(self._h))
 
     def subtypes(self) -> tuple:
-        return tuple(entity(h) for h in (_capi.entity_subtypes(self._h) or ()))
+        return tuple(self._wrap_entity_decl(h) for h in (_capi.entity_subtypes(self._h) or ()))
 
     def attribute_count(self) -> int:
         return int(_capi.entity_attribute_count(self._h))

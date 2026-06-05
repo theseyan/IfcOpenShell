@@ -55,7 +55,7 @@ def remove_time_period(file: ifcopenshell.file, time_period: ifcopenshell.entity
         ifcopenshell.api.sequence.remove_time_period(model, time_period=afternoon)
     """
     _capi.call_status(
-        _capi.get_lib().ifcopenshell_ifcapi_sequence_remove_time_period,
+        "sequence_remove_time_period",
         _capi.file_handle(file),
         _capi.instance_handle(time_period),
     )

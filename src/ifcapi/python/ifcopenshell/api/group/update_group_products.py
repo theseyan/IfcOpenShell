@@ -40,12 +40,11 @@ def update_group_products(
         ifcopenshell.api.group.update_group_products(model,
             products=model.by_type("IfcFurniture"), group=group)
     """
-    lib = _relationship_capi.get_lib()
     owner_history, user, application = _relationship_capi.owner_context(file)
     product_list = _relationship_capi.instance_list(products)
     return _relationship_capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_group_update_group_products,
+        "group_update_group_products",
         _relationship_capi.file_handle(file),
         _relationship_capi.instance_handle(group),
         _relationship_capi.instance_list_ptr(product_list),

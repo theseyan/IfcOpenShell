@@ -38,9 +38,8 @@ def remove_system(file: ifcopenshell.file, system: ifcopenshell.entity_instance)
         # Delete it.
         ifcopenshell.api.system.remove_system(model, system=system)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_system_remove_system,
+        "system_remove_system",
         "Failed to remove system",
         _capi.file_handle(file),
         _capi.instance_handle(system),

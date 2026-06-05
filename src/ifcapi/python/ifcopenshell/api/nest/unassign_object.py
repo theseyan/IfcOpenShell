@@ -49,9 +49,8 @@ def unassign_object(file: ifcopenshell.file, related_objects: list[ifcopenshell.
 
     object_list = _relationship_capi.instance_list(related_objects)
     user, application = _relationship_capi.owner_user_application(file)
-    lib = _relationship_capi.get_lib()
     _relationship_capi.call_status(
-        lib.ifcopenshell_ifcapi_nest_unassign_object,
+        "nest_unassign_object",
         _relationship_capi.file_handle(file),
         _relationship_capi.instance_list_ptr(object_list),
         _relationship_capi.instance_handle(user),

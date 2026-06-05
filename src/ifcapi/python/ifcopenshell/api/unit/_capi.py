@@ -4,25 +4,15 @@
 from __future__ import annotations
 
 import ifcopenshell
+from ifcopenshell._capi_utils import (
+    file_handle,
+    instance_handle,
+    instance_list,
+    wrap_handle,
+)
 
 from ... import _ifcopenshell_capi as _capi
 
 
-def file_handle(file: ifcopenshell.file):
-    return file._handle
-
-
-def instance_handle(entity: ifcopenshell.entity_instance | None):
-    return entity._handle if entity is not None else None
-
-
 def optional_string(value: str | None) -> str | None:
     return value
-
-
-def instance_list(entities):
-    return [entity._handle for entity in entities]
-
-
-def wrap_handle(file: ifcopenshell.file, handle):
-    return ifcopenshell.entity_instance(file, handle) if handle else None

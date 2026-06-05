@@ -346,9 +346,10 @@ class Migrator:
         new_element = self.migrate_class(element, new_file)
         # print("Migrated class from {} to {}".format(element, new_element))
         new_element_schema = schema.declaration_by_name(new_element.is_a())
-        if not hasattr(new_element_schema, "all_attributes"):
+        entity_schema = new_element_schema.as_entity() if hasattr(new_element_schema, "as_entity") else None
+        if entity_schema is None:
             return element  # The element has no attributes, so migration is done
-        new_element = self.migrate_attributes(element, new_file, new_element, new_element_schema)
+        new_element = self.migrate_attributes(element, new_file, new_element, entity_schema)
         self.migrated_ids[element.id()] = new_element.id()
         return new_element
 

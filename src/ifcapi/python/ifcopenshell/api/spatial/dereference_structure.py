@@ -67,9 +67,8 @@ def dereference_structure(
     """
     product_list = _relationship_capi.instance_list(products)
     user, application = _relationship_capi.owner_user_application(file)
-    lib = _relationship_capi.get_lib()
     _relationship_capi.call_status(
-        lib.ifcopenshell_ifcapi_spatial_dereference_structure,
+        "spatial_dereference_structure",
         _relationship_capi.file_handle(file),
         _relationship_capi.instance_list_ptr(product_list),
         _relationship_capi.instance_handle(relating_structure),

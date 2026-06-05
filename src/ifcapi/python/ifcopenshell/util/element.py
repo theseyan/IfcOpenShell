@@ -89,9 +89,7 @@ def _get_pset_definitions(
 def _instance_list_arg(
     entities: Sequence[ifcopenshell.entity_instance],
 ):
-    return _capi.instance_list_create_from_handles(
-        [entity._handle for entity in entities]
-    )
+    return [entity._handle for entity in entities]
 
 
 def get_pset(
@@ -1524,15 +1522,11 @@ def remove_deep2(
         ifc_file.to_delete.update(to_delete)
         return
 
-    also_consider_list = _instance_list_arg(also_consider)
-    do_not_delete_list = _instance_list_arg(tuple(do_not_delete))
-    try:
-        _capi.entity_remove_deep2_ex(
-            element._handle, also_consider_list, do_not_delete_list
-        )
-    finally:
-        _capi.instance_list_destroy(also_consider_list)
-        _capi.instance_list_destroy(do_not_delete_list)
+    _capi.entity_remove_deep2_ex(
+        element._handle,
+        _instance_list_arg(also_consider),
+        _instance_list_arg(tuple(do_not_delete)),
+    )
 
 
 def copy(

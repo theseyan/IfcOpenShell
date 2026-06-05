@@ -66,9 +66,8 @@ def edit_resource_time(
 
     props = _capi.build_resource_time_props(attributes)
     try:
-        lib = _capi.get_lib()
         _capi.call_status(
-            lib.ifcopenshell_ifcapi_resource_edit_resource_time,
+            "resource_edit_resource_time",
             _capi.file_handle(file),
             _capi.instance_handle(resource_time),
             props,

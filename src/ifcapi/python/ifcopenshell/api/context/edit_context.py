@@ -49,9 +49,8 @@ def edit_context(file: ifcopenshell.file, context: ifcopenshell.entity_instance,
     """
     props = pset_capi.build_props(attributes)
     try:
-        lib = _capi.get_lib()
         _capi.call_status(
-            lib.ifcopenshell_ifcapi_context_edit_context,
+            "context_edit_context",
             "context_edit_context failed",
             _capi.file_handle(file),
             _capi.instance_handle(context),

@@ -54,9 +54,8 @@ def remove_reference(
     """
     product_list = _relationship_capi.instance_list(products)
     user, application = _relationship_capi.owner_user_application(file)
-    lib = _relationship_capi.get_lib()
     _relationship_capi.call_status(
-        lib.ifcopenshell_ifcapi_classification_remove_reference,
+        "classification_remove_reference",
         _relationship_capi.file_handle(file),
         _relationship_capi.instance_handle(reference),
         _relationship_capi.instance_list_ptr(product_list),

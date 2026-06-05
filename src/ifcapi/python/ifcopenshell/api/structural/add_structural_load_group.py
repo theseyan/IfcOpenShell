@@ -33,12 +33,10 @@ def add_structural_load_group(
         IfcActionSourceTypeEnum in the IFC documentation.
     :return: The new IfcStructuralLoadCase
     """
-
-    lib = _capi.get_lib()
     owner_history = _capi.owner_history(file)
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_structural_add_structural_load_group,
+        "structural_add_structural_load_group",
         _capi.file_handle(file),
         _capi.string(name),
         _capi.string(action_type),

@@ -41,7 +41,7 @@ def remove_work_plan(file: ifcopenshell.file, work_plan: ifcopenshell.entity_ins
     """
     _, user, application = _capi.owner_context(file)
     _capi.call_status(
-        _capi.get_lib().ifcopenshell_ifcapi_sequence_remove_work_plan,
+        "sequence_remove_work_plan",
         _capi.file_handle(file),
         _capi.instance_handle(work_plan),
         _capi.instance_handle(user),

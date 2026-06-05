@@ -26,9 +26,8 @@ def remove_structural_load_case(file: ifcopenshell.file, load_case: ifcopenshell
     :param load_case: The IfcStructuralLoadCase to remove.
     :return: None
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_structural_remove_structural_load_case,
+        "structural_remove_structural_load_case",
         _capi.file_handle(file),
         _capi.instance_handle(load_case),
     )

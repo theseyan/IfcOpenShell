@@ -74,13 +74,30 @@ def _native_vector(vector: VectorType) -> VectorType:
     return vector
 
 
-def _native_instance_list(values: Sequence[ifcopenshell.entity_instance]) -> _capi.IfcOpenshellIfcparseInstanceList:
-    handles = [value._handle for value in values]
-    return _capi.instance_list_create_from_handles(handles)
+def _native_instance_list(values: Sequence[ifcopenshell.entity_instance]) -> list:
+    return [value._handle for value in values]
 
 
 def _native_faces(faces: Sequence[Sequence[int]]) -> Sequence[Sequence[int]]:
     return faces
+
+
+def _curve_dim(curve: ifcopenshell.entity_instance) -> int | None:
+    try:
+        return curve.Dim
+    except AttributeError:
+        pass
+    if curve.is_a("IfcTrimmedCurve"):
+        return _curve_dim(curve.BasisCurve)
+    if curve.is_a("IfcCompositeCurve") and curve.Segments:
+        return _curve_dim(curve.Segments[0].ParentCurve)
+    if curve.is_a("IfcPolyline") and curve.Points:
+        return len(curve.Points[0].Coordinates)
+    if curve.is_a("IfcIndexedPolyCurve") and curve.Points and curve.Points.CoordList:
+        return len(curve.Points.CoordList[0])
+    if hasattr(curve, "Position") and curve.Position and curve.Position.Location:
+        return len(curve.Position.Location.Coordinates)
+    return None
 
 
 def _native_polygonal_faces(
@@ -584,16 +601,17 @@ class ShapeBuilder:
         # it will just add shape on top instead of "boolean" it
         # because of that you can't create bool edges of outer_curve this way
 
-        if outer_curve.Dim != 2:
+        outer_curve_dim = _curve_dim(outer_curve)
+        if outer_curve_dim != 2:
             raise Exception(
-                f"Outer curve for IfcArbitraryClosedProfileDef/IfcIfcArbitraryProfileDefWithVoid should be 2D to be valid, currently it has {outer_curve.Dim} dimensions.\n"
+                f"Outer curve for IfcArbitraryClosedProfileDef/IfcIfcArbitraryProfileDefWithVoid should be 2D to be valid, currently it has {outer_curve_dim} dimensions.\n"
                 "Ref: https://ifc43-docs.standards.buildingsmart.org/IFC/RELEASE/IFC4x3/HTML/lexical/IfcArbitraryClosedProfileDef.htm#8.15.3.1.4-Formal-propositions"
             )
 
         if inner_curves:
             if not isinstance(inner_curves, collections.abc.Iterable):
                 inner_curves = [inner_curves]
-            if any(curve.Dim != 2 for curve in inner_curves):
+            if any(_curve_dim(curve) != 2 for curve in inner_curves):
                 raise Exception(
                     "WARNING. InnerCurve for IfcIfcArbitraryProfileDefWithVoid sould be 2D to be valid, "
                     "currently on one of the inner curves is using different amount of dimensions.\n"
@@ -976,9 +994,10 @@ class ShapeBuilder:
         :param radius: Radius of the circular disk cross-section.
         :return: IfcSweptDiskSolid
         """
-        if path_curve.Dim != 3:
+        path_curve_dim = _curve_dim(path_curve)
+        if path_curve_dim != 3:
             raise Exception(
-                f"Path curve for IfcSweptDiskSolid should be 3D to be valid, currently it has {path_curve.Dim} dimensions.\n"
+                f"Path curve for IfcSweptDiskSolid should be 3D to be valid, currently it has {path_curve_dim} dimensions.\n"
                 "Ref: https://ifc43-docs.standards.buildingsmart.org/IFC/RELEASE/IFC4x3/HTML/lexical/IfcSweptDiskSolid.htm#8.8.3.42.4-Formal-propositions"
             )
 
@@ -1021,12 +1040,16 @@ class ShapeBuilder:
         if not representation_type:
             representation_type = ifcopenshell.util.representation.guess_type(items)
 
-        return _native_entity(
-            self.file,
-            "ifcopenshell_ifcapi_shape_builder_representation",
-            context._handle,
-            _native_instance_list(items),
-            representation_type,
+        return self.file.create_entity(
+            (
+                "IfcTopologyRepresentation"
+                if representation_type in ("Vertex", "Edge", "Path", "Face", "Shell")
+                else "IfcShapeRepresentation"
+            ),
+            ContextOfItems=context,
+            RepresentationIdentifier=context.ContextIdentifier,
+            RepresentationType=representation_type,
+            Items=items,
         )
 
     def deep_copy(self, element: ifcopenshell.entity_instance) -> ifcopenshell.entity_instance:

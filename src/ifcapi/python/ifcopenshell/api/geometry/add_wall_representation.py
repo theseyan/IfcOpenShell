@@ -73,11 +73,9 @@ def add_wall_representation(
     if booleans is not None:
         while booleans:
             boolean_items.append(booleans.pop(0))
-
-    lib = _capi.get_lib()
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_geometry_add_wall_representation,
+        "geometry_add_wall_representation",
         _capi.file_handle(file),
         _capi.instance_handle(context),
         length,

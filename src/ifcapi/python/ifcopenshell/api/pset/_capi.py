@@ -8,6 +8,13 @@ import datetime
 
 import ifcopenshell
 import ifcopenshell.api.owner.settings
+from ifcopenshell._capi_utils import (
+    file_handle,
+    instance_handle,
+    instance_list,
+    owner_context,
+    raise_last_error,
+)
 
 from ... import _ifcopenshell_capi as _capi
 
@@ -58,7 +65,7 @@ def _add_entry(props, key, value):
             raise
         return
 
-    # entity_instance — could be IfcProperty, IfcValue/typed value, or arbitrary entity.
+    # entity_instance -- could be IfcProperty, IfcValue/typed value, or arbitrary entity.
     if isinstance(value, ifcopenshell.entity_instance):
         _call("ifcopenshell_ifcapi_pset_props_set_instance", props, key, value._handle)
         return
@@ -68,12 +75,7 @@ def _add_entry(props, key, value):
             _call("ifcopenshell_ifcapi_pset_props_set_string_list", props, key, [])
             return
         if all(isinstance(v, ifcopenshell.entity_instance) for v in value):
-            handles = [v._handle for v in value]
-            instance_list = _capi.instance_list_create_from_handles(handles)
-            try:
-                _call("ifcopenshell_ifcapi_pset_props_set_instance_list", props, key, instance_list)
-            finally:
-                _capi.instance_list_destroy(instance_list)
+            _call("ifcopenshell_ifcapi_pset_props_set_instance_list", props, key, [v._handle for v in value])
             return
         # Detect uniform element kind. Mixed -> coerce to strings.
         if all(isinstance(v, bool) or isinstance(v, int) and not isinstance(v, bool) for v in value):
@@ -142,29 +144,6 @@ def free_props(handle):
     if not handle:
         return
     _call("ifcopenshell_ifcapi_pset_props_free", handle)
-
-
-def instance_handle(entity):
-    return entity._handle if entity is not None else None
-
-
-def file_handle(file):
-    return file._handle
-
-
-def instance_list(entities):
-    return [entity._handle for entity in entities]
-
-
-def owner_context(file):
-    user = ifcopenshell.api.owner.settings.get_user(file)
-    application = ifcopenshell.api.owner.settings.get_application(file)
-    return None, user, application
-
-
-def raise_last_error(default_msg):
-    msg = _capi.last_error_message()
-    raise RuntimeError(msg or default_msg)
 
 
 def last_error_kind():

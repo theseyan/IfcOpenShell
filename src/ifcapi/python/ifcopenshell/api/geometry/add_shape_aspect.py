@@ -48,10 +48,9 @@ def add_shape_aspect(
         not necessary.
     :return: The IfcShapeAspect
     """
-    lib = _capi.get_lib()
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_geometry_add_shape_aspect,
+        "geometry_add_shape_aspect",
         _capi.file_handle(file),
         _capi.string(name),
         _capi.instance_list(items),

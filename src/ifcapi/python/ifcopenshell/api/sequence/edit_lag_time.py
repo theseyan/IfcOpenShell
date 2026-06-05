@@ -86,7 +86,7 @@ def edit_lag_time(file: ifcopenshell.file, lag_time: ifcopenshell.entity_instanc
     props = pset_capi.build_props(native_attributes)
     try:
         _capi.call_status(
-            _capi.get_lib().ifcopenshell_ifcapi_sequence_edit_lag_time,
+            "sequence_edit_lag_time",
             _capi.instance_handle(lag_time),
             props,
         )

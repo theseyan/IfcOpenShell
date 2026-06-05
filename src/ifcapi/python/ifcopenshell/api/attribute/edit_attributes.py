@@ -35,7 +35,7 @@ def _edit_attributes(
     try:
         user, application = _capi.owner_context(file)
         _capi.call_status(
-            _capi.get_lib().ifcopenshell_ifcapi_attribute_edit_attributes,
+            "attribute_edit_attributes",
             _capi.file_handle(file),
             _capi.instance_handle(product),
             props,

@@ -51,9 +51,8 @@ def unassign_product(
             relating_product=furniture, related_object=annotation)
     """
     user, application = _relationship_capi.owner_user_application(file)
-    lib = _relationship_capi.get_lib()
     _relationship_capi.call_status(
-        lib.ifcopenshell_ifcapi_drawing_unassign_product,
+        "drawing_unassign_product",
         _relationship_capi.file_handle(file),
         _relationship_capi.instance_handle(relating_product),
         _relationship_capi.instance_handle(related_object),

@@ -54,10 +54,8 @@ def remove_material_set(file: ifcopenshell.file, material: ifcopenshell.entity_i
         # material still exist, though.
         ifcopenshell.api.material.remove_material_set(model, material=material_set)
     """
-
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_material_remove_material_set,
+        "material_remove_material_set",
         "Failed to remove material set",
         _capi.file_handle(file),
         _capi.instance_handle(material),

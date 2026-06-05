@@ -17,7 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-from ifcopenshell.api.boundary import _capi
+import ifcopenshell.util.element
 
 
 def remove_boundary(file: ifcopenshell.file, boundary: ifcopenshell.entity_instance) -> None:
@@ -38,10 +38,11 @@ def remove_boundary(file: ifcopenshell.file, boundary: ifcopenshell.entity_insta
         # Let's remove it!
         ifcopenshell.api.boundary.remove_boundary(model, boundary=boundary)
     """
-    lib = _capi.get_lib()
-    _capi.call_status(
-        lib.ifcopenshell_ifcapi_boundary_remove_boundary,
-        "Failed to remove boundary",
-        _capi.file_handle(file),
-        _capi.instance_handle(boundary),
-    )
+    geometry = boundary.ConnectionGeometry
+    if geometry:
+        boundary.ConnectionGeometry = None
+        ifcopenshell.util.element.remove_deep2(file, geometry)
+    history = boundary.OwnerHistory
+    file.remove(boundary)
+    if history:
+        ifcopenshell.util.element.remove_deep2(file, history)

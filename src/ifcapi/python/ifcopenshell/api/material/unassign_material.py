@@ -52,11 +52,10 @@ def unassign_material(file: ifcopenshell.file, products: list[ifcopenshell.entit
         # out of concrete now.
         ifcopenshell.api.material.unassign_material(model, products=[bench_type])
     """
-    lib = _capi.get_lib()
     _, user, application = _capi.owner_context(file)
     product_list = _capi.instance_list(products)
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_material_unassign_material,
+        "material_unassign_material",
         "Failed to unassign material",
         _capi.file_handle(file),
         product_list,

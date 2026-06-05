@@ -110,13 +110,11 @@ def assign_object(
     # nothing to change
     if not products_to_change:
         return is_decomposed_by
-
-    lib = _relationship_capi.get_lib()
     owner_history, user, application = _relationship_capi.owner_context(file)
     product_list = _relationship_capi.instance_list(products)
     is_decomposed_by = _relationship_capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_aggregate_assign_object,
+        "aggregate_assign_object",
         _relationship_capi.file_handle(file),
         _relationship_capi.instance_list_ptr(product_list),
         _relationship_capi.instance_handle(relating_object),

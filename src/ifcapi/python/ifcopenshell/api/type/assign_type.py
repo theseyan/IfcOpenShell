@@ -218,13 +218,11 @@ class Usecase:
         # nothing to change
         if not objects_to_change:
             return types
-
-        lib = _relationship_capi.get_lib()
         owner_history, user, application = _relationship_capi.owner_context(self.file)
         object_list = _relationship_capi.instance_list(related_objects)
         types = _relationship_capi.call_handle(
             self.file,
-            lib.ifcopenshell_ifcapi_type_assign_type_ex,
+            "type_assign_type_ex",
             _relationship_capi.file_handle(self.file),
             _relationship_capi.instance_list_ptr(object_list),
             _relationship_capi.instance_handle(relating_type),

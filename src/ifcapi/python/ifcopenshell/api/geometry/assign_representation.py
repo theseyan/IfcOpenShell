@@ -8,10 +8,9 @@ from ifcopenshell.api.geometry import _capi
 def assign_representation(
     file: ifcopenshell.file, product: ifcopenshell.entity_instance, representation: ifcopenshell.entity_instance
 ) -> None:
-    lib = _capi.get_lib()
     changed_product = _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_geometry_assign_representation,
+        "geometry_assign_representation",
         _capi.file_handle(file),
         _capi.instance_handle(product),
         _capi.instance_handle(representation),

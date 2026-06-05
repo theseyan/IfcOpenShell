@@ -50,7 +50,7 @@ def unassign_recurrence_pattern(file: ifcopenshell.file, recurrence_pattern: ifc
         ifcopenshell.api.sequence.unassign_recurrence_pattern(recurrence_pattern=pattern)
     """
     _capi.call_status(
-        _capi.get_lib().ifcopenshell_ifcapi_sequence_unassign_recurrence_pattern,
+        "sequence_unassign_recurrence_pattern",
         _capi.file_handle(file),
         _capi.instance_handle(recurrence_pattern),
     )

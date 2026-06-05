@@ -35,10 +35,9 @@ def copy_boundary(file: ifcopenshell.file, boundary: ifcopenshell.entity_instanc
         # And now we have two
         boundary_copy = ifcopenshell.api.boundary.copy_boundary(model, boundary=boundary)
     """
-    lib = _capi.get_lib()
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_boundary_copy_boundary,
+        "boundary_copy_boundary",
         "Failed to copy boundary",
         _capi.file_handle(file),
         _capi.instance_handle(boundary),

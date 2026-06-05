@@ -60,9 +60,8 @@ def create_axis_curve(
         ifcopenshell.api.grid.create_axis_curve(
             model, p1=np.array((0., 0., 0.)), p2=np.array((0., 10., 0.)), grid_axis=axis_1)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_grid_create_axis_curve,
+        "grid_create_axis_curve",
         "grid_create_axis_curve failed",
         _capi.file_handle(file),
         _capi.double_list(p1),

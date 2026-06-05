@@ -71,11 +71,9 @@ def create_grid_axis(
         axis_1 = ifcopenshell.api.grid.create_grid_axis(model,
             axis_tag="1", uvw_axes="VAxes", grid=grid)
     """
-
-    lib = _capi.get_lib()
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_grid_create_grid_axis,
+        "grid_create_grid_axis",
         "Failed to create grid axis",
         _capi.file_handle(file),
         _capi.instance_handle(grid),

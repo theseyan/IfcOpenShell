@@ -90,10 +90,9 @@ def add_cost_value(file: ifcopenshell.file, parent: ifcopenshell.entity_instance
         ifcopenshell.api.cost.edit_cost_value(model,
             cost_value=subvalue2, attributes={"AppliedValue": 3.0})
     """
-    lib = _capi.get_lib()
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_cost_add_cost_value,
+        "cost_add_cost_value",
         _capi.file_handle(file),
         _capi.instance_handle(parent),
     )

@@ -35,9 +35,8 @@ def remove_application(file: ifcopenshell.file, application: ifcopenshell.entity
         application = ifcopenshell.api.owner.add_application(model)
         ifcopenshell.api.owner.remove_address(model, application=application)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_owner_remove_application,
+        "owner_remove_application",
         "Failed to remove application",
         _capi.file_handle(file),
         _capi.instance_handle(application),

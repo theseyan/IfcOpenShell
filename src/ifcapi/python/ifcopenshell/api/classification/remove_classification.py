@@ -38,9 +38,8 @@ def remove_classification(file: ifcopenshell.file, classification: ifcopenshell.
         ifcopenshell.api.classification.remove_classification(model,
             classification=classification)
     """
-    lib = _relationship_capi.get_lib()
     _relationship_capi.call_status(
-        lib.ifcopenshell_ifcapi_classification_remove_classification,
+        "classification_remove_classification",
         _relationship_capi.file_handle(file),
         _relationship_capi.instance_handle(classification),
     )

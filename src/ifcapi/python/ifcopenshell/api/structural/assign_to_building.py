@@ -48,11 +48,10 @@ def assign_to_building(
         ifcopenshell.api.structural.assign_to_building(model,
             structural_analysis_model=model_, building=building)
     """
-    lib = _capi.get_lib()
     owner_history = _capi.owner_history(file)
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_structural_assign_to_building,
+        "structural_assign_to_building",
         _capi.file_handle(file),
         _capi.instance_handle(structural_analysis_model),
         _capi.instance_handle(building),

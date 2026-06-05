@@ -42,9 +42,8 @@ def remove_context(file: ifcopenshell.file, context: ifcopenshell.entity_instanc
         # Let's just get rid of it completely
         ifcopenshell.api.context.remove_context(model, context=body)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_context_remove_context,
+        "context_remove_context",
         "Failed to remove context",
         _capi.file_handle(file),
         _capi.instance_handle(context),

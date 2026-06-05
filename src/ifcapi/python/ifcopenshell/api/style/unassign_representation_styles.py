@@ -49,10 +49,9 @@ def unassign_representation_styles(
         ifcopenshell.api.style.unassign_representation_styles(model,
             shape_representation=representation, styles=[style])
     """
-    lib = _capi.get_lib()
     style_list = _capi.instance_list(styles or [])
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_style_unassign_representation_styles,
+        "style_unassign_representation_styles",
         "Failed to unassign representation styles",
         _capi.file_handle(file),
         _capi.instance_handle(shape_representation),

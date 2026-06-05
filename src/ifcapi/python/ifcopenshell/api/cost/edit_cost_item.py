@@ -41,11 +41,10 @@ def edit_cost_item(
         item = ifcopenshell.api.cost.add_cost_item(model, cost_schedule=schedule)
         ifcopenshell.api.cost.edit_cost_item(model, cost_item=item, attributes={"Name": "Foo"})
     """
-    lib = _capi.get_lib()
     props = _capi.build_props(attributes)
     try:
         return _capi.call_status(
-            lib.ifcopenshell_ifcapi_cost_edit_cost_item,
+            "cost_edit_cost_item",
             _capi.file_handle(file),
             _capi.instance_handle(cost_item),
             props,

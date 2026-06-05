@@ -34,9 +34,8 @@ def disconnect_path(
     - provide connected elements to disconnect explicitly:
     `relating_element` (connected from) and `related_element` (connected to)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_geometry_disconnect_path,
+        "geometry_disconnect_path",
         _capi.file_handle(file),
         _capi.instance_handle(element),
         _capi.string(connection_type or ""),

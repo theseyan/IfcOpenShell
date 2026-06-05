@@ -58,7 +58,7 @@ def unassign_sequence(
     """
     try:
         _capi.call_status(
-            _capi.get_lib().ifcopenshell_ifcapi_sequence_unassign_sequence,
+            "sequence_unassign_sequence",
             _capi.file_handle(file),
             _capi.instance_handle(relating_process),
             _capi.instance_handle(related_process),

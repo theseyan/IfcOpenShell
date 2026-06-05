@@ -72,7 +72,7 @@ def edit_task_time(
     props = pset_capi.build_props(converted_attributes)
     try:
         _capi.call_status(
-            _capi.get_lib().ifcopenshell_ifcapi_sequence_edit_task_time,
+            "sequence_edit_task_time",
             _capi.file_handle(file),
             _capi.instance_handle(task_time),
             props,

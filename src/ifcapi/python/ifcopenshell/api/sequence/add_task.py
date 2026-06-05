@@ -133,7 +133,7 @@ def add_task(
     owner_history, user, application = _capi.owner_context(file)
     return _capi.call_handle(
         file,
-        _capi.get_lib().ifcopenshell_ifcapi_sequence_add_task,
+        "sequence_add_task",
         _capi.file_handle(file),
         _capi.instance_handle(work_schedule),
         _capi.instance_handle(parent_task),

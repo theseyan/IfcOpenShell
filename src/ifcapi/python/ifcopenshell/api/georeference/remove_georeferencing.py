@@ -36,8 +36,7 @@ def remove_georeferencing(file: ifcopenshell.file) -> None:
     """
     if file.schema == "IFC2X3":
         file.by_type("IfcProject")[0]
-    lib = _relationship_capi.get_lib()
     _relationship_capi.call_status(
-        lib.ifcopenshell_ifcapi_georeference_remove_georeferencing,
+        "georeference_remove_georeferencing",
         _relationship_capi.file_handle(file),
     )

@@ -9,17 +9,16 @@ import math
 import isodate
 
 import ifcopenshell
+from ifcopenshell._capi_utils import (
+    call_status as _call_status,
+)
+from ifcopenshell._capi_utils import (
+    file_handle,
+    instance_handle,
+)
 from ifcopenshell.api.pset import _capi as pset_capi
 
 from ... import _ifcopenshell_capi as _capi
-
-
-def file_handle(file: ifcopenshell.file):
-    return file._handle
-
-
-def instance_handle(entity: ifcopenshell.entity_instance | None):
-    return entity._handle if entity is not None else None
 
 
 def _set_temporal_entry(props, key: str, value, parse_datetime_string: bool = False) -> bool:
@@ -130,5 +129,4 @@ def build_resource_time_props(attributes):
 
 
 def call_status(fn_name: str, *args) -> None:
-    fn = getattr(_capi, fn_name)
-    fn(*args)
+    _call_status(fn_name, *args)

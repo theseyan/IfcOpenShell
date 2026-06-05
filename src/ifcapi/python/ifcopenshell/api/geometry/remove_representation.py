@@ -38,9 +38,8 @@ def remove_representation(
     :param should_keep_named_profiles: If true, named profile defs will not be
         removed as they are assumed to be significant.
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_geometry_remove_representation,
+        "geometry_remove_representation",
         _capi.file_handle(file),
         _capi.instance_handle(representation),
         should_keep_named_profiles,

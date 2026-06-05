@@ -87,10 +87,9 @@ def assign_item_style(
         ifcopenshell.api.style.assign_item_style(model,
             style=style, item=representation.Items[0])
     """
-    lib = _capi.get_lib()
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_style_assign_item_style,
+        "style_assign_item_style",
         "Failed to assign item style",
         _capi.file_handle(file),
         _capi.instance_handle(item),

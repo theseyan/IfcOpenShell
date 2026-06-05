@@ -41,9 +41,8 @@ def remove_material(file: ifcopenshell.file, material: ifcopenshell.entity_insta
         # ... and remove it
         ifcopenshell.api.material.remove_material(model, material=aluminium)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_material_remove_material,
+        "material_remove_material",
         "Failed to remove material",
         _capi.file_handle(file),
         _capi.instance_handle(material),

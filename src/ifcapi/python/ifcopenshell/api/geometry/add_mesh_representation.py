@@ -123,10 +123,9 @@ class Usecase:
         return self.create_mesh_representation()
 
     def create_mesh_representation(self) -> ifcopenshell.entity_instance:
-        lib = _capi.get_lib()
         return _capi.call_handle(
             self.file,
-            lib.ifcopenshell_ifcapi_geometry_add_mesh_representation,
+            "geometry_add_mesh_representation",
             _capi.file_handle(self.file),
             _capi.instance_handle(self.context),
             _capi.double_list_list_list(self.vertices.tolist()),

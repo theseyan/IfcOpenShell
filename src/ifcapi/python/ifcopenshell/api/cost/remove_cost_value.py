@@ -46,9 +46,8 @@ def remove_cost_value(
 
         ifcopenshell.api.cost.remove_cost_value(model, parent=item, cost_value=value)
     """
-    lib = _capi.get_lib()
     return _capi.call_status(
-        lib.ifcopenshell_ifcapi_cost_remove_cost_value,
+        "cost_remove_cost_value",
         _capi.file_handle(file),
         _capi.instance_handle(parent),
         _capi.instance_handle(cost_value),

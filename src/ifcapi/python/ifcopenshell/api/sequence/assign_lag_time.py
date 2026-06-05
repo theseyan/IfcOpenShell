@@ -83,7 +83,7 @@ def assign_lag_time(
     """
     return _capi.call_handle(
         file,
-        _capi.get_lib().ifcopenshell_ifcapi_sequence_assign_lag_time,
+        "sequence_assign_lag_time",
         _capi.file_handle(file),
         _capi.instance_handle(rel_sequence),
         _capi.string(ifcopenshell.util.date.datetime2ifc(lag_value, "IfcDuration")),

@@ -52,9 +52,8 @@ def remove_constituent(
         # invalid.
         ifcopenshell.api.material.remove_constituent(model, constituent=glazing)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_material_remove_constituent,
+        "material_remove_constituent",
         "Failed to remove material constituent",
         _capi.file_handle(file),
         _capi.instance_handle(constituent),

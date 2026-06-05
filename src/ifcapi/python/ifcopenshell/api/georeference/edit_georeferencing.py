@@ -89,9 +89,8 @@ def edit_georeferencing(
     coordinate_props = pset_capi.build_props(coordinate_operation or {})
     projected_props = pset_capi.build_props(projected_crs or {})
     try:
-        lib = _relationship_capi.get_lib()
         _relationship_capi.call_status(
-            lib.ifcopenshell_ifcapi_georeference_edit_georeferencing,
+            "georeference_edit_georeferencing",
             _relationship_capi.file_handle(file),
             has_coordinate_operation,
             coordinate_props,

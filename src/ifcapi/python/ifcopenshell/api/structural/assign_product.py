@@ -48,11 +48,10 @@ def assign_product(
         ifcopenshell.api.structural.assign_product(model,
             relating_product=member, related_object=wall)
     """
-    lib = _capi.get_lib()
     owner_history = _capi.owner_history(file)
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_structural_assign_product,
+        "structural_assign_product",
         _capi.file_handle(file),
         _capi.instance_handle(relating_product),
         _capi.instance_handle(related_object),

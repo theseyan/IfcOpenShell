@@ -74,10 +74,9 @@ def add_cost_item_quantity(
         ifcopenshell.api.cost.add_cost_item_quantity(model,
             cost_item=item, ifc_class="IfcQuantityCount")
     """
-    lib = _capi.get_lib()
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_cost_add_cost_item_quantity,
+        "cost_add_cost_item_quantity",
         _capi.file_handle(file),
         _capi.instance_handle(cost_item),
         _capi.string(ifc_class),

@@ -33,12 +33,10 @@ def add_structural_member_connection(
         to the IfcStructuralMember.
     :return: The IfcRelConnectsStructuralMember relationship
     """
-
-    lib = _capi.get_lib()
     owner_history = _capi.owner_history(file)
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_structural_add_structural_member_connection,
+        "structural_add_structural_member_connection",
         _capi.file_handle(file),
         _capi.instance_handle(relating_structural_member),
         _capi.instance_handle(related_structural_connection),

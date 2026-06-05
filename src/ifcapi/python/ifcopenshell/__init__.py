@@ -28,6 +28,16 @@ version_core = version
 guid.new = _capi.guid_new
 
 
+def _take_instance_list(file_obj, instance_list):
+    if not instance_list:
+        return []
+    try:
+        size = _capi.instance_list_size(instance_list)
+        return [entity_instance(file_obj, _capi.instance_list_get(instance_list, i)) for i in range(size)]
+    finally:
+        _capi.instance_list_destroy(instance_list)
+
+
 def get_log() -> str:
     """Return the accumulated parser/validator log (parity with SWIG)."""
     from ifcopenshell import ifcopenshell_wrapper as _W
@@ -564,7 +574,10 @@ class file:
     def by_id(self, id: int) -> entity_instance:
         if isinstance(id, (str, bytes)):
             return self.by_guid(id.decode("utf-8") if isinstance(id, bytes) else id)
-        return entity_instance(self, _capi.file_by_id(self._handle, id))
+        handle = _capi.file_by_id(self._handle, id)
+        if not handle:
+            raise RuntimeError(f"Entity #{id} not found")
+        return entity_instance(self, handle)
 
     def __getattr__(self, attr):
         if attr.startswith("create"):
@@ -619,7 +632,7 @@ class file:
         if inst.id() == 0 and inst._is_wrapped_value_instance():
             return self.create_entity(inst.is_a(), inst.wrappedValue)
         max_id = self.get_max_id() if self.transaction is not None else 0
-        result = entity_instance(self, _capi.file_add(self._handle, inst._handle, 0 if _id is None else int(_id)))
+        result = entity_instance(self, _capi.file_add(self._handle, inst._handle, -1 if _id is None else int(_id)))
         if self.transaction is not None:
             added = [e for e in self.traverse(result) if e.id() > max_id]
             for e in reversed(added):

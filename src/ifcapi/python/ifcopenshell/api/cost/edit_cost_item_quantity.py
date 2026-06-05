@@ -49,11 +49,10 @@ def edit_cost_item_quantity(
         ifcopenshell.api.cost.edit_cost_item_quantity(model,
             physical_quantity=quantity, "attributes": {"VolumeValue": 3.0})
     """
-    lib = _capi.get_lib()
     props = _capi.build_props(attributes)
     try:
         return _capi.call_status(
-            lib.ifcopenshell_ifcapi_cost_edit_cost_item_quantity,
+            "cost_edit_cost_item_quantity",
             _capi.file_handle(file),
             _capi.instance_handle(physical_quantity),
             props,

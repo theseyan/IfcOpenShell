@@ -35,9 +35,8 @@ def edit_structural_connection_cs(
         floats. Defaults to (1., 0., 0.).
     :return: None
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_structural_edit_structural_connection_cs,
+        "structural_edit_structural_connection_cs",
         _capi.file_handle(file),
         _capi.instance_handle(structural_item),
         _capi.double_list(ifc_safe_vector_type(axis)),

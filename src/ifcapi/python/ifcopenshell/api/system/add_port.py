@@ -52,11 +52,10 @@ def add_port(
         port1 = ifcopenshell.api.system.add_port(model, element=duct)
         port2 = ifcopenshell.api.system.add_port(model, element=duct)
     """
-    lib = _capi.get_lib()
     owner_history, user, application = _capi.owner_context(file)
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_system_add_port,
+        "system_add_port",
         "Failed to add port",
         _capi.file_handle(file),
         _capi.instance_handle(element),

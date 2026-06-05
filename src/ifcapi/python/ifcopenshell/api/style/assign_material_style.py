@@ -97,9 +97,8 @@ def assign_material_style(
         # a grey colour applied.
         ifcopenshell.api.style.assign_material_style(model, material=concrete, style=style, context=body)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_style_assign_material_style,
+        "style_assign_material_style",
         "Failed to assign material style",
         _capi.file_handle(file),
         _capi.instance_handle(material),

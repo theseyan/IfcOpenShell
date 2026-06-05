@@ -83,10 +83,9 @@ def assign_cost_item_quantity(
         ifcopenshell.api.cost.assign_cost_item_quantity(model,
             cost_item=item, products=[slab], prop_name="NetVolume")
     """
-    lib = _capi.get_lib()
     owner_history, user, application = _capi.owner_context(file)
     return _capi.call_status(
-        lib.ifcopenshell_ifcapi_cost_assign_cost_item_quantity,
+        "cost_assign_cost_item_quantity",
         _capi.file_handle(file),
         _capi.instance_handle(cost_item),
         _capi.instance_list(products or []),

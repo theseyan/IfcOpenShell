@@ -44,9 +44,8 @@ def remove_cost_item_quantity(
         ifcopenshell.api.cost.remove_cost_item(model,
             cost_item=item, physical_quantity=quantity)
     """
-    lib = _capi.get_lib()
     return _capi.call_status(
-        lib.ifcopenshell_ifcapi_cost_remove_cost_item_quantity,
+        "cost_remove_cost_item_quantity",
         _capi.file_handle(file),
         _capi.instance_handle(cost_item),
         _capi.instance_handle(physical_quantity),

@@ -31,11 +31,10 @@ def connect_path(
     description: Optional[str] = None,
     connection_geometry: Optional[ifcopenshell.entity_instance] = None,
 ) -> ifcopenshell.entity_instance:
-    lib = _capi.get_lib()
     user, application = _capi.owner_user_application(file)
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_geometry_connect_path,
+        "geometry_connect_path",
         _capi.file_handle(file),
         _capi.instance_handle(relating_element),
         _capi.instance_handle(related_element),

@@ -38,11 +38,10 @@ def add_structural_analysis_model(file: ifcopenshell.file) -> ifcopenshell.entit
         # Create a fresh blank structural analysis
         analysis = ifcopenshell.api.structural.add_structural_analysis_model(model)
     """
-    lib = _capi.get_lib()
     owner_history = _capi.owner_history(file)
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_structural_add_structural_analysis_model,
+        "structural_add_structural_analysis_model",
         _capi.file_handle(file),
         _capi.instance_handle(owner_history),
     )

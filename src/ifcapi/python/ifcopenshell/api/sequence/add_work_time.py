@@ -75,7 +75,7 @@ def add_work_time(
     """
     return _capi.call_handle(
         file,
-        _capi.get_lib().ifcopenshell_ifcapi_sequence_add_work_time,
+        "sequence_add_work_time",
         _capi.file_handle(file),
         _capi.instance_handle(work_calendar),
         _capi.string(time_type),

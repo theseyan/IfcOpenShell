@@ -70,4 +70,4 @@ def assign_reference(
     )
     if handle:
         return ifcopenshell.entity_instance(file, handle)
-    raise RuntimeError(_capi.last_error_message() or "Failed to assign library reference")
+    return None

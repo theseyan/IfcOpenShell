@@ -42,9 +42,8 @@ def remove_grid_axis(file: ifcopenshell.file, axis: ifcopenshell.entity_instance
         # Let's remove it!
         ifcopenshell.api.grid.remove_grid_axis(model, axis=axis_2)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_grid_remove_grid_axis,
+        "grid_remove_grid_axis",
         "Failed to remove grid axis",
         _capi.file_handle(file),
         _capi.instance_handle(axis),

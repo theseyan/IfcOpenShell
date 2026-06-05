@@ -38,9 +38,8 @@ def remove_style(file: ifcopenshell.file, style: ifcopenshell.entity_instance) -
         # Not anymore!
         ifcopenshell.api.style.remove_style(model, style=style)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_style_remove_style,
+        "style_remove_style",
         "Failed to remove style",
         _capi.file_handle(file),
         _capi.instance_handle(style),

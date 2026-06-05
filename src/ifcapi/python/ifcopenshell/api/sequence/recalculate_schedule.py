@@ -51,7 +51,7 @@ def recalculate_schedule(file: ifcopenshell.file, work_schedule: ifcopenshell.en
     """
     try:
         _capi.call_status(
-            _capi.get_lib().ifcopenshell_ifcapi_sequence_recalculate_schedule,
+            "sequence_recalculate_schedule",
             _capi.file_handle(file),
             _capi.instance_handle(work_schedule),
         )

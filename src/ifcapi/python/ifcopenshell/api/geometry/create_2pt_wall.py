@@ -50,10 +50,9 @@ def create_2pt_wall(
         If False, values are converted from project units to SI.
     :return: IfcShapeRepresentation.
     """
-    lib = _capi.get_lib()
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_geometry_create_2pt_wall,
+        "geometry_create_2pt_wall",
         _capi.file_handle(file),
         _capi.instance_handle(element),
         _capi.instance_handle(context),

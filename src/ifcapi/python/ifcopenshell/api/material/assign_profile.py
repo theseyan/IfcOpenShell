@@ -88,9 +88,8 @@ def assign_profile(
         )
         ifcopenshell.api.material.assign_profile(model, material_profile=profile_item, profile=hea200)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_material_assign_profile,
+        "material_assign_profile",
         "Failed to assign material profile",
         _capi.file_handle(file),
         _capi.instance_handle(material_profile),

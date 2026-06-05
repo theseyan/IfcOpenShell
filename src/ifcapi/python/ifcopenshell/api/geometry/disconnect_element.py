@@ -25,9 +25,8 @@ def disconnect_element(
     relating_element: ifcopenshell.entity_instance,
     related_element: ifcopenshell.entity_instance,
 ) -> None:
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_geometry_disconnect_element,
+        "geometry_disconnect_element",
         _capi.file_handle(file),
         _capi.instance_handle(relating_element),
         _capi.instance_handle(related_element),

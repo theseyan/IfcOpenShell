@@ -66,7 +66,7 @@ def assign_product(
     owner_history, user, application = _capi.owner_context(file)
     return _capi.call_handle(
         file,
-        _capi.get_lib().ifcopenshell_ifcapi_sequence_assign_product,
+        "sequence_assign_product",
         _capi.file_handle(file),
         _capi.instance_handle(relating_product),
         _capi.instance_handle(related_object),

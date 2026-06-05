@@ -53,9 +53,8 @@ def unassign_container(file: ifcopenshell.file, products: list[ifcopenshell.enti
     """
     product_list = _relationship_capi.instance_list(products)
     user, application = _relationship_capi.owner_user_application(file)
-    lib = _relationship_capi.get_lib()
     _relationship_capi.call_status(
-        lib.ifcopenshell_ifcapi_spatial_unassign_container,
+        "spatial_unassign_container",
         _relationship_capi.file_handle(file),
         _relationship_capi.instance_list_ptr(product_list),
         _relationship_capi.instance_handle(user),

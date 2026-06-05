@@ -59,9 +59,8 @@ def edit_cost_value(
 
     props = pset_capi.build_props(native_attributes)
     try:
-        lib = _capi.get_lib()
         _capi.call_status(
-            lib.ifcopenshell_ifcapi_cost_edit_cost_value,
+            "cost_edit_cost_value",
             _capi.file_handle(file),
             _capi.instance_handle(cost_value),
             props,

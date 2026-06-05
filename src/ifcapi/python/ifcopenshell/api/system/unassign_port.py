@@ -48,10 +48,9 @@ def unassign_port(
         # Unassign one port for some weird reason.
         ifcopenshell.api.system.unassign_port(model, element=duct, port=port1)
     """
-    lib = _capi.get_lib()
     _, user, application = _capi.owner_context(file)
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_system_unassign_port,
+        "system_unassign_port",
         "Failed to unassign port",
         _capi.file_handle(file),
         _capi.instance_handle(element),

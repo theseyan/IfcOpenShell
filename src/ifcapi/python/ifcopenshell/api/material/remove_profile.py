@@ -67,10 +67,8 @@ def remove_profile(
         # Let's remove our welded square.
         ifcopenshell.api.material.remove_profile(model, profile=weld_profile)
     """
-
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_material_remove_profile,
+        "material_remove_profile",
         "Failed to remove material profile",
         _capi.file_handle(file),
         _capi.instance_handle(profile),

@@ -80,9 +80,8 @@ def calculate_cost_item_resource_value(file: ifcopenshell.file, cost_item: ifcop
         # (42 * 200) + 50000 = 58400 is our calculated cost
         ifcopenshell.api.cost.calculate_cost_item_resource_value(model, cost_item=item)
     """
-    lib = _capi.get_lib()
     return _capi.call_status(
-        lib.ifcopenshell_ifcapi_cost_calculate_cost_item_resource_value,
+        "cost_calculate_cost_item_resource_value",
         _capi.file_handle(file),
         _capi.instance_handle(cost_item),
     )

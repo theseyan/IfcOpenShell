@@ -45,9 +45,8 @@ def remove_person_and_organisation(
 
         ifcopenshell.api.owner.remove_person_and_organisation(model, person_and_organisation=user)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_owner_remove_person_and_organisation,
+        "owner_remove_person_and_organisation",
         "Failed to remove person and organisation",
         _capi.file_handle(file),
         _capi.instance_handle(person_and_organisation),

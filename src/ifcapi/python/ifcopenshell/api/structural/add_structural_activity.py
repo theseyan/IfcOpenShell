@@ -53,13 +53,11 @@ def add_structural_activity(
         applied to.
     :return: The newly created entity based on the ifc_class
     """
-
-    lib = _capi.get_lib()
     activity_owner_history = _capi.owner_history(file)
     relationship_owner_history = _capi.owner_history(file)
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_structural_add_structural_activity,
+        "structural_add_structural_activity",
         _capi.file_handle(file),
         _capi.instance_handle(applied_load),
         _capi.instance_handle(structural_member),

@@ -51,7 +51,7 @@ def edit_task(file: ifcopenshell.file, task: ifcopenshell.entity_instance, attri
     props = pset_capi.build_props(attributes)
     try:
         _capi.call_status(
-            _capi.get_lib().ifcopenshell_ifcapi_sequence_edit_task,
+            "sequence_edit_task",
             _capi.instance_handle(task),
             props,
         )

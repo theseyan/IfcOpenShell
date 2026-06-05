@@ -298,10 +298,9 @@ def add_door_representation(
             "part_of_product": part_of_product,
         }
     )
-    lib = _capi.get_lib()
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_geometry_add_door_representation,
+        "geometry_add_door_representation",
         _capi.file_handle(file),
         _capi.instance_handle(context),
         settings["overall_height"],

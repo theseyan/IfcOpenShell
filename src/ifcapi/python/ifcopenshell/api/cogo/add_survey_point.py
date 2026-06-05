@@ -39,11 +39,10 @@ def add_survey_point(
 
         annotation = ifcopenshell.api.cogo.add_survey_point(file,file.createIfcCartesianPoint(4000.0,3500.0)))
     """
-    lib = _capi.get_lib()
     user, application = _capi.owner_user_application(file)
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_cogo_add_survey_point,
+        "cogo_add_survey_point",
         _capi.file_handle(file),
         _capi.instance_handle(survey_point),
         _capi.instance_handle(site),

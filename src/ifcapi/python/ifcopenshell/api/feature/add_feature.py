@@ -101,12 +101,11 @@ def add_feature(
         # The opening will now void the wall.
         ifcopenshell.api.feature.add_feature(model, feature=opening, element=wall)
     """
-    lib = _capi.get_lib()
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_feature_add_feature,
+        "feature_add_feature",
         "Failed to add feature",
         _capi.file_handle(file),
         _capi.instance_handle(feature),

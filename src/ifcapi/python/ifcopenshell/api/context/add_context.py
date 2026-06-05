@@ -180,10 +180,9 @@ def add_context(
         # Place our wall at the origin
         ifcopenshell.api.geometry.edit_object_placement(model, product=wall)
     """
-    lib = _capi.get_lib()
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_context_add_context,
+        "context_add_context",
         "Failed to add context",
         _capi.file_handle(file),
         _capi.nullable_string(context_type),

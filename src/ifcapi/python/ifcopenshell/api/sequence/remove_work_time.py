@@ -41,7 +41,7 @@ def remove_work_time(file: ifcopenshell.file, work_time: ifcopenshell.entity_ins
     """
 
     _capi.call_status(
-        _capi.get_lib().ifcopenshell_ifcapi_sequence_remove_work_time,
+        "sequence_remove_work_time",
         _capi.file_handle(file),
         _capi.instance_handle(work_time),
     )

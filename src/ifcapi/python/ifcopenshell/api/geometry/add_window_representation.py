@@ -447,11 +447,9 @@ def add_window_representation(
     panel_schema = usecase.settings["panel_schema"]
     max_panel_index = max(chain.from_iterable(panel_schema))
     panel_properties[max_panel_index]
-
-    lib = _capi.get_lib()
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_geometry_add_window_representation,
+        "geometry_add_window_representation",
         _capi.file_handle(file),
         _capi.instance_handle(context),
         settings["overall_height"],

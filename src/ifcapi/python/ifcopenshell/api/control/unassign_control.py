@@ -50,9 +50,8 @@ def unassign_control(
     """
     object_list = _relationship_capi.instance_list(related_objects)
     user, application = _relationship_capi.owner_user_application(file)
-    lib = _relationship_capi.get_lib()
     _relationship_capi.call_status(
-        lib.ifcopenshell_ifcapi_control_unassign_control,
+        "control_unassign_control",
         _relationship_capi.file_handle(file),
         _relationship_capi.instance_handle(relating_control),
         _relationship_capi.instance_list_ptr(object_list),

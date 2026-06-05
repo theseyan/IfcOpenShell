@@ -97,4 +97,4 @@ def assign_declaration(
     )
     if handle:
         return ifcopenshell.entity_instance(file, handle)
-    raise RuntimeError(_capi.last_error_message() or "Failed to assign declaration")
+    return None

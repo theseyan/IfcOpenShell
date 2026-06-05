@@ -98,10 +98,9 @@ def regenerate_wall_representation(
         angle in radians. Left as none or 0 defines no slope.
     :return: The newly generated body IfcShapeRepresentation
     """
-    lib = _capi.get_lib()
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_geometry_regenerate_wall_representation,
+        "geometry_regenerate_wall_representation",
         _capi.file_handle(file),
         _capi.instance_handle(wall),
         length,

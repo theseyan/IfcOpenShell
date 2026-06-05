@@ -57,10 +57,6 @@ def _instance_inverse_attribute_names(handle) -> tuple[str, ...]:
     return _capi.instance_get_inverse_attribute_names(handle) or ()
 
 
-def _generated_instance_handle_ptr(handle):
-    return handle
-
-
 def _attribute_value_to_python(av, file_obj):
     """Convert an attribute value handle to a Python value."""
     if _capi.attribute_value_is_null(av):
@@ -163,9 +159,14 @@ class entity_instance:
         object.__setattr__(self, "_wrapped_data", value)
 
     def id(self) -> int:
-        if not self._handle:
+        h = self._handle
+        if not h:
             return 0
-        return int(_capi.instance_id(self._handle))
+        # The C API raises RuntimeError for destroyed handles (handle ptr is NULL).
+        # Check the raw pointer first to avoid the exception path.
+        if not h.handle:
+            return 0
+        return int(_capi.instance_id(h))
 
     def identity(self) -> tuple:
         """Stable identity key for this instance (parity with SWIG wrapped_data.identity()).
@@ -194,7 +195,9 @@ class entity_instance:
         so header-section entities (which live in `Header_section_schema` rather
         than the file's IFC schema) are also resolvable.
         """
-        return _capi.instance_declaration(self._handle)
+        from ifcopenshell import ifcopenshell_wrapper
+
+        return ifcopenshell_wrapper.instance_declaration(self._handle)
 
     def attribute_name(self, index: int) -> str:
         names = _instance_attribute_names(self._handle)
@@ -455,11 +458,20 @@ class entity_instance:
             return _capi.attribute_value_as_string(av)
         if primitive == "entity" or value_type == "ENTITY INSTANCE":
             return entity_instance(self._file, _capi.attribute_value_as_instance(av))
-        if primitive == "integer" or value_type == "INT":
+        # Read using the actual stored type (value_type) first, then fall back to
+        # the schema-declared primitive. The stored type is authoritative because
+        # IFC types like "NUMBER" can hold either integer or double at runtime.
+        if value_type == "INT":
             return int(_capi.attribute_value_as_int32(av))
-        if primitive == "boolean" or value_type in ("BOOL", "LOGICAL"):
+        if value_type == "DOUBLE":
+            return float(_capi.attribute_value_as_double(av))
+        if value_type in ("BOOL", "LOGICAL"):
             return bool(_capi.attribute_value_as_bool(av))
-        if primitive == "float" or value_type == "DOUBLE":
+        if primitive == "integer":
+            return int(_capi.attribute_value_as_int32(av))
+        if primitive == "boolean":
+            return bool(_capi.attribute_value_as_bool(av))
+        if primitive == "float":
             return float(_capi.attribute_value_as_double(av))
         if primitive in ("string", "binary", "enum"):
             return _capi.attribute_value_as_string(av)
@@ -468,13 +480,23 @@ class entity_instance:
         return _MISSING
 
     def _attribute_value_list_to_python(self, av, primitive, value_type):
-        if primitive == "integer" or value_type == "AGGREGATE OF INT":
+        # Read using the actual stored aggregate type first, then fall back to
+        # the schema-declared primitive for the element type.
+        if value_type == "AGGREGATE OF INT":
             return _capi.attribute_value_as_int32_list(av)
-        if primitive == "float" or value_type == "AGGREGATE OF DOUBLE":
+        if value_type == "AGGREGATE OF DOUBLE":
             return _capi.attribute_value_as_double_list(av)
-        if primitive == "entity" or value_type == "AGGREGATE OF ENTITY INSTANCE":
+        if value_type == "AGGREGATE OF ENTITY INSTANCE":
             return tuple(entity_instance(self._file, item) for item in _capi.attribute_value_as_instance_list(av))
-        if primitive in ("string", "binary", "enum") or value_type in ("AGGREGATE OF STRING", "AGGREGATE OF BINARY"):
+        if value_type in ("AGGREGATE OF STRING", "AGGREGATE OF BINARY"):
+            return _capi.attribute_value_as_string_list(av)
+        if primitive == "integer":
+            return _capi.attribute_value_as_int32_list(av)
+        if primitive == "float":
+            return _capi.attribute_value_as_double_list(av)
+        if primitive == "entity":
+            return tuple(entity_instance(self._file, item) for item in _capi.attribute_value_as_instance_list(av))
+        if primitive in ("string", "binary", "enum"):
             return _capi.attribute_value_as_string_list(av)
         return _MISSING
 
@@ -484,16 +506,62 @@ class entity_instance:
         or when the rule evaluates to INDETERMINATE."""
         if not self._handle:
             return None
-        try:
-            av = _capi.compute_derived(self._handle, name)
-            if av is None:
-                return None
-            try:
-                return _attribute_value_to_python(av, self._file)
-            finally:
-                _capi.value_destroy(av)
-        except Exception:
+        av = _capi.compute_derived(self._handle, name)
+        if av is None:
             return None
+        try:
+            # _capi.compute_derived returns an ifcapi value, not an
+            # ifcparse attribute_value.  Use the value API directly.
+            # Value kinds: 0=NONE, 1=BOOL, 2=INT, 3=DOUBLE, 4=STRING,
+            # 5=INSTANCE, 6=LIST, 7=DICT
+            kind = int(_capi.value_kind(av))
+            if kind == 2:  # INT
+                return int(_capi.value_as_int64(av))
+            if kind == 3:  # DOUBLE
+                return float(_capi.value_as_double(av))
+            if kind == 1:  # BOOL
+                return bool(_capi.value_as_bool(av))
+            if kind == 4:  # STRING
+                return _capi.value_as_string(av)
+            if kind == 5:  # INSTANCE
+                h = _capi.value_as_instance(av)
+                if h:
+                    entity_id = int(_capi.instance_id(h))
+                    return self._file.by_id(entity_id)
+                return None
+            if kind == 6:  # LIST
+                size = int(_capi.value_list_size(av))
+                return tuple(
+                    self._get_derived_value_at(av, i) for i in range(size)
+                )
+            # NONE or DICT: return None
+            return None
+        finally:
+            _capi.value_destroy(av)
+
+    def _get_derived_value_at(self, av, index):
+        """Read a single element from a derived list value."""
+        item = _capi.value_list_at(av, index)
+        if item is None:
+            return None
+        try:
+            kind = int(_capi.value_kind(item))
+            if kind == 2:  # INT
+                return int(_capi.value_as_int64(item))
+            if kind == 3:  # DOUBLE
+                return float(_capi.value_as_double(item))
+            if kind == 1:  # BOOL
+                return bool(_capi.value_as_bool(item))
+            if kind == 4:  # STRING
+                return _capi.value_as_string(item)
+            if kind == 5:  # INSTANCE
+                h = _capi.value_as_instance(item)
+                if h:
+                    entity_id = int(_capi.instance_id(h))
+                    return self._file.by_id(entity_id)
+            return None
+        finally:
+            _capi.value_destroy(item)
 
     def _get_aggregate(self, h, name):
         """Read an aggregate attribute, returning a Python tuple.
@@ -698,7 +766,12 @@ class entity_instance:
             for a in decl.all_attributes():
                 if a.name() == name:
                     pt = get_primitive_type(a)
-                    attr_type = str(a.type_of_attribute()).lower()
+                    if pt is None:
+                        pt = self._declared_attribute_primitive(name)
+                    try:
+                        attr_type = str(a.type_of_attribute()).lower()
+                    except Exception:
+                        attr_type = ""
                     break
             else:
                 return value
@@ -757,9 +830,21 @@ class entity_instance:
         try:
             from ifcopenshell.util.attribute import get_primitive_type
             decl = self.declaration()
-            for a in decl.all_attributes():
+            entity = decl.as_entity() if hasattr(decl, "as_entity") else None
+            if entity is None:
+                return None
+            for a in entity.all_attributes():
                 if a.name() == name:
-                    return get_primitive_type(a)
+                    try:
+                        primitive = get_primitive_type(a)
+                    except Exception:
+                        primitive = None
+                    if primitive is not None:
+                        return primitive
+                    pt = a.type_of_attribute()
+                    pt_handle = getattr(pt, "_h", None) or pt
+                    arg_type = _capi.argument_type_to_string(_capi.from_parameter_type(pt_handle))
+                    return _primitive_from_argument_type(arg_type)
         except Exception:
             return None
         return None
@@ -882,3 +967,25 @@ class entity_instance:
         if isinstance(v, (list, tuple)):
             return type(v)(entity_instance.wrap_value(i, file_obj) for i in v)
         return v
+def _primitive_from_argument_type(type_name):
+    type_name = (type_name or "").upper()
+    if type_name.startswith("AGGREGATE OF AGGREGATE OF "):
+        inner = _primitive_from_argument_type(type_name[len("AGGREGATE OF ") :])
+        return ("list", inner) if inner is not None else None
+    if type_name.startswith("AGGREGATE OF "):
+        inner = _primitive_from_argument_type(type_name[len("AGGREGATE OF ") :])
+        return ("list", inner) if inner is not None else None
+    return {
+        "STRING": "string",
+        "BINARY": "binary",
+        "DOUBLE": "float",
+        "REAL": "float",
+        "NUMBER": "float",
+        "INT": "integer",
+        "INTEGER": "integer",
+        "BOOL": "boolean",
+        "BOOLEAN": "boolean",
+        "LOGICAL": "enum",
+        "ENUMERATION": "enum",
+        "ENTITY INSTANCE": "entity",
+    }.get(type_name)

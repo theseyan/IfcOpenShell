@@ -50,9 +50,8 @@ def copy_cost_item_values(
         # Let's copy the value from one item to another
         ifcopenshell.api.cost.copy_cost_item_values(model, source=item1, destination=item2)
     """
-    lib = _capi.get_lib()
     return _capi.call_status(
-        lib.ifcopenshell_ifcapi_cost_copy_cost_item_values,
+        "cost_copy_cost_item_values",
         _capi.file_handle(file),
         _capi.instance_handle(source),
         _capi.instance_handle(destination),

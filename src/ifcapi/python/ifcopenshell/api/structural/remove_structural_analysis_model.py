@@ -31,9 +31,8 @@ def remove_structural_analysis_model(
         remove.
     :return: None
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_structural_remove_structural_analysis_model,
+        "structural_remove_structural_analysis_model",
         _capi.file_handle(file),
         _capi.instance_handle(structural_analysis_model),
     )

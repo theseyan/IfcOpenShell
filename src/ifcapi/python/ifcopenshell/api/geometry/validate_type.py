@@ -13,9 +13,8 @@ def validate_type(
     preferred_item: Union[ifcopenshell.entity_instance, None] = None,
 ) -> bool:
     """Validates the RepresentationType of an IfcShapeRepresentation."""
-    lib = _capi.get_lib()
     return _capi.bool_result(
-        lib.ifcopenshell_ifcapi_geometry_validate_type,
+        "geometry_validate_type",
         _capi.file_handle(file),
         _capi.instance_handle(representation),
         _capi.instance_handle(preferred_item),

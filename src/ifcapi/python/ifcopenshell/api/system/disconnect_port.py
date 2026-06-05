@@ -61,9 +61,8 @@ def disconnect_port(file: ifcopenshell.file, port: ifcopenshell.entity_instance)
         # fitting_port1 instead of duct_port2
         ifcopenshell.api.system.disconnect_port(model, port=duct_port2)
     """
-    lib = _capi.get_lib()
     _capi.call_status(
-        lib.ifcopenshell_ifcapi_system_disconnect_port,
+        "system_disconnect_port",
         "Failed to disconnect port",
         _capi.file_handle(file),
         _capi.instance_handle(port),

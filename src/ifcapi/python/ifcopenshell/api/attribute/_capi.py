@@ -4,16 +4,15 @@
 from __future__ import annotations
 
 import ifcopenshell
+from ifcopenshell._capi_utils import (
+    call_status as _call_status,
+)
+from ifcopenshell._capi_utils import (
+    file_handle,
+    instance_handle,
+)
 
 from ... import _ifcopenshell_capi as _capi
-
-
-def file_handle(file: ifcopenshell.file):
-    return file._handle
-
-
-def instance_handle(entity: ifcopenshell.entity_instance | None):
-    return entity._handle if entity is not None else None
 
 
 def owner_context(file: ifcopenshell.file):
@@ -25,5 +24,4 @@ def owner_context(file: ifcopenshell.file):
 
 
 def call_status(fn_name: str, *args) -> None:
-    fn = getattr(_capi, fn_name)
-    fn(*args)
+    _call_status(fn_name, *args)

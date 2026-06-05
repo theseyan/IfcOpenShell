@@ -80,10 +80,9 @@ def add_topology_representation(
         ifcopenshell.api.geometry.assign_representation(
             model, product=member, representation=rep)
     """
-    lib = _capi.get_lib()
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_geometry_add_topology_representation,
+        "geometry_add_topology_representation",
         _capi.file_handle(file),
         _capi.instance_handle(context),
         _capi.instance_handle(item),

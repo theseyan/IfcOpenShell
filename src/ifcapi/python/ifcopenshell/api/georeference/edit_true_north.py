@@ -56,10 +56,8 @@ def edit_true_north(file: ifcopenshell.file, true_north: Optional[Union[tuple[fl
         x, y = ifcopenshell.util.geolocation.angle2yaxis(true_north)
     elif true_north is not None:
         x, y = true_north
-
-    lib = _relationship_capi.get_lib()
     _relationship_capi.call_status(
-        lib.ifcopenshell_ifcapi_georeference_edit_true_north,
+        "georeference_edit_true_north",
         _relationship_capi.file_handle(file),
         true_north is not None,
         x if true_north is not None else 0.0,

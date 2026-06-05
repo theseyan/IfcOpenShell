@@ -53,11 +53,10 @@ def assign_port(
         # Reassign it back
         ifcopenshell.api.system.assign_port(model, element=duct, port=port1)
     """
-    lib = _capi.get_lib()
     owner_history, user, application = _capi.owner_context(file)
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_system_assign_port,
+        "system_assign_port",
         "Failed to assign port",
         _capi.file_handle(file),
         _capi.instance_handle(element),

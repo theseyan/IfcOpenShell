@@ -132,13 +132,11 @@ def assign_object(
     # nothing to change
     if not objects_to_change:
         return is_nested_by
-
-    lib = _relationship_capi.get_lib()
     owner_history, user, application = _relationship_capi.owner_context(file)
     object_list = _relationship_capi.instance_list(related_objects)
     is_nested_by = _relationship_capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_nest_assign_object,
+        "nest_assign_object",
         _relationship_capi.file_handle(file),
         _relationship_capi.instance_list_ptr(object_list),
         _relationship_capi.instance_handle(relating_object),

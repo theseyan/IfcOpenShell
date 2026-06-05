@@ -44,10 +44,9 @@ def add_structural_load(
         # Create a simple linear load
         ifcopenshell.api.structural.add_structural_load(model)
     """
-    lib = _capi.get_lib()
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_structural_add_structural_load,
+        "structural_add_structural_load",
         _capi.file_handle(file),
         _capi.string(ifc_class),
         _capi.string(name) if name is not None else None,

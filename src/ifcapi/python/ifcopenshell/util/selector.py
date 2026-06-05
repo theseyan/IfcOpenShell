@@ -118,8 +118,7 @@ filter_elements_grammar = lark.Lark("""start: filter_group
 """)
 
 def _make_instance_list(elements):
-    handles = [e._handle for e in elements]
-    return _capi.instance_list_create_from_handles(handles)
+    return [e._handle for e in elements]
 
 
 def _canonical_file_entities(ifc_file, values):

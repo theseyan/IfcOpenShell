@@ -34,12 +34,11 @@ def assign_structural_analysis_model(
         the structural element is related to.
     :return: The IfcRelAssignsToGroup relationship
     """
-    lib = _capi.get_lib()
     owner_history = _capi.owner_history(file)
     user, application = _capi.owner_user_application(file)
     return _capi.call_handle(
         file,
-        lib.ifcopenshell_ifcapi_structural_assign_structural_analysis_model,
+        "structural_assign_structural_analysis_model",
         _capi.file_handle(file),
         _capi.instance_list(products),
         _capi.instance_handle(structural_analysis_model),
