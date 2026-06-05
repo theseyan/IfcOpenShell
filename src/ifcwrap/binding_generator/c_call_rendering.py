@@ -125,6 +125,32 @@ def _value_handle_empty_expr(handle: object, value_expr: str) -> str:
     return f"!static_cast<bool>({value_expr})"
 
 
+def _is_handle_cast(call: CallIR) -> bool:
+    return (
+        call.expose_as.startswith("as_")
+        and
+        call.receiver is not None
+        and call.returns.kind == "handle"
+        and call.returns.sequence_depth == 0
+        and call.returns.handle != call.receiver
+    )
+
+
+def _handle_result_empty_expr(call: CallIR, type_spec: TypeSpec, handle: object, value_expr: str) -> str:
+    if handle.ptr_type == "value":
+        return _value_handle_empty_expr(handle, value_expr)
+    normalized_cpp_type = _normalize_cpp_type(type_spec.cpp_type)
+    if handle.ptr_type == "shared_ptr" or normalized_cpp_type.startswith("std::unique_ptr<"):
+        return f"!{value_expr}"
+    return f"{value_expr} == nullptr"
+
+
+def _should_null_check_handle_result(call: CallIR, type_spec: TypeSpec, handle: object) -> bool:
+    if handle.ptr_type == "value":
+        return type_spec.nullable or (getattr(handle, "empty_check", None) is not None)
+    return type_spec.nullable or _is_handle_cast(call)
+
+
 def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
     type_spec = call.returns
     kind = type_spec.kind
@@ -186,13 +212,17 @@ def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
                     f"auto result_value = std::unique_ptr<{handle.cpp_type}>({expr});\n"
                     f"        *out_result = new {handle.c_type}{{result_value.release(), true}};"
                 )
-        if handle.ptr_type == "value" and (type_spec.nullable or getattr(handle, "empty_check", None)):
+        if _should_null_check_handle_result(call, type_spec, handle):
+            normalized_cpp_type = _normalize_cpp_type(type_spec.cpp_type)
+            wrapped_expr = "std::move(result_value)"
+            if handle.ptr_type not in {"value", "shared_ptr"} and not normalized_cpp_type.startswith("std::unique_ptr<"):
+                wrapped_expr = "result_value"
             return (
                 f"auto result_value = {expr};\n"
-                f"        if ({_value_handle_empty_expr(handle, 'result_value')}) {{\n"
+                f"        if ({_handle_result_empty_expr(call, type_spec, handle, 'result_value')}) {{\n"
                 f"            *out_result = nullptr;\n"
                 f"        }} else {{\n"
-                f"            *out_result = new {handle.c_type}{{std::move(result_value)}};\n"
+                f"            *out_result = {_wrap_handle_expr(type_spec, wrapped_expr, spec)};\n"
                 f"        }}"
             )
         return f"*out_result = {_wrap_handle_expr(type_spec, expr, spec)};"
