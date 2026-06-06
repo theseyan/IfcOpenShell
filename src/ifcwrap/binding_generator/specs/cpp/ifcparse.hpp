@@ -424,7 +424,7 @@ inline double get_unit(ifcopenshell::file& self, const std::string& unit_type) {
     return self.get_unit(unit_type).second;
 }
 
-inline std::string key_value_store_query(ifcopenshell::file& self, const std::string& key) {
+inline std::vector<uint8_t> key_value_store_query(ifcopenshell::file& self, const std::string& key) {
     auto* storage = std::visit([](auto& value) -> const ifcopenshell::impl::rocks_db_file_storage* {
         using T = std::decay_t<decltype(value)>;
         if constexpr (std::is_same_v<T, ifcopenshell::impl::rocks_db_file_storage>) {
@@ -433,16 +433,16 @@ inline std::string key_value_store_query(ifcopenshell::file& self, const std::st
         return nullptr;
     }, self.storage_);
     if (!storage) {
-        return std::string();
+        return std::vector<uint8_t>();
     }
 #ifdef IFOPSH_WITH_ROCKSDB
     std::string value;
     if (storage->db->Get(storage->ropts, key, &value) != rocksdb::Status::OK()) {
-        return std::string();
+        return std::vector<uint8_t>();
     }
-    return value;
+    return std::vector<uint8_t>(value.begin(), value.end());
 #else
-    return std::string();
+    return std::vector<uint8_t>();
 #endif
 }
 

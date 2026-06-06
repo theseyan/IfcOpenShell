@@ -5,7 +5,13 @@ import os
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "python"))
+_ifcapi_python_path = os.path.join(os.path.dirname(__file__), "..", "..", "python")
+sys.path.insert(0, _ifcapi_python_path)
+
+# Ensure subprocesses spawned by tests can also import ifcopenshell.
+_pythonpath = os.environ.get("PYTHONPATH", "")
+_sep = os.pathsep if _pythonpath else ""
+os.environ["PYTHONPATH"] = f"{_ifcapi_python_path}{_sep}{_pythonpath}"
 
 
 _KNOWN_XFAILS: dict = {}

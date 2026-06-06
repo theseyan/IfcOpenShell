@@ -494,7 +494,7 @@ class Triangulation(_OwnedHandle):
 
     @property
     def edges_buffer(self):
-        return _to_numpy(_capi.geom_triangulation_edges_buffer(self._h), np.int32 if np is not None else None)
+        return _to_numpy(_capi.geom_triangulation_edges(self._h), np.int32 if np is not None else None)
 
     @property
     def edges(self):
@@ -502,7 +502,7 @@ class Triangulation(_OwnedHandle):
 
     @property
     def material_ids_buffer(self):
-        return _to_numpy(_capi.geom_triangulation_material_ids_buffer(self._h), np.int32 if np is not None else None)
+        return _to_numpy(_capi.geom_triangulation_material_ids(self._h), np.int32 if np is not None else None)
 
     @property
     def material_ids(self):
@@ -510,7 +510,7 @@ class Triangulation(_OwnedHandle):
 
     @property
     def item_ids_buffer(self):
-        return _to_numpy(_capi.geom_triangulation_item_ids_buffer(self._h), np.int32 if np is not None else None)
+        return _to_numpy(_capi.geom_triangulation_item_ids(self._h), np.int32 if np is not None else None)
 
     @property
     def uvs_buffer(self):
@@ -518,7 +518,7 @@ class Triangulation(_OwnedHandle):
 
     @property
     def edges_item_ids_buffer(self):
-        return _to_numpy(_capi.geom_triangulation_edges_item_ids_buffer(self._h), np.int32 if np is not None else None)
+        return _to_numpy(_capi.geom_triangulation_edges_item_ids(self._h), np.int32 if np is not None else None)
 
     @property
     def edges_item_ids(self):

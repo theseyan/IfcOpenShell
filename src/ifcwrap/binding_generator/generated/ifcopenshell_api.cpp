@@ -23108,7 +23108,7 @@ bool ifcopenshell_ifc_file_key_value_store_iter(ifcopenshell_ifc_file_t* self, c
     }
 }
 
-bool ifcopenshell_ifc_file_key_value_store_query(ifcopenshell_ifc_file_t* self, const char* key, ifcopenshell_string_t* out_result) {
+bool ifcopenshell_ifc_file_key_value_store_query(ifcopenshell_ifc_file_t* self, const char* key, ifcopenshell_uint8_list_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -23116,7 +23116,7 @@ bool ifcopenshell_ifc_file_key_value_store_query(ifcopenshell_ifc_file_t* self, 
     auto* self_cpp = self->ptr;
     if (key == nullptr) { throw std::runtime_error("Parameter \"key\" must not be null"); }
     std::string key_cpp(key);
-        *out_result = make_string(ifcparse::bindings::key_value_store_query(*self_cpp, key_cpp));
+        *out_result = make_uint8_list(ifcparse::bindings::key_value_store_query(*self_cpp, key_cpp));
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

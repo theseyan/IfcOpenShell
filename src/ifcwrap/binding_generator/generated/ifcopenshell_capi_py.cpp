@@ -9727,7 +9727,7 @@ static PyObject *py_ifcopenshell_ifc_file_key_value_store_query(PyObject *self, 
     PyObject *arg_self_obj = NULL;
     ifcopenshell_ifc_file_t *arg_self = NULL;
     const char *arg_key = NULL;
-    ifcopenshell_string_t result = {0};
+    ifcopenshell_uint8_list_t result = {0};
     if (!PyArg_ParseTuple(args, "Os", &arg_self_obj, &arg_key)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellIfcFileType, "IfcOpenshellIfcFile", (void **)&arg_self, 0)) {
@@ -9740,7 +9740,7 @@ static PyObject *py_ifcopenshell_ifc_file_key_value_store_query(PyObject *self, 
         raise_last_error("ifcopenshell_ifc_file_key_value_store_query failed");
         goto __cleanup;
     }
-    __py_result = convert_string(&result);
+    __py_result = convert_uint8_list(&result, 1);
 __cleanup:
     return __py_result;
 }
