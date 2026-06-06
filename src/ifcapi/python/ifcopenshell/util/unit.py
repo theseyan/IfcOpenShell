@@ -431,6 +431,16 @@ def is_attr_type(
     ifc_unit_type_name: str,
     include_select_types: bool = True,
 ):
+    # Unwrap base parameter_type to the inner named/simple/aggregation type.
+    # Use type() identity to avoid recursing on subclasses (named_type, etc.).
+    import ifcopenshell._capi_utils as _capi_utils
+
+    if type(content_type) is ifcopenshell_wrapper.parameter_type:
+        content_type = _capi_utils.unwrap_parameter_type(content_type)
+        if type(content_type) is ifcopenshell_wrapper.parameter_type:
+            return None
+        return is_attr_type(content_type, ifc_unit_type_name, include_select_types)
+
     cur_decl = content_type
 
     if hasattr(cur_decl, "name") and cur_decl.name() == ifc_unit_type_name:
@@ -447,9 +457,13 @@ def is_attr_type(
 
     if isinstance(cur_decl, ifcopenshell_wrapper.aggregation_type):
         def get_declared_type_from_aggregate(cur_decl):
+            import ifcopenshell._capi_utils as _capi_utils
+
             cur_decl = cur_decl.type_of_element()
+            # type_of_element returns a parameter_type — unwrap it
+            cur_decl = _capi_utils.unwrap_parameter_type(cur_decl)
             if not isinstance(cur_decl, ifcopenshell_wrapper.aggregation_type):
-                return cur_decl.declared_type()
+                return cur_decl.declared_type() if hasattr(cur_decl, 'declared_type') else cur_decl
             return get_declared_type_from_aggregate(cur_decl)
 
         cur_decl = get_declared_type_from_aggregate(cur_decl)

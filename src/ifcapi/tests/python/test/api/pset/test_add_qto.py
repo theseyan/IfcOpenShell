@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
+import pytest
+
 import ifcopenshell.api.pset
 import ifcopenshell.api.root
 import ifcopenshell.util.element
@@ -43,7 +45,8 @@ class TestAddQto(test.bootstrap.IFC4):
 
     def test_returning_none_for_unsupported_products(self):
         material = self.file.create_entity("IfcMaterial")
-        assert ifcopenshell.api.pset.add_qto(self.file, product=material, name="Custom_Qto") is None
+        with pytest.raises(TypeError, match="doesn't support adding a quantity set"):
+            ifcopenshell.api.pset.add_qto(self.file, product=material, name="Custom_Qto")
 
 
 class TestAddQtoIFC2X3(test.bootstrap.IFC2X3):

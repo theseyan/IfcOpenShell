@@ -317,6 +317,9 @@ express::Base pset_add_qto(
             return qto;
         }
 
+        set_error(
+            ifcapi::detail::ERROR_TYPE,
+            std::string("Class '") + product.declaration().name() + "' doesn't support adding a quantity set.");
         return {};
     } catch (const std::exception& e) {
         set_error(std::string("pset_add_qto: ") + e.what());

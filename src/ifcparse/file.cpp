@@ -72,7 +72,7 @@ express::Base ifcopenshell::impl::rocks_db_file_storage::assert_existance(size_t
         }
         return express::Base(data);
     } else {
-        throw exception("Instance #" + boost::lexical_cast<std::string>(number) + " not found");
+        throw exception("Entity #" + boost::lexical_cast<std::string>(number) + " not found");
     }
 #else
 	throw exception("RocksDB support not compiled in");
@@ -252,7 +252,7 @@ express::Base ifcopenshell::impl::in_memory_file_storage::instance_by_id(int id)
 {
     auto it = byid_.find(id);
     if (it == byid_.end()) {
-        throw exception("Instance #" + boost::lexical_cast<std::string>(id) + " not found");
+        throw exception("Entity #" + boost::lexical_cast<std::string>(id) + " not found");
     }
     return express::Base(it->second);
 }

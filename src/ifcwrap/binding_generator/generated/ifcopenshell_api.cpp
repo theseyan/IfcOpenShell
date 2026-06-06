@@ -15278,7 +15278,10 @@ bool ifcopenshell_ifc_instance_id(ifcopenshell_ifc_instance_t* self, uint32_t* o
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) {
+        *out_result = 0;
+        return true;
+    }
     auto* self_cpp = &self->value;
         *out_result = static_cast<uint32_t>(self_cpp->id());
         return true;
@@ -15296,7 +15299,10 @@ bool ifcopenshell_ifc_instance_identity(ifcopenshell_ifc_instance_t* self, uint3
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
+    if (!static_cast<bool>(self->value)) {
+        *out_result = 0;
+        return true;
+    }
     auto* self_cpp = &self->value;
         *out_result = static_cast<uint32_t>(self_cpp->identity());
         return true;

@@ -640,6 +640,17 @@ def _render_function_wrapper(function: HostFunctionMetadata, metadata: HostBindi
         goto __cleanup;
     }}
 """
+    # For void/status functions (no out_result), also check for errors set
+    # without a failure return. Some C++ implementation functions catch
+    # exceptions internally, set the error, but return normally, so ok==true
+    # even though an error occurred.
+    status_error_check = ""
+    if out_param is None:
+        status_error_check = f"""    if ({metadata.error_functions['last_error_kind']}() != 0) {{
+        raise_last_error("{function.c_name} failed");
+        goto __cleanup;
+    }}
+"""
     out_decl = ""
     result_assign = ""
     owned = 0 if function.returns.ownership in ("borrowed", "static") else 1
@@ -731,7 +742,7 @@ static PyObject *{_wrapper_name(function.c_name)}(PyObject *self, PyObject *args
         raise_last_error("{function.c_name} failed");
         goto __cleanup;
     }}
-{null_result_check}{result_assign}
+{status_error_check}{null_result_check}{result_assign}
 __cleanup:
 {cleanup_block}    return __py_result;
 }}
@@ -980,6 +991,37 @@ def call_status(fn_name, *args):
 def call_handle_list(file, fn_name, *args):
     handles = getattr(_capi, fn_name)(*args)
     return [ifcopenshell.entity_instance(file, h) for h in handles]
+
+
+def unwrap_parameter_type(param_type):
+    \"\"\"Unwrap a parameter_type wrapper to its inner named/simple/aggregation type.
+
+    When the C API (or SWIG) returns a parameter_type that wraps a concrete
+    (named, simple, or aggregation) type, this function tries each unwrap
+    method and returns the first non-None concrete type.  If the input is
+    already a concrete type (not a bare parameter_type), it is returned as-is.
+
+    This replaces the duplicate pattern::
+
+        if type(param_type) is parameter_type:
+            param_type = param_type.as_named_type() or \\
+                         param_type.as_simple_type() or \\
+                         param_type.as_aggregation_type()
+    \"\"\"
+    from ifcopenshell import ifcopenshell_wrapper as _W
+
+    if type(param_type) is not _W.parameter_type:
+        return param_type
+    inner = param_type.as_named_type()
+    if inner is not None:
+        return inner
+    inner = param_type.as_simple_type()
+    if inner is not None:
+        return inner
+    inner = param_type.as_aggregation_type()
+    if inner is not None:
+        return inner
+    return param_type
 
 
 def owner_context(file):

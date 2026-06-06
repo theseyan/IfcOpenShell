@@ -568,9 +568,23 @@ def _render_call_impl(call: CallIR, spec: BindingIR) -> str:
             )
             if receiver_handle.empty_check:
                 empty_check = receiver_handle.empty_check.format(value=f"{receiver_name}->value")
-                prelude_lines.append(
-                    f'    if ({empty_check}) {{ throw std::runtime_error("Receiver handle is invalid"); }}'
-                )
+                # Methods that are defined to return a scalar zero / false for empty
+                # receiver values (e.g. instance id() and identity()) must not throw
+                # but instead return the zero value and true.
+                _EMPTY_SAFE_RETURN_ZERO = {
+                    "ifcopenshell_ifc_instance_id",
+                    "ifcopenshell_ifc_instance_identity",
+                }
+                if call.c_name in _EMPTY_SAFE_RETURN_ZERO:
+                    zero_val = "0" if call.returns.kind == "uint32_t" else "false"
+                    prelude_lines.append(f'    if ({empty_check}) {{')
+                    prelude_lines.append(f'        *out_result = {zero_val};')
+                    prelude_lines.append(f'        return true;')
+                    prelude_lines.append(f'    }}')
+                else:
+                    prelude_lines.append(
+                        f'    if ({empty_check}) {{ throw std::runtime_error("Receiver handle is invalid"); }}'
+                    )
             prelude_lines.append(f"    auto* self_cpp = &{receiver_name}->value;")
         elif receiver_handle.ptr_type == "shared_ptr":
             # For shared_ptr handles, check that the shared_ptr is not null and use .get()

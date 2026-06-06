@@ -8344,6 +8344,10 @@ static PyObject *py_ifcopenshell_ifc_entity_set_attributes(PyObject *self, PyObj
         raise_last_error("ifcopenshell_ifc_entity_set_attributes failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifc_entity_set_attributes failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -8374,6 +8378,10 @@ static PyObject *py_ifcopenshell_ifc_entity_set_inverse_attributes(PyObject *sel
         raise_last_error("ifcopenshell_ifc_entity_set_inverse_attributes failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifc_entity_set_inverse_attributes failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -8400,6 +8408,10 @@ static PyObject *py_ifcopenshell_ifc_entity_set_subtypes(PyObject *self, PyObjec
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifc_entity_set_subtypes(arg_self, &arg_subtypes);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifc_entity_set_subtypes failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifc_entity_set_subtypes failed");
         goto __cleanup;
     }
@@ -8670,6 +8682,10 @@ static PyObject *py_ifcopenshell_ifc_file_add_type_ref(PyObject *self, PyObject 
         raise_last_error("ifcopenshell_ifc_file_add_type_ref failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifc_file_add_type_ref failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -8694,6 +8710,10 @@ static PyObject *py_ifcopenshell_ifc_file_batch(PyObject *self, PyObject *args) 
         raise_last_error("ifcopenshell_ifc_file_batch failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifc_file_batch failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -8715,6 +8735,10 @@ static PyObject *py_ifcopenshell_ifc_file_build_inverses(PyObject *self, PyObjec
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifc_file_build_inverses(arg_self);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifc_file_build_inverses failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifc_file_build_inverses failed");
         goto __cleanup;
     }
@@ -8744,6 +8768,10 @@ static PyObject *py_ifcopenshell_ifc_file_build_inverses_(PyObject *self, PyObje
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifc_file_build_inverses_(arg_self, arg_entity);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifc_file_build_inverses_ failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifc_file_build_inverses_ failed");
         goto __cleanup;
     }
@@ -8881,6 +8909,10 @@ static PyObject *py_ifcopenshell_ifc_file_bypass_type(PyObject *self, PyObject *
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifc_file_bypass_type(arg_self, arg_type_name);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifc_file_bypass_type failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifc_file_bypass_type failed");
         goto __cleanup;
     }
@@ -9131,6 +9163,10 @@ static PyObject *py_ifcopenshell_ifc_file_description_setdescription(PyObject *s
         raise_last_error("ifcopenshell_ifc_file_description_setdescription failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifc_file_description_setdescription failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -9154,6 +9190,10 @@ static PyObject *py_ifcopenshell_ifc_file_description_setimplementation_level(Py
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifc_file_description_setimplementation_level(arg_self, arg_v);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifc_file_description_setimplementation_level failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifc_file_description_setimplementation_level failed");
         goto __cleanup;
     }
@@ -9935,6 +9975,10 @@ static PyObject *py_ifcopenshell_ifc_file_name_setauthor(PyObject *self, PyObjec
         raise_last_error("ifcopenshell_ifc_file_name_setauthor failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifc_file_name_setauthor failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -9961,6 +10005,10 @@ static PyObject *py_ifcopenshell_ifc_file_name_setauthorization(PyObject *self, 
         raise_last_error("ifcopenshell_ifc_file_name_setauthorization failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifc_file_name_setauthorization failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -9983,6 +10031,10 @@ static PyObject *py_ifcopenshell_ifc_file_name_setname(PyObject *self, PyObject 
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifc_file_name_setname(arg_self, arg_v);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifc_file_name_setname failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifc_file_name_setname failed");
         goto __cleanup;
     }
@@ -10014,6 +10066,10 @@ static PyObject *py_ifcopenshell_ifc_file_name_setorganization(PyObject *self, P
         raise_last_error("ifcopenshell_ifc_file_name_setorganization failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifc_file_name_setorganization failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -10037,6 +10093,10 @@ static PyObject *py_ifcopenshell_ifc_file_name_setoriginating_system(PyObject *s
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifc_file_name_setoriginating_system(arg_self, arg_v);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifc_file_name_setoriginating_system failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifc_file_name_setoriginating_system failed");
         goto __cleanup;
     }
@@ -10065,6 +10125,10 @@ static PyObject *py_ifcopenshell_ifc_file_name_setpreprocessor_version(PyObject 
         raise_last_error("ifcopenshell_ifc_file_name_setpreprocessor_version failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifc_file_name_setpreprocessor_version failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -10087,6 +10151,10 @@ static PyObject *py_ifcopenshell_ifc_file_name_settime_stamp(PyObject *self, PyO
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifc_file_name_settime_stamp(arg_self, arg_v);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifc_file_name_settime_stamp failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifc_file_name_settime_stamp failed");
         goto __cleanup;
     }
@@ -10142,6 +10210,10 @@ static PyObject *py_ifcopenshell_ifc_file_process_deletion_inverse(PyObject *sel
         raise_last_error("ifcopenshell_ifc_file_process_deletion_inverse failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifc_file_process_deletion_inverse failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -10163,6 +10235,10 @@ static PyObject *py_ifcopenshell_ifc_file_recalculate_id_counter(PyObject *self,
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifc_file_recalculate_id_counter(arg_self);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifc_file_recalculate_id_counter failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifc_file_recalculate_id_counter failed");
         goto __cleanup;
     }
@@ -10195,6 +10271,10 @@ static PyObject *py_ifcopenshell_ifc_file_remove(PyObject *self, PyObject *args)
         raise_last_error("ifcopenshell_ifc_file_remove failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifc_file_remove failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -10224,6 +10304,10 @@ static PyObject *py_ifcopenshell_ifc_file_remove_type_ref(PyObject *self, PyObje
         raise_last_error("ifcopenshell_ifc_file_remove_type_ref failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifc_file_remove_type_ref failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -10245,6 +10329,10 @@ static PyObject *py_ifcopenshell_ifc_file_reset_identity_cache(PyObject *self, P
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifc_file_reset_identity_cache(arg_self);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifc_file_reset_identity_cache failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifc_file_reset_identity_cache failed");
         goto __cleanup;
     }
@@ -10408,6 +10496,10 @@ static PyObject *py_ifcopenshell_ifc_file_schema_setschema_identifiers(PyObject 
         raise_last_error("ifcopenshell_ifc_file_schema_setschema_identifiers failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifc_file_schema_setschema_identifiers failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -10568,6 +10660,10 @@ static PyObject *py_ifcopenshell_ifc_file_unbatch(PyObject *self, PyObject *args
         raise_last_error("ifcopenshell_ifc_file_unbatch failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifc_file_unbatch failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -10590,6 +10686,10 @@ static PyObject *py_ifcopenshell_ifc_file_write(PyObject *self, PyObject *args) 
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifc_file_write(arg_self, arg_path);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifc_file_write failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifc_file_write failed");
         goto __cleanup;
     }
@@ -11206,6 +11306,10 @@ static PyObject *py_ifcopenshell_ifc_instance_set_argument_as_aggregate_of_aggre
         raise_last_error("ifcopenshell_ifc_instance_set_argument_as_aggregate_of_aggregate_of_entity_instance failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifc_instance_set_argument_as_aggregate_of_aggregate_of_entity_instance failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -11230,6 +11334,10 @@ static PyObject *py_ifcopenshell_ifc_instance_set_argument_bool(PyObject *self, 
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifc_instance_set_argument_bool(arg_self, (size_t)arg_index, arg_value);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifc_instance_set_argument_bool failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifc_instance_set_argument_bool failed");
         goto __cleanup;
     }
@@ -11259,6 +11367,10 @@ static PyObject *py_ifcopenshell_ifc_instance_set_argument_double(PyObject *self
         raise_last_error("ifcopenshell_ifc_instance_set_argument_double failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifc_instance_set_argument_double failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -11285,6 +11397,10 @@ static PyObject *py_ifcopenshell_ifc_instance_set_argument_double_list(PyObject 
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifc_instance_set_argument_double_list(arg_self, (size_t)arg_index, &arg_value);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifc_instance_set_argument_double_list failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifc_instance_set_argument_double_list failed");
         goto __cleanup;
     }
@@ -11318,6 +11434,10 @@ static PyObject *py_ifcopenshell_ifc_instance_set_argument_double_list_list(PyOb
         raise_last_error("ifcopenshell_ifc_instance_set_argument_double_list_list failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifc_instance_set_argument_double_list_list failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -11347,6 +11467,10 @@ static PyObject *py_ifcopenshell_ifc_instance_set_argument_enumeration(PyObject 
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifc_instance_set_argument_enumeration(arg_self, (size_t)arg_index, arg_enumeration, (size_t)arg_enumeration_index);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifc_instance_set_argument_enumeration failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifc_instance_set_argument_enumeration failed");
         goto __cleanup;
     }
@@ -11405,6 +11529,10 @@ static PyObject *py_ifcopenshell_ifc_instance_set_argument_instance(PyObject *se
         raise_last_error("ifcopenshell_ifc_instance_set_argument_instance failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifc_instance_set_argument_instance failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -11439,6 +11567,10 @@ static PyObject *py_ifcopenshell_ifc_instance_set_argument_instance_list(PyObjec
         raise_last_error("ifcopenshell_ifc_instance_set_argument_instance_list failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifc_instance_set_argument_instance_list failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -11464,6 +11596,10 @@ static PyObject *py_ifcopenshell_ifc_instance_set_argument_int32(PyObject *self,
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifc_instance_set_argument_int32(arg_self, (size_t)arg_index, arg_value);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifc_instance_set_argument_int32 failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifc_instance_set_argument_int32 failed");
         goto __cleanup;
     }
@@ -11493,6 +11629,10 @@ static PyObject *py_ifcopenshell_ifc_instance_set_argument_int32_list(PyObject *
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifc_instance_set_argument_int32_list(arg_self, (size_t)arg_index, &arg_value);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifc_instance_set_argument_int32_list failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifc_instance_set_argument_int32_list failed");
         goto __cleanup;
     }
@@ -11526,6 +11666,10 @@ static PyObject *py_ifcopenshell_ifc_instance_set_argument_int32_list_list(PyObj
         raise_last_error("ifcopenshell_ifc_instance_set_argument_int32_list_list failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifc_instance_set_argument_int32_list_list failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -11553,6 +11697,10 @@ static PyObject *py_ifcopenshell_ifc_instance_set_argument_logical(PyObject *sel
         raise_last_error("ifcopenshell_ifc_instance_set_argument_logical failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifc_instance_set_argument_logical failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -11576,6 +11724,10 @@ static PyObject *py_ifcopenshell_ifc_instance_set_argument_string(PyObject *self
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifc_instance_set_argument_string(arg_self, (size_t)arg_index, arg_value);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifc_instance_set_argument_string failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifc_instance_set_argument_string failed");
         goto __cleanup;
     }
@@ -11608,6 +11760,10 @@ static PyObject *py_ifcopenshell_ifc_instance_set_argument_string_list(PyObject 
         raise_last_error("ifcopenshell_ifc_instance_set_argument_string_list failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifc_instance_set_argument_string_list failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -11636,6 +11792,10 @@ static PyObject *py_ifcopenshell_ifc_instance_set_attribute_value(PyObject *self
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifc_instance_set_attribute_value(arg_self, arg_name, arg_value);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifc_instance_set_attribute_value failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifc_instance_set_attribute_value failed");
         goto __cleanup;
     }
@@ -11730,6 +11890,10 @@ static PyObject *py_ifcopenshell_ifc_instance_streamer_push_page(PyObject *self,
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifc_instance_streamer_push_page(arg_self, arg_page_data);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifc_instance_streamer_push_page failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifc_instance_streamer_push_page failed");
         goto __cleanup;
     }
@@ -11875,6 +12039,10 @@ static PyObject *py_ifcopenshell_ifc_instance_unset_argument(PyObject *self, PyO
         raise_last_error("ifcopenshell_ifc_instance_unset_argument failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifc_instance_unset_argument failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -11897,6 +12065,10 @@ static PyObject *py_ifcopenshell_ifc_instance_unset_attribute_value(PyObject *se
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifc_instance_unset_attribute_value(arg_self, arg_name);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifc_instance_unset_attribute_value failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifc_instance_unset_attribute_value failed");
         goto __cleanup;
     }
@@ -12758,6 +12930,10 @@ static PyObject *py_ifcopenshell_ifcapi_aggregate_unassign_object(PyObject *self
         raise_last_error("ifcopenshell_ifcapi_aggregate_unassign_object failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_aggregate_unassign_object failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -12813,6 +12989,10 @@ static PyObject *py_ifcopenshell_ifcapi_attribute_edit_attributes(PyObject *self
         raise_last_error("ifcopenshell_ifcapi_attribute_edit_attributes failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_attribute_edit_attributes failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -12865,6 +13045,10 @@ static PyObject *py_ifcopenshell_ifcapi_boundary_assign_connection_geometry(PyOb
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_boundary_assign_connection_geometry(arg_file, arg_rel_space_boundary, &arg_outer_boundary, &arg_location, &arg_axis, &arg_ref_direction, &arg_inner_boundaries, arg_unit_scale);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_boundary_assign_connection_geometry failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_boundary_assign_connection_geometry failed");
         goto __cleanup;
     }
@@ -12951,6 +13135,10 @@ static PyObject *py_ifcopenshell_ifcapi_boundary_edit_attributes(PyObject *self,
         raise_last_error("ifcopenshell_ifcapi_boundary_edit_attributes failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_boundary_edit_attributes failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -12977,6 +13165,10 @@ static PyObject *py_ifcopenshell_ifcapi_boundary_remove_boundary(PyObject *self,
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_boundary_remove_boundary(arg_file, arg_boundary);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_boundary_remove_boundary failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_boundary_remove_boundary failed");
         goto __cleanup;
     }
@@ -13126,6 +13318,10 @@ static PyObject *py_ifcopenshell_ifcapi_classification_remove_classification(PyO
         raise_last_error("ifcopenshell_ifcapi_classification_remove_classification failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_classification_remove_classification failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -13166,6 +13362,10 @@ static PyObject *py_ifcopenshell_ifcapi_classification_remove_reference(PyObject
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_classification_remove_reference(arg_file, arg_reference, &arg_products, arg_user, arg_application);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_classification_remove_reference failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_classification_remove_reference failed");
         goto __cleanup;
     }
@@ -13251,6 +13451,10 @@ static PyObject *py_ifcopenshell_ifcapi_cogo_assign_survey_point(PyObject *self,
         raise_last_error("ifcopenshell_ifcapi_cogo_assign_survey_point failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_cogo_assign_survey_point failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -13275,6 +13479,10 @@ static PyObject *py_ifcopenshell_ifcapi_cogo_edit_survey_point(PyObject *self, P
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_cogo_edit_survey_point(arg_annotation, arg_x, arg_y, arg_z);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_cogo_edit_survey_point failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_cogo_edit_survey_point failed");
         goto __cleanup;
     }
@@ -13479,6 +13687,10 @@ static PyObject *py_ifcopenshell_ifcapi_constraint_remove_constraint(PyObject *s
         raise_last_error("ifcopenshell_ifcapi_constraint_remove_constraint failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_constraint_remove_constraint failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -13505,6 +13717,10 @@ static PyObject *py_ifcopenshell_ifcapi_constraint_remove_metric(PyObject *self,
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_constraint_remove_metric(arg_file, arg_metric);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_constraint_remove_metric failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_constraint_remove_metric failed");
         goto __cleanup;
     }
@@ -13548,6 +13764,10 @@ static PyObject *py_ifcopenshell_ifcapi_constraint_unassign_constraint(PyObject 
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_constraint_unassign_constraint(arg_file, &arg_products, arg_constraint, arg_user, arg_application);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_constraint_unassign_constraint failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_constraint_unassign_constraint failed");
         goto __cleanup;
     }
@@ -13631,6 +13851,10 @@ static PyObject *py_ifcopenshell_ifcapi_context_edit_context(PyObject *self, PyO
         raise_last_error("ifcopenshell_ifcapi_context_edit_context failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_context_edit_context failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -13658,6 +13882,10 @@ static PyObject *py_ifcopenshell_ifcapi_context_remove_context(PyObject *self, P
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_context_remove_context(arg_file, arg_context);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_context_remove_context failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_context_remove_context failed");
         goto __cleanup;
     }
@@ -13753,6 +13981,10 @@ static PyObject *py_ifcopenshell_ifcapi_control_unassign_control(PyObject *self,
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_control_unassign_control(arg_file, arg_relating_control, &arg_related_objects, arg_user, arg_application);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_control_unassign_control failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_control_unassign_control failed");
         goto __cleanup;
     }
@@ -13958,6 +14190,10 @@ static PyObject *py_ifcopenshell_ifcapi_cost_assign_cost_item_quantity(PyObject 
         raise_last_error("ifcopenshell_ifcapi_cost_assign_cost_item_quantity failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_cost_assign_cost_item_quantity failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -13993,6 +14229,10 @@ static PyObject *py_ifcopenshell_ifcapi_cost_assign_cost_value(PyObject *self, P
         raise_last_error("ifcopenshell_ifcapi_cost_assign_cost_value failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_cost_assign_cost_value failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -14019,6 +14259,10 @@ static PyObject *py_ifcopenshell_ifcapi_cost_calculate_cost_item_resource_value(
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_cost_calculate_cost_item_resource_value(arg_file, arg_cost_item);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_cost_calculate_cost_item_resource_value failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_cost_calculate_cost_item_resource_value failed");
         goto __cleanup;
     }
@@ -14085,6 +14329,10 @@ static PyObject *py_ifcopenshell_ifcapi_cost_copy_cost_item_values(PyObject *sel
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_cost_copy_cost_item_values(arg_file, arg_source, arg_destination);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_cost_copy_cost_item_values failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_cost_copy_cost_item_values failed");
         goto __cleanup;
     }
@@ -14177,6 +14425,10 @@ static PyObject *py_ifcopenshell_ifcapi_cost_edit_cost_item(PyObject *self, PyOb
         raise_last_error("ifcopenshell_ifcapi_cost_edit_cost_item failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_cost_edit_cost_item failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -14220,6 +14472,10 @@ static PyObject *py_ifcopenshell_ifcapi_cost_edit_cost_item_quantity(PyObject *s
         raise_last_error("ifcopenshell_ifcapi_cost_edit_cost_item_quantity failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_cost_edit_cost_item_quantity failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -14260,6 +14516,10 @@ static PyObject *py_ifcopenshell_ifcapi_cost_edit_cost_schedule(PyObject *self, 
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_cost_edit_cost_schedule(arg_file, arg_cost_schedule, arg_attributes);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_cost_edit_cost_schedule failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_cost_edit_cost_schedule failed");
         goto __cleanup;
     }
@@ -14314,6 +14574,10 @@ static PyObject *py_ifcopenshell_ifcapi_cost_edit_cost_value(PyObject *self, PyO
         raise_last_error("ifcopenshell_ifcapi_cost_edit_cost_value failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_cost_edit_cost_value failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -14345,6 +14609,10 @@ static PyObject *py_ifcopenshell_ifcapi_cost_edit_cost_value_formula(PyObject *s
         raise_last_error("ifcopenshell_ifcapi_cost_edit_cost_value_formula failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_cost_edit_cost_value_formula failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -14371,6 +14639,10 @@ static PyObject *py_ifcopenshell_ifcapi_cost_remove_cost_item(PyObject *self, Py
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_cost_remove_cost_item(arg_file, arg_cost_item);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_cost_remove_cost_item failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_cost_remove_cost_item failed");
         goto __cleanup;
     }
@@ -14408,6 +14680,10 @@ static PyObject *py_ifcopenshell_ifcapi_cost_remove_cost_item_quantity(PyObject 
         raise_last_error("ifcopenshell_ifcapi_cost_remove_cost_item_quantity failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_cost_remove_cost_item_quantity failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -14434,6 +14710,10 @@ static PyObject *py_ifcopenshell_ifcapi_cost_remove_cost_schedule(PyObject *self
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_cost_remove_cost_schedule(arg_file, arg_cost_schedule);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_cost_remove_cost_schedule failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_cost_remove_cost_schedule failed");
         goto __cleanup;
     }
@@ -14468,6 +14748,10 @@ static PyObject *py_ifcopenshell_ifcapi_cost_remove_cost_value(PyObject *self, P
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_cost_remove_cost_value(arg_file, arg_parent, arg_cost_value);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_cost_remove_cost_value failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_cost_remove_cost_value failed");
         goto __cleanup;
     }
@@ -14511,6 +14795,10 @@ static PyObject *py_ifcopenshell_ifcapi_cost_unassign_cost_item_quantity(PyObjec
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_cost_unassign_cost_item_quantity(arg_file, arg_cost_item, &arg_products, arg_user, arg_application);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_cost_unassign_cost_item_quantity failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_cost_unassign_cost_item_quantity failed");
         goto __cleanup;
     }
@@ -14675,6 +14963,10 @@ static PyObject *py_ifcopenshell_ifcapi_document_remove_information(PyObject *se
         raise_last_error("ifcopenshell_ifcapi_document_remove_information failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_document_remove_information failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -14701,6 +14993,10 @@ static PyObject *py_ifcopenshell_ifcapi_document_remove_reference(PyObject *self
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_document_remove_reference(arg_file, arg_reference);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_document_remove_reference failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_document_remove_reference failed");
         goto __cleanup;
     }
@@ -14744,6 +15040,10 @@ static PyObject *py_ifcopenshell_ifcapi_document_unassign_document(PyObject *sel
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_document_unassign_document(arg_file, &arg_products, arg_document, arg_user, arg_application);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_document_unassign_document failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_document_unassign_document failed");
         goto __cleanup;
     }
@@ -14841,6 +15141,10 @@ static PyObject *py_ifcopenshell_ifcapi_drawing_unassign_product(PyObject *self,
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_drawing_unassign_product(arg_file, arg_relating_product, arg_related_object, arg_user, arg_application);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_drawing_unassign_product failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_drawing_unassign_product failed");
         goto __cleanup;
     }
@@ -15629,6 +15933,10 @@ static PyObject *py_ifcopenshell_ifcapi_element_remove_deep(PyObject *self, PyOb
         raise_last_error("ifcopenshell_ifcapi_element_remove_deep failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_element_remove_deep failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -15658,6 +15966,10 @@ static PyObject *py_ifcopenshell_ifcapi_element_replace_element(PyObject *self, 
         raise_last_error("ifcopenshell_ifcapi_element_replace_element failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_element_replace_element failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -15679,6 +15991,10 @@ static PyObject *py_ifcopenshell_ifcapi_entity_remove_deep2(PyObject *self, PyOb
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_entity_remove_deep2(arg_instance);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_entity_remove_deep2 failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_entity_remove_deep2 failed");
         goto __cleanup;
     }
@@ -15712,6 +16028,10 @@ static PyObject *py_ifcopenshell_ifcapi_entity_remove_deep2_ex(PyObject *self, P
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_entity_remove_deep2_ex(arg_instance, &arg_also_consider, &arg_do_not_delete);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_entity_remove_deep2_ex failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_entity_remove_deep2_ex failed");
         goto __cleanup;
     }
@@ -15840,6 +16160,10 @@ static PyObject *py_ifcopenshell_ifcapi_feature_remove_feature(PyObject *self, P
         raise_last_error("ifcopenshell_ifcapi_feature_remove_feature failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_feature_remove_feature failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -15866,6 +16190,10 @@ static PyObject *py_ifcopenshell_ifcapi_feature_remove_filling(PyObject *self, P
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_feature_remove_filling(arg_file, arg_element);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_feature_remove_filling failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_feature_remove_filling failed");
         goto __cleanup;
     }
@@ -16865,6 +17193,10 @@ static PyObject *py_ifcopenshell_ifcapi_geometry_disconnect_element(PyObject *se
         raise_last_error("ifcopenshell_ifcapi_geometry_disconnect_element failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_geometry_disconnect_element failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -16903,6 +17235,10 @@ static PyObject *py_ifcopenshell_ifcapi_geometry_disconnect_path(PyObject *self,
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_geometry_disconnect_path(arg_file, arg_element, arg_connection_type, arg_has_connection_type, arg_relating_element, arg_related_element);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_geometry_disconnect_path failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_geometry_disconnect_path failed");
         goto __cleanup;
     }
@@ -17070,6 +17406,10 @@ static PyObject *py_ifcopenshell_ifcapi_geometry_remove_boolean(PyObject *self, 
         raise_last_error("ifcopenshell_ifcapi_geometry_remove_boolean failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_geometry_remove_boolean failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -17097,6 +17437,10 @@ static PyObject *py_ifcopenshell_ifcapi_geometry_remove_representation(PyObject 
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_geometry_remove_representation(arg_file, arg_representation, arg_should_keep_named_profiles);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_geometry_remove_representation failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_geometry_remove_representation failed");
         goto __cleanup;
     }
@@ -17131,6 +17475,10 @@ static PyObject *py_ifcopenshell_ifcapi_geometry_unassign_representation(PyObjec
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_geometry_unassign_representation(arg_file, arg_product, arg_representation);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_geometry_unassign_representation failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_geometry_unassign_representation failed");
         goto __cleanup;
     }
@@ -17208,6 +17556,10 @@ static PyObject *py_ifcopenshell_ifcapi_georeference_add_georeferencing(PyObject
         raise_last_error("ifcopenshell_ifcapi_georeference_add_georeferencing failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_georeference_add_georeferencing failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -17260,6 +17612,10 @@ static PyObject *py_ifcopenshell_ifcapi_georeference_edit_georeferencing(PyObjec
         raise_last_error("ifcopenshell_ifcapi_georeference_edit_georeferencing failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_georeference_edit_georeferencing failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -17286,6 +17642,10 @@ static PyObject *py_ifcopenshell_ifcapi_georeference_edit_true_north(PyObject *s
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_georeference_edit_true_north(arg_file, arg_has_true_north, arg_x, arg_y);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_georeference_edit_true_north failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_georeference_edit_true_north failed");
         goto __cleanup;
     }
@@ -17318,6 +17678,10 @@ static PyObject *py_ifcopenshell_ifcapi_georeference_edit_wcs(PyObject *self, Py
         raise_last_error("ifcopenshell_ifcapi_georeference_edit_wcs failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_georeference_edit_wcs failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -17339,6 +17703,10 @@ static PyObject *py_ifcopenshell_ifcapi_georeference_remove_georeferencing(PyObj
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_georeference_remove_georeferencing(arg_file);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_georeference_remove_georeferencing failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_georeference_remove_georeferencing failed");
         goto __cleanup;
     }
@@ -17378,6 +17746,10 @@ static PyObject *py_ifcopenshell_ifcapi_grid_create_axis_curve(PyObject *self, P
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_grid_create_axis_curve(arg_file, &arg_p1, &arg_p2, arg_grid_axis, arg_is_si);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_grid_create_axis_curve failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_grid_create_axis_curve failed");
         goto __cleanup;
     }
@@ -17444,6 +17816,10 @@ static PyObject *py_ifcopenshell_ifcapi_grid_remove_grid_axis(PyObject *self, Py
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_grid_remove_grid_axis(arg_file, arg_axis);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_grid_remove_grid_axis failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_grid_remove_grid_axis failed");
         goto __cleanup;
     }
@@ -17572,6 +17948,10 @@ static PyObject *py_ifcopenshell_ifcapi_group_remove_group(PyObject *self, PyObj
         raise_last_error("ifcopenshell_ifcapi_group_remove_group failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_group_remove_group failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -17612,6 +17992,10 @@ static PyObject *py_ifcopenshell_ifcapi_group_unassign_group(PyObject *self, PyO
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_group_unassign_group(arg_file, &arg_products, arg_group, arg_user, arg_application);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_group_unassign_group failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_group_unassign_group failed");
         goto __cleanup;
     }
@@ -17825,6 +18209,10 @@ static PyObject *py_ifcopenshell_ifcapi_layer_assign_layer(PyObject *self, PyObj
         raise_last_error("ifcopenshell_ifcapi_layer_assign_layer failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_layer_assign_layer failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -17852,6 +18240,10 @@ static PyObject *py_ifcopenshell_ifcapi_layer_remove_layer(PyObject *self, PyObj
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_layer_remove_layer(arg_file, arg_layer);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_layer_remove_layer failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_layer_remove_layer failed");
         goto __cleanup;
     }
@@ -17885,6 +18277,10 @@ static PyObject *py_ifcopenshell_ifcapi_layer_unassign_layer(PyObject *self, PyO
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_layer_unassign_layer(arg_file, &arg_items, arg_layer);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_layer_unassign_layer failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_layer_unassign_layer failed");
         goto __cleanup;
     }
@@ -18030,6 +18426,10 @@ static PyObject *py_ifcopenshell_ifcapi_library_remove_library(PyObject *self, P
         raise_last_error("ifcopenshell_ifcapi_library_remove_library failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_library_remove_library failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -18056,6 +18456,10 @@ static PyObject *py_ifcopenshell_ifcapi_library_remove_reference(PyObject *self,
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_library_remove_reference(arg_file, arg_reference);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_library_remove_reference failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_library_remove_reference failed");
         goto __cleanup;
     }
@@ -18099,6 +18503,10 @@ static PyObject *py_ifcopenshell_ifcapi_library_unassign_reference(PyObject *sel
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_library_unassign_reference(arg_file, arg_reference, &arg_products, arg_user, arg_application);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_library_unassign_reference failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_library_unassign_reference failed");
         goto __cleanup;
     }
@@ -18210,6 +18618,10 @@ static PyObject *py_ifcopenshell_ifcapi_material_add_list_item(PyObject *self, P
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_material_add_list_item(arg_file, arg_material_list, arg_material);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_material_add_list_item failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_material_add_list_item failed");
         goto __cleanup;
     }
@@ -18402,6 +18814,10 @@ static PyObject *py_ifcopenshell_ifcapi_material_assign_profile(PyObject *self, 
         raise_last_error("ifcopenshell_ifcapi_material_assign_profile failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_material_assign_profile failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -18447,6 +18863,10 @@ static PyObject *py_ifcopenshell_ifcapi_material_edit_profile_usage(PyObject *se
         raise_last_error("ifcopenshell_ifcapi_material_edit_profile_usage failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_material_edit_profile_usage failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -18475,6 +18895,10 @@ static PyObject *py_ifcopenshell_ifcapi_material_remove_constituent(PyObject *se
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_material_remove_constituent(arg_file, arg_constituent, arg_should_remove_material);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_material_remove_constituent failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_material_remove_constituent failed");
         goto __cleanup;
     }
@@ -18508,6 +18932,10 @@ static PyObject *py_ifcopenshell_ifcapi_material_remove_layer(PyObject *self, Py
         raise_last_error("ifcopenshell_ifcapi_material_remove_layer failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_material_remove_layer failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -18535,6 +18963,10 @@ static PyObject *py_ifcopenshell_ifcapi_material_remove_list_item(PyObject *self
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_material_remove_list_item(arg_file, arg_material_list, arg_material_index);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_material_remove_list_item failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_material_remove_list_item failed");
         goto __cleanup;
     }
@@ -18567,6 +18999,10 @@ static PyObject *py_ifcopenshell_ifcapi_material_remove_material(PyObject *self,
         raise_last_error("ifcopenshell_ifcapi_material_remove_material failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_material_remove_material failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -18593,6 +19029,10 @@ static PyObject *py_ifcopenshell_ifcapi_material_remove_material_set(PyObject *s
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_material_remove_material_set(arg_file, arg_material);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_material_remove_material_set failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_material_remove_material_set failed");
         goto __cleanup;
     }
@@ -18627,6 +19067,10 @@ static PyObject *py_ifcopenshell_ifcapi_material_remove_profile(PyObject *self, 
         raise_last_error("ifcopenshell_ifcapi_material_remove_profile failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_material_remove_profile failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -18655,6 +19099,10 @@ static PyObject *py_ifcopenshell_ifcapi_material_reorder_set_item(PyObject *self
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_material_reorder_set_item(arg_file, arg_material_set, arg_old_index, arg_new_index);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_material_reorder_set_item failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_material_reorder_set_item failed");
         goto __cleanup;
     }
@@ -18693,6 +19141,10 @@ static PyObject *py_ifcopenshell_ifcapi_material_unassign_material(PyObject *sel
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_material_unassign_material(arg_file, &arg_products, arg_user, arg_application);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_material_unassign_material failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_material_unassign_material failed");
         goto __cleanup;
     }
@@ -18784,6 +19236,10 @@ static PyObject *py_ifcopenshell_ifcapi_nest_unassign_object(PyObject *self, PyO
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_nest_unassign_object(arg_file, &arg_objects, arg_user, arg_application);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_nest_unassign_object failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_nest_unassign_object failed");
         goto __cleanup;
     }
@@ -19166,6 +19622,10 @@ static PyObject *py_ifcopenshell_ifcapi_owner_remove_actor(PyObject *self, PyObj
         raise_last_error("ifcopenshell_ifcapi_owner_remove_actor failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_owner_remove_actor failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -19192,6 +19652,10 @@ static PyObject *py_ifcopenshell_ifcapi_owner_remove_address(PyObject *self, PyO
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_owner_remove_address(arg_file, arg_address);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_owner_remove_address failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_owner_remove_address failed");
         goto __cleanup;
     }
@@ -19224,6 +19688,10 @@ static PyObject *py_ifcopenshell_ifcapi_owner_remove_application(PyObject *self,
         raise_last_error("ifcopenshell_ifcapi_owner_remove_application failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_owner_remove_application failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -19250,6 +19718,10 @@ static PyObject *py_ifcopenshell_ifcapi_owner_remove_organisation(PyObject *self
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_owner_remove_organisation(arg_file, arg_organisation);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_owner_remove_organisation failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_owner_remove_organisation failed");
         goto __cleanup;
     }
@@ -19282,6 +19754,10 @@ static PyObject *py_ifcopenshell_ifcapi_owner_remove_person(PyObject *self, PyOb
         raise_last_error("ifcopenshell_ifcapi_owner_remove_person failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_owner_remove_person failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -19311,6 +19787,10 @@ static PyObject *py_ifcopenshell_ifcapi_owner_remove_person_and_organisation(PyO
         raise_last_error("ifcopenshell_ifcapi_owner_remove_person_and_organisation failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_owner_remove_person_and_organisation failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -19337,6 +19817,10 @@ static PyObject *py_ifcopenshell_ifcapi_owner_remove_role(PyObject *self, PyObje
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_owner_remove_role(arg_file, arg_role);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_owner_remove_role failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_owner_remove_role failed");
         goto __cleanup;
     }
@@ -19381,6 +19865,10 @@ static PyObject *py_ifcopenshell_ifcapi_owner_unassign_actor(PyObject *self, PyO
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_owner_unassign_actor(arg_file, arg_relating_actor, arg_related_object, arg_user, arg_application);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_owner_unassign_actor failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_owner_unassign_actor failed");
         goto __cleanup;
     }
@@ -19770,6 +20258,10 @@ static PyObject *py_ifcopenshell_ifcapi_profile_edit_profile(PyObject *self, PyO
         raise_last_error("ifcopenshell_ifcapi_profile_edit_profile failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_profile_edit_profile failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -19797,6 +20289,10 @@ static PyObject *py_ifcopenshell_ifcapi_profile_remove_profile(PyObject *self, P
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_profile_remove_profile(arg_file, arg_profile);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_profile_remove_profile failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_profile_remove_profile failed");
         goto __cleanup;
     }
@@ -19892,6 +20388,10 @@ static PyObject *py_ifcopenshell_ifcapi_project_unassign_declaration(PyObject *s
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_project_unassign_declaration(arg_file, &arg_definitions, arg_relating_context, arg_user, arg_application);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_project_unassign_declaration failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_project_unassign_declaration failed");
         goto __cleanup;
     }
@@ -20174,6 +20674,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_props_free(PyObject *self, PyObject
         raise_last_error("ifcopenshell_ifcapi_pset_props_free failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_pset_props_free failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -20233,6 +20737,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_props_set_bool(PyObject *self, PyOb
         raise_last_error("ifcopenshell_ifcapi_pset_props_set_bool failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_pset_props_set_bool failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -20267,6 +20775,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_props_set_date(PyObject *self, PyOb
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_pset_props_set_date(arg_props, arg_key, arg_year, arg_month, arg_day);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_pset_props_set_date failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_pset_props_set_date failed");
         goto __cleanup;
     }
@@ -20310,6 +20822,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_props_set_datetime(PyObject *self, 
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_pset_props_set_datetime(arg_props, arg_key, arg_year, arg_month, arg_day, arg_hour, arg_minute, arg_second, arg_microsecond, arg_has_timezone, arg_timezone_offset_minutes);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_pset_props_set_datetime failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_pset_props_set_datetime failed");
         goto __cleanup;
     }
@@ -20360,6 +20876,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_props_set_dict(PyObject *self, PyOb
         raise_last_error("ifcopenshell_ifcapi_pset_props_set_dict failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_pset_props_set_dict failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -20393,6 +20913,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_props_set_double(PyObject *self, Py
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_pset_props_set_double(arg_props, arg_key, arg_value);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_pset_props_set_double failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_pset_props_set_double failed");
         goto __cleanup;
     }
@@ -20431,6 +20955,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_props_set_double_list(PyObject *sel
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_pset_props_set_double_list(arg_props, arg_key, &arg_values);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_pset_props_set_double_list failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_pset_props_set_double_list failed");
         goto __cleanup;
     }
@@ -20477,6 +21005,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_props_set_duration(PyObject *self, 
         raise_last_error("ifcopenshell_ifcapi_pset_props_set_duration failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_pset_props_set_duration failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -20513,6 +21045,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_props_set_instance(PyObject *self, 
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_pset_props_set_instance(arg_props, arg_key, arg_value);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_pset_props_set_instance failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_pset_props_set_instance failed");
         goto __cleanup;
     }
@@ -20554,6 +21090,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_props_set_instance_list(PyObject *s
         raise_last_error("ifcopenshell_ifcapi_pset_props_set_instance_list failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_pset_props_set_instance_list failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -20587,6 +21127,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_props_set_int(PyObject *self, PyObj
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_pset_props_set_int(arg_props, arg_key, arg_value);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_pset_props_set_int failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_pset_props_set_int failed");
         goto __cleanup;
     }
@@ -20628,6 +21172,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_props_set_int_list(PyObject *self, 
         raise_last_error("ifcopenshell_ifcapi_pset_props_set_int_list failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_pset_props_set_int_list failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -20663,6 +21211,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_props_set_null(PyObject *self, PyOb
         raise_last_error("ifcopenshell_ifcapi_pset_props_set_null failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_pset_props_set_null failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -20695,6 +21247,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_props_set_string(PyObject *self, Py
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_pset_props_set_string(arg_props, arg_key, arg_value);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_pset_props_set_string failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_pset_props_set_string failed");
         goto __cleanup;
     }
@@ -20736,6 +21292,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_props_set_string_list(PyObject *sel
         raise_last_error("ifcopenshell_ifcapi_pset_props_set_string_list failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_pset_props_set_string_list failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -20770,6 +21330,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_props_set_typed_bool(PyObject *self
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_pset_props_set_typed_bool(arg_props, arg_key, arg_value, arg_ifc_type);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_pset_props_set_typed_bool failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_pset_props_set_typed_bool failed");
         goto __cleanup;
     }
@@ -20809,6 +21373,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_props_set_typed_double(PyObject *se
         raise_last_error("ifcopenshell_ifcapi_pset_props_set_typed_double failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_pset_props_set_typed_double failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -20845,6 +21413,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_props_set_typed_int(PyObject *self,
         raise_last_error("ifcopenshell_ifcapi_pset_props_set_typed_int failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_pset_props_set_typed_int failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -20878,6 +21450,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_props_set_typed_string(PyObject *se
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_pset_props_set_typed_string(arg_props, arg_key, arg_value, arg_ifc_type);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_pset_props_set_typed_string failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_pset_props_set_typed_string failed");
         goto __cleanup;
     }
@@ -20919,6 +21495,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_props_set_unit_for_last(PyObject *s
         raise_last_error("ifcopenshell_ifcapi_pset_props_set_unit_for_last failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_pset_props_set_unit_for_last failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -20951,6 +21531,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_remove_pset(PyObject *self, PyObjec
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_pset_remove_pset(arg_file, arg_product, arg_pset);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_pset_remove_pset failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_pset_remove_pset failed");
         goto __cleanup;
     }
@@ -21078,6 +21662,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_template_free(PyObject *self, PyObj
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_pset_template_free(arg_pqt);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_pset_template_free failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_pset_template_free failed");
         goto __cleanup;
     }
@@ -21306,6 +21894,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_template_remove_prop_template(PyObj
         raise_last_error("ifcopenshell_ifcapi_pset_template_remove_prop_template failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_pset_template_remove_prop_template failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -21330,6 +21922,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_template_remove_pset_template(PyObj
         raise_last_error("ifcopenshell_ifcapi_pset_template_remove_pset_template failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_pset_template_remove_pset_template failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -21348,6 +21944,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_template_set_template_dir(PyObject 
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_pset_template_set_template_dir(arg_dir);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_pset_template_set_template_dir failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_pset_template_set_template_dir failed");
         goto __cleanup;
     }
@@ -21381,6 +21981,10 @@ static PyObject *py_ifcopenshell_ifcapi_pset_unassign_pset(PyObject *self, PyObj
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_pset_unassign_pset(arg_file, &arg_products, arg_pset);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_pset_unassign_pset failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_pset_unassign_pset failed");
         goto __cleanup;
     }
@@ -21625,6 +22229,10 @@ static PyObject *py_ifcopenshell_ifcapi_resource_edit_resource_time(PyObject *se
         raise_last_error("ifcopenshell_ifcapi_resource_edit_resource_time failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_resource_edit_resource_time failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -21697,6 +22305,10 @@ static PyObject *py_ifcopenshell_ifcapi_root_remove_product(PyObject *self, PyOb
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_root_remove_product(arg_file, arg_product, arg_user, arg_application);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_root_remove_product failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_root_remove_product failed");
         goto __cleanup;
     }
@@ -21920,6 +22532,10 @@ static PyObject *py_ifcopenshell_ifcapi_selector_keys_free(PyObject *self, PyObj
         raise_last_error("ifcopenshell_ifcapi_selector_keys_free failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_selector_keys_free failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -22085,6 +22701,10 @@ static PyObject *py_ifcopenshell_ifcapi_selector_node_free(PyObject *self, PyObj
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_selector_node_free(arg_root);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_selector_node_free failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_selector_node_free failed");
         goto __cleanup;
     }
@@ -22931,6 +23551,10 @@ static PyObject *py_ifcopenshell_ifcapi_sequence_calculate_task_duration(PyObjec
         raise_last_error("ifcopenshell_ifcapi_sequence_calculate_task_duration failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_sequence_calculate_task_duration failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -22957,6 +23581,10 @@ static PyObject *py_ifcopenshell_ifcapi_sequence_cascade_schedule(PyObject *self
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_sequence_cascade_schedule(arg_file, arg_task);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_sequence_cascade_schedule failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_sequence_cascade_schedule failed");
         goto __cleanup;
     }
@@ -23052,6 +23680,10 @@ static PyObject *py_ifcopenshell_ifcapi_sequence_create_baseline(PyObject *self,
         raise_last_error("ifcopenshell_ifcapi_sequence_create_baseline failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_sequence_create_baseline failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -23132,6 +23764,10 @@ static PyObject *py_ifcopenshell_ifcapi_sequence_edit_lag_time(PyObject *self, P
         raise_last_error("ifcopenshell_ifcapi_sequence_edit_lag_time failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_sequence_edit_lag_time failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -23167,6 +23803,10 @@ static PyObject *py_ifcopenshell_ifcapi_sequence_edit_recurrence_pattern(PyObjec
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_sequence_edit_recurrence_pattern(arg_recurrence_pattern, arg_attributes);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_sequence_edit_recurrence_pattern failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_sequence_edit_recurrence_pattern failed");
         goto __cleanup;
     }
@@ -23208,6 +23848,10 @@ static PyObject *py_ifcopenshell_ifcapi_sequence_edit_sequence(PyObject *self, P
         raise_last_error("ifcopenshell_ifcapi_sequence_edit_sequence failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_sequence_edit_sequence failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -23243,6 +23887,10 @@ static PyObject *py_ifcopenshell_ifcapi_sequence_edit_task(PyObject *self, PyObj
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_sequence_edit_task(arg_task, arg_attributes);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_sequence_edit_task failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_sequence_edit_task failed");
         goto __cleanup;
     }
@@ -23289,6 +23937,10 @@ static PyObject *py_ifcopenshell_ifcapi_sequence_edit_task_time(PyObject *self, 
         raise_last_error("ifcopenshell_ifcapi_sequence_edit_task_time failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_sequence_edit_task_time failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -23324,6 +23976,10 @@ static PyObject *py_ifcopenshell_ifcapi_sequence_edit_work_calendar(PyObject *se
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_sequence_edit_work_calendar(arg_work_calendar, arg_attributes);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_sequence_edit_work_calendar failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_sequence_edit_work_calendar failed");
         goto __cleanup;
     }
@@ -23365,6 +24021,10 @@ static PyObject *py_ifcopenshell_ifcapi_sequence_edit_work_plan(PyObject *self, 
         raise_last_error("ifcopenshell_ifcapi_sequence_edit_work_plan failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_sequence_edit_work_plan failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -23400,6 +24060,10 @@ static PyObject *py_ifcopenshell_ifcapi_sequence_edit_work_schedule(PyObject *se
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_sequence_edit_work_schedule(arg_work_schedule, arg_attributes);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_sequence_edit_work_schedule failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_sequence_edit_work_schedule failed");
         goto __cleanup;
     }
@@ -23441,6 +24105,10 @@ static PyObject *py_ifcopenshell_ifcapi_sequence_edit_work_time(PyObject *self, 
         raise_last_error("ifcopenshell_ifcapi_sequence_edit_work_time failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_sequence_edit_work_time failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -23468,6 +24136,10 @@ static PyObject *py_ifcopenshell_ifcapi_sequence_recalculate_schedule(PyObject *
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_sequence_recalculate_schedule(arg_file, arg_work_schedule);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_sequence_recalculate_schedule failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_sequence_recalculate_schedule failed");
         goto __cleanup;
     }
@@ -23510,6 +24182,10 @@ static PyObject *py_ifcopenshell_ifcapi_sequence_remove_task(PyObject *self, PyO
         raise_last_error("ifcopenshell_ifcapi_sequence_remove_task failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_sequence_remove_task failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -23536,6 +24212,10 @@ static PyObject *py_ifcopenshell_ifcapi_sequence_remove_time_period(PyObject *se
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_sequence_remove_time_period(arg_file, arg_time_period);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_sequence_remove_time_period failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_sequence_remove_time_period failed");
         goto __cleanup;
     }
@@ -23578,6 +24258,10 @@ static PyObject *py_ifcopenshell_ifcapi_sequence_remove_work_calendar(PyObject *
         raise_last_error("ifcopenshell_ifcapi_sequence_remove_work_calendar failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_sequence_remove_work_calendar failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -23614,6 +24298,10 @@ static PyObject *py_ifcopenshell_ifcapi_sequence_remove_work_plan(PyObject *self
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_sequence_remove_work_plan(arg_file, arg_work_plan, arg_user, arg_application);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_sequence_remove_work_plan failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_sequence_remove_work_plan failed");
         goto __cleanup;
     }
@@ -23656,6 +24344,10 @@ static PyObject *py_ifcopenshell_ifcapi_sequence_remove_work_schedule(PyObject *
         raise_last_error("ifcopenshell_ifcapi_sequence_remove_work_schedule failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_sequence_remove_work_schedule failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -23685,6 +24377,10 @@ static PyObject *py_ifcopenshell_ifcapi_sequence_remove_work_time(PyObject *self
         raise_last_error("ifcopenshell_ifcapi_sequence_remove_work_time failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_sequence_remove_work_time failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -23711,6 +24407,10 @@ static PyObject *py_ifcopenshell_ifcapi_sequence_unassign_lag_time(PyObject *sel
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_sequence_unassign_lag_time(arg_file, arg_rel_sequence);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_sequence_unassign_lag_time failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_sequence_unassign_lag_time failed");
         goto __cleanup;
     }
@@ -23837,6 +24537,10 @@ static PyObject *py_ifcopenshell_ifcapi_sequence_unassign_recurrence_pattern(PyO
         raise_last_error("ifcopenshell_ifcapi_sequence_unassign_recurrence_pattern failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_sequence_unassign_recurrence_pattern failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -23868,6 +24572,10 @@ static PyObject *py_ifcopenshell_ifcapi_sequence_unassign_sequence(PyObject *sel
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_sequence_unassign_sequence(arg_file, arg_relating_process, arg_related_process);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_sequence_unassign_sequence failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_sequence_unassign_sequence failed");
         goto __cleanup;
     }
@@ -25222,6 +25930,10 @@ static PyObject *py_ifcopenshell_ifcapi_spatial_dereference_structure(PyObject *
         raise_last_error("ifcopenshell_ifcapi_spatial_dereference_structure failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_spatial_dereference_structure failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -25310,6 +26022,10 @@ static PyObject *py_ifcopenshell_ifcapi_spatial_unassign_container(PyObject *sel
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_spatial_unassign_container(arg_file, &arg_products, arg_user, arg_application);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_spatial_unassign_container failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_spatial_unassign_container failed");
         goto __cleanup;
     }
@@ -25751,6 +26467,10 @@ static PyObject *py_ifcopenshell_ifcapi_structural_edit_structural_boundary_cond
         raise_last_error("ifcopenshell_ifcapi_structural_edit_structural_boundary_condition failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_structural_edit_structural_boundary_condition failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -25790,6 +26510,10 @@ static PyObject *py_ifcopenshell_ifcapi_structural_edit_structural_connection_cs
         raise_last_error("ifcopenshell_ifcapi_structural_edit_structural_connection_cs failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_structural_edit_structural_connection_cs failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -25825,6 +26549,10 @@ static PyObject *py_ifcopenshell_ifcapi_structural_edit_structural_item_axis(PyO
         raise_last_error("ifcopenshell_ifcapi_structural_edit_structural_item_axis failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_structural_edit_structural_item_axis failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -25852,6 +26580,10 @@ static PyObject *py_ifcopenshell_ifcapi_structural_remove_structural_analysis_mo
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_structural_remove_structural_analysis_model(arg_file, arg_structural_analysis_model);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_structural_remove_structural_analysis_model failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_structural_remove_structural_analysis_model failed");
         goto __cleanup;
     }
@@ -25889,6 +26621,10 @@ static PyObject *py_ifcopenshell_ifcapi_structural_remove_structural_boundary_co
         raise_last_error("ifcopenshell_ifcapi_structural_remove_structural_boundary_condition failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_structural_remove_structural_boundary_condition failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -25915,6 +26651,10 @@ static PyObject *py_ifcopenshell_ifcapi_structural_remove_structural_connection_
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_structural_remove_structural_connection_condition(arg_file, arg_relation);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_structural_remove_structural_connection_condition failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_structural_remove_structural_connection_condition failed");
         goto __cleanup;
     }
@@ -25947,6 +26687,10 @@ static PyObject *py_ifcopenshell_ifcapi_structural_remove_structural_load(PyObje
         raise_last_error("ifcopenshell_ifcapi_structural_remove_structural_load failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_structural_remove_structural_load failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -25976,6 +26720,10 @@ static PyObject *py_ifcopenshell_ifcapi_structural_remove_structural_load_case(P
         raise_last_error("ifcopenshell_ifcapi_structural_remove_structural_load_case failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_structural_remove_structural_load_case failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -26002,6 +26750,10 @@ static PyObject *py_ifcopenshell_ifcapi_structural_remove_structural_load_group(
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_structural_remove_structural_load_group(arg_file, arg_structural_load_group);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_structural_remove_structural_load_group failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_structural_remove_structural_load_group failed");
         goto __cleanup;
     }
@@ -26045,6 +26797,10 @@ static PyObject *py_ifcopenshell_ifcapi_structural_unassign_structural_analysis_
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_structural_unassign_structural_analysis_model(arg_file, &arg_products, arg_structural_analysis_model, arg_user, arg_application);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_structural_unassign_structural_analysis_model failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_structural_unassign_structural_analysis_model failed");
         goto __cleanup;
     }
@@ -26156,6 +26912,10 @@ static PyObject *py_ifcopenshell_ifcapi_style_assign_material_style(PyObject *se
         raise_last_error("ifcopenshell_ifcapi_style_assign_material_style failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_style_assign_material_style failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -26237,6 +26997,10 @@ static PyObject *py_ifcopenshell_ifcapi_style_edit_surface_style(PyObject *self,
         raise_last_error("ifcopenshell_ifcapi_style_edit_surface_style failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_style_edit_surface_style failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -26264,6 +27028,10 @@ static PyObject *py_ifcopenshell_ifcapi_style_remove_style(PyObject *self, PyObj
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_style_remove_style(arg_file, arg_style);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_style_remove_style failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_style_remove_style failed");
         goto __cleanup;
     }
@@ -26296,6 +27064,10 @@ static PyObject *py_ifcopenshell_ifcapi_style_remove_styled_representation(PyObj
         raise_last_error("ifcopenshell_ifcapi_style_remove_styled_representation failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_style_remove_styled_representation failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -26322,6 +27094,10 @@ static PyObject *py_ifcopenshell_ifcapi_style_remove_surface_style(PyObject *sel
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_style_remove_surface_style(arg_file, arg_style);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_style_remove_surface_style failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_style_remove_surface_style failed");
         goto __cleanup;
     }
@@ -26364,6 +27140,10 @@ static PyObject *py_ifcopenshell_ifcapi_style_unassign_material_style(PyObject *
         raise_last_error("ifcopenshell_ifcapi_style_unassign_material_style failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_style_unassign_material_style failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -26395,6 +27175,10 @@ static PyObject *py_ifcopenshell_ifcapi_style_unassign_representation_styles(PyO
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_style_unassign_representation_styles(arg_file, arg_shape_representation, &arg_styles, arg_should_use_presentation_style_assignment);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_style_unassign_representation_styles failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_style_unassign_representation_styles failed");
         goto __cleanup;
     }
@@ -26690,6 +27474,10 @@ static PyObject *py_ifcopenshell_ifcapi_system_connect_port(PyObject *self, PyOb
         raise_last_error("ifcopenshell_ifcapi_system_connect_port failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_system_connect_port failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -26719,6 +27507,10 @@ static PyObject *py_ifcopenshell_ifcapi_system_disconnect_port(PyObject *self, P
         raise_last_error("ifcopenshell_ifcapi_system_disconnect_port failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_system_disconnect_port failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -26745,6 +27537,10 @@ static PyObject *py_ifcopenshell_ifcapi_system_remove_system(PyObject *self, PyO
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_system_remove_system(arg_file, arg_system);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_system_remove_system failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_system_remove_system failed");
         goto __cleanup;
     }
@@ -26792,6 +27588,10 @@ static PyObject *py_ifcopenshell_ifcapi_system_unassign_flow_control(PyObject *s
         raise_last_error("ifcopenshell_ifcapi_system_unassign_flow_control failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_system_unassign_flow_control failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -26836,6 +27636,10 @@ static PyObject *py_ifcopenshell_ifcapi_system_unassign_port(PyObject *self, PyO
         raise_last_error("ifcopenshell_ifcapi_system_unassign_port failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_system_unassign_port failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -26876,6 +27680,10 @@ static PyObject *py_ifcopenshell_ifcapi_system_unassign_system(PyObject *self, P
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_system_unassign_system(arg_file, &arg_products, arg_system, arg_user, arg_application);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_system_unassign_system failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_system_unassign_system failed");
         goto __cleanup;
     }
@@ -27053,6 +27861,10 @@ static PyObject *py_ifcopenshell_ifcapi_type_unassign_type(PyObject *self, PyObj
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_type_unassign_type(arg_file, &arg_objects, arg_user, arg_application);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_type_unassign_type failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_type_unassign_type failed");
         goto __cleanup;
     }
@@ -27621,6 +28433,10 @@ static PyObject *py_ifcopenshell_ifcapi_unit_remove_unit(PyObject *self, PyObjec
         raise_last_error("ifcopenshell_ifcapi_unit_remove_unit failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcapi_unit_remove_unit failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -27796,6 +28612,10 @@ static PyObject *py_ifcopenshell_ifcapi_unit_unassign_unit(PyObject *self, PyObj
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcapi_unit_unassign_unit(arg_file, &arg_units);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_unit_unassign_unit failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcapi_unit_unassign_unit failed");
         goto __cleanup;
     }
@@ -28825,6 +29645,10 @@ static PyObject *py_ifcopenshell_ifcgeom_conversion_result_shape_convex_tag(PyOb
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcgeom_conversion_result_shape_convex_tag(arg_self, arg_value);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcgeom_conversion_result_shape_convex_tag failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcgeom_conversion_result_shape_convex_tag failed");
         goto __cleanup;
     }
@@ -30640,6 +31464,10 @@ static PyObject *py_ifcopenshell_ifcgeom_geometry_serializer_finalize(PyObject *
         raise_last_error("ifcopenshell_ifcgeom_geometry_serializer_finalize failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcgeom_geometry_serializer_finalize failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -30800,6 +31628,10 @@ static PyObject *py_ifcopenshell_ifcgeom_geometry_serializer_set_file(PyObject *
         raise_last_error("ifcopenshell_ifcgeom_geometry_serializer_set_file failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcgeom_geometry_serializer_set_file failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -30823,6 +31655,10 @@ static PyObject *py_ifcopenshell_ifcgeom_geometry_serializer_set_unit_name_and_m
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcgeom_geometry_serializer_set_unit_name_and_magnitude(arg_self, arg_name, arg_magnitude);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcgeom_geometry_serializer_set_unit_name_and_magnitude failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcgeom_geometry_serializer_set_unit_name_and_magnitude failed");
         goto __cleanup;
     }
@@ -30882,6 +31718,10 @@ static PyObject *py_ifcopenshell_ifcgeom_geometry_serializer_write_brep_element(
         raise_last_error("ifcopenshell_ifcgeom_geometry_serializer_write_brep_element failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcgeom_geometry_serializer_write_brep_element failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -30903,6 +31743,10 @@ static PyObject *py_ifcopenshell_ifcgeom_geometry_serializer_write_header(PyObje
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcgeom_geometry_serializer_write_header(arg_self);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcgeom_geometry_serializer_write_header failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcgeom_geometry_serializer_write_header failed");
         goto __cleanup;
     }
@@ -30932,6 +31776,10 @@ static PyObject *py_ifcopenshell_ifcgeom_geometry_serializer_write_triangulation
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcgeom_geometry_serializer_write_triangulation_element(arg_self, arg_o);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcgeom_geometry_serializer_write_triangulation_element failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcgeom_geometry_serializer_write_triangulation_element failed");
         goto __cleanup;
     }
@@ -31034,6 +31882,10 @@ static PyObject *py_ifcopenshell_ifcgeom_iterator_compute_bounds(PyObject *self,
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcgeom_iterator_compute_bounds(arg_self, arg_with_geometry);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcgeom_iterator_compute_bounds failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcgeom_iterator_compute_bounds failed");
         goto __cleanup;
     }
@@ -31947,6 +32799,10 @@ static PyObject *py_ifcopenshell_ifcgeom_serializer_finalize(PyObject *self, PyO
         raise_last_error("ifcopenshell_ifcgeom_serializer_finalize failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcgeom_serializer_finalize failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -32019,6 +32875,10 @@ static PyObject *py_ifcopenshell_ifcgeom_serializer_set_file(PyObject *self, PyO
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcgeom_serializer_set_file(arg_self, arg_arg_0);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcgeom_serializer_set_file failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcgeom_serializer_set_file failed");
         goto __cleanup;
     }
@@ -32192,6 +33052,10 @@ static PyObject *py_ifcopenshell_ifcgeom_serializer_settings_set_bool(PyObject *
         raise_last_error("ifcopenshell_ifcgeom_serializer_settings_set_bool failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcgeom_serializer_settings_set_bool failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -32218,6 +33082,10 @@ static PyObject *py_ifcopenshell_ifcgeom_serializer_settings_set_double(PyObject
         raise_last_error("ifcopenshell_ifcgeom_serializer_settings_set_double failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcgeom_serializer_settings_set_double failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -32241,6 +33109,10 @@ static PyObject *py_ifcopenshell_ifcgeom_serializer_settings_set_int(PyObject *s
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcgeom_serializer_settings_set_int(arg_self, arg_name, arg_value);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcgeom_serializer_settings_set_int failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcgeom_serializer_settings_set_int failed");
         goto __cleanup;
     }
@@ -32273,6 +33145,10 @@ static PyObject *py_ifcopenshell_ifcgeom_serializer_settings_set_int_set(PyObjec
         raise_last_error("ifcopenshell_ifcgeom_serializer_settings_set_int_set failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcgeom_serializer_settings_set_int_set failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -32297,6 +33173,10 @@ static PyObject *py_ifcopenshell_ifcgeom_serializer_settings_set_string(PyObject
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcgeom_serializer_settings_set_string(arg_self, arg_name, arg_value);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcgeom_serializer_settings_set_string failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcgeom_serializer_settings_set_string failed");
         goto __cleanup;
     }
@@ -32344,6 +33224,10 @@ static PyObject *py_ifcopenshell_ifcgeom_serializer_write_header(PyObject *self,
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcgeom_serializer_write_header(arg_self);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcgeom_serializer_write_header failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcgeom_serializer_write_header failed");
         goto __cleanup;
     }
@@ -32565,6 +33449,10 @@ static PyObject *py_ifcopenshell_ifcgeom_settings_set_bool(PyObject *self, PyObj
         raise_last_error("ifcopenshell_ifcgeom_settings_set_bool failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcgeom_settings_set_bool failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -32588,6 +33476,10 @@ static PyObject *py_ifcopenshell_ifcgeom_settings_set_double(PyObject *self, PyO
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcgeom_settings_set_double(arg_self, arg_name, arg_value);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcgeom_settings_set_double failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcgeom_settings_set_double failed");
         goto __cleanup;
     }
@@ -32620,6 +33512,10 @@ static PyObject *py_ifcopenshell_ifcgeom_settings_set_double_list(PyObject *self
         raise_last_error("ifcopenshell_ifcgeom_settings_set_double_list failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcgeom_settings_set_double_list failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -32644,6 +33540,10 @@ static PyObject *py_ifcopenshell_ifcgeom_settings_set_int(PyObject *self, PyObje
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcgeom_settings_set_int(arg_self, arg_name, arg_value);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcgeom_settings_set_int failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcgeom_settings_set_int failed");
         goto __cleanup;
     }
@@ -32676,6 +33576,10 @@ static PyObject *py_ifcopenshell_ifcgeom_settings_set_int_set(PyObject *self, Py
         raise_last_error("ifcopenshell_ifcgeom_settings_set_int_set failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcgeom_settings_set_int_set failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -32700,6 +33604,10 @@ static PyObject *py_ifcopenshell_ifcgeom_settings_set_string(PyObject *self, PyO
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcgeom_settings_set_string(arg_self, arg_name, arg_value);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcgeom_settings_set_string failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcgeom_settings_set_string failed");
         goto __cleanup;
     }
@@ -32729,6 +33637,10 @@ static PyObject *py_ifcopenshell_ifcgeom_settings_set_string_set(PyObject *self,
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcgeom_settings_set_string_set(arg_self, arg_name, &arg_value);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcgeom_settings_set_string_set failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcgeom_settings_set_string_set failed");
         goto __cleanup;
     }
@@ -32966,6 +33878,10 @@ static PyObject *py_ifcopenshell_ifcgeom_taxonomy_boolean_result_add_item(PyObje
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcgeom_taxonomy_boolean_result_add_item(arg_self, arg_item);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcgeom_taxonomy_boolean_result_add_item failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcgeom_taxonomy_boolean_result_add_item failed");
         goto __cleanup;
     }
@@ -33648,6 +34564,10 @@ static PyObject *py_ifcopenshell_ifcgeom_taxonomy_collection_add_item(PyObject *
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcgeom_taxonomy_collection_add_item(arg_self, arg_item);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcgeom_taxonomy_collection_add_item failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcgeom_taxonomy_collection_add_item failed");
         goto __cleanup;
     }
@@ -34879,6 +35799,10 @@ static PyObject *py_ifcopenshell_ifcgeom_taxonomy_loft_add_item(PyObject *self, 
         raise_last_error("ifcopenshell_ifcgeom_taxonomy_loft_add_item failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcgeom_taxonomy_loft_add_item failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -35006,6 +35930,10 @@ static PyObject *py_ifcopenshell_ifcgeom_taxonomy_loft_set_axis(PyObject *self, 
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcgeom_taxonomy_loft_set_axis(arg_self, arg_value);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcgeom_taxonomy_loft_set_axis failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcgeom_taxonomy_loft_set_axis failed");
         goto __cleanup;
     }
@@ -36192,6 +37120,10 @@ static PyObject *py_ifcopenshell_ifcgeom_tree_add_file(PyObject *self, PyObject 
         raise_last_error("ifcopenshell_ifcgeom_tree_add_file failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcgeom_tree_add_file failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -36218,6 +37150,10 @@ static PyObject *py_ifcopenshell_ifcgeom_tree_add_iterator(PyObject *self, PyObj
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcgeom_tree_add_iterator(arg_self, arg_iterator);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcgeom_tree_add_iterator failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcgeom_tree_add_iterator failed");
         goto __cleanup;
     }
@@ -37154,6 +38090,10 @@ static PyObject *py_ifcopenshell_ifcgeom_tree_set_enable_face_styles(PyObject *s
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcgeom_tree_set_enable_face_styles(arg_self, arg_enable);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcgeom_tree_set_enable_face_styles failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcgeom_tree_set_enable_face_styles failed");
         goto __cleanup;
     }
@@ -38503,6 +39443,10 @@ static PyObject *py_ifcopenshell_ifcparse_clear_schemas(PyObject *self, PyObject
         raise_last_error("ifcopenshell_ifcparse_clear_schemas failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcparse_clear_schemas failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -38521,6 +39465,10 @@ static PyObject *py_ifcopenshell_ifcparse_escape_xml(PyObject *self, PyObject *a
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcparse_escape_xml(arg_text);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcparse_escape_xml failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcparse_escape_xml failed");
         goto __cleanup;
     }
@@ -38936,6 +39884,10 @@ static PyObject *py_ifcopenshell_ifcparse_register_schema(PyObject *self, PyObje
         raise_last_error("ifcopenshell_ifcparse_register_schema failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcparse_register_schema failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -38954,6 +39906,10 @@ static PyObject *py_ifcopenshell_ifcparse_sanitate_material_name(PyObject *self,
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcparse_sanitate_material_name(arg_material_name);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcparse_sanitate_material_name failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcparse_sanitate_material_name failed");
         goto __cleanup;
     }
@@ -39043,6 +39999,10 @@ static PyObject *py_ifcopenshell_ifcparse_set_feature(PyObject *self, PyObject *
         raise_last_error("ifcopenshell_ifcparse_set_feature failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcparse_set_feature failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -39064,6 +40024,10 @@ static PyObject *py_ifcopenshell_ifcparse_set_log_format_json(PyObject *self, Py
         raise_last_error("ifcopenshell_ifcparse_set_log_format_json failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcparse_set_log_format_json failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -39082,6 +40046,10 @@ static PyObject *py_ifcopenshell_ifcparse_set_log_format_text(PyObject *self, Py
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcparse_set_log_format_text();
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcparse_set_log_format_text failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcparse_set_log_format_text failed");
         goto __cleanup;
     }
@@ -39255,6 +40223,10 @@ static PyObject *py_ifcopenshell_ifcparse_turn_off_detailed_logging(PyObject *se
         raise_last_error("ifcopenshell_ifcparse_turn_off_detailed_logging failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcparse_turn_off_detailed_logging failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -39276,6 +40248,10 @@ static PyObject *py_ifcopenshell_ifcparse_turn_on_detailed_logging(PyObject *sel
         raise_last_error("ifcopenshell_ifcparse_turn_on_detailed_logging failed");
         goto __cleanup;
     }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_ifcparse_turn_on_detailed_logging failed");
+        goto __cleanup;
+    }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
@@ -39294,6 +40270,10 @@ static PyObject *py_ifcopenshell_ifcparse_unescape_xml(PyObject *self, PyObject 
     ifcopenshell_clear_error();
     ok = ifcopenshell_ifcparse_unescape_xml(arg_text);
     if (!ok) {
+        raise_last_error("ifcopenshell_ifcparse_unescape_xml failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
         raise_last_error("ifcopenshell_ifcparse_unescape_xml failed");
         goto __cleanup;
     }

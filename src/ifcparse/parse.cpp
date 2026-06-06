@@ -2902,7 +2902,7 @@ void ifcopenshell::file::process_deletion_inverse(const express::Base& inst) {
 express::Base file::instance_by_guid(const std::string& guid) {
     auto it = byguid_.find(guid);
     if (it == byguid_.end()) {
-        throw exception("Instance with GlobalId '" + guid + "' not found");
+        throw exception("Entity with GlobalId '" + guid + "' not found");
     }
     return it->second;
 }

@@ -3,26 +3,23 @@
 """Create and assign a new property set to a product."""
 
 import ifcopenshell
-import ifcopenshell.api.owner.settings
 from ifcopenshell import _ifcopenshell_capi as _capi
-from ifcopenshell._capi_utils import raise_last_error
+from ifcopenshell._capi_utils import owner_context, raise_last_error
 from ifcopenshell.api.pset._capi import build_props, free_props
 
 
 def add_pset(file, product, name, ifc2x3_subclass=None):
     """Add a new property set to *product* and return it."""
-    owner_history = ifcopenshell.api.owner.create_owner_history(file)
-    user = ifcopenshell.api.owner.settings.get_user(file)
-    application = ifcopenshell.api.owner.settings.get_application(file)
+    owner_history, user, application = owner_context(file)
     props_handle = build_props({})
     try:
         handle = _capi.pset_add_pset(
             file._handle,
             product._handle,
             name,
-            owner_history._handle if owner_history is not None else None,
-            user._handle if user is not None else None,
-            application._handle if application is not None else None,
+            owner_history._handle if owner_history else None,
+            user._handle if user else None,
+            application._handle if application else None,
             ifc2x3_subclass,
         )
     finally:

@@ -73,6 +73,7 @@ type_declaration = ifcopenshell.ifcopenshell_wrapper.type_declaration
 enumeration_type = ifcopenshell.ifcopenshell_wrapper.enumeration_type
 entity_type = ifcopenshell.ifcopenshell_wrapper.entity
 select_type = ifcopenshell.ifcopenshell_wrapper.select_type
+parameter_type = ifcopenshell.ifcopenshell_wrapper.parameter_type
 attribute = ifcopenshell.ifcopenshell_wrapper.attribute
 inverse_attribute = ifcopenshell.ifcopenshell_wrapper.inverse_attribute
 schema_definition = ifcopenshell.ifcopenshell_wrapper.schema_definition
@@ -246,8 +247,22 @@ def assert_valid(
         # maps to the python types
         type_wrappers += (type_declaration,)
 
-    while isinstance(attr_type, type_wrappers):
-        attr_type = attr_type.declared_type()
+    # Unwrap named_type, type_declaration, and base parameter_type wrappers
+    # until we reach a concrete type (simple_type, entity_type, select_type, etc.)
+    import ifcopenshell._capi_utils as _capi_utils
+
+    while True:
+        if isinstance(attr_type, type_wrappers):
+            attr_type = attr_type.declared_type()
+            continue
+        if type(attr_type) is parameter_type:
+            attr_type = _capi_utils.unwrap_parameter_type(attr_type)
+            # unwrap_parameter_type may return the same param_type if no inner type matched;
+            # if it's still a bare parameter_type, break to avoid infinite loop.
+            if type(attr_type) is parameter_type:
+                break
+            continue
+        break
 
     invalid = False
 

@@ -162,10 +162,6 @@ class entity_instance:
         h = self._handle
         if not h:
             return 0
-        # The C API raises RuntimeError for destroyed handles (handle ptr is NULL).
-        # Check the raw pointer first to avoid the exception path.
-        if not h.handle:
-            return 0
         return int(_capi.instance_id(h))
 
     def identity(self) -> tuple:
@@ -379,6 +375,9 @@ class entity_instance:
         """Return the sole payload of a native type-declaration instance."""
         if not self._handle:
             return _MISSING
+        # Broad except mirrors bindgen-v2 behaviour: declaration(), as_type_declaration(),
+        # and get_primitive_type() can all raise for schema-specific edge cases (unknown
+        # types, header entities, etc.).  _MISSING is the correct fallback.
         try:
             decl = self.declaration()
             if hasattr(decl, "enumeration_items"):

@@ -56,6 +56,37 @@ def call_handle_list(file, fn_name, *args):
     return [ifcopenshell.entity_instance(file, h) for h in handles]
 
 
+def unwrap_parameter_type(param_type):
+    """Unwrap a parameter_type wrapper to its inner named/simple/aggregation type.
+
+    When the C API (or SWIG) returns a parameter_type that wraps a concrete
+    (named, simple, or aggregation) type, this function tries each unwrap
+    method and returns the first non-None concrete type.  If the input is
+    already a concrete type (not a bare parameter_type), it is returned as-is.
+
+    This replaces the duplicate pattern::
+
+        if type(param_type) is parameter_type:
+            param_type = param_type.as_named_type() or \
+                         param_type.as_simple_type() or \
+                         param_type.as_aggregation_type()
+    """
+    from ifcopenshell import ifcopenshell_wrapper as _W
+
+    if type(param_type) is not _W.parameter_type:
+        return param_type
+    inner = param_type.as_named_type()
+    if inner is not None:
+        return inner
+    inner = param_type.as_simple_type()
+    if inner is not None:
+        return inner
+    inner = param_type.as_aggregation_type()
+    if inner is not None:
+        return inner
+    return param_type
+
+
 def owner_context(file):
     import ifcopenshell.api.owner.settings
 
