@@ -754,6 +754,7 @@ bool ifcopenshell_ifcapi_pset_template_remove_pset_template(ifcopenshell_ifc_ins
 bool ifcopenshell_ifcapi_pset_template_set_template_dir(const char* dir);
 bool ifcopenshell_ifcapi_pset_unassign_pset(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* products, ifcopenshell_ifc_instance_t* pset);
 bool ifcopenshell_ifcapi_pset_unshare_pset(ifcopenshell_ifc_file_t* file, const ifcopenshell_ifc_instance_list_t* products, ifcopenshell_ifc_instance_t* pset, ifcopenshell_ifc_instance_t* owner_history, ifcopenshell_ifc_instance_t* user, ifcopenshell_ifc_instance_t* application, ifcopenshell_ifcparse_instance_list_t** out_result);
+bool ifcopenshell_ifcapi_register_scratch_file(const char* schema_name, size_t file_ptr, bool* out_result);
 bool ifcopenshell_ifcapi_representation_get_context(ifcopenshell_ifc_file_t* file, const char* context_type, const char* subcontext, const char* target_view, ifcopenshell_ifc_instance_t** out_result);
 bool ifcopenshell_ifcapi_representation_get_prioritised_contexts(ifcopenshell_ifc_file_t* file, ifcopenshell_ifcparse_instance_list_t** out_result);
 bool ifcopenshell_ifcapi_representation_get_product_representation(ifcopenshell_ifc_instance_t* element, ifcopenshell_ifc_instance_t* context, const char* context_type, const char* subcontext, const char* target_view, ifcopenshell_ifc_instance_t** out_result);

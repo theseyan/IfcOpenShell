@@ -176,6 +176,15 @@ Value make_entity(std::string_view schema_name,
 /// handles. Scalars and already-materialized entities are returned unchanged.
 Value materialize_for_abi(const Value& v);
 
+/* --- Scratch file registration ------------------------------------- */
+
+/// Register an externally-owned file as the scratch file for *schema_name*.
+/// When set, ``get_scratch_file`` returns this file instead of creating a
+/// thread-local one.  This lets Python-hosted files own the entities
+/// produced during DERIVE/WHERE evaluation so they remain addressable from
+/// the Python side via ``by_id`` and friends.
+extern "C" void ifcapi_register_scratch_file(const char* schema_name, void* file);
+
 /* --- Math passthroughs --------------------------------------------- */
 
 Value math_sqrt(const Value& v);

@@ -550,8 +550,21 @@ scratch_files_for_thread() {
     return map;
 }
 
+// Optional globally-registered scratch file (e.g. from Python). When set,
+// it takes precedence over the thread-local scratch file so that entities
+// created during DERIVE/WHERE evaluation are owned by the caller's file
+// and remain addressable via by_id() on the Python side.
+std::mutex g_scratch_mutex;
+std::unordered_map<std::string, ifcopenshell::file*> g_registered_scratch_files;
+
 ifcopenshell::file* get_scratch_file(std::string_view schema_name) {
     std::string key(schema_name);
+    // Check globally-registered scratch file first (e.g. set from Python)
+    {
+        std::lock_guard<std::mutex> lk(g_scratch_mutex);
+        auto git = g_registered_scratch_files.find(key);
+        if (git != g_registered_scratch_files.end() && git->second) return git->second;
+    }
     auto& map = scratch_files_for_thread();
     auto it = map.find(key);
     if (it != map.end()) return it->second.get();
@@ -561,6 +574,13 @@ ifcopenshell::file* get_scratch_file(std::string_view schema_name) {
     auto* raw = file.get();
     map.emplace(std::move(key), std::move(file));
     return raw;
+}
+
+extern "C" void ifcapi_register_scratch_file(const char* schema_name, void* file) {
+    std::lock_guard<std::mutex> lk(g_scratch_mutex);
+    if (schema_name && file) {
+        g_registered_scratch_files[std::string(schema_name)] = static_cast<ifcopenshell::file*>(file);
+    }
 }
 
 bool set_attr_from_value(::express::Base* e, size_t idx, const Value& v);

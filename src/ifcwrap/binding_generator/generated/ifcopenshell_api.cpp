@@ -9598,6 +9598,23 @@ bool ifcopenshell_ifcapi_pset_unshare_pset(ifcopenshell_ifc_file_t* file, const 
     }
 }
 
+bool ifcopenshell_ifcapi_register_scratch_file(const char* schema_name, size_t file_ptr, bool* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    const char* schema_name_str = schema_name;
+    auto file_ptr_cpp = static_cast<size_t>(file_ptr);
+        *out_result = ifcapi::bindings::register_scratch_file(schema_name, file_ptr_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcapi_representation_get_context(ifcopenshell_ifc_file_t* file, const char* context_type, const char* subcontext, const char* target_view, ifcopenshell_ifc_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
@@ -15279,7 +15296,7 @@ bool ifcopenshell_ifc_instance_id(ifcopenshell_ifc_instance_t* self, uint32_t* o
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     if (!static_cast<bool>(self->value)) {
-        *out_result = 0;
+        *out_result = false;
         return true;
     }
     auto* self_cpp = &self->value;
@@ -15300,7 +15317,7 @@ bool ifcopenshell_ifc_instance_identity(ifcopenshell_ifc_instance_t* self, uint3
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     if (!static_cast<bool>(self->value)) {
-        *out_result = 0;
+        *out_result = false;
         return true;
     }
     auto* self_cpp = &self->value;

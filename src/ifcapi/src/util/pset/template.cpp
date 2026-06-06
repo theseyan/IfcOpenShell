@@ -78,7 +78,6 @@ ifcopenshell_pset_template_t* get_or_load_locked(const std::string& schema_id) {
     if (it != g_templates.end()) return it->second.get();
 
     if (g_template_dir.empty()) {
-        set_error("Template directory not set; call ifcopenshell_util_pset_set_template_dir() first");
         return nullptr;
     }
 

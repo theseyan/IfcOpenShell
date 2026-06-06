@@ -52,6 +52,7 @@ IFCAPI_BINDING bool selector_set_element_value(
 IFCAPI_BINDING IFCAPI_OWNED IFCAPI_NULLABLE ifcopenshell_value_t* compute_derived(
     express::Base* instance,
     const std::string& attribute_name);
+IFCAPI_BINDING bool register_scratch_file(const char* schema_name, size_t file_ptr);
 IFCAPI_BINDING int32_t value_kind(const ifcopenshell_value_t* value);
 IFCAPI_BINDING bool value_as_bool(const ifcopenshell_value_t* value);
 IFCAPI_BINDING int64_t value_as_int64(const ifcopenshell_value_t* value);

@@ -84,5 +84,10 @@ ifcopenshell_value_t* compute_derived(::express::Base* instance, const std::stri
     return convert(result);
 }
 
+bool register_scratch_file(const char* schema_name, size_t file_ptr) {
+    ifcapi::express::ifcapi_register_scratch_file(schema_name, reinterpret_cast<void*>(file_ptr));
+    return true;
+}
+
 } // namespace bindings
 } // namespace ifcapi

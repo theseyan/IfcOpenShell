@@ -499,12 +499,28 @@ class entity_instance:
             return _capi.attribute_value_as_string_list(av)
         return _MISSING
 
+    def _ensure_scratch_registered(self):
+        """Register the Python scratch file (matching this entity's schema)
+        with the C++ ``get_scratch_file`` so that entities produced by
+        ``compute_derived`` are owned by a Python-visible file and remain
+        addressable via ``by_id``."""
+        try:
+            import ifcopenshell
+            schema = self._file.schema
+            # Canonicalize "IFC4X3" / "IFC4X3_ADD2" etc.
+            schema = ifcopenshell.file._SCHEMA_ALIASES.get(schema, schema)
+            ifcopenshell._scratch_file(schema)
+        except Exception:
+            return
+
     def _get_derived(self, name):
         """Compute a DERIVE attribute via the native ``ifcopenshell_compute_derived``
         C ABI. Returns ``None`` when no rule is registered for this entity/attr
         or when the rule evaluates to INDETERMINATE."""
         if not self._handle:
             return None
+        import ifcopenshell
+        self._ensure_scratch_registered()
         av = _capi.compute_derived(self._handle, name)
         if av is None:
             return None
@@ -525,8 +541,7 @@ class entity_instance:
             if kind == 5:  # INSTANCE
                 h = _capi.value_as_instance(av)
                 if h:
-                    entity_id = int(_capi.instance_id(h))
-                    return self._file.by_id(entity_id)
+                    return self._wrap_derived_instance(h)
                 return None
             if kind == 6:  # LIST
                 size = int(_capi.value_list_size(av))
@@ -537,6 +552,22 @@ class entity_instance:
             return None
         finally:
             _capi.value_destroy(av)
+
+    def _wrap_derived_instance(self, handle):
+        """Wrap an INSTANCE value from a DERIVE computation as an entity_instance.
+
+        Tries to resolve the owning file from the handle via
+        ``instance_file_pointer`` → ``_borrow_file_ptr`` (matching
+        bindgen‑v2 ``value_to_python``).  Falls back to *self._file* when
+        no file association can be established.
+        """
+        import ifcopenshell
+
+        file = self._file
+        file_ptr = _capi.instance_file_pointer(handle) or 0
+        if file_ptr:
+            file = ifcopenshell._borrow_file_ptr(file_ptr, fallback=self._file)
+        return entity_instance(file, handle)
 
     def _get_derived_value_at(self, av, index):
         """Read a single element from a derived list value."""
@@ -556,8 +587,7 @@ class entity_instance:
             if kind == 5:  # INSTANCE
                 h = _capi.value_as_instance(item)
                 if h:
-                    entity_id = int(_capi.instance_id(h))
-                    return self._file.by_id(entity_id)
+                    return self._wrap_derived_instance(h)
             return None
         finally:
             _capi.value_destroy(item)

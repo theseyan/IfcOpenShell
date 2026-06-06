@@ -22047,6 +22047,27 @@ __cleanup:
     return __py_result;
 }
 
+static PyObject *py_ifcopenshell_ifcapi_register_scratch_file(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    const char *arg_schema_name = NULL;
+    Py_ssize_t arg_file_ptr = 0;
+    bool result = {0};
+    if (!PyArg_ParseTuple(args, "|zn", &arg_schema_name, &arg_file_ptr)) return NULL;
+
+
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_ifcapi_register_scratch_file(arg_schema_name, (size_t)arg_file_ptr, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_ifcapi_register_scratch_file failed");
+        goto __cleanup;
+    }
+    __py_result = PyBool_FromLong(result);
+__cleanup:
+    return __py_result;
+}
+
 static PyObject *py_ifcopenshell_ifcapi_representation_get_context(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -40856,6 +40877,7 @@ static PyMethodDef module_methods[] = {
     {"pset_template_set_template_dir", py_ifcopenshell_ifcapi_pset_template_set_template_dir, METH_VARARGS, "Wrap ifcopenshell_ifcapi_pset_template_set_template_dir"},
     {"pset_unassign_pset", py_ifcopenshell_ifcapi_pset_unassign_pset, METH_VARARGS, "Wrap ifcopenshell_ifcapi_pset_unassign_pset"},
     {"pset_unshare_pset", py_ifcopenshell_ifcapi_pset_unshare_pset, METH_VARARGS, "Wrap ifcopenshell_ifcapi_pset_unshare_pset"},
+    {"register_scratch_file", py_ifcopenshell_ifcapi_register_scratch_file, METH_VARARGS, "Wrap ifcopenshell_ifcapi_register_scratch_file"},
     {"representation_get_context", py_ifcopenshell_ifcapi_representation_get_context, METH_VARARGS, "Wrap ifcopenshell_ifcapi_representation_get_context"},
     {"representation_get_prioritised_contexts", py_ifcopenshell_ifcapi_representation_get_prioritised_contexts, METH_VARARGS, "Wrap ifcopenshell_ifcapi_representation_get_prioritised_contexts"},
     {"representation_get_product_representation", py_ifcopenshell_ifcapi_representation_get_product_representation, METH_VARARGS, "Wrap ifcopenshell_ifcapi_representation_get_product_representation"},
@@ -41925,6 +41947,7 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_ifcapi_pset_template_set_template_dir", py_ifcopenshell_ifcapi_pset_template_set_template_dir, METH_VARARGS, "Wrap ifcopenshell_ifcapi_pset_template_set_template_dir"},
     {"ifcopenshell_ifcapi_pset_unassign_pset", py_ifcopenshell_ifcapi_pset_unassign_pset, METH_VARARGS, "Wrap ifcopenshell_ifcapi_pset_unassign_pset"},
     {"ifcopenshell_ifcapi_pset_unshare_pset", py_ifcopenshell_ifcapi_pset_unshare_pset, METH_VARARGS, "Wrap ifcopenshell_ifcapi_pset_unshare_pset"},
+    {"ifcopenshell_ifcapi_register_scratch_file", py_ifcopenshell_ifcapi_register_scratch_file, METH_VARARGS, "Wrap ifcopenshell_ifcapi_register_scratch_file"},
     {"ifcopenshell_ifcapi_representation_get_context", py_ifcopenshell_ifcapi_representation_get_context, METH_VARARGS, "Wrap ifcopenshell_ifcapi_representation_get_context"},
     {"ifcopenshell_ifcapi_representation_get_prioritised_contexts", py_ifcopenshell_ifcapi_representation_get_prioritised_contexts, METH_VARARGS, "Wrap ifcopenshell_ifcapi_representation_get_prioritised_contexts"},
     {"ifcopenshell_ifcapi_representation_get_product_representation", py_ifcopenshell_ifcapi_representation_get_product_representation, METH_VARARGS, "Wrap ifcopenshell_ifcapi_representation_get_product_representation"},

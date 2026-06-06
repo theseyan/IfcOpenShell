@@ -935,7 +935,10 @@ class rocksdb_lazy_instance:
     def __len__(self):
         indices = []
         for key, _ in self.storage.prefix(f"{self.name}|").items():
-            parts = key.split(b"|")
+            if isinstance(key, bytes):
+                parts = key.split(b"|")
+            else:
+                parts = key.split("|")
             if len(parts) > 2 and parts[2].isdigit():
                 indices.append(int(parts[2]))
         return max(indices, default=-1) + 1
@@ -1022,7 +1025,26 @@ def _scratch_file(schema: str) -> file:
     if f is None:
         f = file(schema=schema)
         _SCRATCH_FILES[schema] = f
+        # Register in _BORROWED_FILES so that _borrow_file_ptr can resolve
+        # entities belonging to this scratch file.
+        ptr = f.file_pointer()
+        if ptr:
+            _BORROWED_FILES[ptr] = f
+        _register_scratch_with_native(schema, f)
     return f
+
+
+def _register_scratch_with_native(schema: str, file_obj: file) -> None:
+    """Register the Python scratch file with the C++ DERIVE/WHERE runtime
+    so that entities produced by ``compute_derived`` belong to the same
+    underlying ``ifcopenshell::file`` and remain addressable via
+    ``by_id`` on the Python side."""
+    raw_ptr = file_obj.file_pointer()
+    if raw_ptr:
+        try:
+            _capi.register_scratch_file(schema, raw_ptr)
+        except Exception:
+            pass
 
 
 def create_entity(type: str, schema: str = "IFC4", *args, **kwargs):
@@ -1061,7 +1083,10 @@ def _borrow_file_ptr(ptr, fallback=None) -> file:
             pass
     borrowed = _BORROWED_FILES.get(ptr_value)
     if borrowed is None or borrowed.file_pointer() != ptr_value:
-        borrowed = _wrap_file_ptr(ptr, owned=False)
+        try:
+            borrowed = _wrap_file_ptr(ptr, owned=False)
+        except Exception:
+            return fallback
         _BORROWED_FILES[ptr_value] = borrowed
     return borrowed
 
@@ -1080,8 +1105,8 @@ class _InstanceStreamer:
 
     @classmethod
     def from_string(cls, data):
-        if isinstance(data, str):
-            data = data.encode("utf-8")
+        if isinstance(data, bytes):
+            data = data.decode("utf-8")
         return cls(_capi.stream_from_string(data))
 
     def __del__(self):
@@ -1172,7 +1197,10 @@ def _stream_attr_type_name(schema, entity_name: str, attribute_name: str, value)
     if key in _STREAM_ATTR_TYPE_CACHE:
         return _STREAM_ATTR_TYPE_CACHE[key]
     result = None
-    declaration = schema.declaration_by_name(entity_name)
+    try:
+        declaration = schema.declaration_by_name(entity_name)
+    except Exception:
+        declaration = None
     entity = declaration.as_entity() if declaration is not None else None
     if entity is not None:
         index = entity.attribute_index(attribute_name)
