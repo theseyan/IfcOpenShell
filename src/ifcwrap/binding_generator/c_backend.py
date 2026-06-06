@@ -46,7 +46,6 @@ try:
         lower_cpp_spec_result_structs_to_specs,
     )
     from .debug import debug_log, debug_path
-    from .python_extension_backend import generate_python_extension
 except ImportError:  # pragma: no cover - script execution fallback
     from authored_spec import (
         AuthoredBindingSpec,
@@ -86,7 +85,6 @@ except ImportError:  # pragma: no cover - script execution fallback
         lower_cpp_spec_result_structs_to_specs,
     )
     from debug import debug_log, debug_path
-    from python_extension_backend import generate_python_extension
 
 # Type alias for spec types
 SourceBindingSpec = Union[AuthoredBindingSpec, MergedBindingSpec]
@@ -358,28 +356,12 @@ int {spec.c_prefix}_last_error_kind(void) {{
     return rendered
 
 
-def generate(
-    spec_path: Path,
+def write_c_abi(
+    spec: BindingIR,
     header_out: Path,
     cpp_out: Path,
     internal_header_out: Path | None = None,
-    python_extension_out: Path | None = None,
-    discovery_include_dirs: tuple[Path, ...] = (),
-    discovery_defines: tuple[str, ...] = (),
-    discovery_clang_args: tuple[str, ...] = (),
-) -> None:
-    debug_log(
-        "c_backend.generate.start",
-        f"spec={debug_path(spec_path)} header_out={debug_path(header_out)} cpp_out={debug_path(cpp_out)} internal_header_out={debug_path(internal_header_out)}",
-    )
-    spec = lower_binding_spec(
-        load_authored_spec(
-            spec_path,
-            discovery_include_dirs=discovery_include_dirs,
-            discovery_defines=discovery_defines,
-            discovery_clang_args=discovery_clang_args,
-        )
-    )
+) -> tuple[Path, Path, Path]:
     header_out.parent.mkdir(parents=True, exist_ok=True)
     cpp_out.parent.mkdir(parents=True, exist_ok=True)
     header_out.write_text(_render_header(spec), encoding="utf-8")
@@ -388,42 +370,112 @@ def generate(
         internal_header_out = cpp_out.with_name(header_out.stem + "_internal.hpp")
     internal_header_out.parent.mkdir(parents=True, exist_ok=True)
     internal_header_out.write_text(_render_internal_header(spec, header_out.name), encoding="utf-8")
-    if python_extension_out is not None:
-        generate_python_extension(spec, python_extension_out, api_header_path=header_out)
-    debug_log("c_backend.generate.done", f"spec={debug_path(spec_path)}")
+    return header_out.resolve(), cpp_out.resolve(), internal_header_out.resolve()
 
 
-def generate_merged(
-    spec_paths: list[Path],
-    module: str,
-    c_prefix: str,
-    header_out: Path,
-    cpp_out: Path,
-    internal_header_out: Path | None = None,
-    python_extension_out: Path | None = None,
+def build_binding_ir(
+    spec_paths: Sequence[Path],
+    *,
+    module: str = "ifcopenshell",
+    c_prefix: str = "ifcopenshell",
     discovery_include_dirs: tuple[Path, ...] = (),
     discovery_defines: tuple[str, ...] = (),
     discovery_clang_args: tuple[str, ...] = (),
-    cpp_spec_paths: list[Path] | None = None,
+    cpp_spec_paths: Sequence[Path] = (),
     cpp_spec_namespace: str | Sequence[str] | None = None,
     cpp_spec_c_prefix: str | Sequence[str] | None = None,
     cpp_spec_handle_c_prefix: str | Sequence[str] | None = None,
-) -> None:
-    """Generate bindings from multiple specs merged together."""
-    debug_log(
-        "c_backend.generate_merged.start",
-        f"specs={len(spec_paths)} header_out={debug_path(header_out)} cpp_out={debug_path(cpp_out)} internal_header_out={debug_path(internal_header_out)}",
+) -> BindingIR:
+    if cpp_spec_paths and not spec_paths:
+        if not cpp_spec_namespace:
+            msg = "cpp_spec_namespace is required when only cpp_spec_paths are provided"
+            raise ValueError(msg)
+        configs = _cpp_spec_configs(cpp_spec_paths, cpp_spec_namespace, cpp_spec_c_prefix, cpp_spec_handle_c_prefix)
+        environment = _cpp_spec_environment(
+            discovery_include_dirs=discovery_include_dirs,
+            discovery_defines=discovery_defines,
+            discovery_clang_args=discovery_clang_args,
+        )
+        handles = {}
+        result_structs = {}
+        calls = []
+        existing_c_names: set[str] = set()
+        for config in configs:
+            for handle_name, handle in lower_cpp_spec_handles_to_specs(
+                discover_cpp_spec_handles(config.path, c_prefix=config.handle_c_prefix)
+            ).items():
+                if handle_name in handles and handles[handle_name] != handle:
+                    msg = f"C++ spec handle '{handle_name}' is declared with conflicting metadata"
+                    raise ValueError(msg)
+                handles[handle_name] = handle
+            for struct_name, struct in lower_cpp_spec_result_structs_to_specs(
+                discover_cpp_spec_result_structs(config.path, config.namespace),
+                handles,
+            ).items():
+                if struct_name in result_structs and result_structs[struct_name] != struct:
+                    msg = f"C++ spec result struct '{struct_name}' is declared with conflicting metadata"
+                    raise ValueError(msg)
+                result_structs[struct_name] = struct
+            for call in lower_cpp_spec_functions_to_calls(
+                discover_cpp_spec_functions(
+                    environment,
+                    config.path,
+                    config.namespace,
+                    contract_headers=discover_cpp_spec_contract_headers(config.path, discovery_include_dirs),
+                ),
+                handles,
+                result_structs,
+                c_prefix=config.c_prefix,
+            ):
+                if call.c_name in existing_c_names:
+                    msg = f"C++ spec export '{call.c_name}' duplicates an existing generated C symbol"
+                    raise ValueError(msg)
+                existing_c_names.add(call.c_name)
+                calls.append(call)
+
+        return lower_binding_spec(
+            SimpleNamespace(
+                module=module,
+                c_prefix=c_prefix,
+                public_headers=tuple(_cpp_spec_public_header(config.path, discovery_include_dirs) for config in configs),
+                public_header_plugins={},
+                handles=handles,
+                result_structs=result_structs,
+                functions=tuple(calls),
+                methods=(),
+                depends_on_common=None,
+            )
+        )
+
+    if not spec_paths:
+        msg = "At least one spec path is required"
+        raise ValueError(msg)
+    if len(spec_paths) == 1 and not cpp_spec_paths:
+        return lower_binding_spec(
+            load_authored_spec(
+                spec_paths[0],
+                discovery_include_dirs=discovery_include_dirs,
+                discovery_defines=discovery_defines,
+                discovery_clang_args=discovery_clang_args,
+            )
+        )
+
+    cpp_spec_configs = (
+        _cpp_spec_configs(cpp_spec_paths, cpp_spec_namespace, cpp_spec_c_prefix, cpp_spec_handle_c_prefix)
+        if cpp_spec_paths
+        else ()
     )
-    cpp_spec_configs = _cpp_spec_configs(cpp_spec_paths, cpp_spec_namespace, cpp_spec_c_prefix, cpp_spec_handle_c_prefix) if cpp_spec_paths else ()
     cpp_spec_handles: dict[str, HandleSpec] = {}
     for config in cpp_spec_configs:
-        for handle_name, handle in lower_cpp_spec_handles_to_specs(discover_cpp_spec_handles(config.path, c_prefix=config.handle_c_prefix)).items():
+        for handle_name, handle in lower_cpp_spec_handles_to_specs(
+            discover_cpp_spec_handles(config.path, c_prefix=config.handle_c_prefix)
+        ).items():
             if handle_name in cpp_spec_handles and cpp_spec_handles[handle_name] != handle:
                 msg = f"C++ spec handle '{handle_name}' is declared with conflicting metadata"
                 raise ValueError(msg)
             cpp_spec_handles[handle_name] = handle
     merged_spec = load_merged_specs(
-        spec_paths,
+        list(spec_paths),
         module,
         c_prefix,
         discovery_include_dirs=discovery_include_dirs,
@@ -439,18 +491,76 @@ def generate_merged(
             discovery_defines=discovery_defines,
             discovery_clang_args=discovery_clang_args,
         )
-    spec = lower_binding_spec(merged_spec)
-    header_out.parent.mkdir(parents=True, exist_ok=True)
-    cpp_out.parent.mkdir(parents=True, exist_ok=True)
-    header_out.write_text(_render_header(spec), encoding="utf-8")
-    cpp_out.write_text(_render_cpp(spec, header_out.name), encoding="utf-8")
-    if internal_header_out is None:
-        internal_header_out = cpp_out.with_name(header_out.stem + "_internal.hpp")
-    internal_header_out.parent.mkdir(parents=True, exist_ok=True)
-    internal_header_out.write_text(_render_internal_header(spec, header_out.name), encoding="utf-8")
-    if python_extension_out is not None:
-        generate_python_extension(spec, python_extension_out, api_header_path=header_out)
+    return lower_binding_spec(merged_spec)
+
+
+def generate(
+    spec_path: Path,
+    header_out: Path,
+    cpp_out: Path,
+    internal_header_out: Path | None = None,
+    discovery_include_dirs: tuple[Path, ...] = (),
+    discovery_defines: tuple[str, ...] = (),
+    discovery_clang_args: tuple[str, ...] = (),
+) -> tuple[Path, Path, Path]:
+    debug_log(
+        "c_backend.generate.start",
+        f"spec={debug_path(spec_path)} header_out={debug_path(header_out)} cpp_out={debug_path(cpp_out)} internal_header_out={debug_path(internal_header_out)}",
+    )
+    result = write_c_abi(
+        build_binding_ir(
+            [spec_path],
+            discovery_include_dirs=discovery_include_dirs,
+            discovery_defines=discovery_defines,
+            discovery_clang_args=discovery_clang_args,
+        ),
+        header_out,
+        cpp_out,
+        internal_header_out,
+    )
+    debug_log("c_backend.generate.done", f"spec={debug_path(spec_path)}")
+    return result
+
+
+def generate_merged(
+    spec_paths: list[Path],
+    module: str,
+    c_prefix: str,
+    header_out: Path,
+    cpp_out: Path,
+    internal_header_out: Path | None = None,
+    discovery_include_dirs: tuple[Path, ...] = (),
+    discovery_defines: tuple[str, ...] = (),
+    discovery_clang_args: tuple[str, ...] = (),
+    cpp_spec_paths: list[Path] | None = None,
+    cpp_spec_namespace: str | Sequence[str] | None = None,
+    cpp_spec_c_prefix: str | Sequence[str] | None = None,
+    cpp_spec_handle_c_prefix: str | Sequence[str] | None = None,
+) -> tuple[Path, Path, Path]:
+    """Generate bindings from multiple specs merged together."""
+    debug_log(
+        "c_backend.generate_merged.start",
+        f"specs={len(spec_paths)} header_out={debug_path(header_out)} cpp_out={debug_path(cpp_out)} internal_header_out={debug_path(internal_header_out)}",
+    )
+    result = write_c_abi(
+        build_binding_ir(
+            spec_paths,
+            module=module,
+            c_prefix=c_prefix,
+            discovery_include_dirs=discovery_include_dirs,
+            discovery_defines=discovery_defines,
+            discovery_clang_args=discovery_clang_args,
+            cpp_spec_paths=tuple(cpp_spec_paths or ()),
+            cpp_spec_namespace=cpp_spec_namespace,
+            cpp_spec_c_prefix=cpp_spec_c_prefix,
+            cpp_spec_handle_c_prefix=cpp_spec_handle_c_prefix,
+        ),
+        header_out,
+        cpp_out,
+        internal_header_out,
+    )
     debug_log("c_backend.generate_merged.done", f"module={module}")
+    return result
 
 
 def _cpp_spec_environment(
@@ -476,79 +586,32 @@ def generate_cpp_specs(
     header_out: Path,
     cpp_out: Path,
     internal_header_out: Path | None = None,
-    python_extension_out: Path | None = None,
     discovery_include_dirs: tuple[Path, ...] = (),
     discovery_defines: tuple[str, ...] = (),
     discovery_clang_args: tuple[str, ...] = (),
     function_c_prefix: str | Sequence[str] | None = None,
     handle_c_prefix: str | Sequence[str] | None = None,
-) -> None:
+) -> tuple[Path, Path, Path]:
     """Generate bindings from explicit C++ spec translation units."""
-    configs = _cpp_spec_configs(spec_paths, namespace, function_c_prefix, handle_c_prefix)
-    environment = _cpp_spec_environment(
-        discovery_include_dirs=discovery_include_dirs,
-        discovery_defines=discovery_defines,
-        discovery_clang_args=discovery_clang_args,
-    )
-    handles = {}
-    result_structs = {}
-    calls = []
-    existing_c_names: set[str] = set()
-    for config in configs:
-        for handle_name, handle in lower_cpp_spec_handles_to_specs(discover_cpp_spec_handles(config.path, c_prefix=config.handle_c_prefix)).items():
-            if handle_name in handles and handles[handle_name] != handle:
-                msg = f"C++ spec handle '{handle_name}' is declared with conflicting metadata"
-                raise ValueError(msg)
-            handles[handle_name] = handle
-        for struct_name, struct in lower_cpp_spec_result_structs_to_specs(
-            discover_cpp_spec_result_structs(config.path, config.namespace),
-            handles,
-        ).items():
-            if struct_name in result_structs and result_structs[struct_name] != struct:
-                msg = f"C++ spec result struct '{struct_name}' is declared with conflicting metadata"
-                raise ValueError(msg)
-            result_structs[struct_name] = struct
-        for call in lower_cpp_spec_functions_to_calls(
-            discover_cpp_spec_functions(
-                environment,
-                config.path,
-                config.namespace,
-                contract_headers=discover_cpp_spec_contract_headers(config.path, discovery_include_dirs),
-            ),
-            handles,
-            result_structs,
-            c_prefix=config.c_prefix,
-        ):
-            if call.c_name in existing_c_names:
-                msg = f"C++ spec export '{call.c_name}' duplicates an existing generated C symbol"
-                raise ValueError(msg)
-            existing_c_names.add(call.c_name)
-            calls.append(call)
-
-    spec = lower_binding_spec(
-        SimpleNamespace(
+    result = write_c_abi(
+        build_binding_ir(
+            (),
             module=module,
             c_prefix=c_prefix,
-            public_headers=tuple(_cpp_spec_public_header(config.path, discovery_include_dirs) for config in configs),
-            public_header_plugins={},
-            handles=handles,
-            result_structs=result_structs,
-            functions=tuple(calls),
-            methods=(),
-            depends_on_common=None,
-        )
+            discovery_include_dirs=discovery_include_dirs,
+            discovery_defines=discovery_defines,
+            discovery_clang_args=discovery_clang_args,
+            cpp_spec_paths=spec_paths,
+            cpp_spec_namespace=namespace,
+            cpp_spec_c_prefix=function_c_prefix,
+            cpp_spec_handle_c_prefix=handle_c_prefix,
+        ),
+        header_out,
+        cpp_out,
+        internal_header_out,
     )
-    header_out.parent.mkdir(parents=True, exist_ok=True)
-    cpp_out.parent.mkdir(parents=True, exist_ok=True)
-    header_out.write_text(_render_header(spec), encoding="utf-8")
-    cpp_out.write_text(_render_cpp(spec, header_out.name), encoding="utf-8")
-    if internal_header_out is None:
-        internal_header_out = cpp_out.with_name(header_out.stem + "_internal.hpp")
-    internal_header_out.parent.mkdir(parents=True, exist_ok=True)
-    internal_header_out.write_text(_render_internal_header(spec, header_out.name), encoding="utf-8")
-    if python_extension_out is not None:
-        generate_python_extension(spec, python_extension_out, api_header_path=header_out)
     debug_log("c_backend.generate_cpp_specs.done", f"specs={len(spec_paths)} module={module}")
+    return result
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -603,12 +666,6 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional output path for the internal C++ header that exposes handle struct definitions and error helpers. Defaults to <cpp-out-dir>/<header-stem>_internal.hpp.",
     )
     parser.add_argument(
-        "--python-extension-out",
-        type=Path,
-        default=None,
-        help="Optional output path for generated CPython C extension source.",
-    )
-    parser.add_argument(
         "--discovery-include-dir",
         type=Path,
         action="append",
@@ -656,7 +713,6 @@ def main() -> int:
             args.header_out,
             args.cpp_out,
             internal_header_out=args.internal_header_out,
-            python_extension_out=args.python_extension_out,
             discovery_include_dirs=tuple(args.discovery_include_dir),
             discovery_defines=tuple(args.discovery_define),
             discovery_clang_args=tuple(args.discovery_clang_arg),
@@ -674,7 +730,6 @@ def main() -> int:
             args.header_out,
             args.cpp_out,
             internal_header_out=args.internal_header_out,
-            python_extension_out=args.python_extension_out,
             discovery_include_dirs=tuple(args.discovery_include_dir),
             discovery_defines=tuple(args.discovery_define),
             discovery_clang_args=tuple(args.discovery_clang_arg),
@@ -691,7 +746,6 @@ def main() -> int:
             args.header_out,
             args.cpp_out,
             internal_header_out=args.internal_header_out,
-            python_extension_out=args.python_extension_out,
             discovery_include_dirs=tuple(args.discovery_include_dir),
             discovery_defines=tuple(args.discovery_define),
             discovery_clang_args=tuple(args.discovery_clang_arg),

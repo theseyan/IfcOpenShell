@@ -35,12 +35,15 @@ if(BUILD_IFCCAPI)
     set(IFCGEOM_CAPI_CPP_SPEC "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/cpp/ifcgeom.hpp")
     set(IFCAPI_CAPI_CPP_SPEC_MACROS "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/cpp/spec_macros.h")
     set(IFCPARSE_CAPI_GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/c_backend.py")
+    set(IFCPARSE_TARGET_GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/targets/generate.py")
     
     # Unified API files
     set(UNIFIED_CAPI_HEADER "${IFCPARSE_CAPI_GENERATED_DIR}/ifcopenshell_api.h")
     set(UNIFIED_CAPI_CPP "${IFCPARSE_CAPI_GENERATED_DIR}/ifcopenshell_api.cpp")
     set(UNIFIED_CAPI_INTERNAL_HEADER "${IFCPARSE_CAPI_GENERATED_DIR}/ifcopenshell_api_internal.hpp")
-    set(UNIFIED_CAPI_PYTHON_EXTENSION "${IFCPARSE_CAPI_GENERATED_DIR}/ifcopenshell_capi_py.cpp")
+    set(UNIFIED_CAPI_PYTHON_OUTPUT_DIR "${IFCPARSE_CAPI_GENERATED_DIR}")
+    set(UNIFIED_CAPI_PYTHON_EXTENSION "${UNIFIED_CAPI_PYTHON_OUTPUT_DIR}/ifcopenshell_capi_py.cpp")
+    set(UNIFIED_CAPI_PYTHON_UTILS "${CMAKE_CURRENT_SOURCE_DIR}/../ifcapi/python/ifcopenshell/_capi_utils.py")
 
     if(IFCCAPI_REGENERATE_BINDINGS)
         if(NOT ${PYTHON_EXECUTABLE} STREQUAL "")
@@ -138,7 +141,6 @@ if(BUILD_IFCCAPI)
                 "${UNIFIED_CAPI_HEADER}"
                 "${UNIFIED_CAPI_CPP}"
                 "${UNIFIED_CAPI_INTERNAL_HEADER}"
-                "${UNIFIED_CAPI_PYTHON_EXTENSION}"
             COMMAND
                 ${Python_EXECUTABLE} "${IFCPARSE_CAPI_GENERATOR}"
                 --spec "${IFCPARSE_CAPI_SPEC}"
@@ -157,7 +159,7 @@ if(BUILD_IFCCAPI)
                 --cpp-spec-handle-c-prefix ""
                 --header-out "${UNIFIED_CAPI_HEADER}"
                 --cpp-out "${UNIFIED_CAPI_CPP}"
-                --python-extension-out "${UNIFIED_CAPI_PYTHON_EXTENSION}"
+                --internal-header-out "${UNIFIED_CAPI_INTERNAL_HEADER}"
                 ${IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS}
                 ${IFCPARSE_CAPI_DISCOVERY_DEFINE_ARGS}
                 --module ifcopenshell
@@ -185,19 +187,70 @@ if(BUILD_IFCCAPI)
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/contract_discovery.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/cpp_spec_frontend.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/debug.py"
-                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/host_metadata.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/policy_ir.py"
-                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/python_extension_backend.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/semantic_types.py"
             VERBATIM
         )
         add_custom_target(
-            ifcopenshell_capi_codegen
+            ifcopenshell_capi_codegen_core
             DEPENDS
                 "${UNIFIED_CAPI_HEADER}"
                 "${UNIFIED_CAPI_CPP}"
                 "${UNIFIED_CAPI_INTERNAL_HEADER}"
+        )
+
+        add_custom_command(
+            OUTPUT
                 "${UNIFIED_CAPI_PYTHON_EXTENSION}"
+                "${UNIFIED_CAPI_PYTHON_UTILS}"
+            COMMAND
+                ${Python_EXECUTABLE} "${IFCPARSE_TARGET_GENERATOR}"
+                --target python
+                --spec-dir "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs"
+                --api-header "${UNIFIED_CAPI_HEADER}"
+                --output-dir "${UNIFIED_CAPI_PYTHON_OUTPUT_DIR}"
+                --target-option "utils-out=${UNIFIED_CAPI_PYTHON_UTILS}"
+                ${IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS}
+                ${IFCPARSE_CAPI_DISCOVERY_DEFINE_ARGS}
+                --module ifcopenshell
+                --c-prefix ifcopenshell
+            DEPENDS
+                "${UNIFIED_CAPI_HEADER}"
+                "${IFCPARSE_CAPI_SPEC}"
+                "${IFCGEOM_CAPI_SPEC}"
+                "${IFCPARSE_CAPI_CPP_SPEC}"
+                "${IFCAPI_CAPI_CPP_SPEC}"
+                "${IFCGEOM_CAPI_CPP_SPEC}"
+                "${IFCAPI_CAPI_CPP_SPEC_MACROS}"
+                "${IFCPARSE_TARGET_GENERATOR}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/authored_spec.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/binding_ir.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/binding_model.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/c_backend.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/clang_discovery.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/contract_discovery.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/cpp_spec_frontend.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/debug.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/host_metadata.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/policy_ir.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/semantic_types.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/targets/__init__.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/targets/_base.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/targets/python/__init__.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/targets/python/backend.py"
+            VERBATIM
+        )
+        add_custom_target(
+            ifcopenshell_capi_codegen_python
+            DEPENDS
+                "${UNIFIED_CAPI_PYTHON_EXTENSION}"
+                "${UNIFIED_CAPI_PYTHON_UTILS}"
+        )
+        add_custom_target(
+            ifcopenshell_capi_codegen
+            DEPENDS
+                ifcopenshell_capi_codegen_core
+                ifcopenshell_capi_codegen_python
         )
     endif()
 
@@ -212,8 +265,8 @@ if(BUILD_IFCCAPI)
         # for users who want to embed the autogen-only core into their own
         # executables.
         add_library(ifcopenshell_capi SHARED "${UNIFIED_CAPI_HEADER}" "${UNIFIED_CAPI_CPP}")
-        if(TARGET ifcopenshell_capi_codegen)
-            add_dependencies(ifcopenshell_capi ifcopenshell_capi_codegen)
+        if(TARGET ifcopenshell_capi_codegen_core)
+            add_dependencies(ifcopenshell_capi ifcopenshell_capi_codegen_core)
         endif()
         if(schema_libraries OR kernel_libraries OR mapping_libraries)
             add_dependencies(ifcopenshell_capi ${schema_libraries} ${kernel_libraries} ${mapping_libraries})
@@ -266,7 +319,7 @@ if(BUILD_IFCCAPI)
         target_compile_definitions(ifcparse_capi_smoke PRIVATE $<$<BOOL:${WITH_ROCKSDB}>:IFOPSH_WITH_ROCKSDB>)
 
         # CPython C extension module (_ifcopenshell_capi)
-        if(EXISTS "${UNIFIED_CAPI_PYTHON_EXTENSION}")
+        if(IFCCAPI_REGENERATE_BINDINGS OR EXISTS "${UNIFIED_CAPI_PYTHON_EXTENSION}")
             find_package(Python COMPONENTS Development.Module QUIET)
             if(Python_Development.Module_FOUND)
                 Python_add_library(_ifcopenshell_capi MODULE "${UNIFIED_CAPI_PYTHON_EXTENSION}" WITH_SOABI)
@@ -276,8 +329,8 @@ if(BUILD_IFCCAPI)
                     OUTPUT_NAME "_ifcopenshell_capi"
                     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../ifcapi/python/ifcopenshell"
                 )
-                if(TARGET ifcopenshell_capi_codegen)
-                    add_dependencies(_ifcopenshell_capi ifcopenshell_capi_codegen)
+                if(TARGET ifcopenshell_capi_codegen_python)
+                    add_dependencies(_ifcopenshell_capi ifcopenshell_capi_codegen_python)
                 endif()
             else()
                 message(STATUS "Python Development.Module not found - skipping _ifcopenshell_capi extension build")
