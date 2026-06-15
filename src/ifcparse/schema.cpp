@@ -21,6 +21,10 @@
 
 #include "express.h"
 
+#ifdef __EMSCRIPTEN__
+#include <dlfcn.h>
+#endif
+
 #include <map>
 #include <mutex>
 #include <set>
@@ -126,6 +130,22 @@ namespace {
 		const auto expected_key = schema_key(schema_name);
 		const auto basename = std::string(schema_plugin_prefix) + boost::to_lower_copy(schema_name);
 
+#ifdef __EMSCRIPTEN__
+		using emscripten_register_fn = void (*)(ifcopenshell::schema_registry*);
+		const auto emscripten_symbol = std::string("ifcopenshell_emscripten_register_schema_") + boost::to_lower_copy(schema_name);
+		if (auto* register_ptr = dlsym(RTLD_DEFAULT, emscripten_symbol.c_str())) {
+			union {
+				void* ptr;
+				emscripten_register_fn fn;
+			} register_symbol;
+			register_symbol.ptr = register_ptr;
+			if (register_symbol.fn) {
+				register_symbol.fn(&registry);
+				return true;
+			}
+		}
+#endif
+
 		for (const auto& path : manager.discover_exact(basename)) {
 			auto module = manager.load(path);
 			if (module.meta().kind_ != ifcopenshell::plugin::kind::parse_schema ||
@@ -133,8 +153,8 @@ namespace {
 				continue;
 			}
 
-			auto register_plugin = module.get_alias<ifcopenshell::schema_registry::register_schema_plugin_fn>(ifcopenshell::schema_plugin_registration_symbol());
-			register_plugin(registry, module);
+			auto register_fn = module.get_alias<ifcopenshell::schema_registry::register_schema_plugin_fn>(ifcopenshell::schema_plugin_registration_symbol());
+			register_fn(registry, module);
 			return true;
 		}
 
@@ -210,8 +230,8 @@ void ifcopenshell::load_schema_plugins(schema_registry& registry) {
 			continue;
 		}
 
-		auto register_plugin = module.get_alias<schema_registry::register_schema_plugin_fn>(schema_plugin_registration_symbol());
-		register_plugin(registry, module);
+		auto register_fn = module.get_alias<schema_registry::register_schema_plugin_fn>(schema_plugin_registration_symbol());
+		register_fn(registry, module);
 	}
 }
 

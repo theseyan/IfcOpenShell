@@ -23,8 +23,6 @@ public_headers:
   - StepSerializer.h
   - RocksDbSerializer.h
   - Serializer.h
-  - kernels/opencascade/IfcGeomTree.h
-  - <BRepTools_ShapeSet.hxx>
   - taxonomy.h
   - hybrid_kernel.h
   - Converter.h
@@ -73,31 +71,43 @@ discover:
     - handle: tree
       cpp_class: IfcGeom::tree
       translation_unit: kernels/opencascade/boolean_utils.cpp
+      compile_guard: IFOPSH_WITH_OPENCASCADE
       expose_as: create_tree
       params: []
+      param_names: []
     - handle: tree
       cpp_class: IfcGeom::tree
       translation_unit: kernels/opencascade/boolean_utils.cpp
+      compile_guard: IFOPSH_WITH_OPENCASCADE
       expose_as: create_tree_from_file
       params:
         - ifcopenshell::file&
+      param_names:
+        - file
       param_renames:
         f: file
     - handle: tree
       cpp_class: IfcGeom::tree
       translation_unit: kernels/opencascade/boolean_utils.cpp
+      compile_guard: IFOPSH_WITH_OPENCASCADE
       expose_as: create_tree_from_file_with_settings
       params:
         - ifcopenshell::file&
         - const ifcopenshell::geometry::Settings&
+      param_names:
+        - file
+        - settings
       param_renames:
         f: file
     - handle: tree
       cpp_class: IfcGeom::tree
       translation_unit: kernels/opencascade/boolean_utils.cpp
+      compile_guard: IFOPSH_WITH_OPENCASCADE
       expose_as: create_tree_from_iterator
       params:
         - IfcGeom::Iterator&
+      param_names:
+        - iterator
       param_renames:
         it: iterator
     - handle: geometry_serializer
@@ -111,14 +121,32 @@ discover:
     - handle: geometry_serializer
       cpp_class: TtlWktSerializer
       translation_unit: ../serializers/TtlWktSerializer.cpp
+      compile_guard: IFOPSH_WITH_OPENCASCADE
       expose_as: create_ttl_serializer
+      params:
+        - const std::string&
+        - const ifcopenshell::geometry::Settings&
+        - const ifcopenshell::geometry::SerializerSettings&
+      param_names:
+        - output
+        - geometry_settings
+        - serializer_settings
       param_renames:
         filename: output
         settings: serializer_settings
     - handle: geometry_serializer
       cpp_class: SvgSerializer
       translation_unit: ../serializers/SvgSerializer.cpp
+      compile_guard: IFOPSH_WITH_OPENCASCADE
       expose_as: create_svg_serializer
+      params:
+        - const std::string&
+        - const ifcopenshell::geometry::Settings&
+        - const ifcopenshell::geometry::SerializerSettings&
+      param_names:
+        - output
+        - geometry_settings
+        - serializer_settings
       param_renames:
         out_filename: output
         settings: serializer_settings
@@ -682,6 +710,7 @@ discover:
 
     - handle: tree
       translation_unit: kernels/opencascade/boolean_utils.cpp
+      compile_guard: IFOPSH_WITH_OPENCASCADE
       exclude:
         - add_element
         - add_file
@@ -712,6 +741,7 @@ discover:
 
     - handle: tree_clash
       translation_unit: kernels/opencascade/boolean_utils.cpp
+      compile_guard: IFOPSH_WITH_OPENCASCADE
       include_all: false
       discover_fields: true
       rename:
@@ -719,6 +749,7 @@ discover:
 
     - handle: tree_ray_intersection
       translation_unit: kernels/opencascade/boolean_utils.cpp
+      compile_guard: IFOPSH_WITH_OPENCASCADE
       include_all: false
       discover_fields: true
       exclude:

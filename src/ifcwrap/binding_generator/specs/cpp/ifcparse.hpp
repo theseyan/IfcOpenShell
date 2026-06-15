@@ -11,6 +11,7 @@
 #include "file.h"
 #include "parse.h"
 #include "schema.h"
+#include "plugin.h"
 #include "si_prefix.h"
 #include "utils.h"
 
@@ -144,6 +145,18 @@ inline std::vector<std::string> schema_names() {
 
 inline IFCAPI_COPY const char* schema_plugin_registration_symbol() {
     return ifcopenshell::schema_plugin_registration_symbol();
+}
+
+inline void set_plugin_search_paths(const std::vector<std::string>& paths) {
+    ifcopenshell::plugin::set_search_paths(paths);
+}
+
+inline std::vector<std::string> get_plugin_search_paths() {
+    return ifcopenshell::plugin::search_paths();
+}
+
+inline void clear_plugin_search_paths() {
+    ifcopenshell::plugin::clear_search_paths();
 }
 
 inline double si_prefix_to_value(const std::string& prefix) {

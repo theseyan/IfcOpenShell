@@ -58,6 +58,16 @@ endif()
 option(MINIMAL_BUILD "The build is to make a minimal version of IFC converter from OCCT into IFC." OFF)
 option(WASM_BUILD "Build a WebAssembly binary." OFF)
 
+if(WASM_BUILD)
+    # Emscripten side modules are built as SHARED libraries with SIDE_MODULE link
+    # flags. Override the default Emscripten toolchain setting so CMake does not
+    # downgrade them to STATIC archives. Core libraries remain STATIC and are
+    # linked into the MAIN_MODULE host executable.
+    set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS TRUE)
+    set(CMAKE_SHARED_LIBRARY_SUFFIX ".wasm")
+    set(BUILD_SHARED_LIBS OFF)
+endif()
+
 option(ENABLE_BUILD_OPTIMIZATIONS "Enable certain compiler and linker optimizations on RelWithDebInfo and Release builds." OFF)
 option(BUILD_SHARED_LIBS "Build IfcOpenShell as shared libraries (required)." ON)
 option(MSVC_PARALLEL_BUILD "Multi-threaded compilation in Microsoft Visual Studio (/MP)" OFF)
@@ -92,6 +102,18 @@ option(
     "Deploy Qt translation catalogs with installed Qt applications."
     OFF
 )
+
+if(WASM_BUILD)
+    if(NOT DEFINED CACHE{WITH_OPENCASCADE})
+        set(WITH_OPENCASCADE OFF CACHE BOOL "Enable geometry interpretation using Open CASCADE")
+    endif()
+    if(NOT DEFINED CACHE{WITH_CGAL})
+        set(WITH_CGAL OFF CACHE BOOL "Enable geometry interpretation using CGAL")
+    endif()
+    if(NOT DEFINED CACHE{WITH_MANIFOLD})
+        set(WITH_MANIFOLD OFF CACHE BOOL "Enable geometry interpretation using Manifold")
+    endif()
+endif()
 
 option(WITH_OPENCASCADE "Enable geometry interpretation using Open CASCADE" ON)
 option(WITH_CGAL "Enable geometry interpretation using CGAL" ON)
@@ -217,6 +239,14 @@ if(WITH_CGAL)
 endif()
 
 if(BUILD_IFCGEOM AND WITH_OPENCASCADE)
+    if(WASM_BUILD)
+        if(NOT DEFINED OPENCASCADE_WASM_DIR)
+            set(OPENCASCADE_WASM_DIR "" CACHE PATH "Path to WASM-compiled OpenCASCADE installation prefix")
+        endif()
+        if(OPENCASCADE_WASM_DIR)
+            list(PREPEND CMAKE_PREFIX_PATH "${OPENCASCADE_WASM_DIR}")
+        endif()
+    endif()
     find_package(OpenCASCADE REQUIRED)
     # Map OpenCASCADE_LIBRARIES variable from OpenCASCADEConfig.cmake to OpenCASCADE_LIBRARIES used by kernel generic cmake file
     set(OpenCASCADE_LIBRARIES ${OpenCASCADE_LIBRARIES})
@@ -562,10 +592,10 @@ if(BUILD_IFCGEOM)
     add_subdirectory(../src/ifcgeom ifcgeom)
 endif(BUILD_IFCGEOM)
 
-if(BUILD_CONVERT OR BUILD_IFCPYTHON OR BUILD_IFCCAPI)
+if(BUILD_CONVERT OR BUILD_IFCPYTHON OR (BUILD_IFCCAPI AND BUILD_IFCGEOM))
     add_subdirectory(../src/serializers serializers)
     set(IFCOPENSHELL_LIBRARIES ${IFCOPENSHELL_LIBRARIES} ${SERIALIZER_SCHEMA_LIBRARIES})
-endif(BUILD_CONVERT OR BUILD_IFCPYTHON OR BUILD_IFCCAPI)
+endif()
 
 if(BUILD_CONVERT)
     add_subdirectory(../src/ifcconvert ifcconvert)

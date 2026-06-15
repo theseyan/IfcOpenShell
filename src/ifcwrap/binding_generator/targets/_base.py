@@ -24,6 +24,7 @@ class TargetGenerationRequest:
     api_header_path: Path | None
     options: dict[str, Any]
     output_dir: Path
+    exports_only: bool = False
 
 
 @dataclass(frozen=True)
@@ -49,7 +50,7 @@ class TargetBackend(ABC):
         return cls.name
 
 
-_TARGET_MODULES = ("python",)
+_TARGET_MODULES = ("python", "wasm")
 
 
 def discover_targets() -> tuple[TargetBackend, ...]:

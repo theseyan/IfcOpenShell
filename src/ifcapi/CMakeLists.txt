@@ -110,7 +110,7 @@ target_include_directories(ifcopenshell_capi
 )
 target_compile_definitions(ifcopenshell_capi
     PUBLIC  IFCOPENSHELL_HAS_HIGHLEVEL_API=1
-    PRIVATE IFCAPI_BUILD
+    PRIVATE IFCAPI_BUILD IFCOPENSHELL_WITH_IFCGEOM=$<BOOL:${BUILD_IFCGEOM}>
 )
 
 # Smoke test executable for the high-level layer.

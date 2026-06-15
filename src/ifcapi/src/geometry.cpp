@@ -3021,6 +3021,7 @@ bool profile_extents(ifcopenshell::file* file,
     auto entity = profile.as<express::Entity>();
     if (!file || !entity) return false;
 
+#if IFCOPENSHELL_WITH_IFCGEOM
     ifcopenshell::geometry::Settings settings;
     settings.get<ifcopenshell::geometry::settings::OutputDimensionality>().value =
         ifcopenshell::geometry::settings::CURVES_SURFACES_AND_SOLIDS;
@@ -3072,6 +3073,11 @@ bool profile_extents(ifcopenshell::file* file,
     *x_out = (xmax - xmin) / unit_scale;
     *y_out = (ymax - ymin) / unit_scale;
     return true;
+#else
+    (void)file;
+    (void)entity;
+    return false;
+#endif
 }
 
 }  // namespace

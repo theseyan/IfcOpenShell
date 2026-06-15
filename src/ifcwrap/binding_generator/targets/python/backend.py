@@ -13,6 +13,7 @@ try:
         HostStructMetadata,
     )
     from .._base import GeneratedArtifact, GeneratedTargetArtifacts, TargetGenerationRequest
+    from .._shared import _method_name, _snake_name, _type_name
 except ImportError:  # pragma: no cover - script execution fallback
     from host_metadata import (
         HostBindingMetadata,
@@ -21,6 +22,7 @@ except ImportError:  # pragma: no cover - script execution fallback
         HostStructMetadata,
     )
     from targets._base import GeneratedArtifact, GeneratedTargetArtifacts, TargetGenerationRequest
+    from targets._shared import _method_name, _snake_name, _type_name
 
 
 _SCALAR_DECLS = {
@@ -53,10 +55,6 @@ _LEAF_READERS = {
 }
 
 
-def _snake_name(c_type: str) -> str:
-    return c_type.removeprefix("ifcopenshell_").removesuffix("_t")
-
-
 def _normalize_c_type(c_type: str) -> str:
     return " ".join(c_type.replace(" *", "*").split())
 
@@ -78,8 +76,7 @@ def _pointee_type(c_type: str) -> str:
 
 
 def _py_type_name(c_type: str) -> str:
-    parts = _snake_name(c_type).split("_")
-    return "IfcOpenshell" + "".join(part.capitalize() for part in parts if part)
+    return _type_name(c_type)
 
 
 def _wrapper_name(c_name: str) -> str:
@@ -95,25 +92,6 @@ def _destroy_method_name(c_type: str) -> str:
             name = name[len(prefix) :]
             break
     return f"{name}_destroy"
-
-
-_PREFIXES = sorted(
-    [
-        "ifcopenshell_ifcparse_",
-        "ifcopenshell_ifcapi_",
-        "ifcopenshell_ifc_",
-        "ifcopenshell_ifc",
-    ],
-    key=len,
-    reverse=True,
-)
-
-
-def _method_name(c_name: str, c_prefix: str) -> str:
-    for prefix in _PREFIXES:
-        if c_name.startswith(prefix):
-            return c_name[len(prefix) :]
-    return c_name.removeprefix(f"{c_prefix}_")
 
 
 def _discover_all_handle_types(api_header_path: Path) -> dict[str, HostStructMetadata]:

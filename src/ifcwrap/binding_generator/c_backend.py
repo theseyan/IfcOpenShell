@@ -122,6 +122,9 @@ def _normalize_repeated_cpp_option(
     return normalized
 
 
+_EMPTY_ARG = "__IFCOPENSHELL_EMPTY__"
+
+
 def _cpp_spec_configs(
     spec_paths: Sequence[Path],
     namespaces: str | Sequence[str] | None,
@@ -151,7 +154,7 @@ def _cpp_spec_configs(
             path=path,
             namespace=namespace,
             c_prefix=c_prefix,
-            handle_c_prefix=handle_c_prefix or c_prefix,
+            handle_c_prefix=("" if handle_c_prefix == _EMPTY_ARG else handle_c_prefix) or c_prefix,
         )
         for path, namespace, c_prefix, handle_c_prefix in zip(
             spec_paths, namespace_values, c_prefix_values, handle_c_prefix_values

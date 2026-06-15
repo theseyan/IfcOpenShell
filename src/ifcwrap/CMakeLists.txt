@@ -27,6 +27,10 @@ endif()
 include(GNUInstallDirs)
 
 if(BUILD_IFCCAPI)
+    if(WASM_BUILD AND NOT IFCCAPI_REGENERATE_BINDINGS)
+        set(IFCCAPI_REGENERATE_BINDINGS ON CACHE BOOL "Regenerate checked-in IfcParse C API bindings during the build." FORCE)
+    endif()
+
     set(IFCPARSE_CAPI_GENERATED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/generated")
     set(IFCPARSE_CAPI_SPEC "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/ifcparse.yml")
     set(IFCGEOM_CAPI_SPEC "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/ifcgeom.yml")
@@ -36,6 +40,40 @@ if(BUILD_IFCCAPI)
     set(IFCAPI_CAPI_CPP_SPEC_MACROS "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs/cpp/spec_macros.h")
     set(IFCPARSE_CAPI_GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/c_backend.py")
     set(IFCPARSE_TARGET_GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/targets/generate.py")
+    set(IFCOPENSHELL_TARGET_SPEC_FILES "${IFCPARSE_CAPI_SPEC}")
+    set(IFCOPENSHELL_TARGET_CPP_SPEC_FILES "${IFCPARSE_CAPI_CPP_SPEC}" "${IFCAPI_CAPI_CPP_SPEC}")
+    set(IFCOPENSHELL_TARGET_CPP_SPEC_NAMESPACES "ifcparse::bindings" "ifcapi::bindings")
+    set(IFCOPENSHELL_TARGET_CPP_SPEC_C_PREFIXES "ifcopenshell_ifcparse" "ifcopenshell_ifcapi")
+    set(IFCOPENSHELL_TARGET_CPP_SPEC_HANDLE_C_PREFIXES "ifcopenshell_ifc" "")
+    if(BUILD_IFCGEOM)
+        list(APPEND IFCOPENSHELL_TARGET_SPEC_FILES "${IFCGEOM_CAPI_SPEC}")
+        list(APPEND IFCOPENSHELL_TARGET_CPP_SPEC_FILES "${IFCGEOM_CAPI_CPP_SPEC}")
+        list(APPEND IFCOPENSHELL_TARGET_CPP_SPEC_NAMESPACES "ifcgeom::bindings")
+        list(APPEND IFCOPENSHELL_TARGET_CPP_SPEC_C_PREFIXES "ifcopenshell_ifcgeom")
+        list(APPEND IFCOPENSHELL_TARGET_CPP_SPEC_HANDLE_C_PREFIXES "")
+    endif()
+
+    set(IFCOPENSHELL_TARGET_GENERATOR_SPEC_ARGS)
+    foreach(spec_file IN LISTS IFCOPENSHELL_TARGET_SPEC_FILES)
+        list(APPEND IFCOPENSHELL_TARGET_GENERATOR_SPEC_ARGS --spec "${spec_file}")
+    endforeach()
+    list(LENGTH IFCOPENSHELL_TARGET_CPP_SPEC_FILES IFCOPENSHELL_TARGET_CPP_SPEC_COUNT)
+    math(EXPR IFCOPENSHELL_TARGET_CPP_SPEC_LAST_INDEX "${IFCOPENSHELL_TARGET_CPP_SPEC_COUNT} - 1")
+    foreach(index RANGE ${IFCOPENSHELL_TARGET_CPP_SPEC_LAST_INDEX})
+        list(GET IFCOPENSHELL_TARGET_CPP_SPEC_FILES ${index} cpp_spec_file)
+        list(GET IFCOPENSHELL_TARGET_CPP_SPEC_NAMESPACES ${index} cpp_spec_namespace)
+        list(GET IFCOPENSHELL_TARGET_CPP_SPEC_C_PREFIXES ${index} cpp_spec_c_prefix)
+        list(GET IFCOPENSHELL_TARGET_CPP_SPEC_HANDLE_C_PREFIXES ${index} cpp_spec_handle_c_prefix)
+        if("${cpp_spec_handle_c_prefix}" STREQUAL "")
+            set(cpp_spec_handle_c_prefix "__IFCOPENSHELL_EMPTY__")
+        endif()
+        list(APPEND IFCOPENSHELL_TARGET_GENERATOR_SPEC_ARGS
+            --cpp-spec "${cpp_spec_file}"
+            --cpp-spec-namespace "${cpp_spec_namespace}"
+            --cpp-spec-c-prefix "${cpp_spec_c_prefix}"
+            --cpp-spec-handle-c-prefix "${cpp_spec_handle_c_prefix}"
+        )
+    endforeach()
     
     # Unified API files
     set(UNIFIED_CAPI_HEADER "${IFCPARSE_CAPI_GENERATED_DIR}/ifcopenshell_api.h")
@@ -44,6 +82,11 @@ if(BUILD_IFCCAPI)
     set(UNIFIED_CAPI_PYTHON_OUTPUT_DIR "${IFCPARSE_CAPI_GENERATED_DIR}")
     set(UNIFIED_CAPI_PYTHON_EXTENSION "${UNIFIED_CAPI_PYTHON_OUTPUT_DIR}/ifcopenshell_capi_py.cpp")
     set(UNIFIED_CAPI_PYTHON_UTILS "${CMAKE_CURRENT_SOURCE_DIR}/../ifcapi/python/ifcopenshell/_capi_utils.py")
+
+    set(IFCOPENSHELL_TARGET_SPEC_DEPENDS "${IFCPARSE_CAPI_SPEC}" "${IFCPARSE_CAPI_CPP_SPEC}" "${IFCAPI_CAPI_CPP_SPEC}")
+    if(BUILD_IFCGEOM)
+        list(APPEND IFCOPENSHELL_TARGET_SPEC_DEPENDS "${IFCGEOM_CAPI_SPEC}" "${IFCGEOM_CAPI_CPP_SPEC}")
+    endif()
 
     if(IFCCAPI_REGENERATE_BINDINGS)
         if(NOT ${PYTHON_EXECUTABLE} STREQUAL "")
@@ -69,17 +112,37 @@ if(BUILD_IFCCAPI)
         set(IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS)
         foreach(include_dir IN ITEMS
             "${CMAKE_CURRENT_SOURCE_DIR}/.."
+            "${CMAKE_CURRENT_SOURCE_DIR}/../plugin"
             "${CMAKE_CURRENT_SOURCE_DIR}/../ifcparse"
             "${CMAKE_CURRENT_SOURCE_DIR}/../ifcparse/schemas"
             "${CMAKE_CURRENT_SOURCE_DIR}/../ifcgeom"
             "${CMAKE_CURRENT_SOURCE_DIR}/../ifcgeom/mapping"
-            "${CMAKE_CURRENT_SOURCE_DIR}/../ifcgeom/kernels"
             "${CMAKE_CURRENT_SOURCE_DIR}/../serializers"
             "${CMAKE_CURRENT_SOURCE_DIR}/../svgfill/src"
             "${CMAKE_CURRENT_SOURCE_DIR}/../ifcapi/include"
         )
             list(APPEND IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS --discovery-include-dir "${include_dir}")
         endforeach()
+        if(BUILD_IFCGEOM)
+            if(WITH_OPENCASCADE)
+                list(APPEND IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS
+                    --discovery-include-dir "${CMAKE_CURRENT_SOURCE_DIR}/../ifcgeom/kernels/opencascade"
+                )
+            endif()
+            if(WITH_CGAL)
+                list(APPEND IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS
+                    --discovery-include-dir "${CMAKE_CURRENT_SOURCE_DIR}/../ifcgeom/kernels/cgal"
+                )
+            endif()
+            if(WITH_MANIFOLD)
+                list(APPEND IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS
+                    --discovery-include-dir "${CMAKE_CURRENT_SOURCE_DIR}/../ifcgeom/kernels/manifold"
+                )
+            endif()
+            list(APPEND IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS
+                --discovery-include-dir "${CMAKE_CURRENT_SOURCE_DIR}/../ifcgeom/kernels/passthrough"
+            )
+        endif()
         foreach(include_dir IN LISTS
             Boost_INCLUDE_DIRS
             CGAL_INCLUDE_DIR
@@ -143,20 +206,7 @@ if(BUILD_IFCCAPI)
                 "${UNIFIED_CAPI_INTERNAL_HEADER}"
             COMMAND
                 ${Python_EXECUTABLE} "${IFCPARSE_CAPI_GENERATOR}"
-                --spec "${IFCPARSE_CAPI_SPEC}"
-                --spec "${IFCGEOM_CAPI_SPEC}"
-                --cpp-spec "${IFCPARSE_CAPI_CPP_SPEC}"
-                --cpp-spec "${IFCAPI_CAPI_CPP_SPEC}"
-                --cpp-spec "${IFCGEOM_CAPI_CPP_SPEC}"
-                --cpp-spec-namespace "ifcparse::bindings"
-                --cpp-spec-namespace "ifcapi::bindings"
-                --cpp-spec-namespace "ifcgeom::bindings"
-                --cpp-spec-c-prefix "ifcopenshell_ifcparse"
-                --cpp-spec-c-prefix "ifcopenshell_ifcapi"
-                --cpp-spec-c-prefix "ifcopenshell_ifcgeom"
-                --cpp-spec-handle-c-prefix "ifcopenshell_ifc"
-                --cpp-spec-handle-c-prefix ""
-                --cpp-spec-handle-c-prefix ""
+                ${IFCOPENSHELL_TARGET_GENERATOR_SPEC_ARGS}
                 --header-out "${UNIFIED_CAPI_HEADER}"
                 --cpp-out "${UNIFIED_CAPI_CPP}"
                 --internal-header-out "${UNIFIED_CAPI_INTERNAL_HEADER}"
@@ -165,11 +215,7 @@ if(BUILD_IFCCAPI)
                 --module ifcopenshell
                 --c-prefix ifcopenshell
             DEPENDS
-                "${IFCPARSE_CAPI_SPEC}"
-                "${IFCGEOM_CAPI_SPEC}"
-                "${IFCPARSE_CAPI_CPP_SPEC}"
-                "${IFCAPI_CAPI_CPP_SPEC}"
-                "${IFCGEOM_CAPI_CPP_SPEC}"
+                ${IFCOPENSHELL_TARGET_SPEC_DEPENDS}
                 "${IFCAPI_CAPI_CPP_SPEC_MACROS}"
                 "${IFCPARSE_CAPI_GENERATOR}"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/authored_spec.py"
@@ -210,17 +256,14 @@ if(BUILD_IFCCAPI)
                 --api-header "${UNIFIED_CAPI_HEADER}"
                 --output-dir "${UNIFIED_CAPI_PYTHON_OUTPUT_DIR}"
                 --target-option "utils-out=${UNIFIED_CAPI_PYTHON_UTILS}"
+                ${IFCOPENSHELL_TARGET_GENERATOR_SPEC_ARGS}
                 ${IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS}
                 ${IFCPARSE_CAPI_DISCOVERY_DEFINE_ARGS}
                 --module ifcopenshell
                 --c-prefix ifcopenshell
             DEPENDS
                 "${UNIFIED_CAPI_HEADER}"
-                "${IFCPARSE_CAPI_SPEC}"
-                "${IFCGEOM_CAPI_SPEC}"
-                "${IFCPARSE_CAPI_CPP_SPEC}"
-                "${IFCAPI_CAPI_CPP_SPEC}"
-                "${IFCGEOM_CAPI_CPP_SPEC}"
+                ${IFCOPENSHELL_TARGET_SPEC_DEPENDS}
                 "${IFCAPI_CAPI_CPP_SPEC_MACROS}"
                 "${IFCPARSE_TARGET_GENERATOR}"
                 "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/authored_spec.py"
@@ -256,7 +299,7 @@ if(BUILD_IFCCAPI)
 
     # Unified C API library (includes both ifcparse and ifcgeom; optionally
     # bundles the high-level handwritten layer from src/ifcapi as well).
-    if(EXISTS "${UNIFIED_CAPI_HEADER}" AND EXISTS "${UNIFIED_CAPI_CPP}")
+    if((EXISTS "${UNIFIED_CAPI_HEADER}" AND EXISTS "${UNIFIED_CAPI_CPP}") OR IFCCAPI_REGENERATE_BINDINGS)
         # Build the unified C API as a SHARED library so that consumers (any
         # language: C, Zig, Rust, Python) get a single distribution
         # exposing both the autogen low-level surface and the optional
@@ -264,51 +307,70 @@ if(BUILD_IFCCAPI)
         # A separate static archive is also produced (BUILD_IFCCAPI_STATIC)
         # for users who want to embed the autogen-only core into their own
         # executables.
-        add_library(ifcopenshell_capi SHARED "${UNIFIED_CAPI_HEADER}" "${UNIFIED_CAPI_CPP}")
+        if(WASM_BUILD)
+            add_library(ifcopenshell_capi STATIC "${UNIFIED_CAPI_HEADER}" "${UNIFIED_CAPI_CPP}")
+        else()
+            add_library(ifcopenshell_capi SHARED "${UNIFIED_CAPI_HEADER}" "${UNIFIED_CAPI_CPP}")
+        endif()
         if(TARGET ifcopenshell_capi_codegen_core)
             add_dependencies(ifcopenshell_capi ifcopenshell_capi_codegen_core)
         endif()
         if(schema_libraries OR kernel_libraries OR mapping_libraries)
-            add_dependencies(ifcopenshell_capi ${schema_libraries} ${kernel_libraries} ${mapping_libraries})
+            if(WASM_BUILD)
+                # Side-module plugins are loaded lazily by the WASM host executable.
+            else()
+                add_dependencies(ifcopenshell_capi ${schema_libraries} ${kernel_libraries} ${mapping_libraries})
+            endif()
         endif()
-        target_link_libraries(ifcopenshell_capi PRIVATE IfcParse IfcGeom ${OpenCASCADE_LIBRARIES})
-        if(TARGET Serializers)
+        target_link_libraries(ifcopenshell_capi PRIVATE IfcParse)
+        if(TARGET IfcGeom)
+            target_link_libraries(ifcopenshell_capi PRIVATE IfcGeom)
+            if(NOT WASM_BUILD)
+                target_link_libraries(ifcopenshell_capi PRIVATE ${OpenCASCADE_LIBRARIES})
+            endif()
+        endif()
+        if(TARGET Serializers AND NOT WASM_BUILD)
             target_link_libraries(ifcopenshell_capi PRIVATE Serializers)
         endif()
-        if(TARGET geometry_serializer)
+        if(TARGET geometry_serializer AND NOT WASM_BUILD)
             target_link_libraries(ifcopenshell_capi PRIVATE geometry_serializer)
         endif()
-        if(geometry_serializer_libraries)
+        if(geometry_serializer_libraries AND NOT WASM_BUILD)
             target_link_libraries(ifcopenshell_capi PRIVATE ${geometry_serializer_libraries})
         endif()
-        if(document_serializer_libraries)
+        if(document_serializer_libraries AND NOT WASM_BUILD)
             target_link_libraries(ifcopenshell_capi PRIVATE ${document_serializer_libraries})
         endif()
-        if(TARGET svgfill)
+        if(TARGET svgfill AND NOT WASM_BUILD)
             target_link_libraries(ifcopenshell_capi PRIVATE svgfill)
         endif()
-        if(TARGET IFCOPENSHELL_CGAL)
+        if(TARGET IFCOPENSHELL_CGAL AND NOT WASM_BUILD)
             target_link_libraries(ifcopenshell_capi PRIVATE IFCOPENSHELL_CGAL)
         endif()
         target_include_directories(
             ifcopenshell_capi
             PUBLIC "${IFCPARSE_CAPI_GENERATED_DIR}"
             PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../ifcparse"
-            PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../ifcgeom"
+            PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../plugin"
             PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../serializers"
             PRIVATE "${OCC_INCLUDE_DIR}"
         )
+        if(BUILD_IFCGEOM)
+            target_include_directories(ifcopenshell_capi PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../ifcgeom")
+        endif()
         set_target_properties(ifcopenshell_capi PROPERTIES
             POSITION_INDEPENDENT_CODE ON
         )
 
         # Smoke tests - separate executables for each test scope
-        add_executable(ifcopenshell_capi_smoke "${CMAKE_CURRENT_SOURCE_DIR}/tests/ifcgeom_c_api_smoke.c")
-        target_link_libraries(ifcopenshell_capi_smoke PRIVATE ifcopenshell_capi)
-        if(TARGET geometry_serializer)
-            target_link_libraries(ifcopenshell_capi_smoke PRIVATE geometry_serializer)
+        if(BUILD_IFCGEOM)
+            add_executable(ifcopenshell_capi_smoke "${CMAKE_CURRENT_SOURCE_DIR}/tests/ifcgeom_c_api_smoke.c")
+            target_link_libraries(ifcopenshell_capi_smoke PRIVATE ifcopenshell_capi)
+            if(TARGET geometry_serializer)
+                target_link_libraries(ifcopenshell_capi_smoke PRIVATE geometry_serializer)
+            endif()
+            target_include_directories(ifcopenshell_capi_smoke PRIVATE "${IFCPARSE_CAPI_GENERATED_DIR}")
         endif()
-        target_include_directories(ifcopenshell_capi_smoke PRIVATE "${IFCPARSE_CAPI_GENERATED_DIR}")
 
         add_executable(ifcparse_capi_smoke "${CMAKE_CURRENT_SOURCE_DIR}/tests/ifcparse_c_api_smoke.c")
         target_link_libraries(ifcparse_capi_smoke PRIVATE ifcopenshell_capi)
@@ -335,6 +397,10 @@ if(BUILD_IFCCAPI)
             else()
                 message(STATUS "Python Development.Module not found - skipping _ifcopenshell_capi extension build")
             endif()
+        endif()
+
+        if(WASM_BUILD)
+            include(wasm.cmake)
         endif()
     else()
         message(STATUS "Unified C API not built - generated files not found at ${UNIFIED_CAPI_HEADER}")

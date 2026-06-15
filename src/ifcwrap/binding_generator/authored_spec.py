@@ -276,6 +276,7 @@ class DiscoveryClassSpec:
     variant_accessors: VariantAccessorsSpec | None  # generates typed get/set for variant methods
     enum_types_as_int32: frozenset[str]  # type names treated as enums → int32 with static_cast
     type_overrides: dict[str, DiscoveryTypeOverrideSpec]  # cpp member name -> explicit type override policy
+    compile_guard: str | None = None
 
 
 @dataclass(frozen=True)
@@ -1416,6 +1417,13 @@ def _parse_discovery(
                 )
             type_overrides[member_name] = DiscoveryTypeOverrideSpec(returns=returns, params=params)
 
+        compile_guard_raw = item_mapping.get("compile_guard")
+        compile_guard = (
+            _expect_str(compile_guard_raw, f"{item_context}.compile_guard")
+            if compile_guard_raw is not None
+            else None
+        )
+
         has_any_feature = (include_all or include or overloads or discover_fields
                           or discover_children is not None or discover_as_item
                           or extra_fields or field_setters or discover_optional_fields
@@ -1454,6 +1462,7 @@ def _parse_discovery(
                 variant_accessors=variant_accessors,
                 enum_types_as_int32=enum_types_as_int32,
                 type_overrides=type_overrides,
+                compile_guard=compile_guard,
             )
         )
 
@@ -1584,7 +1593,7 @@ def _parse_discovery(
             if params is None:
                 msg = f"{item_context}.compile_guard requires params so the C symbol remains stable when the guarded class is unavailable"
                 raise ValueError(msg)
-            if not param_names:
+            if params and not param_names:
                 msg = f"{item_context}.compile_guard requires param_names so fallback generation does not depend on source parameter names"
                 raise ValueError(msg)
         if param_names and params is not None and len(param_names) != len(params):
@@ -2893,6 +2902,8 @@ def _discover_method_calls(
     )
 
     for item_index, item in enumerate(discovery.classes, start=1):
+        if not _compile_guard_active(item.compile_guard, discovery_environment.compilation.defines):
+            continue
         handle = handles[item.handle]
         excluded = set(item.exclude)
         debug_log(
@@ -3506,6 +3517,13 @@ def _resolve_public_header(spec_path: Path, include_dir: Path, header: str) -> P
     raise FileNotFoundError(header)
 
 
+def _compile_guard_active(compile_guard: str | None, defines: tuple[str, ...]) -> bool:
+    if compile_guard is None:
+        return True
+    normalized = {define.removeprefix("-D") for define in defines}
+    return compile_guard in normalized
+
+
 def _contract_headers(spec_path: Path, include_dir: Path, public_headers: tuple[str, ...]) -> tuple[Path, ...]:
     headers: list[Path] = []
     for header in public_headers:
@@ -4012,8 +4030,14 @@ def _array_field_element_type(cpp_type: str, param_count: int, *, context: str) 
 
 
 def _constructor_fallback_params(item: DiscoveryConstructorSpec, handles: dict[str, HandleSpec]) -> tuple[ParamSpec, ...]:
-    if item.params is None or not item.param_names:
+    if item.params is None or item.param_names is None:
         msg = f"Guarded constructor '{item.expose_as}' requires params and param_names for fallback generation"
+        raise ValueError(msg)
+    if len(item.params) != len(item.param_names):
+        msg = (
+            f"Guarded constructor '{item.expose_as}' has mismatched params and param_names "
+            f"({len(item.params)} vs {len(item.param_names)})"
+        )
         raise ValueError(msg)
     params: list[ParamSpec] = []
     for source_type, param_name in zip(item.params, item.param_names):
@@ -4058,17 +4082,22 @@ def _discover_constructor_calls(
         cache_key = (item.cpp_class, item.translation_unit)
         constructors = constructor_cache.get(cache_key)
         if constructors is None:
-            translation_unit = (include_dir / item.translation_unit).resolve()
-            try:
-                constructors = discover_public_constructors(
-                    discovery_environment,
-                    translation_unit,
-                    item.cpp_class,
-                )
-            except ValueError:
-                if item.compile_guard is None:
-                    raise
+            if item.compile_guard is not None and not _compile_guard_active(
+                item.compile_guard, discovery_environment.compilation.defines
+            ):
                 constructors = tuple()
+            else:
+                translation_unit = (include_dir / item.translation_unit).resolve()
+                try:
+                    constructors = discover_public_constructors(
+                        discovery_environment,
+                        translation_unit,
+                        item.cpp_class,
+                    )
+                except (ValueError, RuntimeError):
+                    if item.compile_guard is None:
+                        raise
+                    constructors = tuple()
             constructor_cache[cache_key] = constructors
 
         fallback_params: tuple[ParamSpec, ...] | None = None

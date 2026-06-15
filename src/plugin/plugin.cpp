@@ -151,15 +151,6 @@ namespace {
 #endif
 }
 
-namespace ifcopenshell {
-namespace plugin {
-PLUGIN_API void set_search_paths(const std::vector<std::string>& paths);
-PLUGIN_API std::vector<std::string> search_paths();
-PLUGIN_API void clear_search_paths();
-PLUGIN_API std::filesystem::path add_search_paths_or_default(manager& manager, std::filesystem::path (*default_search_path)());
-}
-}
-
 struct ifcopenshell::plugin::module::data {
 	metadata metadata_;
 	std::filesystem::path path_;
@@ -344,6 +335,15 @@ PLUGIN_API std::filesystem::path ifcopenshell::plugin::add_search_paths_or_defau
 		}
 		return {};
 	}
+
+#ifdef __EMSCRIPTEN__
+	// In WASM, manifest-driven loading uses the JS host to load side modules
+	// first, then native code resolves registration via dlsym(). Avoid eager
+	// dladdr()-based module path resolution unless the caller configured an
+	// explicit search path.
+	plugin_debug("no configured plugin search paths; skipping default module directory resolution in WASM");
+	return {};
+#endif
 
 	plugin_debug("using default plugin search path from module directory");
 	const auto path = default_search_path();
