@@ -8,14 +8,22 @@
 
 #include "ifcparse/express.h"
 #include "ifcparse/file.h"
+#include "ifcparse/schema.h"
 
 #include "ifc_geom_api.h"
 #include "Iterator.h"
 #include "Converter.h"
+#include "kernel_plugin.h"
 #include "kernel_registry.h"
+#include "abstract_mapping.h"
+#include "mapping_plugin.h"
+#include "tree_plugin.h"
+#include "tree_registry.h"
 #include "tree.h"
 #include "taxonomy.h"
 #include "function_item_evaluator.h"
+#include "geometry_serializer_plugin.h"
+#include "document_serializer_plugin.h"
 #include "../svgfill/src/svgfill.h"
 
 #include <Eigen/Dense>
@@ -1217,6 +1225,74 @@ inline std::vector<double> evaluate_at(
         }
     }
     return result;
+}
+
+inline bool plugin_is_loaded(const std::string& kind, const std::string& id) {
+    if (kind == "schema") {
+        return ifcopenshell::schema_registry_instance().get(id) != nullptr;
+    }
+    if (kind == "kernel") {
+        return ifcopenshell::geometry::kernels::kernel_registry_instance().has(id);
+    }
+    if (kind == "mapping") {
+        return ifcopenshell::geometry::impl::mapping_registry_instance().has(id);
+    }
+    if (kind == "tree") {
+        return ifcopenshell::geometry::trees::tree_registry_instance().has(id);
+    }
+    if (kind == "geometry_serializer") {
+        return ifcopenshell::serializers::geometry_serializer_registry_instance().has(id);
+    }
+    if (kind == "document") {
+        auto dot_pos = id.find('.');
+        if (dot_pos != std::string::npos) {
+            auto format = id.substr(0, dot_pos);
+            auto schema = id.substr(dot_pos + 1);
+            return ifcopenshell::serializers::document_serializer_registry_instance().has(format, schema);
+        }
+        return ifcopenshell::serializers::document_serializer_registry_instance().has(id);
+    }
+    return false;
+}
+
+inline bool plugin_load(const std::string& kind, const std::string& id) {
+    if (kind == "schema") {
+        return ifcopenshell::schema_registry_instance().get(id) != nullptr;
+    }
+    if (kind == "kernel") {
+        return ifcopenshell::geometry::kernels::load_kernel_plugin(
+            ifcopenshell::geometry::kernels::kernel_registry_instance(), id
+        );
+    }
+    if (kind == "mapping") {
+        return ifcopenshell::geometry::impl::load_mapping_plugin(
+            ifcopenshell::geometry::impl::mapping_registry_instance(), id
+        );
+    }
+    if (kind == "tree") {
+        return ifcopenshell::geometry::trees::load_tree_plugin(
+            ifcopenshell::geometry::trees::tree_registry_instance(), id
+        );
+    }
+    if (kind == "geometry_serializer") {
+        return ifcopenshell::serializers::load_geometry_serializer_plugin(
+            ifcopenshell::serializers::geometry_serializer_registry_instance(), id
+        );
+    }
+    if (kind == "document") {
+        auto dot_pos = id.find('.');
+        if (dot_pos != std::string::npos) {
+            return ifcopenshell::serializers::load_document_serializer_plugin(
+                ifcopenshell::serializers::document_serializer_registry_instance(),
+                id.substr(0, dot_pos),
+                id.substr(dot_pos + 1)
+            );
+        }
+        return ifcopenshell::serializers::load_document_serializer_plugin(
+            ifcopenshell::serializers::document_serializer_registry_instance(), id
+        );
+    }
+    return false;
 }
 
 } // namespace ifcgeom::bindings

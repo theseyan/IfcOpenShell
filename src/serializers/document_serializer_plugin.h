@@ -60,6 +60,8 @@ public:
 	typedef boost::function<boost::shared_ptr<Serializer>(const document_serializer_context&)> create_fn;
 
 	void bind(const document_serializer_info& info, create_fn create, const ifcopenshell::plugin::module& module = ifcopenshell::plugin::module());
+	bool has(const std::string& format) const;
+	bool has(const std::string& format, const std::string& schema_name) const;
 	const document_serializer_info* find(const std::string& format, const std::string& schema_name = std::string()) const;
 	boost::shared_ptr<Serializer> create(const std::string& format, const document_serializer_context& context) const;
 	std::vector<document_serializer_info> serializers() const;

@@ -3037,8 +3037,12 @@ bool ifcopenshell_ifcgeom_create_tree(ifcopenshell_ifcgeom_tree_t** out_result) 
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+        #if defined(IFOPSH_WITH_OPENCASCADE)
         auto result_value = std::unique_ptr<IfcGeom::tree>(new IfcGeom::tree());
         *out_result = new ifcopenshell_ifcgeom_tree_t{result_value.release(), true};
+#else
+        throw std::runtime_error("ifcopenshell_ifcgeom_create_tree requires IFOPSH_WITH_OPENCASCADE");
+#endif
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3055,8 +3059,12 @@ bool ifcopenshell_ifcgeom_create_tree_from_file(ifcopenshell_ifc_file_t* file, i
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto& file_cpp = *file->ptr;
+        #if defined(IFOPSH_WITH_OPENCASCADE)
         auto result_value = std::unique_ptr<IfcGeom::tree>(new IfcGeom::tree(file_cpp));
         *out_result = new ifcopenshell_ifcgeom_tree_t{result_value.release(), true};
+#else
+        throw std::runtime_error("ifcopenshell_ifcgeom_create_tree_from_file requires IFOPSH_WITH_OPENCASCADE");
+#endif
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3075,8 +3083,12 @@ bool ifcopenshell_ifcgeom_create_tree_from_file_with_settings(ifcopenshell_ifc_f
     auto& file_cpp = *file->ptr;
     if (settings == nullptr || settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"settings\" is invalid"); }
     auto& settings_cpp = *settings->ptr;
+        #if defined(IFOPSH_WITH_OPENCASCADE)
         auto result_value = std::unique_ptr<IfcGeom::tree>(new IfcGeom::tree(file_cpp, settings_cpp));
         *out_result = new ifcopenshell_ifcgeom_tree_t{result_value.release(), true};
+#else
+        throw std::runtime_error("ifcopenshell_ifcgeom_create_tree_from_file_with_settings requires IFOPSH_WITH_OPENCASCADE");
+#endif
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3093,8 +3105,12 @@ bool ifcopenshell_ifcgeom_create_tree_from_iterator(ifcopenshell_ifcgeom_iterato
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (iterator == nullptr || iterator->ptr == nullptr) { throw std::runtime_error("Handle parameter \"iterator\" is invalid"); }
     auto& iterator_cpp = *iterator->ptr;
+        #if defined(IFOPSH_WITH_OPENCASCADE)
         auto result_value = std::unique_ptr<IfcGeom::tree>(new IfcGeom::tree(iterator_cpp));
         *out_result = new ifcopenshell_ifcgeom_tree_t{result_value.release(), true};
+#else
+        throw std::runtime_error("ifcopenshell_ifcgeom_create_tree_from_iterator requires IFOPSH_WITH_OPENCASCADE");
+#endif
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3129,18 +3145,22 @@ bool ifcopenshell_ifcgeom_create_obj_serializer(ifcopenshell_ifcgeom_buffer_t* o
     }
 }
 
-bool ifcopenshell_ifcgeom_create_ttl_serializer(ifcopenshell_ifcgeom_buffer_t* output, ifcopenshell_ifcgeom_settings_t* geometry_settings, ifcopenshell_ifcgeom_serializer_settings_t* serializer_settings, ifcopenshell_ifcgeom_geometry_serializer_t** out_result) {
+bool ifcopenshell_ifcgeom_create_ttl_serializer(const char* output, ifcopenshell_ifcgeom_settings_t* geometry_settings, ifcopenshell_ifcgeom_serializer_settings_t* serializer_settings, ifcopenshell_ifcgeom_geometry_serializer_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (output == nullptr || output->ptr == nullptr) { throw std::runtime_error("Handle parameter \"output\" is invalid"); }
-    auto& output_cpp = *output->ptr;
+    if (output == nullptr) { throw std::runtime_error("Parameter \"output\" must not be null"); }
+    std::string output_cpp(output);
     if (geometry_settings == nullptr || geometry_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"geometry_settings\" is invalid"); }
     auto& geometry_settings_cpp = *geometry_settings->ptr;
     if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
     auto& serializer_settings_cpp = *serializer_settings->ptr;
+        #if defined(IFOPSH_WITH_OPENCASCADE)
         auto result_value = std::unique_ptr<GeometrySerializer>(static_cast<GeometrySerializer*>(new TtlWktSerializer(output_cpp, geometry_settings_cpp, serializer_settings_cpp)));
         *out_result = new ifcopenshell_ifcgeom_geometry_serializer_t{result_value.release(), true};
+#else
+        throw std::runtime_error("ifcopenshell_ifcgeom_create_ttl_serializer requires IFOPSH_WITH_OPENCASCADE");
+#endif
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3151,18 +3171,22 @@ bool ifcopenshell_ifcgeom_create_ttl_serializer(ifcopenshell_ifcgeom_buffer_t* o
     }
 }
 
-bool ifcopenshell_ifcgeom_create_svg_serializer(ifcopenshell_ifcgeom_buffer_t* output, ifcopenshell_ifcgeom_settings_t* geometry_settings, ifcopenshell_ifcgeom_serializer_settings_t* serializer_settings, ifcopenshell_ifcgeom_geometry_serializer_t** out_result) {
+bool ifcopenshell_ifcgeom_create_svg_serializer(const char* output, ifcopenshell_ifcgeom_settings_t* geometry_settings, ifcopenshell_ifcgeom_serializer_settings_t* serializer_settings, ifcopenshell_ifcgeom_geometry_serializer_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (output == nullptr || output->ptr == nullptr) { throw std::runtime_error("Handle parameter \"output\" is invalid"); }
-    auto& output_cpp = *output->ptr;
+    if (output == nullptr) { throw std::runtime_error("Parameter \"output\" must not be null"); }
+    std::string output_cpp(output);
     if (geometry_settings == nullptr || geometry_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"geometry_settings\" is invalid"); }
     auto& geometry_settings_cpp = *geometry_settings->ptr;
     if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
     auto& serializer_settings_cpp = *serializer_settings->ptr;
+        #if defined(IFOPSH_WITH_OPENCASCADE)
         auto result_value = std::unique_ptr<GeometrySerializer>(static_cast<GeometrySerializer*>(new SvgSerializer(output_cpp, geometry_settings_cpp, serializer_settings_cpp)));
         *out_result = new ifcopenshell_ifcgeom_geometry_serializer_t{result_value.release(), true};
+#else
+        throw std::runtime_error("ifcopenshell_ifcgeom_create_svg_serializer requires IFOPSH_WITH_OPENCASCADE");
+#endif
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3577,6 +3601,20 @@ bool ifcopenshell_ifcparse_argument_type_to_string(int32_t type, ifcopenshell_st
     }
 }
 
+bool ifcopenshell_ifcparse_clear_plugin_search_paths(void) {
+    try {
+        ifcopenshell_clear_error();
+        ifcparse::bindings::clear_plugin_search_paths();
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcparse_clear_schemas(void) {
     try {
         ifcopenshell_clear_error();
@@ -3682,6 +3720,21 @@ bool ifcopenshell_ifcparse_get_log(ifcopenshell_string_t* out_result) {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
         *out_result = make_string(ifcparse::bindings::get_log());
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_get_plugin_search_paths(ifcopenshell_string_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+        *out_result = make_string_list(ifcparse::bindings::get_plugin_search_paths());
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -3975,6 +4028,22 @@ bool ifcopenshell_ifcparse_set_log_format_text(void) {
     try {
         ifcopenshell_clear_error();
         ifcparse::bindings::set_log_format_text();
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcparse_set_plugin_search_paths(const ifcopenshell_string_list_t* paths) {
+    try {
+        ifcopenshell_clear_error();
+    if (paths == nullptr) { throw std::runtime_error("Parameter \"paths\" must not be null"); }
+    auto paths_cpp = to_cpp_string_list(paths);
+        ifcparse::bindings::set_plugin_search_paths(paths_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -14353,6 +14422,44 @@ bool ifcopenshell_ifcgeom_nary_union(const ifcopenshell_ifcgeom_conversion_resul
     }
 }
 
+bool ifcopenshell_ifcgeom_plugin_is_loaded(const char* kind, const char* id, bool* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (kind == nullptr) { throw std::runtime_error("Parameter \"kind\" must not be null"); }
+    std::string kind_cpp(kind);
+    if (id == nullptr) { throw std::runtime_error("Parameter \"id\" must not be null"); }
+    std::string id_cpp(id);
+        *out_result = ifcgeom::bindings::plugin_is_loaded(kind_cpp, id_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_ifcgeom_plugin_load(const char* kind, const char* id, bool* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (kind == nullptr) { throw std::runtime_error("Parameter \"kind\" must not be null"); }
+    std::string kind_cpp(kind);
+    if (id == nullptr) { throw std::runtime_error("Parameter \"id\" must not be null"); }
+    std::string id_cpp(id);
+        *out_result = ifcgeom::bindings::plugin_load(kind_cpp, id_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_ifcgeom_svg_to_line_segments(const char* svg_data_cpp, const char* class_name_str, ifcopenshell_string_t* out_result) {
     try {
         ifcopenshell_clear_error();
@@ -21502,485 +21609,6 @@ bool ifcopenshell_ifcgeom_taxonomy_item_kind(ifcopenshell_ifcgeom_taxonomy_item_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<int32_t>(self_cpp->kind());
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_enable_face_styles(ifcopenshell_ifcgeom_tree_t* self, bool* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        *out_result = self_cpp->enable_face_styles();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_set_enable_face_styles(ifcopenshell_ifcgeom_tree_t* self, bool enable) {
-    try {
-        ifcopenshell_clear_error();
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-    auto enable_cpp = static_cast<bool>(enable);
-        self_cpp->enable_face_styles(enable_cpp);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_add_file(ifcopenshell_ifcgeom_tree_t* self, ifcopenshell_ifc_file_t* file, ifcopenshell_ifcgeom_settings_t* settings) {
-    try {
-        ifcopenshell_clear_error();
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
-    auto& file_cpp = *file->ptr;
-    if (settings == nullptr || settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"settings\" is invalid"); }
-    auto& settings_cpp = *settings->ptr;
-        self_cpp->add_file(file_cpp, settings_cpp);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_add_iterator(ifcopenshell_ifcgeom_tree_t* self, ifcopenshell_ifcgeom_iterator_t* iterator) {
-    try {
-        ifcopenshell_clear_error();
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-    if (iterator == nullptr || iterator->ptr == nullptr) { throw std::runtime_error("Handle parameter \"iterator\" is invalid"); }
-    auto& iterator_cpp = *iterator->ptr;
-        self_cpp->add_file(iterator_cpp);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_clash_clearance_many(ifcopenshell_ifcgeom_tree_t* self, const ifcopenshell_ifc_instance_list_t* set_a, const ifcopenshell_ifc_instance_list_t* set_b, double clearance, bool check_all, ifcopenshell_ifcgeom_tree_clash_list_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-    if (set_a == nullptr) { throw std::runtime_error("Parameter \"set_a\" must not be null"); }
-    auto set_a_cpp = to_cpp_ifc_instance_list(set_a);
-    if (set_b == nullptr) { throw std::runtime_error("Parameter \"set_b\" must not be null"); }
-    auto set_b_cpp = to_cpp_ifc_instance_list(set_b);
-    auto clearance_cpp = static_cast<double>(clearance);
-    auto check_all_cpp = static_cast<bool>(check_all);
-        *out_result = new ifcopenshell_ifcgeom_tree_clash_list_t{new std::vector<IfcGeom::clash>(self_cpp->clash_clearance_many(set_a_cpp, set_b_cpp, clearance_cpp, check_all_cpp)), true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_clash_collision_many(ifcopenshell_ifcgeom_tree_t* self, const ifcopenshell_ifc_instance_list_t* set_a, const ifcopenshell_ifc_instance_list_t* set_b, bool allow_touching, ifcopenshell_ifcgeom_tree_clash_list_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-    if (set_a == nullptr) { throw std::runtime_error("Parameter \"set_a\" must not be null"); }
-    auto set_a_cpp = to_cpp_ifc_instance_list(set_a);
-    if (set_b == nullptr) { throw std::runtime_error("Parameter \"set_b\" must not be null"); }
-    auto set_b_cpp = to_cpp_ifc_instance_list(set_b);
-    auto allow_touching_cpp = static_cast<bool>(allow_touching);
-        *out_result = new ifcopenshell_ifcgeom_tree_clash_list_t{new std::vector<IfcGeom::clash>(self_cpp->clash_collision_many(set_a_cpp, set_b_cpp, allow_touching_cpp)), true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_clash_intersection_many(ifcopenshell_ifcgeom_tree_t* self, const ifcopenshell_ifc_instance_list_t* set_a, const ifcopenshell_ifc_instance_list_t* set_b, double tolerance, bool check_all, ifcopenshell_ifcgeom_tree_clash_list_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-    if (set_a == nullptr) { throw std::runtime_error("Parameter \"set_a\" must not be null"); }
-    auto set_a_cpp = to_cpp_ifc_instance_list(set_a);
-    if (set_b == nullptr) { throw std::runtime_error("Parameter \"set_b\" must not be null"); }
-    auto set_b_cpp = to_cpp_ifc_instance_list(set_b);
-    auto tolerance_cpp = static_cast<double>(tolerance);
-    auto check_all_cpp = static_cast<bool>(check_all);
-        *out_result = new ifcopenshell_ifcgeom_tree_clash_list_t{new std::vector<IfcGeom::clash>(self_cpp->clash_intersection_many(set_a_cpp, set_b_cpp, tolerance_cpp, check_all_cpp)), true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_distances(ifcopenshell_ifcgeom_tree_t* self, ifcopenshell_double_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        *out_result = make_double_list(self_cpp->distances());
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_is_manifold(ifcopenshell_ifcgeom_tree_t* self, const ifcopenshell_int32_list_t* faces, bool* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-    if (faces == nullptr) { throw std::runtime_error("Parameter \"faces\" must not be null"); }
-    auto faces_cpp = to_cpp_int32_list(faces);
-        *out_result = self_cpp->is_manifold(faces_cpp);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_protrusion_distances(ifcopenshell_ifcgeom_tree_t* self, ifcopenshell_double_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        *out_result = make_double_list(self_cpp->protrusion_distances());
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_styles(ifcopenshell_ifcgeom_tree_t* self, ifcopenshell_ifcgeom_taxonomy_style_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        *out_result = make_ifcgeom_taxonomy_style_list(self_cpp->styles());
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_uint8_to_b64(ifcopenshell_ifcgeom_tree_t* self, const ifcopenshell_uint8_list_t* uuids_array, ifcopenshell_string_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-    if (uuids_array == nullptr) { throw std::runtime_error("Parameter \"uuids_array\" must not be null"); }
-    auto uuids_array_cpp = to_cpp_uint8_list(uuids_array);
-        *out_result = make_string(self_cpp->uint8_to_b64(uuids_array_cpp));
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_style_count(ifcopenshell_ifcgeom_tree_t* self, size_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        *out_result = self_cpp->styles().size();
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_style_at(ifcopenshell_ifcgeom_tree_t* self, size_t index, ifcopenshell_ifcgeom_taxonomy_style_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        const auto& items = self_cpp->styles();
-        if (index >= items.size()) { throw std::out_of_range("Style index out of range"); }
-        *out_result = new ifcopenshell_ifcgeom_taxonomy_style_t{items[index]};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_clash_a(ifcopenshell_ifcgeom_tree_clash_t* self, ifcopenshell_ifc_instance_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto result_value = self_cpp->a;
-        if (!static_cast<bool>(result_value)) {
-            *out_result = nullptr;
-        } else {
-            *out_result = new ifcopenshell_ifc_instance_t{std::move(result_value)};
-        }
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_clash_b(ifcopenshell_ifcgeom_tree_clash_t* self, ifcopenshell_ifc_instance_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        auto result_value = self_cpp->b;
-        if (!static_cast<bool>(result_value)) {
-            *out_result = nullptr;
-        } else {
-            *out_result = new ifcopenshell_ifc_instance_t{std::move(result_value)};
-        }
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_clash_type(ifcopenshell_ifcgeom_tree_clash_t* self, int32_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        *out_result = static_cast<int32_t>(self_cpp->clash_type);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_clash_distance(ifcopenshell_ifcgeom_tree_clash_t* self, double* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        *out_result = static_cast<double>(self_cpp->distance);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_clash_p1(ifcopenshell_ifcgeom_tree_clash_t* self, ifcopenshell_double_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        *out_result = make_double_list(std::vector<double>(self_cpp->p1.begin(), self_cpp->p1.end()));
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_clash_p2(ifcopenshell_ifcgeom_tree_clash_t* self, ifcopenshell_double_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        *out_result = make_double_list(std::vector<double>(self_cpp->p2.begin(), self_cpp->p2.end()));
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_ray_intersection_distance(ifcopenshell_ifcgeom_tree_ray_intersection_t* self, double* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        *out_result = static_cast<double>(self_cpp->distance);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_ray_intersection_dot_product(ifcopenshell_ifcgeom_tree_ray_intersection_t* self, double* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        *out_result = static_cast<double>(self_cpp->dot_product);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_ray_intersection_normal(ifcopenshell_ifcgeom_tree_ray_intersection_t* self, ifcopenshell_double_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        *out_result = make_double_list(std::vector<double>(self_cpp->normal.begin(), self_cpp->normal.end()));
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_ray_intersection_position(ifcopenshell_ifcgeom_tree_ray_intersection_t* self, ifcopenshell_double_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        *out_result = make_double_list(std::vector<double>(self_cpp->position.begin(), self_cpp->position.end()));
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_ray_intersection_ray_distance(ifcopenshell_ifcgeom_tree_ray_intersection_t* self, double* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        *out_result = static_cast<double>(self_cpp->ray_distance);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_ifcgeom_tree_ray_intersection_style_index(ifcopenshell_ifcgeom_tree_ray_intersection_t* self, int32_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-        *out_result = static_cast<int32_t>(self_cpp->style_index);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

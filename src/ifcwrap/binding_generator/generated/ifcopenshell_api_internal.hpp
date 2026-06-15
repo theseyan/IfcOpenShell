@@ -47,8 +47,6 @@
 #include "StepSerializer.h"
 #include "RocksDbSerializer.h"
 #include "Serializer.h"
-#include "kernels/opencascade/IfcGeomTree.h"
-#include <BRepTools_ShapeSet.hxx>
 #include "taxonomy.h"
 #include "hybrid_kernel.h"
 #include "Converter.h"

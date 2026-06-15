@@ -23,6 +23,10 @@ void ifcopenshell::geometry::impl::mapping_registry::bind(const std::string& sch
 	entry.module_ = module.meta().id.empty() ? plugin::module(mapping_plugin_metadata(schema_name)) : module;
 }
 
+bool ifcopenshell::geometry::impl::mapping_registry::has(const std::string& schema_name) const {
+	return entries_.find(mapping_key(schema_name)) != entries_.end();
+}
+
 ifcopenshell::geometry::abstract_mapping* ifcopenshell::geometry::impl::mapping_registry::construct(ifcopenshell::file* file, Settings& s) {
 	const std::string schema_name_lower = boost::to_lower_copy(file->schema()->name());
 	auto it = entries_.find(schema_name_lower);
