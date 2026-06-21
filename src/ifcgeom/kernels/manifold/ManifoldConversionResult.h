@@ -17,8 +17,8 @@ struct IFC_GEOMLIBRARY_API ManifoldPart {
 
 	ManifoldPart(const manifold::Manifold& s) {
         auto copy = s;
-        copy.CalculateNormals(3);
-        mesh = copy.GetMeshGL64();
+        auto with_normals = copy.CalculateNormals(0);
+        mesh = with_normals.GetMeshGL64();
         solid = s;	
 	}
 

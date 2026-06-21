@@ -21,6 +21,8 @@ namespace {
 	Mesh transform_mesh(const Mesh& mesh, const ifcopenshell::geometry::taxonomy::matrix4& place) {
 		Mesh result = mesh;
 		const auto& m = place.ccomponents();
+		const auto linear = m.block<3, 3>(0, 0);
+		const Eigen::Matrix3d normal_matrix = linear.inverse().transpose();
 		const bool flip = m.block<3, 3>(0, 0).determinant() < 0.;
 		for (size_t i = 0; i < mesh.NumVert(); ++i) {
 			Eigen::Vector4d v(
@@ -32,6 +34,19 @@ namespace {
 			result.vertProperties[i * result.numProp + 0] = v2(0);
 			result.vertProperties[i * result.numProp + 1] = v2(1);
 			result.vertProperties[i * result.numProp + 2] = v2(2);
+			if (mesh.numProp >= 6) {
+				Eigen::Vector3d n(
+					mesh.vertProperties[i * mesh.numProp + 3],
+					mesh.vertProperties[i * mesh.numProp + 4],
+					mesh.vertProperties[i * mesh.numProp + 5]);
+				Eigen::Vector3d n2 = normal_matrix * n;
+				if (n2.squaredNorm() > 1.e-24) {
+					n2.normalize();
+				}
+				result.vertProperties[i * result.numProp + 3] = n2(0);
+				result.vertProperties[i * result.numProp + 4] = n2(1);
+				result.vertProperties[i * result.numProp + 5] = n2(2);
+			}
 		}
 		if (flip) {
 			for (size_t i = 0; i < mesh.NumTri(); ++i) {
@@ -182,7 +197,7 @@ namespace {
 
 ifcopenshell::geometry::ManifoldShape::ManifoldShape(const manifold::Manifold& solid) {
     auto copy = solid;
-    auto with_normals = copy.CalculateNormals(3);
+    auto with_normals = copy.CalculateNormals(0);
     parts_.push_back({with_normals.GetMeshGL64(), solid});
 }
 
@@ -217,6 +232,10 @@ std::optional<manifold::Manifold> ifcopenshell::geometry::ManifoldShape::as_mani
 }
 
 void ifcopenshell::geometry::ManifoldShape::Triangulate(ifcopenshell::geometry::Settings, const ifcopenshell::geometry::taxonomy::matrix4& place, IfcGeom::Representation::Triangulation* t, int item_id, int surface_style_id) const {
+	const auto& settings = t->settings();
+	const bool emit_normals =
+		!settings.get<ifcopenshell::geometry::settings::DontEmitNormals>().get() &&
+		!settings.get<ifcopenshell::geometry::settings::WeldVertices>().get();
 	for (const auto& part : parts_) {
 		auto mesh = transform_mesh(part.mesh, place);
 		std::vector<int> indices(mesh.NumVert());
@@ -227,7 +246,7 @@ void ifcopenshell::geometry::ManifoldShape::Triangulate(ifcopenshell::geometry::
 				mesh.vertProperties[i * mesh.numProp + 0],
 				mesh.vertProperties[i * mesh.numProp + 1],
 				mesh.vertProperties[i * mesh.numProp + 2]);
-            if (mesh.numProp == 6) {
+            if (emit_normals && mesh.numProp >= 6) {
 				t->addNormal(
 					mesh.vertProperties[i * mesh.numProp + 3],
 					mesh.vertProperties[i * mesh.numProp + 4],
