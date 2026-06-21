@@ -185,7 +185,7 @@ _ALLOWED_TYPE_KINDS = {
 _ALLOWED_OWNERSHIP = {"owned", "borrowed", "static", "copy"}
 _ALLOWED_DESTRUCTORS = {"delete", "none", "shared_ptr"}
 _ALLOWED_PTR_TYPES = {"raw", "shared_ptr", "value"}
-_FUNCTION_CALL_KINDS = {"function", "adapter_function", "constructor"}
+_FUNCTION_CALL_KINDS = {"function", "constructor"}
 _METHOD_CALL_KINDS = {"method", "adapter_method"}
 _ALLOWED_IMPLEMENTATION_KINDS = {"inline_cpp"}
 _SCALAR_SEQUENCE_FAMILIES = frozenset({"bool", "string", "int32", "int64", "uint8", "uint32", "double"})
@@ -331,6 +331,13 @@ class DiscoveryConstructorSpec:
     factory: str | None
     field_initializers: tuple[DiscoveryFactoryFieldSpec, ...]
     type_overrides: dict[str, TypeSpec]
+
+
+@dataclass(frozen=True)
+class GeometrySerializerSpec:
+    name: str
+    format: str
+    output: str
 
 
 @dataclass(frozen=True)
@@ -937,7 +944,7 @@ def _parse_call(
     elif "handle" in mapping:
         kind = "constructor"
     else:
-        kind = "adapter_function" if "implementation" in mapping else "function"
+        kind = "function"
 
     allowed_kinds = _METHOD_CALL_KINDS if expect_receiver else _FUNCTION_CALL_KINDS
     if kind not in allowed_kinds:
@@ -1684,6 +1691,63 @@ def _parse_discovery(
         functions=tuple(functions),
         constructors=tuple(constructors),
     )
+
+
+def _parse_geometry_serializers(raw: Any, *, context: str) -> tuple[GeometrySerializerSpec, ...]:
+    serializers: list[GeometrySerializerSpec] = []
+    for index, item in enumerate(_expect_list(raw, context)):
+        item_context = f"{context}[{index}]"
+        mapping = _expect_mapping(item, item_context)
+        name = _expect_str(mapping.get("name"), f"{item_context}.name")
+        format_name = _expect_str(mapping.get("format", name), f"{item_context}.format")
+        output = _expect_str(mapping.get("output", "filename"), f"{item_context}.output")
+        if output not in {"filename", "buffer_pair"}:
+            msg = f"{item_context}.output must be one of ['buffer_pair', 'filename']"
+            raise ValueError(msg)
+        serializers.append(GeometrySerializerSpec(name=name, format=format_name, output=output))
+    return tuple(serializers)
+
+
+def _geometry_serializer_calls(
+    serializers: tuple[GeometrySerializerSpec, ...],
+    *,
+    c_prefix: str,
+    handles: dict[str, HandleSpec],
+    known_handles: set[str],
+) -> tuple[CallSpec, ...]:
+    del known_handles
+    calls: list[CallSpec] = []
+    for serializer in serializers:
+        params: list[ParamSpec]
+        if serializer.output == "buffer_pair":
+            params = [
+                ParamSpec(name="obj_output", type=TypeSpec(kind="handle", handle="buffer", ownership="borrowed")),
+                ParamSpec(name="mtl_output", type=TypeSpec(kind="handle", handle="buffer", ownership="borrowed")),
+            ]
+            output_args = "*obj_output_cpp, *mtl_output_cpp"
+        else:
+            params = [ParamSpec(name="output", type=TypeSpec(kind="string"))]
+            output_args = "output_cpp, std::string()"
+        params.extend([
+            ParamSpec(name="geometry_settings", type=TypeSpec(kind="handle", handle="settings", ownership="borrowed")),
+            ParamSpec(name="serializer_settings", type=TypeSpec(kind="handle", handle="serializer_settings", ownership="borrowed")),
+        ])
+        body = (
+            "return new ifcopenshell::serializers::PluginGeometrySerializer(\n"
+            f'    "{serializer.format}", {output_args}, *geometry_settings_cpp, *serializer_settings_cpp);\n'
+        )
+        expose_as = f"create_{serializer.name}_serializer"
+        calls.append(CallSpec(
+            expose_as=expose_as,
+            c_name=_make_function_c_name(c_prefix, expose_as),
+            receiver=None,
+            returns=TypeSpec(kind="handle", handle="geometry_serializer", ownership="owned"),
+            params=tuple(params),
+            policy_operation=InlineAdapterPolicyOp(
+                implementation=ImplementationSpec(kind="inline_cpp", body=body)
+            ),
+        ))
+    return tuple(calls)
 
 
 def _normalize_cpp_type(cpp_type: str) -> str:
@@ -4370,6 +4434,12 @@ def load_authored_spec(
         )
         for index, item in enumerate(_expect_list(root.get("functions", []), "functions"))
     )
+    geometry_serializer_calls = _geometry_serializer_calls(
+        _parse_geometry_serializers(root.get("geometry_serializers", []), context="geometry_serializers"),
+        c_prefix=c_prefix,
+        handles=handles,
+        known_handles=known_handles,
+    )
     authored_methods = tuple(
         _parse_call(
             item,
@@ -4422,7 +4492,9 @@ def load_authored_spec(
     accessor_methods = tuple(accessor_methods_list)
 
     # Collect authored c_names so discovery can skip collisions
-    authored_c_names = frozenset(c.c_name for c in (*authored_functions, *accessor_methods, *authored_methods))
+    authored_c_names = frozenset(
+        c.c_name for c in (*geometry_serializer_calls, *authored_functions, *accessor_methods, *authored_methods)
+    )
     discovered_methods: tuple[CallSpec, ...] = tuple()
     discovered_functions: tuple[CallSpec, ...] = tuple()
     discovered_constructors: tuple[CallSpec, ...] = tuple()
@@ -4456,7 +4528,7 @@ def load_authored_spec(
         imports=tuple(imports),
         depends_on_common=depends_on_common,
         discovery=discovery,
-        functions=discovered_constructors + discovered_functions + authored_functions,
+        functions=discovered_constructors + discovered_functions + geometry_serializer_calls + authored_functions,
         methods=discovered_methods + accessor_methods + authored_methods,
         discovery_diagnostics=discovery_diagnostics,
     )

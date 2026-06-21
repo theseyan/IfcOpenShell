@@ -34,10 +34,14 @@ function(add_document_serializer_plugin target output_name)
 endfunction()
 
 function(add_geometry_serializer_plugin target output_name)
-    cmake_parse_arguments(PLUGIN "" "" "SOURCES;LIBRARIES;DEFINITIONS" ${ARGN})
+    cmake_parse_arguments(PLUGIN "" "WASM_DEPENDS" "SOURCES;LIBRARIES;DEFINITIONS" ${ARGN})
 
     add_library(${target} SHARED ${PLUGIN_SOURCES})
     target_compile_definitions(${target} PRIVATE SERIALIZERS_EXPORTS BOOST_DLL_USE_STD_FS ${PLUGIN_DEFINITIONS})
+    if(WASM_BUILD AND WITH_OPENCASCADE AND OCC_INCLUDE_DIR)
+        # OCCT headers are needed for compilation even when not linking against the kernel.
+        target_include_directories(${target} PRIVATE "${OCC_INCLUDE_DIR}")
+    endif()
     ifcopenshell_wasm_plugin_target_link(${target}
         MAIN_TARGETS IfcGeom IfcParse
         PRIVATE ${plugin_when_not_wasm} ${PLUGIN_LIBRARIES}
@@ -66,6 +70,7 @@ function(add_geometry_serializer_plugin target output_name)
             ID "${plugin_id}"
             SYMBOL_ID "${plugin_id}"
             EXPORT_SYMBOL "ifcopenshell_emscripten_register_geometry_serializer_${plugin_id}"
+            DEPENDS ${PLUGIN_WASM_DEPENDS}
         )
     endif()
 endfunction()
@@ -76,13 +81,21 @@ endif()
 
 add_subdirectory(schema_dependent)
 
-if (NOT WASM_BUILD)
 set(ttl_geometry_serializer_libraries)
+set(ttl_geometry_serializer_wasm_depends)
+if(WITH_OPENCASCADE AND NOT WASM_BUILD)
+    set(ttl_geometry_serializer_libraries geometry_kernel_opencascade)
+endif()
 if(WITH_OPENCASCADE)
-    set(ttl_geometry_serializer_libraries geometry_kernel_opencascade ${OpenCASCADE_LIBRARIES})
+    set(ttl_geometry_serializer_wasm_depends "kernel:opencascade")
 endif()
-add_geometry_serializer_plugin(geometry_serializer_ttl "geometry.ttl" SOURCES geometry_ttl_plugin.cpp TtlWktSerializer.cpp LIBRARIES ${ttl_geometry_serializer_libraries})
-endif()
+add_geometry_serializer_plugin(
+    geometry_serializer_ttl
+    "geometry.ttl"
+    SOURCES geometry_ttl_plugin.cpp TtlWktSerializer.cpp
+    LIBRARIES ${ttl_geometry_serializer_libraries}
+    WASM_DEPENDS ${ttl_geometry_serializer_wasm_depends}
+)
 
 add_geometry_serializer_plugin(geometry_serializer_obj "geometry.obj" SOURCES geometry_obj_plugin.cpp WavefrontObjSerializer.cpp)
 
@@ -98,11 +111,40 @@ if(USD_SUPPORT)
     add_geometry_serializer_plugin(geometry_serializer_usd "geometry.usd" SOURCES geometry_usd_plugin.cpp USDSerializer.cpp LIBRARIES pxr::USD)
 endif()
 
-if(WITH_OPENCASCADE AND NOT WASM_BUILD)
-    set(opencascade_geometry_serializer_libraries geometry_kernel_opencascade ${OpenCASCADE_LIBRARIES})
-    add_geometry_serializer_plugin(geometry_serializer_stp "geometry.stp" SOURCES geometry_stp_plugin.cpp OpenCascadeBasedSerializer.cpp LIBRARIES ${opencascade_geometry_serializer_libraries})
-    add_geometry_serializer_plugin(geometry_serializer_igs "geometry.igs" SOURCES geometry_igs_plugin.cpp OpenCascadeBasedSerializer.cpp LIBRARIES ${opencascade_geometry_serializer_libraries})
-    add_geometry_serializer_plugin(geometry_serializer_svg "geometry.svg" SOURCES geometry_svg_plugin.cpp SvgSerializer.cpp util.cpp LIBRARIES ${opencascade_geometry_serializer_libraries})
+if(WITH_OPENCASCADE)
+    set(opencascade_geometry_serializer_libraries geometry_kernel_opencascade)
+    if(WASM_BUILD)
+        # For WASM builds, OCCT-backed serializer plugins compile their implementation
+        # sources (SvgSerializer, OpenCascadeBasedSerializer, etc.) but do NOT link
+        # against the kernel module. OCCT symbols are imported at runtime from the
+        # globally-loaded kernel provider side module. ERROR_ON_UNDEFINED_SYMBOLS=0
+        # allows the linker to defer resolution of OCCT symbols.
+        add_geometry_serializer_plugin(
+            geometry_serializer_stp
+            "geometry.stp"
+            SOURCES geometry_stp_plugin.cpp OpenCascadeBasedSerializer.cpp
+            LIBRARIES
+            WASM_DEPENDS "kernel:opencascade"
+        )
+        add_geometry_serializer_plugin(
+            geometry_serializer_igs
+            "geometry.igs"
+            SOURCES geometry_igs_plugin.cpp OpenCascadeBasedSerializer.cpp
+            LIBRARIES
+            WASM_DEPENDS "kernel:opencascade"
+        )
+        add_geometry_serializer_plugin(
+            geometry_serializer_svg
+            "geometry.svg"
+            SOURCES geometry_svg_plugin.cpp SvgSerializer.cpp util.cpp
+            LIBRARIES
+            WASM_DEPENDS "kernel:opencascade"
+        )
+    else()
+        add_geometry_serializer_plugin(geometry_serializer_stp "geometry.stp" SOURCES geometry_stp_plugin.cpp OpenCascadeBasedSerializer.cpp LIBRARIES ${opencascade_geometry_serializer_libraries})
+        add_geometry_serializer_plugin(geometry_serializer_igs "geometry.igs" SOURCES geometry_igs_plugin.cpp OpenCascadeBasedSerializer.cpp LIBRARIES ${opencascade_geometry_serializer_libraries})
+        add_geometry_serializer_plugin(geometry_serializer_svg "geometry.svg" SOURCES geometry_svg_plugin.cpp SvgSerializer.cpp util.cpp LIBRARIES ${opencascade_geometry_serializer_libraries})
+    endif()
 endif()
 
 install(TARGETS ${document_serializer_libraries} ${geometry_serializer_libraries})

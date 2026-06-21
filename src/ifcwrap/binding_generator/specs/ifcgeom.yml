@@ -12,17 +12,11 @@ public_headers:
   - IfcGeomRepresentation.h
   - ConversionSettings.h
   - GeometrySerializer.h
-  - WavefrontObjSerializer.h
-  - TtlWktSerializer.h
-  - SvgSerializer.h
-  - ColladaSerializer.h
-  - GltfSerializer.h
   - JsonSerializer.h
   - XmlSerializer.h
-  - IgesSerializer.h
-  - StepSerializer.h
   - RocksDbSerializer.h
   - Serializer.h
+  - geometry_serializer_plugin.h
   - taxonomy.h
   - hybrid_kernel.h
   - Converter.h
@@ -46,6 +40,20 @@ handle_list_accessors:
     count_as: ray_intersection_count
     at_as: ray_intersection_at
     out_of_range_message: Ray intersection index out of range
+
+geometry_serializers:
+  - name: obj
+    output: buffer_pair
+  - name: ttl
+  - name: svg
+  - name: gltf
+    format: glb
+  - name: iges
+    format: igs
+  - name: step
+    format: stp
+  - name: collada
+    format: dae
 
 discover:
   include_dir: ../../../ifcgeom
@@ -110,98 +118,6 @@ discover:
         - iterator
       param_renames:
         it: iterator
-    - handle: geometry_serializer
-      cpp_class: WaveFrontOBJSerializer
-      translation_unit: ../serializers/WavefrontObjSerializer.cpp
-      expose_as: create_obj_serializer
-      param_renames:
-        obj_filename: obj_output
-        mtl_filename: mtl_output
-        settings: serializer_settings
-    - handle: geometry_serializer
-      cpp_class: TtlWktSerializer
-      translation_unit: ../serializers/TtlWktSerializer.cpp
-      compile_guard: IFOPSH_WITH_OPENCASCADE
-      expose_as: create_ttl_serializer
-      params:
-        - const std::string&
-        - const ifcopenshell::geometry::Settings&
-        - const ifcopenshell::geometry::SerializerSettings&
-      param_names:
-        - output
-        - geometry_settings
-        - serializer_settings
-      param_renames:
-        filename: output
-        settings: serializer_settings
-    - handle: geometry_serializer
-      cpp_class: SvgSerializer
-      translation_unit: ../serializers/SvgSerializer.cpp
-      compile_guard: IFOPSH_WITH_OPENCASCADE
-      expose_as: create_svg_serializer
-      params:
-        - const std::string&
-        - const ifcopenshell::geometry::Settings&
-        - const ifcopenshell::geometry::SerializerSettings&
-      param_names:
-        - output
-        - geometry_settings
-        - serializer_settings
-      param_renames:
-        out_filename: output
-        settings: serializer_settings
-    - handle: geometry_serializer
-      cpp_class: GltfSerializer
-      translation_unit: ../serializers/GltfSerializer.cpp
-      expose_as: create_gltf_serializer
-      compile_guard: WITH_GLTF
-      params:
-        - const std::string&
-        - const ifcopenshell::geometry::Settings&
-        - const ifcopenshell::geometry::SerializerSettings&
-      param_names:
-        - filename
-        - geometry_settings
-        - serializer_settings
-    - handle: geometry_serializer
-      cpp_class: IgesSerializer
-      translation_unit: ../serializers/OpenCascadeBasedSerializer.cpp
-      expose_as: create_iges_serializer
-      compile_guard: IFOPSH_WITH_OPENCASCADE
-      params:
-        - const std::string&
-        - const ifcopenshell::geometry::Settings&
-        - const ifcopenshell::geometry::SerializerSettings&
-      param_names:
-        - filename
-        - geometry_settings
-        - serializer_settings
-    - handle: geometry_serializer
-      cpp_class: StepSerializer
-      translation_unit: ../serializers/OpenCascadeBasedSerializer.cpp
-      expose_as: create_step_serializer
-      compile_guard: IFOPSH_WITH_OPENCASCADE
-      params:
-        - const std::string&
-        - const ifcopenshell::geometry::Settings&
-        - const ifcopenshell::geometry::SerializerSettings&
-      param_names:
-        - filename
-        - geometry_settings
-        - serializer_settings
-    - handle: geometry_serializer
-      cpp_class: ColladaSerializer
-      translation_unit: ../serializers/ColladaSerializer.cpp
-      expose_as: create_collada_serializer
-      compile_guard: WITH_OPENCOLLADA
-      params:
-        - const std::string&
-        - const ifcopenshell::geometry::Settings&
-        - const ifcopenshell::geometry::SerializerSettings&
-      param_names:
-        - filename
-        - geometry_settings
-        - serializer_settings
     - handle: serializer
       cpp_class: JsonSerializer
       translation_unit: ../serializers/JsonSerializer.h
