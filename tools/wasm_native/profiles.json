@@ -1,0 +1,91 @@
+{
+  "minimal": {
+    "description": "Passthrough kernel only (current working state)",
+    "enabled_kernels": ["passthrough"],
+    "dependencies": ["boost", "eigen", "nlohmann_json"],
+    "cmake_flags": {
+      "WITH_OPENCASCADE": "OFF",
+      "WITH_CGAL": "OFF",
+      "WITH_MANIFOLD": "OFF"
+    },
+    "test_expectations": {
+      "schema_plugins": ["ifc2x3", "ifc4", "ifc4x3_add2"],
+      "kernel_plugins": ["passthrough"],
+      "mapping_plugins": ["ifc2x3", "ifc4", "ifc4x3_add2"],
+      "geometry_serializer_plugins": ["obj"],
+      "document_serializer_plugins": []
+    }
+  },
+  "manifold": {
+    "description": "Manifold geometry kernel",
+    "enabled_kernels": ["passthrough", "manifold"],
+    "dependencies": ["boost", "eigen", "nlohmann_json", "manifold"],
+    "cmake_flags": {
+      "WITH_OPENCASCADE": "OFF",
+      "WITH_CGAL": "OFF",
+      "WITH_MANIFOLD": "ON"
+    },
+    "test_expectations": {
+      "schema_plugins": ["ifc2x3", "ifc4", "ifc4x3_add2"],
+      "kernel_plugins": ["passthrough", "manifold"],
+      "mapping_plugins": ["ifc2x3", "ifc4", "ifc4x3_add2"],
+      "geometry_serializer_plugins": ["obj"],
+      "document_serializer_plugins": []
+    }
+  },
+  "cgal": {
+    "description": "CGAL geometry kernel with GMP/MPFR",
+    "enabled_kernels": ["passthrough", "cgal", "cgalsimple"],
+    "dependencies": ["boost", "eigen", "nlohmann_json", "gmp", "mpfr", "cgal"],
+    "cmake_flags": {
+      "WITH_OPENCASCADE": "OFF",
+      "WITH_CGAL": "ON",
+      "WITH_MANIFOLD": "OFF",
+      "CGAL_WITH_GMPXX": "Off"
+    },
+    "test_expectations": {
+      "schema_plugins": ["ifc2x3", "ifc4", "ifc4x3_add2"],
+      "kernel_plugins": ["passthrough", "cgal", "cgalsimple"],
+      "mapping_plugins": ["ifc2x3", "ifc4", "ifc4x3_add2"],
+      "geometry_serializer_plugins": ["obj"],
+      "document_serializer_plugins": []
+    }
+  },
+  "occt": {
+    "description": "OpenCASCADE geometry kernel",
+    "enabled_kernels": ["passthrough", "opencascade"],
+    "dependencies": ["boost", "eigen", "nlohmann_json", "occt"],
+    "cmake_flags": {
+      "WITH_OPENCASCADE": "ON",
+      "WITH_CGAL": "OFF",
+      "WITH_MANIFOLD": "OFF"
+    },
+    "test_expectations": {
+      "schema_plugins": ["ifc2x3", "ifc4", "ifc4x3_add2"],
+      "kernel_plugins": ["passthrough", "opencascade"],
+      "tree_plugins": ["opencascade.brep", "opencascade.trianglebvh"],
+      "mapping_plugins": ["ifc2x3", "ifc4", "ifc4x3_add2"],
+      "geometry_serializer_plugins": ["obj"],
+      "document_serializer_plugins": []
+    }
+  },
+  "full": {
+    "description": "All three geometry kernels",
+    "enabled_kernels": ["passthrough", "opencascade", "cgal", "cgalsimple", "manifold"],
+    "dependencies": ["boost", "eigen", "nlohmann_json", "occt", "gmp", "mpfr", "cgal", "manifold"],
+    "cmake_flags": {
+      "WITH_OPENCASCADE": "ON",
+      "WITH_CGAL": "ON",
+      "WITH_MANIFOLD": "ON",
+      "CGAL_WITH_GMPXX": "Off"
+    },
+    "test_expectations": {
+      "schema_plugins": ["ifc2x3", "ifc4", "ifc4x3_add2"],
+      "kernel_plugins": ["passthrough", "opencascade", "cgal", "cgalsimple", "manifold"],
+      "tree_plugins": ["opencascade.brep", "opencascade.trianglebvh"],
+      "mapping_plugins": ["ifc2x3", "ifc4", "ifc4x3_add2"],
+      "geometry_serializer_plugins": ["obj"],
+      "document_serializer_plugins": []
+    }
+  }
+}
