@@ -99,7 +99,7 @@ foreach(schema ${SCHEMA_VERSIONS})
             SYMBOL_ID "ifc${schema}"
             EXPORT_SYMBOL "ifcopenshell_emscripten_register_schema_ifc${schema}"
         )
-        ifcopenshell_wasm_plugin_link_options(${SCHEMA_PLUGIN_TARGET} ifcopenshell_register_schema_plugin_v1 SIDE_MODULE 1)
+        ifcopenshell_wasm_plugin_link_options(${SCHEMA_PLUGIN_TARGET} ifcopenshell_register_schema_plugin_v1 EXPORT_DYNAMIC)
         ifcopenshell_wasm_plugin_target_link(${SCHEMA_PLUGIN_TARGET}
             MAIN_TARGETS IfcParse
             PRIVATE ${plugin_when_not_wasm}

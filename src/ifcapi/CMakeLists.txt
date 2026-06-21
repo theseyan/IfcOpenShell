@@ -114,7 +114,7 @@ target_compile_definitions(ifcopenshell_capi
 )
 
 # Smoke test executable for the high-level layer.
-if(BUILD_TESTING)
+if(BUILD_TESTING AND NOT WASM_BUILD)
     add_executable(ifcapi_c_smoke_test
         tests/c_smoke_test.c
         tests/test_root.c

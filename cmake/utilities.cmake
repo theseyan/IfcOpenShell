@@ -151,7 +151,7 @@ function(ifcopenshell_wasm_main_module_link TARGET)
         return()
     endif()
 
-    set(wrapper "${CMAKE_SOURCE_DIR}/emscripten-main-module-link.sh")
+    set(wrapper "${CMAKE_SOURCE_DIR}/cmake/emscripten-main-module-link.sh")
     if(EXISTS "${wrapper}")
         set_property(TARGET ${TARGET} PROPERTY RULE_LAUNCH_LINK "${wrapper}")
     endif()
@@ -176,7 +176,7 @@ function(ifcopenshell_wasm_configure_plugin_target TARGET)
         return()
     endif()
 
-    cmake_parse_arguments(PLUGIN "" "KIND;ID;SYMBOL_ID;EXPORT_SYMBOL" "" ${ARGN})
+    cmake_parse_arguments(PLUGIN "" "KIND;ID;SYMBOL_ID;EXPORT_SYMBOL" "DEPENDS" ${ARGN})
     foreach(required IN ITEMS KIND ID SYMBOL_ID EXPORT_SYMBOL)
         if(NOT PLUGIN_${required})
             message(FATAL_ERROR "ifcopenshell_wasm_configure_plugin_target(${TARGET}) requires ${required}")
@@ -187,6 +187,7 @@ function(ifcopenshell_wasm_configure_plugin_target TARGET)
     set_target_properties(${TARGET} PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${plugin_runtime_dir}"
         LIBRARY_OUTPUT_DIRECTORY "${plugin_runtime_dir}"
+        IFCOPENSHELL_PLUGIN_DEPENDS "${PLUGIN_DEPENDS}"
     )
     target_compile_definitions(${TARGET} PRIVATE IFCOPENSHELL_WASM_PLUGIN_ID=${PLUGIN_SYMBOL_ID})
     target_link_options(${TARGET} PRIVATE "LINKER:--export=${PLUGIN_EXPORT_SYMBOL}")
@@ -211,7 +212,12 @@ function(ifcopenshell_wasm_plugin_manifest_entry TARGET OUT_ENTRY)
         set(output_name ${TARGET})
     endif()
 
-    set(${OUT_ENTRY} "${kind}|${plugin_id}|${output_name}" PARENT_SCOPE)
+    get_target_property(depends ${TARGET} IFCOPENSHELL_PLUGIN_DEPENDS)
+    if(NOT depends OR depends STREQUAL "depends-NOTFOUND")
+        set(depends "")
+    endif()
+    string(REPLACE ";" "," depends_csv "${depends}")
+    set(${OUT_ENTRY} "${kind}|${plugin_id}|${output_name}|${depends_csv}" PARENT_SCOPE)
 endfunction()
 
 function(ifcopenshell_wasm_plugin_link_options TARGET REGISTRATION_SYMBOL)
@@ -221,12 +227,13 @@ function(ifcopenshell_wasm_plugin_link_options TARGET REGISTRATION_SYMBOL)
         return()
     endif()
 
-    cmake_parse_arguments(PLUGIN "" "OPTIMIZATION;SIDE_MODULE" "" ${ARGN})
+    cmake_parse_arguments(PLUGIN "EXPORT_DYNAMIC" "OPTIMIZATION;SIDE_MODULE" "" ${ARGN})
     if(NOT PLUGIN_OPTIMIZATION)
-        set(PLUGIN_OPTIMIZATION -O2)
+        # WASM plugins optimize for size by default (side modules download on demand).
+        set(PLUGIN_OPTIMIZATION -Oz)
     endif()
     if(NOT PLUGIN_SIDE_MODULE)
-        set(PLUGIN_SIDE_MODULE 1)
+        set(PLUGIN_SIDE_MODULE 2)
     endif()
 
     set(plugin_symbols
@@ -235,8 +242,16 @@ function(ifcopenshell_wasm_plugin_link_options TARGET REGISTRATION_SYMBOL)
         ${REGISTRATION_SYMBOL}
     )
 
-    target_link_options(${TARGET} PRIVATE "SHELL:-s SIDE_MODULE=${PLUGIN_SIDE_MODULE}" "SHELL:-s ALLOW_TABLE_GROWTH=1" ${PLUGIN_OPTIMIZATION})
-    target_link_options(${TARGET} PRIVATE "SHELL:-fexceptions")
+    target_compile_options(${TARGET} PRIVATE -fwasm-exceptions)
+    target_link_options(${TARGET} PRIVATE "SHELL:-fwasm-exceptions" "SHELL:-s SIDE_MODULE=${PLUGIN_SIDE_MODULE}" "SHELL:-s ALLOW_TABLE_GROWTH=1" "SHELL:-s ERROR_ON_UNDEFINED_SYMBOLS=0" "SHELL:-sSUPPORT_LONGJMP=wasm" ${PLUGIN_OPTIMIZATION})
+    if(PLUGIN_EXPORT_DYNAMIC)
+        # Export all symbols defined in this module so dependent side modules
+        # (tree/serializer plugins) can resolve them at runtime via
+        # allowUndefinedSymbols. Without this, wasm-ld dead-code-eliminates
+        # symbols that are only referenced by external side modules, not from
+        # within the module itself (e.g. OpenCascadeShape::shape()).
+        target_link_options(${TARGET} PRIVATE "LINKER:--export-dynamic")
+    endif()
     foreach(symbol IN LISTS plugin_symbols)
         target_link_options(${TARGET} PRIVATE "LINKER:--export=${symbol}")
     endforeach()

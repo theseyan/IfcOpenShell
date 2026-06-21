@@ -250,6 +250,10 @@ if(BUILD_IFCGEOM AND WITH_OPENCASCADE)
     find_package(OpenCASCADE REQUIRED)
     # Map OpenCASCADE_LIBRARIES variable from OpenCASCADEConfig.cmake to OpenCASCADE_LIBRARIES used by kernel generic cmake file
     set(OpenCASCADE_LIBRARIES ${OpenCASCADE_LIBRARIES})
+    # Set legacy OCC_INCLUDE_DIR from OpenCASCADE config variable
+    if(NOT OCC_INCLUDE_DIR AND OpenCASCADE_INCLUDE_DIR)
+        set(OCC_INCLUDE_DIR "${OpenCASCADE_INCLUDE_DIR}")
+    endif()
     set(SWIG_DEFINES ${SWIG_DEFINES} -DIFOPSH_WITH_OPENCASCADE)
     list(APPEND GEOMETRY_KERNELS opencascade)
 endif()

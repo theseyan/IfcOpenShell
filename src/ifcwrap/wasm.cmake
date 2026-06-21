@@ -11,6 +11,7 @@ set(IFCOPENSHELL_WASM_API_MJS "${IFCOPENSHELL_WASM_OUTPUT_DIR}/ifcopenshell_api.
 set(IFCOPENSHELL_WASM_EXPORTS "${IFCOPENSHELL_WASM_OUTPUT_DIR}/ifcopenshell_exports.txt")
 set(IFCOPENSHELL_WASM_D_TS "${IFCOPENSHELL_WASM_OUTPUT_DIR}/ifcopenshell_api.d.ts")
 set(IFCOPENSHELL_WASM_PLUGINS_JSON "${IFCOPENSHELL_WASM_OUTPUT_DIR}/ifcopenshell_plugins.json")
+set(IFCOPENSHELL_WASM_MATH_IMPORTS_JS "${CMAKE_CURRENT_SOURCE_DIR}/wasm_math_imports.js")
 
 add_custom_command(
     OUTPUT
@@ -55,7 +56,10 @@ add_custom_target(
 set(IFCOPENSHELL_WASM_ENTRYPOINT "${CMAKE_CURRENT_BINARY_DIR}/ifcopenshell_wasm_entrypoint.cpp")
 file(WRITE "${IFCOPENSHELL_WASM_ENTRYPOINT}"
     "// WASM main module entrypoint. Schema and geometry plugins load lazily at runtime.\n"
+    "#include <setjmp.h>\n"
+    "#include <emscripten.h>\n"
     "extern \"C\" void ifcopenshell_wasm_entrypoint(void) {}\n"
+    "extern \"C\" EMSCRIPTEN_KEEPALIVE void ifcopenshell_wasm_keep_setjmp(void) { jmp_buf env; if (setjmp(env)) {} }\n"
 )
 
 add_executable(ifcopenshell_wasm "${IFCOPENSHELL_WASM_ENTRYPOINT}")
@@ -99,9 +103,6 @@ foreach(plugin_target IN LISTS schema_libraries kernel_libraries tree_libraries 
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "$<TARGET_FILE:${plugin_target}>"
                 "${IFCOPENSHELL_WASM_PLUGINS_DIR}/${output_name}.wasm"
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "$<TARGET_FILE:${plugin_target}>"
-                "${IFCOPENSHELL_WASM_PLUGINS_DIR}/${output_name}.so"
         )
     endif()
 endforeach()
@@ -121,15 +122,21 @@ add_custom_target(ifcopenshell_wasm_plugins_bundle
 )
 add_dependencies(ifcopenshell_wasm ifcopenshell_wasm_plugins_bundle)
 
+target_compile_options(ifcopenshell_wasm PRIVATE -fwasm-exceptions)
+set_property(TARGET ifcopenshell_wasm APPEND PROPERTY LINK_DEPENDS "${IFCOPENSHELL_WASM_MATH_IMPORTS_JS}")
+
 target_link_options(
     ifcopenshell_wasm
     PRIVATE
         "SHELL:--no-entry"
+        "SHELL:-fwasm-exceptions"
         "SHELL:-s WASM=1"
         "SHELL:-s MAIN_MODULE=1"
         "SHELL:-s MODULARIZE=1"
         "SHELL:-s EXPORT_ES6=1"
         "SHELL:-s EXPORT_NAME=initIfcOpenShellWasmModule"
+        "SHELL:-s ENVIRONMENT=web,node"
+        "SHELL:--js-library=${IFCOPENSHELL_WASM_MATH_IMPORTS_JS}"
         "SHELL:-s EXPORTED_FUNCTIONS=@${IFCOPENSHELL_WASM_EXPORTS}"
         "SHELL:-s EXPORTED_RUNTIME_METHODS=[\"stringToUTF8\",\"UTF8ToString\",\"lengthBytesUTF8\",\"getValue\",\"setValue\",\"HEAP32\",\"HEAPU32\",\"ccall\",\"cwrap\",\"loadDynamicLibrary\"]"
         "SHELL:-s ALLOW_MEMORY_GROWTH=1"
@@ -138,9 +145,11 @@ target_link_options(
         "SHELL:-s AUTOLOAD_DYLIBS=0"
         "SHELL:-s ERROR_ON_UNDEFINED_SYMBOLS=0"
         "SHELL:-s WASM_BIGINT=1"
-        "SHELL:-s EXPORT_ALL=1"
-        "SHELL:-fexceptions"
-        -O2
+        "SHELL:-Wl,--export=__c_longjmp"
+        "SHELL:-Wl,--export=__wasm_longjmp"
+        "SHELL:-Wl,--export=__wasm_setjmp"
+        "SHELL:-sSUPPORT_LONGJMP=wasm"
+        -Oz
 )
 set_target_properties(ifcopenshell_wasm PROPERTIES
     OUTPUT_NAME "ifcopenshell_wasm"

@@ -17,11 +17,7 @@ foreach(kernel ${GEOMETRY_KERNELS})
     set(KERNEL_TARGET "geometry_kernel_${kernel}")
     add_library(${KERNEL_TARGET} SHARED ${IFCGEOM_FILES})
 
-    if(${kernel} STREQUAL "opencascade")
-        ifcopenshell_wasm_plugin_link_options(${KERNEL_TARGET} ifcopenshell_register_kernel_plugin_v1 OPTIMIZATION -O0)
-    else()
-        ifcopenshell_wasm_plugin_link_options(${KERNEL_TARGET} ifcopenshell_register_kernel_plugin_v1)
-    endif()
+    ifcopenshell_wasm_plugin_link_options(${KERNEL_TARGET} ifcopenshell_register_kernel_plugin_v1 EXPORT_DYNAMIC)
 
     set_target_properties(${KERNEL_TARGET} PROPERTIES
         COMPILE_FLAGS "-DIFC_GEOMLIBRARY_EXPORTS"
@@ -50,7 +46,7 @@ foreach(kernel ${GEOMETRY_KERNELS})
         set(KERNEL_TARGET_SIMPLE "${KERNEL_TARGET}_simple")
         add_library(${KERNEL_TARGET_SIMPLE} SHARED ${IFCGEOM_FILES})
 
-        ifcopenshell_wasm_plugin_link_options(${KERNEL_TARGET_SIMPLE} ifcopenshell_register_kernel_plugin_v1)
+        ifcopenshell_wasm_plugin_link_options(${KERNEL_TARGET_SIMPLE} ifcopenshell_register_kernel_plugin_v1 EXPORT_DYNAMIC)
 
         set_target_properties(${KERNEL_TARGET_SIMPLE} PROPERTIES
             COMPILE_FLAGS "-DIFC_GEOMLIBRARY_EXPORTS -DIFOPSH_SIMPLE_KERNEL -DCGAL_HAS_THREADS"
@@ -73,10 +69,15 @@ foreach(kernel ${GEOMETRY_KERNELS})
         install(TARGETS ${KERNEL_TARGET_SIMPLE})
     elseif(${kernel} STREQUAL "opencascade")
         if (WASM_BUILD)
-            # exclude due to duplicate symbols tripping up wasm-ld
+            # TKMesh and TKXMesh both export the same DISCRETALGO meshing plugin entry point.
+            # Keep TKMesh and drop TKXMesh so wasm-ld sees a single OCCT discretizer.
             set(OCCT_LIBS_FILTERED ${OpenCASCADE_LIBRARIES})
-            list(FILTER OCCT_LIBS_FILTERED EXCLUDE REGEX "(^|;)TKXMesh($|;)")
-            target_link_libraries(${KERNEL_TARGET} PRIVATE ${OCCT_LIBS_FILTERED})
+            list(FILTER OCCT_LIBS_FILTERED EXCLUDE REGEX "TKXMesh")
+            target_link_libraries(${KERNEL_TARGET} PRIVATE
+                "-Wl,--start-group"
+                ${OCCT_LIBS_FILTERED}
+                "-Wl,--end-group"
+            )
         else()
             target_link_libraries(${KERNEL_TARGET} PRIVATE ${OpenCASCADE_LIBRARIES})
         endif()
@@ -98,15 +99,22 @@ foreach(kernel ${GEOMETRY_KERNELS})
                     ID "opencascade.${tree_backend}"
                     SYMBOL_ID "opencascade_${tree_backend}"
                     EXPORT_SYMBOL "ifcopenshell_emscripten_register_tree_opencascade_${tree_backend}"
+                    DEPENDS "kernel:opencascade"
                 )
             endif()
             list(APPEND tree_libraries ${TREE_TARGET})
             if(WASM_BUILD)
-                set(OCCT_LIBS_FILTERED ${OpenCASCADE_LIBRARIES})
-                list(FILTER OCCT_LIBS_FILTERED EXCLUDE REGEX "(^|;)TKXMesh($|;)")
+                # Tree plugins compile against OCCT headers but do NOT link OCCT
+                # libraries. OCCT symbols resolve at runtime from the kernel
+                # provider (which uses --export-dynamic to make all its symbols
+                # available). This matches the serializer plugin pattern and
+                # avoids duplicating OCCT code across side modules.
+                if(WITH_OPENCASCADE AND OCC_INCLUDE_DIR)
+                    target_include_directories(${TREE_TARGET} PRIVATE "${OCC_INCLUDE_DIR}")
+                endif()
                 ifcopenshell_wasm_plugin_target_link(${TREE_TARGET}
                     MAIN_TARGETS IfcParse IfcGeom
-                    PRIVATE ${plugin_when_not_wasm} ${OCCT_LIBS_FILTERED} Eigen3::Eigen
+                    PRIVATE ${plugin_when_not_wasm} Eigen3::Eigen
                 )
                 add_dependencies(${TREE_TARGET} geometry_kernel_opencascade)
             else()
