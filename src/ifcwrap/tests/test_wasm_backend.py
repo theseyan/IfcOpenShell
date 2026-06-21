@@ -5,6 +5,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
+
 # Ensure the repo root is on sys.path so `from src.ifcwrap...` works
 # regardless of the working directory.
 _REPO_ROOT = str(Path(__file__).resolve().parents[3])
@@ -229,6 +231,16 @@ class TestWasmJsGlue:
         assert "_allocInputSequence(module, values" in code
         assert "_freeInputSequence(module, _valuesPtr" in code
 
+    def test_generates_dependency_aware_plugin_loader(self):
+        metadata = _make_metadata()
+        code = render_js_glue(metadata)
+        assert "const loadingPlugins = new Map();" in code
+        assert "function pluginDependencies(kind, id)" in code
+        assert "for (const dependency of pluginDependencies(kind, id))" in code
+        assert "await loadPlugin(dependency.slice(0, separator), dependency.slice(separator + 1));" in code
+        assert "await module.loadDynamicLibrary(url, { loadAsync: true, global: true, allowUndefined: true });" in code
+        assert "invoke_ifcopenshell_ifcgeom_plugin_registry_address" not in code
+
 
 class TestWasmBackend:
     def test_generate_writes_javascript_and_declaration_artifacts(self, tmp_path: Path):
@@ -305,3 +317,55 @@ class TestWasmBackend:
         assert "_ifcopenshell_demo_open" in export_list
         assert "_ifcopenshell_demo_file_destroy" in export_list
         assert "_ifcopenshell_string_destroy" in export_list
+
+    def test_generate_raises_when_api_header_is_missing_required_symbols(self, tmp_path: Path):
+        output_dir = tmp_path / "wasm-target"
+        header_path = tmp_path / "ifcopenshell_api.h"
+        header_path.write_text(
+            "bool ifcopenshell_demo_clear_error(void);\n"
+            "void ifcopenshell_demo_file_destroy(ifcopenshell_demo_file_t* handle);\n",
+            encoding="utf-8",
+        )
+        metadata = _make_metadata(
+            handles={"file": _make_handle("ifcopenshell_demo_file_t")},
+            functions={"ifcopenshell_demo_open": _make_function(c_name="ifcopenshell_demo_open")},
+        )
+
+        with pytest.raises(ValueError, match="ifcopenshell_demo_open"):
+            WasmTargetBackend().generate(
+                TargetGenerationRequest(
+                    ir=_make_ir(module=metadata.module, c_prefix=metadata.c_prefix),
+                    metadata=metadata,
+                    api_header_path=header_path,
+                    options={},
+                    output_dir=output_dir,
+                )
+            )
+
+    def test_generate_accepts_non_bool_non_void_api_declarations(self, tmp_path: Path):
+        output_dir = tmp_path / "wasm-target"
+        header_path = tmp_path / "ifcopenshell_api.h"
+        header_path.write_text(
+            "void ifcopenshell_demo_clear_error(void);\n"
+            "const char* ifcopenshell_demo_last_error_message(void);\n"
+            "int ifcopenshell_demo_last_error_kind(void);\n"
+            "void ifcopenshell_demo_file_destroy(ifcopenshell_demo_file_t* handle);\n"
+            "bool ifcopenshell_demo_open(void);\n",
+            encoding="utf-8",
+        )
+        metadata = _make_metadata(
+            handles={"file": _make_handle("ifcopenshell_demo_file_t")},
+            functions={"ifcopenshell_demo_open": _make_function(c_name="ifcopenshell_demo_open")},
+        )
+
+        artifacts = WasmTargetBackend().generate(
+            TargetGenerationRequest(
+                ir=_make_ir(module=metadata.module, c_prefix=metadata.c_prefix),
+                metadata=metadata,
+                api_header_path=header_path,
+                options={},
+                output_dir=output_dir,
+            )
+        )
+
+        assert {artifact.kind for artifact in artifacts.artifacts} == {"javascript", "typescript", "exports"}
