@@ -128,6 +128,12 @@ from pathlib import Path
 from typing import Literal, Union
 from urllib.request import urlretrieve
 
+# Shared WASM build utilities (nix.core, nix.deps). We add the repo root to
+# sys.path so the `nix` package resolves whether this file is invoked as
+# `python build-all.py` (cwd=nix) or `python nix/build-all.py` (cwd=repo root).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from nix import core, deps  # noqa: E402
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 ch = logging.StreamHandler()
@@ -138,25 +144,29 @@ USE_CURRENT_PYTHON_VERSION = os.getenv("USE_CURRENT_PYTHON_VERSION")
 ADD_COMMIT_SHA = os.getenv("ADD_COMMIT_SHA")
 BUILD_IFCVIEWER = os.getenv("BUILD_IFCVIEWER", "").lower() in {"1", "on", "true", "yes"}
 
+# All dependency versions are sourced from nix/sources.lock.json so that the
+# WASM build path and the native build path agree on pinned versions. Deps not
+# present in the lockfile (OCE, USD, TBB, QT6) retain their inline constants.
+_LOCK = core.load_lockfile()
 PYTHON_VERSIONS = ["3.10.3", "3.11.8", "3.12.1", "3.13.6", "3.14.0"]
-JSON_VERSION = "3.11.3"
+JSON_VERSION = _LOCK["nlohmann_json"]["version"]
 OCE_VERSION = "0.18.3"
-OCCT_VERSION = "7.8.1"
-BOOST_VERSION = "1.86.0"
-EIGEN_VERSION = "3.4.0"
-PCRE_VERSION = "8.41"
-LIBXML2_VERSION = "2.13.8"
-SWIG_VERSION = "4.2.1"
-OPENCOLLADA_VERSION = "v1.6.68"
+OCCT_VERSION = _LOCK["occt"]["version"]
+BOOST_VERSION = _LOCK["boost"]["version"]
+EIGEN_VERSION = _LOCK["eigen"]["version"]
+PCRE_VERSION = _LOCK["pcre"]["version"]
+LIBXML2_VERSION = _LOCK["libxml2"]["version"]
+SWIG_VERSION = _LOCK["swig"]["version"]
+OPENCOLLADA_VERSION = _LOCK["opencollada"]["version"]
 
-GMP_VERSION = "6.3.0"
-MPFR_VERSION = "3.1.6"  # latest is 4.1.0
-CGAL_VERSION = "v5.6.3"
+GMP_VERSION = _LOCK["gmp"]["version"]
+MPFR_VERSION = _LOCK["mpfr"]["version"]  # latest is 4.1.0
+CGAL_VERSION = "v" + _LOCK["cgal"]["version"]
 USD_VERSION = "23.05"
 TBB_VERSION = "2021.9.0"
-ROCKSDB_VERSION = "9.11.2"
-ZSTD_VERSION = "1.5.7"
-MANIFOLD_VERSION = "3.2.1"
+ROCKSDB_VERSION = _LOCK["rocksdb"]["version"]
+ZSTD_VERSION = _LOCK["zstd"]["version"]
+MANIFOLD_VERSION = _LOCK["manifold"]["version"]
 QT6_VERSION = os.getenv("QT6_VERSION", "6.8.3")
 
 # binaries
@@ -886,31 +896,71 @@ os.environ["LDFLAGS"] = LDFLAGS
 # @tfk: this is no longer needed
 # build_dependency(name="cmake-%s" % (CMAKE_VERSION,), mode="autoconf", build_tool_args=[], download_url="https://cmake.org/files/v%s" % (CMAKE_VERSION_2,), download_name="cmake-%s.tar.gz" % (CMAKE_VERSION,))
 
+
+# --- WASM dependency builds (shared with nix/wasm_native.py) -----------------
+# When building for WASM we delegate the per-dependency configure/build/install
+# to `nix.deps` recipes, which themselves read versions and patches from
+# `nix/sources.lock.json`. Non-WASM builds continue using the inline
+# `build_dependency()` invocation below, so native cross-platform behaviour is
+# unchanged — only the version numbers now come from the lockfile.
+
+if WASM:
+    _WASM_DOWNLOADS_DIR = Path(DEPS_DIR) / "wasm-downloads"
+    _WASM_SRC_DIR = Path(DEPS_DIR) / "wasm-src"
+    _WASM_DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    _WASM_SRC_DIR.mkdir(parents=True, exist_ok=True)
+    # Intermediate build dirs land inside DEPS_DIR/wasm-build
+    deps.set_build_root(Path(DEPS_DIR) / "wasm-build")
+    # In WASM mode `emcc`/`emcmake`/`emconfigure` are already on PATH (either
+    # from pyodide or from a sourced emsdk_env.sh), so we can pass os.environ.
+    _WASM_DEP_ENV = dict(os.environ)
+
+
+def _wasm_dep_build(dep_name: str, build_fn, prefix_name: str) -> None:
+    """Fetch + extract + build a single WASM dep via the shared recipe.
+
+    `build_fn` is called as `build_fn(src, prefix, env)`. The install prefix
+    is `DEPS_DIR/install/<prefix_name>` to match non-WASM `build_dependency()`
+    output paths.
+    """
+    core.fetch_sources(_LOCK, [dep_name], _WASM_DOWNLOADS_DIR)
+    src = core.extract_source(dep_name, _LOCK, _WASM_SRC_DIR, _WASM_DOWNLOADS_DIR)
+    prefix = Path(DEPS_DIR) / "install" / prefix_name
+    build_fn(src, prefix, _WASM_DEP_ENV)
+
+
 if "json" in targets:
-    dependency_name = f"json-{JSON_VERSION}"
-    build_dependency(
-        name=dependency_name,
-        mode="cmake",
-        build_tool_args=[
-            f"-DCMAKE_INSTALL_PREFIX={DEPS_DIR}/install/{dependency_name}",
-            "-DJSON_BuildTests=OFF",
-        ],
-        download_url=f"https://github.com/nlohmann/json/releases/download/v{JSON_VERSION}",
-        download_name="json.tar.xz",
-    )
+    if WASM:
+        # Lockfile dep name is `nlohmann_json` (not `json`).
+        _wasm_dep_build("nlohmann_json", deps.build_json, prefix_name=f"json-{JSON_VERSION}")
+    else:
+        dependency_name = f"json-{JSON_VERSION}"
+        build_dependency(
+            name=dependency_name,
+            mode="cmake",
+            build_tool_args=[
+                f"-DCMAKE_INSTALL_PREFIX={DEPS_DIR}/install/{dependency_name}",
+                "-DJSON_BuildTests=OFF",
+            ],
+            download_url=f"https://github.com/nlohmann/json/releases/download/v{JSON_VERSION}",
+            download_name="json.tar.xz",
+        )
 
 if "eigen" in targets:
-    dependency_name = f"eigen-install-{EIGEN_VERSION}"
-    build_dependency(
-        name=f"{dependency_name}",
-        mode="cmake",
-        # We add '-install-' in the middle, so it won't be confused with git repo we used previously.
-        build_tool_args=[
-            f"-DCMAKE_INSTALL_PREFIX={DEPS_DIR}/install/{dependency_name}",
-        ],
-        download_url=f"https://gitlab.com/libeigen/eigen/-/archive/{EIGEN_VERSION}/",
-        download_name=f"eigen-{EIGEN_VERSION}.tar.gz",
-    )
+    if WASM:
+        _wasm_dep_build("eigen", deps.build_eigen, prefix_name=f"eigen-install-{EIGEN_VERSION}")
+    else:
+        dependency_name = f"eigen-install-{EIGEN_VERSION}"
+        build_dependency(
+            name=f"{dependency_name}",
+            mode="cmake",
+            # We add '-install-' in the middle, so it won't be confused with git repo we used previously.
+            build_tool_args=[
+                f"-DCMAKE_INSTALL_PREFIX={DEPS_DIR}/install/{dependency_name}",
+            ],
+            download_url=f"https://gitlab.com/libeigen/eigen/-/archive/{EIGEN_VERSION}/",
+            download_name=f"eigen-{EIGEN_VERSION}.tar.gz",
+        )
 
 if "pcre" in targets:
     OLD_CC, OLD_CXX = None, None
@@ -947,46 +997,53 @@ if "swig" in targets:
     )
 
 if USE_OCCT and "occ" in targets:
-    occt_args: "list[str]" = []
-    patches: "list[str]" = []
-    if OCCT_VERSION < "7.4":
-        patches.append("./patches/occt/enable-exception-handling.patch")
+    if WASM:
+        # OCCT WASM build is handled by the shared `nix.deps.build_occt` recipe
+        # which reads the OCCT version, patches (including `occt/no_em_js.patch`)
+        # and `-fwasm-exceptions` flags from `nix/sources.lock.json`. The
+        # non-WASM branches below continue to use `build_dependency()`.
+        _wasm_dep_build("occt", deps.build_occt, prefix_name=f"occt-{OCCT_VERSION}")
+    else:
+        occt_args: "list[str]" = []
+        patches: "list[str]" = []
+        if OCCT_VERSION < "7.4":
+            patches.append("./patches/occt/enable-exception-handling.patch")
 
-    # Skip ExpToCasExe as we don't need it and it requires additional dependencies.
-    # Before 7.7.2 ExpToCasExe is part of DataExchange, DETools doesn't exist yet.
-    # Since we do need DataExchange (used for IgesSerializer), we use a patch to skip only ExpToCasExe.
-    if "7.7.2" > OCCT_VERSION >= "7.7":
-        patches.append("./patches/occt/no_ExpToCasExe.patch")
-    elif OCCT_VERSION >= "7.7.2":
-        occt_args.append("-DBUILD_MODULE_DETools=OFF")
+        # Skip ExpToCasExe as we don't need it and it requires additional dependencies.
+        # Before 7.7.2 ExpToCasExe is part of DataExchange, DETools doesn't exist yet.
+        # Since we do need DataExchange (used for IgesSerializer), we use a patch to skip only ExpToCasExe.
+        if "7.7.2" > OCCT_VERSION >= "7.7":
+            patches.append("./patches/occt/no_ExpToCasExe.patch")
+        elif OCCT_VERSION >= "7.7.2":
+            occt_args.append("-DBUILD_MODULE_DETools=OFF")
 
-    if "wasm" in flags:
-        patches.append("./patches/occt/no_em_js.patch")
+        if "wasm" in flags:
+            patches.append("./patches/occt/no_em_js.patch")
 
-    build_dependency(
-        name=f"occt-{OCCT_VERSION}",
-        mode="cmake",
-        build_tool_args=[
-            f"-DINSTALL_DIR={DEPS_DIR}/install/occt-{OCCT_VERSION}",
-            f"-DBUILD_LIBRARY_TYPE={LINK_TYPE_UCFIRST}",
-            f"-DBUILD_MODULE_Draw=0",
-            f"-DBUILD_RELEASE_DISABLE_EXCEPTIONS=Off",
-            # Disable xlib explicitly, as it tries to use it on Desktop Ubuntu, adding unnecessary dependency.
-            f"-DUSE_XLIB=OFF",
-            # Avoid building 3D Viewer.
-            f"-DUSE_FREETYPE=OFF",
-            f"-DUSE_OPENGL=OFF",
-            f"-DUSE_GLES2=OFF",
-            f"-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
-            *MAC_CROSS_COMPILE_INTEL_ARGS,
-            *occt_args,
-        ],
-        download_url="https://github.com/Open-Cascade-SAS/OCCT",
-        download_name="occt",
-        download_tool=download_tool_git,
-        patch=patches,
-        revision="V" + OCCT_VERSION.replace(".", "_"),
-    )
+        build_dependency(
+            name=f"occt-{OCCT_VERSION}",
+            mode="cmake",
+            build_tool_args=[
+                f"-DINSTALL_DIR={DEPS_DIR}/install/occt-{OCCT_VERSION}",
+                f"-DBUILD_LIBRARY_TYPE={LINK_TYPE_UCFIRST}",
+                f"-DBUILD_MODULE_Draw=0",
+                f"-DBUILD_RELEASE_DISABLE_EXCEPTIONS=Off",
+                # Disable xlib explicitly, as it tries to use it on Desktop Ubuntu, adding unnecessary dependency.
+                f"-DUSE_XLIB=OFF",
+                # Avoid building 3D Viewer.
+                f"-DUSE_FREETYPE=OFF",
+                f"-DUSE_OPENGL=OFF",
+                f"-DUSE_GLES2=OFF",
+                f"-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+                *MAC_CROSS_COMPILE_INTEL_ARGS,
+                *occt_args,
+            ],
+            download_url="https://github.com/Open-Cascade-SAS/OCCT",
+            download_name="occt",
+            download_tool=download_tool_git,
+            patch=patches,
+            revision="V" + OCCT_VERSION.replace(".", "_"),
+        )
 elif "occ" in targets:
     build_dependency(
         name=f"oce-{OCE_VERSION}",
@@ -1005,59 +1062,67 @@ elif "occ" in targets:
     )
 
 if "manifold" in targets:
-    dependency_name = f"manifold-{MANIFOLD_VERSION}"
-    patches = []
     if WASM:
-        patches.append("./patches/manifold/install-metadata-for-emscripten.patch")
-    build_dependency(
-        name=dependency_name,
-        mode="cmake",
-        build_tool_args=[
-            f"-DCMAKE_INSTALL_PREFIX={DEPS_DIR}/install/{dependency_name}",
-            "-DMANIFOLD_PAR=OFF",
-            "-DMANIFOLD_CROSS_SECTION=OFF",
-            "-DMANIFOLD_PYBIND=OFF",
-            "-DMANIFOLD_JSBIND=OFF",
-            "-DMANIFOLD_CBIND=OFF",
-            "-DMANIFOLD_TEST=OFF",
-            "-DMANIFOLD_EXPORT=OFF",
-            "-DMANIFOLD_DOWNLOADS=OFF",
-            *MAC_CROSS_COMPILE_INTEL_ARGS,
-        ],
-        download_url="https://github.com/elalish/manifold.git",
-        download_name="manifold",
-        download_tool=download_tool_git,
-        revision=f"v{MANIFOLD_VERSION}",
-        patch=patches,
-    )
+        _wasm_dep_build("manifold", deps.build_manifold, prefix_name=f"manifold-{MANIFOLD_VERSION}")
+    else:
+        dependency_name = f"manifold-{MANIFOLD_VERSION}"
+        patches = []
+        build_dependency(
+            name=dependency_name,
+            mode="cmake",
+            build_tool_args=[
+                f"-DCMAKE_INSTALL_PREFIX={DEPS_DIR}/install/{dependency_name}",
+                "-DMANIFOLD_PAR=OFF",
+                "-DMANIFOLD_CROSS_SECTION=OFF",
+                "-DMANIFOLD_PYBIND=OFF",
+                "-DMANIFOLD_JSBIND=OFF",
+                "-DMANIFOLD_CBIND=OFF",
+                "-DMANIFOLD_TEST=OFF",
+                "-DMANIFOLD_EXPORT=OFF",
+                "-DMANIFOLD_DOWNLOADS=OFF",
+                *MAC_CROSS_COMPILE_INTEL_ARGS,
+            ],
+            download_url="https://github.com/elalish/manifold.git",
+            download_name="manifold",
+            download_tool=download_tool_git,
+            revision=f"v{MANIFOLD_VERSION}",
+            patch=patches,
+        )
 
 if "libxml2" in targets:
-    OLD_CC = ""
-    if MAC_CROSS_COMPILE_INTEL:
-        OLD_CC = os.environ.get("CC")
-        os.environ["CC"] = MAC_CROSS_COMPILE_INTEL_CC
-    build_tool_args = [
-        "--without-python",
-        ENABLE_FLAG,
-        DISABLE_FLAG,
-        "--without-zlib",
-        "--without-iconv",
-        "--without-lzma",
-    ]
-    if "wasm" in flags:
-        build_tool_args.append("--without-threads")
-    build_dependency(
-        f"libxml2-{LIBXML2_VERSION}",
-        "autoconf",
-        build_tool_args=build_tool_args,
-        download_url=f"https://download.gnome.org/sources/libxml2/{'.'.join(LIBXML2_VERSION.split('.')[0:2])}/",
-        download_name=f"libxml2-{LIBXML2_VERSION}.tar.xz",
-    )
-    if MAC_CROSS_COMPILE_INTEL:
-        if OLD_CC is None:
-            del os.environ["CC"]
-        else:
-            os.environ["CC"] = OLD_CC
+    if WASM:
+        _wasm_dep_build(
+            "libxml2",
+            lambda src, prefix, env: deps.build_libxml2(src, prefix, env, without_threads=True),
+            prefix_name=f"libxml2-{LIBXML2_VERSION}",
+        )
+    else:
+        OLD_CC = ""
+        if MAC_CROSS_COMPILE_INTEL:
+            OLD_CC = os.environ.get("CC")
+            os.environ["CC"] = MAC_CROSS_COMPILE_INTEL_CC
+        build_tool_args = [
+            "--without-python",
+            ENABLE_FLAG,
+            DISABLE_FLAG,
+            "--without-zlib",
+            "--without-iconv",
+            "--without-lzma",
+        ]
+        if "wasm" in flags:
+            build_tool_args.append("--without-threads")
+        build_dependency(
+            f"libxml2-{LIBXML2_VERSION}",
+            "autoconf",
+            build_tool_args=build_tool_args,
+            download_url=f"https://download.gnome.org/sources/libxml2/{'.'.join(LIBXML2_VERSION.split('.')[0:2])}/",
+            download_name=f"libxml2-{LIBXML2_VERSION}.tar.xz",
+        )
+        if MAC_CROSS_COMPILE_INTEL:
+            if OLD_CC is None:
+                del os.environ["CC"]
+            else:
+                os.environ["CC"] = OLD_CC
 
 if "OpenCOLLADA" in targets:
     patches = ["./patches/opencollada/pr622_and_disable_subdirs.patch"]
@@ -1153,110 +1218,137 @@ if "python" in targets and not USE_CURRENT_PYTHON_VERSION and "wasm" not in flag
     os.environ["CFLAGS"] = OLD_C_FLAGS
 
 if "boost" in targets:
-    str_concat = lambda prefix: lambda postfix: "" if postfix.strip() == "" else "=".join((prefix, postfix.strip()))
-    toolset = []
-    if "wasm" in flags:
-        toolset.append("toolset=emscripten")
-    build_dependency(
-        f"boost-{BOOST_VERSION}",
-        mode="bjam",
-        build_tool_args=[
-            f"--stagedir={DEPS_DIR}/install/boost-{BOOST_VERSION}",
-            "--with-system",
-            "--with-program_options",
-            "--with-regex",
-            "--with-thread",
-            "--with-date_time",
-            "--with-iostreams",
-            "--with-filesystem",
-            f"link={LINK_TYPE}",
-            *toolset,
-            *map(str_concat("cxxflags"), CXXFLAGS.strip().split(" ")),
-            *map(str_concat("linkflags"), LDFLAGS.strip().split(" ")),
-            "stage",
-            "-s",
-            "NO_BZIP2=1",
-            *MAC_CROSS_COMPILE_INTEL_BJAM_ARGS,
-        ],
-        download_url=BOOST_LOCATION,
-        # don't remember what this is, but fail on 1.86
-        # patch="./patches/boost/boostorg_regex_62.patch",
-        download_name=f"boost-{BOOST_VERSION}-b2-nodocs.tar.gz",
-    )
-    if "wasm" in flags:
-        # only supported on nix for now
-        run(
-            ("find", ".", "-name", "*.bc", "-exec", "bash", "-c", "emar q ${1%.bc}.a $1", "bash", "{}", ";"),
-            cwd=f"{DEPS_DIR}/install/boost-{BOOST_VERSION}/lib",
+    if WASM:
+        # `nix.deps.build_boost` builds static emscripten libs and converts
+        # `.bc` -> `.a` via `emar` itself, so we don't need the post-build
+        # `find ... -exec emar ...` snippet used by `build_dependency()`.
+        _wasm_dep_build("boost", deps.build_boost, prefix_name=f"boost-{BOOST_VERSION}")
+    else:
+        str_concat = lambda prefix: lambda postfix: "" if postfix.strip() == "" else "=".join((prefix, postfix.strip()))
+        toolset = []
+        if "wasm" in flags:
+            toolset.append("toolset=emscripten")
+        build_dependency(
+            f"boost-{BOOST_VERSION}",
+            mode="bjam",
+            build_tool_args=[
+                f"--stagedir={DEPS_DIR}/install/boost-{BOOST_VERSION}",
+                "--with-system",
+                "--with-program_options",
+                "--with-regex",
+                "--with-thread",
+                "--with-date_time",
+                "--with-iostreams",
+                "--with-filesystem",
+                f"link={LINK_TYPE}",
+                *toolset,
+                *map(str_concat("cxxflags"), CXXFLAGS.strip().split(" ")),
+                *map(str_concat("linkflags"), LDFLAGS.strip().split(" ")),
+                "stage",
+                "-s",
+                "NO_BZIP2=1",
+                *MAC_CROSS_COMPILE_INTEL_BJAM_ARGS,
+            ],
+            download_url=BOOST_LOCATION,
+            # don't remember what this is, but fail on 1.86
+            # patch="./patches/boost/boostorg_regex_62.patch",
+            download_name=f"boost-{BOOST_VERSION}-b2-nodocs.tar.gz",
         )
+        if "wasm" in flags:
+            # only supported on nix for now
+            run(
+                ("find", ".", "-name", "*.bc", "-exec", "bash", "-c", "emar q ${1%.bc}.a $1", "bash", "{}", ";"),
+                cwd=f"{DEPS_DIR}/install/boost-{BOOST_VERSION}/lib",
+            )
 
 if "cgal" in targets:
-    gmp_args: "list[str]" = []
-    mpfr_args: "list[str]" = []
-
-    OLD_HOST_CC = None
     if WASM:
-        if APPLE:
-            # Override `HOST_CC`, otherwise `emcc` will try to use it's own `clang` which can only build
-            # wasm executables and build will fail.
-            os.environ["HOST_CC"] = "clang"
-        # Disable assembly, otherwise `emcc -c conftest.s` will crash due to assembly mismatch.
-        gmp_args.extend(("--disable-assembly", "--enable-cxx"))
-        mpfr_args.extend(("--host", "none"))
-    elif "x86" in arch:
-        gmp_args.append("--enable-fat")  # See issues #7458 #7556
+        # Build gmp, mpfr, cgal via the shared `nix.deps` recipes. The recipes
+        # read versions/patches from `nix/sources.lock.json` (no inline
+        # versions). On macOS, `nix.deps.build_gmp` sets HOST_CC=clang itself.
+        _wasm_dep_build("gmp", deps.build_gmp, prefix_name=f"gmp-{GMP_VERSION}")
+        _gmp_prefix = Path(DEPS_DIR) / "install" / f"gmp-{GMP_VERSION}"
+        _wasm_dep_build(
+            "mpfr",
+            lambda src, prefix, env: deps.build_mpfr(src, prefix, _gmp_prefix, env),
+            prefix_name=f"mpfr-{MPFR_VERSION}",
+        )
+        _mpfr_prefix = Path(DEPS_DIR) / "install" / f"mpfr-{MPFR_VERSION}"
+        _boost_prefix = Path(DEPS_DIR) / "install" / f"boost-{BOOST_VERSION}"
+        _wasm_dep_build(
+            "cgal",
+            lambda src, prefix, env: deps.build_cgal(
+                src, prefix, _gmp_prefix, _mpfr_prefix, env, boost_prefix=_boost_prefix
+            ),
+            prefix_name=f"cgal-{CGAL_VERSION}",
+        )
+    else:
+        gmp_args: "list[str]" = []
+        mpfr_args: "list[str]" = []
 
-    OLD_CC = None
-    if MAC_CROSS_COMPILE_INTEL:
-        OLD_CC = os.environ.get("CC")
-        # Otherwise it's using arm64 `gcc` and fails to build gmp.
-        os.environ["CC"] = MAC_CROSS_COMPILE_INTEL_CC
-        gmp_args.extend(MAC_CROSS_COMPILE_INTEL_AUTOCONF_HOST_ARGS)
+        OLD_HOST_CC = None
+        if WASM:
+            if APPLE:
+                # Override `HOST_CC`, otherwise `emcc` will try to use it's own `clang` which can only build
+                # wasm executables and build will fail.
+                os.environ["HOST_CC"] = "clang"
+            # Disable assembly, otherwise `emcc -c conftest.s` will crash due to assembly mismatch.
+            gmp_args.extend(("--disable-assembly", "--enable-cxx"))
+            mpfr_args.extend(("--host", "none"))
+        elif "x86" in arch:
+            gmp_args.append("--enable-fat")  # See issues #7458 #7556
 
-    build_dependency(
-        name=f"gmp-{GMP_VERSION}",
-        mode="autoconf",
-        build_tool_args=[ENABLE_FLAG, DISABLE_FLAG, "--with-pic", *gmp_args],
-        pre_compile_subs=(
-            [("build/config.h", "HAVE_OBSTACK_VPRINTF 1", "HAVE_OBSTACK_VPRINTF 0")] if "wasm" in flags else []
-        ),
-        # Sometimes ftp.gnu.org is very slow, use ftpmirror.gnu.org as a workaround.
-        download_url="https://ftpmirror.gnu.org/gnu/gmp/",
-        download_name=f"gmp-{GMP_VERSION}.tar.bz2",
-    )
+        OLD_CC = None
+        if MAC_CROSS_COMPILE_INTEL:
+            OLD_CC = os.environ.get("CC")
+            # Otherwise it's using arm64 `gcc` and fails to build gmp.
+            os.environ["CC"] = MAC_CROSS_COMPILE_INTEL_CC
+            gmp_args.extend(MAC_CROSS_COMPILE_INTEL_AUTOCONF_HOST_ARGS)
 
-    if WASM and APPLE:
-        restore_env("HOST_CC", OLD_HOST_CC)
+        build_dependency(
+            name=f"gmp-{GMP_VERSION}",
+            mode="autoconf",
+            build_tool_args=[ENABLE_FLAG, DISABLE_FLAG, "--with-pic", *gmp_args],
+            pre_compile_subs=(
+                [("build/config.h", "HAVE_OBSTACK_VPRINTF 1", "HAVE_OBSTACK_VPRINTF 0")] if "wasm" in flags else []
+            ),
+            # Sometimes ftp.gnu.org is very slow, use ftpmirror.gnu.org as a workaround.
+            download_url="https://ftpmirror.gnu.org/gnu/gmp/",
+            download_name=f"gmp-{GMP_VERSION}.tar.bz2",
+        )
 
-    build_dependency(
-        name=f"mpfr-{MPFR_VERSION}",
-        mode="autoconf",
-        build_tool_args=[ENABLE_FLAG, DISABLE_FLAG, *mpfr_args, f"--with-gmp={DEPS_DIR}/install/gmp-{GMP_VERSION}"],
-        download_url=f"http://www.mpfr.org/mpfr-{MPFR_VERSION}/",
-        download_name=f"mpfr-{MPFR_VERSION}.tar.bz2",
-    )
+        if WASM and APPLE:
+            restore_env("HOST_CC", OLD_HOST_CC)
 
-    if MAC_CROSS_COMPILE_INTEL:
-        restore_env("CC", OLD_CC)
+        build_dependency(
+            name=f"mpfr-{MPFR_VERSION}",
+            mode="autoconf",
+            build_tool_args=[ENABLE_FLAG, DISABLE_FLAG, *mpfr_args, f"--with-gmp={DEPS_DIR}/install/gmp-{GMP_VERSION}"],
+            download_url=f"http://www.mpfr.org/mpfr-{MPFR_VERSION}/",
+            download_name=f"mpfr-{MPFR_VERSION}.tar.bz2",
+        )
 
-    build_dependency(
-        name=f"cgal-{CGAL_VERSION}",
-        mode="cmake",
-        build_tool_args=[
-            f"-DGMP_LIBRARIES={DEPS_DIR}/install/gmp-{GMP_VERSION}/lib/libgmp.{LIBRARY_EXT}",
-            f"-DGMP_INCLUDE_DIR={DEPS_DIR}/install/gmp-{GMP_VERSION}/include",
-            f"-DMPFR_LIBRARIES={DEPS_DIR}/install/mpfr-{MPFR_VERSION}/lib/libmpfr.{LIBRARY_EXT}",
-            f"-DMPFR_INCLUDE_DIR={DEPS_DIR}/install/mpfr-{MPFR_VERSION}/include",
-            f"-DBoost_INCLUDE_DIR={DEPS_DIR}/install/boost-{BOOST_VERSION}",
-            f"-DCMAKE_INSTALL_PREFIX={DEPS_DIR}/install/cgal-{CGAL_VERSION}/",
-            f"-DCGAL_HEADER_ONLY=On",
-            f"-DBUILD_SHARED_LIBS=Off",
-        ],
-        download_url="https://github.com/CGAL/cgal.git",
-        download_name="cgal",
-        download_tool=download_tool_git,
-        revision=CGAL_VERSION,
-    )
+        if MAC_CROSS_COMPILE_INTEL:
+            restore_env("CC", OLD_CC)
+
+        build_dependency(
+            name=f"cgal-{CGAL_VERSION}",
+            mode="cmake",
+            build_tool_args=[
+                f"-DGMP_LIBRARIES={DEPS_DIR}/install/gmp-{GMP_VERSION}/lib/libgmp.{LIBRARY_EXT}",
+                f"-DGMP_INCLUDE_DIR={DEPS_DIR}/install/gmp-{GMP_VERSION}/include",
+                f"-DMPFR_LIBRARIES={DEPS_DIR}/install/mpfr-{MPFR_VERSION}/lib/libmpfr.{LIBRARY_EXT}",
+                f"-DMPFR_INCLUDE_DIR={DEPS_DIR}/install/mpfr-{MPFR_VERSION}/include",
+                f"-DBoost_INCLUDE_DIR={DEPS_DIR}/install/boost-{BOOST_VERSION}",
+                f"-DCMAKE_INSTALL_PREFIX={DEPS_DIR}/install/cgal-{CGAL_VERSION}/",
+                f"-DCGAL_HEADER_ONLY=On",
+                f"-DBUILD_SHARED_LIBS=Off",
+            ],
+            download_url="https://github.com/CGAL/cgal.git",
+            download_name="cgal",
+            download_tool=download_tool_git,
+            revision=CGAL_VERSION,
+        )
 
 if "usd" in targets:
     build_dependency(

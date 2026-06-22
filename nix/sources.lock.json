@@ -38,7 +38,7 @@
     ]
   },
   "gmp": {
-    "url": "https://ftpmirror.gnu.org/gnu/gmp/gmp-6.3.0.tar.bz2",
+    "url": "https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.bz2",
     "version": "6.3.0",
     "archive_type": "tar.bz2",
     "sha256": "ac28211a7cfb609bae2e2c8d6058d66c8fe96434f740cf6fe2e47b000d1c20cb",
@@ -66,5 +66,55 @@
     "patches": [
       "manifold/install-metadata-for-emscripten.patch"
     ]
+  },
+  "libxml2": {
+    "url": "https://download.gnome.org/sources/libxml2/2.13/libxml2-2.13.8.tar.xz",
+    "version": "2.13.8",
+    "archive_type": "tar.xz",
+    "sha256": "72014489b1b6e22ca47d3cb11af4becb706faa997ac7be1846c478f50214ca81",
+    "patches": []
+  },
+  "pcre": {
+    "url": "https://downloads.sourceforge.net/project/pcre/pcre/8.41/pcre-8.41.tar.bz2",
+    "version": "8.41",
+    "archive_type": "tar.bz2",
+    "sha256": "3e2ee79b3446a697cb66969f9469762dfd7e17e3e98b8740f3ccc7e731246f8a",
+    "patches": []
+  },
+  "opencollada": {
+    "url": "https://github.com/KhronosGroup/OpenCOLLADA.git",
+    "version": "v1.6.68",
+    "ref": "v1.6.68",
+    "archive_type": "git",
+    "sha256": null,
+    "patches": [
+      "opencollada/pr622_and_disable_subdirs.patch",
+      "opencollada/allow_static_libraries_config_on_unix.patch",
+      "opencollada/remove_tr1.patch"
+    ]
+  },
+  "swig": {
+    "url": "https://github.com/swig/swig.git",
+    "version": "4.2.1",
+    "ref": "v4.2.1",
+    "archive_type": "git",
+    "sha256": null,
+    "patches": []
+  },
+  "rocksdb": {
+    "url": "https://github.com/facebook/rocksdb",
+    "version": "9.11.2",
+    "ref": "v9.11.2",
+    "archive_type": "git",
+    "sha256": null,
+    "patches": []
+  },
+  "zstd": {
+    "url": "https://github.com/facebook/zstd",
+    "version": "1.5.7",
+    "ref": "v1.5.7",
+    "archive_type": "git",
+    "sha256": null,
+    "patches": []
   }
 }
