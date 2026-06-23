@@ -379,7 +379,7 @@ def generate_cmake_flags(profile: str) -> List[str]:
         "-DBUILD_SHARED_LIBS=OFF",
         "-DCOLLADA_SUPPORT=OFF",
         "-DBoost_NO_BOOST_CMAKE=On",
-        "-DCMAKE_BUILD_TYPE=MinSizeRel",
+        "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
         f"-DPYTHON_EXECUTABLE={sys.executable}",
     ]
 

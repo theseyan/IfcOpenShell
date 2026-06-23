@@ -35,6 +35,7 @@ addToLibrary({
   },
   log: 'Math.log',
   log10: 'Math.log10',
+  log2: 'Math.log2',
   lround: function(x) {
     return x >= 0 ? Math.floor(x + 0.5) : Math.ceil(x - 0.5);
   },

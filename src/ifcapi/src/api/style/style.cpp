@@ -824,6 +824,13 @@ void remove_surface_style_impl(ifcopenshell::file* file, express::Base style) {
 
     file->remove_entity(style);
     for (auto element : to_delete) {
+        if (element.id()) {
+            try {
+                file->instance_by_id(static_cast<int>(element.id()));
+            } catch (const ifcopenshell::exception&) {
+                continue;
+            }
+        }
         ifcapi::bindings::entity_remove_deep2(&element);
     }
 }

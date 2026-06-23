@@ -20,6 +20,7 @@ All versions and patches come from `nix/sources.lock.json` via
 import os
 import platform
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Optional
@@ -147,13 +148,13 @@ def build_json(src: Path, prefix: Path, env) -> None:
     core.run(["cmake", "--build", str(build_dir), "--target", "install"], env=env)
 
 
-def build_occt(src: Path, prefix: Path, env, *, build_type: str = "MinSizeRel") -> None:
+def build_occt(src: Path, prefix: Path, env, *, build_type: str = "RelWithDebInfo") -> None:
     """Build OpenCASCADE for WASM with -fwasm-exceptions.
 
-    OCCT 7.8.1 does not emit `OpenCASCADE*Targets-minsizerel.cmake`, so a
-    plain MinSizeRel install fails even though the compile itself succeeds.
-    Installing with `--config RelWithDebInfo` avoids that OCCT install-script
-    bug while preserving the requested MinSizeRel compile flags.
+    Uses RelWithDebInfo so that the installed CMake config files contain
+    IMPORTED_LOCATION for the matching configuration.  The actual size
+    optimisation comes from -Oz in the IfcOpenShell link flags, not from
+    the OCCT build type.
     """
     if (prefix / "lib" / "cmake" / "opencascade").exists():
         core.logger.info("OCCT already built at %s", prefix)
@@ -186,8 +187,7 @@ def build_occt(src: Path, prefix: Path, env, *, build_type: str = "MinSizeRel") 
     )
 
     core.run(["cmake", "--build", str(build_dir), "--parallel", "2"], env=env)
-    install_config = "RelWithDebInfo" if build_type == "MinSizeRel" else build_type
-    core.run(["cmake", "--install", str(build_dir), "--config", install_config], env=env)
+    core.run(["cmake", "--install", str(build_dir), "--config", build_type], env=env)
 
 
 def build_manifold(src: Path, prefix: Path, env, *, build_type: str = "MinSizeRel") -> None:
@@ -246,7 +246,21 @@ def build_gmp(src: Path, prefix: Path, env, *, host_cc_override: bool = False) -
 
     build_env = dict(env)
     if host_cc_override or platform.system() == "Darwin":
-        build_env["HOST_CC"] = "clang"
+        try:
+            native_cc = subprocess.check_output(
+                ["xcrun", "--find", "clang"], text=True
+            ).strip()
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            native_cc = "clang"
+        build_env["HOST_CC"] = native_cc
+        build_env["CC_FOR_BUILD"] = native_cc
+        try:
+            sdk_path = subprocess.check_output(
+                ["xcrun", "--show-sdk-path"], text=True
+            ).strip()
+            build_env["CC_FOR_BUILD"] = f"{native_cc} -isysroot {sdk_path}"
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            pass
 
     core.run(
         [

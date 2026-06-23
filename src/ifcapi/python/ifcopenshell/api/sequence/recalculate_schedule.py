@@ -18,8 +18,6 @@
 
 import datetime
 
-import networkx as nx
-
 import ifcopenshell.api.sequence
 import ifcopenshell.util.date
 import ifcopenshell.util.sequence
@@ -110,6 +108,8 @@ class Usecase:
         self.update_task_times()
 
     def build_network_graph(self) -> None:
+        import networkx as nx
+
         self.sequence_type_map = {
             None: "FS",
             "START_START": "SS",

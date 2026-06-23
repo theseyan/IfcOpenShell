@@ -1807,6 +1807,22 @@ bool try_parse_header(
     }
 }
 
+void mark_bypass_type(std::vector<bool>& types_to_bypass, const ifcopenshell::declaration* declaration) {
+    const auto* entity = declaration->as_entity();
+    if (!entity) {
+        return;
+    }
+
+    std::function<void(const ifcopenshell::entity*)> mark;
+    mark = [&](const ifcopenshell::entity* e) {
+        types_to_bypass[e->index_in_schema()] = true;
+        for (auto& subtype : e->subtypes()) {
+            mark(subtype);
+        }
+    };
+    mark(entity);
+}
+
 } // namespace
 
 template <typename Reader>
@@ -1849,16 +1865,7 @@ void ifcopenshell::instance_streamer<Reader>::initialize_header() {
 
     types_to_bypass_materialized_.resize(schema_->declarations().size(), false);
     for (auto& bp : types_to_bypass_) {
-        std::function<void(const ifcopenshell::entity*)> mark;
-        mark = [&](const ifcopenshell::entity* e) {
-            types_to_bypass_materialized_[e->index_in_schema()] = true;
-            for (auto& subtype : e->subtypes()) {
-                mark(subtype);
-            }
-        };
-        if (auto* e = bp->as_entity()) {
-            mark(e);
-        }
+        mark_bypass_type(types_to_bypass_materialized_, bp);
     }
 }
 
@@ -2009,7 +2016,11 @@ template <typename Reader>
 void ifcopenshell::instance_streamer<Reader>::bypass_types(const std::set<std::string>& type_names) {
     for (auto& name : type_names) {
         try {
-            types_to_bypass_.push_back(schema_->declaration_by_name(name));
+            const auto* declaration = schema_->declaration_by_name(name);
+            types_to_bypass_.push_back(declaration);
+            if (!types_to_bypass_materialized_.empty()) {
+                mark_bypass_type(types_to_bypass_materialized_, declaration);
+            }
         } catch (const exception&) {
             continue;
         }

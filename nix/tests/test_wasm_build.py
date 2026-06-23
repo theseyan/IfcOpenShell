@@ -283,7 +283,7 @@ class TestCMakeFlagGeneration(unittest.TestCase):
             "-DBUILD_SHARED_LIBS=OFF",
             "-DCOLLADA_SUPPORT=OFF",
             "-DBoost_NO_BOOST_CMAKE=On",
-            "-DCMAKE_BUILD_TYPE=MinSizeRel",
+            "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
         ):
             self.assertIn(expected, flag_str)
         self.assertIn(f"-DPYTHON_EXECUTABLE={sys.executable}", flags)
