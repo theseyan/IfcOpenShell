@@ -18,8 +18,8 @@ inline express::Base* nullable_ptr(express::Base& value) {
 }
 
 inline bool same_instance(express::Base left, express::Base right) {
-    auto l = left.data_weak().lock();
-    auto r = right.data_weak().lock();
+    auto l = ifcopenshell::lock_data(left.data_weak());
+    auto r = ifcopenshell::lock_data(right.data_weak());
     if (!l || !r) {
         return !l && !r;
     }

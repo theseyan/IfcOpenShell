@@ -39,6 +39,7 @@ template <typename T, typename... Args>
 shared_pointer_type make_pointer_type(Args&&... args) {
     return std::make_shared<T>(std::forward<Args>(args)...);
 }
+inline shared_pointer_type lock_data(const pointer_type& p) { return p.lock(); }
 #else
 using pointer_type = instance_data*;
 using shared_pointer_type = instance_data*;
@@ -46,6 +47,7 @@ template <typename T, typename... Args>
 shared_pointer_type make_pointer_type(Args&&... args) {
     return new T(std::forward<Args>(args)...);
 }
+inline shared_pointer_type lock_data(const pointer_type& p) { return p; }
 #endif
 
 class file;

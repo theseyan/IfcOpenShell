@@ -23,6 +23,7 @@ foreach(kernel ${GEOMETRY_KERNELS})
         COMPILE_FLAGS "-DIFC_GEOMLIBRARY_EXPORTS"
         OUTPUT_NAME "ifcopenshell.geometry.kernel.${kernel}"
     )
+    ifcopenshell_native_plugin_target(${KERNEL_TARGET} IfcGeom)
     if(WASM_BUILD)
         ifcopenshell_wasm_configure_plugin_target(
             ${KERNEL_TARGET}
@@ -52,6 +53,7 @@ foreach(kernel ${GEOMETRY_KERNELS})
             COMPILE_FLAGS "-DIFC_GEOMLIBRARY_EXPORTS -DIFOPSH_SIMPLE_KERNEL -DCGAL_HAS_THREADS"
             OUTPUT_NAME "ifcopenshell.geometry.kernel.cgalsimple"
         )
+        ifcopenshell_native_plugin_target(${KERNEL_TARGET_SIMPLE} IfcGeom)
         if(WASM_BUILD)
             ifcopenshell_wasm_configure_plugin_target(
                 ${KERNEL_TARGET_SIMPLE}
@@ -92,6 +94,7 @@ foreach(kernel ${GEOMETRY_KERNELS})
                 COMPILE_FLAGS "-DIFC_GEOMLIBRARY_EXPORTS"
                 OUTPUT_NAME "ifcopenshell.geometry.tree.opencascade.${tree_backend}"
             )
+            ifcopenshell_native_plugin_target(${TREE_TARGET} IfcGeom)
             if(WASM_BUILD)
                 ifcopenshell_wasm_configure_plugin_target(
                     ${TREE_TARGET}

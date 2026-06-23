@@ -13,6 +13,7 @@ foreach(schema ${SCHEMA_VERSIONS})
         COMPILE_FLAGS "-DIfcSchema=Ifc${schema}"
         OUTPUT_NAME "ifcopenshell.geometry.mapping.ifc${schema}"
     )
+    ifcopenshell_native_plugin_target(geometry_mapping_ifc${schema} IfcGeom)
     if(WASM_BUILD)
         ifcopenshell_wasm_configure_plugin_target(
             geometry_mapping_ifc${schema}

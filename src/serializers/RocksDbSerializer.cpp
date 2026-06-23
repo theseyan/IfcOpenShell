@@ -252,7 +252,7 @@ void RocksDbSerializer::write_streaming_() {
 				}
 
 				auto val = inst.get_attribute_value(0);
-				auto data = inst.data_weak().lock();
+				auto data = ifcopenshell::lock_data(inst.data_weak());
 				if (data && data->storage_ && data->storage_->size() > 0) {
 					val.apply_visitor([&](const auto& t) {
 						rocks_db_attribute_storage{}.set(&storage, &inst.declaration(), inst.identity(), 0, t);

@@ -45,6 +45,16 @@ function(ifcopenshell_plugin_target TARGET)
     set_target_properties(${TARGET} PROPERTIES PREFIX "")
 endfunction()
 
+function(ifcopenshell_native_plugin_target TARGET MODULE_TARGET)
+    if(WASM_BUILD)
+        return()
+    endif()
+    set_target_properties(${TARGET} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "$<TARGET_FILE_DIR:${MODULE_TARGET}>"
+        LIBRARY_OUTPUT_DIRECTORY "$<TARGET_FILE_DIR:${MODULE_TARGET}>"
+    )
+endfunction()
+
 function(ifcopenshell_wasm_plugin_dependency OUT_VAR)
     if(WASM_BUILD)
         # wasm-ld fails when the static `plugin` archive is linked into both the

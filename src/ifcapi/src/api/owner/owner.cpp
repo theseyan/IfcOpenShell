@@ -24,12 +24,12 @@ bool is_ifc4x3(ifcopenshell::file* file) {
 }
 
 bool is_a(express::Base entity, const char* ifc_class) {
-    auto d = entity.data_weak().lock();
+    auto d = ifcopenshell::lock_data(entity.data_weak());
     return d && d->declaration()->is(ifc_class);
 }
 
 std::string exact_class_name(express::Base entity) {
-    auto d = entity.data_weak().lock();
+    auto d = ifcopenshell::lock_data(entity.data_weak());
     return d ? d->declaration()->name() : std::string();
 }
 

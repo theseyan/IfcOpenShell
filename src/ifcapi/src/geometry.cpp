@@ -152,7 +152,7 @@ void write_ref(express::Base e, const char* attr, express::Base ref) {
 }
 
 inline bool is_a(express::Base e, const char* name) {
-    auto d = e.data_weak().lock();
+    auto d = ifcopenshell::lock_data(e.data_weak());
     return d && d->declaration()->is(name);
 }
 

@@ -30,7 +30,7 @@ inline void set_error(const char* msg) { ifcopenshell::capi::set_last_error(msg)
 inline void set_error(const std::string& msg) { ifcopenshell::capi::set_last_error(msg); }
 
 bool is_instance(const express::Base& entity, const char* ifc_class) {
-    auto d = entity.data_weak().lock();
+    auto d = ifcopenshell::lock_data(entity.data_weak());
     return d && d->declaration()->is(ifc_class);
 }
 

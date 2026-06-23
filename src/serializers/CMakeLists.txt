@@ -15,6 +15,7 @@ function(add_document_serializer_plugin target output_name)
     set_target_properties(${target} PROPERTIES
         OUTPUT_NAME "ifcopenshell.${output_name}"
     )
+    ifcopenshell_native_plugin_target(${target} IfcGeom)
 
     list(APPEND document_serializer_libraries ${target})
     set(document_serializer_libraries ${document_serializer_libraries} PARENT_SCOPE)
@@ -38,7 +39,7 @@ function(add_geometry_serializer_plugin target output_name)
 
     add_library(${target} SHARED ${PLUGIN_SOURCES})
     target_compile_definitions(${target} PRIVATE SERIALIZERS_EXPORTS BOOST_DLL_USE_STD_FS ${PLUGIN_DEFINITIONS})
-    if(WASM_BUILD AND WITH_OPENCASCADE AND OCC_INCLUDE_DIR)
+    if(WITH_OPENCASCADE AND OCC_INCLUDE_DIR)
         # OCCT headers are needed for compilation even when not linking against the kernel.
         target_include_directories(${target} PRIVATE "${OCC_INCLUDE_DIR}")
     endif()
@@ -57,6 +58,7 @@ function(add_geometry_serializer_plugin target output_name)
     set_target_properties(${target} PROPERTIES
         OUTPUT_NAME "ifcopenshell.${output_name}"
     )
+    ifcopenshell_native_plugin_target(${target} IfcGeom)
 
     list(APPEND geometry_serializer_libraries ${target})
     set(geometry_serializer_libraries ${geometry_serializer_libraries} PARENT_SCOPE)
@@ -84,7 +86,7 @@ add_subdirectory(schema_dependent)
 set(ttl_geometry_serializer_libraries)
 set(ttl_geometry_serializer_wasm_depends)
 if(WITH_OPENCASCADE AND NOT WASM_BUILD)
-    set(ttl_geometry_serializer_libraries geometry_kernel_opencascade)
+    set(ttl_geometry_serializer_libraries geometry_kernel_opencascade ${OpenCASCADE_LIBRARIES})
 endif()
 if(WITH_OPENCASCADE)
     set(ttl_geometry_serializer_wasm_depends "kernel:opencascade")
@@ -112,7 +114,7 @@ if(USD_SUPPORT)
 endif()
 
 if(WITH_OPENCASCADE)
-    set(opencascade_geometry_serializer_libraries geometry_kernel_opencascade)
+    set(opencascade_geometry_serializer_libraries geometry_kernel_opencascade ${OpenCASCADE_LIBRARIES})
     if(WASM_BUILD)
         # For WASM builds, OCCT-backed serializer plugins compile their implementation
         # sources (SvgSerializer, OpenCascadeBasedSerializer, etc.) but do NOT link
