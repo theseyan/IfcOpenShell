@@ -119,6 +119,71 @@ def _render_node_test(ifc_path: Path) -> str:
         const ifc2x3File = api.parse.newFile('IFC2X3', 0, '');
         assert.equal(ifc2x3File.schemaName(), 'IFC2X3');
 
+        step('root-create-wall');
+        const rootWall = api.root.createEntity(newFile, 'IfcWall', null, 'Smoke Wall', null);
+        assert.equal(rootWall.className(false), 'IfcWall');
+        assert.match(rootWall.toString(false), /Smoke Wall/);
+
+        step('pset-add');
+        const pset = api.pset.addPset(newFile, rootWall, 'Pset_WasmSmoke', null, null, null, null);
+        assert.equal(pset.className(false), 'IfcPropertySet');
+        assert.match(pset.toString(false), /Pset_WasmSmoke/);
+
+        step('pset-edit');
+        const props = api.pset.propsNew();
+        api.pset.propsSetString(props, 'Reference', 'ABC');
+        api.pset.propsSetDouble(props, 'Height', 3.25);
+        api.pset.propsSetBool(props, 'IsExternal', true);
+        assert.equal(api.pset.editPset(newFile, pset, 'Pset_WasmSmokeEdited', props, null, true), true);
+        api.pset.propsFree(props);
+        assert.match(pset.toString(false), /Pset_WasmSmokeEdited/);
+        const hasPropertiesAttr = pset.getArgument(4);
+        const editedProps = hasPropertiesAttr.asInstanceList();
+        assert.equal(editedProps.size(), 3);
+        const findEditedProp = (name) => {{
+            for (let index = 0; index < editedProps.size(); index += 1) {{
+                const prop = editedProps.get(index);
+                const nameValue = prop.getArgument(0);
+                const propName = nameValue.asString();
+                nameValue.destroy();
+                if (propName === name) return prop;
+                prop.destroy();
+            }}
+            return null;
+        }};
+        const referenceProp = findEditedProp('Reference');
+        assert.ok(referenceProp);
+        const referenceNominal = referenceProp.getArgument(2);
+        const referenceValue = referenceNominal.asInstance();
+        const referenceWrappedValue = referenceValue.getArgument(0);
+        assert.equal(referenceWrappedValue.asString(), 'ABC');
+        referenceWrappedValue.destroy();
+        referenceValue.destroy();
+        referenceNominal.destroy();
+        referenceProp.destroy();
+        const heightProp = findEditedProp('Height');
+        assert.ok(heightProp);
+        const heightNominal = heightProp.getArgument(2);
+        const heightValue = heightNominal.asInstance();
+        const heightWrappedValue = heightValue.getArgument(0);
+        assert.equal(heightWrappedValue.asDouble(), 3.25);
+        heightWrappedValue.destroy();
+        heightValue.destroy();
+        heightNominal.destroy();
+        heightProp.destroy();
+        const isExternalProp = findEditedProp('IsExternal');
+        assert.ok(isExternalProp);
+        const isExternalNominal = isExternalProp.getArgument(2);
+        const isExternalValue = isExternalNominal.asInstance();
+        const isExternalWrappedValue = isExternalValue.getArgument(0);
+        assert.equal(isExternalWrappedValue.asBool(), true);
+        isExternalWrappedValue.destroy();
+        isExternalValue.destroy();
+        isExternalNominal.destroy();
+        isExternalProp.destroy();
+        editedProps.destroy();
+        hasPropertiesAttr.destroy();
+
         step('file-create-project');
         const project = newFile.createEntityByName('IfcProject');
         assert.equal(project.className(false), 'IfcProject');
@@ -166,6 +231,8 @@ def _render_node_test(ifc_path: Path) -> str:
         settings.destroy();
         metre.destroy();
         wall.destroy();
+        pset.destroy();
+        rootWall.destroy();
         project.destroy();
         ifc2x3Schema.destroy();
         ifc4Schema.destroy();

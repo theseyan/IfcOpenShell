@@ -66,6 +66,7 @@ if(WASM_BUILD)
     set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS TRUE)
     set(CMAKE_SHARED_LIBRARY_SUFFIX ".wasm")
     set(BUILD_SHARED_LIBS OFF)
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fwasm-exceptions>)
 endif()
 
 option(ENABLE_BUILD_OPTIMIZATIONS "Enable certain compiler and linker optimizations on RelWithDebInfo and Release builds." OFF)
