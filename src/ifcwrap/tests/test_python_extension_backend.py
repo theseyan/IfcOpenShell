@@ -1031,11 +1031,11 @@ class TestHelpers:
     def test_method_name_strips_c_prefix(self):
         assert _method_name("ifcopenshell_demo_create_file", "ifcopenshell_demo") == "create_file"
 
-    def test_method_name_strips_ifcparse_prefix(self):
-        assert _method_name("ifcopenshell_ifcparse_open", "ifcopenshell_wrapper") == "open"
+    def test_method_name_strips_parse_prefix(self):
+        assert _method_name("ifcopenshell_parse_open", "ifcopenshell_wrapper") == "open"
 
-    def test_method_name_strips_ifcapi_prefix(self):
-        assert _method_name("ifcopenshell_ifcapi_get_version", "ifcopenshell_wrapper") == "get_version"
+    def test_method_name_strips_geom_prefix(self):
+        assert _method_name("ifcopenshell_geom_create_settings", "ifcopenshell_wrapper") == "create_settings"
 
 
 # ---------------------------------------------------------------------------
@@ -1087,6 +1087,37 @@ class TestValueConverters:
         assert 'structmember.h"' in code or '"structmember.h"' in code
         assert "ifcopenshell_api.h" in code
 
+    def test_parse_instance_list_input_uses_canonical_helper_names(self):
+        meta = _make_metadata(
+            handles={
+                "instance": _make_handle("instance", "ifcopenshell_instance_t"),
+                "parse_instance_list": _make_handle(
+                    "parse_instance_list",
+                    "ifcopenshell_parse_instance_list_t",
+                    destroy_function="ifcopenshell_parse_instance_list_destroy",
+                ),
+            },
+            functions={
+                "ifcopenshell_demo_accept_instances": _make_function(
+                    c_name="ifcopenshell_demo_accept_instances",
+                    params=(
+                        HostParamMetadata(
+                            name="instances",
+                            c_type="ifcopenshell_parse_instance_list_t*",
+                            role="param",
+                            type_kind="handle",
+                            nullable=False,
+                        ),
+                    ),
+                ),
+            },
+        )
+        code = render_python_extension(meta)
+        assert "make_input_instance_list(arg_instances_obj, &arg_instances_items)" in code
+        assert "free_input_instance_list(&arg_instances_items)" in code
+        assert "make_input_ifc_instance_list" not in code
+        assert "free_input_ifc_instance_list" not in code
+
 
 # ---------------------------------------------------------------------------
 # Test: compiler/pragma markers
@@ -1109,6 +1140,27 @@ class TestGeneratedCodeMarkers:
         code = render_python_extension(meta)
         assert "SimpleNamespaceType" in code
         assert 'PyObject_GetAttrString(types_module, "SimpleNamespace")' in code
+
+    def test_generated_code_accepts_canonical_declaration_family_names(self):
+        meta = _make_metadata(
+            handles={
+                "declaration": _make_handle("declaration", "ifcopenshell_declaration_t"),
+                "entity": _make_handle("entity", "ifcopenshell_entity_t"),
+                "enumeration": _make_handle("enumeration", "ifcopenshell_enumeration_t"),
+                "select_type": _make_handle("select_type", "ifcopenshell_select_type_t"),
+                "type_declaration": _make_handle("type_declaration", "ifcopenshell_type_declaration_t"),
+            },
+        )
+        code = render_python_extension(meta)
+        assert "is_declaration_family_type(PyTypeObject *type)" in code
+        assert "type == &IfcOpenshellDeclarationType" in code
+        assert "type == &IfcOpenshellEntityType" in code
+        assert "type == &IfcOpenshellEnumerationType" in code
+        assert "type == &IfcOpenshellSelectTypeType" in code
+        assert "type == &IfcOpenshellTypeDeclarationType" in code
+        assert "handle_types_are_compatible(Py_TYPE(obj), expected)" in code
+        assert "strcmp(name," not in code
+        assert "IfcOpenshellIfcDeclaration" not in code
 
 
 # ---------------------------------------------------------------------------

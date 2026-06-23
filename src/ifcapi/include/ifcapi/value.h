@@ -24,11 +24,11 @@ extern "C" {
 #endif
 
 /* Forward declarations — full definitions are in ifcopenshell_api_internal.hpp. */
-struct ifcopenshell_ifc_file_t;
-struct ifcopenshell_ifc_instance_t;
+struct ifcopenshell_file_t;
+struct ifcopenshell_instance_t;
 
 /* Opaque value handle. Defined in selector_get.cpp. */
-typedef struct ifcopenshell_value_t ifcopenshell_value_t;
+typedef struct ifcopenshell_selector_value_t ifcopenshell_selector_value_t;
 
 typedef enum {
     IFCSEL_VALUE_NONE     = 0,
@@ -39,7 +39,7 @@ typedef enum {
     IFCSEL_VALUE_INSTANCE = 5,
     IFCSEL_VALUE_LIST     = 6,
     IFCSEL_VALUE_DICT     = 7,
-} ifcopenshell_value_kind_t;
+} ifcopenshell_selector_value_kind_t;
 
 #ifdef __cplusplus
 } /* extern "C" */

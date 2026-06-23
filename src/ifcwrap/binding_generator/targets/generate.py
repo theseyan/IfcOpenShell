@@ -29,8 +29,8 @@ def default_project_specs(spec_dir: Path) -> tuple[list[Path], list[Path], list[
             spec_dir / "cpp" / "ifcgeom.hpp",
         ],
         ["ifcparse::bindings", "ifcapi::bindings", "ifcgeom::bindings"],
-        ["ifcopenshell_ifcparse", "ifcopenshell_ifcapi", "ifcopenshell_ifcgeom"],
-        ["ifcopenshell_ifc", "", ""],
+        ["ifcopenshell_parse", "ifcopenshell", "ifcopenshell_geom"],
+        ["ifcopenshell", "ifcopenshell", "ifcopenshell_geom"],
     )
 
 

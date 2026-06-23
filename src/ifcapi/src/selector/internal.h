@@ -33,29 +33,29 @@
  *  Full definition of the opaque value handle.
  * ==================================================================== */
 
-struct ifcopenshell_value_t {
-    ifcopenshell_value_kind_t kind = IFCSEL_VALUE_NONE;
+struct ifcopenshell_selector_value_t {
+    ifcopenshell_selector_value_kind_t kind = IFCSEL_VALUE_NONE;
     bool    b_val  = false;
     int64_t i_val  = 0;
     double  d_val  = 0.0;
     std::string s_val;
     express::Base inst_val;
 
-    std::vector<ifcopenshell_value_t*> list_val;
-    std::vector<std::pair<std::string, ifcopenshell_value_t*>> dict_val;
+    std::vector<ifcopenshell_selector_value_t*> list_val;
+    std::vector<std::pair<std::string, ifcopenshell_selector_value_t*>> dict_val;
 
-    ~ifcopenshell_value_t() {
+    ~ifcopenshell_selector_value_t() {
         for (auto v : list_val) delete v;
         for (auto& kv : dict_val) delete kv.second;
     }
 
-    ifcopenshell_value_t() = default;
-    ifcopenshell_value_t(const ifcopenshell_value_t&) = delete;
-    ifcopenshell_value_t& operator=(const ifcopenshell_value_t&) = delete;
+    ifcopenshell_selector_value_t() = default;
+    ifcopenshell_selector_value_t(const ifcopenshell_selector_value_t&) = delete;
+    ifcopenshell_selector_value_t& operator=(const ifcopenshell_selector_value_t&) = delete;
 };
 
 /* ---- Type alias ---- */
-using Val = ifcopenshell_value_t;
+using Val = ifcopenshell_selector_value_t;
 
 inline ifcopenshell_selector_node_t* ifcopenshell_selector_parse_filter(const char* query) {
     return ifcapi::bindings::selector_parse_filter(query ? std::string(query) : std::string());
@@ -156,9 +156,9 @@ inline Val* clone_val(const Val* v) {
  * ==================================================================== */
 
 struct ScopedHandle_DISABLED {
-    ifcopenshell_ifc_instance_t h;
+    ifcopenshell_instance_t h;
     explicit ScopedHandle_DISABLED(express::Base e) { h.value = e; }
-    ifcopenshell_ifc_instance_t* get() { return &h; }
+    ifcopenshell_instance_t* get() { return &h; }
 };
 
 /* ====================================================================

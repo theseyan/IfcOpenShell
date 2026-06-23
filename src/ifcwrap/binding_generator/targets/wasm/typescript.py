@@ -7,11 +7,29 @@ import re
 try:
     from ...binding_model import TypeSpec
     from ...host_metadata import HostBindingMetadata, HostFunctionMetadata, HostParamMetadata, HostStructMetadata
-    from .._shared import _INTERNAL_C_FUNCTIONS, _camel_name, _method_name, _public_name, _public_params, _snake_name, _type_name
+    from .._shared import (
+        _INTERNAL_C_FUNCTIONS,
+        _camel_name,
+        _method_name,
+        _public_module_member,
+        _public_name,
+        _public_params,
+        _snake_name,
+        _type_name,
+    )
 except ImportError:  # pragma: no cover - script execution fallback
     from binding_model import TypeSpec
     from host_metadata import HostBindingMetadata, HostFunctionMetadata, HostParamMetadata, HostStructMetadata
-    from targets._shared import _INTERNAL_C_FUNCTIONS, _camel_name, _method_name, _public_name, _public_params, _snake_name, _type_name
+    from targets._shared import (
+        _INTERNAL_C_FUNCTIONS,
+        _camel_name,
+        _method_name,
+        _public_module_member,
+        _public_name,
+        _public_params,
+        _snake_name,
+        _type_name,
+    )
 
 def _interface_name(name: str) -> str:
     base = name.removeprefix("ifcopenshell_").removesuffix("_t")
@@ -115,7 +133,40 @@ def _render_handle_classes(metadata: HostBindingMetadata) -> str:
     return "\n\n".join(chunks)
 
 
-def _render_module_interface(metadata: HostBindingMetadata) -> str:
+def _render_function_signature(name: str, function: HostFunctionMetadata, metadata: HostBindingMetadata) -> str:
+    params = ", ".join(
+        f"{param.name}: {_ts_type_from_c_type(param.c_type, metadata)}"
+        + (" | null" if param.nullable and "null" not in _ts_type_from_c_type(param.c_type, metadata) else "")
+        for param in _public_params(function)
+    )
+    return f"    {name}({params}): {_ts_type(function.returns, metadata)};"
+
+
+def _module_interface_name(module_name: str) -> str:
+    return "IfcOpenshell" + "".join(part.capitalize() for part in module_name.split("_") if part) + "Module"
+
+
+def _collect_module_members(metadata: HostBindingMetadata) -> dict[str, list[str]]:
+    module_members: dict[str, list[str]] = {}
+    for function in sorted(metadata.functions.values(), key=lambda item: item.c_name):
+        if function.receiver is not None or function.c_name in _INTERNAL_C_FUNCTIONS:
+            continue
+        module_member = _public_module_member(function, metadata.c_prefix)
+        if module_member is None:
+            continue
+        module_name, member_name = module_member
+        module_members.setdefault(module_name, []).append(_render_function_signature(member_name, function, metadata))
+    return module_members
+
+
+def _render_nested_module_interfaces(metadata: HostBindingMetadata) -> str:
+    chunks: list[str] = []
+    for module_name, members in sorted(_collect_module_members(metadata).items()):
+        chunks.append(f"  export interface {_module_interface_name(module_name)} {{\n" + "\n".join(members) + "\n  }")
+    return "\n\n".join(chunks)
+
+
+def _render_module_interface(metadata: HostBindingMetadata, module_members: dict[str, list[str]]) -> str:
     members: list[str] = []
     for handle in sorted(metadata.handles.values(), key=lambda item: item.c_type):
         type_name = _type_name(handle.c_type)
@@ -125,13 +176,12 @@ def _render_module_interface(metadata: HostBindingMetadata) -> str:
             continue
         if function.c_name in _INTERNAL_C_FUNCTIONS:
             continue
+        if _public_module_member(function, metadata.c_prefix) is not None:
+            continue
         name = _public_name(function, metadata.c_prefix)
-        params = ", ".join(
-            f"{param.name}: {_ts_type_from_c_type(param.c_type, metadata)}"
-            + (" | null" if param.nullable and "null" not in _ts_type_from_c_type(param.c_type, metadata) else "")
-            for param in _public_params(function)
-        )
-        members.append(f"    {name}({params}): {_ts_type(function.returns, metadata)};")
+        members.append(_render_function_signature(name, function, metadata))
+    for module_name in sorted(module_members):
+        members.append(f"    {module_name}: {_module_interface_name(module_name)};")
     members.extend(
         [
             "    loadPlugin(kind: 'schema' | 'kernel' | 'mapping' | 'tree' | 'document' | 'geometry_serializer', id: string): Promise<void>;",
@@ -145,7 +195,9 @@ def render_typescript_declarations(metadata: HostBindingMetadata, handles: dict[
     del handles
     struct_interfaces = _render_struct_interfaces(metadata)
     handle_classes = _render_handle_classes(metadata)
-    module_interface = _render_module_interface(metadata)
+    module_members = _collect_module_members(metadata)
+    nested_module_interfaces = _render_nested_module_interfaces(metadata)
+    module_interface = _render_module_interface(metadata, module_members)
     sections = [
         "// This file was generated with the assistance of an AI coding tool.",
         "",
@@ -155,7 +207,9 @@ def render_typescript_declarations(metadata: HostBindingMetadata, handles: dict[
         sections.extend([struct_interfaces, ""])
     if handle_classes:
         sections.extend([handle_classes, ""])
-        sections.extend(
+    if nested_module_interfaces:
+        sections.extend([nested_module_interfaces, ""])
+    sections.extend(
         [
             module_interface,
             "",

@@ -64,14 +64,31 @@ def parse_c_functions(path: Path, repo_root: Path | None = None) -> list[CFuncti
 
 
 def _generated_slice(name: str) -> str:
-    if name.startswith("ifcopenshell_ifcgeom_"):
+    if name.startswith("ifcopenshell_geom_"):
         return "ifcgeom"
-    if name.startswith("ifcopenshell_ifcapi_"):
-        return "ifcapi"
-    if name.startswith("ifcopenshell_ifcparse_"):
+    if name.startswith("ifcopenshell_parse_"):
         return "ifcparse"
-    if name.startswith("ifcopenshell_ifc_"):
+    if name.startswith(("ifcopenshell_file_", "ifcopenshell_instance_", "ifcopenshell_schema_")):
         return "ifcparse_handle"
+    if name.startswith(
+        (
+            "ifcopenshell_aggregate_",
+            "ifcopenshell_attribute_",
+            "ifcopenshell_boundary_",
+            "ifcopenshell_classification_",
+            "ifcopenshell_context_",
+            "ifcopenshell_cost_",
+            "ifcopenshell_element_",
+            "ifcopenshell_geometry_",
+            "ifcopenshell_pset_",
+            "ifcopenshell_root_",
+            "ifcopenshell_selector_",
+            "ifcopenshell_shape_builder_",
+            "ifcopenshell_unit_",
+            "ifcopenshell_value_",
+        )
+    ):
+        return "ifcapi"
     if name in {"ifcopenshell_clear_error", "ifcopenshell_last_error_message", "ifcopenshell_last_error_kind"}:
         return "common_error"
     if name.startswith(("ifcopenshell_string", "ifcopenshell_bool_list", "ifcopenshell_int", "ifcopenshell_uint", "ifcopenshell_double")):
@@ -81,7 +98,7 @@ def _generated_slice(name: str) -> str:
 
 def _concept_key(name: str) -> str:
     key = name.removeprefix("ifcopenshell_")
-    for prefix in ("ifcparse_", "ifcgeom_"):
+    for prefix in ("ifcparse_", "ifcgeom_", "parse_", "geom_"):
         key = key.removeprefix(prefix)
     key = key.removeprefix("ifc_")
     return key

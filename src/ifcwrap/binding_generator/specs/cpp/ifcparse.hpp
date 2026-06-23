@@ -45,8 +45,8 @@ IFCAPI_HANDLE(aggregation_type, ifcopenshell::aggregation_type, none)
 IFCAPI_HANDLE(entity, ifcopenshell::entity, none)
 IFCAPI_HANDLE(attribute, ifcopenshell::attribute, none)
 IFCAPI_HANDLE(inverse_attribute, ifcopenshell::inverse_attribute, none)
-IFCAPI_HANDLE(attribute_value, attribute_value, none, value) struct ifcopenshell_ifcparse_attribute_value_t;
-IFCAPI_HANDLE(instance_list, std::vector<express::Base>, none, value) struct ifcopenshell_ifcparse_instance_list_t;
+IFCAPI_HANDLE(attribute_value, attribute_value, none, value) struct ifcopenshell_parse_attribute_value_t;
+IFCAPI_HANDLE(instance_list, std::vector<express::Base>, none, value) struct ifcopenshell_parse_instance_list_t;
 
 namespace ifcopenshell::capi {
 

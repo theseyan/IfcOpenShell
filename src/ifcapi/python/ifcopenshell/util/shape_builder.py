@@ -409,7 +409,7 @@ class ShapeBuilder:
 
         return _native_entity(
             self.file,
-            "ifcopenshell_ifcapi_shape_builder_polyline",
+            "ifcopenshell_shape_builder_polyline",
             _native_points(points),
             bool(closed),
             _native_vector(position_offset if position_offset is not None else ()),
@@ -471,7 +471,7 @@ class ShapeBuilder:
         """
         return _native_entity(
             self.file,
-            "ifcopenshell_ifcapi_shape_builder_circle",
+            "ifcopenshell_shape_builder_circle",
             _native_vector(center),
             float(radius),
         )
@@ -489,7 +489,7 @@ class ShapeBuilder:
 
         return _native_entity(
             self.file,
-            "ifcopenshell_ifcapi_shape_builder_plane",
+            "ifcopenshell_shape_builder_plane",
             _native_vector(location),
             _native_vector(normal),
         )
@@ -506,7 +506,7 @@ class ShapeBuilder:
         """
         return _native_entity(
             self.file,
-            "ifcopenshell_ifcapi_shape_builder_curve_between_two_points",
+            "ifcopenshell_shape_builder_curve_between_two_points",
             _native_points(points),
         )
 
@@ -573,7 +573,7 @@ class ShapeBuilder:
         """
         return _native_entity(
             self.file,
-            "ifcopenshell_ifcapi_shape_builder_ellipse_curve",
+            "ifcopenshell_shape_builder_ellipse_curve",
             x_axis_radius,
             y_axis_radius,
             _native_vector(position),
@@ -620,7 +620,7 @@ class ShapeBuilder:
 
         return _native_entity(
             self.file,
-            "ifcopenshell_ifcapi_shape_builder_profile",
+            "ifcopenshell_shape_builder_profile",
             outer_curve._handle,
             name,
             _native_instance_list(inner_curves),
@@ -651,7 +651,7 @@ class ShapeBuilder:
             processed_objects.append(
                 _native_entity(
                     self.file,
-                    "ifcopenshell_ifcapi_shape_builder_translate",
+                    "ifcopenshell_shape_builder_translate",
                     c._handle,
                     _native_vector(translation),
                     bool(create_copy),
@@ -708,7 +708,7 @@ class ShapeBuilder:
             processed_objects.append(
                 _native_entity(
                     self.file,
-                    "ifcopenshell_ifcapi_shape_builder_rotate",
+                    "ifcopenshell_shape_builder_rotate",
                     c._handle,
                     float(angle),
                     _native_vector(pivot_point),
@@ -758,7 +758,7 @@ class ShapeBuilder:
         """
         return _native_entity(
             self.file,
-            "ifcopenshell_ifcapi_shape_builder_axis2_placement_3d",
+            "ifcopenshell_shape_builder_axis2_placement_3d",
             _native_vector(position),
             _native_vector(z_axis),
             _native_vector(x_axis),
@@ -790,7 +790,7 @@ class ShapeBuilder:
         """
         return _native_entity(
             self.file,
-            "ifcopenshell_ifcapi_shape_builder_axis2_placement_2d",
+            "ifcopenshell_shape_builder_axis2_placement_2d",
             _native_vector(position),
             _native_vector(x_direction if x_direction else ()),
             x_direction is not None,
@@ -806,7 +806,7 @@ class ShapeBuilder:
         """
         return _native_entity(
             self.file,
-            "ifcopenshell_ifcapi_shape_builder_vertex",
+            "ifcopenshell_shape_builder_vertex",
             _native_vector(position),
         )
 
@@ -821,7 +821,7 @@ class ShapeBuilder:
         """
         return _native_entity(
             self.file,
-            "ifcopenshell_ifcapi_shape_builder_edge",
+            "ifcopenshell_shape_builder_edge",
             _native_vector(start),
             _native_vector(end),
         )
@@ -837,7 +837,7 @@ class ShapeBuilder:
         """
         return _native_entity(
             self.file,
-            "ifcopenshell_ifcapi_shape_builder_face",
+            "ifcopenshell_shape_builder_face",
             _native_points(points),
         )
 
@@ -875,7 +875,7 @@ class ShapeBuilder:
                 processed_objects.append(
                     _native_entity(
                         self.file,
-                        "ifcopenshell_ifcapi_shape_builder_mirror",
+                        "ifcopenshell_shape_builder_mirror",
                         curve_or_item_el._handle,
                         _native_vector(mirror_axes),
                         _native_vector(mirror_point),
@@ -900,7 +900,7 @@ class ShapeBuilder:
 
         return _native_entity(
             self.file,
-            "ifcopenshell_ifcapi_shape_builder_sphere",
+            "ifcopenshell_shape_builder_sphere",
             float(radius),
             _native_vector(center),
         )
@@ -922,7 +922,7 @@ class ShapeBuilder:
         """
         return _native_entity(
             self.file,
-            "ifcopenshell_ifcapi_shape_builder_block",
+            "ifcopenshell_shape_builder_block",
             _native_vector(position),
             float(x_length),
             float(y_length),
@@ -939,7 +939,7 @@ class ShapeBuilder:
         """
         return _native_entity(
             self.file,
-            "ifcopenshell_ifcapi_shape_builder_half_space_solid",
+            "ifcopenshell_shape_builder_half_space_solid",
             plane._handle,
             bool(agreement_flag),
         )
@@ -972,7 +972,7 @@ class ShapeBuilder:
 
         return _native_entity(
             self.file,
-            "ifcopenshell_ifcapi_shape_builder_extrude",
+            "ifcopenshell_shape_builder_extrude",
             profile_or_curve._handle,
             float(magnitude),
             _native_vector(position),
@@ -1003,7 +1003,7 @@ class ShapeBuilder:
 
         return _native_entity(
             self.file,
-            "ifcopenshell_ifcapi_shape_builder_swept_disk_solid",
+            "ifcopenshell_shape_builder_swept_disk_solid",
             path_curve._handle,
             float(radius),
         )
@@ -1060,7 +1060,7 @@ class ShapeBuilder:
         """
         return _native_entity(
             self.file,
-            "ifcopenshell_ifcapi_shape_builder_deep_copy",
+            "ifcopenshell_shape_builder_deep_copy",
             element._handle,
         )
 
@@ -1135,7 +1135,7 @@ class ShapeBuilder:
         """
         _native_entity(
             self.file,
-            "ifcopenshell_ifcapi_shape_builder_set_polyline_coords",
+            "ifcopenshell_shape_builder_set_polyline_coords",
             polyline._handle,
             _native_points(coords),
         )
@@ -1249,7 +1249,7 @@ class ShapeBuilder:
         if create_ifc_curve:
             ifc_curve = _native_entity(
                 self.file,
-                "ifcopenshell_ifcapi_shape_builder_indexed_polycurve_2d",
+                "ifcopenshell_shape_builder_indexed_polycurve_2d",
                 _native_points(points),
                 _native_faces([[i + 1 for i in segment] for segment in segments]),
             )
@@ -1367,7 +1367,7 @@ class ShapeBuilder:
         """
         return _native_entity(
             self.file,
-            "ifcopenshell_ifcapi_shape_builder_mesh",
+            "ifcopenshell_shape_builder_mesh",
             _native_points(points),
             _native_faces(faces),
         )
@@ -1383,7 +1383,7 @@ class ShapeBuilder:
         """
         return _native_entity(
             self.file,
-            "ifcopenshell_ifcapi_shape_builder_faceted_brep",
+            "ifcopenshell_shape_builder_faceted_brep",
             _native_points(points),
             _native_faces(faces),
         )
@@ -1402,7 +1402,7 @@ class ShapeBuilder:
         """
         return _native_entity(
             self.file,
-            "ifcopenshell_ifcapi_shape_builder_triangulated_face_set",
+            "ifcopenshell_shape_builder_triangulated_face_set",
             _native_points(points),
             _native_faces(faces),
         )
@@ -1422,7 +1422,7 @@ class ShapeBuilder:
         """
         return _native_entity(
             self.file,
-            "ifcopenshell_ifcapi_shape_builder_polygonal_face_set",
+            "ifcopenshell_shape_builder_polygonal_face_set",
             _native_points(points),
             _native_polygonal_faces(faces),
         )

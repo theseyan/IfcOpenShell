@@ -343,7 +343,7 @@ static void apply_entity_facet(
 /* INSTANCE facet: adds or removes element by GlobalId */
 static void apply_instance_facet(
     ifcopenshell::file* file,
-    ifcopenshell_ifc_file_t* file_h,
+    ifcopenshell_file_t* file_h,
     const ElemSet* base,
     const ifcopenshell_selector_node_t* inst_node,
     ElemSet& elements,
@@ -892,7 +892,7 @@ static void apply_query_facet(
 
 static void process_facet(
     ifcopenshell::file* file,
-    ifcopenshell_ifc_file_t* file_h,
+    ifcopenshell_file_t* file_h,
     const ElemSet* base,
     const ifcopenshell_selector_node_t* facet_child,
     ElemSet& elements,
@@ -948,7 +948,7 @@ static void process_facet(
 
 static ElemSet process_facet_list(
     ifcopenshell::file* file,
-    ifcopenshell_ifc_file_t* file_h,
+    ifcopenshell_file_t* file_h,
     const ElemSet* base,
     const ifcopenshell_selector_node_t* fl_node)
 {
@@ -972,7 +972,7 @@ static ElemSet process_facet_list(
 /* Walk start → filter_group → facet_list; return union of all facet-list results. */
 static ElemSet filter_elements_impl(
     ifcopenshell::file* file,
-    ifcopenshell_ifc_file_t* file_h,
+    ifcopenshell_file_t* file_h,
     const ElemSet* base,
     const ifcopenshell_selector_node_t* ast)
 {
@@ -1001,12 +1001,12 @@ static ElemSet filter_elements_impl(
 namespace ifcapi {
 namespace bindings {
 
-ifcopenshell_value_t* selector_filter_all(ifcopenshell::file* file, const std::string& query)
+ifcopenshell_selector_value_t* selector_filter_all(ifcopenshell::file* file, const std::string& query)
 {
     return selector_filter_elements(file, query, {});
 }
 
-ifcopenshell_value_t* selector_filter_elements(
+ifcopenshell_selector_value_t* selector_filter_elements(
     ifcopenshell::file* file,
     const std::string& query,
     const std::vector<express::Base>& elements)
@@ -1038,7 +1038,7 @@ ifcopenshell_value_t* selector_filter_elements(
     }
 
     ElemSet result_set;
-    ifcopenshell_ifc_file_t file_handle{file, false};
+    ifcopenshell_file_t file_handle{file, false};
     try {
         result_set = filter_elements_impl(file, &file_handle, base_ptr, ast);
     } catch (const std::exception& ex) {

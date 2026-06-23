@@ -59,7 +59,7 @@ std::string guid_compress(const std::string& uuid_hex);
 std::string guid_expand(const std::string& guid);
 } // namespace ifcapi
 
-IFCAPI_HANDLE(value, ifcopenshell_value_t, function:ifcapi::bindings::value_free)
+IFCAPI_HANDLE(value, ifcopenshell_selector_value_t, function:ifcapi::bindings::value_free)
 
 namespace ifcapi::bindings {
 

@@ -79,7 +79,7 @@ def _get_pset_definitions(
 ) -> list[ifcopenshell.entity_instance]:
     return _call_element_instance_list(
         element,
-        "ifcopenshell_ifcapi_element_get_pset_ids",
+        "ifcopenshell_element_get_pset_ids",
         bool(psets_only),
         bool(qtos_only),
         bool(should_inherit),
@@ -594,7 +594,7 @@ def is_userdefined_type(element: ifcopenshell.entity_instance) -> bool:
         is_userdefined_type = ifcopenshell.util.element.is_userdefined_type(element)
     """
     return _call_element_bool(
-        element, "ifcopenshell_ifcapi_element_is_userdefined_type"
+        element, "ifcopenshell_element_is_userdefined_type"
     )
 
 
@@ -615,7 +615,7 @@ def get_type(
         element = ifcopenshell.by_type("IfcWall")[0]
         element_type = ifcopenshell.util.element.get_type(element)
     """
-    return _call_element_instance(element, "ifcopenshell_ifcapi_element_get_type")
+    return _call_element_instance(element, "ifcopenshell_element_get_type")
 
 
 def get_types(type: ifcopenshell.entity_instance) -> list[ifcopenshell.entity_instance]:
@@ -631,7 +631,7 @@ def get_types(type: ifcopenshell.entity_instance) -> list[ifcopenshell.entity_in
         element_type = ifcopenshell.by_type("IfcWallType")[0]
         walls = ifcopenshell.util.element.get_types(element_type)
     """
-    types = _call_element_instance_list(type, "ifcopenshell_ifcapi_element_get_types")
+    types = _call_element_instance_list(type, "ifcopenshell_element_get_types")
     return tuple(types) if types else []
 
 
@@ -656,7 +656,7 @@ def get_shape_aspects(
     """
 
     return _call_element_instance_list(
-        element, "ifcopenshell_ifcapi_element_get_shape_aspects", bool(should_inherit)
+        element, "ifcopenshell_element_get_shape_aspects", bool(should_inherit)
     )
 
 
@@ -686,7 +686,7 @@ def get_material(
     """
     return _call_element_instance(
         element,
-        "ifcopenshell_ifcapi_element_get_material",
+        "ifcopenshell_element_get_material",
         bool(should_skip_usage),
         bool(should_inherit),
     )
@@ -749,7 +749,7 @@ def get_styles(
         styles = ifcopenshell.util.element.get_styles(wall)
     """
     return _call_element_instance_list(
-        element, "ifcopenshell_ifcapi_element_get_styles"
+        element, "ifcopenshell_element_get_styles"
     )
 
 
@@ -778,7 +778,7 @@ def get_elements_by_material(
         ifc_file = material.file
     return set(
         _call_element_instance_list(
-            material, "ifcopenshell_ifcapi_element_get_elements_by_material"
+            material, "ifcopenshell_element_get_elements_by_material"
         )
     )
 
@@ -803,7 +803,7 @@ def get_elements_by_style(
         ifc_file = style.file
     return set(
         _call_element_instance_list(
-            style, "ifcopenshell_ifcapi_element_get_elements_by_style"
+            style, "ifcopenshell_element_get_elements_by_style"
         )
     )
 
@@ -829,7 +829,7 @@ def get_elements_by_representation(
         ifc_file = representation.file
     return set(
         _call_element_instance_list(
-            representation, "ifcopenshell_ifcapi_element_get_elements_by_representation"
+            representation, "ifcopenshell_element_get_elements_by_representation"
         )
     )
 
@@ -847,7 +847,7 @@ def get_elements_by_profile(
     """
     return set(
         _call_element_instance_list(
-            profile, "ifcopenshell_ifcapi_element_get_elements_by_profile"
+            profile, "ifcopenshell_element_get_elements_by_profile"
         )
     )
 
@@ -865,7 +865,7 @@ def get_elements_by_layer(
         ifc_file = layer.file
     return set(
         _call_element_instance_list(
-            layer, "ifcopenshell_ifcapi_element_get_elements_by_layer"
+            layer, "ifcopenshell_element_get_elements_by_layer"
         )
     )
 
@@ -892,7 +892,7 @@ def get_layers(
     if not ifc_file:
         ifc_file = element.file
     return _call_element_instance_list(
-        element, "ifcopenshell_ifcapi_element_get_layers"
+        element, "ifcopenshell_element_get_layers"
     )
 
 
@@ -923,7 +923,7 @@ def get_container(
     """
     return _call_element_instance(
         element,
-        "ifcopenshell_ifcapi_element_get_container",
+        "ifcopenshell_element_get_container",
         bool(should_get_direct),
         ifc_class,
     )
@@ -949,7 +949,7 @@ def get_referenced_structures(
         print(ifcopenshell.util.element.get_referenced_structures(element))
     """
     return _call_element_instance_list(
-        element, "ifcopenshell_ifcapi_element_get_referenced_structures"
+        element, "ifcopenshell_element_get_referenced_structures"
     )
 
 
@@ -970,7 +970,7 @@ def get_structure_referenced_elements(
     """
     return set(
         _call_element_instance_list(
-            structure, "ifcopenshell_ifcapi_element_get_structure_referenced_elements"
+            structure, "ifcopenshell_element_get_structure_referenced_elements"
         )
     )
 
@@ -995,7 +995,7 @@ def get_decomposition(
     """
     return set(
         _call_element_instance_list(
-            element, "ifcopenshell_ifcapi_element_get_decomposition", bool(is_recursive)
+            element, "ifcopenshell_element_get_decomposition", bool(is_recursive)
         )
     )
 
@@ -1045,7 +1045,7 @@ def get_groups(
         group = ifcopenshell.util.element.get_groups(element)[0]
     """
     return _call_element_instance_list(
-        element, "ifcopenshell_ifcapi_element_get_groups"
+        element, "ifcopenshell_element_get_groups"
     )
 
 
@@ -1066,7 +1066,7 @@ def get_controls(
         control = ifcopenshell.util.element.get_controls(task)[0]
     """
     yield from _call_element_instance_list(
-        element, "ifcopenshell_ifcapi_element_get_controls"
+        element, "ifcopenshell_element_get_controls"
     )
 
 
@@ -1100,7 +1100,7 @@ def get_parent(
         element = file.by_type("IfcWall")[0]
         parent = ifcopenshell.util.element.get_parent(element)
     """
-    parent = _call_element_instance(element, "ifcopenshell_ifcapi_element_get_parent")
+    parent = _call_element_instance(element, "ifcopenshell_element_get_parent")
 
     if not ifc_class:
         return parent
@@ -1131,7 +1131,7 @@ def get_filled_void(
         opening = ifcopenshell.util.element.get_filled_void(window)
     """
     return _call_element_instance(
-        element, "ifcopenshell_ifcapi_element_get_filled_void"
+        element, "ifcopenshell_element_get_filled_void"
     )
 
 
@@ -1153,7 +1153,7 @@ def get_voided_element(
         element = ifcopenshell.util.element.get_voided_element(opening)
     """
     return _call_element_instance(
-        element, "ifcopenshell_ifcapi_element_get_voided_element"
+        element, "ifcopenshell_element_get_voided_element"
     )
 
 
@@ -1173,7 +1173,7 @@ def get_aggregate(
         element = file.by_type("IfcBeam")[0]
         aggregate = ifcopenshell.util.element.get_aggregate(element)
     """
-    return _call_element_instance(element, "ifcopenshell_ifcapi_element_get_aggregate")
+    return _call_element_instance(element, "ifcopenshell_element_get_aggregate")
 
 
 def get_nest(
@@ -1192,7 +1192,7 @@ def get_nest(
         element = file.by_type("IfcBeam")[0]
         aggregate = ifcopenshell.util.element.get_nest(element)
     """
-    return _call_element_instance(element, "ifcopenshell_ifcapi_element_get_nest")
+    return _call_element_instance(element, "ifcopenshell_element_get_nest")
 
 
 def get_parts(
@@ -1211,7 +1211,7 @@ def get_parts(
         element = file.by_type("IfcElementAssembly")[0]
         parts = ifcopenshell.util.element.get_parts(element)
     """
-    return _call_element_instance_list(element, "ifcopenshell_ifcapi_element_get_parts")
+    return _call_element_instance_list(element, "ifcopenshell_element_get_parts")
 
 
 def get_contained(
@@ -1231,7 +1231,7 @@ def get_contained(
         elements = ifcopenshell.util.element.get_contained(element)
     """
     return _call_element_instance_list(
-        element, "ifcopenshell_ifcapi_element_get_contained"
+        element, "ifcopenshell_element_get_contained"
     )
 
 
@@ -1325,7 +1325,7 @@ def get_referenced_elements(
 
     return set(
         _call_element_instance_list(
-            reference, "ifcopenshell_ifcapi_element_get_referenced_elements"
+            reference, "ifcopenshell_element_get_referenced_elements"
         )
     )
 
@@ -1663,7 +1663,7 @@ def get_openings(
     :return: Generator of IfcRelVoidsElements.
     """
     yield from _call_element_instance_list(
-        element, "ifcopenshell_ifcapi_element_get_openings"
+        element, "ifcopenshell_element_get_openings"
     )
 
 

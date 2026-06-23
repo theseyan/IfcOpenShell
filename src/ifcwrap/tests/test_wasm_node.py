@@ -107,21 +107,41 @@ def _render_node_test(ifc_path: Path) -> str:
             pluginBaseUrl,
             pluginManifest,
         }});
+        const step = (name) => console.error(`wasm-smoke:${{name}}`);
 
+        step('load-schemas');
         await api.loadPlugin('schema', 'ifc4');
         await api.loadPlugin('schema', 'ifc2x3');
 
-        const newFile = api.newFile('IFC4', 0, '');
+        step('new-files');
+        const newFile = api.parse.newFile('IFC4', 0, '');
         assert.equal(newFile.schemaName(), 'IFC4');
-        const ifc2x3File = api.newFile('IFC2X3', 0, '');
+        const ifc2x3File = api.parse.newFile('IFC2X3', 0, '');
         assert.equal(ifc2x3File.schemaName(), 'IFC2X3');
 
+        step('file-create-project');
         const project = newFile.createEntityByName('IfcProject');
         assert.equal(project.className(false), 'IfcProject');
+        step('file-create-wall');
+        const wall = newFile.createEntityByName('IfcWall');
+        assert.equal(wall.className(false), 'IfcWall');
 
-        const ifc4Schema = api.schemaByName('IFC4');
+        step('unit-add-si');
+        const metre = api.unit.addSiUnit(newFile, 'LENGTHUNIT', null);
+        assert.equal(metre.className(false), 'IfcSIUnit');
+        step('unit-full-name');
+        assert.equal(api.unit.getFullUnitName(metre), 'METRE');
+        step('unit-convert');
+        assert.equal(api.unit.convert(1000, 'MILLI', 'METRE', '', 'METRE'), 1);
+
+        step('placement-rotation');
+        assert.deepEqual(api.placement.rotation(Math.PI / 2, 'Z').slice(0, 4).map((v) => Math.round(v)), [0, -1, 0, 0]);
+        step('shape-is-x');
+        assert.equal(api.shape.isX(1.0000001, 1, 0.001), true);
+        step('schema-checks');
+        const ifc4Schema = api.parse.schemaByName('IFC4');
         assert.equal(ifc4Schema.name(), 'IFC4');
-        const ifc2x3Schema = api.schemaByName('IFC2X3');
+        const ifc2x3Schema = api.parse.schemaByName('IFC2X3');
         assert.equal(ifc2x3Schema.name(), 'IFC2X3');
 
         await api.loadPlugin('schema', 'ifc4');
@@ -135,15 +155,17 @@ def _render_node_test(ifc_path: Path) -> str:
         assert.ok(api.loadedPlugins().includes('mapping:ifc4'));
         assert.ok(api.loadedPlugins().includes('geometry_serializer:obj'));
 
-        const settings = api.geomCreateSettings();
-        const iterator = api.geomCreateIterator('passthrough', settings, newFile, 1);
+        const settings = api.geom.createSettings();
+        const iterator = api.geom.createIterator('passthrough', settings, newFile, 1);
         assert.ok(iterator);
 
-        const opened = api.open({json.dumps(str(ifc_path))}, false);
+        const opened = api.parse.open({json.dumps(str(ifc_path))}, false);
         assert.equal(opened.schemaName(), 'IFC4');
 
         iterator.destroy();
         settings.destroy();
+        metre.destroy();
+        wall.destroy();
         project.destroy();
         ifc2x3Schema.destroy();
         ifc4Schema.destroy();

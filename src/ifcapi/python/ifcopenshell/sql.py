@@ -150,7 +150,10 @@ class sqlite(file):
                 if primitive == "entity":
                     entity.append(attribute.name())
 
-                    attribute_entity = attribute.type_of_attribute().declared_type()
+                    import ifcopenshell._capi_utils as _capi_utils
+
+                    param_type = _capi_utils.unwrap_parameter_type(attribute.type_of_attribute())
+                    attribute_entity = param_type.declared_type() if hasattr(param_type, "declared_type") else None
                     for subtype in ifcopenshell.util.schema.get_subtypes(attribute_entity):
                         self.ifc_class_inverses.setdefault(subtype.name(), {})
                         self.ifc_class_inverses[subtype.name()].setdefault(declaration.name(), [])

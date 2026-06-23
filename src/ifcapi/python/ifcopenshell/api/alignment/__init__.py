@@ -47,6 +47,8 @@ Future versions of this API may support:
     5. Adding a segment at any location along a curve
 """
 
+import ifcopenshell.api.spatial  # noqa: F401
+
 from ._get_segment_start_point_label import register_referent_name_callback
 from .add_stationing_referent import add_stationing_referent
 from .add_vertical_layout import add_vertical_layout

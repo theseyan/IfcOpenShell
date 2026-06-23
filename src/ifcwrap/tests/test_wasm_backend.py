@@ -148,6 +148,42 @@ class TestWasmTypescript:
         assert "openFile(path: string): IfcOpenshellDemoFile;" in code
         assert "setFlag(flag: boolean): void;" in code
 
+    def test_generates_nested_module_interfaces(self):
+        metadata = HostBindingMetadata(
+            module="ifcopenshell_wrapper",
+            c_prefix="ifcopenshell",
+            handles={"settings": _make_handle("ifcopenshell_geom_settings_t")},
+            value_types={},
+            functions={
+                "ifcopenshell_parse_open": _make_function(
+                    c_name="ifcopenshell_parse_open",
+                    params=(HostParamMetadata("path", "const char*", "param", "string"),),
+                ),
+                "ifcopenshell_geom_create_settings": _make_function(
+                    c_name="ifcopenshell_geom_create_settings",
+                    returns=TypeSpec(kind="handle", handle="settings"),
+                ),
+                "ifcopenshell_unit_add_si_unit": _make_function(
+                    c_name="ifcopenshell_unit_add_si_unit",
+                    params=(HostParamMetadata("unit_type", "const char*", "param", "string"),),
+                ),
+            },
+            error_functions=_DEFAULT_ERROR_FUNCTIONS,
+        )
+        code = render_typescript_declarations(metadata)
+        assert "export interface IfcOpenshellParseModule" in code
+        assert "open(path: string): void;" in code
+        assert "export interface IfcOpenshellGeomModule" in code
+        assert "createSettings(): IfcOpenshellGeomSettings;" in code
+        assert "export interface IfcOpenshellUnitModule" in code
+        assert "addSiUnit(unit_type: string): void;" in code
+        assert "parse: IfcOpenshellParseModule;" in code
+        assert "geom: IfcOpenshellGeomModule;" in code
+        assert "unit: IfcOpenshellUnitModule;" in code
+        assert "    createSettings(): IfcOpenshellGeomSettings;" not in code.split(
+            "export interface IfcOpenshellModule"
+        )[1]
+
 
 class TestWasmJsGlue:
     def test_generates_handle_wrapper_and_destroy_logic(self):
@@ -175,6 +211,41 @@ class TestWasmJsGlue:
         assert "openFile: (path) => invoke_ifcopenshell_demo_open_file(module, path)" in code
         assert "createIfcOpenshellModule(initModule, wasmUrl, options = {})" in code
         assert "import initIfcOpenShellWasmModule" not in code
+
+    def test_generates_nested_api_modules(self):
+        metadata = HostBindingMetadata(
+            module="ifcopenshell_wrapper",
+            c_prefix="ifcopenshell",
+            handles={"settings": _make_handle("ifcopenshell_geom_settings_t")},
+            value_types={},
+            functions={
+                "ifcopenshell_parse_open": _make_function(
+                    c_name="ifcopenshell_parse_open",
+                    params=(HostParamMetadata("path", "const char*", "param", "string"),),
+                ),
+                "ifcopenshell_geom_create_settings": _make_function(
+                    c_name="ifcopenshell_geom_create_settings",
+                    returns=TypeSpec(kind="handle", handle="settings"),
+                ),
+                "ifcopenshell_unit_add_si_unit": _make_function(
+                    c_name="ifcopenshell_unit_add_si_unit",
+                    params=(HostParamMetadata("unit_type", "const char*", "param", "string"),),
+                ),
+            },
+            error_functions=_DEFAULT_ERROR_FUNCTIONS,
+        )
+        code = render_js_glue(metadata)
+        assert "parse: Object.freeze({" in code
+        assert "open: (path) => invoke_ifcopenshell_parse_open(module, path)" in code
+        assert "geom: Object.freeze({" in code
+        assert "createSettings: () => invoke_ifcopenshell_geom_create_settings(module)" in code
+        assert "unit: Object.freeze({" in code
+        assert "addSiUnit: (unit_type) => invoke_ifcopenshell_unit_add_si_unit(module, unit_type)" in code
+        assert (
+            "        createSettings: () => invoke_ifcopenshell_geom_create_settings(module),\n"
+            "        geom: Object.freeze({"
+            not in code
+        )
 
     def test_generates_instance_methods_for_receiver_functions(self):
         metadata = _make_metadata(
@@ -239,7 +310,7 @@ class TestWasmJsGlue:
         assert "for (const dependency of pluginDependencies(kind, id))" in code
         assert "await loadPlugin(dependency.slice(0, separator), dependency.slice(separator + 1));" in code
         assert "await module.loadDynamicLibrary(url, { loadAsync: true, global: true, allowUndefined: true });" in code
-        assert "invoke_ifcopenshell_ifcgeom_plugin_registry_address" not in code
+        assert "invoke_ifcopenshell_geom_plugin_registry_address" not in code
 
 
 class TestWasmBackend:

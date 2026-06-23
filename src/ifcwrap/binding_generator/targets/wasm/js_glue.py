@@ -7,11 +7,29 @@ import json
 try:
     from ...binding_model import TypeSpec
     from ...host_metadata import HostBindingMetadata, HostFunctionMetadata, HostParamMetadata, HostStructMetadata
-    from .._shared import _INTERNAL_C_FUNCTIONS, _camel_name, _method_name, _public_name, _public_params, _snake_name, _type_name
+    from .._shared import (
+        _INTERNAL_C_FUNCTIONS,
+        _camel_name,
+        _method_name,
+        _public_module_member,
+        _public_name,
+        _public_params,
+        _snake_name,
+        _type_name,
+    )
 except ImportError:  # pragma: no cover - script execution fallback
     from binding_model import TypeSpec
     from host_metadata import HostBindingMetadata, HostFunctionMetadata, HostParamMetadata, HostStructMetadata
-    from targets._shared import _INTERNAL_C_FUNCTIONS, _camel_name, _method_name, _public_name, _public_params, _snake_name, _type_name
+    from targets._shared import (
+        _INTERNAL_C_FUNCTIONS,
+        _camel_name,
+        _method_name,
+        _public_module_member,
+        _public_name,
+        _public_params,
+        _snake_name,
+        _type_name,
+    )
 
 _POINTER_SIZE = 4
 
@@ -337,6 +355,7 @@ def _render_wrapper(function: HostFunctionMetadata, metadata: HostBindingMetadat
 
 def _render_module_factory(metadata: HostBindingMetadata) -> str:
     members: list[str] = []
+    module_members: dict[str, list[str]] = {}
     for handle in sorted(metadata.handles.values(), key=lambda item: item.c_type):
         type_name = _type_name(handle.c_type)
         members.append(f"        {type_name},")
@@ -347,7 +366,20 @@ def _render_module_factory(metadata: HostBindingMetadata) -> str:
             continue
         name = _public_name(function, metadata.c_prefix)
         params = ", ".join(param.name for param in _public_params(function))
-        members.append(f"        {name}: ({params}) => invoke_{function.c_name}(module{', ' if params else ''}{params}),")
+        call = f"({params}) => invoke_{function.c_name}(module{', ' if params else ''}{params})"
+        module_member = _public_module_member(function, metadata.c_prefix)
+        if module_member is not None:
+            module_name, member_name = module_member
+            module_members.setdefault(module_name, []).append(f"            {member_name}: {call},")
+        else:
+            members.append(f"        {name}: {call},")
+    for module_name, nested_members in sorted(module_members.items()):
+        members.append(
+            f"        {module_name}: Object.freeze({{\n"
+            + "\n".join(nested_members)
+            + "\n"
+            "        }),"
+        )
     joined = "\n".join(members)
     return (
         "export async function createIfcOpenshellModule(initModule, wasmUrl, options = {}) {\n"
@@ -398,7 +430,7 @@ def _render_module_factory(metadata: HostBindingMetadata) -> str:
         "                }\n"
         "                const url = `${pluginBaseUrl}${entry.wasm}`;\n"
         "                await module.loadDynamicLibrary(url, { loadAsync: true, global: true, allowUndefined: true });\n"
-        "                const schema = invoke_ifcopenshell_ifcparse_schema_by_name(module, id.toUpperCase());\n"
+        "                const schema = invoke_ifcopenshell_parse_schema_by_name(module, id.toUpperCase());\n"
         "                if (schema) schema.destroy();\n"
         "                loadedPlugins.add(key);\n"
         "                return;\n"
@@ -409,7 +441,7 @@ def _render_module_factory(metadata: HostBindingMetadata) -> str:
         "            }\n"
         "            const url = `${pluginBaseUrl}${entry.wasm}`;\n"
         "            await module.loadDynamicLibrary(url, { loadAsync: true, global: true, allowUndefined: true });\n"
-        "            if (!invoke_ifcopenshell_ifcgeom_plugin_load(module, kind, id)) {\n"
+        "            if (!invoke_ifcopenshell_geom_plugin_load(module, kind, id)) {\n"
         "                throw new Error(`Plugin ${kind}/${id} loaded but failed to register`);\n"
         "            }\n"
         "            if (!pluginIsLoaded(kind, id)) {\n"
@@ -426,7 +458,7 @@ def _render_module_factory(metadata: HostBindingMetadata) -> str:
         "    }\n"
         "\n"
         "    function pluginIsLoaded(kind, id) {\n"
-        "        return invoke_ifcopenshell_ifcgeom_plugin_is_loaded(module, kind, id);\n"
+        "        return invoke_ifcopenshell_geom_plugin_is_loaded(module, kind, id);\n"
         "    }\n"
         "\n"
         "    return Object.freeze({\n"

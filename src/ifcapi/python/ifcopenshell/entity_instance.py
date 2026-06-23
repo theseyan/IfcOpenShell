@@ -129,7 +129,7 @@ class entity_instance:
     """Wraps a native IFC entity identified by file pointer and STEP ID."""
 
     def __init__(self, file_obj: file, handle):
-        """Wrap a native ifcopenshell_ifc_instance_t* handle.
+        """Wrap a native ifcopenshell_instance_t* handle.
 
         ``handle`` is a native _ifcopenshell_capi handle returned from a C API call.
         Ownership of the handle is transferred to this instance.
@@ -187,7 +187,7 @@ class entity_instance:
     def declaration(self):
         """Return the schema declaration for this entity's type.
 
-        Routes through the autogen ABI (`ifcopenshell_ifc_instance_declaration`)
+        Routes through the autogen ABI (`ifcopenshell_instance_declaration`)
         so header-section entities (which live in `Header_section_schema` rather
         than the file's IFC schema) are also resolvable.
         """

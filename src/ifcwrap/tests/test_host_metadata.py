@@ -38,12 +38,10 @@ def test_host_metadata_derives_layouts_and_signatures(tmp_path: Path) -> None:
                     type:
                       kind: string
               - expose_as: schema_names
+                cpp_name: schema_names
                 returns:
                   kind: string_list
                 params: []
-                implementation:
-                  kind: inline_cpp
-                  body: return std::vector<std::string>{"IFC4"};
             methods:
               - receiver: file
                 expose_as: by_type

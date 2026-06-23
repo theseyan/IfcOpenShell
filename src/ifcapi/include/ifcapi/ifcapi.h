@@ -41,10 +41,10 @@ extern "C" {
 /*  and consumers can mix calls freely.                               */
 /* ------------------------------------------------------------------ */
 
-typedef struct ifcopenshell_ifc_file_t ifcopenshell_ifc_file_t;
-typedef struct ifcopenshell_ifc_instance_t ifcopenshell_ifc_instance_t;
-typedef struct ifcopenshell_ifc_instance_streamer_t ifcopenshell_ifc_instance_streamer_t;
-typedef struct ifcopenshell_ifcgeom_taxonomy_item_t ifcopenshell_ifcgeom_taxonomy_item_t;
+typedef struct ifcopenshell_file_t ifcopenshell_file_t;
+typedef struct ifcopenshell_instance_t ifcopenshell_instance_t;
+typedef struct ifcopenshell_instance_streamer_t ifcopenshell_instance_streamer_t;
+typedef struct ifcopenshell_geom_taxonomy_item_t ifcopenshell_geom_taxonomy_item_t;
 
 /* ------------------------------------------------------------------ */
 /*  Error handling                                                     */

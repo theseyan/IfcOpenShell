@@ -55,8 +55,8 @@ def main() -> int:
             args.spec_dir / "cpp" / "ifcgeom.hpp",
         ],
         cpp_spec_namespace=["ifcparse::bindings", "ifcapi::bindings", "ifcgeom::bindings"],
-        cpp_spec_c_prefix=["ifcopenshell_ifcparse", "ifcopenshell_ifcapi", "ifcopenshell_ifcgeom"],
-        cpp_spec_handle_c_prefix=["ifcopenshell_ifc", "", ""],
+        cpp_spec_c_prefix=["ifcopenshell_parse", "ifcopenshell", "ifcopenshell_geom"],
+        cpp_spec_handle_c_prefix=["ifcopenshell", "ifcopenshell", "ifcopenshell_geom"],
     )
     options = {}
     if args.python_utils_out is not None:

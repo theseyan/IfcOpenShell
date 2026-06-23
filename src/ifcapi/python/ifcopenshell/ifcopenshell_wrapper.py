@@ -57,10 +57,6 @@ def _wrap_optional(h, ctor):
 def _wrap_decl(h):
     if not h:
         return None
-    # Determine the most specific type by probing as_* casts.
-    # The C extension accepts any declaration-family handle type for
-    # any declaration-family function via handle_names_are_compatible(),
-    # so we only need to store the typed handle.
     e = _capi.declaration_as_entity(h)
     if e:
         _capi.declaration_destroy(h)
@@ -397,24 +393,24 @@ class _FunctionItem:
     def _distance(self, fn_name):
         return float(getattr(_capi, fn_name)(self._h))
     def start(self):
-        return self._distance("geom_taxonomy_function_item_start")
+        return self._distance("taxonomy_function_item_start")
     def end(self):
-        return self._distance("geom_taxonomy_function_item_end")
+        return self._distance("taxonomy_function_item_end")
 
 
 class function_item_evaluator:
     def __init__(self, settings, fn):
-        self._h = _capi.geom_create_function_item_evaluator(settings._h, fn._h)
+        self._h = _capi.create_function_item_evaluator(settings._h, fn._h)
     def __del__(self):
         h = getattr(self, "_h", None)
         if h:
             try:
-                _capi.geom_function_item_evaluator_destroy(h)
+                _capi.function_item_evaluator_destroy(h)
             except Exception:
                 pass
             self._h = None
     def evaluate(self, distance_along):
-        values = _capi.geom_function_item_evaluator_evaluate_at(self._h, float(distance_along))
+        values = _capi.function_item_evaluator_evaluate_at(self._h, float(distance_along))
         return [values[i : i + 4] for i in range(0, 16, 4)]
 
 
@@ -424,12 +420,12 @@ def map_shape(settings, wrapped_data):
 
 
 def helmert_curve_point(A0, A1, A2, length):
-    return tuple(_capi.geom_helmert_curve_point(float(A0), float(A1), float(A2), float(length)))
+    return tuple(_capi.helmert_curve_point(float(A0), float(A1), float(A2), float(length)))
 
 
 def convert_loop_to_function_item(fn):
     from ifcopenshell.geom.main import TaxonomyItem
-    return _FunctionItem(TaxonomyItem(_capi.geom_convert_loop_to_function_item(fn._h)))
+    return _FunctionItem(TaxonomyItem(_capi.convert_loop_to_function_item(fn._h)))
 
 
 _GEOM_CLASS_ALIASES = {

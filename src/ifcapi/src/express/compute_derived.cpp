@@ -18,7 +18,7 @@ namespace {
 
 using ifcapi::express::Value;
 
-ifcopenshell_value_t* convert(const Value& v) {
+ifcopenshell_selector_value_t* convert(const Value& v) {
     Value abi_value = ifcapi::express::materialize_for_abi(v);
     switch (abi_value.tag()) {
         case Value::Tag::Indeterminate:
@@ -63,7 +63,7 @@ ifcopenshell_value_t* convert(const Value& v) {
 namespace ifcapi {
 namespace bindings {
 
-ifcopenshell_value_t* compute_derived(::express::Base* instance, const std::string& attr_name) {
+ifcopenshell_selector_value_t* compute_derived(::express::Base* instance, const std::string& attr_name) {
     if (!instance || !*instance) return nullptr;
     auto& e = *instance;
     const auto* decl = e.declaration().as_entity();

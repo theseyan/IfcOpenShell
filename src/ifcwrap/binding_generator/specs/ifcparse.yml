@@ -1,7 +1,7 @@
 schema_version: 1
 module: ifcopenshell
 slice: ifcparse
-c_prefix: ifcopenshell_ifcparse
+c_prefix: ifcopenshell_parse
 
 public_headers:
   - ifc_parse_api.h

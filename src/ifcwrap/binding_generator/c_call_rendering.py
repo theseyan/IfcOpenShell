@@ -572,8 +572,8 @@ def _render_call_impl(call: CallIR, spec: BindingIR) -> str:
                 # receiver values (e.g. instance id() and identity()) must not throw
                 # but instead return the zero value and true.
                 _EMPTY_SAFE_RETURN_ZERO = {
-                    "ifcopenshell_ifc_instance_id",
-                    "ifcopenshell_ifc_instance_identity",
+                    "ifcopenshell_instance_id",
+                    "ifcopenshell_instance_identity",
                 }
                 if call.c_name in _EMPTY_SAFE_RETURN_ZERO:
                     zero_val = "0" if call.returns.kind == "uint32_t" else "false"

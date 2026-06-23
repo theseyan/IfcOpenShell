@@ -3,7 +3,7 @@
 schema_version: 1
 module: ifcopenshell
 slice: ifcgeom
-c_prefix: ifcopenshell_ifcgeom
+c_prefix: ifcopenshell_geom
 
 public_headers:
   - ifc_geom_api.h

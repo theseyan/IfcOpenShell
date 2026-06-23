@@ -2,10 +2,10 @@
 // This file was generated with the assistance of an AI coding tool.
 //
 // Generated high-level bindings expose the public DERIVE-rule ABI via
-// ifcopenshell_ifcapi_compute_derived.
+// ifcopenshell_compute_derived.
 //
 // The raw implementation remains internal to the high-level facade so callers
-// use a generated ifcopenshell_ifcapi_value_t handle with generated accessors.
+// use a generated ifcopenshell_value_t handle with generated accessors.
 
 #ifndef IFCAPI_EXPRESS_RULES_H
 #define IFCAPI_EXPRESS_RULES_H

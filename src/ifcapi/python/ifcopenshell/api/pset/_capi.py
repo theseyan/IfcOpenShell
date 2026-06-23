@@ -31,7 +31,7 @@ def _new_props():
 def _add_entry(props, key, value):
     """Translate a single (key, value) into a builder call."""
     if value is None:
-        _call("ifcopenshell_ifcapi_pset_props_set_null", props, key)
+        _call("ifcopenshell_pset_props_set_null", props, key)
         return
 
     if isinstance(value, dict):
@@ -41,14 +41,14 @@ def _add_entry(props, key, value):
             _add_entry(props, key, value["NominalValue"])
             unit = value["Unit"]
             unit_handle = unit._handle if isinstance(unit, ifcopenshell.entity_instance) else None
-            _call("ifcopenshell_ifcapi_pset_props_set_unit_for_last", props, unit_handle)
+            _call("ifcopenshell_pset_props_set_unit_for_last", props, unit_handle)
             return
         inner = _new_props()
         try:
             if "Discrimination" in value or "HasQuantities" in value:
                 if "Discrimination" in value:
                     _call(
-                        "ifcopenshell_ifcapi_pset_props_set_string",
+                        "ifcopenshell_pset_props_set_string",
                         inner,
                         "Discrimination",
                         str(value["Discrimination"]),
@@ -59,7 +59,7 @@ def _add_entry(props, key, value):
             else:
                 for k2, v2 in value.items():
                     _add_entry(inner, k2, v2)
-            _call("ifcopenshell_ifcapi_pset_props_set_dict", props, key, inner)
+            _call("ifcopenshell_pset_props_set_dict", props, key, inner)
         except Exception:
             free_props(inner)
             raise
@@ -67,24 +67,24 @@ def _add_entry(props, key, value):
 
     # entity_instance -- could be IfcProperty, IfcValue/typed value, or arbitrary entity.
     if isinstance(value, ifcopenshell.entity_instance):
-        _call("ifcopenshell_ifcapi_pset_props_set_instance", props, key, value._handle)
+        _call("ifcopenshell_pset_props_set_instance", props, key, value._handle)
         return
 
     if isinstance(value, (list, tuple)):
         if not value:
-            _call("ifcopenshell_ifcapi_pset_props_set_string_list", props, key, [])
+            _call("ifcopenshell_pset_props_set_string_list", props, key, [])
             return
         if all(isinstance(v, ifcopenshell.entity_instance) for v in value):
-            _call("ifcopenshell_ifcapi_pset_props_set_instance_list", props, key, [v._handle for v in value])
+            _call("ifcopenshell_pset_props_set_instance_list", props, key, [v._handle for v in value])
             return
         # Detect uniform element kind. Mixed -> coerce to strings.
         if all(isinstance(v, bool) or isinstance(v, int) and not isinstance(v, bool) for v in value):
-            _call("ifcopenshell_ifcapi_pset_props_set_int_list", props, key, [int(v) for v in value])
+            _call("ifcopenshell_pset_props_set_int_list", props, key, [int(v) for v in value])
         elif all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in value):
-            _call("ifcopenshell_ifcapi_pset_props_set_double_list", props, key, [float(v) for v in value])
+            _call("ifcopenshell_pset_props_set_double_list", props, key, [float(v) for v in value])
         else:
             _call(
-                "ifcopenshell_ifcapi_pset_props_set_string_list",
+                "ifcopenshell_pset_props_set_string_list",
                 props,
                 key,
                 [
@@ -97,20 +97,20 @@ def _add_entry(props, key, value):
         return
 
     if isinstance(value, bool):
-        _call("ifcopenshell_ifcapi_pset_props_set_bool", props, key, bool(value))
+        _call("ifcopenshell_pset_props_set_bool", props, key, bool(value))
         return
     if isinstance(value, int):
-        _call("ifcopenshell_ifcapi_pset_props_set_int", props, key, int(value))
+        _call("ifcopenshell_pset_props_set_int", props, key, int(value))
         return
     if isinstance(value, float):
-        _call("ifcopenshell_ifcapi_pset_props_set_double", props, key, float(value))
+        _call("ifcopenshell_pset_props_set_double", props, key, float(value))
         return
     if isinstance(value, str):
-        _call("ifcopenshell_ifcapi_pset_props_set_string", props, key, value)
+        _call("ifcopenshell_pset_props_set_string", props, key, value)
         return
     if isinstance(value, datetime.datetime):
         _call(
-            "ifcopenshell_ifcapi_pset_props_set_typed_string",
+            "ifcopenshell_pset_props_set_typed_string",
             props,
             key,
             value.isoformat(),
@@ -119,7 +119,7 @@ def _add_entry(props, key, value):
         return
     if isinstance(value, datetime.date):
         _call(
-            "ifcopenshell_ifcapi_pset_props_set_typed_string",
+            "ifcopenshell_pset_props_set_typed_string",
             props,
             key,
             value.isoformat(),
@@ -128,7 +128,7 @@ def _add_entry(props, key, value):
         return
 
     # Fallback: stringify.
-    _call("ifcopenshell_ifcapi_pset_props_set_string", props, key, str(value))
+    _call("ifcopenshell_pset_props_set_string", props, key, str(value))
 
 
 def build_props(properties):
@@ -143,7 +143,7 @@ def build_props(properties):
 def free_props(handle):
     if not handle:
         return
-    _call("ifcopenshell_ifcapi_pset_props_free", handle)
+    _call("ifcopenshell_pset_props_free", handle)
 
 
 def last_error_kind():

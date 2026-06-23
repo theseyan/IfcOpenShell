@@ -30,7 +30,7 @@ def _set_temporal_entry(props, key: str, value, parse_datetime_string: bool = Fa
     if isinstance(value, datetime.datetime):
         offset = value.utcoffset()
         pset_capi._call(
-            "ifcopenshell_ifcapi_pset_props_set_datetime",
+            "ifcopenshell_pset_props_set_datetime",
             props,
             key,
             value.year,
@@ -46,7 +46,7 @@ def _set_temporal_entry(props, key: str, value, parse_datetime_string: bool = Fa
         return True
     if isinstance(value, datetime.date):
         pset_capi._call(
-            "ifcopenshell_ifcapi_pset_props_set_datetime",
+            "ifcopenshell_pset_props_set_datetime",
             props,
             key,
             value.year,
@@ -95,7 +95,7 @@ def _set_duration_entry(props, key, value) -> None:
         delta = value.tdelta
     negative, days, hours, minutes, seconds, microseconds = _split_timedelta(delta)
     pset_capi._call(
-        "ifcopenshell_ifcapi_pset_props_set_duration",
+        "ifcopenshell_pset_props_set_duration",
         props,
         key,
         negative,

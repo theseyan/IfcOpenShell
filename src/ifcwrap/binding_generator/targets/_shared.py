@@ -7,18 +7,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ..host_metadata import HostFunctionMetadata, HostParamMetadata
 
-_PREFIXES = tuple(
-    sorted(
-        (
-            "ifcopenshell_ifcparse_",
-            "ifcopenshell_ifcapi_",
-            "ifcopenshell_ifc_",
-            "ifcopenshell_ifc",
-        ),
-        key=len,
-        reverse=True,
-    )
-)
+_DOMAIN_PREFIXES = ("ifcopenshell_parse_", "ifcopenshell_geom_")
 
 
 def _snake_name(c_type: str) -> str:
@@ -30,10 +19,13 @@ def _type_name(c_type: str) -> str:
 
 
 def _method_name(c_name: str, c_prefix: str) -> str:
-    for prefix in _PREFIXES:
+    for prefix in _DOMAIN_PREFIXES:
         if c_name.startswith(prefix):
             return c_name[len(prefix) :]
-    return c_name.removeprefix(f"{c_prefix}_")
+    exact_prefix = f"{c_prefix}_"
+    if c_name.startswith(exact_prefix):
+        return c_name[len(exact_prefix) :]
+    return c_name.removeprefix("ifcopenshell_")
 
 
 def _camel_name(name: str) -> str:
@@ -50,16 +42,40 @@ def _public_name(function: HostFunctionMetadata, c_prefix: str) -> str:
     return _camel_name(name)
 
 
+def _public_module_member(function: HostFunctionMetadata, c_prefix: str) -> tuple[str, str] | None:
+    if function.receiver is not None:
+        return None
+    if function.c_name.startswith("ifcopenshell_parse_"):
+        return "parse", _camel_name(function.c_name.removeprefix("ifcopenshell_parse_"))
+    if function.c_name.startswith("ifcopenshell_geom_"):
+        return "geom", _camel_name(function.c_name.removeprefix("ifcopenshell_geom_"))
+    if c_prefix == "ifcopenshell" and function.c_name.startswith("ifcopenshell_"):
+        rest = function.c_name.removeprefix("ifcopenshell_")
+        module, sep, member = rest.partition("_")
+        if sep and module and member:
+            return module, _camel_name(member)
+    return None
+
+
 def _public_params(function: HostFunctionMetadata) -> tuple[HostParamMetadata, ...]:
     return tuple(param for param in function.params if param.role == "param")
 
 
 _INTERNAL_C_FUNCTIONS = frozenset({
-    "ifcopenshell_ifcparse_set_plugin_search_paths",
-    "ifcopenshell_ifcparse_clear_plugin_search_paths",
-    "ifcopenshell_ifcgeom_plugin_is_loaded",
-    "ifcopenshell_ifcgeom_plugin_load",
+    "ifcopenshell_parse_set_plugin_search_paths",
+    "ifcopenshell_parse_clear_plugin_search_paths",
+    "ifcopenshell_geom_plugin_is_loaded",
+    "ifcopenshell_geom_plugin_load",
 })
 
 
-__all__ = ["_INTERNAL_C_FUNCTIONS", "_camel_name", "_method_name", "_public_name", "_public_params", "_snake_name", "_type_name"]
+__all__ = [
+    "_INTERNAL_C_FUNCTIONS",
+    "_camel_name",
+    "_method_name",
+    "_public_module_member",
+    "_public_name",
+    "_public_params",
+    "_snake_name",
+    "_type_name",
+]

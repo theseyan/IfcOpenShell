@@ -216,15 +216,15 @@ def test_parse_c_functions_handles_exported_multiline_declarations(tmp_path: Pat
     header.write_text(
         dedent(
             """
-            struct ifcopenshell_ifc_instance_t*
+            struct ifcopenshell_instance_t*
             ifcopenshell_file_create_entity(
-                ifcopenshell_ifc_file_t* file,
+                ifcopenshell_file_t* file,
                 const char* type_name);
 
-            bool ifcopenshell_ifc_file_by_type(
-                ifcopenshell_ifc_file_t* self,
+            bool ifcopenshell_file_by_type(
+                ifcopenshell_file_t* self,
                 const char* type,
-                ifcopenshell_ifcparse_instance_list_t** out_result);
+                ifcopenshell_parse_instance_list_t** out_result);
             """
         ),
         encoding="utf-8",
@@ -232,8 +232,8 @@ def test_parse_c_functions_handles_exported_multiline_declarations(tmp_path: Pat
 
     functions = {function.name: function for function in parse_c_functions(header, tmp_path)}
 
-    assert set(functions) == {"ifcopenshell_file_create_entity", "ifcopenshell_ifc_file_by_type"}
-    assert functions["ifcopenshell_file_create_entity"].return_type == "struct ifcopenshell_ifc_instance_t*"
+    assert set(functions) == {"ifcopenshell_file_create_entity", "ifcopenshell_file_by_type"}
+    assert functions["ifcopenshell_file_create_entity"].return_type == "struct ifcopenshell_instance_t*"
     assert "const char* type_name" in functions["ifcopenshell_file_create_entity"].params
 
 
@@ -243,8 +243,8 @@ def test_build_inventory_reports_generated_highlevel_and_duplicate_concepts(tmp_
     (generated_dir / "ifcopenshell_api.h").write_text(
         dedent(
             """
-            bool ifcopenshell_ifc_file_by_type(ifcopenshell_ifc_file_t* self, const char* type, void** out_result);
-            bool ifcopenshell_ifcparse_schema_names(ifcopenshell_string_list_t* out_result);
+            bool ifcopenshell_file_by_type(ifcopenshell_file_t* self, const char* type, void** out_result);
+            bool ifcopenshell_parse_schema_names(ifcopenshell_string_list_t* out_result);
             void ifcopenshell_string_destroy(ifcopenshell_string_t* value);
             """
         ),
@@ -255,7 +255,7 @@ def test_build_inventory_reports_generated_highlevel_and_duplicate_concepts(tmp_
     highlevel_dir.mkdir(parents=True)
     (highlevel_dir / "ifcapi.h").write_text(
         "int32_t ifcopenshell_file_by_type("
-        "const ifcopenshell_ifc_file_t* file, const char* type, void** out);\n",
+        "const ifcopenshell_file_t* file, const char* type, void** out);\n",
         encoding="utf-8",
     )
 
@@ -267,7 +267,7 @@ def test_build_inventory_reports_generated_highlevel_and_duplicate_concepts(tmp_
     assert inventory["duplication"]["potential_core_highlevel_count"] == 1
     duplicate = inventory["duplication"]["potential_core_highlevel"][0]
     assert duplicate["highlevel"] == "ifcopenshell_file_by_type"
-    assert duplicate["exact_core_matches"] == ["ifcopenshell_ifc_file_by_type"]
+    assert duplicate["exact_core_matches"] == ["ifcopenshell_file_by_type"]
 
 
 def test_no_duplicate_c_exports() -> None:
@@ -284,8 +284,8 @@ def test_generated_highlevel_c_symbols_are_reported_separately() -> None:
 
     generated_highlevel = inventory["generated_highlevel_c"]["symbols"]
     assert inventory["generated_highlevel_c"]["symbol_count"] == len(generated_highlevel)
-    assert "ifcopenshell_ifcapi_unit_convert" in generated_highlevel
-    assert "ifcopenshell_ifcapi_value_kind" in generated_highlevel
+    assert "ifcopenshell_unit_convert" in generated_highlevel
+    assert "ifcopenshell_value_kind" in generated_highlevel
 
 
 def test_scalar_param_specs_do_not_carry_ownership_policy() -> None:

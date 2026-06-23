@@ -64,11 +64,11 @@ bool icontains(const std::string& s, const std::string& sub) {
 
 /* ---------- Value (None|Bool|Int|Double|String|Instance|List) helpers ---------- */
 
-bool val_is_none(const ifcopenshell_value_t* v) {
+bool val_is_none(const ifcopenshell_selector_value_t* v) {
     return !v || v->kind == IFCSEL_VALUE_NONE;
 }
 
-std::string val_to_string(const ifcopenshell_value_t* v) {
+std::string val_to_string(const ifcopenshell_selector_value_t* v) {
     if (val_is_none(v)) return "";
     switch (v->kind) {
         case IFCSEL_VALUE_STRING: return v->s_val;
@@ -82,7 +82,7 @@ std::string val_to_string(const ifcopenshell_value_t* v) {
     }
 }
 
-bool val_truthy(const ifcopenshell_value_t* v) {
+bool val_truthy(const ifcopenshell_selector_value_t* v) {
     if (val_is_none(v)) return false;
     switch (v->kind) {
         case IFCSEL_VALUE_BOOL:   return v->b_val;
@@ -100,7 +100,7 @@ bool val_truthy(const ifcopenshell_value_t* v) {
    for the “return early on equality” shortcut. Falls back to false when the
    shapes don't match — over-conservative is safe (we just do a redundant
    write). */
-bool vals_equal(const Val* a, const ifcopenshell_value_t* b) {
+bool vals_equal(const Val* a, const ifcopenshell_selector_value_t* b) {
     if (!a && val_is_none(b)) return true;
     if (!a) return false;
     if (a->kind == IFCSEL_VALUE_NONE && val_is_none(b)) return true;
@@ -218,7 +218,7 @@ express::Base find_pset_instance(express::Base e, const std::string& name) {
    for use with edit_pset / edit_qto. value is interpreted analogously to
    the Python {key: value} mapping. */
 void props_set_one(ifcopenshell_pset_props_t* props, const char* key,
-                   const ifcopenshell_value_t* v, bool force_double) {
+                   const ifcopenshell_selector_value_t* v, bool force_double) {
     if (!props) return;
     if (force_double) {
         double d = 0.0;
@@ -278,16 +278,16 @@ void props_set_one(ifcopenshell_pset_props_t* props, const char* key,
     }
 }
 
-void edit_pset_one(ifcopenshell_ifc_file_t* fh, express::Base pset,
-                   const char* key, const ifcopenshell_value_t* v) {
+void edit_pset_one(ifcopenshell_file_t* fh, express::Base pset,
+                   const char* key, const ifcopenshell_selector_value_t* v) {
     auto props = ifcapi::bindings::pset_props_new();
     props_set_one(props, key, v, false);
     ifcapi::bindings::pset_edit_pset(fh ? fh->ptr : nullptr, &pset, nullptr, props, nullptr, false);
     ifcapi::bindings::pset_props_free(props);
 }
 
-void edit_qto_one(ifcopenshell_ifc_file_t* fh, express::Base qto,
-                  const char* key, const ifcopenshell_value_t* v, bool force_double = true) {
+void edit_qto_one(ifcopenshell_file_t* fh, express::Base qto,
+                  const char* key, const ifcopenshell_selector_value_t* v, bool force_double = true) {
     auto props = ifcapi::bindings::pset_props_new();
     props_set_one(props, key, v, force_double);
     ifcapi::bindings::pset_edit_qto(fh ? fh->ptr : nullptr, &qto, nullptr, props, nullptr);
@@ -304,7 +304,7 @@ bool re_match(const std::regex& p, const std::string& s) {
  *  predefined_type closure                                              */
 
 void apply_set_predefined_type(ifcopenshell::file* /*file*/, express::Base element,
-                               const ifcopenshell_value_t* value, bool is_type) {
+                               const ifcopenshell_selector_value_t* value, bool is_type) {
     auto be = as_entity(element);
     if (!be) return;
     auto decl = be.declaration().as_entity();
@@ -361,7 +361,7 @@ enum PsetPVResult { PV_USE_VALUE, PV_USE_LIST, PV_SKIP, PV_ERROR };
 
 PsetPVResult process_pset_prop_value(
     ifcopenshell::file* file, express::Base pset,
-    const std::string& prop, const ifcopenshell_value_t* value,
+    const std::string& prop, const ifcopenshell_selector_value_t* value,
     const Val* current_value /* may be nullptr */, const std::string& concat,
     std::vector<std::string>& out_list)
 {
@@ -543,18 +543,18 @@ Val* dict_get(const DictView& d, const std::string& key) {
  *  Forward declaration                                                   */
 
 int do_set(ifcopenshell::file* file,
-           ifcopenshell_ifc_file_t* file_h,
+           ifcopenshell_file_t* file_h,
            Cursor cur,
            const std::vector<KeyEntry>& keys,
            size_t start_idx,
-           const ifcopenshell_value_t* value,
+           const ifcopenshell_selector_value_t* value,
            const std::string& concat);
 
 /* ====================================================================
  *  Helper: try to set an attribute on `e`, with type-cast fallback        */
 
 void setattr_with_cast(ifcopenshell::file* file, express::Base e,
-                       const std::string& key, const ifcopenshell_value_t* value)
+                       const std::string& key, const ifcopenshell_selector_value_t* value)
 {
     auto be = as_entity(e);
     if (!be) return;
@@ -660,11 +660,11 @@ void setattr_with_cast(ifcopenshell::file* file, express::Base e,
  *  do_set — iterative key application                                    */
 
 int do_set(ifcopenshell::file* file,
-           ifcopenshell_ifc_file_t* file_h,
+           ifcopenshell_file_t* file_h,
            Cursor cur,
            const std::vector<KeyEntry>& keys,
            size_t start_idx,
-           const ifcopenshell_value_t* value,
+           const ifcopenshell_selector_value_t* value,
            const std::string& concat)
 {
     for (size_t i = start_idx; i < keys.size(); ++i) {
@@ -975,35 +975,35 @@ int do_set(ifcopenshell::file* file,
 namespace ifcapi {
 namespace bindings {
 
-ifcopenshell_value_t* value_new_none() {
+ifcopenshell_selector_value_t* value_new_none() {
     return make_none();
 }
 
-ifcopenshell_value_t* value_new_bool(bool value) {
+ifcopenshell_selector_value_t* value_new_bool(bool value) {
     return make_bool(value);
 }
 
-ifcopenshell_value_t* value_new_int(int64_t value) {
+ifcopenshell_selector_value_t* value_new_int(int64_t value) {
     return make_int(value);
 }
 
-ifcopenshell_value_t* value_new_double(double value) {
+ifcopenshell_selector_value_t* value_new_double(double value) {
     return make_double(value);
 }
 
-ifcopenshell_value_t* value_new_string(const std::string& value) {
+ifcopenshell_selector_value_t* value_new_string(const std::string& value) {
     return make_string(value);
 }
 
-ifcopenshell_value_t* value_new_instance(express::Base* value) {
+ifcopenshell_selector_value_t* value_new_instance(express::Base* value) {
     return make_instance(value ? *value : express::Base());
 }
 
-ifcopenshell_value_t* value_new_list() {
+ifcopenshell_selector_value_t* value_new_list() {
     return make_list();
 }
 
-bool value_list_append(ifcopenshell_value_t* list, const ifcopenshell_value_t* item) {
+bool value_list_append(ifcopenshell_selector_value_t* list, const ifcopenshell_selector_value_t* item) {
     if (!list || list->kind != IFCSEL_VALUE_LIST) {
         return false;
     }
@@ -1016,7 +1016,7 @@ bool selector_set_element_value(
     express::Base* element,
     const std::vector<std::string>& keys,
     const std::vector<bool>& regex_flags,
-    const ifcopenshell_value_t* value,
+    const ifcopenshell_selector_value_t* value,
     const char* concat)
 {
     if (!file) {
@@ -1045,7 +1045,7 @@ bool selector_set_element_value(
         key_entries.push_back(std::move(entry));
     }
 
-    ifcopenshell_ifc_file_t file_handle{file, false};
+    ifcopenshell_file_t file_handle{file, false};
     Cursor cursor = (element && *element) ? Cursor::instance(*element) : Cursor::none();
     std::string concat_s = concat ? concat : ", ";
     try {

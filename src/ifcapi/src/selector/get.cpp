@@ -6,11 +6,11 @@
 namespace ifcapi {
 namespace bindings {
 
-void value_free(ifcopenshell_value_t* value) {
+void value_free(ifcopenshell_selector_value_t* value) {
     delete value;
 }
 
-ifcopenshell_value_t* selector_get_element_value(
+ifcopenshell_selector_value_t* selector_get_element_value(
     ifcopenshell::file* file,
     express::Base* element_ptr,
     const std::string& query)
@@ -38,49 +38,49 @@ ifcopenshell_value_t* selector_get_element_value(
     }
 }
 
-int32_t value_kind(const ifcopenshell_value_t* value) {
+int32_t value_kind(const ifcopenshell_selector_value_t* value) {
     return value ? static_cast<int32_t>(value->kind) : IFCSEL_VALUE_NONE;
 }
 
-bool value_as_bool(const ifcopenshell_value_t* value) {
+bool value_as_bool(const ifcopenshell_selector_value_t* value) {
     return value ? value->b_val : false;
 }
 
-int64_t value_as_int64(const ifcopenshell_value_t* value) {
+int64_t value_as_int64(const ifcopenshell_selector_value_t* value) {
     return value ? value->i_val : 0;
 }
 
-double value_as_double(const ifcopenshell_value_t* value) {
+double value_as_double(const ifcopenshell_selector_value_t* value) {
     return value ? value->d_val : 0.0;
 }
 
-std::string value_as_string(const ifcopenshell_value_t* value) {
+std::string value_as_string(const ifcopenshell_selector_value_t* value) {
     return (value && value->kind == IFCSEL_VALUE_STRING) ? value->s_val : std::string();
 }
 
-express::Base value_as_instance(const ifcopenshell_value_t* value) {
+express::Base value_as_instance(const ifcopenshell_selector_value_t* value) {
     return (value && value->kind == IFCSEL_VALUE_INSTANCE) ? value->inst_val : express::Base();
 }
 
-size_t value_list_size(const ifcopenshell_value_t* value) {
+size_t value_list_size(const ifcopenshell_selector_value_t* value) {
     return (value && value->kind == IFCSEL_VALUE_LIST) ? value->list_val.size() : 0;
 }
 
-const ifcopenshell_value_t* value_list_at(const ifcopenshell_value_t* value, size_t index) {
+const ifcopenshell_selector_value_t* value_list_at(const ifcopenshell_selector_value_t* value, size_t index) {
     if (!value || value->kind != IFCSEL_VALUE_LIST || index >= value->list_val.size()) return {};
     return value->list_val[index];
 }
 
-size_t value_dict_size(const ifcopenshell_value_t* value) {
+size_t value_dict_size(const ifcopenshell_selector_value_t* value) {
     return (value && value->kind == IFCSEL_VALUE_DICT) ? value->dict_val.size() : 0;
 }
 
-std::string value_dict_key_at(const ifcopenshell_value_t* value, size_t index) {
+std::string value_dict_key_at(const ifcopenshell_selector_value_t* value, size_t index) {
     if (!value || value->kind != IFCSEL_VALUE_DICT || index >= value->dict_val.size()) return std::string();
     return value->dict_val[index].first;
 }
 
-const ifcopenshell_value_t* value_dict_value_at(const ifcopenshell_value_t* value, size_t index) {
+const ifcopenshell_selector_value_t* value_dict_value_at(const ifcopenshell_selector_value_t* value, size_t index) {
     if (!value || value->kind != IFCSEL_VALUE_DICT || index >= value->dict_val.size()) return {};
     return value->dict_val[index].second;
 }
