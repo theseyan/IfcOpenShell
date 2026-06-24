@@ -1,7 +1,7 @@
 // This file was generated with the assistance of an AI coding tool.
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const distDir = resolve(process.argv[2] ?? "build/wasm-native/dist");
 const ifcPath = resolve(process.argv[3] ?? "test/input/WallInstance_IFC4Add2.ifc");
@@ -15,10 +15,11 @@ const manifest = JSON.parse(readFileSync(new URL("ifcopenshell_plugins.json", di
 try {
   const api = await createIfcOpenshellModule(
     initIfcOpenShellWasm,
-    new URL("ifcopenshell_wasm.wasm", distUrl).pathname,
+    fileURLToPath(new URL("ifcopenshell_wasm.wasm", distUrl)),
     {
-      pluginBaseUrl: distUrl.pathname,
+      pluginBaseUrl: distUrl.href,
       pluginManifest: manifest,
+      pluginLoader: (url) => readFileSync(fileURLToPath(url)),
     },
   );
 
@@ -30,16 +31,16 @@ try {
   await api.loadPlugin("mapping", "ifc4");
   console.log("3. Mapping loaded");
 
-  const model = api.open(ifcPath, false);
+  const model = api.parse.openBytes(readFileSync(ifcPath), "WallInstance_IFC4Add2.ifc", false);
   console.log("4. IFC file opened");
 
-  const settings = api.geomCreateSettings();
-  settings.geomSettingsSetBool("weld-vertices", false);
-  const iterator = api.geomCreateIterator("manifold", settings, model, 1);
-  if (!iterator.geomIteratorInitialize()) {
-    throw new Error("iteratorInitialize returned false");
+  const settings = api.geom.createSettings();
+  settings.setBool("weld-vertices", false);
+  const iterator = api.geom.createIterator("manifold", settings, model, 1);
+  if (!iterator.initialize()) {
+    throw new Error("iterator.initialize() returned false");
   }
-  console.log("5. Triangulation iterator initialized (manifold kernel)");
+  console.log("5. Triangulation iterator initialized");
 
   let totalVerts = 0;
   let totalFaces = 0;
@@ -47,13 +48,13 @@ try {
   let elementCount = 0;
 
   do {
-    const triElem = iterator.geomIteratorGetAsTriangulationElement();
+    const triElem = iterator.getAsTriangulationElement();
     if (!triElem) break;
 
-    const geom = triElem.geomTriangulationElementGeometry();
-    const verts = geom.geomTriangulationVerts();
-    const faces = geom.geomTriangulationFaces();
-    const normals = geom.geomTriangulationNormals();
+    const geom = triElem.geometry();
+    const verts = geom.verts();
+    const faces = geom.faces();
+    const normals = geom.normals();
 
     totalVerts += verts.length;
     totalFaces += faces.length;
@@ -66,7 +67,7 @@ try {
 
     geom.destroy();
     triElem.destroy();
-  } while (iterator.geomIteratorNext());
+  } while (iterator.next());
 
   console.log(`6. Processed ${elementCount} elements`);
   console.log(`   Total: ${totalVerts / 3} vertices, ${totalFaces / 3} triangles, ${totalNormals / 3} normals`);

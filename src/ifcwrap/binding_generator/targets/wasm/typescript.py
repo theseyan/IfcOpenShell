@@ -156,6 +156,13 @@ def _collect_module_members(metadata: HostBindingMetadata) -> dict[str, list[str
             continue
         module_name, member_name = module_member
         module_members.setdefault(module_name, []).append(_render_function_signature(member_name, function, metadata))
+    parse_open = metadata.functions.get("ifcopenshell_parse_open")
+    if parse_open is not None:
+        returns = _ts_type(parse_open.returns, metadata)
+        module_members.setdefault("parse", []).append(
+            "    openBytes(bytes: Uint8Array | ArrayBuffer | ArrayBufferView, "
+            f"filename?: string, readonly?: boolean): {returns};"
+        )
     return module_members
 
 
@@ -218,7 +225,11 @@ def render_typescript_declarations(metadata: HostBindingMetadata, handles: dict[
             "    wasmUrl?: string,",
             "    options?: {",
             "      pluginBaseUrl?: string;",
-            "      pluginManifest?: Record<string, Record<string, { wasm: string }>>;",
+            "      pluginManifest?: Record<string, Record<string, { wasm: string; depends?: string[] }>>;",
+            "      pluginLoader?: (",
+            "        url: string,",
+            "        plugin: { kind: string; id: string; entry: { wasm: string; depends?: string[] } },",
+            "      ) => Promise<Uint8Array | ArrayBuffer | ArrayBufferView> | Uint8Array | ArrayBuffer | ArrayBufferView;",
             "    },",
             "  ): Promise<IfcOpenshellModule>;",
             "}",

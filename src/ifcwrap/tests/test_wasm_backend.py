@@ -173,6 +173,10 @@ class TestWasmTypescript:
         code = render_typescript_declarations(metadata)
         assert "export interface IfcOpenshellParseModule" in code
         assert "open(path: string): void;" in code
+        assert (
+            "openBytes(bytes: Uint8Array | ArrayBuffer | ArrayBufferView, "
+            "filename?: string, readonly?: boolean): void;"
+        ) in code
         assert "export interface IfcOpenshellGeomModule" in code
         assert "createSettings(): IfcOpenshellGeomSettings;" in code
         assert "export interface IfcOpenshellUnitModule" in code
@@ -210,6 +214,12 @@ class TestWasmJsGlue:
         assert "throw new Error(_lastErrorMessage(module, 'ifcopenshell_demo_open_file failed'))" in code
         assert "openFile: (path) => invoke_ifcopenshell_demo_open_file(module, path)" in code
         assert "createIfcOpenshellModule(initModule, wasmUrl, options = {})" in code
+        assert "const pluginBaseUrl = options.pluginBaseUrl ?? new URL('.', import.meta.url).href;" in code
+        assert "const pluginLoader = options.pluginLoader ?? defaultPluginLoader;" in code
+        assert "return new URL(entry.wasm, pluginBaseUrl).href;" in code
+        assert "module.FS.writeFile(path, bytes);" in code
+        assert "module.loadDynamicLibrary(path, { global: true, allowUndefined: true });" in code
+        assert "module.FS.unlink(path);" in code
         assert "import initIfcOpenShellWasmModule" not in code
 
     def test_generates_nested_api_modules(self):
@@ -237,6 +247,9 @@ class TestWasmJsGlue:
         code = render_js_glue(metadata)
         assert "parse: Object.freeze({" in code
         assert "open: (path) => invoke_ifcopenshell_parse_open(module, path)" in code
+        assert "openBytes," in code
+        assert "module.FS.writeFile(path, normalizeVirtualFileBytes(bytes));" in code
+        assert "module.FS.unlink(path);" in code
         assert "geom: Object.freeze({" in code
         assert "createSettings: () => invoke_ifcopenshell_geom_create_settings(module)" in code
         assert "unit: Object.freeze({" in code
@@ -309,7 +322,8 @@ class TestWasmJsGlue:
         assert "function pluginDependencies(kind, id)" in code
         assert "for (const dependency of pluginDependencies(kind, id))" in code
         assert "await loadPlugin(dependency.slice(0, separator), dependency.slice(separator + 1));" in code
-        assert "await module.loadDynamicLibrary(url, { loadAsync: true, global: true, allowUndefined: true });" in code
+        assert "async function loadPluginLibrary(kind, id, entry)" in code
+        assert "module.loadDynamicLibrary(path, { global: true, allowUndefined: true });" in code
         assert "invoke_ifcopenshell_geom_plugin_registry_address" not in code
 
 

@@ -102,10 +102,11 @@ def _render_node_test(ifc_path: Path) -> str:
 
         const wasmUrl = fileURLToPath(new URL('./ifcopenshell_wasm.wasm', import.meta.url));
         const pluginManifest = JSON.parse(readFileSync(new URL('./ifcopenshell_plugins.json', import.meta.url), 'utf8'));
-        const pluginBaseUrl = fileURLToPath(new URL('./', import.meta.url)) + '/';
+        const pluginBaseUrl = new URL('./', import.meta.url).href;
         const api = await createIfcOpenshellModule(initIfcOpenShellWasmModule, wasmUrl, {{
             pluginBaseUrl,
             pluginManifest,
+            pluginLoader: (url) => readFileSync(fileURLToPath(url)),
         }});
         const step = (name) => console.error(`wasm-smoke:${{name}}`);
 
@@ -224,7 +225,11 @@ def _render_node_test(ifc_path: Path) -> str:
         const iterator = api.geom.createIterator('passthrough', settings, newFile, 1);
         assert.ok(iterator);
 
-        const opened = api.parse.open({json.dumps(str(ifc_path))}, false);
+        const opened = api.parse.openBytes(
+            readFileSync({json.dumps(str(ifc_path))}),
+            {json.dumps(ifc_path.name)},
+            false,
+        );
         assert.equal(opened.schemaName(), 'IFC4');
 
         iterator.destroy();
