@@ -218,7 +218,7 @@ class TestWasmJsGlue:
         assert "const pluginLoader = options.pluginLoader ?? defaultPluginLoader;" in code
         assert "return new URL(entry.wasm, pluginBaseUrl).href;" in code
         assert "module.FS.writeFile(path, bytes);" in code
-        assert "module.loadDynamicLibrary(path, { global: true, allowUndefined: true });" in code
+        assert "await module.loadDynamicLibrary(path, { global: true, allowUndefined: true, loadAsync: true });" in code
         assert "module.FS.unlink(path);" in code
         assert "import initIfcOpenShellWasmModule" not in code
 
@@ -296,6 +296,14 @@ class TestWasmJsGlue:
                     element_type="int32_t",
                     sequence_depth=1,
                 ),
+                "string_list": HostStructMetadata(
+                    c_type="ifcopenshell_string_list_t",
+                    kind="sequence",
+                    fields=(HostStructField("items", "ifcopenshell_string_t*"), HostStructField("size", "size_t")),
+                    destroy_function="ifcopenshell_string_list_destroy",
+                    element_type="ifcopenshell_string_t",
+                    sequence_depth=1,
+                ),
             },
             functions={
                 "ifcopenshell_demo_big": _make_function(
@@ -307,6 +315,10 @@ class TestWasmJsGlue:
                     params=(HostParamMetadata("values", "const ifcopenshell_int32_list_t*", "param", "int32"),),
                     returns=TypeSpec(kind="int32"),
                 ),
+                "ifcopenshell_demo_names": _make_function(
+                    c_name="ifcopenshell_demo_names",
+                    returns=TypeSpec(kind="string", sequence_depth=1),
+                ),
             },
         )
         code = render_js_glue(metadata)
@@ -314,6 +326,9 @@ class TestWasmJsGlue:
         assert "const high = module.HEAP32[index + 1];" in code
         assert "_allocInputSequence(module, values" in code
         assert "_freeInputSequence(module, _valuesPtr" in code
+        assert "outResultPtr = module._malloc(8);" in code
+        assert "_readValueType(module, outResultPtr, _VALUE_TYPES[\"ifcopenshell_string_list_t\"])" in code
+        assert "module._ifcopenshell_string_list_destroy(outResultPtr);" in code
 
     def test_generates_dependency_aware_plugin_loader(self):
         metadata = _make_metadata()
@@ -323,7 +338,7 @@ class TestWasmJsGlue:
         assert "for (const dependency of pluginDependencies(kind, id))" in code
         assert "await loadPlugin(dependency.slice(0, separator), dependency.slice(separator + 1));" in code
         assert "async function loadPluginLibrary(kind, id, entry)" in code
-        assert "module.loadDynamicLibrary(path, { global: true, allowUndefined: true });" in code
+        assert "await module.loadDynamicLibrary(path, { global: true, allowUndefined: true, loadAsync: true });" in code
         assert "invoke_ifcopenshell_geom_plugin_registry_address" not in code
 
 

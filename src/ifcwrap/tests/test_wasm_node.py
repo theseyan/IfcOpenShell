@@ -191,6 +191,11 @@ def _render_node_test(ifc_path: Path) -> str:
         step('file-create-wall');
         const wall = newFile.createEntityByName('IfcWall');
         assert.equal(wall.className(false), 'IfcWall');
+        step('string-list-returns');
+        assert.ok(newFile.types().includes('IfcWall'));
+        const wallAttributeNames = rootWall.getAttributeNames();
+        assert.ok(wallAttributeNames.includes('GlobalId'));
+        assert.ok(wallAttributeNames.includes('Name'));
 
         step('unit-add-si');
         const metre = api.unit.addSiUnit(newFile, 'LENGTHUNIT', null);

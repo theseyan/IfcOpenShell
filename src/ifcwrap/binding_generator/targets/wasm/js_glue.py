@@ -115,24 +115,24 @@ def _out_allocation(function: HostFunctionMetadata, metadata: HostBindingMetadat
         return "POINTER_SIZE"
     if returns.kind in _SCALAR_LAYOUTS:
         return str(_SCALAR_LAYOUTS[returns.kind][0])
+    if returns.sequence_depth > 0:
+        return str(_struct_layout(_sequence_value_type(returns, metadata), metadata)[0])
     if returns.kind == "string":
         return str(_struct_layout(metadata.value_types["string"], metadata)[0])
     if returns.kind == "struct" and returns.struct is not None:
         return str(_struct_layout(metadata.value_types[returns.struct], metadata)[0])
-    if returns.sequence_depth > 0:
-        return str(_struct_layout(_sequence_value_type(returns, metadata), metadata)[0])
     return "POINTER_SIZE"
 
 
 def _read_value_type_expr(type_spec: TypeSpec, metadata: HostBindingMetadata, ptr_expr: str) -> str:
+    if type_spec.sequence_depth > 0:
+        sequence = _sequence_value_type(type_spec, metadata)
+        return f"_readValueType(module, {ptr_expr}, _VALUE_TYPES[{json.dumps(sequence.c_type)}])"
     if type_spec.kind == "string":
         return f"_readValueType(module, {ptr_expr}, _VALUE_TYPES['ifcopenshell_string_t'])"
     if type_spec.kind == "struct" and type_spec.struct is not None:
         struct = metadata.value_types[type_spec.struct]
         return f"_readValueType(module, {ptr_expr}, _VALUE_TYPES[{json.dumps(struct.c_type)}])"
-    if type_spec.sequence_depth > 0:
-        sequence = _sequence_value_type(type_spec, metadata)
-        return f"_readValueType(module, {ptr_expr}, _VALUE_TYPES[{json.dumps(sequence.c_type)}])"
     return "module.getValue(outResultPtr, '*')"
 
 
@@ -160,10 +160,10 @@ def _return_expr(function: HostFunctionMetadata, metadata: HostBindingMetadata) 
 
 def _destroy_out_result(function: HostFunctionMetadata, metadata: HostBindingMetadata) -> str | None:
     returns = function.returns
-    if returns.kind == "string":
-        destroy = metadata.value_types["string"].destroy_function
-    elif returns.sequence_depth > 0:
+    if returns.sequence_depth > 0:
         destroy = _sequence_value_type(returns, metadata).destroy_function
+    elif returns.kind == "string":
+        destroy = metadata.value_types["string"].destroy_function
     else:
         destroy = None
     if destroy is None:
@@ -430,7 +430,7 @@ def _render_module_factory(metadata: HostBindingMetadata) -> str:
         "        const path = virtualFilePath(entry.wasm);\n"
         "        module.FS.writeFile(path, bytes);\n"
         "        try {\n"
-        "            module.loadDynamicLibrary(path, { global: true, allowUndefined: true });\n"
+        "            await module.loadDynamicLibrary(path, { global: true, allowUndefined: true, loadAsync: true });\n"
         "        } finally {\n"
         "            module.FS.unlink(path);\n"
         "        }\n"
