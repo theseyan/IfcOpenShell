@@ -1283,32 +1283,39 @@ ifcopenshell_selector_node_t* selector_parse_format(const std::string& query) {
     return reinterpret_cast<ifcopenshell_selector_node_t*>(root);
 }
 
-int32_t selector_node_kind(const ifcopenshell_selector_node_t* node) {
-    if (!node) return static_cast<int32_t>(IFCSEL_TOKEN_ANON);
-    return static_cast<int32_t>(reinterpret_cast<const Node*>(node)->kind);
+int32_t selector_node_kind(std::optional<const ifcopenshell_selector_node_t*> node) {
+    auto* node_ptr = node.value_or(nullptr);
+    if (!node_ptr) return static_cast<int32_t>(IFCSEL_TOKEN_ANON);
+    return static_cast<int32_t>(reinterpret_cast<const Node*>(node_ptr)->kind);
 }
 
-size_t selector_node_child_count(const ifcopenshell_selector_node_t* node) {
-    if (!node) return 0;
-    return reinterpret_cast<const Node*>(node)->children.size();
+size_t selector_node_child_count(std::optional<const ifcopenshell_selector_node_t*> node) {
+    auto* node_ptr = node.value_or(nullptr);
+    if (!node_ptr) return 0;
+    return reinterpret_cast<const Node*>(node_ptr)->children.size();
 }
 
-ifcopenshell_selector_node_t* selector_node_child(const ifcopenshell_selector_node_t* node, size_t index) {
-    if (!node) return nullptr;
-    const auto* n = reinterpret_cast<const Node*>(node);
+ifcopenshell_selector_node_t* selector_node_child(
+    std::optional<const ifcopenshell_selector_node_t*> node,
+    size_t index)
+{
+    auto* node_ptr = node.value_or(nullptr);
+    if (!node_ptr) return nullptr;
+    const auto* n = reinterpret_cast<const Node*>(node_ptr);
     if (index >= n->children.size()) return nullptr;
     return reinterpret_cast<ifcopenshell_selector_node_t*>(n->children[index]);
 }
 
-std::string selector_node_text(const ifcopenshell_selector_node_t* node) {
-    if (!node) return std::string();
-    const auto* n = reinterpret_cast<const Node*>(node);
+std::string selector_node_text(std::optional<const ifcopenshell_selector_node_t*> node) {
+    auto* node_ptr = node.value_or(nullptr);
+    if (!node_ptr) return std::string();
+    const auto* n = reinterpret_cast<const Node*>(node_ptr);
     if (!n->is_token()) return std::string();
     return n->text;
 }
 
-void selector_node_free(ifcopenshell_selector_node_t* root) {
-    node_free_impl(reinterpret_cast<Node*>(root));
+void selector_node_free(std::optional<ifcopenshell_selector_node_t*> root) {
+    node_free_impl(reinterpret_cast<Node*>(root.value_or(nullptr)));
 }
 
 } // namespace bindings

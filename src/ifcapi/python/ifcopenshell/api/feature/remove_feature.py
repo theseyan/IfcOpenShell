@@ -50,7 +50,9 @@ def remove_feature(file: ifcopenshell.file, feature: ifcopenshell.entity_instanc
         "feature_remove_feature",
         "Failed to remove feature",
         _capi.file_handle(file),
-        _capi.instance_handle(feature),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+        {
+            "feature": _capi.instance_handle(feature),
+            "user": _capi.instance_handle(user),
+            "application": _capi.instance_handle(application),
+        },
     )

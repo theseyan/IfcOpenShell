@@ -99,7 +99,10 @@ std::vector<express::Base> create_door_sliding_panel_2d(
 {
     auto door = ifcapi::detail::rectangle(file, panel_size, {panel_position[0] - panel_size[0] * 0.5, panel_position[1]}, true);
     if (swing == "RIGHT") {
-        ifcapi::bindings::shape_builder_mirror(file, &door, {1.0, 0.0}, {panel_position[0] + panel_size[0] / 2.0, panel_position[1]}, false, {});
+        ifcapi::bindings::shape_builder_mirror(
+            file,
+            ifcapi::bindings::ShapeBuilderMirrorOptions{
+                door, {1.0, 0.0}, {panel_position[0] + panel_size[0] / 2.0, panel_position[1]}, false, {}});
     }
     return {door};
 }
@@ -125,13 +128,18 @@ std::vector<express::Base> create_door_panel_2d(
             false));
     }
     const std::vector<int> trim_mask = double_swing ? std::vector<int>{3, 1} : std::vector<int>{0, 1};
-    items.push_back(ifcapi::bindings::shape_builder_ellipse_curve(file, size_yx[1] - size_yx[0], size_yx[1], {size_yx[0], 0.0}, {}, {}, trim_mask));
+    items.push_back(ifcapi::bindings::shape_builder_ellipse_curve(
+        file,
+        ifcapi::bindings::ShapeBuilderEllipseCurveOptions{
+            size_yx[1] - size_yx[0], size_yx[1], {size_yx[0], 0.0}, {}, {}, trim_mask}));
     items.push_back(ifcapi::detail::rectangle(file, size_yx));
     ifcapi::detail::translate_items(file, items, panel_position);
     if (swing == "RIGHT") {
         const auto mirror_point = ifcapi::detail::v2(panel_position[0] + size_yx[1] / 2.0, panel_position[1]);
         for (auto item : items) {
-            ifcapi::bindings::shape_builder_mirror(file, &item, {1.0, 0.0}, mirror_point, false, {});
+            ifcapi::bindings::shape_builder_mirror(
+                file,
+                ifcapi::bindings::ShapeBuilderMirrorOptions{item, {1.0, 0.0}, mirror_point, false, {}});
         }
     }
     return items;
@@ -166,21 +174,25 @@ std::vector<express::Base> create_door_panel_3d(
         true);
     auto door_handle = ifcapi::bindings::shape_builder_extrude(
         file,
-        &handle_polyline,
-        handle_size[2],
-        handle_position,
-        {0.0, 0.0, 1.0},
-        {0.0, 0.0, 1.0},
-        {1.0, 0.0, 0.0},
-        {},
-        false);
+        ifcapi::bindings::ShapeBuilderExtrudeOptions{
+            handle_polyline,
+            handle_size[2],
+            handle_position,
+            {0.0, 0.0, 1.0},
+            {0.0, 0.0, 1.0},
+            {1.0, 0.0, 0.0},
+            {}});
     items.push_back(door_handle);
     if (swing == "LEFT") {
         ifcapi::bindings::shape_builder_mirror(
-            file, &door_handle, {1.0, 0.0}, {panel_position[0] + panel_size[0] / 2.0, panel_position[1]}, false, {});
+            file,
+            ifcapi::bindings::ShapeBuilderMirrorOptions{
+                door_handle, {1.0, 0.0}, {panel_position[0] + panel_size[0] / 2.0, panel_position[1]}, false, {}});
     }
     auto mirrored = ifcapi::bindings::shape_builder_mirror(
-        file, &door_handle, {0.0, 1.0}, {handle_position[0], handle_position[1] + panel_size[1] / 2.0}, true, {});
+        file,
+        ifcapi::bindings::ShapeBuilderMirrorOptions{
+            door_handle, {0.0, 1.0}, {handle_position[0], handle_position[1] + panel_size[1] / 2.0}, true, {}});
     items.push_back(mirrored);
     return items;
 }
@@ -192,24 +204,24 @@ namespace bindings {
 
 express::Base geometry_add_door_representation(
     ifcopenshell::file* file,
-    express::Base* context,
-    double overall_height,
-    double overall_width,
-    const std::string& operation_type,
-    const std::vector<double>& lining_property_values,
-    const std::vector<double>& panel_property_values,
-    express::Base* part_of_product,
-    double unit_scale)
+    const GeometryAddDoorRepresentationOptions& options)
 {
     ifcopenshell_clear_error();
-    if (!file || !context) {
+    if (!file || !options.context) {
         set_error("Invalid arguments");
         return {};
     }
 
     try {
-        const auto lining = parse_lining(lining_property_values);
-        const auto panel = parse_panel(panel_property_values);
+        express::Base context_value = options.context;
+        express::Base* context = &context_value;
+        const double overall_height = options.overall_height;
+        const double overall_width = options.overall_width;
+        const std::string& operation_type = options.operation_type;
+        const double unit_scale = options.unit_scale;
+        const auto lining = parse_lining(options.lining_properties);
+        const auto panel = parse_panel(options.panel_properties);
+        express::Base* part_of_product = options.part_of_product ? const_cast<express::Base*>(&*options.part_of_product) : nullptr;
         const bool double_swing_door = operation_type.find("DOUBLE_SWING") != std::string::npos;
         const bool double_door = operation_type.find("DOUBLE_DOOR") != std::string::npos;
         const bool sliding_door = operation_type.find("SLIDING") != std::string::npos;
@@ -217,7 +229,9 @@ express::Base geometry_add_door_representation(
 
         if (target_view == "ELEVATION_VIEW") {
             auto rect = ifcapi::detail::rectangle(file, {overall_width, 0.0, overall_height});
-            return shape_builder_representation(file, context, {rect}, "Curve3D");
+            return shape_builder_representation(
+                file,
+                ShapeBuilderRepresentationOptions{*context, {rect}, "Curve3D"});
         }
 
         const double lining_depth = lining.lining_depth;
@@ -282,13 +296,19 @@ express::Base geometry_add_door_representation(
                     file, {ifcapi::detail::v2(0.35 * panel_size[0], 0.0), ifcapi::detail::v2(0.65 * panel_size[0], 0.0)}, false));
                 arrow_symbol.push_back(ifcapi::bindings::shape_builder_polyline(
                     file,
-                    {ifcapi::detail::v2(slider_arrow_symbol_size, arrow_offset), ifcapi::detail::v2(0.0, 0.0), ifcapi::detail::v2(slider_arrow_symbol_size, -arrow_offset)},
-                    false,
-                    {0.35 * panel_size[0], 0.0},
-                    true,
-                    {}));
+                    ifcapi::bindings::ShapeBuilderPolylineOptions{
+                        {
+                            ifcapi::detail::v2(slider_arrow_symbol_size, arrow_offset),
+                            ifcapi::detail::v2(0.0, 0.0),
+                            ifcapi::detail::v2(slider_arrow_symbol_size, -arrow_offset),
+                        },
+                        false,
+                        std::vector<double>{0.35 * panel_size[0], 0.0},
+                        {}}));
                 ifcapi::detail::translate_items(file, arrow_symbol, {panel_position[0], panel_position[1] - arrow_offset * 1.5});
-                return shape_builder_representation(file, context, ifcapi::detail::const_refs(arrow_symbol), "Curve2D");
+                return shape_builder_representation(
+                    file,
+                    ShapeBuilderRepresentationOptions{*context, ifcapi::detail::const_refs(arrow_symbol), "Curve2D"});
             }
 
             express::Base lining_item = {};
@@ -308,7 +328,9 @@ express::Base geometry_add_door_representation(
                 lining_item = ifcapi::detail::rectangle(file, {side_lining_thickness, lining_depth});
             }
             items_2d.push_back(lining_item);
-            items_2d.push_back(shape_builder_mirror(file, &lining_item, {1.0, 0.0}, {overall_width / 2.0, 0.0}, true, {}));
+            items_2d.push_back(shape_builder_mirror(
+                file,
+                ShapeBuilderMirrorOptions{lining_item, {1.0, 0.0}, {overall_width / 2.0, 0.0}, true, {}}));
             std::vector<express::Base> door_items;
             if (double_door) {
                 panel_size[0] /= 2.0;
@@ -316,7 +338,9 @@ express::Base geometry_add_door_representation(
                 const auto mirror_point = ifcapi::detail::v2(panel_position[0] + door_opening_width / 2.0, panel_position[1]);
                 std::vector<express::Base> mirrored;
                 for (auto item : door_items) {
-                    mirrored.push_back(shape_builder_mirror(file, &item, {1.0, 0.0}, mirror_point, true, {}));
+                    mirrored.push_back(shape_builder_mirror(
+                        file,
+                        ShapeBuilderMirrorOptions{item, {1.0, 0.0}, mirror_point, true, {}}));
                 }
                 ifcapi::detail::append_items(door_items, mirrored);
             } else {
@@ -325,7 +349,9 @@ express::Base geometry_add_door_representation(
             }
             ifcapi::detail::append_items(items_2d, door_items);
             ifcapi::detail::translate_items(file, items_2d, {0.0, lining_offset});
-            return shape_builder_representation(file, context, ifcapi::detail::const_refs(items_2d), "Curve2D");
+            return shape_builder_representation(
+                file,
+                ShapeBuilderRepresentationOptions{*context, ifcapi::detail::const_refs(items_2d), "Curve2D"});
         }
 
         std::vector<express::Base> lining_items;
@@ -380,7 +406,9 @@ express::Base geometry_add_door_representation(
             const auto mirror_point = ifcapi::detail::v2(panel_position[0] + door_opening_width / 2.0, panel_position[1]);
             std::vector<express::Base> mirrored;
             for (auto item : door_items) {
-                mirrored.push_back(shape_builder_mirror(file, &item, {1.0, 0.0}, mirror_point, true, {}));
+                mirrored.push_back(shape_builder_mirror(
+                    file,
+                    ShapeBuilderMirrorOptions{item, {1.0, 0.0}, mirror_point, true, {}}));
             }
             ifcapi::detail::append_items(door_items, mirrored);
         } else {
@@ -418,18 +446,29 @@ express::Base geometry_add_door_representation(
         std::vector<express::Base> output_items = lining_offset_items;
         ifcapi::detail::append_items(output_items, threshold_items);
         ifcapi::detail::append_items(output_items, casing_items);
-        auto representation = shape_builder_representation(file, context, ifcapi::detail::const_refs(output_items), nullptr);
+        auto representation = shape_builder_representation(
+            file,
+            ShapeBuilderRepresentationOptions{*context, ifcapi::detail::const_refs(output_items), {}});
         if (part_of_product) {
             std::vector<express::Base> lining_aspect = lining_items;
             ifcapi::detail::append_items(lining_aspect, window_lining_items);
             ifcapi::detail::append_items(lining_aspect, threshold_items);
             ifcapi::detail::append_items(lining_aspect, casing_items);
-            geometry_add_shape_aspect(file, "Lining", ifcapi::detail::const_refs(lining_aspect), &representation, part_of_product, nullptr, false);
+            geometry_add_shape_aspect(
+                file,
+                GeometryAddShapeAspectOptions{
+                    "Lining", ifcapi::detail::const_refs(lining_aspect), representation, *part_of_product, {}});
             std::vector<express::Base> framing_aspect = door_items;
             ifcapi::detail::append_items(framing_aspect, frame_items);
-            geometry_add_shape_aspect(file, "Framing", ifcapi::detail::const_refs(framing_aspect), &representation, part_of_product, nullptr, false);
+            geometry_add_shape_aspect(
+                file,
+                GeometryAddShapeAspectOptions{
+                    "Framing", ifcapi::detail::const_refs(framing_aspect), representation, *part_of_product, {}});
             if (!glass_items.empty()) {
-                geometry_add_shape_aspect(file, "Glazing", ifcapi::detail::const_refs(glass_items), &representation, part_of_product, nullptr, false);
+                geometry_add_shape_aspect(
+                    file,
+                    GeometryAddShapeAspectOptions{
+                        "Glazing", ifcapi::detail::const_refs(glass_items), representation, *part_of_product, {}});
             }
         }
         return representation;

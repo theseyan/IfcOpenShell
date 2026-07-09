@@ -86,8 +86,10 @@ express::Base create_owner_relation(
 void update_port_placement(ifcopenshell::file* file, express::Base port) {
     auto placement = ifcapi::detail::read_ref_attr(port, "ObjectPlacement");
     if (is_a(placement, "IfcLocalPlacement")) {
-        auto matrix = ifcapi::bindings::placement_get_local_placement(&placement);
-        ifcapi::bindings::geometry_edit_object_placement(file, &port, matrix, false, false);
+        auto matrix = ifcapi::bindings::placement_get_local_placement(placement);
+        ifcapi::bindings::geometry_edit_object_placement(
+            file,
+            ifcapi::bindings::GeometryEditObjectPlacementOptions{port, matrix, false, false});
     }
 }
 
@@ -174,68 +176,74 @@ void purge_connected_from(ifcopenshell::file* file, express::Base port) {
 namespace ifcapi {
 namespace bindings {
 
-static express::Base system_assign_port_impl(
+express::Base system_add_port(
     ifcopenshell::file* file,
-    express::Base element,
-    express::Base port,
-    express::Base owner_history,
-    express::Base user,
-    express::Base application);
-
-static express::Base system_add_port_impl(
-    ifcopenshell::file* file,
-    express::Base element,
-    express::Base owner_history,
-    express::Base user,
-    express::Base application)
+    const SystemAddPortOptions& options)
 {
+    auto owner_history = options.owner_history.value_or(express::Base());
+    auto user = options.user.value_or(express::Base());
+    auto application = options.application.value_or(express::Base());
+
     auto port = create_entity(file, "IfcDistributionPort");
     ifcapi::detail::write_string_attr(port, "GlobalId", ifcapi::guid_new());
     ifcapi::detail::write_ref_attr(
         port,
         "OwnerHistory",
         ifcapi::detail::ensure_owner_history(file, owner_history, user, application));
-    if (element) {
-        system_assign_port_impl(file, element, port, owner_history, user, application);
+    if (options.element) {
+        SystemAssignPortOptions assign_opts;
+        assign_opts.element = *options.element;
+        assign_opts.port = port;
+        assign_opts.owner_history = options.owner_history;
+        assign_opts.user = options.user;
+        assign_opts.application = options.application;
+        system_assign_port(file, assign_opts);
     }
     return port;
 }
 
-static express::Base system_add_system_impl(
+express::Base system_add_system(
     ifcopenshell::file* file,
-    const std::string& ifc_class,
-    express::Base owner_history)
+    const SystemAddSystemOptions& options)
 {
-    std::string resolved_class = ifc_class;
+    auto owner_history = options.owner_history.value_or(express::Base());
+
+    std::string resolved_class = options.ifc_class;
     if (is_ifc2x3(file) && resolved_class == "IfcDistributionSystem") {
         resolved_class = "IfcSystem";
     }
-    return root_create_entity(file, resolved_class, nullptr, "Unnamed", ifcapi::detail::nullable_ptr(owner_history));
+    RootCreateEntityOptions root_opts;
+    root_opts.ifc_class = resolved_class;
+    root_opts.name = "Unnamed";
+    if (owner_history) {
+        root_opts.owner_history = owner_history;
+    }
+    return root_create_entity(file, root_opts);
 }
 
-static express::Base system_assign_flow_control_impl(
+express::Base system_assign_flow_control(
     ifcopenshell::file* file,
-    express::Base relating_flow_element,
-    express::Base related_flow_control,
-    express::Base owner_history,
-    express::Base user,
-    express::Base application)
+    const SystemAssignFlowControlOptions& options)
 {
-    auto assigned = inverse_entities(related_flow_control, "AssignedToFlowElement");
+    auto owner_history = options.owner_history.value_or(express::Base());
+    auto user = options.user.value_or(express::Base());
+    auto application = options.application.value_or(express::Base());
+
+    auto assigned = inverse_entities(options.related_flow_control, "AssignedToFlowElement");
     if (!assigned.empty()) {
         auto assignment = assigned.front();
-        if (ifcapi::detail::read_ref_attr(assignment, "RelatingFlowElement") == relating_flow_element) {
+        if (ifcapi::detail::read_ref_attr(assignment, "RelatingFlowElement") == options.relating_flow_element) {
             return assignment;
         }
         return {};
     }
 
-    auto flow_rels = inverse_entities(relating_flow_element, "HasControlElements");
+    auto flow_rels = inverse_entities(options.relating_flow_element, "HasControlElements");
     if (!flow_rels.empty()) {
         auto assignment = flow_rels.front();
         auto controls = ifcapi::detail::read_ref_aggregate(assignment, "RelatedControlElements");
-        if (!contains(controls, related_flow_control)) {
-            controls.push_back(related_flow_control);
+        if (!contains(controls, options.related_flow_control)) {
+            controls.push_back(options.related_flow_control);
             ifcapi::detail::write_ref_aggregate(assignment, "RelatedControlElements", controls);
             ifcapi::detail::update_owner_history(file, assignment, user, application);
         }
@@ -243,124 +251,120 @@ static express::Base system_assign_flow_control_impl(
     }
 
     auto assignment = create_owner_relation(file, "IfcRelFlowControlElements", owner_history, user, application);
-    ifcapi::detail::write_ref_aggregate(assignment, "RelatedControlElements", {related_flow_control});
-    ifcapi::detail::write_ref_attr(assignment, "RelatingFlowElement", relating_flow_element);
+    ifcapi::detail::write_ref_aggregate(assignment, "RelatedControlElements", {options.related_flow_control});
+    ifcapi::detail::write_ref_attr(assignment, "RelatingFlowElement", options.relating_flow_element);
     return assignment;
 }
 
-static express::Base system_assign_port_impl(
+express::Base system_assign_port(
     ifcopenshell::file* file,
-    express::Base element,
-    express::Base port,
-    express::Base owner_history,
-    express::Base user,
-    express::Base application)
+    const SystemAssignPortOptions& options)
 {
+    auto owner_history = options.owner_history.value_or(express::Base());
+    auto user = options.user.value_or(express::Base());
+    auto application = options.application.value_or(express::Base());
+
     if (is_ifc2x3(file)) {
-        for (auto rel : inverse_entities(element, "HasPorts")) {
-            if (ifcapi::detail::read_ref_attr(rel, "RelatingPort") == port) return rel;
+        for (auto rel : inverse_entities(options.element, "HasPorts")) {
+            if (ifcapi::detail::read_ref_attr(rel, "RelatingPort") == options.port) return rel;
         }
         auto rel = create_owner_relation(file, "IfcRelConnectsPortToElement", owner_history, user, application);
-        ifcapi::detail::write_ref_attr(rel, "RelatingPort", port);
-        ifcapi::detail::write_ref_attr(rel, "RelatedElement", element);
-        update_port_placement(file, port);
+        ifcapi::detail::write_ref_attr(rel, "RelatingPort", options.port);
+        ifcapi::detail::write_ref_attr(rel, "RelatedElement", options.element);
+        update_port_placement(file, options.port);
         return rel;
     }
 
-    auto rels = inverse_entities(element, "IsNestedBy");
+    auto rels = inverse_entities(options.element, "IsNestedBy");
     for (auto rel : rels) {
-        if (contains(ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects"), port)) return rel;
+        if (contains(ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects"), options.port)) return rel;
     }
 
     express::Base rel = {};
     if (!rels.empty()) {
         rel = rels.front();
-        auto related = append_unique(ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects"), port);
+        auto related = append_unique(ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects"), options.port);
         ifcapi::detail::write_ref_aggregate(rel, "RelatedObjects", related);
         ifcapi::detail::update_owner_history(file, rel, user, application);
     } else {
         rel = create_owner_relation(file, "IfcRelNests", owner_history, user, application);
-        ifcapi::detail::write_ref_aggregate(rel, "RelatedObjects", {port});
-        ifcapi::detail::write_ref_attr(rel, "RelatingObject", element);
+        ifcapi::detail::write_ref_aggregate(rel, "RelatedObjects", {options.port});
+        ifcapi::detail::write_ref_attr(rel, "RelatingObject", options.element);
     }
-    update_port_placement(file, port);
+    update_port_placement(file, options.port);
     return rel;
 }
 
-static express::Base system_assign_system_impl(
+express::Base system_assign_system(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base system,
-    express::Base owner_history,
-    express::Base user,
-    express::Base application)
+    const SystemAssignSystemOptions& options)
 {
-    for (auto product : products) {
-        if (!is_assignable(product, system)) {
+    for (auto product : options.products) {
+        if (!is_assignable(product, options.system)) {
             throw std::runtime_error("product is not assignable to system");
         }
     }
-    return group_assign_group(
-        file,
-        products,
-        &system,
-        ifcapi::detail::nullable_ptr(owner_history),
-        ifcapi::detail::nullable_ptr(user),
-        ifcapi::detail::nullable_ptr(application));
+    GroupAssignGroupOptions opts;
+    opts.products = options.products;
+    opts.group = options.system;
+    if (options.owner_history) opts.owner_history = *options.owner_history;
+    if (options.user) opts.user = *options.user;
+    if (options.application) opts.application = *options.application;
+    return group_assign_group(file, opts);
 }
 
-static void system_connect_port_impl(
+void system_connect_port(
     ifcopenshell::file* file,
-    express::Base port1,
-    express::Base port2,
-    const std::string& direction,
-    express::Base element,
-    express::Base owner_history,
-    express::Base user,
-    express::Base application)
+    const SystemConnectPortOptions& options)
 {
-    if (port1 == port2) return;
+    auto owner_history = options.owner_history.value_or(express::Base());
+    auto user = options.user.value_or(express::Base());
+    auto application = options.application.value_or(express::Base());
+    auto element = options.element.value_or(express::Base());
 
-    purge_existing_connections_to_other_ports(file, port1, port2);
+    if (options.port1 == options.port2) return;
 
-    if (direction == "SOURCE") {
-        write_flow_direction(port1, "SOURCE");
-        write_flow_direction(port2, "SINK");
-    } else if (direction == "SINK") {
-        write_flow_direction(port1, "SINK");
-        write_flow_direction(port2, "SOURCE");
+    purge_existing_connections_to_other_ports(file, options.port1, options.port2);
+
+    if (options.direction == "SOURCE") {
+        write_flow_direction(options.port1, "SOURCE");
+        write_flow_direction(options.port2, "SINK");
+    } else if (options.direction == "SINK") {
+        write_flow_direction(options.port1, "SINK");
+        write_flow_direction(options.port2, "SOURCE");
     } else {
-        write_flow_direction(port1, direction);
-        write_flow_direction(port2, direction);
+        write_flow_direction(options.port1, options.direction);
+        write_flow_direction(options.port2, options.direction);
     }
 
-    if (direction == "SOURCE" || direction == "SOURCEANDSINK" || direction == "NOTDEFINED") {
-        if (inverse_entities(port1, "ConnectedTo").empty()) {
-            create_connects_ports(file, port1, port2, owner_history, user, application);
+    if (options.direction == "SOURCE" || options.direction == "SOURCEANDSINK" || options.direction == "NOTDEFINED") {
+        if (inverse_entities(options.port1, "ConnectedTo").empty()) {
+            create_connects_ports(file, options.port1, options.port2, owner_history, user, application);
         }
     } else {
-        purge_connected_to(file, port1);
+        purge_connected_to(file, options.port1);
     }
 
-    if (direction == "SINK" || direction == "SOURCEANDSINK" || direction == "NOTDEFINED") {
-        if (inverse_entities(port1, "ConnectedFrom").empty()) {
-            create_connects_ports(file, port2, port1, owner_history, user, application);
+    if (options.direction == "SINK" || options.direction == "SOURCEANDSINK" || options.direction == "NOTDEFINED") {
+        if (inverse_entities(options.port1, "ConnectedFrom").empty()) {
+            create_connects_ports(file, options.port2, options.port1, owner_history, user, application);
         }
     } else {
-        purge_connected_from(file, port1);
+        purge_connected_from(file, options.port1);
     }
 
-    for (auto rel : inverse_entities(port1, "ConnectedTo")) {
+    for (auto rel : inverse_entities(options.port1, "ConnectedTo")) {
         ifcapi::detail::write_ref_attr(rel, "RealizingElement", element);
     }
-    for (auto rel : inverse_entities(port1, "ConnectedFrom")) {
+    for (auto rel : inverse_entities(options.port1, "ConnectedFrom")) {
         ifcapi::detail::write_ref_attr(rel, "RealizingElement", element);
     }
 }
 
-static void system_disconnect_port_impl(ifcopenshell::file* file, express::Base port) {
-    auto rels = inverse_entities(port, "ConnectedTo");
-    auto from = inverse_entities(port, "ConnectedFrom");
+void system_disconnect_port(ifcopenshell::file* file, express::Base* port) {
+    auto port_val = ifcapi::detail::deref_or_empty(port);
+    auto rels = inverse_entities(port_val, "ConnectedTo");
+    auto from = inverse_entities(port_val, "ConnectedFrom");
     rels.insert(rels.end(), from.begin(), from.end());
     for (auto rel : rels) {
         clear_flow_direction(ifcapi::detail::read_ref_attr(rel, "RelatingPort"));
@@ -369,9 +373,10 @@ static void system_disconnect_port_impl(ifcopenshell::file* file, express::Base 
     }
 }
 
-static void system_remove_system_impl(ifcopenshell::file* file, express::Base system) {
+void system_remove_system(ifcopenshell::file* file, express::Base* system) {
+    auto system_val = ifcapi::detail::deref_or_empty(system);
     std::vector<int> inverse_ids;
-    for (auto inverse : inverse_entities(file, system)) {
+    for (auto inverse : inverse_entities(file, system_val)) {
         inverse_ids.push_back(inverse.id());
     }
     for (int id : inverse_ids) {
@@ -384,48 +389,48 @@ static void system_remove_system_impl(ifcopenshell::file* file, express::Base sy
         if (!inverse) continue;
         if (is_a(inverse, "IfcRelDefinesByProperties")) {
             auto pset = ifcapi::detail::read_ref_attr(inverse, "RelatingPropertyDefinition");
-            pset_remove_pset(file, &system, &pset);
+            pset_remove_pset(file, &system_val, &pset);
         } else if (is_a(inverse, "IfcRelAssignsToGroup")) {
-            if (ifcapi::detail::read_ref_attr(inverse, "RelatingGroup") == system
+            if (ifcapi::detail::read_ref_attr(inverse, "RelatingGroup") == system_val
                 || ifcapi::detail::read_ref_aggregate(inverse, "RelatedObjects").size() == 1) {
                 remove_relation_with_history(file, inverse);
             }
         }
     }
-    ifcapi::detail::remove_with_history(file, system);
+    ifcapi::detail::remove_with_history(file, system_val);
 }
 
-static void system_unassign_flow_control_impl(
+void system_unassign_flow_control(
     ifcopenshell::file* file,
-    express::Base relating_flow_element,
-    express::Base related_flow_control,
-    express::Base user,
-    express::Base application)
+    const SystemUnassignFlowControlOptions& options)
 {
-    auto assigned = inverse_entities(related_flow_control, "AssignedToFlowElement");
+    auto user = options.user.value_or(express::Base());
+    auto application = options.application.value_or(express::Base());
+
+    auto assigned = inverse_entities(options.related_flow_control, "AssignedToFlowElement");
     if (assigned.empty()) return;
     auto assignment = assigned.front();
-    if (ifcapi::detail::read_ref_attr(assignment, "RelatingFlowElement") != relating_flow_element) return;
+    if (ifcapi::detail::read_ref_attr(assignment, "RelatingFlowElement") != options.relating_flow_element) return;
     auto controls = ifcapi::detail::read_ref_aggregate(assignment, "RelatedControlElements");
     if (controls.size() == 1) {
         remove_relation_with_history(file, assignment);
         return;
     }
-    controls.erase(std::remove(controls.begin(), controls.end(), related_flow_control), controls.end());
+    controls.erase(std::remove(controls.begin(), controls.end(), options.related_flow_control), controls.end());
     ifcapi::detail::write_ref_aggregate(assignment, "RelatedControlElements", controls);
     ifcapi::detail::update_owner_history(file, assignment, user, application);
 }
 
-static void system_unassign_port_impl(
+void system_unassign_port(
     ifcopenshell::file* file,
-    express::Base element,
-    express::Base port,
-    express::Base user,
-    express::Base application)
+    const SystemUnassignPortOptions& options)
 {
+    auto user = options.user.value_or(express::Base());
+    auto application = options.application.value_or(express::Base());
+
     if (is_ifc2x3(file)) {
-        for (auto rel : inverse_entities(element, "HasPorts")) {
-            if (ifcapi::detail::read_ref_attr(rel, "RelatingPort") == port) {
+        for (auto rel : inverse_entities(options.element, "HasPorts")) {
+            if (ifcapi::detail::read_ref_attr(rel, "RelatingPort") == options.port) {
                 remove_relation_with_history(file, rel);
                 return;
             }
@@ -433,180 +438,29 @@ static void system_unassign_port_impl(
         return;
     }
 
-    for (auto rel : inverse_entities(element, "IsNestedBy")) {
+    for (auto rel : inverse_entities(options.element, "IsNestedBy")) {
         auto related = ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects");
-        if (!contains(related, port)) continue;
+        if (!contains(related, options.port)) continue;
         if (related.size() == 1) {
             remove_relation_with_history(file, rel);
             return;
         }
-        related.erase(std::remove(related.begin(), related.end(), port), related.end());
+        related.erase(std::remove(related.begin(), related.end(), options.port), related.end());
         ifcapi::detail::write_ref_aggregate(rel, "RelatedObjects", related);
         ifcapi::detail::update_owner_history(file, rel, user, application);
     }
 }
 
-static void system_unassign_system_impl(
-    ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base system,
-    express::Base user,
-    express::Base application)
-{
-    group_unassign_group(
-        file,
-        products,
-        &system,
-        ifcapi::detail::nullable_ptr(user),
-        ifcapi::detail::nullable_ptr(application));
-}
-
-express::Base system_add_port(
-    ifcopenshell::file* file,
-    express::Base* element,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
-{
-    return system_add_port_impl(
-        file,
-        ifcapi::detail::deref_or_empty(element),
-        ifcapi::detail::deref_or_empty(owner_history),
-        ifcapi::detail::deref_or_empty(user),
-        ifcapi::detail::deref_or_empty(application));
-}
-
-express::Base system_add_system(
-    ifcopenshell::file* file,
-    const std::string& ifc_class,
-    express::Base* owner_history)
-{
-    return system_add_system_impl(file, ifc_class, ifcapi::detail::deref_or_empty(owner_history));
-}
-
-express::Base system_assign_flow_control(
-    ifcopenshell::file* file,
-    express::Base* relating_flow_element,
-    express::Base* related_flow_control,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
-{
-    return system_assign_flow_control_impl(
-        file,
-        ifcapi::detail::deref_or_empty(relating_flow_element),
-        ifcapi::detail::deref_or_empty(related_flow_control),
-        ifcapi::detail::deref_or_empty(owner_history),
-        ifcapi::detail::deref_or_empty(user),
-        ifcapi::detail::deref_or_empty(application));
-}
-
-express::Base system_assign_port(
-    ifcopenshell::file* file,
-    express::Base* element,
-    express::Base* port,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
-{
-    return system_assign_port_impl(
-        file,
-        ifcapi::detail::deref_or_empty(element),
-        ifcapi::detail::deref_or_empty(port),
-        ifcapi::detail::deref_or_empty(owner_history),
-        ifcapi::detail::deref_or_empty(user),
-        ifcapi::detail::deref_or_empty(application));
-}
-
-express::Base system_assign_system(
-    ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base* system,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
-{
-    return system_assign_system_impl(
-        file,
-        products,
-        ifcapi::detail::deref_or_empty(system),
-        ifcapi::detail::deref_or_empty(owner_history),
-        ifcapi::detail::deref_or_empty(user),
-        ifcapi::detail::deref_or_empty(application));
-}
-
-void system_connect_port(
-    ifcopenshell::file* file,
-    express::Base* port1,
-    express::Base* port2,
-    const std::string& direction,
-    express::Base* element,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
-{
-    system_connect_port_impl(
-        file,
-        ifcapi::detail::deref_or_empty(port1),
-        ifcapi::detail::deref_or_empty(port2),
-        direction,
-        ifcapi::detail::deref_or_empty(element),
-        ifcapi::detail::deref_or_empty(owner_history),
-        ifcapi::detail::deref_or_empty(user),
-        ifcapi::detail::deref_or_empty(application));
-}
-
-void system_disconnect_port(ifcopenshell::file* file, express::Base* port) {
-    system_disconnect_port_impl(file, ifcapi::detail::deref_or_empty(port));
-}
-
-void system_remove_system(ifcopenshell::file* file, express::Base* system) {
-    system_remove_system_impl(file, ifcapi::detail::deref_or_empty(system));
-}
-
-void system_unassign_flow_control(
-    ifcopenshell::file* file,
-    express::Base* relating_flow_element,
-    express::Base* related_flow_control,
-    express::Base* user,
-    express::Base* application)
-{
-    system_unassign_flow_control_impl(
-        file,
-        ifcapi::detail::deref_or_empty(relating_flow_element),
-        ifcapi::detail::deref_or_empty(related_flow_control),
-        ifcapi::detail::deref_or_empty(user),
-        ifcapi::detail::deref_or_empty(application));
-}
-
-void system_unassign_port(
-    ifcopenshell::file* file,
-    express::Base* element,
-    express::Base* port,
-    express::Base* user,
-    express::Base* application)
-{
-    system_unassign_port_impl(
-        file,
-        ifcapi::detail::deref_or_empty(element),
-        ifcapi::detail::deref_or_empty(port),
-        ifcapi::detail::deref_or_empty(user),
-        ifcapi::detail::deref_or_empty(application));
-}
-
 void system_unassign_system(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base* system,
-    express::Base* user,
-    express::Base* application)
+    const SystemUnassignSystemOptions& options)
 {
-    system_unassign_system_impl(
-        file,
-        products,
-        ifcapi::detail::deref_or_empty(system),
-        ifcapi::detail::deref_or_empty(user),
-        ifcapi::detail::deref_or_empty(application));
+    GroupUnassignGroupOptions opts;
+    opts.products = options.products;
+    opts.group = options.system;
+    if (options.user) opts.user = *options.user;
+    if (options.application) opts.application = *options.application;
+    group_unassign_group(file, opts);
 }
 
 } // namespace bindings

@@ -42,8 +42,10 @@ def assign_structural_analysis_model(
         _capi.file_handle(file),
         _capi.instance_list(products),
         _capi.instance_handle(structural_analysis_model),
-        _capi.instance_handle(owner_history),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+        {
+            "owner_history": _capi.instance_handle(owner_history),
+            "user": _capi.instance_handle(user),
+            "application": _capi.instance_handle(application),
+        },
         nullable=True,
     )

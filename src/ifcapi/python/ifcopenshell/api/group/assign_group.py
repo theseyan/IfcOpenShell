@@ -51,9 +51,11 @@ def assign_group(
         file,
         "group_assign_group",
         _relationship_capi.file_handle(file),
-        _relationship_capi.instance_list_ptr(product_list),
-        _relationship_capi.instance_handle(group),
-        _relationship_capi.instance_handle(owner_history),
-        _relationship_capi.instance_handle(user),
-        _relationship_capi.instance_handle(application),
+        {
+            "products": product_list,
+            "group": _relationship_capi.instance_handle(group),
+            "owner_history": _relationship_capi.instance_handle(owner_history),
+            "user": _relationship_capi.instance_handle(user),
+            "application": _relationship_capi.instance_handle(application),
+        },
     )

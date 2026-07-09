@@ -241,12 +241,9 @@ namespace bindings {
 
 express::Base geometry_edit_object_placement(
     ifcopenshell::file* file,
-    express::Base* product,
-    const std::vector<double>& matrix,
-    bool is_si,
-    bool should_transform_children)
+    const GeometryEditObjectPlacementOptions& options)
 {
-    auto product_value = ifcapi::detail::deref_or_empty(product);
+    auto product_value = options.product;
     if (!file || !product_value) {
         set_error("geometry_edit_object_placement: missing argument");
         return {};
@@ -254,13 +251,13 @@ express::Base geometry_edit_object_placement(
     if (!has_attr(product_value, "ObjectPlacement")) return {};
 
     std::array<double, 16> m;
-    if (matrix.size() == m.size()) {
-        std::copy(matrix.begin(), matrix.end(), m.begin());
+    if (options.matrix.size() == m.size()) {
+        std::copy(options.matrix.begin(), options.matrix.end(), m.begin());
     } else {
         identity4(m.data());
     }
     try {
-        return edit_placement_impl(file, product_value, m, is_si, should_transform_children);
+        return edit_placement_impl(file, product_value, m, options.is_si, options.should_transform_children);
     } catch (const std::exception& ex) {
         set_error(std::string("edit_object_placement: ") + ex.what());
         return {};

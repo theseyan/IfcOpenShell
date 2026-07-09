@@ -12,11 +12,13 @@ def add_qto(file, product, name):
     owner_history, user, application = owner_context(file)
     handle = _capi.pset_add_qto(
         file._handle,
-        product._handle,
-        name,
-        owner_history._handle if owner_history else None,
-        user._handle if user else None,
-        application._handle if application else None,
+        {
+            "product": product._handle,
+            "name": name,
+            "owner_history": owner_history._handle if owner_history else None,
+            "user": user._handle if user else None,
+            "application": application._handle if application else None,
+        },
     )
     if handle:
         return ifcopenshell.entity_instance(file, handle)

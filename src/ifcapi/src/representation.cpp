@@ -180,10 +180,7 @@ express::Base representation_resolve(express::Base* rep) {
 
 express::Base representation_get_product_representation(
     express::Base* element,
-    express::Base* context,
-    const char* context_type,
-    const char* subcontext,
-    const char* target_view)
+    const RepresentationGetProductRepresentationOptions& options)
 {
     auto e = element ? *element : express::Base();
     if (!e) return {};
@@ -202,7 +199,11 @@ express::Base representation_get_product_representation(
         }
     }
 
-    auto context_e = context ? *context : express::Base();
+    auto context_e = options.context.value_or(express::Base());
+    auto context_type_str = options.context_type.value_or(std::string());
+    auto subcontext_str = options.subcontext.value_or(std::string());
+    auto target_view_str = options.target_view.value_or(std::string());
+
     for (auto r : reps) {
         auto ctx = read_ref(r, "ContextOfItems");
         if (!ctx) continue;
@@ -211,20 +212,20 @@ express::Base representation_get_product_representation(
             if (ctx == context_e) return r;
             continue;
         }
-        if (target_view && *target_view) {
+        if (!target_view_str.empty()) {
             if (!is_a(ctx, "IfcGeometricRepresentationSubContext")) continue;
-            if (read_string(ctx, "TargetView") != target_view) continue;
-            if (read_string(ctx, "ContextIdentifier") != (subcontext ? subcontext : "")) continue;
-            if (read_string(ctx, "ContextType") != (context_type ? context_type : "")) continue;
+            if (read_string(ctx, "TargetView") != target_view_str) continue;
+            if (read_string(ctx, "ContextIdentifier") != subcontext_str) continue;
+            if (read_string(ctx, "ContextType") != context_type_str) continue;
             return r;
         }
-        if (subcontext && *subcontext) {
+        if (!subcontext_str.empty()) {
             if (!is_a(ctx, "IfcGeometricRepresentationSubContext")) continue;
-            if (read_string(ctx, "ContextIdentifier") != subcontext) continue;
-            if (!str_eq_opt(read_string(ctx, "ContextType"), context_type)) continue;
+            if (read_string(ctx, "ContextIdentifier") != subcontext_str) continue;
+            if (!str_eq_opt(read_string(ctx, "ContextType"), context_type_str.empty() ? nullptr : context_type_str.c_str())) continue;
             return r;
         }
-        if (!str_eq_opt(read_string(ctx, "ContextType"), context_type)) continue;
+        if (!str_eq_opt(read_string(ctx, "ContextType"), context_type_str.empty() ? nullptr : context_type_str.c_str())) continue;
         return r;
     }
     return {};

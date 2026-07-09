@@ -17,7 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-from ifcopenshell.api import _relationship_capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def edit_wcs(
@@ -57,12 +57,13 @@ def edit_wcs(
         # This is the simplest scenario, resetting the WCS to 0,0,0 with no rotation (recommended)
         ifcopenshell.api.georeference.edit_wcs(model)
     """
-    _relationship_capi.call_status(
-        "georeference_edit_wcs",
-        _relationship_capi.file_handle(file),
-        x,
-        y,
-        z,
-        rotation,
-        is_si,
+    _capi.georeference_edit_wcs(
+        file._handle,
+        {
+            "x": x,
+            "y": y,
+            "z": z,
+            "rotation": rotation,
+            "is_si": is_si,
+        },
     )

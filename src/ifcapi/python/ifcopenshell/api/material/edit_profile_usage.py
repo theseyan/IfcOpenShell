@@ -103,13 +103,11 @@ class Usecase:
         self.usage = usage
         self.attributes = attributes
         self.cardinal_point = attributes.get("CardinalPoint")
-        has_profile_dimensions = False
-        profile_width = 0.0
-        profile_height = 0.0
+        profile_width = None
+        profile_height = None
         if self.cardinal_point and self.cardinal_point != usage.CardinalPoint:
             dimensions = self.calculate_profile_dimensions()
             if dimensions is not None:
-                has_profile_dimensions = True
                 profile_width, profile_height = dimensions
 
         props = pset_capi.build_props(attributes)
@@ -119,10 +117,11 @@ class Usecase:
                 "material_edit_profile_usage failed",
                 _capi.file_handle(self.file),
                 _capi.instance_handle(usage),
-                props,
-                has_profile_dimensions,
-                profile_width,
-                profile_height,
+                {
+                    "attributes": props,
+                    "profile_width": profile_width,
+                    "profile_height": profile_height,
+                },
             )
         finally:
             pset_capi.free_props(props)

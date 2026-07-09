@@ -18,10 +18,10 @@ namespace bindings {
 
 IFCAPI_BINDING void pset_template_set_template_dir(const std::string& dir);
 IFCAPI_BINDING ifcopenshell_pset_template_t* pset_template_get_template(const std::string& schema_identifier);
-IFCAPI_BINDING ifcopenshell_pset_template_t* pset_template_create_from_files(
+IFCAPI_BINDING IFCAPI_OWNED ifcopenshell_pset_template_t* pset_template_create_from_files(
     const std::string& schema_identifier,
     const std::vector<const ifcopenshell::file*>& template_files);
-IFCAPI_BINDING void pset_template_free(ifcopenshell_pset_template_t* pqt);
+void pset_template_free(ifcopenshell_pset_template_t* pqt);
 IFCAPI_BINDING express::Base pset_template_get_by_name(
     ifcopenshell_pset_template_t* pqt,
     const std::string& name);

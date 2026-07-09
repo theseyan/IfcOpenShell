@@ -44,8 +44,10 @@ def copy_work_schedule(
         "sequence_copy_work_schedule",
         _capi.file_handle(file),
         _capi.instance_handle(work_schedule),
-        _capi.instance_handle(owner_history),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+        {
+            "owner_history": _capi.instance_handle(owner_history),
+            "user": _capi.instance_handle(user),
+            "application": _capi.instance_handle(application),
+        },
         nullable=True,
     )

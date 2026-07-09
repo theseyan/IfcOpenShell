@@ -105,7 +105,7 @@ void sync_predefined_type(ifcopenshell::file* file, express::Base product) {
     auto object_type = ifcapi::detail::read_optional_string_attr(product, "ObjectType");
     auto relating_type = ifcapi::bindings::element_get_type(&product);
     auto type_predefined = relating_type
-        ? ifcapi::detail::read_optional_string_attr(relating_type, "PredefinedType")
+        ? ifcapi::detail::read_optional_string_attr(*relating_type, "PredefinedType")
         : ifcapi::detail::OptionalString{};
     if (type_predefined.has_value && type_predefined.value != "NOTDEFINED") {
         unset_attr(product, "ObjectType");
@@ -139,26 +139,21 @@ std::vector<std::string> attribute_get_enum_items(const ifcopenshell::attribute*
 
 void attribute_edit_attributes(
     ifcopenshell::file* file,
-    express::Base* product,
-    ifcopenshell_pset_props_t* attributes,
-    bool should_sync_predefined_type,
-    bool should_update_owner_history,
-    express::Base* user,
-    express::Base* application)
+    const AttributeEditAttributesOptions& options)
 {
     ifcopenshell_clear_error();
     try {
-        auto product_value = ifcapi::detail::deref_or_empty(product);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto product_value = options.product;
+        auto user_value = options.user.value_or(express::Base());
+        auto application_value = options.application.value_or(express::Base());
         if (!product_value) {
             throw std::runtime_error("attribute_edit_attributes requires a product");
         }
-        ifcapi::detail::apply_attribute_props(product_value, attributes);
-        if (should_sync_predefined_type) {
+        ifcapi::detail::apply_attribute_props(product_value, options.attributes);
+        if (options.sync_predefined_type) {
             sync_predefined_type(file, product_value);
         }
-        if (should_update_owner_history && has_attr(product_value, "OwnerHistory")) {
+        if (options.update_owner_history && has_attr(product_value, "OwnerHistory")) {
             ifcapi::detail::update_owner_history(file, product_value, user_value, application_value);
         }
     } catch (const std::exception& e) {

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -12,13 +13,9 @@ import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-SOURCE_DIR = REPO_ROOT / "cmake"
-DEFAULT_BUILD_DIR = REPO_ROOT / "build-wasm"
-BOOST_ROOT = Path("/opt/homebrew/Cellar/boost@1.85/1.85.0_3")
-BOOST_INCLUDE_DIR = BOOST_ROOT / "include"
-EIGEN3_DIR = Path("/opt/homebrew/share/eigen3/cmake")
+DEFAULT_WASM_DIR = REPO_ROOT / "build" / "wasm-native" / "ifcopenshell" / "full" / "ifcwrap" / "wasm"
 TEST_IFC = REPO_ROOT / "test" / "input" / "WallInstance_IFC4Add2.ifc"
-PYTHON_EXECUTABLE = Path("/opt/homebrew/opt/python@3.11/bin/python3.11")
+WASM_DIR_ENV = "IFCOPENSHELL_WASM_DIR"
 
 
 def _tool_path(preferred: str | Path, fallback: str) -> str | None:
@@ -28,82 +25,51 @@ def _tool_path(preferred: str | Path, fallback: str) -> str | None:
     return shutil.which(fallback)
 
 
-def _run(command: list[str], *, cwd: Path) -> subprocess.CompletedProcess[str]:
-    completed = subprocess.run(command, cwd=cwd, capture_output=True, text=True, check=False)
-    assert completed.returncode == 0, completed.stderr or completed.stdout
-    return completed
-
-
-def _ensure_configured(build_dir: Path) -> None:
-    emcmake = _tool_path("/opt/homebrew/bin/emcmake", "emcmake")
-    cmake = _tool_path("/opt/homebrew/bin/cmake", "cmake")
-    if emcmake is None or cmake is None:
-        pytest.skip("cmake/emcmake not installed")
-    if not BOOST_INCLUDE_DIR.exists():
-        pytest.skip(f"Boost headers not found at {BOOST_INCLUDE_DIR}")
-    if not EIGEN3_DIR.exists():
-        pytest.skip(f"Eigen3 CMake config not found at {EIGEN3_DIR}")
-    if not PYTHON_EXECUTABLE.exists():
-        pytest.skip(f"Python with PyYAML not found at {PYTHON_EXECUTABLE}")
-
-    build_dir.mkdir(exist_ok=True)
-    _run(
-        [
-            emcmake,
-            cmake,
-            "-S",
-            str(SOURCE_DIR),
-            "-B",
-            str(build_dir),
-            "-DWASM_BUILD=ON",
-            "-DBUILD_IFCCAPI=ON",
-            "-DBUILD_IFCAPI=ON",
-            "-DBUILD_IFCGEOM=ON",
-            "-DBUILD_IFCPYTHON=OFF",
-            "-DBUILD_CONVERT=OFF",
-            "-DBUILD_GEOMSERVER=OFF",
-            "-DBUILD_EXAMPLES=OFF",
-            "-DWITH_OPENCASCADE=OFF",
-            "-DWITH_CGAL=OFF",
-            "-DWITH_MANIFOLD=OFF",
-            "-DCOLLADA_SUPPORT=OFF",
-            "-DGLTF_SUPPORT=OFF",
-            f"-DBOOST_ROOT={BOOST_ROOT}",
-            f"-DBoost_INCLUDE_DIR={BOOST_INCLUDE_DIR}",
-            f"-DEigen3_DIR={EIGEN3_DIR}",
-            f"-DPYTHON_EXECUTABLE={PYTHON_EXECUTABLE}",
-        ],
-        cwd=REPO_ROOT,
+def _wasm_dir() -> Path:
+    configured = os.environ.get(WASM_DIR_ENV)
+    if configured:
+        path = Path(configured).expanduser().resolve()
+        assert path.is_dir(), f"{WASM_DIR_ENV} does not point to a directory: {path}"
+        return path
+    if DEFAULT_WASM_DIR.is_dir():
+        return DEFAULT_WASM_DIR
+    pytest.skip(
+        f"prebuilt WASM artifacts not found at {DEFAULT_WASM_DIR}; "
+        f"set {WASM_DIR_ENV} to a prebuilt ifcwrap/wasm directory"
     )
 
 
-def _ensure_built(build_dir: Path) -> Path:
-    cmake = _tool_path("/opt/homebrew/bin/cmake", "cmake")
-    if cmake is None:
-        pytest.skip("cmake not installed")
-    _run([cmake, "--build", str(build_dir), "--target", "ifcopenshell_wasm", "--parallel", "10"], cwd=REPO_ROOT)
-    output_dir = build_dir / "ifcwrap" / "wasm"
-    assert (output_dir / "ifcopenshell_wasm.mjs").exists()
-    assert (output_dir / "ifcopenshell_wasm.wasm").exists()
-    assert (output_dir / "ifcopenshell_api.mjs").exists()
-    assert (output_dir / "ifcopenshell_plugins.json").exists()
-    assert (output_dir / "plugins").is_dir()
-    return output_dir
+def _require_artifacts(wasm_dir: Path) -> None:
+    required_files = [
+        "ifcopenshell_wasm.node.mjs",
+        "ifcopenshell_wasm.wasm",
+        "ifcopenshell_api.mjs",
+        "ifcopenshell_plugins.json",
+    ]
+    for name in required_files:
+        assert (wasm_dir / name).exists(), f"missing WASM smoke artifact: {wasm_dir / name}"
+    assert (wasm_dir / "plugins").is_dir(), f"missing WASM plugin directory: {wasm_dir / 'plugins'}"
 
 
-def _render_node_test(ifc_path: Path) -> str:
+def _render_node_test(wasm_dir: Path, ifc_path: Path) -> str:
     return textwrap.dedent(
         f"""
         import assert from 'node:assert/strict';
         import {{ readFileSync }} from 'node:fs';
-        import initIfcOpenShellWasmModule from './ifcopenshell_wasm.mjs';
-        import {{ createIfcOpenshellModule }} from './ifcopenshell_api.mjs';
-        import {{ fileURLToPath }} from 'node:url';
+        import {{ fileURLToPath, pathToFileURL }} from 'node:url';
 
-        const wasmUrl = fileURLToPath(new URL('./ifcopenshell_wasm.wasm', import.meta.url));
-        const pluginManifest = JSON.parse(readFileSync(new URL('./ifcopenshell_plugins.json', import.meta.url), 'utf8'));
-        const pluginBaseUrl = new URL('./', import.meta.url).href;
-        const api = await createIfcOpenshellModule(initIfcOpenShellWasmModule, wasmUrl, {{
+        const wasmRoot = {json.dumps(str(wasm_dir))};
+        const moduleUrl = (name) => pathToFileURL(`${{wasmRoot}}/${{name}}`).href;
+        const wasmUrl = `${{wasmRoot}}/ifcopenshell_wasm.wasm`;
+        const initFactory = (await import(moduleUrl('ifcopenshell_wasm.node.mjs'))).default;
+        const {{ createIfcOpenshellModule }} = await import(moduleUrl('ifcopenshell_api.mjs'));
+        const initModule = (options = {{}}) => initFactory({{
+            ...options,
+            wasmBinary: readFileSync(wasmUrl),
+        }});
+        const pluginManifest = JSON.parse(readFileSync(`${{wasmRoot}}/ifcopenshell_plugins.json`, 'utf8'));
+        const pluginBaseUrl = pathToFileURL(`${{wasmRoot}}/`).href;
+        const api = await createIfcOpenshellModule(initModule, wasmUrl, {{
             pluginBaseUrl,
             pluginManifest,
             pluginLoader: (url) => readFileSync(fileURLToPath(url)),
@@ -121,21 +87,33 @@ def _render_node_test(ifc_path: Path) -> str:
         assert.equal(ifc2x3File.schemaName(), 'IFC2X3');
 
         step('root-create-wall');
-        const rootWall = api.root.createEntity(newFile, 'IfcWall', null, 'Smoke Wall', null);
+        const rootWall = api.root.createEntity(newFile, {{
+            ifc_class: 'IfcWall',
+            name: 'Smoke Wall',
+        }});
         assert.equal(rootWall.className(false), 'IfcWall');
         assert.match(rootWall.toString(false), /Smoke Wall/);
 
         step('pset-add');
-        const pset = api.pset.addPset(newFile, rootWall, 'Pset_WasmSmoke', null, null, null, null);
+        const pset = api.pset.addPset(newFile, {{
+            product: rootWall,
+            name: 'Pset_WasmSmoke',
+        }});
         assert.equal(pset.className(false), 'IfcPropertySet');
         assert.match(pset.toString(false), /Pset_WasmSmoke/);
 
         step('pset-edit');
         const props = api.pset.propsNew();
+        assert.ok(props);
         api.pset.propsSetString(props, 'Reference', 'ABC');
         api.pset.propsSetDouble(props, 'Height', 3.25);
         api.pset.propsSetBool(props, 'IsExternal', true);
-        assert.equal(api.pset.editPset(newFile, pset, 'Pset_WasmSmokeEdited', props, null, true), true);
+        assert.equal(api.pset.editPset(newFile, {{
+            pset,
+            name: 'Pset_WasmSmokeEdited',
+            properties: props,
+            should_purge: true,
+        }}), true);
         api.pset.propsFree(props);
         assert.match(pset.toString(false), /Pset_WasmSmokeEdited/);
         const hasPropertiesAttr = pset.getArgument(4);
@@ -253,19 +231,18 @@ def _render_node_test(ifc_path: Path) -> str:
     ).strip() + "\n"
 
 
-def test_generated_wasm_bindings_work_in_node():
+def test_generated_wasm_bindings_work_in_node(tmp_path: Path):
     node = _tool_path("/Users/theseyan/.nvm/versions/node/v22.15.0/bin/node", "node")
     if node is None:
         pytest.skip("node not installed")
     if not TEST_IFC.exists():
         pytest.skip(f"Missing IFC fixture at {TEST_IFC}")
 
-    build_dir = DEFAULT_BUILD_DIR
-    _ensure_configured(build_dir)
-    output_dir = _ensure_built(build_dir)
+    wasm_dir = _wasm_dir()
+    _require_artifacts(wasm_dir)
 
-    node_script = output_dir / "test_wasm_bindings.mjs"
-    node_script.write_text(_render_node_test(TEST_IFC), encoding="utf-8")
+    node_script = tmp_path / "test_wasm_bindings.mjs"
+    node_script.write_text(_render_node_test(wasm_dir, TEST_IFC), encoding="utf-8")
 
-    completed = subprocess.run([node, str(node_script)], cwd=output_dir, capture_output=True, text=True, check=False)
+    completed = subprocess.run([node, str(node_script)], cwd=wasm_dir, capture_output=True, text=True, check=False)
     assert completed.returncode == 0, completed.stderr or completed.stdout

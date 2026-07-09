@@ -20,7 +20,7 @@ from typing import Optional
 
 import ifcopenshell
 import ifcopenshell.api.owner.settings
-from ifcopenshell import _ifcopenshell_capi as _capi
+from ifcopenshell.api import _relationship_capi
 
 
 def add_group(
@@ -48,14 +48,17 @@ def add_group(
     """
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
-    handle = _capi.group_add_group(
-        file._handle,
-        name,
-        description,
-        None,
-        user._handle if user is not None else None,
-        application._handle if application is not None else None,
+    opts = {
+        "name": name,
+        "owner_history": None,
+        "user": _relationship_capi.instance_handle(user),
+        "application": _relationship_capi.instance_handle(application),
+    }
+    if description is not None:
+        opts["description"] = description
+    return _relationship_capi.call_handle(
+        file,
+        "group_add_group",
+        _relationship_capi.file_handle(file),
+        opts,
     )
-    if handle:
-        return ifcopenshell.entity_instance(file, handle)
-    raise RuntimeError(_capi.last_error_message() or "Failed to add group")

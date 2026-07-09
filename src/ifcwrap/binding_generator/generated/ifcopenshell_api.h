@@ -40,10 +40,10 @@ typedef struct ifcopenshell_double_list_list_t {
     size_t size;
 } ifcopenshell_double_list_list_t;
 
-typedef struct ifcopenshell_double_list_list_list_t {
-    ifcopenshell_double_list_list_t* items;
+typedef struct ifcopenshell_int64_list_t {
+    int64_t* items;
     size_t size;
-} ifcopenshell_double_list_list_list_t;
+} ifcopenshell_int64_list_t;
 
 typedef struct ifcopenshell_int32_list_t {
     int32_t* items;
@@ -60,16 +60,6 @@ typedef struct ifcopenshell_int32_list_list_list_t {
     size_t size;
 } ifcopenshell_int32_list_list_list_t;
 
-typedef struct ifcopenshell_int32_list_list_list_list_t {
-    ifcopenshell_int32_list_list_list_t* items;
-    size_t size;
-} ifcopenshell_int32_list_list_list_list_t;
-
-typedef struct ifcopenshell_int64_list_t {
-    int64_t* items;
-    size_t size;
-} ifcopenshell_int64_list_t;
-
 typedef struct ifcopenshell_bool_list_t {
     bool* items;
     size_t size;
@@ -85,6 +75,16 @@ typedef struct ifcopenshell_uint8_list_t {
     size_t size;
 } ifcopenshell_uint8_list_t;
 
+typedef struct ifcopenshell_double_list_list_list_t {
+    ifcopenshell_double_list_list_t* items;
+    size_t size;
+} ifcopenshell_double_list_list_list_t;
+
+typedef struct ifcopenshell_int32_list_list_list_list_t {
+    ifcopenshell_int32_list_list_list_t* items;
+    size_t size;
+} ifcopenshell_int32_list_list_list_list_t;
+
 void ifcopenshell_string_destroy(ifcopenshell_string_t* value);
 
 void ifcopenshell_double_list_destroy(ifcopenshell_double_list_t* value);
@@ -93,7 +93,7 @@ void ifcopenshell_string_list_destroy(ifcopenshell_string_list_t* value);
 
 void ifcopenshell_double_list_list_destroy(ifcopenshell_double_list_list_t* value);
 
-void ifcopenshell_double_list_list_list_destroy(ifcopenshell_double_list_list_list_t* value);
+void ifcopenshell_int64_list_destroy(ifcopenshell_int64_list_t* value);
 
 void ifcopenshell_int32_list_destroy(ifcopenshell_int32_list_t* value);
 
@@ -101,15 +101,15 @@ void ifcopenshell_int32_list_list_destroy(ifcopenshell_int32_list_list_t* value)
 
 void ifcopenshell_int32_list_list_list_destroy(ifcopenshell_int32_list_list_list_t* value);
 
-void ifcopenshell_int32_list_list_list_list_destroy(ifcopenshell_int32_list_list_list_list_t* value);
-
-void ifcopenshell_int64_list_destroy(ifcopenshell_int64_list_t* value);
-
 void ifcopenshell_bool_list_destroy(ifcopenshell_bool_list_t* value);
 
 void ifcopenshell_uint32_list_destroy(ifcopenshell_uint32_list_t* value);
 
 void ifcopenshell_uint8_list_destroy(ifcopenshell_uint8_list_t* value);
+
+void ifcopenshell_double_list_list_list_destroy(ifcopenshell_double_list_list_list_t* value);
+
+void ifcopenshell_int32_list_list_list_list_destroy(ifcopenshell_int32_list_list_list_list_t* value);
 
 #endif /* IFCOPENSHELL_COMMON_TYPES_DEFINED */
 
@@ -135,6 +135,7 @@ typedef struct ifcopenshell_inverse_attribute_t ifcopenshell_inverse_attribute_t
 typedef struct ifcopenshell_parse_attribute_value_t ifcopenshell_parse_attribute_value_t;
 typedef struct ifcopenshell_parse_instance_list_t ifcopenshell_parse_instance_list_t;
 typedef struct ifcopenshell_value_t ifcopenshell_value_t;
+typedef struct ifcopenshell_pset_template_handle_t ifcopenshell_pset_template_handle_t;
 typedef struct ifcopenshell_geom_iterator_t ifcopenshell_geom_iterator_t;
 typedef struct ifcopenshell_geom_settings_t ifcopenshell_geom_settings_t;
 typedef struct ifcopenshell_geom_serializer_settings_t ifcopenshell_geom_serializer_settings_t;
@@ -300,9 +301,1403 @@ typedef struct ifcopenshell_geom_element_list_list_t {
     size_t size;
 } ifcopenshell_geom_element_list_list_t;
 
+typedef struct ifcopenshell_aggregate_assign_object_options_t {
+    ifcopenshell_parse_instance_list_t* products;
+    ifcopenshell_instance_t* relating_object;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_aggregate_assign_object_options_t;
+
+typedef struct ifcopenshell_aggregate_unassign_object_options_t {
+    ifcopenshell_parse_instance_list_t* products;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_aggregate_unassign_object_options_t;
+
+typedef struct ifcopenshell_attribute_edit_attributes_options_t {
+    ifcopenshell_instance_t* product;
+    void* attributes;
+    bool sync_predefined_type;
+    bool update_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_attribute_edit_attributes_options_t;
+
+typedef struct ifcopenshell_boundary_assign_connection_geometry_options_t {
+    const ifcopenshell_double_list_list_t* outer_boundary;
+    const ifcopenshell_double_list_t* location;
+    const ifcopenshell_double_list_t* axis;
+    const ifcopenshell_double_list_t* ref_direction;
+    const ifcopenshell_double_list_list_list_t* inner_boundaries;
+    double unit_scale;
+} ifcopenshell_boundary_assign_connection_geometry_options_t;
+
+typedef struct ifcopenshell_boundary_edit_attributes_options_t {
+    ifcopenshell_instance_t* relating_space;
+    ifcopenshell_instance_t* related_building_element;
+    ifcopenshell_instance_t* parent_boundary;
+    bool has_parent_boundary;
+    ifcopenshell_instance_t* corresponding_boundary;
+    bool has_corresponding_boundary;
+    const char* physical_or_virtual;
+    const char* internal_or_external;
+} ifcopenshell_boundary_edit_attributes_options_t;
+
+typedef struct ifcopenshell_classification_add_reference_options_t {
+    ifcopenshell_parse_instance_list_t* products;
+    ifcopenshell_instance_t* reference;
+    bool has_reference;
+    const char* identification;
+    bool has_identification;
+    const char* name;
+    bool has_name;
+    ifcopenshell_instance_t* classification;
+    bool has_classification;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_classification_add_reference_options_t;
+
+typedef struct ifcopenshell_classification_remove_reference_options_t {
+    ifcopenshell_instance_t* reference;
+    ifcopenshell_parse_instance_list_t* products;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_classification_remove_reference_options_t;
+
+typedef struct ifcopenshell_cogo_add_survey_point_options_t {
+    ifcopenshell_instance_t* survey_point;
+    ifcopenshell_instance_t* site;
+    bool has_site;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_cogo_add_survey_point_options_t;
+
+typedef struct ifcopenshell_constraint_assign_constraint_options_t {
+    ifcopenshell_parse_instance_list_t* products;
+    ifcopenshell_instance_t* constraint;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_constraint_assign_constraint_options_t;
+
+typedef struct ifcopenshell_constraint_unassign_constraint_options_t {
+    ifcopenshell_parse_instance_list_t* products;
+    ifcopenshell_instance_t* constraint;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_constraint_unassign_constraint_options_t;
+
+typedef struct ifcopenshell_context_add_context_options_t {
+    const char* context_type;
+    const char* context_identifier;
+    const char* target_view;
+    double target_scale;
+    bool has_target_scale;
+    ifcopenshell_instance_t* parent;
+    bool has_parent;
+} ifcopenshell_context_add_context_options_t;
+
+typedef struct ifcopenshell_control_assign_control_options_t {
+    ifcopenshell_instance_t* relating_control;
+    ifcopenshell_parse_instance_list_t* related_objects;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_control_assign_control_options_t;
+
+typedef struct ifcopenshell_control_unassign_control_options_t {
+    ifcopenshell_instance_t* relating_control;
+    ifcopenshell_parse_instance_list_t* related_objects;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_control_unassign_control_options_t;
+
+typedef struct ifcopenshell_cost_add_cost_item_options_t {
+    ifcopenshell_instance_t* cost_schedule;
+    bool has_cost_schedule;
+    ifcopenshell_instance_t* cost_item;
+    bool has_cost_item;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_cost_add_cost_item_options_t;
+
+typedef struct ifcopenshell_cost_assign_cost_item_quantity_options_t {
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_cost_assign_cost_item_quantity_options_t;
+
+typedef struct ifcopenshell_cost_copy_cost_schedule_options_t {
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_cost_copy_cost_schedule_options_t;
+
+typedef struct ifcopenshell_cost_edit_cost_value_options_t {
+    bool edit_unit_basis;
+    bool clear_unit_basis;
+    double value_component;
+    ifcopenshell_instance_t* unit_component;
+    bool has_unit_component;
+} ifcopenshell_cost_edit_cost_value_options_t;
+
+typedef struct ifcopenshell_cost_unassign_cost_item_quantity_options_t {
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_cost_unassign_cost_item_quantity_options_t;
+
+typedef struct ifcopenshell_document_add_information_options_t {
+    ifcopenshell_instance_t* parent;
+    bool has_parent;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_document_add_information_options_t;
+
+typedef struct ifcopenshell_document_assign_document_options_t {
+    ifcopenshell_parse_instance_list_t* products;
+    ifcopenshell_instance_t* document;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_document_assign_document_options_t;
+
+typedef struct ifcopenshell_document_unassign_document_options_t {
+    ifcopenshell_parse_instance_list_t* products;
+    ifcopenshell_instance_t* document;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_document_unassign_document_options_t;
+
+typedef struct ifcopenshell_drawing_assign_product_options_t {
+    ifcopenshell_instance_t* relating_product;
+    ifcopenshell_instance_t* related_object;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_drawing_assign_product_options_t;
+
+typedef struct ifcopenshell_drawing_unassign_product_options_t {
+    ifcopenshell_instance_t* relating_product;
+    ifcopenshell_instance_t* related_object;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_drawing_unassign_product_options_t;
+
+typedef struct ifcopenshell_element_get_container_options_t {
+    bool direct_only;
+    bool has_direct_only;
+    const char* ifc_class;
+    bool has_ifc_class;
+} ifcopenshell_element_get_container_options_t;
+
+typedef struct ifcopenshell_element_get_decomposition_options_t {
+    bool is_recursive;
+    bool has_is_recursive;
+} ifcopenshell_element_get_decomposition_options_t;
+
+typedef struct ifcopenshell_element_get_material_options_t {
+    bool should_skip_usage;
+    bool has_should_skip_usage;
+    bool should_inherit;
+    bool has_should_inherit;
+} ifcopenshell_element_get_material_options_t;
+
+typedef struct ifcopenshell_element_get_pset_ids_options_t {
+    bool psets_only;
+    bool has_psets_only;
+    bool qtos_only;
+    bool has_qtos_only;
+    bool should_inherit;
+    bool has_should_inherit;
+} ifcopenshell_element_get_pset_ids_options_t;
+
+typedef struct ifcopenshell_element_get_shape_aspects_options_t {
+    bool should_inherit;
+    bool has_should_inherit;
+} ifcopenshell_element_get_shape_aspects_options_t;
+
+typedef struct ifcopenshell_feature_add_feature_options_t {
+    ifcopenshell_instance_t* feature;
+    ifcopenshell_instance_t* element;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_feature_add_feature_options_t;
+
+typedef struct ifcopenshell_feature_remove_feature_options_t {
+    ifcopenshell_instance_t* feature;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_feature_remove_feature_options_t;
+
+typedef struct ifcopenshell_geometry_add_door_representation_options_t {
+    ifcopenshell_instance_t* context;
+    double overall_height;
+    double overall_width;
+    const char* operation_type;
+    const ifcopenshell_double_list_t* lining_properties;
+    const ifcopenshell_double_list_t* panel_properties;
+    ifcopenshell_instance_t* part_of_product;
+    bool has_part_of_product;
+    double unit_scale;
+} ifcopenshell_geometry_add_door_representation_options_t;
+
+typedef struct ifcopenshell_geometry_add_mesh_representation_options_t {
+    const ifcopenshell_double_list_list_list_t* vertices;
+    const ifcopenshell_int32_list_list_list_list_t* faces;
+    bool force_faceted_brep;
+    bool has_force_faceted_brep;
+} ifcopenshell_geometry_add_mesh_representation_options_t;
+
+typedef struct ifcopenshell_geometry_add_railing_representation_options_t {
+    ifcopenshell_instance_t* context;
+    const ifcopenshell_double_list_list_t* railing_path;
+    bool use_manual_supports;
+    double support_spacing;
+    double railing_diameter;
+    double clear_width;
+    const char* terminal_type;
+    double height;
+    bool looped_path;
+    double unit_scale;
+} ifcopenshell_geometry_add_railing_representation_options_t;
+
+typedef struct ifcopenshell_geometry_add_shape_aspect_options_t {
+    const char* name;
+    ifcopenshell_parse_instance_list_t* items;
+    ifcopenshell_instance_t* representation;
+    ifcopenshell_instance_t* part_of_product;
+    const char* description;
+    bool has_description;
+} ifcopenshell_geometry_add_shape_aspect_options_t;
+
+typedef struct ifcopenshell_geometry_add_slab_representation_options_t {
+    ifcopenshell_instance_t* context;
+    double depth;
+    const char* direction_sense;
+    double offset;
+    double x_angle;
+    const ifcopenshell_int32_list_t* clipping_kinds;
+    const ifcopenshell_double_list_list_t* clipping_locations;
+    const ifcopenshell_double_list_list_t* clipping_normals;
+    ifcopenshell_parse_instance_list_t* clipping_entities;
+    const ifcopenshell_double_list_list_t* polyline;
+    bool has_polyline;
+} ifcopenshell_geometry_add_slab_representation_options_t;
+
+typedef struct ifcopenshell_geometry_add_topology_representation_options_t {
+    ifcopenshell_instance_t* context;
+    ifcopenshell_instance_t* item;
+    const char* representation_identifier;
+    bool has_representation_identifier;
+    const char* representation_type;
+    bool has_representation_type;
+} ifcopenshell_geometry_add_topology_representation_options_t;
+
+typedef struct ifcopenshell_geometry_add_wall_representation_options_t {
+    ifcopenshell_instance_t* context;
+    double length;
+    double height;
+    const char* direction_sense;
+    double offset;
+    double thickness;
+    double x_angle;
+    const ifcopenshell_int32_list_t* clipping_kinds;
+    const ifcopenshell_double_list_list_t* clipping_locations;
+    const ifcopenshell_double_list_list_t* clipping_normals;
+    ifcopenshell_parse_instance_list_t* clipping_entities;
+    ifcopenshell_parse_instance_list_t* booleans;
+} ifcopenshell_geometry_add_wall_representation_options_t;
+
+typedef struct ifcopenshell_geometry_add_window_representation_options_t {
+    ifcopenshell_instance_t* context;
+    double overall_height;
+    double overall_width;
+    const ifcopenshell_int32_list_list_t* panel_schema;
+    const ifcopenshell_double_list_t* lining_properties;
+    const ifcopenshell_double_list_list_t* panel_properties;
+    ifcopenshell_instance_t* part_of_product;
+    bool has_part_of_product;
+    double glass_thickness;
+} ifcopenshell_geometry_add_window_representation_options_t;
+
+typedef struct ifcopenshell_geometry_clip_solid_options_t {
+    ifcopenshell_instance_t* item;
+    const ifcopenshell_double_list_t* location;
+    const ifcopenshell_double_list_t* normal;
+    ifcopenshell_instance_t* element;
+    bool has_element;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_geometry_clip_solid_options_t;
+
+typedef struct ifcopenshell_geometry_clip_solid_bounded_options_t {
+    ifcopenshell_instance_t* item;
+    const ifcopenshell_double_list_t* location;
+    const ifcopenshell_double_list_t* normal;
+    const ifcopenshell_double_list_list_t* boundary_points;
+    const ifcopenshell_double_list_t* boundary_position;
+    ifcopenshell_instance_t* element;
+    bool has_element;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_geometry_clip_solid_bounded_options_t;
+
+typedef struct ifcopenshell_geometry_connect_element_options_t {
+    ifcopenshell_instance_t* relating_element;
+    ifcopenshell_instance_t* related_element;
+    const char* description;
+    bool has_description;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_geometry_connect_element_options_t;
+
+typedef struct ifcopenshell_geometry_connect_path_options_t {
+    ifcopenshell_instance_t* relating_element;
+    ifcopenshell_instance_t* related_element;
+    const char* relating_connection;
+    const char* related_connection;
+    const char* description;
+    bool has_description;
+    ifcopenshell_instance_t* connection_geometry;
+    bool has_connection_geometry;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_geometry_connect_path_options_t;
+
+typedef struct ifcopenshell_geometry_connect_wall_options_t {
+    ifcopenshell_instance_t* first_wall;
+    ifcopenshell_instance_t* second_wall;
+    bool is_atpath;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_geometry_connect_wall_options_t;
+
+typedef struct ifcopenshell_geometry_copy_representation_options_t {
+    ifcopenshell_instance_t* source;
+    ifcopenshell_instance_t* target;
+    const char* context_identifier;
+    bool has_context_identifier;
+} ifcopenshell_geometry_copy_representation_options_t;
+
+typedef struct ifcopenshell_geometry_create2_pt_wall_options_t {
+    ifcopenshell_instance_t* element;
+    ifcopenshell_instance_t* context;
+    const ifcopenshell_double_list_t* start;
+    const ifcopenshell_double_list_t* end;
+    double elevation;
+    double height;
+    double thickness;
+    bool is_si;
+} ifcopenshell_geometry_create2_pt_wall_options_t;
+
+typedef struct ifcopenshell_geometry_disconnect_path_options_t {
+    ifcopenshell_instance_t* element;
+    bool has_element;
+    const char* connection_type;
+    bool has_connection_type;
+    ifcopenshell_instance_t* relating_element;
+    bool has_relating_element;
+    ifcopenshell_instance_t* related_element;
+    bool has_related_element;
+} ifcopenshell_geometry_disconnect_path_options_t;
+
+typedef struct ifcopenshell_geometry_edit_object_placement_options_t {
+    ifcopenshell_instance_t* product;
+    const ifcopenshell_double_list_t* matrix;
+    bool is_si;
+    bool should_transform_children;
+} ifcopenshell_geometry_edit_object_placement_options_t;
+
+typedef struct ifcopenshell_geometry_regenerate_wall_representation_options_t {
+    ifcopenshell_instance_t* wall;
+    double length;
+    double height;
+    double angle;
+    bool has_angle;
+} ifcopenshell_geometry_regenerate_wall_representation_options_t;
+
+typedef struct ifcopenshell_geometry_remove_representation_options_t {
+    bool should_keep_named_profiles;
+    bool has_should_keep_named_profiles;
+} ifcopenshell_geometry_remove_representation_options_t;
+
+typedef struct ifcopenshell_geometry_validate_type_options_t {
+    ifcopenshell_instance_t* preferred_item;
+    bool has_preferred_item;
+} ifcopenshell_geometry_validate_type_options_t;
+
+typedef struct ifcopenshell_georeference_add_georeferencing_options_t {
+    const char* ifc_class;
+    const char* name;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_georeference_add_georeferencing_options_t;
+
+typedef struct ifcopenshell_georeference_edit_georeferencing_options_t {
+    void* coordinate_operation;
+    bool has_coordinate_operation;
+    void* projected_crs;
+    bool has_projected_crs;
+} ifcopenshell_georeference_edit_georeferencing_options_t;
+
+typedef struct ifcopenshell_georeference_edit_true_north_options_t {
+    const ifcopenshell_double_list_t* true_north;
+    bool has_true_north;
+} ifcopenshell_georeference_edit_true_north_options_t;
+
+typedef struct ifcopenshell_georeference_edit_wcs_options_t {
+    double x;
+    bool has_x;
+    double y;
+    bool has_y;
+    double z;
+    bool has_z;
+    double rotation;
+    bool has_rotation;
+    bool is_si;
+    bool has_is_si;
+} ifcopenshell_georeference_edit_wcs_options_t;
+
+typedef struct ifcopenshell_group_add_group_options_t {
+    const char* name;
+    const char* description;
+    bool has_description;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_group_add_group_options_t;
+
+typedef struct ifcopenshell_group_assign_group_options_t {
+    ifcopenshell_parse_instance_list_t* products;
+    ifcopenshell_instance_t* group;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_group_assign_group_options_t;
+
+typedef struct ifcopenshell_group_unassign_group_options_t {
+    ifcopenshell_parse_instance_list_t* products;
+    ifcopenshell_instance_t* group;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_group_unassign_group_options_t;
+
+typedef struct ifcopenshell_group_update_group_products_options_t {
+    ifcopenshell_instance_t* group;
+    ifcopenshell_parse_instance_list_t* products;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_group_update_group_products_options_t;
+
+typedef struct ifcopenshell_library_assign_reference_options_t {
+    ifcopenshell_parse_instance_list_t* products;
+    ifcopenshell_instance_t* reference;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_library_assign_reference_options_t;
+
+typedef struct ifcopenshell_library_unassign_reference_options_t {
+    ifcopenshell_instance_t* reference;
+    ifcopenshell_parse_instance_list_t* products;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_library_unassign_reference_options_t;
+
+typedef struct ifcopenshell_material_add_constituent_options_t {
+    ifcopenshell_instance_t* material;
+    const char* name;
+    bool has_name;
+} ifcopenshell_material_add_constituent_options_t;
+
+typedef struct ifcopenshell_material_add_layer_options_t {
+    ifcopenshell_instance_t* material;
+    const char* name;
+    bool has_name;
+} ifcopenshell_material_add_layer_options_t;
+
+typedef struct ifcopenshell_material_add_material_options_t {
+    const char* name;
+    bool has_name;
+    const char* category;
+    bool has_category;
+    const char* description;
+    bool has_description;
+} ifcopenshell_material_add_material_options_t;
+
+typedef struct ifcopenshell_material_add_material_set_options_t {
+    const char* name;
+    bool has_name;
+    const char* set_type;
+    bool has_set_type;
+} ifcopenshell_material_add_material_set_options_t;
+
+typedef struct ifcopenshell_material_add_profile_options_t {
+    ifcopenshell_instance_t* material;
+    bool has_material;
+    ifcopenshell_instance_t* profile;
+    bool has_profile;
+    const char* name;
+    bool has_name;
+} ifcopenshell_material_add_profile_options_t;
+
+typedef struct ifcopenshell_material_assign_material_options_t {
+    const char* type;
+    bool has_type;
+    ifcopenshell_instance_t* material;
+    bool has_material;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_material_assign_material_options_t;
+
+typedef struct ifcopenshell_material_edit_profile_usage_options_t {
+    void* attributes;
+    double profile_width;
+    bool has_profile_width;
+    double profile_height;
+    bool has_profile_height;
+} ifcopenshell_material_edit_profile_usage_options_t;
+
+typedef struct ifcopenshell_material_remove_item_options_t {
+    bool should_remove_material;
+    bool has_should_remove_material;
+} ifcopenshell_material_remove_item_options_t;
+
+typedef struct ifcopenshell_material_remove_list_item_options_t {
+    int32_t material_index;
+    bool has_material_index;
+} ifcopenshell_material_remove_list_item_options_t;
+
+typedef struct ifcopenshell_material_remove_profile_options_t {
+    bool should_remove_profile_def;
+    bool has_should_remove_profile_def;
+    bool should_remove_material;
+    bool has_should_remove_material;
+} ifcopenshell_material_remove_profile_options_t;
+
+typedef struct ifcopenshell_material_reorder_set_item_options_t {
+    int32_t old_index;
+    bool has_old_index;
+    int32_t new_index;
+    bool has_new_index;
+} ifcopenshell_material_reorder_set_item_options_t;
+
+typedef struct ifcopenshell_material_unassign_material_options_t {
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_material_unassign_material_options_t;
+
+typedef struct ifcopenshell_nest_assign_object_options_t {
+    ifcopenshell_parse_instance_list_t* products;
+    ifcopenshell_instance_t* relating_object;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_nest_assign_object_options_t;
+
+typedef struct ifcopenshell_nest_unassign_object_options_t {
+    ifcopenshell_parse_instance_list_t* products;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_nest_unassign_object_options_t;
+
+typedef struct ifcopenshell_owner_add_actor_options_t {
+    ifcopenshell_instance_t* actor;
+    const char* ifc_class;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_owner_add_actor_options_t;
+
+typedef struct ifcopenshell_owner_add_application_options_t {
+    ifcopenshell_instance_t* application_developer;
+    bool has_application_developer;
+    const char* version;
+    const char* application_full_name;
+    const char* application_identifier;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_owner_add_application_options_t;
+
+typedef struct ifcopenshell_owner_assign_actor_options_t {
+    ifcopenshell_instance_t* relating_actor;
+    ifcopenshell_instance_t* related_object;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_owner_assign_actor_options_t;
+
+typedef struct ifcopenshell_owner_create_owner_history_options_t {
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_owner_create_owner_history_options_t;
+
+typedef struct ifcopenshell_owner_unassign_actor_options_t {
+    ifcopenshell_instance_t* relating_actor;
+    ifcopenshell_instance_t* related_object;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_owner_unassign_actor_options_t;
+
+typedef struct ifcopenshell_owner_update_owner_history_options_t {
+    ifcopenshell_instance_t* element;
+    bool has_element;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_owner_update_owner_history_options_t;
+
+typedef struct ifcopenshell_profile_add_arbitrary_profile_options_t {
+    const ifcopenshell_double_list_list_t* profile;
+    const char* name;
+    bool has_name;
+} ifcopenshell_profile_add_arbitrary_profile_options_t;
+
+typedef struct ifcopenshell_profile_add_arbitrary_profile_with_voids_options_t {
+    const ifcopenshell_double_list_list_t* outer_profile;
+    const ifcopenshell_double_list_list_list_t* inner_profiles;
+    const char* name;
+    bool has_name;
+} ifcopenshell_profile_add_arbitrary_profile_with_voids_options_t;
+
+typedef struct ifcopenshell_project_assign_declaration_options_t {
+    ifcopenshell_parse_instance_list_t* definitions;
+    ifcopenshell_instance_t* relating_context;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_project_assign_declaration_options_t;
+
+typedef struct ifcopenshell_project_unassign_declaration_options_t {
+    ifcopenshell_parse_instance_list_t* definitions;
+    ifcopenshell_instance_t* relating_context;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_project_unassign_declaration_options_t;
+
+typedef struct ifcopenshell_pset_add_pset_options_t {
+    ifcopenshell_instance_t* product;
+    const char* name;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+    const char* ifc2x3_subclass;
+    bool has_ifc2x3_subclass;
+} ifcopenshell_pset_add_pset_options_t;
+
+typedef struct ifcopenshell_pset_add_qto_options_t {
+    ifcopenshell_instance_t* product;
+    const char* name;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_pset_add_qto_options_t;
+
+typedef struct ifcopenshell_pset_assign_pset_options_t {
+    ifcopenshell_parse_instance_list_t* products;
+    ifcopenshell_instance_t* pset;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_pset_assign_pset_options_t;
+
+typedef struct ifcopenshell_pset_edit_pset_options_t {
+    ifcopenshell_instance_t* pset;
+    const char* name;
+    bool has_name;
+    void* properties;
+    ifcopenshell_instance_t* pset_template;
+    bool has_pset_template;
+    bool should_purge;
+} ifcopenshell_pset_edit_pset_options_t;
+
+typedef struct ifcopenshell_pset_edit_qto_options_t {
+    ifcopenshell_instance_t* qto;
+    const char* name;
+    bool has_name;
+    void* properties;
+    ifcopenshell_instance_t* qto_template;
+    bool has_qto_template;
+} ifcopenshell_pset_edit_qto_options_t;
+
+typedef struct ifcopenshell_pset_unshare_pset_options_t {
+    ifcopenshell_parse_instance_list_t* products;
+    ifcopenshell_instance_t* pset;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_pset_unshare_pset_options_t;
+
+typedef struct ifcopenshell_representation_get_product_representation_options_t {
+    ifcopenshell_instance_t* context;
+    bool has_context;
+    const char* context_type;
+    bool has_context_type;
+    const char* subcontext;
+    bool has_subcontext;
+    const char* target_view;
+    bool has_target_view;
+} ifcopenshell_representation_get_product_representation_options_t;
+
+typedef struct ifcopenshell_root_create_entity_options_t {
+    const char* ifc_class;
+    const char* predefined_type;
+    bool has_predefined_type;
+    const char* name;
+    bool has_name;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+} ifcopenshell_root_create_entity_options_t;
+
+typedef struct ifcopenshell_root_remove_product_options_t {
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_root_remove_product_options_t;
+
+typedef struct ifcopenshell_sequence_add_task_options_t {
+    ifcopenshell_instance_t* work_schedule;
+    bool has_work_schedule;
+    ifcopenshell_instance_t* parent_task;
+    bool has_parent_task;
+    const char* name;
+    bool has_name;
+    const char* description;
+    bool has_description;
+    const char* identification;
+    bool has_identification;
+    const char* predefined_type;
+    bool has_predefined_type;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_sequence_add_task_options_t;
+
+typedef struct ifcopenshell_sequence_add_task_time_options_t {
+    bool is_recurring;
+    bool has_is_recurring;
+} ifcopenshell_sequence_add_task_time_options_t;
+
+typedef struct ifcopenshell_sequence_add_time_period_options_t {
+    const char* start_time;
+    bool has_start_time;
+    const char* end_time;
+    bool has_end_time;
+} ifcopenshell_sequence_add_time_period_options_t;
+
+typedef struct ifcopenshell_sequence_add_work_calendar_options_t {
+    const char* name;
+    bool has_name;
+    const char* predefined_type;
+    bool has_predefined_type;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_sequence_add_work_calendar_options_t;
+
+typedef struct ifcopenshell_sequence_add_work_plan_options_t {
+    const char* name;
+    bool has_name;
+    const char* predefined_type;
+    bool has_predefined_type;
+    const char* creation_date;
+    bool has_creation_date;
+    const char* start_time;
+    bool has_start_time;
+    ifcopenshell_instance_t* creator_person;
+    bool has_creator_person;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_sequence_add_work_plan_options_t;
+
+typedef struct ifcopenshell_sequence_add_work_schedule_options_t {
+    const char* name;
+    bool has_name;
+    const char* predefined_type;
+    bool has_predefined_type;
+    const char* object_type;
+    bool has_object_type;
+    const char* creation_date;
+    bool has_creation_date;
+    const char* start_time;
+    bool has_start_time;
+    ifcopenshell_instance_t* work_plan;
+    bool has_work_plan;
+    ifcopenshell_instance_t* creator_person;
+    bool has_creator_person;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_sequence_add_work_schedule_options_t;
+
+typedef struct ifcopenshell_sequence_assign_lag_time_options_t {
+    const char* duration_type;
+    bool has_duration_type;
+} ifcopenshell_sequence_assign_lag_time_options_t;
+
+typedef struct ifcopenshell_sequence_assign_process_options_t {
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_sequence_assign_process_options_t;
+
+typedef struct ifcopenshell_sequence_assign_product_options_t {
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_sequence_assign_product_options_t;
+
+typedef struct ifcopenshell_sequence_assign_sequence_options_t {
+    const char* sequence_type;
+    bool has_sequence_type;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_sequence_assign_sequence_options_t;
+
+typedef struct ifcopenshell_sequence_assign_work_plan_options_t {
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_sequence_assign_work_plan_options_t;
+
+typedef struct ifcopenshell_sequence_copy_work_schedule_options_t {
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_sequence_copy_work_schedule_options_t;
+
+typedef struct ifcopenshell_sequence_create_baseline_options_t {
+    const char* name;
+    bool has_name;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_sequence_create_baseline_options_t;
+
+typedef struct ifcopenshell_sequence_duplicate_task_options_t {
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_sequence_duplicate_task_options_t;
+
+typedef struct ifcopenshell_sequence_remove_options_t {
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_sequence_remove_options_t;
+
+typedef struct ifcopenshell_shape_builder_axis2_placement2d_options_t {
+    const ifcopenshell_double_list_t* position;
+    const ifcopenshell_double_list_t* x_direction;
+    bool has_x_direction;
+} ifcopenshell_shape_builder_axis2_placement2d_options_t;
+
+typedef struct ifcopenshell_shape_builder_axis2_placement3d_options_t {
+    const ifcopenshell_double_list_t* position;
+    const ifcopenshell_double_list_t* z_axis;
+    const ifcopenshell_double_list_t* x_axis;
+} ifcopenshell_shape_builder_axis2_placement3d_options_t;
+
+typedef struct ifcopenshell_shape_builder_block_options_t {
+    const ifcopenshell_double_list_t* position;
+    double x_length;
+    double y_length;
+    double z_length;
+} ifcopenshell_shape_builder_block_options_t;
+
+typedef struct ifcopenshell_shape_builder_ellipse_curve_options_t {
+    double x_axis_radius;
+    double y_axis_radius;
+    const ifcopenshell_double_list_t* position;
+    const ifcopenshell_double_list_list_t* trim_points;
+    const ifcopenshell_double_list_t* ref_x_direction;
+    bool has_ref_x_direction;
+    const ifcopenshell_int32_list_t* trim_points_mask;
+} ifcopenshell_shape_builder_ellipse_curve_options_t;
+
+typedef struct ifcopenshell_shape_builder_extrude_options_t {
+    ifcopenshell_instance_t* profile_or_curve;
+    double magnitude;
+    const ifcopenshell_double_list_t* position;
+    const ifcopenshell_double_list_t* extrusion_vector;
+    const ifcopenshell_double_list_t* position_z_axis;
+    const ifcopenshell_double_list_t* position_x_axis;
+    const ifcopenshell_double_list_t* position_y_axis;
+    bool has_position_y_axis;
+} ifcopenshell_shape_builder_extrude_options_t;
+
+typedef struct ifcopenshell_shape_builder_half_space_solid_options_t {
+    ifcopenshell_instance_t* plane;
+    bool agreement_flag;
+} ifcopenshell_shape_builder_half_space_solid_options_t;
+
+typedef struct ifcopenshell_shape_builder_mep_bend_shape_options_t {
+    ifcopenshell_instance_t* segment;
+    double start_length;
+    double end_length;
+    double angle;
+    double radius;
+    const ifcopenshell_double_list_t* bend_vector;
+    bool flip_z_axis;
+} ifcopenshell_shape_builder_mep_bend_shape_options_t;
+
+typedef struct ifcopenshell_shape_builder_mep_transition_calculate_options_t {
+    const ifcopenshell_double_list_t* start_half_dim;
+    const ifcopenshell_double_list_t* end_half_dim;
+    const ifcopenshell_double_list_t* offset;
+    const ifcopenshell_double_list_t* diff;
+    bool has_diff;
+    bool end_profile;
+    double length;
+    bool has_length;
+    double angle;
+    bool has_angle;
+} ifcopenshell_shape_builder_mep_transition_calculate_options_t;
+
+typedef struct ifcopenshell_shape_builder_mep_transition_length_options_t {
+    const ifcopenshell_double_list_t* start_half_dim;
+    const ifcopenshell_double_list_t* end_half_dim;
+    double angle;
+    const ifcopenshell_double_list_t* profile_offset;
+} ifcopenshell_shape_builder_mep_transition_length_options_t;
+
+typedef struct ifcopenshell_shape_builder_mep_transition_shape_options_t {
+    ifcopenshell_instance_t* start_segment;
+    ifcopenshell_instance_t* end_segment;
+    double start_length;
+    double end_length;
+    double angle;
+    const ifcopenshell_double_list_t* profile_offset;
+} ifcopenshell_shape_builder_mep_transition_shape_options_t;
+
+typedef struct ifcopenshell_shape_builder_mirror_options_t {
+    ifcopenshell_instance_t* item;
+    const ifcopenshell_double_list_t* mirror_axes;
+    const ifcopenshell_double_list_t* mirror_point;
+    bool create_copy;
+    const ifcopenshell_double_list_t* placement_matrix;
+} ifcopenshell_shape_builder_mirror_options_t;
+
+typedef struct ifcopenshell_shape_builder_polyline_options_t {
+    const ifcopenshell_double_list_list_t* points;
+    bool closed;
+    bool has_closed;
+    const ifcopenshell_double_list_t* position_offset;
+    bool has_position_offset;
+    const ifcopenshell_int32_list_t* arc_points;
+} ifcopenshell_shape_builder_polyline_options_t;
+
+typedef struct ifcopenshell_shape_builder_profile_options_t {
+    ifcopenshell_instance_t* outer_curve;
+    const char* name;
+    bool has_name;
+    ifcopenshell_parse_instance_list_t* inner_curves;
+    const char* profile_type;
+    bool has_profile_type;
+} ifcopenshell_shape_builder_profile_options_t;
+
+typedef struct ifcopenshell_shape_builder_representation_options_t {
+    ifcopenshell_instance_t* context;
+    ifcopenshell_parse_instance_list_t* items;
+    const char* representation_type;
+    bool has_representation_type;
+} ifcopenshell_shape_builder_representation_options_t;
+
+typedef struct ifcopenshell_shape_builder_rotate_options_t {
+    ifcopenshell_instance_t* item;
+    double angle;
+    const ifcopenshell_double_list_t* pivot_point;
+    bool counter_clockwise;
+    bool create_copy;
+} ifcopenshell_shape_builder_rotate_options_t;
+
+typedef struct ifcopenshell_shape_builder_sphere_options_t {
+    double radius;
+    const ifcopenshell_double_list_t* center;
+} ifcopenshell_shape_builder_sphere_options_t;
+
+typedef struct ifcopenshell_shape_builder_translate_options_t {
+    ifcopenshell_instance_t* item;
+    const ifcopenshell_double_list_t* translation;
+    bool create_copy;
+} ifcopenshell_shape_builder_translate_options_t;
+
+typedef struct ifcopenshell_spatial_assign_container_options_t {
+    ifcopenshell_parse_instance_list_t* products;
+    ifcopenshell_instance_t* relating_structure;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_spatial_assign_container_options_t;
+
+typedef struct ifcopenshell_spatial_dereference_structure_options_t {
+    ifcopenshell_parse_instance_list_t* products;
+    ifcopenshell_instance_t* relating_structure;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_spatial_dereference_structure_options_t;
+
+typedef struct ifcopenshell_spatial_reference_structure_options_t {
+    ifcopenshell_parse_instance_list_t* products;
+    ifcopenshell_instance_t* relating_structure;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_spatial_reference_structure_options_t;
+
+typedef struct ifcopenshell_spatial_unassign_container_options_t {
+    ifcopenshell_parse_instance_list_t* products;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_spatial_unassign_container_options_t;
+
+typedef struct ifcopenshell_structural_add_structural_activity_options_t {
+    ifcopenshell_instance_t* activity_owner_history;
+    bool has_activity_owner_history;
+    ifcopenshell_instance_t* relationship_owner_history;
+    bool has_relationship_owner_history;
+} ifcopenshell_structural_add_structural_activity_options_t;
+
+typedef struct ifcopenshell_structural_add_structural_boundary_condition_options_t {
+    const char* name;
+    bool has_name;
+    ifcopenshell_instance_t* connection;
+    bool has_connection;
+} ifcopenshell_structural_add_structural_boundary_condition_options_t;
+
+typedef struct ifcopenshell_structural_assign_structural_analysis_model_options_t {
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_structural_assign_structural_analysis_model_options_t;
+
+typedef struct ifcopenshell_structural_remove_structural_boundary_condition_options_t {
+    ifcopenshell_instance_t* connection;
+    bool has_connection;
+    ifcopenshell_instance_t* boundary_condition;
+    bool has_boundary_condition;
+} ifcopenshell_structural_remove_structural_boundary_condition_options_t;
+
+typedef struct ifcopenshell_structural_unassign_structural_analysis_model_options_t {
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_structural_unassign_structural_analysis_model_options_t;
+
+typedef struct ifcopenshell_style_assign_item_style_options_t {
+    ifcopenshell_instance_t* item;
+    ifcopenshell_instance_t* style;
+    bool has_style;
+    bool should_use_presentation_style_assignment;
+} ifcopenshell_style_assign_item_style_options_t;
+
+typedef struct ifcopenshell_system_add_port_options_t {
+    ifcopenshell_instance_t* element;
+    bool has_element;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_system_add_port_options_t;
+
+typedef struct ifcopenshell_system_add_system_options_t {
+    const char* ifc_class;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+} ifcopenshell_system_add_system_options_t;
+
+typedef struct ifcopenshell_system_assign_flow_control_options_t {
+    ifcopenshell_instance_t* relating_flow_element;
+    ifcopenshell_instance_t* related_flow_control;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_system_assign_flow_control_options_t;
+
+typedef struct ifcopenshell_system_assign_port_options_t {
+    ifcopenshell_instance_t* element;
+    ifcopenshell_instance_t* port;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_system_assign_port_options_t;
+
+typedef struct ifcopenshell_system_assign_system_options_t {
+    ifcopenshell_parse_instance_list_t* products;
+    ifcopenshell_instance_t* system;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_system_assign_system_options_t;
+
+typedef struct ifcopenshell_system_connect_port_options_t {
+    ifcopenshell_instance_t* port1;
+    ifcopenshell_instance_t* port2;
+    const char* direction;
+    ifcopenshell_instance_t* element;
+    bool has_element;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_system_connect_port_options_t;
+
+typedef struct ifcopenshell_system_unassign_flow_control_options_t {
+    ifcopenshell_instance_t* relating_flow_element;
+    ifcopenshell_instance_t* related_flow_control;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_system_unassign_flow_control_options_t;
+
+typedef struct ifcopenshell_system_unassign_port_options_t {
+    ifcopenshell_instance_t* element;
+    ifcopenshell_instance_t* port;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_system_unassign_port_options_t;
+
+typedef struct ifcopenshell_system_unassign_system_options_t {
+    ifcopenshell_parse_instance_list_t* products;
+    ifcopenshell_instance_t* system;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_system_unassign_system_options_t;
+
+typedef struct ifcopenshell_type_assign_type_options_t {
+    ifcopenshell_parse_instance_list_t* objects;
+    ifcopenshell_instance_t* relating_type;
+    bool should_map_representations;
+    bool has_should_map_representations;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_type_assign_type_options_t;
+
+typedef struct ifcopenshell_type_unassign_type_options_t {
+    ifcopenshell_parse_instance_list_t* objects;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_type_unassign_type_options_t;
+
 typedef struct ifcopenshell_shape_builder_mep_transition_shape_result_t {
     ifcopenshell_instance_t* representation;
-    bool has_result;
     double start_length;
     double end_length;
     double angle;
@@ -323,16 +1718,21 @@ typedef struct ifcopenshell_shape_builder_mep_bend_shape_result_t {
     double main_profile_dimension;
 } ifcopenshell_shape_builder_mep_bend_shape_result_t;
 
-typedef struct ifcopenshell_sequence_date_time_result_t {
-    ifcopenshell_instance_t* date_time;
-    ifcopenshell_string_t date_time_string;
-    bool is_entity;
-} ifcopenshell_sequence_date_time_result_t;
-
 typedef struct ifcopenshell_sequence_duplicate_task_result_t {
     ifcopenshell_parse_instance_list_t* current;
     ifcopenshell_parse_instance_list_t* duplicate;
 } ifcopenshell_sequence_duplicate_task_result_t;
+
+typedef struct ifcopenshell_optional_shape_builder_mep_transition_shape_result_t {
+    bool has_value;
+    ifcopenshell_shape_builder_mep_transition_shape_result_t value;
+} ifcopenshell_optional_shape_builder_mep_transition_shape_result_t;
+
+typedef struct ifcopenshell_instance_string_variant_t {
+    int32_t kind;
+    ifcopenshell_instance_t* value_0;
+    ifcopenshell_string_t value_1;
+} ifcopenshell_instance_string_variant_t;
 
 typedef enum {
     IFCOPENSHELL_ERROR_NONE = 0,
@@ -369,6 +1769,7 @@ void ifcopenshell_inverse_attribute_destroy(ifcopenshell_inverse_attribute_t* ha
 void ifcopenshell_parse_attribute_value_destroy(ifcopenshell_parse_attribute_value_t* handle);
 void ifcopenshell_parse_instance_list_destroy(ifcopenshell_parse_instance_list_t* handle);
 void ifcopenshell_value_destroy(ifcopenshell_value_t* handle);
+void ifcopenshell_pset_template_handle_destroy(ifcopenshell_pset_template_handle_t* handle);
 void ifcopenshell_geom_iterator_destroy(ifcopenshell_geom_iterator_t* handle);
 void ifcopenshell_geom_settings_destroy(ifcopenshell_geom_settings_t* handle);
 void ifcopenshell_geom_serializer_settings_destroy(ifcopenshell_geom_serializer_settings_t* handle);
@@ -448,6 +1849,7 @@ void ifcopenshell_inverse_attribute_list_list_destroy(ifcopenshell_inverse_attri
 void ifcopenshell_geom_taxonomy_style_list_list_destroy(ifcopenshell_geom_taxonomy_style_list_list_t* value);
 void ifcopenshell_geom_taxonomy_item_list_list_destroy(ifcopenshell_geom_taxonomy_item_list_list_t* value);
 void ifcopenshell_geom_element_list_list_destroy(ifcopenshell_geom_element_list_list_t* value);
+void ifcopenshell_instance_string_variant_destroy(ifcopenshell_instance_string_variant_t* value);
 
 bool ifcopenshell_geom_create_xml_serializer(ifcopenshell_file_t* file, const char* filename, ifcopenshell_geom_serializer_t** out_result);
 bool ifcopenshell_geom_create_tree(ifcopenshell_geom_tree_t** out_result);
@@ -515,67 +1917,106 @@ bool ifcopenshell_parse_turn_on_detailed_logging(void);
 bool ifcopenshell_parse_unescape_xml(const char* text);
 bool ifcopenshell_parse_valid_binary_string(const char* binary_string, bool* out_result);
 bool ifcopenshell_parse_version(ifcopenshell_string_t* out_result);
-bool ifcopenshell_aggregate_assign_object(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* relating_object, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_aggregate_unassign_object(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
-bool ifcopenshell_attribute_edit_attributes(ifcopenshell_file_t* file, ifcopenshell_instance_t* product, void* attributes, bool sync_predefined_type, bool update_owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
-bool ifcopenshell_boundary_assign_connection_geometry(ifcopenshell_file_t* file, ifcopenshell_instance_t* rel_space_boundary, const ifcopenshell_double_list_list_t* outer_boundary, const ifcopenshell_double_list_t* location, const ifcopenshell_double_list_t* axis, const ifcopenshell_double_list_t* ref_direction, const ifcopenshell_double_list_list_list_t* inner_boundaries, double unit_scale);
+/** Assign products as parts of an aggregate object. */
+bool ifcopenshell_aggregate_assign_object(ifcopenshell_file_t* file, const ifcopenshell_aggregate_assign_object_options_t* options, ifcopenshell_instance_t** out_result);
+/** Remove products from their aggregate relationships. */
+bool ifcopenshell_aggregate_unassign_object(ifcopenshell_file_t* file, const ifcopenshell_aggregate_unassign_object_options_t* options);
+bool ifcopenshell_attribute_edit_attributes(ifcopenshell_file_t* file, const ifcopenshell_attribute_edit_attributes_options_t* options);
+/** Assign a planar connection geometry to a space boundary relationship. */
+bool ifcopenshell_boundary_assign_connection_geometry(ifcopenshell_file_t* file, ifcopenshell_instance_t* rel_space_boundary, const ifcopenshell_boundary_assign_connection_geometry_options_t* options);
 bool ifcopenshell_boundary_copy_boundary(ifcopenshell_file_t* file, ifcopenshell_instance_t* boundary, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_boundary_edit_attributes(ifcopenshell_instance_t* entity, ifcopenshell_instance_t* relating_space, ifcopenshell_instance_t* related_building_element, ifcopenshell_instance_t* parent_boundary, ifcopenshell_instance_t* corresponding_boundary, const char* physical_or_virtual, const char* internal_or_external);
+bool ifcopenshell_boundary_edit_attributes(ifcopenshell_instance_t* entity, const ifcopenshell_boundary_edit_attributes_options_t* options);
 bool ifcopenshell_boundary_remove_boundary(ifcopenshell_file_t* file, ifcopenshell_instance_t* boundary);
 bool ifcopenshell_classification_add_classification(ifcopenshell_file_t* file, const char* name, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_classification_add_reference(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* reference, const char* identification, bool has_identification, const char* name, bool has_name, ifcopenshell_instance_t* classification, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
+/**
+ * Add a classification reference and associate it with products.
+ *
+ * If an existing reference handle is provided, it is used directly.
+ * Otherwise, a new IfcClassificationReference is created using the
+ * optional identification, name, and classification fields.
+ */
+bool ifcopenshell_classification_add_reference(ifcopenshell_file_t* file, const ifcopenshell_classification_add_reference_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_classification_get_references(ifcopenshell_instance_t* element, bool should_inherit, ifcopenshell_parse_instance_list_t** out_result);
 bool ifcopenshell_classification_remove_classification(ifcopenshell_file_t* file, ifcopenshell_instance_t* classification);
-bool ifcopenshell_classification_remove_reference(ifcopenshell_file_t* file, ifcopenshell_instance_t* reference, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
-bool ifcopenshell_cogo_add_survey_point(ifcopenshell_file_t* file, ifcopenshell_instance_t* survey_point, ifcopenshell_instance_t* site, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
+/**
+ * Remove a classification reference association from products.
+ *
+ * If the reference is no longer associated with any products after
+ * removal, the reference entity itself is also deleted.
+ */
+bool ifcopenshell_classification_remove_reference(ifcopenshell_file_t* file, const ifcopenshell_classification_remove_reference_options_t* options);
+/** Add a single survey point as an IfcAnnotation. */
+bool ifcopenshell_cogo_add_survey_point(ifcopenshell_file_t* file, const ifcopenshell_cogo_add_survey_point_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_cogo_assign_survey_point(ifcopenshell_instance_t* annotation, ifcopenshell_instance_t* survey_point);
 bool ifcopenshell_cogo_edit_survey_point(ifcopenshell_instance_t* annotation, double x, double y, double z);
 bool ifcopenshell_compute_derived(ifcopenshell_instance_t* instance, const char* attribute_name, ifcopenshell_value_t** out_result);
+/**
+ * Add a new IfcMetric constraint. If an objective is provided, the metric
+ * is appended to the objective's benchmark values.
+ */
 bool ifcopenshell_constraint_add_metric(ifcopenshell_file_t* file, ifcopenshell_instance_t* objective, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_constraint_add_metric_reference(ifcopenshell_file_t* file, ifcopenshell_instance_t* metric, const char* reference_path, ifcopenshell_parse_instance_list_t** out_result);
 bool ifcopenshell_constraint_add_objective(ifcopenshell_file_t* file, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_constraint_assign_constraint(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* constraint, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
+/**
+ * Assign a constraint to a list of products via IfcRelAssociatesConstraint.
+ *
+ * If the constraint is already associated with some of the products, only
+ * new products are added to the existing relationship.
+ */
+bool ifcopenshell_constraint_assign_constraint(ifcopenshell_file_t* file, const ifcopenshell_constraint_assign_constraint_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_constraint_remove_constraint(ifcopenshell_file_t* file, ifcopenshell_instance_t* constraint);
 bool ifcopenshell_constraint_remove_metric(ifcopenshell_file_t* file, ifcopenshell_instance_t* metric);
-bool ifcopenshell_constraint_unassign_constraint(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* constraint, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
-bool ifcopenshell_context_add_context(ifcopenshell_file_t* file, const char* context_type, const char* context_identifier, const char* target_view, bool has_target_scale, double target_scale, ifcopenshell_instance_t* parent, ifcopenshell_instance_t** out_result);
+/**
+ * Remove constraint associations from products.
+ *
+ * Products are removed from existing IfcRelAssociatesConstraint
+ * relationships. If no products remain, the relationship is removed.
+ */
+bool ifcopenshell_constraint_unassign_constraint(ifcopenshell_file_t* file, const ifcopenshell_constraint_unassign_constraint_options_t* options);
+bool ifcopenshell_context_add_context(ifcopenshell_file_t* file, const ifcopenshell_context_add_context_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_context_edit_context(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, void* attributes);
 bool ifcopenshell_context_remove_context(ifcopenshell_file_t* file, ifcopenshell_instance_t* context);
-bool ifcopenshell_control_assign_control(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_control, const ifcopenshell_instance_list_t* related_objects, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_control_unassign_control(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_control, const ifcopenshell_instance_list_t* related_objects, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
-bool ifcopenshell_cost_add_cost_item(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_schedule, ifcopenshell_instance_t* cost_item, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
+/** Assign a planning control or constraint to a list of objects. */
+bool ifcopenshell_control_assign_control(ifcopenshell_file_t* file, const ifcopenshell_control_assign_control_options_t* options, ifcopenshell_instance_t** out_result);
+/** Remove a planning control or constraint from a list of objects. */
+bool ifcopenshell_control_unassign_control(ifcopenshell_file_t* file, const ifcopenshell_control_unassign_control_options_t* options);
+bool ifcopenshell_cost_add_cost_item(ifcopenshell_file_t* file, const ifcopenshell_cost_add_cost_item_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_cost_add_cost_item_quantity(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_item, const char* ifc_class, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_cost_add_cost_schedule(ifcopenshell_file_t* file, const char* name, const char* predefined_type, const char* update_date, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_cost_add_cost_value(ifcopenshell_file_t* file, ifcopenshell_instance_t* parent, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_cost_assign_cost_item_quantity(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_item, const ifcopenshell_instance_list_t* products, const char* prop_name, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
+bool ifcopenshell_cost_assign_cost_item_quantity(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_item, const ifcopenshell_instance_list_t* products, const char* prop_name, const ifcopenshell_cost_assign_cost_item_quantity_options_t* options);
 bool ifcopenshell_cost_assign_cost_value(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_item, ifcopenshell_instance_t* cost_rate);
 bool ifcopenshell_cost_calculate_cost_item_resource_value(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_item);
 bool ifcopenshell_cost_copy_cost_item(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_item, ifcopenshell_parse_instance_list_t** out_result);
 bool ifcopenshell_cost_copy_cost_item_values(ifcopenshell_file_t* file, ifcopenshell_instance_t* source, ifcopenshell_instance_t* destination);
-bool ifcopenshell_cost_copy_cost_schedule(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_schedule, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_cost_copy_cost_schedule(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_schedule, const ifcopenshell_cost_copy_cost_schedule_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_cost_edit_cost_item(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_item, void* attributes);
 bool ifcopenshell_cost_edit_cost_item_quantity(ifcopenshell_file_t* file, ifcopenshell_instance_t* physical_quantity, void* attributes);
 bool ifcopenshell_cost_edit_cost_schedule(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_schedule, void* attributes);
-bool ifcopenshell_cost_edit_cost_value(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_value, void* attributes, bool has_unit_basis, bool unit_basis_is_null, double value_component, ifcopenshell_instance_t* unit_component);
+bool ifcopenshell_cost_edit_cost_value(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_value, void* attributes, const ifcopenshell_cost_edit_cost_value_options_t* options);
 bool ifcopenshell_cost_edit_cost_value_formula(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_value, const char* formula);
 bool ifcopenshell_cost_remove_cost_item(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_item);
 bool ifcopenshell_cost_remove_cost_item_quantity(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_item, ifcopenshell_instance_t* physical_quantity);
 bool ifcopenshell_cost_remove_cost_schedule(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_schedule);
 bool ifcopenshell_cost_remove_cost_value(ifcopenshell_file_t* file, ifcopenshell_instance_t* parent, ifcopenshell_instance_t* cost_value);
-bool ifcopenshell_cost_unassign_cost_item_quantity(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_item, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
-bool ifcopenshell_document_add_information(ifcopenshell_file_t* file, ifcopenshell_instance_t* parent, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_cost_unassign_cost_item_quantity(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_item, const ifcopenshell_instance_list_t* products, const ifcopenshell_cost_unassign_cost_item_quantity_options_t* options);
+/** Add a new document information to the project. */
+bool ifcopenshell_document_add_information(ifcopenshell_file_t* file, const ifcopenshell_document_add_information_options_t* options, ifcopenshell_instance_t** out_result);
+/** Create a new reference to a document. */
 bool ifcopenshell_document_add_reference(ifcopenshell_file_t* file, ifcopenshell_instance_t* information, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_document_assign_document(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* document, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
+/** Assign a document to a list of products. */
+bool ifcopenshell_document_assign_document(ifcopenshell_file_t* file, const ifcopenshell_document_assign_document_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_document_remove_information(ifcopenshell_file_t* file, ifcopenshell_instance_t* information);
 bool ifcopenshell_document_remove_reference(ifcopenshell_file_t* file, ifcopenshell_instance_t* reference);
-bool ifcopenshell_document_unassign_document(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* document, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
-bool ifcopenshell_drawing_assign_product(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_product, ifcopenshell_instance_t* related_object, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_drawing_unassign_product(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_product, ifcopenshell_instance_t* related_object, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
+/** Unassign a document from a list of products. */
+bool ifcopenshell_document_unassign_document(ifcopenshell_file_t* file, const ifcopenshell_document_unassign_document_options_t* options);
+bool ifcopenshell_drawing_assign_product(ifcopenshell_file_t* file, const ifcopenshell_drawing_assign_product_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_drawing_unassign_product(ifcopenshell_file_t* file, const ifcopenshell_drawing_unassign_product_options_t* options);
 bool ifcopenshell_element_get_aggregate(ifcopenshell_instance_t* instance, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_element_get_contained(ifcopenshell_instance_t* element, ifcopenshell_parse_instance_list_t** out_result);
-bool ifcopenshell_element_get_container(ifcopenshell_instance_t* instance, bool direct_only, const char* ifc_class, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_element_get_container(ifcopenshell_instance_t* instance, const ifcopenshell_element_get_container_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_element_get_controls(ifcopenshell_instance_t* element, ifcopenshell_parse_instance_list_t** out_result);
-bool ifcopenshell_element_get_decomposition(ifcopenshell_instance_t* element, bool is_recursive, ifcopenshell_parse_instance_list_t** out_result);
+bool ifcopenshell_element_get_decomposition(ifcopenshell_instance_t* element, const ifcopenshell_element_get_decomposition_options_t* options, ifcopenshell_parse_instance_list_t** out_result);
 bool ifcopenshell_element_get_elements_by_layer(ifcopenshell_instance_t* layer, ifcopenshell_parse_instance_list_t** out_result);
 bool ifcopenshell_element_get_elements_by_material(ifcopenshell_instance_t* material, ifcopenshell_parse_instance_list_t** out_result);
 bool ifcopenshell_element_get_elements_by_profile(ifcopenshell_instance_t* profile, ifcopenshell_parse_instance_list_t** out_result);
@@ -584,15 +2025,15 @@ bool ifcopenshell_element_get_elements_by_style(ifcopenshell_instance_t* style, 
 bool ifcopenshell_element_get_filled_void(ifcopenshell_instance_t* element, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_element_get_groups(ifcopenshell_instance_t* element, ifcopenshell_parse_instance_list_t** out_result);
 bool ifcopenshell_element_get_layers(ifcopenshell_instance_t* element, ifcopenshell_parse_instance_list_t** out_result);
-bool ifcopenshell_element_get_material(ifcopenshell_instance_t* instance, bool should_skip_usage, bool should_inherit, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_element_get_material(ifcopenshell_instance_t* instance, const ifcopenshell_element_get_material_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_element_get_nest(ifcopenshell_instance_t* instance, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_element_get_openings(ifcopenshell_instance_t* element, ifcopenshell_parse_instance_list_t** out_result);
 bool ifcopenshell_element_get_parent(ifcopenshell_instance_t* instance, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_element_get_parts(ifcopenshell_instance_t* element, ifcopenshell_parse_instance_list_t** out_result);
-bool ifcopenshell_element_get_pset_ids(ifcopenshell_instance_t* element, bool psets_only, bool qtos_only, bool should_inherit, ifcopenshell_parse_instance_list_t** out_result);
+bool ifcopenshell_element_get_pset_ids(ifcopenshell_instance_t* element, const ifcopenshell_element_get_pset_ids_options_t* options, ifcopenshell_parse_instance_list_t** out_result);
 bool ifcopenshell_element_get_referenced_elements(ifcopenshell_instance_t* reference, ifcopenshell_parse_instance_list_t** out_result);
 bool ifcopenshell_element_get_referenced_structures(ifcopenshell_instance_t* element, ifcopenshell_parse_instance_list_t** out_result);
-bool ifcopenshell_element_get_shape_aspects(ifcopenshell_instance_t* element, bool should_inherit, ifcopenshell_parse_instance_list_t** out_result);
+bool ifcopenshell_element_get_shape_aspects(ifcopenshell_instance_t* element, const ifcopenshell_element_get_shape_aspects_options_t* options, ifcopenshell_parse_instance_list_t** out_result);
 bool ifcopenshell_element_get_structure_referenced_elements(ifcopenshell_instance_t* structure, ifcopenshell_parse_instance_list_t** out_result);
 bool ifcopenshell_element_get_styles(ifcopenshell_instance_t* element, ifcopenshell_parse_instance_list_t** out_result);
 bool ifcopenshell_element_get_type(ifcopenshell_instance_t* instance, ifcopenshell_instance_t** out_result);
@@ -603,52 +2044,57 @@ bool ifcopenshell_element_remove_deep(ifcopenshell_instance_t* element);
 bool ifcopenshell_element_replace_element(ifcopenshell_instance_t* old_element, ifcopenshell_instance_t* new_element);
 bool ifcopenshell_entity_remove_deep2(ifcopenshell_instance_t* instance);
 bool ifcopenshell_entity_remove_deep2_ex(ifcopenshell_instance_t* instance, const ifcopenshell_instance_list_t* also_consider, const ifcopenshell_instance_list_t* do_not_delete);
-bool ifcopenshell_feature_add_feature(ifcopenshell_file_t* file, ifcopenshell_instance_t* feature, ifcopenshell_instance_t* element, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_feature_add_feature(ifcopenshell_file_t* file, const ifcopenshell_feature_add_feature_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_feature_add_filling(ifcopenshell_file_t* file, ifcopenshell_instance_t* opening, ifcopenshell_instance_t* element, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_feature_remove_feature(ifcopenshell_file_t* file, ifcopenshell_instance_t* feature, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
+bool ifcopenshell_feature_remove_feature(ifcopenshell_file_t* file, const ifcopenshell_feature_remove_feature_options_t* options);
 bool ifcopenshell_feature_remove_filling(ifcopenshell_file_t* file, ifcopenshell_instance_t* element);
 bool ifcopenshell_geometry_add_axis_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, const ifcopenshell_double_list_list_t* axis, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_geometry_add_boolean(ifcopenshell_file_t* file, ifcopenshell_instance_t* first_item, const ifcopenshell_instance_list_t* second_items, const char* operator_type, ifcopenshell_parse_instance_list_t** out_result);
-bool ifcopenshell_geometry_add_door_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, double overall_height, double overall_width, const char* operation_type, const ifcopenshell_double_list_t* lining_properties, const ifcopenshell_double_list_t* panel_properties, ifcopenshell_instance_t* part_of_product, double unit_scale, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_geometry_add_door_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_door_representation_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_geometry_add_footprint_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, const ifcopenshell_instance_list_t* curves, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_geometry_add_mesh_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, const ifcopenshell_double_list_list_list_t* vertices, const ifcopenshell_int32_list_list_list_list_t* faces, bool force_faceted_brep, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_geometry_add_railing_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, const ifcopenshell_double_list_list_t* railing_path, bool use_manual_supports, double support_spacing, double railing_diameter, double clear_width, const char* terminal_type, double height, bool looped_path, double unit_scale, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_geometry_add_shape_aspect(ifcopenshell_file_t* file, const char* name, const ifcopenshell_instance_list_t* items, ifcopenshell_instance_t* representation, ifcopenshell_instance_t* part_of_product, const char* description, bool has_description, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_geometry_add_slab_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, double depth, const char* direction_sense, double offset, double x_angle, const ifcopenshell_int32_list_t* clipping_kinds, const ifcopenshell_double_list_list_t* clipping_locations, const ifcopenshell_double_list_list_t* clipping_normals, const ifcopenshell_instance_list_t* clipping_entities, const ifcopenshell_double_list_list_t* polyline, bool has_polyline, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_geometry_add_topology_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, ifcopenshell_instance_t* item, const char* representation_identifier, bool has_representation_identifier, const char* representation_type, bool has_representation_type, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_geometry_add_wall_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, double length, double height, const char* direction_sense, double offset, double thickness, double x_angle, const ifcopenshell_int32_list_t* clipping_kinds, const ifcopenshell_double_list_list_t* clipping_locations, const ifcopenshell_double_list_list_t* clipping_normals, const ifcopenshell_instance_list_t* clipping_entities, const ifcopenshell_instance_list_t* booleans, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_geometry_add_window_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, double overall_height, double overall_width, const ifcopenshell_int32_list_list_t* panel_schema, const ifcopenshell_double_list_t* lining_properties, const ifcopenshell_double_list_list_t* panel_properties, ifcopenshell_instance_t* part_of_product, double glass_thickness, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_geometry_add_mesh_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, const ifcopenshell_geometry_add_mesh_representation_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_geometry_add_railing_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_railing_representation_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_geometry_add_shape_aspect(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_shape_aspect_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_geometry_add_slab_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_slab_representation_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_geometry_add_topology_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_topology_representation_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_geometry_add_wall_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_wall_representation_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_geometry_add_window_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_window_representation_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_geometry_assign_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* product, ifcopenshell_instance_t* representation, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_geometry_clip_solid(ifcopenshell_file_t* file, ifcopenshell_instance_t* item, const ifcopenshell_double_list_t* location, const ifcopenshell_double_list_t* normal, ifcopenshell_instance_t* element, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_geometry_clip_solid_bounded(ifcopenshell_file_t* file, ifcopenshell_instance_t* item, const ifcopenshell_double_list_t* location, const ifcopenshell_double_list_t* normal, const ifcopenshell_double_list_list_t* boundary_points, const ifcopenshell_double_list_t* boundary_position, ifcopenshell_instance_t* element, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_geometry_connect_element(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_element, ifcopenshell_instance_t* related_element, const char* description, bool has_description, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_geometry_connect_path(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_element, ifcopenshell_instance_t* related_element, const char* relating_connection, const char* related_connection, const char* description, bool has_description, ifcopenshell_instance_t* connection_geometry, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_geometry_connect_wall(ifcopenshell_file_t* file, ifcopenshell_instance_t* wall1, ifcopenshell_instance_t* wall2, bool is_atpath, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_geometry_copy_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* source, ifcopenshell_instance_t* target, const char* context_identifier, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_geometry_create_2pt_wall(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, ifcopenshell_instance_t* context, const ifcopenshell_double_list_t* p1, const ifcopenshell_double_list_t* p2, double elevation, double height, double thickness, bool is_si, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_geometry_clip_solid(ifcopenshell_file_t* file, const ifcopenshell_geometry_clip_solid_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_geometry_clip_solid_bounded(ifcopenshell_file_t* file, const ifcopenshell_geometry_clip_solid_bounded_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_geometry_connect_element(ifcopenshell_file_t* file, const ifcopenshell_geometry_connect_element_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_geometry_connect_path(ifcopenshell_file_t* file, const ifcopenshell_geometry_connect_path_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_geometry_connect_wall(ifcopenshell_file_t* file, const ifcopenshell_geometry_connect_wall_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_geometry_copy_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_copy_representation_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_geometry_create_2pt_wall(ifcopenshell_file_t* file, const ifcopenshell_geometry_create2_pt_wall_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_geometry_disconnect_element(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_element, ifcopenshell_instance_t* related_element);
-bool ifcopenshell_geometry_disconnect_path(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, const char* connection_type, bool has_connection_type, ifcopenshell_instance_t* relating_element, ifcopenshell_instance_t* related_element);
-bool ifcopenshell_geometry_edit_object_placement(ifcopenshell_file_t* file, ifcopenshell_instance_t* product, const ifcopenshell_double_list_t* matrix, bool is_si, bool should_transform_children, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_geometry_disconnect_path(ifcopenshell_file_t* file, const ifcopenshell_geometry_disconnect_path_options_t* options);
+bool ifcopenshell_geometry_edit_object_placement(ifcopenshell_file_t* file, const ifcopenshell_geometry_edit_object_placement_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_geometry_map_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* representation, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_geometry_profile_extents(ifcopenshell_file_t* file, ifcopenshell_instance_t* profile, ifcopenshell_double_list_t* out_result);
-bool ifcopenshell_geometry_regenerate_wall_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* wall, double length, double height, double angle, bool has_angle, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_geometry_regenerate_wall_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_regenerate_wall_representation_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_geometry_remove_boolean(ifcopenshell_file_t* file, ifcopenshell_instance_t* item);
-bool ifcopenshell_geometry_remove_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* representation, bool should_keep_named_profiles);
+bool ifcopenshell_geometry_remove_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* representation, const ifcopenshell_geometry_remove_representation_options_t* options);
 bool ifcopenshell_geometry_unassign_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* product, ifcopenshell_instance_t* representation);
-bool ifcopenshell_geometry_validate_type(ifcopenshell_file_t* file, ifcopenshell_instance_t* representation, ifcopenshell_instance_t* preferred_item, bool* out_result);
-bool ifcopenshell_georeference_add_georeferencing(ifcopenshell_file_t* file, const char* ifc_class, const char* name, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
-bool ifcopenshell_georeference_edit_georeferencing(ifcopenshell_file_t* file, bool has_coordinate_operation, void* coordinate_operation, bool has_projected_crs, void* projected_crs);
-bool ifcopenshell_georeference_edit_true_north(ifcopenshell_file_t* file, bool has_true_north, double x, double y);
-bool ifcopenshell_georeference_edit_wcs(ifcopenshell_file_t* file, double x, double y, double z, double rotation, bool is_si);
+bool ifcopenshell_geometry_validate_type(ifcopenshell_file_t* file, ifcopenshell_instance_t* representation, const ifcopenshell_geometry_validate_type_options_t* options, bool* out_result);
+bool ifcopenshell_georeference_add_georeferencing(ifcopenshell_file_t* file, const ifcopenshell_georeference_add_georeferencing_options_t* options);
+bool ifcopenshell_georeference_edit_georeferencing(ifcopenshell_file_t* file, const ifcopenshell_georeference_edit_georeferencing_options_t* options);
+bool ifcopenshell_georeference_edit_true_north(ifcopenshell_file_t* file, const ifcopenshell_georeference_edit_true_north_options_t* options);
+bool ifcopenshell_georeference_edit_wcs(ifcopenshell_file_t* file, const ifcopenshell_georeference_edit_wcs_options_t* options);
 bool ifcopenshell_georeference_remove_georeferencing(ifcopenshell_file_t* file);
 bool ifcopenshell_grid_create_axis_curve(ifcopenshell_file_t* file, const ifcopenshell_double_list_t* p1, const ifcopenshell_double_list_t* p2, ifcopenshell_instance_t* grid_axis, bool is_si);
 bool ifcopenshell_grid_create_grid_axis(ifcopenshell_file_t* file, ifcopenshell_instance_t* grid, const char* axis_tag, bool same_sense, const char* uvw_axes, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_grid_remove_grid_axis(ifcopenshell_file_t* file, ifcopenshell_instance_t* axis);
-bool ifcopenshell_group_add_group(ifcopenshell_file_t* file, const char* name, const char* description, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_group_assign_group(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* group, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
+/** Create a new IfcGroup with generated identity and ownership metadata. */
+bool ifcopenshell_group_add_group(ifcopenshell_file_t* file, const ifcopenshell_group_add_group_options_t* options, ifcopenshell_instance_t** out_result);
+/** Assign products to a group, merging into an existing relationship when present. */
+bool ifcopenshell_group_assign_group(ifcopenshell_file_t* file, const ifcopenshell_group_assign_group_options_t* options, ifcopenshell_instance_t** out_result);
+/** Remove a group and its relationships. */
 bool ifcopenshell_group_remove_group(ifcopenshell_file_t* file, ifcopenshell_instance_t* group);
-bool ifcopenshell_group_unassign_group(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* group, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
-bool ifcopenshell_group_update_group_products(ifcopenshell_file_t* file, ifcopenshell_instance_t* group, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
+/** Remove products from a group relationship. */
+bool ifcopenshell_group_unassign_group(ifcopenshell_file_t* file, const ifcopenshell_group_unassign_group_options_t* options);
+/** Replace the product list of an existing group relationship. */
+bool ifcopenshell_group_update_group_products(ifcopenshell_file_t* file, const ifcopenshell_group_update_group_products_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_guid_compress(const char* uuid_hex, ifcopenshell_string_t* out_result);
 bool ifcopenshell_guid_expand(const char* guid, ifcopenshell_string_t* out_result);
 bool ifcopenshell_guid_new(ifcopenshell_string_t* out_result);
@@ -659,38 +2105,42 @@ bool ifcopenshell_layer_remove_layer(ifcopenshell_file_t* file, ifcopenshell_ins
 bool ifcopenshell_layer_unassign_layer(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* items, ifcopenshell_instance_t* layer);
 bool ifcopenshell_library_add_library(ifcopenshell_file_t* file, const char* name, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_library_add_reference(ifcopenshell_file_t* file, ifcopenshell_instance_t* library, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_library_assign_reference(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* reference, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
+/** Assign a library reference to a list of products. */
+bool ifcopenshell_library_assign_reference(ifcopenshell_file_t* file, const ifcopenshell_library_assign_reference_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_library_remove_library(ifcopenshell_file_t* file, ifcopenshell_instance_t* library);
 bool ifcopenshell_library_remove_reference(ifcopenshell_file_t* file, ifcopenshell_instance_t* reference);
-bool ifcopenshell_library_unassign_reference(ifcopenshell_file_t* file, ifcopenshell_instance_t* reference, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
-bool ifcopenshell_material_add_constituent(ifcopenshell_file_t* file, ifcopenshell_instance_t* constituent_set, ifcopenshell_instance_t* material, const char* name, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_material_add_layer(ifcopenshell_file_t* file, ifcopenshell_instance_t* layer_set, ifcopenshell_instance_t* material, const char* name, ifcopenshell_instance_t** out_result);
+/** Unassign a library reference from a list of products. */
+bool ifcopenshell_library_unassign_reference(ifcopenshell_file_t* file, const ifcopenshell_library_unassign_reference_options_t* options);
+bool ifcopenshell_material_add_constituent(ifcopenshell_file_t* file, ifcopenshell_instance_t* constituent_set, const ifcopenshell_material_add_constituent_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_material_add_layer(ifcopenshell_file_t* file, ifcopenshell_instance_t* layer_set, const ifcopenshell_material_add_layer_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_material_add_list_item(ifcopenshell_file_t* file, ifcopenshell_instance_t* material_list, ifcopenshell_instance_t* material);
-bool ifcopenshell_material_add_material(ifcopenshell_file_t* file, const char* name, const char* category, const char* description, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_material_add_material_set(ifcopenshell_file_t* file, const char* name, const char* set_type, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_material_add_profile(ifcopenshell_file_t* file, ifcopenshell_instance_t* profile_set, ifcopenshell_instance_t* material, ifcopenshell_instance_t* profile, const char* name, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_material_assign_material(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, const char* type, ifcopenshell_instance_t* material, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_parse_instance_list_t** out_result);
+bool ifcopenshell_material_add_material(ifcopenshell_file_t* file, const ifcopenshell_material_add_material_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_material_add_material_set(ifcopenshell_file_t* file, const ifcopenshell_material_add_material_set_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_material_add_profile(ifcopenshell_file_t* file, ifcopenshell_instance_t* profile_set, const ifcopenshell_material_add_profile_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_material_assign_material(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, const ifcopenshell_material_assign_material_options_t* options, ifcopenshell_parse_instance_list_t** out_result);
 bool ifcopenshell_material_assign_profile(ifcopenshell_file_t* file, ifcopenshell_instance_t* material_profile, ifcopenshell_instance_t* profile);
-bool ifcopenshell_material_edit_profile_usage(ifcopenshell_file_t* file, ifcopenshell_instance_t* usage, void* attributes, bool has_profile_dimensions, double profile_width, double profile_height);
-bool ifcopenshell_material_remove_constituent(ifcopenshell_file_t* file, ifcopenshell_instance_t* constituent, bool should_remove_material);
-bool ifcopenshell_material_remove_layer(ifcopenshell_file_t* file, ifcopenshell_instance_t* layer, bool should_remove_material);
-bool ifcopenshell_material_remove_list_item(ifcopenshell_file_t* file, ifcopenshell_instance_t* material_list, int32_t material_index);
+bool ifcopenshell_material_edit_profile_usage(ifcopenshell_file_t* file, ifcopenshell_instance_t* usage, const ifcopenshell_material_edit_profile_usage_options_t* options);
+bool ifcopenshell_material_remove_constituent(ifcopenshell_file_t* file, ifcopenshell_instance_t* constituent, const ifcopenshell_material_remove_item_options_t* options);
+bool ifcopenshell_material_remove_layer(ifcopenshell_file_t* file, ifcopenshell_instance_t* layer, const ifcopenshell_material_remove_item_options_t* options);
+bool ifcopenshell_material_remove_list_item(ifcopenshell_file_t* file, ifcopenshell_instance_t* material_list, const ifcopenshell_material_remove_list_item_options_t* options);
 bool ifcopenshell_material_remove_material(ifcopenshell_file_t* file, ifcopenshell_instance_t* material);
 bool ifcopenshell_material_remove_material_set(ifcopenshell_file_t* file, ifcopenshell_instance_t* material);
-bool ifcopenshell_material_remove_profile(ifcopenshell_file_t* file, ifcopenshell_instance_t* profile, bool should_remove_profile_def, bool should_remove_material);
-bool ifcopenshell_material_reorder_set_item(ifcopenshell_file_t* file, ifcopenshell_instance_t* material_set, int32_t old_index, int32_t new_index);
-bool ifcopenshell_material_unassign_material(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
-bool ifcopenshell_nest_assign_object(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* objects, ifcopenshell_instance_t* relating_object, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_nest_unassign_object(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* objects, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
-bool ifcopenshell_owner_add_actor(ifcopenshell_file_t* file, ifcopenshell_instance_t* actor, const char* ifc_class, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_material_remove_profile(ifcopenshell_file_t* file, ifcopenshell_instance_t* profile, const ifcopenshell_material_remove_profile_options_t* options);
+bool ifcopenshell_material_reorder_set_item(ifcopenshell_file_t* file, ifcopenshell_instance_t* material_set, const ifcopenshell_material_reorder_set_item_options_t* options);
+bool ifcopenshell_material_unassign_material(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, const ifcopenshell_material_unassign_material_options_t* options);
+/** Assign objects as nested children of a parent host. */
+bool ifcopenshell_nest_assign_object(ifcopenshell_file_t* file, const ifcopenshell_nest_assign_object_options_t* options, ifcopenshell_instance_t** out_result);
+/** Remove objects from their nesting relationships. */
+bool ifcopenshell_nest_unassign_object(ifcopenshell_file_t* file, const ifcopenshell_nest_unassign_object_options_t* options);
+bool ifcopenshell_owner_add_actor(ifcopenshell_file_t* file, const ifcopenshell_owner_add_actor_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_owner_add_address(ifcopenshell_file_t* file, ifcopenshell_instance_t* assigned_object, const char* ifc_class, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_owner_add_application(ifcopenshell_file_t* file, ifcopenshell_instance_t* application_developer, const char* version, const char* application_full_name, const char* application_identifier, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_owner_add_application(ifcopenshell_file_t* file, const ifcopenshell_owner_add_application_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_owner_add_organisation(ifcopenshell_file_t* file, const char* identification, const char* name, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_owner_add_person(ifcopenshell_file_t* file, const char* identification, const char* family_name, const char* given_name, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_owner_add_person_and_organisation(ifcopenshell_file_t* file, ifcopenshell_instance_t* person, ifcopenshell_instance_t* organisation, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_owner_add_role(ifcopenshell_file_t* file, ifcopenshell_instance_t* assigned_object, const char* role, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_owner_assign_actor(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_actor, ifcopenshell_instance_t* related_object, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_owner_create_owner_history(ifcopenshell_file_t* file, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_owner_assign_actor(ifcopenshell_file_t* file, const ifcopenshell_owner_assign_actor_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_owner_create_owner_history(ifcopenshell_file_t* file, const ifcopenshell_owner_create_owner_history_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_owner_remove_actor(ifcopenshell_file_t* file, ifcopenshell_instance_t* actor);
 bool ifcopenshell_owner_remove_address(ifcopenshell_file_t* file, ifcopenshell_instance_t* address);
 bool ifcopenshell_owner_remove_application(ifcopenshell_file_t* file, ifcopenshell_instance_t* application);
@@ -698,8 +2148,8 @@ bool ifcopenshell_owner_remove_organisation(ifcopenshell_file_t* file, ifcopensh
 bool ifcopenshell_owner_remove_person(ifcopenshell_file_t* file, ifcopenshell_instance_t* person);
 bool ifcopenshell_owner_remove_person_and_organisation(ifcopenshell_file_t* file, ifcopenshell_instance_t* person_and_organisation);
 bool ifcopenshell_owner_remove_role(ifcopenshell_file_t* file, ifcopenshell_instance_t* role);
-bool ifcopenshell_owner_unassign_actor(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_actor, ifcopenshell_instance_t* related_object, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
-bool ifcopenshell_owner_update_owner_history(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_owner_unassign_actor(ifcopenshell_file_t* file, const ifcopenshell_owner_unassign_actor_options_t* options);
+bool ifcopenshell_owner_update_owner_history(ifcopenshell_file_t* file, const ifcopenshell_owner_update_owner_history_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_placement_a2p(const ifcopenshell_double_list_t* origin, const ifcopenshell_double_list_t* z_axis, const ifcopenshell_double_list_t* x_axis, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_placement_get_axis2placement(ifcopenshell_instance_t* instance, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_placement_get_cartesian_xform_3d(ifcopenshell_instance_t* instance, ifcopenshell_double_list_t* out_result);
@@ -707,19 +2157,36 @@ bool ifcopenshell_placement_get_local_placement(ifcopenshell_instance_t* instanc
 bool ifcopenshell_placement_get_mappeditem_xform(ifcopenshell_instance_t* instance, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_placement_get_storey_elevation(ifcopenshell_instance_t* instance, double* out_result);
 bool ifcopenshell_placement_rotation(double angle_rad, const char* axis, ifcopenshell_double_list_t* out_result);
-bool ifcopenshell_profile_add_arbitrary_profile(ifcopenshell_file_t* file, const ifcopenshell_double_list_list_t* profile, const char* name, bool has_name, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_profile_add_arbitrary_profile_with_voids(ifcopenshell_file_t* file, const ifcopenshell_double_list_list_t* outer_profile, const ifcopenshell_double_list_list_list_t* inner_profiles, const char* name, bool has_name, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_profile_add_arbitrary_profile(ifcopenshell_file_t* file, const ifcopenshell_profile_add_arbitrary_profile_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_profile_add_arbitrary_profile_with_voids(ifcopenshell_file_t* file, const ifcopenshell_profile_add_arbitrary_profile_with_voids_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_profile_add_parameterized_profile(ifcopenshell_file_t* file, const char* ifc_class, const char* profile_type, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_profile_copy_profile(ifcopenshell_file_t* file, ifcopenshell_instance_t* profile, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_profile_edit_profile(ifcopenshell_instance_t* profile, void* attributes);
 bool ifcopenshell_profile_remove_profile(ifcopenshell_file_t* file, ifcopenshell_instance_t* profile);
-bool ifcopenshell_project_assign_declaration(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* definitions, ifcopenshell_instance_t* relating_context, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_project_unassign_declaration(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* definitions, ifcopenshell_instance_t* relating_context, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
-bool ifcopenshell_pset_add_pset(ifcopenshell_file_t* file, ifcopenshell_instance_t* product, const char* name, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, const char* ifc2x3_subclass, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_pset_add_qto(ifcopenshell_file_t* file, ifcopenshell_instance_t* product, const char* name, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_pset_assign_pset(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* pset, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_pset_edit_pset(ifcopenshell_file_t* file, ifcopenshell_instance_t* pset, const char* name, void* properties, ifcopenshell_instance_t* pset_template, bool should_purge, bool* out_result);
-bool ifcopenshell_pset_edit_qto(ifcopenshell_file_t* file, ifcopenshell_instance_t* qto, const char* name, void* properties, ifcopenshell_instance_t* qto_template, bool* out_result);
+/**
+ * Declare objects to a project or project library context.
+ *
+ * Creates or updates an IfcRelDeclares relationship linking the given
+ * definitions to the relating context. If the definitions are already
+ * declared to a different context, they are moved.
+ */
+bool ifcopenshell_project_assign_declaration(ifcopenshell_file_t* file, const ifcopenshell_project_assign_declaration_options_t* options, ifcopenshell_instance_t** out_result);
+/**
+ * Remove declarations of objects from a project or project library context.
+ *
+ * Removes the definitions from any existing IfcRelDeclares relationship.
+ * If no definitions remain, the relationship itself is removed.
+ */
+bool ifcopenshell_project_unassign_declaration(ifcopenshell_file_t* file, const ifcopenshell_project_unassign_declaration_options_t* options);
+/**
+ * Add or return an existing property set attached to an object, context, type,
+ * material, or profile definition.
+ */
+bool ifcopenshell_pset_add_pset(ifcopenshell_file_t* file, const ifcopenshell_pset_add_pset_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_pset_add_qto(ifcopenshell_file_t* file, const ifcopenshell_pset_add_qto_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_pset_assign_pset(ifcopenshell_file_t* file, const ifcopenshell_pset_assign_pset_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_pset_edit_pset(ifcopenshell_file_t* file, const ifcopenshell_pset_edit_pset_options_t* options, bool* out_result);
+bool ifcopenshell_pset_edit_qto(ifcopenshell_file_t* file, const ifcopenshell_pset_edit_qto_options_t* options, bool* out_result);
 bool ifcopenshell_pset_props_free(void* props);
 bool ifcopenshell_pset_props_new(void** out_result);
 bool ifcopenshell_pset_props_set_bool(void* props, const char* key, bool value);
@@ -744,28 +2211,31 @@ bool ifcopenshell_pset_props_set_unit_for_last(void* props, ifcopenshell_instanc
 bool ifcopenshell_pset_remove_pset(ifcopenshell_file_t* file, ifcopenshell_instance_t* product, ifcopenshell_instance_t* pset);
 bool ifcopenshell_pset_template_add_prop_template(ifcopenshell_file_t* file, ifcopenshell_instance_t* pset_template, const char* name, const char* description, const char* template_type, const char* primary_measure_type, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_pset_template_add_pset_template(ifcopenshell_file_t* file, const char* name, const char* template_type, const char* applicable_entity, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_pset_template_create_from_files(const char* schema_identifier, const ifcopenshell_file_list_t* template_files, void** out_result);
-bool ifcopenshell_pset_template_free(void* pqt);
-bool ifcopenshell_pset_template_get_applicable(void* pqt, const char* ifc_class, const char* predefined_type, bool pset_only, bool qto_only, const char* schema_name, ifcopenshell_parse_instance_list_t** out_result);
-bool ifcopenshell_pset_template_get_applicable_names(void* pqt, const char* ifc_class, const char* predefined_type, bool pset_only, bool qto_only, const char* schema_name, ifcopenshell_string_list_t* out_result);
-bool ifcopenshell_pset_template_get_by_name(void* pqt, const char* name, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_pset_template_get_template(const char* schema_identifier, void** out_result);
-bool ifcopenshell_pset_template_is_templated(void* pqt, const char* name, bool* out_result);
+bool ifcopenshell_pset_template_create_from_files(const char* schema_identifier, const ifcopenshell_file_list_t* template_files, ifcopenshell_pset_template_handle_t** out_result);
+bool ifcopenshell_pset_template_get_applicable(ifcopenshell_pset_template_handle_t* pqt, const char* ifc_class, const char* predefined_type, bool pset_only, bool qto_only, const char* schema_name, ifcopenshell_parse_instance_list_t** out_result);
+bool ifcopenshell_pset_template_get_applicable_names(ifcopenshell_pset_template_handle_t* pqt, const char* ifc_class, const char* predefined_type, bool pset_only, bool qto_only, const char* schema_name, ifcopenshell_string_list_t* out_result);
+bool ifcopenshell_pset_template_get_by_name(ifcopenshell_pset_template_handle_t* pqt, const char* name, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_pset_template_get_template(const char* schema_identifier, ifcopenshell_pset_template_handle_t** out_result);
+bool ifcopenshell_pset_template_is_templated(ifcopenshell_pset_template_handle_t* pqt, const char* name, bool* out_result);
 bool ifcopenshell_pset_template_pset_type(ifcopenshell_instance_t* pset_template, ifcopenshell_string_t* out_result);
 bool ifcopenshell_pset_template_remove_prop_template(ifcopenshell_file_t* file, ifcopenshell_instance_t* prop_template);
 bool ifcopenshell_pset_template_remove_pset_template(ifcopenshell_instance_t* pset_template);
 bool ifcopenshell_pset_template_set_template_dir(const char* dir);
 bool ifcopenshell_pset_unassign_pset(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* pset);
-bool ifcopenshell_pset_unshare_pset(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* pset, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_parse_instance_list_t** out_result);
-bool ifcopenshell_register_scratch_file(const char* schema_name, size_t file_ptr, bool* out_result);
+bool ifcopenshell_pset_unshare_pset(ifcopenshell_file_t* file, const ifcopenshell_pset_unshare_pset_options_t* options, ifcopenshell_parse_instance_list_t** out_result);
+bool ifcopenshell_register_scratch_file(const char* schema_name, ifcopenshell_file_t* file, bool* out_result);
 bool ifcopenshell_representation_get_context(ifcopenshell_file_t* file, const char* context_type, const char* subcontext, const char* target_view, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_representation_get_prioritised_contexts(ifcopenshell_file_t* file, ifcopenshell_parse_instance_list_t** out_result);
-bool ifcopenshell_representation_get_product_representation(ifcopenshell_instance_t* element, ifcopenshell_instance_t* context, const char* context_type, const char* subcontext, const char* target_view, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_representation_get_product_representation(ifcopenshell_instance_t* element, const ifcopenshell_representation_get_product_representation_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_representation_resolve(ifcopenshell_instance_t* representation, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_representation_resolve_base_items(ifcopenshell_instance_t* representation, ifcopenshell_parse_instance_list_t** out_result);
 bool ifcopenshell_resource_edit_resource_time(ifcopenshell_file_t* file, ifcopenshell_instance_t* resource_time, void* attributes);
-bool ifcopenshell_root_create_entity(ifcopenshell_file_t* file, const char* ifc_class, const char* predefined_type, const char* name, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_root_remove_product(ifcopenshell_file_t* file, ifcopenshell_instance_t* product, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
+/**
+ * Create an IFC entity with generated identity, ownership metadata, optional
+ * name, and optional predefined type.
+ */
+bool ifcopenshell_root_create_entity(ifcopenshell_file_t* file, const ifcopenshell_root_create_entity_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_root_remove_product(ifcopenshell_file_t* file, ifcopenshell_instance_t* product, const ifcopenshell_root_remove_product_options_t* options);
 bool ifcopenshell_schema_reassign_class(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, const char* new_class, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_selector_filter_all(ifcopenshell_file_t* file, const char* query, ifcopenshell_value_t** out_result);
 bool ifcopenshell_selector_filter_elements(ifcopenshell_file_t* file, const char* query, const ifcopenshell_instance_list_t* elements, ifcopenshell_value_t** out_result);
@@ -784,26 +2254,26 @@ bool ifcopenshell_selector_parse_filter(const char* query, void** out_result);
 bool ifcopenshell_selector_parse_format(const char* query, void** out_result);
 bool ifcopenshell_selector_parse_get_element(const char* query, void** out_result);
 bool ifcopenshell_selector_parse_keys(const char* query, void** out_result);
-bool ifcopenshell_selector_set_element_value(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, const ifcopenshell_string_list_t* keys, const ifcopenshell_bool_list_t* regex_flags, ifcopenshell_value_t* value, const char* concat, bool* out_result);
-bool ifcopenshell_sequence_add_date_time(ifcopenshell_file_t* file, const char* date_time, ifcopenshell_sequence_date_time_result_t* out_result);
-bool ifcopenshell_sequence_add_task(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_schedule, ifcopenshell_instance_t* parent_task, const char* name, const char* description, const char* identification, const char* predefined_type, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_sequence_add_task_time(ifcopenshell_file_t* file, ifcopenshell_instance_t* task, bool is_recurring, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_sequence_add_time_period(ifcopenshell_file_t* file, ifcopenshell_instance_t* recurrence_pattern, const char* start_time, const char* end_time, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_sequence_add_work_calendar(ifcopenshell_file_t* file, const char* name, const char* predefined_type, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_sequence_add_work_plan(ifcopenshell_file_t* file, const char* name, const char* predefined_type, const char* creation_date, const char* start_time, ifcopenshell_instance_t* creator_person, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_sequence_add_work_schedule(ifcopenshell_file_t* file, const char* name, const char* predefined_type, const char* object_type, const char* creation_date, const char* start_time, ifcopenshell_instance_t* work_plan, ifcopenshell_instance_t* creator_person, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_selector_set_element_value(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, const char* query, ifcopenshell_value_t* value, const char* concat);
+bool ifcopenshell_sequence_add_date_time(ifcopenshell_file_t* file, const char* date_time, ifcopenshell_instance_string_variant_t* out_result);
+bool ifcopenshell_sequence_add_task(ifcopenshell_file_t* file, const ifcopenshell_sequence_add_task_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_sequence_add_task_time(ifcopenshell_file_t* file, ifcopenshell_instance_t* task, const ifcopenshell_sequence_add_task_time_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_sequence_add_time_period(ifcopenshell_file_t* file, ifcopenshell_instance_t* recurrence_pattern, const ifcopenshell_sequence_add_time_period_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_sequence_add_work_calendar(ifcopenshell_file_t* file, const ifcopenshell_sequence_add_work_calendar_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_sequence_add_work_plan(ifcopenshell_file_t* file, const ifcopenshell_sequence_add_work_plan_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_sequence_add_work_schedule(ifcopenshell_file_t* file, const ifcopenshell_sequence_add_work_schedule_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_sequence_add_work_time(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_calendar, const char* time_type, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_sequence_assign_lag_time(ifcopenshell_file_t* file, ifcopenshell_instance_t* rel_sequence, const char* lag_value, const char* duration_type, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_sequence_assign_process(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_process, ifcopenshell_instance_t* related_object, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_sequence_assign_product(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_product, ifcopenshell_instance_t* related_object, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_sequence_assign_lag_time(ifcopenshell_file_t* file, ifcopenshell_instance_t* rel_sequence, const char* lag_value, const ifcopenshell_sequence_assign_lag_time_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_sequence_assign_process(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_process, ifcopenshell_instance_t* related_object, const ifcopenshell_sequence_assign_process_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_sequence_assign_product(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_product, ifcopenshell_instance_t* related_object, const ifcopenshell_sequence_assign_product_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_sequence_assign_recurrence_pattern(ifcopenshell_file_t* file, ifcopenshell_instance_t* parent, const char* recurrence_type, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_sequence_assign_sequence(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_process, ifcopenshell_instance_t* related_process, const char* sequence_type, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_sequence_assign_work_plan(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_schedule, ifcopenshell_instance_t* work_plan, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_sequence_assign_sequence(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_process, ifcopenshell_instance_t* related_process, const ifcopenshell_sequence_assign_sequence_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_sequence_assign_work_plan(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_schedule, ifcopenshell_instance_t* work_plan, const ifcopenshell_sequence_assign_work_plan_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_sequence_calculate_task_duration(ifcopenshell_file_t* file, ifcopenshell_instance_t* task);
 bool ifcopenshell_sequence_cascade_schedule(ifcopenshell_file_t* file, ifcopenshell_instance_t* task);
-bool ifcopenshell_sequence_copy_work_schedule(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_schedule, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_sequence_create_baseline(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_schedule, const char* name, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
-bool ifcopenshell_sequence_duplicate_task(ifcopenshell_file_t* file, ifcopenshell_instance_t* task, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_sequence_duplicate_task_result_t* out_result);
+bool ifcopenshell_sequence_copy_work_schedule(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_schedule, const ifcopenshell_sequence_copy_work_schedule_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_sequence_create_baseline(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_schedule, const ifcopenshell_sequence_create_baseline_options_t* options);
+bool ifcopenshell_sequence_duplicate_task(ifcopenshell_file_t* file, ifcopenshell_instance_t* task, const ifcopenshell_sequence_duplicate_task_options_t* options, ifcopenshell_sequence_duplicate_task_result_t* out_result);
 bool ifcopenshell_sequence_edit_lag_time(ifcopenshell_instance_t* lag_time, void* attributes);
 bool ifcopenshell_sequence_edit_recurrence_pattern(ifcopenshell_instance_t* recurrence_pattern, void* attributes);
 bool ifcopenshell_sequence_edit_sequence(ifcopenshell_instance_t* rel_sequence, void* attributes);
@@ -814,76 +2284,80 @@ bool ifcopenshell_sequence_edit_work_plan(ifcopenshell_instance_t* work_plan, vo
 bool ifcopenshell_sequence_edit_work_schedule(ifcopenshell_instance_t* work_schedule, void* attributes);
 bool ifcopenshell_sequence_edit_work_time(ifcopenshell_instance_t* work_time, void* attributes);
 bool ifcopenshell_sequence_recalculate_schedule(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_schedule);
-bool ifcopenshell_sequence_remove_task(ifcopenshell_file_t* file, ifcopenshell_instance_t* task, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
+bool ifcopenshell_sequence_remove_task(ifcopenshell_file_t* file, ifcopenshell_instance_t* task, const ifcopenshell_sequence_remove_options_t* options);
 bool ifcopenshell_sequence_remove_time_period(ifcopenshell_file_t* file, ifcopenshell_instance_t* time_period);
-bool ifcopenshell_sequence_remove_work_calendar(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_calendar, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
-bool ifcopenshell_sequence_remove_work_plan(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_plan, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
-bool ifcopenshell_sequence_remove_work_schedule(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_schedule, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
+bool ifcopenshell_sequence_remove_work_calendar(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_calendar, const ifcopenshell_sequence_remove_options_t* options);
+bool ifcopenshell_sequence_remove_work_plan(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_plan, const ifcopenshell_sequence_remove_options_t* options);
+bool ifcopenshell_sequence_remove_work_schedule(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_schedule, const ifcopenshell_sequence_remove_options_t* options);
 bool ifcopenshell_sequence_remove_work_time(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_time);
 bool ifcopenshell_sequence_unassign_lag_time(ifcopenshell_file_t* file, ifcopenshell_instance_t* rel_sequence);
-bool ifcopenshell_sequence_unassign_process(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_process, ifcopenshell_instance_t* related_object, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_sequence_unassign_product(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_product, ifcopenshell_instance_t* related_object, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_sequence_unassign_process(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_process, ifcopenshell_instance_t* related_object, const ifcopenshell_sequence_remove_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_sequence_unassign_product(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_product, ifcopenshell_instance_t* related_object, const ifcopenshell_sequence_remove_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_sequence_unassign_recurrence_pattern(ifcopenshell_file_t* file, ifcopenshell_instance_t* recurrence_pattern);
 bool ifcopenshell_sequence_unassign_sequence(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_process, ifcopenshell_instance_t* related_process);
-bool ifcopenshell_shape_builder_axis2_placement_2d(ifcopenshell_file_t* file, const ifcopenshell_double_list_t* position, const ifcopenshell_double_list_t* x_direction, bool has_x_direction, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_shape_builder_axis2_placement_3d(ifcopenshell_file_t* file, const ifcopenshell_double_list_t* position, const ifcopenshell_double_list_t* z_axis, const ifcopenshell_double_list_t* x_axis, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_shape_builder_block(ifcopenshell_file_t* file, const ifcopenshell_double_list_t* position, double x_length, double y_length, double z_length, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_shape_builder_axis2_placement_2d(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_axis2_placement2d_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_shape_builder_axis2_placement_3d(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_axis2_placement3d_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_shape_builder_block(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_block_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_shape_builder_circle(ifcopenshell_file_t* file, const ifcopenshell_double_list_t* center, double radius, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_shape_builder_curve_between_two_points(ifcopenshell_file_t* file, const ifcopenshell_double_list_list_t* points, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_shape_builder_deep_copy(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_shape_builder_edge(ifcopenshell_file_t* file, const ifcopenshell_double_list_t* start, const ifcopenshell_double_list_t* end, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_shape_builder_ellipse_curve(ifcopenshell_file_t* file, double x_axis_radius, double y_axis_radius, const ifcopenshell_double_list_t* position, const ifcopenshell_double_list_list_t* trim_points, const ifcopenshell_double_list_t* ref_x_direction, const ifcopenshell_int32_list_t* trim_points_mask, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_shape_builder_extrude(ifcopenshell_file_t* file, ifcopenshell_instance_t* profile_or_curve, double magnitude, const ifcopenshell_double_list_t* position, const ifcopenshell_double_list_t* extrusion_vector, const ifcopenshell_double_list_t* position_z_axis, const ifcopenshell_double_list_t* position_x_axis, const ifcopenshell_double_list_t* position_y_axis, bool has_position_y_axis, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_shape_builder_ellipse_curve(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_ellipse_curve_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_shape_builder_extrude(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_extrude_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_shape_builder_face(ifcopenshell_file_t* file, const ifcopenshell_double_list_list_t* points, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_shape_builder_faceted_brep(ifcopenshell_file_t* file, const ifcopenshell_double_list_list_t* points, const ifcopenshell_int32_list_list_t* faces, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_shape_builder_get_polyline_coords(ifcopenshell_instance_t* polyline, ifcopenshell_double_list_list_t* out_result);
-bool ifcopenshell_shape_builder_half_space_solid(ifcopenshell_file_t* file, ifcopenshell_instance_t* plane, bool agreement_flag, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_shape_builder_half_space_solid(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_half_space_solid_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_shape_builder_indexed_polycurve_2d(ifcopenshell_file_t* file, const ifcopenshell_double_list_list_t* points, const ifcopenshell_int32_list_list_t* segments, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_shape_builder_mep_bend_shape(ifcopenshell_file_t* file, ifcopenshell_instance_t* segment, double start_length, double end_length, double angle, double radius, const ifcopenshell_double_list_t* bend_vector, bool flip_z_axis, ifcopenshell_shape_builder_mep_bend_shape_result_t* out_result);
-bool ifcopenshell_shape_builder_mep_transition_calculate(const ifcopenshell_double_list_t* start_half_dim, const ifcopenshell_double_list_t* end_half_dim, const ifcopenshell_double_list_t* offset, const ifcopenshell_double_list_t* diff, bool has_diff, bool end_profile, double length, bool has_length, double angle, bool has_angle, double* out_result);
-bool ifcopenshell_shape_builder_mep_transition_length(const ifcopenshell_double_list_t* start_half_dim, const ifcopenshell_double_list_t* end_half_dim, double angle, const ifcopenshell_double_list_t* profile_offset, double* out_result);
-bool ifcopenshell_shape_builder_mep_transition_shape(ifcopenshell_file_t* file, ifcopenshell_instance_t* start_segment, ifcopenshell_instance_t* end_segment, double start_length, double end_length, double angle, const ifcopenshell_double_list_t* profile_offset, ifcopenshell_shape_builder_mep_transition_shape_result_t* out_result);
+bool ifcopenshell_shape_builder_mep_bend_shape(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_mep_bend_shape_options_t* options, ifcopenshell_shape_builder_mep_bend_shape_result_t* out_result);
+bool ifcopenshell_shape_builder_mep_transition_calculate(const ifcopenshell_shape_builder_mep_transition_calculate_options_t* options, double* out_result);
+bool ifcopenshell_shape_builder_mep_transition_length(const ifcopenshell_shape_builder_mep_transition_length_options_t* options, double* out_result);
+bool ifcopenshell_shape_builder_mep_transition_shape(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_mep_transition_shape_options_t* options, ifcopenshell_optional_shape_builder_mep_transition_shape_result_t* out_result);
 bool ifcopenshell_shape_builder_mesh(ifcopenshell_file_t* file, const ifcopenshell_double_list_list_t* points, const ifcopenshell_int32_list_list_t* faces, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_shape_builder_mirror(ifcopenshell_file_t* file, ifcopenshell_instance_t* item, const ifcopenshell_double_list_t* mirror_axes, const ifcopenshell_double_list_t* mirror_point, bool create_copy, const ifcopenshell_double_list_t* placement_matrix, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_shape_builder_mirror(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_mirror_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_shape_builder_plane(ifcopenshell_file_t* file, const ifcopenshell_double_list_t* location, const ifcopenshell_double_list_t* normal, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_shape_builder_polygonal_face_set(ifcopenshell_file_t* file, const ifcopenshell_double_list_list_t* points, const ifcopenshell_int32_list_list_list_t* faces, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_shape_builder_polyline(ifcopenshell_file_t* file, const ifcopenshell_double_list_list_t* points, bool closed, const ifcopenshell_double_list_t* position_offset, bool has_position_offset, const ifcopenshell_int32_list_t* arc_points, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_shape_builder_profile(ifcopenshell_file_t* file, ifcopenshell_instance_t* outer_curve, const char* name, const ifcopenshell_instance_list_t* inner_curves, const char* profile_type, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_shape_builder_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, const ifcopenshell_instance_list_t* items, const char* representation_type, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_shape_builder_rotate(ifcopenshell_file_t* file, ifcopenshell_instance_t* item, double angle, const ifcopenshell_double_list_t* pivot_point, bool counter_clockwise, bool create_copy, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_shape_builder_polyline(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_polyline_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_shape_builder_profile(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_profile_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_shape_builder_representation(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_representation_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_shape_builder_rotate(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_rotate_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_shape_builder_set_polyline_coords(ifcopenshell_file_t* file, ifcopenshell_instance_t* polyline, const ifcopenshell_double_list_list_t* coords, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_shape_builder_sphere(ifcopenshell_file_t* file, double radius, const ifcopenshell_double_list_t* center, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_shape_builder_sphere(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_sphere_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_shape_builder_swept_disk_solid(ifcopenshell_file_t* file, ifcopenshell_instance_t* path_curve, double radius, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_shape_builder_translate(ifcopenshell_file_t* file, ifcopenshell_instance_t* item, const ifcopenshell_double_list_t* translation, bool create_copy, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_shape_builder_translate(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_translate_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_shape_builder_triangulated_face_set(ifcopenshell_file_t* file, const ifcopenshell_double_list_list_t* points, const ifcopenshell_int32_list_list_t* faces, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_shape_builder_vertex(ifcopenshell_file_t* file, const ifcopenshell_double_list_t* position, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_shape_is_x(double value, double x, double tolerance, bool* out_result);
-bool ifcopenshell_spatial_assign_container(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* relating_structure, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_spatial_dereference_structure(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* relating_structure, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
-bool ifcopenshell_spatial_reference_structure(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* relating_structure, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_spatial_unassign_container(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
-bool ifcopenshell_structural_add_structural_activity(ifcopenshell_file_t* file, ifcopenshell_instance_t* applied_load, ifcopenshell_instance_t* structural_member, const char* ifc_class, const char* predefined_type, const char* global_or_local, ifcopenshell_instance_t* activity_owner_history, ifcopenshell_instance_t* relationship_owner_history, ifcopenshell_instance_t** out_result);
+/** Assign products to be contained hierarchically in a spatial structure. */
+bool ifcopenshell_spatial_assign_container(ifcopenshell_file_t* file, const ifcopenshell_spatial_assign_container_options_t* options, ifcopenshell_instance_t** out_result);
+/** Dereference products from a spatial structure. */
+bool ifcopenshell_spatial_dereference_structure(ifcopenshell_file_t* file, const ifcopenshell_spatial_dereference_structure_options_t* options);
+/** Reference products in a spatial structure without containment. */
+bool ifcopenshell_spatial_reference_structure(ifcopenshell_file_t* file, const ifcopenshell_spatial_reference_structure_options_t* options, ifcopenshell_instance_t** out_result);
+/** Remove products from their spatial containment relationships. */
+bool ifcopenshell_spatial_unassign_container(ifcopenshell_file_t* file, const ifcopenshell_spatial_unassign_container_options_t* options);
+bool ifcopenshell_structural_add_structural_activity(ifcopenshell_file_t* file, ifcopenshell_instance_t* applied_load, ifcopenshell_instance_t* structural_member, const char* ifc_class, const char* predefined_type, const char* global_or_local, const ifcopenshell_structural_add_structural_activity_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_structural_add_structural_analysis_model(ifcopenshell_file_t* file, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_structural_add_structural_boundary_condition(ifcopenshell_file_t* file, const char* name, bool has_name, ifcopenshell_instance_t* connection, const char* ifc_class, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_structural_add_structural_load(ifcopenshell_file_t* file, const char* ifc_class, const char* name, bool has_name, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_structural_add_structural_boundary_condition(ifcopenshell_file_t* file, const char* ifc_class, const ifcopenshell_structural_add_structural_boundary_condition_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_structural_add_structural_load(ifcopenshell_file_t* file, const char* ifc_class, const char* name, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_structural_add_structural_load_case(ifcopenshell_file_t* file, const char* name, const char* action_type, const char* action_source, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_structural_add_structural_load_group(ifcopenshell_file_t* file, const char* name, const char* action_type, const char* action_source, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_structural_add_structural_member_connection(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_structural_member, ifcopenshell_instance_t* related_structural_connection, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_structural_assign_product(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_product, ifcopenshell_instance_t* related_object, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_structural_assign_structural_analysis_model(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* structural_analysis_model, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_structural_assign_structural_analysis_model(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* structural_analysis_model, const ifcopenshell_structural_assign_structural_analysis_model_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_structural_assign_to_building(ifcopenshell_file_t* file, ifcopenshell_instance_t* structural_analysis_model, ifcopenshell_instance_t* building, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_structural_edit_structural_boundary_condition(ifcopenshell_file_t* file, ifcopenshell_instance_t* condition, void* attributes);
 bool ifcopenshell_structural_edit_structural_connection_cs(ifcopenshell_file_t* file, ifcopenshell_instance_t* structural_item, const ifcopenshell_double_list_t* axis, const ifcopenshell_double_list_t* ref_direction);
 bool ifcopenshell_structural_edit_structural_item_axis(ifcopenshell_file_t* file, ifcopenshell_instance_t* structural_item, const ifcopenshell_double_list_t* axis);
 bool ifcopenshell_structural_remove_structural_analysis_model(ifcopenshell_file_t* file, ifcopenshell_instance_t* structural_analysis_model);
-bool ifcopenshell_structural_remove_structural_boundary_condition(ifcopenshell_file_t* file, ifcopenshell_instance_t* connection, ifcopenshell_instance_t* boundary_condition);
+bool ifcopenshell_structural_remove_structural_boundary_condition(ifcopenshell_file_t* file, const ifcopenshell_structural_remove_structural_boundary_condition_options_t* options);
 bool ifcopenshell_structural_remove_structural_connection_condition(ifcopenshell_file_t* file, ifcopenshell_instance_t* relation);
 bool ifcopenshell_structural_remove_structural_load(ifcopenshell_file_t* file, ifcopenshell_instance_t* structural_load);
 bool ifcopenshell_structural_remove_structural_load_case(ifcopenshell_file_t* file, ifcopenshell_instance_t* structural_load_case);
 bool ifcopenshell_structural_remove_structural_load_group(ifcopenshell_file_t* file, ifcopenshell_instance_t* structural_load_group);
-bool ifcopenshell_structural_unassign_structural_analysis_model(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* structural_analysis_model, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
+bool ifcopenshell_structural_unassign_structural_analysis_model(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* structural_analysis_model, const ifcopenshell_structural_unassign_structural_analysis_model_options_t* options);
 bool ifcopenshell_style_add_style(ifcopenshell_file_t* file, const char* name, const char* ifc_class, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_style_assign_item_style(ifcopenshell_file_t* file, ifcopenshell_instance_t* item, ifcopenshell_instance_t* style, bool should_use_presentation_style_assignment, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_style_assign_item_style(ifcopenshell_file_t* file, const ifcopenshell_style_assign_item_style_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_style_assign_material_style(ifcopenshell_file_t* file, ifcopenshell_instance_t* material, ifcopenshell_instance_t* style, ifcopenshell_instance_t* context, bool should_use_presentation_style_assignment);
 bool ifcopenshell_style_assign_representation_styles(ifcopenshell_file_t* file, ifcopenshell_instance_t* shape_representation, const ifcopenshell_instance_list_t* styles, bool should_use_presentation_style_assignment, bool replace_previous_same_type_style, ifcopenshell_parse_instance_list_t** out_result);
 bool ifcopenshell_style_edit_surface_style(ifcopenshell_file_t* file, ifcopenshell_instance_t* style, void* attributes);
@@ -892,21 +2366,34 @@ bool ifcopenshell_style_remove_styled_representation(ifcopenshell_file_t* file, 
 bool ifcopenshell_style_remove_surface_style(ifcopenshell_file_t* file, ifcopenshell_instance_t* style);
 bool ifcopenshell_style_unassign_material_style(ifcopenshell_file_t* file, ifcopenshell_instance_t* material, ifcopenshell_instance_t* style, ifcopenshell_instance_t* context);
 bool ifcopenshell_style_unassign_representation_styles(ifcopenshell_file_t* file, ifcopenshell_instance_t* shape_representation, const ifcopenshell_instance_list_t* styles, bool should_use_presentation_style_assignment);
-bool ifcopenshell_system_add_port(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_system_add_system(ifcopenshell_file_t* file, const char* ifc_class, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_system_assign_flow_control(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_flow_element, ifcopenshell_instance_t* related_flow_control, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_system_assign_port(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, ifcopenshell_instance_t* port, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_system_assign_system(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* system, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_system_connect_port(ifcopenshell_file_t* file, ifcopenshell_instance_t* port1, ifcopenshell_instance_t* port2, const char* direction, ifcopenshell_instance_t* element, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
+/** Create a new distribution port and optionally assign it to an element. */
+bool ifcopenshell_system_add_port(ifcopenshell_file_t* file, const ifcopenshell_system_add_port_options_t* options, ifcopenshell_instance_t** out_result);
+/** Create a new system with the given IFC class. */
+bool ifcopenshell_system_add_system(ifcopenshell_file_t* file, const ifcopenshell_system_add_system_options_t* options, ifcopenshell_instance_t** out_result);
+/** Assign a flow control element to a flow element. */
+bool ifcopenshell_system_assign_flow_control(ifcopenshell_file_t* file, const ifcopenshell_system_assign_flow_control_options_t* options, ifcopenshell_instance_t** out_result);
+/** Assign a port to an element. */
+bool ifcopenshell_system_assign_port(ifcopenshell_file_t* file, const ifcopenshell_system_assign_port_options_t* options, ifcopenshell_instance_t** out_result);
+/** Assign products to a system. */
+bool ifcopenshell_system_assign_system(ifcopenshell_file_t* file, const ifcopenshell_system_assign_system_options_t* options, ifcopenshell_instance_t** out_result);
+/** Connect two ports together with a given flow direction. */
+bool ifcopenshell_system_connect_port(ifcopenshell_file_t* file, const ifcopenshell_system_connect_port_options_t* options);
+/** Disconnect a port from all connected ports. */
 bool ifcopenshell_system_disconnect_port(ifcopenshell_file_t* file, ifcopenshell_instance_t* port);
+/** Remove a system and its relationships. */
 bool ifcopenshell_system_remove_system(ifcopenshell_file_t* file, ifcopenshell_instance_t* system);
-bool ifcopenshell_system_unassign_flow_control(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_flow_element, ifcopenshell_instance_t* related_flow_control, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
-bool ifcopenshell_system_unassign_port(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, ifcopenshell_instance_t* port, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
-bool ifcopenshell_system_unassign_system(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* system, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
-bool ifcopenshell_type_assign_type(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* objects, ifcopenshell_instance_t* relating_type, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_type_assign_type_ex(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* objects, ifcopenshell_instance_t* relating_type, bool should_map_representations, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result);
+/** Unassign a flow control element from a flow element. */
+bool ifcopenshell_system_unassign_flow_control(ifcopenshell_file_t* file, const ifcopenshell_system_unassign_flow_control_options_t* options);
+/** Unassign a port from an element. */
+bool ifcopenshell_system_unassign_port(ifcopenshell_file_t* file, const ifcopenshell_system_unassign_port_options_t* options);
+/** Unassign products from a system. */
+bool ifcopenshell_system_unassign_system(ifcopenshell_file_t* file, const ifcopenshell_system_unassign_system_options_t* options);
+/** Assign a type to element occurrences, creating or merging IfcRelDefinesByType. */
+bool ifcopenshell_type_assign_type(ifcopenshell_file_t* file, const ifcopenshell_type_assign_type_options_t* options, ifcopenshell_instance_t** out_result);
+/** Map representation maps from a type onto a related object. */
 bool ifcopenshell_type_map_type_representations(ifcopenshell_file_t* file, ifcopenshell_instance_t* related_object, ifcopenshell_instance_t* relating_type, bool* out_result);
-bool ifcopenshell_type_unassign_type(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* objects, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application);
+/** Remove type assignments from element occurrences. */
+bool ifcopenshell_type_unassign_type(ifcopenshell_file_t* file, const ifcopenshell_type_unassign_type_options_t* options);
 bool ifcopenshell_unit_add_context_dependent_unit(ifcopenshell_file_t* file, const char* unit_type, const char* name, const ifcopenshell_int64_list_t* dimensions, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_unit_add_derived_unit(ifcopenshell_file_t* file, const char* unit_type, const char* userdefinedtype, const ifcopenshell_instance_list_t* units, const ifcopenshell_int64_list_t* exponents, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_unit_add_monetary_unit(ifcopenshell_file_t* file, const char* currency, ifcopenshell_instance_t** out_result);
@@ -943,6 +2430,7 @@ bool ifcopenshell_value_as_instance(ifcopenshell_value_t* value, ifcopenshell_in
 bool ifcopenshell_value_as_int64(ifcopenshell_value_t* value, int64_t* out_result);
 bool ifcopenshell_value_as_string(ifcopenshell_value_t* value, ifcopenshell_string_t* out_result);
 bool ifcopenshell_value_dict_key_at(ifcopenshell_value_t* value, size_t index, ifcopenshell_string_t* out_result);
+bool ifcopenshell_value_dict_set(ifcopenshell_value_t* dict, const char* key, ifcopenshell_value_t* value, bool* out_result);
 bool ifcopenshell_value_dict_size(ifcopenshell_value_t* value, size_t* out_result);
 bool ifcopenshell_value_dict_value_at(ifcopenshell_value_t* value, size_t index, ifcopenshell_value_t** out_result);
 bool ifcopenshell_value_kind(ifcopenshell_value_t* value, int32_t* out_result);
@@ -950,6 +2438,7 @@ bool ifcopenshell_value_list_append(ifcopenshell_value_t* list, ifcopenshell_val
 bool ifcopenshell_value_list_at(ifcopenshell_value_t* value, size_t index, ifcopenshell_value_t** out_result);
 bool ifcopenshell_value_list_size(ifcopenshell_value_t* value, size_t* out_result);
 bool ifcopenshell_value_new_bool(bool value, ifcopenshell_value_t** out_result);
+bool ifcopenshell_value_new_dict(ifcopenshell_value_t** out_result);
 bool ifcopenshell_value_new_double(double value, ifcopenshell_value_t** out_result);
 bool ifcopenshell_value_new_instance(ifcopenshell_instance_t* value, ifcopenshell_value_t** out_result);
 bool ifcopenshell_value_new_int(int64_t value, ifcopenshell_value_t** out_result);
@@ -966,14 +2455,14 @@ bool ifcopenshell_geom_create_iterator(const char* geometry_library_cpp, ifcopen
 bool ifcopenshell_geom_create_iterator_with_include_exclude(const char* geometry_library_cpp, ifcopenshell_geom_settings_t* settings_cpp, ifcopenshell_file_t* file_cpp, const ifcopenshell_string_list_t* elems_cpp, bool include, int32_t num_threads, ifcopenshell_geom_iterator_t** out_result);
 bool ifcopenshell_geom_create_iterator_with_include_exclude_globalid(const char* geometry_library_cpp, ifcopenshell_geom_settings_t* settings_cpp, ifcopenshell_file_t* file_cpp, const ifcopenshell_string_list_t* elems_cpp, bool include, int32_t num_threads, ifcopenshell_geom_iterator_t** out_result);
 bool ifcopenshell_geom_create_iterator_with_include_exclude_id(const char* geometry_library_cpp, ifcopenshell_geom_settings_t* settings_cpp, ifcopenshell_file_t* file_cpp, const ifcopenshell_int32_list_t* elems_cpp, bool include, int32_t num_threads, ifcopenshell_geom_iterator_t** out_result);
-bool ifcopenshell_geom_create_shape(ifcopenshell_geom_settings_t* settings_cpp, ifcopenshell_instance_t* instance_cpp, ifcopenshell_instance_t* representation_cpp, const char* geometry_library_str, ifcopenshell_geom_element_t** out_result);
+bool ifcopenshell_geom_create_shape(ifcopenshell_geom_settings_t* settings_cpp, ifcopenshell_instance_t* instance_cpp, ifcopenshell_instance_t* representation, const char* geometry_library, ifcopenshell_geom_element_t** out_result);
 bool ifcopenshell_geom_line_segments_to_polygons(int32_t solver, double eps, const char* segments_json_cpp, ifcopenshell_geom_svgfill_polygon_list_t* out_result);
 bool ifcopenshell_geom_map_shape(ifcopenshell_geom_settings_t* settings_cpp, ifcopenshell_instance_t* instance_cpp, ifcopenshell_geom_taxonomy_item_t** out_result);
 bool ifcopenshell_geom_nary_union(const ifcopenshell_geom_conversion_result_shape_list_t* shapes_cpp, ifcopenshell_geom_conversion_result_shape_t** out_result);
 bool ifcopenshell_geom_plugin_is_loaded(const char* kind, const char* id, bool* out_result);
 bool ifcopenshell_geom_plugin_load(const char* kind, const char* id, bool* out_result);
-bool ifcopenshell_geom_svg_to_line_segments(const char* svg_data_cpp, const char* class_name_str, ifcopenshell_string_t* out_result);
-bool ifcopenshell_geom_svg_to_polygons(const char* svg_data_cpp, const char* class_name_str, ifcopenshell_geom_svgfill_polygon_list_t* out_result);
+bool ifcopenshell_geom_svg_to_line_segments(const char* svg_data_cpp, const char* class_name, ifcopenshell_string_t* out_result);
+bool ifcopenshell_geom_svg_to_polygons(const char* svg_data_cpp, const char* class_name, ifcopenshell_geom_svgfill_polygon_list_t* out_result);
 bool ifcopenshell_geom_taxonomy_create_box(double dx, double dy, double dz, ifcopenshell_geom_taxonomy_solid_t** out_result);
 bool ifcopenshell_geom_taxonomy_create_circle(double origin_x, double origin_y, double origin_z, double dir_x, double dir_y, double dir_z, double radius, ifcopenshell_geom_taxonomy_circle_t** out_result);
 bool ifcopenshell_geom_taxonomy_create_cylinder(double origin_x, double origin_y, double origin_z, double dir_x, double dir_y, double dir_z, double radius, ifcopenshell_geom_taxonomy_cylinder_t** out_result);

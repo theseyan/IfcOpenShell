@@ -17,5 +17,5 @@ def validate_type(
         "geometry_validate_type",
         _capi.file_handle(file),
         _capi.instance_handle(representation),
-        _capi.instance_handle(preferred_item),
+        {"preferred_item": _capi.instance_handle(preferred_item)},
     )

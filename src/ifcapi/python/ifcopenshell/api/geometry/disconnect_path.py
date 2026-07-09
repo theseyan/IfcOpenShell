@@ -37,9 +37,10 @@ def disconnect_path(
     _capi.call_status(
         "geometry_disconnect_path",
         _capi.file_handle(file),
-        _capi.instance_handle(element),
-        _capi.string(connection_type or ""),
-        connection_type is not None,
-        _capi.instance_handle(relating_element),
-        _capi.instance_handle(related_element),
+        {
+            "element": _capi.instance_handle(element),
+            "connection_type": connection_type,
+            "relating_element": _capi.instance_handle(relating_element),
+            "related_element": _capi.instance_handle(related_element),
+        },
     )

@@ -16,13 +16,11 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
+import ifcopenshell.util.unit
 from typing import Optional
 
-import numpy as np
-import numpy.typing as npt
-
-import ifcopenshell.util.unit
-from ifcopenshell.util.shape_builder import SequenceOfVectors, V, ifc_safe_vector_type
+from ifcopenshell.api.boundary import _capi
+from ifcopenshell.util.shape_builder import SequenceOfVectors
 
 
 def assign_connection_geometry(
@@ -77,61 +75,17 @@ def assign_connection_geometry(
             location=[0., 0., 0.], axis=[1., 0., 0.], ref_direction=[0., 0., 1.],
             )
     """
-    usecase = Usecase()
-    usecase.file = file
-    usecase.rel_space_boundary = rel_space_boundary
-    usecase.outer_boundary = V(outer_boundary)
-    usecase.inner_boundaries = V(inner_boundaries or [])
-    usecase.location = V(location)
-    usecase.axis = V(axis)
-    usecase.ref_direction = V(ref_direction)
-    usecase.unit_scale = unit_scale if unit_scale is not None else ifcopenshell.util.unit.calculate_unit_scale(file)
-    return usecase.execute()
-
-
-class Usecase:
-    file: ifcopenshell.file
-    rel_space_boundary: ifcopenshell.entity_instance
-    outer_boundary: npt.NDArray
-    inner_boundaries: npt.NDArray
-    location: npt.NDArray
-    axis: npt.NDArray
-    ref_direction: npt.NDArray
-    unit_scale: float
-
-    def execute(self):
-        outer_boundary = self.create_polyline(self.outer_boundary)
-        inner_boundaries = tuple(self.create_polyline(boundary) for boundary in self.inner_boundaries)
-        plane = self.create_plane(self.location, self.axis, self.ref_direction)
-        curve_bounded_plane = self.file.createIfcCurveBoundedPlane(plane, outer_boundary, inner_boundaries)
-        connection_geometry = self.file.createIfcConnectionSurfaceGeometry(curve_bounded_plane)
-        self.rel_space_boundary.ConnectionGeometry = connection_geometry
-
-    def create_point(self, point: npt.NDArray) -> ifcopenshell.entity_instance:
-        return self.file.create_entity("IfcCartesianPoint", ifc_safe_vector_type(point / self.unit_scale))
-
-    def close_polyline(
-        self, points: tuple[ifcopenshell.entity_instance, ...]
-    ) -> tuple[ifcopenshell.entity_instance, ...]:
-        return points + (points[0],)
-
-    def create_polyline(self, points: npt.NDArray) -> ifcopenshell.entity_instance:
-        if len(points) == 0:
-            raise RuntimeError("polyline must contain at least one point")
-        if np.allclose(points[0], points[-1]):
-            points = points[0 : len(points) - 1]
-        if len(points) == 0:
-            raise RuntimeError("polyline must contain at least one point")
-        ifc_points = tuple(self.create_point(point) for point in points)
-        return self.file.createIfcPolyline(self.close_polyline(ifc_points))
-
-    def create_plane(
-        self, location: npt.NDArray, axis: npt.NDArray, ref_direction: npt.NDArray
-    ) -> ifcopenshell.entity_instance:
-        return self.file.createIfcPlane(
-            self.file.createIfcAxis2Placement3D(
-                self.create_point(location),
-                self.file.createIfcDirection(ifc_safe_vector_type(axis)),
-                self.file.createIfcDirection(ifc_safe_vector_type(ref_direction)),
-            )
-        )
+    _capi.call_status(
+        "boundary_assign_connection_geometry",
+        "Failed to assign boundary connection geometry",
+        _capi.file_handle(file),
+        _capi.instance_handle(rel_space_boundary),
+        {
+            "outer_boundary": _capi.double_list_list(outer_boundary),
+            "location": _capi.double_list(location),
+            "axis": _capi.double_list(axis),
+            "ref_direction": _capi.double_list(ref_direction),
+            "inner_boundaries": _capi.double_list_list_list(inner_boundaries or []),
+            "unit_scale": unit_scale if unit_scale is not None else ifcopenshell.util.unit.calculate_unit_scale(file),
+        },
+    )

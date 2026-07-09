@@ -152,10 +152,12 @@ def get_representation(
     context_type = None if isinstance(context, ifcopenshell.entity_instance) else context
     handle = _capi.representation_get_product_representation(
         element._handle,
-        context_handle,
-        context_type,
-        subcontext,
-        target_view,
+        {
+            "context": context_handle,
+            "context_type": context_type,
+            "subcontext": subcontext,
+            "target_view": target_view,
+        },
     )
     return _wrap_handle(element.file, handle)
 

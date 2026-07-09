@@ -105,7 +105,10 @@ void remove_context_impl(ifcopenshell::file* file, express::Base context) {
         for (auto element : elements) {
             ifcapi::bindings::geometry_unassign_representation(file, &element, &representation);
         }
-        ifcapi::bindings::geometry_remove_representation(file, &representation, true);
+        ifcapi::bindings::geometry_remove_representation(
+            file,
+            &representation,
+            ifcapi::bindings::GeometryRemoveRepresentationOptions{true});
     }
 }
 
@@ -116,22 +119,19 @@ namespace bindings {
 
 express::Base context_add_context(
     ifcopenshell::file* file,
-    const char* context_type,
-    const char* context_identifier,
-    const char* target_view,
-    bool has_target_scale,
-    double target_scale,
-    express::Base* parent)
+    const ContextAddContextOptions& options)
 {
-    auto parent_value = ifcapi::detail::deref_or_empty(parent);
+    auto parent_value = options.parent.value_or(express::Base());
     if (!parent_value) {
         auto context = create_entity(file, "IfcGeometricRepresentationContext");
-        if (context_type && std::string(context_type) == "Plan") {
+        if (!options.context_type.empty() && options.context_type == "Plan") {
             ifcapi::detail::write_string_attr(context, "ContextType", "Plan");
             ifcapi::detail::write_int_attr(context, "CoordinateSpaceDimension", 2);
             ifcapi::detail::write_ref_attr(context, "WorldCoordinateSystem", create_2d_origin(file));
         } else {
-            write_optional_string(context, "ContextType", context_type);
+            if (!options.context_type.empty()) {
+                ifcapi::detail::write_string_attr(context, "ContextType", options.context_type);
+            }
             ifcapi::detail::write_int_attr(context, "CoordinateSpaceDimension", 3);
             ifcapi::detail::write_ref_attr(context, "WorldCoordinateSystem", create_3d_origin(file));
         }
@@ -145,12 +145,20 @@ express::Base context_add_context(
     }
 
     auto subcontext = create_entity(file, "IfcGeometricRepresentationSubContext");
-    write_optional_string(subcontext, "ContextIdentifier", context_identifier);
-    write_optional_string(subcontext, "ContextType", context_type);
+    if (!options.context_identifier.empty()) {
+        ifcapi::detail::write_string_attr(subcontext, "ContextIdentifier", options.context_identifier);
+    }
+    if (!options.context_type.empty()) {
+        ifcapi::detail::write_string_attr(subcontext, "ContextType", options.context_type);
+    }
     ifcapi::detail::write_ref_attr(subcontext, "ParentContext", parent_value);
-    write_optional_enum(subcontext, "TargetView", target_view);
-    if (has_target_scale) {
-        ifcapi::detail::write_double_attr(subcontext, "TargetScale", target_scale);
+    if (!options.target_view.empty()) {
+        if (!ifcapi::detail::write_enum_attr(subcontext, "TargetView", options.target_view)) {
+            throw std::runtime_error(std::string("Unable to find keyword in schema: ") + options.target_view);
+        }
+    }
+    if (options.target_scale) {
+        ifcapi::detail::write_double_attr(subcontext, "TargetScale", *options.target_scale);
     }
     return subcontext;
 }

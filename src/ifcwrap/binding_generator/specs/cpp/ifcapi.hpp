@@ -60,13 +60,13 @@ std::string guid_expand(const std::string& guid);
 } // namespace ifcapi
 
 IFCAPI_HANDLE(value, ifcopenshell_selector_value_t, function:ifcapi::bindings::value_free)
+IFCAPI_HANDLE(pset_template_handle, ifcopenshell_pset_template_t, function:ifcapi::bindings::pset_template_free)
 
 namespace ifcapi::bindings {
 
 IFCAPI_RESULT_STRUCT(ifcapi::bindings::ShapeBuilderMepTransitionShapeResult)
 struct ifcopenshell_shape_builder_mep_transition_shape_result_t {
     express::Base representation;
-    bool has_result;
     double start_length;
     double end_length;
     double angle;
@@ -86,13 +86,6 @@ struct ifcopenshell_shape_builder_mep_bend_shape_result_t {
     double lateral_sign;
     int z_axis_sign;
     double main_profile_dimension;
-};
-
-IFCAPI_RESULT_STRUCT(ifcapi::bindings::SequenceDateTimeResult)
-struct ifcopenshell_sequence_date_time_result_t {
-    express::Base date_time;
-    std::string date_time_string;
-    bool is_entity;
 };
 
 IFCAPI_RESULT_STRUCT(ifcapi::bindings::SequenceDuplicateTaskResult)

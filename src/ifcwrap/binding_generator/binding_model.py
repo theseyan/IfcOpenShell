@@ -10,16 +10,19 @@ class TypeSpec:
     kind: str
     handle: str | None = None
     struct: str | None = None
+    variants: tuple["TypeSpec", ...] = ()
     ownership: str | None = None
     nullable: bool = False
     cpp_type: str | None = None
     sequence_depth: int = 0
+    semantic: str | None = None
 
 
 @dataclass(frozen=True)
 class ParamSpec:
     name: str
     type: TypeSpec
+    has_default: bool = False
 
 
 @dataclass(frozen=True)
@@ -48,6 +51,21 @@ class ResultStructSpec:
 
 
 @dataclass(frozen=True)
+class OptionStructFieldSpec:
+    name: str
+    type: TypeSpec
+    cpp_field: str | None = None
+
+
+@dataclass(frozen=True)
+class OptionStructSpec:
+    name: str
+    cpp_type: str
+    c_type: str
+    fields: tuple[OptionStructFieldSpec, ...]
+
+
+@dataclass(frozen=True)
 class ImplementationSpec:
     kind: str
     body: str
@@ -61,6 +79,7 @@ class CallSpec:
     returns: TypeSpec
     params: tuple[ParamSpec, ...]
     policy_operation: object
+    doc: str | None = None
 
 
 @dataclass(frozen=True)

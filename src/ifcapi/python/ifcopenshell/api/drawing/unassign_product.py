@@ -54,8 +54,10 @@ def unassign_product(
     _relationship_capi.call_status(
         "drawing_unassign_product",
         _relationship_capi.file_handle(file),
-        _relationship_capi.instance_handle(relating_product),
-        _relationship_capi.instance_handle(related_object),
-        _relationship_capi.instance_handle(user),
-        _relationship_capi.instance_handle(application),
+        {
+            "relating_product": _relationship_capi.instance_handle(relating_product),
+            "related_object": _relationship_capi.instance_handle(related_object),
+            "user": _relationship_capi.instance_handle(user),
+            "application": _relationship_capi.instance_handle(application),
+        },
     )

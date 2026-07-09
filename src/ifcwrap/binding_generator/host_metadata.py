@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import re
 
 try:
     from .binding_ir import BindingIR, CallIR
     from .binding_model import HandleSpec, TypeSpec
+    from .c_variant_helpers import _variant_destroy_name
 except ImportError:  # pragma: no cover - script execution fallback
     from binding_ir import BindingIR, CallIR
     from binding_model import HandleSpec, TypeSpec
+    from c_variant_helpers import _variant_destroy_name
 
 
 @dataclass(frozen=True)
@@ -31,12 +33,28 @@ class HostStructMetadata:
 
 
 @dataclass(frozen=True)
+class HostOptionFieldMetadata:
+    name: str
+    type: TypeSpec
+    c_type: str
+    semantic: str | None = None
+
+
+@dataclass(frozen=True)
+class HostOptionStructMetadata:
+    name: str
+    c_type: str
+    fields: tuple[HostOptionFieldMetadata, ...]
+
+
+@dataclass(frozen=True)
 class HostParamMetadata:
     name: str
     c_type: str
     role: str
     type_kind: str
     nullable: bool = False
+    has_default: bool = False
 
 
 @dataclass(frozen=True)
@@ -47,6 +65,7 @@ class HostFunctionMetadata:
     error_policy: str
     returns: TypeSpec
     receiver: str | None
+    doc: str | None = None
 
 
 @dataclass(frozen=True)
@@ -57,6 +76,7 @@ class HostBindingMetadata:
     value_types: dict[str, HostStructMetadata]
     functions: dict[str, HostFunctionMetadata]
     error_functions: dict[str, str]
+    option_structs: dict[str, HostOptionStructMetadata] = field(default_factory=dict)
 
 
 _SCALAR_PARAM_TYPES = {
@@ -183,6 +203,9 @@ def _used_scalar_sequence_kinds(ir: BindingIR) -> tuple[str, ...]:
     for struct in ir.result_structs.values():
         for field in struct.fields:
             add_type(field.type)
+    for struct in ir.option_structs.values():
+        for field in struct.fields:
+            add_type(field.type)
     return tuple(ordered)
 
 
@@ -203,6 +226,9 @@ def _used_handle_list_handles(ir: BindingIR) -> tuple[HandleSpec, ...]:
         for param in call.params:
             add(param.type)
     for struct in ir.result_structs.values():
+        for field in struct.fields:
+            add(field.type)
+    for struct in ir.option_structs.values():
         for field in struct.fields:
             add(field.type)
     return tuple(handles)
@@ -233,7 +259,38 @@ def _param_c_type(type_spec: TypeSpec, ir: BindingIR) -> str:
         if type_spec.struct is None:
             raise ValueError("struct type is missing struct name")
         return ir.result_structs[type_spec.struct].c_type
+    if type_spec.kind == "option":
+        if type_spec.struct is None:
+            raise ValueError("option type is missing option struct name")
+        return f"const {ir.option_structs[type_spec.struct].c_type}*"
     raise ValueError(f"Unsupported parameter kind: {type_spec.kind}")
+
+
+def _option_field_c_type(type_spec: TypeSpec, ir: BindingIR) -> str:
+    return _param_c_type(type_spec, ir)
+
+
+def _variant_alt_name(type_spec: TypeSpec, ir: BindingIR) -> str:
+    sequence_kind = _type_spec_sequence_kind(type_spec)
+    if sequence_kind is not None:
+        return sequence_kind
+    if type_spec.kind == "handle" and type_spec.handle is not None:
+        return type_spec.handle
+    if type_spec.kind == "struct" and type_spec.struct is not None:
+        return type_spec.struct
+    return type_spec.kind
+
+
+def _variant_c_type(type_spec: TypeSpec, ir: BindingIR) -> str:
+    parts = "_".join(_variant_alt_name(alt, ir) for alt in type_spec.variants)
+    return f"{ir.c_prefix}_{parts}_variant_t"
+
+
+def _optional_struct_c_type(type_spec: TypeSpec, ir: BindingIR) -> str:
+    if type_spec.struct is None:
+        raise ValueError("nullable struct return is missing struct name")
+    base = ir.result_structs[type_spec.struct].c_type.removeprefix(f"{ir.c_prefix}_")
+    return f"{ir.c_prefix}_optional_{base}"
 
 
 def _out_c_type(type_spec: TypeSpec, ir: BindingIR) -> str:
@@ -260,7 +317,11 @@ def _out_c_type(type_spec: TypeSpec, ir: BindingIR) -> str:
     if type_spec.kind == "struct":
         if type_spec.struct is None:
             raise ValueError("struct type is missing struct name")
+        if type_spec.nullable:
+            return f"{_optional_struct_c_type(type_spec, ir)}*"
         return f"{ir.result_structs[type_spec.struct].c_type}*"
+    if type_spec.kind == "variant":
+        return f"{_variant_c_type(type_spec, ir)}*"
     raise ValueError(f"Unsupported return kind: {type_spec.kind}")
 
 
@@ -283,6 +344,8 @@ def _field_c_type(type_spec: TypeSpec, ir: BindingIR) -> str:
         return f"{handle.c_type}*"
     if type_spec.kind == "opaque_ptr":
         return "void*"
+    if type_spec.kind == "variant":
+        return _variant_c_type(type_spec, ir)
     raise ValueError(f"Unsupported result struct field kind: {type_spec.kind}")
 
 
@@ -361,6 +424,35 @@ def _host_value_structs(ir: BindingIR) -> dict[str, HostStructMetadata]:
             destroy_function=None,
             element_type=struct.cpp_type,
         )
+    for call in (*ir.functions, *ir.methods):
+        returns = call.returns
+        if returns.kind == "struct" and returns.nullable and returns.struct is not None:
+            c_type = _optional_struct_c_type(returns, ir)
+            result[_snake_name(c_type)] = HostStructMetadata(
+                c_type=c_type,
+                kind="optional_result_struct",
+                fields=(
+                    HostStructField("has_value", "bool"),
+                    HostStructField("value", ir.result_structs[returns.struct].c_type),
+                ),
+                destroy_function=None,
+                element_type=returns.struct,
+            )
+        if returns.kind == "variant":
+            c_type = _variant_c_type(returns, ir)
+            result[_snake_name(c_type)] = HostStructMetadata(
+                c_type=c_type,
+                kind="variant",
+                fields=tuple(
+                    [HostStructField("kind", "int32_t")]
+                    + [
+                        HostStructField(f"value_{index}", _field_c_type(alt, ir))
+                        for index, alt in enumerate(returns.variants)
+                    ]
+                ),
+                destroy_function=_variant_destroy_name(returns, ir),
+                element_type=returns.cpp_type,
+            )
     return result
 
 
@@ -385,6 +477,7 @@ def _function_metadata(call: CallIR, ir: BindingIR) -> HostFunctionMetadata:
                 role="param",
                 type_kind=param.type.kind,
                 nullable=param.type.nullable,
+                has_default=param.has_default,
             )
         )
     if call.returns.kind != "void":
@@ -404,6 +497,7 @@ def _function_metadata(call: CallIR, ir: BindingIR) -> HostFunctionMetadata:
         error_policy="bool_return_last_error",
         returns=call.returns,
         receiver=call.receiver,
+        doc=call.doc,
     )
 
 
@@ -417,6 +511,17 @@ def build_host_metadata(ir: BindingIR) -> HostBindingMetadata:
         c_prefix=ir.c_prefix,
         handles=_host_structs_for_handles(ir),
         value_types=_host_value_structs(ir),
+        option_structs={
+            name: HostOptionStructMetadata(
+                name=option.name,
+                c_type=option.c_type,
+                fields=tuple(
+                    HostOptionFieldMetadata(field.name, field.type, _option_field_c_type(field.type, ir), field.type.semantic)
+                    for field in option.fields
+                ),
+            )
+            for name, option in ir.option_structs.items()
+        },
         functions=functions,
         error_functions={
             "clear_error": f"{ir.c_prefix}_clear_error",

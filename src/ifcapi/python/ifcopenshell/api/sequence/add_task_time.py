@@ -64,5 +64,5 @@ def add_task_time(
         "sequence_add_task_time",
         _capi.file_handle(file),
         _capi.instance_handle(task),
-        is_recurring,
+        {"is_recurring": is_recurring},
     )

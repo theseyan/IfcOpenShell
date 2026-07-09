@@ -60,10 +60,12 @@ def unshare_pset(
     product_list = [e._handle for e in products]
     out = _capi.pset_unshare_pset(
         file._handle,
-        product_list,
-        pset._handle,
-        None,
-        user._handle if user is not None else None,
-        application._handle if application is not None else None,
+        {
+            "products": product_list,
+            "pset": pset._handle,
+            "owner_history": None,
+            "user": user._handle if user is not None else None,
+            "application": application._handle if application is not None else None,
+        },
     )
     return ifcopenshell._take_instance_list(file, out)

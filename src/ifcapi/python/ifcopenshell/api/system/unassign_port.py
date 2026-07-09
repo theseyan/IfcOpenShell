@@ -53,8 +53,10 @@ def unassign_port(
         "system_unassign_port",
         "Failed to unassign port",
         _capi.file_handle(file),
-        _capi.instance_handle(element),
-        _capi.instance_handle(port),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+        {
+            "element": _capi.instance_handle(element),
+            "port": _capi.instance_handle(port),
+            "user": _capi.instance_handle(user),
+            "application": _capi.instance_handle(application),
+        },
     )

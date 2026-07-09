@@ -64,16 +64,12 @@ namespace bindings {
 
 express::Base project_assign_declaration(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& definitions,
-    express::Base* relating_context,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const ProjectAssignDeclarationOptions& options)
 {
-    auto relating = ifcapi::detail::deref_or_empty(relating_context);
-    auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
-    auto user_value = ifcapi::detail::deref_or_empty(user);
-    auto application_value = ifcapi::detail::deref_or_empty(application);
+    auto relating = options.relating_context;
+    auto owner_history_value = options.owner_history.value_or(express::Base());
+    auto user_value = options.user.value_or(express::Base());
+    auto application_value = options.application.value_or(express::Base());
     auto all_declares = declared_rels(relating);
 
     std::vector<express::Base> previous_rels;
@@ -82,7 +78,7 @@ express::Base project_assign_declaration(
     std::set<express::Base> seen_definitions;
     std::set<express::Base> seen_previous_rels;
 
-    for (auto definition : definitions) {
+    for (auto definition : options.definitions) {
         if (!definition) continue;
         if (!seen_definitions.insert(definition).second) continue;
         if (!has_inverse_attr(definition, "HasContext")) continue;
@@ -141,17 +137,14 @@ express::Base project_assign_declaration(
 
 void project_unassign_declaration(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& definitions,
-    express::Base* /*relating_context*/,
-    express::Base* user,
-    express::Base* application)
+    const ProjectUnassignDeclarationOptions& options)
 {
     std::set<express::Base> definition_set;
-    for (auto definition : definitions) {
+    for (auto definition : options.definitions) {
         if (definition) definition_set.insert(definition);
     }
-    auto user_value = ifcapi::detail::deref_or_empty(user);
-    auto application_value = ifcapi::detail::deref_or_empty(application);
+    auto user_value = options.user.value_or(express::Base());
+    auto application_value = options.application.value_or(express::Base());
     std::vector<express::Base> rels;
     std::set<express::Base> seen_rels;
     for (auto definition : definition_set) {

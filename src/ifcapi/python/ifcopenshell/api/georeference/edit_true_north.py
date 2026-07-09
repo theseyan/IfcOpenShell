@@ -19,7 +19,7 @@
 from typing import Optional, Union
 
 import ifcopenshell
-from ifcopenshell.api import _relationship_capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 import ifcopenshell.util.geolocation
 
 
@@ -52,14 +52,15 @@ def edit_true_north(file: ifcopenshell.file, true_north: Optional[Union[tuple[fl
         # This unsets true north
         ifcopenshell.api.georeference.edit_true_north(model, true_north=None)
     """
-    if isinstance(true_north, (float, int)):
-        x, y = ifcopenshell.util.geolocation.angle2yaxis(true_north)
-    elif true_north is not None:
-        x, y = true_north
-    _relationship_capi.call_status(
-        "georeference_edit_true_north",
-        _relationship_capi.file_handle(file),
-        true_north is not None,
-        x if true_north is not None else 0.0,
-        y if true_north is not None else 0.0,
+    if true_north is None:
+        vec = None
+    elif isinstance(true_north, (float, int)):
+        vec = list(ifcopenshell.util.geolocation.angle2yaxis(true_north))
+    else:
+        vec = list(true_north)
+    _capi.georeference_edit_true_north(
+        file._handle,
+        {
+            "true_north": vec,
+        },
     )

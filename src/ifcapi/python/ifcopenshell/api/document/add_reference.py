@@ -17,7 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-from ifcopenshell import _ifcopenshell_capi as _capi
+from ifcopenshell.api import _relationship_capi
 
 
 def add_reference(file: ifcopenshell.file, information: ifcopenshell.entity_instance) -> ifcopenshell.entity_instance:
@@ -62,7 +62,9 @@ def add_reference(file: ifcopenshell.file, information: ifcopenshell.entity_inst
         ifcopenshell.api.document.edit_reference(model,
             reference=reference2, attributes={"Identification": "2.1.15"})
     """
-    handle = _capi.document_add_reference(file._handle, information._handle if information is not None else None)
-    if handle:
-        return ifcopenshell.entity_instance(file, handle)
-    raise RuntimeError(_capi.last_error_message() or "Failed to add document reference")
+    return _relationship_capi.call_handle(
+        file,
+        "document_add_reference",
+        _relationship_capi.file_handle(file),
+        _relationship_capi.instance_handle(information),
+    )

@@ -6,27 +6,51 @@
 #include "ifcapi/bindings/contract.h"
 
 #include "ifcparse/express.h"
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING express::Base element_get_type(express::Base* instance);
-IFCAPI_BINDING express::Base element_get_aggregate(express::Base* instance);
-IFCAPI_BINDING express::Base element_get_nest(express::Base* instance);
-IFCAPI_BINDING express::Base element_get_container(
+struct ElementGetContainerOptions {
+    std::optional<bool> direct_only;
+    std::optional<std::string> ifc_class;
+};
+
+struct ElementGetMaterialOptions {
+    std::optional<bool> should_skip_usage;
+    std::optional<bool> should_inherit;
+};
+
+struct ElementGetShapeAspectsOptions {
+    std::optional<bool> should_inherit;
+};
+
+struct ElementGetDecompositionOptions {
+    std::optional<bool> is_recursive;
+};
+
+struct ElementGetPsetIdsOptions {
+    std::optional<bool> psets_only;
+    std::optional<bool> qtos_only;
+    std::optional<bool> should_inherit;
+};
+
+IFCAPI_BINDING std::optional<express::Base> element_get_type(express::Base* instance);
+IFCAPI_BINDING std::optional<express::Base> element_get_aggregate(express::Base* instance);
+IFCAPI_BINDING std::optional<express::Base> element_get_nest(express::Base* instance);
+IFCAPI_BINDING std::optional<express::Base> element_get_container(
     express::Base* instance,
-    bool direct_only,
-    const char* ifc_class);
-IFCAPI_BINDING express::Base element_get_parent(express::Base* instance);
-IFCAPI_BINDING express::Base element_get_material(
+    const ElementGetContainerOptions& options);
+IFCAPI_BINDING std::optional<express::Base> element_get_parent(express::Base* instance);
+IFCAPI_BINDING std::optional<express::Base> element_get_material(
     express::Base* instance,
-    bool should_skip_usage,
-    bool should_inherit);
+    const ElementGetMaterialOptions& options);
 IFCAPI_BINDING std::vector<express::Base> element_get_types(express::Base* type_element);
 IFCAPI_BINDING std::vector<express::Base> element_get_shape_aspects(
     express::Base* element,
-    bool should_inherit);
+    const ElementGetShapeAspectsOptions& options);
 IFCAPI_BINDING std::vector<express::Base> element_get_groups(express::Base* element);
 IFCAPI_BINDING std::vector<express::Base> element_get_controls(express::Base* element);
 IFCAPI_BINDING std::vector<express::Base> element_get_parts(express::Base* element);
@@ -34,8 +58,8 @@ IFCAPI_BINDING std::vector<express::Base> element_get_contained(express::Base* e
 IFCAPI_BINDING std::vector<express::Base> element_get_referenced_structures(express::Base* element);
 IFCAPI_BINDING std::vector<express::Base> element_get_structure_referenced_elements(express::Base* structure);
 IFCAPI_BINDING std::vector<express::Base> element_get_openings(express::Base* element);
-IFCAPI_BINDING express::Base element_get_filled_void(express::Base* element);
-IFCAPI_BINDING express::Base element_get_voided_element(express::Base* element);
+IFCAPI_BINDING std::optional<express::Base> element_get_filled_void(express::Base* element);
+IFCAPI_BINDING std::optional<express::Base> element_get_voided_element(express::Base* element);
 IFCAPI_BINDING bool element_is_userdefined_type(express::Base* element);
 IFCAPI_BINDING std::vector<express::Base> element_get_referenced_elements(express::Base* reference);
 IFCAPI_BINDING std::vector<express::Base> element_get_elements_by_material(express::Base* material);
@@ -51,12 +75,10 @@ IFCAPI_BINDING void element_replace_element(
 IFCAPI_BINDING void element_remove_deep(express::Base* element);
 IFCAPI_BINDING std::vector<express::Base> element_get_decomposition(
     express::Base* element,
-    bool is_recursive);
+    const ElementGetDecompositionOptions& options);
 IFCAPI_BINDING std::vector<express::Base> element_get_pset_ids(
     express::Base* element,
-    bool psets_only,
-    bool qtos_only,
-    bool should_inherit);
+    const ElementGetPsetIdsOptions& options);
 
 } // namespace bindings
 } // namespace ifcapi

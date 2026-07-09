@@ -49,11 +49,13 @@ def assign_constraint(
     product_list = [e._handle for e in products]
     handle = _capi.constraint_assign_constraint(
         file._handle,
-        product_list,
-        constraint._handle,
-        None,
-        user._handle if user is not None else None,
-        application._handle if application is not None else None,
+        {
+            "products": product_list,
+            "constraint": constraint._handle,
+            "owner_history": None,
+            "user": user._handle if user is not None else None,
+            "application": application._handle if application is not None else None,
+        },
     )
     if handle:
         return ifcopenshell.entity_instance(file, handle)

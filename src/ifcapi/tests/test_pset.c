@@ -69,18 +69,18 @@ static ifcopenshell_instance_t* list_get(ifcopenshell_parse_instance_list_t* lis
     return result;
 }
 
-static ifcopenshell_instance_t* owned_list_get(ifcopenshell_instance_list_t* list, size_t index) {
-    ASSERT(list != NULL, "owned instance list is non-NULL");
-    ASSERT(index < list->size, "owned instance list index in bounds");
-    ifcopenshell_instance_t* result = list->items[index];
-    ASSERT(result != NULL, "owned instance list item is non-NULL");
-    return result;
-}
-
 static ifcopenshell_instance_list_t make_instance_list(ifcopenshell_instance_t** items, size_t size) {
     ifcopenshell_instance_list_t result;
     result.items = items;
     result.size = size;
+    return result;
+}
+
+static ifcopenshell_parse_instance_list_t* make_parse_instance_list(ifcopenshell_instance_t** items, size_t size) {
+    ifcopenshell_instance_list_t handles = make_instance_list(items, size);
+    ifcopenshell_parse_instance_list_t* result = NULL;
+    ASSERT(ifcopenshell_parse_instance_list_create_from_handles(&handles, &result), "parse instance list creation succeeds");
+    ASSERT(result != NULL, "parse instance list is non-NULL");
     return result;
 }
 
@@ -98,8 +98,8 @@ static size_t list_size(ifcopenshell_parse_instance_list_t* list) {
     return result;
 }
 
-static ifcopenshell_instance_list_t by_type(ifcopenshell_file_t* file, const char* ifc_class) {
-    ifcopenshell_instance_list_t result = {0};
+static ifcopenshell_parse_instance_list_t* by_type(ifcopenshell_file_t* file, const char* ifc_class) {
+    ifcopenshell_parse_instance_list_t* result = NULL;
     ASSERT(ifcopenshell_file_by_type(file, ifc_class, &result), "by_type succeeds");
     return result;
 }
@@ -162,8 +162,10 @@ static void test_pset_add_and_edit(void) {
     ASSERT(wall != NULL, "wall is non-NULL");
 
     ifcopenshell_instance_t* pset = NULL;
-    ASSERT(ifcopenshell_pset_add_pset(
-        file, wall, "Pset_CSmoke", NULL, NULL, NULL, NULL, &pset), "pset_add_pset succeeds");
+    ifcopenshell_pset_add_pset_options_t add_options = {0};
+    add_options.product = wall;
+    add_options.name = "Pset_CSmoke";
+    ASSERT(ifcopenshell_pset_add_pset(file, &add_options, &pset), "pset_add_pset succeeds");
     ASSERT(pset != NULL, "pset is non-NULL");
     assert_instance_is(pset, "IfcPropertySet", "created instance is IfcPropertySet");
 
@@ -175,8 +177,13 @@ static void test_pset_add_and_edit(void) {
     ASSERT(ifcopenshell_pset_props_set_bool(props, "IsExternal", true), "props bool succeeds");
 
     bool ok = false;
-    ASSERT(ifcopenshell_pset_edit_pset(
-        file, pset, "Pset_CSmokeEdited", props, NULL, true, &ok), "pset_edit_pset call succeeds");
+    ifcopenshell_pset_edit_pset_options_t edit_options = {0};
+    edit_options.pset = pset;
+    edit_options.name = "Pset_CSmokeEdited";
+    edit_options.has_name = true;
+    edit_options.properties = props;
+    edit_options.should_purge = true;
+    ASSERT(ifcopenshell_pset_edit_pset(file, &edit_options, &ok), "pset_edit_pset call succeeds");
     ASSERT(ok, "pset_edit_pset returns true");
     ASSERT(ifcopenshell_pset_props_free(props), "props_free succeeds");
 
@@ -226,8 +233,10 @@ static void test_qto_add_and_edit(void) {
     ASSERT(wall != NULL, "wall is non-NULL");
 
     ifcopenshell_instance_t* qto = NULL;
-    ASSERT(ifcopenshell_pset_add_qto(file, wall, "Qto_CSmoke", NULL, NULL, NULL, &qto),
-           "pset_add_qto succeeds");
+    ifcopenshell_pset_add_qto_options_t add_options = {0};
+    add_options.product = wall;
+    add_options.name = "Qto_CSmoke";
+    ASSERT(ifcopenshell_pset_add_qto(file, &add_options, &qto), "pset_add_qto succeeds");
     ASSERT(qto != NULL, "qto is non-NULL");
     assert_instance_is(qto, "IfcElementQuantity", "created instance is IfcElementQuantity");
 
@@ -237,8 +246,12 @@ static void test_qto_add_and_edit(void) {
     ASSERT(ifcopenshell_pset_props_set_double(props, "Length", 12.5), "qto length prop succeeds");
 
     bool ok = false;
-    ASSERT(ifcopenshell_pset_edit_qto(file, qto, "Qto_CSmokeEdited", props, NULL, &ok),
-           "pset_edit_qto call succeeds");
+    ifcopenshell_pset_edit_qto_options_t edit_options = {0};
+    edit_options.qto = qto;
+    edit_options.name = "Qto_CSmokeEdited";
+    edit_options.has_name = true;
+    edit_options.properties = props;
+    ASSERT(ifcopenshell_pset_edit_qto(file, &edit_options, &ok), "pset_edit_qto call succeeds");
     ASSERT(ok, "pset_edit_qto returns true");
     ASSERT(ifcopenshell_pset_props_free(props), "props_free succeeds");
 
@@ -280,15 +293,20 @@ static void test_pset_assign_unassign_and_unshare(void) {
     }
 
     ifcopenshell_instance_t* pset = NULL;
-    ASSERT(ifcopenshell_pset_add_pset(file, walls[0], "Pset_AssignSmoke", NULL, NULL, NULL, NULL, &pset),
-           "pset_add_pset succeeds");
+    ifcopenshell_pset_add_pset_options_t add_options = {0};
+    add_options.product = walls[0];
+    add_options.name = "Pset_AssignSmoke";
+    ASSERT(ifcopenshell_pset_add_pset(file, &add_options, &pset), "pset_add_pset succeeds");
     ASSERT(pset != NULL, "pset is non-NULL");
 
     ifcopenshell_instance_t* assign_items[2] = {walls[1], walls[2]};
-    ifcopenshell_instance_list_t assign_list = make_instance_list(assign_items, 2);
+    ifcopenshell_parse_instance_list_t* assign_list = make_parse_instance_list(assign_items, 2);
     ifcopenshell_instance_t* rel = NULL;
-    ASSERT(ifcopenshell_pset_assign_pset(file, &assign_list, pset, NULL, NULL, NULL, &rel),
-           "pset_assign_pset succeeds");
+    ifcopenshell_pset_assign_pset_options_t assign_options = {0};
+    assign_options.products = assign_list;
+    assign_options.pset = pset;
+    ASSERT(ifcopenshell_pset_assign_pset(file, &assign_options, &rel), "pset_assign_pset succeeds");
+    ifcopenshell_parse_instance_list_destroy(assign_list);
     ASSERT(rel != NULL, "pset_assign_pset returns rel for occurrences");
     ifcopenshell_parse_instance_list_t* related = instance_list_argument(rel, 4);
     ASSERT(list_size(related) == 3, "assignment merged related objects");
@@ -302,26 +320,35 @@ static void test_pset_assign_unassign_and_unshare(void) {
     ifcopenshell_parse_instance_list_destroy(related);
     ifcopenshell_instance_destroy(rel);
 
-    ASSERT(ifcopenshell_pset_assign_pset(file, &unassign_list, pset, NULL, NULL, NULL, &rel),
-           "pset_assign_pset reassigns wall");
+    ifcopenshell_parse_instance_list_t* reassign_list = make_parse_instance_list(unassign_items, 1);
+    assign_options.products = reassign_list;
+    ASSERT(ifcopenshell_pset_assign_pset(file, &assign_options, &rel), "pset_assign_pset reassigns wall");
+    ifcopenshell_parse_instance_list_destroy(reassign_list);
     ASSERT(rel != NULL, "reassignment returns rel");
     ifcopenshell_instance_destroy(rel);
 
-    ifcopenshell_instance_list_t unshare_list = make_instance_list(assign_items, 2);
-    ifcopenshell_instance_list_t copied = {0};
-    ASSERT(ifcopenshell_pset_unshare_pset(file, &unshare_list, pset, NULL, NULL, NULL, &copied),
-           "pset_unshare_pset succeeds");
-    ASSERT(copied.size == 2, "unshare returns one copied pset per selected product");
-    ASSERT(owned_list_get(&copied, 0) != NULL, "first copied pset exists");
-    ASSERT(owned_list_get(&copied, 1) != NULL, "second copied pset exists");
+    ifcopenshell_parse_instance_list_t* unshare_list = make_parse_instance_list(assign_items, 2);
+    ifcopenshell_parse_instance_list_t* copied = NULL;
+    ifcopenshell_pset_unshare_pset_options_t unshare_options = {0};
+    unshare_options.products = unshare_list;
+    unshare_options.pset = pset;
+    ASSERT(ifcopenshell_pset_unshare_pset(file, &unshare_options, &copied), "pset_unshare_pset succeeds");
+    ifcopenshell_parse_instance_list_destroy(unshare_list);
+    ASSERT(list_size(copied) == 2, "unshare returns one copied pset per selected product");
+    ifcopenshell_instance_t* copied_pset = list_get(copied, 0);
+    ASSERT(copied_pset != NULL, "first copied pset exists");
+    ifcopenshell_instance_destroy(copied_pset);
+    copied_pset = list_get(copied, 1);
+    ASSERT(copied_pset != NULL, "second copied pset exists");
+    ifcopenshell_instance_destroy(copied_pset);
 
-    ifcopenshell_instance_list_t psets = by_type(file, "IfcPropertySet");
-    ASSERT(psets.size == 3, "unshare leaves three property sets");
-    ifcopenshell_instance_list_destroy(&psets);
-    ifcopenshell_instance_list_t rels = by_type(file, "IfcRelDefinesByProperties");
-    ASSERT(rels.size == 3, "unshare leaves one rel per pset");
-    ifcopenshell_instance_list_destroy(&rels);
-    ifcopenshell_instance_list_destroy(&copied);
+    ifcopenshell_parse_instance_list_t* psets = by_type(file, "IfcPropertySet");
+    ASSERT(list_size(psets) == 3, "unshare leaves three property sets");
+    ifcopenshell_parse_instance_list_destroy(psets);
+    ifcopenshell_parse_instance_list_t* rels = by_type(file, "IfcRelDefinesByProperties");
+    ASSERT(list_size(rels) == 3, "unshare leaves one rel per pset");
+    ifcopenshell_parse_instance_list_destroy(rels);
+    ifcopenshell_parse_instance_list_destroy(copied);
 
     for (size_t i = 0; i < 3; ++i) {
         ifcopenshell_instance_destroy(walls[i]);
@@ -348,15 +375,17 @@ static void test_pset_type_assignment_and_remove(void) {
     ASSERT(pset != NULL, "pset is non-NULL");
 
     ifcopenshell_instance_t* type_items[1] = {wall_type};
-    ifcopenshell_instance_list_t type_list = make_instance_list(type_items, 1);
+    ifcopenshell_parse_instance_list_t* type_assign_list = make_parse_instance_list(type_items, 1);
     ifcopenshell_instance_t* rel = NULL;
-    ASSERT(ifcopenshell_pset_assign_pset(file, &type_list, pset, NULL, NULL, NULL, &rel),
-           "type-only pset_assign_pset succeeds");
-    ASSERT(rel != NULL, "type-only assignment returns a nullable handle wrapper");
-    ifcopenshell_instance_destroy(rel);
-    ifcopenshell_instance_list_t type_rels = by_type(file, "IfcRelDefinesByProperties");
-    ASSERT(type_rels.size == 0, "type-only assignment creates no occurrence relation");
-    ifcopenshell_instance_list_destroy(&type_rels);
+    ifcopenshell_pset_assign_pset_options_t assign_options = {0};
+    assign_options.products = type_assign_list;
+    assign_options.pset = pset;
+    ASSERT(ifcopenshell_pset_assign_pset(file, &assign_options, &rel), "type-only pset_assign_pset succeeds");
+    ifcopenshell_parse_instance_list_destroy(type_assign_list);
+    ASSERT(rel == NULL, "type-only assignment returns no occurrence relation");
+    ifcopenshell_parse_instance_list_t* type_rels = by_type(file, "IfcRelDefinesByProperties");
+    ASSERT(list_size(type_rels) == 0, "type-only assignment creates no occurrence relation");
+    ifcopenshell_parse_instance_list_destroy(type_rels);
 
     ifcopenshell_parse_instance_list_t* type_psets = instance_list_argument(wall_type, 5);
     ASSERT(list_size(type_psets) == 1, "type assignment added one HasPropertySets item");
@@ -365,6 +394,7 @@ static void test_pset_type_assignment_and_remove(void) {
     ifcopenshell_instance_destroy(assigned);
     ifcopenshell_parse_instance_list_destroy(type_psets);
 
+    ifcopenshell_instance_list_t type_list = make_instance_list(type_items, 1);
     ASSERT(ifcopenshell_pset_unassign_pset(file, &type_list, pset), "type pset_unassign_pset succeeds");
     ifcopenshell_parse_attribute_value_t* attr = argument(wall_type, 5);
     bool is_null = false;
@@ -380,22 +410,28 @@ static void test_pset_type_assignment_and_remove(void) {
     ASSERT(ifcopenshell_parse_new_file("IFC4", 0, "", &file), "new IFC4 file for remove succeeds");
     ifcopenshell_instance_t* wall = NULL;
     ASSERT(ifcopenshell_file_create_entity_by_name(file, "IfcWall", &wall), "create wall for remove succeeds");
-    ASSERT(ifcopenshell_pset_add_pset(file, wall, "Pset_RemoveSmoke", NULL, NULL, NULL, NULL, &pset),
-           "pset_add_pset for remove succeeds");
+    ifcopenshell_pset_add_pset_options_t add_options = {0};
+    add_options.product = wall;
+    add_options.name = "Pset_RemoveSmoke";
+    ASSERT(ifcopenshell_pset_add_pset(file, &add_options, &pset), "pset_add_pset for remove succeeds");
     void* props = NULL;
     ASSERT(ifcopenshell_pset_props_new(&props), "remove props_new succeeds");
     ASSERT(ifcopenshell_pset_props_set_string(props, "Reference", "ABC"), "remove props string succeeds");
     bool ok = false;
-    ASSERT(ifcopenshell_pset_edit_pset(file, pset, NULL, props, NULL, true, &ok), "edit pset for remove succeeds");
+    ifcopenshell_pset_edit_pset_options_t edit_options = {0};
+    edit_options.pset = pset;
+    edit_options.properties = props;
+    edit_options.should_purge = true;
+    ASSERT(ifcopenshell_pset_edit_pset(file, &edit_options, &ok), "edit pset for remove succeeds");
     ASSERT(ok, "edit pset for remove returns true");
     ASSERT(ifcopenshell_pset_props_free(props), "remove props_free succeeds");
     ASSERT(ifcopenshell_pset_remove_pset(file, wall, pset), "pset_remove_pset succeeds");
-    ifcopenshell_instance_list_t psets = by_type(file, "IfcPropertySet");
-    ASSERT(psets.size == 0, "remove pset purges pset");
-    ifcopenshell_instance_list_destroy(&psets);
-    ifcopenshell_instance_list_t props_left = by_type(file, "IfcPropertySingleValue");
-    ASSERT(props_left.size == 0, "remove pset purges owned properties");
-    ifcopenshell_instance_list_destroy(&props_left);
+    ifcopenshell_parse_instance_list_t* psets = by_type(file, "IfcPropertySet");
+    ASSERT(list_size(psets) == 0, "remove pset purges pset");
+    ifcopenshell_parse_instance_list_destroy(psets);
+    ifcopenshell_parse_instance_list_t* props_left = by_type(file, "IfcPropertySingleValue");
+    ASSERT(list_size(props_left) == 0, "remove pset purges owned properties");
+    ifcopenshell_parse_instance_list_destroy(props_left);
 
     ifcopenshell_instance_destroy(pset);
     ifcopenshell_instance_destroy(wall);
@@ -428,30 +464,36 @@ static void test_group_remove_with_pset(void) {
     ASSERT(group_rel != NULL, "group relation is non-NULL");
 
     ifcopenshell_instance_t* pset = NULL;
-    ASSERT(ifcopenshell_pset_add_pset(file, group, "Pset_GroupSmoke", NULL, NULL, NULL, NULL, &pset),
-           "group pset_add_pset succeeds");
+    ifcopenshell_pset_add_pset_options_t add_options = {0};
+    add_options.product = group;
+    add_options.name = "Pset_GroupSmoke";
+    ASSERT(ifcopenshell_pset_add_pset(file, &add_options, &pset), "group pset_add_pset succeeds");
     void* props = NULL;
     ASSERT(ifcopenshell_pset_props_new(&props), "group pset props_new succeeds");
     ASSERT(ifcopenshell_pset_props_set_string(props, "Reference", "ABC"), "group pset prop succeeds");
     bool ok = false;
-    ASSERT(ifcopenshell_pset_edit_pset(file, pset, NULL, props, NULL, true, &ok), "group pset edit succeeds");
+    ifcopenshell_pset_edit_pset_options_t edit_options = {0};
+    edit_options.pset = pset;
+    edit_options.properties = props;
+    edit_options.should_purge = true;
+    ASSERT(ifcopenshell_pset_edit_pset(file, &edit_options, &ok), "group pset edit succeeds");
     ASSERT(ok, "group pset edit returns true");
     ASSERT(ifcopenshell_pset_props_free(props), "group pset props_free succeeds");
 
     ASSERT(ifcopenshell_group_remove_group(file, group), "group_remove_group succeeds");
 
-    ifcopenshell_instance_list_t groups = by_type(file, "IfcGroup");
-    ASSERT(groups.size == 0, "group removal purges group");
-    ifcopenshell_instance_list_destroy(&groups);
-    ifcopenshell_instance_list_t group_rels = by_type(file, "IfcRelAssignsToGroup");
-    ASSERT(group_rels.size == 0, "group removal purges group relationships");
-    ifcopenshell_instance_list_destroy(&group_rels);
-    ifcopenshell_instance_list_t psets = by_type(file, "IfcPropertySet");
-    ASSERT(psets.size == 0, "group removal purges group psets");
-    ifcopenshell_instance_list_destroy(&psets);
-    ifcopenshell_instance_list_t props_left = by_type(file, "IfcPropertySingleValue");
-    ASSERT(props_left.size == 0, "group removal purges group pset properties");
-    ifcopenshell_instance_list_destroy(&props_left);
+    ifcopenshell_parse_instance_list_t* groups = by_type(file, "IfcGroup");
+    ASSERT(list_size(groups) == 0, "group removal purges group");
+    ifcopenshell_parse_instance_list_destroy(groups);
+    ifcopenshell_parse_instance_list_t* group_rels = by_type(file, "IfcRelAssignsToGroup");
+    ASSERT(list_size(group_rels) == 0, "group removal purges group relationships");
+    ifcopenshell_parse_instance_list_destroy(group_rels);
+    ifcopenshell_parse_instance_list_t* psets = by_type(file, "IfcPropertySet");
+    ASSERT(list_size(psets) == 0, "group removal purges group psets");
+    ifcopenshell_parse_instance_list_destroy(psets);
+    ifcopenshell_parse_instance_list_t* props_left = by_type(file, "IfcPropertySingleValue");
+    ASSERT(list_size(props_left) == 0, "group removal purges group pset properties");
+    ifcopenshell_parse_instance_list_destroy(props_left);
 
     ifcopenshell_instance_destroy(pset);
     ifcopenshell_instance_destroy(group_rel);

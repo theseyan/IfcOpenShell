@@ -53,8 +53,9 @@ def add_structural_boundary_condition(
         file,
         "structural_add_structural_boundary_condition",
         _capi.file_handle(file),
-        _capi.string(name) if name is not None else None,
-        name is not None,
-        _capi.instance_handle(connection),
         _capi.string(ifc_class),
+        {
+            "name": name if name is not None else None,
+            "connection": _capi.instance_handle(connection),
+        },
     )

@@ -57,5 +57,5 @@ def remove_constituent(
         "Failed to remove material constituent",
         _capi.file_handle(file),
         _capi.instance_handle(constituent),
-        should_remove_material,
+        {"should_remove_material": should_remove_material},
     )

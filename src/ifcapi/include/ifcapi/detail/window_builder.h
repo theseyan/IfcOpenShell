@@ -108,14 +108,18 @@ inline std::vector<express::Base> create_window_frame_simple(
             {size[0] - (thickness[0] + thickness[2]), size[2] - (thickness[3] + thickness[1])},
             {thickness[0], thickness[3]},
             true);
-        auto panel_profile = ifcapi::bindings::shape_builder_profile(file, &panel_rect, nullptr, {inner_rect}, "AREA");
+        auto panel_profile = ifcapi::bindings::shape_builder_profile(
+            file,
+            ifcapi::bindings::ShapeBuilderProfileOptions{panel_rect, {}, {inner_rect}, "AREA"});
         result.push_back(extrude_y(file, panel_profile, size[1], position));
         return result;
     }
 
     for (const auto& segment : segments_from_thickness(thickness)) {
         auto curve = polyline(file, window_segment_points(segment, size, thickness), true);
-        auto panel_profile = ifcapi::bindings::shape_builder_profile(file, &curve, nullptr, {}, "AREA");
+        auto panel_profile = ifcapi::bindings::shape_builder_profile(
+            file,
+            ifcapi::bindings::ShapeBuilderProfileOptions{curve, {}, {}, "AREA"});
         result.push_back(extrude_y(file, panel_profile, size[1], position));
     }
     return result;

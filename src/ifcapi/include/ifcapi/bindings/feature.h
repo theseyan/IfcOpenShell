@@ -8,24 +8,40 @@
 #include "ifcparse/express.h"
 #include "ifcparse/file.h"
 
+#include <optional>
+
 namespace ifcapi {
 namespace bindings {
 
+/**
+ * Options for adding a feature element to a host element.
+ */
+struct FeatureAddFeatureOptions {
+    express::Base feature;
+    express::Base element;
+    std::optional<express::Base> user;
+    std::optional<express::Base> application;
+};
+
+/**
+ * Options for removing a feature element and its relationship.
+ */
+struct FeatureRemoveFeatureOptions {
+    express::Base feature;
+    std::optional<express::Base> user;
+    std::optional<express::Base> application;
+};
+
 IFCAPI_BINDING express::Base feature_add_feature(
     ifcopenshell::file* file,
-    express::Base* feature,
-    express::Base* element,
-    IFCAPI_NULLABLE express::Base* user,
-    IFCAPI_NULLABLE express::Base* application);
+    const FeatureAddFeatureOptions& options);
 IFCAPI_BINDING express::Base feature_add_filling(
     ifcopenshell::file* file,
     express::Base* opening,
     express::Base* element);
 IFCAPI_BINDING void feature_remove_feature(
     ifcopenshell::file* file,
-    express::Base* feature,
-    IFCAPI_NULLABLE express::Base* user,
-    IFCAPI_NULLABLE express::Base* application);
+    const FeatureRemoveFeatureOptions& options);
 IFCAPI_BINDING void feature_remove_filling(
     ifcopenshell::file* file,
     express::Base* element);

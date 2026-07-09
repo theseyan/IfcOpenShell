@@ -39,14 +39,14 @@ express::Base extrude_support_disk(
     const double rotated = -angle;
     return ifcapi::bindings::shape_builder_extrude(
         file,
-        &circle,
-        depth,
-        position,
-        {0.0, 0.0, -1.0},
-        ifcapi::detail::rotate_xy({0.0, -1.0, 0.0}, rotated),
-        ifcapi::detail::rotate_xy({1.0, 0.0, 0.0}, rotated),
-        {},
-        false);
+        ifcapi::bindings::ShapeBuilderExtrudeOptions{
+            circle,
+            depth,
+            position,
+            {0.0, 0.0, -1.0},
+            ifcapi::detail::rotate_xy({0.0, -1.0, 0.0}, rotated),
+            ifcapi::detail::rotate_xy({1.0, 0.0, 0.0}, rotated),
+            {}});
 }
 
 std::vector<express::Base> add_support_on_point(
@@ -68,7 +68,9 @@ std::vector<express::Base> add_support_on_point(
             ifcapi::detail::vec_mul(z_down, support_length * std::sin(PI / 4.0))),
         ifcapi::detail::vec_add(arc_center, ifcapi::detail::vec_mul(z_down, support_length)),
     };
-    auto polyline = ifcapi::bindings::shape_builder_polyline(file, support_points, false, {}, false, {1});
+    auto polyline = ifcapi::bindings::shape_builder_polyline(
+        file,
+        ifcapi::bindings::ShapeBuilderPolylineOptions{support_points, false, {}, {1}});
     auto solid = ifcapi::bindings::shape_builder_swept_disk_solid(file, &polyline, support_radius);
     auto disk_circle = ifcapi::bindings::shape_builder_circle(file, {}, support_disk_radius);
     const double angle = ifcapi::detail::np_angle_signed({0.0, 1.0}, {ortho_dir[0], ortho_dir[1]});
@@ -308,23 +310,25 @@ namespace bindings {
 
 express::Base geometry_add_railing_representation(
     ifcopenshell::file* file,
-    express::Base* context,
-    const std::vector<std::vector<double>>& input_railing_path,
-    bool use_manual_supports,
-    double support_spacing,
-    double railing_diameter,
-    double clear_width,
-    const std::string& terminal_type,
-    double input_height,
-    bool looped_path,
-    double unit_scale)
+    const GeometryAddRailingRepresentationOptions& options)
 {
     ifcopenshell_clear_error();
-    if (!file || !context) {
+    if (!file || !options.context) {
         set_error("Invalid arguments");
         return {};
     }
     try {
+        express::Base context_value = options.context;
+        express::Base* context = &context_value;
+        const auto& input_railing_path = options.railing_path;
+        const bool use_manual_supports = options.use_manual_supports;
+        const double support_spacing = options.support_spacing;
+        const double railing_diameter = options.railing_diameter;
+        const double clear_width = options.clear_width;
+        const std::string& terminal_type = options.terminal_type;
+        const double input_height = options.height;
+        const bool looped_path = options.looped_path;
+        const double unit_scale = options.unit_scale;
         if (input_railing_path.size() < 2) {
             throw std::runtime_error("Railing path requires at least two points");
         }
@@ -358,9 +362,14 @@ express::Base geometry_add_railing_representation(
             add_cap(railing_coords, arc_points, terminal_type, terminal_radius, clear_width, height, true);
             add_cap(railing_coords, arc_points, terminal_type, terminal_radius, clear_width, height, false);
         }
-        auto path = ifcapi::bindings::shape_builder_polyline(file, railing_coords, false, {}, false, get_arc_indices(railing_coords, arc_points));
+        auto path = ifcapi::bindings::shape_builder_polyline(
+            file,
+            ifcapi::bindings::ShapeBuilderPolylineOptions{
+                railing_coords, false, {}, get_arc_indices(railing_coords, arc_points)});
         items.push_back(ifcapi::bindings::shape_builder_swept_disk_solid(file, &path, railing_radius));
-        return shape_builder_representation(file, context, ifcapi::detail::const_refs(items), "SolidModel");
+        return shape_builder_representation(
+            file,
+            ShapeBuilderRepresentationOptions{*context, ifcapi::detail::const_refs(items), "SolidModel"});
     } catch (const std::exception& e) {
         set_error(e.what());
         return {};

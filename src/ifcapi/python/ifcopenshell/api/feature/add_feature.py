@@ -108,8 +108,10 @@ def add_feature(
         "feature_add_feature",
         "Failed to add feature",
         _capi.file_handle(file),
-        _capi.instance_handle(feature),
-        _capi.instance_handle(element),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+        {
+            "feature": _capi.instance_handle(feature),
+            "element": _capi.instance_handle(element),
+            "user": _capi.instance_handle(user),
+            "application": _capi.instance_handle(application),
+        },
     )

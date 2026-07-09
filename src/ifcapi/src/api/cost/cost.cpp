@@ -25,6 +25,7 @@
 #include <set>
 #include <stdexcept>
 #include <utility>
+#include <variant>
 
 namespace {
 
@@ -576,7 +577,7 @@ void cost_edit_cost_value(
     bool has_unit_basis,
     bool unit_basis_is_null,
     double value_component,
-    express::Base unit_component)
+    std::optional<express::Base> unit_component)
 {
     ifcopenshell_clear_error();
     try {
@@ -602,12 +603,12 @@ void cost_edit_cost_value(
                 if (!unit_component) {
                     throw std::runtime_error("UnitBasis requires a UnitComponent");
                 }
-                auto unit_type = ifcapi::detail::read_string_attr(unit_component, "UnitType");
+                auto unit_type = ifcapi::detail::read_string_attr(*unit_component, "UnitType");
                 auto measure_class = unit_get_measure_class(unit_type);
                 auto measure = create_measure(file, measure_class, value_component);
                 new_unit_basis = create_entity(file, "IfcMeasureWithUnit");
                 ifcapi::detail::write_ref_attr(new_unit_basis, "ValueComponent", measure);
-                ifcapi::detail::write_ref_attr(new_unit_basis, "UnitComponent", unit_component);
+                ifcapi::detail::write_ref_attr(new_unit_basis, "UnitComponent", *unit_component);
             }
             if (old_unit_basis) {
                 entity_remove_deep2(&old_unit_basis);
@@ -644,12 +645,23 @@ express::Base cost_add_cost_schedule(
 {
     ifcopenshell_clear_error();
     try {
-        auto schedule = root_create_entity(file, "IfcCostSchedule", predefined_type.c_str(), name, detail::nullable_ptr(owner_history));
+        RootCreateEntityOptions options;
+        options.ifc_class = "IfcCostSchedule";
+        if (!predefined_type.empty()) {
+            options.predefined_type = predefined_type;
+        }
+        if (name && name[0] != '\0') {
+            options.name = name;
+        }
+        if (owner_history) {
+            options.owner_history = owner_history;
+        }
+        auto schedule = root_create_entity(file, options);
         auto result = sequence_add_date_time(file, update_date);
-        if (result.is_entity) {
-            ifcapi::detail::write_ref_attr(schedule, "UpdateDate", result.date_time);
+        if (std::holds_alternative<express::Base>(result)) {
+            ifcapi::detail::write_ref_attr(schedule, "UpdateDate", std::get<express::Base>(result));
         } else {
-            ifcapi::detail::write_string_attr(schedule, "UpdateDate", result.date_time_string);
+            ifcapi::detail::write_string_attr(schedule, "UpdateDate", std::get<std::string>(result));
         }
         return schedule;
     } catch (const std::exception& e) {
@@ -668,23 +680,28 @@ express::Base cost_add_cost_item(
 {
     ifcopenshell_clear_error();
     try {
-        auto item = root_create_entity(file, "IfcCostItem", nullptr, nullptr, detail::nullable_ptr(owner_history));
+        RootCreateEntityOptions options;
+        options.ifc_class = "IfcCostItem";
+        if (owner_history) {
+            options.owner_history = owner_history;
+        }
+        auto item = root_create_entity(file, options);
         if (cost_schedule) {
-            control_assign_control(
-                file,
-                &cost_schedule,
+            control_assign_control(file, {
+                cost_schedule,
                 {item},
-                detail::nullable_ptr(owner_history),
-                detail::nullable_ptr(user),
-                detail::nullable_ptr(application));
+                owner_history ? std::optional<express::Base>(owner_history) : std::nullopt,
+                user ? std::optional<express::Base>(user) : std::nullopt,
+                application ? std::optional<express::Base>(application) : std::nullopt,
+            });
         } else if (parent_cost_item) {
-            nest_assign_object(
-                file,
-                {item},
-                &parent_cost_item,
-                detail::nullable_ptr(owner_history),
-                detail::nullable_ptr(user),
-                detail::nullable_ptr(application));
+            NestAssignObjectOptions nest_opts;
+            nest_opts.products = {item};
+            nest_opts.relating_object = parent_cost_item;
+            if (owner_history) nest_opts.owner_history = owner_history;
+            if (user) nest_opts.user = user;
+            if (application) nest_opts.application = application;
+            nest_assign_object(file, nest_opts);
         }
         return item;
     } catch (const std::exception& e) {
@@ -748,13 +765,13 @@ void cost_assign_cost_item_quantity(
         for (auto raw_product : products) {
             auto product = raw_product;
             if (!product || is_a(product, "IfcSpatialElement")) continue;
-            control_assign_control(
-                file,
-                &cost_item,
+            control_assign_control(file, {
+                cost_item,
                 {product},
-                detail::nullable_ptr(owner_history),
-                detail::nullable_ptr(user),
-                detail::nullable_ptr(application));
+                owner_history ? std::optional<express::Base>(owner_history) : std::nullopt,
+                user ? std::optional<express::Base>(user) : std::nullopt,
+                application ? std::optional<express::Base>(application) : std::nullopt,
+            });
             if (prop.empty()) continue;
             auto existing = ifcapi::detail::read_ref_aggregate(cost_item, "CostQuantities");
             if (!existing.empty()) {
@@ -827,7 +844,12 @@ void cost_unassign_cost_item_quantity(
             "CostQuantities",
             std::vector<express::Base>(quantities.begin(), quantities.end()));
         for (auto product : product_vec) {
-            control_unassign_control(file, &cost_item, {product}, detail::nullable_ptr(user), detail::nullable_ptr(application));
+            control_unassign_control(file, {
+                cost_item,
+                {product},
+                user ? std::optional<express::Base>(user) : std::nullopt,
+                application ? std::optional<express::Base>(application) : std::nullopt,
+            });
         }
         auto existing = ifcapi::detail::read_ref_aggregate(cost_item, "CostQuantities");
         if (existing.size() == 1 && is_a(existing.front(), "IfcQuantityCount")) {
@@ -959,8 +981,17 @@ private:
                     ifcapi::detail::write_ref_attr(rel, "RelatingObject", to_element);
                     ifcapi::detail::write_ref_aggregate(rel, "RelatedObjects", new_children);
                     std::vector<express::Base> child_const(new_children.begin(), new_children.end());
-                    nest_unassign_object(file_, child_const, nullptr, nullptr);
-                    nest_assign_object(file_, child_const, &to_element, nullptr, nullptr, nullptr);
+                    {
+                        NestUnassignObjectOptions unassign_opts;
+                        unassign_opts.products = child_const;
+                        nest_unassign_object(file_, unassign_opts);
+                    }
+                    {
+                        NestAssignObjectOptions assign_opts;
+                        assign_opts.products = child_const;
+                        assign_opts.relating_object = to_element;
+                        nest_assign_object(file_, assign_opts);
+                    }
                 }
             } else {
                 auto* declaration = inverse.declaration().as_entity();
@@ -1025,13 +1056,13 @@ express::Base cost_copy_cost_schedule(
             for (auto cost_item : ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects")) {
                 auto duplicated = cost_copy_cost_item(file, cost_item);
                 if (!duplicated.empty()) {
-                    control_assign_control(
-                        file,
-                        &new_schedule,
+                    control_assign_control(file, {
+                        new_schedule,
                         {duplicated.front()},
-                        detail::nullable_ptr(owner_history),
-                        detail::nullable_ptr(user),
-                        detail::nullable_ptr(application));
+                        owner_history ? std::optional<express::Base>(owner_history) : std::nullopt,
+                        user ? std::optional<express::Base>(user) : std::nullopt,
+                        application ? std::optional<express::Base>(application) : std::nullopt,
+                    });
                 }
             }
         }
@@ -1126,19 +1157,16 @@ void cost_edit_cost_value(
     ifcopenshell::file* file,
     express::Base* cost_value,
     ifcopenshell_pset_props_t* attributes,
-    bool has_unit_basis,
-    bool unit_basis_is_null,
-    double value_component,
-    express::Base* unit_component)
+    const CostEditCostValueOptions& options)
 {
     cost_edit_cost_value(
         file,
         detail::deref_or_empty(cost_value),
         attributes,
-        has_unit_basis,
-        unit_basis_is_null,
-        value_component,
-        detail::deref_or_empty(unit_component));
+        options.edit_unit_basis,
+        options.clear_unit_basis,
+        options.value_component,
+        options.unit_component);
 }
 
 void cost_edit_cost_value_formula(ifcopenshell::file* file, express::Base* cost_value, const std::string& formula) {
@@ -1150,26 +1178,22 @@ express::Base cost_add_cost_schedule(
     const char* name,
     const std::string& predefined_type,
     const std::string& update_date,
-    express::Base* owner_history)
+    std::optional<express::Base> owner_history)
 {
-    return cost_add_cost_schedule(file, name, predefined_type, update_date, detail::deref_or_empty(owner_history));
+    return cost_add_cost_schedule(file, name, predefined_type, update_date, owner_history.value_or(express::Base{}));
 }
 
 express::Base cost_add_cost_item(
     ifcopenshell::file* file,
-    express::Base* cost_schedule,
-    express::Base* parent_cost_item,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const CostAddCostItemOptions& options)
 {
     return cost_add_cost_item(
         file,
-        detail::deref_or_empty(cost_schedule),
-        detail::deref_or_empty(parent_cost_item),
-        detail::deref_or_empty(owner_history),
-        detail::deref_or_empty(user),
-        detail::deref_or_empty(application));
+        options.cost_schedule.value_or(express::Base{}),
+        options.cost_item.value_or(express::Base{}),
+        options.owner_history.value_or(express::Base{}),
+        options.user.value_or(express::Base{}),
+        options.application.value_or(express::Base{}));
 }
 
 express::Base cost_add_cost_value(ifcopenshell::file* file, express::Base* parent) {
@@ -1185,29 +1209,30 @@ void cost_assign_cost_item_quantity(
     express::Base* cost_item,
     const std::vector<express::Base>& products,
     const char* prop_name,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const CostAssignCostItemQuantityOptions& options)
 {
     cost_assign_cost_item_quantity(
         file,
         detail::deref_or_empty(cost_item),
         products,
         prop_name,
-        detail::deref_or_empty(owner_history),
-        detail::deref_or_empty(user),
-        detail::deref_or_empty(application));
+        options.owner_history.value_or(express::Base{}),
+        options.user.value_or(express::Base{}),
+        options.application.value_or(express::Base{}));
 }
 
 void cost_unassign_cost_item_quantity(
     ifcopenshell::file* file,
     express::Base* cost_item,
     const std::vector<express::Base>& products,
-    express::Base* user,
-    express::Base* application)
+    const CostUnassignCostItemQuantityOptions& options)
 {
     cost_unassign_cost_item_quantity(
-        file, detail::deref_or_empty(cost_item), products, detail::deref_or_empty(user), detail::deref_or_empty(application));
+        file,
+        detail::deref_or_empty(cost_item),
+        products,
+        options.user.value_or(express::Base{}),
+        options.application.value_or(express::Base{}));
 }
 
 void cost_remove_cost_item_quantity(ifcopenshell::file* file, express::Base* cost_item, express::Base* physical_quantity) {
@@ -1245,16 +1270,14 @@ std::vector<express::Base> cost_copy_cost_item(ifcopenshell::file* file, express
 express::Base cost_copy_cost_schedule(
     ifcopenshell::file* file,
     express::Base* cost_schedule,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const CostCopyCostScheduleOptions& options)
 {
     return cost_copy_cost_schedule(
         file,
         detail::deref_or_empty(cost_schedule),
-        detail::deref_or_empty(owner_history),
-        detail::deref_or_empty(user),
-        detail::deref_or_empty(application));
+        options.owner_history.value_or(express::Base{}),
+        options.user.value_or(express::Base{}),
+        options.application.value_or(express::Base{}));
 }
 
 void cost_remove_cost_item(ifcopenshell::file* file, express::Base* cost_item) {

@@ -72,8 +72,9 @@ static void test_error_handling(void) {
 
     /* NULL file should fail gracefully */
     ifcopenshell_instance_t* inst = NULL;
-    ASSERT(!ifcopenshell_root_create_entity(NULL, "IfcWall", NULL, NULL, NULL, &inst),
-           "NULL file returns false");
+    ifcopenshell_root_create_entity_options_t options = {0};
+    options.ifc_class = "IfcWall";
+    ASSERT(!ifcopenshell_root_create_entity(NULL, &options, &inst), "NULL file returns false");
     ASSERT(inst == NULL, "NULL file leaves output NULL");
     ASSERT(strlen(ifcopenshell_last_error_message()) > 0, "error message set");
     printf("  Error msg: %s\n", ifcopenshell_last_error_message());
@@ -137,10 +138,12 @@ static void test_file_ops(void) {
     ifcopenshell_parse_attribute_value_destroy(name_value);
 
     /* by_type */
-    ifcopenshell_instance_list_t walls = {0};
+    ifcopenshell_parse_instance_list_t* walls = NULL;
     ASSERT(ifcopenshell_file_by_type(f, "IfcWall", &walls), "by_type succeeds");
-    ASSERT(walls.size == 1, "by_type count is 1");
-    ifcopenshell_instance_list_destroy(&walls);
+    size_t wall_count = 0;
+    ASSERT(ifcopenshell_parse_instance_list_size(walls, &wall_count), "by_type count succeeds");
+    ASSERT(wall_count == 1, "by_type count is 1");
+    ifcopenshell_parse_instance_list_destroy(walls);
 
     ifcopenshell_instance_destroy(wall);
     ifcopenshell_file_destroy(f);

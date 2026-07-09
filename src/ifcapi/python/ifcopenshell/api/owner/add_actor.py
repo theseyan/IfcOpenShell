@@ -22,6 +22,7 @@ from typing import Literal
 import ifcopenshell
 import ifcopenshell.api.owner.settings
 from ifcopenshell import _ifcopenshell_capi as _capi
+from ifcopenshell._capi_utils import instance_handle
 
 ACTOR_TYPE = Literal["IfcActor", "IfcOccupant"]
 
@@ -67,14 +68,13 @@ def add_actor(
     """
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
-    handle = _capi.owner_add_actor(
-        file._handle,
-        actor._handle,
-        ifc_class or "IfcActor",
-        None,
-        user._handle if user is not None else None,
-        application._handle if application is not None else None,
-    )
+    opts = {
+        "actor": actor._handle,
+        "ifc_class": ifc_class or "IfcActor",
+        "user": instance_handle(user),
+        "application": instance_handle(application),
+    }
+    handle = _capi.owner_add_actor(file._handle, opts)
     if handle:
         return ifcopenshell.entity_instance(file, handle)
     raise RuntimeError(_capi.last_error_message() or "Failed to add actor")

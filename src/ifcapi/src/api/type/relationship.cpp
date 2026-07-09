@@ -240,48 +240,33 @@ namespace bindings {
 
 express::Base type_assign_type(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& objects,
-    express::Base* relating_type,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const TypeAssignTypeOptions& options)
 {
     return assign_type_core(
-        file, objects, deref_or_empty(relating_type), true, deref_or_empty(owner_history),
-        deref_or_empty(user), deref_or_empty(application));
-}
-
-express::Base type_assign_type_ex(
-    ifcopenshell::file* file,
-    const std::vector<express::Base>& objects,
-    express::Base* relating_type,
-    bool should_map_representations,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
-{
-    return assign_type_core(
-        file, objects, deref_or_empty(relating_type), should_map_representations, deref_or_empty(owner_history),
-        deref_or_empty(user), deref_or_empty(application));
+        file,
+        options.objects,
+        options.relating_type,
+        options.should_map_representations.value_or(true),
+        options.owner_history.value_or(express::Base()),
+        options.user.value_or(express::Base()),
+        options.application.value_or(express::Base()));
 }
 
 void type_unassign_type(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& objects,
-    express::Base* user,
-    express::Base* application)
+    const TypeUnassignTypeOptions& options)
 {
-    if (!file || objects.empty()) return;
+    if (!file || options.objects.empty()) return;
 
     try {
         const auto* rdt_decl = file->schema()->declaration_by_name("IfcRelDefinesByType");
         auto* rdt_entity_decl = rdt_decl->as_entity();
         int related_idx = find_attr_index(rdt_entity_decl, "RelatedObjects");
 
-        auto user_value = deref_or_empty(user);
-        auto application_value = deref_or_empty(application);
+        auto user_value = options.user.value_or(express::Base());
+        auto application_value = options.application.value_or(express::Base());
         std::set<express::Base> objects_set;
-        for (auto object : objects) {
+        for (auto object : options.objects) {
             if (object) objects_set.insert(object);
         }
 

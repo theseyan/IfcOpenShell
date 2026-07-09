@@ -195,11 +195,12 @@ std::vector<express::Base> element_get_types(express::Base* type_element) {
 
 std::vector<express::Base> element_get_shape_aspects(
     express::Base* element,
-    bool should_inherit)
+    const ElementGetShapeAspectsOptions& options)
 {
     auto element_value = detail::deref_or_empty(element);
     if (!element_value) return {};
     auto* f = element_value.file();
+    bool should_inherit = options.should_inherit.value_or(true);
 
     std::vector<express::Base> result;
 
@@ -207,7 +208,10 @@ std::vector<express::Base> element_get_shape_aspects(
         if (should_inherit) {
             auto type_e = element_get_type(&element_value);
             if (type_e) {
-                auto inherited = element_get_shape_aspects(&type_e, false);
+                auto type_value = *type_e;
+                ElementGetShapeAspectsOptions inherited_options;
+                inherited_options.should_inherit = false;
+                auto inherited = element_get_shape_aspects(&type_value, inherited_options);
                 result.insert(result.end(), inherited.begin(), inherited.end());
             }
         }
@@ -311,19 +315,19 @@ std::vector<express::Base> element_get_openings(express::Base* element) {
     return result;
 }
 
-express::Base element_get_filled_void(express::Base* element) {
+std::optional<express::Base> element_get_filled_void(express::Base* element) {
     auto element_value = detail::deref_or_empty(element);
-    if (!element_value) return {};
+    if (!element_value) return std::nullopt;
     auto inv = inverse_attr(element_value, "FillsVoids");
-    if (inv.empty()) return {};
+    if (inv.empty()) return std::nullopt;
     return read_ref(inv.front(), "RelatingOpeningElement");
 }
 
-express::Base element_get_voided_element(express::Base* element) {
+std::optional<express::Base> element_get_voided_element(express::Base* element) {
     auto element_value = detail::deref_or_empty(element);
-    if (!element_value) return {};
+    if (!element_value) return std::nullopt;
     auto inv = inverse_attr(element_value, "VoidsElements");
-    if (inv.empty()) return {};
+    if (inv.empty()) return std::nullopt;
     return read_ref(inv.front(), "RelatingBuildingElement");
 }
 
@@ -336,16 +340,16 @@ bool element_is_userdefined_type(express::Base* element) {
     bool decided = false;
 
     if (type_e) {
-        std::string pt = ifcapi::get_string_attr(type_e, "PredefinedType");
+        std::string pt = ifcapi::get_string_attr(*type_e, "PredefinedType");
         if (pt == "USERDEFINED") { result = true; decided = true; }
         else if (pt.empty()) {
             std::string et;
             bool has_secondary = false;
-            if (ifcapi::has_attr(type_e, "ElementType")) {
-                et = ifcapi::get_string_attr(type_e, "ElementType");
+            if (ifcapi::has_attr(*type_e, "ElementType")) {
+                et = ifcapi::get_string_attr(*type_e, "ElementType");
                 has_secondary = true;
-            } else if (ifcapi::has_attr(type_e, "ProcessType")) {
-                et = ifcapi::get_string_attr(type_e, "ProcessType");
+            } else if (ifcapi::has_attr(*type_e, "ProcessType")) {
+                et = ifcapi::get_string_attr(*type_e, "ProcessType");
                 has_secondary = true;
             }
             if (has_secondary && !et.empty()) { result = true; decided = true; }

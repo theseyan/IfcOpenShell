@@ -63,9 +63,11 @@ def assign_product(
         file,
         "drawing_assign_product",
         _relationship_capi.file_handle(file),
-        _relationship_capi.instance_handle(relating_product),
-        _relationship_capi.instance_handle(related_object),
-        _relationship_capi.instance_handle(owner_history),
-        _relationship_capi.instance_handle(user),
-        _relationship_capi.instance_handle(application),
+        {
+            "relating_product": _relationship_capi.instance_handle(relating_product),
+            "related_object": _relationship_capi.instance_handle(related_object),
+            "owner_history": _relationship_capi.instance_handle(owner_history),
+            "user": _relationship_capi.instance_handle(user),
+            "application": _relationship_capi.instance_handle(application),
+        },
     )

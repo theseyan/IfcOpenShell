@@ -9,6 +9,7 @@ try:
     from ...host_metadata import (
         HostBindingMetadata,
         HostFunctionMetadata,
+        HostOptionStructMetadata,
         HostParamMetadata,
         HostStructMetadata,
     )
@@ -18,6 +19,7 @@ except ImportError:  # pragma: no cover - script execution fallback
     from host_metadata import (
         HostBindingMetadata,
         HostFunctionMetadata,
+        HostOptionStructMetadata,
         HostParamMetadata,
         HostStructMetadata,
     )
@@ -151,6 +153,20 @@ def _discover_all_handle_types(api_header_path: Path) -> dict[str, HostStructMet
         )
         for match in pattern.finditer(header)
     }
+
+
+def _discover_api_function_names(api_header_path: Path) -> set[str]:
+    header = api_header_path.read_text(encoding="utf-8")
+    pattern = re.compile(
+        r"^\s*[A-Za-z_][A-Za-z0-9_\s\*]*\s+(ifcopenshell_[A-Za-z0-9_]+)\s*\(",
+        re.MULTILINE,
+    )
+    return {match.group(1) for match in pattern.finditer(header)}
+
+
+def _option_by_c_type(c_type: str, metadata: HostBindingMetadata) -> HostOptionStructMetadata | None:
+    normalized = _normalize_c_type(c_type).removeprefix("const ").removesuffix("*").strip()
+    return next((option for option in metadata.option_structs.values() if option.c_type == normalized), None)
 
 
 def _render_handle_type_decl(handle: HostStructMetadata) -> str:
@@ -371,9 +387,44 @@ static PyObject *convert_{_snake_name(struct.c_type)}({struct.c_type} *value, in
 """
 
 
+def _render_optional_result_struct_converter(
+    struct: HostStructMetadata,
+    value_types: dict[str, HostStructMetadata],
+    handles: dict[str, HostStructMetadata],
+) -> str:
+    payload = next(field for field in struct.fields if field.name == "value")
+    payload_c_type = payload.c_type.removeprefix("const ").removesuffix("*").strip()
+    payload_type = next(item for item in value_types.values() if item.c_type == payload_c_type)
+    return f"""\
+static PyObject *convert_{_snake_name(struct.c_type)}({struct.c_type} *value, int owned) {{
+    if (!value->has_value) Py_RETURN_NONE;
+    return convert_{_snake_name(payload_type.c_type)}(&value->value, owned);
+}}
+"""
+
+
+def _render_variant_converter(struct: HostStructMetadata, handles: dict[str, HostStructMetadata]) -> str:
+    branches = []
+    for index, field in enumerate(field for field in struct.fields if field.name.startswith("value_")):
+        branches.append(
+            f"    if (value->kind == {index}) return {_convert_expr(field.c_type, f'value->{field.name}', handles, owned=1)};"
+        )
+    body = "\n".join(branches)
+    return f"""\
+static PyObject *convert_{_snake_name(struct.c_type)}({struct.c_type} *value, int owned) {{
+    (void)owned;
+{body}
+    PyErr_SetString(PyExc_RuntimeError, "Unsupported variant alternative");
+    return NULL;
+}}
+"""
+
+
 def _render_value_converters(metadata: HostBindingMetadata, handles: dict[str, HostStructMetadata]) -> str:
     sequences = sorted((s for s in metadata.value_types.values() if _is_sequence(s)), key=lambda s: s.sequence_depth)
     result_structs = [s for s in metadata.value_types.values() if s.kind == "result_struct"]
+    optional_result_structs = [s for s in metadata.value_types.values() if s.kind == "optional_result_struct"]
+    variants = [s for s in metadata.value_types.values() if s.kind == "variant"]
     converters = [
         """
 static PyObject *convert_ifcopenshell_string_copy(ifcopenshell_string_t *value) {
@@ -392,6 +443,11 @@ static PyObject *convert_string(ifcopenshell_string_t *value) {
     ]
     converters.extend(_render_sequence_converter(struct) for struct in sequences)
     converters.extend(_render_result_struct_converter(struct, handles) for struct in result_structs)
+    converters.extend(
+        _render_optional_result_struct_converter(struct, metadata.value_types, handles)
+        for struct in optional_result_structs
+    )
+    converters.extend(_render_variant_converter(struct, handles) for struct in variants)
     return "\n".join(converters)
 
 
@@ -547,8 +603,208 @@ static int make_input_{name}(PyObject *obj, {struct.c_type} *out) {{
 """
 
 
+def _render_option_field_assignment(
+    option: HostOptionStructMetadata,
+    field_index: int,
+    handles: dict[str, HostStructMetadata],
+) -> str:
+    field = option.fields[field_index]
+    field_ref = f"field_{field_index}"
+    required = 0 if field.type.nullable else 1
+    lines = [f'    PyObject *{field_ref} = get_option_field(obj, "{field.name}", {required});']
+    if field.type.nullable:
+        lines.extend(
+            [
+                f"    if (!{field_ref}) {{",
+                "        if (PyErr_Occurred()) return 0;",
+                "    } else {",
+                f"        refs[{field_index}] = {field_ref};",
+                f"        if ({field_ref} != Py_None) {{",
+            ]
+        )
+        indent = "        "
+    else:
+        lines.extend(
+            [
+                f"    if (!{field_ref}) {{",
+                "        return 0;",
+                "    }",
+                f"    refs[{field_index}] = {field_ref};",
+            ]
+        )
+        indent = ""
+    sequence_base, sequence_depth = _base_pointer_type(field.c_type)
+    if field.type.kind == "handle" and sequence_base == "ifcopenshell_parse_instance_list_t" and sequence_depth == 1:
+        lines.extend(
+            [
+                f"    {indent}ifcopenshell_instance_list_t {field.name}_items_{field_index} = {{0}};",
+                f"    {indent}if (!make_input_instance_list({field_ref}, &{field.name}_items_{field_index})) {{",
+                f"    {indent}    return 0;",
+                f"    {indent}}}",
+                f"    {indent}if (!ifcopenshell_parse_instance_list_create_from_handles(&{field.name}_items_{field_index}, &out->{field.name})) {{",
+                f"    {indent}    free_input_instance_list(&{field.name}_items_{field_index});",
+                f"    {indent}    raise_last_error(\"ifcopenshell_parse_instance_list_create_from_handles failed\");",
+                f"    {indent}    return 0;",
+                f"    {indent}}}",
+                f"    {indent}free_input_instance_list(&{field.name}_items_{field_index});",
+            ]
+        )
+    elif field.type.sequence_depth > 0:
+        sequence_name = _snake_name(sequence_base)
+        lines.extend(
+            [
+                f"    {indent}{sequence_base} *sequence_{field_index} = ({sequence_base} *)PyMem_Calloc(1, sizeof({sequence_base}));",
+                f"    {indent}if (!sequence_{field_index}) {{",
+                f"    {indent}    PyErr_NoMemory();",
+                f"    {indent}    return 0;",
+                f"    {indent}}}",
+                f"    {indent}if (!make_input_{sequence_name}({field_ref}, sequence_{field_index})) {{",
+                f"    {indent}    PyMem_Free(sequence_{field_index});",
+                f"    {indent}    return 0;",
+                f"    {indent}}}",
+                f"    {indent}out->{field.name} = sequence_{field_index};",
+            ]
+        )
+    elif field.type.kind == "string":
+        lines.extend(
+            [
+                f"    {indent}out->{field.name} = PyUnicode_AsUTF8({field_ref});",
+                f"    {indent}if (!out->{field.name}) return 0;",
+            ]
+        )
+    elif field.type.kind in {"bool", "logical"}:
+        lines.extend(
+            [
+                f"    {indent}int value_{field_index} = PyObject_IsTrue({field_ref});",
+                f"    {indent}if (value_{field_index} < 0) return 0;",
+                f"    {indent}out->{field.name} = ({field.c_type})value_{field_index};",
+            ]
+        )
+    elif field.type.kind in {"int32", "uint32", "size"}:
+        reader = "PyLong_AsUnsignedLong" if field.type.kind == "uint32" else "PyLong_AsLong"
+        lines.extend(
+            [
+                f"    {indent}out->{field.name} = ({field.c_type}){reader}({field_ref});",
+                f"    {indent}if (PyErr_Occurred()) return 0;",
+            ]
+        )
+    elif field.type.kind == "int64":
+        lines.extend(
+            [
+                f"    {indent}out->{field.name} = ({field.c_type})PyLong_AsLongLong({field_ref});",
+                f"    {indent}if (PyErr_Occurred()) return 0;",
+            ]
+        )
+    elif field.type.kind == "double":
+        lines.extend(
+            [
+                f"    {indent}out->{field.name} = PyFloat_AsDouble({field_ref});",
+                f"    {indent}if (PyErr_Occurred()) return 0;",
+            ]
+        )
+    elif field.type.kind == "handle" and field.type.handle is not None:
+        handle_c_type = field.c_type.removeprefix("const ").removesuffix("*").strip()
+        handle = handles.get(handle_c_type)
+        if handle is None:
+            msg = f"Unsupported option handle field type for Python backend: {option.c_type}.{field.name}"
+            raise ValueError(msg)
+        py_name = _py_type_name(handle.c_type)
+        lines.extend(
+            [
+                f"    {indent}if (!extract_handle({field_ref}, &{py_name}Type, \"{py_name}\", (void **)&out->{field.name}, 0)) {{",
+                f"    {indent}    return 0;",
+                f"    {indent}}}",
+            ]
+        )
+    elif field.type.kind == "opaque_ptr":
+        lines.extend(
+            [
+                f"    {indent}if (PyCapsule_IsValid({field_ref}, NULL)) {{",
+                f"    {indent}    out->{field.name} = PyCapsule_GetPointer({field_ref}, NULL);",
+                f"    {indent}}} else {{",
+                f"    {indent}    PyErr_SetString(PyExc_TypeError, \"Expected a capsule\");",
+                f"    {indent}    return 0;",
+                f"    {indent}}}",
+            ]
+        )
+    else:
+        msg = f"Unsupported option field type for Python backend: {option.c_type}.{field.name}"
+        raise ValueError(msg)
+    if field.type.nullable:
+        lines.extend(
+            [
+                f"        out->has_{field.name} = true;",
+                "        }",
+                "    }",
+            ]
+        )
+    return "\n".join(lines)
+
+
+def _render_option_free_helper(option: HostOptionStructMetadata) -> str:
+    lines: list[str] = []
+    for field in option.fields:
+        base, pointer_depth = _base_pointer_type(field.c_type)
+        if field.type.kind == "handle" and base == "ifcopenshell_parse_instance_list_t" and pointer_depth == 1:
+            lines.extend(
+                [
+                    f"    if (value->{field.name}) {{",
+                    f"        ifcopenshell_parse_instance_list_destroy(value->{field.name});",
+                    f"        value->{field.name} = NULL;",
+                    "    }",
+                ]
+            )
+            continue
+        if field.type.sequence_depth <= 0:
+            continue
+        sequence_name = _snake_name(base)
+        lines.extend(
+            [
+                f"    if (value->{field.name}) {{",
+                f"        free_input_{sequence_name}(({base} *)value->{field.name});",
+                f"        PyMem_Free((void *)value->{field.name});",
+                f"        value->{field.name} = NULL;",
+                "    }",
+            ]
+        )
+    body = "\n".join(lines) if lines else "    (void)value;"
+    return f"""\
+static void free_input_{_snake_name(option.c_type)}({option.c_type} *value) {{
+{body}
+}}
+"""
+
+
+def _render_option_input_helper(option: HostOptionStructMetadata, handles: dict[str, HostStructMetadata]) -> str:
+    field_blocks = "\n".join(
+        _render_option_field_assignment(option, index, handles)
+        for index, _ in enumerate(option.fields)
+    )
+    return (
+        _render_option_free_helper(option)
+        + "\n"
+        + f"""\
+static int fill_input_{_snake_name(option.c_type)}(PyObject *obj, {option.c_type} *out, PyObject **refs) {{
+    if (!PyMapping_Check(obj)) {{
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }}
+{field_blocks}
+    return 1;
+}}
+"""
+    )
+
+
+def _render_option_input_helpers(metadata: HostBindingMetadata, handles: dict[str, HostStructMetadata]) -> str:
+    return "\n\n".join(
+        _render_option_input_helper(option, handles)
+        for option in sorted(metadata.option_structs.values(), key=lambda item: item.c_type)
+    )
+
+
 def _param_parse(
-    param: HostParamMetadata, handles: dict[str, HostStructMetadata]
+    param: HostParamMetadata, metadata: HostBindingMetadata, handles: dict[str, HostStructMetadata]
 ) -> tuple[list[str], list[str], list[str], str, list[str], list[str]]:
     c_type = _normalize_c_type(param.c_type)
     base, pointer_depth = _base_pointer_type(c_type)
@@ -564,6 +820,20 @@ def _param_parse(
         fmt = "z" if param.nullable else "s"
         parse_args.append(f"&arg_{name}")
         call_args.append(f"arg_{name}")
+    elif pointer_depth == 1 and (option := _option_by_c_type(c_type, metadata)) is not None:
+        declarations.append(f"    PyObject *arg_{name}_obj = NULL;")
+        declarations.append(f"    {option.c_type} arg_{name} = {{0}};")
+        declarations.append(f"    PyObject *arg_{name}_refs[{len(option.fields)}] = {{0}};")
+        fmt = "O"
+        parse_args.append(f"&arg_{name}_obj")
+        call_args.append(f"&arg_{name}")
+        setup.append(
+            f"    if (!fill_input_{_snake_name(option.c_type)}(arg_{name}_obj, &arg_{name}, arg_{name}_refs)) {{\n"
+            f"        goto __cleanup;\n"
+            f"    }}"
+        )
+        cleanup.append(f"    free_input_{_snake_name(option.c_type)}(&arg_{name});")
+        cleanup.append(f"    release_option_refs(arg_{name}_refs, {len(option.fields)});")
     elif c_type in _SCALAR_DECLS:
         decl, fmt, _ = _SCALAR_DECLS[c_type]
         declarations.append(f"    {decl} arg_{name} = 0;")
@@ -641,7 +911,7 @@ def _render_function_wrapper(function: HostFunctionMetadata, metadata: HostBindi
     for param in function.params:
         if param.role == "out_result":
             continue
-        decl, args, calls, fmt, clean, param_setup = _param_parse(param, handles)
+        decl, args, calls, fmt, clean, param_setup = _param_parse(param, metadata, handles)
         declarations.extend(decl)
         parse_args.extend(args)
         call_args.extend(calls)
@@ -771,18 +1041,22 @@ __cleanup:
 
 def render_python_extension(metadata: HostBindingMetadata, api_header_path: Path | None = None) -> str:
     handles = {handle.c_type: handle for handle in metadata.handles.values()}
+    functions = list(metadata.functions.values())
     if api_header_path is not None:
         discovered = {handle.c_type: handle for handle in _discover_all_handle_types(api_header_path).values()}
         discovered.update(handles)
         handles = discovered
+        exported_functions = _discover_api_function_names(api_header_path)
+        functions = [function for function in functions if function.c_name in exported_functions]
     sorted_handles = sorted(handles.values(), key=lambda item: item.c_type)
     handle_family_helpers = _render_handle_family_helpers(handles)
     handle_decls = "\n".join(_render_handle_type_decl(handle) for handle in sorted_handles)
     destroy_wrappers = "\n".join(_render_destroy_wrapper(handle) for handle in sorted_handles)
     wrap_decls = "\n".join(_render_wrap_handle(handle) for handle in sorted_handles)
     input_helpers = _render_input_sequence_helpers(metadata, handles)
+    option_helpers = _render_option_input_helpers(metadata, handles)
     value_converters = _render_value_converters(metadata, handles)
-    wrappers = "\n".join(_render_function_wrapper(function, metadata, handles) for function in metadata.functions.values())
+    wrappers = "\n".join(_render_function_wrapper(function, metadata, handles) for function in functions)
     methods = "\n".join(
         [
             f'    {{"{_destroy_method_name(handle.c_type)}", py_{_destroy_method_name(handle.c_type)}, METH_VARARGS, "Destroy {handle.c_type}"}},'
@@ -790,11 +1064,11 @@ def render_python_extension(metadata: HostBindingMetadata, api_header_path: Path
         ]
         + [
         f'    {{"{_method_name(function.c_name, metadata.c_prefix)}", {_wrapper_name(function.c_name)}, METH_VARARGS, "Wrap {function.c_name}"}},'
-        for function in metadata.functions.values()
+        for function in functions
         ]
         + [
         f'    {{"{function.c_name}", {_wrapper_name(function.c_name)}, METH_VARARGS, "Wrap {function.c_name}"}},'
-        for function in metadata.functions.values()
+        for function in functions
         ]
     )
     type_ready = "\n".join(f"    if (PyType_Ready(&{_py_type_name(h.c_type)}Type) < 0) return NULL;" for h in sorted_handles)
@@ -859,9 +1133,30 @@ static int extract_handle(PyObject *obj, PyTypeObject *expected, const char *exp
     return 1;
 }}
 
+static PyObject *get_option_field(PyObject *obj, const char *name, int required) {{
+    PyObject *key = PyUnicode_FromString(name);
+    if (!key) return NULL;
+    PyObject *value = PyObject_GetItem(obj, key);
+    Py_DECREF(key);
+    if (value) return value;
+    if (!PyErr_ExceptionMatches(PyExc_KeyError)) return NULL;
+    PyErr_Clear();
+    if (required) {{
+        PyErr_Format(PyExc_KeyError, "Missing required option field '%s'", name);
+    }}
+    return NULL;
+}}
+
+static void release_option_refs(PyObject **refs, size_t count) {{
+    for (size_t i = 0; i < count; ++i) {{
+        Py_XDECREF(refs[i]);
+    }}
+}}
+
 {destroy_wrappers}
 {wrap_decls}
 {input_helpers}
+{option_helpers}
 {value_converters}
 {wrappers}
 

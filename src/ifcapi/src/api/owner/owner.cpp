@@ -121,12 +121,14 @@ express::Base create_default_application_organisation(
     if (is_ifc4x3(file)) {
         auto actor = create_actor(file, organisation, "IfcActor", owner_history, user, application);
         auto pset = ifcapi::bindings::pset_add_pset(
-            file, &actor, "PEnum_AddressType", &owner_history, &user, &application, nullptr);
+            file,
+            ifcapi::bindings::PsetAddPsetOptions{
+                actor, "PEnum_AddressType", owner_history, user, application, {}});
         auto* props = ifcapi::bindings::pset_props_new();
         ifcapi::bindings::pset_props_set_string(props, "Purpose", "OTHER");
         ifcapi::bindings::pset_props_set_string(props, "UserDefinedPurpose", "WEBPAGE");
         ifcapi::bindings::pset_props_set_string(props, "WWWHomePageURL", "https://ifcopenshell.org");
-        ifcapi::bindings::pset_edit_pset(file, &pset, nullptr, props, nullptr, true);
+        ifcapi::bindings::pset_edit_pset(file, ifcapi::bindings::PsetEditPsetOptions{pset, {}, props, {}, true});
         ifcapi::bindings::pset_props_free(props);
     } else {
         auto address = create_entity(file, "IfcTelecomAddress");
@@ -146,15 +148,11 @@ namespace bindings {
 
 express::Base owner_add_actor(
     ifcopenshell::file* file,
-    express::Base* actor,
-    const std::string& ifc_class,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const OwnerAddActorOptions& options)
 {
     return create_actor(
-        file, detail::deref_or_empty(actor), ifc_class, detail::deref_or_empty(owner_history),
-        detail::deref_or_empty(user), detail::deref_or_empty(application));
+        file, options.actor, options.ifc_class, options.owner_history.value_or(express::Base()),
+        options.user.value_or(express::Base()), options.application.value_or(express::Base()));
 }
 
 express::Base owner_add_address(
@@ -171,26 +169,20 @@ express::Base owner_add_address(
 
 express::Base owner_add_application(
     ifcopenshell::file* file,
-    express::Base* application_developer,
-    const std::string& version,
-    const std::string& application_full_name,
-    const std::string& application_identifier,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const OwnerAddApplicationOptions& options)
 {
-    auto application_developer_value = detail::deref_or_empty(application_developer);
-    auto owner_history_value = detail::deref_or_empty(owner_history);
-    auto user_value = detail::deref_or_empty(user);
-    auto application_value = detail::deref_or_empty(application);
+    auto application_developer_value = options.application_developer.value_or(express::Base());
+    auto owner_history_value = options.owner_history.value_or(express::Base());
+    auto user_value = options.user.value_or(express::Base());
+    auto application_value = options.application.value_or(express::Base());
     if (!application_developer_value) {
         application_developer_value = create_default_application_organisation(file, owner_history_value, user_value, application_value);
     }
     auto result = create_entity(file, "IfcApplication");
     ifcapi::detail::write_ref_attr(result, "ApplicationDeveloper", application_developer_value);
-    ifcapi::detail::write_string_attr(result, "Version", version);
-    ifcapi::detail::write_string_attr(result, "ApplicationFullName", application_full_name);
-    ifcapi::detail::write_string_attr(result, "ApplicationIdentifier", application_identifier);
+    ifcapi::detail::write_string_attr(result, "Version", options.version);
+    ifcapi::detail::write_string_attr(result, "ApplicationFullName", options.application_full_name);
+    ifcapi::detail::write_string_attr(result, "ApplicationIdentifier", options.application_identifier);
     return result;
 }
 
@@ -247,17 +239,13 @@ express::Base owner_add_role(
 
 express::Base owner_assign_actor(
     ifcopenshell::file* file,
-    express::Base* relating_actor,
-    express::Base* related_object,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const OwnerAssignActorOptions& options)
 {
-    auto relating_actor_value = detail::deref_or_empty(relating_actor);
-    auto related_object_value = detail::deref_or_empty(related_object);
-    auto owner_history_value = detail::deref_or_empty(owner_history);
-    auto user_value = detail::deref_or_empty(user);
-    auto application_value = detail::deref_or_empty(application);
+    auto relating_actor_value = options.relating_actor;
+    auto related_object_value = options.related_object;
+    auto owner_history_value = options.owner_history.value_or(express::Base());
+    auto user_value = options.user.value_or(express::Base());
+    auto application_value = options.application.value_or(express::Base());
     for (auto rel : inverse_entities(related_object_value, "HasAssignments")) {
         if (is_a(rel, "IfcRelAssignsToActor")
             && ifcapi::detail::read_ref_attr(rel, "RelatingActor") == relating_actor_value) {
@@ -409,15 +397,12 @@ void owner_remove_role(ifcopenshell::file* file, express::Base* role) {
 
 void owner_unassign_actor(
     ifcopenshell::file* file,
-    express::Base* relating_actor,
-    express::Base* related_object,
-    express::Base* user,
-    express::Base* application)
+    const OwnerUnassignActorOptions& options)
 {
-    auto relating_actor_value = detail::deref_or_empty(relating_actor);
-    auto related_object_value = detail::deref_or_empty(related_object);
-    auto user_value = detail::deref_or_empty(user);
-    auto application_value = detail::deref_or_empty(application);
+    auto relating_actor_value = options.relating_actor;
+    auto related_object_value = options.related_object;
+    auto user_value = options.user.value_or(express::Base());
+    auto application_value = options.application.value_or(express::Base());
     for (auto rel : inverse_entities(related_object_value, "HasAssignments")) {
         if (!is_a(rel, "IfcRelAssignsToActor")
             || ifcapi::detail::read_ref_attr(rel, "RelatingActor") != relating_actor_value) {

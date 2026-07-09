@@ -8,31 +8,84 @@
 #include "ifcparse/express.h"
 #include "ifcparse/file.h"
 
+#include <optional>
 #include <string>
 
 namespace ifcapi {
 namespace bindings {
 
+/**
+ * Options for adding a new actor (IfcActor or IfcOccupant).
+ */
+struct OwnerAddActorOptions {
+    express::Base actor;
+    std::string ifc_class;
+    std::optional<express::Base> owner_history;
+    std::optional<express::Base> user;
+    std::optional<express::Base> application;
+};
+
+/**
+ * Options for adding a new IfcApplication.
+ */
+struct OwnerAddApplicationOptions {
+    std::optional<express::Base> application_developer;
+    std::string version;
+    std::string application_full_name;
+    std::string application_identifier;
+    std::optional<express::Base> owner_history;
+    std::optional<express::Base> user;
+    std::optional<express::Base> application;
+};
+
+/**
+ * Options for assigning an actor to an object.
+ */
+struct OwnerAssignActorOptions {
+    express::Base relating_actor;
+    express::Base related_object;
+    std::optional<express::Base> owner_history;
+    std::optional<express::Base> user;
+    std::optional<express::Base> application;
+};
+
+/**
+ * Options for creating an IfcOwnerHistory.
+ */
+struct OwnerCreateOwnerHistoryOptions {
+    std::optional<express::Base> user;
+    std::optional<express::Base> application;
+};
+
+/**
+ * Options for unassigning an actor from an object.
+ */
+struct OwnerUnassignActorOptions {
+    express::Base relating_actor;
+    express::Base related_object;
+    std::optional<express::Base> user;
+    std::optional<express::Base> application;
+};
+
+/**
+ * Options for updating an IfcOwnerHistory on an element.
+ */
+struct OwnerUpdateOwnerHistoryOptions {
+    std::optional<express::Base> element;
+    std::optional<express::Base> user;
+    std::optional<express::Base> application;
+};
+
 IFCAPI_BINDING express::Base owner_add_actor(
     ifcopenshell::file* file,
-    express::Base* actor,
-    const std::string& ifc_class,
-    IFCAPI_NULLABLE express::Base* owner_history,
-    IFCAPI_NULLABLE express::Base* user,
-    IFCAPI_NULLABLE express::Base* application);
+    const OwnerAddActorOptions& options);
 IFCAPI_BINDING express::Base owner_add_address(
     ifcopenshell::file* file,
     express::Base* assigned_object,
     const std::string& ifc_class);
 IFCAPI_BINDING express::Base owner_add_application(
     ifcopenshell::file* file,
-    IFCAPI_NULLABLE express::Base* application_developer,
-    const std::string& version,
-    const std::string& application_full_name,
-    const std::string& application_identifier,
-    IFCAPI_NULLABLE express::Base* owner_history,
-    IFCAPI_NULLABLE express::Base* user,
-    IFCAPI_NULLABLE express::Base* application);
+    const OwnerAddApplicationOptions& options);
 IFCAPI_BINDING express::Base owner_add_organisation(
     ifcopenshell::file* file,
     const std::string& identification,
@@ -52,15 +105,10 @@ IFCAPI_BINDING express::Base owner_add_role(
     const std::string& role);
 IFCAPI_BINDING express::Base owner_assign_actor(
     ifcopenshell::file* file,
-    express::Base* relating_actor,
-    express::Base* related_object,
-    IFCAPI_NULLABLE express::Base* owner_history,
-    IFCAPI_NULLABLE express::Base* user,
-    IFCAPI_NULLABLE express::Base* application);
+    const OwnerAssignActorOptions& options);
 IFCAPI_BINDING express::Base owner_create_owner_history(
     ifcopenshell::file* file,
-    IFCAPI_NULLABLE express::Base* user,
-    IFCAPI_NULLABLE express::Base* application);
+    const OwnerCreateOwnerHistoryOptions& options);
 IFCAPI_BINDING void owner_remove_actor(ifcopenshell::file* file, express::Base* actor);
 IFCAPI_BINDING void owner_remove_address(ifcopenshell::file* file, express::Base* address);
 IFCAPI_BINDING void owner_remove_application(ifcopenshell::file* file, express::Base* application);
@@ -72,15 +120,10 @@ IFCAPI_BINDING void owner_remove_person_and_organisation(
 IFCAPI_BINDING void owner_remove_role(ifcopenshell::file* file, express::Base* role);
 IFCAPI_BINDING void owner_unassign_actor(
     ifcopenshell::file* file,
-    express::Base* relating_actor,
-    express::Base* related_object,
-    IFCAPI_NULLABLE express::Base* user,
-    IFCAPI_NULLABLE express::Base* application);
+    const OwnerUnassignActorOptions& options);
 IFCAPI_BINDING express::Base owner_update_owner_history(
     ifcopenshell::file* file,
-    IFCAPI_NULLABLE express::Base* element,
-    IFCAPI_NULLABLE express::Base* user,
-    IFCAPI_NULLABLE express::Base* application);
+    const OwnerUpdateOwnerHistoryOptions& options);
 
 } // namespace bindings
 } // namespace ifcapi

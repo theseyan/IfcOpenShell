@@ -63,7 +63,9 @@ inline express::Base polyline(
     const std::vector<std::vector<double>>& points,
     bool closed = true)
 {
-    return ifcapi::bindings::shape_builder_polyline(file, points, closed, {}, false, {});
+    return ifcapi::bindings::shape_builder_polyline(
+        file,
+        ifcapi::bindings::ShapeBuilderPolylineOptions{points, closed, {}, {}});
 }
 
 inline express::Base rectangle(
@@ -83,14 +85,14 @@ inline express::Base extrude_y(
 {
     return ifcapi::bindings::shape_builder_extrude(
         file,
-        &profile_or_curve,
-        magnitude,
-        position,
-        {0.0, 0.0, -1.0},
-        {0.0, -1.0, 0.0},
-        {1.0, 0.0, 0.0},
-        {},
-        false);
+        ifcapi::bindings::ShapeBuilderExtrudeOptions{
+            profile_or_curve,
+            magnitude,
+            position,
+            {0.0, 0.0, -1.0},
+            {0.0, -1.0, 0.0},
+            {1.0, 0.0, 0.0},
+            {}});
 }
 
 inline express::Base extrude_z(
@@ -101,14 +103,14 @@ inline express::Base extrude_z(
 {
     return ifcapi::bindings::shape_builder_extrude(
         file,
-        &profile_or_curve,
-        magnitude,
-        position,
-        {0.0, 0.0, 1.0},
-        {0.0, 0.0, 1.0},
-        {1.0, 0.0, 0.0},
-        {},
-        false);
+        ifcapi::bindings::ShapeBuilderExtrudeOptions{
+            profile_or_curve,
+            magnitude,
+            position,
+            {0.0, 0.0, 1.0},
+            {0.0, 0.0, 1.0},
+            {1.0, 0.0, 0.0},
+            {}});
 }
 
 inline void translate_items(
@@ -117,7 +119,9 @@ inline void translate_items(
     const std::vector<double>& translation)
 {
     for (auto item : items) {
-        ifcapi::bindings::shape_builder_translate(file, &item, translation, false);
+        ifcapi::bindings::shape_builder_translate(
+            file,
+            ifcapi::bindings::ShapeBuilderTranslateOptions{item, translation, false});
     }
 }
 

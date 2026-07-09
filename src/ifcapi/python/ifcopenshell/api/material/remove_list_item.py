@@ -57,5 +57,5 @@ def remove_list_item(
         "Failed to remove material list item",
         _capi.file_handle(file),
         _capi.instance_handle(material_list),
-        material_index,
+        {"material_index": material_index},
     )

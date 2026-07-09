@@ -8,35 +8,54 @@
 #include "ifcparse/express.h"
 #include "ifcparse/file.h"
 
+#include <optional>
 #include <vector>
 
 namespace ifcapi {
 namespace bindings {
 
+/**
+ * Options for assigning a type to element occurrences.
+ */
+struct TypeAssignTypeOptions {
+    std::vector<express::Base> objects;
+    express::Base relating_type;
+    std::optional<bool> should_map_representations = true;
+    std::optional<express::Base> owner_history;
+    std::optional<express::Base> user;
+    std::optional<express::Base> application;
+};
+
+/**
+ * Options for unassigning types from element occurrences.
+ */
+struct TypeUnassignTypeOptions {
+    std::vector<express::Base> objects;
+    std::optional<express::Base> user;
+    std::optional<express::Base> application;
+};
+
+/**
+ * Assign a type to element occurrences, creating or merging IfcRelDefinesByType.
+ */
 IFCAPI_BINDING express::Base type_assign_type(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& objects,
-    express::Base* relating_type,
-    IFCAPI_NULLABLE express::Base* owner_history,
-    IFCAPI_NULLABLE express::Base* user,
-    IFCAPI_NULLABLE express::Base* application);
-IFCAPI_BINDING express::Base type_assign_type_ex(
-    ifcopenshell::file* file,
-    const std::vector<express::Base>& objects,
-    express::Base* relating_type,
-    bool should_map_representations,
-    IFCAPI_NULLABLE express::Base* owner_history,
-    IFCAPI_NULLABLE express::Base* user,
-    IFCAPI_NULLABLE express::Base* application);
+    const TypeAssignTypeOptions& options);
+
+/**
+ * Map representation maps from a type onto a related object.
+ */
 IFCAPI_BINDING bool type_map_type_representations(
     ifcopenshell::file* file,
     express::Base* related_object,
     express::Base* relating_type);
+
+/**
+ * Remove type assignments from element occurrences.
+ */
 IFCAPI_BINDING void type_unassign_type(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& objects,
-    IFCAPI_NULLABLE express::Base* user,
-    IFCAPI_NULLABLE express::Base* application);
+    const TypeUnassignTypeOptions& options);
 
 } // namespace bindings
 } // namespace ifcapi

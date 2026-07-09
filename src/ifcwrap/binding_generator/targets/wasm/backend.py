@@ -8,11 +8,13 @@ import re
 try:
     from ...host_metadata import HostBindingMetadata
     from .._base import GeneratedArtifact, GeneratedTargetArtifacts, TargetGenerationRequest
+    from .api_bridge import render_api_direct
     from .js_glue import render_js_glue
     from .typescript import render_typescript_declarations
 except ImportError:  # pragma: no cover - script execution fallback
     from host_metadata import HostBindingMetadata
     from targets._base import GeneratedArtifact, GeneratedTargetArtifacts, TargetGenerationRequest
+    from targets.wasm.api_bridge import render_api_direct
     from targets.wasm.js_glue import render_js_glue
     from targets.wasm.typescript import render_typescript_declarations
 
@@ -97,10 +99,14 @@ def generate(request: TargetGenerationRequest) -> GeneratedTargetArtifacts:
     dts_path = output_dir / "ifcopenshell_api.d.ts"
     dts_path.write_text(declarations, encoding="utf-8")
 
+    api_path = output_dir / "ifcopenshell_api.ts"
+    api_path.write_text(render_api_direct(request.metadata), encoding="utf-8")
+
     return GeneratedTargetArtifacts(
         artifacts=(
             GeneratedArtifact(kind="javascript", path=js_path),
             GeneratedArtifact(kind="typescript", path=dts_path),
+            GeneratedArtifact(kind="api", path=api_path),
             GeneratedArtifact(kind="exports", path=exports_path),
         )
     )

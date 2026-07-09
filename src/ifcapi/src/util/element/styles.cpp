@@ -77,9 +77,11 @@ std::vector<express::Base> element_get_styles(express::Base* element) {
     }
 
     std::vector<express::Base> styles;
-    auto material = ifcapi::bindings::element_get_material(element, true, true);
+    auto material = ifcapi::bindings::element_get_material(element, {true, true});
     std::vector<express::Base> materials;
-    collect_materials(material, materials);
+    if (material) {
+        collect_materials(*material, materials);
+    }
     for (const auto& material_item : materials) {
         auto material_representations = read_ref_list(material_item, "HasRepresentation");
         if (material_representations.empty()) {
@@ -99,7 +101,7 @@ std::vector<express::Base> element_get_styles(express::Base* element) {
     }
 
     auto body = ifcapi::bindings::representation_get_product_representation(
-        element, nullptr, "Model", "Body", "MODEL_VIEW");
+        element, {{}, "Model", "Body", "MODEL_VIEW"});
     if (body) {
         std::deque<express::Base> queue;
         for (const auto& item : read_ref_list(body, "Items")) {

@@ -419,25 +419,16 @@ express::Base classification_add_classification(ifcopenshell::file* file, const 
 
 express::Base classification_add_reference(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base* reference,
-    const std::string& identification,
-    bool has_identification,
-    const std::string& name,
-    bool has_name,
-    express::Base* classification,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const ClassificationAddReferenceOptions& options)
 {
     ifcopenshell_clear_error();
     try {
-        auto reference_value = ifcapi::detail::deref_or_empty(reference);
-        auto classification_value = ifcapi::detail::deref_or_empty(classification);
-        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
-        auto product_vec = ifcapi::detail::to_mutable_refs(products);
+        auto reference_value = options.reference.value_or(express::Base());
+        auto classification_value = options.classification.value_or(express::Base());
+        auto owner_history_value = options.owner_history.value_or(express::Base());
+        auto user_value = options.user.value_or(express::Base());
+        auto application_value = options.application.value_or(express::Base());
+        auto product_vec = ifcapi::detail::to_mutable_refs(options.products);
         if (product_vec.empty()) {
             return {};
         }
@@ -456,11 +447,11 @@ express::Base classification_add_reference(
         }
 
         if (!reference_value) {
-            ifcapi::detail::OptionalString optional_identification{has_identification, identification};
+            ifcapi::detail::OptionalString optional_identification{options.identification.has_value(), options.identification.value_or("")};
             reference_value = find_existing_reference(file, optional_identification);
             if (!reference_value) {
                 reference_value = file->create(file->schema()->declaration_by_name("IfcClassificationReference"));
-                ifcapi::detail::write_optional_string_attr(reference_value, "Name", {has_name, name});
+                ifcapi::detail::write_optional_string_attr(reference_value, "Name", {options.name.has_value(), options.name.value_or("")});
                 ifcapi::detail::write_ref_attr(reference_value, "ReferencedSource", classification_value);
                 ifcapi::detail::write_optional_string_attr(
                     reference_value,
@@ -486,17 +477,14 @@ express::Base classification_add_reference(
 
 void classification_remove_reference(
     ifcopenshell::file* file,
-    express::Base* reference,
-    const std::vector<express::Base>& products,
-    express::Base* user,
-    express::Base* application)
+    const ClassificationRemoveReferenceOptions& options)
 {
     ifcopenshell_clear_error();
     try {
-        auto reference_value = ifcapi::detail::deref_or_empty(reference);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
-        auto product_vec = ifcapi::detail::to_mutable_refs(products);
+        auto reference_value = options.reference;
+        auto user_value = options.user.value_or(express::Base());
+        auto application_value = options.application.value_or(express::Base());
+        auto product_vec = ifcapi::detail::to_mutable_refs(options.products);
         auto products_to_remove = intersect_products(product_vec, referenced_elements(reference_value));
         if (products_to_remove.empty()) {
             return;

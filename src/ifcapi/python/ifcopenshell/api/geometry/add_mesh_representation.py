@@ -128,7 +128,9 @@ class Usecase:
             "geometry_add_mesh_representation",
             _capi.file_handle(self.file),
             _capi.instance_handle(self.context),
-            _capi.double_list_list_list(self.vertices.tolist()),
-            _capi.int32_list_list_list_list(self.faces),
-            self.force_faceted_brep,
+            {
+                "vertices": self.vertices.tolist(),
+                "faces": self.faces,
+                "force_faceted_brep": self.force_faceted_brep,
+            },
         )

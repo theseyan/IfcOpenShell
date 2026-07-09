@@ -63,11 +63,13 @@ def assign_pset(
     product_list = [e._handle for e in products]
     handle = _capi.pset_assign_pset(
         file._handle,
-        product_list,
-        pset._handle,
-        None,
-        user._handle if user is not None else None,
-        application._handle if application is not None else None,
+        {
+            "products": product_list,
+            "pset": pset._handle,
+            "owner_history": None,
+            "user": user._handle if user is not None else None,
+            "application": application._handle if application is not None else None,
+        },
     )
     if handle:
         return ifcopenshell.entity_instance(file, handle)

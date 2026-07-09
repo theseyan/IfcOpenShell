@@ -222,14 +222,16 @@ class Usecase:
         object_list = _relationship_capi.instance_list(related_objects)
         types = _relationship_capi.call_handle(
             self.file,
-            "type_assign_type_ex",
+            "type_assign_type",
             _relationship_capi.file_handle(self.file),
-            _relationship_capi.instance_list_ptr(object_list),
-            _relationship_capi.instance_handle(relating_type),
-            bool(should_map_representations),
-            _relationship_capi.instance_handle(owner_history),
-            _relationship_capi.instance_handle(user),
-            _relationship_capi.instance_handle(application),
+            {
+                "objects": _relationship_capi.instance_list_ptr(object_list),
+                "relating_type": _relationship_capi.instance_handle(relating_type),
+                "should_map_representations": bool(should_map_representations),
+                "owner_history": _relationship_capi.instance_handle(owner_history),
+                "user": _relationship_capi.instance_handle(user),
+                "application": _relationship_capi.instance_handle(application),
+            },
         )
 
         if should_map_representations:

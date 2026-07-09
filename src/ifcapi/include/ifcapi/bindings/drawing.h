@@ -9,23 +9,39 @@
 #include "ifcparse/express.h"
 #include "ifcparse/file.h"
 
+#include <optional>
+
 namespace ifcapi {
 namespace bindings {
 
+/**
+ * Options for assigning a product to an annotation object.
+ */
+struct DrawingAssignProductOptions {
+    express::Base relating_product;
+    express::Base related_object;
+    std::optional<express::Base> owner_history;
+    std::optional<express::Base> user;
+    std::optional<express::Base> application;
+};
+
+/**
+ * Options for unassigning a product from an annotation object.
+ */
+struct DrawingUnassignProductOptions {
+    express::Base relating_product;
+    express::Base related_object;
+    std::optional<express::Base> user;
+    std::optional<express::Base> application;
+};
+
 IFCAPI_BINDING express::Base drawing_assign_product(
     ifcopenshell::file* file,
-    express::Base* relating_product,
-    express::Base* related_object,
-    IFCAPI_NULLABLE express::Base* owner_history,
-    IFCAPI_NULLABLE express::Base* user,
-    IFCAPI_NULLABLE express::Base* application);
+    const DrawingAssignProductOptions& options);
 
 IFCAPI_BINDING void drawing_unassign_product(
     ifcopenshell::file* file,
-    express::Base* relating_product,
-    express::Base* related_object,
-    IFCAPI_NULLABLE express::Base* user,
-    IFCAPI_NULLABLE express::Base* application);
+    const DrawingUnassignProductOptions& options);
 
 } // namespace bindings
 } // namespace ifcapi

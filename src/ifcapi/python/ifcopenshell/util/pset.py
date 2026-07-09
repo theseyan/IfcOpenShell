@@ -114,7 +114,7 @@ class PsetQto:
         if self._native_ptr is None or not self._owns_native_ptr:
             return
         try:
-            _capi.pset_template_free(self._native_ptr)
+            _capi.pset_template_handle_destroy(self._native_ptr)
         except Exception:
             pass
 

@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import re
 from typing import Union
 
 try:
     from .authored_spec import AuthoredBindingSpec, MergedBindingSpec
-    from .binding_model import CallSpec, HandleSpec, ImplementationSpec, ParamSpec, ResultStructSpec, TypeSpec
+    from .binding_model import CallSpec, HandleSpec, ImplementationSpec, OptionStructSpec, ParamSpec, ResultStructSpec, TypeSpec
     from .policy_ir import (
         ArrayElementFieldPolicyOp,
         AsItemCastPolicyOp,
@@ -39,7 +39,7 @@ try:
     from .debug import debug_log
 except ImportError:  # pragma: no cover - script execution fallback
     from authored_spec import AuthoredBindingSpec, MergedBindingSpec
-    from binding_model import CallSpec, HandleSpec, ImplementationSpec, ParamSpec, ResultStructSpec, TypeSpec
+    from binding_model import CallSpec, HandleSpec, ImplementationSpec, OptionStructSpec, ParamSpec, ResultStructSpec, TypeSpec
     from policy_ir import (
         ArrayElementFieldPolicyOp,
         AsItemCastPolicyOp,
@@ -247,6 +247,7 @@ class CallIR:
     returns: TypeSpec
     params: tuple[ParamSpec, ...]
     operation: OperationIR
+    doc: str | None = None
 
 
 @dataclass(frozen=True)
@@ -258,6 +259,7 @@ class BindingIR:
     result_structs: dict[str, ResultStructSpec]
     functions: tuple[CallIR, ...]
     methods: tuple[CallIR, ...]
+    option_structs: dict[str, OptionStructSpec] = field(default_factory=dict)
     depends_on_common: str | None = None
 
 
@@ -370,6 +372,7 @@ def lower_call(call: CallSpec) -> CallIR:
         returns=call.returns,
         params=call.params,
         operation=operation,
+        doc=call.doc,
     )
 
 
@@ -384,6 +387,7 @@ def lower_binding_spec(spec: SourceBindingSpec) -> BindingIR:
         public_headers=spec.public_headers,
         handles=spec.handles,
         result_structs=getattr(spec, "result_structs", {}),
+        option_structs=getattr(spec, "option_structs", {}),
         functions=tuple(lower_call(call) for call in spec.functions),
         methods=tuple(lower_call(call) for call in spec.methods),
         depends_on_common=getattr(spec, "depends_on_common", None),

@@ -13,6 +13,8 @@ class MarkedFunction:
     name: str
     return_annotations: frozenset[str]
     param_annotations: dict[str, frozenset[str]]
+    param_defaults: dict[str, bool]
+    doc: str | None = None
 
 
 _COMMENT_RE = re.compile(r"//.*?$|/\*.*?\*/", re.MULTILINE | re.DOTALL)
@@ -20,7 +22,6 @@ _ANNOTATIONS = frozenset({
     "IFCAPI_OWNED",
     "IFCAPI_COPY",
     "IFCAPI_STATIC",
-    "IFCAPI_NULLABLE",
 })
 _ANNOTATION_CALLS: tuple[str, ...] = ()
 
@@ -80,6 +81,26 @@ def _param_name(param: str) -> str:
     return matches[-1]
 
 
+def _has_default(param: str) -> bool:
+    angle_depth = paren_depth = bracket_depth = 0
+    for char in param:
+        if char == "<":
+            angle_depth += 1
+        elif char == ">" and angle_depth:
+            angle_depth -= 1
+        elif char == "(":
+            paren_depth += 1
+        elif char == ")" and paren_depth:
+            paren_depth -= 1
+        elif char == "[":
+            bracket_depth += 1
+        elif char == "]" and bracket_depth:
+            bracket_depth -= 1
+        elif char == "=" and not angle_depth and not paren_depth and not bracket_depth:
+            return True
+    return False
+
+
 def _parse_param_annotations(params: str) -> dict[str, frozenset[str]]:
     parsed: dict[str, frozenset[str]] = {}
     for param in _split_params(params):
@@ -90,6 +111,65 @@ def _parse_param_annotations(params: str) -> dict[str, frozenset[str]]:
     return parsed
 
 
+def _parse_param_defaults(params: str) -> dict[str, bool]:
+    return {
+        _param_name(param): True
+        for param in _split_params(params)
+        if _has_default(param)
+    }
+
+
+def _clean_doc_comment(raw: str | None) -> str | None:
+    if raw is None:
+        return None
+    lines: list[str] = []
+    for raw_line in raw.strip().splitlines():
+        line = raw_line.strip()
+        if line.startswith("/**") or line.startswith("/*!"):
+            line = line[3:].strip()
+        elif line.startswith("/*"):
+            line = line[2:].strip()
+        if line.endswith("*/"):
+            line = line[:-2].strip()
+        if line.startswith("///") or line.startswith("//!"):
+            line = line[3:].strip()
+        if line.startswith("*"):
+            line = line[1:].strip()
+        lines.append(line)
+    while lines and not lines[0]:
+        lines.pop(0)
+    while lines and not lines[-1]:
+        lines.pop()
+    doc = "\n".join(lines).strip()
+    return doc or None
+
+
+def _adjacent_doc_before(text: str, position: int) -> str | None:
+    docs: list[str] = []
+    cursor = position
+    while True:
+        while cursor > 0 and text[cursor - 1].isspace():
+            cursor -= 1
+        if cursor >= 2 and text[cursor - 2 : cursor] == "*/":
+            start = text.rfind("/*", 0, cursor - 2)
+            if start < 0:
+                break
+            raw = text[start:cursor]
+            if raw.startswith(("/**", "/*!")):
+                docs.insert(0, raw)
+                cursor = start
+                continue
+            break
+        line_start = text.rfind("\n", 0, cursor) + 1
+        line = text[line_start:cursor].strip()
+        if line.startswith(("///", "//!")):
+            docs.insert(0, text[line_start:cursor])
+            cursor = line_start
+            continue
+        break
+    return _clean_doc_comment("\n".join(docs)) if docs else None
+
+
 def discover_marked_functions_in_headers(
     headers: list[Path] | tuple[Path, ...],
     *,
@@ -98,7 +178,7 @@ def discover_marked_functions_in_headers(
     """Discover function declarations annotated with a binding contract marker."""
     marker_re = re.escape(marker)
     declaration_re = re.compile(
-        rf"\b{marker_re}\s+"
+        rf"(?P<marker>\b{marker_re})\s+"
         r"(?P<return_decl>[\w:<>~,\s*&]+?)\s+"
         r"(?P<name>[A-Za-z_]\w*)\s*\("
         r"(?P<params>[^;{{}}]*)\)\s*;",
@@ -106,7 +186,7 @@ def discover_marked_functions_in_headers(
     )
     discovered: list[MarkedFunction] = []
     for header in headers:
-        text = _strip_comments(header.read_text(encoding="utf-8"))
+        text = header.read_text(encoding="utf-8")
         for match in declaration_re.finditer(text):
             return_annotations, _ = _leading_annotations(match.group("return_decl"))
             discovered.append(
@@ -115,6 +195,8 @@ def discover_marked_functions_in_headers(
                     name=match.group("name"),
                     return_annotations=return_annotations,
                     param_annotations=_parse_param_annotations(match.group("params")),
+                    param_defaults=_parse_param_defaults(match.group("params")),
+                    doc=_adjacent_doc_before(text, match.start("marker")),
                 )
             )
     return tuple(discovered)

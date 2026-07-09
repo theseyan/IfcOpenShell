@@ -71,6 +71,8 @@ def unassign_cost_item_quantity(
         _capi.file_handle(file),
         _capi.instance_handle(cost_item),
         _capi.instance_list(products or []),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+        {
+            "user": _capi.instance_handle(user),
+            "application": _capi.instance_handle(application),
+        },
     )

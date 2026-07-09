@@ -20,10 +20,12 @@ def edit_qto(file, qto, name=None, properties=None, pset_template=None):
     try:
         _capi.pset_edit_qto(
             file._handle,
-            qto._handle,
-            name,
-            props_handle,
-            template_handle,
+            {
+                "qto": qto._handle,
+                "name": name,
+                "properties": props_handle,
+                "qto_template": template_handle,
+            },
         )
         if _capi.last_error_kind() != _capi.IFCOPENSHELL_ERROR_NONE:
             raise_last_error("edit_qto failed")

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Optional
 
 import ifcopenshell
-from ifcopenshell import _ifcopenshell_capi as _capi
+from ifcopenshell.api.geometry import _capi
 
 
 def copy_representation(
@@ -15,12 +15,14 @@ def copy_representation(
     context_identifier: str = "Body",
 ) -> Optional[ifcopenshell.entity_instance]:
     """Copy a geometric representation from one element to another."""
-    handle = _capi.geometry_copy_representation(
-        file._handle,
-        source._handle,
-        target._handle,
-        context_identifier,
+    return _capi.call_handle(
+        file,
+        "geometry_copy_representation",
+        _capi.file_handle(file),
+        {
+            "source": _capi.instance_handle(source),
+            "target": _capi.instance_handle(target),
+            "context_identifier": context_identifier,
+        },
+        nullable=True,
     )
-    if handle:
-        return ifcopenshell.entity_instance(file, handle)
-    return None

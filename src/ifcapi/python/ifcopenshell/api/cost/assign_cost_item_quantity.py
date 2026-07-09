@@ -90,7 +90,9 @@ def assign_cost_item_quantity(
         _capi.instance_handle(cost_item),
         _capi.instance_list(products or []),
         _capi.string(prop_name),
-        _capi.instance_handle(owner_history),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+        {
+            "owner_history": _capi.instance_handle(owner_history),
+            "user": _capi.instance_handle(user),
+            "application": _capi.instance_handle(application),
+        },
     )

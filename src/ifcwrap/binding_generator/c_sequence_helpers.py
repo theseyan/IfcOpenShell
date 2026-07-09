@@ -526,24 +526,28 @@ def _used_handle_list_handles(spec: BindingIR) -> tuple[HandleSpec, ...]:
     opaque_handle_c_types = {handle.c_type for handle in spec.handles.values()}
     seen: set[str] = set()
     handles: list[HandleSpec] = []
+
+    def add_type(type_spec: TypeSpec) -> None:
+        if type_spec.kind != "handle" or type_spec.sequence_depth == 0:
+            return
+        handle_name = type_spec.handle
+        if _handle_list_c_type(spec.handles[handle_name]) in opaque_handle_c_types:
+            return
+        if handle_name in seen:
+            return
+        seen.add(handle_name)
+        handles.append(spec.handles[handle_name])
+
     for call in (*spec.functions, *spec.methods):
-        if call.returns.kind == "handle" and call.returns.sequence_depth > 0:
-            handle_name = call.returns.handle
-            if _handle_list_c_type(spec.handles[handle_name]) in opaque_handle_c_types:
-                continue
-            if handle_name not in seen:
-                seen.add(handle_name)
-                handles.append(spec.handles[handle_name])
+        add_type(call.returns)
         for param in call.params:
-            if param.type.kind != "handle" or param.type.sequence_depth == 0:
-                continue
-            handle_name = param.type.handle
-            if _handle_list_c_type(spec.handles[handle_name]) in opaque_handle_c_types:
-                continue
-            if handle_name in seen:
-                continue
-            seen.add(handle_name)
-            handles.append(spec.handles[handle_name])
+            add_type(param.type)
+    for struct in spec.result_structs.values():
+        for field in struct.fields:
+            add_type(field.type)
+    for struct in spec.option_structs.values():
+        for field in struct.fields:
+            add_type(field.type)
     return tuple(handles)
 
 
@@ -577,6 +581,12 @@ def _used_scalar_sequence_kinds(spec: BindingIR) -> tuple[str, ...]:
         add_type(call.returns)
         for param in call.params:
             add_type(param.type)
+    for struct in spec.result_structs.values():
+        for field in struct.fields:
+            add_type(field.type)
+    for struct in spec.option_structs.values():
+        for field in struct.fields:
+            add_type(field.type)
     return tuple(ordered)
 
 

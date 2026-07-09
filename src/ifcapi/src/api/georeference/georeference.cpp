@@ -103,14 +103,18 @@ void add_ifc2x3_georeferencing(
     }
 
     auto conversion = ifcapi::bindings::pset_add_pset(
-        file, &project, "ePSet_MapConversion", &owner_history, &user, &application, nullptr);
+        file,
+        ifcapi::bindings::PsetAddPsetOptions{
+            project, "ePSet_MapConversion", owner_history, user, application, {}});
     auto crs = ifcapi::bindings::pset_add_pset(
-        file, &project, "ePSet_ProjectedCRS", &owner_history, &user, &application, nullptr);
+        file,
+        ifcapi::bindings::PsetAddPsetOptions{
+            project, "ePSet_ProjectedCRS", owner_history, user, application, {}});
 
     std::unique_ptr<ifcopenshell_pset_props_t, void (*)(ifcopenshell_pset_props_t*)> crs_props(
         ifcapi::bindings::pset_props_new(), ifcapi::bindings::pset_props_free);
     ifcapi::bindings::pset_props_set_typed_string(crs_props.get(), "Name", name, "IfcLabel");
-    if (!ifcapi::bindings::pset_edit_pset(file, &crs, nullptr, crs_props.get(), nullptr, true)) {
+    if (!ifcapi::bindings::pset_edit_pset(file, ifcapi::bindings::PsetEditPsetOptions{crs, {}, crs_props.get(), {}, true})) {
         return;
     }
 
@@ -119,7 +123,8 @@ void add_ifc2x3_georeferencing(
     ifcapi::bindings::pset_props_set_typed_double(conversion_props.get(), "Eastings", 0.0, "IfcLengthMeasure");
     ifcapi::bindings::pset_props_set_typed_double(conversion_props.get(), "Northings", 0.0, "IfcLengthMeasure");
     ifcapi::bindings::pset_props_set_typed_double(conversion_props.get(), "OrthogonalHeight", 0.0, "IfcLengthMeasure");
-    ifcapi::bindings::pset_edit_pset(file, &conversion, nullptr, conversion_props.get(), nullptr, true);
+    ifcapi::bindings::pset_edit_pset(
+        file, ifcapi::bindings::PsetEditPsetOptions{conversion, {}, conversion_props.get(), {}, true});
 }
 
 void remove_ifc2x3_georeferencing(ifcopenshell::file* file) {
@@ -138,23 +143,21 @@ void remove_ifc2x3_georeferencing(ifcopenshell::file* file) {
 
 void edit_ifc2x3_georeferencing(
     ifcopenshell::file* file,
-    bool has_coordinate_operation,
-    ifcopenshell_pset_props_t* coordinate_operation,
-    bool has_projected_crs,
-    ifcopenshell_pset_props_t* projected_crs)
+    const ifcapi::bindings::GeoreferenceEditGeoreferencingOptions& options)
 {
     auto project = ifcapi::detail::first_instance_by_type(file, "IfcProject");
     if (!project) {
         return;
     }
-    if (has_projected_crs) {
+    if (options.projected_crs) {
         if (auto crs = ifcapi::detail::named_property_set(project, "ePSet_ProjectedCRS")) {
-            ifcapi::bindings::pset_edit_pset(file, &crs, nullptr, projected_crs, nullptr, true);
+            ifcapi::bindings::pset_edit_pset(file, ifcapi::bindings::PsetEditPsetOptions{crs, {}, *options.projected_crs, {}, true});
         }
     }
-    if (has_coordinate_operation) {
+    if (options.coordinate_operation) {
         if (auto conversion = ifcapi::detail::named_property_set(project, "ePSet_MapConversion")) {
-            ifcapi::bindings::pset_edit_pset(file, &conversion, nullptr, coordinate_operation, nullptr, true);
+            ifcapi::bindings::pset_edit_pset(
+                file, ifcapi::bindings::PsetEditPsetOptions{conversion, {}, *options.coordinate_operation, {}, true});
         }
     }
 }
@@ -166,19 +169,15 @@ namespace bindings {
 
 void georeference_add_georeferencing(
     ifcopenshell::file* file,
-    const std::string& ifc_class,
-    const std::string& name,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const GeoreferenceAddGeoreferencingOptions& options)
 {
     ifcopenshell_clear_error();
     try {
-        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto owner_history_value = options.owner_history.value_or(express::Base());
+        auto user_value = options.user.value_or(express::Base());
+        auto application_value = options.application.value_or(express::Base());
         if (is_ifc2x3(file)) {
-            add_ifc2x3_georeferencing(file, name, owner_history_value, user_value, application_value);
+            add_ifc2x3_georeferencing(file, options.name, owner_history_value, user_value, application_value);
             return;
         }
 
@@ -203,22 +202,22 @@ void georeference_add_georeferencing(
         }
 
         auto projected_crs = create_entity(file, "IfcProjectedCRS");
-        ifcapi::detail::write_string_attr(projected_crs, "Name", name);
+        ifcapi::detail::write_string_attr(projected_crs, "Name", options.name);
 
-        if (ifc_class == "IfcMapConversion" || ifc_class == "IfcMapConversionScaled") {
-            auto conversion = create_entity(file, ifc_class.c_str());
+        if (options.ifc_class == "IfcMapConversion" || options.ifc_class == "IfcMapConversionScaled") {
+            auto conversion = create_entity(file, options.ifc_class.c_str());
             ifcapi::detail::write_ref_attr(conversion, "SourceCRS", source_crs);
             ifcapi::detail::write_ref_attr(conversion, "TargetCRS", projected_crs);
             ifcapi::detail::write_double_attr(conversion, "Eastings", 0.0);
             ifcapi::detail::write_double_attr(conversion, "Northings", 0.0);
             ifcapi::detail::write_double_attr(conversion, "OrthogonalHeight", 0.0);
-            if (ifc_class == "IfcMapConversionScaled") {
+            if (options.ifc_class == "IfcMapConversionScaled") {
                 ifcapi::detail::write_double_attr(conversion, "FactorX", 1.0);
                 ifcapi::detail::write_double_attr(conversion, "FactorY", 1.0);
                 ifcapi::detail::write_double_attr(conversion, "FactorZ", 1.0);
             }
-        } else if (ifc_class == "IfcRigidOperation") {
-            auto conversion = create_entity(file, ifc_class.c_str());
+        } else if (options.ifc_class == "IfcRigidOperation") {
+            auto conversion = create_entity(file, options.ifc_class.c_str());
             ifcapi::detail::write_ref_attr(conversion, "SourceCRS", source_crs);
             ifcapi::detail::write_ref_attr(conversion, "TargetCRS", projected_crs);
             int first_idx = ifcapi::detail::attr_index_of(conversion, "FirstCoordinate");
@@ -240,18 +239,26 @@ void georeference_add_georeferencing(
     }
 }
 
-void georeference_edit_true_north(ifcopenshell::file* file, bool has_true_north, double x, double y) {
+void georeference_edit_true_north(
+    ifcopenshell::file* file,
+    const GeoreferenceEditTrueNorthOptions& options) {
     ifcopenshell_clear_error();
     try {
         for (auto context : geometric_contexts(file)) {
             auto true_north = ifcapi::detail::read_ref_attr(context, "TrueNorth");
-            if (true_north && !has_true_north) {
-                ifcapi::detail::write_ref_attr(context, "TrueNorth", {});
-                if (ifcapi::detail::total_inverses(file, true_north) == 0) {
-                    ifcapi::bindings::entity_remove_deep2(&true_north);
+            if (!options.true_north) {
+                if (true_north) {
+                    ifcapi::detail::write_ref_attr(context, "TrueNorth", {});
+                    if (ifcapi::detail::total_inverses(file, true_north) == 0) {
+                        ifcapi::bindings::entity_remove_deep2(&true_north);
+                    }
                 }
                 continue;
             }
+
+            const auto& vec = *options.true_north;
+            double x = vec.size() > 0 ? vec[0] : 0.0;
+            double y = vec.size() > 1 ? vec[1] : 0.0;
 
             if (true_north) {
                 if (ifcapi::detail::total_inverses(file, true_north) != 1) {
@@ -271,40 +278,42 @@ void georeference_edit_true_north(ifcopenshell::file* file, bool has_true_north,
 
 void georeference_edit_georeferencing(
     ifcopenshell::file* file,
-    bool has_coordinate_operation,
-    ifcopenshell_pset_props_t* coordinate_operation,
-    bool has_projected_crs,
-    ifcopenshell_pset_props_t* projected_crs)
+    const GeoreferenceEditGeoreferencingOptions& options)
 {
     ifcopenshell_clear_error();
     try {
         if (is_ifc2x3(file)) {
-            edit_ifc2x3_georeferencing(
-                file, has_coordinate_operation, coordinate_operation, has_projected_crs, projected_crs);
+            edit_ifc2x3_georeferencing(file, options);
             return;
         }
-        if (has_projected_crs) {
+        if (options.projected_crs) {
             auto crs_items = ifcapi::detail::instances_by_type(file, "IfcProjectedCRS");
             if (crs_items.empty()) {
                 throw std::runtime_error("IfcProjectedCRS not found");
             }
-            ifcapi::detail::apply_attribute_props(crs_items.front(), projected_crs);
+            ifcapi::detail::apply_attribute_props(crs_items.front(), *options.projected_crs);
         }
-        if (has_coordinate_operation) {
+        if (options.coordinate_operation) {
             auto conversion_items = ifcapi::detail::instances_by_type(file, "IfcCoordinateOperation");
             if (conversion_items.empty()) {
                 throw std::runtime_error("IfcCoordinateOperation not found");
             }
-            ifcapi::detail::apply_attribute_props(conversion_items.front(), coordinate_operation);
+            ifcapi::detail::apply_attribute_props(conversion_items.front(), *options.coordinate_operation);
         }
     } catch (const std::exception& e) {
         ifcapi::detail::set_error(e.what());
     }
 }
 
-void georeference_edit_wcs(ifcopenshell::file* file, double x, double y, double z, double rotation, bool is_si) {
+void georeference_edit_wcs(ifcopenshell::file* file, const GeoreferenceEditWcsOptions& options) {
     ifcopenshell_clear_error();
     try {
+        double x = options.x.value_or(0.0);
+        double y = options.y.value_or(0.0);
+        double z = options.z.value_or(0.0);
+        double rotation = options.rotation.value_or(0.0);
+        bool is_si = options.is_si.value_or(true);
+
         double unit_scale = ifcapi::bindings::unit_calculate_unit_scale(file, "LENGTHUNIT");
         if (unit_scale == 0.0) {
             unit_scale = 1.0;

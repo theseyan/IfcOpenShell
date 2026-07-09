@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.owner.settings
-from ifcopenshell import _ifcopenshell_capi as _capi
+from ifcopenshell.api import _relationship_capi
 
 
 def unassign_reference(
@@ -55,13 +54,15 @@ def unassign_reference(
         # Let's change our mind and unassign it.
         ifcopenshell.api.library.unassign_reference(model, reference=reference, products=[ahu])
     """
-    user = ifcopenshell.api.owner.settings.get_user(file)
-    application = ifcopenshell.api.owner.settings.get_application(file)
-    product_list = [e._handle for e in products]
-    _capi.library_unassign_reference(
-        file._handle,
-        reference._handle,
-        product_list,
-        user._handle if user is not None else None,
-        application._handle if application is not None else None,
+    user, application = _relationship_capi.owner_user_application(file)
+    product_list = _relationship_capi.instance_list(products)
+    _relationship_capi.call_status(
+        "library_unassign_reference",
+        _relationship_capi.file_handle(file),
+        {
+            "reference": _relationship_capi.instance_handle(reference),
+            "products": product_list,
+            "user": _relationship_capi.instance_handle(user),
+            "application": _relationship_capi.instance_handle(application),
+        },
     )

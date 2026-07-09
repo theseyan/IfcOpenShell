@@ -156,6 +156,11 @@ struct ifcopenshell_value_t {
     bool owned;
 };
 
+struct ifcopenshell_pset_template_handle_t {
+    ifcopenshell_pset_template_t* ptr;
+    bool owned;
+};
+
 struct ifcopenshell_geom_iterator_t {
     IfcGeom::Iterator* ptr;
     bool owned;

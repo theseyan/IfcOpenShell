@@ -8,7 +8,7 @@ import numpy as np
 
 import ifcopenshell
 import ifcopenshell.api.owner
-from ifcopenshell import _ifcopenshell_capi as _capi
+from ifcopenshell.api.geometry import _capi
 
 _IDENTITY = [
     1.0, 0.0, 0.0, 0.0,
@@ -28,15 +28,17 @@ def edit_object_placement(file, product=None, matrix=None, is_si=True, should_tr
         arr = np.ascontiguousarray(np.asarray(matrix, dtype=np.float64).reshape(4, 4))
         matrix_values = arr.reshape(16).tolist()
 
-    handle = _capi.geometry_edit_object_placement(
-        file._handle,
-        product._handle,
-        matrix_values,
-        bool(is_si),
-        bool(should_transform_children),
+    new_placement = _capi.call_handle(
+        file,
+        "geometry_edit_object_placement",
+        _capi.file_handle(file),
+        {
+            "product": _capi.instance_handle(product),
+            "matrix": matrix_values,
+            "is_si": bool(is_si),
+            "should_transform_children": bool(should_transform_children),
+        },
+        nullable=True,
     )
-    if not handle:
-        return None
-    new_placement = ifcopenshell.entity_instance(file, handle)
     ifcopenshell.api.owner.update_owner_history(file, element=product)
     return new_placement

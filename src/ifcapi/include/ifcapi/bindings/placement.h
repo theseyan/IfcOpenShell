@@ -7,6 +7,7 @@
 
 #include "ifcparse/express.h"
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -19,7 +20,7 @@ IFCAPI_BINDING std::vector<double> placement_a2p(
     const std::vector<double>& x_axis);
 IFCAPI_BINDING std::vector<double> placement_get_axis2placement(express::Base* instance);
 IFCAPI_BINDING std::vector<double> placement_get_local_placement(
-    IFCAPI_NULLABLE express::Base* instance);
+    std::optional<express::Base> instance);
 IFCAPI_BINDING std::vector<double> placement_get_cartesian_xform_3d(express::Base* instance);
 IFCAPI_BINDING std::vector<double> placement_get_mappeditem_xform(express::Base* instance);
 IFCAPI_BINDING double placement_get_storey_elevation(express::Base* instance);

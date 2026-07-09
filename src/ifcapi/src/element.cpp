@@ -163,38 +163,50 @@ express::Base resolve_container(
 
 } // namespace
 
-express::Base element_get_type(express::Base* instance) {
-    return instance ? resolve_type(instance->file(), *instance) : express::Base();
+std::optional<express::Base> element_get_type(express::Base* instance) {
+    if (!instance) return std::nullopt;
+    auto result = resolve_type(instance->file(), *instance);
+    return result ? std::optional(result) : std::nullopt;
 }
 
-express::Base element_get_aggregate(express::Base* instance) {
-    return instance ? resolve_aggregate(instance->file(), *instance) : express::Base();
+std::optional<express::Base> element_get_aggregate(express::Base* instance) {
+    if (!instance) return std::nullopt;
+    auto result = resolve_aggregate(instance->file(), *instance);
+    return result ? std::optional(result) : std::nullopt;
 }
 
-express::Base element_get_nest(express::Base* instance) {
-    return instance ? resolve_nest(instance->file(), *instance) : express::Base();
+std::optional<express::Base> element_get_nest(express::Base* instance) {
+    if (!instance) return std::nullopt;
+    auto result = resolve_nest(instance->file(), *instance);
+    return result ? std::optional(result) : std::nullopt;
 }
 
-express::Base element_get_container(
+std::optional<express::Base> element_get_container(
     express::Base* instance,
-    bool direct_only,
-    const char* ifc_class)
+    const ElementGetContainerOptions& options)
 {
-    return instance ? resolve_container(instance->file(), *instance, direct_only, ifc_class) : express::Base();
+    bool direct_only = options.direct_only.value_or(false);
+    const char* ifc_class = options.ifc_class ? options.ifc_class->c_str() : nullptr;
+    if (!instance) return std::nullopt;
+    auto result = resolve_container(instance->file(), *instance, direct_only, ifc_class);
+    return result ? std::optional(result) : std::nullopt;
 }
 
-express::Base element_get_parent(express::Base* instance) {
-    return instance ? resolve_parent(instance->file(), *instance) : express::Base();
+std::optional<express::Base> element_get_parent(express::Base* instance) {
+    if (!instance) return std::nullopt;
+    auto result = resolve_parent(instance->file(), *instance);
+    return result ? std::optional(result) : std::nullopt;
 }
 
-express::Base element_get_material(
+std::optional<express::Base> element_get_material(
     express::Base* instance,
-    bool should_skip_usage,
-    bool should_inherit)
+    const ElementGetMaterialOptions& options)
 {
     if (!instance || !*instance) {
-        return {};
+        return std::nullopt;
     }
+    bool should_skip_usage = options.should_skip_usage.value_or(false);
+    bool should_inherit = options.should_inherit.value_or(true);
 
     for (const auto& rel : get_inverse(*instance, "HasAssociations")) {
         if (!is_a(rel, "IfcRelAssociatesMaterial")) {
@@ -218,16 +230,23 @@ express::Base element_get_material(
     if (should_inherit) {
         auto type_obj = resolve_type(instance->file(), *instance);
         if (type_obj && type_obj != *instance && !get_inverse(type_obj, "HasAssociations").empty()) {
-            return element_get_material(&type_obj, should_skip_usage, false);
+            ElementGetMaterialOptions inherited_options;
+            inherited_options.should_skip_usage = should_skip_usage;
+            inherited_options.should_inherit = false;
+            return element_get_material(&type_obj, inherited_options);
         }
     }
-    return {};
+    return std::nullopt;
 }
 
-std::vector<express::Base> element_get_decomposition(express::Base* instance, bool is_recursive) {
+std::vector<express::Base> element_get_decomposition(
+    express::Base* instance,
+    const ElementGetDecompositionOptions& options)
+{
     if (!instance || !*instance) {
         return {};
     }
+    bool is_recursive = options.is_recursive.value_or(true);
 
     std::set<int32_t> seen;
     std::vector<express::Base> result;
@@ -283,13 +302,14 @@ std::vector<express::Base> element_get_decomposition(express::Base* instance, bo
 
 std::vector<express::Base> element_get_pset_ids(
     express::Base* element,
-    bool psets_only,
-    bool qtos_only,
-    bool should_inherit)
+    const ElementGetPsetIdsOptions& options)
 {
     if (!element || !*element) {
         return {};
     }
+    bool psets_only = options.psets_only.value_or(false);
+    bool qtos_only = options.qtos_only.value_or(false);
+    bool should_inherit = options.should_inherit.value_or(true);
     auto* file = element->file();
     bool file_is_ifc2x3 = is_ifc2x3(file);
     std::vector<express::Base> result;
@@ -346,7 +366,11 @@ std::vector<express::Base> element_get_pset_ids(
         if (should_inherit) {
             auto type_obj = resolve_type(file, *element);
             if (type_obj) {
-                for (const auto& inherited : element_get_pset_ids(&type_obj, psets_only, qtos_only, false)) {
+                ElementGetPsetIdsOptions inherited_options;
+                inherited_options.psets_only = psets_only;
+                inherited_options.qtos_only = qtos_only;
+                inherited_options.should_inherit = false;
+                for (const auto& inherited : element_get_pset_ids(&type_obj, inherited_options)) {
                     push_def(inherited);
                 }
             }

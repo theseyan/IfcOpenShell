@@ -21,6 +21,7 @@ from typing import Union
 import ifcopenshell
 import ifcopenshell.api.owner.settings
 from ifcopenshell import _ifcopenshell_capi as _capi
+from ifcopenshell._capi_utils import instance_handle
 
 
 def create_owner_history(file: ifcopenshell.file) -> Union[ifcopenshell.entity_instance, None]:
@@ -103,9 +104,9 @@ def create_owner_history(file: ifcopenshell.file) -> Union[ifcopenshell.entity_i
     application = ifcopenshell.api.owner.settings.get_application(file)
     if file.schema != "IFC2X3" and not application:
         return
-    handle = _capi.owner_create_owner_history(
-        file._handle,
-        user._handle if user is not None else None,
-        application._handle if application is not None else None,
-    )
+    opts = {
+        "user": instance_handle(user),
+        "application": instance_handle(application),
+    }
+    handle = _capi.owner_create_owner_history(file._handle, opts)
     return ifcopenshell.entity_instance(file, handle) if handle else None

@@ -19,8 +19,7 @@
 from typing import Union
 
 import ifcopenshell
-import ifcopenshell.api.owner.settings
-from ifcopenshell import _ifcopenshell_capi as _capi
+from ifcopenshell.api import _relationship_capi
 
 
 def assign_reference(
@@ -57,17 +56,17 @@ def assign_reference(
         # And now assign the IFC model's AHU with its Brickschema counterpart
         ifcopenshell.api.library.assign_reference(model, reference=reference, products=[ahu])
     """
-    user = ifcopenshell.api.owner.settings.get_user(file)
-    application = ifcopenshell.api.owner.settings.get_application(file)
-    product_list = [e._handle for e in products]
-    handle = _capi.library_assign_reference(
-        file._handle,
-        product_list,
-        reference._handle,
-        None,
-        user._handle if user is not None else None,
-        application._handle if application is not None else None,
+    user, application = _relationship_capi.owner_user_application(file)
+    product_list = _relationship_capi.instance_list(products)
+    return _relationship_capi.call_handle(
+        file,
+        "library_assign_reference",
+        _relationship_capi.file_handle(file),
+        {
+            "products": product_list,
+            "reference": _relationship_capi.instance_handle(reference),
+            "owner_history": None,
+            "user": _relationship_capi.instance_handle(user),
+            "application": _relationship_capi.instance_handle(application),
+        },
     )
-    if handle:
-        return ifcopenshell.entity_instance(file, handle)
-    return None

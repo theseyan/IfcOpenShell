@@ -390,7 +390,7 @@ inline Val* extract_pset_props(express::Base defn) {
 inline std::vector<std::pair<std::string, Val*>>
 get_all_psets(express::Base entity) {
     std::vector<std::pair<std::string, Val*>> result;
-    auto psets = ifcapi::bindings::element_get_pset_ids(&entity, false, false, true);
+    auto psets = ifcapi::bindings::element_get_pset_ids(&entity, {false, false, true});
     if (psets.empty()) return result;
 
     for (auto pset : psets) {
@@ -492,14 +492,14 @@ inline Val* resolve_predefined_type(express::Base e) {
     auto type_e = ifcapi::bindings::element_get_type(&e);
 
     if (type_e) {
-        std::string pt = get_string_attr(type_e, "PredefinedType");
+        std::string pt = get_string_attr(*type_e, "PredefinedType");
         if (pt.empty() || pt == "USERDEFINED") {
-            int et_idx = find_attr_idx(type_e, "ElementType");
+            int et_idx = find_attr_idx(*type_e, "ElementType");
             if (et_idx < 0) {
-                std::string prt = get_string_attr(type_e, "ProcessType");
+                std::string prt = get_string_attr(*type_e, "ProcessType");
                 if (!prt.empty() && prt != "NOTDEFINED") return make_string(prt);
             } else {
-                std::string et = get_string_attr(type_e, "ElementType");
+                std::string et = get_string_attr(*type_e, "ElementType");
                 if (!et.empty() && et != "NOTDEFINED") return make_string(et);
             }
         } else if (pt != "NOTDEFINED") {
@@ -575,9 +575,9 @@ inline Val* resolve_profiles(ifcopenshell::file* file, express::Base e) {
     auto list = make_list();
     if (!e) return list;
 
-    auto mat = ifcapi::bindings::element_get_material(&e, true, true);
-    if (mat && entity_is_a(mat, "IfcMaterialProfileSet")) {
-        for (auto mp : get_entity_list(mat, "MaterialProfiles")) {
+    auto mat = ifcapi::bindings::element_get_material(&e, {true, true});
+    if (mat && entity_is_a(*mat, "IfcMaterialProfileSet")) {
+        for (auto mp : get_entity_list(*mat, "MaterialProfiles")) {
             auto profile = get_entity_ref(mp, "Profile");
             if (profile) list->list_val.push_back(make_instance(profile));
         }
@@ -586,7 +586,7 @@ inline Val* resolve_profiles(ifcopenshell::file* file, express::Base e) {
 
     if (!file) return list;
     auto rep = ifcapi::bindings::representation_get_product_representation(
-        &e, nullptr, "Model", "Body", "MODEL_VIEW");
+        &e, {{}, "Model", "Body", "MODEL_VIEW"});
     if (!rep) return list;
 
     auto items = ifcapi::bindings::representation_resolve_base_items(&rep);
@@ -603,7 +603,7 @@ inline Val* resolve_xyz(express::Base e, const std::string& k) {
     auto placement_e = get_entity_ref(e, "ObjectPlacement");
     if (!placement_e) return make_none();
     double matrix[16];
-    if (!placement_matrix_to_array(ifcapi::bindings::placement_get_local_placement(&placement_e), matrix)) return make_none();
+    if (!placement_matrix_to_array(ifcapi::bindings::placement_get_local_placement(placement_e), matrix)) return make_none();
     int ci = (k == "x") ? 0 : (k == "y") ? 1 : 2;
     return make_double(matrix[ci * 4 + 3]);
 }
@@ -734,7 +734,7 @@ inline Val* resolve_map_coordinate(ifcopenshell::file* file, express::Base e, co
     auto placement_e = get_entity_ref(e, "ObjectPlacement");
     if (!placement_e) return make_none();
     double matrix[16];
-    if (!placement_matrix_to_array(ifcapi::bindings::placement_get_local_placement(&placement_e), matrix)) return make_none();
+    if (!placement_matrix_to_array(ifcapi::bindings::placement_get_local_placement(placement_e), matrix)) return make_none();
     double x = matrix[3];
     double y = matrix[7];
     double z = matrix[11];
@@ -837,35 +837,35 @@ inline Val* apply_key(ifcopenshell::file* file, const Val* cur, const KeyEntry& 
     if (!key.is_regex) {
         if (k == "type") {
             auto type = ifcapi::bindings::element_get_type(&e);
-            return type ? make_instance(type) : make_none();
+            return type ? make_instance(*type) : make_none();
         }
         if (k == "material" || k == "mat") {
-            auto material = ifcapi::bindings::element_get_material(&e, true, true);
-            return material ? make_instance(material) : make_none();
+            auto material = ifcapi::bindings::element_get_material(&e, {true, true});
+            return material ? make_instance(*material) : make_none();
         }
         if (k == "materials" || k == "mats") {
-            auto mat = ifcapi::bindings::element_get_material(&e, true, true);
+            auto mat = ifcapi::bindings::element_get_material(&e, {true, true});
             if (!mat) return make_none();
             auto list = make_list();
-            if (entity_is_a(mat, "IfcMaterial")) {
-                list->list_val.push_back(make_instance(mat));
-            } else if (entity_is_a(mat, "IfcMaterialLayerSet")) {
-                for (auto lay : get_entity_list(mat, "MaterialLayers")) {
+            if (entity_is_a(*mat, "IfcMaterial")) {
+                list->list_val.push_back(make_instance(*mat));
+            } else if (entity_is_a(*mat, "IfcMaterialLayerSet")) {
+                for (auto lay : get_entity_list(*mat, "MaterialLayers")) {
                     auto m = get_entity_ref(lay, "Material");
                     if (m) list->list_val.push_back(make_instance(m));
                 }
-            } else if (entity_is_a(mat, "IfcMaterialProfileSet")) {
-                for (auto pr : get_entity_list(mat, "MaterialProfiles")) {
+            } else if (entity_is_a(*mat, "IfcMaterialProfileSet")) {
+                for (auto pr : get_entity_list(*mat, "MaterialProfiles")) {
                     auto m = get_entity_ref(pr, "Material");
                     if (m) list->list_val.push_back(make_instance(m));
                 }
-            } else if (entity_is_a(mat, "IfcMaterialConstituentSet")) {
-                for (auto co : get_entity_list(mat, "MaterialConstituents")) {
+            } else if (entity_is_a(*mat, "IfcMaterialConstituentSet")) {
+                for (auto co : get_entity_list(*mat, "MaterialConstituents")) {
                     auto m = get_entity_ref(co, "Material");
                     if (m) list->list_val.push_back(make_instance(m));
                 }
-            } else if (entity_is_a(mat, "IfcMaterialList")) {
-                for (auto m : get_entity_list(mat, "Materials"))
+            } else if (entity_is_a(*mat, "IfcMaterialList")) {
+                for (auto m : get_entity_list(*mat, "Materials"))
                     list->list_val.push_back(make_instance(m));
             }
             return list;
@@ -886,28 +886,28 @@ inline Val* apply_key(ifcopenshell::file* file, const Val* cur, const KeyEntry& 
             return list;
         }
         if (k == "container") {
-            auto container = ifcapi::bindings::element_get_container(&e, false, nullptr);
-            return container ? make_instance(container) : make_none();
+            auto container = ifcapi::bindings::element_get_container(&e, {false, {}});
+            return container ? make_instance(*container) : make_none();
         }
         if (k == "space") {
-            auto space = ifcapi::bindings::element_get_container(&e, false, "IfcSpace");
-            return space ? make_instance(space) : make_none();
+            auto space = ifcapi::bindings::element_get_container(&e, {false, std::string("IfcSpace")});
+            return space ? make_instance(*space) : make_none();
         }
         if (k == "storey") {
-            auto storey = ifcapi::bindings::element_get_container(&e, false, "IfcBuildingStorey");
-            return storey ? make_instance(storey) : make_none();
+            auto storey = ifcapi::bindings::element_get_container(&e, {false, std::string("IfcBuildingStorey")});
+            return storey ? make_instance(*storey) : make_none();
         }
         if (k == "building") {
-            auto building = ifcapi::bindings::element_get_container(&e, false, "IfcBuilding");
-            return building ? make_instance(building) : make_none();
+            auto building = ifcapi::bindings::element_get_container(&e, {false, std::string("IfcBuilding")});
+            return building ? make_instance(*building) : make_none();
         }
         if (k == "site") {
-            auto site = ifcapi::bindings::element_get_container(&e, false, "IfcSite");
-            return site ? make_instance(site) : make_none();
+            auto site = ifcapi::bindings::element_get_container(&e, {false, std::string("IfcSite")});
+            return site ? make_instance(*site) : make_none();
         }
         if (k == "parent") {
             auto parent = ifcapi::bindings::element_get_parent(&e);
-            return parent ? make_instance(parent) : make_none();
+            return parent ? make_instance(*parent) : make_none();
         }
         if (k == "types" || k == "occurrences") return resolve_occurrences(e);
         if (k == "count")           return make_int(1);

@@ -37,12 +37,14 @@ def _edit_attributes(
         _capi.call_status(
             "attribute_edit_attributes",
             _capi.file_handle(file),
-            _capi.instance_handle(product),
-            props,
-            sync_predefined_type,
-            update_owner_history,
-            _capi.instance_handle(user),
-            _capi.instance_handle(application),
+            {
+                "product": _capi.instance_handle(product),
+                "attributes": props,
+                "sync_predefined_type": sync_predefined_type,
+                "update_owner_history": update_owner_history,
+                "user": _capi.instance_handle(user),
+                "application": _capi.instance_handle(application),
+            },
         )
     finally:
         pset_capi.free_props(props)

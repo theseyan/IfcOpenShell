@@ -169,20 +169,16 @@ namespace bindings {
 
 express::Base pset_assign_pset(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base* pset_ptr,
-    express::Base* owner_history_ptr,
-    express::Base* user_ptr,
-    express::Base* application_ptr)
+    const PsetAssignPsetOptions& options)
 {
-    auto pset = ifcapi::detail::deref_or_empty(pset_ptr);
-    auto owner_history = ifcapi::detail::deref_or_empty(owner_history_ptr);
-    auto user = ifcapi::detail::deref_or_empty(user_ptr);
-    auto application = ifcapi::detail::deref_or_empty(application_ptr);
+    auto pset = options.pset;
+    auto owner_history = options.owner_history.value_or(express::Base());
+    auto user = options.user.value_or(express::Base());
+    auto application = options.application.value_or(express::Base());
     if (!file || !pset) throw std::runtime_error("Invalid pset assignment arguments");
     std::vector<express::Base> occurrences;
     std::vector<express::Base> types;
-    split_products(products, occurrences, types);
+    split_products(options.products, occurrences, types);
 
     express::Base rel;
     if (!occurrences.empty()) {
@@ -284,18 +280,14 @@ void pset_remove_pset(
 
 std::vector<express::Base> pset_unshare_pset(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base* pset_ptr,
-    express::Base* owner_history_ptr,
-    express::Base* user_ptr,
-    express::Base* application_ptr)
+    const PsetUnsharePsetOptions& options)
 {
-    auto pset = ifcapi::detail::deref_or_empty(pset_ptr);
-    auto owner_history = ifcapi::detail::deref_or_empty(owner_history_ptr);
-    auto user = ifcapi::detail::deref_or_empty(user_ptr);
-    auto application = ifcapi::detail::deref_or_empty(application_ptr);
+    auto pset = options.pset;
+    auto owner_history = options.owner_history.value_or(express::Base());
+    auto user = options.user.value_or(express::Base());
+    auto application = options.application.value_or(express::Base());
     if (!file || !pset) throw std::runtime_error("Invalid pset unshare arguments");
-    auto selected = products;
+    auto selected = options.products;
     if (selected.empty()) throw std::runtime_error("No products provided.");
     auto original_products = selected;
     if (same_entity_set(selected, pset_elements(file, pset))) {
@@ -313,8 +305,15 @@ std::vector<express::Base> pset_unshare_pset(
         auto copy = ifcapi::detail::shallow_copy(file, pset);
         if (!copy) throw std::runtime_error("Failed to copy property set");
         result.push_back(copy);
-        std::vector<express::Base> one{product};
-        pset_assign_pset(file, one, &copy, &owner_history, &user, &application);
+        pset_assign_pset(
+            file,
+            PsetAssignPsetOptions{
+                {product},
+                copy,
+                owner_history ? std::optional<express::Base>(owner_history) : std::nullopt,
+                user ? std::optional<express::Base>(user) : std::nullopt,
+                application ? std::optional<express::Base>(application) : std::nullopt,
+            });
     }
     (void)original_products;
     return result;

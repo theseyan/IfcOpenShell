@@ -8,6 +8,7 @@
 #include "ifcparse/express.h"
 #include "ifcparse/file.h"
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -20,11 +21,22 @@ IFCAPI_BINDING express::Base style_add_style(
     ifcopenshell::file* file,
     const char* name,
     const std::string& ifc_class);
+
+/**
+ * Options for assigning a style to a representation item.
+ */
+struct StyleAssignItemStyleOptions {
+    /// The representation item to assign the style to.
+    express::Base item;
+    /// Optional style to assign. Empty to remove/unassign.
+    std::optional<express::Base> style;
+    /// Whether to use IfcPresentationStyleAssignment (for IFC2X3 compat).
+    bool should_use_presentation_style_assignment;
+};
+
 IFCAPI_BINDING express::Base style_assign_item_style(
     ifcopenshell::file* file,
-    express::Base* item,
-    IFCAPI_NULLABLE express::Base* style,
-    bool should_use_presentation_style_assignment);
+    const StyleAssignItemStyleOptions& options);
 IFCAPI_BINDING std::vector<express::Base> style_assign_representation_styles(
     ifcopenshell::file* file,
     express::Base* shape_representation,

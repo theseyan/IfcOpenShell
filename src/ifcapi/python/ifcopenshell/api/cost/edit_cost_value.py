@@ -50,10 +50,13 @@ def edit_cost_value(
     native_attributes = attributes.copy()
     has_unit_basis = "UnitBasis" in native_attributes
     unit_basis = native_attributes.pop("UnitBasis", None)
-    unit_basis_is_null = unit_basis is None
+
+    edit_unit_basis = has_unit_basis
+    clear_unit_basis = unit_basis is None
     value_component = 0.0
     unit_component = None
     if has_unit_basis and unit_basis:
+        clear_unit_basis = False
         value_component = unit_basis["ValueComponent"]
         unit_component = unit_basis["UnitComponent"]
 
@@ -64,10 +67,12 @@ def edit_cost_value(
             _capi.file_handle(file),
             _capi.instance_handle(cost_value),
             props,
-            has_unit_basis,
-            unit_basis_is_null,
-            float(value_component),
-            _capi.instance_handle(unit_component),
+            {
+                "edit_unit_basis": edit_unit_basis,
+                "clear_unit_basis": clear_unit_basis,
+                "value_component": float(value_component),
+                "unit_component": _capi.instance_handle(unit_component),
+            },
         )
     finally:
         pset_capi.free_props(props)

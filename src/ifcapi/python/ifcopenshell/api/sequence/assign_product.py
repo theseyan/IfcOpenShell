@@ -70,8 +70,10 @@ def assign_product(
         _capi.file_handle(file),
         _capi.instance_handle(relating_product),
         _capi.instance_handle(related_object),
-        _capi.instance_handle(owner_history),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+        {
+            "owner_history": _capi.instance_handle(owner_history),
+            "user": _capi.instance_handle(user),
+            "application": _capi.instance_handle(application),
+        },
         nullable=True,
     )

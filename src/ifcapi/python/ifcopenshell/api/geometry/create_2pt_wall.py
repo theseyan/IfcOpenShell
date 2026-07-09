@@ -54,14 +54,16 @@ def create_2pt_wall(
         file,
         "geometry_create_2pt_wall",
         _capi.file_handle(file),
-        _capi.instance_handle(element),
-        _capi.instance_handle(context),
-        _capi.double_list(p1),
-        _capi.double_list(p2),
-        elevation,
-        height,
-        thickness,
-        is_si,
+        {
+            "element": _capi.instance_handle(element),
+            "context": _capi.instance_handle(context),
+            "start": p1,
+            "end": p2,
+            "elevation": elevation,
+            "height": height,
+            "thickness": thickness,
+            "is_si": is_si,
+        },
     )
 
 

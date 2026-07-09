@@ -60,5 +60,5 @@ def remove_layer(
         "Failed to remove material layer",
         _capi.file_handle(file),
         _capi.instance_handle(layer),
-        should_remove_material,
+        {"should_remove_material": should_remove_material},
     )

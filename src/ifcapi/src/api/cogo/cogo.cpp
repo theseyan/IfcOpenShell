@@ -77,15 +77,10 @@ express::Base first_item(express::Base annotation) {
 
 express::Base cogo_add_survey_point(
     ifcopenshell::file* file,
-    express::Base* survey_point,
-    express::Base* site,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const CogoAddSurveyPointOptions& options)
 {
     ifcopenshell_clear_error();
-    auto survey_point_value = ifcapi::detail::deref_or_empty(survey_point);
-    if (!file || !survey_point_value) {
+    if (!file || !options.survey_point) {
         set_error("Invalid arguments");
         return {};
     }
@@ -95,7 +90,7 @@ express::Base cogo_add_survey_point(
         if (!context) {
             throw std::runtime_error("No Model/Annotation/MODEL_VIEW representation context found");
         }
-        auto actual_site = site && *site ? *site : first_site(file);
+        auto actual_site = options.site.value_or(first_site(file));
         if (!actual_site) {
             throw std::runtime_error("No IfcSite found");
         }
@@ -104,7 +99,7 @@ express::Base cogo_add_survey_point(
         ifcapi::detail::write_ref_attr(shape_representation, "ContextOfItems", context);
         ifcapi::detail::write_string_attr(shape_representation, "RepresentationIdentifier", "Annotation");
         ifcapi::detail::write_string_attr(shape_representation, "RepresentationType", "Point");
-        ifcapi::detail::write_ref_aggregate(shape_representation, "Items", {survey_point_value});
+        ifcapi::detail::write_ref_aggregate(shape_representation, "Items", {options.survey_point});
 
         auto representation = file->create(file->schema()->declaration_by_name("IfcProductDefinitionShape"));
         ifcapi::detail::write_ref_aggregate(representation, "Representations", {shape_representation});
@@ -118,7 +113,13 @@ express::Base cogo_add_survey_point(
         ifcapi::detail::write_ref_attr(annotation, "Representation", representation);
         ifcapi::detail::write_enum_attr(annotation, "PredefinedType", "SURVEY");
 
-        spatial_assign_container(file, {annotation}, &actual_site, owner_history, user, application);
+        spatial_assign_container(file, {
+            {annotation},
+            actual_site,
+            options.owner_history,
+            options.user,
+            options.application,
+        });
         return annotation;
     } catch (const std::exception& e) {
         set_error(e.what());

@@ -128,24 +128,36 @@ def _canonical_file_entities(ifc_file, values):
     }
 
 
-def _set_element_value_native(ifc_file, element, keys, value, concat):
-    key_values = [key.pattern if isinstance(key, re.Pattern) else str(key) for key in keys]
-    regex_flags = [isinstance(key, re.Pattern) for key in keys]
+def _quote_key(key: str) -> str:
+    return '"' + key.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def _key_query(keys) -> str:
+    parts = []
+    for key in keys:
+        if isinstance(key, re.Pattern):
+            pattern = key.pattern.replace("/", "\\/")
+            parts.append(f"/{pattern}/")
+        else:
+            parts.append(_quote_key(str(key)))
+    return ".".join(parts)
+
+
+def _set_element_value_native(ifc_file, element, query, value, concat):
     value_ptr = python_to_value(None, value)
     try:
-        success = _capi.selector_set_element_value(
+        _capi.selector_set_element_value(
             ifc_file._handle,
             element._handle,
-            key_values,
-            regex_flags,
+            query,
             value_ptr,
             concat,
         )
-        if not success:
-            raise SetElementValueException(
-                f"Failed to set value '{value}' for element '{element}' with query '{key_values}' "
-                "(invalid or unsupported query)."
-            )
+    except Exception as ex:
+        raise SetElementValueException(
+            f"Failed to set value '{value}' for element '{element}' with query '{query}' "
+            "(invalid or unsupported query)."
+        ) from ex
     finally:
         _capi.value_destroy(value_ptr)
 
@@ -674,8 +686,10 @@ def set_element_value(
     original_element = element
     if isinstance(query, (list, tuple)):
         keys = query
+        native_query = _key_query(keys)
     else:
         keys = GetElementTransformer().transform(get_element_grammar.parse(query))
+        native_query = query
 
     if element is None:
         return
@@ -684,7 +698,7 @@ def set_element_value(
             set_element_value(ifc_file, item, keys, value, concat=concat)
         return
     if isinstance(element, ifcopenshell.entity_instance):
-        _set_element_value_native(ifc_file, element, keys, value, concat)
+        _set_element_value_native(ifc_file, element, native_query, value, concat)
         return
 
     for i, key in enumerate(keys):

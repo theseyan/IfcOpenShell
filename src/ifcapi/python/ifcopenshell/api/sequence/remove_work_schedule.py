@@ -47,6 +47,8 @@ def remove_work_schedule(file: ifcopenshell.file, work_schedule: ifcopenshell.en
         "sequence_remove_work_schedule",
         _capi.file_handle(file),
         _capi.instance_handle(work_schedule),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+        {
+            "user": _capi.instance_handle(user),
+            "application": _capi.instance_handle(application),
+        },
     )

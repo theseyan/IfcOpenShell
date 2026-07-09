@@ -70,8 +70,10 @@ def dereference_structure(
     _relationship_capi.call_status(
         "spatial_dereference_structure",
         _relationship_capi.file_handle(file),
-        _relationship_capi.instance_list_ptr(product_list),
-        _relationship_capi.instance_handle(relating_structure),
-        _relationship_capi.instance_handle(user),
-        _relationship_capi.instance_handle(application),
+        {
+            "products": product_list,
+            "relating_structure": _relationship_capi.instance_handle(relating_structure),
+            "user": _relationship_capi.instance_handle(user),
+            "application": _relationship_capi.instance_handle(application),
+        },
     )

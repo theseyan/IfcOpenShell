@@ -88,8 +88,10 @@ def add_layer(
     handle = _capi.material_add_layer(
         file._handle,
         layer_set._handle,
-        material._handle,
-        name,
+        {
+            "material": material._handle,
+            "name": name,
+        },
     )
     if handle:
         return ifcopenshell.entity_instance(file, handle)

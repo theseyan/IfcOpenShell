@@ -89,11 +89,13 @@ def assign_declaration(
     definition_list = [e._handle for e in definitions]
     handle = _capi.project_assign_declaration(
         file._handle,
-        definition_list,
-        relating_context._handle,
-        None,
-        user._handle if user is not None else None,
-        application._handle if application is not None else None,
+        {
+            "definitions": definition_list,
+            "relating_context": relating_context._handle,
+            "owner_history": None,
+            "user": user._handle if user is not None else None,
+            "application": application._handle if application is not None else None,
+        },
     )
     if handle:
         return ifcopenshell.entity_instance(file, handle)

@@ -56,9 +56,18 @@ def python_to_value(lib, value):
     if isinstance(value, entity_instance):
         return _capi.value_new_instance(value._handle)
     if isinstance(value, dict):
-        raise TypeError(
-            "ifcopenshell_value_t dict construction is not exposed by the generated C API."
-        )
+        result = _capi.value_new_dict()
+        try:
+            for key, item in value.items():
+                child = python_to_value(lib, item)
+                try:
+                    _capi.value_dict_set(result, str(key), child)
+                finally:
+                    _capi.value_destroy(child)
+        except Exception:
+            _capi.value_destroy(result)
+            raise
+        return result
     if isinstance(value, Iterable):
         result = _capi.value_new_list()
         try:

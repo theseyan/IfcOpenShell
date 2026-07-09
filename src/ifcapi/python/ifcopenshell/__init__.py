@@ -1039,10 +1039,9 @@ def _register_scratch_with_native(schema: str, file_obj: file) -> None:
     so that entities produced by ``compute_derived`` belong to the same
     underlying ``ifcopenshell::file`` and remain addressable via
     ``by_id`` on the Python side."""
-    raw_ptr = file_obj.file_pointer()
-    if raw_ptr:
+    if file_obj._handle:
         try:
-            _capi.register_scratch_file(schema, raw_ptr)
+            _capi.register_scratch_file(schema, file_obj._handle)
         except Exception:
             pass
 

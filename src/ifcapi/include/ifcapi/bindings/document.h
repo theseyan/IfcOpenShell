@@ -9,33 +9,57 @@
 #include "ifcparse/express.h"
 #include "ifcparse/file.h"
 
+#include <optional>
 #include <vector>
 
 namespace ifcapi {
 namespace bindings {
 
+/// Options for adding a new document information entity.
+struct DocumentAddInformationOptions {
+    std::optional<express::Base> parent;
+    std::optional<express::Base> owner_history;
+    std::optional<express::Base> user;
+    std::optional<express::Base> application;
+};
+
+/// Options for assigning a document to products.
+struct DocumentAssignDocumentOptions {
+    std::vector<express::Base> products;
+    express::Base document;
+    std::optional<express::Base> owner_history;
+    std::optional<express::Base> user;
+    std::optional<express::Base> application;
+};
+
+/// Options for unassigning a document from products.
+struct DocumentUnassignDocumentOptions {
+    std::vector<express::Base> products;
+    express::Base document;
+    std::optional<express::Base> user;
+    std::optional<express::Base> application;
+};
+
+/// Add a new document information to the project.
 IFCAPI_BINDING express::Base document_add_information(
     ifcopenshell::file* file,
-    IFCAPI_NULLABLE express::Base* parent,
-    IFCAPI_NULLABLE express::Base* owner_history,
-    IFCAPI_NULLABLE express::Base* user,
-    IFCAPI_NULLABLE express::Base* application);
+    const DocumentAddInformationOptions& options);
+
+/// Create a new reference to a document.
 IFCAPI_BINDING express::Base document_add_reference(
     ifcopenshell::file* file,
-    IFCAPI_NULLABLE express::Base* information);
+    std::optional<express::Base> information);
+
+/// Assign a document to a list of products.
 IFCAPI_BINDING express::Base document_assign_document(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base* document,
-    IFCAPI_NULLABLE express::Base* owner_history,
-    IFCAPI_NULLABLE express::Base* user,
-    IFCAPI_NULLABLE express::Base* application);
+    const DocumentAssignDocumentOptions& options);
+
+/// Unassign a document from a list of products.
 IFCAPI_BINDING void document_unassign_document(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base* document,
-    IFCAPI_NULLABLE express::Base* user,
-    IFCAPI_NULLABLE express::Base* application);
+    const DocumentUnassignDocumentOptions& options);
+
 IFCAPI_BINDING void document_remove_reference(
     ifcopenshell::file* file,
     express::Base* reference);

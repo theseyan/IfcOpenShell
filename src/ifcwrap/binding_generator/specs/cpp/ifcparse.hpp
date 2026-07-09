@@ -21,6 +21,7 @@
 #include <fstream>
 #include <iterator>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <type_traits>
@@ -670,15 +671,15 @@ inline ifcopenshell::spf_header* header(ifcopenshell::file* self) {
     return &self->header();
 }
 
-inline IFCAPI_NULLABLE express::Base header_file_description(ifcopenshell::file* self) {
+inline std::optional<express::Base> header_file_description(ifcopenshell::file* self) {
     return self->header().file_description();
 }
 
-inline IFCAPI_NULLABLE express::Base header_file_name(ifcopenshell::file* self) {
+inline std::optional<express::Base> header_file_name(ifcopenshell::file* self) {
     return self->header().file_name();
 }
 
-inline IFCAPI_NULLABLE express::Base header_file_schema(ifcopenshell::file* self) {
+inline std::optional<express::Base> header_file_schema(ifcopenshell::file* self) {
     return self->header().file_schema();
 }
 
@@ -876,7 +877,7 @@ inline std::string as_string(attribute_value& self) {
     return static_cast<std::string>(self);
 }
 
-inline IFCAPI_NULLABLE express::Base as_instance(attribute_value& self) {
+inline std::optional<express::Base> as_instance(attribute_value& self) {
     return static_cast<express::Base>(self);
 }
 
@@ -894,7 +895,7 @@ inline std::size_t as_enumeration_index(attribute_value& self) {
     return static_cast<enumeration_reference>(self).index();
 }
 
-inline IFCAPI_NULLABLE ifcopenshell::enumeration_type* as_enumeration_type(attribute_value& self) {
+inline std::optional<ifcopenshell::enumeration_type*> as_enumeration_type(attribute_value& self) {
     return const_cast<ifcopenshell::enumeration_type*>(static_cast<enumeration_reference>(self).enumeration());
 }
 
@@ -1035,7 +1036,7 @@ inline std::size_t size(std::vector<express::Base>& self) {
     return self.size();
 }
 
-inline IFCAPI_NULLABLE express::Base get(
+inline std::optional<express::Base> get(
     std::vector<express::Base>& self,
     std::size_t index
 ) {

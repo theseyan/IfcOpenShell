@@ -102,11 +102,12 @@ def regenerate_wall_representation(
         file,
         "geometry_regenerate_wall_representation",
         _capi.file_handle(file),
-        _capi.instance_handle(wall),
-        length,
-        height,
-        0.0 if angle is None else angle,
-        angle is not None,
+        {
+            "wall": _capi.instance_handle(wall),
+            "length": length,
+            "height": height,
+            "angle": angle,
+        },
         nullable=True,
     )
 

@@ -133,26 +133,25 @@ namespace bindings {
 
 express::Base aggregate_assign_object(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base* relating_object,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const AggregateAssignObjectOptions& options)
 {
     ifcopenshell_clear_error();
-    if (!file || products.empty()) {
+    if (!file || options.products.empty()) {
         set_error("Invalid arguments");
         return {};
     }
 
     try {
-        auto relating = relating_object ? *relating_object : express::Base();
+        auto relating = options.relating_object;
         if (!relating) {
             set_error("Relating object not found");
             return {};
         }
+        auto owner_history = options.owner_history.value_or(express::Base());
+        auto user = options.user.value_or(express::Base());
+        auto application = options.application.value_or(express::Base());
 
-        auto products_set = to_ref_set_filtered(products);
+        auto products_set = to_ref_set_filtered(options.products);
         if (products_set.empty()) {
             return {};
         }
@@ -192,8 +191,8 @@ express::Base aggregate_assign_object(
                 ifcapi::detail::update_owner_history(
                     file,
                     container_rel,
-                    user ? *user : express::Base(),
-                    application ? *application : express::Base());
+                    user,
+                    application);
             }
         }
 
@@ -207,8 +206,8 @@ express::Base aggregate_assign_object(
                 ifcapi::detail::update_owner_history(
                     file,
                     prev_rel,
-                    user ? *user : express::Base(),
-                    application ? *application : express::Base());
+                    user,
+                    application);
             }
         }
 
@@ -221,17 +220,17 @@ express::Base aggregate_assign_object(
             ifcapi::detail::update_owner_history(
                 file,
                 existing_rel,
-                user ? *user : express::Base(),
-                application ? *application : express::Base());
+                user,
+                application);
             return existing_rel;
         }
 
         auto rel = create_relationship(
             file,
             "IfcRelAggregates",
-            owner_history ? *owner_history : express::Base(),
-            user ? *user : express::Base(),
-            application ? *application : express::Base());
+            owner_history,
+            user,
+            application);
         if (!rel) {
             set_error("Failed to create IfcRelAggregates");
             return {};
@@ -247,16 +246,16 @@ express::Base aggregate_assign_object(
 
 void aggregate_unassign_object(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base* user,
-    express::Base* application)
+    const AggregateUnassignObjectOptions& options)
 {
-    if (!file || products.empty()) {
+    if (!file || options.products.empty()) {
         return;
     }
 
     try {
-        auto products_set = to_ref_set_filtered(products);
+        auto user = options.user.value_or(express::Base());
+        auto application = options.application.value_or(express::Base());
+        auto products_set = to_ref_set_filtered(options.products);
         std::set<express::Base> rels;
         for (const auto& product : products_set) {
             auto rel = find_decomposes(product);
@@ -274,8 +273,8 @@ void aggregate_unassign_object(
                 ifcapi::detail::update_owner_history(
                     file,
                     rel,
-                    user ? *user : express::Base(),
-                    application ? *application : express::Base());
+                    user,
+                    application);
             }
         }
     } catch (...) {
@@ -284,26 +283,26 @@ void aggregate_unassign_object(
 
 express::Base spatial_assign_container(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base* relating_structure,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const SpatialAssignContainerOptions& options)
 {
     ifcopenshell_clear_error();
-    if (!file || products.empty()) {
+    if (!file || options.products.empty()) {
         set_error("Invalid arguments");
         return {};
     }
 
     try {
-        auto structure = relating_structure ? *relating_structure : express::Base();
+        auto structure = options.relating_structure;
         if (!structure) {
             set_error("Relating structure not found");
             return {};
         }
 
-        auto products_set = to_ref_set_filtered(products);
+        auto owner_history = options.owner_history.value_or(express::Base());
+        auto user = options.user.value_or(express::Base());
+        auto application = options.application.value_or(express::Base());
+
+        auto products_set = to_ref_set_filtered(options.products);
         if (products_set.empty()) {
             return {};
         }
@@ -340,11 +339,7 @@ express::Base spatial_assign_container(
                 ifcapi::detail::remove_with_history(file, agg_rel);
             } else {
                 ifcapi::detail::write_ref_aggregate(agg_rel, "RelatedObjects", remaining);
-                ifcapi::detail::update_owner_history(
-                    file,
-                    agg_rel,
-                    user ? *user : express::Base(),
-                    application ? *application : express::Base());
+                ifcapi::detail::update_owner_history(file, agg_rel, user, application);
             }
         }
 
@@ -355,11 +350,7 @@ express::Base spatial_assign_container(
                 ifcapi::detail::remove_with_history(file, prev_rel);
             } else {
                 ifcapi::detail::write_ref_aggregate(prev_rel, "RelatedElements", remaining);
-                ifcapi::detail::update_owner_history(
-                    file,
-                    prev_rel,
-                    user ? *user : express::Base(),
-                    application ? *application : express::Base());
+                ifcapi::detail::update_owner_history(file, prev_rel, user, application);
             }
         }
 
@@ -368,20 +359,16 @@ express::Base spatial_assign_container(
             auto current_set = ifcapi::detail::to_ref_set(current);
             current_set.insert(products_set.begin(), products_set.end());
             ifcapi::detail::write_ref_aggregate(existing_rel, "RelatedElements", ifcapi::detail::to_ref_vector(current_set));
-            ifcapi::detail::update_owner_history(
-                file,
-                existing_rel,
-                user ? *user : express::Base(),
-                application ? *application : express::Base());
+            ifcapi::detail::update_owner_history(file, existing_rel, user, application);
             return existing_rel;
         }
 
         auto rel = create_relationship(
             file,
             "IfcRelContainedInSpatialStructure",
-            owner_history ? *owner_history : express::Base(),
-            user ? *user : express::Base(),
-            application ? *application : express::Base());
+            owner_history,
+            user,
+            application);
         if (!rel) {
             set_error("Failed to create IfcRelContainedInSpatialStructure");
             return {};
@@ -397,16 +384,16 @@ express::Base spatial_assign_container(
 
 void spatial_unassign_container(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base* user,
-    express::Base* application)
+    const SpatialUnassignContainerOptions& options)
 {
-    if (!file || products.empty()) {
+    if (!file || options.products.empty()) {
         return;
     }
 
     try {
-        auto products_set = to_ref_set_filtered(products);
+        auto user = options.user.value_or(express::Base());
+        auto application = options.application.value_or(express::Base());
+        auto products_set = to_ref_set_filtered(options.products);
         std::set<express::Base> rels;
         for (const auto& product : products_set) {
             auto rel = find_contained_in_structure(product);
@@ -421,11 +408,7 @@ void spatial_unassign_container(
                 ifcapi::detail::remove_with_history(file, rel);
             } else {
                 ifcapi::detail::write_ref_aggregate(rel, "RelatedElements", remaining);
-                ifcapi::detail::update_owner_history(
-                    file,
-                    rel,
-                    user ? *user : express::Base(),
-                    application ? *application : express::Base());
+                ifcapi::detail::update_owner_history(file, rel, user, application);
             }
         }
     } catch (...) {
@@ -434,25 +417,25 @@ void spatial_unassign_container(
 
 express::Base spatial_reference_structure(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base* relating_structure,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const SpatialReferenceStructureOptions& options)
 {
     ifcopenshell_clear_error();
-    if (!file || products.empty()) {
+    if (!file || options.products.empty()) {
         return {};
     }
 
     try {
-        auto structure = relating_structure ? *relating_structure : express::Base();
+        auto structure = options.relating_structure;
         if (!structure) {
             set_error("Relating structure not found");
             return {};
         }
 
-        auto products_set = to_ref_set_filtered(products);
+        auto owner_history = options.owner_history.value_or(express::Base());
+        auto user = options.user.value_or(express::Base());
+        auto application = options.application.value_or(express::Base());
+
+        auto products_set = to_ref_set_filtered(options.products);
         if (products_set.empty()) {
             return {};
         }
@@ -479,20 +462,16 @@ express::Base spatial_reference_structure(
             auto related = ifcapi::detail::read_ref_aggregate(rel, "RelatedElements");
             ifcapi::detail::append_unique(related, products_to_assign);
             ifcapi::detail::write_ref_aggregate(rel, "RelatedElements", related);
-            ifcapi::detail::update_owner_history(
-                file,
-                rel,
-                user ? *user : express::Base(),
-                application ? *application : express::Base());
+            ifcapi::detail::update_owner_history(file, rel, user, application);
             return rel;
         }
 
         rel = create_relationship(
             file,
             "IfcRelReferencedInSpatialStructure",
-            owner_history ? *owner_history : express::Base(),
-            user ? *user : express::Base(),
-            application ? *application : express::Base());
+            owner_history,
+            user,
+            application);
         if (!rel) {
             set_error("Failed to create IfcRelReferencedInSpatialStructure");
             return {};
@@ -508,23 +487,23 @@ express::Base spatial_reference_structure(
 
 void spatial_dereference_structure(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base* relating_structure,
-    express::Base* user,
-    express::Base* application)
+    const SpatialDereferenceStructureOptions& options)
 {
     ifcopenshell_clear_error();
-    if (!file || products.empty() || !relating_structure || !*relating_structure) {
+    if (!file || options.products.empty() || !options.relating_structure) {
         return;
     }
 
     try {
-        auto products_set = to_ref_set_filtered(products);
+        auto user = options.user.value_or(express::Base());
+        auto application = options.application.value_or(express::Base());
+
+        auto products_set = to_ref_set_filtered(options.products);
         if (products_set.empty()) {
             return;
         }
 
-        auto references = ifcapi::detail::read_inverse_aggregate(*relating_structure, "ReferencesElements");
+        auto references = ifcapi::detail::read_inverse_aggregate(options.relating_structure, "ReferencesElements");
         for (auto rel : references) {
             auto related = ifcapi::detail::read_ref_aggregate(rel, "RelatedElements");
             bool intersects = false;
@@ -543,11 +522,7 @@ void spatial_dereference_structure(
                 ifcapi::detail::remove_with_history(file, rel);
             } else {
                 ifcapi::detail::write_ref_aggregate(rel, "RelatedElements", remaining);
-                ifcapi::detail::update_owner_history(
-                    file,
-                    rel,
-                    user ? *user : express::Base(),
-                    application ? *application : express::Base());
+                ifcapi::detail::update_owner_history(file, rel, user, application);
             }
         }
     } catch (const std::exception& e) {

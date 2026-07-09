@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os
 from pathlib import Path
 import re
@@ -15,6 +15,7 @@ try:
         DiscoveryDiagnostic,
         HandleSpec,
         ImplementationSpec,
+        OptionStructSpec,
         ParamSpec,
         ResultStructFieldSpec,
         ResultStructSpec,
@@ -26,6 +27,7 @@ except ImportError:  # pragma: no cover - script execution fallback
         DiscoveryDiagnostic,
         HandleSpec,
         ImplementationSpec,
+        OptionStructSpec,
         ParamSpec,
         ResultStructFieldSpec,
         ResultStructSpec,
@@ -140,6 +142,7 @@ try:
         SequenceSemanticType,
         StringSemanticType,
         UnsupportedSemanticType,
+        VariantSemanticType,
         VoidSemanticType,
         analyze_cpp_type,
         semantic_leaf_type,
@@ -155,6 +158,7 @@ except ImportError:  # pragma: no cover - script execution fallback
         SequenceSemanticType,
         StringSemanticType,
         UnsupportedSemanticType,
+        VariantSemanticType,
         VoidSemanticType,
         analyze_cpp_type,
         semantic_leaf_type,
@@ -181,6 +185,7 @@ _ALLOWED_TYPE_KINDS = {
     "instance_list",
     "opaque_ptr",  # Raw pointer to an external type (passed through as void*)
     "struct",
+    "variant",
 }
 _ALLOWED_OWNERSHIP = {"owned", "borrowed", "static", "copy"}
 _ALLOWED_DESTRUCTORS = {"delete", "none", "shared_ptr"}
@@ -385,6 +390,7 @@ class AuthoredBindingSpec:
     discovery: DiscoverySpec | None
     functions: tuple[CallSpec, ...]
     methods: tuple[CallSpec, ...]
+    option_structs: dict[str, OptionStructSpec] = field(default_factory=dict)
     discovery_diagnostics: tuple[DiscoveryDiagnostic, ...] = ()
 
 
@@ -398,6 +404,7 @@ class MergedBindingSpec:
     result_structs: dict[str, ResultStructSpec]
     functions: tuple[CallSpec, ...]  # All functions from all modules
     methods: tuple[CallSpec, ...]  # All methods from all modules
+    option_structs: dict[str, OptionStructSpec] = field(default_factory=dict)
     discovery_diagnostics: tuple[DiscoveryDiagnostic, ...] = ()
 
 
@@ -1945,8 +1952,15 @@ def _type_spec_from_logical_semantic(semantic: RecordSemanticType) -> TypeSpec |
 
 def _type_spec_from_opaque_pointer_semantic(semantic: RecordSemanticType, *, nullable: bool) -> TypeSpec | None:
     if semantic.pointer_wrapper is None and _normalize_cpp_type(semantic.cpp_type).endswith("*"):
-        return TypeSpec(kind="opaque_ptr", cpp_type=semantic.cpp_type, nullable=nullable)
+        normalized = _normalize_cpp_type(semantic.cpp_type).removesuffix("*").strip()
+        role = _OPAQUE_POINTER_SEMANTIC_ROLES.get(normalized)
+        return TypeSpec(kind="opaque_ptr", cpp_type=semantic.cpp_type, nullable=nullable, semantic=role)
     return None
+
+
+_OPAQUE_POINTER_SEMANTIC_ROLES: dict[str, str] = {
+    "ifcopenshell_pset_props_t": "property_map",
+}
 
 
 def _sequence_scalar_kind(semantic: ScalarSemanticType | StringSemanticType) -> str | None:
@@ -2017,16 +2031,36 @@ def _infer_type(
         nullable = nullable_string_pointers and _normalize_cpp_type(semantic.cpp_type).endswith("*")
         return TypeSpec(kind="string", ownership="copy", nullable=nullable, cpp_type=_cpp_type_storage(cpp_type))
     if isinstance(semantic, OptionalSemanticType):
-        inner = _infer_type(semantic.element.cpp_type, handles, ownership=ownership, nullable_pointers=True)
+        inner = _infer_type(
+            semantic.element.cpp_type,
+            handles,
+            ownership=ownership,
+            nullable_pointers=True,
+            result_structs=result_structs,
+        )
         return TypeSpec(
             kind=inner.kind,
             handle=inner.handle,
             struct=inner.struct,
+            variants=inner.variants,
             ownership=inner.ownership,
             nullable=True,
             cpp_type=_cpp_type_storage(cpp_type),
             sequence_depth=inner.sequence_depth,
+            semantic=inner.semantic,
         )
+    if isinstance(semantic, VariantSemanticType):
+        alternatives = tuple(
+            _infer_type(
+                alternative.cpp_type,
+                handles,
+                ownership=ownership,
+                nullable_pointers=False,
+                result_structs=result_structs,
+            )
+            for alternative in semantic.alternatives
+        )
+        return TypeSpec(kind="variant", variants=alternatives, ownership="copy", cpp_type=_cpp_type_storage(cpp_type))
     if isinstance(semantic, ScalarSemanticType):
         scalar_kind = {
             "bool": "bool",
@@ -2225,10 +2259,12 @@ def _merge_type_override(inferred: TypeSpec, override: TypeSpec | None) -> TypeS
         kind=override.kind or inferred.kind,
         handle=override.handle if override.handle is not None else inferred.handle,
         struct=override.struct if override.struct is not None else inferred.struct,
+        variants=override.variants or inferred.variants,
         ownership=override.ownership if override.ownership is not None else inferred.ownership,
-        nullable=override.nullable,
+        nullable=inferred.nullable or override.nullable,
         cpp_type=override.cpp_type if override.cpp_type is not None else inferred.cpp_type,
         sequence_depth=override.sequence_depth if override.sequence_depth != 0 else inferred.sequence_depth,
+        semantic=override.semantic if override.semantic is not None else inferred.semantic,
     )
 
 
@@ -2510,16 +2546,16 @@ def _validate_override_keys_for_overloads(
 
 
 def _extract_optional_inner_type(cpp_type: str | DiscoveredCppType) -> str | DiscoveredCppType | None:
-    """Extract T from boost::optional<T> or std::optional<T>. Returns None if not optional."""
+    """Extract T from std::optional<T>. Returns None if not optional."""
     if isinstance(cpp_type, DiscoveredCppType):
-        if cpp_type.template_name in {"boost::optional", "std::optional"} and len(cpp_type.template_args) == 1:
+        if cpp_type.template_name == "std::optional" and len(cpp_type.template_args) == 1:
             return cpp_type.template_args[0]
         normalized = cpp_type.canonical_spelling
     else:
         normalized = _normalize_cpp_type(cpp_type)
-    for prefix in ("boost::optional<", "std::optional<"):
-        if normalized.startswith(prefix) and normalized.endswith(">"):
-            return normalized[len(prefix):-1].strip()
+    prefix = "std::optional<"
+    if normalized.startswith(prefix) and normalized.endswith(">"):
+        return normalized[len(prefix):-1].strip()
     return None
 
 
@@ -2696,7 +2732,7 @@ def _emit_optional_field_calls(
     reserved_c_names: frozenset[str] | set[str],
     diagnostics: list[DiscoveryDiagnostic],
 ) -> None:
-    """Generate has_X / X pair for a boost::optional<T> field."""
+    """Generate has_X / X pair for a std::optional<T> field."""
     try:
         returns = _infer_return_type(inner_cpp_type, handles)
     except ValueError:
@@ -3142,7 +3178,7 @@ def _discover_method_calls(
                     continue
                 field = fields_by_name[field_name]
 
-                # Handle boost::optional<T> fields
+                # Handle std::optional<T> fields
                 optional_inner = _extract_optional_inner_type(field.cpp_type_ref)
                 if optional_inner is not None:
                     if item.discover_optional_fields:
@@ -3626,13 +3662,9 @@ def _contract_function_overrides(headers: tuple[Path, ...]) -> dict[str, Discove
                     if "IFCAPI_COPY" in function.return_annotations
                     else None
                 ),
-                nullable="IFCAPI_NULLABLE" in function.return_annotations,
+                nullable=False,
             )
-        params = {
-            param_name: TypeSpec(kind="", nullable=True)
-            for param_name, annotations in function.param_annotations.items()
-            if "IFCAPI_NULLABLE" in annotations
-        }
+        params = {}
         if returns is not None or params:
             overrides[function.name] = DiscoveryTypeOverrideSpec(returns=returns, params=params)
     return overrides

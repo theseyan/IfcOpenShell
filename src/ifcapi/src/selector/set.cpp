@@ -10,6 +10,7 @@
 #include "ifcapi/bindings/pset.h"
 #include "ifcapi/bindings/pset_template.h"
 #include "ifcapi/bindings/schema.h"
+#include "ifcapi/bindings/selector.h"
 #include "ifcapi/bindings/shape.h"
 #include "ifcapi/bindings/value.h"
 #include "ifcapi/value.h"
@@ -28,6 +29,7 @@
 #include <array>
 #include <cmath>
 #include <cstring>
+#include <memory>
 #include <regex>
 #include <string>
 #include <vector>
@@ -47,6 +49,10 @@ struct ifcopenshell_selector_keylist_t {
 namespace {
 
 inline void set_error(const std::string& m) { ifcopenshell::capi::set_last_error(m); }
+
+void free_node(ifcopenshell_selector_node_t* node) {
+    ifcapi::bindings::selector_node_free(node);
+}
 
 inline express::Entity as_entity(express::Base e) {
     return e ? e.as<express::Entity>() : express::Entity();
@@ -133,11 +139,11 @@ bool vals_equal(const Val* a, const ifcopenshell_selector_value_t* b) {
 /* Helpers around the existing C ABI ------------------------------------ */
 
 express::Base call_get_type(express::Base e) {
-    return ifcapi::bindings::element_get_type(&e);
+    return ifcapi::bindings::element_get_type(&e).value_or(express::Base());
 }
 
 express::Base call_get_material(express::Base e) {
-    return ifcapi::bindings::element_get_material(&e, true, true);
+    return ifcapi::bindings::element_get_material(&e, {true, true}).value_or(express::Base());
 }
 
 std::vector<express::Base> call_get_materials(express::Base e) {
@@ -186,11 +192,16 @@ std::vector<express::Base> call_get_classification(express::Base e) {
 }
 
 express::Base call_get_container(express::Base e, const char* cls) {
-    return ifcapi::bindings::element_get_container(&e, false, cls);
+    ifcapi::bindings::ElementGetContainerOptions options;
+    options.direct_only = false;
+    if (cls) {
+        options.ifc_class = cls;
+    }
+    return ifcapi::bindings::element_get_container(&e, options).value_or(express::Base());
 }
 
 express::Base call_get_parent(express::Base e) {
-    return ifcapi::bindings::element_get_parent(&e);
+    return ifcapi::bindings::element_get_parent(&e).value_or(express::Base());
 }
 
 /* Get all psets (de-duplicated by name) of e — name → property-dict-Val. */
@@ -202,7 +213,7 @@ std::vector<std::pair<std::string, Val*>> all_psets(express::Base e) {
    Name on element. Returns nullptr if none. */
 express::Base find_pset_instance(express::Base e, const std::string& name) {
     if (!e) return {};
-    auto psets = ifcapi::bindings::element_get_pset_ids(&e, false, false, true);
+    auto psets = ifcapi::bindings::element_get_pset_ids(&e, {false, false, true});
     express::Base result = {};
     if (!psets.empty()) {
         for (auto pset : psets) {
@@ -240,7 +251,10 @@ void props_set_one(ifcopenshell_pset_props_t* props, const char* key,
         case IFCSEL_VALUE_STRING: ifcapi::bindings::pset_props_set_string(props, key, v->s_val); break;
         case IFCSEL_VALUE_INSTANCE: {
             auto inst = v->inst_val;
-            ifcapi::bindings::pset_props_set_instance(props, key, inst ? &inst : nullptr);
+            ifcapi::bindings::pset_props_set_instance(
+                props,
+                key,
+                inst ? std::optional<express::Base>(inst) : std::nullopt);
             break;
         }
         case IFCSEL_VALUE_LIST: {
@@ -282,7 +296,8 @@ void edit_pset_one(ifcopenshell_file_t* fh, express::Base pset,
                    const char* key, const ifcopenshell_selector_value_t* v) {
     auto props = ifcapi::bindings::pset_props_new();
     props_set_one(props, key, v, false);
-    ifcapi::bindings::pset_edit_pset(fh ? fh->ptr : nullptr, &pset, nullptr, props, nullptr, false);
+    ifcapi::bindings::pset_edit_pset(
+        fh ? fh->ptr : nullptr, ifcapi::bindings::PsetEditPsetOptions{pset, {}, props, {}, false});
     ifcapi::bindings::pset_props_free(props);
 }
 
@@ -290,7 +305,8 @@ void edit_qto_one(ifcopenshell_file_t* fh, express::Base qto,
                   const char* key, const ifcopenshell_selector_value_t* v, bool force_double = true) {
     auto props = ifcapi::bindings::pset_props_new();
     props_set_one(props, key, v, force_double);
-    ifcapi::bindings::pset_edit_qto(fh ? fh->ptr : nullptr, &qto, nullptr, props, nullptr);
+    ifcapi::bindings::pset_edit_qto(
+        fh ? fh->ptr : nullptr, ifcapi::bindings::PsetEditQtoOptions{qto, {}, props, {}});
     ifcapi::bindings::pset_props_free(props);
 }
 
@@ -471,7 +487,7 @@ PsetPVResult process_pset_prop_value(
             pos = found + concat.size();
         }
     }
-    for (const auto ev : enum_values) {
+    for (const auto& ev : enum_values) {
         if (std::find(available.begin(), available.end(), ev) == available.end()) {
             std::string msg = "Error setting pset enum property.\nInvalid enum values for property '" +
                               prop + "' in pset '" + pset_name + "': '";
@@ -712,7 +728,7 @@ int do_set(ifcopenshell::file* file,
                     std::string cur_cls = cur.inst.declaration().name();
                     std::string val_str = val_to_string(value);
                     if (lower(cur_cls) == lower(val_str)) return 0;
-                    ifcapi::bindings::schema_reassign_class(file_h ? file_h->ptr : nullptr, &cur.inst, val_str);
+                    ifcapi::bindings::schema_reassign_class(file_h ? std::optional<ifcopenshell::file*>{file_h->ptr} : std::nullopt, &cur.inst, val_str);
                     return 0;
                 }
                 if (k == "id") return 0;
@@ -744,7 +760,7 @@ int do_set(ifcopenshell::file* file,
                     if (!placement_e) {
                         ifcapi::identity4(matrix.data());
                     } else {
-                        auto placement_matrix = ifcapi::bindings::placement_get_local_placement(&placement_e);
+                        auto placement_matrix = ifcapi::bindings::placement_get_local_placement(placement_e);
                         if (placement_matrix.size() == matrix.size()) {
                             std::copy(placement_matrix.begin(), placement_matrix.end(), matrix.begin());
                         } else {
@@ -765,7 +781,9 @@ int do_set(ifcopenshell::file* file,
 
                     matrix[(size_t)ci * 4 + 3] = newv;
                     std::vector<double> matrix_values(matrix.begin(), matrix.end());
-                    ifcapi::bindings::geometry_edit_object_placement(file_h ? file_h->ptr : nullptr, &cur.inst, matrix_values, false, true);
+                    ifcapi::bindings::geometry_edit_object_placement(
+                        file_h ? file_h->ptr : nullptr,
+                        ifcapi::bindings::GeometryEditObjectPlacementOptions{cur.inst, matrix_values, false, true});
                     return 0;
                 }
             }
@@ -853,9 +871,11 @@ int do_set(ifcopenshell::file* file,
                 if (val_truthy(value) && (i + 2 == keys.size())) {
                     bool is_qto = icontains(k, "qto") || icontains(k, "quantity") || icontains(k, "quantities");
                     if (is_qto) {
-                        pset_inst = ifcapi::bindings::pset_add_qto(file, &cur.inst, k, nullptr, nullptr, nullptr);
+                        pset_inst = ifcapi::bindings::pset_add_qto(
+                            file, ifcapi::bindings::PsetAddQtoOptions{cur.inst, k, {}, {}, {}});
                     } else {
-                        pset_inst = ifcapi::bindings::pset_add_pset(file, &cur.inst, k, nullptr, nullptr, nullptr, nullptr);
+                        pset_inst = ifcapi::bindings::pset_add_pset(
+                            file, ifcapi::bindings::PsetAddPsetOptions{cur.inst, k, {}, {}, {}, {}});
                     }
                     if (pset_inst) {
                         pset_dict = make_dict();  /* empty */
@@ -909,7 +929,9 @@ int do_set(ifcopenshell::file* file,
                 if (pr == PV_USE_LIST) {
                     auto props = ifcapi::bindings::pset_props_new();
                     ifcapi::bindings::pset_props_set_string_list(props, k, out_list);
-                    ifcapi::bindings::pset_edit_pset(file_h ? file_h->ptr : nullptr, &pset, nullptr, props, nullptr, false);
+                    ifcapi::bindings::pset_edit_pset(
+                        file_h ? file_h->ptr : nullptr,
+                        ifcapi::bindings::PsetEditPsetOptions{pset, {}, props, {}, false});
                     ifcapi::bindings::pset_props_free(props);
                     return 0;
                 }
@@ -995,67 +1017,74 @@ ifcopenshell_selector_value_t* value_new_string(const std::string& value) {
     return make_string(value);
 }
 
-ifcopenshell_selector_value_t* value_new_instance(express::Base* value) {
-    return make_instance(value ? *value : express::Base());
+ifcopenshell_selector_value_t* value_new_instance(std::optional<express::Base> value) {
+    return make_instance(value.value_or(express::Base()));
 }
 
 ifcopenshell_selector_value_t* value_new_list() {
     return make_list();
 }
 
-bool value_list_append(ifcopenshell_selector_value_t* list, const ifcopenshell_selector_value_t* item) {
+ifcopenshell_selector_value_t* value_new_dict() {
+    return make_dict();
+}
+
+bool value_list_append(
+    ifcopenshell_selector_value_t* list,
+    std::optional<const ifcopenshell_selector_value_t*> item)
+{
     if (!list || list->kind != IFCSEL_VALUE_LIST) {
         return false;
     }
-    list->list_val.push_back(clone_val(item));
+    list->list_val.push_back(clone_val(item.value_or(nullptr)));
     return true;
 }
 
-bool selector_set_element_value(
-    ifcopenshell::file* file,
-    express::Base* element,
-    const std::vector<std::string>& keys,
-    const std::vector<bool>& regex_flags,
-    const ifcopenshell_selector_value_t* value,
-    const char* concat)
+bool value_dict_set(
+    ifcopenshell_selector_value_t* dict,
+    const std::string& key,
+    std::optional<const ifcopenshell_selector_value_t*> value)
 {
-    if (!file) {
-        set_error("ifcapi::bindings::selector_set_element_value: NULL file");
-        return false;
-    }
-    if (keys.size() != regex_flags.size()) {
-        set_error("ifcapi::bindings::selector_set_element_value: keys/regex_flags size mismatch");
+    if (!dict || dict->kind != IFCSEL_VALUE_DICT) {
         return false;
     }
 
-    std::vector<KeyEntry> key_entries;
-    key_entries.reserve(keys.size());
-    for (size_t i = 0; i < keys.size(); ++i) {
-        KeyEntry entry;
-        entry.is_regex = regex_flags[i];
-        entry.text = keys[i];
-        if (entry.is_regex) {
-            try {
-                entry.pattern = std::regex(entry.text);
-            } catch (const std::exception& ex) {
-                set_error(std::string("selector_set_element_value: invalid regex key: ") + ex.what());
-                return false;
-            }
+    auto next = clone_val(value.value_or(nullptr));
+    for (auto& item : dict->dict_val) {
+        if (item.first == key) {
+            delete item.second;
+            item.second = next;
+            return true;
         }
-        key_entries.push_back(std::move(entry));
+    }
+
+    dict->dict_val.push_back({key, next});
+    return true;
+}
+
+void selector_set_element_value(
+    ifcopenshell::file* file,
+    std::optional<express::Base> element,
+    const std::string& query,
+    std::optional<const ifcopenshell_selector_value_t*> value,
+    const char* concat)
+{
+    if (!file) {
+        throw std::runtime_error("ifcapi::bindings::selector_set_element_value: NULL file");
     }
 
     ifcopenshell_file_t file_handle{file, false};
     Cursor cursor = (element && *element) ? Cursor::instance(*element) : Cursor::none();
     std::string concat_s = concat ? concat : ", ";
-    try {
-        return do_set(file, &file_handle, std::move(cursor), key_entries, 0, value, concat_s) == 0;
-    } catch (const std::exception& ex) {
-        set_error(std::string("selector_set_element_value: ") + ex.what());
-        return false;
-    } catch (...) {
-        set_error("selector_set_element_value: unknown error");
-        return false;
+    std::unique_ptr<ifcopenshell_selector_node_t, decltype(&free_node)> ast(
+        selector_parse_get_element(query),
+        free_node);
+    if (!ast) {
+        throw std::runtime_error("selector_set_element_value: invalid query");
+    }
+    auto key_entries = extract_keys(ast.get());
+    if (do_set(file, &file_handle, std::move(cursor), key_entries, 0, value.value_or(nullptr), concat_s) != 0) {
+        throw std::runtime_error("selector_set_element_value: failed to set value (invalid or unsupported query)");
     }
 }
 

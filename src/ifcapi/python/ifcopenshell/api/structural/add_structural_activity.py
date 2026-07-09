@@ -64,6 +64,8 @@ def add_structural_activity(
         _capi.string(ifc_class),
         _capi.string(predefined_type),
         _capi.string(global_or_local),
-        _capi.instance_handle(activity_owner_history),
-        _capi.instance_handle(relationship_owner_history),
+        {
+            "activity_owner_history": _capi.instance_handle(activity_owner_history),
+            "relationship_owner_history": _capi.instance_handle(relationship_owner_history),
+        },
     )

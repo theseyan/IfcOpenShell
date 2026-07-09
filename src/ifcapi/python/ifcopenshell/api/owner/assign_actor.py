@@ -18,6 +18,7 @@
 
 import ifcopenshell
 from ifcopenshell.api.owner import _capi
+from ifcopenshell._capi_utils import instance_handle
 
 
 def assign_actor(
@@ -71,14 +72,17 @@ def assign_actor(
             relating_actor=manufacturer, related_object=pump_type)
     """
     owner_history, user, application = _capi.owner_context(file)
+    opts = {
+        "relating_actor": instance_handle(relating_actor),
+        "related_object": instance_handle(related_object),
+        "owner_history": instance_handle(owner_history),
+        "user": instance_handle(user),
+        "application": instance_handle(application),
+    }
     return _capi.call_handle(
         file,
         "owner_assign_actor",
         "Failed to assign actor",
         _capi.file_handle(file),
-        _capi.instance_handle(relating_actor),
-        _capi.instance_handle(related_object),
-        _capi.instance_handle(owner_history),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+        opts,
     )

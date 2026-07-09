@@ -80,9 +80,11 @@ def _get_pset_definitions(
     return _call_element_instance_list(
         element,
         "ifcopenshell_element_get_pset_ids",
-        bool(psets_only),
-        bool(qtos_only),
-        bool(should_inherit),
+        {
+            "psets_only": bool(psets_only),
+            "qtos_only": bool(qtos_only),
+            "should_inherit": bool(should_inherit),
+        },
     )
 
 
@@ -656,7 +658,9 @@ def get_shape_aspects(
     """
 
     return _call_element_instance_list(
-        element, "ifcopenshell_element_get_shape_aspects", bool(should_inherit)
+        element,
+        "ifcopenshell_element_get_shape_aspects",
+        {"should_inherit": bool(should_inherit)},
     )
 
 
@@ -687,8 +691,10 @@ def get_material(
     return _call_element_instance(
         element,
         "ifcopenshell_element_get_material",
-        bool(should_skip_usage),
-        bool(should_inherit),
+        {
+            "should_skip_usage": bool(should_skip_usage),
+            "should_inherit": bool(should_inherit),
+        },
     )
 
 
@@ -924,8 +930,10 @@ def get_container(
     return _call_element_instance(
         element,
         "ifcopenshell_element_get_container",
-        bool(should_get_direct),
-        ifc_class,
+        {
+            "direct_only": bool(should_get_direct),
+            "ifc_class": ifc_class,
+        },
     )
 
 
@@ -995,7 +1003,9 @@ def get_decomposition(
     """
     return set(
         _call_element_instance_list(
-            element, "ifcopenshell_element_get_decomposition", bool(is_recursive)
+            element,
+            "ifcopenshell_element_get_decomposition",
+            {"is_recursive": bool(is_recursive)},
         )
     )
 

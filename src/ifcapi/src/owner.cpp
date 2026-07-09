@@ -64,15 +64,16 @@ namespace bindings {
 
 express::Base owner_create_owner_history(
     ifcopenshell::file* file,
-    express::Base* user,
-    express::Base* application)
+    const OwnerCreateOwnerHistoryOptions& options)
 {
     ifcopenshell_clear_error();
     if (!file) {
         set_error("file is NULL");
         return {};
     }
-    if (!user || !*user || !application || !*application) {
+    auto user = options.user.value_or(express::Base());
+    auto application = options.application.value_or(express::Base());
+    if (!user || !application) {
         if (is_ifc2x3(file)) {
             set_error("IFC2X3 owner history requires an owning user and application");
         }
@@ -87,13 +88,13 @@ express::Base owner_create_owner_history(
             return {};
         }
         const int now = now_seconds();
-        ifcapi::detail::write_ref_attr(owner_history, "OwningUser", *user);
-        ifcapi::detail::write_ref_attr(owner_history, "OwningApplication", *application);
+        ifcapi::detail::write_ref_attr(owner_history, "OwningUser", user);
+        ifcapi::detail::write_ref_attr(owner_history, "OwningApplication", application);
         ifcapi::detail::write_enum_attr(owner_history, "State", "READWRITE");
         ifcapi::detail::write_enum_attr(owner_history, "ChangeAction", "ADDED");
         ifcapi::detail::write_int_attr(owner_history, "LastModifiedDate", now);
-        ifcapi::detail::write_ref_attr(owner_history, "LastModifyingUser", *user);
-        ifcapi::detail::write_ref_attr(owner_history, "LastModifyingApplication", *application);
+        ifcapi::detail::write_ref_attr(owner_history, "LastModifyingUser", user);
+        ifcapi::detail::write_ref_attr(owner_history, "LastModifyingApplication", application);
         ifcapi::detail::write_int_attr(owner_history, "CreationDate", now);
         return owner_history;
     } catch (const std::exception& ex) {
@@ -107,25 +108,26 @@ express::Base owner_create_owner_history(
 
 express::Base owner_update_owner_history(
     ifcopenshell::file* file,
-    express::Base* element,
-    express::Base* user,
-    express::Base* application)
+    const OwnerUpdateOwnerHistoryOptions& options)
 {
     ifcopenshell_clear_error();
     if (!file) {
         set_error("file is NULL");
         return {};
     }
-    if (!element || !*element || !element->declaration().is("IfcRoot") || !user || !*user || !application || !*application) {
+    auto element = options.element.value_or(express::Base());
+    auto user = options.user.value_or(express::Base());
+    auto application = options.application.value_or(express::Base());
+    if (!element || !element.declaration().is("IfcRoot") || !user || !application) {
         return {};
     }
 
     try {
-        auto owner_history = ifcapi::detail::read_ref_attr(*element, "OwnerHistory");
+        auto owner_history = ifcapi::detail::read_ref_attr(element, "OwnerHistory");
         if (!owner_history) {
-            owner_history = owner_create_owner_history(file, user, application);
+            owner_history = owner_create_owner_history(file, OwnerCreateOwnerHistoryOptions{user, application});
             if (owner_history) {
-                ifcapi::detail::write_ref_attr(*element, "OwnerHistory", owner_history);
+                ifcapi::detail::write_ref_attr(element, "OwnerHistory", owner_history);
             }
             return owner_history;
         }
@@ -133,7 +135,7 @@ express::Base owner_update_owner_history(
         if (ifcapi::detail::total_inverses(file, owner_history) > 1) {
             owner_history = shallow_copy(file, owner_history);
             if (owner_history) {
-                ifcapi::detail::write_ref_attr(*element, "OwnerHistory", owner_history);
+                ifcapi::detail::write_ref_attr(element, "OwnerHistory", owner_history);
             }
         }
 
@@ -142,8 +144,8 @@ express::Base owner_update_owner_history(
         }
         ifcapi::detail::write_enum_attr(owner_history, "ChangeAction", "MODIFIED");
         ifcapi::detail::write_int_attr(owner_history, "LastModifiedDate", now_seconds());
-        ifcapi::detail::write_ref_attr(owner_history, "LastModifyingUser", *user);
-        ifcapi::detail::write_ref_attr(owner_history, "LastModifyingApplication", *application);
+        ifcapi::detail::write_ref_attr(owner_history, "LastModifyingUser", user);
+        ifcapi::detail::write_ref_attr(owner_history, "LastModifyingApplication", application);
         return owner_history;
     } catch (const std::exception& ex) {
         set_error(ex.what());

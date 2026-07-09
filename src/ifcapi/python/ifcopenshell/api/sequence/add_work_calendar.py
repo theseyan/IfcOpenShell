@@ -82,10 +82,12 @@ def add_work_calendar(
         file,
         "sequence_add_work_calendar",
         _capi.file_handle(file),
-        _capi.string(name),
-        _capi.string(predefined_type),
-        _capi.instance_handle(owner_history),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+        {
+            "name": name,
+            "predefined_type": predefined_type,
+            "owner_history": _capi.instance_handle(owner_history),
+            "user": _capi.instance_handle(user),
+            "application": _capi.instance_handle(application),
+        },
         nullable=True,
     )

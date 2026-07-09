@@ -47,12 +47,14 @@ def unassign_object(file: ifcopenshell.file, related_objects: list[ifcopenshell.
         ifcopenshell.api.nest.unassign_object(model, related_objects=[subtask2])
     """
 
-    object_list = _relationship_capi.instance_list(related_objects)
+    product_list = _relationship_capi.instance_list(related_objects)
     user, application = _relationship_capi.owner_user_application(file)
     _relationship_capi.call_status(
         "nest_unassign_object",
         _relationship_capi.file_handle(file),
-        _relationship_capi.instance_list_ptr(object_list),
-        _relationship_capi.instance_handle(user),
-        _relationship_capi.instance_handle(application),
+        {
+            "products": product_list,
+            "user": _relationship_capi.instance_handle(user),
+            "application": _relationship_capi.instance_handle(application),
+        },
     )

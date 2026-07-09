@@ -6,7 +6,14 @@ from pathlib import Path
 from textwrap import dedent
 
 from src.ifcwrap.binding_generator.authored_spec import load_authored_spec
-from src.ifcwrap.binding_generator.binding_ir import lower_binding_spec
+from src.ifcwrap.binding_generator.binding_ir import BindingIR, CallIR, DirectCallOp, lower_binding_spec
+from src.ifcwrap.binding_generator.binding_model import (
+    HandleSpec,
+    OptionStructFieldSpec,
+    OptionStructSpec,
+    ParamSpec,
+    TypeSpec,
+)
 from src.ifcwrap.binding_generator.host_metadata import build_host_metadata
 
 
@@ -121,3 +128,53 @@ def test_host_metadata_derives_layouts_and_signatures(tmp_path: Path) -> None:
         "ifcopenshell_demo_item_t*",
         "const ifcopenshell_int64_list_t*",
     ]
+
+
+def test_host_metadata_includes_sequences_used_only_by_option_structs() -> None:
+    metadata = build_host_metadata(
+        BindingIR(
+            module="demo",
+            c_prefix="ifcopenshell_demo",
+            public_headers=(),
+            handles={
+                "item": HandleSpec(
+                    name="item",
+                    cpp_type="Demo::Item",
+                    c_type="ifcopenshell_demo_item_t",
+                    destructor="delete",
+                ),
+            },
+            result_structs={},
+            functions=(
+                CallIR(
+                    expose_as="add_mesh",
+                    c_name="ifcopenshell_demo_add_mesh",
+                    receiver=None,
+                    returns=TypeSpec(kind="void"),
+                    params=(ParamSpec("options", TypeSpec(kind="option", struct="AddMeshOptions")),),
+                    operation=DirectCallOp(cpp_name="Demo::add_mesh"),
+                ),
+            ),
+            methods=(),
+            option_structs={
+                "AddMeshOptions": OptionStructSpec(
+                    name="AddMeshOptions",
+                    cpp_type="Demo::AddMeshOptions",
+                    c_type="ifcopenshell_demo_add_mesh_options_t",
+                    fields=(
+                        OptionStructFieldSpec("faces", TypeSpec(kind="int32", sequence_depth=4)),
+                        OptionStructFieldSpec(
+                            "grouped_items",
+                            TypeSpec(kind="handle", handle="item", sequence_depth=2),
+                        ),
+                    ),
+                ),
+            },
+        )
+    )
+
+    assert "int32_list" in metadata.value_types
+    assert "int32_list_list_list_list" in metadata.value_types
+    assert metadata.value_types["int32_list_list_list_list"].sequence_depth == 4
+    assert "demo_item_list" in metadata.value_types
+    assert "demo_item_list_list" in metadata.value_types

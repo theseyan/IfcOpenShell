@@ -148,11 +148,13 @@ def assign_material(
     rels = _capi.material_assign_material(
         file._handle,
         product_list,
-        type,
-        material._handle if material is not None else None,
-        None,
-        user._handle if user is not None else None,
-        application._handle if application is not None else None,
+        {
+            "type": type,
+            "material": material._handle if material is not None else None,
+            "owner_history": None,
+            "user": user._handle if user is not None else None,
+            "application": application._handle if application is not None else None,
+        },
     )
     if not rels:
         return None

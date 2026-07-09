@@ -20,7 +20,7 @@ from typing import Optional
 
 import ifcopenshell
 import ifcopenshell.api.owner.settings
-from ifcopenshell import _ifcopenshell_capi as _capi
+from ifcopenshell.api import _relationship_capi
 
 
 def add_information(
@@ -56,15 +56,15 @@ def add_information(
             attributes={"Identification": "A-GA-6100", "Name": "Overall Plan",
             "Location": "A-GA-6100 - Overall Plan.pdf"})
     """
-    user = ifcopenshell.api.owner.settings.get_user(file)
-    application = ifcopenshell.api.owner.settings.get_application(file)
-    handle = _capi.document_add_information(
-        file._handle,
-        parent._handle if parent is not None else None,
-        None,
-        user._handle if user is not None else None,
-        application._handle if application is not None else None,
+    user, application = _relationship_capi.owner_user_application(file)
+    return _relationship_capi.call_handle(
+        file,
+        "document_add_information",
+        _relationship_capi.file_handle(file),
+        {
+            "parent": _relationship_capi.instance_handle(parent),
+            "owner_history": None,
+            "user": _relationship_capi.instance_handle(user),
+            "application": _relationship_capi.instance_handle(application),
+        },
     )
-    if handle:
-        return ifcopenshell.entity_instance(file, handle)
-    raise RuntimeError(_capi.last_error_message() or "Failed to add document information")

@@ -256,11 +256,11 @@ namespace ifcapi {
 namespace bindings {
 
 express::Base schema_reassign_class(
-    ifcopenshell::file* file,
+    std::optional<ifcopenshell::file*> file,
     express::Base* element,
     const std::string& new_class)
 {
-    return reassign_class_impl(file, element ? *element : express::Base(), new_class);
+    return reassign_class_impl(file.value_or(nullptr), element ? *element : express::Base(), new_class);
 }
 
 } // namespace bindings

@@ -8,6 +8,7 @@
 #include "ifcparse/express.h"
 #include "ifcparse/file.h"
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -17,26 +18,57 @@ namespace bindings {
 IFCAPI_BINDING express::Base boundary_copy_boundary(
     ifcopenshell::file* file,
     express::Base* boundary);
+
+/**
+ * Options for assigning connection geometry to a space boundary.
+ */
+struct BoundaryAssignConnectionGeometryOptions {
+    /// Closed outer polyline of the connection plane.
+    std::vector<std::vector<double>> outer_boundary;
+    /// Origin of the connection plane relative to the bounded space.
+    std::vector<double> location;
+    /// Local axis direction of the connection plane.
+    std::vector<double> axis;
+    /// Local reference direction of the connection plane.
+    std::vector<double> ref_direction;
+    /// Closed inner polylines representing openings in the connection plane.
+    std::vector<std::vector<std::vector<double>>> inner_boundaries;
+    /// Scale that converts model units to SI units.
+    double unit_scale = 1.0;
+};
+
+/**
+ * Assign a planar connection geometry to a space boundary relationship.
+ */
 IFCAPI_BINDING void boundary_assign_connection_geometry(
     ifcopenshell::file* file,
     express::Base* rel_space_boundary,
-    const std::vector<std::vector<double>>& outer_boundary,
-    const std::vector<double>& location,
-    const std::vector<double>& axis,
-    const std::vector<double>& ref_direction,
-    const std::vector<std::vector<std::vector<double>>>& inner_boundaries,
-    double unit_scale);
+    const BoundaryAssignConnectionGeometryOptions& options);
 IFCAPI_BINDING void boundary_remove_boundary(
     ifcopenshell::file* file,
     express::Base* boundary);
+
+/**
+ * Options for editing attributes of a space boundary relationship.
+ */
+struct BoundaryEditAttributesOptions {
+    /// The space that the boundary relates to.
+    express::Base relating_space;
+    /// The building element that defines the boundary.
+    express::Base related_building_element;
+    /// Optional parent boundary for inner boundaries.
+    std::optional<express::Base> parent_boundary;
+    /// Optional corresponding boundary on the other side of the element.
+    std::optional<express::Base> corresponding_boundary;
+    /// Physical or virtual enum value.
+    std::string physical_or_virtual;
+    /// Internal or external enum value.
+    std::string internal_or_external;
+};
+
 IFCAPI_BINDING void boundary_edit_attributes(
     express::Base* entity,
-    express::Base* relating_space,
-    express::Base* related_building_element,
-    IFCAPI_NULLABLE express::Base* parent_boundary,
-    IFCAPI_NULLABLE express::Base* corresponding_boundary,
-    const std::string& physical_or_virtual,
-    const std::string& internal_or_external);
+    const BoundaryEditAttributesOptions& options);
 
 } // namespace bindings
 } // namespace ifcapi

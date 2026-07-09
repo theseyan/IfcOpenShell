@@ -13,6 +13,7 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <variant>
 #include <vector>
 
 // Note: project-specific headers (geometry, serializers, schema, etc.) are
@@ -1763,12 +1764,9 @@ void ifcopenshell_double_list_list_destroy(ifcopenshell_double_list_list_t* valu
     value->size = 0;
 }
 
-void ifcopenshell_double_list_list_list_destroy(ifcopenshell_double_list_list_list_t* value) {
+void ifcopenshell_int64_list_destroy(ifcopenshell_int64_list_t* value) {
     if (value == nullptr || value->items == nullptr) {
         return;
-    }
-    for (size_t i = 0; i < value->size; ++i) {
-        ifcopenshell_double_list_list_destroy(&value->items[i]);
     }
     delete[] value->items;
     value->items = nullptr;
@@ -1808,27 +1806,6 @@ void ifcopenshell_int32_list_list_list_destroy(ifcopenshell_int32_list_list_list
     value->size = 0;
 }
 
-void ifcopenshell_int32_list_list_list_list_destroy(ifcopenshell_int32_list_list_list_list_t* value) {
-    if (value == nullptr || value->items == nullptr) {
-        return;
-    }
-    for (size_t i = 0; i < value->size; ++i) {
-        ifcopenshell_int32_list_list_list_destroy(&value->items[i]);
-    }
-    delete[] value->items;
-    value->items = nullptr;
-    value->size = 0;
-}
-
-void ifcopenshell_int64_list_destroy(ifcopenshell_int64_list_t* value) {
-    if (value == nullptr || value->items == nullptr) {
-        return;
-    }
-    delete[] value->items;
-    value->items = nullptr;
-    value->size = 0;
-}
-
 void ifcopenshell_bool_list_destroy(ifcopenshell_bool_list_t* value) {
     if (value == nullptr || value->items == nullptr) {
         return;
@@ -1850,6 +1827,30 @@ void ifcopenshell_uint32_list_destroy(ifcopenshell_uint32_list_t* value) {
 void ifcopenshell_uint8_list_destroy(ifcopenshell_uint8_list_t* value) {
     if (value == nullptr || value->items == nullptr) {
         return;
+    }
+    delete[] value->items;
+    value->items = nullptr;
+    value->size = 0;
+}
+
+void ifcopenshell_double_list_list_list_destroy(ifcopenshell_double_list_list_list_t* value) {
+    if (value == nullptr || value->items == nullptr) {
+        return;
+    }
+    for (size_t i = 0; i < value->size; ++i) {
+        ifcopenshell_double_list_list_destroy(&value->items[i]);
+    }
+    delete[] value->items;
+    value->items = nullptr;
+    value->size = 0;
+}
+
+void ifcopenshell_int32_list_list_list_list_destroy(ifcopenshell_int32_list_list_list_list_t* value) {
+    if (value == nullptr || value->items == nullptr) {
+        return;
+    }
+    for (size_t i = 0; i < value->size; ++i) {
+        ifcopenshell_int32_list_list_list_destroy(&value->items[i]);
     }
     delete[] value->items;
     value->items = nullptr;
@@ -1922,22 +1923,20 @@ static std::vector<std::vector<double>> to_cpp_double_list_list(const ifcopenshe
     return result;
 }
 
-static ifcopenshell_double_list_list_list_t make_double_list_list_list(const std::vector<std::vector<std::vector<double>>>& values) {
-    auto* items = values.empty() ? nullptr : new ifcopenshell_double_list_list_t[values.size()];
+static ifcopenshell_int64_list_t make_int64_list(const std::vector<int64_t>& values) {
+    auto* items = values.empty() ? nullptr : new int64_t[values.size()];
     for (size_t i = 0; i < values.size(); ++i) {
-        items[i] = make_double_list_list(values[i]);
+        items[i] = values[i];
     }
-    return ifcopenshell_double_list_list_list_t{items, values.size()};
+    return ifcopenshell_int64_list_t{items, values.size()};
 }
 
-static std::vector<std::vector<std::vector<double>>> to_cpp_double_list_list_list(const ifcopenshell_double_list_list_list_t* value) {
-    validate_list_items("double_list_list_list", value->items, value->size);
-    std::vector<std::vector<std::vector<double>>> result;
-    result.reserve(value->size);
-    for (size_t i = 0; i < value->size; ++i) {
-        result.push_back(to_cpp_double_list_list(&value->items[i]));
+static std::vector<int64_t> to_cpp_int64_list(const ifcopenshell_int64_list_t* value) {
+    validate_list_items("int64_list", value->items, value->size);
+    if (value->size == 0) {
+        return {};
     }
-    return result;
+    return std::vector<int64_t>(value->items, value->items + value->size);
 }
 
 static ifcopenshell_int32_list_t make_int32_list(const std::vector<int>& values) {
@@ -1992,40 +1991,6 @@ static std::vector<std::vector<std::vector<int>>> to_cpp_int32_list_list_list(co
     return result;
 }
 
-static ifcopenshell_int32_list_list_list_list_t make_int32_list_list_list_list(const std::vector<std::vector<std::vector<std::vector<int>>>>& values) {
-    auto* items = values.empty() ? nullptr : new ifcopenshell_int32_list_list_list_t[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {
-        items[i] = make_int32_list_list_list(values[i]);
-    }
-    return ifcopenshell_int32_list_list_list_list_t{items, values.size()};
-}
-
-static std::vector<std::vector<std::vector<std::vector<int>>>> to_cpp_int32_list_list_list_list(const ifcopenshell_int32_list_list_list_list_t* value) {
-    validate_list_items("int32_list_list_list_list", value->items, value->size);
-    std::vector<std::vector<std::vector<std::vector<int>>>> result;
-    result.reserve(value->size);
-    for (size_t i = 0; i < value->size; ++i) {
-        result.push_back(to_cpp_int32_list_list_list(&value->items[i]));
-    }
-    return result;
-}
-
-static ifcopenshell_int64_list_t make_int64_list(const std::vector<int64_t>& values) {
-    auto* items = values.empty() ? nullptr : new int64_t[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {
-        items[i] = values[i];
-    }
-    return ifcopenshell_int64_list_t{items, values.size()};
-}
-
-static std::vector<int64_t> to_cpp_int64_list(const ifcopenshell_int64_list_t* value) {
-    validate_list_items("int64_list", value->items, value->size);
-    if (value->size == 0) {
-        return {};
-    }
-    return std::vector<int64_t>(value->items, value->items + value->size);
-}
-
 static ifcopenshell_bool_list_t make_bool_list(const std::vector<bool>& values) {
     auto* items = values.empty() ? nullptr : new bool[values.size()];
     for (size_t i = 0; i < values.size(); ++i) {
@@ -2074,6 +2039,42 @@ static std::vector<uint8_t> to_cpp_uint8_list(const ifcopenshell_uint8_list_t* v
         return {};
     }
     return std::vector<uint8_t>(value->items, value->items + value->size);
+}
+
+static ifcopenshell_double_list_list_list_t make_double_list_list_list(const std::vector<std::vector<std::vector<double>>>& values) {
+    auto* items = values.empty() ? nullptr : new ifcopenshell_double_list_list_t[values.size()];
+    for (size_t i = 0; i < values.size(); ++i) {
+        items[i] = make_double_list_list(values[i]);
+    }
+    return ifcopenshell_double_list_list_list_t{items, values.size()};
+}
+
+static std::vector<std::vector<std::vector<double>>> to_cpp_double_list_list_list(const ifcopenshell_double_list_list_list_t* value) {
+    validate_list_items("double_list_list_list", value->items, value->size);
+    std::vector<std::vector<std::vector<double>>> result;
+    result.reserve(value->size);
+    for (size_t i = 0; i < value->size; ++i) {
+        result.push_back(to_cpp_double_list_list(&value->items[i]));
+    }
+    return result;
+}
+
+static ifcopenshell_int32_list_list_list_list_t make_int32_list_list_list_list(const std::vector<std::vector<std::vector<std::vector<int>>>>& values) {
+    auto* items = values.empty() ? nullptr : new ifcopenshell_int32_list_list_list_t[values.size()];
+    for (size_t i = 0; i < values.size(); ++i) {
+        items[i] = make_int32_list_list_list(values[i]);
+    }
+    return ifcopenshell_int32_list_list_list_list_t{items, values.size()};
+}
+
+static std::vector<std::vector<std::vector<std::vector<int>>>> to_cpp_int32_list_list_list_list(const ifcopenshell_int32_list_list_list_list_t* value) {
+    validate_list_items("int32_list_list_list_list", value->items, value->size);
+    std::vector<std::vector<std::vector<std::vector<int>>>> result;
+    result.reserve(value->size);
+    for (size_t i = 0; i < value->size; ++i) {
+        result.push_back(to_cpp_int32_list_list_list(&value->items[i]));
+    }
+    return result;
 }
 
 void ifcopenshell_clear_error(void) {
@@ -2243,6 +2244,14 @@ void ifcopenshell_value_destroy(ifcopenshell_value_t* handle) {
         return;
     }
     if (handle->owned && handle->ptr) { ifcapi::bindings::value_free(handle->ptr); }
+    delete handle;
+}
+
+void ifcopenshell_pset_template_handle_destroy(ifcopenshell_pset_template_handle_t* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    if (handle->owned && handle->ptr) { ifcapi::bindings::pset_template_free(handle->ptr); }
     delete handle;
 }
 
@@ -3011,6 +3020,23 @@ void ifcopenshell_geom_element_list_list_destroy(ifcopenshell_geom_element_list_
     delete[] value->items;
     value->items = nullptr;
     value->size = 0;
+}
+void ifcopenshell_instance_string_variant_destroy(ifcopenshell_instance_string_variant_t* value) {
+    if (value == nullptr) {
+        return;
+    }
+    switch (value->kind) {
+    case 0:
+        ifcopenshell_instance_destroy(value->value_0);
+        value->value_0 = nullptr;
+        break;
+    case 1:
+        ifcopenshell_string_destroy(&value->value_1);
+        break;
+    default:
+        break;
+    }
+    value->kind = -1;
 }
 
 bool ifcopenshell_geom_create_xml_serializer(ifcopenshell_file_t* file, const char* filename, ifcopenshell_geom_serializer_t** out_result) {
@@ -4240,20 +4266,31 @@ bool ifcopenshell_parse_version(ifcopenshell_string_t* out_result) {
     }
 }
 
-bool ifcopenshell_aggregate_assign_object(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* relating_object, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_aggregate_assign_object(ifcopenshell_file_t* file, const ifcopenshell_aggregate_assign_object_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
-    auto products_cpp = to_cpp_instance_list(products);
-    if (relating_object == nullptr) { throw std::runtime_error("Handle parameter \"relating_object\" must not be null"); }
-    auto relating_object_cpp = &relating_object->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::aggregate_assign_object(file_cpp, products_cpp, relating_object_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::AggregateAssignObjectOptions options_cpp{};
+    if (options->products == nullptr) { throw std::runtime_error("Options field \"products\" must not be null"); }
+    options_cpp.products = options->products->value;
+    if (options->relating_object == nullptr) { throw std::runtime_error("Options field \"relating_object\" must not be null"); }
+    options_cpp.relating_object = options->relating_object->value;
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::aggregate_assign_object(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -4269,16 +4306,24 @@ bool ifcopenshell_aggregate_assign_object(ifcopenshell_file_t* file, const ifcop
     }
 }
 
-bool ifcopenshell_aggregate_unassign_object(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_aggregate_unassign_object(ifcopenshell_file_t* file, const ifcopenshell_aggregate_unassign_object_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
-    auto products_cpp = to_cpp_instance_list(products);
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::aggregate_unassign_object(file_cpp, products_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::AggregateUnassignObjectOptions options_cpp{};
+    if (options->products == nullptr) { throw std::runtime_error("Options field \"products\" must not be null"); }
+    options_cpp.products = options->products->value;
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::aggregate_unassign_object(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -4289,20 +4334,27 @@ bool ifcopenshell_aggregate_unassign_object(ifcopenshell_file_t* file, const ifc
     }
 }
 
-bool ifcopenshell_attribute_edit_attributes(ifcopenshell_file_t* file, ifcopenshell_instance_t* product, void* attributes, bool sync_predefined_type, bool update_owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_attribute_edit_attributes(ifcopenshell_file_t* file, const ifcopenshell_attribute_edit_attributes_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (product == nullptr) { throw std::runtime_error("Handle parameter \"product\" must not be null"); }
-    auto product_cpp = &product->value;
-    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
-    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
-    auto sync_predefined_type_cpp = static_cast<bool>(sync_predefined_type);
-    auto update_owner_history_cpp = static_cast<bool>(update_owner_history);
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::attribute_edit_attributes(file_cpp, product_cpp, attributes_cpp, sync_predefined_type_cpp, update_owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::AttributeEditAttributesOptions options_cpp{};
+    if (options->product == nullptr) { throw std::runtime_error("Options field \"product\" must not be null"); }
+    options_cpp.product = options->product->value;
+    options_cpp.attributes = static_cast<ifcopenshell_pset_props_t*>(options->attributes);
+    options_cpp.sync_predefined_type = static_cast<bool>(options->sync_predefined_type);
+    options_cpp.update_owner_history = static_cast<bool>(options->update_owner_history);
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::attribute_edit_attributes(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -4313,25 +4365,27 @@ bool ifcopenshell_attribute_edit_attributes(ifcopenshell_file_t* file, ifcopensh
     }
 }
 
-bool ifcopenshell_boundary_assign_connection_geometry(ifcopenshell_file_t* file, ifcopenshell_instance_t* rel_space_boundary, const ifcopenshell_double_list_list_t* outer_boundary, const ifcopenshell_double_list_t* location, const ifcopenshell_double_list_t* axis, const ifcopenshell_double_list_t* ref_direction, const ifcopenshell_double_list_list_list_t* inner_boundaries, double unit_scale) {
+bool ifcopenshell_boundary_assign_connection_geometry(ifcopenshell_file_t* file, ifcopenshell_instance_t* rel_space_boundary, const ifcopenshell_boundary_assign_connection_geometry_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (rel_space_boundary == nullptr) { throw std::runtime_error("Handle parameter \"rel_space_boundary\" must not be null"); }
     auto rel_space_boundary_cpp = &rel_space_boundary->value;
-    if (outer_boundary == nullptr) { throw std::runtime_error("Parameter \"outer_boundary\" must not be null"); }
-    auto outer_boundary_cpp = to_cpp_double_list_list(outer_boundary);
-    if (location == nullptr) { throw std::runtime_error("Parameter \"location\" must not be null"); }
-    auto location_cpp = to_cpp_double_list(location);
-    if (axis == nullptr) { throw std::runtime_error("Parameter \"axis\" must not be null"); }
-    auto axis_cpp = to_cpp_double_list(axis);
-    if (ref_direction == nullptr) { throw std::runtime_error("Parameter \"ref_direction\" must not be null"); }
-    auto ref_direction_cpp = to_cpp_double_list(ref_direction);
-    if (inner_boundaries == nullptr) { throw std::runtime_error("Parameter \"inner_boundaries\" must not be null"); }
-    auto inner_boundaries_cpp = to_cpp_double_list_list_list(inner_boundaries);
-    auto unit_scale_cpp = static_cast<double>(unit_scale);
-        ifcapi::bindings::boundary_assign_connection_geometry(file_cpp, rel_space_boundary_cpp, outer_boundary_cpp, location_cpp, axis_cpp, ref_direction_cpp, inner_boundaries_cpp, unit_scale_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::BoundaryAssignConnectionGeometryOptions options_cpp{};
+    if (options->outer_boundary == nullptr) { throw std::runtime_error("Options field \"outer_boundary\" must not be null"); }
+    options_cpp.outer_boundary = to_cpp_double_list_list(options->outer_boundary);
+    if (options->location == nullptr) { throw std::runtime_error("Options field \"location\" must not be null"); }
+    options_cpp.location = to_cpp_double_list(options->location);
+    if (options->axis == nullptr) { throw std::runtime_error("Options field \"axis\" must not be null"); }
+    options_cpp.axis = to_cpp_double_list(options->axis);
+    if (options->ref_direction == nullptr) { throw std::runtime_error("Options field \"ref_direction\" must not be null"); }
+    options_cpp.ref_direction = to_cpp_double_list(options->ref_direction);
+    if (options->inner_boundaries == nullptr) { throw std::runtime_error("Options field \"inner_boundaries\" must not be null"); }
+    options_cpp.inner_boundaries = to_cpp_double_list_list_list(options->inner_boundaries);
+    options_cpp.unit_scale = static_cast<double>(options->unit_scale);
+        ifcapi::bindings::boundary_assign_connection_geometry(file_cpp, rel_space_boundary_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -4366,22 +4420,30 @@ bool ifcopenshell_boundary_copy_boundary(ifcopenshell_file_t* file, ifcopenshell
     }
 }
 
-bool ifcopenshell_boundary_edit_attributes(ifcopenshell_instance_t* entity, ifcopenshell_instance_t* relating_space, ifcopenshell_instance_t* related_building_element, ifcopenshell_instance_t* parent_boundary, ifcopenshell_instance_t* corresponding_boundary, const char* physical_or_virtual, const char* internal_or_external) {
+bool ifcopenshell_boundary_edit_attributes(ifcopenshell_instance_t* entity, const ifcopenshell_boundary_edit_attributes_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (entity == nullptr) { throw std::runtime_error("Handle parameter \"entity\" must not be null"); }
     auto entity_cpp = &entity->value;
-    if (relating_space == nullptr) { throw std::runtime_error("Handle parameter \"relating_space\" must not be null"); }
-    auto relating_space_cpp = &relating_space->value;
-    if (related_building_element == nullptr) { throw std::runtime_error("Handle parameter \"related_building_element\" must not be null"); }
-    auto related_building_element_cpp = &related_building_element->value;
-    auto parent_boundary_cpp = (parent_boundary != nullptr) ? &parent_boundary->value : nullptr;
-    auto corresponding_boundary_cpp = (corresponding_boundary != nullptr) ? &corresponding_boundary->value : nullptr;
-    if (physical_or_virtual == nullptr) { throw std::runtime_error("Parameter \"physical_or_virtual\" must not be null"); }
-    std::string physical_or_virtual_cpp(physical_or_virtual);
-    if (internal_or_external == nullptr) { throw std::runtime_error("Parameter \"internal_or_external\" must not be null"); }
-    std::string internal_or_external_cpp(internal_or_external);
-        ifcapi::bindings::boundary_edit_attributes(entity_cpp, relating_space_cpp, related_building_element_cpp, parent_boundary_cpp, corresponding_boundary_cpp, physical_or_virtual_cpp, internal_or_external_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::BoundaryEditAttributesOptions options_cpp{};
+    if (options->relating_space == nullptr) { throw std::runtime_error("Options field \"relating_space\" must not be null"); }
+    options_cpp.relating_space = options->relating_space->value;
+    if (options->related_building_element == nullptr) { throw std::runtime_error("Options field \"related_building_element\" must not be null"); }
+    options_cpp.related_building_element = options->related_building_element->value;
+    if (options->has_parent_boundary) {
+        if (options->parent_boundary == nullptr) { throw std::runtime_error("Options field \"parent_boundary\" must not be null"); }
+        options_cpp.parent_boundary = options->parent_boundary->value;
+    }
+    if (options->has_corresponding_boundary) {
+        if (options->corresponding_boundary == nullptr) { throw std::runtime_error("Options field \"corresponding_boundary\" must not be null"); }
+        options_cpp.corresponding_boundary = options->corresponding_boundary->value;
+    }
+    if (options->physical_or_virtual == nullptr) { throw std::runtime_error("Options field \"physical_or_virtual\" must not be null"); }
+    options_cpp.physical_or_virtual = std::string(options->physical_or_virtual);
+    if (options->internal_or_external == nullptr) { throw std::runtime_error("Options field \"internal_or_external\" must not be null"); }
+    options_cpp.internal_or_external = std::string(options->internal_or_external);
+        ifcapi::bindings::boundary_edit_attributes(entity_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -4434,26 +4496,45 @@ bool ifcopenshell_classification_add_classification(ifcopenshell_file_t* file, c
     }
 }
 
-bool ifcopenshell_classification_add_reference(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* reference, const char* identification, bool has_identification, const char* name, bool has_name, ifcopenshell_instance_t* classification, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_classification_add_reference(ifcopenshell_file_t* file, const ifcopenshell_classification_add_reference_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
-    auto products_cpp = to_cpp_instance_list(products);
-    auto reference_cpp = (reference != nullptr) ? &reference->value : nullptr;
-    if (identification == nullptr) { throw std::runtime_error("Parameter \"identification\" must not be null"); }
-    std::string identification_cpp(identification);
-    auto has_identification_cpp = static_cast<bool>(has_identification);
-    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
-    std::string name_cpp(name);
-    auto has_name_cpp = static_cast<bool>(has_name);
-    auto classification_cpp = (classification != nullptr) ? &classification->value : nullptr;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::classification_add_reference(file_cpp, products_cpp, reference_cpp, identification_cpp, has_identification_cpp, name_cpp, has_name_cpp, classification_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ClassificationAddReferenceOptions options_cpp{};
+    if (options->products == nullptr) { throw std::runtime_error("Options field \"products\" must not be null"); }
+    options_cpp.products = options->products->value;
+    if (options->has_reference) {
+        if (options->reference == nullptr) { throw std::runtime_error("Options field \"reference\" must not be null"); }
+        options_cpp.reference = options->reference->value;
+    }
+    if (options->has_identification) {
+        if (options->identification == nullptr) { throw std::runtime_error("Options field \"identification\" must not be null"); }
+        options_cpp.identification = std::string(options->identification);
+    }
+    if (options->has_name) {
+        if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+        options_cpp.name = std::string(options->name);
+    }
+    if (options->has_classification) {
+        if (options->classification == nullptr) { throw std::runtime_error("Options field \"classification\" must not be null"); }
+        options_cpp.classification = options->classification->value;
+    }
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::classification_add_reference(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -4505,18 +4586,26 @@ bool ifcopenshell_classification_remove_classification(ifcopenshell_file_t* file
     }
 }
 
-bool ifcopenshell_classification_remove_reference(ifcopenshell_file_t* file, ifcopenshell_instance_t* reference, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_classification_remove_reference(ifcopenshell_file_t* file, const ifcopenshell_classification_remove_reference_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (reference == nullptr) { throw std::runtime_error("Handle parameter \"reference\" must not be null"); }
-    auto reference_cpp = &reference->value;
-    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
-    auto products_cpp = to_cpp_instance_list(products);
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::classification_remove_reference(file_cpp, reference_cpp, products_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ClassificationRemoveReferenceOptions options_cpp{};
+    if (options->reference == nullptr) { throw std::runtime_error("Options field \"reference\" must not be null"); }
+    options_cpp.reference = options->reference->value;
+    if (options->products == nullptr) { throw std::runtime_error("Options field \"products\" must not be null"); }
+    options_cpp.products = options->products->value;
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::classification_remove_reference(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -4527,19 +4616,33 @@ bool ifcopenshell_classification_remove_reference(ifcopenshell_file_t* file, ifc
     }
 }
 
-bool ifcopenshell_cogo_add_survey_point(ifcopenshell_file_t* file, ifcopenshell_instance_t* survey_point, ifcopenshell_instance_t* site, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_cogo_add_survey_point(ifcopenshell_file_t* file, const ifcopenshell_cogo_add_survey_point_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (survey_point == nullptr) { throw std::runtime_error("Handle parameter \"survey_point\" must not be null"); }
-    auto survey_point_cpp = &survey_point->value;
-    auto site_cpp = (site != nullptr) ? &site->value : nullptr;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::cogo_add_survey_point(file_cpp, survey_point_cpp, site_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::CogoAddSurveyPointOptions options_cpp{};
+    if (options->survey_point == nullptr) { throw std::runtime_error("Options field \"survey_point\" must not be null"); }
+    options_cpp.survey_point = options->survey_point->value;
+    if (options->has_site) {
+        if (options->site == nullptr) { throw std::runtime_error("Options field \"site\" must not be null"); }
+        options_cpp.site = options->site->value;
+    }
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::cogo_add_survey_point(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -4601,10 +4704,15 @@ bool ifcopenshell_compute_derived(ifcopenshell_instance_t* instance, const char*
     if (attribute_name == nullptr) { throw std::runtime_error("Parameter \"attribute_name\" must not be null"); }
     std::string attribute_name_cpp(attribute_name);
         auto result_value = ifcapi::bindings::compute_derived(instance_cpp, attribute_name_cpp);
-        if (result_value == nullptr) {
+        if (!result_value) {
             *out_result = nullptr;
         } else {
-            *out_result = new ifcopenshell_value_t{result_value, true};
+            auto unwrapped_result = *result_value;
+            if (unwrapped_result == nullptr) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_value_t{unwrapped_result, true};
+            }
         }
         return true;
     } catch (const std::exception& e) {
@@ -4622,7 +4730,8 @@ bool ifcopenshell_constraint_add_metric(ifcopenshell_file_t* file, ifcopenshell_
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    auto objective_cpp = (objective != nullptr) ? &objective->value : nullptr;
+    std::optional<express::Base> objective_cpp;
+    if (objective != nullptr) { objective_cpp = objective->value; }
         auto result_value = ifcapi::bindings::constraint_add_metric(file_cpp, objective_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -4682,20 +4791,31 @@ bool ifcopenshell_constraint_add_objective(ifcopenshell_file_t* file, ifcopenshe
     }
 }
 
-bool ifcopenshell_constraint_assign_constraint(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* constraint, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_constraint_assign_constraint(ifcopenshell_file_t* file, const ifcopenshell_constraint_assign_constraint_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
-    auto products_cpp = to_cpp_instance_list(products);
-    if (constraint == nullptr) { throw std::runtime_error("Handle parameter \"constraint\" must not be null"); }
-    auto constraint_cpp = &constraint->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::constraint_assign_constraint(file_cpp, products_cpp, constraint_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ConstraintAssignConstraintOptions options_cpp{};
+    if (options->products == nullptr) { throw std::runtime_error("Options field \"products\" must not be null"); }
+    options_cpp.products = options->products->value;
+    if (options->constraint == nullptr) { throw std::runtime_error("Options field \"constraint\" must not be null"); }
+    options_cpp.constraint = options->constraint->value;
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::constraint_assign_constraint(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -4747,18 +4867,26 @@ bool ifcopenshell_constraint_remove_metric(ifcopenshell_file_t* file, ifcopenshe
     }
 }
 
-bool ifcopenshell_constraint_unassign_constraint(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* constraint, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_constraint_unassign_constraint(ifcopenshell_file_t* file, const ifcopenshell_constraint_unassign_constraint_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
-    auto products_cpp = to_cpp_instance_list(products);
-    if (constraint == nullptr) { throw std::runtime_error("Handle parameter \"constraint\" must not be null"); }
-    auto constraint_cpp = &constraint->value;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::constraint_unassign_constraint(file_cpp, products_cpp, constraint_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ConstraintUnassignConstraintOptions options_cpp{};
+    if (options->products == nullptr) { throw std::runtime_error("Options field \"products\" must not be null"); }
+    options_cpp.products = options->products->value;
+    if (options->constraint == nullptr) { throw std::runtime_error("Options field \"constraint\" must not be null"); }
+    options_cpp.constraint = options->constraint->value;
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::constraint_unassign_constraint(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -4769,19 +4897,28 @@ bool ifcopenshell_constraint_unassign_constraint(ifcopenshell_file_t* file, cons
     }
 }
 
-bool ifcopenshell_context_add_context(ifcopenshell_file_t* file, const char* context_type, const char* context_identifier, const char* target_view, bool has_target_scale, double target_scale, ifcopenshell_instance_t* parent, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_context_add_context(ifcopenshell_file_t* file, const ifcopenshell_context_add_context_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    const char* context_type_str = context_type;
-    const char* context_identifier_str = context_identifier;
-    const char* target_view_str = target_view;
-    auto has_target_scale_cpp = static_cast<bool>(has_target_scale);
-    auto target_scale_cpp = static_cast<double>(target_scale);
-    auto parent_cpp = (parent != nullptr) ? &parent->value : nullptr;
-        auto result_value = ifcapi::bindings::context_add_context(file_cpp, context_type, context_identifier, target_view, has_target_scale_cpp, target_scale_cpp, parent_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ContextAddContextOptions options_cpp{};
+    if (options->context_type == nullptr) { throw std::runtime_error("Options field \"context_type\" must not be null"); }
+    options_cpp.context_type = std::string(options->context_type);
+    if (options->context_identifier == nullptr) { throw std::runtime_error("Options field \"context_identifier\" must not be null"); }
+    options_cpp.context_identifier = std::string(options->context_identifier);
+    if (options->target_view == nullptr) { throw std::runtime_error("Options field \"target_view\" must not be null"); }
+    options_cpp.target_view = std::string(options->target_view);
+    if (options->has_target_scale) {
+        options_cpp.target_scale = options->target_scale;
+    }
+    if (options->has_parent) {
+        if (options->parent == nullptr) { throw std::runtime_error("Options field \"parent\" must not be null"); }
+        options_cpp.parent = options->parent->value;
+    }
+        auto result_value = ifcapi::bindings::context_add_context(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -4835,20 +4972,31 @@ bool ifcopenshell_context_remove_context(ifcopenshell_file_t* file, ifcopenshell
     }
 }
 
-bool ifcopenshell_control_assign_control(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_control, const ifcopenshell_instance_list_t* related_objects, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_control_assign_control(ifcopenshell_file_t* file, const ifcopenshell_control_assign_control_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (relating_control == nullptr) { throw std::runtime_error("Handle parameter \"relating_control\" must not be null"); }
-    auto relating_control_cpp = &relating_control->value;
-    if (related_objects == nullptr) { throw std::runtime_error("Parameter \"related_objects\" must not be null"); }
-    auto related_objects_cpp = to_cpp_instance_list(related_objects);
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::control_assign_control(file_cpp, relating_control_cpp, related_objects_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ControlAssignControlOptions options_cpp{};
+    if (options->relating_control == nullptr) { throw std::runtime_error("Options field \"relating_control\" must not be null"); }
+    options_cpp.relating_control = options->relating_control->value;
+    if (options->related_objects == nullptr) { throw std::runtime_error("Options field \"related_objects\" must not be null"); }
+    options_cpp.related_objects = options->related_objects->value;
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::control_assign_control(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -4864,18 +5012,26 @@ bool ifcopenshell_control_assign_control(ifcopenshell_file_t* file, ifcopenshell
     }
 }
 
-bool ifcopenshell_control_unassign_control(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_control, const ifcopenshell_instance_list_t* related_objects, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_control_unassign_control(ifcopenshell_file_t* file, const ifcopenshell_control_unassign_control_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (relating_control == nullptr) { throw std::runtime_error("Handle parameter \"relating_control\" must not be null"); }
-    auto relating_control_cpp = &relating_control->value;
-    if (related_objects == nullptr) { throw std::runtime_error("Parameter \"related_objects\" must not be null"); }
-    auto related_objects_cpp = to_cpp_instance_list(related_objects);
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::control_unassign_control(file_cpp, relating_control_cpp, related_objects_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ControlUnassignControlOptions options_cpp{};
+    if (options->relating_control == nullptr) { throw std::runtime_error("Options field \"relating_control\" must not be null"); }
+    options_cpp.relating_control = options->relating_control->value;
+    if (options->related_objects == nullptr) { throw std::runtime_error("Options field \"related_objects\" must not be null"); }
+    options_cpp.related_objects = options->related_objects->value;
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::control_unassign_control(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -4886,18 +5042,35 @@ bool ifcopenshell_control_unassign_control(ifcopenshell_file_t* file, ifcopenshe
     }
 }
 
-bool ifcopenshell_cost_add_cost_item(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_schedule, ifcopenshell_instance_t* cost_item, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_cost_add_cost_item(ifcopenshell_file_t* file, const ifcopenshell_cost_add_cost_item_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    auto cost_schedule_cpp = (cost_schedule != nullptr) ? &cost_schedule->value : nullptr;
-    auto cost_item_cpp = (cost_item != nullptr) ? &cost_item->value : nullptr;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::cost_add_cost_item(file_cpp, cost_schedule_cpp, cost_item_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::CostAddCostItemOptions options_cpp{};
+    if (options->has_cost_schedule) {
+        if (options->cost_schedule == nullptr) { throw std::runtime_error("Options field \"cost_schedule\" must not be null"); }
+        options_cpp.cost_schedule = options->cost_schedule->value;
+    }
+    if (options->has_cost_item) {
+        if (options->cost_item == nullptr) { throw std::runtime_error("Options field \"cost_item\" must not be null"); }
+        options_cpp.cost_item = options->cost_item->value;
+    }
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::cost_add_cost_item(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -4950,7 +5123,8 @@ bool ifcopenshell_cost_add_cost_schedule(ifcopenshell_file_t* file, const char* 
     std::string predefined_type_cpp(predefined_type);
     if (update_date == nullptr) { throw std::runtime_error("Parameter \"update_date\" must not be null"); }
     std::string update_date_cpp(update_date);
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
+    std::optional<express::Base> owner_history_cpp;
+    if (owner_history != nullptr) { owner_history_cpp = owner_history->value; }
         auto result_value = ifcapi::bindings::cost_add_cost_schedule(file_cpp, name, predefined_type_cpp, update_date_cpp, owner_history_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -4991,7 +5165,7 @@ bool ifcopenshell_cost_add_cost_value(ifcopenshell_file_t* file, ifcopenshell_in
     }
 }
 
-bool ifcopenshell_cost_assign_cost_item_quantity(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_item, const ifcopenshell_instance_list_t* products, const char* prop_name, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_cost_assign_cost_item_quantity(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_item, const ifcopenshell_instance_list_t* products, const char* prop_name, const ifcopenshell_cost_assign_cost_item_quantity_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
@@ -5001,10 +5175,21 @@ bool ifcopenshell_cost_assign_cost_item_quantity(ifcopenshell_file_t* file, ifco
     if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
     auto products_cpp = to_cpp_instance_list(products);
     const char* prop_name_str = prop_name;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::cost_assign_cost_item_quantity(file_cpp, cost_item_cpp, products_cpp, prop_name, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::CostAssignCostItemQuantityOptions options_cpp{};
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::cost_assign_cost_item_quantity(file_cpp, cost_item_cpp, products_cpp, prop_name, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -5092,7 +5277,7 @@ bool ifcopenshell_cost_copy_cost_item_values(ifcopenshell_file_t* file, ifcopens
     }
 }
 
-bool ifcopenshell_cost_copy_cost_schedule(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_schedule, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_cost_copy_cost_schedule(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_schedule, const ifcopenshell_cost_copy_cost_schedule_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -5100,10 +5285,21 @@ bool ifcopenshell_cost_copy_cost_schedule(ifcopenshell_file_t* file, ifcopenshel
     auto file_cpp = file->ptr;
     if (cost_schedule == nullptr) { throw std::runtime_error("Handle parameter \"cost_schedule\" must not be null"); }
     auto cost_schedule_cpp = &cost_schedule->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::cost_copy_cost_schedule(file_cpp, cost_schedule_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::CostCopyCostScheduleOptions options_cpp{};
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::cost_copy_cost_schedule(file_cpp, cost_schedule_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -5179,7 +5375,7 @@ bool ifcopenshell_cost_edit_cost_schedule(ifcopenshell_file_t* file, ifcopenshel
     }
 }
 
-bool ifcopenshell_cost_edit_cost_value(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_value, void* attributes, bool has_unit_basis, bool unit_basis_is_null, double value_component, ifcopenshell_instance_t* unit_component) {
+bool ifcopenshell_cost_edit_cost_value(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_value, void* attributes, const ifcopenshell_cost_edit_cost_value_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
@@ -5188,11 +5384,16 @@ bool ifcopenshell_cost_edit_cost_value(ifcopenshell_file_t* file, ifcopenshell_i
     auto cost_value_cpp = &cost_value->value;
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
-    auto has_unit_basis_cpp = static_cast<bool>(has_unit_basis);
-    auto unit_basis_is_null_cpp = static_cast<bool>(unit_basis_is_null);
-    auto value_component_cpp = static_cast<double>(value_component);
-    auto unit_component_cpp = (unit_component != nullptr) ? &unit_component->value : nullptr;
-        ifcapi::bindings::cost_edit_cost_value(file_cpp, cost_value_cpp, attributes_cpp, has_unit_basis_cpp, unit_basis_is_null_cpp, value_component_cpp, unit_component_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::CostEditCostValueOptions options_cpp{};
+    options_cpp.edit_unit_basis = static_cast<bool>(options->edit_unit_basis);
+    options_cpp.clear_unit_basis = static_cast<bool>(options->clear_unit_basis);
+    options_cpp.value_component = static_cast<double>(options->value_component);
+    if (options->has_unit_component) {
+        if (options->unit_component == nullptr) { throw std::runtime_error("Options field \"unit_component\" must not be null"); }
+        options_cpp.unit_component = options->unit_component->value;
+    }
+        ifcapi::bindings::cost_edit_cost_value(file_cpp, cost_value_cpp, attributes_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -5299,7 +5500,7 @@ bool ifcopenshell_cost_remove_cost_value(ifcopenshell_file_t* file, ifcopenshell
     }
 }
 
-bool ifcopenshell_cost_unassign_cost_item_quantity(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_item, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_cost_unassign_cost_item_quantity(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_item, const ifcopenshell_instance_list_t* products, const ifcopenshell_cost_unassign_cost_item_quantity_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
@@ -5308,9 +5509,17 @@ bool ifcopenshell_cost_unassign_cost_item_quantity(ifcopenshell_file_t* file, if
     auto cost_item_cpp = &cost_item->value;
     if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
     auto products_cpp = to_cpp_instance_list(products);
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::cost_unassign_cost_item_quantity(file_cpp, cost_item_cpp, products_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::CostUnassignCostItemQuantityOptions options_cpp{};
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::cost_unassign_cost_item_quantity(file_cpp, cost_item_cpp, products_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -5321,17 +5530,31 @@ bool ifcopenshell_cost_unassign_cost_item_quantity(ifcopenshell_file_t* file, if
     }
 }
 
-bool ifcopenshell_document_add_information(ifcopenshell_file_t* file, ifcopenshell_instance_t* parent, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_document_add_information(ifcopenshell_file_t* file, const ifcopenshell_document_add_information_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    auto parent_cpp = (parent != nullptr) ? &parent->value : nullptr;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::document_add_information(file_cpp, parent_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::DocumentAddInformationOptions options_cpp{};
+    if (options->has_parent) {
+        if (options->parent == nullptr) { throw std::runtime_error("Options field \"parent\" must not be null"); }
+        options_cpp.parent = options->parent->value;
+    }
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::document_add_information(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -5353,7 +5576,8 @@ bool ifcopenshell_document_add_reference(ifcopenshell_file_t* file, ifcopenshell
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    auto information_cpp = (information != nullptr) ? &information->value : nullptr;
+    std::optional<express::Base> information_cpp;
+    if (information != nullptr) { information_cpp = information->value; }
         auto result_value = ifcapi::bindings::document_add_reference(file_cpp, information_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -5370,20 +5594,31 @@ bool ifcopenshell_document_add_reference(ifcopenshell_file_t* file, ifcopenshell
     }
 }
 
-bool ifcopenshell_document_assign_document(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* document, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_document_assign_document(ifcopenshell_file_t* file, const ifcopenshell_document_assign_document_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
-    auto products_cpp = to_cpp_instance_list(products);
-    if (document == nullptr) { throw std::runtime_error("Handle parameter \"document\" must not be null"); }
-    auto document_cpp = &document->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::document_assign_document(file_cpp, products_cpp, document_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::DocumentAssignDocumentOptions options_cpp{};
+    if (options->products == nullptr) { throw std::runtime_error("Options field \"products\" must not be null"); }
+    options_cpp.products = options->products->value;
+    if (options->document == nullptr) { throw std::runtime_error("Options field \"document\" must not be null"); }
+    options_cpp.document = options->document->value;
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::document_assign_document(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -5435,18 +5670,26 @@ bool ifcopenshell_document_remove_reference(ifcopenshell_file_t* file, ifcopensh
     }
 }
 
-bool ifcopenshell_document_unassign_document(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* document, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_document_unassign_document(ifcopenshell_file_t* file, const ifcopenshell_document_unassign_document_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
-    auto products_cpp = to_cpp_instance_list(products);
-    if (document == nullptr) { throw std::runtime_error("Handle parameter \"document\" must not be null"); }
-    auto document_cpp = &document->value;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::document_unassign_document(file_cpp, products_cpp, document_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::DocumentUnassignDocumentOptions options_cpp{};
+    if (options->products == nullptr) { throw std::runtime_error("Options field \"products\" must not be null"); }
+    options_cpp.products = options->products->value;
+    if (options->document == nullptr) { throw std::runtime_error("Options field \"document\" must not be null"); }
+    options_cpp.document = options->document->value;
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::document_unassign_document(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -5457,20 +5700,31 @@ bool ifcopenshell_document_unassign_document(ifcopenshell_file_t* file, const if
     }
 }
 
-bool ifcopenshell_drawing_assign_product(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_product, ifcopenshell_instance_t* related_object, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_drawing_assign_product(ifcopenshell_file_t* file, const ifcopenshell_drawing_assign_product_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (relating_product == nullptr) { throw std::runtime_error("Handle parameter \"relating_product\" must not be null"); }
-    auto relating_product_cpp = &relating_product->value;
-    if (related_object == nullptr) { throw std::runtime_error("Handle parameter \"related_object\" must not be null"); }
-    auto related_object_cpp = &related_object->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::drawing_assign_product(file_cpp, relating_product_cpp, related_object_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::DrawingAssignProductOptions options_cpp{};
+    if (options->relating_product == nullptr) { throw std::runtime_error("Options field \"relating_product\" must not be null"); }
+    options_cpp.relating_product = options->relating_product->value;
+    if (options->related_object == nullptr) { throw std::runtime_error("Options field \"related_object\" must not be null"); }
+    options_cpp.related_object = options->related_object->value;
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::drawing_assign_product(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -5486,18 +5740,26 @@ bool ifcopenshell_drawing_assign_product(ifcopenshell_file_t* file, ifcopenshell
     }
 }
 
-bool ifcopenshell_drawing_unassign_product(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_product, ifcopenshell_instance_t* related_object, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_drawing_unassign_product(ifcopenshell_file_t* file, const ifcopenshell_drawing_unassign_product_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (relating_product == nullptr) { throw std::runtime_error("Handle parameter \"relating_product\" must not be null"); }
-    auto relating_product_cpp = &relating_product->value;
-    if (related_object == nullptr) { throw std::runtime_error("Handle parameter \"related_object\" must not be null"); }
-    auto related_object_cpp = &related_object->value;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::drawing_unassign_product(file_cpp, relating_product_cpp, related_object_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::DrawingUnassignProductOptions options_cpp{};
+    if (options->relating_product == nullptr) { throw std::runtime_error("Options field \"relating_product\" must not be null"); }
+    options_cpp.relating_product = options->relating_product->value;
+    if (options->related_object == nullptr) { throw std::runtime_error("Options field \"related_object\" must not be null"); }
+    options_cpp.related_object = options->related_object->value;
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::drawing_unassign_product(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -5515,10 +5777,15 @@ bool ifcopenshell_element_get_aggregate(ifcopenshell_instance_t* instance, ifcop
     if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
     auto instance_cpp = &instance->value;
         auto result_value = ifcapi::bindings::element_get_aggregate(instance_cpp);
-        if (!static_cast<bool>(result_value)) {
+        if (!result_value) {
             *out_result = nullptr;
         } else {
-            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
         }
         return true;
     } catch (const std::exception& e) {
@@ -5547,19 +5814,31 @@ bool ifcopenshell_element_get_contained(ifcopenshell_instance_t* element, ifcope
     }
 }
 
-bool ifcopenshell_element_get_container(ifcopenshell_instance_t* instance, bool direct_only, const char* ifc_class, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_element_get_container(ifcopenshell_instance_t* instance, const ifcopenshell_element_get_container_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
     auto instance_cpp = &instance->value;
-    auto direct_only_cpp = static_cast<bool>(direct_only);
-    const char* ifc_class_str = ifc_class;
-        auto result_value = ifcapi::bindings::element_get_container(instance_cpp, direct_only_cpp, ifc_class);
-        if (!static_cast<bool>(result_value)) {
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ElementGetContainerOptions options_cpp{};
+    if (options->has_direct_only) {
+        options_cpp.direct_only = options->direct_only;
+    }
+    if (options->has_ifc_class) {
+        if (options->ifc_class == nullptr) { throw std::runtime_error("Options field \"ifc_class\" must not be null"); }
+        options_cpp.ifc_class = std::string(options->ifc_class);
+    }
+        auto result_value = ifcapi::bindings::element_get_container(instance_cpp, options_cpp);
+        if (!result_value) {
             *out_result = nullptr;
         } else {
-            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
         }
         return true;
     } catch (const std::exception& e) {
@@ -5588,14 +5867,18 @@ bool ifcopenshell_element_get_controls(ifcopenshell_instance_t* element, ifcopen
     }
 }
 
-bool ifcopenshell_element_get_decomposition(ifcopenshell_instance_t* element, bool is_recursive, ifcopenshell_parse_instance_list_t** out_result) {
+bool ifcopenshell_element_get_decomposition(ifcopenshell_instance_t* element, const ifcopenshell_element_get_decomposition_options_t* options, ifcopenshell_parse_instance_list_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
     auto element_cpp = &element->value;
-    auto is_recursive_cpp = static_cast<bool>(is_recursive);
-        *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_decomposition(element_cpp, is_recursive_cpp)};
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ElementGetDecompositionOptions options_cpp{};
+    if (options->has_is_recursive) {
+        options_cpp.is_recursive = options->is_recursive;
+    }
+        *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_decomposition(element_cpp, options_cpp)};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -5698,10 +5981,15 @@ bool ifcopenshell_element_get_filled_void(ifcopenshell_instance_t* element, ifco
     if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
     auto element_cpp = &element->value;
         auto result_value = ifcapi::bindings::element_get_filled_void(element_cpp);
-        if (!static_cast<bool>(result_value)) {
+        if (!result_value) {
             *out_result = nullptr;
         } else {
-            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
         }
         return true;
     } catch (const std::exception& e) {
@@ -5747,19 +6035,30 @@ bool ifcopenshell_element_get_layers(ifcopenshell_instance_t* element, ifcopensh
     }
 }
 
-bool ifcopenshell_element_get_material(ifcopenshell_instance_t* instance, bool should_skip_usage, bool should_inherit, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_element_get_material(ifcopenshell_instance_t* instance, const ifcopenshell_element_get_material_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
     auto instance_cpp = &instance->value;
-    auto should_skip_usage_cpp = static_cast<bool>(should_skip_usage);
-    auto should_inherit_cpp = static_cast<bool>(should_inherit);
-        auto result_value = ifcapi::bindings::element_get_material(instance_cpp, should_skip_usage_cpp, should_inherit_cpp);
-        if (!static_cast<bool>(result_value)) {
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ElementGetMaterialOptions options_cpp{};
+    if (options->has_should_skip_usage) {
+        options_cpp.should_skip_usage = options->should_skip_usage;
+    }
+    if (options->has_should_inherit) {
+        options_cpp.should_inherit = options->should_inherit;
+    }
+        auto result_value = ifcapi::bindings::element_get_material(instance_cpp, options_cpp);
+        if (!result_value) {
             *out_result = nullptr;
         } else {
-            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
         }
         return true;
     } catch (const std::exception& e) {
@@ -5778,10 +6077,15 @@ bool ifcopenshell_element_get_nest(ifcopenshell_instance_t* instance, ifcopenshe
     if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
     auto instance_cpp = &instance->value;
         auto result_value = ifcapi::bindings::element_get_nest(instance_cpp);
-        if (!static_cast<bool>(result_value)) {
+        if (!result_value) {
             *out_result = nullptr;
         } else {
-            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
         }
         return true;
     } catch (const std::exception& e) {
@@ -5817,10 +6121,15 @@ bool ifcopenshell_element_get_parent(ifcopenshell_instance_t* instance, ifcopens
     if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
     auto instance_cpp = &instance->value;
         auto result_value = ifcapi::bindings::element_get_parent(instance_cpp);
-        if (!static_cast<bool>(result_value)) {
+        if (!result_value) {
             *out_result = nullptr;
         } else {
-            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
         }
         return true;
     } catch (const std::exception& e) {
@@ -5849,16 +6158,24 @@ bool ifcopenshell_element_get_parts(ifcopenshell_instance_t* element, ifcopenshe
     }
 }
 
-bool ifcopenshell_element_get_pset_ids(ifcopenshell_instance_t* element, bool psets_only, bool qtos_only, bool should_inherit, ifcopenshell_parse_instance_list_t** out_result) {
+bool ifcopenshell_element_get_pset_ids(ifcopenshell_instance_t* element, const ifcopenshell_element_get_pset_ids_options_t* options, ifcopenshell_parse_instance_list_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
     auto element_cpp = &element->value;
-    auto psets_only_cpp = static_cast<bool>(psets_only);
-    auto qtos_only_cpp = static_cast<bool>(qtos_only);
-    auto should_inherit_cpp = static_cast<bool>(should_inherit);
-        *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_pset_ids(element_cpp, psets_only_cpp, qtos_only_cpp, should_inherit_cpp)};
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ElementGetPsetIdsOptions options_cpp{};
+    if (options->has_psets_only) {
+        options_cpp.psets_only = options->psets_only;
+    }
+    if (options->has_qtos_only) {
+        options_cpp.qtos_only = options->qtos_only;
+    }
+    if (options->has_should_inherit) {
+        options_cpp.should_inherit = options->should_inherit;
+    }
+        *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_pset_ids(element_cpp, options_cpp)};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -5903,14 +6220,18 @@ bool ifcopenshell_element_get_referenced_structures(ifcopenshell_instance_t* ele
     }
 }
 
-bool ifcopenshell_element_get_shape_aspects(ifcopenshell_instance_t* element, bool should_inherit, ifcopenshell_parse_instance_list_t** out_result) {
+bool ifcopenshell_element_get_shape_aspects(ifcopenshell_instance_t* element, const ifcopenshell_element_get_shape_aspects_options_t* options, ifcopenshell_parse_instance_list_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
     auto element_cpp = &element->value;
-    auto should_inherit_cpp = static_cast<bool>(should_inherit);
-        *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_shape_aspects(element_cpp, should_inherit_cpp)};
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ElementGetShapeAspectsOptions options_cpp{};
+    if (options->has_should_inherit) {
+        options_cpp.should_inherit = options->should_inherit;
+    }
+        *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_shape_aspects(element_cpp, options_cpp)};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -5962,10 +6283,15 @@ bool ifcopenshell_element_get_type(ifcopenshell_instance_t* instance, ifcopenshe
     if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
     auto instance_cpp = &instance->value;
         auto result_value = ifcapi::bindings::element_get_type(instance_cpp);
-        if (!static_cast<bool>(result_value)) {
+        if (!result_value) {
             *out_result = nullptr;
         } else {
-            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
         }
         return true;
     } catch (const std::exception& e) {
@@ -6001,10 +6327,15 @@ bool ifcopenshell_element_get_voided_element(ifcopenshell_instance_t* element, i
     if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
     auto element_cpp = &element->value;
         auto result_value = ifcapi::bindings::element_get_voided_element(element_cpp);
-        if (!static_cast<bool>(result_value)) {
+        if (!result_value) {
             *out_result = nullptr;
         } else {
-            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
         }
         return true;
     } catch (const std::exception& e) {
@@ -6103,19 +6434,27 @@ bool ifcopenshell_entity_remove_deep2_ex(ifcopenshell_instance_t* instance, cons
     }
 }
 
-bool ifcopenshell_feature_add_feature(ifcopenshell_file_t* file, ifcopenshell_instance_t* feature, ifcopenshell_instance_t* element, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_feature_add_feature(ifcopenshell_file_t* file, const ifcopenshell_feature_add_feature_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (feature == nullptr) { throw std::runtime_error("Handle parameter \"feature\" must not be null"); }
-    auto feature_cpp = &feature->value;
-    if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
-    auto element_cpp = &element->value;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::feature_add_feature(file_cpp, feature_cpp, element_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::FeatureAddFeatureOptions options_cpp{};
+    if (options->feature == nullptr) { throw std::runtime_error("Options field \"feature\" must not be null"); }
+    options_cpp.feature = options->feature->value;
+    if (options->element == nullptr) { throw std::runtime_error("Options field \"element\" must not be null"); }
+    options_cpp.element = options->element->value;
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::feature_add_feature(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -6157,16 +6496,24 @@ bool ifcopenshell_feature_add_filling(ifcopenshell_file_t* file, ifcopenshell_in
     }
 }
 
-bool ifcopenshell_feature_remove_feature(ifcopenshell_file_t* file, ifcopenshell_instance_t* feature, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_feature_remove_feature(ifcopenshell_file_t* file, const ifcopenshell_feature_remove_feature_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (feature == nullptr) { throw std::runtime_error("Handle parameter \"feature\" must not be null"); }
-    auto feature_cpp = &feature->value;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::feature_remove_feature(file_cpp, feature_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::FeatureRemoveFeatureOptions options_cpp{};
+    if (options->feature == nullptr) { throw std::runtime_error("Options field \"feature\" must not be null"); }
+    options_cpp.feature = options->feature->value;
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::feature_remove_feature(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -6244,25 +6591,30 @@ bool ifcopenshell_geometry_add_boolean(ifcopenshell_file_t* file, ifcopenshell_i
     }
 }
 
-bool ifcopenshell_geometry_add_door_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, double overall_height, double overall_width, const char* operation_type, const ifcopenshell_double_list_t* lining_properties, const ifcopenshell_double_list_t* panel_properties, ifcopenshell_instance_t* part_of_product, double unit_scale, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_geometry_add_door_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_door_representation_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (context == nullptr) { throw std::runtime_error("Handle parameter \"context\" must not be null"); }
-    auto context_cpp = &context->value;
-    auto overall_height_cpp = static_cast<double>(overall_height);
-    auto overall_width_cpp = static_cast<double>(overall_width);
-    if (operation_type == nullptr) { throw std::runtime_error("Parameter \"operation_type\" must not be null"); }
-    std::string operation_type_cpp(operation_type);
-    if (lining_properties == nullptr) { throw std::runtime_error("Parameter \"lining_properties\" must not be null"); }
-    auto lining_properties_cpp = to_cpp_double_list(lining_properties);
-    if (panel_properties == nullptr) { throw std::runtime_error("Parameter \"panel_properties\" must not be null"); }
-    auto panel_properties_cpp = to_cpp_double_list(panel_properties);
-    auto part_of_product_cpp = (part_of_product != nullptr) ? &part_of_product->value : nullptr;
-    auto unit_scale_cpp = static_cast<double>(unit_scale);
-        auto result_value = ifcapi::bindings::geometry_add_door_representation(file_cpp, context_cpp, overall_height_cpp, overall_width_cpp, operation_type_cpp, lining_properties_cpp, panel_properties_cpp, part_of_product_cpp, unit_scale_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeometryAddDoorRepresentationOptions options_cpp{};
+    if (options->context == nullptr) { throw std::runtime_error("Options field \"context\" must not be null"); }
+    options_cpp.context = options->context->value;
+    options_cpp.overall_height = static_cast<double>(options->overall_height);
+    options_cpp.overall_width = static_cast<double>(options->overall_width);
+    if (options->operation_type == nullptr) { throw std::runtime_error("Options field \"operation_type\" must not be null"); }
+    options_cpp.operation_type = std::string(options->operation_type);
+    if (options->lining_properties == nullptr) { throw std::runtime_error("Options field \"lining_properties\" must not be null"); }
+    options_cpp.lining_properties = to_cpp_double_list(options->lining_properties);
+    if (options->panel_properties == nullptr) { throw std::runtime_error("Options field \"panel_properties\" must not be null"); }
+    options_cpp.panel_properties = to_cpp_double_list(options->panel_properties);
+    if (options->has_part_of_product) {
+        if (options->part_of_product == nullptr) { throw std::runtime_error("Options field \"part_of_product\" must not be null"); }
+        options_cpp.part_of_product = options->part_of_product->value;
+    }
+    options_cpp.unit_scale = static_cast<double>(options->unit_scale);
+        auto result_value = ifcapi::bindings::geometry_add_door_representation(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -6304,7 +6656,7 @@ bool ifcopenshell_geometry_add_footprint_representation(ifcopenshell_file_t* fil
     }
 }
 
-bool ifcopenshell_geometry_add_mesh_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, const ifcopenshell_double_list_list_list_t* vertices, const ifcopenshell_int32_list_list_list_list_t* faces, bool force_faceted_brep, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_geometry_add_mesh_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, const ifcopenshell_geometry_add_mesh_representation_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -6312,12 +6664,16 @@ bool ifcopenshell_geometry_add_mesh_representation(ifcopenshell_file_t* file, if
     auto file_cpp = file->ptr;
     if (context == nullptr) { throw std::runtime_error("Handle parameter \"context\" must not be null"); }
     auto context_cpp = &context->value;
-    if (vertices == nullptr) { throw std::runtime_error("Parameter \"vertices\" must not be null"); }
-    auto vertices_cpp = to_cpp_double_list_list_list(vertices);
-    if (faces == nullptr) { throw std::runtime_error("Parameter \"faces\" must not be null"); }
-    auto faces_cpp = to_cpp_int32_list_list_list_list(faces);
-    auto force_faceted_brep_cpp = static_cast<bool>(force_faceted_brep);
-        auto result_value = ifcapi::bindings::geometry_add_mesh_representation(file_cpp, context_cpp, vertices_cpp, faces_cpp, force_faceted_brep_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeometryAddMeshRepresentationOptions options_cpp{};
+    if (options->vertices == nullptr) { throw std::runtime_error("Options field \"vertices\" must not be null"); }
+    options_cpp.vertices = to_cpp_double_list_list_list(options->vertices);
+    if (options->faces == nullptr) { throw std::runtime_error("Options field \"faces\" must not be null"); }
+    options_cpp.faces = to_cpp_int32_list_list_list_list(options->faces);
+    if (options->has_force_faceted_brep) {
+        options_cpp.force_faceted_brep = options->force_faceted_brep;
+    }
+        auto result_value = ifcapi::bindings::geometry_add_mesh_representation(file_cpp, context_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -6333,26 +6689,28 @@ bool ifcopenshell_geometry_add_mesh_representation(ifcopenshell_file_t* file, if
     }
 }
 
-bool ifcopenshell_geometry_add_railing_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, const ifcopenshell_double_list_list_t* railing_path, bool use_manual_supports, double support_spacing, double railing_diameter, double clear_width, const char* terminal_type, double height, bool looped_path, double unit_scale, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_geometry_add_railing_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_railing_representation_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (context == nullptr) { throw std::runtime_error("Handle parameter \"context\" must not be null"); }
-    auto context_cpp = &context->value;
-    if (railing_path == nullptr) { throw std::runtime_error("Parameter \"railing_path\" must not be null"); }
-    auto railing_path_cpp = to_cpp_double_list_list(railing_path);
-    auto use_manual_supports_cpp = static_cast<bool>(use_manual_supports);
-    auto support_spacing_cpp = static_cast<double>(support_spacing);
-    auto railing_diameter_cpp = static_cast<double>(railing_diameter);
-    auto clear_width_cpp = static_cast<double>(clear_width);
-    if (terminal_type == nullptr) { throw std::runtime_error("Parameter \"terminal_type\" must not be null"); }
-    std::string terminal_type_cpp(terminal_type);
-    auto height_cpp = static_cast<double>(height);
-    auto looped_path_cpp = static_cast<bool>(looped_path);
-    auto unit_scale_cpp = static_cast<double>(unit_scale);
-        auto result_value = ifcapi::bindings::geometry_add_railing_representation(file_cpp, context_cpp, railing_path_cpp, use_manual_supports_cpp, support_spacing_cpp, railing_diameter_cpp, clear_width_cpp, terminal_type_cpp, height_cpp, looped_path_cpp, unit_scale_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeometryAddRailingRepresentationOptions options_cpp{};
+    if (options->context == nullptr) { throw std::runtime_error("Options field \"context\" must not be null"); }
+    options_cpp.context = options->context->value;
+    if (options->railing_path == nullptr) { throw std::runtime_error("Options field \"railing_path\" must not be null"); }
+    options_cpp.railing_path = to_cpp_double_list_list(options->railing_path);
+    options_cpp.use_manual_supports = static_cast<bool>(options->use_manual_supports);
+    options_cpp.support_spacing = static_cast<double>(options->support_spacing);
+    options_cpp.railing_diameter = static_cast<double>(options->railing_diameter);
+    options_cpp.clear_width = static_cast<double>(options->clear_width);
+    if (options->terminal_type == nullptr) { throw std::runtime_error("Options field \"terminal_type\" must not be null"); }
+    options_cpp.terminal_type = std::string(options->terminal_type);
+    options_cpp.height = static_cast<double>(options->height);
+    options_cpp.looped_path = static_cast<bool>(options->looped_path);
+    options_cpp.unit_scale = static_cast<double>(options->unit_scale);
+        auto result_value = ifcapi::bindings::geometry_add_railing_representation(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -6368,23 +6726,27 @@ bool ifcopenshell_geometry_add_railing_representation(ifcopenshell_file_t* file,
     }
 }
 
-bool ifcopenshell_geometry_add_shape_aspect(ifcopenshell_file_t* file, const char* name, const ifcopenshell_instance_list_t* items, ifcopenshell_instance_t* representation, ifcopenshell_instance_t* part_of_product, const char* description, bool has_description, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_geometry_add_shape_aspect(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_shape_aspect_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
-    std::string name_cpp(name);
-    if (items == nullptr) { throw std::runtime_error("Parameter \"items\" must not be null"); }
-    auto items_cpp = to_cpp_instance_list(items);
-    if (representation == nullptr) { throw std::runtime_error("Handle parameter \"representation\" must not be null"); }
-    auto representation_cpp = &representation->value;
-    if (part_of_product == nullptr) { throw std::runtime_error("Handle parameter \"part_of_product\" must not be null"); }
-    auto part_of_product_cpp = &part_of_product->value;
-    const char* description_str = description;
-    auto has_description_cpp = static_cast<bool>(has_description);
-        auto result_value = ifcapi::bindings::geometry_add_shape_aspect(file_cpp, name_cpp, items_cpp, representation_cpp, part_of_product_cpp, description, has_description_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeometryAddShapeAspectOptions options_cpp{};
+    if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+    options_cpp.name = std::string(options->name);
+    if (options->items == nullptr) { throw std::runtime_error("Options field \"items\" must not be null"); }
+    options_cpp.items = options->items->value;
+    if (options->representation == nullptr) { throw std::runtime_error("Options field \"representation\" must not be null"); }
+    options_cpp.representation = options->representation->value;
+    if (options->part_of_product == nullptr) { throw std::runtime_error("Options field \"part_of_product\" must not be null"); }
+    options_cpp.part_of_product = options->part_of_product->value;
+    if (options->has_description) {
+        if (options->description == nullptr) { throw std::runtime_error("Options field \"description\" must not be null"); }
+        options_cpp.description = std::string(options->description);
+    }
+        auto result_value = ifcapi::bindings::geometry_add_shape_aspect(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -6400,31 +6762,34 @@ bool ifcopenshell_geometry_add_shape_aspect(ifcopenshell_file_t* file, const cha
     }
 }
 
-bool ifcopenshell_geometry_add_slab_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, double depth, const char* direction_sense, double offset, double x_angle, const ifcopenshell_int32_list_t* clipping_kinds, const ifcopenshell_double_list_list_t* clipping_locations, const ifcopenshell_double_list_list_t* clipping_normals, const ifcopenshell_instance_list_t* clipping_entities, const ifcopenshell_double_list_list_t* polyline, bool has_polyline, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_geometry_add_slab_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_slab_representation_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (context == nullptr) { throw std::runtime_error("Handle parameter \"context\" must not be null"); }
-    auto context_cpp = &context->value;
-    auto depth_cpp = static_cast<double>(depth);
-    if (direction_sense == nullptr) { throw std::runtime_error("Parameter \"direction_sense\" must not be null"); }
-    std::string direction_sense_cpp(direction_sense);
-    auto offset_cpp = static_cast<double>(offset);
-    auto x_angle_cpp = static_cast<double>(x_angle);
-    if (clipping_kinds == nullptr) { throw std::runtime_error("Parameter \"clipping_kinds\" must not be null"); }
-    auto clipping_kinds_cpp = to_cpp_int32_list(clipping_kinds);
-    if (clipping_locations == nullptr) { throw std::runtime_error("Parameter \"clipping_locations\" must not be null"); }
-    auto clipping_locations_cpp = to_cpp_double_list_list(clipping_locations);
-    if (clipping_normals == nullptr) { throw std::runtime_error("Parameter \"clipping_normals\" must not be null"); }
-    auto clipping_normals_cpp = to_cpp_double_list_list(clipping_normals);
-    if (clipping_entities == nullptr) { throw std::runtime_error("Parameter \"clipping_entities\" must not be null"); }
-    auto clipping_entities_cpp = to_cpp_instance_list(clipping_entities);
-    if (polyline == nullptr) { throw std::runtime_error("Parameter \"polyline\" must not be null"); }
-    auto polyline_cpp = to_cpp_double_list_list(polyline);
-    auto has_polyline_cpp = static_cast<bool>(has_polyline);
-        auto result_value = ifcapi::bindings::geometry_add_slab_representation(file_cpp, context_cpp, depth_cpp, direction_sense_cpp, offset_cpp, x_angle_cpp, clipping_kinds_cpp, clipping_locations_cpp, clipping_normals_cpp, clipping_entities_cpp, polyline_cpp, has_polyline_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeometryAddSlabRepresentationOptions options_cpp{};
+    if (options->context == nullptr) { throw std::runtime_error("Options field \"context\" must not be null"); }
+    options_cpp.context = options->context->value;
+    options_cpp.depth = static_cast<double>(options->depth);
+    if (options->direction_sense == nullptr) { throw std::runtime_error("Options field \"direction_sense\" must not be null"); }
+    options_cpp.direction_sense = std::string(options->direction_sense);
+    options_cpp.offset = static_cast<double>(options->offset);
+    options_cpp.x_angle = static_cast<double>(options->x_angle);
+    if (options->clipping_kinds == nullptr) { throw std::runtime_error("Options field \"clipping_kinds\" must not be null"); }
+    options_cpp.clipping_kinds = to_cpp_int32_list(options->clipping_kinds);
+    if (options->clipping_locations == nullptr) { throw std::runtime_error("Options field \"clipping_locations\" must not be null"); }
+    options_cpp.clipping_locations = to_cpp_double_list_list(options->clipping_locations);
+    if (options->clipping_normals == nullptr) { throw std::runtime_error("Options field \"clipping_normals\" must not be null"); }
+    options_cpp.clipping_normals = to_cpp_double_list_list(options->clipping_normals);
+    if (options->clipping_entities == nullptr) { throw std::runtime_error("Options field \"clipping_entities\" must not be null"); }
+    options_cpp.clipping_entities = options->clipping_entities->value;
+    if (options->has_polyline) {
+        if (options->polyline == nullptr) { throw std::runtime_error("Options field \"polyline\" must not be null"); }
+        options_cpp.polyline = to_cpp_double_list_list(options->polyline);
+    }
+        auto result_value = ifcapi::bindings::geometry_add_slab_representation(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -6440,21 +6805,27 @@ bool ifcopenshell_geometry_add_slab_representation(ifcopenshell_file_t* file, if
     }
 }
 
-bool ifcopenshell_geometry_add_topology_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, ifcopenshell_instance_t* item, const char* representation_identifier, bool has_representation_identifier, const char* representation_type, bool has_representation_type, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_geometry_add_topology_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_topology_representation_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (context == nullptr) { throw std::runtime_error("Handle parameter \"context\" must not be null"); }
-    auto context_cpp = &context->value;
-    if (item == nullptr) { throw std::runtime_error("Handle parameter \"item\" must not be null"); }
-    auto item_cpp = &item->value;
-    const char* representation_identifier_str = representation_identifier;
-    auto has_representation_identifier_cpp = static_cast<bool>(has_representation_identifier);
-    const char* representation_type_str = representation_type;
-    auto has_representation_type_cpp = static_cast<bool>(has_representation_type);
-        auto result_value = ifcapi::bindings::geometry_add_topology_representation(file_cpp, context_cpp, item_cpp, representation_identifier, has_representation_identifier_cpp, representation_type, has_representation_type_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeometryAddTopologyRepresentationOptions options_cpp{};
+    if (options->context == nullptr) { throw std::runtime_error("Options field \"context\" must not be null"); }
+    options_cpp.context = options->context->value;
+    if (options->item == nullptr) { throw std::runtime_error("Options field \"item\" must not be null"); }
+    options_cpp.item = options->item->value;
+    if (options->has_representation_identifier) {
+        if (options->representation_identifier == nullptr) { throw std::runtime_error("Options field \"representation_identifier\" must not be null"); }
+        options_cpp.representation_identifier = std::string(options->representation_identifier);
+    }
+    if (options->has_representation_type) {
+        if (options->representation_type == nullptr) { throw std::runtime_error("Options field \"representation_type\" must not be null"); }
+        options_cpp.representation_type = std::string(options->representation_type);
+    }
+        auto result_value = ifcapi::bindings::geometry_add_topology_representation(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -6470,32 +6841,34 @@ bool ifcopenshell_geometry_add_topology_representation(ifcopenshell_file_t* file
     }
 }
 
-bool ifcopenshell_geometry_add_wall_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, double length, double height, const char* direction_sense, double offset, double thickness, double x_angle, const ifcopenshell_int32_list_t* clipping_kinds, const ifcopenshell_double_list_list_t* clipping_locations, const ifcopenshell_double_list_list_t* clipping_normals, const ifcopenshell_instance_list_t* clipping_entities, const ifcopenshell_instance_list_t* booleans, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_geometry_add_wall_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_wall_representation_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (context == nullptr) { throw std::runtime_error("Handle parameter \"context\" must not be null"); }
-    auto context_cpp = &context->value;
-    auto length_cpp = static_cast<double>(length);
-    auto height_cpp = static_cast<double>(height);
-    if (direction_sense == nullptr) { throw std::runtime_error("Parameter \"direction_sense\" must not be null"); }
-    std::string direction_sense_cpp(direction_sense);
-    auto offset_cpp = static_cast<double>(offset);
-    auto thickness_cpp = static_cast<double>(thickness);
-    auto x_angle_cpp = static_cast<double>(x_angle);
-    if (clipping_kinds == nullptr) { throw std::runtime_error("Parameter \"clipping_kinds\" must not be null"); }
-    auto clipping_kinds_cpp = to_cpp_int32_list(clipping_kinds);
-    if (clipping_locations == nullptr) { throw std::runtime_error("Parameter \"clipping_locations\" must not be null"); }
-    auto clipping_locations_cpp = to_cpp_double_list_list(clipping_locations);
-    if (clipping_normals == nullptr) { throw std::runtime_error("Parameter \"clipping_normals\" must not be null"); }
-    auto clipping_normals_cpp = to_cpp_double_list_list(clipping_normals);
-    if (clipping_entities == nullptr) { throw std::runtime_error("Parameter \"clipping_entities\" must not be null"); }
-    auto clipping_entities_cpp = to_cpp_instance_list(clipping_entities);
-    if (booleans == nullptr) { throw std::runtime_error("Parameter \"booleans\" must not be null"); }
-    auto booleans_cpp = to_cpp_instance_list(booleans);
-        auto result_value = ifcapi::bindings::geometry_add_wall_representation(file_cpp, context_cpp, length_cpp, height_cpp, direction_sense_cpp, offset_cpp, thickness_cpp, x_angle_cpp, clipping_kinds_cpp, clipping_locations_cpp, clipping_normals_cpp, clipping_entities_cpp, booleans_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeometryAddWallRepresentationOptions options_cpp{};
+    if (options->context == nullptr) { throw std::runtime_error("Options field \"context\" must not be null"); }
+    options_cpp.context = options->context->value;
+    options_cpp.length = static_cast<double>(options->length);
+    options_cpp.height = static_cast<double>(options->height);
+    if (options->direction_sense == nullptr) { throw std::runtime_error("Options field \"direction_sense\" must not be null"); }
+    options_cpp.direction_sense = std::string(options->direction_sense);
+    options_cpp.offset = static_cast<double>(options->offset);
+    options_cpp.thickness = static_cast<double>(options->thickness);
+    options_cpp.x_angle = static_cast<double>(options->x_angle);
+    if (options->clipping_kinds == nullptr) { throw std::runtime_error("Options field \"clipping_kinds\" must not be null"); }
+    options_cpp.clipping_kinds = to_cpp_int32_list(options->clipping_kinds);
+    if (options->clipping_locations == nullptr) { throw std::runtime_error("Options field \"clipping_locations\" must not be null"); }
+    options_cpp.clipping_locations = to_cpp_double_list_list(options->clipping_locations);
+    if (options->clipping_normals == nullptr) { throw std::runtime_error("Options field \"clipping_normals\" must not be null"); }
+    options_cpp.clipping_normals = to_cpp_double_list_list(options->clipping_normals);
+    if (options->clipping_entities == nullptr) { throw std::runtime_error("Options field \"clipping_entities\" must not be null"); }
+    options_cpp.clipping_entities = options->clipping_entities->value;
+    if (options->booleans == nullptr) { throw std::runtime_error("Options field \"booleans\" must not be null"); }
+    options_cpp.booleans = options->booleans->value;
+        auto result_value = ifcapi::bindings::geometry_add_wall_representation(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -6511,25 +6884,30 @@ bool ifcopenshell_geometry_add_wall_representation(ifcopenshell_file_t* file, if
     }
 }
 
-bool ifcopenshell_geometry_add_window_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, double overall_height, double overall_width, const ifcopenshell_int32_list_list_t* panel_schema, const ifcopenshell_double_list_t* lining_properties, const ifcopenshell_double_list_list_t* panel_properties, ifcopenshell_instance_t* part_of_product, double glass_thickness, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_geometry_add_window_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_window_representation_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (context == nullptr) { throw std::runtime_error("Handle parameter \"context\" must not be null"); }
-    auto context_cpp = &context->value;
-    auto overall_height_cpp = static_cast<double>(overall_height);
-    auto overall_width_cpp = static_cast<double>(overall_width);
-    if (panel_schema == nullptr) { throw std::runtime_error("Parameter \"panel_schema\" must not be null"); }
-    auto panel_schema_cpp = to_cpp_int32_list_list(panel_schema);
-    if (lining_properties == nullptr) { throw std::runtime_error("Parameter \"lining_properties\" must not be null"); }
-    auto lining_properties_cpp = to_cpp_double_list(lining_properties);
-    if (panel_properties == nullptr) { throw std::runtime_error("Parameter \"panel_properties\" must not be null"); }
-    auto panel_properties_cpp = to_cpp_double_list_list(panel_properties);
-    auto part_of_product_cpp = (part_of_product != nullptr) ? &part_of_product->value : nullptr;
-    auto glass_thickness_cpp = static_cast<double>(glass_thickness);
-        auto result_value = ifcapi::bindings::geometry_add_window_representation(file_cpp, context_cpp, overall_height_cpp, overall_width_cpp, panel_schema_cpp, lining_properties_cpp, panel_properties_cpp, part_of_product_cpp, glass_thickness_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeometryAddWindowRepresentationOptions options_cpp{};
+    if (options->context == nullptr) { throw std::runtime_error("Options field \"context\" must not be null"); }
+    options_cpp.context = options->context->value;
+    options_cpp.overall_height = static_cast<double>(options->overall_height);
+    options_cpp.overall_width = static_cast<double>(options->overall_width);
+    if (options->panel_schema == nullptr) { throw std::runtime_error("Options field \"panel_schema\" must not be null"); }
+    options_cpp.panel_schema = to_cpp_int32_list_list(options->panel_schema);
+    if (options->lining_properties == nullptr) { throw std::runtime_error("Options field \"lining_properties\" must not be null"); }
+    options_cpp.lining_properties = to_cpp_double_list(options->lining_properties);
+    if (options->panel_properties == nullptr) { throw std::runtime_error("Options field \"panel_properties\" must not be null"); }
+    options_cpp.panel_properties = to_cpp_double_list_list(options->panel_properties);
+    if (options->has_part_of_product) {
+        if (options->part_of_product == nullptr) { throw std::runtime_error("Options field \"part_of_product\" must not be null"); }
+        options_cpp.part_of_product = options->part_of_product->value;
+    }
+    options_cpp.glass_thickness = static_cast<double>(options->glass_thickness);
+        auto result_value = ifcapi::bindings::geometry_add_window_representation(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -6571,23 +6949,37 @@ bool ifcopenshell_geometry_assign_representation(ifcopenshell_file_t* file, ifco
     }
 }
 
-bool ifcopenshell_geometry_clip_solid(ifcopenshell_file_t* file, ifcopenshell_instance_t* item, const ifcopenshell_double_list_t* location, const ifcopenshell_double_list_t* normal, ifcopenshell_instance_t* element, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_geometry_clip_solid(ifcopenshell_file_t* file, const ifcopenshell_geometry_clip_solid_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (item == nullptr) { throw std::runtime_error("Handle parameter \"item\" must not be null"); }
-    auto item_cpp = &item->value;
-    if (location == nullptr) { throw std::runtime_error("Parameter \"location\" must not be null"); }
-    auto location_cpp = to_cpp_double_list(location);
-    if (normal == nullptr) { throw std::runtime_error("Parameter \"normal\" must not be null"); }
-    auto normal_cpp = to_cpp_double_list(normal);
-    auto element_cpp = (element != nullptr) ? &element->value : nullptr;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::geometry_clip_solid(file_cpp, item_cpp, location_cpp, normal_cpp, element_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeometryClipSolidOptions options_cpp{};
+    if (options->item == nullptr) { throw std::runtime_error("Options field \"item\" must not be null"); }
+    options_cpp.item = options->item->value;
+    if (options->location == nullptr) { throw std::runtime_error("Options field \"location\" must not be null"); }
+    options_cpp.location = to_cpp_double_list(options->location);
+    if (options->normal == nullptr) { throw std::runtime_error("Options field \"normal\" must not be null"); }
+    options_cpp.normal = to_cpp_double_list(options->normal);
+    if (options->has_element) {
+        if (options->element == nullptr) { throw std::runtime_error("Options field \"element\" must not be null"); }
+        options_cpp.element = options->element->value;
+    }
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::geometry_clip_solid(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -6603,27 +6995,41 @@ bool ifcopenshell_geometry_clip_solid(ifcopenshell_file_t* file, ifcopenshell_in
     }
 }
 
-bool ifcopenshell_geometry_clip_solid_bounded(ifcopenshell_file_t* file, ifcopenshell_instance_t* item, const ifcopenshell_double_list_t* location, const ifcopenshell_double_list_t* normal, const ifcopenshell_double_list_list_t* boundary_points, const ifcopenshell_double_list_t* boundary_position, ifcopenshell_instance_t* element, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_geometry_clip_solid_bounded(ifcopenshell_file_t* file, const ifcopenshell_geometry_clip_solid_bounded_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (item == nullptr) { throw std::runtime_error("Handle parameter \"item\" must not be null"); }
-    auto item_cpp = &item->value;
-    if (location == nullptr) { throw std::runtime_error("Parameter \"location\" must not be null"); }
-    auto location_cpp = to_cpp_double_list(location);
-    if (normal == nullptr) { throw std::runtime_error("Parameter \"normal\" must not be null"); }
-    auto normal_cpp = to_cpp_double_list(normal);
-    if (boundary_points == nullptr) { throw std::runtime_error("Parameter \"boundary_points\" must not be null"); }
-    auto boundary_points_cpp = to_cpp_double_list_list(boundary_points);
-    if (boundary_position == nullptr) { throw std::runtime_error("Parameter \"boundary_position\" must not be null"); }
-    auto boundary_position_cpp = to_cpp_double_list(boundary_position);
-    auto element_cpp = (element != nullptr) ? &element->value : nullptr;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::geometry_clip_solid_bounded(file_cpp, item_cpp, location_cpp, normal_cpp, boundary_points_cpp, boundary_position_cpp, element_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeometryClipSolidBoundedOptions options_cpp{};
+    if (options->item == nullptr) { throw std::runtime_error("Options field \"item\" must not be null"); }
+    options_cpp.item = options->item->value;
+    if (options->location == nullptr) { throw std::runtime_error("Options field \"location\" must not be null"); }
+    options_cpp.location = to_cpp_double_list(options->location);
+    if (options->normal == nullptr) { throw std::runtime_error("Options field \"normal\" must not be null"); }
+    options_cpp.normal = to_cpp_double_list(options->normal);
+    if (options->boundary_points == nullptr) { throw std::runtime_error("Options field \"boundary_points\" must not be null"); }
+    options_cpp.boundary_points = to_cpp_double_list_list(options->boundary_points);
+    if (options->boundary_position == nullptr) { throw std::runtime_error("Options field \"boundary_position\" must not be null"); }
+    options_cpp.boundary_position = to_cpp_double_list(options->boundary_position);
+    if (options->has_element) {
+        if (options->element == nullptr) { throw std::runtime_error("Options field \"element\" must not be null"); }
+        options_cpp.element = options->element->value;
+    }
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::geometry_clip_solid_bounded(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -6639,22 +7045,35 @@ bool ifcopenshell_geometry_clip_solid_bounded(ifcopenshell_file_t* file, ifcopen
     }
 }
 
-bool ifcopenshell_geometry_connect_element(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_element, ifcopenshell_instance_t* related_element, const char* description, bool has_description, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_geometry_connect_element(ifcopenshell_file_t* file, const ifcopenshell_geometry_connect_element_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (relating_element == nullptr) { throw std::runtime_error("Handle parameter \"relating_element\" must not be null"); }
-    auto relating_element_cpp = &relating_element->value;
-    if (related_element == nullptr) { throw std::runtime_error("Handle parameter \"related_element\" must not be null"); }
-    auto related_element_cpp = &related_element->value;
-    const char* description_str = description;
-    auto has_description_cpp = static_cast<bool>(has_description);
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::geometry_connect_element(file_cpp, relating_element_cpp, related_element_cpp, description, has_description_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeometryConnectElementOptions options_cpp{};
+    if (options->relating_element == nullptr) { throw std::runtime_error("Options field \"relating_element\" must not be null"); }
+    options_cpp.relating_element = options->relating_element->value;
+    if (options->related_element == nullptr) { throw std::runtime_error("Options field \"related_element\" must not be null"); }
+    options_cpp.related_element = options->related_element->value;
+    if (options->has_description) {
+        if (options->description == nullptr) { throw std::runtime_error("Options field \"description\" must not be null"); }
+        options_cpp.description = std::string(options->description);
+    }
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::geometry_connect_element(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -6670,27 +7089,43 @@ bool ifcopenshell_geometry_connect_element(ifcopenshell_file_t* file, ifcopenshe
     }
 }
 
-bool ifcopenshell_geometry_connect_path(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_element, ifcopenshell_instance_t* related_element, const char* relating_connection, const char* related_connection, const char* description, bool has_description, ifcopenshell_instance_t* connection_geometry, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_geometry_connect_path(ifcopenshell_file_t* file, const ifcopenshell_geometry_connect_path_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (relating_element == nullptr) { throw std::runtime_error("Handle parameter \"relating_element\" must not be null"); }
-    auto relating_element_cpp = &relating_element->value;
-    if (related_element == nullptr) { throw std::runtime_error("Handle parameter \"related_element\" must not be null"); }
-    auto related_element_cpp = &related_element->value;
-    if (relating_connection == nullptr) { throw std::runtime_error("Parameter \"relating_connection\" must not be null"); }
-    std::string relating_connection_cpp(relating_connection);
-    if (related_connection == nullptr) { throw std::runtime_error("Parameter \"related_connection\" must not be null"); }
-    std::string related_connection_cpp(related_connection);
-    const char* description_str = description;
-    auto has_description_cpp = static_cast<bool>(has_description);
-    auto connection_geometry_cpp = (connection_geometry != nullptr) ? &connection_geometry->value : nullptr;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::geometry_connect_path(file_cpp, relating_element_cpp, related_element_cpp, relating_connection_cpp, related_connection_cpp, description, has_description_cpp, connection_geometry_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeometryConnectPathOptions options_cpp{};
+    if (options->relating_element == nullptr) { throw std::runtime_error("Options field \"relating_element\" must not be null"); }
+    options_cpp.relating_element = options->relating_element->value;
+    if (options->related_element == nullptr) { throw std::runtime_error("Options field \"related_element\" must not be null"); }
+    options_cpp.related_element = options->related_element->value;
+    if (options->relating_connection == nullptr) { throw std::runtime_error("Options field \"relating_connection\" must not be null"); }
+    options_cpp.relating_connection = std::string(options->relating_connection);
+    if (options->related_connection == nullptr) { throw std::runtime_error("Options field \"related_connection\" must not be null"); }
+    options_cpp.related_connection = std::string(options->related_connection);
+    if (options->has_description) {
+        if (options->description == nullptr) { throw std::runtime_error("Options field \"description\" must not be null"); }
+        options_cpp.description = std::string(options->description);
+    }
+    if (options->has_connection_geometry) {
+        if (options->connection_geometry == nullptr) { throw std::runtime_error("Options field \"connection_geometry\" must not be null"); }
+        options_cpp.connection_geometry = options->connection_geometry->value;
+    }
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::geometry_connect_path(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -6706,21 +7141,32 @@ bool ifcopenshell_geometry_connect_path(ifcopenshell_file_t* file, ifcopenshell_
     }
 }
 
-bool ifcopenshell_geometry_connect_wall(ifcopenshell_file_t* file, ifcopenshell_instance_t* wall1, ifcopenshell_instance_t* wall2, bool is_atpath, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_geometry_connect_wall(ifcopenshell_file_t* file, const ifcopenshell_geometry_connect_wall_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (wall1 == nullptr) { throw std::runtime_error("Handle parameter \"wall1\" must not be null"); }
-    auto wall1_cpp = &wall1->value;
-    if (wall2 == nullptr) { throw std::runtime_error("Handle parameter \"wall2\" must not be null"); }
-    auto wall2_cpp = &wall2->value;
-    auto is_atpath_cpp = static_cast<bool>(is_atpath);
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::geometry_connect_wall(file_cpp, wall1_cpp, wall2_cpp, is_atpath_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeometryConnectWallOptions options_cpp{};
+    if (options->first_wall == nullptr) { throw std::runtime_error("Options field \"first_wall\" must not be null"); }
+    options_cpp.first_wall = options->first_wall->value;
+    if (options->second_wall == nullptr) { throw std::runtime_error("Options field \"second_wall\" must not be null"); }
+    options_cpp.second_wall = options->second_wall->value;
+    options_cpp.is_atpath = static_cast<bool>(options->is_atpath);
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::geometry_connect_wall(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -6736,18 +7182,23 @@ bool ifcopenshell_geometry_connect_wall(ifcopenshell_file_t* file, ifcopenshell_
     }
 }
 
-bool ifcopenshell_geometry_copy_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* source, ifcopenshell_instance_t* target, const char* context_identifier, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_geometry_copy_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_copy_representation_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (source == nullptr) { throw std::runtime_error("Handle parameter \"source\" must not be null"); }
-    auto source_cpp = &source->value;
-    if (target == nullptr) { throw std::runtime_error("Handle parameter \"target\" must not be null"); }
-    auto target_cpp = &target->value;
-    const char* context_identifier_str = context_identifier;
-        auto result_value = ifcapi::bindings::geometry_copy_representation(file_cpp, source_cpp, target_cpp, context_identifier);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeometryCopyRepresentationOptions options_cpp{};
+    if (options->source == nullptr) { throw std::runtime_error("Options field \"source\" must not be null"); }
+    options_cpp.source = options->source->value;
+    if (options->target == nullptr) { throw std::runtime_error("Options field \"target\" must not be null"); }
+    options_cpp.target = options->target->value;
+    if (options->has_context_identifier) {
+        if (options->context_identifier == nullptr) { throw std::runtime_error("Options field \"context_identifier\" must not be null"); }
+        options_cpp.context_identifier = std::string(options->context_identifier);
+    }
+        auto result_value = ifcapi::bindings::geometry_copy_representation(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -6763,25 +7214,27 @@ bool ifcopenshell_geometry_copy_representation(ifcopenshell_file_t* file, ifcope
     }
 }
 
-bool ifcopenshell_geometry_create_2pt_wall(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, ifcopenshell_instance_t* context, const ifcopenshell_double_list_t* p1, const ifcopenshell_double_list_t* p2, double elevation, double height, double thickness, bool is_si, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_geometry_create_2pt_wall(ifcopenshell_file_t* file, const ifcopenshell_geometry_create2_pt_wall_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
-    auto element_cpp = &element->value;
-    if (context == nullptr) { throw std::runtime_error("Handle parameter \"context\" must not be null"); }
-    auto context_cpp = &context->value;
-    if (p1 == nullptr) { throw std::runtime_error("Parameter \"p1\" must not be null"); }
-    auto p1_cpp = to_cpp_double_list(p1);
-    if (p2 == nullptr) { throw std::runtime_error("Parameter \"p2\" must not be null"); }
-    auto p2_cpp = to_cpp_double_list(p2);
-    auto elevation_cpp = static_cast<double>(elevation);
-    auto height_cpp = static_cast<double>(height);
-    auto thickness_cpp = static_cast<double>(thickness);
-    auto is_si_cpp = static_cast<bool>(is_si);
-        auto result_value = ifcapi::bindings::geometry_create_2pt_wall(file_cpp, element_cpp, context_cpp, p1_cpp, p2_cpp, elevation_cpp, height_cpp, thickness_cpp, is_si_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeometryCreate2PtWallOptions options_cpp{};
+    if (options->element == nullptr) { throw std::runtime_error("Options field \"element\" must not be null"); }
+    options_cpp.element = options->element->value;
+    if (options->context == nullptr) { throw std::runtime_error("Options field \"context\" must not be null"); }
+    options_cpp.context = options->context->value;
+    if (options->start == nullptr) { throw std::runtime_error("Options field \"start\" must not be null"); }
+    options_cpp.start = to_cpp_double_list(options->start);
+    if (options->end == nullptr) { throw std::runtime_error("Options field \"end\" must not be null"); }
+    options_cpp.end = to_cpp_double_list(options->end);
+    options_cpp.elevation = static_cast<double>(options->elevation);
+    options_cpp.height = static_cast<double>(options->height);
+    options_cpp.thickness = static_cast<double>(options->thickness);
+    options_cpp.is_si = static_cast<bool>(options->is_si);
+        auto result_value = ifcapi::bindings::geometry_create_2pt_wall(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -6817,17 +7270,30 @@ bool ifcopenshell_geometry_disconnect_element(ifcopenshell_file_t* file, ifcopen
     }
 }
 
-bool ifcopenshell_geometry_disconnect_path(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, const char* connection_type, bool has_connection_type, ifcopenshell_instance_t* relating_element, ifcopenshell_instance_t* related_element) {
+bool ifcopenshell_geometry_disconnect_path(ifcopenshell_file_t* file, const ifcopenshell_geometry_disconnect_path_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    auto element_cpp = (element != nullptr) ? &element->value : nullptr;
-    const char* connection_type_str = connection_type;
-    auto has_connection_type_cpp = static_cast<bool>(has_connection_type);
-    auto relating_element_cpp = (relating_element != nullptr) ? &relating_element->value : nullptr;
-    auto related_element_cpp = (related_element != nullptr) ? &related_element->value : nullptr;
-        ifcapi::bindings::geometry_disconnect_path(file_cpp, element_cpp, connection_type, has_connection_type_cpp, relating_element_cpp, related_element_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeometryDisconnectPathOptions options_cpp{};
+    if (options->has_element) {
+        if (options->element == nullptr) { throw std::runtime_error("Options field \"element\" must not be null"); }
+        options_cpp.element = options->element->value;
+    }
+    if (options->has_connection_type) {
+        if (options->connection_type == nullptr) { throw std::runtime_error("Options field \"connection_type\" must not be null"); }
+        options_cpp.connection_type = std::string(options->connection_type);
+    }
+    if (options->has_relating_element) {
+        if (options->relating_element == nullptr) { throw std::runtime_error("Options field \"relating_element\" must not be null"); }
+        options_cpp.relating_element = options->relating_element->value;
+    }
+    if (options->has_related_element) {
+        if (options->related_element == nullptr) { throw std::runtime_error("Options field \"related_element\" must not be null"); }
+        options_cpp.related_element = options->related_element->value;
+    }
+        ifcapi::bindings::geometry_disconnect_path(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -6838,19 +7304,21 @@ bool ifcopenshell_geometry_disconnect_path(ifcopenshell_file_t* file, ifcopenshe
     }
 }
 
-bool ifcopenshell_geometry_edit_object_placement(ifcopenshell_file_t* file, ifcopenshell_instance_t* product, const ifcopenshell_double_list_t* matrix, bool is_si, bool should_transform_children, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_geometry_edit_object_placement(ifcopenshell_file_t* file, const ifcopenshell_geometry_edit_object_placement_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (product == nullptr) { throw std::runtime_error("Handle parameter \"product\" must not be null"); }
-    auto product_cpp = &product->value;
-    if (matrix == nullptr) { throw std::runtime_error("Parameter \"matrix\" must not be null"); }
-    auto matrix_cpp = to_cpp_double_list(matrix);
-    auto is_si_cpp = static_cast<bool>(is_si);
-    auto should_transform_children_cpp = static_cast<bool>(should_transform_children);
-        auto result_value = ifcapi::bindings::geometry_edit_object_placement(file_cpp, product_cpp, matrix_cpp, is_si_cpp, should_transform_children_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeometryEditObjectPlacementOptions options_cpp{};
+    if (options->product == nullptr) { throw std::runtime_error("Options field \"product\" must not be null"); }
+    options_cpp.product = options->product->value;
+    if (options->matrix == nullptr) { throw std::runtime_error("Options field \"matrix\" must not be null"); }
+    options_cpp.matrix = to_cpp_double_list(options->matrix);
+    options_cpp.is_si = static_cast<bool>(options->is_si);
+    options_cpp.should_transform_children = static_cast<bool>(options->should_transform_children);
+        auto result_value = ifcapi::bindings::geometry_edit_object_placement(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -6909,19 +7377,22 @@ bool ifcopenshell_geometry_profile_extents(ifcopenshell_file_t* file, ifcopenshe
     }
 }
 
-bool ifcopenshell_geometry_regenerate_wall_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* wall, double length, double height, double angle, bool has_angle, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_geometry_regenerate_wall_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_regenerate_wall_representation_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (wall == nullptr) { throw std::runtime_error("Handle parameter \"wall\" must not be null"); }
-    auto wall_cpp = &wall->value;
-    auto length_cpp = static_cast<double>(length);
-    auto height_cpp = static_cast<double>(height);
-    auto angle_cpp = static_cast<double>(angle);
-    auto has_angle_cpp = static_cast<bool>(has_angle);
-        auto result_value = ifcapi::bindings::geometry_regenerate_wall_representation(file_cpp, wall_cpp, length_cpp, height_cpp, angle_cpp, has_angle_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeometryRegenerateWallRepresentationOptions options_cpp{};
+    if (options->wall == nullptr) { throw std::runtime_error("Options field \"wall\" must not be null"); }
+    options_cpp.wall = options->wall->value;
+    options_cpp.length = static_cast<double>(options->length);
+    options_cpp.height = static_cast<double>(options->height);
+    if (options->has_angle) {
+        options_cpp.angle = options->angle;
+    }
+        auto result_value = ifcapi::bindings::geometry_regenerate_wall_representation(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -6955,15 +7426,19 @@ bool ifcopenshell_geometry_remove_boolean(ifcopenshell_file_t* file, ifcopenshel
     }
 }
 
-bool ifcopenshell_geometry_remove_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* representation, bool should_keep_named_profiles) {
+bool ifcopenshell_geometry_remove_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* representation, const ifcopenshell_geometry_remove_representation_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (representation == nullptr) { throw std::runtime_error("Handle parameter \"representation\" must not be null"); }
     auto representation_cpp = &representation->value;
-    auto should_keep_named_profiles_cpp = static_cast<bool>(should_keep_named_profiles);
-        ifcapi::bindings::geometry_remove_representation(file_cpp, representation_cpp, should_keep_named_profiles_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeometryRemoveRepresentationOptions options_cpp{};
+    if (options->has_should_keep_named_profiles) {
+        options_cpp.should_keep_named_profiles = options->should_keep_named_profiles;
+    }
+        ifcapi::bindings::geometry_remove_representation(file_cpp, representation_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -6994,7 +7469,7 @@ bool ifcopenshell_geometry_unassign_representation(ifcopenshell_file_t* file, if
     }
 }
 
-bool ifcopenshell_geometry_validate_type(ifcopenshell_file_t* file, ifcopenshell_instance_t* representation, ifcopenshell_instance_t* preferred_item, bool* out_result) {
+bool ifcopenshell_geometry_validate_type(ifcopenshell_file_t* file, ifcopenshell_instance_t* representation, const ifcopenshell_geometry_validate_type_options_t* options, bool* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -7002,8 +7477,13 @@ bool ifcopenshell_geometry_validate_type(ifcopenshell_file_t* file, ifcopenshell
     auto file_cpp = file->ptr;
     if (representation == nullptr) { throw std::runtime_error("Handle parameter \"representation\" must not be null"); }
     auto representation_cpp = &representation->value;
-    auto preferred_item_cpp = (preferred_item != nullptr) ? &preferred_item->value : nullptr;
-        *out_result = ifcapi::bindings::geometry_validate_type(file_cpp, representation_cpp, preferred_item_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeometryValidateTypeOptions options_cpp{};
+    if (options->has_preferred_item) {
+        if (options->preferred_item == nullptr) { throw std::runtime_error("Options field \"preferred_item\" must not be null"); }
+        options_cpp.preferred_item = options->preferred_item->value;
+    }
+        *out_result = ifcapi::bindings::geometry_validate_type(file_cpp, representation_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -7014,19 +7494,30 @@ bool ifcopenshell_geometry_validate_type(ifcopenshell_file_t* file, ifcopenshell
     }
 }
 
-bool ifcopenshell_georeference_add_georeferencing(ifcopenshell_file_t* file, const char* ifc_class, const char* name, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_georeference_add_georeferencing(ifcopenshell_file_t* file, const ifcopenshell_georeference_add_georeferencing_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (ifc_class == nullptr) { throw std::runtime_error("Parameter \"ifc_class\" must not be null"); }
-    std::string ifc_class_cpp(ifc_class);
-    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
-    std::string name_cpp(name);
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::georeference_add_georeferencing(file_cpp, ifc_class_cpp, name_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeoreferenceAddGeoreferencingOptions options_cpp{};
+    if (options->ifc_class == nullptr) { throw std::runtime_error("Options field \"ifc_class\" must not be null"); }
+    options_cpp.ifc_class = std::string(options->ifc_class);
+    if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+    options_cpp.name = std::string(options->name);
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::georeference_add_georeferencing(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -7037,18 +7528,20 @@ bool ifcopenshell_georeference_add_georeferencing(ifcopenshell_file_t* file, con
     }
 }
 
-bool ifcopenshell_georeference_edit_georeferencing(ifcopenshell_file_t* file, bool has_coordinate_operation, void* coordinate_operation, bool has_projected_crs, void* projected_crs) {
+bool ifcopenshell_georeference_edit_georeferencing(ifcopenshell_file_t* file, const ifcopenshell_georeference_edit_georeferencing_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    auto has_coordinate_operation_cpp = static_cast<bool>(has_coordinate_operation);
-    if (coordinate_operation == nullptr) { throw std::runtime_error("Parameter \"coordinate_operation\" must not be null"); }
-    auto coordinate_operation_cpp = static_cast<ifcopenshell_pset_props_t*>(coordinate_operation);
-    auto has_projected_crs_cpp = static_cast<bool>(has_projected_crs);
-    if (projected_crs == nullptr) { throw std::runtime_error("Parameter \"projected_crs\" must not be null"); }
-    auto projected_crs_cpp = static_cast<ifcopenshell_pset_props_t*>(projected_crs);
-        ifcapi::bindings::georeference_edit_georeferencing(file_cpp, has_coordinate_operation_cpp, coordinate_operation_cpp, has_projected_crs_cpp, projected_crs_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeoreferenceEditGeoreferencingOptions options_cpp{};
+    if (options->has_coordinate_operation) {
+        options_cpp.coordinate_operation = static_cast<ifcopenshell_pset_props_t*>(options->coordinate_operation);
+    }
+    if (options->has_projected_crs) {
+        options_cpp.projected_crs = static_cast<ifcopenshell_pset_props_t*>(options->projected_crs);
+    }
+        ifcapi::bindings::georeference_edit_georeferencing(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -7059,15 +7552,18 @@ bool ifcopenshell_georeference_edit_georeferencing(ifcopenshell_file_t* file, bo
     }
 }
 
-bool ifcopenshell_georeference_edit_true_north(ifcopenshell_file_t* file, bool has_true_north, double x, double y) {
+bool ifcopenshell_georeference_edit_true_north(ifcopenshell_file_t* file, const ifcopenshell_georeference_edit_true_north_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    auto has_true_north_cpp = static_cast<bool>(has_true_north);
-    auto x_cpp = static_cast<double>(x);
-    auto y_cpp = static_cast<double>(y);
-        ifcapi::bindings::georeference_edit_true_north(file_cpp, has_true_north_cpp, x_cpp, y_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeoreferenceEditTrueNorthOptions options_cpp{};
+    if (options->has_true_north) {
+        if (options->true_north == nullptr) { throw std::runtime_error("Options field \"true_north\" must not be null"); }
+        options_cpp.true_north = to_cpp_double_list(options->true_north);
+    }
+        ifcapi::bindings::georeference_edit_true_north(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -7078,17 +7574,29 @@ bool ifcopenshell_georeference_edit_true_north(ifcopenshell_file_t* file, bool h
     }
 }
 
-bool ifcopenshell_georeference_edit_wcs(ifcopenshell_file_t* file, double x, double y, double z, double rotation, bool is_si) {
+bool ifcopenshell_georeference_edit_wcs(ifcopenshell_file_t* file, const ifcopenshell_georeference_edit_wcs_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    auto x_cpp = static_cast<double>(x);
-    auto y_cpp = static_cast<double>(y);
-    auto z_cpp = static_cast<double>(z);
-    auto rotation_cpp = static_cast<double>(rotation);
-    auto is_si_cpp = static_cast<bool>(is_si);
-        ifcapi::bindings::georeference_edit_wcs(file_cpp, x_cpp, y_cpp, z_cpp, rotation_cpp, is_si_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeoreferenceEditWcsOptions options_cpp{};
+    if (options->has_x) {
+        options_cpp.x = options->x;
+    }
+    if (options->has_y) {
+        options_cpp.y = options->y;
+    }
+    if (options->has_z) {
+        options_cpp.z = options->z;
+    }
+    if (options->has_rotation) {
+        options_cpp.rotation = options->rotation;
+    }
+    if (options->has_is_si) {
+        options_cpp.is_si = options->is_si;
+    }
+        ifcapi::bindings::georeference_edit_wcs(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -7185,19 +7693,33 @@ bool ifcopenshell_grid_remove_grid_axis(ifcopenshell_file_t* file, ifcopenshell_
     }
 }
 
-bool ifcopenshell_group_add_group(ifcopenshell_file_t* file, const char* name, const char* description, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_group_add_group(ifcopenshell_file_t* file, const ifcopenshell_group_add_group_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
-    std::string name_cpp(name);
-    const char* description_str = description;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::group_add_group(file_cpp, name_cpp, description, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GroupAddGroupOptions options_cpp{};
+    if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+    options_cpp.name = std::string(options->name);
+    if (options->has_description) {
+        if (options->description == nullptr) { throw std::runtime_error("Options field \"description\" must not be null"); }
+        options_cpp.description = std::string(options->description);
+    }
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::group_add_group(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -7213,20 +7735,31 @@ bool ifcopenshell_group_add_group(ifcopenshell_file_t* file, const char* name, c
     }
 }
 
-bool ifcopenshell_group_assign_group(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* group, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_group_assign_group(ifcopenshell_file_t* file, const ifcopenshell_group_assign_group_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
-    auto products_cpp = to_cpp_instance_list(products);
-    if (group == nullptr) { throw std::runtime_error("Handle parameter \"group\" must not be null"); }
-    auto group_cpp = &group->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::group_assign_group(file_cpp, products_cpp, group_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GroupAssignGroupOptions options_cpp{};
+    if (options->products == nullptr) { throw std::runtime_error("Options field \"products\" must not be null"); }
+    options_cpp.products = options->products->value;
+    if (options->group == nullptr) { throw std::runtime_error("Options field \"group\" must not be null"); }
+    options_cpp.group = options->group->value;
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::group_assign_group(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -7260,18 +7793,26 @@ bool ifcopenshell_group_remove_group(ifcopenshell_file_t* file, ifcopenshell_ins
     }
 }
 
-bool ifcopenshell_group_unassign_group(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* group, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_group_unassign_group(ifcopenshell_file_t* file, const ifcopenshell_group_unassign_group_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
-    auto products_cpp = to_cpp_instance_list(products);
-    if (group == nullptr) { throw std::runtime_error("Handle parameter \"group\" must not be null"); }
-    auto group_cpp = &group->value;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::group_unassign_group(file_cpp, products_cpp, group_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GroupUnassignGroupOptions options_cpp{};
+    if (options->products == nullptr) { throw std::runtime_error("Options field \"products\" must not be null"); }
+    options_cpp.products = options->products->value;
+    if (options->group == nullptr) { throw std::runtime_error("Options field \"group\" must not be null"); }
+    options_cpp.group = options->group->value;
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::group_unassign_group(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -7282,20 +7823,31 @@ bool ifcopenshell_group_unassign_group(ifcopenshell_file_t* file, const ifcopens
     }
 }
 
-bool ifcopenshell_group_update_group_products(ifcopenshell_file_t* file, ifcopenshell_instance_t* group, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_group_update_group_products(ifcopenshell_file_t* file, const ifcopenshell_group_update_group_products_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (group == nullptr) { throw std::runtime_error("Handle parameter \"group\" must not be null"); }
-    auto group_cpp = &group->value;
-    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
-    auto products_cpp = to_cpp_instance_list(products);
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::group_update_group_products(file_cpp, group_cpp, products_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GroupUpdateGroupProductsOptions options_cpp{};
+    if (options->group == nullptr) { throw std::runtime_error("Options field \"group\" must not be null"); }
+    options_cpp.group = options->group->value;
+    if (options->products == nullptr) { throw std::runtime_error("Options field \"products\" must not be null"); }
+    options_cpp.products = options->products->value;
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::group_update_group_products(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -7546,20 +8098,31 @@ bool ifcopenshell_library_add_reference(ifcopenshell_file_t* file, ifcopenshell_
     }
 }
 
-bool ifcopenshell_library_assign_reference(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* reference, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_library_assign_reference(ifcopenshell_file_t* file, const ifcopenshell_library_assign_reference_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
-    auto products_cpp = to_cpp_instance_list(products);
-    if (reference == nullptr) { throw std::runtime_error("Handle parameter \"reference\" must not be null"); }
-    auto reference_cpp = &reference->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::library_assign_reference(file_cpp, products_cpp, reference_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::LibraryAssignReferenceOptions options_cpp{};
+    if (options->products == nullptr) { throw std::runtime_error("Options field \"products\" must not be null"); }
+    options_cpp.products = options->products->value;
+    if (options->reference == nullptr) { throw std::runtime_error("Options field \"reference\" must not be null"); }
+    options_cpp.reference = options->reference->value;
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::library_assign_reference(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -7611,18 +8174,26 @@ bool ifcopenshell_library_remove_reference(ifcopenshell_file_t* file, ifcopenshe
     }
 }
 
-bool ifcopenshell_library_unassign_reference(ifcopenshell_file_t* file, ifcopenshell_instance_t* reference, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_library_unassign_reference(ifcopenshell_file_t* file, const ifcopenshell_library_unassign_reference_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (reference == nullptr) { throw std::runtime_error("Handle parameter \"reference\" must not be null"); }
-    auto reference_cpp = &reference->value;
-    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
-    auto products_cpp = to_cpp_instance_list(products);
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::library_unassign_reference(file_cpp, reference_cpp, products_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::LibraryUnassignReferenceOptions options_cpp{};
+    if (options->reference == nullptr) { throw std::runtime_error("Options field \"reference\" must not be null"); }
+    options_cpp.reference = options->reference->value;
+    if (options->products == nullptr) { throw std::runtime_error("Options field \"products\" must not be null"); }
+    options_cpp.products = options->products->value;
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::library_unassign_reference(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -7633,7 +8204,7 @@ bool ifcopenshell_library_unassign_reference(ifcopenshell_file_t* file, ifcopens
     }
 }
 
-bool ifcopenshell_material_add_constituent(ifcopenshell_file_t* file, ifcopenshell_instance_t* constituent_set, ifcopenshell_instance_t* material, const char* name, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_material_add_constituent(ifcopenshell_file_t* file, ifcopenshell_instance_t* constituent_set, const ifcopenshell_material_add_constituent_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -7641,10 +8212,15 @@ bool ifcopenshell_material_add_constituent(ifcopenshell_file_t* file, ifcopenshe
     auto file_cpp = file->ptr;
     if (constituent_set == nullptr) { throw std::runtime_error("Handle parameter \"constituent_set\" must not be null"); }
     auto constituent_set_cpp = &constituent_set->value;
-    if (material == nullptr) { throw std::runtime_error("Handle parameter \"material\" must not be null"); }
-    auto material_cpp = &material->value;
-    const char* name_str = name;
-        auto result_value = ifcapi::bindings::material_add_constituent(file_cpp, constituent_set_cpp, material_cpp, name);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::MaterialAddConstituentOptions options_cpp{};
+    if (options->material == nullptr) { throw std::runtime_error("Options field \"material\" must not be null"); }
+    options_cpp.material = options->material->value;
+    if (options->has_name) {
+        if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+        options_cpp.name = std::string(options->name);
+    }
+        auto result_value = ifcapi::bindings::material_add_constituent(file_cpp, constituent_set_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -7660,7 +8236,7 @@ bool ifcopenshell_material_add_constituent(ifcopenshell_file_t* file, ifcopenshe
     }
 }
 
-bool ifcopenshell_material_add_layer(ifcopenshell_file_t* file, ifcopenshell_instance_t* layer_set, ifcopenshell_instance_t* material, const char* name, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_material_add_layer(ifcopenshell_file_t* file, ifcopenshell_instance_t* layer_set, const ifcopenshell_material_add_layer_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -7668,10 +8244,15 @@ bool ifcopenshell_material_add_layer(ifcopenshell_file_t* file, ifcopenshell_ins
     auto file_cpp = file->ptr;
     if (layer_set == nullptr) { throw std::runtime_error("Handle parameter \"layer_set\" must not be null"); }
     auto layer_set_cpp = &layer_set->value;
-    if (material == nullptr) { throw std::runtime_error("Handle parameter \"material\" must not be null"); }
-    auto material_cpp = &material->value;
-    const char* name_str = name;
-        auto result_value = ifcapi::bindings::material_add_layer(file_cpp, layer_set_cpp, material_cpp, name);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::MaterialAddLayerOptions options_cpp{};
+    if (options->material == nullptr) { throw std::runtime_error("Options field \"material\" must not be null"); }
+    options_cpp.material = options->material->value;
+    if (options->has_name) {
+        if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+        options_cpp.name = std::string(options->name);
+    }
+        auto result_value = ifcapi::bindings::material_add_layer(file_cpp, layer_set_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -7707,16 +8288,27 @@ bool ifcopenshell_material_add_list_item(ifcopenshell_file_t* file, ifcopenshell
     }
 }
 
-bool ifcopenshell_material_add_material(ifcopenshell_file_t* file, const char* name, const char* category, const char* description, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_material_add_material(ifcopenshell_file_t* file, const ifcopenshell_material_add_material_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    const char* name_str = name;
-    const char* category_str = category;
-    const char* description_str = description;
-        auto result_value = ifcapi::bindings::material_add_material(file_cpp, name, category, description);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::MaterialAddMaterialOptions options_cpp{};
+    if (options->has_name) {
+        if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+        options_cpp.name = std::string(options->name);
+    }
+    if (options->has_category) {
+        if (options->category == nullptr) { throw std::runtime_error("Options field \"category\" must not be null"); }
+        options_cpp.category = std::string(options->category);
+    }
+    if (options->has_description) {
+        if (options->description == nullptr) { throw std::runtime_error("Options field \"description\" must not be null"); }
+        options_cpp.description = std::string(options->description);
+    }
+        auto result_value = ifcapi::bindings::material_add_material(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -7732,17 +8324,23 @@ bool ifcopenshell_material_add_material(ifcopenshell_file_t* file, const char* n
     }
 }
 
-bool ifcopenshell_material_add_material_set(ifcopenshell_file_t* file, const char* name, const char* set_type, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_material_add_material_set(ifcopenshell_file_t* file, const ifcopenshell_material_add_material_set_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
-    std::string name_cpp(name);
-    if (set_type == nullptr) { throw std::runtime_error("Parameter \"set_type\" must not be null"); }
-    std::string set_type_cpp(set_type);
-        auto result_value = ifcapi::bindings::material_add_material_set(file_cpp, name_cpp, set_type_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::MaterialAddMaterialSetOptions options_cpp{};
+    if (options->has_name) {
+        if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+        options_cpp.name = std::string(options->name);
+    }
+    if (options->has_set_type) {
+        if (options->set_type == nullptr) { throw std::runtime_error("Options field \"set_type\" must not be null"); }
+        options_cpp.set_type = std::string(options->set_type);
+    }
+        auto result_value = ifcapi::bindings::material_add_material_set(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -7758,7 +8356,7 @@ bool ifcopenshell_material_add_material_set(ifcopenshell_file_t* file, const cha
     }
 }
 
-bool ifcopenshell_material_add_profile(ifcopenshell_file_t* file, ifcopenshell_instance_t* profile_set, ifcopenshell_instance_t* material, ifcopenshell_instance_t* profile, const char* name, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_material_add_profile(ifcopenshell_file_t* file, ifcopenshell_instance_t* profile_set, const ifcopenshell_material_add_profile_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -7766,10 +8364,21 @@ bool ifcopenshell_material_add_profile(ifcopenshell_file_t* file, ifcopenshell_i
     auto file_cpp = file->ptr;
     if (profile_set == nullptr) { throw std::runtime_error("Handle parameter \"profile_set\" must not be null"); }
     auto profile_set_cpp = &profile_set->value;
-    auto material_cpp = (material != nullptr) ? &material->value : nullptr;
-    auto profile_cpp = (profile != nullptr) ? &profile->value : nullptr;
-    const char* name_str = name;
-        auto result_value = ifcapi::bindings::material_add_profile(file_cpp, profile_set_cpp, material_cpp, profile_cpp, name);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::MaterialAddProfileOptions options_cpp{};
+    if (options->has_material) {
+        if (options->material == nullptr) { throw std::runtime_error("Options field \"material\" must not be null"); }
+        options_cpp.material = options->material->value;
+    }
+    if (options->has_profile) {
+        if (options->profile == nullptr) { throw std::runtime_error("Options field \"profile\" must not be null"); }
+        options_cpp.profile = options->profile->value;
+    }
+    if (options->has_name) {
+        if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+        options_cpp.name = std::string(options->name);
+    }
+        auto result_value = ifcapi::bindings::material_add_profile(file_cpp, profile_set_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -7785,7 +8394,7 @@ bool ifcopenshell_material_add_profile(ifcopenshell_file_t* file, ifcopenshell_i
     }
 }
 
-bool ifcopenshell_material_assign_material(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, const char* type, ifcopenshell_instance_t* material, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_parse_instance_list_t** out_result) {
+bool ifcopenshell_material_assign_material(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, const ifcopenshell_material_assign_material_options_t* options, ifcopenshell_parse_instance_list_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -7793,13 +8402,29 @@ bool ifcopenshell_material_assign_material(ifcopenshell_file_t* file, const ifco
     auto file_cpp = file->ptr;
     if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
     auto products_cpp = to_cpp_instance_list(products);
-    if (type == nullptr) { throw std::runtime_error("Parameter \"type\" must not be null"); }
-    std::string type_cpp(type);
-    auto material_cpp = (material != nullptr) ? &material->value : nullptr;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::material_assign_material(file_cpp, products_cpp, type_cpp, material_cpp, owner_history_cpp, user_cpp, application_cpp)};
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::MaterialAssignMaterialOptions options_cpp{};
+    if (options->has_type) {
+        if (options->type == nullptr) { throw std::runtime_error("Options field \"type\" must not be null"); }
+        options_cpp.type = std::string(options->type);
+    }
+    if (options->has_material) {
+        if (options->material == nullptr) { throw std::runtime_error("Options field \"material\" must not be null"); }
+        options_cpp.material = options->material->value;
+    }
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::material_assign_material(file_cpp, products_cpp, options_cpp)};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -7830,19 +8455,23 @@ bool ifcopenshell_material_assign_profile(ifcopenshell_file_t* file, ifcopenshel
     }
 }
 
-bool ifcopenshell_material_edit_profile_usage(ifcopenshell_file_t* file, ifcopenshell_instance_t* usage, void* attributes, bool has_profile_dimensions, double profile_width, double profile_height) {
+bool ifcopenshell_material_edit_profile_usage(ifcopenshell_file_t* file, ifcopenshell_instance_t* usage, const ifcopenshell_material_edit_profile_usage_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (usage == nullptr) { throw std::runtime_error("Handle parameter \"usage\" must not be null"); }
     auto usage_cpp = &usage->value;
-    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
-    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
-    auto has_profile_dimensions_cpp = static_cast<bool>(has_profile_dimensions);
-    auto profile_width_cpp = static_cast<double>(profile_width);
-    auto profile_height_cpp = static_cast<double>(profile_height);
-        ifcapi::bindings::material_edit_profile_usage(file_cpp, usage_cpp, attributes_cpp, has_profile_dimensions_cpp, profile_width_cpp, profile_height_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::MaterialEditProfileUsageOptions options_cpp{};
+    options_cpp.attributes = static_cast<ifcopenshell_pset_props_t*>(options->attributes);
+    if (options->has_profile_width) {
+        options_cpp.profile_width = options->profile_width;
+    }
+    if (options->has_profile_height) {
+        options_cpp.profile_height = options->profile_height;
+    }
+        ifcapi::bindings::material_edit_profile_usage(file_cpp, usage_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -7853,15 +8482,19 @@ bool ifcopenshell_material_edit_profile_usage(ifcopenshell_file_t* file, ifcopen
     }
 }
 
-bool ifcopenshell_material_remove_constituent(ifcopenshell_file_t* file, ifcopenshell_instance_t* constituent, bool should_remove_material) {
+bool ifcopenshell_material_remove_constituent(ifcopenshell_file_t* file, ifcopenshell_instance_t* constituent, const ifcopenshell_material_remove_item_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (constituent == nullptr) { throw std::runtime_error("Handle parameter \"constituent\" must not be null"); }
     auto constituent_cpp = &constituent->value;
-    auto should_remove_material_cpp = static_cast<bool>(should_remove_material);
-        ifcapi::bindings::material_remove_constituent(file_cpp, constituent_cpp, should_remove_material_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::MaterialRemoveItemOptions options_cpp{};
+    if (options->has_should_remove_material) {
+        options_cpp.should_remove_material = options->should_remove_material;
+    }
+        ifcapi::bindings::material_remove_constituent(file_cpp, constituent_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -7872,15 +8505,19 @@ bool ifcopenshell_material_remove_constituent(ifcopenshell_file_t* file, ifcopen
     }
 }
 
-bool ifcopenshell_material_remove_layer(ifcopenshell_file_t* file, ifcopenshell_instance_t* layer, bool should_remove_material) {
+bool ifcopenshell_material_remove_layer(ifcopenshell_file_t* file, ifcopenshell_instance_t* layer, const ifcopenshell_material_remove_item_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (layer == nullptr) { throw std::runtime_error("Handle parameter \"layer\" must not be null"); }
     auto layer_cpp = &layer->value;
-    auto should_remove_material_cpp = static_cast<bool>(should_remove_material);
-        ifcapi::bindings::material_remove_layer(file_cpp, layer_cpp, should_remove_material_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::MaterialRemoveItemOptions options_cpp{};
+    if (options->has_should_remove_material) {
+        options_cpp.should_remove_material = options->should_remove_material;
+    }
+        ifcapi::bindings::material_remove_layer(file_cpp, layer_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -7891,15 +8528,19 @@ bool ifcopenshell_material_remove_layer(ifcopenshell_file_t* file, ifcopenshell_
     }
 }
 
-bool ifcopenshell_material_remove_list_item(ifcopenshell_file_t* file, ifcopenshell_instance_t* material_list, int32_t material_index) {
+bool ifcopenshell_material_remove_list_item(ifcopenshell_file_t* file, ifcopenshell_instance_t* material_list, const ifcopenshell_material_remove_list_item_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (material_list == nullptr) { throw std::runtime_error("Handle parameter \"material_list\" must not be null"); }
     auto material_list_cpp = &material_list->value;
-    auto material_index_cpp = static_cast<int>(material_index);
-        ifcapi::bindings::material_remove_list_item(file_cpp, material_list_cpp, material_index_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::MaterialRemoveListItemOptions options_cpp{};
+    if (options->has_material_index) {
+        options_cpp.material_index = options->material_index;
+    }
+        ifcapi::bindings::material_remove_list_item(file_cpp, material_list_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -7946,16 +8587,22 @@ bool ifcopenshell_material_remove_material_set(ifcopenshell_file_t* file, ifcope
     }
 }
 
-bool ifcopenshell_material_remove_profile(ifcopenshell_file_t* file, ifcopenshell_instance_t* profile, bool should_remove_profile_def, bool should_remove_material) {
+bool ifcopenshell_material_remove_profile(ifcopenshell_file_t* file, ifcopenshell_instance_t* profile, const ifcopenshell_material_remove_profile_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (profile == nullptr) { throw std::runtime_error("Handle parameter \"profile\" must not be null"); }
     auto profile_cpp = &profile->value;
-    auto should_remove_profile_def_cpp = static_cast<bool>(should_remove_profile_def);
-    auto should_remove_material_cpp = static_cast<bool>(should_remove_material);
-        ifcapi::bindings::material_remove_profile(file_cpp, profile_cpp, should_remove_profile_def_cpp, should_remove_material_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::MaterialRemoveProfileOptions options_cpp{};
+    if (options->has_should_remove_profile_def) {
+        options_cpp.should_remove_profile_def = options->should_remove_profile_def;
+    }
+    if (options->has_should_remove_material) {
+        options_cpp.should_remove_material = options->should_remove_material;
+    }
+        ifcapi::bindings::material_remove_profile(file_cpp, profile_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -7966,16 +8613,22 @@ bool ifcopenshell_material_remove_profile(ifcopenshell_file_t* file, ifcopenshel
     }
 }
 
-bool ifcopenshell_material_reorder_set_item(ifcopenshell_file_t* file, ifcopenshell_instance_t* material_set, int32_t old_index, int32_t new_index) {
+bool ifcopenshell_material_reorder_set_item(ifcopenshell_file_t* file, ifcopenshell_instance_t* material_set, const ifcopenshell_material_reorder_set_item_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (material_set == nullptr) { throw std::runtime_error("Handle parameter \"material_set\" must not be null"); }
     auto material_set_cpp = &material_set->value;
-    auto old_index_cpp = static_cast<int>(old_index);
-    auto new_index_cpp = static_cast<int>(new_index);
-        ifcapi::bindings::material_reorder_set_item(file_cpp, material_set_cpp, old_index_cpp, new_index_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::MaterialReorderSetItemOptions options_cpp{};
+    if (options->has_old_index) {
+        options_cpp.old_index = options->old_index;
+    }
+    if (options->has_new_index) {
+        options_cpp.new_index = options->new_index;
+    }
+        ifcapi::bindings::material_reorder_set_item(file_cpp, material_set_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -7986,16 +8639,24 @@ bool ifcopenshell_material_reorder_set_item(ifcopenshell_file_t* file, ifcopensh
     }
 }
 
-bool ifcopenshell_material_unassign_material(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_material_unassign_material(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, const ifcopenshell_material_unassign_material_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
     auto products_cpp = to_cpp_instance_list(products);
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::material_unassign_material(file_cpp, products_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::MaterialUnassignMaterialOptions options_cpp{};
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::material_unassign_material(file_cpp, products_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -8006,20 +8667,31 @@ bool ifcopenshell_material_unassign_material(ifcopenshell_file_t* file, const if
     }
 }
 
-bool ifcopenshell_nest_assign_object(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* objects, ifcopenshell_instance_t* relating_object, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_nest_assign_object(ifcopenshell_file_t* file, const ifcopenshell_nest_assign_object_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (objects == nullptr) { throw std::runtime_error("Parameter \"objects\" must not be null"); }
-    auto objects_cpp = to_cpp_instance_list(objects);
-    if (relating_object == nullptr) { throw std::runtime_error("Handle parameter \"relating_object\" must not be null"); }
-    auto relating_object_cpp = &relating_object->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::nest_assign_object(file_cpp, objects_cpp, relating_object_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::NestAssignObjectOptions options_cpp{};
+    if (options->products == nullptr) { throw std::runtime_error("Options field \"products\" must not be null"); }
+    options_cpp.products = options->products->value;
+    if (options->relating_object == nullptr) { throw std::runtime_error("Options field \"relating_object\" must not be null"); }
+    options_cpp.relating_object = options->relating_object->value;
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::nest_assign_object(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -8035,16 +8707,24 @@ bool ifcopenshell_nest_assign_object(ifcopenshell_file_t* file, const ifcopenshe
     }
 }
 
-bool ifcopenshell_nest_unassign_object(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* objects, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_nest_unassign_object(ifcopenshell_file_t* file, const ifcopenshell_nest_unassign_object_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (objects == nullptr) { throw std::runtime_error("Parameter \"objects\" must not be null"); }
-    auto objects_cpp = to_cpp_instance_list(objects);
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::nest_unassign_object(file_cpp, objects_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::NestUnassignObjectOptions options_cpp{};
+    if (options->products == nullptr) { throw std::runtime_error("Options field \"products\" must not be null"); }
+    options_cpp.products = options->products->value;
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::nest_unassign_object(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -8055,20 +8735,31 @@ bool ifcopenshell_nest_unassign_object(ifcopenshell_file_t* file, const ifcopens
     }
 }
 
-bool ifcopenshell_owner_add_actor(ifcopenshell_file_t* file, ifcopenshell_instance_t* actor, const char* ifc_class, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_owner_add_actor(ifcopenshell_file_t* file, const ifcopenshell_owner_add_actor_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (actor == nullptr) { throw std::runtime_error("Handle parameter \"actor\" must not be null"); }
-    auto actor_cpp = &actor->value;
-    if (ifc_class == nullptr) { throw std::runtime_error("Parameter \"ifc_class\" must not be null"); }
-    std::string ifc_class_cpp(ifc_class);
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::owner_add_actor(file_cpp, actor_cpp, ifc_class_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::OwnerAddActorOptions options_cpp{};
+    if (options->actor == nullptr) { throw std::runtime_error("Options field \"actor\" must not be null"); }
+    options_cpp.actor = options->actor->value;
+    if (options->ifc_class == nullptr) { throw std::runtime_error("Options field \"ifc_class\" must not be null"); }
+    options_cpp.ifc_class = std::string(options->ifc_class);
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::owner_add_actor(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -8110,23 +8801,37 @@ bool ifcopenshell_owner_add_address(ifcopenshell_file_t* file, ifcopenshell_inst
     }
 }
 
-bool ifcopenshell_owner_add_application(ifcopenshell_file_t* file, ifcopenshell_instance_t* application_developer, const char* version, const char* application_full_name, const char* application_identifier, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_owner_add_application(ifcopenshell_file_t* file, const ifcopenshell_owner_add_application_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    auto application_developer_cpp = (application_developer != nullptr) ? &application_developer->value : nullptr;
-    if (version == nullptr) { throw std::runtime_error("Parameter \"version\" must not be null"); }
-    std::string version_cpp(version);
-    if (application_full_name == nullptr) { throw std::runtime_error("Parameter \"application_full_name\" must not be null"); }
-    std::string application_full_name_cpp(application_full_name);
-    if (application_identifier == nullptr) { throw std::runtime_error("Parameter \"application_identifier\" must not be null"); }
-    std::string application_identifier_cpp(application_identifier);
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::owner_add_application(file_cpp, application_developer_cpp, version_cpp, application_full_name_cpp, application_identifier_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::OwnerAddApplicationOptions options_cpp{};
+    if (options->has_application_developer) {
+        if (options->application_developer == nullptr) { throw std::runtime_error("Options field \"application_developer\" must not be null"); }
+        options_cpp.application_developer = options->application_developer->value;
+    }
+    if (options->version == nullptr) { throw std::runtime_error("Options field \"version\" must not be null"); }
+    options_cpp.version = std::string(options->version);
+    if (options->application_full_name == nullptr) { throw std::runtime_error("Options field \"application_full_name\" must not be null"); }
+    options_cpp.application_full_name = std::string(options->application_full_name);
+    if (options->application_identifier == nullptr) { throw std::runtime_error("Options field \"application_identifier\" must not be null"); }
+    options_cpp.application_identifier = std::string(options->application_identifier);
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::owner_add_application(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -8248,20 +8953,31 @@ bool ifcopenshell_owner_add_role(ifcopenshell_file_t* file, ifcopenshell_instanc
     }
 }
 
-bool ifcopenshell_owner_assign_actor(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_actor, ifcopenshell_instance_t* related_object, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_owner_assign_actor(ifcopenshell_file_t* file, const ifcopenshell_owner_assign_actor_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (relating_actor == nullptr) { throw std::runtime_error("Handle parameter \"relating_actor\" must not be null"); }
-    auto relating_actor_cpp = &relating_actor->value;
-    if (related_object == nullptr) { throw std::runtime_error("Handle parameter \"related_object\" must not be null"); }
-    auto related_object_cpp = &related_object->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::owner_assign_actor(file_cpp, relating_actor_cpp, related_object_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::OwnerAssignActorOptions options_cpp{};
+    if (options->relating_actor == nullptr) { throw std::runtime_error("Options field \"relating_actor\" must not be null"); }
+    options_cpp.relating_actor = options->relating_actor->value;
+    if (options->related_object == nullptr) { throw std::runtime_error("Options field \"related_object\" must not be null"); }
+    options_cpp.related_object = options->related_object->value;
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::owner_assign_actor(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -8277,15 +8993,23 @@ bool ifcopenshell_owner_assign_actor(ifcopenshell_file_t* file, ifcopenshell_ins
     }
 }
 
-bool ifcopenshell_owner_create_owner_history(ifcopenshell_file_t* file, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_owner_create_owner_history(ifcopenshell_file_t* file, const ifcopenshell_owner_create_owner_history_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::owner_create_owner_history(file_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::OwnerCreateOwnerHistoryOptions options_cpp{};
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::owner_create_owner_history(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -8427,18 +9151,26 @@ bool ifcopenshell_owner_remove_role(ifcopenshell_file_t* file, ifcopenshell_inst
     }
 }
 
-bool ifcopenshell_owner_unassign_actor(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_actor, ifcopenshell_instance_t* related_object, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_owner_unassign_actor(ifcopenshell_file_t* file, const ifcopenshell_owner_unassign_actor_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (relating_actor == nullptr) { throw std::runtime_error("Handle parameter \"relating_actor\" must not be null"); }
-    auto relating_actor_cpp = &relating_actor->value;
-    if (related_object == nullptr) { throw std::runtime_error("Handle parameter \"related_object\" must not be null"); }
-    auto related_object_cpp = &related_object->value;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::owner_unassign_actor(file_cpp, relating_actor_cpp, related_object_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::OwnerUnassignActorOptions options_cpp{};
+    if (options->relating_actor == nullptr) { throw std::runtime_error("Options field \"relating_actor\" must not be null"); }
+    options_cpp.relating_actor = options->relating_actor->value;
+    if (options->related_object == nullptr) { throw std::runtime_error("Options field \"related_object\" must not be null"); }
+    options_cpp.related_object = options->related_object->value;
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::owner_unassign_actor(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -8449,16 +9181,27 @@ bool ifcopenshell_owner_unassign_actor(ifcopenshell_file_t* file, ifcopenshell_i
     }
 }
 
-bool ifcopenshell_owner_update_owner_history(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_owner_update_owner_history(ifcopenshell_file_t* file, const ifcopenshell_owner_update_owner_history_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    auto element_cpp = (element != nullptr) ? &element->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::owner_update_owner_history(file_cpp, element_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::OwnerUpdateOwnerHistoryOptions options_cpp{};
+    if (options->has_element) {
+        if (options->element == nullptr) { throw std::runtime_error("Options field \"element\" must not be null"); }
+        options_cpp.element = options->element->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::owner_update_owner_history(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -8533,7 +9276,8 @@ bool ifcopenshell_placement_get_local_placement(ifcopenshell_instance_t* instanc
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    auto instance_cpp = (instance != nullptr) ? &instance->value : nullptr;
+    std::optional<express::Base> instance_cpp;
+    if (instance != nullptr) { instance_cpp = instance->value; }
         *out_result = make_double_list(ifcapi::bindings::placement_get_local_placement(instance_cpp));
         return true;
     } catch (const std::exception& e) {
@@ -8597,17 +9341,21 @@ bool ifcopenshell_placement_rotation(double angle_rad, const char* axis, ifcopen
     }
 }
 
-bool ifcopenshell_profile_add_arbitrary_profile(ifcopenshell_file_t* file, const ifcopenshell_double_list_list_t* profile, const char* name, bool has_name, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_profile_add_arbitrary_profile(ifcopenshell_file_t* file, const ifcopenshell_profile_add_arbitrary_profile_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (profile == nullptr) { throw std::runtime_error("Parameter \"profile\" must not be null"); }
-    auto profile_cpp = to_cpp_double_list_list(profile);
-    const char* name_str = name;
-    auto has_name_cpp = static_cast<bool>(has_name);
-        auto result_value = ifcapi::bindings::profile_add_arbitrary_profile(file_cpp, profile_cpp, name, has_name_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ProfileAddArbitraryProfileOptions options_cpp{};
+    if (options->profile == nullptr) { throw std::runtime_error("Options field \"profile\" must not be null"); }
+    options_cpp.profile = to_cpp_double_list_list(options->profile);
+    if (options->has_name) {
+        if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+        options_cpp.name = std::string(options->name);
+    }
+        auto result_value = ifcapi::bindings::profile_add_arbitrary_profile(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -8623,19 +9371,23 @@ bool ifcopenshell_profile_add_arbitrary_profile(ifcopenshell_file_t* file, const
     }
 }
 
-bool ifcopenshell_profile_add_arbitrary_profile_with_voids(ifcopenshell_file_t* file, const ifcopenshell_double_list_list_t* outer_profile, const ifcopenshell_double_list_list_list_t* inner_profiles, const char* name, bool has_name, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_profile_add_arbitrary_profile_with_voids(ifcopenshell_file_t* file, const ifcopenshell_profile_add_arbitrary_profile_with_voids_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (outer_profile == nullptr) { throw std::runtime_error("Parameter \"outer_profile\" must not be null"); }
-    auto outer_profile_cpp = to_cpp_double_list_list(outer_profile);
-    if (inner_profiles == nullptr) { throw std::runtime_error("Parameter \"inner_profiles\" must not be null"); }
-    auto inner_profiles_cpp = to_cpp_double_list_list_list(inner_profiles);
-    const char* name_str = name;
-    auto has_name_cpp = static_cast<bool>(has_name);
-        auto result_value = ifcapi::bindings::profile_add_arbitrary_profile_with_voids(file_cpp, outer_profile_cpp, inner_profiles_cpp, name, has_name_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ProfileAddArbitraryProfileWithVoidsOptions options_cpp{};
+    if (options->outer_profile == nullptr) { throw std::runtime_error("Options field \"outer_profile\" must not be null"); }
+    options_cpp.outer_profile = to_cpp_double_list_list(options->outer_profile);
+    if (options->inner_profiles == nullptr) { throw std::runtime_error("Options field \"inner_profiles\" must not be null"); }
+    options_cpp.inner_profiles = to_cpp_double_list_list_list(options->inner_profiles);
+    if (options->has_name) {
+        if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+        options_cpp.name = std::string(options->name);
+    }
+        auto result_value = ifcapi::bindings::profile_add_arbitrary_profile_with_voids(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -8737,20 +9489,31 @@ bool ifcopenshell_profile_remove_profile(ifcopenshell_file_t* file, ifcopenshell
     }
 }
 
-bool ifcopenshell_project_assign_declaration(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* definitions, ifcopenshell_instance_t* relating_context, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_project_assign_declaration(ifcopenshell_file_t* file, const ifcopenshell_project_assign_declaration_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (definitions == nullptr) { throw std::runtime_error("Parameter \"definitions\" must not be null"); }
-    auto definitions_cpp = to_cpp_instance_list(definitions);
-    if (relating_context == nullptr) { throw std::runtime_error("Handle parameter \"relating_context\" must not be null"); }
-    auto relating_context_cpp = &relating_context->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::project_assign_declaration(file_cpp, definitions_cpp, relating_context_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ProjectAssignDeclarationOptions options_cpp{};
+    if (options->definitions == nullptr) { throw std::runtime_error("Options field \"definitions\" must not be null"); }
+    options_cpp.definitions = options->definitions->value;
+    if (options->relating_context == nullptr) { throw std::runtime_error("Options field \"relating_context\" must not be null"); }
+    options_cpp.relating_context = options->relating_context->value;
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::project_assign_declaration(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -8766,18 +9529,26 @@ bool ifcopenshell_project_assign_declaration(ifcopenshell_file_t* file, const if
     }
 }
 
-bool ifcopenshell_project_unassign_declaration(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* definitions, ifcopenshell_instance_t* relating_context, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_project_unassign_declaration(ifcopenshell_file_t* file, const ifcopenshell_project_unassign_declaration_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (definitions == nullptr) { throw std::runtime_error("Parameter \"definitions\" must not be null"); }
-    auto definitions_cpp = to_cpp_instance_list(definitions);
-    if (relating_context == nullptr) { throw std::runtime_error("Handle parameter \"relating_context\" must not be null"); }
-    auto relating_context_cpp = &relating_context->value;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::project_unassign_declaration(file_cpp, definitions_cpp, relating_context_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ProjectUnassignDeclarationOptions options_cpp{};
+    if (options->definitions == nullptr) { throw std::runtime_error("Options field \"definitions\" must not be null"); }
+    options_cpp.definitions = options->definitions->value;
+    if (options->relating_context == nullptr) { throw std::runtime_error("Options field \"relating_context\" must not be null"); }
+    options_cpp.relating_context = options->relating_context->value;
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::project_unassign_declaration(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -8788,21 +9559,35 @@ bool ifcopenshell_project_unassign_declaration(ifcopenshell_file_t* file, const 
     }
 }
 
-bool ifcopenshell_pset_add_pset(ifcopenshell_file_t* file, ifcopenshell_instance_t* product, const char* name, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, const char* ifc2x3_subclass, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_pset_add_pset(ifcopenshell_file_t* file, const ifcopenshell_pset_add_pset_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (product == nullptr) { throw std::runtime_error("Handle parameter \"product\" must not be null"); }
-    auto product_cpp = &product->value;
-    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
-    std::string name_cpp(name);
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-    const char* ifc2x3_subclass_str = ifc2x3_subclass;
-        auto result_value = ifcapi::bindings::pset_add_pset(file_cpp, product_cpp, name_cpp, owner_history_cpp, user_cpp, application_cpp, ifc2x3_subclass);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::PsetAddPsetOptions options_cpp{};
+    if (options->product == nullptr) { throw std::runtime_error("Options field \"product\" must not be null"); }
+    options_cpp.product = options->product->value;
+    if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+    options_cpp.name = std::string(options->name);
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+    if (options->has_ifc2x3_subclass) {
+        if (options->ifc2x3_subclass == nullptr) { throw std::runtime_error("Options field \"ifc2x3_subclass\" must not be null"); }
+        options_cpp.ifc2x3_subclass = std::string(options->ifc2x3_subclass);
+    }
+        auto result_value = ifcapi::bindings::pset_add_pset(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -8818,20 +9603,31 @@ bool ifcopenshell_pset_add_pset(ifcopenshell_file_t* file, ifcopenshell_instance
     }
 }
 
-bool ifcopenshell_pset_add_qto(ifcopenshell_file_t* file, ifcopenshell_instance_t* product, const char* name, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_pset_add_qto(ifcopenshell_file_t* file, const ifcopenshell_pset_add_qto_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (product == nullptr) { throw std::runtime_error("Handle parameter \"product\" must not be null"); }
-    auto product_cpp = &product->value;
-    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
-    std::string name_cpp(name);
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::pset_add_qto(file_cpp, product_cpp, name_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::PsetAddQtoOptions options_cpp{};
+    if (options->product == nullptr) { throw std::runtime_error("Options field \"product\" must not be null"); }
+    options_cpp.product = options->product->value;
+    if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+    options_cpp.name = std::string(options->name);
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::pset_add_qto(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -8847,20 +9643,31 @@ bool ifcopenshell_pset_add_qto(ifcopenshell_file_t* file, ifcopenshell_instance_
     }
 }
 
-bool ifcopenshell_pset_assign_pset(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* pset, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_pset_assign_pset(ifcopenshell_file_t* file, const ifcopenshell_pset_assign_pset_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
-    auto products_cpp = to_cpp_instance_list(products);
-    if (pset == nullptr) { throw std::runtime_error("Handle parameter \"pset\" must not be null"); }
-    auto pset_cpp = &pset->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::pset_assign_pset(file_cpp, products_cpp, pset_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::PsetAssignPsetOptions options_cpp{};
+    if (options->products == nullptr) { throw std::runtime_error("Options field \"products\" must not be null"); }
+    options_cpp.products = options->products->value;
+    if (options->pset == nullptr) { throw std::runtime_error("Options field \"pset\" must not be null"); }
+    options_cpp.pset = options->pset->value;
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::pset_assign_pset(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -8876,20 +9683,27 @@ bool ifcopenshell_pset_assign_pset(ifcopenshell_file_t* file, const ifcopenshell
     }
 }
 
-bool ifcopenshell_pset_edit_pset(ifcopenshell_file_t* file, ifcopenshell_instance_t* pset, const char* name, void* properties, ifcopenshell_instance_t* pset_template, bool should_purge, bool* out_result) {
+bool ifcopenshell_pset_edit_pset(ifcopenshell_file_t* file, const ifcopenshell_pset_edit_pset_options_t* options, bool* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (pset == nullptr) { throw std::runtime_error("Handle parameter \"pset\" must not be null"); }
-    auto pset_cpp = &pset->value;
-    const char* name_str = name;
-    if (properties == nullptr) { throw std::runtime_error("Parameter \"properties\" must not be null"); }
-    auto properties_cpp = static_cast<ifcopenshell_pset_props_t*>(properties);
-    auto pset_template_cpp = (pset_template != nullptr) ? &pset_template->value : nullptr;
-    auto should_purge_cpp = static_cast<bool>(should_purge);
-        *out_result = ifcapi::bindings::pset_edit_pset(file_cpp, pset_cpp, name, properties_cpp, pset_template_cpp, should_purge_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::PsetEditPsetOptions options_cpp{};
+    if (options->pset == nullptr) { throw std::runtime_error("Options field \"pset\" must not be null"); }
+    options_cpp.pset = options->pset->value;
+    if (options->has_name) {
+        if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+        options_cpp.name = std::string(options->name);
+    }
+    options_cpp.properties = static_cast<ifcopenshell_pset_props_t*>(options->properties);
+    if (options->has_pset_template) {
+        if (options->pset_template == nullptr) { throw std::runtime_error("Options field \"pset_template\" must not be null"); }
+        options_cpp.pset_template = options->pset_template->value;
+    }
+    options_cpp.should_purge = static_cast<bool>(options->should_purge);
+        *out_result = ifcapi::bindings::pset_edit_pset(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -8900,19 +9714,26 @@ bool ifcopenshell_pset_edit_pset(ifcopenshell_file_t* file, ifcopenshell_instanc
     }
 }
 
-bool ifcopenshell_pset_edit_qto(ifcopenshell_file_t* file, ifcopenshell_instance_t* qto, const char* name, void* properties, ifcopenshell_instance_t* qto_template, bool* out_result) {
+bool ifcopenshell_pset_edit_qto(ifcopenshell_file_t* file, const ifcopenshell_pset_edit_qto_options_t* options, bool* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (qto == nullptr) { throw std::runtime_error("Handle parameter \"qto\" must not be null"); }
-    auto qto_cpp = &qto->value;
-    const char* name_str = name;
-    if (properties == nullptr) { throw std::runtime_error("Parameter \"properties\" must not be null"); }
-    auto properties_cpp = static_cast<ifcopenshell_pset_props_t*>(properties);
-    auto qto_template_cpp = (qto_template != nullptr) ? &qto_template->value : nullptr;
-        *out_result = ifcapi::bindings::pset_edit_qto(file_cpp, qto_cpp, name, properties_cpp, qto_template_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::PsetEditQtoOptions options_cpp{};
+    if (options->qto == nullptr) { throw std::runtime_error("Options field \"qto\" must not be null"); }
+    options_cpp.qto = options->qto->value;
+    if (options->has_name) {
+        if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+        options_cpp.name = std::string(options->name);
+    }
+    options_cpp.properties = static_cast<ifcopenshell_pset_props_t*>(options->properties);
+    if (options->has_qto_template) {
+        if (options->qto_template == nullptr) { throw std::runtime_error("Options field \"qto_template\" must not be null"); }
+        options_cpp.qto_template = options->qto_template->value;
+    }
+        *out_result = ifcapi::bindings::pset_edit_qto(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -9113,7 +9934,8 @@ bool ifcopenshell_pset_props_set_instance(void* props, const char* key, ifcopens
     auto props_cpp = static_cast<ifcopenshell_pset_props_t*>(props);
     if (key == nullptr) { throw std::runtime_error("Parameter \"key\" must not be null"); }
     std::string key_cpp(key);
-    auto value_cpp = (value != nullptr) ? &value->value : nullptr;
+    std::optional<express::Base> value_cpp;
+    if (value != nullptr) { value_cpp = value->value; }
         ifcapi::bindings::pset_props_set_instance(props_cpp, key_cpp, value_cpp);
         return true;
     } catch (const std::exception& e) {
@@ -9332,7 +10154,8 @@ bool ifcopenshell_pset_props_set_unit_for_last(void* props, ifcopenshell_instanc
         ifcopenshell_clear_error();
     if (props == nullptr) { throw std::runtime_error("Parameter \"props\" must not be null"); }
     auto props_cpp = static_cast<ifcopenshell_pset_props_t*>(props);
-    auto unit_cpp = (unit != nullptr) ? &unit->value : nullptr;
+    std::optional<express::Base> unit_cpp;
+    if (unit != nullptr) { unit_cpp = unit->value; }
         ifcapi::bindings::pset_props_set_unit_for_last(props_cpp, unit_cpp);
         return true;
     } catch (const std::exception& e) {
@@ -9421,7 +10244,7 @@ bool ifcopenshell_pset_template_add_pset_template(ifcopenshell_file_t* file, con
     }
 }
 
-bool ifcopenshell_pset_template_create_from_files(const char* schema_identifier, const ifcopenshell_file_list_t* template_files, void** out_result) {
+bool ifcopenshell_pset_template_create_from_files(const char* schema_identifier, const ifcopenshell_file_list_t* template_files, ifcopenshell_pset_template_handle_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -9429,7 +10252,12 @@ bool ifcopenshell_pset_template_create_from_files(const char* schema_identifier,
     std::string schema_identifier_cpp(schema_identifier);
     if (template_files == nullptr) { throw std::runtime_error("Parameter \"template_files\" must not be null"); }
     auto template_files_cpp = to_cpp_file_list(template_files);
-        *out_result = static_cast<void*>(ifcapi::bindings::pset_template_create_from_files(schema_identifier_cpp, template_files_cpp));
+        auto result_value = ifcapi::bindings::pset_template_create_from_files(schema_identifier_cpp, template_files_cpp);
+        if (result_value == nullptr) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_pset_template_handle_t{result_value, true};
+        }
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -9440,28 +10268,12 @@ bool ifcopenshell_pset_template_create_from_files(const char* schema_identifier,
     }
 }
 
-bool ifcopenshell_pset_template_free(void* pqt) {
-    try {
-        ifcopenshell_clear_error();
-    if (pqt == nullptr) { throw std::runtime_error("Parameter \"pqt\" must not be null"); }
-    auto pqt_cpp = static_cast<ifcopenshell_pset_template_t*>(pqt);
-        ifcapi::bindings::pset_template_free(pqt_cpp);
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_pset_template_get_applicable(void* pqt, const char* ifc_class, const char* predefined_type, bool pset_only, bool qto_only, const char* schema_name, ifcopenshell_parse_instance_list_t** out_result) {
+bool ifcopenshell_pset_template_get_applicable(ifcopenshell_pset_template_handle_t* pqt, const char* ifc_class, const char* predefined_type, bool pset_only, bool qto_only, const char* schema_name, ifcopenshell_parse_instance_list_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (pqt == nullptr) { throw std::runtime_error("Parameter \"pqt\" must not be null"); }
-    auto pqt_cpp = static_cast<ifcopenshell_pset_template_t*>(pqt);
+    if (pqt == nullptr || pqt->ptr == nullptr) { throw std::runtime_error("Handle parameter \"pqt\" is invalid"); }
+    auto pqt_cpp = pqt->ptr;
     const char* ifc_class_str = ifc_class;
     const char* predefined_type_str = predefined_type;
     auto pset_only_cpp = static_cast<bool>(pset_only);
@@ -9478,12 +10290,12 @@ bool ifcopenshell_pset_template_get_applicable(void* pqt, const char* ifc_class,
     }
 }
 
-bool ifcopenshell_pset_template_get_applicable_names(void* pqt, const char* ifc_class, const char* predefined_type, bool pset_only, bool qto_only, const char* schema_name, ifcopenshell_string_list_t* out_result) {
+bool ifcopenshell_pset_template_get_applicable_names(ifcopenshell_pset_template_handle_t* pqt, const char* ifc_class, const char* predefined_type, bool pset_only, bool qto_only, const char* schema_name, ifcopenshell_string_list_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (pqt == nullptr) { throw std::runtime_error("Parameter \"pqt\" must not be null"); }
-    auto pqt_cpp = static_cast<ifcopenshell_pset_template_t*>(pqt);
+    if (pqt == nullptr || pqt->ptr == nullptr) { throw std::runtime_error("Handle parameter \"pqt\" is invalid"); }
+    auto pqt_cpp = pqt->ptr;
     const char* ifc_class_str = ifc_class;
     const char* predefined_type_str = predefined_type;
     auto pset_only_cpp = static_cast<bool>(pset_only);
@@ -9500,12 +10312,12 @@ bool ifcopenshell_pset_template_get_applicable_names(void* pqt, const char* ifc_
     }
 }
 
-bool ifcopenshell_pset_template_get_by_name(void* pqt, const char* name, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_pset_template_get_by_name(ifcopenshell_pset_template_handle_t* pqt, const char* name, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (pqt == nullptr) { throw std::runtime_error("Parameter \"pqt\" must not be null"); }
-    auto pqt_cpp = static_cast<ifcopenshell_pset_template_t*>(pqt);
+    if (pqt == nullptr || pqt->ptr == nullptr) { throw std::runtime_error("Handle parameter \"pqt\" is invalid"); }
+    auto pqt_cpp = pqt->ptr;
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
         auto result_value = ifcapi::bindings::pset_template_get_by_name(pqt_cpp, name_cpp);
@@ -9524,13 +10336,18 @@ bool ifcopenshell_pset_template_get_by_name(void* pqt, const char* name, ifcopen
     }
 }
 
-bool ifcopenshell_pset_template_get_template(const char* schema_identifier, void** out_result) {
+bool ifcopenshell_pset_template_get_template(const char* schema_identifier, ifcopenshell_pset_template_handle_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (schema_identifier == nullptr) { throw std::runtime_error("Parameter \"schema_identifier\" must not be null"); }
     std::string schema_identifier_cpp(schema_identifier);
-        *out_result = static_cast<void*>(ifcapi::bindings::pset_template_get_template(schema_identifier_cpp));
+        auto result_value = ifcapi::bindings::pset_template_get_template(schema_identifier_cpp);
+        if (result_value == nullptr) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_pset_template_handle_t{result_value, false};
+        }
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -9541,12 +10358,12 @@ bool ifcopenshell_pset_template_get_template(const char* schema_identifier, void
     }
 }
 
-bool ifcopenshell_pset_template_is_templated(void* pqt, const char* name, bool* out_result) {
+bool ifcopenshell_pset_template_is_templated(ifcopenshell_pset_template_handle_t* pqt, const char* name, bool* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (pqt == nullptr) { throw std::runtime_error("Parameter \"pqt\" must not be null"); }
-    auto pqt_cpp = static_cast<ifcopenshell_pset_template_t*>(pqt);
+    if (pqt == nullptr || pqt->ptr == nullptr) { throw std::runtime_error("Handle parameter \"pqt\" is invalid"); }
+    auto pqt_cpp = pqt->ptr;
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
         *out_result = ifcapi::bindings::pset_template_is_templated(pqt_cpp, name_cpp);
@@ -9647,20 +10464,31 @@ bool ifcopenshell_pset_unassign_pset(ifcopenshell_file_t* file, const ifcopenshe
     }
 }
 
-bool ifcopenshell_pset_unshare_pset(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* pset, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_parse_instance_list_t** out_result) {
+bool ifcopenshell_pset_unshare_pset(ifcopenshell_file_t* file, const ifcopenshell_pset_unshare_pset_options_t* options, ifcopenshell_parse_instance_list_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
-    auto products_cpp = to_cpp_instance_list(products);
-    if (pset == nullptr) { throw std::runtime_error("Handle parameter \"pset\" must not be null"); }
-    auto pset_cpp = &pset->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::pset_unshare_pset(file_cpp, products_cpp, pset_cpp, owner_history_cpp, user_cpp, application_cpp)};
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::PsetUnsharePsetOptions options_cpp{};
+    if (options->products == nullptr) { throw std::runtime_error("Options field \"products\" must not be null"); }
+    options_cpp.products = options->products->value;
+    if (options->pset == nullptr) { throw std::runtime_error("Options field \"pset\" must not be null"); }
+    options_cpp.pset = options->pset->value;
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::pset_unshare_pset(file_cpp, options_cpp)};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -9671,13 +10499,14 @@ bool ifcopenshell_pset_unshare_pset(ifcopenshell_file_t* file, const ifcopenshel
     }
 }
 
-bool ifcopenshell_register_scratch_file(const char* schema_name, size_t file_ptr, bool* out_result) {
+bool ifcopenshell_register_scratch_file(const char* schema_name, ifcopenshell_file_t* file, bool* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     const char* schema_name_str = schema_name;
-    auto file_ptr_cpp = static_cast<size_t>(file_ptr);
-        *out_result = ifcapi::bindings::register_scratch_file(schema_name, file_ptr_cpp);
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+        *out_result = ifcapi::bindings::register_scratch_file(schema_name, file_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -9730,17 +10559,31 @@ bool ifcopenshell_representation_get_prioritised_contexts(ifcopenshell_file_t* f
     }
 }
 
-bool ifcopenshell_representation_get_product_representation(ifcopenshell_instance_t* element, ifcopenshell_instance_t* context, const char* context_type, const char* subcontext, const char* target_view, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_representation_get_product_representation(ifcopenshell_instance_t* element, const ifcopenshell_representation_get_product_representation_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
     auto element_cpp = &element->value;
-    auto context_cpp = (context != nullptr) ? &context->value : nullptr;
-    const char* context_type_str = context_type;
-    const char* subcontext_str = subcontext;
-    const char* target_view_str = target_view;
-        auto result_value = ifcapi::bindings::representation_get_product_representation(element_cpp, context_cpp, context_type, subcontext, target_view);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::RepresentationGetProductRepresentationOptions options_cpp{};
+    if (options->has_context) {
+        if (options->context == nullptr) { throw std::runtime_error("Options field \"context\" must not be null"); }
+        options_cpp.context = options->context->value;
+    }
+    if (options->has_context_type) {
+        if (options->context_type == nullptr) { throw std::runtime_error("Options field \"context_type\" must not be null"); }
+        options_cpp.context_type = std::string(options->context_type);
+    }
+    if (options->has_subcontext) {
+        if (options->subcontext == nullptr) { throw std::runtime_error("Options field \"subcontext\" must not be null"); }
+        options_cpp.subcontext = std::string(options->subcontext);
+    }
+    if (options->has_target_view) {
+        if (options->target_view == nullptr) { throw std::runtime_error("Options field \"target_view\" must not be null"); }
+        options_cpp.target_view = std::string(options->target_view);
+    }
+        auto result_value = ifcapi::bindings::representation_get_product_representation(element_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -9815,18 +10658,29 @@ bool ifcopenshell_resource_edit_resource_time(ifcopenshell_file_t* file, ifcopen
     }
 }
 
-bool ifcopenshell_root_create_entity(ifcopenshell_file_t* file, const char* ifc_class, const char* predefined_type, const char* name, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_root_create_entity(ifcopenshell_file_t* file, const ifcopenshell_root_create_entity_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (ifc_class == nullptr) { throw std::runtime_error("Parameter \"ifc_class\" must not be null"); }
-    std::string ifc_class_cpp(ifc_class);
-    const char* predefined_type_str = predefined_type;
-    const char* name_str = name;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-        auto result_value = ifcapi::bindings::root_create_entity(file_cpp, ifc_class_cpp, predefined_type, name, owner_history_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::RootCreateEntityOptions options_cpp{};
+    if (options->ifc_class == nullptr) { throw std::runtime_error("Options field \"ifc_class\" must not be null"); }
+    options_cpp.ifc_class = std::string(options->ifc_class);
+    if (options->has_predefined_type) {
+        if (options->predefined_type == nullptr) { throw std::runtime_error("Options field \"predefined_type\" must not be null"); }
+        options_cpp.predefined_type = std::string(options->predefined_type);
+    }
+    if (options->has_name) {
+        if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+        options_cpp.name = std::string(options->name);
+    }
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+        auto result_value = ifcapi::bindings::root_create_entity(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -9842,16 +10696,24 @@ bool ifcopenshell_root_create_entity(ifcopenshell_file_t* file, const char* ifc_
     }
 }
 
-bool ifcopenshell_root_remove_product(ifcopenshell_file_t* file, ifcopenshell_instance_t* product, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_root_remove_product(ifcopenshell_file_t* file, ifcopenshell_instance_t* product, const ifcopenshell_root_remove_product_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (product == nullptr) { throw std::runtime_error("Handle parameter \"product\" must not be null"); }
     auto product_cpp = &product->value;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::root_remove_product(file_cpp, product_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::RootRemoveProductOptions options_cpp{};
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::root_remove_product(file_cpp, product_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -9866,7 +10728,8 @@ bool ifcopenshell_schema_reassign_class(ifcopenshell_file_t* file, ifcopenshell_
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    auto file_cpp = (file != nullptr && file->ptr != nullptr) ? file->ptr : nullptr;
+    std::optional<ifcopenshell::file*> file_cpp;
+    if (file != nullptr && file->ptr != nullptr) { file_cpp = file->ptr; }
     if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
     auto element_cpp = &element->value;
     if (new_class == nullptr) { throw std::runtime_error("Parameter \"new_class\" must not be null"); }
@@ -9896,10 +10759,15 @@ bool ifcopenshell_selector_filter_all(ifcopenshell_file_t* file, const char* que
     if (query == nullptr) { throw std::runtime_error("Parameter \"query\" must not be null"); }
     std::string query_cpp(query);
         auto result_value = ifcapi::bindings::selector_filter_all(file_cpp, query_cpp);
-        if (result_value == nullptr) {
+        if (!result_value) {
             *out_result = nullptr;
         } else {
-            *out_result = new ifcopenshell_value_t{result_value, true};
+            auto unwrapped_result = *result_value;
+            if (unwrapped_result == nullptr) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_value_t{unwrapped_result, true};
+            }
         }
         return true;
     } catch (const std::exception& e) {
@@ -9922,10 +10790,15 @@ bool ifcopenshell_selector_filter_elements(ifcopenshell_file_t* file, const char
     if (elements == nullptr) { throw std::runtime_error("Parameter \"elements\" must not be null"); }
     auto elements_cpp = to_cpp_instance_list(elements);
         auto result_value = ifcapi::bindings::selector_filter_elements(file_cpp, query_cpp, elements_cpp);
-        if (result_value == nullptr) {
+        if (!result_value) {
             *out_result = nullptr;
         } else {
-            *out_result = new ifcopenshell_value_t{result_value, true};
+            auto unwrapped_result = *result_value;
+            if (unwrapped_result == nullptr) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_value_t{unwrapped_result, true};
+            }
         }
         return true;
     } catch (const std::exception& e) {
@@ -9941,8 +10814,10 @@ bool ifcopenshell_selector_format(ifcopenshell_file_t* file, ifcopenshell_instan
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    auto file_cpp = (file != nullptr && file->ptr != nullptr) ? file->ptr : nullptr;
-    auto instance_cpp = (instance != nullptr) ? &instance->value : nullptr;
+    std::optional<ifcopenshell::file*> file_cpp;
+    if (file != nullptr && file->ptr != nullptr) { file_cpp = file->ptr; }
+    std::optional<express::Base> instance_cpp;
+    if (instance != nullptr) { instance_cpp = instance->value; }
     if (query == nullptr) { throw std::runtime_error("Parameter \"query\" must not be null"); }
     std::string query_cpp(query);
         auto result_value = ifcapi::bindings::selector_format(file_cpp, instance_cpp, query_cpp);
@@ -9966,16 +10841,22 @@ bool ifcopenshell_selector_get_element_value(ifcopenshell_file_t* file, ifcopens
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    auto file_cpp = (file != nullptr && file->ptr != nullptr) ? file->ptr : nullptr;
+    std::optional<ifcopenshell::file*> file_cpp;
+    if (file != nullptr && file->ptr != nullptr) { file_cpp = file->ptr; }
     if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
     auto element_cpp = &element->value;
     if (query == nullptr) { throw std::runtime_error("Parameter \"query\" must not be null"); }
     std::string query_cpp(query);
         auto result_value = ifcapi::bindings::selector_get_element_value(file_cpp, element_cpp, query_cpp);
-        if (result_value == nullptr) {
+        if (!result_value) {
             *out_result = nullptr;
         } else {
-            *out_result = new ifcopenshell_value_t{result_value, true};
+            auto unwrapped_result = *result_value;
+            if (unwrapped_result == nullptr) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_value_t{unwrapped_result, true};
+            }
         }
         return true;
     } catch (const std::exception& e) {
@@ -9991,7 +10872,8 @@ bool ifcopenshell_selector_keys_count(void* keys, size_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    auto keys_cpp = static_cast<ifcopenshell_selector_keys_t*>(keys);
+    std::optional<ifcopenshell_selector_keys_t*> keys_cpp;
+    if (keys != nullptr) { keys_cpp = static_cast<ifcopenshell_selector_keys_t*>(keys); }
         *out_result = static_cast<size_t>(ifcapi::bindings::selector_keys_count(keys_cpp));
         return true;
     } catch (const std::exception& e) {
@@ -10006,7 +10888,8 @@ bool ifcopenshell_selector_keys_count(void* keys, size_t* out_result) {
 bool ifcopenshell_selector_keys_free(void* keys) {
     try {
         ifcopenshell_clear_error();
-    auto keys_cpp = static_cast<ifcopenshell_selector_keys_t*>(keys);
+    std::optional<ifcopenshell_selector_keys_t*> keys_cpp;
+    if (keys != nullptr) { keys_cpp = static_cast<ifcopenshell_selector_keys_t*>(keys); }
         ifcapi::bindings::selector_keys_free(keys_cpp);
         return true;
     } catch (const std::exception& e) {
@@ -10022,7 +10905,8 @@ bool ifcopenshell_selector_keys_get(void* keys, size_t index, ifcopenshell_strin
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    auto keys_cpp = static_cast<ifcopenshell_selector_keys_t*>(keys);
+    std::optional<ifcopenshell_selector_keys_t*> keys_cpp;
+    if (keys != nullptr) { keys_cpp = static_cast<ifcopenshell_selector_keys_t*>(keys); }
     auto index_cpp = static_cast<size_t>(index);
         *out_result = make_string(ifcapi::bindings::selector_keys_get(keys_cpp, index_cpp));
         return true;
@@ -10039,7 +10923,8 @@ bool ifcopenshell_selector_keys_is_regex(void* keys, size_t index, bool* out_res
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    auto keys_cpp = static_cast<ifcopenshell_selector_keys_t*>(keys);
+    std::optional<ifcopenshell_selector_keys_t*> keys_cpp;
+    if (keys != nullptr) { keys_cpp = static_cast<ifcopenshell_selector_keys_t*>(keys); }
     auto index_cpp = static_cast<size_t>(index);
         *out_result = ifcapi::bindings::selector_keys_is_regex(keys_cpp, index_cpp);
         return true;
@@ -10056,7 +10941,8 @@ bool ifcopenshell_selector_node_child(void* node, size_t index, void** out_resul
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    auto node_cpp = static_cast<const ifcopenshell_selector_node_t*>(node);
+    std::optional<ifcopenshell_selector_node_t*> node_cpp;
+    if (node != nullptr) { node_cpp = static_cast<ifcopenshell_selector_node_t*>(node); }
     auto index_cpp = static_cast<size_t>(index);
         *out_result = static_cast<void*>(ifcapi::bindings::selector_node_child(node_cpp, index_cpp));
         return true;
@@ -10073,7 +10959,8 @@ bool ifcopenshell_selector_node_child_count(void* node, size_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    auto node_cpp = static_cast<const ifcopenshell_selector_node_t*>(node);
+    std::optional<ifcopenshell_selector_node_t*> node_cpp;
+    if (node != nullptr) { node_cpp = static_cast<ifcopenshell_selector_node_t*>(node); }
         *out_result = static_cast<size_t>(ifcapi::bindings::selector_node_child_count(node_cpp));
         return true;
     } catch (const std::exception& e) {
@@ -10088,7 +10975,8 @@ bool ifcopenshell_selector_node_child_count(void* node, size_t* out_result) {
 bool ifcopenshell_selector_node_free(void* root) {
     try {
         ifcopenshell_clear_error();
-    auto root_cpp = static_cast<ifcopenshell_selector_node_t*>(root);
+    std::optional<ifcopenshell_selector_node_t*> root_cpp;
+    if (root != nullptr) { root_cpp = static_cast<ifcopenshell_selector_node_t*>(root); }
         ifcapi::bindings::selector_node_free(root_cpp);
         return true;
     } catch (const std::exception& e) {
@@ -10104,7 +10992,8 @@ bool ifcopenshell_selector_node_kind(void* node, int32_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    auto node_cpp = static_cast<const ifcopenshell_selector_node_t*>(node);
+    std::optional<ifcopenshell_selector_node_t*> node_cpp;
+    if (node != nullptr) { node_cpp = static_cast<ifcopenshell_selector_node_t*>(node); }
         *out_result = static_cast<int32_t>(ifcapi::bindings::selector_node_kind(node_cpp));
         return true;
     } catch (const std::exception& e) {
@@ -10120,7 +11009,8 @@ bool ifcopenshell_selector_node_text(void* node, ifcopenshell_string_t* out_resu
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    auto node_cpp = static_cast<const ifcopenshell_selector_node_t*>(node);
+    std::optional<ifcopenshell_selector_node_t*> node_cpp;
+    if (node != nullptr) { node_cpp = static_cast<ifcopenshell_selector_node_t*>(node); }
         *out_result = make_string(ifcapi::bindings::selector_node_text(node_cpp));
         return true;
     } catch (const std::exception& e) {
@@ -10200,20 +11090,19 @@ bool ifcopenshell_selector_parse_keys(const char* query, void** out_result) {
     }
 }
 
-bool ifcopenshell_selector_set_element_value(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, const ifcopenshell_string_list_t* keys, const ifcopenshell_bool_list_t* regex_flags, ifcopenshell_value_t* value, const char* concat, bool* out_result) {
+bool ifcopenshell_selector_set_element_value(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, const char* query, ifcopenshell_value_t* value, const char* concat) {
     try {
         ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    auto element_cpp = (element != nullptr) ? &element->value : nullptr;
-    if (keys == nullptr) { throw std::runtime_error("Parameter \"keys\" must not be null"); }
-    auto keys_cpp = to_cpp_string_list(keys);
-    if (regex_flags == nullptr) { throw std::runtime_error("Parameter \"regex_flags\" must not be null"); }
-    auto regex_flags_cpp = to_cpp_bool_list(regex_flags);
-    auto value_cpp = (value != nullptr && value->ptr != nullptr) ? value->ptr : nullptr;
+    std::optional<express::Base> element_cpp;
+    if (element != nullptr) { element_cpp = element->value; }
+    if (query == nullptr) { throw std::runtime_error("Parameter \"query\" must not be null"); }
+    std::string query_cpp(query);
+    std::optional<ifcopenshell_selector_value_t*> value_cpp;
+    if (value != nullptr && value->ptr != nullptr) { value_cpp = value->ptr; }
     const char* concat_str = concat;
-        *out_result = ifcapi::bindings::selector_set_element_value(file_cpp, element_cpp, keys_cpp, regex_flags_cpp, value_cpp, concat);
+        ifcapi::bindings::selector_set_element_value(file_cpp, element_cpp, query_cpp, value_cpp, concat);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -10224,7 +11113,7 @@ bool ifcopenshell_selector_set_element_value(ifcopenshell_file_t* file, ifcopens
     }
 }
 
-bool ifcopenshell_sequence_add_date_time(ifcopenshell_file_t* file, const char* date_time, ifcopenshell_sequence_date_time_result_t* out_result) {
+bool ifcopenshell_sequence_add_date_time(ifcopenshell_file_t* file, const char* date_time, ifcopenshell_instance_string_variant_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -10233,9 +11122,15 @@ bool ifcopenshell_sequence_add_date_time(ifcopenshell_file_t* file, const char* 
     if (date_time == nullptr) { throw std::runtime_error("Parameter \"date_time\" must not be null"); }
     std::string date_time_cpp(date_time);
         auto result_value = ifcapi::bindings::sequence_add_date_time(file_cpp, date_time_cpp);
-        out_result->date_time = new ifcopenshell_instance_t{result_value.date_time};
-        out_result->date_time_string = make_string(result_value.date_time_string);
-        out_result->is_entity = static_cast<bool>(result_value.is_entity);
+        if (std::holds_alternative<express::Base>(result_value)) {
+                    out_result->kind = 0;
+                    out_result->value_0 = new ifcopenshell_instance_t{std::get<express::Base>(result_value)};
+                }
+        else if (std::holds_alternative<std::string>(result_value)) {
+                    out_result->kind = 1;
+                    out_result->value_1 = make_string(std::get<std::string>(result_value));
+                }
+        else { throw std::runtime_error("Unsupported variant alternative"); }
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -10246,23 +11141,51 @@ bool ifcopenshell_sequence_add_date_time(ifcopenshell_file_t* file, const char* 
     }
 }
 
-bool ifcopenshell_sequence_add_task(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_schedule, ifcopenshell_instance_t* parent_task, const char* name, const char* description, const char* identification, const char* predefined_type, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_sequence_add_task(ifcopenshell_file_t* file, const ifcopenshell_sequence_add_task_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    auto work_schedule_cpp = (work_schedule != nullptr) ? &work_schedule->value : nullptr;
-    auto parent_task_cpp = (parent_task != nullptr) ? &parent_task->value : nullptr;
-    const char* name_str = name;
-    const char* description_str = description;
-    const char* identification_str = identification;
-    if (predefined_type == nullptr) { throw std::runtime_error("Parameter \"predefined_type\" must not be null"); }
-    std::string predefined_type_cpp(predefined_type);
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::sequence_add_task(file_cpp, work_schedule_cpp, parent_task_cpp, name, description, identification, predefined_type_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SequenceAddTaskOptions options_cpp{};
+    if (options->has_work_schedule) {
+        if (options->work_schedule == nullptr) { throw std::runtime_error("Options field \"work_schedule\" must not be null"); }
+        options_cpp.work_schedule = options->work_schedule->value;
+    }
+    if (options->has_parent_task) {
+        if (options->parent_task == nullptr) { throw std::runtime_error("Options field \"parent_task\" must not be null"); }
+        options_cpp.parent_task = options->parent_task->value;
+    }
+    if (options->has_name) {
+        if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+        options_cpp.name = std::string(options->name);
+    }
+    if (options->has_description) {
+        if (options->description == nullptr) { throw std::runtime_error("Options field \"description\" must not be null"); }
+        options_cpp.description = std::string(options->description);
+    }
+    if (options->has_identification) {
+        if (options->identification == nullptr) { throw std::runtime_error("Options field \"identification\" must not be null"); }
+        options_cpp.identification = std::string(options->identification);
+    }
+    if (options->has_predefined_type) {
+        if (options->predefined_type == nullptr) { throw std::runtime_error("Options field \"predefined_type\" must not be null"); }
+        options_cpp.predefined_type = std::string(options->predefined_type);
+    }
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::sequence_add_task(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -10278,7 +11201,7 @@ bool ifcopenshell_sequence_add_task(ifcopenshell_file_t* file, ifcopenshell_inst
     }
 }
 
-bool ifcopenshell_sequence_add_task_time(ifcopenshell_file_t* file, ifcopenshell_instance_t* task, bool is_recurring, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_sequence_add_task_time(ifcopenshell_file_t* file, ifcopenshell_instance_t* task, const ifcopenshell_sequence_add_task_time_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -10286,8 +11209,12 @@ bool ifcopenshell_sequence_add_task_time(ifcopenshell_file_t* file, ifcopenshell
     auto file_cpp = file->ptr;
     if (task == nullptr) { throw std::runtime_error("Handle parameter \"task\" must not be null"); }
     auto task_cpp = &task->value;
-    auto is_recurring_cpp = static_cast<bool>(is_recurring);
-        auto result_value = ifcapi::bindings::sequence_add_task_time(file_cpp, task_cpp, is_recurring_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SequenceAddTaskTimeOptions options_cpp{};
+    if (options->has_is_recurring) {
+        options_cpp.is_recurring = options->is_recurring;
+    }
+        auto result_value = ifcapi::bindings::sequence_add_task_time(file_cpp, task_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -10303,7 +11230,7 @@ bool ifcopenshell_sequence_add_task_time(ifcopenshell_file_t* file, ifcopenshell
     }
 }
 
-bool ifcopenshell_sequence_add_time_period(ifcopenshell_file_t* file, ifcopenshell_instance_t* recurrence_pattern, const char* start_time, const char* end_time, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_sequence_add_time_period(ifcopenshell_file_t* file, ifcopenshell_instance_t* recurrence_pattern, const ifcopenshell_sequence_add_time_period_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -10311,9 +11238,17 @@ bool ifcopenshell_sequence_add_time_period(ifcopenshell_file_t* file, ifcopenshe
     auto file_cpp = file->ptr;
     if (recurrence_pattern == nullptr) { throw std::runtime_error("Handle parameter \"recurrence_pattern\" must not be null"); }
     auto recurrence_pattern_cpp = &recurrence_pattern->value;
-    const char* start_time_str = start_time;
-    const char* end_time_str = end_time;
-        auto result_value = ifcapi::bindings::sequence_add_time_period(file_cpp, recurrence_pattern_cpp, start_time, end_time);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SequenceAddTimePeriodOptions options_cpp{};
+    if (options->has_start_time) {
+        if (options->start_time == nullptr) { throw std::runtime_error("Options field \"start_time\" must not be null"); }
+        options_cpp.start_time = std::string(options->start_time);
+    }
+    if (options->has_end_time) {
+        if (options->end_time == nullptr) { throw std::runtime_error("Options field \"end_time\" must not be null"); }
+        options_cpp.end_time = std::string(options->end_time);
+    }
+        auto result_value = ifcapi::bindings::sequence_add_time_period(file_cpp, recurrence_pattern_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -10329,20 +11264,35 @@ bool ifcopenshell_sequence_add_time_period(ifcopenshell_file_t* file, ifcopenshe
     }
 }
 
-bool ifcopenshell_sequence_add_work_calendar(ifcopenshell_file_t* file, const char* name, const char* predefined_type, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_sequence_add_work_calendar(ifcopenshell_file_t* file, const ifcopenshell_sequence_add_work_calendar_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
-    std::string name_cpp(name);
-    if (predefined_type == nullptr) { throw std::runtime_error("Parameter \"predefined_type\" must not be null"); }
-    std::string predefined_type_cpp(predefined_type);
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::sequence_add_work_calendar(file_cpp, name_cpp, predefined_type_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SequenceAddWorkCalendarOptions options_cpp{};
+    if (options->has_name) {
+        if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+        options_cpp.name = std::string(options->name);
+    }
+    if (options->has_predefined_type) {
+        if (options->predefined_type == nullptr) { throw std::runtime_error("Options field \"predefined_type\" must not be null"); }
+        options_cpp.predefined_type = std::string(options->predefined_type);
+    }
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::sequence_add_work_calendar(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -10358,24 +11308,47 @@ bool ifcopenshell_sequence_add_work_calendar(ifcopenshell_file_t* file, const ch
     }
 }
 
-bool ifcopenshell_sequence_add_work_plan(ifcopenshell_file_t* file, const char* name, const char* predefined_type, const char* creation_date, const char* start_time, ifcopenshell_instance_t* creator_person, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_sequence_add_work_plan(ifcopenshell_file_t* file, const ifcopenshell_sequence_add_work_plan_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    const char* name_str = name;
-    if (predefined_type == nullptr) { throw std::runtime_error("Parameter \"predefined_type\" must not be null"); }
-    std::string predefined_type_cpp(predefined_type);
-    if (creation_date == nullptr) { throw std::runtime_error("Parameter \"creation_date\" must not be null"); }
-    std::string creation_date_cpp(creation_date);
-    if (start_time == nullptr) { throw std::runtime_error("Parameter \"start_time\" must not be null"); }
-    std::string start_time_cpp(start_time);
-    auto creator_person_cpp = (creator_person != nullptr) ? &creator_person->value : nullptr;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::sequence_add_work_plan(file_cpp, name, predefined_type_cpp, creation_date_cpp, start_time_cpp, creator_person_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SequenceAddWorkPlanOptions options_cpp{};
+    if (options->has_name) {
+        if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+        options_cpp.name = std::string(options->name);
+    }
+    if (options->has_predefined_type) {
+        if (options->predefined_type == nullptr) { throw std::runtime_error("Options field \"predefined_type\" must not be null"); }
+        options_cpp.predefined_type = std::string(options->predefined_type);
+    }
+    if (options->has_creation_date) {
+        if (options->creation_date == nullptr) { throw std::runtime_error("Options field \"creation_date\" must not be null"); }
+        options_cpp.creation_date = std::string(options->creation_date);
+    }
+    if (options->has_start_time) {
+        if (options->start_time == nullptr) { throw std::runtime_error("Options field \"start_time\" must not be null"); }
+        options_cpp.start_time = std::string(options->start_time);
+    }
+    if (options->has_creator_person) {
+        if (options->creator_person == nullptr) { throw std::runtime_error("Options field \"creator_person\" must not be null"); }
+        options_cpp.creator_person = options->creator_person->value;
+    }
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::sequence_add_work_plan(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -10391,27 +11364,55 @@ bool ifcopenshell_sequence_add_work_plan(ifcopenshell_file_t* file, const char* 
     }
 }
 
-bool ifcopenshell_sequence_add_work_schedule(ifcopenshell_file_t* file, const char* name, const char* predefined_type, const char* object_type, const char* creation_date, const char* start_time, ifcopenshell_instance_t* work_plan, ifcopenshell_instance_t* creator_person, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_sequence_add_work_schedule(ifcopenshell_file_t* file, const ifcopenshell_sequence_add_work_schedule_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
-    std::string name_cpp(name);
-    if (predefined_type == nullptr) { throw std::runtime_error("Parameter \"predefined_type\" must not be null"); }
-    std::string predefined_type_cpp(predefined_type);
-    const char* object_type_str = object_type;
-    if (creation_date == nullptr) { throw std::runtime_error("Parameter \"creation_date\" must not be null"); }
-    std::string creation_date_cpp(creation_date);
-    if (start_time == nullptr) { throw std::runtime_error("Parameter \"start_time\" must not be null"); }
-    std::string start_time_cpp(start_time);
-    auto work_plan_cpp = (work_plan != nullptr) ? &work_plan->value : nullptr;
-    auto creator_person_cpp = (creator_person != nullptr) ? &creator_person->value : nullptr;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::sequence_add_work_schedule(file_cpp, name_cpp, predefined_type_cpp, object_type, creation_date_cpp, start_time_cpp, work_plan_cpp, creator_person_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SequenceAddWorkScheduleOptions options_cpp{};
+    if (options->has_name) {
+        if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+        options_cpp.name = std::string(options->name);
+    }
+    if (options->has_predefined_type) {
+        if (options->predefined_type == nullptr) { throw std::runtime_error("Options field \"predefined_type\" must not be null"); }
+        options_cpp.predefined_type = std::string(options->predefined_type);
+    }
+    if (options->has_object_type) {
+        if (options->object_type == nullptr) { throw std::runtime_error("Options field \"object_type\" must not be null"); }
+        options_cpp.object_type = std::string(options->object_type);
+    }
+    if (options->has_creation_date) {
+        if (options->creation_date == nullptr) { throw std::runtime_error("Options field \"creation_date\" must not be null"); }
+        options_cpp.creation_date = std::string(options->creation_date);
+    }
+    if (options->has_start_time) {
+        if (options->start_time == nullptr) { throw std::runtime_error("Options field \"start_time\" must not be null"); }
+        options_cpp.start_time = std::string(options->start_time);
+    }
+    if (options->has_work_plan) {
+        if (options->work_plan == nullptr) { throw std::runtime_error("Options field \"work_plan\" must not be null"); }
+        options_cpp.work_plan = options->work_plan->value;
+    }
+    if (options->has_creator_person) {
+        if (options->creator_person == nullptr) { throw std::runtime_error("Options field \"creator_person\" must not be null"); }
+        options_cpp.creator_person = options->creator_person->value;
+    }
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::sequence_add_work_schedule(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -10453,7 +11454,7 @@ bool ifcopenshell_sequence_add_work_time(ifcopenshell_file_t* file, ifcopenshell
     }
 }
 
-bool ifcopenshell_sequence_assign_lag_time(ifcopenshell_file_t* file, ifcopenshell_instance_t* rel_sequence, const char* lag_value, const char* duration_type, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_sequence_assign_lag_time(ifcopenshell_file_t* file, ifcopenshell_instance_t* rel_sequence, const char* lag_value, const ifcopenshell_sequence_assign_lag_time_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -10463,9 +11464,13 @@ bool ifcopenshell_sequence_assign_lag_time(ifcopenshell_file_t* file, ifcopenshe
     auto rel_sequence_cpp = &rel_sequence->value;
     if (lag_value == nullptr) { throw std::runtime_error("Parameter \"lag_value\" must not be null"); }
     std::string lag_value_cpp(lag_value);
-    if (duration_type == nullptr) { throw std::runtime_error("Parameter \"duration_type\" must not be null"); }
-    std::string duration_type_cpp(duration_type);
-        auto result_value = ifcapi::bindings::sequence_assign_lag_time(file_cpp, rel_sequence_cpp, lag_value_cpp, duration_type_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SequenceAssignLagTimeOptions options_cpp{};
+    if (options->has_duration_type) {
+        if (options->duration_type == nullptr) { throw std::runtime_error("Options field \"duration_type\" must not be null"); }
+        options_cpp.duration_type = std::string(options->duration_type);
+    }
+        auto result_value = ifcapi::bindings::sequence_assign_lag_time(file_cpp, rel_sequence_cpp, lag_value_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -10481,7 +11486,7 @@ bool ifcopenshell_sequence_assign_lag_time(ifcopenshell_file_t* file, ifcopenshe
     }
 }
 
-bool ifcopenshell_sequence_assign_process(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_process, ifcopenshell_instance_t* related_object, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_sequence_assign_process(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_process, ifcopenshell_instance_t* related_object, const ifcopenshell_sequence_assign_process_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -10491,10 +11496,21 @@ bool ifcopenshell_sequence_assign_process(ifcopenshell_file_t* file, ifcopenshel
     auto relating_process_cpp = &relating_process->value;
     if (related_object == nullptr) { throw std::runtime_error("Handle parameter \"related_object\" must not be null"); }
     auto related_object_cpp = &related_object->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::sequence_assign_process(file_cpp, relating_process_cpp, related_object_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SequenceAssignProcessOptions options_cpp{};
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::sequence_assign_process(file_cpp, relating_process_cpp, related_object_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -10510,7 +11526,7 @@ bool ifcopenshell_sequence_assign_process(ifcopenshell_file_t* file, ifcopenshel
     }
 }
 
-bool ifcopenshell_sequence_assign_product(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_product, ifcopenshell_instance_t* related_object, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_sequence_assign_product(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_product, ifcopenshell_instance_t* related_object, const ifcopenshell_sequence_assign_product_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -10520,10 +11536,21 @@ bool ifcopenshell_sequence_assign_product(ifcopenshell_file_t* file, ifcopenshel
     auto relating_product_cpp = &relating_product->value;
     if (related_object == nullptr) { throw std::runtime_error("Handle parameter \"related_object\" must not be null"); }
     auto related_object_cpp = &related_object->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::sequence_assign_product(file_cpp, relating_product_cpp, related_object_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SequenceAssignProductOptions options_cpp{};
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::sequence_assign_product(file_cpp, relating_product_cpp, related_object_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -10565,7 +11592,7 @@ bool ifcopenshell_sequence_assign_recurrence_pattern(ifcopenshell_file_t* file, 
     }
 }
 
-bool ifcopenshell_sequence_assign_sequence(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_process, ifcopenshell_instance_t* related_process, const char* sequence_type, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_sequence_assign_sequence(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_process, ifcopenshell_instance_t* related_process, const ifcopenshell_sequence_assign_sequence_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -10575,12 +11602,25 @@ bool ifcopenshell_sequence_assign_sequence(ifcopenshell_file_t* file, ifcopenshe
     auto relating_process_cpp = &relating_process->value;
     if (related_process == nullptr) { throw std::runtime_error("Handle parameter \"related_process\" must not be null"); }
     auto related_process_cpp = &related_process->value;
-    if (sequence_type == nullptr) { throw std::runtime_error("Parameter \"sequence_type\" must not be null"); }
-    std::string sequence_type_cpp(sequence_type);
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::sequence_assign_sequence(file_cpp, relating_process_cpp, related_process_cpp, sequence_type_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SequenceAssignSequenceOptions options_cpp{};
+    if (options->has_sequence_type) {
+        if (options->sequence_type == nullptr) { throw std::runtime_error("Options field \"sequence_type\" must not be null"); }
+        options_cpp.sequence_type = std::string(options->sequence_type);
+    }
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::sequence_assign_sequence(file_cpp, relating_process_cpp, related_process_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -10596,7 +11636,7 @@ bool ifcopenshell_sequence_assign_sequence(ifcopenshell_file_t* file, ifcopenshe
     }
 }
 
-bool ifcopenshell_sequence_assign_work_plan(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_schedule, ifcopenshell_instance_t* work_plan, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_sequence_assign_work_plan(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_schedule, ifcopenshell_instance_t* work_plan, const ifcopenshell_sequence_assign_work_plan_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -10606,10 +11646,21 @@ bool ifcopenshell_sequence_assign_work_plan(ifcopenshell_file_t* file, ifcopensh
     auto work_schedule_cpp = &work_schedule->value;
     if (work_plan == nullptr) { throw std::runtime_error("Handle parameter \"work_plan\" must not be null"); }
     auto work_plan_cpp = &work_plan->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::sequence_assign_work_plan(file_cpp, work_schedule_cpp, work_plan_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SequenceAssignWorkPlanOptions options_cpp{};
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::sequence_assign_work_plan(file_cpp, work_schedule_cpp, work_plan_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -10661,7 +11712,7 @@ bool ifcopenshell_sequence_cascade_schedule(ifcopenshell_file_t* file, ifcopensh
     }
 }
 
-bool ifcopenshell_sequence_copy_work_schedule(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_schedule, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_sequence_copy_work_schedule(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_schedule, const ifcopenshell_sequence_copy_work_schedule_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -10669,10 +11720,21 @@ bool ifcopenshell_sequence_copy_work_schedule(ifcopenshell_file_t* file, ifcopen
     auto file_cpp = file->ptr;
     if (work_schedule == nullptr) { throw std::runtime_error("Handle parameter \"work_schedule\" must not be null"); }
     auto work_schedule_cpp = &work_schedule->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::sequence_copy_work_schedule(file_cpp, work_schedule_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SequenceCopyWorkScheduleOptions options_cpp{};
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::sequence_copy_work_schedule(file_cpp, work_schedule_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -10688,18 +11750,32 @@ bool ifcopenshell_sequence_copy_work_schedule(ifcopenshell_file_t* file, ifcopen
     }
 }
 
-bool ifcopenshell_sequence_create_baseline(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_schedule, const char* name, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_sequence_create_baseline(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_schedule, const ifcopenshell_sequence_create_baseline_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (work_schedule == nullptr) { throw std::runtime_error("Handle parameter \"work_schedule\" must not be null"); }
     auto work_schedule_cpp = &work_schedule->value;
-    const char* name_str = name;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::sequence_create_baseline(file_cpp, work_schedule_cpp, name, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SequenceCreateBaselineOptions options_cpp{};
+    if (options->has_name) {
+        if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+        options_cpp.name = std::string(options->name);
+    }
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::sequence_create_baseline(file_cpp, work_schedule_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -10710,7 +11786,7 @@ bool ifcopenshell_sequence_create_baseline(ifcopenshell_file_t* file, ifcopenshe
     }
 }
 
-bool ifcopenshell_sequence_duplicate_task(ifcopenshell_file_t* file, ifcopenshell_instance_t* task, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_sequence_duplicate_task_result_t* out_result) {
+bool ifcopenshell_sequence_duplicate_task(ifcopenshell_file_t* file, ifcopenshell_instance_t* task, const ifcopenshell_sequence_duplicate_task_options_t* options, ifcopenshell_sequence_duplicate_task_result_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -10718,10 +11794,21 @@ bool ifcopenshell_sequence_duplicate_task(ifcopenshell_file_t* file, ifcopenshel
     auto file_cpp = file->ptr;
     if (task == nullptr) { throw std::runtime_error("Handle parameter \"task\" must not be null"); }
     auto task_cpp = &task->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::sequence_duplicate_task(file_cpp, task_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SequenceDuplicateTaskOptions options_cpp{};
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::sequence_duplicate_task(file_cpp, task_cpp, options_cpp);
         out_result->current = new ifcopenshell_parse_instance_list_t{result_value.current};
         out_result->duplicate = new ifcopenshell_parse_instance_list_t{result_value.duplicate};
         return true;
@@ -10916,16 +12003,24 @@ bool ifcopenshell_sequence_recalculate_schedule(ifcopenshell_file_t* file, ifcop
     }
 }
 
-bool ifcopenshell_sequence_remove_task(ifcopenshell_file_t* file, ifcopenshell_instance_t* task, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_sequence_remove_task(ifcopenshell_file_t* file, ifcopenshell_instance_t* task, const ifcopenshell_sequence_remove_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (task == nullptr) { throw std::runtime_error("Handle parameter \"task\" must not be null"); }
     auto task_cpp = &task->value;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::sequence_remove_task(file_cpp, task_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SequenceRemoveOptions options_cpp{};
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::sequence_remove_task(file_cpp, task_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -10954,16 +12049,24 @@ bool ifcopenshell_sequence_remove_time_period(ifcopenshell_file_t* file, ifcopen
     }
 }
 
-bool ifcopenshell_sequence_remove_work_calendar(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_calendar, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_sequence_remove_work_calendar(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_calendar, const ifcopenshell_sequence_remove_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (work_calendar == nullptr) { throw std::runtime_error("Handle parameter \"work_calendar\" must not be null"); }
     auto work_calendar_cpp = &work_calendar->value;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::sequence_remove_work_calendar(file_cpp, work_calendar_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SequenceRemoveOptions options_cpp{};
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::sequence_remove_work_calendar(file_cpp, work_calendar_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -10974,16 +12077,24 @@ bool ifcopenshell_sequence_remove_work_calendar(ifcopenshell_file_t* file, ifcop
     }
 }
 
-bool ifcopenshell_sequence_remove_work_plan(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_plan, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_sequence_remove_work_plan(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_plan, const ifcopenshell_sequence_remove_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (work_plan == nullptr) { throw std::runtime_error("Handle parameter \"work_plan\" must not be null"); }
     auto work_plan_cpp = &work_plan->value;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::sequence_remove_work_plan(file_cpp, work_plan_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SequenceRemoveOptions options_cpp{};
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::sequence_remove_work_plan(file_cpp, work_plan_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -10994,16 +12105,24 @@ bool ifcopenshell_sequence_remove_work_plan(ifcopenshell_file_t* file, ifcopensh
     }
 }
 
-bool ifcopenshell_sequence_remove_work_schedule(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_schedule, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_sequence_remove_work_schedule(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_schedule, const ifcopenshell_sequence_remove_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (work_schedule == nullptr) { throw std::runtime_error("Handle parameter \"work_schedule\" must not be null"); }
     auto work_schedule_cpp = &work_schedule->value;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::sequence_remove_work_schedule(file_cpp, work_schedule_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SequenceRemoveOptions options_cpp{};
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::sequence_remove_work_schedule(file_cpp, work_schedule_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -11050,7 +12169,7 @@ bool ifcopenshell_sequence_unassign_lag_time(ifcopenshell_file_t* file, ifcopens
     }
 }
 
-bool ifcopenshell_sequence_unassign_process(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_process, ifcopenshell_instance_t* related_object, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_sequence_unassign_process(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_process, ifcopenshell_instance_t* related_object, const ifcopenshell_sequence_remove_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -11060,9 +12179,17 @@ bool ifcopenshell_sequence_unassign_process(ifcopenshell_file_t* file, ifcopensh
     auto relating_process_cpp = &relating_process->value;
     if (related_object == nullptr) { throw std::runtime_error("Handle parameter \"related_object\" must not be null"); }
     auto related_object_cpp = &related_object->value;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::sequence_unassign_process(file_cpp, relating_process_cpp, related_object_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SequenceRemoveOptions options_cpp{};
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::sequence_unassign_process(file_cpp, relating_process_cpp, related_object_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -11078,7 +12205,7 @@ bool ifcopenshell_sequence_unassign_process(ifcopenshell_file_t* file, ifcopensh
     }
 }
 
-bool ifcopenshell_sequence_unassign_product(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_product, ifcopenshell_instance_t* related_object, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_sequence_unassign_product(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_product, ifcopenshell_instance_t* related_object, const ifcopenshell_sequence_remove_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -11088,9 +12215,17 @@ bool ifcopenshell_sequence_unassign_product(ifcopenshell_file_t* file, ifcopensh
     auto relating_product_cpp = &relating_product->value;
     if (related_object == nullptr) { throw std::runtime_error("Handle parameter \"related_object\" must not be null"); }
     auto related_object_cpp = &related_object->value;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::sequence_unassign_product(file_cpp, relating_product_cpp, related_object_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SequenceRemoveOptions options_cpp{};
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::sequence_unassign_product(file_cpp, relating_product_cpp, related_object_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -11144,18 +12279,21 @@ bool ifcopenshell_sequence_unassign_sequence(ifcopenshell_file_t* file, ifcopens
     }
 }
 
-bool ifcopenshell_shape_builder_axis2_placement_2d(ifcopenshell_file_t* file, const ifcopenshell_double_list_t* position, const ifcopenshell_double_list_t* x_direction, bool has_x_direction, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_shape_builder_axis2_placement_2d(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_axis2_placement2d_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (position == nullptr) { throw std::runtime_error("Parameter \"position\" must not be null"); }
-    auto position_cpp = to_cpp_double_list(position);
-    if (x_direction == nullptr) { throw std::runtime_error("Parameter \"x_direction\" must not be null"); }
-    auto x_direction_cpp = to_cpp_double_list(x_direction);
-    auto has_x_direction_cpp = static_cast<bool>(has_x_direction);
-        auto result_value = ifcapi::bindings::shape_builder_axis2_placement_2d(file_cpp, position_cpp, x_direction_cpp, has_x_direction_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ShapeBuilderAxis2Placement2dOptions options_cpp{};
+    if (options->position == nullptr) { throw std::runtime_error("Options field \"position\" must not be null"); }
+    options_cpp.position = to_cpp_double_list(options->position);
+    if (options->has_x_direction) {
+        if (options->x_direction == nullptr) { throw std::runtime_error("Options field \"x_direction\" must not be null"); }
+        options_cpp.x_direction = to_cpp_double_list(options->x_direction);
+    }
+        auto result_value = ifcapi::bindings::shape_builder_axis2_placement_2d(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -11171,19 +12309,21 @@ bool ifcopenshell_shape_builder_axis2_placement_2d(ifcopenshell_file_t* file, co
     }
 }
 
-bool ifcopenshell_shape_builder_axis2_placement_3d(ifcopenshell_file_t* file, const ifcopenshell_double_list_t* position, const ifcopenshell_double_list_t* z_axis, const ifcopenshell_double_list_t* x_axis, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_shape_builder_axis2_placement_3d(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_axis2_placement3d_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (position == nullptr) { throw std::runtime_error("Parameter \"position\" must not be null"); }
-    auto position_cpp = to_cpp_double_list(position);
-    if (z_axis == nullptr) { throw std::runtime_error("Parameter \"z_axis\" must not be null"); }
-    auto z_axis_cpp = to_cpp_double_list(z_axis);
-    if (x_axis == nullptr) { throw std::runtime_error("Parameter \"x_axis\" must not be null"); }
-    auto x_axis_cpp = to_cpp_double_list(x_axis);
-        auto result_value = ifcapi::bindings::shape_builder_axis2_placement_3d(file_cpp, position_cpp, z_axis_cpp, x_axis_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ShapeBuilderAxis2Placement3dOptions options_cpp{};
+    if (options->position == nullptr) { throw std::runtime_error("Options field \"position\" must not be null"); }
+    options_cpp.position = to_cpp_double_list(options->position);
+    if (options->z_axis == nullptr) { throw std::runtime_error("Options field \"z_axis\" must not be null"); }
+    options_cpp.z_axis = to_cpp_double_list(options->z_axis);
+    if (options->x_axis == nullptr) { throw std::runtime_error("Options field \"x_axis\" must not be null"); }
+    options_cpp.x_axis = to_cpp_double_list(options->x_axis);
+        auto result_value = ifcapi::bindings::shape_builder_axis2_placement_3d(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -11199,18 +12339,20 @@ bool ifcopenshell_shape_builder_axis2_placement_3d(ifcopenshell_file_t* file, co
     }
 }
 
-bool ifcopenshell_shape_builder_block(ifcopenshell_file_t* file, const ifcopenshell_double_list_t* position, double x_length, double y_length, double z_length, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_shape_builder_block(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_block_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (position == nullptr) { throw std::runtime_error("Parameter \"position\" must not be null"); }
-    auto position_cpp = to_cpp_double_list(position);
-    auto x_length_cpp = static_cast<double>(x_length);
-    auto y_length_cpp = static_cast<double>(y_length);
-    auto z_length_cpp = static_cast<double>(z_length);
-        auto result_value = ifcapi::bindings::shape_builder_block(file_cpp, position_cpp, x_length_cpp, y_length_cpp, z_length_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ShapeBuilderBlockOptions options_cpp{};
+    if (options->position == nullptr) { throw std::runtime_error("Options field \"position\" must not be null"); }
+    options_cpp.position = to_cpp_double_list(options->position);
+    options_cpp.x_length = static_cast<double>(options->x_length);
+    options_cpp.y_length = static_cast<double>(options->y_length);
+    options_cpp.z_length = static_cast<double>(options->z_length);
+        auto result_value = ifcapi::bindings::shape_builder_block(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -11325,23 +12467,27 @@ bool ifcopenshell_shape_builder_edge(ifcopenshell_file_t* file, const ifcopenshe
     }
 }
 
-bool ifcopenshell_shape_builder_ellipse_curve(ifcopenshell_file_t* file, double x_axis_radius, double y_axis_radius, const ifcopenshell_double_list_t* position, const ifcopenshell_double_list_list_t* trim_points, const ifcopenshell_double_list_t* ref_x_direction, const ifcopenshell_int32_list_t* trim_points_mask, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_shape_builder_ellipse_curve(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_ellipse_curve_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    auto x_axis_radius_cpp = static_cast<double>(x_axis_radius);
-    auto y_axis_radius_cpp = static_cast<double>(y_axis_radius);
-    if (position == nullptr) { throw std::runtime_error("Parameter \"position\" must not be null"); }
-    auto position_cpp = to_cpp_double_list(position);
-    if (trim_points == nullptr) { throw std::runtime_error("Parameter \"trim_points\" must not be null"); }
-    auto trim_points_cpp = to_cpp_double_list_list(trim_points);
-    if (ref_x_direction == nullptr) { throw std::runtime_error("Parameter \"ref_x_direction\" must not be null"); }
-    auto ref_x_direction_cpp = to_cpp_double_list(ref_x_direction);
-    if (trim_points_mask == nullptr) { throw std::runtime_error("Parameter \"trim_points_mask\" must not be null"); }
-    auto trim_points_mask_cpp = to_cpp_int32_list(trim_points_mask);
-        auto result_value = ifcapi::bindings::shape_builder_ellipse_curve(file_cpp, x_axis_radius_cpp, y_axis_radius_cpp, position_cpp, trim_points_cpp, ref_x_direction_cpp, trim_points_mask_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ShapeBuilderEllipseCurveOptions options_cpp{};
+    options_cpp.x_axis_radius = static_cast<double>(options->x_axis_radius);
+    options_cpp.y_axis_radius = static_cast<double>(options->y_axis_radius);
+    if (options->position == nullptr) { throw std::runtime_error("Options field \"position\" must not be null"); }
+    options_cpp.position = to_cpp_double_list(options->position);
+    if (options->trim_points == nullptr) { throw std::runtime_error("Options field \"trim_points\" must not be null"); }
+    options_cpp.trim_points = to_cpp_double_list_list(options->trim_points);
+    if (options->has_ref_x_direction) {
+        if (options->ref_x_direction == nullptr) { throw std::runtime_error("Options field \"ref_x_direction\" must not be null"); }
+        options_cpp.ref_x_direction = to_cpp_double_list(options->ref_x_direction);
+    }
+    if (options->trim_points_mask == nullptr) { throw std::runtime_error("Options field \"trim_points_mask\" must not be null"); }
+    options_cpp.trim_points_mask = to_cpp_int32_list(options->trim_points_mask);
+        auto result_value = ifcapi::bindings::shape_builder_ellipse_curve(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -11357,27 +12503,30 @@ bool ifcopenshell_shape_builder_ellipse_curve(ifcopenshell_file_t* file, double 
     }
 }
 
-bool ifcopenshell_shape_builder_extrude(ifcopenshell_file_t* file, ifcopenshell_instance_t* profile_or_curve, double magnitude, const ifcopenshell_double_list_t* position, const ifcopenshell_double_list_t* extrusion_vector, const ifcopenshell_double_list_t* position_z_axis, const ifcopenshell_double_list_t* position_x_axis, const ifcopenshell_double_list_t* position_y_axis, bool has_position_y_axis, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_shape_builder_extrude(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_extrude_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (profile_or_curve == nullptr) { throw std::runtime_error("Handle parameter \"profile_or_curve\" must not be null"); }
-    auto profile_or_curve_cpp = &profile_or_curve->value;
-    auto magnitude_cpp = static_cast<double>(magnitude);
-    if (position == nullptr) { throw std::runtime_error("Parameter \"position\" must not be null"); }
-    auto position_cpp = to_cpp_double_list(position);
-    if (extrusion_vector == nullptr) { throw std::runtime_error("Parameter \"extrusion_vector\" must not be null"); }
-    auto extrusion_vector_cpp = to_cpp_double_list(extrusion_vector);
-    if (position_z_axis == nullptr) { throw std::runtime_error("Parameter \"position_z_axis\" must not be null"); }
-    auto position_z_axis_cpp = to_cpp_double_list(position_z_axis);
-    if (position_x_axis == nullptr) { throw std::runtime_error("Parameter \"position_x_axis\" must not be null"); }
-    auto position_x_axis_cpp = to_cpp_double_list(position_x_axis);
-    if (position_y_axis == nullptr) { throw std::runtime_error("Parameter \"position_y_axis\" must not be null"); }
-    auto position_y_axis_cpp = to_cpp_double_list(position_y_axis);
-    auto has_position_y_axis_cpp = static_cast<bool>(has_position_y_axis);
-        auto result_value = ifcapi::bindings::shape_builder_extrude(file_cpp, profile_or_curve_cpp, magnitude_cpp, position_cpp, extrusion_vector_cpp, position_z_axis_cpp, position_x_axis_cpp, position_y_axis_cpp, has_position_y_axis_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ShapeBuilderExtrudeOptions options_cpp{};
+    if (options->profile_or_curve == nullptr) { throw std::runtime_error("Options field \"profile_or_curve\" must not be null"); }
+    options_cpp.profile_or_curve = options->profile_or_curve->value;
+    options_cpp.magnitude = static_cast<double>(options->magnitude);
+    if (options->position == nullptr) { throw std::runtime_error("Options field \"position\" must not be null"); }
+    options_cpp.position = to_cpp_double_list(options->position);
+    if (options->extrusion_vector == nullptr) { throw std::runtime_error("Options field \"extrusion_vector\" must not be null"); }
+    options_cpp.extrusion_vector = to_cpp_double_list(options->extrusion_vector);
+    if (options->position_z_axis == nullptr) { throw std::runtime_error("Options field \"position_z_axis\" must not be null"); }
+    options_cpp.position_z_axis = to_cpp_double_list(options->position_z_axis);
+    if (options->position_x_axis == nullptr) { throw std::runtime_error("Options field \"position_x_axis\" must not be null"); }
+    options_cpp.position_x_axis = to_cpp_double_list(options->position_x_axis);
+    if (options->has_position_y_axis) {
+        if (options->position_y_axis == nullptr) { throw std::runtime_error("Options field \"position_y_axis\" must not be null"); }
+        options_cpp.position_y_axis = to_cpp_double_list(options->position_y_axis);
+    }
+        auto result_value = ifcapi::bindings::shape_builder_extrude(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -11460,16 +12609,18 @@ bool ifcopenshell_shape_builder_get_polyline_coords(ifcopenshell_instance_t* pol
     }
 }
 
-bool ifcopenshell_shape_builder_half_space_solid(ifcopenshell_file_t* file, ifcopenshell_instance_t* plane, bool agreement_flag, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_shape_builder_half_space_solid(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_half_space_solid_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (plane == nullptr) { throw std::runtime_error("Handle parameter \"plane\" must not be null"); }
-    auto plane_cpp = &plane->value;
-    auto agreement_flag_cpp = static_cast<bool>(agreement_flag);
-        auto result_value = ifcapi::bindings::shape_builder_half_space_solid(file_cpp, plane_cpp, agreement_flag_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ShapeBuilderHalfSpaceSolidOptions options_cpp{};
+    if (options->plane == nullptr) { throw std::runtime_error("Options field \"plane\" must not be null"); }
+    options_cpp.plane = options->plane->value;
+    options_cpp.agreement_flag = static_cast<bool>(options->agreement_flag);
+        auto result_value = ifcapi::bindings::shape_builder_half_space_solid(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -11511,22 +12662,24 @@ bool ifcopenshell_shape_builder_indexed_polycurve_2d(ifcopenshell_file_t* file, 
     }
 }
 
-bool ifcopenshell_shape_builder_mep_bend_shape(ifcopenshell_file_t* file, ifcopenshell_instance_t* segment, double start_length, double end_length, double angle, double radius, const ifcopenshell_double_list_t* bend_vector, bool flip_z_axis, ifcopenshell_shape_builder_mep_bend_shape_result_t* out_result) {
+bool ifcopenshell_shape_builder_mep_bend_shape(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_mep_bend_shape_options_t* options, ifcopenshell_shape_builder_mep_bend_shape_result_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (segment == nullptr) { throw std::runtime_error("Handle parameter \"segment\" must not be null"); }
-    auto segment_cpp = &segment->value;
-    auto start_length_cpp = static_cast<double>(start_length);
-    auto end_length_cpp = static_cast<double>(end_length);
-    auto angle_cpp = static_cast<double>(angle);
-    auto radius_cpp = static_cast<double>(radius);
-    if (bend_vector == nullptr) { throw std::runtime_error("Parameter \"bend_vector\" must not be null"); }
-    auto bend_vector_cpp = to_cpp_double_list(bend_vector);
-    auto flip_z_axis_cpp = static_cast<bool>(flip_z_axis);
-        auto result_value = ifcapi::bindings::shape_builder_mep_bend_shape(file_cpp, segment_cpp, start_length_cpp, end_length_cpp, angle_cpp, radius_cpp, bend_vector_cpp, flip_z_axis_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ShapeBuilderMepBendShapeOptions options_cpp{};
+    if (options->segment == nullptr) { throw std::runtime_error("Options field \"segment\" must not be null"); }
+    options_cpp.segment = options->segment->value;
+    options_cpp.start_length = static_cast<double>(options->start_length);
+    options_cpp.end_length = static_cast<double>(options->end_length);
+    options_cpp.angle = static_cast<double>(options->angle);
+    options_cpp.radius = static_cast<double>(options->radius);
+    if (options->bend_vector == nullptr) { throw std::runtime_error("Options field \"bend_vector\" must not be null"); }
+    options_cpp.bend_vector = to_cpp_double_list(options->bend_vector);
+    options_cpp.flip_z_axis = static_cast<bool>(options->flip_z_axis);
+        auto result_value = ifcapi::bindings::shape_builder_mep_bend_shape(file_cpp, options_cpp);
         out_result->representation = new ifcopenshell_instance_t{result_value.representation};
         out_result->start_length = static_cast<double>(result_value.start_length);
         out_result->end_length = static_cast<double>(result_value.end_length);
@@ -11546,25 +12699,30 @@ bool ifcopenshell_shape_builder_mep_bend_shape(ifcopenshell_file_t* file, ifcope
     }
 }
 
-bool ifcopenshell_shape_builder_mep_transition_calculate(const ifcopenshell_double_list_t* start_half_dim, const ifcopenshell_double_list_t* end_half_dim, const ifcopenshell_double_list_t* offset, const ifcopenshell_double_list_t* diff, bool has_diff, bool end_profile, double length, bool has_length, double angle, bool has_angle, double* out_result) {
+bool ifcopenshell_shape_builder_mep_transition_calculate(const ifcopenshell_shape_builder_mep_transition_calculate_options_t* options, double* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (start_half_dim == nullptr) { throw std::runtime_error("Parameter \"start_half_dim\" must not be null"); }
-    auto start_half_dim_cpp = to_cpp_double_list(start_half_dim);
-    if (end_half_dim == nullptr) { throw std::runtime_error("Parameter \"end_half_dim\" must not be null"); }
-    auto end_half_dim_cpp = to_cpp_double_list(end_half_dim);
-    if (offset == nullptr) { throw std::runtime_error("Parameter \"offset\" must not be null"); }
-    auto offset_cpp = to_cpp_double_list(offset);
-    if (diff == nullptr) { throw std::runtime_error("Parameter \"diff\" must not be null"); }
-    auto diff_cpp = to_cpp_double_list(diff);
-    auto has_diff_cpp = static_cast<bool>(has_diff);
-    auto end_profile_cpp = static_cast<bool>(end_profile);
-    auto length_cpp = static_cast<double>(length);
-    auto has_length_cpp = static_cast<bool>(has_length);
-    auto angle_cpp = static_cast<double>(angle);
-    auto has_angle_cpp = static_cast<bool>(has_angle);
-        *out_result = static_cast<double>(ifcapi::bindings::shape_builder_mep_transition_calculate(start_half_dim_cpp, end_half_dim_cpp, offset_cpp, diff_cpp, has_diff_cpp, end_profile_cpp, length_cpp, has_length_cpp, angle_cpp, has_angle_cpp));
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ShapeBuilderMepTransitionCalculateOptions options_cpp{};
+    if (options->start_half_dim == nullptr) { throw std::runtime_error("Options field \"start_half_dim\" must not be null"); }
+    options_cpp.start_half_dim = to_cpp_double_list(options->start_half_dim);
+    if (options->end_half_dim == nullptr) { throw std::runtime_error("Options field \"end_half_dim\" must not be null"); }
+    options_cpp.end_half_dim = to_cpp_double_list(options->end_half_dim);
+    if (options->offset == nullptr) { throw std::runtime_error("Options field \"offset\" must not be null"); }
+    options_cpp.offset = to_cpp_double_list(options->offset);
+    if (options->has_diff) {
+        if (options->diff == nullptr) { throw std::runtime_error("Options field \"diff\" must not be null"); }
+        options_cpp.diff = to_cpp_double_list(options->diff);
+    }
+    options_cpp.end_profile = static_cast<bool>(options->end_profile);
+    if (options->has_length) {
+        options_cpp.length = options->length;
+    }
+    if (options->has_angle) {
+        options_cpp.angle = options->angle;
+    }
+        *out_result = static_cast<double>(ifcapi::bindings::shape_builder_mep_transition_calculate(options_cpp));
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -11575,18 +12733,20 @@ bool ifcopenshell_shape_builder_mep_transition_calculate(const ifcopenshell_doub
     }
 }
 
-bool ifcopenshell_shape_builder_mep_transition_length(const ifcopenshell_double_list_t* start_half_dim, const ifcopenshell_double_list_t* end_half_dim, double angle, const ifcopenshell_double_list_t* profile_offset, double* out_result) {
+bool ifcopenshell_shape_builder_mep_transition_length(const ifcopenshell_shape_builder_mep_transition_length_options_t* options, double* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (start_half_dim == nullptr) { throw std::runtime_error("Parameter \"start_half_dim\" must not be null"); }
-    auto start_half_dim_cpp = to_cpp_double_list(start_half_dim);
-    if (end_half_dim == nullptr) { throw std::runtime_error("Parameter \"end_half_dim\" must not be null"); }
-    auto end_half_dim_cpp = to_cpp_double_list(end_half_dim);
-    auto angle_cpp = static_cast<double>(angle);
-    if (profile_offset == nullptr) { throw std::runtime_error("Parameter \"profile_offset\" must not be null"); }
-    auto profile_offset_cpp = to_cpp_double_list(profile_offset);
-        *out_result = static_cast<double>(ifcapi::bindings::shape_builder_mep_transition_length(start_half_dim_cpp, end_half_dim_cpp, angle_cpp, profile_offset_cpp));
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ShapeBuilderMepTransitionLengthOptions options_cpp{};
+    if (options->start_half_dim == nullptr) { throw std::runtime_error("Options field \"start_half_dim\" must not be null"); }
+    options_cpp.start_half_dim = to_cpp_double_list(options->start_half_dim);
+    if (options->end_half_dim == nullptr) { throw std::runtime_error("Options field \"end_half_dim\" must not be null"); }
+    options_cpp.end_half_dim = to_cpp_double_list(options->end_half_dim);
+    options_cpp.angle = static_cast<double>(options->angle);
+    if (options->profile_offset == nullptr) { throw std::runtime_error("Options field \"profile_offset\" must not be null"); }
+    options_cpp.profile_offset = to_cpp_double_list(options->profile_offset);
+        *out_result = static_cast<double>(ifcapi::bindings::shape_builder_mep_transition_length(options_cpp));
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -11597,30 +12757,34 @@ bool ifcopenshell_shape_builder_mep_transition_length(const ifcopenshell_double_
     }
 }
 
-bool ifcopenshell_shape_builder_mep_transition_shape(ifcopenshell_file_t* file, ifcopenshell_instance_t* start_segment, ifcopenshell_instance_t* end_segment, double start_length, double end_length, double angle, const ifcopenshell_double_list_t* profile_offset, ifcopenshell_shape_builder_mep_transition_shape_result_t* out_result) {
+bool ifcopenshell_shape_builder_mep_transition_shape(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_mep_transition_shape_options_t* options, ifcopenshell_optional_shape_builder_mep_transition_shape_result_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (start_segment == nullptr) { throw std::runtime_error("Handle parameter \"start_segment\" must not be null"); }
-    auto start_segment_cpp = &start_segment->value;
-    if (end_segment == nullptr) { throw std::runtime_error("Handle parameter \"end_segment\" must not be null"); }
-    auto end_segment_cpp = &end_segment->value;
-    auto start_length_cpp = static_cast<double>(start_length);
-    auto end_length_cpp = static_cast<double>(end_length);
-    auto angle_cpp = static_cast<double>(angle);
-    if (profile_offset == nullptr) { throw std::runtime_error("Parameter \"profile_offset\" must not be null"); }
-    auto profile_offset_cpp = to_cpp_double_list(profile_offset);
-        auto result_value = ifcapi::bindings::shape_builder_mep_transition_shape(file_cpp, start_segment_cpp, end_segment_cpp, start_length_cpp, end_length_cpp, angle_cpp, profile_offset_cpp);
-        out_result->representation = new ifcopenshell_instance_t{result_value.representation};
-        out_result->has_result = static_cast<bool>(result_value.has_result);
-        out_result->start_length = static_cast<double>(result_value.start_length);
-        out_result->end_length = static_cast<double>(result_value.end_length);
-        out_result->angle = static_cast<double>(result_value.angle);
-        out_result->profile_offset = make_double_list(result_value.profile_offset);
-        out_result->transition_length = static_cast<double>(result_value.transition_length);
-        out_result->full_transition_length = static_cast<double>(result_value.full_transition_length);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ShapeBuilderMepTransitionShapeOptions options_cpp{};
+    if (options->start_segment == nullptr) { throw std::runtime_error("Options field \"start_segment\" must not be null"); }
+    options_cpp.start_segment = options->start_segment->value;
+    if (options->end_segment == nullptr) { throw std::runtime_error("Options field \"end_segment\" must not be null"); }
+    options_cpp.end_segment = options->end_segment->value;
+    options_cpp.start_length = static_cast<double>(options->start_length);
+    options_cpp.end_length = static_cast<double>(options->end_length);
+    options_cpp.angle = static_cast<double>(options->angle);
+    if (options->profile_offset == nullptr) { throw std::runtime_error("Options field \"profile_offset\" must not be null"); }
+    options_cpp.profile_offset = to_cpp_double_list(options->profile_offset);
+        auto result_value = ifcapi::bindings::shape_builder_mep_transition_shape(file_cpp, options_cpp);
+        out_result->has_value = static_cast<bool>(result_value);
+        if (result_value) {
+            out_result->value.representation = new ifcopenshell_instance_t{(*result_value).representation};
+            out_result->value.start_length = static_cast<double>((*result_value).start_length);
+            out_result->value.end_length = static_cast<double>((*result_value).end_length);
+            out_result->value.angle = static_cast<double>((*result_value).angle);
+            out_result->value.profile_offset = make_double_list((*result_value).profile_offset);
+            out_result->value.transition_length = static_cast<double>((*result_value).transition_length);
+            out_result->value.full_transition_length = static_cast<double>((*result_value).full_transition_length);
+        }
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -11657,22 +12821,24 @@ bool ifcopenshell_shape_builder_mesh(ifcopenshell_file_t* file, const ifcopenshe
     }
 }
 
-bool ifcopenshell_shape_builder_mirror(ifcopenshell_file_t* file, ifcopenshell_instance_t* item, const ifcopenshell_double_list_t* mirror_axes, const ifcopenshell_double_list_t* mirror_point, bool create_copy, const ifcopenshell_double_list_t* placement_matrix, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_shape_builder_mirror(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_mirror_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (item == nullptr) { throw std::runtime_error("Handle parameter \"item\" must not be null"); }
-    auto item_cpp = &item->value;
-    if (mirror_axes == nullptr) { throw std::runtime_error("Parameter \"mirror_axes\" must not be null"); }
-    auto mirror_axes_cpp = to_cpp_double_list(mirror_axes);
-    if (mirror_point == nullptr) { throw std::runtime_error("Parameter \"mirror_point\" must not be null"); }
-    auto mirror_point_cpp = to_cpp_double_list(mirror_point);
-    auto create_copy_cpp = static_cast<bool>(create_copy);
-    if (placement_matrix == nullptr) { throw std::runtime_error("Parameter \"placement_matrix\" must not be null"); }
-    auto placement_matrix_cpp = to_cpp_double_list(placement_matrix);
-        auto result_value = ifcapi::bindings::shape_builder_mirror(file_cpp, item_cpp, mirror_axes_cpp, mirror_point_cpp, create_copy_cpp, placement_matrix_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ShapeBuilderMirrorOptions options_cpp{};
+    if (options->item == nullptr) { throw std::runtime_error("Options field \"item\" must not be null"); }
+    options_cpp.item = options->item->value;
+    if (options->mirror_axes == nullptr) { throw std::runtime_error("Options field \"mirror_axes\" must not be null"); }
+    options_cpp.mirror_axes = to_cpp_double_list(options->mirror_axes);
+    if (options->mirror_point == nullptr) { throw std::runtime_error("Options field \"mirror_point\" must not be null"); }
+    options_cpp.mirror_point = to_cpp_double_list(options->mirror_point);
+    options_cpp.create_copy = static_cast<bool>(options->create_copy);
+    if (options->placement_matrix == nullptr) { throw std::runtime_error("Options field \"placement_matrix\" must not be null"); }
+    options_cpp.placement_matrix = to_cpp_double_list(options->placement_matrix);
+        auto result_value = ifcapi::bindings::shape_builder_mirror(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -11740,21 +12906,26 @@ bool ifcopenshell_shape_builder_polygonal_face_set(ifcopenshell_file_t* file, co
     }
 }
 
-bool ifcopenshell_shape_builder_polyline(ifcopenshell_file_t* file, const ifcopenshell_double_list_list_t* points, bool closed, const ifcopenshell_double_list_t* position_offset, bool has_position_offset, const ifcopenshell_int32_list_t* arc_points, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_shape_builder_polyline(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_polyline_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (points == nullptr) { throw std::runtime_error("Parameter \"points\" must not be null"); }
-    auto points_cpp = to_cpp_double_list_list(points);
-    auto closed_cpp = static_cast<bool>(closed);
-    if (position_offset == nullptr) { throw std::runtime_error("Parameter \"position_offset\" must not be null"); }
-    auto position_offset_cpp = to_cpp_double_list(position_offset);
-    auto has_position_offset_cpp = static_cast<bool>(has_position_offset);
-    if (arc_points == nullptr) { throw std::runtime_error("Parameter \"arc_points\" must not be null"); }
-    auto arc_points_cpp = to_cpp_int32_list(arc_points);
-        auto result_value = ifcapi::bindings::shape_builder_polyline(file_cpp, points_cpp, closed_cpp, position_offset_cpp, has_position_offset_cpp, arc_points_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ShapeBuilderPolylineOptions options_cpp{};
+    if (options->points == nullptr) { throw std::runtime_error("Options field \"points\" must not be null"); }
+    options_cpp.points = to_cpp_double_list_list(options->points);
+    if (options->has_closed) {
+        options_cpp.closed = options->closed;
+    }
+    if (options->has_position_offset) {
+        if (options->position_offset == nullptr) { throw std::runtime_error("Options field \"position_offset\" must not be null"); }
+        options_cpp.position_offset = to_cpp_double_list(options->position_offset);
+    }
+    if (options->arc_points == nullptr) { throw std::runtime_error("Options field \"arc_points\" must not be null"); }
+    options_cpp.arc_points = to_cpp_int32_list(options->arc_points);
+        auto result_value = ifcapi::bindings::shape_builder_polyline(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -11770,19 +12941,27 @@ bool ifcopenshell_shape_builder_polyline(ifcopenshell_file_t* file, const ifcope
     }
 }
 
-bool ifcopenshell_shape_builder_profile(ifcopenshell_file_t* file, ifcopenshell_instance_t* outer_curve, const char* name, const ifcopenshell_instance_list_t* inner_curves, const char* profile_type, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_shape_builder_profile(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_profile_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (outer_curve == nullptr) { throw std::runtime_error("Handle parameter \"outer_curve\" must not be null"); }
-    auto outer_curve_cpp = &outer_curve->value;
-    const char* name_str = name;
-    if (inner_curves == nullptr) { throw std::runtime_error("Parameter \"inner_curves\" must not be null"); }
-    auto inner_curves_cpp = to_cpp_instance_list(inner_curves);
-    const char* profile_type_str = profile_type;
-        auto result_value = ifcapi::bindings::shape_builder_profile(file_cpp, outer_curve_cpp, name, inner_curves_cpp, profile_type);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ShapeBuilderProfileOptions options_cpp{};
+    if (options->outer_curve == nullptr) { throw std::runtime_error("Options field \"outer_curve\" must not be null"); }
+    options_cpp.outer_curve = options->outer_curve->value;
+    if (options->has_name) {
+        if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+        options_cpp.name = std::string(options->name);
+    }
+    if (options->inner_curves == nullptr) { throw std::runtime_error("Options field \"inner_curves\" must not be null"); }
+    options_cpp.inner_curves = options->inner_curves->value;
+    if (options->has_profile_type) {
+        if (options->profile_type == nullptr) { throw std::runtime_error("Options field \"profile_type\" must not be null"); }
+        options_cpp.profile_type = std::string(options->profile_type);
+    }
+        auto result_value = ifcapi::bindings::shape_builder_profile(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -11798,18 +12977,23 @@ bool ifcopenshell_shape_builder_profile(ifcopenshell_file_t* file, ifcopenshell_
     }
 }
 
-bool ifcopenshell_shape_builder_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, const ifcopenshell_instance_list_t* items, const char* representation_type, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_shape_builder_representation(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_representation_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (context == nullptr) { throw std::runtime_error("Handle parameter \"context\" must not be null"); }
-    auto context_cpp = &context->value;
-    if (items == nullptr) { throw std::runtime_error("Parameter \"items\" must not be null"); }
-    auto items_cpp = to_cpp_instance_list(items);
-    const char* representation_type_str = representation_type;
-        auto result_value = ifcapi::bindings::shape_builder_representation(file_cpp, context_cpp, items_cpp, representation_type);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ShapeBuilderRepresentationOptions options_cpp{};
+    if (options->context == nullptr) { throw std::runtime_error("Options field \"context\" must not be null"); }
+    options_cpp.context = options->context->value;
+    if (options->items == nullptr) { throw std::runtime_error("Options field \"items\" must not be null"); }
+    options_cpp.items = options->items->value;
+    if (options->has_representation_type) {
+        if (options->representation_type == nullptr) { throw std::runtime_error("Options field \"representation_type\" must not be null"); }
+        options_cpp.representation_type = std::string(options->representation_type);
+    }
+        auto result_value = ifcapi::bindings::shape_builder_representation(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -11825,20 +13009,22 @@ bool ifcopenshell_shape_builder_representation(ifcopenshell_file_t* file, ifcope
     }
 }
 
-bool ifcopenshell_shape_builder_rotate(ifcopenshell_file_t* file, ifcopenshell_instance_t* item, double angle, const ifcopenshell_double_list_t* pivot_point, bool counter_clockwise, bool create_copy, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_shape_builder_rotate(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_rotate_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (item == nullptr) { throw std::runtime_error("Handle parameter \"item\" must not be null"); }
-    auto item_cpp = &item->value;
-    auto angle_cpp = static_cast<double>(angle);
-    if (pivot_point == nullptr) { throw std::runtime_error("Parameter \"pivot_point\" must not be null"); }
-    auto pivot_point_cpp = to_cpp_double_list(pivot_point);
-    auto counter_clockwise_cpp = static_cast<bool>(counter_clockwise);
-    auto create_copy_cpp = static_cast<bool>(create_copy);
-        auto result_value = ifcapi::bindings::shape_builder_rotate(file_cpp, item_cpp, angle_cpp, pivot_point_cpp, counter_clockwise_cpp, create_copy_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ShapeBuilderRotateOptions options_cpp{};
+    if (options->item == nullptr) { throw std::runtime_error("Options field \"item\" must not be null"); }
+    options_cpp.item = options->item->value;
+    options_cpp.angle = static_cast<double>(options->angle);
+    if (options->pivot_point == nullptr) { throw std::runtime_error("Options field \"pivot_point\" must not be null"); }
+    options_cpp.pivot_point = to_cpp_double_list(options->pivot_point);
+    options_cpp.counter_clockwise = static_cast<bool>(options->counter_clockwise);
+    options_cpp.create_copy = static_cast<bool>(options->create_copy);
+        auto result_value = ifcapi::bindings::shape_builder_rotate(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -11880,16 +13066,18 @@ bool ifcopenshell_shape_builder_set_polyline_coords(ifcopenshell_file_t* file, i
     }
 }
 
-bool ifcopenshell_shape_builder_sphere(ifcopenshell_file_t* file, double radius, const ifcopenshell_double_list_t* center, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_shape_builder_sphere(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_sphere_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    auto radius_cpp = static_cast<double>(radius);
-    if (center == nullptr) { throw std::runtime_error("Parameter \"center\" must not be null"); }
-    auto center_cpp = to_cpp_double_list(center);
-        auto result_value = ifcapi::bindings::shape_builder_sphere(file_cpp, radius_cpp, center_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ShapeBuilderSphereOptions options_cpp{};
+    options_cpp.radius = static_cast<double>(options->radius);
+    if (options->center == nullptr) { throw std::runtime_error("Options field \"center\" must not be null"); }
+    options_cpp.center = to_cpp_double_list(options->center);
+        auto result_value = ifcapi::bindings::shape_builder_sphere(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -11930,18 +13118,20 @@ bool ifcopenshell_shape_builder_swept_disk_solid(ifcopenshell_file_t* file, ifco
     }
 }
 
-bool ifcopenshell_shape_builder_translate(ifcopenshell_file_t* file, ifcopenshell_instance_t* item, const ifcopenshell_double_list_t* translation, bool create_copy, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_shape_builder_translate(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_translate_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (item == nullptr) { throw std::runtime_error("Handle parameter \"item\" must not be null"); }
-    auto item_cpp = &item->value;
-    if (translation == nullptr) { throw std::runtime_error("Parameter \"translation\" must not be null"); }
-    auto translation_cpp = to_cpp_double_list(translation);
-    auto create_copy_cpp = static_cast<bool>(create_copy);
-        auto result_value = ifcapi::bindings::shape_builder_translate(file_cpp, item_cpp, translation_cpp, create_copy_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ShapeBuilderTranslateOptions options_cpp{};
+    if (options->item == nullptr) { throw std::runtime_error("Options field \"item\" must not be null"); }
+    options_cpp.item = options->item->value;
+    if (options->translation == nullptr) { throw std::runtime_error("Options field \"translation\" must not be null"); }
+    options_cpp.translation = to_cpp_double_list(options->translation);
+    options_cpp.create_copy = static_cast<bool>(options->create_copy);
+        auto result_value = ifcapi::bindings::shape_builder_translate(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -12025,20 +13215,31 @@ bool ifcopenshell_shape_is_x(double value, double x, double tolerance, bool* out
     }
 }
 
-bool ifcopenshell_spatial_assign_container(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* relating_structure, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_spatial_assign_container(ifcopenshell_file_t* file, const ifcopenshell_spatial_assign_container_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
-    auto products_cpp = to_cpp_instance_list(products);
-    if (relating_structure == nullptr) { throw std::runtime_error("Handle parameter \"relating_structure\" must not be null"); }
-    auto relating_structure_cpp = &relating_structure->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::spatial_assign_container(file_cpp, products_cpp, relating_structure_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SpatialAssignContainerOptions options_cpp{};
+    if (options->products == nullptr) { throw std::runtime_error("Options field \"products\" must not be null"); }
+    options_cpp.products = options->products->value;
+    if (options->relating_structure == nullptr) { throw std::runtime_error("Options field \"relating_structure\" must not be null"); }
+    options_cpp.relating_structure = options->relating_structure->value;
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::spatial_assign_container(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -12054,18 +13255,26 @@ bool ifcopenshell_spatial_assign_container(ifcopenshell_file_t* file, const ifco
     }
 }
 
-bool ifcopenshell_spatial_dereference_structure(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* relating_structure, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_spatial_dereference_structure(ifcopenshell_file_t* file, const ifcopenshell_spatial_dereference_structure_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
-    auto products_cpp = to_cpp_instance_list(products);
-    if (relating_structure == nullptr) { throw std::runtime_error("Handle parameter \"relating_structure\" must not be null"); }
-    auto relating_structure_cpp = &relating_structure->value;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::spatial_dereference_structure(file_cpp, products_cpp, relating_structure_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SpatialDereferenceStructureOptions options_cpp{};
+    if (options->products == nullptr) { throw std::runtime_error("Options field \"products\" must not be null"); }
+    options_cpp.products = options->products->value;
+    if (options->relating_structure == nullptr) { throw std::runtime_error("Options field \"relating_structure\" must not be null"); }
+    options_cpp.relating_structure = options->relating_structure->value;
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::spatial_dereference_structure(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -12076,20 +13285,31 @@ bool ifcopenshell_spatial_dereference_structure(ifcopenshell_file_t* file, const
     }
 }
 
-bool ifcopenshell_spatial_reference_structure(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* relating_structure, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_spatial_reference_structure(ifcopenshell_file_t* file, const ifcopenshell_spatial_reference_structure_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
-    auto products_cpp = to_cpp_instance_list(products);
-    if (relating_structure == nullptr) { throw std::runtime_error("Handle parameter \"relating_structure\" must not be null"); }
-    auto relating_structure_cpp = &relating_structure->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::spatial_reference_structure(file_cpp, products_cpp, relating_structure_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SpatialReferenceStructureOptions options_cpp{};
+    if (options->products == nullptr) { throw std::runtime_error("Options field \"products\" must not be null"); }
+    options_cpp.products = options->products->value;
+    if (options->relating_structure == nullptr) { throw std::runtime_error("Options field \"relating_structure\" must not be null"); }
+    options_cpp.relating_structure = options->relating_structure->value;
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::spatial_reference_structure(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -12105,16 +13325,24 @@ bool ifcopenshell_spatial_reference_structure(ifcopenshell_file_t* file, const i
     }
 }
 
-bool ifcopenshell_spatial_unassign_container(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_spatial_unassign_container(ifcopenshell_file_t* file, const ifcopenshell_spatial_unassign_container_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
-    auto products_cpp = to_cpp_instance_list(products);
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::spatial_unassign_container(file_cpp, products_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SpatialUnassignContainerOptions options_cpp{};
+    if (options->products == nullptr) { throw std::runtime_error("Options field \"products\" must not be null"); }
+    options_cpp.products = options->products->value;
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::spatial_unassign_container(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -12125,7 +13353,7 @@ bool ifcopenshell_spatial_unassign_container(ifcopenshell_file_t* file, const if
     }
 }
 
-bool ifcopenshell_structural_add_structural_activity(ifcopenshell_file_t* file, ifcopenshell_instance_t* applied_load, ifcopenshell_instance_t* structural_member, const char* ifc_class, const char* predefined_type, const char* global_or_local, ifcopenshell_instance_t* activity_owner_history, ifcopenshell_instance_t* relationship_owner_history, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_structural_add_structural_activity(ifcopenshell_file_t* file, ifcopenshell_instance_t* applied_load, ifcopenshell_instance_t* structural_member, const char* ifc_class, const char* predefined_type, const char* global_or_local, const ifcopenshell_structural_add_structural_activity_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -12141,9 +13369,17 @@ bool ifcopenshell_structural_add_structural_activity(ifcopenshell_file_t* file, 
     std::string predefined_type_cpp(predefined_type);
     if (global_or_local == nullptr) { throw std::runtime_error("Parameter \"global_or_local\" must not be null"); }
     std::string global_or_local_cpp(global_or_local);
-    auto activity_owner_history_cpp = (activity_owner_history != nullptr) ? &activity_owner_history->value : nullptr;
-    auto relationship_owner_history_cpp = (relationship_owner_history != nullptr) ? &relationship_owner_history->value : nullptr;
-        auto result_value = ifcapi::bindings::structural_add_structural_activity(file_cpp, applied_load_cpp, structural_member_cpp, ifc_class_cpp, predefined_type_cpp, global_or_local_cpp, activity_owner_history_cpp, relationship_owner_history_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::StructuralAddStructuralActivityOptions options_cpp{};
+    if (options->has_activity_owner_history) {
+        if (options->activity_owner_history == nullptr) { throw std::runtime_error("Options field \"activity_owner_history\" must not be null"); }
+        options_cpp.activity_owner_history = options->activity_owner_history->value;
+    }
+    if (options->has_relationship_owner_history) {
+        if (options->relationship_owner_history == nullptr) { throw std::runtime_error("Options field \"relationship_owner_history\" must not be null"); }
+        options_cpp.relationship_owner_history = options->relationship_owner_history->value;
+    }
+        auto result_value = ifcapi::bindings::structural_add_structural_activity(file_cpp, applied_load_cpp, structural_member_cpp, ifc_class_cpp, predefined_type_cpp, global_or_local_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -12165,7 +13401,8 @@ bool ifcopenshell_structural_add_structural_analysis_model(ifcopenshell_file_t* 
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
+    std::optional<express::Base> owner_history_cpp;
+    if (owner_history != nullptr) { owner_history_cpp = owner_history->value; }
         auto result_value = ifcapi::bindings::structural_add_structural_analysis_model(file_cpp, owner_history_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -12182,18 +13419,25 @@ bool ifcopenshell_structural_add_structural_analysis_model(ifcopenshell_file_t* 
     }
 }
 
-bool ifcopenshell_structural_add_structural_boundary_condition(ifcopenshell_file_t* file, const char* name, bool has_name, ifcopenshell_instance_t* connection, const char* ifc_class, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_structural_add_structural_boundary_condition(ifcopenshell_file_t* file, const char* ifc_class, const ifcopenshell_structural_add_structural_boundary_condition_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    const char* name_str = name;
-    auto has_name_cpp = static_cast<bool>(has_name);
-    auto connection_cpp = (connection != nullptr) ? &connection->value : nullptr;
     if (ifc_class == nullptr) { throw std::runtime_error("Parameter \"ifc_class\" must not be null"); }
     std::string ifc_class_cpp(ifc_class);
-        auto result_value = ifcapi::bindings::structural_add_structural_boundary_condition(file_cpp, name, has_name_cpp, connection_cpp, ifc_class_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::StructuralAddStructuralBoundaryConditionOptions options_cpp{};
+    if (options->has_name) {
+        if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+        options_cpp.name = std::string(options->name);
+    }
+    if (options->has_connection) {
+        if (options->connection == nullptr) { throw std::runtime_error("Options field \"connection\" must not be null"); }
+        options_cpp.connection = options->connection->value;
+    }
+        auto result_value = ifcapi::bindings::structural_add_structural_boundary_condition(file_cpp, ifc_class_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -12209,7 +13453,7 @@ bool ifcopenshell_structural_add_structural_boundary_condition(ifcopenshell_file
     }
 }
 
-bool ifcopenshell_structural_add_structural_load(ifcopenshell_file_t* file, const char* ifc_class, const char* name, bool has_name, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_structural_add_structural_load(ifcopenshell_file_t* file, const char* ifc_class, const char* name, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -12217,9 +13461,9 @@ bool ifcopenshell_structural_add_structural_load(ifcopenshell_file_t* file, cons
     auto file_cpp = file->ptr;
     if (ifc_class == nullptr) { throw std::runtime_error("Parameter \"ifc_class\" must not be null"); }
     std::string ifc_class_cpp(ifc_class);
-    const char* name_str = name;
-    auto has_name_cpp = static_cast<bool>(has_name);
-        auto result_value = ifcapi::bindings::structural_add_structural_load(file_cpp, ifc_class_cpp, name, has_name_cpp);
+    std::optional<std::string> name_cpp;
+    if (name != nullptr) { name_cpp = std::string(name); }
+        auto result_value = ifcapi::bindings::structural_add_structural_load(file_cpp, ifc_class_cpp, name_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -12247,7 +13491,8 @@ bool ifcopenshell_structural_add_structural_load_case(ifcopenshell_file_t* file,
     std::string action_type_cpp(action_type);
     if (action_source == nullptr) { throw std::runtime_error("Parameter \"action_source\" must not be null"); }
     std::string action_source_cpp(action_source);
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
+    std::optional<express::Base> owner_history_cpp;
+    if (owner_history != nullptr) { owner_history_cpp = owner_history->value; }
         auto result_value = ifcapi::bindings::structural_add_structural_load_case(file_cpp, name_cpp, action_type_cpp, action_source_cpp, owner_history_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -12276,7 +13521,8 @@ bool ifcopenshell_structural_add_structural_load_group(ifcopenshell_file_t* file
     std::string action_type_cpp(action_type);
     if (action_source == nullptr) { throw std::runtime_error("Parameter \"action_source\" must not be null"); }
     std::string action_source_cpp(action_source);
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
+    std::optional<express::Base> owner_history_cpp;
+    if (owner_history != nullptr) { owner_history_cpp = owner_history->value; }
         auto result_value = ifcapi::bindings::structural_add_structural_load_group(file_cpp, name_cpp, action_type_cpp, action_source_cpp, owner_history_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -12303,7 +13549,8 @@ bool ifcopenshell_structural_add_structural_member_connection(ifcopenshell_file_
     auto relating_structural_member_cpp = &relating_structural_member->value;
     if (related_structural_connection == nullptr) { throw std::runtime_error("Handle parameter \"related_structural_connection\" must not be null"); }
     auto related_structural_connection_cpp = &related_structural_connection->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
+    std::optional<express::Base> owner_history_cpp;
+    if (owner_history != nullptr) { owner_history_cpp = owner_history->value; }
         auto result_value = ifcapi::bindings::structural_add_structural_member_connection(file_cpp, relating_structural_member_cpp, related_structural_connection_cpp, owner_history_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -12330,7 +13577,8 @@ bool ifcopenshell_structural_assign_product(ifcopenshell_file_t* file, ifcopensh
     auto relating_product_cpp = &relating_product->value;
     if (related_object == nullptr) { throw std::runtime_error("Handle parameter \"related_object\" must not be null"); }
     auto related_object_cpp = &related_object->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
+    std::optional<express::Base> owner_history_cpp;
+    if (owner_history != nullptr) { owner_history_cpp = owner_history->value; }
         auto result_value = ifcapi::bindings::structural_assign_product(file_cpp, relating_product_cpp, related_object_cpp, owner_history_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -12347,7 +13595,7 @@ bool ifcopenshell_structural_assign_product(ifcopenshell_file_t* file, ifcopensh
     }
 }
 
-bool ifcopenshell_structural_assign_structural_analysis_model(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* structural_analysis_model, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_structural_assign_structural_analysis_model(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* structural_analysis_model, const ifcopenshell_structural_assign_structural_analysis_model_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -12357,10 +13605,21 @@ bool ifcopenshell_structural_assign_structural_analysis_model(ifcopenshell_file_
     auto products_cpp = to_cpp_instance_list(products);
     if (structural_analysis_model == nullptr) { throw std::runtime_error("Handle parameter \"structural_analysis_model\" must not be null"); }
     auto structural_analysis_model_cpp = &structural_analysis_model->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::structural_assign_structural_analysis_model(file_cpp, products_cpp, structural_analysis_model_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::StructuralAssignStructuralAnalysisModelOptions options_cpp{};
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::structural_assign_structural_analysis_model(file_cpp, products_cpp, structural_analysis_model_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -12386,7 +13645,8 @@ bool ifcopenshell_structural_assign_to_building(ifcopenshell_file_t* file, ifcop
     auto structural_analysis_model_cpp = &structural_analysis_model->value;
     if (building == nullptr) { throw std::runtime_error("Handle parameter \"building\" must not be null"); }
     auto building_cpp = &building->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
+    std::optional<express::Base> owner_history_cpp;
+    if (owner_history != nullptr) { owner_history_cpp = owner_history->value; }
         auto result_value = ifcapi::bindings::structural_assign_to_building(file_cpp, structural_analysis_model_cpp, building_cpp, owner_history_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -12483,14 +13743,22 @@ bool ifcopenshell_structural_remove_structural_analysis_model(ifcopenshell_file_
     }
 }
 
-bool ifcopenshell_structural_remove_structural_boundary_condition(ifcopenshell_file_t* file, ifcopenshell_instance_t* connection, ifcopenshell_instance_t* boundary_condition) {
+bool ifcopenshell_structural_remove_structural_boundary_condition(ifcopenshell_file_t* file, const ifcopenshell_structural_remove_structural_boundary_condition_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    auto connection_cpp = (connection != nullptr) ? &connection->value : nullptr;
-    auto boundary_condition_cpp = (boundary_condition != nullptr) ? &boundary_condition->value : nullptr;
-        ifcapi::bindings::structural_remove_structural_boundary_condition(file_cpp, connection_cpp, boundary_condition_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::StructuralRemoveStructuralBoundaryConditionOptions options_cpp{};
+    if (options->has_connection) {
+        if (options->connection == nullptr) { throw std::runtime_error("Options field \"connection\" must not be null"); }
+        options_cpp.connection = options->connection->value;
+    }
+    if (options->has_boundary_condition) {
+        if (options->boundary_condition == nullptr) { throw std::runtime_error("Options field \"boundary_condition\" must not be null"); }
+        options_cpp.boundary_condition = options->boundary_condition->value;
+    }
+        ifcapi::bindings::structural_remove_structural_boundary_condition(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -12573,7 +13841,7 @@ bool ifcopenshell_structural_remove_structural_load_group(ifcopenshell_file_t* f
     }
 }
 
-bool ifcopenshell_structural_unassign_structural_analysis_model(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* structural_analysis_model, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_structural_unassign_structural_analysis_model(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* structural_analysis_model, const ifcopenshell_structural_unassign_structural_analysis_model_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
@@ -12582,9 +13850,17 @@ bool ifcopenshell_structural_unassign_structural_analysis_model(ifcopenshell_fil
     auto products_cpp = to_cpp_instance_list(products);
     if (structural_analysis_model == nullptr) { throw std::runtime_error("Handle parameter \"structural_analysis_model\" must not be null"); }
     auto structural_analysis_model_cpp = &structural_analysis_model->value;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::structural_unassign_structural_analysis_model(file_cpp, products_cpp, structural_analysis_model_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::StructuralUnassignStructuralAnalysisModelOptions options_cpp{};
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::structural_unassign_structural_analysis_model(file_cpp, products_cpp, structural_analysis_model_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -12620,17 +13896,22 @@ bool ifcopenshell_style_add_style(ifcopenshell_file_t* file, const char* name, c
     }
 }
 
-bool ifcopenshell_style_assign_item_style(ifcopenshell_file_t* file, ifcopenshell_instance_t* item, ifcopenshell_instance_t* style, bool should_use_presentation_style_assignment, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_style_assign_item_style(ifcopenshell_file_t* file, const ifcopenshell_style_assign_item_style_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (item == nullptr) { throw std::runtime_error("Handle parameter \"item\" must not be null"); }
-    auto item_cpp = &item->value;
-    auto style_cpp = (style != nullptr) ? &style->value : nullptr;
-    auto should_use_presentation_style_assignment_cpp = static_cast<bool>(should_use_presentation_style_assignment);
-        auto result_value = ifcapi::bindings::style_assign_item_style(file_cpp, item_cpp, style_cpp, should_use_presentation_style_assignment_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::StyleAssignItemStyleOptions options_cpp{};
+    if (options->item == nullptr) { throw std::runtime_error("Options field \"item\" must not be null"); }
+    options_cpp.item = options->item->value;
+    if (options->has_style) {
+        if (options->style == nullptr) { throw std::runtime_error("Options field \"style\" must not be null"); }
+        options_cpp.style = options->style->value;
+    }
+    options_cpp.should_use_presentation_style_assignment = static_cast<bool>(options->should_use_presentation_style_assignment);
+        auto result_value = ifcapi::bindings::style_assign_item_style(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -12809,17 +14090,31 @@ bool ifcopenshell_style_unassign_representation_styles(ifcopenshell_file_t* file
     }
 }
 
-bool ifcopenshell_system_add_port(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_system_add_port(ifcopenshell_file_t* file, const ifcopenshell_system_add_port_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    auto element_cpp = (element != nullptr) ? &element->value : nullptr;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::system_add_port(file_cpp, element_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SystemAddPortOptions options_cpp{};
+    if (options->has_element) {
+        if (options->element == nullptr) { throw std::runtime_error("Options field \"element\" must not be null"); }
+        options_cpp.element = options->element->value;
+    }
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::system_add_port(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -12835,16 +14130,21 @@ bool ifcopenshell_system_add_port(ifcopenshell_file_t* file, ifcopenshell_instan
     }
 }
 
-bool ifcopenshell_system_add_system(ifcopenshell_file_t* file, const char* ifc_class, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_system_add_system(ifcopenshell_file_t* file, const ifcopenshell_system_add_system_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (ifc_class == nullptr) { throw std::runtime_error("Parameter \"ifc_class\" must not be null"); }
-    std::string ifc_class_cpp(ifc_class);
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-        auto result_value = ifcapi::bindings::system_add_system(file_cpp, ifc_class_cpp, owner_history_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SystemAddSystemOptions options_cpp{};
+    if (options->ifc_class == nullptr) { throw std::runtime_error("Options field \"ifc_class\" must not be null"); }
+    options_cpp.ifc_class = std::string(options->ifc_class);
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+        auto result_value = ifcapi::bindings::system_add_system(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -12860,20 +14160,31 @@ bool ifcopenshell_system_add_system(ifcopenshell_file_t* file, const char* ifc_c
     }
 }
 
-bool ifcopenshell_system_assign_flow_control(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_flow_element, ifcopenshell_instance_t* related_flow_control, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_system_assign_flow_control(ifcopenshell_file_t* file, const ifcopenshell_system_assign_flow_control_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (relating_flow_element == nullptr) { throw std::runtime_error("Handle parameter \"relating_flow_element\" must not be null"); }
-    auto relating_flow_element_cpp = &relating_flow_element->value;
-    if (related_flow_control == nullptr) { throw std::runtime_error("Handle parameter \"related_flow_control\" must not be null"); }
-    auto related_flow_control_cpp = &related_flow_control->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::system_assign_flow_control(file_cpp, relating_flow_element_cpp, related_flow_control_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SystemAssignFlowControlOptions options_cpp{};
+    if (options->relating_flow_element == nullptr) { throw std::runtime_error("Options field \"relating_flow_element\" must not be null"); }
+    options_cpp.relating_flow_element = options->relating_flow_element->value;
+    if (options->related_flow_control == nullptr) { throw std::runtime_error("Options field \"related_flow_control\" must not be null"); }
+    options_cpp.related_flow_control = options->related_flow_control->value;
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::system_assign_flow_control(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -12889,20 +14200,31 @@ bool ifcopenshell_system_assign_flow_control(ifcopenshell_file_t* file, ifcopens
     }
 }
 
-bool ifcopenshell_system_assign_port(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, ifcopenshell_instance_t* port, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_system_assign_port(ifcopenshell_file_t* file, const ifcopenshell_system_assign_port_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
-    auto element_cpp = &element->value;
-    if (port == nullptr) { throw std::runtime_error("Handle parameter \"port\" must not be null"); }
-    auto port_cpp = &port->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::system_assign_port(file_cpp, element_cpp, port_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SystemAssignPortOptions options_cpp{};
+    if (options->element == nullptr) { throw std::runtime_error("Options field \"element\" must not be null"); }
+    options_cpp.element = options->element->value;
+    if (options->port == nullptr) { throw std::runtime_error("Options field \"port\" must not be null"); }
+    options_cpp.port = options->port->value;
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::system_assign_port(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -12918,20 +14240,31 @@ bool ifcopenshell_system_assign_port(ifcopenshell_file_t* file, ifcopenshell_ins
     }
 }
 
-bool ifcopenshell_system_assign_system(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* system, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_system_assign_system(ifcopenshell_file_t* file, const ifcopenshell_system_assign_system_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
-    auto products_cpp = to_cpp_instance_list(products);
-    if (system == nullptr) { throw std::runtime_error("Handle parameter \"system\" must not be null"); }
-    auto system_cpp = &system->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::system_assign_system(file_cpp, products_cpp, system_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SystemAssignSystemOptions options_cpp{};
+    if (options->products == nullptr) { throw std::runtime_error("Options field \"products\" must not be null"); }
+    options_cpp.products = options->products->value;
+    if (options->system == nullptr) { throw std::runtime_error("Options field \"system\" must not be null"); }
+    options_cpp.system = options->system->value;
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::system_assign_system(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -12947,22 +14280,36 @@ bool ifcopenshell_system_assign_system(ifcopenshell_file_t* file, const ifcopens
     }
 }
 
-bool ifcopenshell_system_connect_port(ifcopenshell_file_t* file, ifcopenshell_instance_t* port1, ifcopenshell_instance_t* port2, const char* direction, ifcopenshell_instance_t* element, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_system_connect_port(ifcopenshell_file_t* file, const ifcopenshell_system_connect_port_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (port1 == nullptr) { throw std::runtime_error("Handle parameter \"port1\" must not be null"); }
-    auto port1_cpp = &port1->value;
-    if (port2 == nullptr) { throw std::runtime_error("Handle parameter \"port2\" must not be null"); }
-    auto port2_cpp = &port2->value;
-    if (direction == nullptr) { throw std::runtime_error("Parameter \"direction\" must not be null"); }
-    std::string direction_cpp(direction);
-    auto element_cpp = (element != nullptr) ? &element->value : nullptr;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::system_connect_port(file_cpp, port1_cpp, port2_cpp, direction_cpp, element_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SystemConnectPortOptions options_cpp{};
+    if (options->port1 == nullptr) { throw std::runtime_error("Options field \"port1\" must not be null"); }
+    options_cpp.port1 = options->port1->value;
+    if (options->port2 == nullptr) { throw std::runtime_error("Options field \"port2\" must not be null"); }
+    options_cpp.port2 = options->port2->value;
+    if (options->direction == nullptr) { throw std::runtime_error("Options field \"direction\" must not be null"); }
+    options_cpp.direction = std::string(options->direction);
+    if (options->has_element) {
+        if (options->element == nullptr) { throw std::runtime_error("Options field \"element\" must not be null"); }
+        options_cpp.element = options->element->value;
+    }
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::system_connect_port(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -13009,18 +14356,26 @@ bool ifcopenshell_system_remove_system(ifcopenshell_file_t* file, ifcopenshell_i
     }
 }
 
-bool ifcopenshell_system_unassign_flow_control(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_flow_element, ifcopenshell_instance_t* related_flow_control, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_system_unassign_flow_control(ifcopenshell_file_t* file, const ifcopenshell_system_unassign_flow_control_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (relating_flow_element == nullptr) { throw std::runtime_error("Handle parameter \"relating_flow_element\" must not be null"); }
-    auto relating_flow_element_cpp = &relating_flow_element->value;
-    if (related_flow_control == nullptr) { throw std::runtime_error("Handle parameter \"related_flow_control\" must not be null"); }
-    auto related_flow_control_cpp = &related_flow_control->value;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::system_unassign_flow_control(file_cpp, relating_flow_element_cpp, related_flow_control_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SystemUnassignFlowControlOptions options_cpp{};
+    if (options->relating_flow_element == nullptr) { throw std::runtime_error("Options field \"relating_flow_element\" must not be null"); }
+    options_cpp.relating_flow_element = options->relating_flow_element->value;
+    if (options->related_flow_control == nullptr) { throw std::runtime_error("Options field \"related_flow_control\" must not be null"); }
+    options_cpp.related_flow_control = options->related_flow_control->value;
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::system_unassign_flow_control(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -13031,18 +14386,26 @@ bool ifcopenshell_system_unassign_flow_control(ifcopenshell_file_t* file, ifcope
     }
 }
 
-bool ifcopenshell_system_unassign_port(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, ifcopenshell_instance_t* port, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_system_unassign_port(ifcopenshell_file_t* file, const ifcopenshell_system_unassign_port_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
-    auto element_cpp = &element->value;
-    if (port == nullptr) { throw std::runtime_error("Handle parameter \"port\" must not be null"); }
-    auto port_cpp = &port->value;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::system_unassign_port(file_cpp, element_cpp, port_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SystemUnassignPortOptions options_cpp{};
+    if (options->element == nullptr) { throw std::runtime_error("Options field \"element\" must not be null"); }
+    options_cpp.element = options->element->value;
+    if (options->port == nullptr) { throw std::runtime_error("Options field \"port\" must not be null"); }
+    options_cpp.port = options->port->value;
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::system_unassign_port(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -13053,18 +14416,26 @@ bool ifcopenshell_system_unassign_port(ifcopenshell_file_t* file, ifcopenshell_i
     }
 }
 
-bool ifcopenshell_system_unassign_system(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* products, ifcopenshell_instance_t* system, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_system_unassign_system(ifcopenshell_file_t* file, const ifcopenshell_system_unassign_system_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (products == nullptr) { throw std::runtime_error("Parameter \"products\" must not be null"); }
-    auto products_cpp = to_cpp_instance_list(products);
-    if (system == nullptr) { throw std::runtime_error("Handle parameter \"system\" must not be null"); }
-    auto system_cpp = &system->value;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::system_unassign_system(file_cpp, products_cpp, system_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::SystemUnassignSystemOptions options_cpp{};
+    if (options->products == nullptr) { throw std::runtime_error("Options field \"products\" must not be null"); }
+    options_cpp.products = options->products->value;
+    if (options->system == nullptr) { throw std::runtime_error("Options field \"system\" must not be null"); }
+    options_cpp.system = options->system->value;
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::system_unassign_system(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -13075,50 +14446,34 @@ bool ifcopenshell_system_unassign_system(ifcopenshell_file_t* file, const ifcope
     }
 }
 
-bool ifcopenshell_type_assign_type(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* objects, ifcopenshell_instance_t* relating_type, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_type_assign_type(ifcopenshell_file_t* file, const ifcopenshell_type_assign_type_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (objects == nullptr) { throw std::runtime_error("Parameter \"objects\" must not be null"); }
-    auto objects_cpp = to_cpp_instance_list(objects);
-    if (relating_type == nullptr) { throw std::runtime_error("Handle parameter \"relating_type\" must not be null"); }
-    auto relating_type_cpp = &relating_type->value;
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::type_assign_type(file_cpp, objects_cpp, relating_type_cpp, owner_history_cpp, user_cpp, application_cpp);
-        if (!static_cast<bool>(result_value)) {
-            *out_result = nullptr;
-        } else {
-            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
-        }
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::TypeAssignTypeOptions options_cpp{};
+    if (options->objects == nullptr) { throw std::runtime_error("Options field \"objects\" must not be null"); }
+    options_cpp.objects = options->objects->value;
+    if (options->relating_type == nullptr) { throw std::runtime_error("Options field \"relating_type\" must not be null"); }
+    options_cpp.relating_type = options->relating_type->value;
+    if (options->has_should_map_representations) {
+        options_cpp.should_map_representations = options->should_map_representations;
     }
-}
-
-bool ifcopenshell_type_assign_type_ex(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* objects, ifcopenshell_instance_t* relating_type, bool should_map_representations, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application, ifcopenshell_instance_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
-    auto file_cpp = file->ptr;
-    if (objects == nullptr) { throw std::runtime_error("Parameter \"objects\" must not be null"); }
-    auto objects_cpp = to_cpp_instance_list(objects);
-    if (relating_type == nullptr) { throw std::runtime_error("Handle parameter \"relating_type\" must not be null"); }
-    auto relating_type_cpp = &relating_type->value;
-    auto should_map_representations_cpp = static_cast<bool>(should_map_representations);
-    auto owner_history_cpp = (owner_history != nullptr) ? &owner_history->value : nullptr;
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        auto result_value = ifcapi::bindings::type_assign_type_ex(file_cpp, objects_cpp, relating_type_cpp, should_map_representations_cpp, owner_history_cpp, user_cpp, application_cpp);
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::type_assign_type(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -13155,16 +14510,24 @@ bool ifcopenshell_type_map_type_representations(ifcopenshell_file_t* file, ifcop
     }
 }
 
-bool ifcopenshell_type_unassign_type(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* objects, ifcopenshell_instance_t* user, ifcopenshell_instance_t* application) {
+bool ifcopenshell_type_unassign_type(ifcopenshell_file_t* file, const ifcopenshell_type_unassign_type_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (objects == nullptr) { throw std::runtime_error("Parameter \"objects\" must not be null"); }
-    auto objects_cpp = to_cpp_instance_list(objects);
-    auto user_cpp = (user != nullptr) ? &user->value : nullptr;
-    auto application_cpp = (application != nullptr) ? &application->value : nullptr;
-        ifcapi::bindings::type_unassign_type(file_cpp, objects_cpp, user_cpp, application_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::TypeUnassignTypeOptions options_cpp{};
+    if (options->objects == nullptr) { throw std::runtime_error("Options field \"objects\" must not be null"); }
+    options_cpp.objects = options->objects->value;
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::type_unassign_type(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -13880,6 +15243,27 @@ bool ifcopenshell_value_dict_key_at(ifcopenshell_value_t* value, size_t index, i
     }
 }
 
+bool ifcopenshell_value_dict_set(ifcopenshell_value_t* dict, const char* key, ifcopenshell_value_t* value, bool* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (dict == nullptr || dict->ptr == nullptr) { throw std::runtime_error("Handle parameter \"dict\" is invalid"); }
+    auto dict_cpp = dict->ptr;
+    if (key == nullptr) { throw std::runtime_error("Parameter \"key\" must not be null"); }
+    std::string key_cpp(key);
+    std::optional<ifcopenshell_selector_value_t*> value_cpp;
+    if (value != nullptr && value->ptr != nullptr) { value_cpp = value->ptr; }
+        *out_result = ifcapi::bindings::value_dict_set(dict_cpp, key_cpp, value_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_value_dict_size(ifcopenshell_value_t* value, size_t* out_result) {
     try {
         ifcopenshell_clear_error();
@@ -13943,7 +15327,8 @@ bool ifcopenshell_value_list_append(ifcopenshell_value_t* list, ifcopenshell_val
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (list == nullptr || list->ptr == nullptr) { throw std::runtime_error("Handle parameter \"list\" is invalid"); }
     auto list_cpp = list->ptr;
-    auto item_cpp = (item != nullptr && item->ptr != nullptr) ? item->ptr : nullptr;
+    std::optional<ifcopenshell_selector_value_t*> item_cpp;
+    if (item != nullptr && item->ptr != nullptr) { item_cpp = item->ptr; }
         *out_result = ifcapi::bindings::value_list_append(list_cpp, item_cpp);
         return true;
     } catch (const std::exception& e) {
@@ -14016,6 +15401,26 @@ bool ifcopenshell_value_new_bool(bool value, ifcopenshell_value_t** out_result) 
     }
 }
 
+bool ifcopenshell_value_new_dict(ifcopenshell_value_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+        auto result_value = ifcapi::bindings::value_new_dict();
+        if (result_value == nullptr) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_value_t{result_value, true};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_value_new_double(double value, ifcopenshell_value_t** out_result) {
     try {
         ifcopenshell_clear_error();
@@ -14041,7 +15446,8 @@ bool ifcopenshell_value_new_instance(ifcopenshell_instance_t* value, ifcopenshel
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    auto value_cpp = (value != nullptr) ? &value->value : nullptr;
+    std::optional<express::Base> value_cpp;
+    if (value != nullptr) { value_cpp = value->value; }
         auto result_value = ifcapi::bindings::value_new_instance(value_cpp);
         if (result_value == nullptr) {
             *out_result = nullptr;
@@ -14348,7 +15754,7 @@ bool ifcopenshell_geom_create_iterator_with_include_exclude_id(const char* geome
     }
 }
 
-bool ifcopenshell_geom_create_shape(ifcopenshell_geom_settings_t* settings_cpp, ifcopenshell_instance_t* instance_cpp, ifcopenshell_instance_t* representation_cpp, const char* geometry_library_str, ifcopenshell_geom_element_t** out_result) {
+bool ifcopenshell_geom_create_shape(ifcopenshell_geom_settings_t* settings_cpp, ifcopenshell_instance_t* instance_cpp, ifcopenshell_instance_t* representation, const char* geometry_library, ifcopenshell_geom_element_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -14356,9 +15762,11 @@ bool ifcopenshell_geom_create_shape(ifcopenshell_geom_settings_t* settings_cpp, 
     auto settings_cpp_cpp = settings_cpp->ptr;
     if (instance_cpp == nullptr) { throw std::runtime_error("Handle parameter \"instance_cpp\" must not be null"); }
     auto instance_cpp_cpp = &instance_cpp->value;
-    auto representation_cpp_cpp = (representation_cpp != nullptr) ? &representation_cpp->value : nullptr;
-    const char* geometry_library_str_str = geometry_library_str;
-        auto result_value = std::unique_ptr<IfcGeom::Element>(ifcgeom::bindings::create_shape(settings_cpp_cpp, instance_cpp_cpp, representation_cpp_cpp, geometry_library_str));
+    std::optional<express::Base> representation_cpp;
+    if (representation != nullptr) { representation_cpp = representation->value; }
+    std::optional<std::string> geometry_library_cpp;
+    if (geometry_library != nullptr) { geometry_library_cpp = std::string(geometry_library); }
+        auto result_value = std::unique_ptr<IfcGeom::Element>(ifcgeom::bindings::create_shape(settings_cpp_cpp, instance_cpp_cpp, representation_cpp, geometry_library_cpp));
         *out_result = new ifcopenshell_geom_element_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
@@ -14464,14 +15872,15 @@ bool ifcopenshell_geom_plugin_load(const char* kind, const char* id, bool* out_r
     }
 }
 
-bool ifcopenshell_geom_svg_to_line_segments(const char* svg_data_cpp, const char* class_name_str, ifcopenshell_string_t* out_result) {
+bool ifcopenshell_geom_svg_to_line_segments(const char* svg_data_cpp, const char* class_name, ifcopenshell_string_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (svg_data_cpp == nullptr) { throw std::runtime_error("Parameter \"svg_data_cpp\" must not be null"); }
     std::string svg_data_cpp_cpp(svg_data_cpp);
-    const char* class_name_str_str = class_name_str;
-        *out_result = make_string(ifcgeom::bindings::svg_to_line_segments(svg_data_cpp_cpp, class_name_str));
+    std::optional<std::string> class_name_cpp;
+    if (class_name != nullptr) { class_name_cpp = std::string(class_name); }
+        *out_result = make_string(ifcgeom::bindings::svg_to_line_segments(svg_data_cpp_cpp, class_name_cpp));
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -14482,14 +15891,15 @@ bool ifcopenshell_geom_svg_to_line_segments(const char* svg_data_cpp, const char
     }
 }
 
-bool ifcopenshell_geom_svg_to_polygons(const char* svg_data_cpp, const char* class_name_str, ifcopenshell_geom_svgfill_polygon_list_t* out_result) {
+bool ifcopenshell_geom_svg_to_polygons(const char* svg_data_cpp, const char* class_name, ifcopenshell_geom_svgfill_polygon_list_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (svg_data_cpp == nullptr) { throw std::runtime_error("Parameter \"svg_data_cpp\" must not be null"); }
     std::string svg_data_cpp_cpp(svg_data_cpp);
-    const char* class_name_str_str = class_name_str;
-        *out_result = make_geom_svgfill_polygon_list(ifcgeom::bindings::svg_to_polygons(svg_data_cpp_cpp, class_name_str));
+    std::optional<std::string> class_name_cpp;
+    if (class_name != nullptr) { class_name_cpp = std::string(class_name); }
+        *out_result = make_geom_svgfill_polygon_list(ifcgeom::bindings::svg_to_polygons(svg_data_cpp_cpp, class_name_cpp));
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -22456,10 +23866,15 @@ bool ifcopenshell_parse_attribute_value_as_enumeration_type(ifcopenshell_parse_a
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto& self_cpp = self->value;
         auto result_value = ifcparse::bindings::as_enumeration_type(self_cpp);
-        if (result_value == nullptr) {
+        if (!result_value) {
             *out_result = nullptr;
         } else {
-            *out_result = new ifcopenshell_enumeration_t{result_value, false};
+            auto unwrapped_result = *result_value;
+            if (unwrapped_result == nullptr) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_enumeration_t{unwrapped_result, false};
+            }
         }
         return true;
     } catch (const std::exception& e) {
@@ -22495,10 +23910,15 @@ bool ifcopenshell_parse_attribute_value_as_instance(ifcopenshell_parse_attribute
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto& self_cpp = self->value;
         auto result_value = ifcparse::bindings::as_instance(self_cpp);
-        if (!static_cast<bool>(result_value)) {
+        if (!result_value) {
             *out_result = nullptr;
         } else {
-            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
         }
         return true;
     } catch (const std::exception& e) {
@@ -22757,10 +24177,15 @@ bool ifcopenshell_parse_instance_list_get(ifcopenshell_parse_instance_list_t* se
     auto* self_cpp = &self->value;
     auto index_cpp = static_cast<size_t>(index);
         auto result_value = ifcparse::bindings::get(*self_cpp, index_cpp);
-        if (!static_cast<bool>(result_value)) {
+        if (!result_value) {
             *out_result = nullptr;
         } else {
-            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
         }
         return true;
     } catch (const std::exception& e) {
@@ -23087,10 +24512,15 @@ bool ifcopenshell_file_header_file_description(ifcopenshell_file_t* self, ifcope
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         auto result_value = ifcparse::bindings::header_file_description(self_cpp);
-        if (!static_cast<bool>(result_value)) {
+        if (!result_value) {
             *out_result = nullptr;
         } else {
-            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
         }
         return true;
     } catch (const std::exception& e) {
@@ -23109,10 +24539,15 @@ bool ifcopenshell_file_header_file_name(ifcopenshell_file_t* self, ifcopenshell_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         auto result_value = ifcparse::bindings::header_file_name(self_cpp);
-        if (!static_cast<bool>(result_value)) {
+        if (!result_value) {
             *out_result = nullptr;
         } else {
-            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
         }
         return true;
     } catch (const std::exception& e) {
@@ -23131,10 +24566,15 @@ bool ifcopenshell_file_header_file_schema(ifcopenshell_file_t* self, ifcopenshel
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         auto result_value = ifcparse::bindings::header_file_schema(self_cpp);
-        if (!static_cast<bool>(result_value)) {
+        if (!result_value) {
             *out_result = nullptr;
         } else {
-            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
         }
         return true;
     } catch (const std::exception& e) {

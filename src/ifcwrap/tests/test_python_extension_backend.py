@@ -10,6 +10,8 @@ from src.ifcwrap.binding_generator.binding_ir import BindingIR
 from src.ifcwrap.binding_generator.host_metadata import (
     HostBindingMetadata,
     HostFunctionMetadata,
+    HostOptionFieldMetadata,
+    HostOptionStructMetadata,
     HostParamMetadata,
     HostStructField,
     HostStructMetadata,
@@ -136,6 +138,8 @@ def _make_metadata(
     module: str = "ifcopenshell_wrapper",
     c_prefix: str = "ifcopenshell_demo",
     handles: dict[str, HostStructMetadata] | None = None,
+    value_types: dict[str, HostStructMetadata] | None = None,
+    option_structs: dict[str, HostOptionStructMetadata] | None = None,
     functions: dict[str, HostFunctionMetadata] | None = None,
 ) -> HostBindingMetadata:
     """Create a minimal HostBindingMetadata."""
@@ -143,7 +147,8 @@ def _make_metadata(
         module=module,
         c_prefix=c_prefix,
         handles=handles or {},
-        value_types={},
+        value_types=value_types or {},
+        option_structs=option_structs or {},
         functions=functions or {},
         error_functions=_DEFAULT_ERROR_FUNCTIONS,
     )
@@ -478,6 +483,101 @@ class TestFunctionWrapperParams:
         assert "arg_name" in code
         assert "arg_value" in code
 
+    def test_option_struct_param_generates_mapping_converter(self):
+        meta = _make_metadata(
+            handles={
+                "file": _make_handle("file", "ifcopenshell_file_t"),
+                "instance": _make_handle("instance", "ifcopenshell_instance_t"),
+                "parse_instance_list": _make_handle(
+                    "parse_instance_list",
+                    "ifcopenshell_parse_instance_list_t",
+                    destroy_function="ifcopenshell_parse_instance_list_destroy",
+                ),
+            },
+            value_types={
+                "double_list": HostStructMetadata(
+                    c_type="ifcopenshell_double_list_t",
+                    kind="sequence",
+                    fields=(HostStructField("items", "double*"), HostStructField("size", "size_t")),
+                    destroy_function="ifcopenshell_double_list_destroy",
+                    element_type="double",
+                    sequence_depth=1,
+                ),
+                "double_list_list": HostStructMetadata(
+                    c_type="ifcopenshell_double_list_list_t",
+                    kind="sequence",
+                    fields=(
+                        HostStructField("items", "ifcopenshell_double_list_t*"),
+                        HostStructField("size", "size_t"),
+                    ),
+                    destroy_function="ifcopenshell_double_list_list_destroy",
+                    element_type="ifcopenshell_double_list_t",
+                    sequence_depth=2,
+                ),
+            },
+            option_structs={
+                "CreateEntityOptions": HostOptionStructMetadata(
+                    name="CreateEntityOptions",
+                    c_type="ifcopenshell_root_create_entity_options_t",
+                    fields=(
+                        HostOptionFieldMetadata("ifc_class", TypeSpec(kind="string"), "const char*"),
+                        HostOptionFieldMetadata(
+                            "axis",
+                            TypeSpec(kind="double", sequence_depth=2),
+                            "const ifcopenshell_double_list_list_t*",
+                        ),
+                        HostOptionFieldMetadata("name", TypeSpec(kind="string", nullable=True), "const char*"),
+                        HostOptionFieldMetadata(
+                            "owner_history",
+                            TypeSpec(kind="handle", handle="instance", nullable=True),
+                            "ifcopenshell_instance_t*",
+                        ),
+                        HostOptionFieldMetadata("properties", TypeSpec(kind="opaque_ptr"), "void*"),
+                        HostOptionFieldMetadata(
+                            "products",
+                            TypeSpec(kind="handle", handle="parse_instance_list"),
+                            "ifcopenshell_parse_instance_list_t*",
+                        ),
+                    ),
+                )
+            },
+            functions={
+                "ifcopenshell_root_create_entity": _make_function(
+                    c_name="ifcopenshell_root_create_entity",
+                    params=(
+                        HostParamMetadata("file", "ifcopenshell_file_t*", "param", "handle"),
+                        HostParamMetadata(
+                            "options",
+                            "const ifcopenshell_root_create_entity_options_t*",
+                            "param",
+                            "option",
+                        ),
+                    ),
+                    returns=TypeSpec(kind="handle", handle="instance"),
+                    handle_c_type_map={"instance": "ifcopenshell_instance_t"},
+                )
+            },
+        )
+
+        code = render_python_extension(meta)
+
+        assert "fill_input_root_create_entity_options" in code
+        assert 'get_option_field(obj, "ifc_class", 1)' in code
+        assert 'get_option_field(obj, "name", 0)' in code
+        assert 'get_option_field(obj, "axis", 1)' in code
+        assert "make_input_double_list_list(field_1, sequence_1)" in code
+        assert "free_input_double_list_list((ifcopenshell_double_list_list_t *)value->axis);" in code
+        assert "out->has_name = true;" in code
+        assert "PyUnicode_AsUTF8(field_0)" in code
+        assert "release_option_refs(arg_options_refs, 6);" in code
+        assert 'extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance"' in code
+        assert "PyCapsule_IsValid(field_4, NULL)" in code
+        assert "out->properties = PyCapsule_GetPointer(field_4, NULL);" in code
+        assert 'get_option_field(obj, "products", 1)' in code
+        assert "make_input_instance_list(field_5, &products_items_5)" in code
+        assert "ifcopenshell_parse_instance_list_create_from_handles(&products_items_5, &out->products)" in code
+        assert "ifcopenshell_parse_instance_list_destroy(value->products)" in code
+
 
 # ---------------------------------------------------------------------------
 # Test: function wrapper — handle receiver (methods)
@@ -759,6 +859,41 @@ class TestPythonTargetBackend:
         paths = {artifact.kind: artifact.path for artifact in artifacts.artifacts}
         assert paths["source"] == (output_dir / "ifcopenshell_capi_py.cpp").resolve()
         assert paths["utility"] == utility_path.resolve()
+
+    def test_generate_wraps_only_functions_declared_in_api_header(self, tmp_path: Path):
+        output_dir = tmp_path / "python-target"
+        header_path = tmp_path / "ifcopenshell_api.h"
+        header_path.write_text(
+            dedent(
+                """
+                bool ifcopenshell_demo_exported(void);
+                """
+            ).strip()
+            + "\n",
+            encoding="utf-8",
+        )
+        metadata = _make_metadata(
+            functions={
+                "ifcopenshell_demo_exported": _make_function(c_name="ifcopenshell_demo_exported"),
+                "ifcopenshell_demo_internal": _make_function(c_name="ifcopenshell_demo_internal"),
+            },
+        )
+
+        artifacts = PythonTargetBackend().generate(
+            TargetGenerationRequest(
+                ir=_make_ir(module=metadata.module, c_prefix=metadata.c_prefix),
+                metadata=metadata,
+                api_header_path=header_path,
+                options={},
+                output_dir=output_dir,
+            )
+        )
+
+        code = next(artifact.path for artifact in artifacts.artifacts if artifact.kind == "source").read_text(
+            encoding="utf-8"
+        )
+        assert "py_ifcopenshell_demo_exported" in code
+        assert "py_ifcopenshell_demo_internal" not in code
 
 
 # ---------------------------------------------------------------------------

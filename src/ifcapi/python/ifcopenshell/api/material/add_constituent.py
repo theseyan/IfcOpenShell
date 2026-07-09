@@ -90,8 +90,10 @@ def add_constituent(
     handle = _capi.material_add_constituent(
         file._handle,
         constituent_set._handle,
-        material._handle,
-        name,
+        {
+            "material": material._handle,
+            "name": name,
+        },
     )
     if handle:
         return ifcopenshell.entity_instance(file, handle)

@@ -144,23 +144,18 @@ namespace bindings {
 
 express::Base pset_add_pset(
     ifcopenshell::file* file,
-    express::Base* product_ptr,
-    const std::string& name,
-    express::Base* owner_history_ptr,
-    express::Base* user_ptr,
-    express::Base* application_ptr,
-    const char* ifc2x3_subclass)
+    const PsetAddPsetOptions& options)
 {
-    auto product = ifcapi::detail::deref_or_empty(product_ptr);
-    auto owner_history = ifcapi::detail::deref_or_empty(owner_history_ptr);
-    auto user = ifcapi::detail::deref_or_empty(user_ptr);
-    auto application = ifcapi::detail::deref_or_empty(application_ptr);
+    auto product = options.product;
+    auto owner_history = options.owner_history.value_or(express::Base());
+    auto user = options.user.value_or(express::Base());
+    auto application = options.application.value_or(express::Base());
     if (!file || !product) {
         set_error("pset_add_pset: missing required argument");
         return {};
     }
     try {
-        std::string nm(name);
+        std::string nm(options.name);
 
         if (entity_is_a(product, "IfcObject") || entity_is_a(product, "IfcContext")) {
             if (auto existing = find_existing_pset_on_object(product, nm)) {
@@ -186,8 +181,8 @@ express::Base pset_add_pset(
         if (entity_is_a(product, "IfcMaterial") || entity_is_a(product, "IfcMaterialDefinition")) {
             std::string ifc_class;
             if (is_ifc2x3) {
-                ifc_class = (ifc2x3_subclass && *ifc2x3_subclass)
-                    ? std::string(ifc2x3_subclass)
+                ifc_class = (options.ifc2x3_subclass && !options.ifc2x3_subclass->empty())
+                    ? *options.ifc2x3_subclass
                     : std::string("IfcExtendedMaterialProperties");
             } else {
                 ifc_class = "IfcMaterialProperties";
@@ -234,8 +229,8 @@ express::Base pset_add_pset(
             }
             std::string ifc_class;
             if (is_ifc2x3) {
-                ifc_class = (ifc2x3_subclass && *ifc2x3_subclass)
-                    ? std::string(ifc2x3_subclass)
+                ifc_class = (options.ifc2x3_subclass && !options.ifc2x3_subclass->empty())
+                    ? *options.ifc2x3_subclass
                     : std::string("IfcGeneralProfileProperties");
             } else {
                 ifc_class = "IfcProfileProperties";
@@ -264,22 +259,18 @@ express::Base pset_add_pset(
 
 express::Base pset_add_qto(
     ifcopenshell::file* file,
-    express::Base* product_ptr,
-    const std::string& name,
-    express::Base* owner_history_ptr,
-    express::Base* user_ptr,
-    express::Base* application_ptr)
+    const PsetAddQtoOptions& options)
 {
-    auto product = ifcapi::detail::deref_or_empty(product_ptr);
-    auto owner_history = ifcapi::detail::deref_or_empty(owner_history_ptr);
-    auto user = ifcapi::detail::deref_or_empty(user_ptr);
-    auto application = ifcapi::detail::deref_or_empty(application_ptr);
-    if (!file || !product || name.empty()) {
+    auto product = options.product;
+    auto owner_history = options.owner_history.value_or(express::Base());
+    auto user = options.user.value_or(express::Base());
+    auto application = options.application.value_or(express::Base());
+    if (!file || !product || options.name.empty()) {
         set_error("pset_add_qto: missing required argument");
         return {};
     }
     try {
-        std::string nm(name);
+        std::string nm(options.name);
         const char* mom = nullptr;
         std::string base = "BaseQuantities";
         if (nm.size() >= base.size() && nm.compare(nm.size() - base.size(), base.size(), base) == 0) {

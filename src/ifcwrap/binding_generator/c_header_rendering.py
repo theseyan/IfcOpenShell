@@ -15,7 +15,14 @@ try:
         _used_handle_list_handles,
         _used_scalar_sequence_kinds,
     )
-    from .c_type_rendering import _render_call_decl, _render_result_struct_decl
+    from .c_type_rendering import (
+        _render_call_decl,
+        _render_option_struct_decl,
+        _render_optional_result_struct_decl,
+        _render_result_struct_decl,
+        _render_variant_decl,
+    )
+    from .c_variant_helpers import _render_variant_destroy_decls
     from .debug import debug_log
 except ImportError:  # pragma: no cover - script execution fallback
     from authored_spec import HandleSpec
@@ -30,7 +37,14 @@ except ImportError:  # pragma: no cover - script execution fallback
         _used_handle_list_handles,
         _used_scalar_sequence_kinds,
     )
-    from c_type_rendering import _render_call_decl, _render_result_struct_decl
+    from c_type_rendering import (
+        _render_call_decl,
+        _render_option_struct_decl,
+        _render_optional_result_struct_decl,
+        _render_result_struct_decl,
+        _render_variant_decl,
+    )
+    from c_variant_helpers import _render_variant_destroy_decls
     from debug import debug_log
 
 
@@ -63,11 +77,25 @@ def _render_header(spec: BindingIR) -> str:
     result_struct_decls = "\n\n".join(
         _render_result_struct_decl(struct, spec) for struct in spec.result_structs.values()
     )
+    optional_result_struct_decls = "\n\n".join(
+        _render_optional_result_struct_decl(call.returns, spec)
+        for call in (*spec.functions, *spec.methods)
+        if call.returns.kind == "struct" and call.returns.nullable
+    )
+    variant_decls = "\n\n".join(
+        _render_variant_decl(call.returns, spec)
+        for call in (*spec.functions, *spec.methods)
+        if call.returns.kind == "variant"
+    )
+    option_struct_decls = "\n\n".join(
+        _render_option_struct_decl(struct, spec) for struct in spec.option_structs.values()
+    )
     destroy_decls = "\n".join(_render_handle_destroy_decl(handle) for handle in spec.handles.values())
     handle_list_destroy_decls = "\n".join(_render_handle_list_destroy_decl(handle) for handle in handle_list_types)
     handle_list_list_destroy_decls = "\n".join(
         _render_handle_list_list_destroy_decl(handle) for handle in handle_list_types
     )
+    variant_destroy_decls = _render_variant_destroy_decls(spec)
     call_decls = "\n".join(_render_call_decl(call, spec) for call in (*spec.functions, *spec.methods))
     sequence_kinds = _used_scalar_sequence_kinds(spec)
     common_type_decls = _render_common_type_decls(sequence_kinds)
@@ -96,7 +124,13 @@ extern "C" {{
 {handle_list_forwards}
 {handle_list_list_forwards}
 
+{option_struct_decls}
+
 {result_struct_decls}
+
+{optional_result_struct_decls}
+
+{variant_decls}
 
 typedef enum {{
     IFCOPENSHELL_ERROR_NONE = 0,
@@ -114,6 +148,7 @@ int {spec.c_prefix}_last_error_kind(void);
 {destroy_decls}
 {handle_list_destroy_decls}
 {handle_list_list_destroy_decls}
+{variant_destroy_decls}
 
 {call_decls}
 

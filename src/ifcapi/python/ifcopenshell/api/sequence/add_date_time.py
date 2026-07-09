@@ -49,11 +49,6 @@ def add_date_time(file: ifcopenshell.file, dt: datetime) -> Union[str, ifcopensh
     dt_str = ifcopenshell.util.date.datetime2ifc(dt, "IfcDateTime")
     assert isinstance(dt_str, str)
     result = _capi.sequence_add_date_time(file._handle, dt_str)
-    if result.is_entity:
-        handle = result.date_time
-        if handle:
-            return ifcopenshell.entity_instance(file, handle)
-        raise RuntimeError(_capi.last_error_message() or "sequence_add_date_time failed")
-    value = result.date_time_string
-    assert isinstance(value, str)
-    return value
+    if isinstance(result, str):
+        return result
+    return ifcopenshell.entity_instance(file, result)

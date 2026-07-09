@@ -69,10 +69,12 @@ def create_entity(
     owner_history = ifcopenshell.api.owner.create_owner_history(file)
     handle = _capi.root_create_entity(
         file._handle,
-        ifc_class,
-        predefined_type,
-        name,
-        owner_history._handle if owner_history is not None else None,
+        {
+            "ifc_class": ifc_class,
+            "predefined_type": predefined_type,
+            "name": name,
+            "owner_history": owner_history._handle if owner_history is not None else None,
+        },
     )
     if handle:
         return ifcopenshell.entity_instance(file, handle)

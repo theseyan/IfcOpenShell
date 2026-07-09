@@ -35,17 +35,17 @@ namespace bindings {
 
 express::Base control_assign_control(
     ifcopenshell::file* file,
-    express::Base* relating_control,
-    const std::vector<express::Base>& related_objects,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const ControlAssignControlOptions& options)
 {
-    auto control = detail::deref_or_empty(relating_control);
-    auto related_set = unique_valid(related_objects);
+    auto control = options.relating_control;
+    auto related_set = unique_valid(options.related_objects);
     if (!file || !control || related_set.empty()) {
         return {};
     }
+
+    auto owner_history = options.owner_history.value_or(express::Base());
+    auto user = options.user.value_or(express::Base());
+    auto application = options.application.value_or(express::Base());
 
     std::vector<express::Base> objects_to_assign;
     auto control_assignments = detail::read_inverse_aggregate(control, "Controls");
@@ -79,7 +79,7 @@ express::Base control_assign_control(
             }
         }
         detail::write_ref_aggregate(controls, "RelatedObjects", related);
-        detail::update_owner_history(file, controls, detail::deref_or_empty(user), detail::deref_or_empty(application));
+        detail::update_owner_history(file, controls, user, application);
         return controls;
     }
 
@@ -89,8 +89,7 @@ express::Base control_assign_control(
     detail::write_ref_attr(
         rel,
         "OwnerHistory",
-        detail::ensure_owner_history(
-            file, detail::deref_or_empty(owner_history), detail::deref_or_empty(user), detail::deref_or_empty(application)));
+        detail::ensure_owner_history(file, owner_history, user, application));
     detail::write_ref_aggregate(rel, "RelatedObjects", objects_to_assign);
     detail::write_ref_attr(rel, "RelatingControl", control);
     return rel;
@@ -98,16 +97,16 @@ express::Base control_assign_control(
 
 void control_unassign_control(
     ifcopenshell::file* file,
-    express::Base* relating_control,
-    const std::vector<express::Base>& related_objects,
-    express::Base* user,
-    express::Base* application)
+    const ControlUnassignControlOptions& options)
 {
-    auto control = detail::deref_or_empty(relating_control);
-    auto related_set = unique_valid(related_objects);
+    auto control = options.relating_control;
+    auto related_set = unique_valid(options.related_objects);
     if (!file || !control || related_set.empty()) {
         return;
     }
+
+    auto user = options.user.value_or(express::Base());
+    auto application = options.application.value_or(express::Base());
 
     auto control_assignments = detail::read_inverse_aggregate(control, "Controls");
     std::vector<express::Base> rels;
@@ -130,7 +129,7 @@ void control_unassign_control(
             detail::remove_with_history(file, rel);
         } else {
             detail::write_ref_aggregate(rel, "RelatedObjects", remaining);
-            detail::update_owner_history(file, rel, detail::deref_or_empty(user), detail::deref_or_empty(application));
+            detail::update_owner_history(file, rel, user, application);
         }
     }
 }

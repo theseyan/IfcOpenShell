@@ -53,9 +53,11 @@ def assign_flow_control(
         file,
         "system_assign_flow_control",
         _capi.file_handle(file),
-        _capi.instance_handle(relating_flow_element),
-        _capi.instance_handle(related_flow_control),
-        _capi.instance_handle(owner_history),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+        {
+            "relating_flow_element": _capi.instance_handle(relating_flow_element),
+            "related_flow_control": _capi.instance_handle(related_flow_control),
+            "owner_history": _capi.instance_handle(owner_history),
+            "user": _capi.instance_handle(user),
+            "application": _capi.instance_handle(application),
+        },
     )

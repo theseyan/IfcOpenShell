@@ -133,16 +133,18 @@ def assign_object(
     if not objects_to_change:
         return is_nested_by
     owner_history, user, application = _relationship_capi.owner_context(file)
-    object_list = _relationship_capi.instance_list(related_objects)
+    product_list = _relationship_capi.instance_list(related_objects)
     is_nested_by = _relationship_capi.call_handle(
         file,
         "nest_assign_object",
         _relationship_capi.file_handle(file),
-        _relationship_capi.instance_list_ptr(object_list),
-        _relationship_capi.instance_handle(relating_object),
-        _relationship_capi.instance_handle(owner_history),
-        _relationship_capi.instance_handle(user),
-        _relationship_capi.instance_handle(application),
+        {
+            "products": product_list,
+            "relating_object": _relationship_capi.instance_handle(relating_object),
+            "owner_history": _relationship_capi.instance_handle(owner_history),
+            "user": _relationship_capi.instance_handle(user),
+            "application": _relationship_capi.instance_handle(application),
+        },
     )
 
     # NOTE: Creating a nesting relationship doesn't localize the object's placement,

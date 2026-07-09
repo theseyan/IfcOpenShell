@@ -24,6 +24,7 @@ try:
     from .c_header_rendering import _render_header
     from .c_internal_header import _render_internal_header
     from .c_runtime_support import _render_cpp_support_runtime
+    from .c_variant_helpers import _render_variant_destroy_impls
     from .c_sequence_helpers import (
         _render_common_type_impls,
         _render_handle_list_destroy_impl,
@@ -40,6 +41,7 @@ try:
         discover_cpp_spec_contract_headers,
         discover_cpp_spec_functions,
         discover_cpp_spec_handles,
+        discover_cpp_spec_option_structs,
         discover_cpp_spec_result_structs,
         lower_cpp_spec_functions_to_calls,
         lower_cpp_spec_handles_to_specs,
@@ -63,6 +65,7 @@ except ImportError:  # pragma: no cover - script execution fallback
     from c_header_rendering import _render_header
     from c_internal_header import _render_internal_header
     from c_runtime_support import _render_cpp_support_runtime
+    from c_variant_helpers import _render_variant_destroy_impls
     from c_sequence_helpers import (
         _render_common_type_impls,
         _render_handle_list_destroy_impl,
@@ -79,6 +82,7 @@ except ImportError:  # pragma: no cover - script execution fallback
         discover_cpp_spec_contract_headers,
         discover_cpp_spec_functions,
         discover_cpp_spec_handles,
+        discover_cpp_spec_option_structs,
         discover_cpp_spec_result_structs,
         lower_cpp_spec_functions_to_calls,
         lower_cpp_spec_handles_to_specs,
@@ -188,6 +192,7 @@ def _merge_cpp_specs(
     )
     handles = dict(base.handles)
     result_structs = dict(base.result_structs)
+    option_structs = dict(getattr(base, "option_structs", {}))
     calls = list(base.functions)
     methods = list(base.methods)
     existing_c_names = {call.c_name for call in (*base.functions, *base.methods)}
@@ -210,15 +215,29 @@ def _merge_cpp_specs(
                 msg = f"C++ spec result struct '{struct_name}' is declared with conflicting metadata"
                 raise ValueError(msg)
             result_structs[struct_name] = struct
-        for call in lower_cpp_spec_functions_to_calls(
-            discover_cpp_spec_functions(
-                environment,
-                config.path,
-                config.namespace,
-                contract_headers=discover_cpp_spec_contract_headers(config.path, discovery_include_dirs),
-            ),
+        functions = discover_cpp_spec_functions(
+            environment,
+            config.path,
+            config.namespace,
+            contract_headers=discover_cpp_spec_contract_headers(config.path, discovery_include_dirs),
+        )
+        for struct_name, struct in discover_cpp_spec_option_structs(
+            environment,
+            config.path,
+            functions,
             handles,
             result_structs,
+            c_prefix=config.c_prefix,
+        ).items():
+            if struct_name in option_structs and option_structs[struct_name] != struct:
+                msg = f"C++ spec option struct '{struct_name}' is declared with conflicting metadata"
+                raise ValueError(msg)
+            option_structs[struct_name] = struct
+        for call in lower_cpp_spec_functions_to_calls(
+            functions,
+            handles,
+            result_structs,
+            option_structs,
             c_prefix=config.c_prefix,
         ):
             if call.c_name in existing_c_names:
@@ -237,6 +256,7 @@ def _merge_cpp_specs(
         public_headers=tuple(public_headers),
         handles=handles,
         result_structs=result_structs,
+        option_structs=option_structs,
         functions=tuple(calls),
         methods=tuple(methods),
         discovery_diagnostics=base.discovery_diagnostics,
@@ -297,6 +317,7 @@ def _render_cpp(spec: BindingIR, header_name: str) -> str:
     handle_list_list_destroy_impls = "\n\n".join(
         _render_handle_list_list_destroy_impl(handle) for handle in handle_list_types
     )
+    variant_destroy_impls = _render_variant_destroy_impls(spec)
 
     # Only emit common type implementations if this is not a dependent module.
     depends_on_common = spec.depends_on_common
@@ -320,6 +341,7 @@ def _render_cpp(spec: BindingIR, header_name: str) -> str:
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <variant>
 #include <vector>
 
 // Note: project-specific headers (geometry, serializers, schema, etc.) are
@@ -352,6 +374,7 @@ int {spec.c_prefix}_last_error_kind(void) {{
 {destroy_impls_block}
 {handle_list_destroy_impls}
 {handle_list_list_destroy_impls}
+{variant_destroy_impls}
 
 {call_impls}
 """
@@ -393,7 +416,12 @@ def build_binding_ir(
         if not cpp_spec_namespace:
             msg = "cpp_spec_namespace is required when only cpp_spec_paths are provided"
             raise ValueError(msg)
-        configs = _cpp_spec_configs(cpp_spec_paths, cpp_spec_namespace, cpp_spec_c_prefix, cpp_spec_handle_c_prefix)
+        configs = _cpp_spec_configs(
+            cpp_spec_paths,
+            cpp_spec_namespace,
+            cpp_spec_c_prefix or c_prefix,
+            cpp_spec_handle_c_prefix,
+        )
         environment = _cpp_spec_environment(
             discovery_include_dirs=discovery_include_dirs,
             discovery_defines=discovery_defines,
@@ -401,6 +429,7 @@ def build_binding_ir(
         )
         handles = {}
         result_structs = {}
+        option_structs = {}
         calls = []
         existing_c_names: set[str] = set()
         for config in configs:
@@ -419,15 +448,29 @@ def build_binding_ir(
                     msg = f"C++ spec result struct '{struct_name}' is declared with conflicting metadata"
                     raise ValueError(msg)
                 result_structs[struct_name] = struct
-            for call in lower_cpp_spec_functions_to_calls(
-                discover_cpp_spec_functions(
-                    environment,
-                    config.path,
-                    config.namespace,
-                    contract_headers=discover_cpp_spec_contract_headers(config.path, discovery_include_dirs),
-                ),
+            functions = discover_cpp_spec_functions(
+                environment,
+                config.path,
+                config.namespace,
+                contract_headers=discover_cpp_spec_contract_headers(config.path, discovery_include_dirs),
+            )
+            for struct_name, struct in discover_cpp_spec_option_structs(
+                environment,
+                config.path,
+                functions,
                 handles,
                 result_structs,
+                c_prefix=config.c_prefix,
+            ).items():
+                if struct_name in option_structs and option_structs[struct_name] != struct:
+                    msg = f"C++ spec option struct '{struct_name}' is declared with conflicting metadata"
+                    raise ValueError(msg)
+                option_structs[struct_name] = struct
+            for call in lower_cpp_spec_functions_to_calls(
+                functions,
+                handles,
+                result_structs,
+                option_structs,
                 c_prefix=config.c_prefix,
             ):
                 if call.c_name in existing_c_names:
@@ -444,6 +487,7 @@ def build_binding_ir(
                 public_header_plugins={},
                 handles=handles,
                 result_structs=result_structs,
+                option_structs=option_structs,
                 functions=tuple(calls),
                 methods=(),
                 depends_on_common=None,

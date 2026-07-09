@@ -47,9 +47,11 @@ def add_georeferencing(file: ifcopenshell.file, ifc_class: str = "IfcMapConversi
     _relationship_capi.call_status(
         "georeference_add_georeferencing",
         _relationship_capi.file_handle(file),
-        _relationship_capi.string(ifc_class),
-        _relationship_capi.string(name),
-        _relationship_capi.instance_handle(owner_history),
-        _relationship_capi.instance_handle(user),
-        _relationship_capi.instance_handle(application),
+        {
+            "ifc_class": ifc_class,
+            "name": name,
+            "owner_history": _relationship_capi.instance_handle(owner_history),
+            "user": _relationship_capi.instance_handle(user),
+            "application": _relationship_capi.instance_handle(application),
+        },
     )

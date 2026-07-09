@@ -18,6 +18,7 @@
 
 import ifcopenshell
 from ifcopenshell.api.owner import _capi
+from ifcopenshell._capi_utils import instance_handle
 
 
 def unassign_actor(
@@ -52,12 +53,15 @@ def unassign_actor(
             relating_actor=manufacturer, related_object=pump_type)
     """
     _, user, application = _capi.owner_context(file)
+    opts = {
+        "relating_actor": instance_handle(relating_actor),
+        "related_object": instance_handle(related_object),
+        "user": instance_handle(user),
+        "application": instance_handle(application),
+    }
     _capi.call_status(
         "owner_unassign_actor",
         "Failed to unassign actor",
         _capi.file_handle(file),
-        _capi.instance_handle(relating_actor),
-        _capi.instance_handle(related_object),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+        opts,
     )

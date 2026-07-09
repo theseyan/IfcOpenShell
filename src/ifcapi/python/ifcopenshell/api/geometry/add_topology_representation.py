@@ -84,10 +84,10 @@ def add_topology_representation(
         file,
         "geometry_add_topology_representation",
         _capi.file_handle(file),
-        _capi.instance_handle(context),
-        _capi.instance_handle(item),
-        _capi.string(representation_identifier) if representation_identifier is not None else None,
-        representation_identifier is not None,
-        _capi.string(representation_type) if representation_type is not None else None,
-        representation_type is not None,
+        {
+            "context": _capi.instance_handle(context),
+            "item": _capi.instance_handle(item),
+            "representation_identifier": representation_identifier,
+            "representation_type": representation_type,
+        },
     )

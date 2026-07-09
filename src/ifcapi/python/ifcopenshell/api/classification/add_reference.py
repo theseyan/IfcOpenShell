@@ -144,16 +144,16 @@ def _native_add_reference(
         file,
         "classification_add_reference",
         _relationship_capi.file_handle(file),
-        _relationship_capi.instance_list_ptr(product_list),
-        _relationship_capi.instance_handle(reference),
-        _relationship_capi.string(identification or ""),
-        identification is not None,
-        _relationship_capi.string(name or ""),
-        name is not None,
-        _relationship_capi.instance_handle(classification),
-        _relationship_capi.instance_handle(owner_history),
-        _relationship_capi.instance_handle(user),
-        _relationship_capi.instance_handle(application),
+        {
+            "products": _relationship_capi.instance_list_ptr(product_list),
+            "reference": _relationship_capi.instance_handle(reference),
+            "identification": identification,
+            "name": name,
+            "classification": _relationship_capi.instance_handle(classification),
+            "owner_history": _relationship_capi.instance_handle(owner_history),
+            "user": _relationship_capi.instance_handle(user),
+            "application": _relationship_capi.instance_handle(application),
+        },
     )
 
 

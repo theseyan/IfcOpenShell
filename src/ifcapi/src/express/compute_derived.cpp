@@ -63,7 +63,7 @@ ifcopenshell_selector_value_t* convert(const Value& v) {
 namespace ifcapi {
 namespace bindings {
 
-ifcopenshell_selector_value_t* compute_derived(::express::Base* instance, const std::string& attr_name) {
+std::optional<ifcopenshell_selector_value_t*> compute_derived(::express::Base* instance, const std::string& attr_name) {
     if (!instance || !*instance) return nullptr;
     auto& e = *instance;
     const auto* decl = e.declaration().as_entity();
@@ -84,8 +84,8 @@ ifcopenshell_selector_value_t* compute_derived(::express::Base* instance, const 
     return convert(result);
 }
 
-bool register_scratch_file(const char* schema_name, size_t file_ptr) {
-    ifcapi::express::ifcapi_register_scratch_file(schema_name, reinterpret_cast<void*>(file_ptr));
+bool register_scratch_file(const char* schema_name, ifcopenshell::file* file) {
+    ifcapi::express::ifcapi_register_scratch_file(schema_name, file);
     return true;
 }
 

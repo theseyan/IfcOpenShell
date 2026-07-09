@@ -44,6 +44,8 @@ def remove_work_plan(file: ifcopenshell.file, work_plan: ifcopenshell.entity_ins
         "sequence_remove_work_plan",
         _capi.file_handle(file),
         _capi.instance_handle(work_plan),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+        {
+            "user": _capi.instance_handle(user),
+            "application": _capi.instance_handle(application),
+        },
     )

@@ -451,14 +451,16 @@ def add_window_representation(
         file,
         "geometry_add_window_representation",
         _capi.file_handle(file),
-        _capi.instance_handle(context),
-        settings["overall_height"],
-        settings["overall_width"],
-        _capi.int32_list_list(panel_schema),
-        _capi.double_list([lining_properties[name] for name in WINDOW_LINING_PROPERTY_ORDER]),
-        _capi.double_list_list([[panel[name] for name in WINDOW_PANEL_PROPERTY_ORDER] for panel in panel_properties]),
-        _capi.instance_handle(part_of_product),
-        0.01 * si_conversion,
+        {
+            "context": _capi.instance_handle(context),
+            "overall_height": settings["overall_height"],
+            "overall_width": settings["overall_width"],
+            "panel_schema": panel_schema,
+            "lining_properties": [lining_properties[name] for name in WINDOW_LINING_PROPERTY_ORDER],
+            "panel_properties": [[panel[name] for name in WINDOW_PANEL_PROPERTY_ORDER] for panel in panel_properties],
+            "part_of_product": _capi.instance_handle(part_of_product),
+            "glass_thickness": 0.01 * si_conversion,
+        },
     )
 
 

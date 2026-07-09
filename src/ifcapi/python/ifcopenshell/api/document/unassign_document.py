@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.owner.settings
-from ifcopenshell import _ifcopenshell_capi as _capi
+from ifcopenshell.api import _relationship_capi
 
 
 def unassign_document(
@@ -51,13 +50,15 @@ def unassign_document(
         # Now let's change our mind and remove the association
         ifcopenshell.api.document.unassign_document(model, products=[storey], document=reference)
     """
-    user = ifcopenshell.api.owner.settings.get_user(file)
-    application = ifcopenshell.api.owner.settings.get_application(file)
-    product_list = [e._handle for e in products]
-    _capi.document_unassign_document(
-        file._handle,
-        product_list,
-        document._handle,
-        user._handle if user is not None else None,
-        application._handle if application is not None else None,
+    user, application = _relationship_capi.owner_user_application(file)
+    product_list = _relationship_capi.instance_list(products)
+    _relationship_capi.call_status(
+        "document_unassign_document",
+        _relationship_capi.file_handle(file),
+        {
+            "products": product_list,
+            "document": _relationship_capi.instance_handle(document),
+            "user": _relationship_capi.instance_handle(user),
+            "application": _relationship_capi.instance_handle(application),
+        },
     )

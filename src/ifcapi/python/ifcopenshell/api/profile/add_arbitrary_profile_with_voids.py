@@ -63,7 +63,8 @@ def add_arbitrary_profile_with_voids(
     outer = [list(v) for v in outer_profile]
     inners = [[list(v) for v in inner] for inner in inner_profiles]
     handle = _capi.profile_add_arbitrary_profile_with_voids(
-        file._handle, outer, inners, name, name is not None
+        file._handle,
+        {"outer_profile": outer, "inner_profiles": inners, **({"name": name} if name is not None else {})},
     )
     if handle:
         return ifcopenshell.entity_instance(file, handle)

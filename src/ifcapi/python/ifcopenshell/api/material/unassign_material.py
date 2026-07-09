@@ -59,6 +59,8 @@ def unassign_material(file: ifcopenshell.file, products: list[ifcopenshell.entit
         "Failed to unassign material",
         _capi.file_handle(file),
         product_list,
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+        {
+            "user": _capi.instance_handle(user),
+            "application": _capi.instance_handle(application),
+        },
     )

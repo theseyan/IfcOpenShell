@@ -8,13 +8,14 @@
 #include "ifcparse/express.h"
 #include "ifcparse/file.h"
 
+#include <optional>
 #include <string>
 
 namespace ifcapi {
 namespace bindings {
 
 IFCAPI_BINDING express::Base schema_reassign_class(
-    IFCAPI_NULLABLE ifcopenshell::file* file,
+    std::optional<ifcopenshell::file*> file,
     express::Base* element,
     const std::string& new_class);
 

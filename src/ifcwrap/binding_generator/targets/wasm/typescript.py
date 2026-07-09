@@ -39,6 +39,17 @@ def _interface_name(name: str) -> str:
 
 def _ts_type_from_c_type(c_type: str, metadata: HostBindingMetadata) -> str:
     normalized = " ".join(c_type.replace(" *", "*").split())
+    normalized_base = normalized.removeprefix("const ").removesuffix("*").strip()
+    option = next(
+        (
+            option
+            for option in metadata.option_structs.values()
+            if normalized in {f"{option.c_type}*", f"const {option.c_type}*"}
+        ),
+        None,
+    )
+    if option is not None:
+        return _interface_name(option.c_type)
     handle_name = next((name for name, handle in metadata.handles.items() if f"{handle.c_type}*" == normalized), None)
     if handle_name is not None:
         return _type_name(metadata.handles[handle_name].c_type)
@@ -48,30 +59,69 @@ def _ts_type_from_c_type(c_type: str, metadata: HostBindingMetadata) -> str:
         return "number"
     if normalized == "int64_t":
         return "bigint"
-    if normalized == "const char*":
+    if normalized in {"const char*", "ifcopenshell_string_t"}:
         return "string"
     if normalized.endswith("**"):
         pointee = normalized[:-2].strip()
         handle_name = next((name for name, handle in metadata.handles.items() if handle.c_type == pointee), None)
         if handle_name is not None:
             return f"{_type_name(metadata.handles[handle_name].c_type)}[]"
-    if normalized.startswith("const ifcopenshell_") and normalized.endswith("_list_t*"):
-        if "double_list" in normalized:
-            return "number[]"
-        if "int32_list" in normalized or "uint32_list" in normalized:
-            return "number[]"
-        if "int64_list" in normalized:
-            return "bigint[]"
-        if "bool_list" in normalized:
-            return "boolean[]"
-        if "string_list" in normalized:
-            return "string[]"
-    return "unknown"
+    sequence = next(
+        (
+            item
+            for item in metadata.value_types.values()
+            if item.c_type == normalized_base and item.kind in {"sequence", "handle_sequence"}
+        ),
+        None,
+    )
+    if sequence is not None:
+        return _sequence_ts_type(sequence, metadata)
+    return "IfcOpenshellRawValue"
+
+
+def _sequence_ts_type(struct: HostStructMetadata, metadata: HostBindingMetadata) -> str:
+    if struct.kind == "handle_sequence":
+        item = next(
+            (
+                _type_name(handle.c_type)
+                for handle in metadata.handles.values()
+                if struct.element_type is not None
+                and struct.element_type.removeprefix("const ").removesuffix("*").strip() == handle.c_type
+            ),
+            "IfcOpenshellRawValue",
+        )
+        return f"{item}[]"
+
+    elem = (struct.element_type or "").removeprefix("const ").removesuffix("*").strip()
+    scalar = {
+        "bool": "boolean",
+        "int32_t": "number",
+        "uint32_t": "number",
+        "uint8_t": "number",
+        "double": "number",
+        "int64_t": "bigint",
+        "ifcopenshell_string_t": "string",
+    }.get(elem)
+    if scalar is not None:
+        return f"{scalar}[]"
+
+    nested = next((item for item in metadata.value_types.values() if item.c_type == elem), None)
+    if nested is not None and nested.kind in {"sequence", "handle_sequence"}:
+        return f"{_sequence_ts_type(nested, metadata)}[]"
+    return "IfcOpenshellRawValue[]"
 
 
 def _ts_type(type_spec: TypeSpec, metadata: HostBindingMetadata) -> str:
     if type_spec.sequence_depth > 0:
-        inner = _ts_type(TypeSpec(kind=type_spec.kind, handle=type_spec.handle, struct=type_spec.struct), metadata)
+        inner = _ts_type(
+            TypeSpec(
+                kind=type_spec.kind,
+                handle=type_spec.handle,
+                struct=type_spec.struct,
+                variants=type_spec.variants,
+            ),
+            metadata,
+        )
         for _ in range(type_spec.sequence_depth):
             inner = f"{inner}[]"
         return inner
@@ -90,8 +140,13 @@ def _ts_type(type_spec: TypeSpec, metadata: HostBindingMetadata) -> str:
     elif type_spec.kind == "struct" and type_spec.struct is not None:
         struct = metadata.value_types[type_spec.struct]
         result = _interface_name(struct.c_type)
+    elif type_spec.kind == "option" and type_spec.struct is not None:
+        option = metadata.option_structs[type_spec.struct]
+        result = _interface_name(option.c_type)
+    elif type_spec.kind == "variant":
+        result = " | ".join(_ts_type(alt, metadata).removesuffix(" | null") for alt in type_spec.variants)
     else:
-        result = "unknown"
+        result = "IfcOpenshellRawValue"
     if type_spec.nullable and result != "void":
         return f"{result} | null"
     return result
@@ -109,6 +164,18 @@ def _render_struct_interfaces(metadata: HostBindingMetadata) -> str:
     return "\n\n".join(chunks)
 
 
+def _render_option_struct_interfaces(metadata: HostBindingMetadata) -> str:
+    chunks: list[str] = []
+    for option in sorted(metadata.option_structs.values(), key=lambda item: item.c_type):
+        fields = "\n".join(
+            f"    {field.name}{'?' if field.type.nullable else ''}: "
+            f"{_ts_type(field.type, metadata).removesuffix(' | null')};"
+            for field in option.fields
+        )
+        chunks.append(f"  export interface {_interface_name(option.c_type)} {{\n{fields}\n  }}")
+    return "\n\n".join(chunks)
+
+
 def _render_handle_classes(metadata: HostBindingMetadata) -> str:
     receiver_groups: dict[str, list[HostFunctionMetadata]] = {}
     for function in metadata.functions.values():
@@ -121,13 +188,7 @@ def _render_handle_classes(metadata: HostBindingMetadata) -> str:
         methods = ["    readonly ptr: number;", "    destroy(): void;"]
         for function in sorted(receiver_groups.get(handle_name, []), key=lambda item: item.c_name):
             name = _public_name(function, metadata.c_prefix)
-            params = ", ".join(
-                f"{param.name}: {_ts_type_from_c_type(param.c_type, metadata)}"
-                + (" | null" if param.nullable and "null" not in _ts_type_from_c_type(param.c_type, metadata) else "")
-                for param in _public_params(function)
-            )
-            returns = _ts_type(function.returns, metadata)
-            methods.append(f"    {name}({params}): {returns};")
+            methods.append(_render_function_signature(name, function, metadata))
         method_block = "\n".join(methods)
         chunks.append(f"  export class {_type_name(handle.c_type)} {{\n{method_block}\n  }}")
     return "\n\n".join(chunks)
@@ -139,7 +200,19 @@ def _render_function_signature(name: str, function: HostFunctionMetadata, metada
         + (" | null" if param.nullable and "null" not in _ts_type_from_c_type(param.c_type, metadata) else "")
         for param in _public_params(function)
     )
-    return f"    {name}({params}): {_ts_type(function.returns, metadata)};"
+    signature = f"    {name}({params}): {_ts_type(function.returns, metadata)};"
+    if not function.doc:
+        return signature
+    return _render_doc_comment(function.doc, "    ") + "\n" + signature
+
+
+def _render_doc_comment(doc: str, indent: str) -> str:
+    escaped = doc.replace("*/", "* /").strip()
+    lines = escaped.splitlines()
+    if len(lines) == 1:
+        return f"{indent}/** {lines[0]} */"
+    body = "\n".join(f"{indent} * {line}" if line else f"{indent} *" for line in lines)
+    return f"{indent}/**\n{body}\n{indent} */"
 
 
 def _module_interface_name(module_name: str) -> str:
@@ -201,6 +274,7 @@ def _render_module_interface(metadata: HostBindingMetadata, module_members: dict
 def render_typescript_declarations(metadata: HostBindingMetadata, handles: dict[str, HostStructMetadata] | None = None) -> str:
     del handles
     struct_interfaces = _render_struct_interfaces(metadata)
+    option_struct_interfaces = _render_option_struct_interfaces(metadata)
     handle_classes = _render_handle_classes(metadata)
     module_members = _collect_module_members(metadata)
     nested_module_interfaces = _render_nested_module_interfaces(metadata)
@@ -209,9 +283,13 @@ def render_typescript_declarations(metadata: HostBindingMetadata, handles: dict[
         "// This file was generated with the assistance of an AI coding tool.",
         "",
         "declare module 'ifcopenshell-api' {",
+        "  export type IfcOpenshellRawValue = null | boolean | number | bigint | string | object | IfcOpenshellRawValue[];",
+        "",
     ]
     if struct_interfaces:
         sections.extend([struct_interfaces, ""])
+    if option_struct_interfaces:
+        sections.extend([option_struct_interfaces, ""])
     if handle_classes:
         sections.extend([handle_classes, ""])
     if nested_module_interfaces:
@@ -221,7 +299,7 @@ def render_typescript_declarations(metadata: HostBindingMetadata, handles: dict[
             module_interface,
             "",
             "  export function createIfcOpenshellModule(",
-            "    initModule: (options?: Record<string, unknown>) => Promise<unknown>,",
+            "    initModule: (options?: Record<string, IfcOpenshellRawValue>) => Promise<object>,",
             "    wasmUrl?: string,",
             "    options?: {",
             "      pluginBaseUrl?: string;",

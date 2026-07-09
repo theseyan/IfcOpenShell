@@ -92,7 +92,9 @@ def assign_item_style(
         "style_assign_item_style",
         "Failed to assign item style",
         _capi.file_handle(file),
-        _capi.instance_handle(item),
-        _capi.instance_handle(style),
-        should_use_presentation_style_assignment,
+        {
+            "item": _capi.instance_handle(item),
+            "style": _capi.instance_handle(style),
+            "should_use_presentation_style_assignment": should_use_presentation_style_assignment,
+        },
     )

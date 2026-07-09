@@ -70,19 +70,15 @@ namespace bindings {
 
 express::Base drawing_assign_product(
     ifcopenshell::file* file,
-    express::Base* relating_product,
-    express::Base* related_object,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const DrawingAssignProductOptions& options)
 {
     ifcopenshell_clear_error();
     try {
-        auto relating_product_value = ifcapi::detail::deref_or_empty(relating_product);
-        auto related_object_value = ifcapi::detail::deref_or_empty(related_object);
-        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto relating_product_value = options.relating_product;
+        auto related_object_value = options.related_object;
+        auto owner_history_value = options.owner_history.value_or(express::Base());
+        auto user_value = options.user.value_or(express::Base());
+        auto application_value = options.application.value_or(express::Base());
         if (is_a(relating_product_value, "IfcGridAxis")) {
             auto axis = relating_product_value;
             auto grid = grid_for_axis(axis);
@@ -139,17 +135,14 @@ express::Base drawing_assign_product(
 
 void drawing_unassign_product(
     ifcopenshell::file* file,
-    express::Base* relating_product,
-    express::Base* related_object,
-    express::Base* user,
-    express::Base* application)
+    const DrawingUnassignProductOptions& options)
 {
     ifcopenshell_clear_error();
     try {
-        auto relating_product_value = ifcapi::detail::deref_or_empty(relating_product);
-        auto related_object_value = ifcapi::detail::deref_or_empty(related_object);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto relating_product_value = options.relating_product;
+        auto related_object_value = options.related_object;
+        auto user_value = options.user.value_or(express::Base());
+        auto application_value = options.application.value_or(express::Base());
         if (is_a(relating_product_value, "IfcGridAxis")) {
             relating_product_value = grid_for_axis(relating_product_value);
         }

@@ -92,9 +92,11 @@ def reference_structure(
         file,
         "spatial_reference_structure",
         _relationship_capi.file_handle(file),
-        _relationship_capi.instance_list_ptr(product_list),
-        _relationship_capi.instance_handle(relating_structure),
-        _relationship_capi.instance_handle(owner_history),
-        _relationship_capi.instance_handle(user),
-        _relationship_capi.instance_handle(application),
+        {
+            "products": product_list,
+            "relating_structure": _relationship_capi.instance_handle(relating_structure),
+            "owner_history": _relationship_capi.instance_handle(owner_history),
+            "user": _relationship_capi.instance_handle(user),
+            "application": _relationship_capi.instance_handle(application),
+        },
     )

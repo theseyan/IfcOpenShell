@@ -46,6 +46,7 @@
 #include <cctype>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <set>
 #include <sstream>
 #include <string>
@@ -685,7 +686,7 @@ std::string bbim_boolean_data(express::Base pset) {
 }
 
 express::Base find_bbim_boolean_pset(express::Base element) {
-    auto psets = ifcapi::bindings::element_get_pset_ids(&element, true, false, true);
+    auto psets = ifcapi::bindings::element_get_pset_ids(&element, {true, false, true});
     for (auto pset : psets) {
         if (pset && is_a(pset, "IfcPropertySet") && read_string(pset, "Name") == "BBIM_Boolean") {
             return pset;
@@ -757,9 +758,9 @@ struct WallVectors {
 
 std::vector<PrioritisedLayer> get_wall_layers(express::Base wall) {
     std::vector<PrioritisedLayer> result;
-    auto material = ifcapi::bindings::element_get_material(&wall, true, false);
-    if (!is_a(material, "IfcMaterialLayerSet")) return result;
-    for (auto layer : read_ref_list(material, "MaterialLayers")) {
+    auto material = ifcapi::bindings::element_get_material(&wall, {true, false});
+    if (!material || !is_a(*material, "IfcMaterialLayerSet")) return result;
+    for (auto layer : read_ref_list(*material, "MaterialLayers")) {
         result.push_back({read_int(layer, "Priority", 0), read_double(layer, "LayerThickness", 0.0)});
     }
     return result;
@@ -805,7 +806,7 @@ std::vector<std::vector<double>> get_reference_line_with_fallback(
     double fallback_length)
 {
     if (auto axis = ifcapi::bindings::representation_get_product_representation(
-        &wall, nullptr, "Plan", "Axis", "GRAPH_VIEW")) {
+        &wall, {{}, "Plan", "Axis", "GRAPH_VIEW"})) {
     if (auto resolved = ifcapi::bindings::representation_resolve(&axis)) {
             for (auto item : read_ref_list(resolved, "Items")) {
                 std::vector<double> p0, p1;
@@ -890,15 +891,15 @@ struct WallRegenerator {
         if (!axis) {
             auto plan = ifcapi::bindings::representation_get_context(file, "Plan", {}, {});
             if (!plan) {
-                plan = ifcapi::bindings::context_add_context(file, "Plan", nullptr, nullptr, false, 0.0, nullptr);
+                plan = ifcapi::bindings::context_add_context(file, ifcapi::bindings::ContextAddContextOptions{"Plan"});
             }
-            axis = ifcapi::bindings::context_add_context(file, "Plan", "Axis", "GRAPH_VIEW", false, 0.0, &plan);
+            axis = ifcapi::bindings::context_add_context(file, ifcapi::bindings::ContextAddContextOptions{"Plan", "Axis", "GRAPH_VIEW", {}, plan});
         }
     }
 
     WallVectors get_wall_vectors(express::Base wall) {
         if (auto body_rep = ifcapi::bindings::representation_get_product_representation(
-                &wall, nullptr, "Model", "Body", "MODEL_VIEW")) {
+                &wall, {{}, "Model", "Body", "MODEL_VIEW"})) {
             if (auto resolved = ifcapi::bindings::representation_resolve(&body_rep)) {
                 for (auto item : read_ref_list(resolved, "Items")) {
                     while (is_a(item, "IfcBooleanResult")) {
@@ -941,11 +942,11 @@ struct WallRegenerator {
     {
         std::vector<std::vector<std::vector<double>>> axes = {{reference[0], reference[1]}};
         int sense_factor = 1;
-        auto usage = ifcapi::bindings::element_get_material(&wall, false, false);
-        if (is_a(usage, "IfcMaterialLayerSetUsage")) {
-            const double offset = read_double(usage, "OffsetFromReferenceLine", 0.0);
+        auto usage = ifcapi::bindings::element_get_material(&wall, {false, false});
+        if (usage && is_a(*usage, "IfcMaterialLayerSetUsage")) {
+            const double offset = read_double(*usage, "OffsetFromReferenceLine", 0.0);
             for (auto& point : axes[0]) point[1] += offset;
-            sense_factor = read_string(usage, "DirectionSense") == "NEGATIVE" ? -1 : 1;
+            sense_factor = read_string(*usage, "DirectionSense") == "NEGATIVE" ? -1 : 1;
         }
         for (const auto& layer : layers) {
             const double y_offset = (layer.thickness * sense_factor) / std::cos(angle);
@@ -986,8 +987,8 @@ struct WallRegenerator {
         auto axes2 = get_axes(wall2, reference2, layers2, wall_vectors2.a);
         auto placement1 = read_ref(wall1, "ObjectPlacement");
         auto placement2 = read_ref(wall2, "ObjectPlacement");
-        auto matrix1i = ifcapi::detail::invert_rigid4(ifcapi::bindings::placement_get_local_placement(&placement1));
-        auto matrix2 = ifcapi::bindings::placement_get_local_placement(&placement2);
+        auto matrix1i = ifcapi::detail::invert_rigid4(ifcapi::bindings::placement_get_local_placement(placement1));
+        auto matrix2 = ifcapi::bindings::placement_get_local_placement(placement2);
         auto transform = ifcapi::detail::matmul4(matrix1i, matrix2);
 
         for (auto& axis_pair : axes2) {
@@ -1164,22 +1165,22 @@ struct WallRegenerator {
 
     express::Base polyline(const std::vector<std::vector<double>>& points, bool closed, bool has_offset) {
         return ifcapi::bindings::shape_builder_polyline(
-            file, points, closed, has_offset ? mul2(reference_p1, -1.0) : std::vector<double>{}, has_offset, {});
+            file,
+            ifcapi::bindings::ShapeBuilderPolylineOptions{
+                points, closed, has_offset ? std::optional<std::vector<double>>(mul2(reference_p1, -1.0)) : std::nullopt, {}});
     }
 
     express::Base profile_from_points(const std::vector<std::vector<double>>& points, bool has_offset) {
         auto outer_curve = polyline(points, true, has_offset);
         return ifcapi::bindings::shape_builder_profile(
             file,
-            &outer_curve,
-            nullptr,
-            {},
-            "AREA");
+            ifcapi::bindings::ShapeBuilderProfileOptions{outer_curve, {}, {}, "AREA"});
     }
 
     express::Base extrude(express::Base profile, double magnitude, const std::vector<double>& vector) {
         return ifcapi::bindings::shape_builder_extrude(
-            file, &profile, magnitude, {}, vector, vector, {1.0, 0.0, 0.0}, {}, false);
+            file,
+            ifcapi::bindings::ShapeBuilderExtrudeOptions{profile, magnitude, {}, vector, vector, {1.0, 0.0, 0.0}, {}});
     }
 
     express::Base regenerate(express::Base wall, double length, double height, bool has_angle, double angle) {
@@ -1311,17 +1312,27 @@ struct WallRegenerator {
             item = boolean;
         }
 
-        auto body_rep = ifcapi::bindings::shape_builder_representation(file, &body, {item}, nullptr);
-        if (auto old_rep = ifcapi::bindings::representation_get_product_representation(&wall, &body, nullptr, nullptr, nullptr)) {
+        auto body_rep = ifcapi::bindings::shape_builder_representation(
+            file,
+            ifcapi::bindings::ShapeBuilderRepresentationOptions{body, {item}, {}});
+        if (auto old_rep = ifcapi::bindings::representation_get_product_representation(&wall, {body, {}, {}, {}})) {
             ifcapi::bindings::element_replace_element(&old_rep, &body_rep);
             ifcapi::bindings::entity_remove_deep2(&old_rep);
         } else {
             ifcapi::bindings::geometry_assign_representation(file, &wall, &body_rep);
         }
 
-        auto axis_curve = ifcapi::bindings::shape_builder_polyline(file, {reference_p1, reference_p2}, false, has_offset ? mul2(reference_p1, -1.0) : std::vector<double>{}, has_offset, {});
-        auto axis_rep = ifcapi::bindings::shape_builder_representation(file, &axis, {axis_curve}, nullptr);
-        if (auto old_rep = ifcapi::bindings::representation_get_product_representation(&wall, &axis, nullptr, nullptr, nullptr)) {
+        auto axis_curve = ifcapi::bindings::shape_builder_polyline(
+            file,
+            ifcapi::bindings::ShapeBuilderPolylineOptions{
+                {reference_p1, reference_p2},
+                false,
+                has_offset ? std::optional<std::vector<double>>(mul2(reference_p1, -1.0)) : std::nullopt,
+                {}});
+        auto axis_rep = ifcapi::bindings::shape_builder_representation(
+            file,
+            ifcapi::bindings::ShapeBuilderRepresentationOptions{axis, {axis_curve}, {}});
+        if (auto old_rep = ifcapi::bindings::representation_get_product_representation(&wall, {axis, {}, {}, {}})) {
             ifcapi::bindings::element_replace_element(&old_rep, &axis_rep);
             ifcapi::bindings::entity_remove_deep2(&old_rep);
         } else {
@@ -1367,20 +1378,24 @@ struct WallRegenerator {
         auto placement = read_ref(wall, "ObjectPlacement");
         for (auto referenced_placement : inverse_refs(placement, "ReferencedByPlacements")) {
             children.push_back({
-                ifcapi::bindings::placement_get_local_placement(&referenced_placement),
+                ifcapi::bindings::placement_get_local_placement(referenced_placement),
                 inverse_refs(referenced_placement, "PlacesObject"),
             });
         }
-        auto matrix = ifcapi::bindings::placement_get_local_placement(&placement);
+        auto matrix = ifcapi::bindings::placement_get_local_placement(placement);
         const double x = reference_p1[0];
         const double y = reference_p1[1];
         matrix[3] = matrix[0] * x + matrix[1] * y + matrix[3];
         matrix[7] = matrix[4] * x + matrix[5] * y + matrix[7];
         matrix[11] = matrix[8] * x + matrix[9] * y + matrix[11];
-        ifcapi::bindings::geometry_edit_object_placement(file, &wall, matrix, false, true);
+        ifcapi::bindings::geometry_edit_object_placement(
+            file,
+            ifcapi::bindings::GeometryEditObjectPlacementOptions{wall, matrix, false, true});
         for (const auto& child : children) {
             for (auto element : child.elements) {
-                ifcapi::bindings::geometry_edit_object_placement(file, &element, child.matrix, false, true);
+                ifcapi::bindings::geometry_edit_object_placement(
+                    file,
+                    ifcapi::bindings::GeometryEditObjectPlacementOptions{element, child.matrix, false, true});
             }
         }
     }
@@ -1401,7 +1416,15 @@ void register_bbim_boolean(
         ids = parse_json_int_array(bbim_boolean_data(pset));
     } else {
         pset = ifcapi::bindings::pset_add_pset(
-            file, &element, "BBIM_Boolean", entity_ptr(owner_history), entity_ptr(user), entity_ptr(application), nullptr);
+            file,
+            ifcapi::bindings::PsetAddPsetOptions{
+                element,
+                "BBIM_Boolean",
+                owner_history ? std::optional<express::Base>(owner_history) : std::nullopt,
+                user ? std::optional<express::Base>(user) : std::nullopt,
+                application ? std::optional<express::Base>(application) : std::nullopt,
+                {},
+            });
         if (!pset) throw std::runtime_error("Unable to create BBIM_Boolean pset");
     }
     int result_id = static_cast<int>(result.id());
@@ -1413,7 +1436,7 @@ void register_bbim_boolean(
     if (!props) throw std::runtime_error("Unable to create pset property container");
     try {
         ifcapi::bindings::pset_props_set_string(props, "Data", dump_json_int_array(ids));
-        if (!ifcapi::bindings::pset_edit_pset(file, &pset, nullptr, props, nullptr, true)) {
+        if (!ifcapi::bindings::pset_edit_pset(file, ifcapi::bindings::PsetEditPsetOptions{pset, {}, props, {}, true})) {
             throw std::runtime_error("pset_edit_pset failed");
         }
         ifcapi::bindings::pset_props_free(props);
@@ -2332,7 +2355,9 @@ express::Base geometry_create_2pt_wall(
             0.0, 0.0, 1.0, elevation,
             0.0, 0.0, 0.0, 1.0,
         };
-        if (!geometry_edit_object_placement(file, &element, matrix, true, false)) {
+        if (!geometry_edit_object_placement(
+                file,
+                GeometryEditObjectPlacementOptions{element, matrix, true, false})) {
             throw std::runtime_error("Unable to edit wall placement");
         }
         return representation;
@@ -2360,8 +2385,8 @@ express::Base geometry_connect_wall(
     try {
         auto placement1 = read_ref(wall1, "ObjectPlacement");
         auto placement2 = read_ref(wall2, "ObjectPlacement");
-        auto matrix1i = ifcapi::detail::invert_rigid4(ifcapi::bindings::placement_get_local_placement(&placement1));
-        auto matrix2 = ifcapi::bindings::placement_get_local_placement(&placement2);
+        auto matrix1i = ifcapi::detail::invert_rigid4(ifcapi::bindings::placement_get_local_placement(placement1));
+        auto matrix2 = ifcapi::bindings::placement_get_local_placement(placement2);
         auto transform = ifcapi::detail::matmul4(matrix1i, matrix2);
         auto axis1 = ifcapi::detail::get_reference_line(file, wall1);
         auto axis2 = ifcapi::detail::get_reference_line(file, wall2);
@@ -2380,8 +2405,17 @@ express::Base geometry_connect_wall(
         const std::string wall1_end = x > midx ? "ATEND" : "ATSTART";
         const std::string wall2_end = is_atpath ? "ATPATH" : (std::fabs(y - starty) < std::fabs(y - endy) ? "ATSTART" : "ATEND");
         return geometry_connect_path(
-            file, &wall1, &wall2, wall1_end, wall2_end, nullptr, false, nullptr,
-            entity_ptr(owner_history), entity_ptr(user), entity_ptr(application));
+            file,
+            GeometryConnectPathOptions{
+                wall1,
+                wall2,
+                wall1_end,
+                wall2_end,
+                {},
+                {},
+                owner_history ? std::optional<express::Base>(owner_history) : std::nullopt,
+                user ? std::optional<express::Base>(user) : std::nullopt,
+                application ? std::optional<express::Base>(application) : std::nullopt});
     } catch (const std::exception& e) {
         set_error(e.what());
         return {};
@@ -3331,162 +3365,150 @@ express::Base geometry_add_footprint_representation(
 express::Base geometry_add_mesh_representation(
     ifcopenshell::file* file,
     express::Base* context,
-    const std::vector<std::vector<std::vector<double>>>& vertices,
-    const std::vector<std::vector<std::vector<std::vector<int>>>>& faces,
-    bool force_faceted_brep)
+    const GeometryAddMeshRepresentationOptions& options)
 {
     auto context_value = ifcapi::detail::deref_or_empty(context);
-    return geometry_add_mesh_representation(file, context_value, vertices, faces, force_faceted_brep);
+    return geometry_add_mesh_representation(
+        file, context_value, options.vertices, options.faces, options.force_faceted_brep.value_or(false));
 }
 
 express::Base geometry_add_shape_aspect(
     ifcopenshell::file* file,
-    const std::string& name,
-    const std::vector<express::Base>& items,
-    express::Base* representation,
-    express::Base* part_of_product,
-    const char* description,
-    bool has_description)
+    const GeometryAddShapeAspectOptions& options)
 {
-    auto representation_value = ifcapi::detail::deref_or_empty(representation);
-    auto part_value = ifcapi::detail::deref_or_empty(part_of_product);
-    return geometry_add_shape_aspect(file, name, items, representation_value, part_value, description, has_description);
+    return geometry_add_shape_aspect(
+        file,
+        options.name,
+        options.items,
+        options.representation,
+        options.part_of_product,
+        options.description ? options.description->c_str() : nullptr,
+        static_cast<bool>(options.description));
 }
 
 express::Base geometry_add_topology_representation(
     ifcopenshell::file* file,
-    express::Base* context,
-    express::Base* item,
-    const char* representation_identifier,
-    bool has_representation_identifier,
-    const char* representation_type,
-    bool has_representation_type)
+    const GeometryAddTopologyRepresentationOptions& options)
 {
-    auto context_value = ifcapi::detail::deref_or_empty(context);
-    auto item_value = ifcapi::detail::deref_or_empty(item);
     return geometry_add_topology_representation(
-        file, context_value, item_value, representation_identifier, has_representation_identifier,
-        representation_type, has_representation_type);
+        file,
+        options.context,
+        options.item,
+        options.representation_identifier ? options.representation_identifier->c_str() : nullptr,
+        static_cast<bool>(options.representation_identifier),
+        options.representation_type ? options.representation_type->c_str() : nullptr,
+        static_cast<bool>(options.representation_type));
 }
 
 express::Base geometry_add_wall_representation(
     ifcopenshell::file* file,
-    express::Base* context,
-    double length,
-    double height,
-    const std::string& direction_sense,
-    double offset,
-    double thickness,
-    double x_angle,
-    const std::vector<int32_t>& clipping_kinds,
-    const std::vector<std::vector<double>>& clipping_locations,
-    const std::vector<std::vector<double>>& clipping_normals,
-    const std::vector<express::Base>& clipping_entities,
-    const std::vector<express::Base>& booleans)
+    const GeometryAddWallRepresentationOptions& options)
 {
-    auto context_value = ifcapi::detail::deref_or_empty(context);
     return geometry_add_wall_representation(
-        file, context_value, length, height, direction_sense, offset, thickness, x_angle, clipping_kinds,
-        clipping_locations, clipping_normals, clipping_entities, booleans);
+        file,
+        options.context,
+        options.length,
+        options.height,
+        options.direction_sense,
+        options.offset,
+        options.thickness,
+        options.x_angle,
+        options.clipping_kinds,
+        options.clipping_locations,
+        options.clipping_normals,
+        options.clipping_entities,
+        options.booleans);
 }
 
 express::Base geometry_add_slab_representation(
     ifcopenshell::file* file,
-    express::Base* context,
-    double depth,
-    const std::string& direction_sense,
-    double offset,
-    double x_angle,
-    const std::vector<int32_t>& clipping_kinds,
-    const std::vector<std::vector<double>>& clipping_locations,
-    const std::vector<std::vector<double>>& clipping_normals,
-    const std::vector<express::Base>& clipping_entities,
-    const std::vector<std::vector<double>>& polyline,
-    bool has_polyline)
+    const GeometryAddSlabRepresentationOptions& options)
 {
-    auto context_value = ifcapi::detail::deref_or_empty(context);
+    static const std::vector<std::vector<double>> empty_polyline;
     return geometry_add_slab_representation(
-        file, context_value, depth, direction_sense, offset, x_angle, clipping_kinds, clipping_locations,
-        clipping_normals, clipping_entities, polyline, has_polyline);
+        file,
+        options.context,
+        options.depth,
+        options.direction_sense,
+        options.offset,
+        options.x_angle,
+        options.clipping_kinds,
+        options.clipping_locations,
+        options.clipping_normals,
+        options.clipping_entities,
+        options.polyline ? *options.polyline : empty_polyline,
+        static_cast<bool>(options.polyline));
 }
 
 express::Base geometry_create_2pt_wall(
     ifcopenshell::file* file,
-    express::Base* element,
-    express::Base* context,
-    const std::vector<double>& p1,
-    const std::vector<double>& p2,
-    double elevation,
-    double height,
-    double thickness,
-    bool is_si)
+    const GeometryCreate2PtWallOptions& options)
 {
-    auto element_value = ifcapi::detail::deref_or_empty(element);
-    auto context_value = ifcapi::detail::deref_or_empty(context);
-    return geometry_create_2pt_wall(file, element_value, context_value, p1, p2, elevation, height, thickness, is_si);
+    return geometry_create_2pt_wall(
+        file,
+        options.element,
+        options.context,
+        options.start,
+        options.end,
+        options.elevation,
+        options.height,
+        options.thickness,
+        options.is_si);
 }
 
 express::Base geometry_connect_wall(
     ifcopenshell::file* file,
-    express::Base* wall1,
-    express::Base* wall2,
-    bool is_atpath,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const GeometryConnectWallOptions& options)
 {
-    auto wall1_value = ifcapi::detail::deref_or_empty(wall1);
-    auto wall2_value = ifcapi::detail::deref_or_empty(wall2);
-    auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
-    auto user_value = ifcapi::detail::deref_or_empty(user);
-    auto application_value = ifcapi::detail::deref_or_empty(application);
-    return geometry_connect_wall(file, wall1_value, wall2_value, is_atpath, owner_history_value, user_value, application_value);
+    return geometry_connect_wall(
+        file,
+        options.first_wall,
+        options.second_wall,
+        options.is_atpath,
+        options.owner_history.value_or(express::Base{}),
+        options.user.value_or(express::Base{}),
+        options.application.value_or(express::Base{}));
 }
 
 express::Base geometry_clip_solid(
     ifcopenshell::file* file,
-    express::Base* item,
-    const std::vector<double>& location,
-    const std::vector<double>& normal,
-    express::Base* element,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const GeometryClipSolidOptions& options)
 {
-    auto item_value = ifcapi::detail::deref_or_empty(item);
-    auto element_value = ifcapi::detail::deref_or_empty(element);
-    auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
-    auto user_value = ifcapi::detail::deref_or_empty(user);
-    auto application_value = ifcapi::detail::deref_or_empty(application);
     return geometry_clip_solid(
-        file, item_value, location, normal, element_value, owner_history_value, user_value, application_value);
+        file,
+        options.item,
+        options.location,
+        options.normal,
+        options.element.value_or(express::Base{}),
+        options.owner_history.value_or(express::Base{}),
+        options.user.value_or(express::Base{}),
+        options.application.value_or(express::Base{}));
 }
 
 express::Base geometry_clip_solid_bounded(
     ifcopenshell::file* file,
-    express::Base* item,
-    const std::vector<double>& location,
-    const std::vector<double>& normal,
-    const std::vector<std::vector<double>>& boundary_points,
-    const std::vector<double>& boundary_position,
-    express::Base* element,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const GeometryClipSolidBoundedOptions& options)
 {
-    auto item_value = ifcapi::detail::deref_or_empty(item);
-    auto element_value = ifcapi::detail::deref_or_empty(element);
-    auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
-    auto user_value = ifcapi::detail::deref_or_empty(user);
-    auto application_value = ifcapi::detail::deref_or_empty(application);
     return geometry_clip_solid_bounded(
-        file, item_value, location, normal, boundary_points, boundary_position, element_value,
-        owner_history_value, user_value, application_value);
+        file,
+        options.item,
+        options.location,
+        options.normal,
+        options.boundary_points,
+        options.boundary_position,
+        options.element.value_or(express::Base{}),
+        options.owner_history.value_or(express::Base{}),
+        options.user.value_or(express::Base{}),
+        options.application.value_or(express::Base{}));
 }
 
-bool geometry_validate_type(ifcopenshell::file* file, express::Base* representation, express::Base* preferred_item) {
+bool geometry_validate_type(
+    ifcopenshell::file* file,
+    express::Base* representation,
+    const GeometryValidateTypeOptions& options)
+{
     auto representation_value = ifcapi::detail::deref_or_empty(representation);
-    auto preferred_value = ifcapi::detail::deref_or_empty(preferred_item);
+    auto preferred_value = options.preferred_item.value_or(express::Base{});
     return geometry_validate_type(file, representation_value, preferred_value);
 }
 
@@ -3507,30 +3529,31 @@ express::Base geometry_assign_representation(ifcopenshell::file* file, express::
 }
 
 express::Base geometry_regenerate_wall_representation(
-    ifcopenshell::file* file, express::Base* wall, double length, double height, double angle, bool has_angle)
+    ifcopenshell::file* file,
+    const GeometryRegenerateWallRepresentationOptions& options)
 {
-    auto wall_value = ifcapi::detail::deref_or_empty(wall);
-    return geometry_regenerate_wall_representation(file, wall_value, length, height, angle, has_angle);
+    return geometry_regenerate_wall_representation(
+        file,
+        options.wall,
+        options.length,
+        options.height,
+        options.angle.value_or(0.0),
+        static_cast<bool>(options.angle));
 }
 
 express::Base geometry_connect_element(
     ifcopenshell::file* file,
-    express::Base* relating_element,
-    express::Base* related_element,
-    const char* description,
-    bool has_description,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const GeometryConnectElementOptions& options)
 {
-    auto relating_value = ifcapi::detail::deref_or_empty(relating_element);
-    auto related_value = ifcapi::detail::deref_or_empty(related_element);
-    auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
-    auto user_value = ifcapi::detail::deref_or_empty(user);
-    auto application_value = ifcapi::detail::deref_or_empty(application);
     return geometry_connect_element(
-        file, relating_value, related_value, description, has_description,
-        owner_history_value, user_value, application_value);
+        file,
+        options.relating_element,
+        options.related_element,
+        options.description ? options.description->c_str() : nullptr,
+        static_cast<bool>(options.description),
+        options.owner_history.value_or(express::Base{}),
+        options.user.value_or(express::Base{}),
+        options.application.value_or(express::Base{}));
 }
 
 void geometry_disconnect_element(ifcopenshell::file* file, express::Base* relating_element, express::Base* related_element) {
@@ -3541,40 +3564,33 @@ void geometry_disconnect_element(ifcopenshell::file* file, express::Base* relati
 
 express::Base geometry_connect_path(
     ifcopenshell::file* file,
-    express::Base* relating_element,
-    express::Base* related_element,
-    const std::string& relating_connection,
-    const std::string& related_connection,
-    const char* description,
-    bool has_description,
-    express::Base* connection_geometry,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const GeometryConnectPathOptions& options)
 {
-    auto relating_value = ifcapi::detail::deref_or_empty(relating_element);
-    auto related_value = ifcapi::detail::deref_or_empty(related_element);
-    auto connection_geometry_value = ifcapi::detail::deref_or_empty(connection_geometry);
-    auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
-    auto user_value = ifcapi::detail::deref_or_empty(user);
-    auto application_value = ifcapi::detail::deref_or_empty(application);
     return geometry_connect_path(
-        file, relating_value, related_value, relating_connection, related_connection, description, has_description,
-        connection_geometry_value, owner_history_value, user_value, application_value);
+        file,
+        options.relating_element,
+        options.related_element,
+        options.relating_connection,
+        options.related_connection,
+        options.description ? options.description->c_str() : nullptr,
+        static_cast<bool>(options.description),
+        options.connection_geometry.value_or(express::Base{}),
+        options.owner_history.value_or(express::Base{}),
+        options.user.value_or(express::Base{}),
+        options.application.value_or(express::Base{}));
 }
 
 void geometry_disconnect_path(
     ifcopenshell::file* file,
-    express::Base* element,
-    const char* connection_type,
-    bool has_connection_type,
-    express::Base* relating_element,
-    express::Base* related_element)
+    const GeometryDisconnectPathOptions& options)
 {
-    auto element_value = ifcapi::detail::deref_or_empty(element);
-    auto relating_value = ifcapi::detail::deref_or_empty(relating_element);
-    auto related_value = ifcapi::detail::deref_or_empty(related_element);
-    geometry_disconnect_path(file, element_value, connection_type, has_connection_type, relating_value, related_value);
+    geometry_disconnect_path(
+        file,
+        options.element.value_or(express::Base{}),
+        options.connection_type ? options.connection_type->c_str() : nullptr,
+        static_cast<bool>(options.connection_type),
+        options.relating_element.value_or(express::Base{}),
+        options.related_element.value_or(express::Base{}));
 }
 
 void geometry_unassign_representation(ifcopenshell::file* file, express::Base* product, express::Base* representation) {
@@ -3583,17 +3599,24 @@ void geometry_unassign_representation(ifcopenshell::file* file, express::Base* p
     geometry_unassign_representation(file, product_value, representation_value);
 }
 
-void geometry_remove_representation(ifcopenshell::file* file, express::Base* representation, bool should_keep_named_profiles) {
+void geometry_remove_representation(
+    ifcopenshell::file* file,
+    express::Base* representation,
+    const GeometryRemoveRepresentationOptions& options)
+{
     auto representation_value = ifcapi::detail::deref_or_empty(representation);
-    geometry_remove_representation(file, representation_value, should_keep_named_profiles);
+    geometry_remove_representation(file, representation_value, options.should_keep_named_profiles.value_or(true));
 }
 
 express::Base geometry_copy_representation(
-    ifcopenshell::file* file, express::Base* source, express::Base* target, const char* context_identifier)
+    ifcopenshell::file* file,
+    const GeometryCopyRepresentationOptions& options)
 {
-    auto source_value = ifcapi::detail::deref_or_empty(source);
-    auto target_value = ifcapi::detail::deref_or_empty(target);
-    return geometry_copy_representation(file, source_value, target_value, context_identifier);
+    return geometry_copy_representation(
+        file,
+        options.source,
+        options.target,
+        options.context_identifier ? options.context_identifier->c_str() : nullptr);
 }
 
 bool type_map_type_representations(ifcopenshell::file* file, express::Base* related_object, express::Base* relating_type) {

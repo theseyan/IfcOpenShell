@@ -9,6 +9,7 @@
 #include "ifcparse/express.h"
 #include "ifcparse/file.h"
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -17,21 +18,33 @@ struct ifcopenshell_pset_props_t;
 namespace ifcapi {
 namespace bindings {
 
+/**
+ * Options for creating an arbitrary closed profile from a polyline.
+ */
+struct ProfileAddArbitraryProfileOptions {
+    std::vector<std::vector<double>> profile;
+    std::optional<std::string> name;
+};
+
+/**
+ * Options for creating an arbitrary closed profile with inner voids.
+ */
+struct ProfileAddArbitraryProfileWithVoidsOptions {
+    std::vector<std::vector<double>> outer_profile;
+    std::vector<std::vector<std::vector<double>>> inner_profiles;
+    std::optional<std::string> name;
+};
+
 IFCAPI_BINDING express::Base profile_add_parameterized_profile(
     ifcopenshell::file* file,
     const std::string& ifc_class,
     const std::string& profile_type);
 IFCAPI_BINDING express::Base profile_add_arbitrary_profile(
     ifcopenshell::file* file,
-    const std::vector<std::vector<double>>& profile,
-    const char* name,
-    bool has_name);
+    const ProfileAddArbitraryProfileOptions& options);
 IFCAPI_BINDING express::Base profile_add_arbitrary_profile_with_voids(
     ifcopenshell::file* file,
-    const std::vector<std::vector<double>>& outer_profile,
-    const std::vector<std::vector<std::vector<double>>>& inner_profiles,
-    const char* name,
-    bool has_name);
+    const ProfileAddArbitraryProfileWithVoidsOptions& options);
 IFCAPI_BINDING express::Base profile_copy_profile(
     ifcopenshell::file* file,
     express::Base* profile);

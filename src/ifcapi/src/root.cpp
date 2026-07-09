@@ -114,7 +114,10 @@ void root_remove_product_impl(
     for (auto representation : representations) {
         auto product_ref = product;
         ifcapi::bindings::geometry_unassign_representation(file, &product_ref, &representation);
-        ifcapi::bindings::geometry_remove_representation(file, &representation, true);
+        ifcapi::bindings::geometry_remove_representation(
+            file,
+            &representation,
+            ifcapi::bindings::GeometryRemoveRepresentationOptions{true});
     }
 
     auto openings = ifcapi::detail::read_inverse_aggregate(product, "HasOpenings");
@@ -122,9 +125,7 @@ void root_remove_product_impl(
         if (auto opening = ifcapi::detail::read_ref_attr(rel, "RelatedOpeningElement")) {
             ifcapi::bindings::feature_remove_feature(
                 file,
-                &opening,
-                ifcapi::detail::nullable_ptr(user),
-                ifcapi::detail::nullable_ptr(application));
+                ifcapi::bindings::FeatureRemoveFeatureOptions{opening, user, application});
         }
     }
 
@@ -156,22 +157,21 @@ void root_remove_product_impl(
             ifcapi::bindings::material_unassign_material(
                 file,
                 single_ref(product),
-                ifcapi::detail::nullable_ptr(user),
-                ifcapi::detail::nullable_ptr(application));
+                {user, application});
         } else if (is_instance(inverse, "IfcRelDefinesByType")) {
             if (ifcapi::detail::same_instance(ifcapi::detail::read_ref_attr(inverse, "RelatingType"), product)) {
                 auto related = ifcapi::detail::read_ref_aggregate(inverse, "RelatedObjects");
-                ifcapi::bindings::type_unassign_type(
-                    file,
-                    related,
-                    ifcapi::detail::nullable_ptr(user),
-                    ifcapi::detail::nullable_ptr(application));
+                ifcapi::bindings::TypeUnassignTypeOptions type_opts;
+                type_opts.objects = related;
+                if (user) type_opts.user = user;
+                if (application) type_opts.application = application;
+                ifcapi::bindings::type_unassign_type(file, type_opts);
             } else {
-                ifcapi::bindings::type_unassign_type(
-                    file,
-                    single_ref(product),
-                    ifcapi::detail::nullable_ptr(user),
-                    ifcapi::detail::nullable_ptr(application));
+                ifcapi::bindings::TypeUnassignTypeOptions type_opts;
+                type_opts.objects = single_ref(product);
+                if (user) type_opts.user = user;
+                if (application) type_opts.application = application;
+                ifcapi::bindings::type_unassign_type(file, type_opts);
             }
         } else if (is_instance(inverse, "IfcRelSpaceBoundary")) {
             ifcapi::bindings::boundary_remove_boundary(file, &inverse);
@@ -276,10 +276,7 @@ namespace bindings {
 
 express::Base root_create_entity(
     ifcopenshell::file* file,
-    const std::string& ifc_class,
-    const char* predefined_type,
-    const char* name,
-    express::Base* owner_history)
+    const RootCreateEntityOptions& options)
 {
     ifcopenshell_clear_error();
 
@@ -287,6 +284,7 @@ express::Base root_create_entity(
         set_error("file is NULL");
         return {};
     }
+    const std::string& ifc_class = options.ifc_class;
     if (ifc_class.empty()) {
         set_error("ifc_class is empty");
         return {};
@@ -321,12 +319,12 @@ express::Base root_create_entity(
             ifcapi::detail::write_string_attr(view, "GlobalId", ifcapi::guid_new());
         }
 
-        if (owner_history && *owner_history && view.has_attr("OwnerHistory")) {
-            ifcapi::detail::write_ref_attr(view, "OwnerHistory", *owner_history);
+        if (options.owner_history && *options.owner_history && view.has_attr("OwnerHistory")) {
+            ifcapi::detail::write_ref_attr(view, "OwnerHistory", *options.owner_history);
         }
 
-        if (name) {
-            ifcapi::detail::write_string_attr(view, "Name", name);
+        if (options.name) {
+            ifcapi::detail::write_string_attr(view, "Name", *options.name);
         }
 
         auto set_enum = [&](const char* attr_name, const std::string& value) -> bool {
@@ -339,7 +337,8 @@ express::Base root_create_entity(
             view.set(attr_name, value);
         };
 
-        if (predefined_type && predefined_type[0] != '\0') {
+        if (options.predefined_type && !options.predefined_type->empty()) {
+            const std::string& predefined_type = *options.predefined_type;
             if (view.has_attr("PredefinedType")) {
                 if (!set_enum("PredefinedType", predefined_type)) {
                     set_enum("PredefinedType", "USERDEFINED");
@@ -415,16 +414,15 @@ express::Base root_create_entity(
 void root_remove_product(
     ifcopenshell::file* file,
     express::Base* product,
-    express::Base* user,
-    express::Base* application)
+    const RootRemoveProductOptions& options)
 {
     ifcopenshell_clear_error();
     try {
         root_remove_product_impl(
             file,
             product ? *product : express::Base(),
-            user ? *user : express::Base(),
-            application ? *application : express::Base());
+            options.user.value_or(express::Base{}),
+            options.application.value_or(express::Base{}));
     } catch (const std::exception& e) {
         set_error(e.what());
     } catch (...) {

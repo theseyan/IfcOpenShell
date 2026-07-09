@@ -57,9 +57,10 @@ def duplicate_task(
     result = _capi.sequence_duplicate_task(
         file._handle,
         task._handle,
-        None,
-        user._handle if user is not None else None,
-        application._handle if application is not None else None,
+        {
+            "user": user._handle if user is not None else None,
+            "application": application._handle if application is not None else None,
+        },
     )
     current = ifcopenshell._take_instance_list(file, result.current)
     duplicate = ifcopenshell._take_instance_list(file, result.duplicate)

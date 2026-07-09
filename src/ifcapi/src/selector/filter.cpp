@@ -430,8 +430,8 @@ static void apply_type_facet(
         if (!type_e) {
             match = compare_full(nullptr, cmp, fv);
         } else {
-            std::string type_name = get_string_attr(type_e, "Name");
-            std::string type_guid = get_string_attr(type_e, "GlobalId");
+            std::string type_name = get_string_attr(*type_e, "Name");
+            std::string type_guid = get_string_attr(*type_e, "GlobalId");
             StringVal nv(type_name), gv(type_guid);
             const Val* nv_ptr = type_name.empty() ? static_cast<const Val*>(nullptr)
                                                     : static_cast<const Val*>(&nv);
@@ -485,8 +485,8 @@ static void apply_material_facet(
 
     ElemSet result;
     for (auto e : elements) {
-        auto mat = ifcapi::bindings::element_get_material(&e, true, true);
-        auto materials = expand_to_materials(mat);
+        auto mat = ifcapi::bindings::element_get_material(&e, {true, true});
+        auto materials = mat ? expand_to_materials(*mat) : std::vector<express::Base>{};
 
         bool filter_result;
         if (materials.empty()) {
@@ -672,7 +672,8 @@ static std::vector<express::Base> get_container_tree(express::Base container) {
     while (container) {
         if (entity_is_a(container, "IfcProject")) break;
         tree.push_back(container);
-        container = ifcapi::bindings::element_get_aggregate(&container);
+        auto aggregate = ifcapi::bindings::element_get_aggregate(&container);
+        container = aggregate.value_or(express::Base());
     }
     return tree;
 }
@@ -694,14 +695,14 @@ static void apply_location_facet(
     ElemSet result;
     for (auto e : elements) {
         /* Get direct spatial container */
-        auto container = ifcapi::bindings::element_get_container(&e, false, nullptr);
+        auto container = ifcapi::bindings::element_get_container(&e, {false, {}});
 
         /* Fall back to aggregate parent if no spatial container */
         if (!container) {
             container = ifcapi::bindings::element_get_aggregate(&e);
         }
 
-        auto containers = get_container_tree(container);
+        auto containers = container ? get_container_tree(*container) : std::vector<express::Base>{};
 
         bool filter_result;
         if (containers.empty()) {
@@ -829,7 +830,7 @@ static void apply_parent_facet(
     /* Get all children of matched parents */
     ElemSet children;
     for (auto parent : parents) {
-        auto decomposed = ifcapi::bindings::element_get_decomposition(&parent, true);
+        auto decomposed = ifcapi::bindings::element_get_decomposition(&parent, {true});
         if (!decomposed.empty()) {
             for (auto child : decomposed)
                 if (child) children.insert(child);
@@ -1001,12 +1002,12 @@ static ElemSet filter_elements_impl(
 namespace ifcapi {
 namespace bindings {
 
-ifcopenshell_selector_value_t* selector_filter_all(ifcopenshell::file* file, const std::string& query)
+std::optional<ifcopenshell_selector_value_t*> selector_filter_all(ifcopenshell::file* file, const std::string& query)
 {
     return selector_filter_elements(file, query, {});
 }
 
-ifcopenshell_selector_value_t* selector_filter_elements(
+std::optional<ifcopenshell_selector_value_t*> selector_filter_elements(
     ifcopenshell::file* file,
     const std::string& query,
     const std::vector<express::Base>& elements)

@@ -64,11 +64,7 @@ using namespace ifcapi::detail;
 
 express::Base group_add_group(
     ifcopenshell::file* file,
-    const std::string& name,
-    const char* description,
-    express::Base owner_history,
-    express::Base user,
-    express::Base application)
+    const GroupAddGroupOptions& options)
 {
     ifcopenshell_clear_error();
     if (!file) {
@@ -77,6 +73,10 @@ express::Base group_add_group(
     }
 
     try {
+        auto owner_history = options.owner_history.value_or(express::Base());
+        auto user = options.user.value_or(express::Base());
+        auto application = options.application.value_or(express::Base());
+
         const auto* group_decl = file->schema()->declaration_by_name("IfcGroup");
         auto group = file->create(group_decl);
         auto* group_entity_decl = group_decl->as_entity();
@@ -85,10 +85,10 @@ express::Base group_add_group(
         int oh_idx = find_attr_index(group_entity_decl, "OwnerHistory");
         set_ref(group, oh_idx, ensure_owner_history(file, owner_history, user, application));
         int name_idx = find_attr_index(group_entity_decl, "Name");
-        if (name_idx >= 0) group.set_attribute_value(static_cast<size_t>(name_idx), name);
-        if (description) {
+        if (name_idx >= 0) group.set_attribute_value(static_cast<size_t>(name_idx), options.name);
+        if (options.description.has_value()) {
             int desc_idx = find_attr_index(group_entity_decl, "Description");
-            if (desc_idx >= 0) group.set_attribute_value(static_cast<size_t>(desc_idx), std::string(description));
+            if (desc_idx >= 0) group.set_attribute_value(static_cast<size_t>(desc_idx), options.description.value());
         }
         return group;
     } catch (const std::exception& e) {
@@ -99,25 +99,25 @@ express::Base group_add_group(
 
 express::Base group_update_group_products(
     ifcopenshell::file* file,
-    express::Base group,
-    const std::vector<express::Base>& products,
-    express::Base owner_history,
-    express::Base user,
-    express::Base application)
+    const GroupUpdateGroupProductsOptions& options)
 {
     ifcopenshell_clear_error();
-    if (!file || !group) {
+    if (!file || !options.group) {
         set_error("Invalid arguments");
         return {};
     }
 
     try {
-        std::vector<express::Base> product_vec;
-        for (auto product : products) if (product) product_vec.push_back(product);
+        auto owner_history = options.owner_history.value_or(express::Base());
+        auto user = options.user.value_or(express::Base());
+        auto application = options.application.value_or(express::Base());
 
-        auto rels = get_group_rels(group);
+        std::vector<express::Base> product_vec;
+        for (auto product : options.products) if (product) product_vec.push_back(product);
+
+        auto rels = get_group_rels(options.group);
         if (rels.empty()) {
-            return create_group_rel(file, group, product_vec, owner_history, user, application);
+            return create_group_rel(file, options.group, product_vec, owner_history, user, application);
         }
 
         std::vector<express::Base> related;
@@ -152,27 +152,27 @@ express::Base group_update_group_products(
 
 express::Base group_assign_group(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base group,
-    express::Base owner_history,
-    express::Base user,
-    express::Base application)
+    const GroupAssignGroupOptions& options)
 {
     ifcopenshell_clear_error();
-    if (!file || products.empty()) {
+    if (!file || options.products.empty()) {
         set_error("Invalid arguments");
         return {};
     }
 
     try {
-        auto group_e = group;
+        auto group_e = options.group;
         if (!group_e) {
             set_error("Group not found");
             return {};
         }
 
+        auto owner_history = options.owner_history.value_or(express::Base());
+        auto user = options.user.value_or(express::Base());
+        auto application = options.application.value_or(express::Base());
+
         std::vector<express::Base> products_vec;
-        for (auto obj : products) {
+        for (auto obj : options.products) {
             if (obj) products_vec.push_back(obj);
         }
         if (products_vec.empty()) return {};
@@ -219,15 +219,15 @@ express::Base group_assign_group(
 
 void group_unassign_group(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base group,
-    express::Base user,
-    express::Base application)
+    const GroupUnassignGroupOptions& options)
 {
-    if (!file || products.empty() || !group) return;
+    if (!file || options.products.empty() || !options.group) return;
 
     try {
-        auto group_e = group;
+        auto user = options.user.value_or(express::Base());
+        auto application = options.application.value_or(express::Base());
+
+        auto group_e = options.group;
         if (!group_e) return;
 
         auto rel = find_is_grouped_by(group_e);
@@ -237,7 +237,7 @@ void group_unassign_group(
         int related_idx = find_attr_index(rel_entity_decl, "RelatedObjects");
 
         std::set<express::Base> products_set;
-        for (auto obj : products) {
+        for (auto obj : options.products) {
             if (obj) products_set.insert(obj);
         }
 
@@ -260,13 +260,13 @@ void group_unassign_group(
 
 void group_remove_group(
     ifcopenshell::file* file,
-    express::Base group)
+    express::Base* group)
 {
     if (!file || !group) return;
 
     std::vector<int> inverse_ids;
     try {
-        for (auto inverse : file->instances_by_reference(static_cast<int>(group.id()))) {
+        for (auto inverse : file->instances_by_reference(static_cast<int>(group->id()))) {
             if (inverse && inverse.id() > 0) inverse_ids.push_back(static_cast<int>(inverse.id()));
         }
     } catch (...) {
@@ -277,82 +277,17 @@ void group_remove_group(
         if (!inverse) continue;
         if (inverse.declaration().is("IfcRelDefinesByProperties")) {
             auto pset = read_ref_attr(inverse, "RelatingPropertyDefinition");
-            if (pset) pset_remove_pset(file, &group, &pset);
+            if (pset) pset_remove_pset(file, group, &pset);
         } else if (inverse.declaration().is("IfcRelAssignsToGroup")) {
             auto relating_group = read_ref_attr(inverse, "RelatingGroup");
             auto related = read_ref_aggregate(inverse, "RelatedObjects");
-            if (relating_group == group || related.size() == 1) {
+            if (relating_group == *group || related.size() == 1) {
                 remove_with_history(file, inverse);
             }
         }
     }
 
-    remove_with_history(file, group);
-}
-
-express::Base group_add_group(
-    ifcopenshell::file* file,
-    const std::string& name,
-    const char* description,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
-{
-    return group_add_group(
-        file,
-        name,
-        description,
-        deref_or_empty(owner_history),
-        deref_or_empty(user),
-        deref_or_empty(application));
-}
-
-express::Base group_update_group_products(
-    ifcopenshell::file* file,
-    express::Base* group,
-    const std::vector<express::Base>& products,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
-{
-    return group_update_group_products(
-        file,
-        deref_or_empty(group),
-        products,
-        deref_or_empty(owner_history),
-        deref_or_empty(user),
-        deref_or_empty(application));
-}
-
-express::Base group_assign_group(
-    ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base* group,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
-{
-    return group_assign_group(
-        file,
-        products,
-        deref_or_empty(group),
-        deref_or_empty(owner_history),
-        deref_or_empty(user),
-        deref_or_empty(application));
-}
-
-void group_unassign_group(
-    ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base* group,
-    express::Base* user,
-    express::Base* application)
-{
-    group_unassign_group(file, products, deref_or_empty(group), deref_or_empty(user), deref_or_empty(application));
-}
-
-void group_remove_group(ifcopenshell::file* file, express::Base* group) {
-    group_remove_group(file, deref_or_empty(group));
+    remove_with_history(file, *group);
 }
 
 } // namespace bindings

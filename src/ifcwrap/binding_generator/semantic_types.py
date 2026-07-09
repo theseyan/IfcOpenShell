@@ -104,6 +104,12 @@ class OptionalSemanticType:
 
 
 @dataclass(frozen=True)
+class VariantSemanticType:
+    cpp_type: str
+    alternatives: tuple["SemanticCppType", ...]
+
+
+@dataclass(frozen=True)
 class UnsupportedSemanticType:
     cpp_type: str
     reason: str
@@ -117,6 +123,7 @@ SemanticCppType = (
     | RecordSemanticType
     | SequenceSemanticType
     | OptionalSemanticType
+    | VariantSemanticType
     | UnsupportedSemanticType
 )
 
@@ -157,10 +164,16 @@ def _from_discovered(cpp_type: DiscoveredCppType) -> SemanticCppType:
             element=analyze_cpp_type(cpp_type.template_args[0]),
         )
 
-    if cpp_type.template_name in {"std::optional", "boost::optional"} and cpp_type.template_args:
+    if cpp_type.template_name == "std::optional" and cpp_type.template_args:
         return OptionalSemanticType(
             cpp_type=cpp_text,
             element=analyze_cpp_type(cpp_type.template_args[0]),
+        )
+
+    if cpp_type.template_name == "std::variant" and cpp_type.template_args:
+        return VariantSemanticType(
+            cpp_type=cpp_text,
+            alternatives=tuple(analyze_cpp_type(arg) for arg in cpp_type.template_args),
         )
 
     if cpp_type.template_name in {"std::shared_ptr", "boost::shared_ptr", "std::unique_ptr"} and cpp_type.template_args:
@@ -201,13 +214,19 @@ def _from_string(cpp_type: str) -> SemanticCppType:
                 element=analyze_cpp_type(args[0]),
             )
 
-    for template_name in ("std::optional", "boost::optional"):
-        args = _template_match(normalized, template_name)
-        if args:
-            return OptionalSemanticType(
-                cpp_type=normalized,
-                element=analyze_cpp_type(args[0]),
-            )
+    args = _template_match(normalized, "std::optional")
+    if args:
+        return OptionalSemanticType(
+            cpp_type=normalized,
+            element=analyze_cpp_type(args[0]),
+        )
+
+    args = _template_match(normalized, "std::variant")
+    if args:
+        return VariantSemanticType(
+            cpp_type=normalized,
+            alternatives=tuple(analyze_cpp_type(arg) for arg in args),
+        )
 
     for pointer_name, wrapper_kind in (
         ("std::shared_ptr", "shared_ptr"),

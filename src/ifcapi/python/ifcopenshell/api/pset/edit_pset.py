@@ -20,11 +20,13 @@ def edit_pset(file, pset, name=None, properties=None, pset_template=None, should
     try:
         _capi.pset_edit_pset(
             file._handle,
-            pset._handle,
-            name,
-            props_handle,
-            template_handle,
-            bool(should_purge),
+            {
+                "pset": pset._handle,
+                "name": name,
+                "properties": props_handle,
+                "pset_template": template_handle,
+                "should_purge": bool(should_purge),
+            },
         )
         if _capi.last_error_kind() != _capi.IFCOPENSHELL_ERROR_NONE:
             raise_last_error("edit_pset failed")

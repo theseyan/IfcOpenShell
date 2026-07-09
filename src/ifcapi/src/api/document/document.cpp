@@ -225,12 +225,14 @@ namespace bindings {
 
 express::Base document_add_information(
     ifcopenshell::file* file,
-    express::Base parent,
-    express::Base owner_history,
-    express::Base user,
-    express::Base application)
+    const DocumentAddInformationOptions& options)
 {
+    auto owner_history = options.owner_history.value_or(express::Base());
+    auto user = options.user.value_or(express::Base());
+    auto application = options.application.value_or(express::Base());
+
     auto information = create_document_information(file);
+    auto parent = options.parent.value_or(express::Base());
     if (!parent) parent = first_project(file);
     if (!parent) throw std::runtime_error("IfcProject is not found.");
 
@@ -249,33 +251,35 @@ express::Base document_add_information(
 
 express::Base document_add_reference(
     ifcopenshell::file* file,
-    express::Base information)
+    std::optional<express::Base> information)
 {
+    auto information_value = information.value_or(express::Base());
     const auto* declaration = file->schema()->declaration_by_name("IfcDocumentReference");
     auto reference = file->create(declaration);
     if (is_ifc2x3(file)) {
         ifcapi::detail::write_string_attr(reference, "ItemReference", "X");
-        if (information) {
-            auto references = ifcapi::detail::read_ref_aggregate(information, "DocumentReferences");
+        if (information_value) {
+            auto references = ifcapi::detail::read_ref_aggregate(information_value, "DocumentReferences");
             references.push_back(reference);
-            ifcapi::detail::write_ref_aggregate(information, "DocumentReferences", references);
+            ifcapi::detail::write_ref_aggregate(information_value, "DocumentReferences", references);
         }
     } else {
         ifcapi::detail::write_string_attr(reference, "Identification", "X");
-        ifcapi::detail::write_ref_attr(reference, "ReferencedDocument", information);
+        ifcapi::detail::write_ref_attr(reference, "ReferencedDocument", information_value);
     }
     return reference;
 }
 
 express::Base document_assign_document(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base document,
-    express::Base owner_history,
-    express::Base user,
-    express::Base application)
+    const DocumentAssignDocumentOptions& options)
 {
-    auto product_vec = mutable_entities(products);
+    auto owner_history = options.owner_history.value_or(express::Base());
+    auto user = options.user.value_or(express::Base());
+    auto application = options.application.value_or(express::Base());
+    auto document = options.document;
+
+    auto product_vec = mutable_entities(options.products);
     auto products_to_add = products_not_already_referenced(product_vec, referenced_elements(file, document));
     if (products_to_add.empty()) return {};
 
@@ -297,12 +301,13 @@ express::Base document_assign_document(
 
 void document_unassign_document(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base document,
-    express::Base user,
-    express::Base application)
+    const DocumentUnassignDocumentOptions& options)
 {
-    auto product_vec = mutable_entities(products);
+    auto user = options.user.value_or(express::Base());
+    auto application = options.application.value_or(express::Base());
+    auto document = options.document;
+
+    auto product_vec = mutable_entities(options.products);
     std::unordered_set<express::Base> products_set(product_vec.begin(), product_vec.end());
     std::vector<express::Base> rels;
     std::unordered_set<express::Base> seen_rels;
@@ -332,71 +337,16 @@ void document_unassign_document(
 
 void document_remove_reference(
     ifcopenshell::file* file,
-    express::Base reference)
+    express::Base* reference)
 {
-    remove_reference_impl(file, reference);
+    remove_reference_impl(file, detail::deref_or_empty(reference));
 }
 
 void document_remove_information(
     ifcopenshell::file* file,
-    express::Base information)
+    express::Base* information)
 {
-    remove_information_impl(file, information);
-}
-
-express::Base document_add_information(
-    ifcopenshell::file* file,
-    express::Base* parent,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
-{
-    return document_add_information(
-        file,
-        detail::deref_or_empty(parent),
-        detail::deref_or_empty(owner_history),
-        detail::deref_or_empty(user),
-        detail::deref_or_empty(application));
-}
-
-express::Base document_add_reference(ifcopenshell::file* file, express::Base* information) {
-    return document_add_reference(file, detail::deref_or_empty(information));
-}
-
-express::Base document_assign_document(
-    ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base* document,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
-{
-    return document_assign_document(
-        file,
-        products,
-        detail::deref_or_empty(document),
-        detail::deref_or_empty(owner_history),
-        detail::deref_or_empty(user),
-        detail::deref_or_empty(application));
-}
-
-void document_unassign_document(
-    ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base* document,
-    express::Base* user,
-    express::Base* application)
-{
-    document_unassign_document(
-        file, products, detail::deref_or_empty(document), detail::deref_or_empty(user), detail::deref_or_empty(application));
-}
-
-void document_remove_reference(ifcopenshell::file* file, express::Base* reference) {
-    document_remove_reference(file, detail::deref_or_empty(reference));
-}
-
-void document_remove_information(ifcopenshell::file* file, express::Base* information) {
-    document_remove_information(file, detail::deref_or_empty(information));
+    remove_information_impl(file, detail::deref_or_empty(information));
 }
 
 } // namespace bindings

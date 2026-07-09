@@ -7,7 +7,6 @@
 #define IFCAPI_OWNED
 #define IFCAPI_COPY
 #define IFCAPI_STATIC
-#define IFCAPI_NULLABLE
 #define IFCAPI_HANDLE(cpp_type, destructor, ...)
 #define IFCAPI_RESULT_STRUCT(...)
 

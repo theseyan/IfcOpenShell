@@ -410,11 +410,12 @@ class ShapeBuilder:
         return _native_entity(
             self.file,
             "ifcopenshell_shape_builder_polyline",
-            _native_points(points),
-            bool(closed),
-            _native_vector(position_offset if position_offset is not None else ()),
-            position_offset is not None,
-            arc_points,
+            {
+                "points": _native_points(points),
+                "closed": bool(closed),
+                **({"position_offset": _native_vector(position_offset)} if position_offset is not None else {}),
+                "arc_points": arc_points,
+            },
         )
 
     @staticmethod
@@ -574,12 +575,14 @@ class ShapeBuilder:
         return _native_entity(
             self.file,
             "ifcopenshell_shape_builder_ellipse_curve",
-            x_axis_radius,
-            y_axis_radius,
-            _native_vector(position),
-            _native_points(trim_points),
-            _native_vector(ref_x_direction),
-            trim_points_mask,
+            {
+                "x_axis_radius": x_axis_radius,
+                "y_axis_radius": y_axis_radius,
+                "position": _native_vector(position),
+                "trim_points": _native_points(trim_points),
+                "ref_x_direction": _native_vector(ref_x_direction) if ref_x_direction is not None else None,
+                "trim_points_mask": trim_points_mask,
+            },
         )
 
     def profile(
@@ -621,10 +624,12 @@ class ShapeBuilder:
         return _native_entity(
             self.file,
             "ifcopenshell_shape_builder_profile",
-            outer_curve._handle,
-            name,
-            _native_instance_list(inner_curves),
-            profile_type,
+            {
+                "outer_curve": outer_curve._handle,
+                "name": name,
+                "inner_curves": _native_instance_list(inner_curves),
+                "profile_type": profile_type,
+            },
         )
 
     def translate(
@@ -652,9 +657,11 @@ class ShapeBuilder:
                 _native_entity(
                     self.file,
                     "ifcopenshell_shape_builder_translate",
-                    c._handle,
-                    _native_vector(translation),
-                    bool(create_copy),
+                    {
+                        "item": c._handle,
+                        "translation": _native_vector(translation),
+                        "create_copy": bool(create_copy),
+                    },
                 )
             )
 
@@ -709,11 +716,13 @@ class ShapeBuilder:
                 _native_entity(
                     self.file,
                     "ifcopenshell_shape_builder_rotate",
-                    c._handle,
-                    float(angle),
-                    _native_vector(pivot_point),
-                    bool(counter_clockwise),
-                    bool(create_copy),
+                    {
+                        "item": c._handle,
+                        "angle": float(angle),
+                        "pivot_point": _native_vector(pivot_point),
+                        "counter_clockwise": bool(counter_clockwise),
+                        "create_copy": bool(create_copy),
+                    },
                 )
             )
 
@@ -759,9 +768,11 @@ class ShapeBuilder:
         return _native_entity(
             self.file,
             "ifcopenshell_shape_builder_axis2_placement_3d",
-            _native_vector(position),
-            _native_vector(z_axis),
-            _native_vector(x_axis),
+            {
+                "position": _native_vector(position),
+                "z_axis": _native_vector(z_axis),
+                "x_axis": _native_vector(x_axis),
+            },
         )
 
     def create_axis2_placement_3d_from_matrix(
@@ -791,9 +802,10 @@ class ShapeBuilder:
         return _native_entity(
             self.file,
             "ifcopenshell_shape_builder_axis2_placement_2d",
-            _native_vector(position),
-            _native_vector(x_direction if x_direction else ()),
-            x_direction is not None,
+            {
+                "position": _native_vector(position),
+                "x_direction": _native_vector(x_direction) if x_direction is not None else None,
+            },
         )
 
     def vertex(self, position: VectorType = (0.0, 0.0, 0.0)) -> ifcopenshell.entity_instance:
@@ -876,15 +888,17 @@ class ShapeBuilder:
                     _native_entity(
                         self.file,
                         "ifcopenshell_shape_builder_mirror",
-                        curve_or_item_el._handle,
-                        _native_vector(mirror_axes),
-                        _native_vector(mirror_point),
-                        bool(create_copy),
-                        _native_vector(
-                            []
-                            if placement_matrix is None
-                            else np.array(placement_matrix, dtype="d")[:3, :3].reshape(9).tolist()
-                        ),
+                        {
+                            "item": curve_or_item_el._handle,
+                            "mirror_axes": _native_vector(mirror_axes),
+                            "mirror_point": _native_vector(mirror_point),
+                            "create_copy": bool(create_copy),
+                            "placement_matrix": _native_vector(
+                                []
+                                if placement_matrix is None
+                                else np.array(placement_matrix, dtype="d")[:3, :3].reshape(9).tolist()
+                            ),
+                        },
                     )
                 )
 
@@ -901,8 +915,10 @@ class ShapeBuilder:
         return _native_entity(
             self.file,
             "ifcopenshell_shape_builder_sphere",
-            float(radius),
-            _native_vector(center),
+            {
+                "radius": float(radius),
+                "center": _native_vector(center),
+            },
         )
 
     def block(
@@ -923,10 +939,12 @@ class ShapeBuilder:
         return _native_entity(
             self.file,
             "ifcopenshell_shape_builder_block",
-            _native_vector(position),
-            float(x_length),
-            float(y_length),
-            float(z_length),
+            {
+                "position": _native_vector(position),
+                "x_length": float(x_length),
+                "y_length": float(y_length),
+                "z_length": float(z_length),
+            },
         )
 
     def half_space_solid(
@@ -940,8 +958,10 @@ class ShapeBuilder:
         return _native_entity(
             self.file,
             "ifcopenshell_shape_builder_half_space_solid",
-            plane._handle,
-            bool(agreement_flag),
+            {
+                "plane": plane._handle,
+                "agreement_flag": bool(agreement_flag),
+            },
         )
 
     def extrude(
@@ -973,14 +993,15 @@ class ShapeBuilder:
         return _native_entity(
             self.file,
             "ifcopenshell_shape_builder_extrude",
-            profile_or_curve._handle,
-            float(magnitude),
-            _native_vector(position),
-            _native_vector(extrusion_vector),
-            _native_vector(position_z_axis),
-            _native_vector(position_x_axis),
-            _native_vector(position_y_axis if position_y_axis is not None else ()),
-            position_y_axis is not None,
+            {
+                "profile_or_curve": profile_or_curve._handle,
+                "magnitude": float(magnitude),
+                "position": _native_vector(position),
+                "extrusion_vector": _native_vector(extrusion_vector),
+                "position_z_axis": _native_vector(position_z_axis),
+                "position_x_axis": _native_vector(position_x_axis),
+                **({"position_y_axis": _native_vector(position_y_axis)} if position_y_axis is not None else {}),
+            },
         )
 
     def create_swept_disk_solid(
@@ -1500,25 +1521,27 @@ class ShapeBuilder:
         """
         value = _capi.shape_builder_mep_transition_shape(
             self.file._handle,
-            start_segment._handle,
-            end_segment._handle,
-            float(start_length),
-            float(end_length),
-            float(angle),
-            _native_vector(profile_offset),
+            {
+                "start_segment": start_segment._handle,
+                "end_segment": end_segment._handle,
+                "start_length": float(start_length),
+                "end_length": float(end_length),
+                "angle": float(angle),
+                "profile_offset": _native_vector(profile_offset),
+            },
         )
-        if not _struct_field(value, "has_result", 1):
+        if value is None:
             return None, None
         representation = _native_entity_from_struct_handle(
             self.file, _struct_field(value, "representation", 0), "shape_builder_mep_transition_shape"
         )
         return representation, {
-            "start_length": _struct_field(value, "start_length", 2),
-            "end_length": _struct_field(value, "end_length", 3),
-            "angle": _struct_field(value, "angle", 4),
-            "profile_offset": _struct_field(value, "profile_offset", 5),
-            "transition_length": _struct_field(value, "transition_length", 6),
-            "full_transition_length": _struct_field(value, "full_transition_length", 7),
+            "start_length": _struct_field(value, "start_length", 1),
+            "end_length": _struct_field(value, "end_length", 2),
+            "angle": _struct_field(value, "angle", 3),
+            "profile_offset": _struct_field(value, "profile_offset", 4),
+            "transition_length": _struct_field(value, "transition_length", 5),
+            "full_transition_length": _struct_field(value, "full_transition_length", 6),
         }
 
     # TODO: move to separate shape_builder method
@@ -1546,10 +1569,12 @@ class ShapeBuilder:
             for the given angle and offset.
         """
         result = _capi.shape_builder_mep_transition_length(
-            _native_vector(start_half_dim),
-            _native_vector(end_half_dim),
-            float(angle),
-            _native_vector(profile_offset),
+            {
+                "start_half_dim": _native_vector(start_half_dim),
+                "end_half_dim": _native_vector(end_half_dim),
+                "angle": float(angle),
+                "profile_offset": _native_vector(profile_offset),
+            },
         )
         return None if np.isnan(result) else result
 
@@ -1582,16 +1607,15 @@ class ShapeBuilder:
             (if ``length`` was given), or ``None`` if the geometry is not feasible.
         """
         result = _capi.shape_builder_mep_transition_calculate(
-            _native_vector(start_half_dim),
-            _native_vector(end_half_dim),
-            _native_vector(offset),
-            _native_vector(diff if diff is not None else ()),
-            diff is not None,
-            bool(end_profile),
-            0.0 if length is None else float(length),
-            length is not None,
-            0.0 if angle is None else float(angle),
-            angle is not None,
+            {
+                "start_half_dim": _native_vector(start_half_dim),
+                "end_half_dim": _native_vector(end_half_dim),
+                "offset": _native_vector(offset),
+                "diff": _native_vector(diff) if diff is not None else None,
+                "end_profile": bool(end_profile),
+                "length": None if length is None else float(length),
+                "angle": None if angle is None else float(angle),
+            },
         )
         return None if np.isnan(result) else result
 
@@ -1621,13 +1645,15 @@ class ShapeBuilder:
         """
         value = _capi.shape_builder_mep_bend_shape(
             self.file._handle,
-            segment._handle,
-            float(start_length),
-            float(end_length),
-            float(angle),
-            float(radius),
-            _native_vector(bend_vector),
-            bool(flip_z_axis),
+            {
+                "segment": segment._handle,
+                "start_length": float(start_length),
+                "end_length": float(end_length),
+                "angle": float(angle),
+                "radius": float(radius),
+                "bend_vector": _native_vector(bend_vector),
+                "flip_z_axis": bool(flip_z_axis),
+            },
         )
         representation = _native_entity_from_struct_handle(
             self.file, _struct_field(value, "representation", 0), "shape_builder_mep_bend_shape"

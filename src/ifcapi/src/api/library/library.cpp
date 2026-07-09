@@ -144,25 +144,22 @@ express::Base library_add_reference(
 
 express::Base library_assign_reference(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base* reference,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const LibraryAssignReferenceOptions& options)
 {
-    auto reference_value = detail::deref_or_empty(reference);
-    auto owner_history_value = detail::deref_or_empty(owner_history);
-    auto user_value = detail::deref_or_empty(user);
-    auto application_value = detail::deref_or_empty(application);
-    auto product_vec = mutable_entities(products);
-    auto products_to_add = products_not_already_referenced(product_vec, referenced_elements(file, reference_value));
+    auto owner_history = options.owner_history.value_or(express::Base());
+    auto user = options.user.value_or(express::Base());
+    auto application = options.application.value_or(express::Base());
+    auto reference = options.reference;
+
+    auto product_vec = mutable_entities(options.products);
+    auto products_to_add = products_not_already_referenced(product_vec, referenced_elements(file, reference));
     if (products_to_add.empty()) return {};
 
-    auto rels = library_association_rels(file, reference_value);
+    auto rels = library_association_rels(file, reference);
     express::Base rel = rels.empty() ? express::Base() : rels.front();
     if (!rel) {
         return create_rel_associates_library(
-            file, products_to_add, reference_value, owner_history_value, user_value, application_value);
+            file, products_to_add, reference, owner_history, user, application);
     }
 
     auto related = detail::read_ref_aggregate(rel, "RelatedObjects");
@@ -171,28 +168,26 @@ express::Base library_assign_reference(
         if (seen.insert(product).second) related.push_back(product);
     }
     detail::write_ref_aggregate(rel, "RelatedObjects", related);
-    detail::update_owner_history(file, rel, user_value, application_value);
+    detail::update_owner_history(file, rel, user, application);
     return rel;
 }
 
 void library_unassign_reference(
     ifcopenshell::file* file,
-    express::Base* reference,
-    const std::vector<express::Base>& products,
-    express::Base* user,
-    express::Base* application)
+    const LibraryUnassignReferenceOptions& options)
 {
-    auto reference_value = detail::deref_or_empty(reference);
-    auto user_value = detail::deref_or_empty(user);
-    auto application_value = detail::deref_or_empty(application);
-    auto product_vec = mutable_entities(products);
+    auto user = options.user.value_or(express::Base());
+    auto application = options.application.value_or(express::Base());
+    auto reference = options.reference;
+
+    auto product_vec = mutable_entities(options.products);
     std::unordered_set<express::Base> products_set(product_vec.begin(), product_vec.end());
     std::vector<express::Base> rels;
     std::unordered_set<express::Base> seen_rels;
     for (auto product : product_vec) {
         for (auto rel : inverse_entities(product, "HasAssociations")) {
             if (rel && rel.declaration().is("IfcRelAssociatesLibrary")
-                && detail::read_ref_attr(rel, "RelatingLibrary") == reference_value
+                && detail::read_ref_attr(rel, "RelatingLibrary") == reference
                 && seen_rels.insert(rel).second) {
                 rels.push_back(rel);
             }
@@ -208,7 +203,7 @@ void library_unassign_reference(
             detail::remove_with_history(file, rel);
         } else {
             detail::write_ref_aggregate(rel, "RelatedObjects", remaining);
-            detail::update_owner_history(file, rel, user_value, application_value);
+            detail::update_owner_history(file, rel, user, application);
         }
     }
 }

@@ -8,23 +8,43 @@
 #include "ifcparse/express.h"
 #include "ifcparse/file.h"
 
+#include <optional>
 #include <vector>
 
 namespace ifcapi {
 namespace bindings {
 
+/**
+ * Options for assigning objects as nested children of a parent host.
+ */
+struct NestAssignObjectOptions {
+    std::vector<express::Base> products;
+    express::Base relating_object;
+    std::optional<express::Base> owner_history;
+    std::optional<express::Base> user;
+    std::optional<express::Base> application;
+};
+
+/**
+ * Options for removing objects from their nesting relationships.
+ */
+struct NestUnassignObjectOptions {
+    std::vector<express::Base> products;
+    std::optional<express::Base> user;
+    std::optional<express::Base> application;
+};
+
+/**
+ * Assign objects as nested children of a parent host.
+ */
 IFCAPI_BINDING express::Base nest_assign_object(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& objects,
-    express::Base* relating_object,
-    IFCAPI_NULLABLE express::Base* owner_history,
-    IFCAPI_NULLABLE express::Base* user,
-    IFCAPI_NULLABLE express::Base* application);
-IFCAPI_BINDING void nest_unassign_object(
-    ifcopenshell::file* file,
-    const std::vector<express::Base>& objects,
-    IFCAPI_NULLABLE express::Base* user,
-    IFCAPI_NULLABLE express::Base* application);
+    const NestAssignObjectOptions& options);
+
+/**
+ * Remove objects from their nesting relationships.
+ */
+IFCAPI_BINDING void nest_unassign_object(ifcopenshell::file* file, const NestUnassignObjectOptions& options);
 
 } // namespace bindings
 } // namespace ifcapi

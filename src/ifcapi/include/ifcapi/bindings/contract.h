@@ -8,14 +8,12 @@
  * contract. It compiles away in normal builds, while giving the generator a
  * stable facade to target instead of scraping implementation internals.
  *
- * IFCAPI_OWNED, IFCAPI_COPY, and IFCAPI_NULLABLE are source-contract
- * annotations consumed by the binding generator. Place them immediately after
- * IFCAPI_BINDING for return policy, or at the start of a parameter declaration
- * for parameter policy.
+ * IFCAPI_OWNED and IFCAPI_COPY are source-contract annotations consumed by the
+ * binding generator. Place them immediately after IFCAPI_BINDING for return
+ * policy.
  */
 #define IFCAPI_BINDING
 #define IFCAPI_OWNED
 #define IFCAPI_COPY
-#define IFCAPI_NULLABLE
 
 #endif /* IFCAPI_BINDINGS_CONTRACT_H */

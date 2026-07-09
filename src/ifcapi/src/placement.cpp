@@ -219,10 +219,10 @@ std::vector<double> placement_get_axis2placement(express::Base* instance) {
     return matrix_result(compute_axis2placement(ifcapi::detail::deref_or_empty(instance), out), out);
 }
 
-std::vector<double> placement_get_local_placement(express::Base* instance) {
+std::vector<double> placement_get_local_placement(std::optional<express::Base> instance) {
     double out[16];
     identity4(out);
-    auto instance_value = ifcapi::detail::deref_or_empty(instance);
+    auto instance_value = instance.value_or(express::Base());
     if (!instance_value) return matrix_to_vector(out);
     return matrix_result(compute_local_placement(instance_value, out), out);
 }

@@ -42,5 +42,7 @@ def remove_representation(
         "geometry_remove_representation",
         _capi.file_handle(file),
         _capi.instance_handle(representation),
-        should_keep_named_profiles,
+        {
+            "should_keep_named_profiles": should_keep_named_profiles,
+        },
     )

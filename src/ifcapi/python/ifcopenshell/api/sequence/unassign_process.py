@@ -62,7 +62,9 @@ def unassign_process(
         _capi.file_handle(file),
         _capi.instance_handle(relating_process),
         _capi.instance_handle(related_object),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+        {
+            "user": _capi.instance_handle(user),
+            "application": _capi.instance_handle(application),
+        },
         nullable=True,
     )

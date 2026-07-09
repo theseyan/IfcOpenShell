@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 try:
-    from .authored_spec import ParamSpec, TypeSpec
+    from .authored_spec import ParamSpec, TypeSpec, _extract_optional_inner_type
     from .binding_ir import (
         ArrayElementFieldOp,
         BindingIR,
@@ -54,7 +54,7 @@ try:
         _qualify_handle_cpp_fragment,
     )
 except ImportError:  # pragma: no cover - script execution fallback
-    from authored_spec import ParamSpec, TypeSpec
+    from authored_spec import ParamSpec, TypeSpec, _extract_optional_inner_type
     from binding_ir import (
         ArrayElementFieldOp,
         BindingIR,
@@ -197,6 +197,30 @@ def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
             helper = _handle_list_list_helper_name(spec.handles[type_spec.handle])
             return f"*out_result = {helper}({expr});"
         handle = spec.handles[type_spec.handle]
+        if type_spec.nullable and _is_optional_cpp_type(type_spec):
+            inner_cpp_type = _extract_optional_inner_type(type_spec.cpp_type) or handle.cpp_type
+            unwrapped_type = TypeSpec(
+                kind=type_spec.kind,
+                handle=type_spec.handle,
+                struct=type_spec.struct,
+                ownership=type_spec.ownership,
+                nullable=False,
+                cpp_type=inner_cpp_type,
+                sequence_depth=type_spec.sequence_depth,
+            )
+            return (
+                f"auto result_value = {expr};\n"
+                f"        if (!result_value) {{\n"
+                f"            *out_result = nullptr;\n"
+                f"        }} else {{\n"
+                f"            auto unwrapped_result = *result_value;\n"
+                f"            if ({_handle_result_empty_expr(call, unwrapped_type, handle, 'unwrapped_result')}) {{\n"
+                f"                *out_result = nullptr;\n"
+                f"            }} else {{\n"
+                f"                *out_result = {_wrap_handle_expr(unwrapped_type, 'unwrapped_result', spec)};\n"
+                f"            }}\n"
+                f"        }}"
+            )
         if (
             type_spec.ownership == "owned"
             and handle.name not in {"attribute_value", "instance_list"}
@@ -233,9 +257,20 @@ def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
             raise ValueError(f"{call.c_name} struct return is missing struct name")
         struct = spec.result_structs[type_spec.struct]
         lines = [f"auto result_value = {expr};"]
+        target = "out_result"
+        value_expr_prefix = "result_value"
+        if type_spec.nullable:
+            lines.extend(
+                [
+                    "out_result->has_value = static_cast<bool>(result_value);",
+                    "if (result_value) {",
+                ]
+            )
+            target = "out_result->value"
+            value_expr_prefix = "(*result_value)"
         for field in struct.fields:
             cpp_field = field.cpp_field or field.name
-            field_expr = f"result_value.{cpp_field}"
+            field_expr = f"{value_expr_prefix}.{cpp_field}"
             field_type = field.type
             field_sequence_kind = _type_spec_sequence_kind(field_type)
             if field_sequence_kind is not None:
@@ -256,7 +291,48 @@ def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
                 assignment = f"static_cast<void*>({field_expr})"
             else:
                 raise ValueError(f"Unsupported result struct field kind: {field_type.kind}")
-            lines.append(f"out_result->{field.name} = {assignment};")
+            separator = "." if target.endswith("value") else "->"
+            prefix = "    " if type_spec.nullable else ""
+            lines.append(f"{prefix}{target}{separator}{field.name} = {assignment};")
+        if type_spec.nullable:
+            lines.append("}")
+        return "\n        ".join(lines)
+    if kind == "variant":
+        lines = [f"auto result_value = {expr};"]
+        for index, alt in enumerate(type_spec.variants):
+            alt_cpp_type = alt.cpp_type
+            if alt_cpp_type is None:
+                raise ValueError(f"{call.c_name} variant alternative is missing C++ type")
+            alt_expr = f"std::get<{alt_cpp_type}>(result_value)"
+            alt_sequence_kind = _type_spec_sequence_kind(alt)
+            if alt_sequence_kind is not None:
+                assignment = f"{_sequence_make_helper(alt_sequence_kind)}({alt_expr})"
+            elif alt.kind in _SCALAR_TYPE_MAP:
+                assignment = f"static_cast<{_SCALAR_TYPE_MAP[alt.kind][0]}>({alt_expr})"
+            elif alt.kind == "string":
+                helper = "make_static_string" if alt.ownership == "static" else "make_string"
+                assignment = f"{helper}({alt_expr})"
+            elif alt.kind == "handle":
+                if alt.sequence_depth == 1:
+                    assignment = f"{_handle_list_helper_name(spec.handles[alt.handle])}({alt_expr})"
+                elif alt.sequence_depth == 2:
+                    assignment = f"{_handle_list_list_helper_name(spec.handles[alt.handle])}({alt_expr})"
+                else:
+                    assignment = _wrap_handle_expr(alt, alt_expr, spec)
+            elif alt.kind == "opaque_ptr":
+                assignment = f"static_cast<void*>({alt_expr})"
+            else:
+                raise ValueError(f"Unsupported variant alternative kind: {alt.kind}")
+            prefix = "if" if index == 0 else "else if"
+            lines.extend(
+                [
+                    f"{prefix} (std::holds_alternative<{alt_cpp_type}>(result_value)) {{",
+                    f"            out_result->kind = {index};",
+                    f"            out_result->value_{index} = {assignment};",
+                    "        }",
+                ]
+            )
+        lines.append('else { throw std::runtime_error("Unsupported variant alternative"); }')
         return "\n        ".join(lines)
     msg = f"Unsupported return kind: {kind}"
     raise ValueError(msg)
@@ -264,6 +340,11 @@ def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
 
 def _null_check(param_name: str, label: str) -> str:
     return f'    if ({param_name} == nullptr) {{ throw std::runtime_error("{label} \\"{param_name}\\" must not be null"); }}'
+
+
+def _is_optional_cpp_type(type_spec: TypeSpec) -> bool:
+    cpp_type = _normalize_cpp_type(type_spec.cpp_type)
+    return cpp_type.startswith("std::optional<")
 
 
 def _render_param_prelude(param: ParamSpec, spec: BindingIR) -> str:
@@ -297,11 +378,20 @@ def _render_param_prelude(param: ParamSpec, spec: BindingIR) -> str:
             f"    }}"
         )
     if kind in _SCALAR_TYPE_MAP and type_spec.cpp_type is not None:
+        if type_spec.nullable and _is_optional_cpp_type(type_spec):
+            raise ValueError(
+                f'Standalone optional scalar parameter "{param.name}" needs an options struct to preserve presence'
+            )
         if kind == "size":
             return f"    auto {param.name}_cpp = static_cast<size_t>({param.name});"
         return f"    auto {param.name}_cpp = static_cast<{type_spec.cpp_type}>({param.name});"
     if kind == "string":
         if type_spec.nullable:
+            if _is_optional_cpp_type(type_spec):
+                return (
+                    f"    std::optional<std::string> {param.name}_cpp;\n"
+                    f"    if ({param.name} != nullptr) {{ {param.name}_cpp = std::string({param.name}); }}"
+                )
             return f"    const char* {param.name}_str = {param.name};"
         return (
             f'{_null_check(param.name, "Parameter")}\n'
@@ -331,6 +421,27 @@ def _render_param_prelude(param: ParamSpec, spec: BindingIR) -> str:
                 f"    auto {param.name}_cpp = {helper_name}({param.name});"
             )
         handle = spec.handles[type_spec.handle]
+        if type_spec.nullable and _is_optional_cpp_type(type_spec):
+            inner_type = _extract_optional_inner_type(type_spec.cpp_type) or handle.cpp_type
+            if handle.ptr_type == "value":
+                return (
+                    f"    std::optional<{inner_type}> {param.name}_cpp;\n"
+                    f"    if ({param.name} != nullptr) {{ {param.name}_cpp = {param.name}->value; }}"
+                )
+            if handle.ptr_type == "shared_ptr":
+                return (
+                    f"    std::optional<{inner_type}> {param.name}_cpp;\n"
+                    f"    if ({param.name} != nullptr && {param.name}->ptr != nullptr) {{ {param.name}_cpp = {param.name}->ptr; }}"
+                )
+            if inner_type.endswith("*"):
+                return (
+                    f"    std::optional<{inner_type}> {param.name}_cpp;\n"
+                    f"    if ({param.name} != nullptr && {param.name}->ptr != nullptr) {{ {param.name}_cpp = {param.name}->ptr; }}"
+                )
+            return (
+                f"    std::optional<{inner_type}> {param.name}_cpp;\n"
+                f"    if ({param.name} != nullptr && {param.name}->ptr != nullptr) {{ {param.name}_cpp = *{param.name}->ptr; }}"
+            )
         if handle.name == "attribute_value":
             return (
                 f'{_null_check(param.name, "Handle parameter")}\n'
@@ -399,12 +510,96 @@ def _render_param_prelude(param: ParamSpec, spec: BindingIR) -> str:
     if kind == "opaque_ptr":
         cpp_type = type_spec.cpp_type
         if type_spec.nullable:
+            if _is_optional_cpp_type(type_spec):
+                inner_type = _extract_optional_inner_type(type_spec.cpp_type)
+                if inner_type is None:
+                    raise ValueError(f'Opaque pointer parameter "{param.name}" has invalid optional cpp_type')
+                return (
+                    f"    std::optional<{inner_type}> {param.name}_cpp;\n"
+                    f"    if ({param.name} != nullptr) {{ {param.name}_cpp = static_cast<{inner_type}>({param.name}); }}"
+                )
             return f"    auto {param.name}_cpp = static_cast<{cpp_type}>({param.name});"
         return (
             f'{_null_check(param.name, "Parameter")}\n'
             f"    auto {param.name}_cpp = static_cast<{cpp_type}>({param.name});"
         )
+    if kind == "option":
+        return _render_option_param_prelude(param, spec)
     return ""
+
+
+def _render_option_param_prelude(param: ParamSpec, spec: BindingIR) -> str:
+    if param.type.struct is None:
+        raise ValueError(f'Option parameter "{param.name}" is missing option struct name')
+    option = spec.option_structs[param.type.struct]
+    lines = [_null_check(param.name, "Options parameter"), f"    {option.cpp_type} {param.name}_cpp{{}};"]
+    for field in option.fields:
+        source = f"{param.name}->{field.name}"
+        target = f"{param.name}_cpp.{field.cpp_field or field.name}"
+        if field.type.nullable:
+            lines.append(f"    if ({param.name}->has_{field.name}) {{")
+            field_check = _render_option_required_field_check(param.name, field, indent="        ")
+            if field_check:
+                lines.append(field_check)
+            lines.append(f"        {target} = {_option_field_cpp_expr(field.type, source, spec)};")
+            lines.append("    }")
+        else:
+            lines.append(_render_option_required_field_check(param.name, field))
+            lines.append(f"    {target} = {_option_field_cpp_expr(field.type, source, spec)};")
+    return "\n".join(line for line in lines if line)
+
+
+def _render_option_required_field_check(option_param: str, field: object, *, indent: str = "    ") -> str:
+    if _type_spec_sequence_kind(field.type) is not None:
+        return (
+            f'{indent}if ({option_param}->{field.name} == nullptr) '
+            f'{{ throw std::runtime_error("Options field \\"{field.name}\\" must not be null"); }}'
+        )
+    if field.type.kind == "string":
+        return (
+            f'{indent}if ({option_param}->{field.name} == nullptr) '
+            f'{{ throw std::runtime_error("Options field \\"{field.name}\\" must not be null"); }}'
+        )
+    if field.type.kind == "handle" and field.type.sequence_depth == 0:
+        return (
+            f'{indent}if ({option_param}->{field.name} == nullptr) '
+            f'{{ throw std::runtime_error("Options field \\"{field.name}\\" must not be null"); }}'
+        )
+    return ""
+
+
+def _option_field_cpp_expr(type_spec: TypeSpec, source: str, spec: BindingIR) -> str:
+    sequence_kind = _type_spec_sequence_kind(type_spec)
+    if sequence_kind is not None:
+        return f"{_sequence_to_cpp_helper(sequence_kind)}({source})"
+    if type_spec.kind == "string":
+        return f"std::string({source})"
+    if type_spec.kind in _SCALAR_TYPE_MAP:
+        if type_spec.cpp_type is not None and not _is_optional_cpp_type(type_spec):
+            return f"static_cast<{type_spec.cpp_type}>({source})"
+        return source
+    if type_spec.kind == "handle":
+        if type_spec.sequence_depth == 1:
+            handle = spec.handles[type_spec.handle]
+            helper_name = f"to_cpp_{_snake_name(_handle_list_c_type(handle))}"
+            return f"{helper_name}({source})"
+        if type_spec.sequence_depth == 2:
+            handle = spec.handles[type_spec.handle]
+            helper_name = f"to_cpp_{_snake_name(_handle_list_list_c_type(handle))}"
+            return f"{helper_name}({source})"
+        handle = spec.handles[type_spec.handle]
+        if handle.ptr_type == "value":
+            return f"{source}->value"
+        if handle.ptr_type == "shared_ptr":
+            return f"{source}->ptr"
+        return f"{source}->ptr"
+    if type_spec.kind == "opaque_ptr":
+        cpp_type = _normalize_cpp_type(type_spec.cpp_type)
+        if cpp_type.startswith("std::optional<") and cpp_type.endswith(">"):
+            inner_type = cpp_type[len("std::optional<") : -1]
+            return f"static_cast<{inner_type}>({source})"
+        return f"static_cast<{type_spec.cpp_type}>({source})"
+    raise ValueError(f"Unsupported option field kind: {type_spec.kind}")
 
 
 def _uses_cpp_arg_name(type_spec: TypeSpec) -> bool:
@@ -414,10 +609,12 @@ def _uses_cpp_arg_name(type_spec: TypeSpec) -> bool:
     if type_spec.kind in _SCALAR_TYPE_MAP:
         return type_spec.cpp_type is not None
     if type_spec.kind == "string":
-        return not type_spec.nullable
+        return not type_spec.nullable or _is_optional_cpp_type(type_spec)
     if type_spec.kind == "handle":
         return True
     if type_spec.kind == "opaque_ptr":
+        return True
+    if type_spec.kind == "option":
         return True
     return False
 

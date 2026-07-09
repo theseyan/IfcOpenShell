@@ -403,14 +403,14 @@ inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::sweep_along_curve::ptr tax
 inline IFCAPI_OWNED IfcGeom::Element* create_shape(
     ifcopenshell::geometry::Settings* settings_cpp,
     express::Base* instance_cpp,
-    IFCAPI_NULLABLE express::Base* representation_cpp,
-    IFCAPI_NULLABLE const char* geometry_library_str
+    std::optional<express::Base> representation,
+    std::optional<std::string> geometry_library
 ) {
     ifcopenshell::file* file = instance_cpp->file();
     if (!file) {
         throw std::runtime_error("Instance has no associated file");
     }
-    std::string geom_lib = geometry_library_str ? std::string(geometry_library_str) : "opencascade";
+    std::string geom_lib = geometry_library.value_or("opencascade");
     ifcopenshell::geometry::Converter kernel(
         ifcopenshell::geometry::kernels::construct(file, geom_lib, *settings_cpp),
         file, *settings_cpp);
@@ -421,7 +421,7 @@ inline IFCAPI_OWNED IfcGeom::Element* create_shape(
     }
 
     if (entity.declaration().is("IfcProduct")) {
-        express::Base ifc_representation = representation_cpp ? *representation_cpp : express::Base();
+        express::Base ifc_representation = representation.value_or(express::Base());
         if (!ifc_representation) {
             auto prod_rep_attr = entity.get("Representation");
             if (prod_rep_attr.isNull()) {
@@ -618,13 +618,11 @@ inline IFCAPI_OWNED IfcGeom::ConversionResultShape* nary_union(
 
 inline IFCAPI_OWNED std::string svg_to_line_segments(
     const std::string& svg_data_cpp,
-    IFCAPI_NULLABLE const char* class_name_str
+    std::optional<std::string> class_name
 ) {
 #ifdef IFOPSH_WITH_CGAL
     std::vector<std::vector<svgfill::line_segment_2>> segments;
-    std::optional<std::string> cn;
-    if (class_name_str) cn = std::string(class_name_str);
-    if (!svgfill::svg_to_line_segments(std::string(svg_data_cpp), cn, segments)) {
+    if (!svgfill::svg_to_line_segments(std::string(svg_data_cpp), class_name, segments)) {
         throw std::runtime_error("Failed to read SVG");
     }
     std::ostringstream oss;
@@ -643,20 +641,18 @@ inline IFCAPI_OWNED std::string svg_to_line_segments(
     return oss.str();
 #else
     (void)svg_data_cpp;
-    (void)class_name_str;
+    (void)class_name;
     throw std::runtime_error("svg_to_line_segments requires IFOPSH_WITH_CGAL");
 #endif
 }
 
 inline IFCAPI_OWNED std::vector<const svgfill::polygon_2*> svg_to_polygons(
     const std::string& svg_data_cpp,
-    IFCAPI_NULLABLE const char* class_name_str
+    std::optional<std::string> class_name
 ) {
 #ifdef IFOPSH_WITH_CGAL
     std::vector<svgfill::polygon_2> polygons;
-    std::optional<std::string> cn;
-    if (class_name_str) cn = std::string(class_name_str);
-    if (!svgfill::svg_to_polygons(std::string(svg_data_cpp), cn, polygons)) {
+    if (!svgfill::svg_to_polygons(std::string(svg_data_cpp), class_name, polygons)) {
         throw std::runtime_error("Failed to read SVG");
     }
     std::vector<const svgfill::polygon_2*> result;
@@ -666,7 +662,7 @@ inline IFCAPI_OWNED std::vector<const svgfill::polygon_2*> svg_to_polygons(
     return result;
 #else
     (void)svg_data_cpp;
-    (void)class_name_str;
+    (void)class_name;
     throw std::runtime_error("svg_to_polygons requires IFOPSH_WITH_CGAL");
 #endif
 }

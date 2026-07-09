@@ -98,13 +98,13 @@ express::Base constraint_add_objective(ifcopenshell::file* file) {
     return objective;
 }
 
-express::Base constraint_add_metric(ifcopenshell::file* file, express::Base* objective) {
+express::Base constraint_add_metric(ifcopenshell::file* file, std::optional<express::Base> objective) {
     const auto* declaration = file->schema()->declaration_by_name("IfcMetric");
     auto metric = file->create(declaration);
     detail::write_string_attr(metric, "Name", "Unnamed");
     detail::write_string_attr(metric, "ConstraintGrade", "NOTDEFINED");
     detail::write_string_attr(metric, "Benchmark", "EQUALTO");
-    auto objective_value = detail::deref_or_empty(objective);
+    auto objective_value = objective.value_or(express::Base());
     if (objective_value) {
         auto values = detail::read_ref_aggregate(objective_value, "BenchmarkValues");
         values.push_back(metric);
@@ -139,19 +139,15 @@ std::vector<express::Base> constraint_add_metric_reference(
 
 express::Base constraint_assign_constraint(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base* constraint,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const ConstraintAssignConstraintOptions& options)
 {
     std::vector<express::Base> product_vec;
-    for (auto product : products) {
+    for (auto product : options.products) {
         if (product) {
             product_vec.push_back(product);
         }
     }
-    auto constraint_value = detail::deref_or_empty(constraint);
+    auto constraint_value = options.constraint;
     if (product_vec.empty() || !constraint_value) {
         return {};
     }
@@ -181,9 +177,9 @@ express::Base constraint_assign_constraint(
             file,
             products_to_assign,
             constraint_value,
-            detail::deref_or_empty(owner_history),
-            detail::deref_or_empty(user),
-            detail::deref_or_empty(application));
+            options.owner_history.value_or(express::Base()),
+            options.user.value_or(express::Base()),
+            options.application.value_or(express::Base()));
     }
 
     auto related = detail::read_ref_aggregate(rel, "RelatedObjects");
@@ -194,24 +190,21 @@ express::Base constraint_assign_constraint(
         }
     }
     detail::write_ref_aggregate(rel, "RelatedObjects", related);
-    detail::update_owner_history(file, rel, detail::deref_or_empty(user), detail::deref_or_empty(application));
+    detail::update_owner_history(file, rel, options.user.value_or(express::Base()), options.application.value_or(express::Base()));
     return rel;
 }
 
 void constraint_unassign_constraint(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& products,
-    express::Base* constraint,
-    express::Base* user,
-    express::Base* application)
+    const ConstraintUnassignConstraintOptions& options)
 {
     std::unordered_set<express::Base> products_set;
-    for (auto product : products) {
+    for (auto product : options.products) {
         if (product) {
             products_set.insert(product);
         }
     }
-    auto constraint_value = detail::deref_or_empty(constraint);
+    auto constraint_value = options.constraint;
     if (products_set.empty() || !constraint_value) {
         return;
     }
@@ -234,7 +227,7 @@ void constraint_unassign_constraint(
             detail::remove_with_history(file, rel);
         } else {
             detail::write_ref_aggregate(rel, "RelatedObjects", remaining);
-            detail::update_owner_history(file, rel, detail::deref_or_empty(user), detail::deref_or_empty(application));
+            detail::update_owner_history(file, rel, options.user.value_or(express::Base()), options.application.value_or(express::Base()));
         }
     }
 }

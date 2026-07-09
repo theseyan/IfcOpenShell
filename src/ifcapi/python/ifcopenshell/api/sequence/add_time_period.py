@@ -85,8 +85,10 @@ def add_time_period(
         "sequence_add_time_period",
         _capi.file_handle(file),
         _capi.instance_handle(recurrence_pattern),
-        _capi.string(start_time) if start_time is not None else None,
-        _capi.string(end_time) if end_time is not None else None,
+        {
+            "start_time": start_time,
+            "end_time": end_time,
+        },
         nullable=True,
     )
 

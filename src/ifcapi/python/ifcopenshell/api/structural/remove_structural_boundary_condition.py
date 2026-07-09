@@ -38,6 +38,8 @@ def remove_structural_boundary_condition(
     _capi.call_status(
         "structural_remove_structural_boundary_condition",
         _capi.file_handle(file),
-        _capi.instance_handle(connection),
-        _capi.instance_handle(boundary_condition),
+        {
+            "connection": _capi.instance_handle(connection),
+            "boundary_condition": _capi.instance_handle(boundary_condition),
+        },
     )

@@ -20,7 +20,7 @@ from typing import Any, Optional
 
 import ifcopenshell
 import ifcopenshell.api.pset
-from ifcopenshell.api import _relationship_capi
+from ifcopenshell import _ifcopenshell_capi as _capi
 from ifcopenshell.api.pset import _capi as pset_capi
 import ifcopenshell.util.element
 
@@ -84,19 +84,18 @@ def edit_georeferencing(
                 "Scale": 0.99956, # Ask your surveyor for your site's average combined scale factor!
             })
     """
-    has_coordinate_operation = bool(coordinate_operation)
-    has_projected_crs = bool(projected_crs)
-    coordinate_props = pset_capi.build_props(coordinate_operation or {})
-    projected_props = pset_capi.build_props(projected_crs or {})
+    coordinate_props = pset_capi.build_props(coordinate_operation) if coordinate_operation else None
+    projected_props = pset_capi.build_props(projected_crs) if projected_crs else None
     try:
-        _relationship_capi.call_status(
-            "georeference_edit_georeferencing",
-            _relationship_capi.file_handle(file),
-            has_coordinate_operation,
-            coordinate_props,
-            has_projected_crs,
-            projected_props,
+        _capi.georeference_edit_georeferencing(
+            file._handle,
+            {
+                "coordinate_operation": coordinate_props,
+                "projected_crs": projected_props,
+            },
         )
     finally:
-        pset_capi.free_props(coordinate_props)
-        pset_capi.free_props(projected_props)
+        if coordinate_props is not None:
+            pset_capi.free_props(coordinate_props)
+        if projected_props is not None:
+            pset_capi.free_props(projected_props)

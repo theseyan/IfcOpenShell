@@ -82,9 +82,11 @@ def add_material(
     """
     handle = _capi.material_add_material(
         file._handle,
-        name,
-        category,
-        description,
+        {
+            "name": name,
+            "category": category,
+            "description": description,
+        },
     )
     if handle:
         return ifcopenshell.entity_instance(file, handle)

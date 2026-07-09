@@ -112,10 +112,12 @@ def assign_sequence(
             _capi.file_handle(file),
             _capi.instance_handle(relating_process),
             _capi.instance_handle(related_process),
-            _capi.string(sequence_type),
-            _capi.instance_handle(owner_history),
-            _capi.instance_handle(user),
-            _capi.instance_handle(application),
+            {
+                "sequence_type": sequence_type,
+                "owner_history": _capi.instance_handle(owner_history),
+                "user": _capi.instance_handle(user),
+                "application": _capi.instance_handle(application),
+            },
             nullable=True,
         )
     except RuntimeError as e:

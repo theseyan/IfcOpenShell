@@ -13,10 +13,6 @@
 namespace ifcapi {
 namespace detail {
 
-inline express::Base* nullable_ptr(express::Base& value) {
-    return value ? &value : nullptr;
-}
-
 inline bool same_instance(express::Base left, express::Base right) {
     auto l = ifcopenshell::lock_data(left.data_weak());
     auto r = ifcopenshell::lock_data(right.data_weak());
@@ -34,7 +30,8 @@ inline express::Base ensure_owner_history(
 {
     return owner_history
         ? owner_history
-        : ifcapi::bindings::owner_create_owner_history(file, nullable_ptr(user), nullable_ptr(application));
+        : ifcapi::bindings::owner_create_owner_history(
+              file, ifcapi::bindings::OwnerCreateOwnerHistoryOptions{user, application});
 }
 
 inline void update_owner_history(
@@ -44,7 +41,8 @@ inline void update_owner_history(
     express::Base application)
 {
     if (entity && user && application) {
-        ifcapi::bindings::owner_update_owner_history(file, &entity, &user, &application);
+        ifcapi::bindings::owner_update_owner_history(
+            file, ifcapi::bindings::OwnerUpdateOwnerHistoryOptions{entity, user, application});
     }
 }
 

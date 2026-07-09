@@ -95,9 +95,11 @@ def add_profile(
     handle = _capi.material_add_profile(
         file._handle,
         profile_set._handle,
-        material._handle if material is not None else None,
-        profile._handle if profile is not None else None,
-        name,
+        {
+            "material": material._handle if material is not None else None,
+            "profile": profile._handle if profile is not None else None,
+            "name": name,
+        },
     )
     if handle:
         return ifcopenshell.entity_instance(file, handle)

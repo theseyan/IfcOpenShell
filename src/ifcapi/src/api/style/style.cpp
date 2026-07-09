@@ -657,7 +657,7 @@ void style_assign_material_style_impl(
     if (constituent_names.empty()) return;
     auto elements = ifcapi::bindings::element_get_elements_by_material(&material);
     for (auto element : elements) {
-        auto shape_aspects = ifcapi::bindings::element_get_shape_aspects(&element, true);
+        auto shape_aspects = ifcapi::bindings::element_get_shape_aspects(&element, {true});
         for (auto shape_aspect : shape_aspects) {
             if (!contains_name(constituent_names, ifcapi::detail::read_string_attr(shape_aspect, "Name"))) continue;
             for (auto rep : ifcapi::detail::read_ref_aggregate(shape_aspect, "ShapeRepresentations")) {
@@ -716,7 +716,7 @@ void style_unassign_material_style_impl(
     if (constituent_names.empty()) return;
     auto elements = ifcapi::bindings::element_get_elements_by_material(&material);
     for (auto element : elements) {
-        auto shape_aspects = ifcapi::bindings::element_get_shape_aspects(&element, true);
+        auto shape_aspects = ifcapi::bindings::element_get_shape_aspects(&element, {true});
         for (auto shape_aspect : shape_aspects) {
             if (!contains_name(constituent_names, ifcapi::detail::read_string_attr(shape_aspect, "Name"))) continue;
             for (auto rep : ifcapi::detail::read_ref_aggregate(shape_aspect, "ShapeRepresentations")) {
@@ -917,15 +917,13 @@ void style_edit_surface_style(
 
 express::Base style_assign_item_style(
     ifcopenshell::file* file,
-    express::Base* item,
-    express::Base* style,
-    bool should_use_presentation_style_assignment)
+    const StyleAssignItemStyleOptions& options)
 {
     return style_assign_item_style_impl(
         file,
-        ifcapi::detail::deref_or_empty(item),
-        ifcapi::detail::deref_or_empty(style),
-        should_use_presentation_style_assignment);
+        options.item,
+        options.style.value_or(express::Base()),
+        options.should_use_presentation_style_assignment);
 }
 
 std::vector<express::Base> style_assign_representation_styles(

@@ -583,11 +583,11 @@ void pset_props_set_string(ifcopenshell_pset_props_t* p, const std::string& key,
     e.s_val = v;
 }
 
-void pset_props_set_instance(ifcopenshell_pset_props_t* p, const std::string& key, express::Base* v) {
+void pset_props_set_instance(ifcopenshell_pset_props_t* p, const std::string& key, std::optional<express::Base> v) {
     if (!p) return;
     auto& e = append_entry(p, key);
     e.kind = Kind::INSTANCE;
-    e.inst = ifcapi::detail::deref_or_empty(v);
+    e.inst = v.value_or(express::Base{});
 }
 
 void pset_props_set_typed_string(
@@ -713,36 +713,32 @@ void pset_props_set_dict(ifcopenshell_pset_props_t* outer, const std::string& ke
 // Attach an IfcUnit to the most recently added entry (mirrors upstream's
 // ``unpack_unit_value`` shape ``{NominalValue, Unit}``). The unit becomes the
 // ``Unit`` attribute on the resulting IfcPropertySingleValue.
-void pset_props_set_unit_for_last(ifcopenshell_pset_props_t* p, express::Base* unit) {
+void pset_props_set_unit_for_last(ifcopenshell_pset_props_t* p, std::optional<express::Base> unit) {
     if (!p || p->entries.empty()) return;
-    p->entries.back().unit = ifcapi::detail::deref_or_empty(unit);
+    p->entries.back().unit = unit.value_or(express::Base{});
 }
 
 /* ---- edit_pset ---- */
 
 bool pset_edit_pset(
     ifcopenshell::file* file,
-    express::Base* pset_ptr,
-    const char* name,
-    ifcopenshell_pset_props_t* properties,
-    express::Base* pset_template_ptr,
-    bool should_purge)
+    const PsetEditPsetOptions& options)
 {
-    auto pset = ifcapi::detail::deref_or_empty(pset_ptr);
-    auto pset_template = ifcapi::detail::deref_or_empty(pset_template_ptr);
+    auto pset = options.pset;
+    auto pset_template = options.pset_template.value_or(express::Base());
     if (!file || !pset) {
         set_error("pset_edit_pset: missing required argument");
         return false;
     }
     try {
-        if (name) write_string_attr(pset, "Name", std::string(name));
+        if (options.name) write_string_attr(pset, "Name", *options.name);
 
         // Map of remaining property entries (key → entry pointer for direct lookup
         // / removal). We track removal from the dict similarly to the Python loop.
         std::unordered_map<std::string, const Entry*> remaining;
         std::vector<std::string> ordered_keys;
-        if (properties) {
-            for (const auto& e : properties->entries) {
+        if (options.properties) {
+            for (const auto& e : options.properties->entries) {
                 if (remaining.find(e.key) == remaining.end()) ordered_keys.push_back(e.key);
                 remaining[e.key] = &e;
             }
@@ -772,12 +768,12 @@ bool pset_edit_pset(
             const Entry* e = it->second;
             bool removed = false;
             if (entity_is_a(prop, "IfcPropertySingleValue")) {
-                if (!process_existing_single_value(file, prop, pset_template, *e, should_purge, removed)) {
+                if (!process_existing_single_value(file, prop, pset_template, *e, options.should_purge, removed)) {
                     kept.push_back(prop);
                     continue;
                 }
             } else if (entity_is_a(prop, "IfcPropertyEnumeratedValue")) {
-                if (!process_existing_enumerated(file, prop, *e, should_purge, removed)) {
+                if (!process_existing_enumerated(file, prop, *e, options.should_purge, removed)) {
                     kept.push_back(prop);
                     continue;
                 }
@@ -794,7 +790,7 @@ bool pset_edit_pset(
             auto it = remaining.find(key);
             if (it == remaining.end()) continue;
             const Entry* e = it->second;
-            if (e->kind == Kind::NONE && should_purge) continue;
+            if (e->kind == Kind::NONE && options.should_purge) continue;
             auto np = build_new_property(file, pset_template, key, *e);
             if (np) kept.push_back(np);
         }
@@ -971,26 +967,23 @@ int64_t entry_to_int(const Entry& e) {
 
 bool pset_edit_qto(
     ifcopenshell::file* file,
-    express::Base* qto_ptr,
-    const char* name,
-    ifcopenshell_pset_props_t* properties,
-    express::Base* qto_template_ptr)
+    const PsetEditQtoOptions& options)
 {
-    auto qto = ifcapi::detail::deref_or_empty(qto_ptr);
-    auto qto_template = ifcapi::detail::deref_or_empty(qto_template_ptr);
+    auto qto = options.qto;
+    auto qto_template = options.qto_template.value_or(express::Base());
     if (!file || !qto) {
         set_error("pset_edit_qto: missing required argument");
         return false;
     }
     try {
-        if (name) write_string_attr(qto, "Name", std::string(name));
+        if (options.name) write_string_attr(qto, "Name", *options.name);
 
         const char* attr_name = entity_is_a(qto, "IfcPhysicalComplexQuantity") ? "HasQuantities" : "Quantities";
 
         std::unordered_map<std::string, const Entry*> remaining;
         std::vector<std::string> ordered_keys;
-        if (properties) {
-            for (const auto& e : properties->entries) {
+        if (options.properties) {
+            for (const auto& e : options.properties->entries) {
                 if (remaining.find(e.key) == remaining.end()) ordered_keys.push_back(e.key);
                 remaining[e.key] = &e;
             }
@@ -1036,7 +1029,7 @@ bool pset_edit_qto(
                         }
                     }
                     if (has_discrim) write_string_attr(prop, "Discrimination", discrim);
-                    pset_edit_qto(file, &prop, nullptr, &sub, nullptr);
+                    pset_edit_qto(file, PsetEditQtoOptions{prop, {}, &sub, {}});
                 }
                 kept.push_back(prop);
                 remaining.erase(it);
@@ -1089,7 +1082,7 @@ bool pset_edit_qto(
                 auto cq = file->create(cq_decl);
                 write_string_attr(cq, "Name", key);
                 write_string_attr(cq, "Discrimination", discrim);
-                pset_edit_qto(file, &cq, nullptr, &sub, nullptr);
+                pset_edit_qto(file, PsetEditQtoOptions{cq, {}, &sub, {}});
                 kept.push_back(cq);
                 continue;
             }

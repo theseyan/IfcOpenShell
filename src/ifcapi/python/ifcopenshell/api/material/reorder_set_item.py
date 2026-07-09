@@ -59,6 +59,8 @@ def reorder_set_item(
         "Failed to reorder material set item",
         _capi.file_handle(file),
         _capi.instance_handle(material_set),
-        old_index,
-        new_index,
+        {
+            "old_index": old_index,
+            "new_index": new_index,
+        },
     )

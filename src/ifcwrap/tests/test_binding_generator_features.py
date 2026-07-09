@@ -1679,7 +1679,7 @@ def test_generate_synthetic_autodiscovery_features(tmp_path: Path) -> None:
 
             struct Derived : Base {
             public:
-                boost::optional<double> weight;
+                std::optional<double> weight;
                 Node::ptr axis;
                 std::vector<Node::ptr> children;
                 std::array<int, 2> uv = {1, 2};
@@ -2724,19 +2724,19 @@ def test_autodiscovery_uses_marked_contract_when_translation_unit_is_omitted(tmp
     header.write_text(
         dedent(
             """
+            #include <optional>
             #include <string>
             #include <vector>
             #define IFCAPI_BINDING
             #define IFCAPI_OWNED
             #define IFCAPI_COPY
-            #define IFCAPI_NULLABLE
             struct DemoValue {};
 
             namespace ifcapi::bindings {
             IFCAPI_BINDING int contract_count(const std::string& name);
             IFCAPI_BINDING double contract_scale(double value);
-            IFCAPI_BINDING IFCAPI_OWNED IFCAPI_NULLABLE DemoValue* contract_value(
-                IFCAPI_NULLABLE DemoValue* input,
+            IFCAPI_BINDING IFCAPI_OWNED std::optional<DemoValue*> contract_value(
+                std::optional<DemoValue*> input,
                 const std::vector<int>& values);
             IFCAPI_BINDING IFCAPI_COPY std::vector<DemoValue*> contract_copies();
             int internal_helper();
@@ -2898,62 +2898,6 @@ def test_contract_discovery_rejects_duplicate_header_policy(tmp_path: Path) -> N
     )
 
     with pytest.raises(ValueError, match="duplicate return policy"):
-        load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
-
-
-def test_contract_discovery_rejects_duplicate_parameter_policy(tmp_path: Path) -> None:
-    header = tmp_path / "bindings.h"
-    source = tmp_path / "reference.cpp"
-    spec_path = tmp_path / "bindings.yml"
-
-    header.write_text(
-        dedent(
-            """
-            #define IFCAPI_BINDING
-            #define IFCAPI_NULLABLE
-            struct DemoValue {};
-
-            namespace ifcapi::bindings {
-            IFCAPI_BINDING void contract_value(IFCAPI_NULLABLE DemoValue* value);
-            }
-            """
-        ).strip()
-        + "\n",
-        encoding="utf-8",
-    )
-    source.write_text("int reference() { return 0; }\n", encoding="utf-8")
-    discovery_dirs = _discovery_include_dirs(tmp_path)
-
-    spec_path.write_text(
-        dedent(
-            """
-            schema_version: 1
-            module: demo
-            slice: demo
-            c_prefix: ifcopenshell_demo
-            public_headers:
-              - bindings.h
-            handles:
-              - name: demo_value
-                cpp_type: DemoValue
-                c_type: ifcopenshell_demo_value_t
-                destructor: delete
-            discover:
-              include_dir: .
-              functions:
-                - namespace: ifcapi::bindings
-                  type_overrides:
-                    contract_value:
-                      params:
-                        value:
-                          nullable: true
-            """
-        ).strip()
-        + "\n",
-        encoding="utf-8",
-    )
-
-    with pytest.raises(ValueError, match="duplicate parameter policy"):
         load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
 
 
@@ -4109,17 +4053,7 @@ def test_load_authored_spec_reports_discovery_diagnostics(tmp_path: Path) -> Non
         dedent(
             """
             #include <map>
-
-            namespace boost {
-            template <typename T>
-            struct optional {
-                optional() = default;
-                optional(const T&) {}
-                bool is_initialized() const { return true; }
-                T& operator*();
-                const T& operator*() const;
-            };
-            }
+            #include <optional>
 
             namespace Demo {
             struct Diagnostics {
@@ -4130,7 +4064,7 @@ def test_load_authored_spec_reports_discovery_diagnostics(tmp_path: Path) -> Non
                 std::map<int, int> unsupported_method() const { return {}; }
 
                 std::map<int, int> unsupported_field;
-                boost::optional<std::map<int, int>> unsupported_optional;
+                std::optional<std::map<int, int>> unsupported_optional;
             };
             }
             """

@@ -81,20 +81,16 @@ using namespace ifcapi::detail;
 
 express::Base nest_assign_object(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& objects,
-    express::Base* relating_object,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const NestAssignObjectOptions& options)
 {
     ifcopenshell_clear_error();
-    if (!file || objects.empty()) {
+    if (!file || options.products.empty()) {
         set_error("Invalid arguments");
         return {};
     }
 
     try {
-        auto relating = deref_or_empty(relating_object);
+        auto relating = options.relating_object;
         if (!relating) {
             set_error("Relating object not found");
             return {};
@@ -103,7 +99,7 @@ express::Base nest_assign_object(
         // Maintain insertion order (nesting order matters in IFC).
         std::vector<express::Base> objects_vec;
         std::set<express::Base> objects_set;
-        for (auto object : objects) {
+        for (auto object : options.products) {
             if (object && objects_set.insert(object).second) {
                 objects_vec.push_back(object);
             }
@@ -111,9 +107,9 @@ express::Base nest_assign_object(
         if (objects_vec.empty()) return {};
 
         auto existing_rel = find_is_nested_by(file, relating);
-        auto owner_history_value = deref_or_empty(owner_history);
-        auto user_value = deref_or_empty(user);
-        auto application_value = deref_or_empty(application);
+        auto owner_history_value = options.owner_history.value_or(express::Base());
+        auto user_value = options.user.value_or(express::Base());
+        auto application_value = options.application.value_or(express::Base());
 
         const auto* nests_decl = file->schema()->declaration_by_name("IfcRelNests");
         auto* nests_entity_decl = nests_decl->as_entity();
@@ -143,13 +139,21 @@ express::Base nest_assign_object(
                 }
             }
             if (!contained_objects.empty()) {
-                spatial_unassign_container(file, contained_objects, user, application);
+                SpatialUnassignContainerOptions spatial_opts;
+                spatial_opts.products = contained_objects;
+                if (user_value) spatial_opts.user = user_value;
+                if (application_value) spatial_opts.application = application_value;
+                spatial_unassign_container(file, spatial_opts);
             }
         }
 
         // Unassign from aggregates.
         {
-            aggregate_unassign_object(file, objects_to_change, user, application);
+            AggregateUnassignObjectOptions agg_opts;
+            agg_opts.products = objects_to_change;
+            if (user_value) agg_opts.user = user_value;
+            if (application_value) agg_opts.application = application_value;
+            aggregate_unassign_object(file, agg_opts);
         }
 
         // Remove from previous nest rels (preserving order).
@@ -207,21 +211,19 @@ express::Base nest_assign_object(
 
 void nest_unassign_object(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& objects,
-    express::Base* user,
-    express::Base* application)
+    const NestUnassignObjectOptions& options)
 {
-    if (!file || objects.empty()) return;
+    if (!file || options.products.empty()) return;
 
     try {
-        auto user_value = deref_or_empty(user);
-        auto application_value = deref_or_empty(application);
+        auto user_value = options.user.value_or(express::Base());
+        auto application_value = options.application.value_or(express::Base());
         const auto* nests_decl = file->schema()->declaration_by_name("IfcRelNests");
         auto* nests_entity_decl = nests_decl->as_entity();
         int related_idx = find_attr_index(nests_entity_decl, "RelatedObjects");
 
         std::set<express::Base> objects_set;
-        for (auto object : objects) {
+        for (auto object : options.products) {
             if (object) objects_set.insert(object);
         }
 

@@ -53,7 +53,8 @@ def add_arbitrary_profile(
     """
     outer = [list(v) for v in profile]
     handle = _capi.profile_add_arbitrary_profile(
-        file._handle, outer, name, name is not None
+        file._handle,
+        {"profile": outer, **({"name": name} if name is not None else {})},
     )
     if handle:
         return ifcopenshell.entity_instance(file, handle)

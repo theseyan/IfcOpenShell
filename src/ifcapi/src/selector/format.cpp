@@ -708,11 +708,10 @@ namespace ifcapi {
 namespace bindings {
 
 std::optional<std::string> selector_format(
-    ifcopenshell::file* file,
-    express::Base* instance_ptr,
+    std::optional<ifcopenshell::file*> file,
+    std::optional<express::Base> instance,
     const std::string& query)
 {
-    auto instance = ifcapi::detail::deref_or_empty(instance_ptr);
     ifcopenshell_selector_node_t* ast = selector_parse_format(query);
     if (!ast) {
         return std::nullopt;
@@ -721,7 +720,7 @@ std::optional<std::string> selector_format(
     std::string out;
     bool has_value = false;
     try {
-        FormatEvaluator ev(file, instance);
+        FormatEvaluator ev(file.value_or(nullptr), instance.value_or(express::Base()));
         has_value = ev.to_output(ast, out);
     } catch (...) {
         ifcopenshell_selector_node_free(ast);
@@ -744,22 +743,25 @@ ifcopenshell_selector_keys_t* selector_parse_keys(const std::string& query) {
     return h;
 }
 
-size_t selector_keys_count(ifcopenshell_selector_keys_t* h) {
+size_t selector_keys_count(std::optional<ifcopenshell_selector_keys_t*> keys) {
+    auto* h = keys.value_or(nullptr);
     return h ? h->entries.size() : 0;
 }
 
-std::string selector_keys_get(ifcopenshell_selector_keys_t* h, size_t i) {
+std::string selector_keys_get(std::optional<ifcopenshell_selector_keys_t*> keys, size_t i) {
+    auto* h = keys.value_or(nullptr);
     if (!h || i >= h->entries.size()) return std::string();
     return h->entries[i].text;
 }
 
-bool selector_keys_is_regex(ifcopenshell_selector_keys_t* h, size_t i) {
+bool selector_keys_is_regex(std::optional<ifcopenshell_selector_keys_t*> keys, size_t i) {
+    auto* h = keys.value_or(nullptr);
     if (!h || i >= h->entries.size()) return false;
     return h->entries[i].is_regex;
 }
 
-void selector_keys_free(ifcopenshell_selector_keys_t* h) {
-    delete h;
+void selector_keys_free(std::optional<ifcopenshell_selector_keys_t*> keys) {
+    delete keys.value_or(nullptr);
 }
 
 } // namespace bindings

@@ -21,6 +21,7 @@ from typing import Union
 import ifcopenshell
 import ifcopenshell.api.owner.settings
 from ifcopenshell import _ifcopenshell_capi as _capi
+from ifcopenshell._capi_utils import instance_handle
 
 
 def update_owner_history(
@@ -64,10 +65,10 @@ def update_owner_history(
     application = ifcopenshell.api.owner.settings.get_application(file)
     if not application:
         return
-    handle = _capi.owner_update_owner_history(
-        file._handle,
-        element._handle,
-        user._handle,
-        application._handle,
-    )
+    opts = {
+        "element": instance_handle(element),
+        "user": instance_handle(user),
+        "application": instance_handle(application),
+    }
+    handle = _capi.owner_update_owner_history(file._handle, opts)
     return ifcopenshell.entity_instance(file, handle) if handle else None

@@ -18,6 +18,8 @@ from src.ifcwrap.binding_generator.binding_model import TypeSpec
 from src.ifcwrap.binding_generator.host_metadata import (
     HostBindingMetadata,
     HostFunctionMetadata,
+    HostOptionFieldMetadata,
+    HostOptionStructMetadata,
     HostParamMetadata,
     HostStructField,
     HostStructMetadata,
@@ -25,6 +27,7 @@ from src.ifcwrap.binding_generator.host_metadata import (
 from src.ifcwrap.binding_generator.targets import TargetGenerationRequest, discover_targets, get_target
 from src.ifcwrap.binding_generator.targets.wasm import WasmTargetBackend
 from src.ifcwrap.binding_generator.targets.wasm.backend import render_export_list, render_wasm_bindings
+from src.ifcwrap.binding_generator.targets.wasm.api_bridge import render_api_direct
 from src.ifcwrap.binding_generator.targets.wasm.js_glue import render_js_glue
 from src.ifcwrap.binding_generator.targets.wasm.typescript import render_typescript_declarations
 
@@ -64,6 +67,7 @@ def _make_function(
     params: tuple[HostParamMetadata, ...] = (),
     returns: TypeSpec | None = None,
     receiver: str | None = None,
+    doc: str | None = None,
 ) -> HostFunctionMetadata:
     if returns is None:
         returns = TypeSpec(kind="void")
@@ -86,6 +90,8 @@ def _make_function(
             "int64": "int64_t*",
             "string": "ifcopenshell_string_t*",
             "handle": f"ifcopenshell_demo_{returns.handle}_t**",
+            "struct": "void*",
+            "variant": "void*",
         }[returns.kind]
         full_params.append(
             HostParamMetadata(
@@ -102,20 +108,24 @@ def _make_function(
         error_policy="bool_return_last_error",
         returns=returns,
         receiver=receiver,
+        doc=doc,
     )
 
 
 def _make_metadata(
     *,
+    c_prefix: str = "ifcopenshell_demo",
     handles: dict[str, HostStructMetadata] | None = None,
     value_types: dict[str, HostStructMetadata] | None = None,
+    option_structs: dict[str, HostOptionStructMetadata] | None = None,
     functions: dict[str, HostFunctionMetadata] | None = None,
 ) -> HostBindingMetadata:
     return HostBindingMetadata(
         module="ifcopenshell_wrapper",
-        c_prefix="ifcopenshell_demo",
+        c_prefix=c_prefix,
         handles=handles or {},
         value_types=value_types or {},
+        option_structs=option_structs or {},
         functions=functions or {},
         error_functions=_DEFAULT_ERROR_FUNCTIONS,
     )
@@ -188,6 +198,73 @@ class TestWasmTypescript:
             "export interface IfcOpenshellModule"
         )[1]
 
+    def test_renders_source_docs_as_jsdoc(self):
+        metadata = _make_metadata(
+            functions={
+                "ifcopenshell_demo_root_create_entity": _make_function(
+                    c_name="ifcopenshell_demo_root_create_entity",
+                    params=(HostParamMetadata("ifc_class", "const char*", "param", "string"),),
+                    doc="Create an IFC entity.\nInitializes identity and ownership metadata.",
+                ),
+            },
+        )
+        code = render_typescript_declarations(metadata)
+        assert (
+            "    /**\n"
+            "     * Create an IFC entity.\n"
+            "     * Initializes identity and ownership metadata.\n"
+            "     */\n"
+            "    rootCreateEntity(ifc_class: string): void;"
+        ) in code
+
+    def test_renders_option_struct_interfaces(self):
+        metadata = _make_metadata(
+            option_structs={
+                "CreateEntityOptions": HostOptionStructMetadata(
+                    name="CreateEntityOptions",
+                    c_type="ifcopenshell_demo_create_entity_options_t",
+                    fields=(
+                        HostOptionFieldMetadata("ifc_class", TypeSpec(kind="string"), "const char*"),
+                        HostOptionFieldMetadata("name", TypeSpec(kind="string", nullable=True), "const char*"),
+                    ),
+                )
+            }
+        )
+
+        code = render_typescript_declarations(metadata)
+
+        assert "export interface IfcOpenshellDemoCreateEntityOptions" in code
+        assert "ifc_class: string;" in code
+        assert "name?: string;" in code
+
+    def test_renders_option_struct_parameters(self):
+        metadata = _make_metadata(
+            option_structs={
+                "CreateEntityOptions": HostOptionStructMetadata(
+                    name="CreateEntityOptions",
+                    c_type="ifcopenshell_demo_create_entity_options_t",
+                    fields=(HostOptionFieldMetadata("ifc_class", TypeSpec(kind="string"), "const char*"),),
+                )
+            },
+            functions={
+                "ifcopenshell_demo_root_create_entity": _make_function(
+                    c_name="ifcopenshell_demo_root_create_entity",
+                    params=(
+                        HostParamMetadata(
+                            "options",
+                            "const ifcopenshell_demo_create_entity_options_t*",
+                            "param",
+                            "option",
+                        ),
+                    ),
+                )
+            },
+        )
+
+        code = render_typescript_declarations(metadata)
+
+        assert "rootCreateEntity(options: IfcOpenshellDemoCreateEntityOptions): void;" in code
+
 
 class TestWasmJsGlue:
     def test_generates_handle_wrapper_and_destroy_logic(self):
@@ -221,6 +298,59 @@ class TestWasmJsGlue:
         assert "await module.loadDynamicLibrary(path, { global: true, allowUndefined: true, loadAsync: true });" in code
         assert "module.FS.unlink(path);" in code
         assert "import initIfcOpenShellWasmModule" not in code
+
+    def test_wraps_owned_and_borrowed_handle_returns(self):
+        metadata = _make_metadata(
+            handles={"template": _make_handle("ifcopenshell_demo_template_t")},
+            functions={
+                "ifcopenshell_demo_template_create": _make_function(
+                    c_name="ifcopenshell_demo_template_create",
+                    returns=TypeSpec(kind="handle", handle="template", ownership="owned"),
+                ),
+                "ifcopenshell_demo_template_cached": _make_function(
+                    c_name="ifcopenshell_demo_template_cached",
+                    returns=TypeSpec(kind="handle", handle="template", ownership="borrowed"),
+                ),
+            },
+        )
+
+        code = render_js_glue(metadata)
+
+        assert "_wrapIfcOpenshellDemoTemplate(module.getValue(outResultPtr, '*'), true, module)" in code
+        assert "_wrapIfcOpenshellDemoTemplate(module.getValue(outResultPtr, '*'), false, module)" in code
+
+    def test_destroys_variant_results_after_transferring_handles(self):
+        variant = TypeSpec(
+            kind="variant",
+            cpp_type="std::variant<Demo::Instance*, std::string>",
+            variants=(
+                TypeSpec(kind="handle", handle="instance", cpp_type="Demo::Instance*", ownership="owned"),
+                TypeSpec(kind="string", cpp_type="std::string"),
+            ),
+        )
+        metadata = _make_metadata(
+            handles={"instance": _make_handle("ifcopenshell_demo_instance_t")},
+            value_types={
+                "instance_string_variant": HostStructMetadata(
+                    c_type="ifcopenshell_demo_instance_string_variant_t",
+                    kind="variant",
+                    fields=(
+                        HostStructField("kind", "int32_t"),
+                        HostStructField("value_0", "ifcopenshell_demo_instance_t*"),
+                        HostStructField("value_1", "ifcopenshell_string_t"),
+                    ),
+                    destroy_function="ifcopenshell_demo_instance_string_variant_destroy",
+                    element_type=variant.cpp_type,
+                )
+            },
+            functions={"ifcopenshell_demo_value": _make_function(c_name="ifcopenshell_demo_value", returns=variant)},
+        )
+
+        code = render_js_glue(metadata)
+
+        assert "module._ifcopenshell_demo_instance_string_variant_destroy(outResultPtr);" in code
+        assert "const ptr = module.getValue(fieldPtr, '*');" in code
+        assert "module.setValue(fieldPtr, 0, '*');" in code
 
     def test_generates_nested_api_modules(self):
         metadata = HostBindingMetadata(
@@ -330,6 +460,43 @@ class TestWasmJsGlue:
         assert "_readValueType(module, outResultPtr, _VALUE_TYPES[\"ifcopenshell_string_list_t\"])" in code
         assert "module._ifcopenshell_string_list_destroy(outResultPtr);" in code
 
+    def test_marshals_handle_sequence_parameters(self):
+        metadata = _make_metadata(
+            handles={"instance": _make_handle("ifcopenshell_instance_t")},
+            value_types={
+                "instance_list": HostStructMetadata(
+                    c_type="ifcopenshell_instance_list_t",
+                    kind="handle_sequence",
+                    fields=(
+                        HostStructField("items", "ifcopenshell_instance_t**"),
+                        HostStructField("size", "size_t"),
+                    ),
+                    destroy_function=None,
+                    element_type="ifcopenshell_instance_t",
+                    sequence_depth=1,
+                ),
+            },
+            functions={
+                "ifcopenshell_demo_from_handles": _make_function(
+                    c_name="ifcopenshell_demo_from_handles",
+                    params=(
+                        HostParamMetadata(
+                            "instances",
+                            "const ifcopenshell_instance_list_t*",
+                            "param",
+                            "handle",
+                        ),
+                    ),
+                )
+            },
+        )
+
+        code = render_js_glue(metadata)
+
+        assert "_allocInputHandleSequence(module, instances" in code
+        assert "_freeInputHandleSequence(module, _instancesPtr" in code
+        assert "module.setValue(itemsPtr + index * POINTER_SIZE, item == null ? 0 : item.ptr, '*');" in code
+
     def test_generates_dependency_aware_plugin_loader(self):
         metadata = _make_metadata()
         code = render_js_glue(metadata)
@@ -340,6 +507,555 @@ class TestWasmJsGlue:
         assert "async function loadPluginLibrary(kind, id, entry)" in code
         assert "await module.loadDynamicLibrary(path, { global: true, allowUndefined: true, loadAsync: true });" in code
         assert "invoke_ifcopenshell_geom_plugin_registry_address" not in code
+
+    def test_marshals_option_struct_parameters(self):
+        metadata = _make_metadata(
+            value_types={
+                "double_list": HostStructMetadata(
+                    c_type="ifcopenshell_double_list_t",
+                    kind="sequence",
+                    fields=(HostStructField("items", "double*"), HostStructField("size", "size_t")),
+                    destroy_function="ifcopenshell_double_list_destroy",
+                    element_type="double",
+                    sequence_depth=1,
+                ),
+                "double_list_list": HostStructMetadata(
+                    c_type="ifcopenshell_double_list_list_t",
+                    kind="sequence",
+                    fields=(
+                        HostStructField("items", "ifcopenshell_double_list_t*"),
+                        HostStructField("size", "size_t"),
+                    ),
+                    destroy_function="ifcopenshell_double_list_list_destroy",
+                    element_type="ifcopenshell_double_list_t",
+                    sequence_depth=2,
+                ),
+            },
+            option_structs={
+                "CreateEntityOptions": HostOptionStructMetadata(
+                    name="CreateEntityOptions",
+                    c_type="ifcopenshell_demo_create_entity_options_t",
+                    fields=(
+                        HostOptionFieldMetadata("ifc_class", TypeSpec(kind="string"), "const char*"),
+                        HostOptionFieldMetadata(
+                            "axis",
+                            TypeSpec(kind="double", sequence_depth=2),
+                            "const ifcopenshell_double_list_list_t*",
+                        ),
+                        HostOptionFieldMetadata("name", TypeSpec(kind="string", nullable=True), "const char*"),
+                    ),
+                )
+            },
+            functions={
+                "ifcopenshell_demo_root_create_entity": _make_function(
+                    c_name="ifcopenshell_demo_root_create_entity",
+                    params=(
+                        HostParamMetadata(
+                            "options",
+                            "const ifcopenshell_demo_create_entity_options_t*",
+                            "param",
+                            "option",
+                        ),
+                    ),
+                )
+            },
+        )
+
+        code = render_js_glue(metadata)
+
+        assert '"ifcopenshell_demo_create_entity_options_t": {' in code
+        assert '"optionFields": [' in code
+        assert '"name": "has_name"' in code
+        assert 'var _optionsPtr = _allocInputOption(module, options, "ifcopenshell_demo_create_entity_options_t");' in code
+        assert 'if (_optionsPtr) _freeInputOption(module, _optionsPtr, "ifcopenshell_demo_create_entity_options_t");' in code
+        assert "function _allocInputOption(module, value, cType)" in code
+        assert "function _zeroMemory(module, ptr, size)" in code
+        assert "module.HEAPU32.fill(0, start, start + wordCount);" in code
+        assert "module.HEAPU8.fill" not in code
+        assert "    _zeroMemory(module, ptr, layout.size);" in code
+        assert "function _freeInputOption(module, ptr, cType)" in code
+        assert "function _writeInputSequence(module, structPtr, value, metadata)" in code
+        assert "else _writeInputSequence(module, itemPtr, value[index], elementMetadata);" in code
+        assert "function _freeInputSequenceItems(module, ptr, metadata)" in code
+
+
+class TestWasmApiBridge:
+    def test_generates_direct_api_facade(self):
+        metadata = _make_metadata(
+            c_prefix="ifcopenshell",
+            handles={
+                "file": _make_handle("ifcopenshell_file_t"),
+                "instance": _make_handle("ifcopenshell_instance_t"),
+            },
+            option_structs={
+                "CreateEntityOptions": HostOptionStructMetadata(
+                    name="CreateEntityOptions",
+                    c_type="ifcopenshell_root_create_entity_options_t",
+                    fields=(
+                        HostOptionFieldMetadata("ifc_class", TypeSpec(kind="string"), "const char*"),
+                        HostOptionFieldMetadata("name", TypeSpec(kind="string", nullable=True), "const char*"),
+                        HostOptionFieldMetadata(
+                            "owner_history",
+                            TypeSpec(kind="handle", handle="instance", nullable=True),
+                            "ifcopenshell_instance_t*",
+                        ),
+                    ),
+                )
+            },
+            functions={
+                "ifcopenshell_root_create_entity": _make_function(
+                    c_name="ifcopenshell_root_create_entity",
+                    params=(
+                        HostParamMetadata("file", "ifcopenshell_file_t*", "param", "handle"),
+                        HostParamMetadata(
+                            "options",
+                            "const ifcopenshell_root_create_entity_options_t*",
+                            "param",
+                            "option",
+                        ),
+                    ),
+                    returns=TypeSpec(kind="handle", handle="instance"),
+                    doc="Create an IFC entity.",
+                )
+            },
+        )
+
+        code = render_api_direct(metadata)
+
+        assert "export interface IfcOpenShellRootCreateEntityOptions" in code
+        assert "ownerHistory?: Entity;" in code
+        assert "export interface RootApi" in code
+        assert "createEntity(file: IfcFile, options: IfcOpenShellRootCreateEntityOptions): Entity;" in code
+        assert "raw.root.createEntity(file.raw, encodeOptions(options" in code
+        assert '"ifcClass": "ifc_class"' in code
+        assert '"name": "name"' in code
+        assert '"ownerHistory": "owner_history"' in code
+        assert "type ApiInput = ApiData | PsetProperties | PsetInput;" in code
+        assert "function toRaw(value: ApiInput, shell: IfcOpenShell, temps: Disposable[]): RawValue" in code
+        assert "disposeAll(temps);" in code
+        assert "return wrapEntity(shell, result) as Entity;" in code
+
+    def test_direct_api_facade_wraps_option_handles(self):
+        metadata = _make_metadata(
+            c_prefix="ifcopenshell",
+            handles={
+                "file": _make_handle("ifcopenshell_file_t"),
+                "instance": _make_handle("ifcopenshell_instance_t"),
+            },
+            option_structs={
+                "CreateEntityOptions": HostOptionStructMetadata(
+                    name="CreateEntityOptions",
+                    c_type="ifcopenshell_root_create_entity_options_t",
+                    fields=(
+                        HostOptionFieldMetadata("ifc_class", TypeSpec(kind="string"), "const char*"),
+                        HostOptionFieldMetadata(
+                            "owner_history",
+                            TypeSpec(kind="handle", handle="instance", nullable=True),
+                            "ifcopenshell_instance_t*",
+                        ),
+                    ),
+                )
+            },
+            functions={
+                "ifcopenshell_root_create_entity": _make_function(
+                    c_name="ifcopenshell_root_create_entity",
+                    params=(
+                        HostParamMetadata("file", "ifcopenshell_file_t*", "param", "handle"),
+                        HostParamMetadata(
+                            "options",
+                            "const ifcopenshell_root_create_entity_options_t*",
+                            "param",
+                            "option",
+                        ),
+                    ),
+                    returns=TypeSpec(kind="handle", handle="instance"),
+                )
+            },
+        )
+
+        code = render_api_direct(metadata)
+
+        assert "ApiHandle" not in code
+        assert "ApiTransport" not in code
+        assert "apiWorkerDispatch" not in code
+        assert "if (value instanceof Entity) return value.raw;" in code
+        assert "raw.root.createEntity(file.raw, encodeOptions(options" in code
+
+    def test_direct_api_facade_maps_pset_properties(self):
+        metadata = _make_metadata(
+            c_prefix="ifcopenshell",
+            handles={
+                "file": _make_handle("ifcopenshell_file_t"),
+                "instance": _make_handle("ifcopenshell_instance_t"),
+            },
+            option_structs={
+                "PsetEditPsetOptions": HostOptionStructMetadata(
+                    name="PsetEditPsetOptions",
+                    c_type="ifcopenshell_pset_edit_pset_options_t",
+                    fields=(
+                        HostOptionFieldMetadata("pset", TypeSpec(kind="handle", handle="instance"), "ifcopenshell_instance_t*"),
+                        HostOptionFieldMetadata("properties", TypeSpec(kind="opaque_ptr", semantic="property_map"), "void*"),
+                    ),
+                )
+            },
+            functions={
+                "ifcopenshell_pset_edit_pset": _make_function(
+                    c_name="ifcopenshell_pset_edit_pset",
+                    params=(
+                        HostParamMetadata("file", "ifcopenshell_file_t*", "param", "handle"),
+                        HostParamMetadata(
+                            "options",
+                            "const ifcopenshell_pset_edit_pset_options_t*",
+                            "param",
+                            "option",
+                        ),
+                    ),
+                    returns=TypeSpec(kind="bool"),
+                ),
+                "ifcopenshell_pset_props_new": _make_function(
+                    c_name="ifcopenshell_pset_props_new",
+                    returns=TypeSpec(kind="int32"),
+                ),
+            },
+        )
+
+        code = render_api_direct(metadata)
+
+        assert "properties: PsetProperties | PsetInput;" in code
+        assert "propsNew" not in code
+        assert "return toRawPsetProperties(shell, value as PsetProperties | PsetInput, temps);" in code
+
+    def test_direct_api_facade_wraps_pset_template_handles(self):
+        metadata = _make_metadata(
+            c_prefix="ifcopenshell",
+            handles={
+                "file": _make_handle("ifcopenshell_file_t"),
+                "instance": _make_handle("ifcopenshell_instance_t"),
+                "pset_template_handle": _make_handle("ifcopenshell_pset_template_handle_t"),
+            },
+            value_types={
+                "file_list": HostStructMetadata(
+                    c_type="ifcopenshell_file_list_t",
+                    kind="handle_sequence",
+                    fields=(
+                        HostStructField("items", "ifcopenshell_file_t**"),
+                        HostStructField("size", "size_t"),
+                    ),
+                    destroy_function=None,
+                    element_type="ifcopenshell_file_t",
+                    sequence_depth=1,
+                ),
+            },
+            functions={
+                "ifcopenshell_pset_template_create_from_files": _make_function(
+                    c_name="ifcopenshell_pset_template_create_from_files",
+                    params=(
+                        HostParamMetadata("schema_identifier", "const char*", "param", "string"),
+                        HostParamMetadata("template_files", "const ifcopenshell_file_list_t*", "param", "handle"),
+                    ),
+                    returns=TypeSpec(kind="handle", handle="pset_template_handle", ownership="owned", nullable=True),
+                ),
+                "ifcopenshell_pset_template_get_template": _make_function(
+                    c_name="ifcopenshell_pset_template_get_template",
+                    params=(HostParamMetadata("schema_identifier", "const char*", "param", "string"),),
+                    returns=TypeSpec(kind="handle", handle="pset_template_handle", ownership="borrowed", nullable=True),
+                ),
+                "ifcopenshell_pset_template_get_by_name": _make_function(
+                    c_name="ifcopenshell_pset_template_get_by_name",
+                    params=(
+                        HostParamMetadata("pqt", "ifcopenshell_pset_template_handle_t*", "param", "handle"),
+                        HostParamMetadata("name", "const char*", "param", "string"),
+                    ),
+                    returns=TypeSpec(kind="handle", handle="instance", nullable=True),
+                ),
+                "ifcopenshell_pset_template_free": _make_function(
+                    c_name="ifcopenshell_pset_template_free",
+                    params=(HostParamMetadata("pqt", "ifcopenshell_pset_template_handle_t*", "param", "handle"),),
+                ),
+            },
+        )
+
+        code = render_api_direct(metadata)
+
+        assert "export interface PsetTemplate" in code
+        assert "templateCreateFromFiles(schema_identifier: string, template_files: IfcFile[]): PsetTemplate | null;" in code
+        assert "templateGetTemplate(schema_identifier: string): PsetTemplate | null;" in code
+        assert "templateGetByName(pqt: PsetTemplate, name: string): Entity | null;" in code
+        assert "templateFree" not in code
+        assert "free(pqt" not in code
+        assert "const result = raw.pset.templateCreateFromFiles(schema_identifier, toRaw(template_files, shell, temps));" in code
+        assert "return result as PsetTemplate | null;" in code
+        assert "const result = raw.pset.templateGetByName(pqt, name);" in code
+        assert "pqt.raw" not in code
+        assert "PsetTemplate | null" in code
+        assert "number | null" not in code
+
+    def test_direct_api_facade_maps_pset_props_by_c_type(self):
+        metadata = _make_metadata(
+            c_prefix="ifcopenshell",
+            handles={
+                "file": _make_handle("ifcopenshell_file_t"),
+                "instance": _make_handle("ifcopenshell_instance_t"),
+            },
+            option_structs={
+                "AttributeEditAttributesOptions": HostOptionStructMetadata(
+                    name="AttributeEditAttributesOptions",
+                    c_type="ifcopenshell_attribute_edit_attributes_options_t",
+                    fields=(
+                        HostOptionFieldMetadata("product", TypeSpec(kind="handle", handle="instance"), "ifcopenshell_instance_t*"),
+                        HostOptionFieldMetadata("attributes", TypeSpec(kind="opaque_ptr", semantic="property_map"), "void*"),
+                    ),
+                ),
+                "GeoreferenceEditGeoreferencingOptions": HostOptionStructMetadata(
+                    name="GeoreferenceEditGeoreferencingOptions",
+                    c_type="ifcopenshell_georeference_edit_georeferencing_options_t",
+                    fields=(
+                        HostOptionFieldMetadata("coordinate_operation", TypeSpec(kind="opaque_ptr", nullable=True, semantic="property_map"), "void*"),
+                        HostOptionFieldMetadata("projected_crs", TypeSpec(kind="opaque_ptr", nullable=True, semantic="property_map"), "void*"),
+                    ),
+                ),
+            },
+            functions={
+                "ifcopenshell_attribute_edit_attributes": _make_function(
+                    c_name="ifcopenshell_attribute_edit_attributes",
+                    params=(
+                        HostParamMetadata("file", "ifcopenshell_file_t*", "param", "handle"),
+                        HostParamMetadata(
+                            "options",
+                            "const ifcopenshell_attribute_edit_attributes_options_t*",
+                            "param",
+                            "option",
+                        ),
+                    ),
+                    returns=TypeSpec(kind="bool"),
+                ),
+                "ifcopenshell_georeference_edit_georeferencing": _make_function(
+                    c_name="ifcopenshell_georeference_edit_georeferencing",
+                    params=(
+                        HostParamMetadata("file", "ifcopenshell_file_t*", "param", "handle"),
+                        HostParamMetadata(
+                            "options",
+                            "const ifcopenshell_georeference_edit_georeferencing_options_t*",
+                            "param",
+                            "option",
+                        ),
+                    ),
+                    returns=TypeSpec(kind="bool"),
+                ),
+            },
+        )
+
+        code = render_api_direct(metadata)
+
+        assert "attributes: PsetProperties | PsetInput;" in code
+        assert "coordinateOperation?: PsetProperties | PsetInput;" in code
+        assert "projectedCrs?: PsetProperties | PsetInput;" in code
+        assert "attributes: number" not in code
+        assert "coordinateOperation?: number" not in code
+        assert "projectedCrs?: number" not in code
+        assert "return toRawPsetProperties(shell, value as PsetProperties | PsetInput, temps);" in code
+
+    def test_direct_api_facade_hides_selector_internals(self):
+        metadata = _make_metadata(
+            c_prefix="ifcopenshell",
+            handles={"file": _make_handle("ifcopenshell_file_t")},
+            functions={
+                "ifcopenshell_selector_filter_all": _make_function(
+                    c_name="ifcopenshell_selector_filter_all",
+                    params=(
+                        HostParamMetadata("file", "ifcopenshell_file_t*", "param", "handle"),
+                        HostParamMetadata("query", "const char*", "param", "string"),
+                    ),
+                    returns=TypeSpec(kind="handle", handle="value"),
+                ),
+                "ifcopenshell_selector_parse_keys": _make_function(
+                    c_name="ifcopenshell_selector_parse_keys",
+                    params=(HostParamMetadata("query", "const char*", "param", "string"),),
+                    returns=TypeSpec(kind="int32", nullable=True),
+                ),
+            },
+        )
+
+        code = render_api_direct(metadata)
+
+        assert "filterAll(file: IfcFile, query: string)" in code
+        assert "parseKeys" not in code
+
+    def test_direct_api_facade_excludes_value_module(self):
+        metadata = _make_metadata(
+            c_prefix="ifcopenshell",
+            handles={
+                "file": _make_handle("ifcopenshell_file_t"),
+                "value": _make_handle("ifcopenshell_value_t"),
+            },
+            functions={
+                "ifcopenshell_value_new_string": _make_function(
+                    c_name="ifcopenshell_value_new_string",
+                    params=(HostParamMetadata("value", "const char*", "param", "string"),),
+                    returns=TypeSpec(kind="handle", handle="value"),
+                ),
+                "ifcopenshell_value_new_list": _make_function(
+                    c_name="ifcopenshell_value_new_list",
+                    returns=TypeSpec(kind="handle", handle="value"),
+                ),
+                "ifcopenshell_value_new_dict": _make_function(
+                    c_name="ifcopenshell_value_new_dict",
+                    returns=TypeSpec(kind="handle", handle="value"),
+                ),
+                "ifcopenshell_value_list_append": _make_function(
+                    c_name="ifcopenshell_value_list_append",
+                    params=(
+                        HostParamMetadata("list", "ifcopenshell_value_t*", "param", "handle"),
+                        HostParamMetadata("item", "ifcopenshell_value_t*", "param", "handle"),
+                    ),
+                    returns=TypeSpec(kind="bool"),
+                ),
+                "ifcopenshell_value_dict_set": _make_function(
+                    c_name="ifcopenshell_value_dict_set",
+                    params=(
+                        HostParamMetadata("dict", "ifcopenshell_value_t*", "param", "handle"),
+                        HostParamMetadata("key", "const char*", "param", "string"),
+                        HostParamMetadata("value", "ifcopenshell_value_t*", "param", "handle"),
+                    ),
+                    returns=TypeSpec(kind="bool"),
+                ),
+                "ifcopenshell_selector_filter_all": _make_function(
+                    c_name="ifcopenshell_selector_filter_all",
+                    params=(
+                        HostParamMetadata("file", "ifcopenshell_file_t*", "param", "handle"),
+                        HostParamMetadata("query", "const char*", "param", "string"),
+                    ),
+                    returns=TypeSpec(kind="handle", handle="value"),
+                ),
+            },
+        )
+
+        code = render_api_direct(metadata)
+
+        assert "export interface ValueApi" not in code
+        assert "value: ValueApi;" not in code
+        assert "newString" not in code
+        assert "newList" not in code
+        assert "newDict" not in code
+        assert "listAppend" not in code
+        assert "dictSet" not in code
+        assert "filterAll(file: IfcFile, query: string): ValueData | null;" in code
+
+    def test_direct_api_facade_maps_selector_value_params_to_value_input(self):
+        metadata = _make_metadata(
+            c_prefix="ifcopenshell",
+            handles={
+                "file": _make_handle("ifcopenshell_file_t"),
+                "value": _make_handle("ifcopenshell_value_t"),
+            },
+            functions={
+                "ifcopenshell_selector_set_element_value": _make_function(
+                    c_name="ifcopenshell_selector_set_element_value",
+                    params=(
+                        HostParamMetadata("file", "ifcopenshell_file_t*", "param", "handle"),
+                        HostParamMetadata("element", "ifcopenshell_instance_t*", "param", "handle"),
+                        HostParamMetadata("query", "const char*", "param", "string"),
+                        HostParamMetadata("value", "ifcopenshell_value_t*", "param", "handle"),
+                        HostParamMetadata("concat", "const char*", "param", "string"),
+                    ),
+                    returns=TypeSpec(kind="bool"),
+                ),
+            },
+        )
+
+        code = render_api_direct(metadata)
+
+        assert "value: ValueInput" in code
+        assert "setElementValue(file: IfcFile" in code
+
+    def test_direct_api_facade_maps_nullable_result_structs(self):
+        metadata = _make_metadata(
+            c_prefix="ifcopenshell",
+            handles={
+                "file": _make_handle("ifcopenshell_file_t"),
+                "instance": _make_handle("ifcopenshell_instance_t"),
+            },
+            value_types={
+                "mep_result": HostStructMetadata(
+                    c_type="ifcopenshell_shape_builder_mep_transition_shape_result_t",
+                    kind="result_struct",
+                    fields=(
+                        HostStructField("representation", "ifcopenshell_instance_t*"),
+                        HostStructField("start_length", "double"),
+                    ),
+                    destroy_function=None,
+                ),
+                "optional_mep_result": HostStructMetadata(
+                    c_type="ifcopenshell_optional_shape_builder_mep_transition_shape_result_t",
+                    kind="optional_result_struct",
+                    fields=(
+                        HostStructField("has_value", "bool"),
+                        HostStructField("value", "ifcopenshell_shape_builder_mep_transition_shape_result_t"),
+                    ),
+                    destroy_function=None,
+                    element_type="mep_result",
+                ),
+            },
+            functions={
+                "ifcopenshell_shape_builder_mep_transition_shape": _make_function(
+                    c_name="ifcopenshell_shape_builder_mep_transition_shape",
+                    params=(HostParamMetadata("file", "ifcopenshell_file_t*", "param", "handle"),),
+                    returns=TypeSpec(kind="struct", struct="mep_result", nullable=True),
+                )
+            },
+        )
+
+        code = render_api_direct(metadata)
+
+        assert "builderMepTransitionShape(file: IfcFile): IfcOpenShellShapeBuilderMepTransitionShapeResult | null;" in code
+        assert "if (result === null) return null;" in code
+        assert "hasResult" not in code
+
+    def test_direct_api_facade_maps_variants_to_unions(self):
+        metadata = _make_metadata(
+            c_prefix="ifcopenshell",
+            handles={
+                "file": _make_handle("ifcopenshell_file_t"),
+                "instance": _make_handle("ifcopenshell_instance_t"),
+            },
+            value_types={
+                "entity_string_variant": HostStructMetadata(
+                    c_type="ifcopenshell_instance_string_variant_t",
+                    kind="variant",
+                    fields=(
+                        HostStructField("kind", "int32_t"),
+                        HostStructField("value_0", "ifcopenshell_instance_t*"),
+                        HostStructField("value_1", "ifcopenshell_string_t"),
+                    ),
+                    destroy_function=None,
+                    element_type="std::variant<express::Base, std::string>",
+                ),
+            },
+            functions={
+                "ifcopenshell_sequence_add_date_time": _make_function(
+                    c_name="ifcopenshell_sequence_add_date_time",
+                    params=(
+                        HostParamMetadata("file", "ifcopenshell_file_t*", "param", "handle"),
+                        HostParamMetadata("date_time", "const char*", "param", "string"),
+                    ),
+                    returns=TypeSpec(
+                        kind="variant",
+                        variants=(
+                            TypeSpec(kind="handle", handle="instance", cpp_type="express::Base"),
+                            TypeSpec(kind="string", cpp_type="std::string"),
+                        ),
+                        cpp_type="std::variant<express::Base, std::string>",
+                    ),
+                )
+            },
+        )
+
+        code = render_api_direct(metadata)
+
+        assert "addDateTime(file: IfcFile, date_time: string): Entity | string;" in code
+        assert "return wrap(shell, result) as Entity | string;" in code
+        assert "isEntity:" not in code
+        assert "dateTimeString" not in code
 
 
 class TestWasmBackend:
@@ -361,6 +1077,7 @@ class TestWasmBackend:
         assert paths["javascript"] == (output_dir / "ifcopenshell_api.js").resolve()
         assert paths["typescript"] == (output_dir / "ifcopenshell_api.d.ts").resolve()
         assert paths["exports"] == (output_dir / "ifcopenshell_exports.txt").resolve()
+        assert paths["api"] == (output_dir / "ifcopenshell_api.ts").resolve()
         assert paths["javascript"].read_text(encoding="utf-8").startswith("// This file was generated")
         assert "declare module 'ifcopenshell-api'" in paths["typescript"].read_text(encoding="utf-8")
         assert "_ifcopenshell_demo_clear_error" in paths["exports"].read_text(encoding="utf-8")
@@ -468,4 +1185,9 @@ class TestWasmBackend:
             )
         )
 
-        assert {artifact.kind for artifact in artifacts.artifacts} == {"javascript", "typescript", "exports"}
+        assert {artifact.kind for artifact in artifacts.artifacts} == {
+            "javascript",
+            "typescript",
+            "api",
+            "exports",
+        }

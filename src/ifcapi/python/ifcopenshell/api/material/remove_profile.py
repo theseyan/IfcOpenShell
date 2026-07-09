@@ -72,6 +72,8 @@ def remove_profile(
         "Failed to remove material profile",
         _capi.file_handle(file),
         _capi.instance_handle(profile),
-        should_remove_profile_def,
-        should_remove_material,
+        {
+            "should_remove_profile_def": should_remove_profile_def,
+            "should_remove_material": should_remove_material,
+        },
     )

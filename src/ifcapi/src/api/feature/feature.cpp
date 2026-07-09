@@ -38,17 +38,14 @@ namespace bindings {
 
 express::Base feature_add_feature(
     ifcopenshell::file* file,
-    express::Base* feature,
-    express::Base* element,
-    express::Base* user,
-    express::Base* application)
+    const FeatureAddFeatureOptions& options)
 {
     ifcopenshell_clear_error();
     try {
-        auto feature_value = ifcapi::detail::deref_or_empty(feature);
-        auto element_value = ifcapi::detail::deref_or_empty(element);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto feature_value = options.feature;
+        auto element_value = options.element;
+        auto user_value = options.user.value_or(express::Base());
+        auto application_value = options.application.value_or(express::Base());
         std::vector<express::Base> rels;
         const char* ifc_class = nullptr;
         const char* relating_attr = nullptr;
@@ -66,7 +63,12 @@ express::Base feature_add_feature(
             related_attr = "RelatedFeatureElement";
         } else if (is_instance(feature_value, "IfcSurfaceFeature")) {
             if (file && file->schema()->name() == "IFC4") {
-                return aggregate_assign_object(file, {feature_value}, &element_value, nullptr, user, application);
+                AggregateAssignObjectOptions agg_options;
+                agg_options.products = {feature_value};
+                agg_options.relating_object = element_value;
+                if (user_value) agg_options.user = user_value;
+                if (application_value) agg_options.application = application_value;
+                return aggregate_assign_object(file, agg_options);
             }
             rels = ifcapi::detail::read_inverse_aggregate(feature_value, "AdheresToElement");
             ifc_class = "IfcRelAdheresToElement";
@@ -110,7 +112,9 @@ express::Base feature_add_feature(
 
         auto placement = ifcapi::detail::read_ref_attr(feature_value, "ObjectPlacement");
         if (is_instance(placement, "IfcLocalPlacement")) {
-            geometry_edit_object_placement(file, &feature_value, placement_get_local_placement(&placement), false, false);
+            geometry_edit_object_placement(
+                file,
+                GeometryEditObjectPlacementOptions{feature_value, placement_get_local_placement(placement), false, false});
         }
         return rel;
     } catch (const std::exception& e) {
@@ -148,15 +152,13 @@ express::Base feature_add_filling(
 
 void feature_remove_feature(
     ifcopenshell::file* file,
-    express::Base* feature,
-    express::Base* user,
-    express::Base* application)
+    const FeatureRemoveFeatureOptions& options)
 {
     ifcopenshell_clear_error();
     try {
-        auto feature_value = ifcapi::detail::deref_or_empty(feature);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto feature_value = options.feature;
+        auto user_value = options.user.value_or(express::Base());
+        auto application_value = options.application.value_or(express::Base());
         std::vector<express::Base> rels;
         if (is_instance(feature_value, "IfcFeatureElementSubtraction")) {
             rels = ifcapi::detail::read_inverse_aggregate(feature_value, "VoidsElements");
@@ -164,7 +166,11 @@ void feature_remove_feature(
             rels = ifcapi::detail::read_inverse_aggregate(feature_value, "ProjectsElements");
         } else if (is_instance(feature_value, "IfcSurfaceFeature")) {
             if (file && file->schema()->name() == "IFC4") {
-                aggregate_unassign_object(file, {feature_value}, user, application);
+                AggregateUnassignObjectOptions agg_options;
+                agg_options.products = {feature_value};
+                if (user_value) agg_options.user = user_value;
+                if (application_value) agg_options.application = application_value;
+                aggregate_unassign_object(file, agg_options);
             } else {
                 // Upstream queries the absent ProjectsElements inverse here; preserve its empty-rel behavior explicitly.
                 rels = {};
@@ -178,7 +184,10 @@ void feature_remove_feature(
                 ifcapi::detail::remove_with_history(file, rel);
             }
         }
-        root_remove_product(file, &feature_value, detail::nullable_ptr(user_value), detail::nullable_ptr(application_value));
+        RootRemoveProductOptions remove_options;
+        if (user_value) remove_options.user = user_value;
+        if (application_value) remove_options.application = application_value;
+        root_remove_product(file, &feature_value, remove_options);
     } catch (const std::exception& e) {
         set_error(e.what());
     }

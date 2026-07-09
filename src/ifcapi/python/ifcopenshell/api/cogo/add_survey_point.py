@@ -44,9 +44,11 @@ def add_survey_point(
         file,
         "cogo_add_survey_point",
         _capi.file_handle(file),
-        _capi.instance_handle(survey_point),
-        _capi.instance_handle(site),
-        None,
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+        {
+            "survey_point": _capi.instance_handle(survey_point),
+            "site": _capi.instance_handle(site),
+            "owner_history": None,
+            "user": _capi.instance_handle(user),
+            "application": _capi.instance_handle(application),
+        },
     )

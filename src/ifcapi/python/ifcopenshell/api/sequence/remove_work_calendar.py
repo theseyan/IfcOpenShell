@@ -44,6 +44,8 @@ def remove_work_calendar(file: ifcopenshell.file, work_calendar: ifcopenshell.en
         "sequence_remove_work_calendar",
         _capi.file_handle(file),
         _capi.instance_handle(work_calendar),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+        {
+            "user": _capi.instance_handle(user),
+            "application": _capi.instance_handle(application),
+        },
     )

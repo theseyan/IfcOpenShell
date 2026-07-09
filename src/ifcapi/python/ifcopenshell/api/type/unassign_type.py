@@ -52,7 +52,9 @@ def unassign_type(file: ifcopenshell.file, related_objects: list[ifcopenshell.en
     _relationship_capi.call_status(
         "type_unassign_type",
         _relationship_capi.file_handle(file),
-        _relationship_capi.instance_list_ptr(object_list),
-        _relationship_capi.instance_handle(user),
-        _relationship_capi.instance_handle(application),
+        {
+            "objects": object_list,
+            "user": _relationship_capi.instance_handle(user),
+            "application": _relationship_capi.instance_handle(application),
+        },
     )

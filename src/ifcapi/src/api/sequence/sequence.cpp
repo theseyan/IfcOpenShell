@@ -51,6 +51,14 @@ std::vector<express::Base> one_const(express::Base item) {
     return item ? std::vector<express::Base>{item} : std::vector<express::Base>{};
 }
 
+express::Base option_entity(const std::optional<express::Base>& value) {
+    return value.value_or(express::Base());
+}
+
+const char* optional_c_str(const std::optional<std::string>& value) {
+    return value ? value->c_str() : nullptr;
+}
+
 express::Base create_root_entity(
     ifcopenshell::file* file,
     const char* ifc_class,
@@ -61,8 +69,18 @@ express::Base create_root_entity(
     express::Base application)
 {
     auto history = ifcapi::detail::ensure_owner_history(file, owner_history, user, application);
-    auto entity = ifcapi::bindings::root_create_entity(
-        file, ifc_class, predefined_type, name, ifcapi::detail::nullable_ptr(history));
+    ifcapi::bindings::RootCreateEntityOptions options;
+    options.ifc_class = ifc_class ? ifc_class : "";
+    if (predefined_type && predefined_type[0] != '\0') {
+        options.predefined_type = predefined_type;
+    }
+    if (name && name[0] != '\0') {
+        options.name = name;
+    }
+    if (history) {
+        options.owner_history = history;
+    }
+    auto entity = ifcapi::bindings::root_create_entity(file, options);
     if (!entity) {
         throw std::runtime_error(std::string("Failed to create ") + ifc_class);
     }
@@ -109,14 +127,14 @@ std::string current_ifc_datetime() {
     return buffer;
 }
 
-ifcapi::bindings::SequenceDateTimeResult make_date_time_result(
+std::variant<express::Base, std::string> make_date_time_result(
     ifcopenshell::file* file,
     const std::string& value)
 {
     if (is_ifc2x3(file)) {
-        return ifcapi::bindings::SequenceDateTimeResult{create_ifc_date_time(file, value), std::string(), true};
+        return create_ifc_date_time(file, value);
     }
-    return ifcapi::bindings::SequenceDateTimeResult{{}, value, false};
+    return value;
 }
 
 void write_date_time_attr(
@@ -790,13 +808,13 @@ private:
                     new_tasks.push_back(duplicate_task(nested_task));
                 }
                 if (!new_tasks.empty()) {
-                    ifcapi::bindings::nest_assign_object(
-                        file_,
-                        ifcapi::detail::to_const_refs(new_tasks),
-                        &to_element,
-                        ifcapi::detail::nullable_ptr(owner_history_),
-                        ifcapi::detail::nullable_ptr(user_),
-                        ifcapi::detail::nullable_ptr(application_));
+                    ifcapi::bindings::NestAssignObjectOptions nest_opts;
+                    nest_opts.products = ifcapi::detail::to_const_refs(new_tasks);
+                    nest_opts.relating_object = to_element;
+                    if (owner_history_) nest_opts.owner_history = owner_history_;
+                    if (user_) nest_opts.user = user_;
+                    if (application_) nest_opts.application = application_;
+                    ifcapi::bindings::nest_assign_object(file_, nest_opts);
                 }
             } else if (inverse.declaration().is("IfcRelSequence") ||
                 (inverse.declaration().is("IfcRelAssignsToControl") &&
@@ -873,14 +891,16 @@ private:
                     relating_process = duplicate_[static_cast<size_t>(relating_index)];
                 }
                 if (relating_process && related_process) {
+                    ifcapi::bindings::SequenceAssignSequenceOptions options;
+                    options.sequence_type = ifcapi::detail::read_string_attr(inverse, "SequenceType");
+                    if (owner_history_) options.owner_history = owner_history_;
+                    if (user_) options.user = user_;
+                    if (application_) options.application = application_;
                     auto rel = ifcapi::bindings::sequence_assign_sequence(
                         file_,
                         &relating_process,
                         &related_process,
-                        ifcapi::detail::read_string_attr(inverse, "SequenceType"),
-                        ifcapi::detail::nullable_ptr(owner_history_),
-                        ifcapi::detail::nullable_ptr(user_),
-                        ifcapi::detail::nullable_ptr(application_));
+                        options);
                     if (auto lag = ifcapi::detail::read_ref_attr(inverse, "TimeLag")) {
                         ifcapi::detail::write_ref_attr(rel, "TimeLag", deep_copy_entity(file_, lag));
                     }
@@ -929,12 +949,12 @@ void remove_task_internal(
         return;
     }
     auto context = first_context(file);
-    ifcapi::bindings::project_unassign_declaration(
-        file,
-        one_const(task),
-        &context,
-        ifcapi::detail::nullable_ptr(user),
-        ifcapi::detail::nullable_ptr(application));
+    ifcapi::bindings::project_unassign_declaration(file, {
+        .definitions = one_const(task),
+        .relating_context = context,
+        .user = user ? std::optional<express::Base>(user) : std::nullopt,
+        .application = application ? std::optional<express::Base>(application) : std::nullopt,
+    });
 
     remove_task_time(file, ifcapi::detail::read_ref_attr(task, "TaskTime"));
 
@@ -942,19 +962,24 @@ void remove_task_internal(
     if (!nested_by.empty()) {
         auto subtasks = ifcapi::detail::read_ref_aggregate(nested_by.front(), "RelatedObjects");
         if (!subtasks.empty()) {
-            ifcapi::bindings::nest_unassign_object(
-                file,
-                ifcapi::detail::to_const_refs(subtasks),
-                ifcapi::detail::nullable_ptr(user),
-                ifcapi::detail::nullable_ptr(application));
+            {
+                ifcapi::bindings::NestUnassignObjectOptions nest_opts;
+                nest_opts.products = ifcapi::detail::to_const_refs(subtasks);
+                if (user) nest_opts.user = user;
+                if (application) nest_opts.application = application;
+                ifcapi::bindings::nest_unassign_object(file, nest_opts);
+            }
             for (auto subtask : subtasks) {
                 remove_task_internal(file, subtask, user, application);
             }
         }
     }
     if (!ifcapi::detail::read_inverse_aggregate(task, "Nests").empty()) {
-        ifcapi::bindings::nest_unassign_object(
-            file, one_const(task), ifcapi::detail::nullable_ptr(user), ifcapi::detail::nullable_ptr(application));
+        ifcapi::bindings::NestUnassignObjectOptions nest_opts;
+        nest_opts.products = one_const(task);
+        if (user) nest_opts.user = user;
+        if (application) nest_opts.application = application;
+        ifcapi::bindings::nest_unassign_object(file, nest_opts);
     }
 
     auto inverses = file->instances_by_reference(static_cast<int>(task.id()));
@@ -1013,23 +1038,23 @@ void remove_work_calendar_internal(
         return;
     }
     auto context = first_context(file);
-    ifcapi::bindings::project_unassign_declaration(
-        file,
-        one_const(work_calendar),
-        &context,
-        ifcapi::detail::nullable_ptr(user),
-        ifcapi::detail::nullable_ptr(application));
+    ifcapi::bindings::project_unassign_declaration(file, {
+        .definitions = one_const(work_calendar),
+        .relating_context = context,
+        .user = user ? std::optional<express::Base>(user) : std::nullopt,
+        .application = application ? std::optional<express::Base>(application) : std::nullopt,
+    });
     for (auto rel : ifcapi::detail::read_inverse_aggregate(work_calendar, "Controls")) {
         if (!ifcapi::detail::exists_in_file(file, rel)) {
             continue;
         }
         auto related = ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects");
-        ifcapi::bindings::control_unassign_control(
-            file,
-            &work_calendar,
+        ifcapi::bindings::control_unassign_control(file, {
+            work_calendar,
             ifcapi::detail::to_const_refs(related),
-            ifcapi::detail::nullable_ptr(user),
-            ifcapi::detail::nullable_ptr(application));
+            user ? std::optional<express::Base>(user) : std::nullopt,
+            application ? std::optional<express::Base>(application) : std::nullopt,
+        });
     }
     auto working_times = ifcapi::detail::read_ref_aggregate(work_calendar, "WorkingTimes");
     auto exception_times = ifcapi::detail::read_ref_aggregate(work_calendar, "ExceptionTimes");
@@ -1056,23 +1081,23 @@ void remove_work_plan_internal(
         return;
     }
     auto context = first_context(file);
-    ifcapi::bindings::project_unassign_declaration(
-        file,
-        one_const(work_plan),
-        &context,
-        ifcapi::detail::nullable_ptr(user),
-        ifcapi::detail::nullable_ptr(application));
+    ifcapi::bindings::project_unassign_declaration(file, {
+        .definitions = one_const(work_plan),
+        .relating_context = context,
+        .user = user ? std::optional<express::Base>(user) : std::nullopt,
+        .application = application ? std::optional<express::Base>(application) : std::nullopt,
+    });
     std::vector<express::Base> related_objects;
     for (auto rel : ifcapi::detail::read_inverse_aggregate(work_plan, "IsDecomposedBy")) {
         auto related = ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects");
         related_objects.insert(related_objects.end(), related.begin(), related.end());
     }
     if (!related_objects.empty()) {
-        ifcapi::bindings::aggregate_unassign_object(
-            file,
-            ifcapi::detail::to_const_refs(related_objects),
-            ifcapi::detail::nullable_ptr(user),
-            ifcapi::detail::nullable_ptr(application));
+        ifcapi::bindings::AggregateUnassignObjectOptions options;
+        options.products = related_objects;
+        if (user) options.user = user;
+        if (application) options.application = application;
+        ifcapi::bindings::aggregate_unassign_object(file, options);
     }
     ifcapi::detail::remove_with_history(file, work_plan);
 }
@@ -1087,12 +1112,12 @@ void remove_work_schedule_internal(
         return;
     }
     auto context = first_context(file);
-    ifcapi::bindings::project_unassign_declaration(
-        file,
-        one_const(work_schedule),
-        &context,
-        ifcapi::detail::nullable_ptr(user),
-        ifcapi::detail::nullable_ptr(application));
+    ifcapi::bindings::project_unassign_declaration(file, {
+        .definitions = one_const(work_schedule),
+        .relating_context = context,
+        .user = user ? std::optional<express::Base>(user) : std::nullopt,
+        .application = application ? std::optional<express::Base>(application) : std::nullopt,
+    });
 
     for (auto rel : ifcapi::detail::read_inverse_aggregate(work_schedule, "Declares")) {
         auto related = ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects");
@@ -1104,11 +1129,11 @@ void remove_work_schedule_internal(
     }
 
     if (!ifcapi::detail::read_inverse_aggregate(work_schedule, "Decomposes").empty()) {
-        ifcapi::bindings::aggregate_unassign_object(
-            file,
-            one_const(work_schedule),
-            ifcapi::detail::nullable_ptr(user),
-            ifcapi::detail::nullable_ptr(application));
+        ifcapi::bindings::AggregateUnassignObjectOptions options;
+        options.products = {work_schedule};
+        if (user) options.user = user;
+        if (application) options.application = application;
+        ifcapi::bindings::aggregate_unassign_object(file, options);
     }
 
     auto inverses = file->instances_by_reference(static_cast<int>(work_schedule.id()));
@@ -1771,7 +1796,7 @@ private:
 namespace ifcapi {
 namespace bindings {
 
-SequenceDateTimeResult sequence_add_date_time(ifcopenshell::file* file, const std::string& date_time) {
+std::variant<express::Base, std::string> sequence_add_date_time(ifcopenshell::file* file, const std::string& date_time) {
     ifcopenshell_clear_error();
     return make_date_time_result(file, date_time);
 }
@@ -1834,16 +1859,14 @@ void sequence_edit_task_time(
 SequenceDuplicateTaskResult sequence_duplicate_task(
     ifcopenshell::file* file,
     express::Base* task,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const SequenceDuplicateTaskOptions& options)
 {
     ifcopenshell_clear_error();
     try {
         auto task_value = ifcapi::detail::deref_or_empty(task);
-        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto owner_history_value = option_entity(options.owner_history);
+        auto user_value = option_entity(options.user);
+        auto application_value = option_entity(options.application);
         return DuplicateTask(file, owner_history_value, user_value, application_value).execute(task_value);
     } catch (const std::exception& e) {
         set_error(e.what());
@@ -1854,28 +1877,26 @@ SequenceDuplicateTaskResult sequence_duplicate_task(
 express::Base sequence_copy_work_schedule(
     ifcopenshell::file* file,
     express::Base* work_schedule,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const SequenceCopyWorkScheduleOptions& options)
 {
     ifcopenshell_clear_error();
     try {
         auto work_schedule_value = ifcapi::detail::deref_or_empty(work_schedule);
-        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto owner_history_value = option_entity(options.owner_history);
+        auto user_value = option_entity(options.user);
+        auto application_value = option_entity(options.application);
         auto new_schedule = ifcapi::detail::shallow_copy(file, work_schedule_value);
         for (auto rel : ifcapi::detail::read_inverse_aggregate(work_schedule_value, "Controls")) {
             for (auto task : ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects")) {
                 auto duplicated = DuplicateTask(file, owner_history_value, user_value, application_value).execute(task).duplicate;
                 if (!duplicated.empty()) {
-                    ifcapi::bindings::control_assign_control(
-                        file,
-                        &new_schedule,
+                    ifcapi::bindings::control_assign_control(file, {
+                        new_schedule,
                         one_const(duplicated.front()),
-                        ifcapi::detail::nullable_ptr(owner_history_value),
-                        ifcapi::detail::nullable_ptr(user_value),
-                        ifcapi::detail::nullable_ptr(application_value));
+                        owner_history_value ? std::optional<express::Base>(owner_history_value) : std::nullopt,
+                        user_value ? std::optional<express::Base>(user_value) : std::nullopt,
+                        application_value ? std::optional<express::Base>(application_value) : std::nullopt,
+                    });
                 }
             }
         }
@@ -1889,35 +1910,31 @@ express::Base sequence_copy_work_schedule(
 void sequence_create_baseline(
     ifcopenshell::file* file,
     express::Base* work_schedule,
-    const char* name,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const SequenceCreateBaselineOptions& options)
 {
     ifcopenshell_clear_error();
     try {
         auto work_schedule_value = ifcapi::detail::deref_or_empty(work_schedule);
-        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto owner_history_value = option_entity(options.owner_history);
+        auto user_value = option_entity(options.user);
+        auto application_value = option_entity(options.application);
         if (ifcapi::detail::read_string_attr(work_schedule_value, "PredefinedType") != "PLANNED") {
             return;
         }
         const auto now = current_ifc_datetime();
+        SequenceAddWorkScheduleOptions baseline_options;
+        baseline_options.name = ifcapi::detail::read_string_attr(work_schedule_value, "Name");
+        baseline_options.predefined_type = "BASELINE";
+        baseline_options.creation_date = now;
+        baseline_options.start_time = now;
+        if (owner_history_value) baseline_options.owner_history = owner_history_value;
+        if (user_value) baseline_options.user = user_value;
+        if (application_value) baseline_options.application = application_value;
         auto baseline = sequence_add_work_schedule(
             file,
-            ifcapi::detail::read_string_attr(work_schedule_value, "Name"),
-            "BASELINE",
-            nullptr,
-            now,
-            now,
-            nullptr,
-            nullptr,
-            ifcapi::detail::nullable_ptr(owner_history_value),
-            ifcapi::detail::nullable_ptr(user_value),
-            ifcapi::detail::nullable_ptr(application_value));
-        if (name) {
-            ifcapi::detail::write_string_attr(baseline, "Name", name);
+            baseline_options);
+        if (options.name) {
+            ifcapi::detail::write_string_attr(baseline, "Name", *options.name);
         } else {
             ifcapi::detail::write_blank_attr(baseline, "Name");
         }
@@ -1929,13 +1946,13 @@ void sequence_create_baseline(
                 }
                 auto duplicated = DuplicateTask(file, owner_history_value, user_value, application_value).execute(task);
                 if (!duplicated.duplicate.empty()) {
-                    ifcapi::bindings::control_assign_control(
-                        file,
-                        &baseline,
+                    ifcapi::bindings::control_assign_control(file, {
+                        baseline,
                         one_const(duplicated.duplicate.front()),
-                        ifcapi::detail::nullable_ptr(owner_history_value),
-                        ifcapi::detail::nullable_ptr(user_value),
-                        ifcapi::detail::nullable_ptr(application_value));
+                        owner_history_value ? std::optional<express::Base>(owner_history_value) : std::nullopt,
+                        user_value ? std::optional<express::Base>(user_value) : std::nullopt,
+                        application_value ? std::optional<express::Base>(application_value) : std::nullopt,
+                    });
                 }
                 for (size_t i = 0; i < duplicated.current.size() && i < duplicated.duplicate.size(); ++i) {
                     create_object_reference(
@@ -1956,11 +1973,12 @@ void sequence_create_baseline(
 express::Base sequence_add_task_time(
     ifcopenshell::file* file,
     express::Base* task,
-    bool is_recurring)
+    const SequenceAddTaskTimeOptions& options)
 {
     ifcopenshell_clear_error();
     try {
         auto task_value = ifcapi::detail::deref_or_empty(task);
+        const bool is_recurring = options.is_recurring.value_or(false);
         auto task_time = create_entity(file, is_recurring ? "IfcTaskTimeRecurring" : "IfcTaskTime");
         ifcapi::detail::write_ref_attr(task_value, "TaskTime", task_time);
         return task_time;
@@ -1972,51 +1990,44 @@ express::Base sequence_add_task_time(
 
 express::Base sequence_add_task(
     ifcopenshell::file* file,
-    express::Base* work_schedule,
-    express::Base* parent_task,
-    const char* name,
-    const char* description,
-    const char* identification,
-    const std::string& predefined_type,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const SequenceAddTaskOptions& options)
 {
     ifcopenshell_clear_error();
     try {
-        auto work_schedule_value = ifcapi::detail::deref_or_empty(work_schedule);
-        auto parent_task_value = ifcapi::detail::deref_or_empty(parent_task);
-        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto work_schedule_value = option_entity(options.work_schedule);
+        auto parent_task_value = option_entity(options.parent_task);
+        auto owner_history_value = option_entity(options.owner_history);
+        auto user_value = option_entity(options.user);
+        auto application_value = option_entity(options.application);
+        const std::string predefined_type = options.predefined_type.value_or("NOTDEFINED");
         auto task = create_root_entity(
-            file, "IfcTask", predefined_type.c_str(), name, owner_history_value, user_value, application_value);
-        if (description) {
-            ifcapi::detail::write_string_attr(task, "Description", description);
+            file, "IfcTask", predefined_type.c_str(), optional_c_str(options.name), owner_history_value, user_value, application_value);
+        if (options.description) {
+            ifcapi::detail::write_string_attr(task, "Description", *options.description);
         }
-        if (identification) {
-            ifcapi::detail::write_string_attr(task, "Identification", identification);
+        if (options.identification) {
+            ifcapi::detail::write_string_attr(task, "Identification", *options.identification);
         }
         int milestone_idx = ifcapi::detail::attr_index_of(task, "IsMilestone");
         if (milestone_idx >= 0) {
             task.set_attribute_value(static_cast<size_t>(milestone_idx), false);
         }
         if (work_schedule_value) {
-            ifcapi::bindings::control_assign_control(
-                file,
-                &work_schedule_value,
+            ifcapi::bindings::control_assign_control(file, {
+                work_schedule_value,
                 one_const(task),
-                ifcapi::detail::nullable_ptr(owner_history_value),
-                ifcapi::detail::nullable_ptr(user_value),
-                ifcapi::detail::nullable_ptr(application_value));
+                owner_history_value ? std::optional<express::Base>(owner_history_value) : std::nullopt,
+                user_value ? std::optional<express::Base>(user_value) : std::nullopt,
+                application_value ? std::optional<express::Base>(application_value) : std::nullopt,
+            });
         } else if (parent_task_value) {
-            auto rel = ifcapi::bindings::nest_assign_object(
-                file,
-                one_const(task),
-                &parent_task_value,
-                ifcapi::detail::nullable_ptr(owner_history_value),
-                ifcapi::detail::nullable_ptr(user_value),
-                ifcapi::detail::nullable_ptr(application_value));
+            ifcapi::bindings::NestAssignObjectOptions nest_opts;
+            nest_opts.products = one_const(task);
+            nest_opts.relating_object = parent_task_value;
+            if (owner_history_value) nest_opts.owner_history = owner_history_value;
+            if (user_value) nest_opts.user = user_value;
+            if (application_value) nest_opts.application = application_value;
+            auto rel = ifcapi::bindings::nest_assign_object(file, nest_opts);
             auto parent_identification = ifcapi::detail::read_optional_string_attr(parent_task_value, "Identification");
             if (!is_ifc2x3(file) && rel && parent_identification.has_value) {
                 auto related = ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects");
@@ -2033,27 +2044,25 @@ express::Base sequence_add_task(
 
 express::Base sequence_add_work_calendar(
     ifcopenshell::file* file,
-    const std::string& name,
-    const std::string& predefined_type,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const SequenceAddWorkCalendarOptions& options)
 {
     ifcopenshell_clear_error();
     try {
-        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto owner_history_value = option_entity(options.owner_history);
+        auto user_value = option_entity(options.user);
+        auto application_value = option_entity(options.application);
+        const auto predefined_type = options.predefined_type.value_or("NOTDEFINED");
+        const auto name = options.name.value_or("Unnamed");
         auto work_calendar = create_root_entity(
             file, "IfcWorkCalendar", predefined_type.c_str(), name.c_str(), owner_history_value, user_value, application_value);
         auto context = first_context(file);
-        ifcapi::bindings::project_assign_declaration(
-            file,
-            one_const(work_calendar),
-            &context,
-            ifcapi::detail::nullable_ptr(owner_history_value),
-            ifcapi::detail::nullable_ptr(user_value),
-            ifcapi::detail::nullable_ptr(application_value));
+        ifcapi::bindings::project_assign_declaration(file, {
+            .definitions = one_const(work_calendar),
+            .relating_context = context,
+            .owner_history = owner_history_value ? std::optional<express::Base>(owner_history_value) : std::nullopt,
+            .user = user_value ? std::optional<express::Base>(user_value) : std::nullopt,
+            .application = application_value ? std::optional<express::Base>(application_value) : std::nullopt,
+        });
         return work_calendar;
     } catch (const std::exception& e) {
         set_error(e.what());
@@ -2063,23 +2072,19 @@ express::Base sequence_add_work_calendar(
 
 express::Base sequence_add_work_plan(
     ifcopenshell::file* file,
-    const char* name,
-    const std::string& predefined_type,
-    const std::string& creation_date,
-    const std::string& start_time,
-    express::Base* creator_person,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const SequenceAddWorkPlanOptions& options)
 {
     ifcopenshell_clear_error();
     try {
-        auto creator_person_value = ifcapi::detail::deref_or_empty(creator_person);
-        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto creator_person_value = option_entity(options.creator_person);
+        auto owner_history_value = option_entity(options.owner_history);
+        auto user_value = option_entity(options.user);
+        auto application_value = option_entity(options.application);
+        const auto predefined_type = options.predefined_type.value_or("NOTDEFINED");
+        const auto creation_date = options.creation_date.value_or(current_ifc_datetime());
+        const auto start_time = options.start_time.value_or(creation_date);
         auto work_plan = create_root_entity(
-            file, "IfcWorkPlan", predefined_type.c_str(), name, owner_history_value, user_value, application_value);
+            file, "IfcWorkPlan", predefined_type.c_str(), optional_c_str(options.name), owner_history_value, user_value, application_value);
         write_date_time_attr(file, work_plan, "CreationDate", creation_date);
         if (creator_person_value) {
             ifcapi::detail::write_ref_aggregate(work_plan, "Creators", {creator_person_value});
@@ -2087,13 +2092,13 @@ express::Base sequence_add_work_plan(
         write_date_time_attr(file, work_plan, "StartTime", start_time);
         if (!is_ifc2x3(file)) {
             auto context = first_context(file);
-            ifcapi::bindings::project_assign_declaration(
-                file,
-                one_const(work_plan),
-                &context,
-                ifcapi::detail::nullable_ptr(owner_history_value),
-                ifcapi::detail::nullable_ptr(user_value),
-                ifcapi::detail::nullable_ptr(application_value));
+            ifcapi::bindings::project_assign_declaration(file, {
+                .definitions = one_const(work_plan),
+                .relating_context = context,
+                .owner_history = owner_history_value ? std::optional<express::Base>(owner_history_value) : std::nullopt,
+                .user = user_value ? std::optional<express::Base>(user_value) : std::nullopt,
+                .application = application_value ? std::optional<express::Base>(application_value) : std::nullopt,
+            });
         }
         return work_plan;
     } catch (const std::exception& e) {
@@ -2104,24 +2109,19 @@ express::Base sequence_add_work_plan(
 
 express::Base sequence_add_work_schedule(
     ifcopenshell::file* file,
-    const std::string& name,
-    const std::string& predefined_type,
-    const char* object_type,
-    const std::string& creation_date,
-    const std::string& start_time,
-    express::Base* work_plan,
-    express::Base* creator_person,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const SequenceAddWorkScheduleOptions& options)
 {
     ifcopenshell_clear_error();
     try {
-        auto work_plan_value = ifcapi::detail::deref_or_empty(work_plan);
-        auto creator_person_value = ifcapi::detail::deref_or_empty(creator_person);
-        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto work_plan_value = option_entity(options.work_plan);
+        auto creator_person_value = option_entity(options.creator_person);
+        auto owner_history_value = option_entity(options.owner_history);
+        auto user_value = option_entity(options.user);
+        auto application_value = option_entity(options.application);
+        const auto name = options.name.value_or("Unnamed");
+        const auto predefined_type = options.predefined_type.value_or("NOTDEFINED");
+        const auto creation_date = options.creation_date.value_or(current_ifc_datetime());
+        const auto start_time = options.start_time.value_or(creation_date);
         auto work_schedule = create_root_entity(
             file, "IfcWorkSchedule", predefined_type.c_str(), name.c_str(), owner_history_value, user_value, application_value);
         write_date_time_attr(file, work_schedule, "CreationDate", creation_date);
@@ -2129,26 +2129,26 @@ express::Base sequence_add_work_schedule(
             ifcapi::detail::write_ref_aggregate(work_schedule, "Creators", {creator_person_value});
         }
         write_date_time_attr(file, work_schedule, "StartTime", start_time);
-        if (object_type) {
-            ifcapi::detail::write_string_attr(work_schedule, "ObjectType", object_type);
+        if (options.object_type) {
+            ifcapi::detail::write_string_attr(work_schedule, "ObjectType", *options.object_type);
         }
         if (work_plan_value) {
-            ifcapi::bindings::aggregate_assign_object(
-                file,
-                one_const(work_schedule),
-                &work_plan_value,
-                ifcapi::detail::nullable_ptr(owner_history_value),
-                ifcapi::detail::nullable_ptr(user_value),
-                ifcapi::detail::nullable_ptr(application_value));
+            ifcapi::bindings::AggregateAssignObjectOptions aggregate_options;
+            aggregate_options.products = {work_schedule};
+            aggregate_options.relating_object = work_plan_value;
+            if (owner_history_value) aggregate_options.owner_history = owner_history_value;
+            if (user_value) aggregate_options.user = user_value;
+            if (application_value) aggregate_options.application = application_value;
+            ifcapi::bindings::aggregate_assign_object(file, aggregate_options);
         } else if (!is_ifc2x3(file)) {
             auto context = first_context(file);
-            ifcapi::bindings::project_assign_declaration(
-                file,
-                one_const(work_schedule),
-                &context,
-                ifcapi::detail::nullable_ptr(owner_history_value),
-                ifcapi::detail::nullable_ptr(user_value),
-                ifcapi::detail::nullable_ptr(application_value));
+            ifcapi::bindings::project_assign_declaration(file, {
+                .definitions = one_const(work_schedule),
+                .relating_context = context,
+                .owner_history = owner_history_value ? std::optional<express::Base>(owner_history_value) : std::nullopt,
+                .user = user_value ? std::optional<express::Base>(user_value) : std::nullopt,
+                .application = application_value ? std::optional<express::Base>(application_value) : std::nullopt,
+            });
         }
         return work_schedule;
     } catch (const std::exception& e) {
@@ -2185,18 +2185,17 @@ express::Base sequence_add_work_time(
 express::Base sequence_add_time_period(
     ifcopenshell::file* file,
     express::Base* recurrence_pattern,
-    const char* start_time,
-    const char* end_time)
+    const SequenceAddTimePeriodOptions& options)
 {
     ifcopenshell_clear_error();
     try {
         auto recurrence_pattern_value = ifcapi::detail::deref_or_empty(recurrence_pattern);
         auto time_period = create_entity(file, "IfcTimePeriod");
-        if (start_time) {
-            ifcapi::detail::write_string_attr(time_period, "StartTime", start_time);
+        if (options.start_time) {
+            ifcapi::detail::write_string_attr(time_period, "StartTime", *options.start_time);
         }
-        if (end_time) {
-            ifcapi::detail::write_string_attr(time_period, "EndTime", end_time);
+        if (options.end_time) {
+            ifcapi::detail::write_string_attr(time_period, "EndTime", *options.end_time);
         }
         auto time_periods = ifcapi::detail::read_ref_aggregate(recurrence_pattern_value, "TimePeriods");
         time_periods.push_back(time_period);
@@ -2212,18 +2211,16 @@ express::Base sequence_assign_sequence(
     ifcopenshell::file* file,
     express::Base* relating_process,
     express::Base* related_process,
-    const std::string& sequence_type,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const SequenceAssignSequenceOptions& options)
 {
     ifcopenshell_clear_error();
     try {
         auto relating_process_value = ifcapi::detail::deref_or_empty(relating_process);
         auto related_process_value = ifcapi::detail::deref_or_empty(related_process);
-        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto owner_history_value = option_entity(options.owner_history);
+        auto user_value = option_entity(options.user);
+        auto application_value = option_entity(options.application);
+        const auto sequence_type = options.sequence_type.value_or("FINISH_START");
         if (auto existing = find_sequence(relating_process_value, related_process_value)) {
             return existing;
         }
@@ -2246,11 +2243,12 @@ express::Base sequence_assign_lag_time(
     ifcopenshell::file* file,
     express::Base* rel_sequence,
     const std::string& lag_value,
-    const std::string& duration_type)
+    const SequenceAssignLagTimeOptions& options)
 {
     ifcopenshell_clear_error();
     try {
         auto rel_sequence_value = ifcapi::detail::deref_or_empty(rel_sequence);
+        const auto duration_type = options.duration_type.value_or("WORKTIME");
         auto duration = ifcapi::detail::create_typed_string(file, "IfcDuration", lag_value);
         auto lag_time = create_entity(file, "IfcLagTime");
         ifcapi::detail::write_enum_attr(lag_time, "DurationType", duration_type);
@@ -2273,17 +2271,15 @@ express::Base sequence_assign_process(
     ifcopenshell::file* file,
     express::Base* relating_process,
     express::Base* related_object,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const SequenceAssignProcessOptions& options)
 {
     ifcopenshell_clear_error();
     try {
         auto relating_process_value = ifcapi::detail::deref_or_empty(relating_process);
         auto related_object_value = ifcapi::detail::deref_or_empty(related_object);
-        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto owner_history_value = option_entity(options.owner_history);
+        auto user_value = option_entity(options.user);
+        auto application_value = option_entity(options.application);
         return assign_object_relationship(
             file,
             relating_process_value,
@@ -2305,17 +2301,15 @@ express::Base sequence_assign_product(
     ifcopenshell::file* file,
     express::Base* relating_product,
     express::Base* related_object,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const SequenceAssignProductOptions& options)
 {
     ifcopenshell_clear_error();
     try {
         auto relating_product_value = ifcapi::detail::deref_or_empty(relating_product);
         auto related_object_value = ifcapi::detail::deref_or_empty(related_object);
-        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto owner_history_value = option_entity(options.owner_history);
+        auto user_value = option_entity(options.user);
+        auto application_value = option_entity(options.application);
         return assign_object_relationship(
             file,
             relating_product_value,
@@ -2337,31 +2331,29 @@ express::Base sequence_assign_work_plan(
     ifcopenshell::file* file,
     express::Base* work_schedule,
     express::Base* work_plan,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const SequenceAssignWorkPlanOptions& options)
 {
     ifcopenshell_clear_error();
     try {
         auto work_schedule_value = ifcapi::detail::deref_or_empty(work_schedule);
         auto work_plan_value = ifcapi::detail::deref_or_empty(work_plan);
-        auto owner_history_value = ifcapi::detail::deref_or_empty(owner_history);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto owner_history_value = option_entity(options.owner_history);
+        auto user_value = option_entity(options.user);
+        auto application_value = option_entity(options.application);
         auto context = first_context(file);
-        ifcapi::bindings::project_unassign_declaration(
-            file,
-            one_const(work_schedule_value),
-            &context,
-            ifcapi::detail::nullable_ptr(user_value),
-            ifcapi::detail::nullable_ptr(application_value));
-        return ifcapi::bindings::aggregate_assign_object(
-            file,
-            one_const(work_schedule_value),
-            &work_plan_value,
-            ifcapi::detail::nullable_ptr(owner_history_value),
-            ifcapi::detail::nullable_ptr(user_value),
-            ifcapi::detail::nullable_ptr(application_value));
+        ifcapi::bindings::project_unassign_declaration(file, {
+            .definitions = one_const(work_schedule_value),
+            .relating_context = context,
+            .user = user_value ? std::optional<express::Base>(user_value) : std::nullopt,
+            .application = application_value ? std::optional<express::Base>(application_value) : std::nullopt,
+        });
+        ifcapi::bindings::AggregateAssignObjectOptions aggregate_options;
+        aggregate_options.products = {work_schedule_value};
+        aggregate_options.relating_object = work_plan_value;
+        if (owner_history_value) aggregate_options.owner_history = owner_history_value;
+        if (user_value) aggregate_options.user = user_value;
+        if (application_value) aggregate_options.application = application_value;
+        return ifcapi::bindings::aggregate_assign_object(file, aggregate_options);
     } catch (const std::exception& e) {
         set_error(e.what());
         return {};
@@ -2529,15 +2521,14 @@ express::Base sequence_unassign_process(
     ifcopenshell::file* file,
     express::Base* relating_process,
     express::Base* related_object,
-    express::Base* user,
-    express::Base* application)
+    const SequenceRemoveOptions& options)
 {
     ifcopenshell_clear_error();
     try {
         auto relating_process_value = ifcapi::detail::deref_or_empty(relating_process);
         auto related_object_value = ifcapi::detail::deref_or_empty(related_object);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto user_value = option_entity(options.user);
+        auto application_value = option_entity(options.application);
         return unassign_object_relationship(
             file,
             relating_process_value,
@@ -2556,15 +2547,14 @@ express::Base sequence_unassign_product(
     ifcopenshell::file* file,
     express::Base* relating_product,
     express::Base* related_object,
-    express::Base* user,
-    express::Base* application)
+    const SequenceRemoveOptions& options)
 {
     ifcopenshell_clear_error();
     try {
         auto relating_product_value = ifcapi::detail::deref_or_empty(relating_product);
         auto related_object_value = ifcapi::detail::deref_or_empty(related_object);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto user_value = option_entity(options.user);
+        auto application_value = option_entity(options.application);
         return unassign_object_relationship(
             file,
             relating_product_value,
@@ -2622,14 +2612,13 @@ void sequence_remove_work_time(ifcopenshell::file* file, express::Base* work_tim
 void sequence_remove_task(
     ifcopenshell::file* file,
     express::Base* task,
-    express::Base* user,
-    express::Base* application)
+    const SequenceRemoveOptions& options)
 {
     ifcopenshell_clear_error();
     try {
         auto task_value = ifcapi::detail::deref_or_empty(task);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto user_value = option_entity(options.user);
+        auto application_value = option_entity(options.application);
         remove_task_internal(file, task_value, user_value, application_value);
     } catch (const std::exception& e) {
         set_error(e.what());
@@ -2639,14 +2628,13 @@ void sequence_remove_task(
 void sequence_remove_work_calendar(
     ifcopenshell::file* file,
     express::Base* work_calendar,
-    express::Base* user,
-    express::Base* application)
+    const SequenceRemoveOptions& options)
 {
     ifcopenshell_clear_error();
     try {
         auto work_calendar_value = ifcapi::detail::deref_or_empty(work_calendar);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto user_value = option_entity(options.user);
+        auto application_value = option_entity(options.application);
         remove_work_calendar_internal(file, work_calendar_value, user_value, application_value);
     } catch (const std::exception& e) {
         set_error(e.what());
@@ -2656,14 +2644,13 @@ void sequence_remove_work_calendar(
 void sequence_remove_work_plan(
     ifcopenshell::file* file,
     express::Base* work_plan,
-    express::Base* user,
-    express::Base* application)
+    const SequenceRemoveOptions& options)
 {
     ifcopenshell_clear_error();
     try {
         auto work_plan_value = ifcapi::detail::deref_or_empty(work_plan);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto user_value = option_entity(options.user);
+        auto application_value = option_entity(options.application);
         remove_work_plan_internal(file, work_plan_value, user_value, application_value);
     } catch (const std::exception& e) {
         set_error(e.what());
@@ -2673,14 +2660,13 @@ void sequence_remove_work_plan(
 void sequence_remove_work_schedule(
     ifcopenshell::file* file,
     express::Base* work_schedule,
-    express::Base* user,
-    express::Base* application)
+    const SequenceRemoveOptions& options)
 {
     ifcopenshell_clear_error();
     try {
         auto work_schedule_value = ifcapi::detail::deref_or_empty(work_schedule);
-        auto user_value = ifcapi::detail::deref_or_empty(user);
-        auto application_value = ifcapi::detail::deref_or_empty(application);
+        auto user_value = option_entity(options.user);
+        auto application_value = option_entity(options.application);
         remove_work_schedule_internal(file, work_schedule_value, user_value, application_value);
     } catch (const std::exception& e) {
         set_error(e.what());

@@ -20,6 +20,7 @@ from typing import Optional
 
 import ifcopenshell
 from ifcopenshell import _ifcopenshell_capi as _capi
+from ifcopenshell._capi_utils import instance_handle
 
 
 def add_application(
@@ -53,16 +54,13 @@ def add_application(
 
         application = ifcopenshell.api.owner.add_application(model)
     """
-    handle = _capi.owner_add_application(
-        file._handle,
-        application_developer._handle if application_developer is not None else None,
-        version or ifcopenshell.version,
-        application_full_name,
-        application_identifier,
-        None,
-        None,
-        None,
-    )
+    opts = {
+        "application_developer": instance_handle(application_developer),
+        "version": version or ifcopenshell.version,
+        "application_full_name": application_full_name,
+        "application_identifier": application_identifier,
+    }
+    handle = _capi.owner_add_application(file._handle, opts)
     if handle:
         return ifcopenshell.entity_instance(file, handle)
     raise RuntimeError(_capi.last_error_message() or "Failed to add application")

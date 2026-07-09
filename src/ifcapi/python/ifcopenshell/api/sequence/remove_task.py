@@ -55,6 +55,8 @@ def remove_task(file: ifcopenshell.file, task: ifcopenshell.entity_instance) -> 
         "sequence_remove_task",
         _capi.file_handle(file),
         _capi.instance_handle(task),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+        {
+            "user": _capi.instance_handle(user),
+            "application": _capi.instance_handle(application),
+        },
     )

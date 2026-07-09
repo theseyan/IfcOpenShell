@@ -37,8 +37,8 @@ static size_t list_size(ifcopenshell_parse_instance_list_t* list) {
     return result;
 }
 
-static ifcopenshell_instance_list_t by_type(ifcopenshell_file_t* file, const char* ifc_class) {
-    ifcopenshell_instance_list_t result = {0};
+static ifcopenshell_parse_instance_list_t* by_type(ifcopenshell_file_t* file, const char* ifc_class) {
+    ifcopenshell_parse_instance_list_t* result = NULL;
     ASSERT(ifcopenshell_file_by_type(file, ifc_class, &result), "by_type succeeds");
     return result;
 }
@@ -91,9 +91,9 @@ static void test_unit_creation(void) {
     ASSERT(derived != NULL, "derived unit is non-NULL");
     assert_instance_is(derived, "IfcDerivedUnit", "created derived unit is IfcDerivedUnit");
 
-    ifcopenshell_instance_list_t derived_elements = by_type(file, "IfcDerivedUnitElement");
-    ASSERT(derived_elements.size == 2, "derived unit creates one element per component unit");
-    ifcopenshell_instance_list_destroy(&derived_elements);
+    ifcopenshell_parse_instance_list_t* derived_elements = by_type(file, "IfcDerivedUnitElement");
+    ASSERT(list_size(derived_elements) == 2, "derived unit creates one element per component unit");
+    ifcopenshell_parse_instance_list_destroy(derived_elements);
 
     ifcopenshell_instance_destroy(derived);
     ifcopenshell_instance_destroy(time);
@@ -118,8 +118,11 @@ static void test_unit_unassign_and_remove(void) {
     ASSERT(ifcopenshell_unit_add_si_unit(file, "AREAUNIT", NULL, &area), "area unit add succeeds");
 
     ifcopenshell_instance_t* project = NULL;
-    ASSERT(ifcopenshell_root_create_entity(file, "IfcProject", NULL, "C Smoke Project", NULL, &project),
-           "create project succeeds");
+    ifcopenshell_root_create_entity_options_t project_options = {0};
+    project_options.ifc_class = "IfcProject";
+    project_options.name = "C Smoke Project";
+    project_options.has_name = true;
+    ASSERT(ifcopenshell_root_create_entity(file, &project_options, &project), "create project succeeds");
     ASSERT(project != NULL, "project is non-NULL");
 
     ifcopenshell_instance_t* assignment = NULL;
@@ -144,12 +147,12 @@ static void test_unit_unassign_and_remove(void) {
     ifcopenshell_parse_instance_list_destroy(kept_units);
 
     ASSERT(ifcopenshell_unit_remove_unit(file, area), "unit_remove_unit succeeds");
-    ifcopenshell_instance_list_t assignments = by_type(file, "IfcUnitAssignment");
-    ASSERT(assignments.size == 0, "removing last assigned unit removes assignment");
-    ifcopenshell_instance_list_destroy(&assignments);
-    ifcopenshell_instance_list_t si_units = by_type(file, "IfcSIUnit");
-    ASSERT(si_units.size == 1, "unit_remove_unit purges only the selected unit");
-    ifcopenshell_instance_list_destroy(&si_units);
+    ifcopenshell_parse_instance_list_t* assignments = by_type(file, "IfcUnitAssignment");
+    ASSERT(list_size(assignments) == 0, "removing last assigned unit removes assignment");
+    ifcopenshell_parse_instance_list_destroy(assignments);
+    ifcopenshell_parse_instance_list_t* si_units = by_type(file, "IfcSIUnit");
+    ASSERT(list_size(si_units) == 1, "unit_remove_unit purges only the selected unit");
+    ifcopenshell_parse_instance_list_destroy(si_units);
 
     ifcopenshell_instance_destroy(assignment);
     ifcopenshell_instance_destroy(project);

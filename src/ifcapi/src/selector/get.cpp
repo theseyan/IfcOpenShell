@@ -10,8 +10,8 @@ void value_free(ifcopenshell_selector_value_t* value) {
     delete value;
 }
 
-ifcopenshell_selector_value_t* selector_get_element_value(
-    ifcopenshell::file* file,
+std::optional<ifcopenshell_selector_value_t*> selector_get_element_value(
+    std::optional<ifcopenshell::file*> file,
     express::Base* element_ptr,
     const std::string& query)
 {
@@ -28,7 +28,7 @@ ifcopenshell_selector_value_t* selector_get_element_value(
     selector_node_free(ast);
 
     try {
-        return get_element_value_impl(file, element, keys);
+        return get_element_value_impl(file.value_or(nullptr), element, keys);
     } catch (const std::exception& ex) {
         ifcopenshell::capi::set_last_error(ex.what());
         return {};

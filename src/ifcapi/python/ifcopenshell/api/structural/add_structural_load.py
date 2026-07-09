@@ -49,6 +49,5 @@ def add_structural_load(
         "structural_add_structural_load",
         _capi.file_handle(file),
         _capi.string(ifc_class),
-        _capi.string(name) if name is not None else None,
-        name is not None,
+        name if name is not None else None,
     )

@@ -20,7 +20,7 @@ from typing import Optional
 
 import ifcopenshell
 import ifcopenshell.api.owner.settings
-from ifcopenshell import _ifcopenshell_capi as _capi
+from ifcopenshell.api.system import _capi
 
 
 def connect_port(
@@ -96,13 +96,17 @@ def connect_port(
     """
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
-    _capi.system_connect_port(
-        file._handle,
-        port1._handle,
-        port2._handle,
-        direction,
-        element._handle if element is not None else None,
-        None,
-        user._handle if user is not None else None,
-        application._handle if application is not None else None,
+    _capi.call_status(
+        "system_connect_port",
+        "Failed to connect port",
+        _capi.file_handle(file),
+        {
+            "port1": _capi.instance_handle(port1),
+            "port2": _capi.instance_handle(port2),
+            "direction": direction,
+            "element": _capi.instance_handle(element),
+            "owner_history": None,
+            "user": _capi.instance_handle(user),
+            "application": _capi.instance_handle(application),
+        },
     )

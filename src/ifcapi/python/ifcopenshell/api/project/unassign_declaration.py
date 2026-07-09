@@ -57,8 +57,10 @@ def unassign_declaration(
     definition_list = [e._handle for e in definitions]
     _capi.project_unassign_declaration(
         file._handle,
-        definition_list,
-        relating_context._handle,
-        user._handle if user is not None else None,
-        application._handle if application is not None else None,
+        {
+            "definitions": definition_list,
+            "relating_context": relating_context._handle,
+            "user": user._handle if user is not None else None,
+            "application": application._handle if application is not None else None,
+        },
     )

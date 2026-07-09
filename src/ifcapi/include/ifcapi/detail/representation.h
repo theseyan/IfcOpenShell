@@ -61,7 +61,7 @@ inline bool read_curve_axis_points(express::Base curve, std::vector<double>& p0,
 inline std::vector<std::vector<double>> get_reference_line(ifcopenshell::file* file, express::Base wall) {
     auto wall_ref = wall;
     if (auto axis = ifcapi::bindings::representation_get_product_representation(
-            &wall_ref, nullptr, "Plan", "Axis", "GRAPH_VIEW")) {
+            &wall_ref, {{}, "Plan", "Axis", "GRAPH_VIEW"})) {
         if (auto resolved = ifcapi::bindings::representation_resolve(&axis)) {
             for (auto item : read_ref_aggregate(resolved, "Items")) {
                 std::vector<double> p0, p1;

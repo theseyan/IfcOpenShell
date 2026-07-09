@@ -38,12 +38,7 @@ express::Base boundary_copy_boundary(ifcopenshell::file* file, express::Base* bo
 void boundary_assign_connection_geometry(
     ifcopenshell::file* file,
     express::Base* rel_space_boundary,
-    const std::vector<std::vector<double>>& outer_boundary,
-    const std::vector<double>& location,
-    const std::vector<double>& axis,
-    const std::vector<double>& ref_direction,
-    const std::vector<std::vector<std::vector<double>>>& inner_boundaries,
-    double unit_scale)
+    const BoundaryAssignConnectionGeometryOptions& options)
 {
     ifcopenshell_clear_error();
     if (!file || !rel_space_boundary || !*rel_space_boundary) {
@@ -51,19 +46,19 @@ void boundary_assign_connection_geometry(
         return;
     }
     try {
-        auto outer_curve = ifcapi::detail::create_closed_polyline(file, outer_boundary, unit_scale);
+        auto outer_curve = ifcapi::detail::create_closed_polyline(file, options.outer_boundary, options.unit_scale);
         std::vector<express::Base> inner_curves;
-        inner_curves.reserve(inner_boundaries.size());
-        for (const auto& boundary : inner_boundaries) {
-            inner_curves.push_back(ifcapi::detail::create_closed_polyline(file, boundary, unit_scale));
+        inner_curves.reserve(options.inner_boundaries.size());
+        for (const auto& boundary : options.inner_boundaries) {
+            inner_curves.push_back(ifcapi::detail::create_closed_polyline(file, boundary, options.unit_scale));
         }
 
         auto curve_bounded_plane = file->create(file->schema()->declaration_by_name("IfcCurveBoundedPlane"));
         auto placement = ifcapi::detail::create_axis2_placement_3d(
             file,
-            ifcapi::detail::scale_point_coordinates(location, unit_scale),
-            axis,
-            ref_direction);
+            ifcapi::detail::scale_point_coordinates(options.location, options.unit_scale),
+            options.axis,
+            options.ref_direction);
         ifcapi::detail::write_ref_attr(
             curve_bounded_plane, "BasisSurface", ifcapi::detail::create_plane(file, placement));
         ifcapi::detail::write_ref_attr(curve_bounded_plane, "OuterBoundary", outer_curve);
@@ -96,12 +91,7 @@ void boundary_remove_boundary(ifcopenshell::file* file, express::Base* boundary)
 
 void boundary_edit_attributes(
     express::Base* entity,
-    express::Base* relating_space,
-    express::Base* related_building_element,
-    express::Base* parent_boundary,
-    express::Base* corresponding_boundary,
-    const std::string& physical_or_virtual,
-    const std::string& internal_or_external)
+    const BoundaryEditAttributesOptions& options)
 {
     ifcopenshell_clear_error();
     if (!entity || !*entity) {
@@ -109,18 +99,17 @@ void boundary_edit_attributes(
         return;
     }
     try {
-        ifcapi::detail::write_ref_attr(*entity, "RelatingSpace", relating_space ? *relating_space : express::Base());
-        ifcapi::detail::write_ref_attr(
-            *entity, "RelatedBuildingElement", related_building_element ? *related_building_element : express::Base());
+        ifcapi::detail::write_ref_attr(*entity, "RelatingSpace", options.relating_space);
+        ifcapi::detail::write_ref_attr(*entity, "RelatedBuildingElement", options.related_building_element);
         if (ifcapi::detail::entity_has_attr(*entity, "ParentBoundary")) {
-            ifcapi::detail::write_ref_attr(*entity, "ParentBoundary", parent_boundary ? *parent_boundary : express::Base());
+            ifcapi::detail::write_ref_attr(*entity, "ParentBoundary", options.parent_boundary.value_or(express::Base()));
         }
         if (ifcapi::detail::entity_has_attr(*entity, "CorrespondingBoundary")) {
             ifcapi::detail::write_ref_attr(
-                *entity, "CorrespondingBoundary", corresponding_boundary ? *corresponding_boundary : express::Base());
+                *entity, "CorrespondingBoundary", options.corresponding_boundary.value_or(express::Base()));
         }
-        ifcapi::detail::write_enum_attr(*entity, "PhysicalOrVirtualBoundary", physical_or_virtual);
-        ifcapi::detail::write_enum_attr(*entity, "InternalOrExternalBoundary", internal_or_external);
+        ifcapi::detail::write_enum_attr(*entity, "PhysicalOrVirtualBoundary", options.physical_or_virtual);
+        ifcapi::detail::write_enum_attr(*entity, "InternalOrExternalBoundary", options.internal_or_external);
     } catch (const std::exception& e) {
         set_error(e.what());
     }

@@ -52,10 +52,11 @@ def add_shape_aspect(
         file,
         "geometry_add_shape_aspect",
         _capi.file_handle(file),
-        _capi.string(name),
-        _capi.instance_list(items),
-        _capi.instance_handle(representation),
-        _capi.instance_handle(part_of_product),
-        _capi.string(description) if description is not None else None,
-        description is not None,
+        {
+            "name": name,
+            "items": _capi.instance_list(items),
+            "representation": _capi.instance_handle(representation),
+            "part_of_product": _capi.instance_handle(part_of_product),
+            "description": description,
+        },
     )

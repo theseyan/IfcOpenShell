@@ -21,6 +21,27 @@ void set_error(const std::string& message) {
     ifcopenshell::capi::set_last_error(message);
 }
 
+express::Base create_root_entity(
+    ifcopenshell::file* file,
+    const std::string& ifc_class,
+    const std::string& predefined_type = {},
+    const std::string& name = {},
+    std::optional<express::Base> owner_history = std::nullopt)
+{
+    RootCreateEntityOptions options;
+    options.ifc_class = ifc_class;
+    if (!predefined_type.empty()) {
+        options.predefined_type = predefined_type;
+    }
+    if (!name.empty()) {
+        options.name = name;
+    }
+    if (owner_history) {
+        options.owner_history = *owner_history;
+    }
+    return root_create_entity(file, options);
+}
+
 size_t total_inverses(ifcopenshell::file* file, express::Base entity) {
     if (!file || !entity || entity.id() <= 0) return 0;
     return file->instances_by_reference(static_cast<int>(entity.id())).size();
@@ -106,40 +127,48 @@ express::Base create_typed_value(
 
 express::Base structural_add_structural_analysis_model(
     ifcopenshell::file* file,
-    express::Base* owner_history)
+    std::optional<express::Base> owner_history)
 {
     ifcopenshell_clear_error();
-    return root_create_entity(file, "IfcStructuralAnalysisModel", "LOADING_3D", {}, owner_history);
+    return create_root_entity(file, "IfcStructuralAnalysisModel", "LOADING_3D", {}, owner_history);
 }
 
 express::Base structural_assign_structural_analysis_model(
     ifcopenshell::file* file,
     const std::vector<express::Base>& products,
     express::Base* structural_analysis_model,
-    express::Base* owner_history,
-    express::Base* user,
-    express::Base* application)
+    const StructuralAssignStructuralAnalysisModelOptions& options)
 {
     ifcopenshell_clear_error();
-    return group_assign_group(file, products, structural_analysis_model, owner_history, user, application);
+    GroupAssignGroupOptions opts;
+    opts.products = products;
+    opts.group = ifcapi::detail::deref_or_empty(structural_analysis_model);
+    if (options.owner_history) opts.owner_history = *options.owner_history;
+    if (options.user) opts.user = *options.user;
+    if (options.application) opts.application = *options.application;
+    return group_assign_group(file, opts);
 }
 
 void structural_unassign_structural_analysis_model(
     ifcopenshell::file* file,
     const std::vector<express::Base>& products,
     express::Base* structural_analysis_model,
-    express::Base* user,
-    express::Base* application)
+    const StructuralUnassignStructuralAnalysisModelOptions& options)
 {
     ifcopenshell_clear_error();
-    group_unassign_group(file, products, structural_analysis_model, user, application);
+    GroupUnassignGroupOptions opts;
+    opts.products = products;
+    opts.group = ifcapi::detail::deref_or_empty(structural_analysis_model);
+    if (options.user) opts.user = *options.user;
+    if (options.application) opts.application = *options.application;
+    group_unassign_group(file, opts);
 }
 
 express::Base structural_assign_product(
     ifcopenshell::file* file,
     express::Base* relating_product,
     express::Base* related_object,
-    express::Base* owner_history)
+    std::optional<express::Base> owner_history)
 {
     ifcopenshell_clear_error();
     auto relating_product_ref = ifcapi::detail::deref_or_empty(relating_product);
@@ -163,7 +192,7 @@ express::Base structural_assign_product(
             return rel;
         }
 
-        auto rel = root_create_entity(file, "IfcRelAssignsToProduct", {}, {}, owner_history);
+        auto rel = create_root_entity(file, "IfcRelAssignsToProduct", {}, {}, owner_history);
         if (!rel) {
             return {};
         }
@@ -183,8 +212,7 @@ express::Base structural_add_structural_activity(
     const std::string& ifc_class,
     const std::string& predefined_type,
     const std::string& global_or_local,
-    express::Base* activity_owner_history,
-    express::Base* relationship_owner_history)
+    const StructuralAddStructuralActivityOptions& options)
 {
     ifcopenshell_clear_error();
     auto applied_load_ref = ifcapi::detail::deref_or_empty(applied_load);
@@ -195,19 +223,14 @@ express::Base structural_add_structural_activity(
     }
 
     try {
-        auto activity = root_create_entity(file, ifc_class, predefined_type.c_str(), {}, activity_owner_history);
+        auto activity = create_root_entity(file, ifc_class, predefined_type, {}, options.activity_owner_history);
         if (!activity) {
             return {};
         }
         ifcapi::detail::write_ref_attr(activity, "AppliedLoad", applied_load_ref);
         ifcapi::detail::write_enum_attr(activity, "GlobalOrLocal", global_or_local);
 
-        auto rel = root_create_entity(
-            file,
-            "IfcRelConnectsStructuralActivity",
-            {},
-            {},
-            relationship_owner_history);
+        auto rel = create_root_entity(file, "IfcRelConnectsStructuralActivity", {}, {}, options.relationship_owner_history);
         if (!rel) {
             return {};
         }
@@ -223,8 +246,7 @@ express::Base structural_add_structural_activity(
 express::Base structural_add_structural_load(
     ifcopenshell::file* file,
     const std::string& ifc_class,
-    const char* name,
-    bool has_name)
+    std::optional<std::string> name)
 {
     ifcopenshell_clear_error();
     if (!file) {
@@ -233,8 +255,8 @@ express::Base structural_add_structural_load(
     }
     try {
         auto load = file->create(file->schema()->declaration_by_name(ifc_class));
-        if (has_name) {
-            ifcapi::detail::write_string_attr(load, "Name", name ? name : "");
+        if (name) {
+            ifcapi::detail::write_string_attr(load, "Name", *name);
         }
         return load;
     } catch (const std::exception& e) {
@@ -248,10 +270,10 @@ express::Base structural_add_structural_load_case(
     const std::string& name,
     const std::string& action_type,
     const std::string& action_source,
-    express::Base* owner_history)
+    std::optional<express::Base> owner_history)
 {
     ifcopenshell_clear_error();
-    auto load_case = root_create_entity(file, "IfcStructuralLoadCase", "LOAD_CASE", name.c_str(), owner_history);
+    auto load_case = create_root_entity(file, "IfcStructuralLoadCase", "LOAD_CASE", name, owner_history);
     if (load_case) {
         ifcapi::detail::write_enum_attr(load_case, "ActionType", action_type);
         ifcapi::detail::write_enum_attr(load_case, "ActionSource", action_source);
@@ -264,10 +286,10 @@ express::Base structural_add_structural_load_group(
     const std::string& name,
     const std::string& action_type,
     const std::string& action_source,
-    express::Base* owner_history)
+    std::optional<express::Base> owner_history)
 {
     ifcopenshell_clear_error();
-    auto load_group = root_create_entity(file, "IfcStructuralLoadGroup", "LOAD_GROUP", name.c_str(), owner_history);
+    auto load_group = create_root_entity(file, "IfcStructuralLoadGroup", "LOAD_GROUP", name, owner_history);
     if (load_group) {
         ifcapi::detail::write_enum_attr(load_group, "ActionType", action_type);
         ifcapi::detail::write_enum_attr(load_group, "ActionSource", action_source);
@@ -279,7 +301,7 @@ express::Base structural_add_structural_member_connection(
     ifcopenshell::file* file,
     express::Base* relating_structural_member,
     express::Base* related_structural_connection,
-    express::Base* owner_history)
+    std::optional<express::Base> owner_history)
 {
     ifcopenshell_clear_error();
     auto relating_structural_member_ref = ifcapi::detail::deref_or_empty(relating_structural_member);
@@ -295,7 +317,7 @@ express::Base structural_add_structural_member_connection(
             return rel;
         }
     }
-    auto rel = root_create_entity(file, "IfcRelConnectsStructuralMember", {}, {}, owner_history);
+    auto rel = create_root_entity(file, "IfcRelConnectsStructuralMember", {}, {}, owner_history);
     if (!rel) {
         return {};
     }
@@ -306,10 +328,8 @@ express::Base structural_add_structural_member_connection(
 
 express::Base structural_add_structural_boundary_condition(
     ifcopenshell::file* file,
-    const char* name,
-    bool has_name,
-    express::Base* connection,
-    const std::string& ifc_class)
+    const std::string& ifc_class,
+    const StructuralAddStructuralBoundaryConditionOptions& options)
 {
     ifcopenshell_clear_error();
     if (!file) {
@@ -318,7 +338,7 @@ express::Base structural_add_structural_boundary_condition(
     }
     try {
         std::string boundary_class = ifc_class;
-        auto connection_ref = ifcapi::detail::deref_or_empty(connection);
+        auto connection_ref = options.connection.value_or(express::Base());
         if (connection_ref) {
             auto related_connection = connection_ref;
             if (connection_ref.declaration().is("IfcRelConnectsStructuralMember")) {
@@ -338,8 +358,8 @@ express::Base structural_add_structural_boundary_condition(
             }
         }
         auto condition = file->create(file->schema()->declaration_by_name(boundary_class));
-        if (has_name) {
-            ifcapi::detail::write_string_attr(condition, "Name", name ? name : "");
+        if (options.name) {
+            ifcapi::detail::write_string_attr(condition, "Name", *options.name);
         }
         if (connection_ref) {
             ifcapi::detail::write_ref_attr(connection_ref, "AppliedCondition", condition);
@@ -448,7 +468,7 @@ express::Base structural_assign_to_building(
     ifcopenshell::file* file,
     express::Base* structural_analysis_model,
     express::Base* building,
-    express::Base* owner_history)
+    std::optional<express::Base> owner_history)
 {
     ifcopenshell_clear_error();
     auto structural_analysis_model_ref = ifcapi::detail::deref_or_empty(structural_analysis_model);
@@ -466,7 +486,7 @@ express::Base structural_assign_to_building(
         ifcapi::detail::write_ref_aggregate(rel, "RelatedBuildings", buildings);
         return rel;
     }
-    auto rel = root_create_entity(file, "IfcRelServicesBuildings", {}, {}, owner_history);
+    auto rel = create_root_entity(file, "IfcRelServicesBuildings", {}, {}, owner_history);
     if (!rel) {
         return {};
     }
@@ -527,14 +547,13 @@ void structural_remove_structural_load_group(ifcopenshell::file* file, express::
 
 void structural_remove_structural_boundary_condition(
     ifcopenshell::file* file,
-    express::Base* connection,
-    express::Base* boundary_condition)
+    const StructuralRemoveStructuralBoundaryConditionOptions& options)
 {
     ifcopenshell_clear_error();
     if (!file) return;
     try {
-        auto connection_ref = ifcapi::detail::deref_or_empty(connection);
-        auto boundary_condition_ref = ifcapi::detail::deref_or_empty(boundary_condition);
+        auto connection_ref = options.connection.value_or(express::Base());
+        auto boundary_condition_ref = options.boundary_condition.value_or(express::Base());
         if (connection_ref) {
             auto applied_condition = ifcapi::detail::read_ref_attr(connection_ref, "AppliedCondition");
             if (!applied_condition) return;
@@ -576,10 +595,9 @@ void structural_remove_structural_connection_condition(
     try {
         if (ifcapi::detail::read_ref_attr(relation_ref, "AppliedCondition")) {
             auto related_connection = ifcapi::detail::read_ref_attr(relation_ref, "RelatedStructuralConnection");
-            structural_remove_structural_boundary_condition(
-                file,
-                ifcapi::detail::nullable_ptr(related_connection),
-                nullptr);
+            StructuralRemoveStructuralBoundaryConditionOptions rm_opts;
+            if (related_connection) rm_opts.connection = related_connection;
+            structural_remove_structural_boundary_condition(file, rm_opts);
         }
         auto history = ifcapi::detail::read_ref_attr(relation_ref, "OwnerHistory");
         file->remove_entity(relation_ref);

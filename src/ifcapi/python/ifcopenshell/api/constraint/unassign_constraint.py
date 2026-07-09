@@ -40,8 +40,10 @@ def unassign_constraint(
     product_list = [e._handle for e in products]
     _capi.constraint_unassign_constraint(
         file._handle,
-        product_list,
-        constraint._handle,
-        user._handle if user is not None else None,
-        application._handle if application is not None else None,
+        {
+            "products": product_list,
+            "constraint": constraint._handle,
+            "user": user._handle if user is not None else None,
+            "application": application._handle if application is not None else None,
+        },
     )

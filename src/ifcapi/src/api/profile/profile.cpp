@@ -94,16 +94,14 @@ express::Base profile_add_parameterized_profile(
 
 express::Base profile_add_arbitrary_profile(
     ifcopenshell::file* file,
-    const std::vector<std::vector<double>>& profile,
-    const char* name,
-    bool has_name)
+    const ProfileAddArbitraryProfileOptions& options)
 {
-    auto points = ifcapi::detail::convert_si_to_project_units(file, profile);
+    auto points = ifcapi::detail::convert_si_to_project_units(file, options.profile);
     auto curve = create_arbitrary_profile_curve(file, points);
     auto result = file->create(file->schema()->declaration_by_name("IfcArbitraryClosedProfileDef"));
     ifcapi::detail::write_string_attr(result, "ProfileType", "AREA");
-    if (has_name) {
-        ifcapi::detail::write_string_attr(result, "ProfileName", name ? name : "");
+    if (options.name) {
+        ifcapi::detail::write_string_attr(result, "ProfileName", *options.name);
     }
     ifcapi::detail::write_ref_attr(result, "OuterCurve", curve);
     return result;
@@ -111,22 +109,19 @@ express::Base profile_add_arbitrary_profile(
 
 express::Base profile_add_arbitrary_profile_with_voids(
     ifcopenshell::file* file,
-    const std::vector<std::vector<double>>& outer_profile,
-    const std::vector<std::vector<std::vector<double>>>& inner_profiles,
-    const char* name,
-    bool has_name)
+    const ProfileAddArbitraryProfileWithVoidsOptions& options)
 {
-    auto outer_points = ifcapi::detail::convert_si_to_project_units(file, outer_profile);
+    auto outer_points = ifcapi::detail::convert_si_to_project_units(file, options.outer_profile);
     auto outer_curve = create_arbitrary_profile_curve(file, outer_points, !is_ifc2x3(file));
     std::vector<express::Base> inner_curves;
-    for (const auto& inner_profile : inner_profiles) {
+    for (const auto& inner_profile : options.inner_profiles) {
         auto inner_points = ifcapi::detail::convert_si_to_project_units(file, inner_profile);
         inner_curves.push_back(create_arbitrary_profile_curve(file, inner_points));
     }
     auto result = file->create(file->schema()->declaration_by_name("IfcArbitraryProfileDefWithVoids"));
     ifcapi::detail::write_string_attr(result, "ProfileType", "AREA");
-    if (has_name) {
-        ifcapi::detail::write_string_attr(result, "ProfileName", name ? name : "");
+    if (options.name) {
+        ifcapi::detail::write_string_attr(result, "ProfileName", *options.name);
     }
     ifcapi::detail::write_ref_attr(result, "OuterCurve", outer_curve);
     ifcapi::detail::write_ref_aggregate(result, "InnerCurves", inner_curves);

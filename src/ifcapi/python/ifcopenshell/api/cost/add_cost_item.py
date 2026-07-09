@@ -60,9 +60,11 @@ def add_cost_item(
         file,
         "cost_add_cost_item",
         _capi.file_handle(file),
-        _capi.instance_handle(cost_schedule),
-        _capi.instance_handle(cost_item),
-        _capi.instance_handle(owner_history),
-        _capi.instance_handle(user),
-        _capi.instance_handle(application),
+        {
+            "cost_schedule": _capi.instance_handle(cost_schedule),
+            "cost_item": _capi.instance_handle(cost_item),
+            "owner_history": _capi.instance_handle(owner_history),
+            "user": _capi.instance_handle(user),
+            "application": _capi.instance_handle(application),
+        },
     )

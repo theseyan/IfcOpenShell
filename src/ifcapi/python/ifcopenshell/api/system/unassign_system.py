@@ -18,7 +18,7 @@
 
 import ifcopenshell
 import ifcopenshell.api.owner.settings
-from ifcopenshell import _ifcopenshell_capi as _capi
+from ifcopenshell.api.system import _capi
 
 
 def unassign_system(
@@ -52,10 +52,14 @@ def unassign_system(
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
     product_list = [e._handle for e in products]
-    _capi.system_unassign_system(
-        file._handle,
-        product_list,
-        system._handle,
-        user._handle if user is not None else None,
-        application._handle if application is not None else None,
+    _capi.call_status(
+        "system_unassign_system",
+        "Failed to unassign system",
+        _capi.file_handle(file),
+        {
+            "products": product_list,
+            "system": _capi.instance_handle(system),
+            "user": _capi.instance_handle(user),
+            "application": _capi.instance_handle(application),
+        },
     )

@@ -21,7 +21,7 @@ from typing import Union
 import ifcopenshell
 import ifcopenshell.api.owner.settings
 import ifcopenshell.util.system
-from ifcopenshell import _ifcopenshell_capi as _capi
+from ifcopenshell.api.system import _capi
 
 
 def assign_system(
@@ -58,14 +58,15 @@ def assign_system(
     user = ifcopenshell.api.owner.settings.get_user(file)
     application = ifcopenshell.api.owner.settings.get_application(file)
     product_list = [e._handle for e in products]
-    handle = _capi.system_assign_system(
-        file._handle,
-        product_list,
-        system._handle,
-        None,
-        user._handle if user is not None else None,
-        application._handle if application is not None else None,
+    return _capi.call_nullable_handle(
+        file,
+        "system_assign_system",
+        _capi.file_handle(file),
+        {
+            "products": product_list,
+            "system": _capi.instance_handle(system),
+            "owner_history": None,
+            "user": _capi.instance_handle(user),
+            "application": _capi.instance_handle(application),
+        },
     )
-    if handle:
-        return ifcopenshell.entity_instance(file, handle)
-    return None

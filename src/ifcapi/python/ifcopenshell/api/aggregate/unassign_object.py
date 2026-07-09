@@ -58,7 +58,9 @@ def unassign_object(file: ifcopenshell.file, products: list[ifcopenshell.entity_
     _relationship_capi.call_status(
         "aggregate_unassign_object",
         _relationship_capi.file_handle(file),
-        _relationship_capi.instance_list_ptr(product_list),
-        _relationship_capi.instance_handle(user),
-        _relationship_capi.instance_handle(application),
+        {
+            "products": product_list,
+            "user": _relationship_capi.instance_handle(user),
+            "application": _relationship_capi.instance_handle(application),
+        },
     )

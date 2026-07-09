@@ -75,9 +75,11 @@ def assign_control(
         file,
         "control_assign_control",
         _relationship_capi.file_handle(file),
-        _relationship_capi.instance_handle(relating_control),
-        _relationship_capi.instance_list_ptr(object_list),
-        _relationship_capi.instance_handle(owner_history),
-        _relationship_capi.instance_handle(user),
-        _relationship_capi.instance_handle(application),
+        {
+            "relating_control": _relationship_capi.instance_handle(relating_control),
+            "related_objects": object_list,
+            "owner_history": _relationship_capi.instance_handle(owner_history),
+            "user": _relationship_capi.instance_handle(user),
+            "application": _relationship_capi.instance_handle(application),
+        },
     )

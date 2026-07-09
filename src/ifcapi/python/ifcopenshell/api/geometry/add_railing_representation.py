@@ -124,16 +124,18 @@ def add_railing_representation(
         file,
         "geometry_add_railing_representation",
         _capi.file_handle(file),
-        _capi.instance_handle(context),
-        _capi.double_list_list(settings["railing_path"]),
-        use_manual_supports,
-        settings["support_spacing"],
-        settings["railing_diameter"],
-        settings["clear_width"],
-        _capi.string(terminal_type),
-        settings["height"],
-        looped_path,
-        unit_scale,
+        {
+            "context": _capi.instance_handle(context),
+            "railing_path": settings["railing_path"],
+            "use_manual_supports": use_manual_supports,
+            "support_spacing": settings["support_spacing"],
+            "railing_diameter": settings["railing_diameter"],
+            "clear_width": settings["clear_width"],
+            "terminal_type": terminal_type,
+            "height": settings["height"],
+            "looped_path": looped_path,
+            "unit_scale": unit_scale,
+        },
     )
 
 

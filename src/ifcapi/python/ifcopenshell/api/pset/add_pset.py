@@ -15,12 +15,14 @@ def add_pset(file, product, name, ifc2x3_subclass=None):
     try:
         handle = _capi.pset_add_pset(
             file._handle,
-            product._handle,
-            name,
-            owner_history._handle if owner_history else None,
-            user._handle if user else None,
-            application._handle if application else None,
-            ifc2x3_subclass,
+            {
+                "product": product._handle,
+                "name": name,
+                "owner_history": owner_history._handle if owner_history else None,
+                "user": user._handle if user else None,
+                "application": application._handle if application else None,
+                "ifc2x3_subclass": ifc2x3_subclass,
+            },
         )
     finally:
         free_props(props_handle)

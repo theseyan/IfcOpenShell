@@ -185,10 +185,11 @@ def add_context(
         "context_add_context",
         "Failed to add context",
         _capi.file_handle(file),
-        _capi.nullable_string(context_type),
-        _capi.nullable_string(context_identifier),
-        _capi.nullable_string(target_view),
-        target_scale is not None,
-        target_scale or 0.0,
-        _capi.instance_handle(parent),
+        {
+            "context_type": context_type or "",
+            "context_identifier": context_identifier or "",
+            "target_view": target_view or "",
+            "target_scale": target_scale,
+            "parent": _capi.instance_handle(parent),
+        },
     )
