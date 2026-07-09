@@ -1,0 +1,160 @@
+
+import { createApi, type Api } from './generated/ifcopenshell_api.js';
+import type {
+  EmscriptenFS,
+  EmscriptenOptions,
+  IfcOpenshellApiFactory,
+  IfcOpenshellModule,
+  InitOptions,
+  PluginKind,
+  PluginLoader,
+  WasmAssets,
+} from './types.js';
+
+export interface IfcOpenShell {
+  readonly raw: IfcOpenshellModule;
+  readonly api: Api;
+  readonly fs: EmscriptenFS | null;
+  loadPlugin(kind: PluginKind, id: string): Promise<void>;
+  loadedPlugins(): string[];
+  dispose(): void;
+  [Symbol.dispose](): void;
+  [Symbol.asyncDispose](): Promise<void>;
+}
+
+const DEFAULT_API_MODULE = '@ifcopenshell-js/wasm/api';
+
+export class IfcOpenShellError extends Error {
+  constructor(message: string, cause?: unknown) {
+    super(message, cause !== undefined ? { cause } : undefined);
+    this.name = 'IfcOpenShellError';
+  }
+}
+
+export async function init(options: InitOptions = {}): Promise<IfcOpenShell> {
+  const defaults = options.wasmAssets ? null : await resolveRuntime(options.wasmRoot);
+  const assets = options.wasmAssets ?? defaults?.wasmAssets;
+  const loader = options.pluginLoader ?? defaults?.pluginLoader;
+
+  validateAssets(assets);
+
+  let fs: EmscriptenFS | null = null;
+  const initModule = (opts?: EmscriptenOptions) =>
+    Promise.resolve(assets.initModule(opts)).then((mod) => {
+      fs = readFs(mod);
+      return mod;
+    });
+
+  const createModule = await resolveApiFactory(assets);
+  let raw: IfcOpenshellModule;
+  try {
+    raw = await createModule(initModule, assets.wasmUrl, {
+      pluginBaseUrl: assets.pluginBaseUrl,
+      pluginManifest: assets.manifest as Record<string, Record<string, { wasm: string; depends?: string[] }>>,
+      pluginLoader: loader,
+    });
+  } catch (error) {
+    throw new IfcOpenShellError('Failed to instantiate IfcOpenShell WASM', error);
+  }
+
+  let disposed = false;
+  const dispose = () => {
+    if (disposed) return;
+    disposed = true;
+    if ('destroy' in raw && typeof (raw as { destroy?: unknown }).destroy === 'function') {
+      (raw as { destroy(): void }).destroy();
+    }
+  };
+
+  const shell: IfcOpenShell = {
+    raw,
+    api: null as unknown as Api,
+    fs,
+    loadPlugin: (kind, id) => loadPlugin(raw, kind, id),
+    loadedPlugins: () => raw.loadedPlugins(),
+    dispose,
+    [Symbol.dispose]: dispose,
+    async [Symbol.asyncDispose]() {
+      dispose();
+    },
+  };
+  (shell as { api: Api }).api = createApi(shell);
+  return Object.freeze(shell);
+}
+
+async function resolveRuntime(wasmRoot?: string): Promise<{ wasmAssets: WasmAssets; pluginLoader?: PluginLoader }> {
+  let wasm: typeof import('@ifcopenshell-js/wasm');
+  try {
+    wasm = await import('@ifcopenshell-js/wasm');
+  } catch (error) {
+    throw new IfcOpenShellError(
+      'Default init() requires @ifcopenshell-js/wasm. Install it or pass explicit wasmAssets.',
+      error,
+    );
+  }
+
+  const wasmAssets = await wasm.resolveWasmAssets(wasmRoot) as WasmAssets;
+  let pluginLoader: PluginLoader | undefined;
+  try {
+    pluginLoader = wasm.createNodePluginLoader();
+  } catch {
+    pluginLoader = undefined;
+  }
+  return { wasmAssets, pluginLoader };
+}
+
+async function resolveApiFactory(assets: WasmAssets): Promise<IfcOpenshellApiFactory> {
+  if (assets.createIfcOpenshellModule) return assets.createIfcOpenshellModule;
+
+  const specifier = assets.apiModuleUrl ?? DEFAULT_API_MODULE;
+  try {
+    const mod = await import(/* @vite-ignore */ /* webpackIgnore: true */ specifier);
+    if (typeof mod.createIfcOpenshellModule !== 'function') {
+      throw new IfcOpenShellError(`${specifier} does not export createIfcOpenshellModule`);
+    }
+    return mod.createIfcOpenshellModule as IfcOpenshellApiFactory;
+  } catch (error) {
+    throw new IfcOpenShellError(
+      `Failed to load IfcOpenShell API module from ${specifier}`,
+      error,
+    );
+  }
+}
+
+function validateAssets(assets: WasmAssets | undefined): asserts assets is WasmAssets {
+  if (typeof assets?.initModule !== 'function') {
+    throw new IfcOpenShellError('wasmAssets.initModule must be the ifcopenshell_wasm.mjs module factory');
+  }
+  if (typeof assets.wasmUrl !== 'string' || assets.wasmUrl.length === 0) {
+    throw new IfcOpenShellError('wasmAssets.wasmUrl must point to ifcopenshell_wasm.wasm');
+  }
+  if (typeof assets.pluginBaseUrl !== 'string' || assets.pluginBaseUrl.length === 0) {
+    throw new IfcOpenShellError('wasmAssets.pluginBaseUrl must point to the plugin directory');
+  }
+  if (!assets.manifest || typeof assets.manifest !== 'object') {
+    throw new IfcOpenShellError('wasmAssets.manifest must contain ifcopenshell_plugins.json');
+  }
+}
+
+function readFs(mod: unknown): EmscriptenFS | null {
+  const fs = (mod as { FS?: unknown } | null)?.FS;
+  if (
+    fs &&
+    typeof fs === 'object' &&
+    typeof (fs as { writeFile?: unknown }).writeFile === 'function' &&
+    typeof (fs as { readFile?: unknown }).readFile === 'function'
+  ) {
+    return fs as EmscriptenFS;
+  }
+  return null;
+}
+
+async function loadPlugin(raw: IfcOpenshellModule, kind: PluginKind, id: string): Promise<void> {
+  try {
+    await raw.loadPlugin(kind, id);
+  } catch (error) {
+    const key = `${kind}:${id}`;
+    const suffix = error instanceof Error && error.message ? `: ${error.message}` : '';
+    throw new IfcOpenShellError(`Failed to load plugin ${key}${suffix}`, error);
+  }
+}
