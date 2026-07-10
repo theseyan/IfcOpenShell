@@ -220,7 +220,7 @@ express::Base edit_placement_impl(
         if (total_inverses(file, old_placement) == 1) {
             set_entity_ref(product, "ObjectPlacement", {});
             set_entity_ref(old_placement, "PlacementRelTo", {});
-            ifcapi::bindings::entity_remove_deep2(&old_placement);
+            ifcapi::bindings::entity_remove_deep(&old_placement);
         }
     }
 

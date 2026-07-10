@@ -601,7 +601,7 @@ void structural_remove_structural_connection_condition(
         }
         auto history = ifcapi::detail::read_ref_attr(relation_ref, "OwnerHistory");
         file->remove_entity(relation_ref);
-        if (history) ifcapi::bindings::entity_remove_deep2(&history);
+        if (history) ifcapi::bindings::entity_remove_deep(&history);
     } catch (const std::exception& e) {
         set_error(e.what());
     }

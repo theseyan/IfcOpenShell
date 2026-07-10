@@ -6209,12 +6209,12 @@ bool ifcopenshell_element_replace_element(ifcopenshell_instance_t* old_element, 
     }
 }
 
-bool ifcopenshell_entity_remove_deep2(ifcopenshell_instance_t* instance) {
+bool ifcopenshell_entity_remove_deep(ifcopenshell_instance_t* instance) {
     try {
         ifcopenshell_clear_error();
     if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
     auto instance_cpp = &instance->value;
-        ifcapi::bindings::entity_remove_deep2(instance_cpp);
+        ifcapi::bindings::entity_remove_deep(instance_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -6225,16 +6225,18 @@ bool ifcopenshell_entity_remove_deep2(ifcopenshell_instance_t* instance) {
     }
 }
 
-bool ifcopenshell_entity_remove_deep2_ex(ifcopenshell_instance_t* instance, const ifcopenshell_instance_list_t* also_consider, const ifcopenshell_instance_list_t* do_not_delete) {
+bool ifcopenshell_entity_remove_deep_with_options(ifcopenshell_instance_t* instance, const ifcopenshell_entity_remove_deep_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
     auto instance_cpp = &instance->value;
-    if (also_consider == nullptr) { throw std::runtime_error("Parameter \"also_consider\" must not be null"); }
-    auto also_consider_cpp = to_cpp_instance_list(also_consider);
-    if (do_not_delete == nullptr) { throw std::runtime_error("Parameter \"do_not_delete\" must not be null"); }
-    auto do_not_delete_cpp = to_cpp_instance_list(do_not_delete);
-        ifcapi::bindings::entity_remove_deep2_ex(instance_cpp, also_consider_cpp, do_not_delete_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::EntityRemoveDeepOptions options_cpp{};
+    if (options->also_consider == nullptr) { throw std::runtime_error("Options field \"also_consider\" must not be null"); }
+    options_cpp.also_consider = options->also_consider->value;
+    if (options->do_not_delete == nullptr) { throw std::runtime_error("Options field \"do_not_delete\" must not be null"); }
+    options_cpp.do_not_delete = options->do_not_delete->value;
+        ifcapi::bindings::entity_remove_deep_with_options(instance_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -7708,11 +7710,11 @@ bool ifcopenshell_guid_expand(const char* guid, ifcopenshell_string_t* out_resul
     }
 }
 
-bool ifcopenshell_guid_new(ifcopenshell_string_t* out_result) {
+bool ifcopenshell_guid_generate(ifcopenshell_string_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-        *out_result = make_string(ifcapi::bindings::guid_new());
+        *out_result = make_string(ifcapi::bindings::guid_generate());
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -9009,34 +9011,13 @@ bool ifcopenshell_owner_update_owner_history(ifcopenshell_file_t* file, const if
     }
 }
 
-bool ifcopenshell_placement_a2p(const ifcopenshell_double_list_t* origin, const ifcopenshell_double_list_t* z_axis, const ifcopenshell_double_list_t* x_axis, ifcopenshell_double_list_t* out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (origin == nullptr) { throw std::runtime_error("Parameter \"origin\" must not be null"); }
-    auto origin_cpp = to_cpp_double_list(origin);
-    if (z_axis == nullptr) { throw std::runtime_error("Parameter \"z_axis\" must not be null"); }
-    auto z_axis_cpp = to_cpp_double_list(z_axis);
-    if (x_axis == nullptr) { throw std::runtime_error("Parameter \"x_axis\" must not be null"); }
-    auto x_axis_cpp = to_cpp_double_list(x_axis);
-        *out_result = make_double_list(ifcapi::bindings::placement_a2p(origin_cpp, z_axis_cpp, x_axis_cpp));
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_placement_get_axis2placement(ifcopenshell_instance_t* instance, ifcopenshell_double_list_t* out_result) {
+bool ifcopenshell_placement_get_axis2_placement(ifcopenshell_instance_t* instance, ifcopenshell_double_list_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
     auto instance_cpp = &instance->value;
-        *out_result = make_double_list(ifcapi::bindings::placement_get_axis2placement(instance_cpp));
+        *out_result = make_double_list(ifcapi::bindings::placement_get_axis2_placement(instance_cpp));
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -9105,6 +9086,27 @@ bool ifcopenshell_placement_get_storey_elevation(ifcopenshell_instance_t* instan
     if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
     auto instance_cpp = &instance->value;
         *out_result = static_cast<double>(ifcapi::bindings::placement_get_storey_elevation(instance_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_placement_matrix_from_axes(const ifcopenshell_double_list_t* origin, const ifcopenshell_double_list_t* z_axis, const ifcopenshell_double_list_t* x_axis, ifcopenshell_double_list_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (origin == nullptr) { throw std::runtime_error("Parameter \"origin\" must not be null"); }
+    auto origin_cpp = to_cpp_double_list(origin);
+    if (z_axis == nullptr) { throw std::runtime_error("Parameter \"z_axis\" must not be null"); }
+    auto z_axis_cpp = to_cpp_double_list(z_axis);
+    if (x_axis == nullptr) { throw std::runtime_error("Parameter \"x_axis\" must not be null"); }
+    auto x_axis_cpp = to_cpp_double_list(x_axis);
+        *out_result = make_double_list(ifcapi::bindings::placement_matrix_from_axes(origin_cpp, z_axis_cpp, x_axis_cpp));
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -12989,14 +12991,14 @@ bool ifcopenshell_shape_builder_vertex(ifcopenshell_file_t* file, const ifcopens
     }
 }
 
-bool ifcopenshell_shape_is_x(double value, double x, double tolerance, bool* out_result) {
+bool ifcopenshell_shape_is_almost_equal(double value, double x, double tolerance, bool* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     auto value_cpp = static_cast<double>(value);
     auto x_cpp = static_cast<double>(x);
     auto tolerance_cpp = static_cast<double>(tolerance);
-        *out_result = ifcapi::bindings::shape_is_x(value_cpp, x_cpp, tolerance_cpp);
+        *out_result = ifcapi::bindings::shape_is_almost_equal(value_cpp, x_cpp, tolerance_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

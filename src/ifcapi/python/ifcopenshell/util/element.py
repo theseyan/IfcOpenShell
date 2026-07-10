@@ -1532,10 +1532,12 @@ def remove_deep2(
         ifc_file.to_delete.update(to_delete)
         return
 
-    _capi.entity_remove_deep2_ex(
+    _capi.entity_remove_deep_with_options(
         element._handle,
-        _instance_list_arg(also_consider),
-        _instance_list_arg(tuple(do_not_delete)),
+        {
+            "also_consider": _instance_list_arg(also_consider),
+            "do_not_delete": _instance_list_arg(tuple(do_not_delete)),
+        },
     )
 
 

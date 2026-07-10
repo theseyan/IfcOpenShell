@@ -200,7 +200,7 @@ std::vector<double> matrix_result(bool ok, const double* matrix) {
 namespace ifcapi {
 namespace bindings {
 
-std::vector<double> placement_a2p(
+std::vector<double> placement_matrix_from_axes(
     const std::vector<double>& origin,
     const std::vector<double>& z_axis,
     const std::vector<double>& x_axis)
@@ -213,7 +213,7 @@ std::vector<double> placement_a2p(
     return matrix_to_vector(out);
 }
 
-std::vector<double> placement_get_axis2placement(express::Base* instance) {
+std::vector<double> placement_get_axis2_placement(express::Base* instance) {
     double out[16];
     identity4(out);
     return matrix_result(compute_axis2placement(ifcapi::detail::deref_or_empty(instance), out), out);

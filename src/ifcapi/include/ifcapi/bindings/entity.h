@@ -12,11 +12,15 @@
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING void entity_remove_deep2(express::Base* instance);
-IFCAPI_BINDING void entity_remove_deep2_ex(
+struct EntityRemoveDeepOptions {
+    std::vector<express::Base> also_consider;
+    std::vector<express::Base> do_not_delete;
+};
+
+IFCAPI_BINDING void entity_remove_deep(express::Base* instance);
+IFCAPI_BINDING void entity_remove_deep_with_options(
     express::Base* instance,
-    const std::vector<express::Base>& also_consider,
-    const std::vector<express::Base>& do_not_delete);
+    const EntityRemoveDeepOptions& options);
 
 } // namespace bindings
 } // namespace ifcapi

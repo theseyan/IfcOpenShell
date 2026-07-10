@@ -135,7 +135,7 @@ void remove_type_pset(express::Base type, express::Base pset) {
 void remove_owner_history_entity(ifcopenshell::file* file, express::Base entity) {
     auto history = ifcapi::detail::read_ref_attr(entity, "OwnerHistory");
     file->remove_entity(entity);
-    if (history) ifcapi::bindings::entity_remove_deep2(&history);
+    if (history) ifcapi::bindings::entity_remove_deep(&history);
 }
 
 std::vector<express::Base> removable_properties(express::Base pset) {

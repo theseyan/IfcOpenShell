@@ -53,7 +53,7 @@ inline void remove_with_history(ifcopenshell::file* file, express::Base entity) 
     auto history = read_ref_attr(entity, "OwnerHistory");
     file->remove_entity(entity);
     if (history) {
-        ifcapi::bindings::entity_remove_deep2(&history);
+        ifcapi::bindings::entity_remove_deep(&history);
     }
 }
 

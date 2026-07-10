@@ -8,7 +8,7 @@
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING bool shape_is_x(double value, double x, double tolerance);
+IFCAPI_BINDING bool shape_is_almost_equal(double value, double x, double tolerance);
 
 } // namespace bindings
 } // namespace ifcapi

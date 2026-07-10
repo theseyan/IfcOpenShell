@@ -34,13 +34,13 @@ def _matrix_from_values(values: Optional[Iterable[float]], *, fallback: str) -> 
 
 def a2p(o: Iterable[float], z: Iterable[float], x: Iterable[float]) -> MatrixType:
     """Build a 4x4 transformation matrix from origin, Z axis, and X axis."""
-    values = _capi.placement_a2p(list(o), list(z), list(x))
+    values = _capi.placement_matrix_from_axes(list(o), list(z), list(x))
     return _matrix_from_values(values, fallback="a2p failed to compute a 4x4 placement matrix")
 
 
 def get_axis2placement(placement: ifcopenshell.entity_instance) -> MatrixType:
     """Parse an IfcAxis2Placement (2D, 3D, Linear, or 1D) into a 4x4 matrix."""
-    matrix_values = _capi.placement_get_axis2placement(placement._handle)
+    matrix_values = _capi.placement_get_axis2_placement(placement._handle)
     if matrix_values and len(matrix_values) == 16:
         return _matrix_from_values(matrix_values, fallback="Failed to compute axis placement matrix")
     # Fallback for IfcAxis2PlacementLinear with IfcPointByDistanceExpression.

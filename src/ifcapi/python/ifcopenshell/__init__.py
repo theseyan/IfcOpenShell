@@ -25,7 +25,7 @@ from . import guid, settings
 
 version = "0.8.1"
 version_core = version
-guid.new = _capi.guid_new
+guid.new = _capi.guid_generate
 
 
 def _take_instance_list(file_obj, instance_list):

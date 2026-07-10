@@ -1152,7 +1152,7 @@ express::Base mirror_impl(
         mirror_impl(file, read_ref(result, "BasisCurve"), mirror_axes, mirror_point, false, {});
     } else if (is_a(result, "IfcExtrudedAreaSolid")) {
         auto result_position = read_ref(result, "Position");
-        const auto placement = mat3_from_matrix(ifcapi::bindings::placement_get_axis2placement(&result_position));
+        const auto placement = mat3_from_matrix(ifcapi::bindings::placement_get_axis2_placement(&result_position));
         auto position = location_coordinates(result);
         auto mirrored = mirror_point_2d(position, mirror_axes, mirror_point);
         if (position.size() > 2) {

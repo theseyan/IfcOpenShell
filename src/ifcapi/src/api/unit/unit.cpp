@@ -199,7 +199,7 @@ void unit_remove_unit(
 {
     auto unit = ifcapi::detail::deref_or_empty(unit_ptr);
     remove_from_assignment(file, unit);
-    entity_remove_deep2(&unit);
+    entity_remove_deep(&unit);
 }
 
 } // namespace bindings

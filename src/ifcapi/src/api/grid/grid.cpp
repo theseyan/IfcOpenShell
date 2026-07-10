@@ -99,7 +99,7 @@ void grid_remove_grid_axis(ifcopenshell::file* file, express::Base* axis) {
         auto axis_value = ifcapi::detail::deref_or_empty(axis);
         auto axis_curve = ifcapi::detail::read_ref_attr(axis_value, "AxisCurve");
         file->remove_entity(axis_value);
-        if (axis_curve) entity_remove_deep2(&axis_curve);
+        if (axis_curve) entity_remove_deep(&axis_curve);
     } catch (const std::exception& e) {
         set_error(e.what());
     }
@@ -147,7 +147,7 @@ void grid_create_axis_curve(
         auto existing_curve = ifcapi::detail::read_ref_attr(grid_axis_value, "AxisCurve");
         ifcapi::detail::write_ref_attr(grid_axis_value, "AxisCurve", create_axis_polyline(file, point1, point2));
         if (existing_curve) {
-            entity_remove_deep2(&existing_curve);
+            entity_remove_deep(&existing_curve);
         }
     } catch (const std::exception& e) {
         set_error(e.what());

@@ -570,6 +570,11 @@ typedef struct ifcopenshell_element_get_shape_aspects_options_t {
     bool has_should_inherit;
 } ifcopenshell_element_get_shape_aspects_options_t;
 
+typedef struct ifcopenshell_entity_remove_deep_options_t {
+    ifcopenshell_parse_instance_list_t* also_consider;
+    ifcopenshell_parse_instance_list_t* do_not_delete;
+} ifcopenshell_entity_remove_deep_options_t;
+
 typedef struct ifcopenshell_feature_add_feature_options_t {
     ifcopenshell_instance_t* feature;
     ifcopenshell_instance_t* element;
@@ -2045,8 +2050,8 @@ bool ifcopenshell_element_get_voided_element(ifcopenshell_instance_t* element, i
 bool ifcopenshell_element_is_userdefined_type(ifcopenshell_instance_t* element, bool* out_result);
 bool ifcopenshell_element_remove_deep(ifcopenshell_instance_t* element);
 bool ifcopenshell_element_replace_element(ifcopenshell_instance_t* old_element, ifcopenshell_instance_t* new_element);
-bool ifcopenshell_entity_remove_deep2(ifcopenshell_instance_t* instance);
-bool ifcopenshell_entity_remove_deep2_ex(ifcopenshell_instance_t* instance, const ifcopenshell_instance_list_t* also_consider, const ifcopenshell_instance_list_t* do_not_delete);
+bool ifcopenshell_entity_remove_deep(ifcopenshell_instance_t* instance);
+bool ifcopenshell_entity_remove_deep_with_options(ifcopenshell_instance_t* instance, const ifcopenshell_entity_remove_deep_options_t* options);
 bool ifcopenshell_feature_add_feature(ifcopenshell_file_t* file, const ifcopenshell_feature_add_feature_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_feature_add_filling(ifcopenshell_file_t* file, ifcopenshell_instance_t* opening, ifcopenshell_instance_t* element, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_feature_remove_feature(ifcopenshell_file_t* file, const ifcopenshell_feature_remove_feature_options_t* options);
@@ -2100,7 +2105,7 @@ bool ifcopenshell_group_unassign_group(ifcopenshell_file_t* file, const ifcopens
 bool ifcopenshell_group_update_group_products(ifcopenshell_file_t* file, const ifcopenshell_group_update_group_products_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_guid_compress(const char* uuid_hex, ifcopenshell_string_t* out_result);
 bool ifcopenshell_guid_expand(const char* guid, ifcopenshell_string_t* out_result);
-bool ifcopenshell_guid_new(ifcopenshell_string_t* out_result);
+bool ifcopenshell_guid_generate(ifcopenshell_string_t* out_result);
 bool ifcopenshell_layer_add_layer(ifcopenshell_file_t* file, const char* name, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_layer_add_layer_with_style(ifcopenshell_file_t* file, const char* name, const ifcopenshell_layer_add_layer_with_style_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_layer_assign_layer(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* items, ifcopenshell_instance_t* layer);
@@ -2153,12 +2158,12 @@ bool ifcopenshell_owner_remove_person_and_organisation(ifcopenshell_file_t* file
 bool ifcopenshell_owner_remove_role(ifcopenshell_file_t* file, ifcopenshell_instance_t* role);
 bool ifcopenshell_owner_unassign_actor(ifcopenshell_file_t* file, const ifcopenshell_owner_unassign_actor_options_t* options);
 bool ifcopenshell_owner_update_owner_history(ifcopenshell_file_t* file, const ifcopenshell_owner_update_owner_history_options_t* options, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_placement_a2p(const ifcopenshell_double_list_t* origin, const ifcopenshell_double_list_t* z_axis, const ifcopenshell_double_list_t* x_axis, ifcopenshell_double_list_t* out_result);
-bool ifcopenshell_placement_get_axis2placement(ifcopenshell_instance_t* instance, ifcopenshell_double_list_t* out_result);
+bool ifcopenshell_placement_get_axis2_placement(ifcopenshell_instance_t* instance, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_placement_get_cartesian_xform_3d(ifcopenshell_instance_t* instance, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_placement_get_local_placement(ifcopenshell_instance_t* instance, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_placement_get_mappeditem_xform(ifcopenshell_instance_t* instance, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_placement_get_storey_elevation(ifcopenshell_instance_t* instance, double* out_result);
+bool ifcopenshell_placement_matrix_from_axes(const ifcopenshell_double_list_t* origin, const ifcopenshell_double_list_t* z_axis, const ifcopenshell_double_list_t* x_axis, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_placement_rotation(double angle_rad, const char* axis, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_profile_add_arbitrary_profile(ifcopenshell_file_t* file, const ifcopenshell_profile_add_arbitrary_profile_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_profile_add_arbitrary_profile_with_voids(ifcopenshell_file_t* file, const ifcopenshell_profile_add_arbitrary_profile_with_voids_options_t* options, ifcopenshell_instance_t** out_result);
@@ -2330,7 +2335,7 @@ bool ifcopenshell_shape_builder_swept_disk_solid(ifcopenshell_file_t* file, ifco
 bool ifcopenshell_shape_builder_translate(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_translate_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_shape_builder_triangulated_face_set(ifcopenshell_file_t* file, const ifcopenshell_double_list_list_t* points, const ifcopenshell_int32_list_list_t* faces, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_shape_builder_vertex(ifcopenshell_file_t* file, const ifcopenshell_double_list_t* position, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_shape_is_x(double value, double x, double tolerance, bool* out_result);
+bool ifcopenshell_shape_is_almost_equal(double value, double x, double tolerance, bool* out_result);
 /** Assign products to be contained hierarchically in a spatial structure. */
 bool ifcopenshell_spatial_assign_container(ifcopenshell_file_t* file, const ifcopenshell_spatial_assign_container_options_t* options, ifcopenshell_instance_t** out_result);
 /** Dereference products from a spatial structure. */

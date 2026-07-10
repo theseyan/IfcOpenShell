@@ -831,7 +831,7 @@ void remove_surface_style_impl(ifcopenshell::file* file, express::Base style) {
                 continue;
             }
         }
-        ifcapi::bindings::entity_remove_deep2(&element);
+        ifcapi::bindings::entity_remove_deep(&element);
     }
 }
 
@@ -868,7 +868,7 @@ void purge_fill_area_style_hatching(
             remove_style_impl(file, inverse, {fill_area_style_hatching, style});
         }
     }
-    ifcapi::bindings::entity_remove_deep2_ex(&fill_area_style_hatching, {}, {style});
+    ifcapi::bindings::entity_remove_deep_with_options(&fill_area_style_hatching, {{}, {style}});
 }
 
 void purge_inverses(ifcopenshell::file* file, express::Base style) {
@@ -897,7 +897,7 @@ void remove_style_impl(
         }
     } else if (is_a(style, "IfcFillAreaStyle")) {
         for (auto style_item : ifcapi::detail::read_ref_aggregate(style, "FillStyles")) {
-            ifcapi::bindings::entity_remove_deep2_ex(&style_item, {style}, do_not_delete);
+            ifcapi::bindings::entity_remove_deep_with_options(&style_item, {{style}, do_not_delete});
         }
     }
     file->remove_entity(style);

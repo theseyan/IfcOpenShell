@@ -105,4 +105,4 @@ def new() -> str:
     """
     Generates a random UUID and compresses it to a Base 64 IFC GUID.
     """
-    return _capi.guid_new()
+    return _capi.guid_generate()

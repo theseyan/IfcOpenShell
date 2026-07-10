@@ -7,7 +7,7 @@
 namespace ifcapi {
 namespace bindings {
 
-bool shape_is_x(double value, double x, double tolerance) {
+bool shape_is_almost_equal(double value, double x, double tolerance) {
     if (tolerance == 0.0) tolerance = 1e-6;
     return std::fabs(x - value) < tolerance;
 }

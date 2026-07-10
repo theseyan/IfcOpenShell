@@ -357,7 +357,7 @@ bool process_existing_enumerated(ifcopenshell::file* file, express::Base prop,
         auto value_reference = read_ref_attr(entry.inst, "EnumerationReference");
         auto prop_reference = read_ref_attr(prop, "EnumerationReference");
         if (!value_reference) {
-            if (prop_reference) ifcapi::bindings::entity_remove_deep2(&prop_reference);
+            if (prop_reference) ifcapi::bindings::entity_remove_deep(&prop_reference);
             write_blank_attr(prop, "EnumerationReference");
         } else if (!prop_reference) {
             write_ref_attr(prop, "EnumerationReference", copy_property_enumeration(file, value_reference));

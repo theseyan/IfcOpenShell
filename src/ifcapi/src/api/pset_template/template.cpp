@@ -91,7 +91,7 @@ express::Base pset_template_add_prop_template(
 
 void pset_template_remove_pset_template(express::Base* pset_template)
 {
-    entity_remove_deep2(pset_template);
+    entity_remove_deep(pset_template);
 }
 
 void pset_template_remove_prop_template(
@@ -111,7 +111,7 @@ void pset_template_remove_prop_template(
             }
         }
     }
-    entity_remove_deep2(&prop_template);
+    entity_remove_deep(&prop_template);
 }
 
 } // namespace bindings

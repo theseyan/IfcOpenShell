@@ -94,7 +94,7 @@ void root_remove_product_impl(
         auto object_placement = ifcapi::detail::read_ref_attr(product, "ObjectPlacement");
         if (object_placement && ifcapi::detail::total_inverses(file, object_placement) == 1) {
             ifcapi::detail::write_ref_attr(product, "ObjectPlacement", {});
-            ifcapi::bindings::entity_remove_deep2(&object_placement);
+            ifcapi::bindings::entity_remove_deep(&object_placement);
         }
     } else if (is_instance(product, "IfcTypeProduct")) {
         for (auto representation_map : ifcapi::detail::read_ref_aggregate(product, "RepresentationMaps")) {

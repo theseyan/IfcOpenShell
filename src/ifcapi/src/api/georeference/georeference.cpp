@@ -250,7 +250,7 @@ void georeference_edit_true_north(
                 if (true_north) {
                     ifcapi::detail::write_ref_attr(context, "TrueNorth", {});
                     if (ifcapi::detail::total_inverses(file, true_north) == 0) {
-                        ifcapi::bindings::entity_remove_deep2(&true_north);
+                        ifcapi::bindings::entity_remove_deep(&true_north);
                     }
                 }
                 continue;
@@ -345,7 +345,7 @@ void georeference_edit_wcs(ifcopenshell::file* file, const GeoreferenceEditWcsOp
             if (placement) {
                 ifcapi::detail::write_ref_attr(context, "WorldCoordinateSystem", placement);
                 if (ifcapi::detail::total_inverses(file, old_wcs) == 0) {
-                    ifcapi::bindings::entity_remove_deep2(&old_wcs);
+                    ifcapi::bindings::entity_remove_deep(&old_wcs);
                 }
             }
         }
@@ -368,7 +368,7 @@ void georeference_remove_georeferencing(ifcopenshell::file* file) {
             auto unit = ifcapi::detail::read_ref_attr(projected_crs, "MapUnit");
             if (unit && ifcapi::detail::total_inverses(file, unit) == 1) {
                 ifcapi::detail::write_ref_attr(projected_crs, "MapUnit", {});
-                ifcapi::bindings::entity_remove_deep2(&unit);
+                ifcapi::bindings::entity_remove_deep(&unit);
             }
             file->remove_entity(projected_crs);
         }

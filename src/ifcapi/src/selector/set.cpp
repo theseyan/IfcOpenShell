@@ -777,7 +777,7 @@ int do_set(ifcopenshell::file* file,
                             try { newv = std::stod(value->s_val); } catch (...) { newv = 0.0; }
                         } else if (value->kind == IFCSEL_VALUE_BOOL) newv = value->b_val ? 1.0 : 0.0;
                     }
-                    if (ifcapi::bindings::shape_is_x(newv, prev, 0.0)) return 0;
+                    if (ifcapi::bindings::shape_is_almost_equal(newv, prev, 0.0)) return 0;
 
                     matrix[(size_t)ci * 4 + 3] = newv;
                     std::vector<double> matrix_values(matrix.begin(), matrix.end());

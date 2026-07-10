@@ -174,7 +174,7 @@ void profile_remove_profile(
     }
     file->remove_entity(profile);
     for (auto subelement : subelements) {
-        entity_remove_deep2(&subelement);
+        entity_remove_deep(&subelement);
     }
 }
 

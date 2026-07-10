@@ -678,7 +678,7 @@ inline bool apply_wcs_inverse(ifcopenshell::file* file, double& x, double& y, do
     auto wcs = get_entity_ref(chosen, "WorldCoordinateSystem");
     if (!wcs) return false;
     double m[16];
-    if (!placement_matrix_to_array(ifcapi::bindings::placement_get_axis2placement(&wcs), m)) return false;
+    if (!placement_matrix_to_array(ifcapi::bindings::placement_get_axis2_placement(&wcs), m)) return false;
     double inv[16];
     if (!invert_rigid4(m, inv)) return false;
     transform_point4(inv, x, y, z);

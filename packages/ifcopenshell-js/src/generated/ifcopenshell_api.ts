@@ -137,8 +137,8 @@ type RawApi = {
     replaceElement: RawFn;
   };
   entity: {
-    removeDeep2: RawFn;
-    removeDeep2Ex: RawFn;
+    removeDeep: RawFn;
+    removeDeepWithOptions: RawFn;
   };
   feature: {
     addFeature: RawFn;
@@ -199,7 +199,7 @@ type RawApi = {
   guid: {
     compress: RawFn;
     expand: RawFn;
-    "new": RawFn;
+    generate: RawFn;
   };
   layer: {
     addLayer: RawFn;
@@ -260,12 +260,12 @@ type RawApi = {
     updateOwnerHistory: RawFn;
   };
   placement: {
-    a2p: RawFn;
-    getAxis2placement: RawFn;
+    getAxis2Placement: RawFn;
     getCartesianXform3d: RawFn;
     getLocalPlacement: RawFn;
     getMappeditemXform: RawFn;
     getStoreyElevation: RawFn;
+    matrixFromAxes: RawFn;
     rotation: RawFn;
   };
   profile: {
@@ -404,7 +404,7 @@ type RawApi = {
     builderTranslate: RawFn;
     builderTriangulatedFaceSet: RawFn;
     builderVertex: RawFn;
-    isX: RawFn;
+    isAlmostEqual: RawFn;
   };
   spatial: {
     assignContainer: RawFn;
@@ -726,6 +726,11 @@ export interface IfcOpenShellElementGetPsetIdsOptions {
 
 export interface IfcOpenShellElementGetShapeAspectsOptions {
   shouldInherit?: boolean;
+}
+
+export interface IfcOpenShellEntityRemoveDeepOptions {
+  alsoConsider: Entity[];
+  doNotDelete: Entity[];
 }
 
 export interface IfcOpenShellFeatureAddFeatureOptions {
@@ -1742,8 +1747,8 @@ export interface ElementApi {
     replaceElement(old_element: Entity, new_element: Entity): void;
 }
 export interface EntityApi {
-    removeDeep2(instance: Entity): void;
-    removeDeep2Ex(instance: Entity, also_consider: Entity[], do_not_delete: Entity[]): void;
+    removeDeep(instance: Entity): void;
+    removeDeepWithOptions(instance: Entity, options: IfcOpenShellEntityRemoveDeepOptions): void;
 }
 export interface FeatureApi {
     addFeature(file: IfcFile, options: IfcOpenShellFeatureAddFeatureOptions): Entity;
@@ -1809,7 +1814,7 @@ export interface GroupApi {
 export interface GuidApi {
     compress(uuid_hex: string): string;
     expand(guid: string): string;
-    "new"(): string;
+    generate(): string;
 }
 export interface LayerApi {
     addLayer(file: IfcFile, name: string): Entity;
@@ -1874,12 +1879,12 @@ export interface OwnerApi {
     updateOwnerHistory(file: IfcFile, options: IfcOpenShellOwnerUpdateOwnerHistoryOptions): Entity;
 }
 export interface PlacementApi {
-    a2p(origin: number[], z_axis: number[], x_axis: number[]): number[];
-    getAxis2placement(instance: Entity): number[];
+    getAxis2Placement(instance: Entity): number[];
     getCartesianXform3d(instance: Entity): number[];
     getLocalPlacement(instance: Entity): number[];
     getMappeditemXform(instance: Entity): number[];
     getStoreyElevation(instance: Entity): number;
+    matrixFromAxes(origin: number[], z_axis: number[], x_axis: number[]): number[];
     rotation(angle_rad: number, axis: string): number[];
 }
 export interface ProfileApi {
@@ -2039,7 +2044,7 @@ export interface ShapeApi {
     builderTranslate(file: IfcFile, options: IfcOpenShellShapeBuilderTranslateOptions): Entity;
     builderTriangulatedFaceSet(file: IfcFile, points: number[][], faces: number[][]): Entity;
     builderVertex(file: IfcFile, position: number[]): Entity;
-    isX(value: number, x: number, tolerance: number): boolean;
+    isAlmostEqual(value: number, x: number, tolerance: number): boolean;
 }
 export interface SpatialApi {
     /** Assign products to be contained hierarchically in a spatial structure. */
@@ -3004,18 +3009,18 @@ export function createApi(shell: IfcOpenShell): Api {
     },
     }),
     entity: Object.freeze({
-    removeDeep2(instance: Entity): void {
+    removeDeep(instance: Entity): void {
       const temps: Disposable[] = [];
       try {
-        raw.entity.removeDeep2(instance.raw);
+        raw.entity.removeDeep(instance.raw);
       } finally {
         disposeAll(temps);
       }
     },
-    removeDeep2Ex(instance: Entity, also_consider: Entity[], do_not_delete: Entity[]): void {
+    removeDeepWithOptions(instance: Entity, options: IfcOpenShellEntityRemoveDeepOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.entity.removeDeep2Ex(instance.raw, toRaw(also_consider, shell, temps), toRaw(do_not_delete, shell, temps));
+        raw.entity.removeDeepWithOptions(instance.raw, encodeOptions(options, {"alsoConsider": "also_consider", "doNotDelete": "do_not_delete"}, shell, temps));
       } finally {
         disposeAll(temps);
       }
@@ -3453,10 +3458,10 @@ export function createApi(shell: IfcOpenShell): Api {
         disposeAll(temps);
       }
     },
-    "new"(): string {
+    generate(): string {
       const temps: Disposable[] = [];
       try {
-        const result = raw.guid["new"]();
+        const result = raw.guid.generate();
         return wrap(shell, result) as string;
       } finally {
         disposeAll(temps);
@@ -3884,19 +3889,10 @@ export function createApi(shell: IfcOpenShell): Api {
     },
     }),
     placement: Object.freeze({
-    a2p(origin: number[], z_axis: number[], x_axis: number[]): number[] {
+    getAxis2Placement(instance: Entity): number[] {
       const temps: Disposable[] = [];
       try {
-        const result = raw.placement.a2p(toRaw(origin, shell, temps), toRaw(z_axis, shell, temps), toRaw(x_axis, shell, temps));
-        return wrap(shell, result) as number[];
-      } finally {
-        disposeAll(temps);
-      }
-    },
-    getAxis2placement(instance: Entity): number[] {
-      const temps: Disposable[] = [];
-      try {
-        const result = raw.placement.getAxis2placement(instance.raw);
+        const result = raw.placement.getAxis2Placement(instance.raw);
         return wrap(shell, result) as number[];
       } finally {
         disposeAll(temps);
@@ -3934,6 +3930,15 @@ export function createApi(shell: IfcOpenShell): Api {
       try {
         const result = raw.placement.getStoreyElevation(instance.raw);
         return wrap(shell, result) as number;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    matrixFromAxes(origin: number[], z_axis: number[], x_axis: number[]): number[] {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.placement.matrixFromAxes(toRaw(origin, shell, temps), toRaw(z_axis, shell, temps), toRaw(x_axis, shell, temps));
+        return wrap(shell, result) as number[];
       } finally {
         disposeAll(temps);
       }
@@ -4996,10 +5001,10 @@ export function createApi(shell: IfcOpenShell): Api {
         disposeAll(temps);
       }
     },
-    isX(value: number, x: number, tolerance: number): boolean {
+    isAlmostEqual(value: number, x: number, tolerance: number): boolean {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.isX(value, x, tolerance);
+        const result = raw.shape.isAlmostEqual(value, x, tolerance);
         return wrap(shell, result) as boolean;
       } finally {
         disposeAll(temps);

@@ -611,7 +611,7 @@ void cost_edit_cost_value(
                 ifcapi::detail::write_ref_attr(new_unit_basis, "UnitComponent", *unit_component);
             }
             if (old_unit_basis) {
-                entity_remove_deep2(&old_unit_basis);
+                entity_remove_deep(&old_unit_basis);
             }
             ifcapi::detail::write_ref_attr(cost_value, "UnitBasis", new_unit_basis);
         }

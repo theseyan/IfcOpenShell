@@ -81,7 +81,7 @@ void boundary_remove_boundary(ifcopenshell::file* file, express::Base* boundary)
         auto geometry = ifcapi::detail::read_ref_attr(*boundary, "ConnectionGeometry");
         if (geometry) {
             ifcapi::detail::write_ref_attr(*boundary, "ConnectionGeometry", {});
-            entity_remove_deep2(&geometry);
+            entity_remove_deep(&geometry);
         }
         ifcapi::detail::remove_with_history(file, *boundary);
     } catch (const std::exception& e) {

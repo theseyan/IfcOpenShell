@@ -707,7 +707,7 @@ void material_remove_constituent(
     auto constituent_value = detail::deref_or_empty(constituent);
     auto material = ifcapi::detail::read_ref_attr(constituent_value, "Material");
     file->remove_entity(constituent_value);
-    if (material && options.should_remove_material.value_or(false)) ifcapi::bindings::entity_remove_deep2(&material);
+    if (material && options.should_remove_material.value_or(false)) ifcapi::bindings::entity_remove_deep(&material);
 }
 
 void material_remove_layer(
@@ -718,7 +718,7 @@ void material_remove_layer(
     auto layer_value = detail::deref_or_empty(layer);
     auto material = ifcapi::detail::read_ref_attr(layer_value, "Material");
     file->remove_entity(layer_value);
-    if (material && options.should_remove_material.value_or(false)) ifcapi::bindings::entity_remove_deep2(&material);
+    if (material && options.should_remove_material.value_or(false)) ifcapi::bindings::entity_remove_deep(&material);
 }
 
 void material_remove_profile(
@@ -730,8 +730,8 @@ void material_remove_profile(
     auto material = ifcapi::detail::read_ref_attr(profile_value, "Material");
     auto profile_def = ifcapi::detail::read_ref_attr(profile_value, "Profile");
     file->remove_entity(profile_value);
-    if (material && options.should_remove_material.value_or(false)) ifcapi::bindings::entity_remove_deep2(&material);
-    if (profile_def && options.should_remove_profile_def.value_or(false)) ifcapi::bindings::entity_remove_deep2(&profile_def);
+    if (material && options.should_remove_material.value_or(false)) ifcapi::bindings::entity_remove_deep(&material);
+    if (profile_def && options.should_remove_profile_def.value_or(false)) ifcapi::bindings::entity_remove_deep(&profile_def);
 }
 
 void material_remove_list_item(

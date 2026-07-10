@@ -14,11 +14,11 @@
 namespace ifcapi {
 namespace bindings {
 
-IFCAPI_BINDING std::vector<double> placement_a2p(
+IFCAPI_BINDING std::vector<double> placement_matrix_from_axes(
     const std::vector<double>& origin,
     const std::vector<double>& z_axis,
     const std::vector<double>& x_axis);
-IFCAPI_BINDING std::vector<double> placement_get_axis2placement(express::Base* instance);
+IFCAPI_BINDING std::vector<double> placement_get_axis2_placement(express::Base* instance);
 IFCAPI_BINDING std::vector<double> placement_get_local_placement(
     std::optional<express::Base> instance);
 IFCAPI_BINDING std::vector<double> placement_get_cartesian_xform_3d(express::Base* instance);

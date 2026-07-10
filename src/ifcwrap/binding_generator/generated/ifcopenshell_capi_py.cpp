@@ -8458,6 +8458,56 @@ static int fill_input_element_get_shape_aspects_options(PyObject *obj, ifcopensh
 }
 
 
+static void free_input_entity_remove_deep_options(ifcopenshell_entity_remove_deep_options_t *value) {
+    if (value->also_consider) {
+        ifcopenshell_parse_instance_list_destroy(value->also_consider);
+        value->also_consider = NULL;
+    }
+    if (value->do_not_delete) {
+        ifcopenshell_parse_instance_list_destroy(value->do_not_delete);
+        value->do_not_delete = NULL;
+    }
+}
+
+static int fill_input_entity_remove_deep_options(PyObject *obj, ifcopenshell_entity_remove_deep_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "also_consider", 1);
+    if (!field_0) {
+        return 0;
+    }
+    refs[0] = field_0;
+    ifcopenshell_instance_list_t also_consider_items_0 = {0};
+    if (!make_input_instance_list(field_0, &also_consider_items_0)) {
+        return 0;
+    }
+    if (!ifcopenshell_parse_instance_list_create_from_handles(&also_consider_items_0, &out->also_consider)) {
+        free_input_instance_list(&also_consider_items_0);
+        raise_last_error("ifcopenshell_parse_instance_list_create_from_handles failed");
+        return 0;
+    }
+    free_input_instance_list(&also_consider_items_0);
+    PyObject *field_1 = get_option_field(obj, "do_not_delete", 1);
+    if (!field_1) {
+        return 0;
+    }
+    refs[1] = field_1;
+    ifcopenshell_instance_list_t do_not_delete_items_1 = {0};
+    if (!make_input_instance_list(field_1, &do_not_delete_items_1)) {
+        return 0;
+    }
+    if (!ifcopenshell_parse_instance_list_create_from_handles(&do_not_delete_items_1, &out->do_not_delete)) {
+        free_input_instance_list(&do_not_delete_items_1);
+        raise_last_error("ifcopenshell_parse_instance_list_create_from_handles failed");
+        return 0;
+    }
+    free_input_instance_list(&do_not_delete_items_1);
+    return 1;
+}
+
+
 static void free_input_feature_add_feature_options(ifcopenshell_feature_add_feature_options_t *value) {
     (void)value;
 }
@@ -20510,7 +20560,7 @@ __cleanup:
     return __py_result;
 }
 
-static PyObject *py_ifcopenshell_entity_remove_deep2(PyObject *self, PyObject *args) {
+static PyObject *py_ifcopenshell_entity_remove_deep(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
     PyObject *arg_instance_obj = NULL;
@@ -20523,13 +20573,13 @@ static PyObject *py_ifcopenshell_entity_remove_deep2(PyObject *self, PyObject *a
     }
 
     ifcopenshell_clear_error();
-    ok = ifcopenshell_entity_remove_deep2(arg_instance);
+    ok = ifcopenshell_entity_remove_deep(arg_instance);
     if (!ok) {
-        raise_last_error("ifcopenshell_entity_remove_deep2 failed");
+        raise_last_error("ifcopenshell_entity_remove_deep failed");
         goto __cleanup;
     }
     if (ifcopenshell_last_error_kind() != 0) {
-        raise_last_error("ifcopenshell_entity_remove_deep2 failed");
+        raise_last_error("ifcopenshell_entity_remove_deep failed");
         goto __cleanup;
     }
     Py_INCREF(Py_None);
@@ -20538,42 +20588,39 @@ __cleanup:
     return __py_result;
 }
 
-static PyObject *py_ifcopenshell_entity_remove_deep2_ex(PyObject *self, PyObject *args) {
+static PyObject *py_ifcopenshell_entity_remove_deep_with_options(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
     PyObject *arg_instance_obj = NULL;
     ifcopenshell_instance_t *arg_instance = NULL;
-    PyObject *arg_also_consider_obj = NULL;
-    ifcopenshell_instance_list_t arg_also_consider = {0};
-    PyObject *arg_do_not_delete_obj = NULL;
-    ifcopenshell_instance_list_t arg_do_not_delete = {0};
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_entity_remove_deep_options_t arg_options = {0};
+    PyObject *arg_options_refs[2] = {0};
 
-    if (!PyArg_ParseTuple(args, "OOO", &arg_instance_obj, &arg_also_consider_obj, &arg_do_not_delete_obj)) return NULL;
+    if (!PyArg_ParseTuple(args, "OO", &arg_instance_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_instance_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_instance, 0)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_also_consider_obj, &arg_also_consider)) {
+    if (!fill_input_entity_remove_deep_options(arg_options_obj, &arg_options, arg_options_refs)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_do_not_delete_obj, &arg_do_not_delete)) {
-        goto __cleanup;
-    }
+
     ifcopenshell_clear_error();
-    ok = ifcopenshell_entity_remove_deep2_ex(arg_instance, &arg_also_consider, &arg_do_not_delete);
+    ok = ifcopenshell_entity_remove_deep_with_options(arg_instance, &arg_options);
     if (!ok) {
-        raise_last_error("ifcopenshell_entity_remove_deep2_ex failed");
+        raise_last_error("ifcopenshell_entity_remove_deep_with_options failed");
         goto __cleanup;
     }
     if (ifcopenshell_last_error_kind() != 0) {
-        raise_last_error("ifcopenshell_entity_remove_deep2_ex failed");
+        raise_last_error("ifcopenshell_entity_remove_deep_with_options failed");
         goto __cleanup;
     }
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        free_input_instance_list(&arg_do_not_delete);
-        free_input_instance_list(&arg_also_consider);
+        release_option_refs(arg_options_refs, 2);
+        free_input_entity_remove_deep_options(&arg_options);
     return __py_result;
 }
 
@@ -34361,7 +34408,7 @@ __cleanup:
     return __py_result;
 }
 
-static PyObject *py_ifcopenshell_guid_new(PyObject *self, PyObject *args) {
+static PyObject *py_ifcopenshell_guid_generate(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
 
@@ -34371,9 +34418,9 @@ static PyObject *py_ifcopenshell_guid_new(PyObject *self, PyObject *args) {
 
 
     ifcopenshell_clear_error();
-    ok = ifcopenshell_guid_new(&result);
+    ok = ifcopenshell_guid_generate(&result);
     if (!ok) {
-        raise_last_error("ifcopenshell_guid_new failed");
+        raise_last_error("ifcopenshell_guid_generate failed");
         goto __cleanup;
     }
     __py_result = convert_string(&result);
@@ -39230,43 +39277,7 @@ __cleanup:
     return __py_result;
 }
 
-static PyObject *py_ifcopenshell_placement_a2p(PyObject *self, PyObject *args) {
-    PyObject *__py_result = NULL;
-    bool ok = false;
-    PyObject *arg_origin_obj = NULL;
-    ifcopenshell_double_list_t arg_origin = {0};
-    PyObject *arg_z_axis_obj = NULL;
-    ifcopenshell_double_list_t arg_z_axis = {0};
-    PyObject *arg_x_axis_obj = NULL;
-    ifcopenshell_double_list_t arg_x_axis = {0};
-    ifcopenshell_double_list_t result = {0};
-    if (!PyArg_ParseTuple(args, "OOO", &arg_origin_obj, &arg_z_axis_obj, &arg_x_axis_obj)) return NULL;
-
-
-    if (!make_input_double_list(arg_origin_obj, &arg_origin)) {
-        goto __cleanup;
-    }
-    if (!make_input_double_list(arg_z_axis_obj, &arg_z_axis)) {
-        goto __cleanup;
-    }
-    if (!make_input_double_list(arg_x_axis_obj, &arg_x_axis)) {
-        goto __cleanup;
-    }
-    ifcopenshell_clear_error();
-    ok = ifcopenshell_placement_a2p(&arg_origin, &arg_z_axis, &arg_x_axis, &result);
-    if (!ok) {
-        raise_last_error("ifcopenshell_placement_a2p failed");
-        goto __cleanup;
-    }
-    __py_result = convert_double_list(&result, 1);
-__cleanup:
-        free_input_double_list(&arg_x_axis);
-        free_input_double_list(&arg_z_axis);
-        free_input_double_list(&arg_origin);
-    return __py_result;
-}
-
-static PyObject *py_ifcopenshell_placement_get_axis2placement(PyObject *self, PyObject *args) {
+static PyObject *py_ifcopenshell_placement_get_axis2_placement(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
     PyObject *arg_instance_obj = NULL;
@@ -39279,9 +39290,9 @@ static PyObject *py_ifcopenshell_placement_get_axis2placement(PyObject *self, Py
     }
 
     ifcopenshell_clear_error();
-    ok = ifcopenshell_placement_get_axis2placement(arg_instance, &result);
+    ok = ifcopenshell_placement_get_axis2_placement(arg_instance, &result);
     if (!ok) {
-        raise_last_error("ifcopenshell_placement_get_axis2placement failed");
+        raise_last_error("ifcopenshell_placement_get_axis2_placement failed");
         goto __cleanup;
     }
     __py_result = convert_double_list(&result, 1);
@@ -39378,6 +39389,42 @@ static PyObject *py_ifcopenshell_placement_get_storey_elevation(PyObject *self, 
     }
     __py_result = PyFloat_FromDouble(result);
 __cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_placement_matrix_from_axes(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_origin_obj = NULL;
+    ifcopenshell_double_list_t arg_origin = {0};
+    PyObject *arg_z_axis_obj = NULL;
+    ifcopenshell_double_list_t arg_z_axis = {0};
+    PyObject *arg_x_axis_obj = NULL;
+    ifcopenshell_double_list_t arg_x_axis = {0};
+    ifcopenshell_double_list_t result = {0};
+    if (!PyArg_ParseTuple(args, "OOO", &arg_origin_obj, &arg_z_axis_obj, &arg_x_axis_obj)) return NULL;
+
+
+    if (!make_input_double_list(arg_origin_obj, &arg_origin)) {
+        goto __cleanup;
+    }
+    if (!make_input_double_list(arg_z_axis_obj, &arg_z_axis)) {
+        goto __cleanup;
+    }
+    if (!make_input_double_list(arg_x_axis_obj, &arg_x_axis)) {
+        goto __cleanup;
+    }
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_placement_matrix_from_axes(&arg_origin, &arg_z_axis, &arg_x_axis, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_placement_matrix_from_axes failed");
+        goto __cleanup;
+    }
+    __py_result = convert_double_list(&result, 1);
+__cleanup:
+        free_input_double_list(&arg_x_axis);
+        free_input_double_list(&arg_z_axis);
+        free_input_double_list(&arg_origin);
     return __py_result;
 }
 
@@ -44955,7 +45002,7 @@ __cleanup:
     return __py_result;
 }
 
-static PyObject *py_ifcopenshell_shape_is_x(PyObject *self, PyObject *args) {
+static PyObject *py_ifcopenshell_shape_is_almost_equal(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
     double arg_value = 0;
@@ -44967,9 +45014,9 @@ static PyObject *py_ifcopenshell_shape_is_x(PyObject *self, PyObject *args) {
 
 
     ifcopenshell_clear_error();
-    ok = ifcopenshell_shape_is_x(arg_value, arg_x, arg_tolerance, &result);
+    ok = ifcopenshell_shape_is_almost_equal(arg_value, arg_x, arg_tolerance, &result);
     if (!ok) {
-        raise_last_error("ifcopenshell_shape_is_x failed");
+        raise_last_error("ifcopenshell_shape_is_almost_equal failed");
         goto __cleanup;
     }
     __py_result = PyBool_FromLong(result);
@@ -48377,8 +48424,8 @@ static PyMethodDef module_methods[] = {
     {"entity_derived", py_ifcopenshell_entity_derived, METH_VARARGS, "Wrap ifcopenshell_entity_derived"},
     {"entity_inverse_attributes", py_ifcopenshell_entity_inverse_attributes, METH_VARARGS, "Wrap ifcopenshell_entity_inverse_attributes"},
     {"entity_is_abstract", py_ifcopenshell_entity_is_abstract, METH_VARARGS, "Wrap ifcopenshell_entity_is_abstract"},
-    {"entity_remove_deep2", py_ifcopenshell_entity_remove_deep2, METH_VARARGS, "Wrap ifcopenshell_entity_remove_deep2"},
-    {"entity_remove_deep2_ex", py_ifcopenshell_entity_remove_deep2_ex, METH_VARARGS, "Wrap ifcopenshell_entity_remove_deep2_ex"},
+    {"entity_remove_deep", py_ifcopenshell_entity_remove_deep, METH_VARARGS, "Wrap ifcopenshell_entity_remove_deep"},
+    {"entity_remove_deep_with_options", py_ifcopenshell_entity_remove_deep_with_options, METH_VARARGS, "Wrap ifcopenshell_entity_remove_deep_with_options"},
     {"entity_set_attributes", py_ifcopenshell_entity_set_attributes, METH_VARARGS, "Wrap ifcopenshell_entity_set_attributes"},
     {"entity_set_inverse_attributes", py_ifcopenshell_entity_set_inverse_attributes, METH_VARARGS, "Wrap ifcopenshell_entity_set_inverse_attributes"},
     {"entity_set_subtypes", py_ifcopenshell_entity_set_subtypes, METH_VARARGS, "Wrap ifcopenshell_entity_set_subtypes"},
@@ -48884,7 +48931,7 @@ static PyMethodDef module_methods[] = {
     {"group_update_group_products", py_ifcopenshell_group_update_group_products, METH_VARARGS, "Wrap ifcopenshell_group_update_group_products"},
     {"guid_compress", py_ifcopenshell_guid_compress, METH_VARARGS, "Wrap ifcopenshell_guid_compress"},
     {"guid_expand", py_ifcopenshell_guid_expand, METH_VARARGS, "Wrap ifcopenshell_guid_expand"},
-    {"guid_new", py_ifcopenshell_guid_new, METH_VARARGS, "Wrap ifcopenshell_guid_new"},
+    {"guid_generate", py_ifcopenshell_guid_generate, METH_VARARGS, "Wrap ifcopenshell_guid_generate"},
     {"header_file", py_ifcopenshell_header_file, METH_VARARGS, "Wrap ifcopenshell_header_file"},
     {"header_file_description", py_ifcopenshell_header_file_description, METH_VARARGS, "Wrap ifcopenshell_header_file_description"},
     {"header_file_name", py_ifcopenshell_header_file_name, METH_VARARGS, "Wrap ifcopenshell_header_file_name"},
@@ -49056,12 +49103,12 @@ static PyMethodDef module_methods[] = {
     {"unescape_xml", py_ifcopenshell_parse_unescape_xml, METH_VARARGS, "Wrap ifcopenshell_parse_unescape_xml"},
     {"valid_binary_string", py_ifcopenshell_parse_valid_binary_string, METH_VARARGS, "Wrap ifcopenshell_parse_valid_binary_string"},
     {"version", py_ifcopenshell_parse_version, METH_VARARGS, "Wrap ifcopenshell_parse_version"},
-    {"placement_a2p", py_ifcopenshell_placement_a2p, METH_VARARGS, "Wrap ifcopenshell_placement_a2p"},
-    {"placement_get_axis2placement", py_ifcopenshell_placement_get_axis2placement, METH_VARARGS, "Wrap ifcopenshell_placement_get_axis2placement"},
+    {"placement_get_axis2_placement", py_ifcopenshell_placement_get_axis2_placement, METH_VARARGS, "Wrap ifcopenshell_placement_get_axis2_placement"},
     {"placement_get_cartesian_xform_3d", py_ifcopenshell_placement_get_cartesian_xform_3d, METH_VARARGS, "Wrap ifcopenshell_placement_get_cartesian_xform_3d"},
     {"placement_get_local_placement", py_ifcopenshell_placement_get_local_placement, METH_VARARGS, "Wrap ifcopenshell_placement_get_local_placement"},
     {"placement_get_mappeditem_xform", py_ifcopenshell_placement_get_mappeditem_xform, METH_VARARGS, "Wrap ifcopenshell_placement_get_mappeditem_xform"},
     {"placement_get_storey_elevation", py_ifcopenshell_placement_get_storey_elevation, METH_VARARGS, "Wrap ifcopenshell_placement_get_storey_elevation"},
+    {"placement_matrix_from_axes", py_ifcopenshell_placement_matrix_from_axes, METH_VARARGS, "Wrap ifcopenshell_placement_matrix_from_axes"},
     {"placement_rotation", py_ifcopenshell_placement_rotation, METH_VARARGS, "Wrap ifcopenshell_placement_rotation"},
     {"profile_add_arbitrary_profile", py_ifcopenshell_profile_add_arbitrary_profile, METH_VARARGS, "Wrap ifcopenshell_profile_add_arbitrary_profile"},
     {"profile_add_arbitrary_profile_with_voids", py_ifcopenshell_profile_add_arbitrary_profile_with_voids, METH_VARARGS, "Wrap ifcopenshell_profile_add_arbitrary_profile_with_voids"},
@@ -49223,7 +49270,7 @@ static PyMethodDef module_methods[] = {
     {"shape_builder_translate", py_ifcopenshell_shape_builder_translate, METH_VARARGS, "Wrap ifcopenshell_shape_builder_translate"},
     {"shape_builder_triangulated_face_set", py_ifcopenshell_shape_builder_triangulated_face_set, METH_VARARGS, "Wrap ifcopenshell_shape_builder_triangulated_face_set"},
     {"shape_builder_vertex", py_ifcopenshell_shape_builder_vertex, METH_VARARGS, "Wrap ifcopenshell_shape_builder_vertex"},
-    {"shape_is_x", py_ifcopenshell_shape_is_x, METH_VARARGS, "Wrap ifcopenshell_shape_is_x"},
+    {"shape_is_almost_equal", py_ifcopenshell_shape_is_almost_equal, METH_VARARGS, "Wrap ifcopenshell_shape_is_almost_equal"},
     {"simple_type_as_simple_type", py_ifcopenshell_simple_type_as_simple_type, METH_VARARGS, "Wrap ifcopenshell_simple_type_as_simple_type"},
     {"simple_type_declared_type", py_ifcopenshell_simple_type_declared_type, METH_VARARGS, "Wrap ifcopenshell_simple_type_declared_type"},
     {"simple_type_kind", py_ifcopenshell_simple_type_kind, METH_VARARGS, "Wrap ifcopenshell_simple_type_kind"},
@@ -49446,8 +49493,8 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_entity_derived", py_ifcopenshell_entity_derived, METH_VARARGS, "Wrap ifcopenshell_entity_derived"},
     {"ifcopenshell_entity_inverse_attributes", py_ifcopenshell_entity_inverse_attributes, METH_VARARGS, "Wrap ifcopenshell_entity_inverse_attributes"},
     {"ifcopenshell_entity_is_abstract", py_ifcopenshell_entity_is_abstract, METH_VARARGS, "Wrap ifcopenshell_entity_is_abstract"},
-    {"ifcopenshell_entity_remove_deep2", py_ifcopenshell_entity_remove_deep2, METH_VARARGS, "Wrap ifcopenshell_entity_remove_deep2"},
-    {"ifcopenshell_entity_remove_deep2_ex", py_ifcopenshell_entity_remove_deep2_ex, METH_VARARGS, "Wrap ifcopenshell_entity_remove_deep2_ex"},
+    {"ifcopenshell_entity_remove_deep", py_ifcopenshell_entity_remove_deep, METH_VARARGS, "Wrap ifcopenshell_entity_remove_deep"},
+    {"ifcopenshell_entity_remove_deep_with_options", py_ifcopenshell_entity_remove_deep_with_options, METH_VARARGS, "Wrap ifcopenshell_entity_remove_deep_with_options"},
     {"ifcopenshell_entity_set_attributes", py_ifcopenshell_entity_set_attributes, METH_VARARGS, "Wrap ifcopenshell_entity_set_attributes"},
     {"ifcopenshell_entity_set_inverse_attributes", py_ifcopenshell_entity_set_inverse_attributes, METH_VARARGS, "Wrap ifcopenshell_entity_set_inverse_attributes"},
     {"ifcopenshell_entity_set_subtypes", py_ifcopenshell_entity_set_subtypes, METH_VARARGS, "Wrap ifcopenshell_entity_set_subtypes"},
@@ -49953,7 +50000,7 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_group_update_group_products", py_ifcopenshell_group_update_group_products, METH_VARARGS, "Wrap ifcopenshell_group_update_group_products"},
     {"ifcopenshell_guid_compress", py_ifcopenshell_guid_compress, METH_VARARGS, "Wrap ifcopenshell_guid_compress"},
     {"ifcopenshell_guid_expand", py_ifcopenshell_guid_expand, METH_VARARGS, "Wrap ifcopenshell_guid_expand"},
-    {"ifcopenshell_guid_new", py_ifcopenshell_guid_new, METH_VARARGS, "Wrap ifcopenshell_guid_new"},
+    {"ifcopenshell_guid_generate", py_ifcopenshell_guid_generate, METH_VARARGS, "Wrap ifcopenshell_guid_generate"},
     {"ifcopenshell_header_file", py_ifcopenshell_header_file, METH_VARARGS, "Wrap ifcopenshell_header_file"},
     {"ifcopenshell_header_file_description", py_ifcopenshell_header_file_description, METH_VARARGS, "Wrap ifcopenshell_header_file_description"},
     {"ifcopenshell_header_file_name", py_ifcopenshell_header_file_name, METH_VARARGS, "Wrap ifcopenshell_header_file_name"},
@@ -50125,12 +50172,12 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_parse_unescape_xml", py_ifcopenshell_parse_unescape_xml, METH_VARARGS, "Wrap ifcopenshell_parse_unescape_xml"},
     {"ifcopenshell_parse_valid_binary_string", py_ifcopenshell_parse_valid_binary_string, METH_VARARGS, "Wrap ifcopenshell_parse_valid_binary_string"},
     {"ifcopenshell_parse_version", py_ifcopenshell_parse_version, METH_VARARGS, "Wrap ifcopenshell_parse_version"},
-    {"ifcopenshell_placement_a2p", py_ifcopenshell_placement_a2p, METH_VARARGS, "Wrap ifcopenshell_placement_a2p"},
-    {"ifcopenshell_placement_get_axis2placement", py_ifcopenshell_placement_get_axis2placement, METH_VARARGS, "Wrap ifcopenshell_placement_get_axis2placement"},
+    {"ifcopenshell_placement_get_axis2_placement", py_ifcopenshell_placement_get_axis2_placement, METH_VARARGS, "Wrap ifcopenshell_placement_get_axis2_placement"},
     {"ifcopenshell_placement_get_cartesian_xform_3d", py_ifcopenshell_placement_get_cartesian_xform_3d, METH_VARARGS, "Wrap ifcopenshell_placement_get_cartesian_xform_3d"},
     {"ifcopenshell_placement_get_local_placement", py_ifcopenshell_placement_get_local_placement, METH_VARARGS, "Wrap ifcopenshell_placement_get_local_placement"},
     {"ifcopenshell_placement_get_mappeditem_xform", py_ifcopenshell_placement_get_mappeditem_xform, METH_VARARGS, "Wrap ifcopenshell_placement_get_mappeditem_xform"},
     {"ifcopenshell_placement_get_storey_elevation", py_ifcopenshell_placement_get_storey_elevation, METH_VARARGS, "Wrap ifcopenshell_placement_get_storey_elevation"},
+    {"ifcopenshell_placement_matrix_from_axes", py_ifcopenshell_placement_matrix_from_axes, METH_VARARGS, "Wrap ifcopenshell_placement_matrix_from_axes"},
     {"ifcopenshell_placement_rotation", py_ifcopenshell_placement_rotation, METH_VARARGS, "Wrap ifcopenshell_placement_rotation"},
     {"ifcopenshell_profile_add_arbitrary_profile", py_ifcopenshell_profile_add_arbitrary_profile, METH_VARARGS, "Wrap ifcopenshell_profile_add_arbitrary_profile"},
     {"ifcopenshell_profile_add_arbitrary_profile_with_voids", py_ifcopenshell_profile_add_arbitrary_profile_with_voids, METH_VARARGS, "Wrap ifcopenshell_profile_add_arbitrary_profile_with_voids"},
@@ -50292,7 +50339,7 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_shape_builder_translate", py_ifcopenshell_shape_builder_translate, METH_VARARGS, "Wrap ifcopenshell_shape_builder_translate"},
     {"ifcopenshell_shape_builder_triangulated_face_set", py_ifcopenshell_shape_builder_triangulated_face_set, METH_VARARGS, "Wrap ifcopenshell_shape_builder_triangulated_face_set"},
     {"ifcopenshell_shape_builder_vertex", py_ifcopenshell_shape_builder_vertex, METH_VARARGS, "Wrap ifcopenshell_shape_builder_vertex"},
-    {"ifcopenshell_shape_is_x", py_ifcopenshell_shape_is_x, METH_VARARGS, "Wrap ifcopenshell_shape_is_x"},
+    {"ifcopenshell_shape_is_almost_equal", py_ifcopenshell_shape_is_almost_equal, METH_VARARGS, "Wrap ifcopenshell_shape_is_almost_equal"},
     {"ifcopenshell_simple_type_as_simple_type", py_ifcopenshell_simple_type_as_simple_type, METH_VARARGS, "Wrap ifcopenshell_simple_type_as_simple_type"},
     {"ifcopenshell_simple_type_declared_type", py_ifcopenshell_simple_type_declared_type, METH_VARARGS, "Wrap ifcopenshell_simple_type_declared_type"},
     {"ifcopenshell_simple_type_kind", py_ifcopenshell_simple_type_kind, METH_VARARGS, "Wrap ifcopenshell_simple_type_kind"},

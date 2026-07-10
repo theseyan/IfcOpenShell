@@ -55,15 +55,16 @@ bool contains_ref(const std::vector<express::Base>& values, const express::Base&
 
 } // namespace
 
-void entity_remove_deep2(express::Base* instance) {
-    entity_remove_deep2_ex(instance, {}, {});
+void entity_remove_deep(express::Base* instance) {
+    entity_remove_deep_with_options(instance, EntityRemoveDeepOptions{});
 }
 
-void entity_remove_deep2_ex(
+void entity_remove_deep_with_options(
     express::Base* instance,
-    const std::vector<express::Base>& also_consider,
-    const std::vector<express::Base>& do_not_delete)
+    const EntityRemoveDeepOptions& options)
 {
+    const auto& also_consider = options.also_consider;
+    const auto& do_not_delete = options.do_not_delete;
     if (!instance || !*instance) {
         return;
     }

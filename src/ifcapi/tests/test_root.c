@@ -23,8 +23,8 @@ static void test_guid(void) {
 
     /* Generate a new GUID */
     ifcopenshell_string_t guid = {0};
-    ASSERT(ifcopenshell_guid_new(&guid), "guid_new succeeds");
-    ASSERT(guid.data != NULL, "guid_new returns non-NULL");
+    ASSERT(ifcopenshell_guid_generate(&guid), "guid_generate succeeds");
+    ASSERT(guid.data != NULL, "guid_generate returns non-NULL");
     ASSERT(guid.size == 22, "GUID is 22 chars");
     printf("  Generated GUID: %s\n", guid.data);
 

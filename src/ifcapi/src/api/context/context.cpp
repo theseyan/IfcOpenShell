@@ -89,7 +89,7 @@ void remove_context_impl(ifcopenshell::file* file, express::Base context) {
                     inverse,
                     "SourceCRS",
                     ifcapi::detail::read_ref_attr(inverse, "TargetCRS"));
-                ifcapi::bindings::entity_remove_deep2(&inverse);
+                ifcapi::bindings::entity_remove_deep(&inverse);
             } else {
                 ifcapi::detail::replace_attribute_reference(inverse, context, parent);
             }

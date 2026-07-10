@@ -210,6 +210,19 @@ def test_ifcapi_contract_discovery_uses_marked_public_headers() -> None:
     assert "element_get_type" in marked_names
     assert "value_new_string" in marked_names
 
+    assert "entity_remove_deep" in marked_names
+    assert "entity_remove_deep_with_options" in marked_names
+    assert "entity_remove_deep2" not in marked_names
+    assert "entity_remove_deep2_ex" not in marked_names
+
+    assert "placement_matrix_from_axes" in marked_names
+    assert "placement_get_axis2_placement" in marked_names
+    assert "placement_a2p" not in marked_names
+    assert "placement_get_axis2placement" not in marked_names
+
+    assert "shape_is_almost_equal" in marked_names
+    assert "shape_is_x" not in marked_names
+
 
 def test_parse_c_functions_handles_exported_multiline_declarations(tmp_path: Path) -> None:
     header = tmp_path / "api.h"

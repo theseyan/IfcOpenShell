@@ -173,7 +173,7 @@ describeGeneratedOrSkip('direct api modules', () => {
   });
 
   it('compares floating-point values with tolerance', () => {
-    expect(shell.api.shape.isX(1.0000001, 1, 0.001)).toBe(true);
-    expect(shell.api.shape.isX(1.5, 1, 0.001)).toBe(false);
+    expect(shell.api.shape.isAlmostEqual(1.0000001, 1, 0.001)).toBe(true);
+    expect(shell.api.shape.isAlmostEqual(1.5, 1, 0.001)).toBe(false);
   });
 });

@@ -1317,7 +1317,7 @@ struct WallRegenerator {
             ifcapi::bindings::ShapeBuilderRepresentationOptions{body, {item}, {}});
         if (auto old_rep = ifcapi::bindings::representation_get_product_representation(&wall, {body, {}, {}, {}})) {
             ifcapi::bindings::element_replace_element(&old_rep, &body_rep);
-            ifcapi::bindings::entity_remove_deep2(&old_rep);
+            ifcapi::bindings::entity_remove_deep(&old_rep);
         } else {
             ifcapi::bindings::geometry_assign_representation(file, &wall, &body_rep);
         }
@@ -1334,7 +1334,7 @@ struct WallRegenerator {
             ifcapi::bindings::ShapeBuilderRepresentationOptions{axis, {axis_curve}, {}});
         if (auto old_rep = ifcapi::bindings::representation_get_product_representation(&wall, {axis, {}, {}, {}})) {
             ifcapi::bindings::element_replace_element(&old_rep, &axis_rep);
-            ifcapi::bindings::entity_remove_deep2(&old_rep);
+            ifcapi::bindings::entity_remove_deep(&old_rep);
         } else {
             ifcapi::bindings::geometry_assign_representation(file, &wall, &axis_rep);
         }
@@ -3001,7 +3001,7 @@ void unassign_type_representation(ifcopenshell::file* file,
     auto placeholder = file->create(sr_decl);
     write_ref(matching, "MappedRepresentation", placeholder);
 
-    ifcapi::bindings::entity_remove_deep2(&matching);
+    ifcapi::bindings::entity_remove_deep(&matching);
 }
 
 // ---- profile extents (axis-aligned 2D bbox of an IfcProfileDef) ---------
@@ -3196,16 +3196,16 @@ void geometry_remove_representation(
     ifcapi::detail::append_unique(also_consider, styled_items);
     ifcapi::detail::append_unique(also_consider, textures);
 
-    entity_remove_deep2_ex(
+    entity_remove_deep_with_options(
         &representation,
-        ifcapi::detail::to_const_refs(also_consider),
-        ifcapi::detail::to_const_refs(do_not_delete));
+        {ifcapi::detail::to_const_refs(also_consider),
+         ifcapi::detail::to_const_refs(do_not_delete)});
 
     for (auto texture : textures) {
-        entity_remove_deep2(&texture);
+        entity_remove_deep(&texture);
     }
     for (auto colour : colours) {
-        entity_remove_deep2(&colour);
+        entity_remove_deep(&colour);
     }
 
     for (auto styled_item : styled_items) {

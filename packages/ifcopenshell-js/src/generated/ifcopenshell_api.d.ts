@@ -228,6 +228,11 @@ declare module 'ifcopenshell-api' {
     should_inherit?: boolean;
   }
 
+  export interface IfcOpenshellEntityRemoveDeepOptions {
+    also_consider: IfcOpenshellParseInstanceList;
+    do_not_delete: IfcOpenshellParseInstanceList;
+  }
+
   export interface IfcOpenshellFeatureAddFeatureOptions {
     feature: IfcOpenshellInstance;
     element: IfcOpenshellInstance;
@@ -2160,8 +2165,8 @@ declare module 'ifcopenshell-api' {
   }
 
   export interface IfcOpenshellEntityModule {
-    removeDeep2(instance: IfcOpenshellInstance): void;
-    removeDeep2Ex(instance: IfcOpenshellInstance, also_consider: IfcOpenshellInstance[], do_not_delete: IfcOpenshellInstance[]): void;
+    removeDeep(instance: IfcOpenshellInstance): void;
+    removeDeepWithOptions(instance: IfcOpenshellInstance, options: IfcOpenshellEntityRemoveDeepOptions): void;
   }
 
   export interface IfcOpenshellFeatureModule {
@@ -2288,7 +2293,7 @@ declare module 'ifcopenshell-api' {
   export interface IfcOpenshellGuidModule {
     compress(uuid_hex: string): string;
     expand(guid: string): string;
-    new(): string;
+    generate(): string;
   }
 
   export interface IfcOpenshellLayerModule {
@@ -2400,12 +2405,12 @@ declare module 'ifcopenshell-api' {
   }
 
   export interface IfcOpenshellPlacementModule {
-    a2p(origin: number[], z_axis: number[], x_axis: number[]): number[];
-    getAxis2placement(instance: IfcOpenshellInstance): number[];
+    getAxis2Placement(instance: IfcOpenshellInstance): number[];
     getCartesianXform3d(instance: IfcOpenshellInstance): number[];
     getLocalPlacement(instance: IfcOpenshellInstance | null): number[];
     getMappeditemXform(instance: IfcOpenshellInstance): number[];
     getStoreyElevation(instance: IfcOpenshellInstance): number;
+    matrixFromAxes(origin: number[], z_axis: number[], x_axis: number[]): number[];
     rotation(angle_rad: number, axis: string): number[];
   }
 
@@ -2610,7 +2615,7 @@ declare module 'ifcopenshell-api' {
     builderTranslate(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderTranslateOptions): IfcOpenshellInstance;
     builderTriangulatedFaceSet(file: IfcOpenshellFile, points: number[][], faces: number[][]): IfcOpenshellInstance;
     builderVertex(file: IfcOpenshellFile, position: number[]): IfcOpenshellInstance;
-    isX(value: number, x: number, tolerance: number): boolean;
+    isAlmostEqual(value: number, x: number, tolerance: number): boolean;
   }
 
   export interface IfcOpenshellSpatialModule {
