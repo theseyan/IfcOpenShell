@@ -672,7 +672,7 @@ def _render_option_field_assignment(
                 f"    {indent}if (!out->{field.name}) return 0;",
             ]
         )
-    elif field.type.kind in {"bool", "logical"}:
+    elif field.type.kind == "bool":
         lines.extend(
             [
                 f"    {indent}int value_{field_index} = PyObject_IsTrue({field_ref});",

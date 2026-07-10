@@ -155,11 +155,6 @@ std::string value_to_json_string(const T& value, bool include_identifier) {
         return value ? json_quote(value) : "null";
     } else if constexpr (std::is_same_v<T, bool>) {
         return value ? "true" : "false";
-    } else if constexpr (std::is_same_v<T, boost::logic::tribool>) {
-        if (boost::logic::indeterminate(value)) {
-            return "null";
-        }
-        return value ? "true" : "false";
     } else if constexpr (std::is_integral_v<T> || std::is_floating_point_v<T>) {
         std::ostringstream out;
         out << value;
@@ -7752,7 +7747,7 @@ bool ifcopenshell_layer_add_layer(ifcopenshell_file_t* file, const char* name, i
     }
 }
 
-bool ifcopenshell_layer_add_layer_with_style(ifcopenshell_file_t* file, const char* name, ifcopenshell_logical_t on, ifcopenshell_logical_t frozen, ifcopenshell_logical_t blocked, const ifcopenshell_instance_list_t* styles, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_layer_add_layer_with_style(ifcopenshell_file_t* file, const char* name, const ifcopenshell_layer_add_layer_with_style_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -7760,39 +7755,20 @@ bool ifcopenshell_layer_add_layer_with_style(ifcopenshell_file_t* file, const ch
     auto file_cpp = file->ptr;
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
-    boost::logic::tribool on_cpp;
-    if (on == IFCOPENSHELL_LOGICAL_FALSE) {
-        on_cpp = false;
-    } else if (on == IFCOPENSHELL_LOGICAL_TRUE) {
-        on_cpp = true;
-    } else if (on == IFCOPENSHELL_LOGICAL_UNKNOWN) {
-        on_cpp = boost::logic::indeterminate;
-    } else {
-        throw std::runtime_error("Logical parameter \"on\" must be -1, 0, or 1");
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::LayerAddLayerWithStyleOptions options_cpp{};
+    if (options->has_on) {
+        options_cpp.on = options->on;
     }
-    boost::logic::tribool frozen_cpp;
-    if (frozen == IFCOPENSHELL_LOGICAL_FALSE) {
-        frozen_cpp = false;
-    } else if (frozen == IFCOPENSHELL_LOGICAL_TRUE) {
-        frozen_cpp = true;
-    } else if (frozen == IFCOPENSHELL_LOGICAL_UNKNOWN) {
-        frozen_cpp = boost::logic::indeterminate;
-    } else {
-        throw std::runtime_error("Logical parameter \"frozen\" must be -1, 0, or 1");
+    if (options->has_frozen) {
+        options_cpp.frozen = options->frozen;
     }
-    boost::logic::tribool blocked_cpp;
-    if (blocked == IFCOPENSHELL_LOGICAL_FALSE) {
-        blocked_cpp = false;
-    } else if (blocked == IFCOPENSHELL_LOGICAL_TRUE) {
-        blocked_cpp = true;
-    } else if (blocked == IFCOPENSHELL_LOGICAL_UNKNOWN) {
-        blocked_cpp = boost::logic::indeterminate;
-    } else {
-        throw std::runtime_error("Logical parameter \"blocked\" must be -1, 0, or 1");
+    if (options->has_blocked) {
+        options_cpp.blocked = options->blocked;
     }
-    if (styles == nullptr) { throw std::runtime_error("Parameter \"styles\" must not be null"); }
-    auto styles_cpp = to_cpp_instance_list(styles);
-        auto result_value = ifcapi::bindings::layer_add_layer_with_style(file_cpp, name_cpp, on_cpp, frozen_cpp, blocked_cpp, styles_cpp);
+    if (options->styles == nullptr) { throw std::runtime_error("Options field \"styles\" must not be null"); }
+    options_cpp.styles = options->styles->value;
+        auto result_value = ifcapi::bindings::layer_add_layer_with_style(file_cpp, name_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {

@@ -125,7 +125,7 @@ def _ts_type(type_spec: TypeSpec, metadata: HostBindingMetadata) -> str:
         for _ in range(type_spec.sequence_depth):
             inner = f"{inner}[]"
         return inner
-    if type_spec.kind in {"bool", "logical"}:
+    if type_spec.kind == "bool":
         result = "boolean"
     elif type_spec.kind in {"double", "int32", "uint32", "size", "uint8", "opaque_ptr"}:
         result = "number"

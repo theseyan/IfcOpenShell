@@ -979,6 +979,13 @@ export interface IfcOpenShellGroupUpdateGroupProductsOptions {
   application?: Entity;
 }
 
+export interface IfcOpenShellLayerAddLayerWithStyleOptions {
+  on?: boolean;
+  frozen?: boolean;
+  blocked?: boolean;
+  styles: Entity[];
+}
+
 export interface IfcOpenShellLibraryAssignReferenceOptions {
   products: Entity[];
   reference: Entity;
@@ -1806,7 +1813,7 @@ export interface GuidApi {
 }
 export interface LayerApi {
     addLayer(file: IfcFile, name: string): Entity;
-    addLayerWithStyle(file: IfcFile, name: string, on: boolean, frozen: boolean, blocked: boolean, styles: Entity[]): Entity;
+    addLayerWithStyle(file: IfcFile, name: string, options: IfcOpenShellLayerAddLayerWithStyleOptions): Entity;
     assignLayer(file: IfcFile, items: Entity[], layer: Entity): void;
     removeLayer(file: IfcFile, layer: Entity): void;
     unassignLayer(file: IfcFile, items: Entity[], layer: Entity): void;
@@ -3466,10 +3473,10 @@ export function createApi(shell: IfcOpenShell): Api {
         disposeAll(temps);
       }
     },
-    addLayerWithStyle(file: IfcFile, name: string, on: boolean, frozen: boolean, blocked: boolean, styles: Entity[]): Entity {
+    addLayerWithStyle(file: IfcFile, name: string, options: IfcOpenShellLayerAddLayerWithStyleOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.layer.addLayerWithStyle(file.raw, name, on, frozen, blocked, toRaw(styles, shell, temps));
+        const result = raw.layer.addLayerWithStyle(file.raw, name, encodeOptions(options, {"blocked": "blocked", "frozen": "frozen", "on": "on", "styles": "styles"}, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);

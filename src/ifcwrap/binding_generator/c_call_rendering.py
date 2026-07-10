@@ -364,19 +364,6 @@ def _render_param_prelude(param: ParamSpec, spec: BindingIR) -> str:
             f'{_null_check(param.name, "Parameter")}\n'
             f"    auto {param.name}_cpp = {to_cpp}({param.name});"
         )
-    if kind == "logical":
-        return (
-            f"    boost::logic::tribool {param.name}_cpp;\n"
-            f"    if ({param.name} == IFCOPENSHELL_LOGICAL_FALSE) {{\n"
-            f"        {param.name}_cpp = false;\n"
-            f"    }} else if ({param.name} == IFCOPENSHELL_LOGICAL_TRUE) {{\n"
-            f"        {param.name}_cpp = true;\n"
-            f"    }} else if ({param.name} == IFCOPENSHELL_LOGICAL_UNKNOWN) {{\n"
-            f"        {param.name}_cpp = boost::logic::indeterminate;\n"
-            f"    }} else {{\n"
-            f"        throw std::runtime_error(\"Logical parameter \\\"{param.name}\\\" must be -1, 0, or 1\");\n"
-            f"    }}"
-        )
     if kind in _SCALAR_TYPE_MAP and type_spec.cpp_type is not None:
         if type_spec.nullable and _is_optional_cpp_type(type_spec):
             raise ValueError(

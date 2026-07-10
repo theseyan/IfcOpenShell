@@ -8,22 +8,20 @@
 #include "ifcparse/schema.h"
 
 #include <algorithm>
-#include <boost/logic/tribool.hpp>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 namespace {
 
-void write_logical_attr(express::Base entity, const char* attr, boost::logic::tribool value) {
+void write_logical_attr(express::Base entity, const char* attr, std::optional<bool> value) {
     int idx = ifcapi::detail::attr_index_of(entity, attr);
     if (idx >= 0) {
-        if (boost::logic::indeterminate(value)) {
+        if (!value.has_value()) {
             entity.set_attribute_value(static_cast<size_t>(idx), std::string("UNKNOWN"));
-        } else if (value) {
-            entity.set_attribute_value(static_cast<size_t>(idx), true);
         } else {
-            entity.set_attribute_value(static_cast<size_t>(idx), false);
+            entity.set_attribute_value(static_cast<size_t>(idx), *value);
         }
     }
 }
@@ -64,18 +62,15 @@ express::Base layer_add_layer(
 express::Base layer_add_layer_with_style(
     ifcopenshell::file* file,
     const std::string& name,
-    boost::logic::tribool on,
-    boost::logic::tribool frozen,
-    boost::logic::tribool blocked,
-    const std::vector<express::Base>& styles)
+    const LayerAddLayerWithStyleOptions& options)
 {
     const auto* declaration = file->schema()->declaration_by_name("IfcPresentationLayerWithStyle");
     auto result = file->create(declaration);
     detail::write_string_attr(result, "Name", name);
-    write_logical_attr(result, "LayerOn", on);
-    write_logical_attr(result, "LayerFrozen", frozen);
-    write_logical_attr(result, "LayerBlocked", blocked);
-    detail::write_ref_aggregate(result, "LayerStyles", mutable_items(styles));
+    write_logical_attr(result, "LayerOn", options.on);
+    write_logical_attr(result, "LayerFrozen", options.frozen);
+    write_logical_attr(result, "LayerBlocked", options.blocked);
+    detail::write_ref_aggregate(result, "LayerStyles", mutable_items(options.styles));
     return result;
 }
 

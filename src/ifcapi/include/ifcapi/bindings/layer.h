@@ -9,13 +9,26 @@
 #include "ifcparse/express.h"
 #include "ifcparse/file.h"
 
-#include <boost/logic/tribool.hpp>
-
+#include <optional>
 #include <string>
 #include <vector>
 
 namespace ifcapi {
 namespace bindings {
+
+/**
+ * Options for adding a presentation layer with style.
+ */
+struct LayerAddLayerWithStyleOptions {
+    /// Whether the layer is visible. nullopt maps to IFC UNKNOWN.
+    std::optional<bool> on;
+    /// Whether the layer is frozen. nullopt maps to IFC UNKNOWN.
+    std::optional<bool> frozen;
+    /// Whether the layer is blocked. nullopt maps to IFC UNKNOWN.
+    std::optional<bool> blocked;
+    /// Styles to assign to the layer.
+    std::vector<express::Base> styles;
+};
 
 IFCAPI_BINDING express::Base layer_add_layer(
     ifcopenshell::file* file,
@@ -23,10 +36,7 @@ IFCAPI_BINDING express::Base layer_add_layer(
 IFCAPI_BINDING express::Base layer_add_layer_with_style(
     ifcopenshell::file* file,
     const std::string& name,
-    boost::logic::tribool on,
-    boost::logic::tribool frozen,
-    boost::logic::tribool blocked,
-    const std::vector<express::Base>& styles);
+    const LayerAddLayerWithStyleOptions& options);
 IFCAPI_BINDING void layer_assign_layer(
     ifcopenshell::file* file,
     const std::vector<express::Base>& items,

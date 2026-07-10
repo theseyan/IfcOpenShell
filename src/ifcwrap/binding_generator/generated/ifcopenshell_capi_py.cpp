@@ -10705,6 +10705,73 @@ static int fill_input_group_update_group_products_options(PyObject *obj, ifcopen
 }
 
 
+static void free_input_layer_add_layer_with_style_options(ifcopenshell_layer_add_layer_with_style_options_t *value) {
+    if (value->styles) {
+        ifcopenshell_parse_instance_list_destroy(value->styles);
+        value->styles = NULL;
+    }
+}
+
+static int fill_input_layer_add_layer_with_style_options(PyObject *obj, ifcopenshell_layer_add_layer_with_style_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "on", 0);
+    if (!field_0) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[0] = field_0;
+        if (field_0 != Py_None) {
+            int value_0 = PyObject_IsTrue(field_0);
+            if (value_0 < 0) return 0;
+            out->on = (bool)value_0;
+        out->has_on = true;
+        }
+    }
+    PyObject *field_1 = get_option_field(obj, "frozen", 0);
+    if (!field_1) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[1] = field_1;
+        if (field_1 != Py_None) {
+            int value_1 = PyObject_IsTrue(field_1);
+            if (value_1 < 0) return 0;
+            out->frozen = (bool)value_1;
+        out->has_frozen = true;
+        }
+    }
+    PyObject *field_2 = get_option_field(obj, "blocked", 0);
+    if (!field_2) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[2] = field_2;
+        if (field_2 != Py_None) {
+            int value_2 = PyObject_IsTrue(field_2);
+            if (value_2 < 0) return 0;
+            out->blocked = (bool)value_2;
+        out->has_blocked = true;
+        }
+    }
+    PyObject *field_3 = get_option_field(obj, "styles", 1);
+    if (!field_3) {
+        return 0;
+    }
+    refs[3] = field_3;
+    ifcopenshell_instance_list_t styles_items_3 = {0};
+    if (!make_input_instance_list(field_3, &styles_items_3)) {
+        return 0;
+    }
+    if (!ifcopenshell_parse_instance_list_create_from_handles(&styles_items_3, &out->styles)) {
+        free_input_instance_list(&styles_items_3);
+        raise_last_error("ifcopenshell_parse_instance_list_create_from_handles failed");
+        return 0;
+    }
+    free_input_instance_list(&styles_items_3);
+    return 1;
+}
+
+
 static void free_input_library_assign_reference_options(ifcopenshell_library_assign_reference_options_t *value) {
     if (value->products) {
         ifcopenshell_parse_instance_list_destroy(value->products);
@@ -35896,22 +35963,21 @@ static PyObject *py_ifcopenshell_layer_add_layer_with_style(PyObject *self, PyOb
     PyObject *arg_file_obj = NULL;
     ifcopenshell_file_t *arg_file = NULL;
     const char *arg_name = NULL;
-    int arg_on = 0;
-    int arg_frozen = 0;
-    int arg_blocked = 0;
-    PyObject *arg_styles_obj = NULL;
-    ifcopenshell_instance_list_t arg_styles = {0};
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_layer_add_layer_with_style_options_t arg_options = {0};
+    PyObject *arg_options_refs[4] = {0};
     ifcopenshell_instance_t *result = NULL;
-    if (!PyArg_ParseTuple(args, "OsiiiO", &arg_file_obj, &arg_name, &arg_on, &arg_frozen, &arg_blocked, &arg_styles_obj)) return NULL;
+    if (!PyArg_ParseTuple(args, "OsO", &arg_file_obj, &arg_name, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_styles_obj, &arg_styles)) {
+    if (!fill_input_layer_add_layer_with_style_options(arg_options_obj, &arg_options, arg_options_refs)) {
         goto __cleanup;
     }
+
     ifcopenshell_clear_error();
-    ok = ifcopenshell_layer_add_layer_with_style(arg_file, arg_name, (ifcopenshell_logical_t)arg_on, (ifcopenshell_logical_t)arg_frozen, (ifcopenshell_logical_t)arg_blocked, &arg_styles, &result);
+    ok = ifcopenshell_layer_add_layer_with_style(arg_file, arg_name, &arg_options, &result);
     if (!ok) {
         raise_last_error("ifcopenshell_layer_add_layer_with_style failed");
         goto __cleanup;
@@ -35922,7 +35988,8 @@ static PyObject *py_ifcopenshell_layer_add_layer_with_style(PyObject *self, PyOb
     }
     __py_result = wrap_instance(result, 0);
 __cleanup:
-        free_input_instance_list(&arg_styles);
+        release_option_refs(arg_options_refs, 4);
+        free_input_layer_add_layer_with_style_options(&arg_options);
     return __py_result;
 }
 

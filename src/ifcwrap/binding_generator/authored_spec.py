@@ -170,7 +170,6 @@ except ImportError:  # pragma: no cover - script execution fallback
 _ALLOWED_TYPE_KINDS = {
     "void",
     "bool",
-    "logical",
     "int32",
     "int64",
     "double",
@@ -1880,12 +1879,6 @@ def _type_spec_from_result_struct_semantic(
     return None
 
 
-def _type_spec_from_logical_semantic(semantic: RecordSemanticType) -> TypeSpec | None:
-    if any(_cpp_type_names_match("boost::logic::tribool", match_name) for match_name in semantic_record_match_names(semantic)):
-        return TypeSpec(kind="logical", cpp_type=semantic.cpp_type)
-    return None
-
-
 def _type_spec_from_opaque_pointer_semantic(semantic: RecordSemanticType, *, nullable: bool) -> TypeSpec | None:
     if semantic.pointer_wrapper is None and _normalize_cpp_type(semantic.cpp_type).endswith("*"):
         normalized = _normalize_cpp_type(semantic.cpp_type).removesuffix("*").strip()
@@ -2009,9 +2002,6 @@ def _infer_type(
         if scalar_kind is not None:
             return TypeSpec(kind=scalar_kind, cpp_type=_cpp_type_storage(cpp_type))
     if isinstance(semantic, RecordSemanticType):
-        logical_spec = _type_spec_from_logical_semantic(semantic)
-        if logical_spec is not None:
-            return logical_spec
         struct_spec = _type_spec_from_result_struct_semantic(semantic, result_structs)
         if struct_spec is not None:
             return struct_spec

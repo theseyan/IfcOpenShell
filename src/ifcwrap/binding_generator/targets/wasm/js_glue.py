@@ -47,7 +47,6 @@ _POINTER_SIZE = 4
 
 _SCALAR_LAYOUTS = {
     "bool": (1, 1),
-    "logical": (4, 4),
     "int32": (4, 4),
     "uint8": (1, 1),
     "uint32": (4, 4),
@@ -193,8 +192,6 @@ def _return_expr(function: HostFunctionMetadata, metadata: HostBindingMetadata) 
         return _read_value_type_expr(returns, metadata, "outResultPtr")
     if returns.kind == "bool":
         return "module.getValue(outResultPtr, 'i8') !== 0"
-    if returns.kind == "logical":
-        return "module.getValue(outResultPtr, 'i32') !== 0"
     if returns.kind in {"int32", "uint32", "size"}:
         return "module.getValue(outResultPtr, 'i32')"
     if returns.kind == "double":
@@ -235,7 +232,7 @@ def _js_arg_expr(param: HostParamMetadata, metadata: HostBindingMetadata) -> tup
         alloc = f"    var {ptr_name} = _allocInputOption(module, {name}, {json.dumps(option.c_type)});"
         cleanup = f"    if ({ptr_name}) _freeInputOption(module, {ptr_name}, {json.dumps(option.c_type)});"
         return ptr_name, alloc, cleanup
-    if param.type_kind in {"bool", "logical"}:
+    if param.type_kind == "bool":
         return f"{name} ? 1 : 0", None, None
     handle = _handle_for_c_type(param.c_type, metadata)
     if handle is not None:

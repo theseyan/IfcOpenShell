@@ -883,6 +883,16 @@ typedef struct ifcopenshell_group_update_group_products_options_t {
     bool has_application;
 } ifcopenshell_group_update_group_products_options_t;
 
+typedef struct ifcopenshell_layer_add_layer_with_style_options_t {
+    bool on;
+    bool has_on;
+    bool frozen;
+    bool has_frozen;
+    bool blocked;
+    bool has_blocked;
+    ifcopenshell_parse_instance_list_t* styles;
+} ifcopenshell_layer_add_layer_with_style_options_t;
+
 typedef struct ifcopenshell_library_assign_reference_options_t {
     ifcopenshell_parse_instance_list_t* products;
     ifcopenshell_instance_t* reference;
@@ -2092,7 +2102,7 @@ bool ifcopenshell_guid_compress(const char* uuid_hex, ifcopenshell_string_t* out
 bool ifcopenshell_guid_expand(const char* guid, ifcopenshell_string_t* out_result);
 bool ifcopenshell_guid_new(ifcopenshell_string_t* out_result);
 bool ifcopenshell_layer_add_layer(ifcopenshell_file_t* file, const char* name, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_layer_add_layer_with_style(ifcopenshell_file_t* file, const char* name, ifcopenshell_logical_t on, ifcopenshell_logical_t frozen, ifcopenshell_logical_t blocked, const ifcopenshell_instance_list_t* styles, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_layer_add_layer_with_style(ifcopenshell_file_t* file, const char* name, const ifcopenshell_layer_add_layer_with_style_options_t* options, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_layer_assign_layer(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* items, ifcopenshell_instance_t* layer);
 bool ifcopenshell_layer_remove_layer(ifcopenshell_file_t* file, ifcopenshell_instance_t* layer);
 bool ifcopenshell_layer_unassign_layer(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* items, ifcopenshell_instance_t* layer);

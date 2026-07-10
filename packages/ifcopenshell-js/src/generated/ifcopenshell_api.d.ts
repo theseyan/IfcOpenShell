@@ -479,6 +479,13 @@ declare module 'ifcopenshell-api' {
     application?: IfcOpenshellInstance;
   }
 
+  export interface IfcOpenshellLayerAddLayerWithStyleOptions {
+    on?: boolean;
+    frozen?: boolean;
+    blocked?: boolean;
+    styles: IfcOpenshellParseInstanceList;
+  }
+
   export interface IfcOpenshellLibraryAssignReferenceOptions {
     products: IfcOpenshellParseInstanceList;
     reference: IfcOpenshellInstance;
@@ -2286,7 +2293,7 @@ declare module 'ifcopenshell-api' {
 
   export interface IfcOpenshellLayerModule {
     addLayer(file: IfcOpenshellFile, name: string): IfcOpenshellInstance;
-    addLayerWithStyle(file: IfcOpenshellFile, name: string, on: boolean, frozen: boolean, blocked: boolean, styles: IfcOpenshellInstance[]): IfcOpenshellInstance;
+    addLayerWithStyle(file: IfcOpenshellFile, name: string, options: IfcOpenshellLayerAddLayerWithStyleOptions): IfcOpenshellInstance;
     assignLayer(file: IfcOpenshellFile, items: IfcOpenshellInstance[], layer: IfcOpenshellInstance): void;
     removeLayer(file: IfcOpenshellFile, layer: IfcOpenshellInstance): void;
     unassignLayer(file: IfcOpenshellFile, items: IfcOpenshellInstance[], layer: IfcOpenshellInstance): void;

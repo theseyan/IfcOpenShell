@@ -295,7 +295,7 @@ def _param_ts_type(param: HostParamMetadata, metadata: HostBindingMetadata, modu
         return _option_type_name(option)
     if param.type_kind == "string":
         return "string"
-    if param.type_kind in {"bool", "logical"}:
+    if param.type_kind == "bool":
         return "boolean"
     if param.type_kind in {"int32", "uint32", "size", "double"}:
         return "number"

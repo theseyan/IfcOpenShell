@@ -27,11 +27,11 @@ IfcLogical = Union[bool, Literal["UNKNOWN"]]
 
 def _logical_value(value):
     if value is True:
-        return _capi.IFCOPENSHELL_LOGICAL_TRUE
+        return True
     if value is False:
-        return _capi.IFCOPENSHELL_LOGICAL_FALSE
+        return False
     if value == "UNKNOWN":
-        return _capi.IFCOPENSHELL_LOGICAL_UNKNOWN
+        return None
     raise ValueError('Logical value must be True, False, or "UNKNOWN"')
 
 
@@ -63,14 +63,19 @@ def add_layer_with_style(
             stlyes=[curve_style]
         )
     """
+    on_val = _logical_value(on)
+    frozen_val = _logical_value(frozen)
+    blocked_val = _logical_value(blocked)
     style_list = [e._handle for e in styles]
     handle = _capi.layer_add_layer_with_style(
         file._handle,
         name,
-        _logical_value(on),
-        _logical_value(frozen),
-        _logical_value(blocked),
-        style_list,
+        {
+            "on": on_val,
+            "frozen": frozen_val,
+            "blocked": blocked_val,
+            "styles": style_list,
+        },
     )
     if handle:
         return ifcopenshell.entity_instance(file, handle)

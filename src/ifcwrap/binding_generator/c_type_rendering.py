@@ -34,11 +34,6 @@ except ImportError:  # pragma: no cover - script execution fallback
 # Entries that are not scalar require handle/string/list-specific logic.
 _SCALAR_TYPE_MAP: dict[str, tuple[str, str, str]] = {
     "bool": ("bool", "bool*", "*out_result = {expr};"),
-    "logical": (
-        "ifcopenshell_logical_t",
-        "ifcopenshell_logical_t*",
-        "*out_result = static_cast<ifcopenshell_logical_t>({expr});",
-    ),
     "int32": ("int32_t", "int32_t*", "*out_result = static_cast<int32_t>({expr});"),
     "int64": ("int64_t", "int64_t*", "*out_result = static_cast<int64_t>({expr});"),
     "double": ("double", "double*", "*out_result = static_cast<double>({expr});"),

@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
+import pytest
+
 import ifcopenshell.api.layer
 import test.bootstrap
 
@@ -39,6 +41,35 @@ class TestAddLayerWithStyle(test.bootstrap.IFC4):
         assert layer.LayerFrozen == True
         assert layer.LayerBlocked == True
         assert layer.LayerStyles == (curve_style,)
+
+    def test_false_values(self):
+        layer = ifcopenshell.api.layer.add_layer_with_style(
+            self.file, on=False, frozen=False, blocked=False
+        )
+        assert layer.LayerOn == False
+        assert layer.LayerFrozen == False
+        assert layer.LayerBlocked == False
+
+    def test_mixed_logical_values(self):
+        layer = ifcopenshell.api.layer.add_layer_with_style(
+            self.file, on=True, frozen="UNKNOWN", blocked=False
+        )
+        assert layer.LayerOn == True
+        assert layer.LayerFrozen == "UNKNOWN"
+        assert layer.LayerBlocked == False
+
+    def test_invalid_logical_value_raises(self):
+        with pytest.raises(ValueError, match="Logical value must be True, False, or"):
+            ifcopenshell.api.layer.add_layer_with_style(self.file, on="invalid")
+
+    def test_style_ordering_preserved(self):
+        s1 = self.file.create_entity("IfcCurveStyle")
+        s2 = self.file.create_entity("IfcCurveStyle")
+        s3 = self.file.create_entity("IfcCurveStyle")
+        layer = ifcopenshell.api.layer.add_layer_with_style(
+            self.file, styles=(s1, s2, s3)
+        )
+        assert layer.LayerStyles == (s1, s2, s3)
 
 
 class TestAddLayerWithStyleIFC2X3(test.bootstrap.IFC2X3, TestAddLayerWithStyle):

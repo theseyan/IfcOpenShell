@@ -144,11 +144,6 @@ std::string value_to_json_string(const T& value, bool include_identifier) {{
         return value ? json_quote(value) : "null";
     }} else if constexpr (std::is_same_v<T, bool>) {{
         return value ? "true" : "false";
-    }} else if constexpr (std::is_same_v<T, boost::logic::tribool>) {{
-        if (boost::logic::indeterminate(value)) {{
-            return "null";
-        }}
-        return value ? "true" : "false";
     }} else if constexpr (std::is_integral_v<T> || std::is_floating_point_v<T>) {{
         std::ostringstream out;
         out << value;
