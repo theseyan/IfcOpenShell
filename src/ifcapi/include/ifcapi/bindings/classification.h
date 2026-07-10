@@ -16,10 +16,25 @@
 namespace ifcapi {
 namespace bindings {
 
+/**
+ * Return all classification references associated with an element.
+ *
+ * For IfcRoot-derived elements, returns references from IfcRelAssociatesClassification.
+ * For non-IfcRoot elements (e.g. IfcMaterial), returns references via
+ * IfcExternalReferenceRelationship. When should_inherit is true, references
+ * from the element's type are merged, with occurrence-level references
+ * overriding type-level ones within the same classification system.
+ */
 IFCAPI_BINDING std::vector<express::Base> classification_get_references(
     express::Base* element,
     bool should_inherit);
 
+/**
+ * Create a new IfcClassification and associate it with the project.
+ *
+ * The classification is linked to the first IfcProject via
+ * IfcRelAssociatesClassification so that it persists in the file.
+ */
 IFCAPI_BINDING express::Base classification_add_classification(
     ifcopenshell::file* file,
     const std::string& name);
@@ -81,6 +96,15 @@ IFCAPI_BINDING void classification_remove_reference(
     ifcopenshell::file* file,
     const ClassificationRemoveReferenceOptions& options);
 
+/**
+ * Remove an IfcClassification and all its references.
+ *
+ * For IFC4+, recursively deletes every IfcClassificationReference in the
+ * classification hierarchy via HasReferences. For IFC2X3, deletes only
+ * references whose ReferencedSource is the classification itself; nested
+ * references are not traversed and may be orphaned. Any
+ * IfcRelAssociatesClassification that becomes orphaned is also deleted.
+ */
 IFCAPI_BINDING void classification_remove_classification(
     ifcopenshell::file* file,
     express::Base* classification);

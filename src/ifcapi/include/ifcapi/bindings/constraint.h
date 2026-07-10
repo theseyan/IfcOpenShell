@@ -16,6 +16,11 @@
 namespace ifcapi {
 namespace bindings {
 
+/**
+ * Create a new IfcObjective constraint with default attributes.
+ *
+ * Sets Name to "Unnamed", ConstraintGrade and ObjectiveQualifier to "NOTDEFINED".
+ */
 IFCAPI_BINDING express::Base constraint_add_objective(ifcopenshell::file* file);
 
 /**
@@ -26,6 +31,16 @@ IFCAPI_BINDING express::Base constraint_add_metric(
     ifcopenshell::file* file,
     std::optional<express::Base> objective);
 
+/**
+ * Create a chain of IfcReference entities from a dot-separated path and
+ * assign it to a metric's ReferencePath attribute.
+ *
+ * For example, a path "Pset_WallCommon.FireRating" produces two IfcReference
+ * entities linked by InnerReference, with AttributeIdentifier set to
+ * "Pset_WallCommon" and "FireRating" respectively.
+ *
+ * @return The created IfcReference chain in order from outermost to innermost.
+ */
 IFCAPI_BINDING IFCAPI_OWNED std::vector<express::Base> constraint_add_metric_reference(
     ifcopenshell::file* file,
     express::Base* metric,
@@ -81,9 +96,21 @@ IFCAPI_BINDING void constraint_unassign_constraint(
     ifcopenshell::file* file,
     const ConstraintUnassignConstraintOptions& options);
 
+/**
+ * Remove a constraint entity and clean up orphaned IfcRelAssociatesConstraint
+ * relationships that reference it.
+ */
 IFCAPI_BINDING void constraint_remove_constraint(
     ifcopenshell::file* file,
     express::Base* constraint);
+
+/**
+ * Remove an IfcMetric and its reference path chain.
+ *
+ * Deletes the metric's IfcReference chain (via InnerReference), then removes
+ * the metric entity. Orphaned IfcRelAssociatesConstraint and
+ * IfcResourceConstraintRelationship entities are also deleted.
+ */
 IFCAPI_BINDING void constraint_remove_metric(
     ifcopenshell::file* file,
     express::Base* metric);

@@ -28,18 +28,40 @@ struct RootCreateEntityOptions {
     std::optional<express::Base> owner_history;
 };
 
+/**
+ * Options for removing a product.
+ */
 struct RootRemoveProductOptions {
+    /// Optional user for owner history updates on modified relationships.
     std::optional<express::Base> user;
+    /// Optional application for owner history updates on modified relationships.
     std::optional<express::Base> application;
 };
 
 /**
- * Create an IFC entity with generated identity, ownership metadata, optional
- * name, and optional predefined type.
+ * Create an IFC entity with generated identity, optional name, and optional
+ * predefined type.
+ *
+ * Sets GlobalId (for IfcRoot-derived entities). OwnerHistory is assigned only
+ * when the owner_history option contains a handle; it is not created
+ * automatically. Schema-specific defaults are applied for spatial elements,
+ * element types, and door/window styles. If the predefined type is not a valid
+ * enum value, it is stored as USERDEFINED with the value in ObjectType
+ * (or ElementType/ProcessType where applicable).
  */
 IFCAPI_BINDING express::Base root_create_entity(
     ifcopenshell::file* file,
     const RootCreateEntityOptions& options);
+
+/**
+ * Remove a product and all its relationships.
+ *
+ * Performs a deep removal that cleans up: representations, object placements,
+ * opening elements, property sets, material assignments, type definitions,
+ * space boundaries, nesting relationships, aggregate relationships, spatial
+ * containment, element connections, port connections, group memberships,
+ * and grid axes. The product entity itself is deleted last.
+ */
 IFCAPI_BINDING void root_remove_product(
     ifcopenshell::file* file,
     express::Base* product,

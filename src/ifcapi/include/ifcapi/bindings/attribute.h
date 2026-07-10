@@ -18,27 +18,55 @@ struct ifcopenshell_pset_props_t;
 namespace ifcapi {
 namespace bindings {
 
+/**
+ * Return the primitive type name of a schema attribute.
+ *
+ * Possible values include "string", "float", "integer", "boolean",
+ * "enum", "entity", "select", "aggregate", "binary", and "unknown".
+ *
+ * @param attribute Schema attribute declaration.
+ * @return A static string describing the primitive type.
+ */
 const char* attribute_get_primitive_type(const ifcopenshell::attribute* attribute);
+
+/**
+ * Return the enumeration items of a schema attribute.
+ *
+ * If the attribute is not an enumeration type, returns an empty list.
+ *
+ * @param attribute Schema attribute declaration.
+ * @return Ordered list of enumeration value names.
+ */
 std::vector<std::string> attribute_get_enum_items(const ifcopenshell::attribute* attribute);
 
 /**
  * Options for editing attributes of a product.
  */
 struct AttributeEditAttributesOptions {
-    /// The product whose attributes are being edited.
+    /// Product whose attributes are being edited.
     express::Base product;
-    /// Attribute property bag to apply.
+    /// Property bag of attribute name/value pairs to apply to the product.
     ifcopenshell_pset_props_t* attributes;
-    /// Whether to synchronize PredefinedType based on ElementType/ObjectType.
+    /// When true, synchronize PredefinedType based on ElementType or ObjectType.
     bool sync_predefined_type;
-    /// Whether to update OwnerHistory.
+    /// When true, update the product's OwnerHistory after modifying attributes.
     bool update_owner_history;
-    /// Optional user for owner history updates.
+    /// IfcPersonAndOrganization used for OwnerHistory updates. Omit to use the file default.
     std::optional<express::Base> user;
-    /// Optional application for owner history updates.
+    /// IfcApplication used for OwnerHistory updates. Omit to use the file default.
     std::optional<express::Base> application;
 };
 
+/**
+ * Edit arbitrary attributes on a product.
+ *
+ * Applies the attribute values from the property bag to the product.
+ * Optionally synchronizes PredefinedType when ElementType or ObjectType
+ * changes, and optionally updates OwnerHistory.
+ *
+ * @param file The IFC file containing the product.
+ * @param options Attribute editing options.
+ */
 IFCAPI_BINDING void attribute_edit_attributes(
     ifcopenshell::file* file,
     const AttributeEditAttributesOptions& options);

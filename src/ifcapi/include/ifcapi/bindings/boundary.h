@@ -15,6 +15,13 @@
 namespace ifcapi {
 namespace bindings {
 
+/**
+ * Shallow-copy a space boundary relationship, deep-copying its connection geometry.
+ *
+ * @param file File that receives the copied entities.
+ * @param boundary IfcRelSpaceBoundary entity to copy.
+ * @return Newly created copy, or a null handle on failure.
+ */
 IFCAPI_BINDING express::Base boundary_copy_boundary(
     ifcopenshell::file* file,
     express::Base* boundary);
@@ -44,6 +51,15 @@ IFCAPI_BINDING void boundary_assign_connection_geometry(
     ifcopenshell::file* file,
     express::Base* rel_space_boundary,
     const BoundaryAssignConnectionGeometryOptions& options);
+/**
+ * Remove a space boundary relationship and its connection geometry.
+ *
+ * Removes the ConnectionGeometry attribute first (deep-removing its entities),
+ * then removes the boundary entity itself with history cleanup.
+ *
+ * @param file IFC file containing the boundary.
+ * @param boundary IfcRelSpaceBoundary entity to remove.
+ */
 IFCAPI_BINDING void boundary_remove_boundary(
     ifcopenshell::file* file,
     express::Base* boundary);
@@ -66,6 +82,16 @@ struct BoundaryEditAttributesOptions {
     std::string internal_or_external;
 };
 
+/**
+ * Edit attributes of a space boundary relationship.
+ *
+ * Updates the relating space, related building element, and boundary
+ * classification. ParentBoundary and CorrespondingBoundary are set only when
+ * the schema supports them (IFC4+); nullopt clears those attributes.
+ *
+ * @param entity IfcRelSpaceBoundary entity to modify.
+ * @param options Attribute values to set.
+ */
 IFCAPI_BINDING void boundary_edit_attributes(
     express::Base* entity,
     const BoundaryEditAttributesOptions& options);

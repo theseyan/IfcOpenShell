@@ -20,7 +20,7 @@ except ImportError:  # pragma: no cover - script execution fallback
 
 
 _C_FUNCTION_DECL_RE = re.compile(
-    r"^(?!typedef\b)[^();{}]*?\b([A-Za-z_][A-Za-z0-9_]*)\s*\([^;{}]*\)\s*;",
+    r"^(?!typedef\b)[^();{}\n]*?\b([A-Za-z_][A-Za-z0-9_]*)\s*\([^;{}\n]*\)\s*;",
     re.MULTILINE,
 )
 
