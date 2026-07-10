@@ -151,4 +151,29 @@ describeGeneratedOrSkip('direct api modules', () => {
 
     expect(await wall.get('Name')).toBe('Updated');
   });
+
+  it('adds SI units and resolves full unit names', async () => {
+    await using file = await IfcFile.createEmpty(shell, 'IFC4');
+    const metre = shell.api.unit.addSiUnit(file, 'LENGTHUNIT', null);
+    expect(metre.type).toBe('IfcSIUnit');
+    expect(shell.api.unit.getFullUnitName(metre)).toBe('METRE');
+  });
+
+  it('converts between unit prefixes', () => {
+    expect(shell.api.unit.convert(1000, 'MILLI', 'METRE', '', 'METRE')).toBe(1);
+  });
+
+  it('creates rotation matrices', () => {
+    const matrix = shell.api.placement.rotation(Math.PI / 2, 'Z');
+    expect(matrix).toHaveLength(16);
+    expect(Math.round(matrix[0])).toBe(0);
+    expect(Math.round(matrix[1])).toBe(-1);
+    expect(Math.round(matrix[4])).toBe(1);
+    expect(Math.round(matrix[5])).toBe(0);
+  });
+
+  it('compares floating-point values with tolerance', () => {
+    expect(shell.api.shape.isX(1.0000001, 1, 0.001)).toBe(true);
+    expect(shell.api.shape.isX(1.5, 1, 0.001)).toBe(false);
+  });
 });

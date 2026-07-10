@@ -34,7 +34,6 @@ const WASM_ARTIFACT_CANDIDATES: readonly WasmArtifactCandidate[] = [
   ...(ENV_WASM_DIR ? [{ kind: 'env' as const, path: ENV_WASM_DIR }] : []),
   { kind: 'packaged', path: resolve(REPO_ROOT, 'packages', 'ifcopenshell-wasm', 'wasm') },
   { kind: 'generated', path: resolve(REPO_ROOT, 'build', 'wasm-native', 'ifcopenshell', 'full', 'ifcwrap', 'wasm') },
-  { kind: 'generated', path: resolve(REPO_ROOT, 'build-wasm', 'ifcwrap', 'wasm') },
 ];
 
 function hasRequiredWasmFiles(dir: string): boolean {
