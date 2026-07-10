@@ -41,20 +41,6 @@ handle_list_accessors:
     at_as: ray_intersection_at
     out_of_range_message: Ray intersection index out of range
 
-geometry_serializers:
-  - name: obj
-    output: buffer_pair
-  - name: ttl
-  - name: svg
-  - name: gltf
-    format: glb
-  - name: iges
-    format: igs
-  - name: step
-    format: stp
-  - name: collada
-    format: dae
-
 discover:
   include_dir: ../../../ifcgeom
   class_defaults:

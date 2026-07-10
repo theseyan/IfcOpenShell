@@ -1249,55 +1249,6 @@ def test_load_authored_spec_infers_simple_call_kinds(tmp_path: Path) -> None:
     assert isinstance(spec.methods[1].policy_operation, InlineAdapterPolicyOp)
 
 
-def test_load_authored_spec_generates_geometry_serializer_calls(tmp_path: Path) -> None:
-    spec_path = tmp_path / "geometry_serializers.yml"
-    spec_path.write_text(
-        dedent(
-            """
-            schema_version: 1
-            module: demo
-            slice: demo
-            c_prefix: ifcopenshell_demo
-            public_headers:
-              - demo.h
-            handles:
-              - name: geometry_serializer
-                cpp_type: Demo::Serializer
-                c_type: ifcopenshell_demo_geometry_serializer_t
-                destructor: delete
-              - name: buffer
-                cpp_type: Demo::Buffer
-                c_type: ifcopenshell_demo_buffer_t
-                destructor: delete
-              - name: settings
-                cpp_type: Demo::Settings
-                c_type: ifcopenshell_demo_settings_t
-                destructor: delete
-              - name: serializer_settings
-                cpp_type: Demo::SerializerSettings
-                c_type: ifcopenshell_demo_serializer_settings_t
-                destructor: delete
-            geometry_serializers:
-              - name: obj
-                output: buffer_pair
-              - name: gltf
-                format: glb
-            """
-        ).strip()
-        + "\n",
-        encoding="utf-8",
-    )
-
-    spec = load_authored_spec(spec_path)
-    calls = {call.expose_as: call for call in spec.functions}
-
-    assert {"create_obj_serializer", "create_gltf_serializer"} <= set(calls)
-    assert isinstance(calls["create_obj_serializer"].policy_operation, InlineAdapterPolicyOp)
-    assert [param.name for param in calls["create_obj_serializer"].params[:2]] == ["obj_output", "mtl_output"]
-    assert calls["create_gltf_serializer"].params[0].type.kind == "string"
-    assert "PluginGeometrySerializer" in calls["create_gltf_serializer"].policy_operation.implementation.body
-
-
 def test_load_authored_spec_rejects_free_function_implementations(tmp_path: Path) -> None:
     spec_path = tmp_path / "free_function_implementation.yml"
     spec_path.write_text(

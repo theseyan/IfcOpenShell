@@ -1,3 +1,4 @@
+// This file was generated with the assistance of an AI coding tool.
 
 import { AttributeValue } from '../attribute.js';
 import { Entity } from '../entity.js';

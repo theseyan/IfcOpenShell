@@ -24185,39 +24185,6 @@ __cleanup:
     return __py_result;
 }
 
-static PyObject *py_ifcopenshell_geom_create_collada_serializer(PyObject *self, PyObject *args) {
-    PyObject *__py_result = NULL;
-    bool ok = false;
-    const char *arg_output = NULL;
-    PyObject *arg_geometry_settings_obj = NULL;
-    ifcopenshell_geom_settings_t *arg_geometry_settings = NULL;
-    PyObject *arg_serializer_settings_obj = NULL;
-    ifcopenshell_geom_serializer_settings_t *arg_serializer_settings = NULL;
-    ifcopenshell_geom_geometry_serializer_t *result = NULL;
-    if (!PyArg_ParseTuple(args, "sOO", &arg_output, &arg_geometry_settings_obj, &arg_serializer_settings_obj)) return NULL;
-
-    if (!extract_handle(arg_geometry_settings_obj, &IfcOpenshellGeomSettingsType, "IfcOpenshellGeomSettings", (void **)&arg_geometry_settings, 0)) {
-        goto __cleanup;
-    }
-    if (!extract_handle(arg_serializer_settings_obj, &IfcOpenshellGeomSerializerSettingsType, "IfcOpenshellGeomSerializerSettings", (void **)&arg_serializer_settings, 0)) {
-        goto __cleanup;
-    }
-
-    ifcopenshell_clear_error();
-    ok = ifcopenshell_geom_create_collada_serializer(arg_output, arg_geometry_settings, arg_serializer_settings, &result);
-    if (!ok) {
-        raise_last_error("ifcopenshell_geom_create_collada_serializer failed");
-        goto __cleanup;
-    }
-    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
-        raise_last_error("ifcopenshell_geom_create_collada_serializer failed");
-        goto __cleanup;
-    }
-    __py_result = wrap_geom_geometry_serializer(result, 1);
-__cleanup:
-    return __py_result;
-}
-
 static PyObject *py_ifcopenshell_geom_create_epeck_from_double(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -24322,16 +24289,18 @@ __cleanup:
     return __py_result;
 }
 
-static PyObject *py_ifcopenshell_geom_create_gltf_serializer(PyObject *self, PyObject *args) {
+static PyObject *py_ifcopenshell_geom_create_geometry_serializer_by_path(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
-    const char *arg_output = NULL;
+    const char *arg_format = NULL;
+    const char *arg_output_filename = NULL;
+    const char *arg_output_temp_filename = NULL;
     PyObject *arg_geometry_settings_obj = NULL;
     ifcopenshell_geom_settings_t *arg_geometry_settings = NULL;
     PyObject *arg_serializer_settings_obj = NULL;
     ifcopenshell_geom_serializer_settings_t *arg_serializer_settings = NULL;
     ifcopenshell_geom_geometry_serializer_t *result = NULL;
-    if (!PyArg_ParseTuple(args, "sOO", &arg_output, &arg_geometry_settings_obj, &arg_serializer_settings_obj)) return NULL;
+    if (!PyArg_ParseTuple(args, "sssOO", &arg_format, &arg_output_filename, &arg_output_temp_filename, &arg_geometry_settings_obj, &arg_serializer_settings_obj)) return NULL;
 
     if (!extract_handle(arg_geometry_settings_obj, &IfcOpenshellGeomSettingsType, "IfcOpenshellGeomSettings", (void **)&arg_geometry_settings, 0)) {
         goto __cleanup;
@@ -24341,13 +24310,13 @@ static PyObject *py_ifcopenshell_geom_create_gltf_serializer(PyObject *self, PyO
     }
 
     ifcopenshell_clear_error();
-    ok = ifcopenshell_geom_create_gltf_serializer(arg_output, arg_geometry_settings, arg_serializer_settings, &result);
+    ok = ifcopenshell_geom_create_geometry_serializer_by_path(arg_format, arg_output_filename, arg_output_temp_filename, arg_geometry_settings, arg_serializer_settings, &result);
     if (!ok) {
-        raise_last_error("ifcopenshell_geom_create_gltf_serializer failed");
+        raise_last_error("ifcopenshell_geom_create_geometry_serializer_by_path failed");
         goto __cleanup;
     }
     if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
-        raise_last_error("ifcopenshell_geom_create_gltf_serializer failed");
+        raise_last_error("ifcopenshell_geom_create_geometry_serializer_by_path failed");
         goto __cleanup;
     }
     __py_result = wrap_geom_geometry_serializer(result, 1);
@@ -24355,17 +24324,27 @@ __cleanup:
     return __py_result;
 }
 
-static PyObject *py_ifcopenshell_geom_create_iges_serializer(PyObject *self, PyObject *args) {
+static PyObject *py_ifcopenshell_geom_create_geometry_serializer_by_stream(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
-    const char *arg_output = NULL;
+    const char *arg_format = NULL;
+    PyObject *arg_output_obj = NULL;
+    ifcopenshell_geom_buffer_t *arg_output = NULL;
+    PyObject *arg_output_temp_obj = NULL;
+    ifcopenshell_geom_buffer_t *arg_output_temp = NULL;
     PyObject *arg_geometry_settings_obj = NULL;
     ifcopenshell_geom_settings_t *arg_geometry_settings = NULL;
     PyObject *arg_serializer_settings_obj = NULL;
     ifcopenshell_geom_serializer_settings_t *arg_serializer_settings = NULL;
     ifcopenshell_geom_geometry_serializer_t *result = NULL;
-    if (!PyArg_ParseTuple(args, "sOO", &arg_output, &arg_geometry_settings_obj, &arg_serializer_settings_obj)) return NULL;
+    if (!PyArg_ParseTuple(args, "sOOOO", &arg_format, &arg_output_obj, &arg_output_temp_obj, &arg_geometry_settings_obj, &arg_serializer_settings_obj)) return NULL;
 
+    if (!extract_handle(arg_output_obj, &IfcOpenshellGeomBufferType, "IfcOpenshellGeomBuffer", (void **)&arg_output, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_output_temp_obj, &IfcOpenshellGeomBufferType, "IfcOpenshellGeomBuffer", (void **)&arg_output_temp, 0)) {
+        goto __cleanup;
+    }
     if (!extract_handle(arg_geometry_settings_obj, &IfcOpenshellGeomSettingsType, "IfcOpenshellGeomSettings", (void **)&arg_geometry_settings, 0)) {
         goto __cleanup;
     }
@@ -24374,13 +24353,13 @@ static PyObject *py_ifcopenshell_geom_create_iges_serializer(PyObject *self, PyO
     }
 
     ifcopenshell_clear_error();
-    ok = ifcopenshell_geom_create_iges_serializer(arg_output, arg_geometry_settings, arg_serializer_settings, &result);
+    ok = ifcopenshell_geom_create_geometry_serializer_by_stream(arg_format, arg_output, arg_output_temp, arg_geometry_settings, arg_serializer_settings, &result);
     if (!ok) {
-        raise_last_error("ifcopenshell_geom_create_iges_serializer failed");
+        raise_last_error("ifcopenshell_geom_create_geometry_serializer_by_stream failed");
         goto __cleanup;
     }
     if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
-        raise_last_error("ifcopenshell_geom_create_iges_serializer failed");
+        raise_last_error("ifcopenshell_geom_create_geometry_serializer_by_stream failed");
         goto __cleanup;
     }
     __py_result = wrap_geom_geometry_serializer(result, 1);
@@ -24570,48 +24549,6 @@ __cleanup:
     return __py_result;
 }
 
-static PyObject *py_ifcopenshell_geom_create_obj_serializer(PyObject *self, PyObject *args) {
-    PyObject *__py_result = NULL;
-    bool ok = false;
-    PyObject *arg_obj_output_obj = NULL;
-    ifcopenshell_geom_buffer_t *arg_obj_output = NULL;
-    PyObject *arg_mtl_output_obj = NULL;
-    ifcopenshell_geom_buffer_t *arg_mtl_output = NULL;
-    PyObject *arg_geometry_settings_obj = NULL;
-    ifcopenshell_geom_settings_t *arg_geometry_settings = NULL;
-    PyObject *arg_serializer_settings_obj = NULL;
-    ifcopenshell_geom_serializer_settings_t *arg_serializer_settings = NULL;
-    ifcopenshell_geom_geometry_serializer_t *result = NULL;
-    if (!PyArg_ParseTuple(args, "OOOO", &arg_obj_output_obj, &arg_mtl_output_obj, &arg_geometry_settings_obj, &arg_serializer_settings_obj)) return NULL;
-
-    if (!extract_handle(arg_obj_output_obj, &IfcOpenshellGeomBufferType, "IfcOpenshellGeomBuffer", (void **)&arg_obj_output, 0)) {
-        goto __cleanup;
-    }
-    if (!extract_handle(arg_mtl_output_obj, &IfcOpenshellGeomBufferType, "IfcOpenshellGeomBuffer", (void **)&arg_mtl_output, 0)) {
-        goto __cleanup;
-    }
-    if (!extract_handle(arg_geometry_settings_obj, &IfcOpenshellGeomSettingsType, "IfcOpenshellGeomSettings", (void **)&arg_geometry_settings, 0)) {
-        goto __cleanup;
-    }
-    if (!extract_handle(arg_serializer_settings_obj, &IfcOpenshellGeomSerializerSettingsType, "IfcOpenshellGeomSerializerSettings", (void **)&arg_serializer_settings, 0)) {
-        goto __cleanup;
-    }
-
-    ifcopenshell_clear_error();
-    ok = ifcopenshell_geom_create_obj_serializer(arg_obj_output, arg_mtl_output, arg_geometry_settings, arg_serializer_settings, &result);
-    if (!ok) {
-        raise_last_error("ifcopenshell_geom_create_obj_serializer failed");
-        goto __cleanup;
-    }
-    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
-        raise_last_error("ifcopenshell_geom_create_obj_serializer failed");
-        goto __cleanup;
-    }
-    __py_result = wrap_geom_geometry_serializer(result, 1);
-__cleanup:
-    return __py_result;
-}
-
 static PyObject *py_ifcopenshell_geom_create_rocksdb_serializer_streaming(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -24723,72 +24660,6 @@ __cleanup:
     return __py_result;
 }
 
-static PyObject *py_ifcopenshell_geom_create_step_serializer(PyObject *self, PyObject *args) {
-    PyObject *__py_result = NULL;
-    bool ok = false;
-    const char *arg_output = NULL;
-    PyObject *arg_geometry_settings_obj = NULL;
-    ifcopenshell_geom_settings_t *arg_geometry_settings = NULL;
-    PyObject *arg_serializer_settings_obj = NULL;
-    ifcopenshell_geom_serializer_settings_t *arg_serializer_settings = NULL;
-    ifcopenshell_geom_geometry_serializer_t *result = NULL;
-    if (!PyArg_ParseTuple(args, "sOO", &arg_output, &arg_geometry_settings_obj, &arg_serializer_settings_obj)) return NULL;
-
-    if (!extract_handle(arg_geometry_settings_obj, &IfcOpenshellGeomSettingsType, "IfcOpenshellGeomSettings", (void **)&arg_geometry_settings, 0)) {
-        goto __cleanup;
-    }
-    if (!extract_handle(arg_serializer_settings_obj, &IfcOpenshellGeomSerializerSettingsType, "IfcOpenshellGeomSerializerSettings", (void **)&arg_serializer_settings, 0)) {
-        goto __cleanup;
-    }
-
-    ifcopenshell_clear_error();
-    ok = ifcopenshell_geom_create_step_serializer(arg_output, arg_geometry_settings, arg_serializer_settings, &result);
-    if (!ok) {
-        raise_last_error("ifcopenshell_geom_create_step_serializer failed");
-        goto __cleanup;
-    }
-    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
-        raise_last_error("ifcopenshell_geom_create_step_serializer failed");
-        goto __cleanup;
-    }
-    __py_result = wrap_geom_geometry_serializer(result, 1);
-__cleanup:
-    return __py_result;
-}
-
-static PyObject *py_ifcopenshell_geom_create_svg_serializer(PyObject *self, PyObject *args) {
-    PyObject *__py_result = NULL;
-    bool ok = false;
-    const char *arg_output = NULL;
-    PyObject *arg_geometry_settings_obj = NULL;
-    ifcopenshell_geom_settings_t *arg_geometry_settings = NULL;
-    PyObject *arg_serializer_settings_obj = NULL;
-    ifcopenshell_geom_serializer_settings_t *arg_serializer_settings = NULL;
-    ifcopenshell_geom_geometry_serializer_t *result = NULL;
-    if (!PyArg_ParseTuple(args, "sOO", &arg_output, &arg_geometry_settings_obj, &arg_serializer_settings_obj)) return NULL;
-
-    if (!extract_handle(arg_geometry_settings_obj, &IfcOpenshellGeomSettingsType, "IfcOpenshellGeomSettings", (void **)&arg_geometry_settings, 0)) {
-        goto __cleanup;
-    }
-    if (!extract_handle(arg_serializer_settings_obj, &IfcOpenshellGeomSerializerSettingsType, "IfcOpenshellGeomSerializerSettings", (void **)&arg_serializer_settings, 0)) {
-        goto __cleanup;
-    }
-
-    ifcopenshell_clear_error();
-    ok = ifcopenshell_geom_create_svg_serializer(arg_output, arg_geometry_settings, arg_serializer_settings, &result);
-    if (!ok) {
-        raise_last_error("ifcopenshell_geom_create_svg_serializer failed");
-        goto __cleanup;
-    }
-    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
-        raise_last_error("ifcopenshell_geom_create_svg_serializer failed");
-        goto __cleanup;
-    }
-    __py_result = wrap_geom_geometry_serializer(result, 1);
-__cleanup:
-    return __py_result;
-}
-
 static PyObject *py_ifcopenshell_geom_create_tree(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -24895,39 +24766,6 @@ static PyObject *py_ifcopenshell_geom_create_tree_from_iterator(PyObject *self, 
         goto __cleanup;
     }
     __py_result = wrap_geom_tree(result, 1);
-__cleanup:
-    return __py_result;
-}
-
-static PyObject *py_ifcopenshell_geom_create_ttl_serializer(PyObject *self, PyObject *args) {
-    PyObject *__py_result = NULL;
-    bool ok = false;
-    const char *arg_output = NULL;
-    PyObject *arg_geometry_settings_obj = NULL;
-    ifcopenshell_geom_settings_t *arg_geometry_settings = NULL;
-    PyObject *arg_serializer_settings_obj = NULL;
-    ifcopenshell_geom_serializer_settings_t *arg_serializer_settings = NULL;
-    ifcopenshell_geom_geometry_serializer_t *result = NULL;
-    if (!PyArg_ParseTuple(args, "sOO", &arg_output, &arg_geometry_settings_obj, &arg_serializer_settings_obj)) return NULL;
-
-    if (!extract_handle(arg_geometry_settings_obj, &IfcOpenshellGeomSettingsType, "IfcOpenshellGeomSettings", (void **)&arg_geometry_settings, 0)) {
-        goto __cleanup;
-    }
-    if (!extract_handle(arg_serializer_settings_obj, &IfcOpenshellGeomSerializerSettingsType, "IfcOpenshellGeomSerializerSettings", (void **)&arg_serializer_settings, 0)) {
-        goto __cleanup;
-    }
-
-    ifcopenshell_clear_error();
-    ok = ifcopenshell_geom_create_ttl_serializer(arg_output, arg_geometry_settings, arg_serializer_settings, &result);
-    if (!ok) {
-        raise_last_error("ifcopenshell_geom_create_ttl_serializer failed");
-        goto __cleanup;
-    }
-    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
-        raise_last_error("ifcopenshell_geom_create_ttl_serializer failed");
-        goto __cleanup;
-    }
-    __py_result = wrap_geom_geometry_serializer(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -48639,30 +48477,25 @@ static PyMethodDef module_methods[] = {
     {"convert_loop_to_function_item", py_ifcopenshell_geom_convert_loop_to_function_item, METH_VARARGS, "Wrap ifcopenshell_geom_convert_loop_to_function_item"},
     {"create_buffer", py_ifcopenshell_geom_create_buffer, METH_VARARGS, "Wrap ifcopenshell_geom_create_buffer"},
     {"create_buffer_from_filename", py_ifcopenshell_geom_create_buffer_from_filename, METH_VARARGS, "Wrap ifcopenshell_geom_create_buffer_from_filename"},
-    {"create_collada_serializer", py_ifcopenshell_geom_create_collada_serializer, METH_VARARGS, "Wrap ifcopenshell_geom_create_collada_serializer"},
     {"create_epeck_from_double", py_ifcopenshell_geom_create_epeck_from_double, METH_VARARGS, "Wrap ifcopenshell_geom_create_epeck_from_double"},
     {"create_epeck_from_int", py_ifcopenshell_geom_create_epeck_from_int, METH_VARARGS, "Wrap ifcopenshell_geom_create_epeck_from_int"},
     {"create_epeck_from_string", py_ifcopenshell_geom_create_epeck_from_string, METH_VARARGS, "Wrap ifcopenshell_geom_create_epeck_from_string"},
     {"create_function_item_evaluator", py_ifcopenshell_geom_create_function_item_evaluator, METH_VARARGS, "Wrap ifcopenshell_geom_create_function_item_evaluator"},
-    {"create_gltf_serializer", py_ifcopenshell_geom_create_gltf_serializer, METH_VARARGS, "Wrap ifcopenshell_geom_create_gltf_serializer"},
-    {"create_iges_serializer", py_ifcopenshell_geom_create_iges_serializer, METH_VARARGS, "Wrap ifcopenshell_geom_create_iges_serializer"},
+    {"create_geometry_serializer_by_path", py_ifcopenshell_geom_create_geometry_serializer_by_path, METH_VARARGS, "Wrap ifcopenshell_geom_create_geometry_serializer_by_path"},
+    {"create_geometry_serializer_by_stream", py_ifcopenshell_geom_create_geometry_serializer_by_stream, METH_VARARGS, "Wrap ifcopenshell_geom_create_geometry_serializer_by_stream"},
     {"create_iterator", py_ifcopenshell_geom_create_iterator, METH_VARARGS, "Wrap ifcopenshell_geom_create_iterator"},
     {"create_iterator_with_include_exclude", py_ifcopenshell_geom_create_iterator_with_include_exclude, METH_VARARGS, "Wrap ifcopenshell_geom_create_iterator_with_include_exclude"},
     {"create_iterator_with_include_exclude_globalid", py_ifcopenshell_geom_create_iterator_with_include_exclude_globalid, METH_VARARGS, "Wrap ifcopenshell_geom_create_iterator_with_include_exclude_globalid"},
     {"create_iterator_with_include_exclude_id", py_ifcopenshell_geom_create_iterator_with_include_exclude_id, METH_VARARGS, "Wrap ifcopenshell_geom_create_iterator_with_include_exclude_id"},
     {"create_json_serializer", py_ifcopenshell_geom_create_json_serializer, METH_VARARGS, "Wrap ifcopenshell_geom_create_json_serializer"},
-    {"create_obj_serializer", py_ifcopenshell_geom_create_obj_serializer, METH_VARARGS, "Wrap ifcopenshell_geom_create_obj_serializer"},
     {"create_rocksdb_serializer_streaming", py_ifcopenshell_geom_create_rocksdb_serializer_streaming, METH_VARARGS, "Wrap ifcopenshell_geom_create_rocksdb_serializer_streaming"},
     {"create_serializer_settings", py_ifcopenshell_geom_create_serializer_settings, METH_VARARGS, "Wrap ifcopenshell_geom_create_serializer_settings"},
     {"create_settings", py_ifcopenshell_geom_create_settings, METH_VARARGS, "Wrap ifcopenshell_geom_create_settings"},
     {"create_shape", py_ifcopenshell_geom_create_shape, METH_VARARGS, "Wrap ifcopenshell_geom_create_shape"},
-    {"create_step_serializer", py_ifcopenshell_geom_create_step_serializer, METH_VARARGS, "Wrap ifcopenshell_geom_create_step_serializer"},
-    {"create_svg_serializer", py_ifcopenshell_geom_create_svg_serializer, METH_VARARGS, "Wrap ifcopenshell_geom_create_svg_serializer"},
     {"create_tree", py_ifcopenshell_geom_create_tree, METH_VARARGS, "Wrap ifcopenshell_geom_create_tree"},
     {"create_tree_from_file", py_ifcopenshell_geom_create_tree_from_file, METH_VARARGS, "Wrap ifcopenshell_geom_create_tree_from_file"},
     {"create_tree_from_file_with_settings", py_ifcopenshell_geom_create_tree_from_file_with_settings, METH_VARARGS, "Wrap ifcopenshell_geom_create_tree_from_file_with_settings"},
     {"create_tree_from_iterator", py_ifcopenshell_geom_create_tree_from_iterator, METH_VARARGS, "Wrap ifcopenshell_geom_create_tree_from_iterator"},
-    {"create_ttl_serializer", py_ifcopenshell_geom_create_ttl_serializer, METH_VARARGS, "Wrap ifcopenshell_geom_create_ttl_serializer"},
     {"create_xml_serializer", py_ifcopenshell_geom_create_xml_serializer, METH_VARARGS, "Wrap ifcopenshell_geom_create_xml_serializer"},
     {"element_context", py_ifcopenshell_geom_element_context, METH_VARARGS, "Wrap ifcopenshell_geom_element_context"},
     {"element_guid", py_ifcopenshell_geom_element_guid, METH_VARARGS, "Wrap ifcopenshell_geom_element_guid"},
@@ -49714,30 +49547,25 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_geom_convert_loop_to_function_item", py_ifcopenshell_geom_convert_loop_to_function_item, METH_VARARGS, "Wrap ifcopenshell_geom_convert_loop_to_function_item"},
     {"ifcopenshell_geom_create_buffer", py_ifcopenshell_geom_create_buffer, METH_VARARGS, "Wrap ifcopenshell_geom_create_buffer"},
     {"ifcopenshell_geom_create_buffer_from_filename", py_ifcopenshell_geom_create_buffer_from_filename, METH_VARARGS, "Wrap ifcopenshell_geom_create_buffer_from_filename"},
-    {"ifcopenshell_geom_create_collada_serializer", py_ifcopenshell_geom_create_collada_serializer, METH_VARARGS, "Wrap ifcopenshell_geom_create_collada_serializer"},
     {"ifcopenshell_geom_create_epeck_from_double", py_ifcopenshell_geom_create_epeck_from_double, METH_VARARGS, "Wrap ifcopenshell_geom_create_epeck_from_double"},
     {"ifcopenshell_geom_create_epeck_from_int", py_ifcopenshell_geom_create_epeck_from_int, METH_VARARGS, "Wrap ifcopenshell_geom_create_epeck_from_int"},
     {"ifcopenshell_geom_create_epeck_from_string", py_ifcopenshell_geom_create_epeck_from_string, METH_VARARGS, "Wrap ifcopenshell_geom_create_epeck_from_string"},
     {"ifcopenshell_geom_create_function_item_evaluator", py_ifcopenshell_geom_create_function_item_evaluator, METH_VARARGS, "Wrap ifcopenshell_geom_create_function_item_evaluator"},
-    {"ifcopenshell_geom_create_gltf_serializer", py_ifcopenshell_geom_create_gltf_serializer, METH_VARARGS, "Wrap ifcopenshell_geom_create_gltf_serializer"},
-    {"ifcopenshell_geom_create_iges_serializer", py_ifcopenshell_geom_create_iges_serializer, METH_VARARGS, "Wrap ifcopenshell_geom_create_iges_serializer"},
+    {"ifcopenshell_geom_create_geometry_serializer_by_path", py_ifcopenshell_geom_create_geometry_serializer_by_path, METH_VARARGS, "Wrap ifcopenshell_geom_create_geometry_serializer_by_path"},
+    {"ifcopenshell_geom_create_geometry_serializer_by_stream", py_ifcopenshell_geom_create_geometry_serializer_by_stream, METH_VARARGS, "Wrap ifcopenshell_geom_create_geometry_serializer_by_stream"},
     {"ifcopenshell_geom_create_iterator", py_ifcopenshell_geom_create_iterator, METH_VARARGS, "Wrap ifcopenshell_geom_create_iterator"},
     {"ifcopenshell_geom_create_iterator_with_include_exclude", py_ifcopenshell_geom_create_iterator_with_include_exclude, METH_VARARGS, "Wrap ifcopenshell_geom_create_iterator_with_include_exclude"},
     {"ifcopenshell_geom_create_iterator_with_include_exclude_globalid", py_ifcopenshell_geom_create_iterator_with_include_exclude_globalid, METH_VARARGS, "Wrap ifcopenshell_geom_create_iterator_with_include_exclude_globalid"},
     {"ifcopenshell_geom_create_iterator_with_include_exclude_id", py_ifcopenshell_geom_create_iterator_with_include_exclude_id, METH_VARARGS, "Wrap ifcopenshell_geom_create_iterator_with_include_exclude_id"},
     {"ifcopenshell_geom_create_json_serializer", py_ifcopenshell_geom_create_json_serializer, METH_VARARGS, "Wrap ifcopenshell_geom_create_json_serializer"},
-    {"ifcopenshell_geom_create_obj_serializer", py_ifcopenshell_geom_create_obj_serializer, METH_VARARGS, "Wrap ifcopenshell_geom_create_obj_serializer"},
     {"ifcopenshell_geom_create_rocksdb_serializer_streaming", py_ifcopenshell_geom_create_rocksdb_serializer_streaming, METH_VARARGS, "Wrap ifcopenshell_geom_create_rocksdb_serializer_streaming"},
     {"ifcopenshell_geom_create_serializer_settings", py_ifcopenshell_geom_create_serializer_settings, METH_VARARGS, "Wrap ifcopenshell_geom_create_serializer_settings"},
     {"ifcopenshell_geom_create_settings", py_ifcopenshell_geom_create_settings, METH_VARARGS, "Wrap ifcopenshell_geom_create_settings"},
     {"ifcopenshell_geom_create_shape", py_ifcopenshell_geom_create_shape, METH_VARARGS, "Wrap ifcopenshell_geom_create_shape"},
-    {"ifcopenshell_geom_create_step_serializer", py_ifcopenshell_geom_create_step_serializer, METH_VARARGS, "Wrap ifcopenshell_geom_create_step_serializer"},
-    {"ifcopenshell_geom_create_svg_serializer", py_ifcopenshell_geom_create_svg_serializer, METH_VARARGS, "Wrap ifcopenshell_geom_create_svg_serializer"},
     {"ifcopenshell_geom_create_tree", py_ifcopenshell_geom_create_tree, METH_VARARGS, "Wrap ifcopenshell_geom_create_tree"},
     {"ifcopenshell_geom_create_tree_from_file", py_ifcopenshell_geom_create_tree_from_file, METH_VARARGS, "Wrap ifcopenshell_geom_create_tree_from_file"},
     {"ifcopenshell_geom_create_tree_from_file_with_settings", py_ifcopenshell_geom_create_tree_from_file_with_settings, METH_VARARGS, "Wrap ifcopenshell_geom_create_tree_from_file_with_settings"},
     {"ifcopenshell_geom_create_tree_from_iterator", py_ifcopenshell_geom_create_tree_from_iterator, METH_VARARGS, "Wrap ifcopenshell_geom_create_tree_from_iterator"},
-    {"ifcopenshell_geom_create_ttl_serializer", py_ifcopenshell_geom_create_ttl_serializer, METH_VARARGS, "Wrap ifcopenshell_geom_create_ttl_serializer"},
     {"ifcopenshell_geom_create_xml_serializer", py_ifcopenshell_geom_create_xml_serializer, METH_VARARGS, "Wrap ifcopenshell_geom_create_xml_serializer"},
     {"ifcopenshell_geom_element_context", py_ifcopenshell_geom_element_context, METH_VARARGS, "Wrap ifcopenshell_geom_element_context"},
     {"ifcopenshell_geom_element_guid", py_ifcopenshell_geom_element_guid, METH_VARARGS, "Wrap ifcopenshell_geom_element_guid"},

@@ -1291,6 +1291,30 @@ inline bool plugin_load(const std::string& kind, const std::string& id) {
     return false;
 }
 
+inline IFCAPI_OWNED GeometrySerializer* create_geometry_serializer_by_path(
+    const std::string& format,
+    const std::string& output_filename,
+    const std::string& output_temp_filename,
+    ifcopenshell::geometry::Settings* geometry_settings,
+    ifcopenshell::geometry::SerializerSettings* serializer_settings
+) {
+    return new ifcopenshell::serializers::PluginGeometrySerializer(
+        format, output_filename, output_temp_filename, *geometry_settings, *serializer_settings
+    );
+}
+
+inline IFCAPI_OWNED GeometrySerializer* create_geometry_serializer_by_stream(
+    const std::string& format,
+    stream_or_filename* output,
+    stream_or_filename* output_temp,
+    ifcopenshell::geometry::Settings* geometry_settings,
+    ifcopenshell::geometry::SerializerSettings* serializer_settings
+) {
+    return new ifcopenshell::serializers::PluginGeometrySerializer(
+        format, *output, *output_temp, *geometry_settings, *serializer_settings
+    );
+}
+
 } // namespace ifcgeom::bindings
 
 #endif // IFCWRAP_BINDING_GENERATOR_IFCGEOM_SPEC_HPP

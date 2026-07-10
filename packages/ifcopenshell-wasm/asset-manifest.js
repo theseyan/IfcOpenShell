@@ -29,12 +29,16 @@ export const manifest = {
   },
   "document": {
     "xml.ifc2x3": { wasm: new URL("./wasm/plugins/ifcopenshell.document.xml.ifc2x3.wasm", import.meta.url).href },
+    "json.ifc2x3": { wasm: new URL("./wasm/plugins/ifcopenshell.document.json.ifc2x3.wasm", import.meta.url).href },
     "xml.ifc4": { wasm: new URL("./wasm/plugins/ifcopenshell.document.xml.ifc4.wasm", import.meta.url).href },
+    "json.ifc4": { wasm: new URL("./wasm/plugins/ifcopenshell.document.json.ifc4.wasm", import.meta.url).href },
     "xml.ifc4x3_add2": { wasm: new URL("./wasm/plugins/ifcopenshell.document.xml.ifc4x3_add2.wasm", import.meta.url).href },
+    "json.ifc4x3_add2": { wasm: new URL("./wasm/plugins/ifcopenshell.document.json.ifc4x3_add2.wasm", import.meta.url).href },
   },
   "geometry_serializer": {
     "ttl": { wasm: new URL("./wasm/plugins/ifcopenshell.geometry.ttl.wasm", import.meta.url).href, depends: ["kernel:opencascade"] },
     "obj": { wasm: new URL("./wasm/plugins/ifcopenshell.geometry.obj.wasm", import.meta.url).href },
+    "glb": { wasm: new URL("./wasm/plugins/ifcopenshell.geometry.glb.wasm", import.meta.url).href },
     "stp": { wasm: new URL("./wasm/plugins/ifcopenshell.geometry.stp.wasm", import.meta.url).href, depends: ["kernel:opencascade"] },
     "igs": { wasm: new URL("./wasm/plugins/ifcopenshell.geometry.igs.wasm", import.meta.url).href, depends: ["kernel:opencascade"] },
     "svg": { wasm: new URL("./wasm/plugins/ifcopenshell.geometry.svg.wasm", import.meta.url).href, depends: ["kernel:opencascade"] },

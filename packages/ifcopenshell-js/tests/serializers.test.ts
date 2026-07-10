@@ -69,7 +69,7 @@ describeOrSkip('serializers', () => {
     const expected = new Error('stop after capturing serializer settings');
     const raw = Object.create(shell.raw) as typeof shell.raw;
     const geom = Object.create(shell.raw.geom) as typeof shell.raw.geom;
-    Object.defineProperty(geom, 'createObjSerializer', {
+    Object.defineProperty(geom, 'createGeometrySerializerByStream', {
       value: (...args: unknown[]) => {
         calls.push(args);
         throw expected;
@@ -85,7 +85,7 @@ describeOrSkip('serializers', () => {
       serializerSettings,
     })).rejects.toBe(expected);
     expect(calls).toHaveLength(1);
-    expect(calls[0]?.[3]).toBe(serializerSettings.raw);
+    expect(calls[0]?.[4]).toBe(serializerSettings.raw);
   });
 
   it('reports a failed representation fallback instead of silently omitting geometry', async () => {
@@ -111,7 +111,7 @@ describeOrSkip('serializers', () => {
         geom: {
           createSerializerSettings: () => serializerSettings,
           createBuffer: () => buffer,
-          createObjSerializer: () => serializer,
+          createGeometrySerializerByStream: () => serializer,
           createIterator: () => iterator,
         },
       },

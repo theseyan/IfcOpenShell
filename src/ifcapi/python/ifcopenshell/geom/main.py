@@ -1613,20 +1613,37 @@ class Serializer(_SerializerBase):
     _writes_geometry = False
 
 
-def _make_buffer_serializer(create_fn_name, output_args, geometry_settings, ser_settings):
-    """Create a buffer-backed :class:`GeometrySerializer`."""
-    args = [_serializer_handle(b) for b in output_args]
-    args += [_serializer_handle(geometry_settings), _serializer_handle(ser_settings)]
-    fn = getattr(_capi, create_fn_name)
-    out = fn(*args)
-    return GeometrySerializer(out, _keep=(output_args, geometry_settings, ser_settings))
+def _make_geometry_serializer(format, output, output_temp, geometry_settings, ser_settings):
+    """Create a plugin serializer through an explicit path or stream API."""
+    if isinstance(output, str) and isinstance(output_temp, str):
+        out = _capi.create_geometry_serializer_by_path(
+            format,
+            output,
+            output_temp,
+            _serializer_handle(geometry_settings),
+            _serializer_handle(ser_settings),
+        )
+        keep = (geometry_settings, ser_settings)
+    else:
+        output = transform_string(output)
+        output_temp = transform_string(output_temp)
+        out = _capi.create_geometry_serializer_by_stream(
+            format,
+            _serializer_handle(output),
+            _serializer_handle(output_temp),
+            _serializer_handle(geometry_settings),
+            _serializer_handle(ser_settings),
+        )
+        keep = (output, output_temp, geometry_settings, ser_settings)
+    return GeometrySerializer(out, _keep=keep)
 
 
-def _make_filename_serializer(create_fn_name, filename, geometry_settings, ser_settings):
+def _make_filename_serializer(format, filename, geometry_settings, ser_settings):
     """Create a filename-backed :class:`GeometrySerializer`."""
-    fn = getattr(_capi, create_fn_name)
-    out = fn(
+    out = _capi.create_geometry_serializer_by_path(
+        format,
         str(filename),
+        "",
         _serializer_handle(geometry_settings),
         _serializer_handle(ser_settings),
     )
@@ -1654,63 +1671,48 @@ class serializers:
 
     @staticmethod
     def obj(out_filename, mtl_filename, geometry_settings, settings):
-        return _make_buffer_serializer(
-            "create_obj_serializer",
-            [transform_string(out_filename), transform_string(mtl_filename)],
-            geometry_settings,
-            settings,
-        )
+        return _make_geometry_serializer("obj", mtl_filename, out_filename, geometry_settings, settings)
 
     @staticmethod
     def svg(out_filename, geometry_settings, settings):
-        return _make_buffer_serializer(
-            "create_svg_serializer",
-            [transform_string(out_filename)],
-            geometry_settings,
-            settings,
-        )
+        return _make_geometry_serializer("svg", out_filename, out_filename, geometry_settings, settings)
 
     @staticmethod
     def ttl(out_filename, geometry_settings, settings):
-        return _make_buffer_serializer(
-            "create_ttl_serializer",
-            [transform_string(out_filename)],
-            geometry_settings,
-            settings,
-        )
+        return _make_geometry_serializer("ttl", out_filename, out_filename, geometry_settings, settings)
 
     @staticmethod
     def gltf(out_filename, geometry_settings, settings):
         return _make_filename_serializer(
-            "create_gltf_serializer",
+            "glb",
             out_filename, geometry_settings, settings,
         )
 
     @staticmethod
     def iges(out_filename, geometry_settings, settings):
         return _make_filename_serializer(
-            "create_iges_serializer",
+            "igs",
             out_filename, geometry_settings, settings,
         )
 
     @staticmethod
     def step(out_filename, geometry_settings, settings):
         return _make_filename_serializer(
-            "create_step_serializer",
+            "stp",
             out_filename, geometry_settings, settings,
         )
 
     @staticmethod
     def collada(out_filename, geometry_settings, settings):
         return _make_filename_serializer(
-            "create_collada_serializer",
+            "dae",
             out_filename, geometry_settings, settings,
         )
 
     @staticmethod
     def hdf5(out_filename, geometry_settings, settings):
         return _make_filename_serializer(
-            "create_hdf_serializer",
+            "hdf5",
             out_filename, geometry_settings, settings,
         )
 

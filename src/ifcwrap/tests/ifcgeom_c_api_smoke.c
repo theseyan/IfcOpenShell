@@ -1526,8 +1526,8 @@ static void test_obj_serializer_apis(void) {
     expect_ok(ifcopenshell_geom_serializer_settings_set_int(serializer_settings, "digits", 7));
     expect_ok(ifcopenshell_geom_create_buffer(&obj_buffer));
     expect_ok(ifcopenshell_geom_create_buffer(&mtl_buffer));
-    expect_ok(ifcopenshell_geom_create_obj_serializer(
-        obj_buffer, mtl_buffer, geom_settings, serializer_settings, &serializer));
+    expect_ok(ifcopenshell_geom_create_geometry_serializer_by_stream(
+        "obj", mtl_buffer, obj_buffer, geom_settings, serializer_settings, &serializer));
 
     expect_ok(ifcopenshell_geom_geometry_serializer_ready(serializer, &ready));
     expect_true(ready, "OBJ serializer should be ready");
@@ -1626,7 +1626,8 @@ static void test_ttl_serializer_apis(void) {
     expect_ok(ifcopenshell_geom_create_serializer_settings(&serializer_settings));
     expect_ok(ifcopenshell_geom_serializer_settings_set_string(serializer_settings, "base-uri", "https://example.com/"));
     expect_ok(ifcopenshell_geom_create_buffer(&ttl_buffer));
-    expect_ok(ifcopenshell_geom_create_ttl_serializer(ttl_buffer, geom_settings, serializer_settings, &serializer));
+    expect_ok(ifcopenshell_geom_create_geometry_serializer_by_stream(
+        "ttl", ttl_buffer, ttl_buffer, geom_settings, serializer_settings, &serializer));
 
     expect_ok(ifcopenshell_geom_geometry_serializer_ready(serializer, &ready));
     expect_true(ready, "TTL serializer should be ready");
@@ -1699,7 +1700,8 @@ static void test_svg_serializer_apis(void) {
     expect_ok(ifcopenshell_geom_settings_set_int(geom_settings, "iterator-output", 1)); /* NATIVE */
     expect_ok(ifcopenshell_geom_create_serializer_settings(&serializer_settings));
     expect_ok(ifcopenshell_geom_create_buffer(&svg_buffer));
-    expect_ok(ifcopenshell_geom_create_svg_serializer(svg_buffer, geom_settings, serializer_settings, &serializer));
+    expect_ok(ifcopenshell_geom_create_geometry_serializer_by_stream(
+        "svg", svg_buffer, svg_buffer, geom_settings, serializer_settings, &serializer));
 
     expect_ok(ifcopenshell_geom_geometry_serializer_ready(serializer, &ready));
     expect_true(ready, "SVG serializer should be ready");
@@ -1770,7 +1772,8 @@ static void test_gltf_serializer_apis(void) {
     expect_ok(ifcopenshell_geom_create_settings(&geom_settings));
     expect_ok(ifcopenshell_geom_settings_set_int(geom_settings, "iterator-output", 0)); /* TRIANGULATED */
     expect_ok(ifcopenshell_geom_create_serializer_settings(&serializer_settings));
-    expect_ok(ifcopenshell_geom_create_gltf_serializer(gltf_filename, geom_settings, serializer_settings, &serializer));
+    expect_ok(ifcopenshell_geom_create_geometry_serializer_by_path(
+        "glb", gltf_filename, "", geom_settings, serializer_settings, &serializer));
 
     if (!serializer) {
         printf("  SKIP: GLTF serializer not available (build may not have WITH_GLTF)\n");
@@ -1928,7 +1931,8 @@ static void test_iges_step_serializer_apis(void) {
     expect_ok(ifcopenshell_geom_create_serializer_settings(&serializer_settings));
 
     /* Test IGES serializer */
-    expect_ok(ifcopenshell_geom_create_iges_serializer(iges_filename, geom_settings, serializer_settings, &iges_serializer));
+    expect_ok(ifcopenshell_geom_create_geometry_serializer_by_path(
+        "igs", iges_filename, "", geom_settings, serializer_settings, &iges_serializer));
     if (!iges_serializer) {
         printf("  SKIP: IGES serializer not available (may require OpenCascade)\n");
     } else {
@@ -1965,7 +1969,8 @@ static void test_iges_step_serializer_apis(void) {
     }
 
     /* Test STEP serializer */
-    expect_ok(ifcopenshell_geom_create_step_serializer(step_filename, geom_settings, serializer_settings, &step_serializer));
+    expect_ok(ifcopenshell_geom_create_geometry_serializer_by_path(
+        "stp", step_filename, "", geom_settings, serializer_settings, &step_serializer));
     if (!step_serializer) {
         printf("  SKIP: STEP serializer not available (may require OpenCascade)\n");
     } else {
@@ -2037,11 +2042,12 @@ static void test_collada_hdf_serializer_apis(void) {
     /* Test Collada serializer (optional feature) */
     expect_ok(ifcopenshell_geom_create_settings(&collada_settings));
     expect_ok(ifcopenshell_geom_settings_set_int(collada_settings, "iterator-output", 0)); /* TRIANGULATED */
-    ok = ifcopenshell_geom_create_collada_serializer(
-        collada_filename, collada_settings, serializer_settings, &collada_serializer);
+    ok = ifcopenshell_geom_create_geometry_serializer_by_path(
+        "dae", collada_filename, "", collada_settings, serializer_settings, &collada_serializer);
     if (!ok) {
         const char* err = ifcopenshell_last_error_message();
-        if (err && (strstr(err, "not available in this build") != NULL || strstr(err, "requires") != NULL)) {
+        if (err && (strstr(err, "not available in this build") != NULL || strstr(err, "requires") != NULL
+                    || strstr(err, "No geometry serializer registered") != NULL)) {
             printf("  SKIP: Collada serializer not available in this build\n");
             ifcopenshell_clear_error();
         } else {

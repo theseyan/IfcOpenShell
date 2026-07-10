@@ -1871,13 +1871,6 @@ bool ifcopenshell_geom_taxonomy_create_bspline_surface(int32_t degree_u, int32_t
 bool ifcopenshell_geom_taxonomy_create_boolean_result(int32_t operation, ifcopenshell_geom_taxonomy_boolean_result_t** out_result);
 bool ifcopenshell_geom_taxonomy_create_offset_curve(ifcopenshell_geom_taxonomy_item_t* basis, ifcopenshell_geom_taxonomy_direction3_t* reference, double offset, ifcopenshell_geom_taxonomy_offset_curve_t** out_result);
 bool ifcopenshell_geom_helmert_curve_point(double A0, double A1, double A2, double s, ifcopenshell_double_list_t* out_result);
-bool ifcopenshell_geom_create_obj_serializer(ifcopenshell_geom_buffer_t* obj_output, ifcopenshell_geom_buffer_t* mtl_output, ifcopenshell_geom_settings_t* geometry_settings, ifcopenshell_geom_serializer_settings_t* serializer_settings, ifcopenshell_geom_geometry_serializer_t** out_result);
-bool ifcopenshell_geom_create_ttl_serializer(const char* output, ifcopenshell_geom_settings_t* geometry_settings, ifcopenshell_geom_serializer_settings_t* serializer_settings, ifcopenshell_geom_geometry_serializer_t** out_result);
-bool ifcopenshell_geom_create_svg_serializer(const char* output, ifcopenshell_geom_settings_t* geometry_settings, ifcopenshell_geom_serializer_settings_t* serializer_settings, ifcopenshell_geom_geometry_serializer_t** out_result);
-bool ifcopenshell_geom_create_gltf_serializer(const char* output, ifcopenshell_geom_settings_t* geometry_settings, ifcopenshell_geom_serializer_settings_t* serializer_settings, ifcopenshell_geom_geometry_serializer_t** out_result);
-bool ifcopenshell_geom_create_iges_serializer(const char* output, ifcopenshell_geom_settings_t* geometry_settings, ifcopenshell_geom_serializer_settings_t* serializer_settings, ifcopenshell_geom_geometry_serializer_t** out_result);
-bool ifcopenshell_geom_create_step_serializer(const char* output, ifcopenshell_geom_settings_t* geometry_settings, ifcopenshell_geom_serializer_settings_t* serializer_settings, ifcopenshell_geom_geometry_serializer_t** out_result);
-bool ifcopenshell_geom_create_collada_serializer(const char* output, ifcopenshell_geom_settings_t* geometry_settings, ifcopenshell_geom_serializer_settings_t* serializer_settings, ifcopenshell_geom_geometry_serializer_t** out_result);
 bool ifcopenshell_parse_argument_type_to_string(int32_t type, ifcopenshell_string_t* out_result);
 bool ifcopenshell_parse_clear_plugin_search_paths(void);
 bool ifcopenshell_parse_clear_schemas(void);
@@ -2451,6 +2444,8 @@ bool ifcopenshell_geom_create_epeck_from_double(double value, ifcopenshell_geom_
 bool ifcopenshell_geom_create_epeck_from_int(int32_t value, ifcopenshell_geom_opaque_number_t** out_result);
 bool ifcopenshell_geom_create_epeck_from_string(const char* value_cpp, ifcopenshell_geom_opaque_number_t** out_result);
 bool ifcopenshell_geom_create_function_item_evaluator(ifcopenshell_geom_settings_t* settings_cpp, ifcopenshell_geom_taxonomy_item_t* fn_item_cpp, ifcopenshell_geom_function_item_evaluator_t** out_result);
+bool ifcopenshell_geom_create_geometry_serializer_by_path(const char* format, const char* output_filename, const char* output_temp_filename, ifcopenshell_geom_settings_t* geometry_settings, ifcopenshell_geom_serializer_settings_t* serializer_settings, ifcopenshell_geom_geometry_serializer_t** out_result);
+bool ifcopenshell_geom_create_geometry_serializer_by_stream(const char* format, ifcopenshell_geom_buffer_t* output, ifcopenshell_geom_buffer_t* output_temp, ifcopenshell_geom_settings_t* geometry_settings, ifcopenshell_geom_serializer_settings_t* serializer_settings, ifcopenshell_geom_geometry_serializer_t** out_result);
 bool ifcopenshell_geom_create_iterator(const char* geometry_library_cpp, ifcopenshell_geom_settings_t* settings_cpp, ifcopenshell_file_t* file_cpp, int32_t num_threads, ifcopenshell_geom_iterator_t** out_result);
 bool ifcopenshell_geom_create_iterator_with_include_exclude(const char* geometry_library_cpp, ifcopenshell_geom_settings_t* settings_cpp, ifcopenshell_file_t* file_cpp, const ifcopenshell_string_list_t* elems_cpp, bool include, int32_t num_threads, ifcopenshell_geom_iterator_t** out_result);
 bool ifcopenshell_geom_create_iterator_with_include_exclude_globalid(const char* geometry_library_cpp, ifcopenshell_geom_settings_t* settings_cpp, ifcopenshell_file_t* file_cpp, const ifcopenshell_string_list_t* elems_cpp, bool include, int32_t num_threads, ifcopenshell_geom_iterator_t** out_result);

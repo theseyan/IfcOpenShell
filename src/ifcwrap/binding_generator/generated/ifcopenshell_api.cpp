@@ -3431,190 +3431,6 @@ bool ifcopenshell_geom_helmert_curve_point(double A0, double A1, double A2, doub
     }
 }
 
-bool ifcopenshell_geom_create_obj_serializer(ifcopenshell_geom_buffer_t* obj_output, ifcopenshell_geom_buffer_t* mtl_output, ifcopenshell_geom_settings_t* geometry_settings, ifcopenshell_geom_serializer_settings_t* serializer_settings, ifcopenshell_geom_geometry_serializer_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (obj_output == nullptr || obj_output->ptr == nullptr) { throw std::runtime_error("Handle parameter \"obj_output\" is invalid"); }
-    auto obj_output_cpp = obj_output->ptr;
-    if (mtl_output == nullptr || mtl_output->ptr == nullptr) { throw std::runtime_error("Handle parameter \"mtl_output\" is invalid"); }
-    auto mtl_output_cpp = mtl_output->ptr;
-    if (geometry_settings == nullptr || geometry_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"geometry_settings\" is invalid"); }
-    auto geometry_settings_cpp = geometry_settings->ptr;
-    if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
-    auto serializer_settings_cpp = serializer_settings->ptr;
-        auto generated_result = [&]() {
-return new ifcopenshell::serializers::PluginGeometrySerializer(
-    "obj", *obj_output_cpp, *mtl_output_cpp, *geometry_settings_cpp, *serializer_settings_cpp);
-        }();
-        auto result_value = std::unique_ptr<GeometrySerializer>(generated_result);
-        *out_result = new ifcopenshell_geom_geometry_serializer_t{result_value.release(), true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_geom_create_ttl_serializer(const char* output, ifcopenshell_geom_settings_t* geometry_settings, ifcopenshell_geom_serializer_settings_t* serializer_settings, ifcopenshell_geom_geometry_serializer_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (output == nullptr) { throw std::runtime_error("Parameter \"output\" must not be null"); }
-    std::string output_cpp(output);
-    if (geometry_settings == nullptr || geometry_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"geometry_settings\" is invalid"); }
-    auto geometry_settings_cpp = geometry_settings->ptr;
-    if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
-    auto serializer_settings_cpp = serializer_settings->ptr;
-        auto generated_result = [&]() {
-return new ifcopenshell::serializers::PluginGeometrySerializer(
-    "ttl", output_cpp, std::string(), *geometry_settings_cpp, *serializer_settings_cpp);
-        }();
-        auto result_value = std::unique_ptr<GeometrySerializer>(generated_result);
-        *out_result = new ifcopenshell_geom_geometry_serializer_t{result_value.release(), true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_geom_create_svg_serializer(const char* output, ifcopenshell_geom_settings_t* geometry_settings, ifcopenshell_geom_serializer_settings_t* serializer_settings, ifcopenshell_geom_geometry_serializer_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (output == nullptr) { throw std::runtime_error("Parameter \"output\" must not be null"); }
-    std::string output_cpp(output);
-    if (geometry_settings == nullptr || geometry_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"geometry_settings\" is invalid"); }
-    auto geometry_settings_cpp = geometry_settings->ptr;
-    if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
-    auto serializer_settings_cpp = serializer_settings->ptr;
-        auto generated_result = [&]() {
-return new ifcopenshell::serializers::PluginGeometrySerializer(
-    "svg", output_cpp, std::string(), *geometry_settings_cpp, *serializer_settings_cpp);
-        }();
-        auto result_value = std::unique_ptr<GeometrySerializer>(generated_result);
-        *out_result = new ifcopenshell_geom_geometry_serializer_t{result_value.release(), true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_geom_create_gltf_serializer(const char* output, ifcopenshell_geom_settings_t* geometry_settings, ifcopenshell_geom_serializer_settings_t* serializer_settings, ifcopenshell_geom_geometry_serializer_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (output == nullptr) { throw std::runtime_error("Parameter \"output\" must not be null"); }
-    std::string output_cpp(output);
-    if (geometry_settings == nullptr || geometry_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"geometry_settings\" is invalid"); }
-    auto geometry_settings_cpp = geometry_settings->ptr;
-    if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
-    auto serializer_settings_cpp = serializer_settings->ptr;
-        auto generated_result = [&]() {
-return new ifcopenshell::serializers::PluginGeometrySerializer(
-    "glb", output_cpp, std::string(), *geometry_settings_cpp, *serializer_settings_cpp);
-        }();
-        auto result_value = std::unique_ptr<GeometrySerializer>(generated_result);
-        *out_result = new ifcopenshell_geom_geometry_serializer_t{result_value.release(), true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_geom_create_iges_serializer(const char* output, ifcopenshell_geom_settings_t* geometry_settings, ifcopenshell_geom_serializer_settings_t* serializer_settings, ifcopenshell_geom_geometry_serializer_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (output == nullptr) { throw std::runtime_error("Parameter \"output\" must not be null"); }
-    std::string output_cpp(output);
-    if (geometry_settings == nullptr || geometry_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"geometry_settings\" is invalid"); }
-    auto geometry_settings_cpp = geometry_settings->ptr;
-    if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
-    auto serializer_settings_cpp = serializer_settings->ptr;
-        auto generated_result = [&]() {
-return new ifcopenshell::serializers::PluginGeometrySerializer(
-    "igs", output_cpp, std::string(), *geometry_settings_cpp, *serializer_settings_cpp);
-        }();
-        auto result_value = std::unique_ptr<GeometrySerializer>(generated_result);
-        *out_result = new ifcopenshell_geom_geometry_serializer_t{result_value.release(), true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_geom_create_step_serializer(const char* output, ifcopenshell_geom_settings_t* geometry_settings, ifcopenshell_geom_serializer_settings_t* serializer_settings, ifcopenshell_geom_geometry_serializer_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (output == nullptr) { throw std::runtime_error("Parameter \"output\" must not be null"); }
-    std::string output_cpp(output);
-    if (geometry_settings == nullptr || geometry_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"geometry_settings\" is invalid"); }
-    auto geometry_settings_cpp = geometry_settings->ptr;
-    if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
-    auto serializer_settings_cpp = serializer_settings->ptr;
-        auto generated_result = [&]() {
-return new ifcopenshell::serializers::PluginGeometrySerializer(
-    "stp", output_cpp, std::string(), *geometry_settings_cpp, *serializer_settings_cpp);
-        }();
-        auto result_value = std::unique_ptr<GeometrySerializer>(generated_result);
-        *out_result = new ifcopenshell_geom_geometry_serializer_t{result_value.release(), true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
-bool ifcopenshell_geom_create_collada_serializer(const char* output, ifcopenshell_geom_settings_t* geometry_settings, ifcopenshell_geom_serializer_settings_t* serializer_settings, ifcopenshell_geom_geometry_serializer_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (output == nullptr) { throw std::runtime_error("Parameter \"output\" must not be null"); }
-    std::string output_cpp(output);
-    if (geometry_settings == nullptr || geometry_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"geometry_settings\" is invalid"); }
-    auto geometry_settings_cpp = geometry_settings->ptr;
-    if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
-    auto serializer_settings_cpp = serializer_settings->ptr;
-        auto generated_result = [&]() {
-return new ifcopenshell::serializers::PluginGeometrySerializer(
-    "dae", output_cpp, std::string(), *geometry_settings_cpp, *serializer_settings_cpp);
-        }();
-        auto result_value = std::unique_ptr<GeometrySerializer>(generated_result);
-        *out_result = new ifcopenshell_geom_geometry_serializer_t{result_value.release(), true};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
 bool ifcopenshell_parse_argument_type_to_string(int32_t type, ifcopenshell_string_t* out_result) {
     try {
         ifcopenshell_clear_error();
@@ -15643,6 +15459,58 @@ bool ifcopenshell_geom_create_function_item_evaluator(ifcopenshell_geom_settings
     const auto& fn_item_cpp_cpp = fn_item_cpp->ptr;
         auto result_value = std::unique_ptr<ifcopenshell::geometry::function_item_evaluator>(ifcgeom::bindings::create_function_item_evaluator(settings_cpp_cpp, fn_item_cpp_cpp));
         *out_result = new ifcopenshell_geom_function_item_evaluator_t{result_value.release(), true};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_geom_create_geometry_serializer_by_path(const char* format, const char* output_filename, const char* output_temp_filename, ifcopenshell_geom_settings_t* geometry_settings, ifcopenshell_geom_serializer_settings_t* serializer_settings, ifcopenshell_geom_geometry_serializer_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (format == nullptr) { throw std::runtime_error("Parameter \"format\" must not be null"); }
+    std::string format_cpp(format);
+    if (output_filename == nullptr) { throw std::runtime_error("Parameter \"output_filename\" must not be null"); }
+    std::string output_filename_cpp(output_filename);
+    if (output_temp_filename == nullptr) { throw std::runtime_error("Parameter \"output_temp_filename\" must not be null"); }
+    std::string output_temp_filename_cpp(output_temp_filename);
+    if (geometry_settings == nullptr || geometry_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"geometry_settings\" is invalid"); }
+    auto geometry_settings_cpp = geometry_settings->ptr;
+    if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
+    auto serializer_settings_cpp = serializer_settings->ptr;
+        auto result_value = std::unique_ptr<GeometrySerializer>(ifcgeom::bindings::create_geometry_serializer_by_path(format_cpp, output_filename_cpp, output_temp_filename_cpp, geometry_settings_cpp, serializer_settings_cpp));
+        *out_result = new ifcopenshell_geom_geometry_serializer_t{result_value.release(), true};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_geom_create_geometry_serializer_by_stream(const char* format, ifcopenshell_geom_buffer_t* output, ifcopenshell_geom_buffer_t* output_temp, ifcopenshell_geom_settings_t* geometry_settings, ifcopenshell_geom_serializer_settings_t* serializer_settings, ifcopenshell_geom_geometry_serializer_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (format == nullptr) { throw std::runtime_error("Parameter \"format\" must not be null"); }
+    std::string format_cpp(format);
+    if (output == nullptr || output->ptr == nullptr) { throw std::runtime_error("Handle parameter \"output\" is invalid"); }
+    auto output_cpp = output->ptr;
+    if (output_temp == nullptr || output_temp->ptr == nullptr) { throw std::runtime_error("Handle parameter \"output_temp\" is invalid"); }
+    auto output_temp_cpp = output_temp->ptr;
+    if (geometry_settings == nullptr || geometry_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"geometry_settings\" is invalid"); }
+    auto geometry_settings_cpp = geometry_settings->ptr;
+    if (serializer_settings == nullptr || serializer_settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"serializer_settings\" is invalid"); }
+    auto serializer_settings_cpp = serializer_settings->ptr;
+        auto result_value = std::unique_ptr<GeometrySerializer>(ifcgeom::bindings::create_geometry_serializer_by_stream(format_cpp, output_cpp, output_temp_cpp, geometry_settings_cpp, serializer_settings_cpp));
+        *out_result = new ifcopenshell_geom_geometry_serializer_t{result_value.release(), true};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

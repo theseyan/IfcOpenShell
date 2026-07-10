@@ -165,12 +165,14 @@ export async function exportToBuffer(
     if (format === 'obj') {
       obj = shell.raw.geom.createBuffer();
       mtl = shell.raw.geom.createBuffer();
-      serializer = shell.raw.geom.createObjSerializer(obj, mtl, geomSettings.raw, serSettings);
+      serializer = shell.raw.geom.createGeometrySerializerByStream(
+        'obj', mtl, obj, geomSettings.raw, serSettings,
+      );
     } else {
       outputPath = uniquePath(format);
-      serializer = format === 'svg'
-        ? shell.raw.geom.createSvgSerializer(outputPath, geomSettings.raw, serSettings)
-        : shell.raw.geom.createTtlSerializer(outputPath, geomSettings.raw, serSettings);
+      serializer = shell.raw.geom.createGeometrySerializerByPath(
+        format, outputPath, outputPath, geomSettings.raw, serSettings,
+      );
     }
     if (!serializer || serializer.ptr === 0) throw new IfcOpenShellError(`Failed to create ${format} serializer`);
     serializer.setFile(file.raw);
