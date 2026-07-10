@@ -13,6 +13,7 @@ set(IFCOPENSHELL_WASM_D_TS "${IFCOPENSHELL_WASM_OUTPUT_DIR}/ifcopenshell_api.d.t
 set(IFCOPENSHELL_WASM_DIRECT_API_TS "${IFCOPENSHELL_WASM_OUTPUT_DIR}/ifcopenshell_api.ts")
 set(IFCOPENSHELL_JS_GENERATED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../packages/ifcopenshell-js/src/generated")
 set(IFCOPENSHELL_JS_DIRECT_API_TS "${IFCOPENSHELL_JS_GENERATED_DIR}/ifcopenshell_api.ts")
+set(IFCOPENSHELL_JS_GENERATED_D_TS "${IFCOPENSHELL_JS_GENERATED_DIR}/ifcopenshell_api.d.ts")
 set(IFCOPENSHELL_WASM_PLUGINS_JSON "${IFCOPENSHELL_WASM_OUTPUT_DIR}/ifcopenshell_plugins.json")
 set(IFCOPENSHELL_WASM_MATH_IMPORTS_JS "${CMAKE_CURRENT_SOURCE_DIR}/wasm_math_imports.js")
 
@@ -24,6 +25,7 @@ add_custom_command(
         "${IFCOPENSHELL_WASM_D_TS}"
         "${IFCOPENSHELL_WASM_DIRECT_API_TS}"
         "${IFCOPENSHELL_JS_DIRECT_API_TS}"
+        "${IFCOPENSHELL_JS_GENERATED_D_TS}"
     COMMAND
         ${Python_EXECUTABLE} "${IFCPARSE_TARGET_GENERATOR}"
         --target wasm
@@ -46,6 +48,10 @@ add_custom_command(
         ${CMAKE_COMMAND} -E copy_if_different
         "${IFCOPENSHELL_WASM_DIRECT_API_TS}"
         "${IFCOPENSHELL_JS_DIRECT_API_TS}"
+    COMMAND
+        ${CMAKE_COMMAND} -E copy_if_different
+        "${IFCOPENSHELL_WASM_D_TS}"
+        "${IFCOPENSHELL_JS_GENERATED_D_TS}"
     DEPENDS
         "${UNIFIED_CAPI_HEADER}"
         "${IFCPARSE_TARGET_GENERATOR}"
@@ -67,6 +73,7 @@ add_custom_target(
         "${IFCOPENSHELL_WASM_D_TS}"
         "${IFCOPENSHELL_WASM_DIRECT_API_TS}"
         "${IFCOPENSHELL_JS_DIRECT_API_TS}"
+        "${IFCOPENSHELL_JS_GENERATED_D_TS}"
 )
 
 set(IFCOPENSHELL_WASM_ENTRYPOINT "${CMAKE_CURRENT_BINARY_DIR}/ifcopenshell_wasm_entrypoint.cpp")

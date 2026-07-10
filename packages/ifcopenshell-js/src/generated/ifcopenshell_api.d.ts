@@ -1,3 +1,4 @@
+// This file was generated with the assistance of an AI coding tool.
 
 declare module 'ifcopenshell-api' {
   export type IfcOpenshellRawValue = null | boolean | number | bigint | string | object | IfcOpenshellRawValue[];
@@ -50,6 +51,15 @@ declare module 'ifcopenshell-api' {
     update_owner_history: boolean;
     user?: IfcOpenshellInstance;
     application?: IfcOpenshellInstance;
+  }
+
+  export interface IfcOpenshellBoundaryAssignConnectionGeometryOptions {
+    outer_boundary: number[][];
+    location: number[];
+    axis: number[];
+    ref_direction: number[];
+    inner_boundaries: number[][][];
+    unit_scale: number;
   }
 
   export interface IfcOpenshellBoundaryEditAttributesOptions {
@@ -1883,7 +1893,6 @@ declare module 'ifcopenshell-api' {
     selectElement(instance: IfcOpenshellInstance, completely_within: boolean, extend: number): IfcOpenshellParseInstanceList;
     selectPoint(x: number, y: number, z: number, extend: number): IfcOpenshellParseInstanceList;
     selectRay(origin_x: number, origin_y: number, origin_z: number, dir_x: number, dir_y: number, dir_z: number, length: number): IfcOpenshellGeomTreeRayIntersectionList;
-    selectShapeSerialization(shape_serialization: string, completely_within: boolean, extend: number): IfcOpenshellParseInstanceList;
     setEnableFaceStyles(enable: boolean): void;
     styleAt(index: number): IfcOpenshellGeomTaxonomyStyle;
     styleCount(): number;
@@ -1991,7 +2000,8 @@ declare module 'ifcopenshell-api' {
   }
 
   export interface IfcOpenshellBoundaryModule {
-    assignConnectionGeometry(file: IfcOpenshellFile, rel_space_boundary: IfcOpenshellInstance, outer_boundary: number[][], location: number[], axis: number[], ref_direction: number[], inner_boundaries: number[][][], unit_scale: number): void;
+    /** Assign a planar connection geometry to a space boundary relationship. */
+    assignConnectionGeometry(file: IfcOpenshellFile, rel_space_boundary: IfcOpenshellInstance, options: IfcOpenshellBoundaryAssignConnectionGeometryOptions): void;
     copyBoundary(file: IfcOpenshellFile, boundary: IfcOpenshellInstance): IfcOpenshellInstance;
     editAttributes(entity: IfcOpenshellInstance, options: IfcOpenshellBoundaryEditAttributesOptions): void;
     removeBoundary(file: IfcOpenshellFile, boundary: IfcOpenshellInstance): void;
@@ -2159,30 +2169,25 @@ declare module 'ifcopenshell-api' {
     convertLoopToFunctionItem(loop_item_cpp: IfcOpenshellGeomTaxonomyItem): IfcOpenshellGeomTaxonomyItem;
     createBuffer(): IfcOpenshellGeomBuffer;
     createBufferFromFilename(filename: string): IfcOpenshellGeomBuffer;
-    createColladaSerializer(output: string, geometry_settings: IfcOpenshellGeomSettings, serializer_settings: IfcOpenshellGeomSerializerSettings): IfcOpenshellGeomGeometrySerializer;
     createEpeckFromDouble(value: number): IfcOpenshellGeomOpaqueNumber | null;
     createEpeckFromInt(value: number): IfcOpenshellGeomOpaqueNumber | null;
     createEpeckFromString(value_cpp: string): IfcOpenshellGeomOpaqueNumber | null;
     createFunctionItemEvaluator(settings_cpp: IfcOpenshellGeomSettings, fn_item_cpp: IfcOpenshellGeomTaxonomyItem): IfcOpenshellGeomFunctionItemEvaluator | null;
-    createGltfSerializer(output: string, geometry_settings: IfcOpenshellGeomSettings, serializer_settings: IfcOpenshellGeomSerializerSettings): IfcOpenshellGeomGeometrySerializer;
-    createIgesSerializer(output: string, geometry_settings: IfcOpenshellGeomSettings, serializer_settings: IfcOpenshellGeomSerializerSettings): IfcOpenshellGeomGeometrySerializer;
+    createGeometrySerializerByPath(format: string, output_filename: string, output_temp_filename: string, geometry_settings: IfcOpenshellGeomSettings, serializer_settings: IfcOpenshellGeomSerializerSettings): IfcOpenshellGeomGeometrySerializer | null;
+    createGeometrySerializerByStream(format: string, output: IfcOpenshellGeomBuffer, output_temp: IfcOpenshellGeomBuffer, geometry_settings: IfcOpenshellGeomSettings, serializer_settings: IfcOpenshellGeomSerializerSettings): IfcOpenshellGeomGeometrySerializer | null;
     createIterator(geometry_library_cpp: string, settings_cpp: IfcOpenshellGeomSettings, file_cpp: IfcOpenshellFile, num_threads: number): IfcOpenshellGeomIterator | null;
     createIteratorWithIncludeExclude(geometry_library_cpp: string, settings_cpp: IfcOpenshellGeomSettings, file_cpp: IfcOpenshellFile, elems_cpp: string[], include: boolean, num_threads: number): IfcOpenshellGeomIterator | null;
     createIteratorWithIncludeExcludeGlobalid(geometry_library_cpp: string, settings_cpp: IfcOpenshellGeomSettings, file_cpp: IfcOpenshellFile, elems_cpp: string[], include: boolean, num_threads: number): IfcOpenshellGeomIterator | null;
     createIteratorWithIncludeExcludeId(geometry_library_cpp: string, settings_cpp: IfcOpenshellGeomSettings, file_cpp: IfcOpenshellFile, elems_cpp: number[], include: boolean, num_threads: number): IfcOpenshellGeomIterator | null;
     createJsonSerializer(file: IfcOpenshellFile, filename: string): IfcOpenshellGeomSerializer;
-    createObjSerializer(obj_output: IfcOpenshellGeomBuffer, mtl_output: IfcOpenshellGeomBuffer, geometry_settings: IfcOpenshellGeomSettings, serializer_settings: IfcOpenshellGeomSerializerSettings): IfcOpenshellGeomGeometrySerializer;
     createRocksdbSerializerStreaming(input_filename: string, rocksdb_filename: string): IfcOpenshellGeomSerializer;
     createSerializerSettings(): IfcOpenshellGeomSerializerSettings;
     createSettings(): IfcOpenshellGeomSettings;
     createShape(settings_cpp: IfcOpenshellGeomSettings, instance_cpp: IfcOpenshellInstance, representation: IfcOpenshellInstance | null, geometry_library: string | null): IfcOpenshellGeomElement | null;
-    createStepSerializer(output: string, geometry_settings: IfcOpenshellGeomSettings, serializer_settings: IfcOpenshellGeomSerializerSettings): IfcOpenshellGeomGeometrySerializer;
-    createSvgSerializer(output: string, geometry_settings: IfcOpenshellGeomSettings, serializer_settings: IfcOpenshellGeomSerializerSettings): IfcOpenshellGeomGeometrySerializer;
     createTree(): IfcOpenshellGeomTree;
     createTreeFromFile(file: IfcOpenshellFile): IfcOpenshellGeomTree;
     createTreeFromFileWithSettings(file: IfcOpenshellFile, settings: IfcOpenshellGeomSettings): IfcOpenshellGeomTree;
     createTreeFromIterator(iterator: IfcOpenshellGeomIterator): IfcOpenshellGeomTree;
-    createTtlSerializer(output: string, geometry_settings: IfcOpenshellGeomSettings, serializer_settings: IfcOpenshellGeomSerializerSettings): IfcOpenshellGeomGeometrySerializer;
     createXmlSerializer(file: IfcOpenshellFile, filename: string): IfcOpenshellGeomSerializer;
     helmertCurvePoint(A0: number, A1: number, A2: number, s: number): number[];
     lineSegmentsToPolygons(solver: number, eps: number, segments_json_cpp: string): IfcOpenshellGeomSvgfillPolygon[];

@@ -2162,11 +2162,8 @@ static void test_tree_apis(void) {
     bool initialized = false;
     ifcopenshell_geom_element_t* elem = NULL;
     ifcopenshell_geom_brep_element_t* brep_elem = NULL;
-    ifcopenshell_geom_brep_representation_t* brep_repr = NULL;
-    ifcopenshell_geom_conversion_result_shape_t* compound = NULL;
     ifcopenshell_instance_t* product = NULL;
     ifcopenshell_parse_instance_list_t* selected = NULL;
-    ifcopenshell_string_t shape_serialized = {0};
     size_t selected_count = 0;
     ifcopenshell_double_list_t distances = {0};
     ifcopenshell_double_list_t protrusions = {0};
@@ -2203,6 +2200,11 @@ static void test_tree_apis(void) {
     }
 
     expect_ok(ifcopenshell_geom_create_tree_from_iterator(iterator, &tree4));
+    /* The tree keeps borrowed element pointers, so release it before its iterator. */
+    ifcopenshell_geom_tree_destroy(tree4);
+    tree4 = NULL;
+    ifcopenshell_geom_iterator_destroy(iterator);
+    iterator = NULL;
 
     expect_ok(ifcopenshell_geom_create_iterator("opencascade", settings, file, 1, &iterator));
     expect_ok(ifcopenshell_geom_iterator_initialize(iterator, &initialized));
@@ -2246,16 +2248,6 @@ static void test_tree_apis(void) {
     expect_ok(ifcopenshell_geom_tree_select_box_bounds(tree, -1000.0, -1000.0, -1000.0, 1000.0, 1000.0, 1000.0, false, &selected));
     expect_ok(ifcopenshell_parse_instance_list_size(selected, &selected_count));
     ifcopenshell_parse_instance_list_destroy(selected);
-
-    expect_ok(ifcopenshell_geom_brep_element_geometry(brep_elem, &brep_repr));
-    expect_ok(ifcopenshell_geom_brep_representation_as_compound(brep_repr, false, &compound));
-    expect_ok(ifcopenshell_geom_conversion_result_shape_serialize(compound, &shape_serialized));
-    expect_true(shape_serialized.data != NULL && shape_serialized.size > 0, "Serialized shape should be non-empty");
-    expect_ok(ifcopenshell_geom_tree_select_shape_serialization(tree, shape_serialized.data, false, 0.0, &selected));
-    expect_ok(ifcopenshell_parse_instance_list_size(selected, &selected_count));
-    ifcopenshell_parse_instance_list_destroy(selected);
-    ifcopenshell_string_destroy(&shape_serialized);
-    ifcopenshell_geom_conversion_result_shape_destroy(compound);
 
     expect_ok(ifcopenshell_geom_tree_distances(tree, &distances));
     ifcopenshell_double_list_destroy(&distances);

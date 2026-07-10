@@ -25974,27 +25974,6 @@ bool ifcopenshell_geom_tree_select_ray(ifcopenshell_geom_tree_t* self, double or
     }
 }
 
-bool ifcopenshell_geom_tree_select_shape_serialization(ifcopenshell_geom_tree_t* self, const char* shape_serialization, bool completely_within, double extend, ifcopenshell_parse_instance_list_t** out_result) {
-    try {
-        ifcopenshell_clear_error();
-    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
-    if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
-    auto* self_cpp = self->ptr;
-    if (shape_serialization == nullptr) { throw std::runtime_error("Parameter \"shape_serialization\" must not be null"); }
-    std::string shape_serialization_cpp(shape_serialization);
-    auto completely_within_cpp = static_cast<bool>(completely_within);
-    auto extend_cpp = static_cast<double>(extend);
-        *out_result = new ifcopenshell_parse_instance_list_t{ifcgeom::bindings::select_shape_serialization(self_cpp, shape_serialization_cpp, completely_within_cpp, extend_cpp)};
-        return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
-    } catch (...) {
-        set_last_error("Unknown C++ exception");
-        return false;
-    }
-}
-
 bool ifcopenshell_geom_conversion_result_shape_serialize(ifcopenshell_geom_conversion_result_shape_t* self, ifcopenshell_string_t* out_result) {
     try {
         ifcopenshell_clear_error();

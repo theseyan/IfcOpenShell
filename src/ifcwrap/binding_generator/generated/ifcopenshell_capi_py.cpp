@@ -31856,36 +31856,6 @@ __cleanup:
     return __py_result;
 }
 
-static PyObject *py_ifcopenshell_geom_tree_select_shape_serialization(PyObject *self, PyObject *args) {
-    PyObject *__py_result = NULL;
-    bool ok = false;
-    PyObject *arg_self_obj = NULL;
-    ifcopenshell_geom_tree_t *arg_self = NULL;
-    const char *arg_shape_serialization = NULL;
-    int arg_completely_within = 0;
-    double arg_extend = 0;
-    ifcopenshell_parse_instance_list_t *result = NULL;
-    if (!PyArg_ParseTuple(args, "Ospd", &arg_self_obj, &arg_shape_serialization, &arg_completely_within, &arg_extend)) return NULL;
-
-    if (!extract_handle(arg_self_obj, &IfcOpenshellGeomTreeType, "IfcOpenshellGeomTree", (void **)&arg_self, 0)) {
-        goto __cleanup;
-    }
-
-    ifcopenshell_clear_error();
-    ok = ifcopenshell_geom_tree_select_shape_serialization(arg_self, arg_shape_serialization, arg_completely_within, arg_extend, &result);
-    if (!ok) {
-        raise_last_error("ifcopenshell_geom_tree_select_shape_serialization failed");
-        goto __cleanup;
-    }
-    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
-        raise_last_error("ifcopenshell_geom_tree_select_shape_serialization failed");
-        goto __cleanup;
-    }
-    __py_result = wrap_parse_instance_list(result, 1);
-__cleanup:
-    return __py_result;
-}
-
 static PyObject *py_ifcopenshell_geom_tree_set_enable_face_styles(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -48766,7 +48736,6 @@ static PyMethodDef module_methods[] = {
     {"tree_select_element", py_ifcopenshell_geom_tree_select_element, METH_VARARGS, "Wrap ifcopenshell_geom_tree_select_element"},
     {"tree_select_point", py_ifcopenshell_geom_tree_select_point, METH_VARARGS, "Wrap ifcopenshell_geom_tree_select_point"},
     {"tree_select_ray", py_ifcopenshell_geom_tree_select_ray, METH_VARARGS, "Wrap ifcopenshell_geom_tree_select_ray"},
-    {"tree_select_shape_serialization", py_ifcopenshell_geom_tree_select_shape_serialization, METH_VARARGS, "Wrap ifcopenshell_geom_tree_select_shape_serialization"},
     {"tree_set_enable_face_styles", py_ifcopenshell_geom_tree_set_enable_face_styles, METH_VARARGS, "Wrap ifcopenshell_geom_tree_set_enable_face_styles"},
     {"tree_style_at", py_ifcopenshell_geom_tree_style_at, METH_VARARGS, "Wrap ifcopenshell_geom_tree_style_at"},
     {"tree_style_count", py_ifcopenshell_geom_tree_style_count, METH_VARARGS, "Wrap ifcopenshell_geom_tree_style_count"},
@@ -49836,7 +49805,6 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_geom_tree_select_element", py_ifcopenshell_geom_tree_select_element, METH_VARARGS, "Wrap ifcopenshell_geom_tree_select_element"},
     {"ifcopenshell_geom_tree_select_point", py_ifcopenshell_geom_tree_select_point, METH_VARARGS, "Wrap ifcopenshell_geom_tree_select_point"},
     {"ifcopenshell_geom_tree_select_ray", py_ifcopenshell_geom_tree_select_ray, METH_VARARGS, "Wrap ifcopenshell_geom_tree_select_ray"},
-    {"ifcopenshell_geom_tree_select_shape_serialization", py_ifcopenshell_geom_tree_select_shape_serialization, METH_VARARGS, "Wrap ifcopenshell_geom_tree_select_shape_serialization"},
     {"ifcopenshell_geom_tree_set_enable_face_styles", py_ifcopenshell_geom_tree_set_enable_face_styles, METH_VARARGS, "Wrap ifcopenshell_geom_tree_set_enable_face_styles"},
     {"ifcopenshell_geom_tree_style_at", py_ifcopenshell_geom_tree_style_at, METH_VARARGS, "Wrap ifcopenshell_geom_tree_style_at"},
     {"ifcopenshell_geom_tree_style_count", py_ifcopenshell_geom_tree_style_count, METH_VARARGS, "Wrap ifcopenshell_geom_tree_style_count"},

@@ -2997,7 +2997,6 @@ bool ifcopenshell_geom_tree_select_brep_element(ifcopenshell_geom_tree_t* self, 
 bool ifcopenshell_geom_tree_select_element(ifcopenshell_geom_tree_t* self, ifcopenshell_instance_t* instance, bool completely_within, double extend, ifcopenshell_parse_instance_list_t** out_result);
 bool ifcopenshell_geom_tree_select_point(ifcopenshell_geom_tree_t* self, double x, double y, double z, double extend, ifcopenshell_parse_instance_list_t** out_result);
 bool ifcopenshell_geom_tree_select_ray(ifcopenshell_geom_tree_t* self, double origin_x, double origin_y, double origin_z, double dir_x, double dir_y, double dir_z, double length, ifcopenshell_geom_tree_ray_intersection_list_t** out_result);
-bool ifcopenshell_geom_tree_select_shape_serialization(ifcopenshell_geom_tree_t* self, const char* shape_serialization, bool completely_within, double extend, ifcopenshell_parse_instance_list_t** out_result);
 bool ifcopenshell_geom_conversion_result_shape_serialize(ifcopenshell_geom_conversion_result_shape_t* self, ifcopenshell_string_t* out_result);
 bool ifcopenshell_geom_conversion_result_shape_serialize_obj(ifcopenshell_geom_conversion_result_shape_t* self, ifcopenshell_string_t* out_result);
 bool ifcopenshell_geom_element_transformation_buffer(ifcopenshell_geom_element_t* self, const double** out_result);

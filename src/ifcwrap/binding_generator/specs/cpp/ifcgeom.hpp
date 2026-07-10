@@ -825,19 +825,6 @@ inline IFCAPI_OWNED std::vector<express::Base> select_brep_element(
     return to_base_vector(self->select(element, completely_within, extend));
 }
 
-inline IFCAPI_OWNED std::vector<express::Base> select_shape_serialization(
-    IfcGeom::tree* self,
-    const std::string& shape_serialization,
-    bool completely_within,
-    double extend
-) {
-    (void)self;
-    (void)shape_serialization;
-    (void)completely_within;
-    (void)extend;
-    throw std::runtime_error("Selecting from shape serialization is not supported by the current ifcgeom tree API");
-}
-
 inline IFCAPI_OWNED std::vector<express::Base> select_box_point(
     IfcGeom::tree* self,
     double x,
