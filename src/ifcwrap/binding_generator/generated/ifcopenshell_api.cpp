@@ -7012,10 +7012,15 @@ bool ifcopenshell_geometry_copy_representation(ifcopenshell_file_t* file, const 
         options_cpp.context_identifier = std::string(options->context_identifier);
     }
         auto result_value = ifcapi::bindings::geometry_copy_representation(file_cpp, options_cpp);
-        if (!static_cast<bool>(result_value)) {
+        if (!result_value) {
             *out_result = nullptr;
         } else {
-            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
         }
         return true;
     } catch (const std::exception& e) {

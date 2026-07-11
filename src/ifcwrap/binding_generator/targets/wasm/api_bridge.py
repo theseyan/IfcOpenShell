@@ -273,7 +273,14 @@ def _pset_props_field_names(option: HostOptionStructMetadata) -> set[str]:
     return {_camel_name(field.name) for field in option.fields if field.type.semantic == "property_map"}
 
 
+def _is_property_map_param(param: HostParamMetadata) -> bool:
+    return param.semantic == "property_map"
+
+
 def _param_ts_type(param: HostParamMetadata, metadata: HostBindingMetadata, module_name: str | None = None) -> str:
+    if _is_property_map_param(param):
+        base = "PsetProperties | PsetInput"
+        return f"{base} | null" if param.nullable else base
     normalized_base = " ".join(param.c_type.replace(" *", "*").split()).removeprefix("const ").removesuffix("*").strip()
     sequence = next(
         (
@@ -339,6 +346,13 @@ def _render_result_interfaces(metadata: HostBindingMetadata) -> str:
 
 
 def _param_expr(param: HostParamMetadata, metadata: HostBindingMetadata, module_name: str | None = None) -> str:
+    if _is_property_map_param(param):
+        if param.nullable:
+            return (
+                f"{param.name} == null ? null : "
+                f"toRawPsetProperties(shell, {param.name} as PsetProperties | PsetInput, temps)"
+            )
+        return f"toRawPsetProperties(shell, {param.name} as PsetProperties | PsetInput, temps)"
     normalized_base = " ".join(param.c_type.replace(" *", "*").split()).removeprefix("const ").removesuffix("*").strip()
     sequence = next(
         (
@@ -349,7 +363,7 @@ def _param_expr(param: HostParamMetadata, metadata: HostBindingMetadata, module_
         None,
     )
     if sequence is not None:
-        return f"toRaw({param.name}, shell, temps)"
+        return f"toRawSequence({param.name}, shell, temps)"
     handle = _handle_kind_from_c_type(param.c_type, metadata)
     if _is_instance_list_handle(handle):
         return f"toRaw({param.name}, shell, temps)"
@@ -587,6 +601,12 @@ def render_api_direct(metadata: HostBindingMetadata) -> str:
             "      .filter(([publicName]) => data[publicName] !== undefined)",
             "      .map(([publicName, nativeName]) => [nativeName, encodeOptionValue(publicName, data[publicName] as ApiInput, shell, temps, psetFieldSet)]),",
             "  ) as Record<string, RawValue>;",
+            "}",
+            "",
+            "function toRawSequence(value: ApiInput, shell: IfcOpenShell, temps: Disposable[]): RawValue {",
+            "  if (value === null) return null;",
+            "  if (Array.isArray(value)) return value.map((item) => toRawSequence(item, shell, temps));",
+            "  return toRaw(value, shell, temps);",
             "}",
             "",
             "function toRaw(value: ApiInput, shell: IfcOpenShell, temps: Disposable[]): RawValue {",

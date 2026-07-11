@@ -1688,9 +1688,11 @@ export interface ClassificationApi {
     /**
      * Remove an IfcClassification and all its references.
      *
-     * Deletes every IfcClassificationReference in the classification hierarchy,
-     * then removes the classification entity itself. Any IfcRelAssociatesClassification
-     * or IfcExternalReferenceRelationship that becomes orphaned is also deleted.
+     * For IFC4+, recursively deletes every IfcClassificationReference in the
+     * classification hierarchy via HasReferences. For IFC2X3, deletes only
+     * references whose ReferencedSource is the classification itself; nested
+     * references are not traversed and may be orphaned. Any
+     * IfcRelAssociatesClassification that becomes orphaned is also deleted.
      */
     removeClassification(file: IfcFile, classification: Entity): void;
     /**
@@ -1822,7 +1824,7 @@ export interface ContextApi {
      *
      * Applies attribute key-value pairs from the props builder to the context entity.
      */
-    editContext(file: IfcFile, context: Entity, attributes: ApiData): void;
+    editContext(file: IfcFile, context: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Remove a geometric representation context and its subcontexts recursively.
      *
@@ -1989,7 +1991,7 @@ export interface CostApi {
      * @param cost_item IfcCostItem entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editCostItem(file: IfcFile, cost_item: Entity, attributes: ApiData): void;
+    editCostItem(file: IfcFile, cost_item: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Edit attributes of an IfcPhysicalQuantity.
      *
@@ -1999,7 +2001,7 @@ export interface CostApi {
      * @param physical_quantity IfcPhysicalQuantity entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editCostItemQuantity(file: IfcFile, physical_quantity: Entity, attributes: ApiData): void;
+    editCostItemQuantity(file: IfcFile, physical_quantity: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Edit attributes of an IfcCostSchedule.
      *
@@ -2009,7 +2011,7 @@ export interface CostApi {
      * @param cost_schedule IfcCostSchedule entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editCostSchedule(file: IfcFile, cost_schedule: Entity, attributes: ApiData): void;
+    editCostSchedule(file: IfcFile, cost_schedule: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Edit attributes of an IfcCostValue.
      *
@@ -2022,7 +2024,7 @@ export interface CostApi {
      * @param attributes Property bag of attribute name/value pairs.
      * @param options Unit basis replacement options.
      */
-    editCostValue(file: IfcFile, cost_value: Entity, attributes: ApiData, options: IfcOpenShellCostEditCostValueOptions): void;
+    editCostValue(file: IfcFile, cost_value: Entity, attributes: PsetProperties | PsetInput, options: IfcOpenShellCostEditCostValueOptions): void;
     /**
      * Set an IfcCostValue's attributes from a formula expression.
      *
@@ -2744,9 +2746,10 @@ export interface GeometryApi {
      *
      * @param file IFC file to modify.
      * @param options Source product, target product, and optional context identifier.
-     * @return Newly created IfcShapeRepresentation, or null handle on failure.
+     * @return Newly created IfcShapeRepresentation, or no value when the source
+     * has no representation for the requested context identifier.
      */
-    copyRepresentation(file: IfcFile, options: IfcOpenShellGeometryCopyRepresentationOptions): Entity;
+    copyRepresentation(file: IfcFile, options: IfcOpenShellGeometryCopyRepresentationOptions): Entity | null;
     /**
      * Create a wall from two XY endpoints with body representation and placement.
      *
@@ -2913,8 +2916,9 @@ export interface GeoreferenceApi {
      *
      * When true_north is std::nullopt, any existing TrueNorth reference is removed
      * from every IfcGeometricRepresentationContext and the orphaned IfcDirection is
-     * deleted if unreferenced. When present, the vector must contain exactly two
-     * elements representing a unitised 2D direction (X, Y).
+     * deleted if unreferenced. When present, the first two elements of the vector
+     * are used as (X, Y) direction ratios; missing entries default to 0.0. The
+     * vector is not normalized.
      *
      * @param file File whose contexts to update.
      * @param options True north direction vector or std::nullopt to remove.
@@ -3548,7 +3552,7 @@ export interface ProfileApi {
      * @param profile IfcProfileDef entity to modify.
      * @param attributes Property container with attribute name-value pairs.
      */
-    editProfile(profile: Entity, attributes: ApiData): void;
+    editProfile(profile: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Remove a profile definition and its directly referenced sub-entities.
      *
@@ -3830,7 +3834,7 @@ export interface ResourceApi {
      * @param resource_time IfcResourceTime entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editResourceTime(file: IfcFile, resource_time: Entity, attributes: ApiData): void;
+    editResourceTime(file: IfcFile, resource_time: Entity, attributes: PsetProperties | PsetInput): void;
 }
 export interface RootApi {
     /**
@@ -4163,28 +4167,28 @@ export interface SequenceApi {
      * @param lag_time IfcLagTime entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editLagTime(lag_time: Entity, attributes: ApiData): void;
+    editLagTime(lag_time: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Edit attributes of an IfcRecurrencePattern entity.
      *
      * @param recurrence_pattern IfcRecurrencePattern entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editRecurrencePattern(recurrence_pattern: Entity, attributes: ApiData): void;
+    editRecurrencePattern(recurrence_pattern: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Edit attributes of an IfcRelSequence entity.
      *
      * @param rel_sequence IfcRelSequence entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editSequence(rel_sequence: Entity, attributes: ApiData): void;
+    editSequence(rel_sequence: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Edit attributes of an IfcTask entity.
      *
      * @param task IfcTask entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editTask(task: Entity, attributes: ApiData): void;
+    editTask(task: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Edit attributes of an IfcTaskTime entity.
      *
@@ -4198,28 +4202,28 @@ export interface SequenceApi {
      * @param task_time IfcTaskTime entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editTaskTime(file: IfcFile, task_time: Entity, attributes: ApiData): void;
+    editTaskTime(file: IfcFile, task_time: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Edit attributes of an IfcWorkCalendar entity.
      *
      * @param work_calendar IfcWorkCalendar entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editWorkCalendar(work_calendar: Entity, attributes: ApiData): void;
+    editWorkCalendar(work_calendar: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Edit attributes of an IfcWorkPlan entity.
      *
      * @param work_plan IfcWorkPlan entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editWorkPlan(work_plan: Entity, attributes: ApiData): void;
+    editWorkPlan(work_plan: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Edit attributes of an IfcWorkSchedule entity.
      *
      * @param work_schedule IfcWorkSchedule entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editWorkSchedule(work_schedule: Entity, attributes: ApiData): void;
+    editWorkSchedule(work_schedule: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Edit attributes of an IfcWorkTime entity.
      *
@@ -4229,7 +4233,7 @@ export interface SequenceApi {
      * @param work_time IfcWorkTime entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editWorkTime(work_time: Entity, attributes: ApiData): void;
+    editWorkTime(work_time: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Recalculate an entire work schedule using the critical path method.
      *
@@ -4857,7 +4861,7 @@ export interface StructuralApi {
      * @param condition IfcBoundaryCondition entity to edit.
      * @param attributes Property bag of typed attribute entries.
      */
-    editStructuralBoundaryCondition(file: IfcFile, condition: Entity, attributes: ApiData): void;
+    editStructuralBoundaryCondition(file: IfcFile, condition: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Edit the ConditionCoordinateSystem of a structural item.
      *
@@ -5016,7 +5020,7 @@ export interface StyleApi {
      * @param style IfcSurfaceStyle entity to modify.
      * @param attributes Property container with attribute name-value pairs.
      */
-    editSurfaceStyle(file: IfcFile, style: Entity, attributes: ApiData): void;
+    editSurfaceStyle(file: IfcFile, style: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Remove a presentation style and clean up all references to it.
      *
@@ -5727,9 +5731,11 @@ export function createApi(shell: IfcOpenShell): Api {
     /**
      * Remove an IfcClassification and all its references.
      *
-     * Deletes every IfcClassificationReference in the classification hierarchy,
-     * then removes the classification entity itself. Any IfcRelAssociatesClassification
-     * or IfcExternalReferenceRelationship that becomes orphaned is also deleted.
+     * For IFC4+, recursively deletes every IfcClassificationReference in the
+     * classification hierarchy via HasReferences. For IFC2X3, deletes only
+     * references whose ReferencedSource is the classification itself; nested
+     * references are not traversed and may be orphaned. Any
+     * IfcRelAssociatesClassification that becomes orphaned is also deleted.
      */
     removeClassification(file: IfcFile, classification: Entity): void {
       const temps: Disposable[] = [];
@@ -5966,10 +5972,10 @@ export function createApi(shell: IfcOpenShell): Api {
      *
      * Applies attribute key-value pairs from the props builder to the context entity.
      */
-    editContext(file: IfcFile, context: Entity, attributes: ApiData): void {
+    editContext(file: IfcFile, context: Entity, attributes: PsetProperties | PsetInput): void {
       const temps: Disposable[] = [];
       try {
-        raw.context.editContext(file.raw, context.raw, attributes);
+        raw.context.editContext(file.raw, context.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -6128,7 +6134,7 @@ export function createApi(shell: IfcOpenShell): Api {
     assignCostItemQuantity(file: IfcFile, cost_item: Entity, products: Entity[], prop_name: string, options: IfcOpenShellCostAssignCostItemQuantityOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.cost.assignCostItemQuantity(file.raw, cost_item.raw, toRaw(products, shell, temps), prop_name, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "user": "user"}, shell, temps));
+        raw.cost.assignCostItemQuantity(file.raw, cost_item.raw, toRawSequence(products, shell, temps), prop_name, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "user": "user"}, shell, temps));
       } finally {
         disposeAll(temps);
       }
@@ -6238,10 +6244,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param cost_item IfcCostItem entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editCostItem(file: IfcFile, cost_item: Entity, attributes: ApiData): void {
+    editCostItem(file: IfcFile, cost_item: Entity, attributes: PsetProperties | PsetInput): void {
       const temps: Disposable[] = [];
       try {
-        raw.cost.editCostItem(file.raw, cost_item.raw, attributes);
+        raw.cost.editCostItem(file.raw, cost_item.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -6255,10 +6261,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param physical_quantity IfcPhysicalQuantity entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editCostItemQuantity(file: IfcFile, physical_quantity: Entity, attributes: ApiData): void {
+    editCostItemQuantity(file: IfcFile, physical_quantity: Entity, attributes: PsetProperties | PsetInput): void {
       const temps: Disposable[] = [];
       try {
-        raw.cost.editCostItemQuantity(file.raw, physical_quantity.raw, attributes);
+        raw.cost.editCostItemQuantity(file.raw, physical_quantity.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -6272,10 +6278,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param cost_schedule IfcCostSchedule entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editCostSchedule(file: IfcFile, cost_schedule: Entity, attributes: ApiData): void {
+    editCostSchedule(file: IfcFile, cost_schedule: Entity, attributes: PsetProperties | PsetInput): void {
       const temps: Disposable[] = [];
       try {
-        raw.cost.editCostSchedule(file.raw, cost_schedule.raw, attributes);
+        raw.cost.editCostSchedule(file.raw, cost_schedule.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -6292,10 +6298,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param attributes Property bag of attribute name/value pairs.
      * @param options Unit basis replacement options.
      */
-    editCostValue(file: IfcFile, cost_value: Entity, attributes: ApiData, options: IfcOpenShellCostEditCostValueOptions): void {
+    editCostValue(file: IfcFile, cost_value: Entity, attributes: PsetProperties | PsetInput, options: IfcOpenShellCostEditCostValueOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.cost.editCostValue(file.raw, cost_value.raw, attributes, encodeOptions(options, {"clearUnitBasis": "clear_unit_basis", "editUnitBasis": "edit_unit_basis", "unitComponent": "unit_component", "valueComponent": "value_component"}, shell, temps));
+        raw.cost.editCostValue(file.raw, cost_value.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps), encodeOptions(options, {"clearUnitBasis": "clear_unit_basis", "editUnitBasis": "edit_unit_basis", "unitComponent": "unit_component", "valueComponent": "value_component"}, shell, temps));
       } finally {
         disposeAll(temps);
       }
@@ -6408,7 +6414,7 @@ export function createApi(shell: IfcOpenShell): Api {
     unassignCostItemQuantity(file: IfcFile, cost_item: Entity, products: Entity[], options: IfcOpenShellCostUnassignCostItemQuantityOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.cost.unassignCostItemQuantity(file.raw, cost_item.raw, toRaw(products, shell, temps), encodeOptions(options, {"application": "application", "user": "user"}, shell, temps));
+        raw.cost.unassignCostItemQuantity(file.raw, cost_item.raw, toRawSequence(products, shell, temps), encodeOptions(options, {"application": "application", "user": "user"}, shell, temps));
       } finally {
         disposeAll(temps);
       }
@@ -7230,7 +7236,7 @@ export function createApi(shell: IfcOpenShell): Api {
     addAxisRepresentation(file: IfcFile, context: Entity, axis: number[][]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.geometry.addAxisRepresentation(file.raw, context.raw, toRaw(axis, shell, temps));
+        const result = raw.geometry.addAxisRepresentation(file.raw, context.raw, toRawSequence(axis, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -7253,7 +7259,7 @@ export function createApi(shell: IfcOpenShell): Api {
     addBoolean(file: IfcFile, first_item: Entity, second_items: Entity[], operator_type: string): Entity[] {
       const temps: Disposable[] = [];
       try {
-        const result = raw.geometry.addBoolean(file.raw, first_item.raw, toRaw(second_items, shell, temps), operator_type);
+        const result = raw.geometry.addBoolean(file.raw, first_item.raw, toRawSequence(second_items, shell, temps), operator_type);
         return wrapEntities(shell, result as never) as Entity[];
       } finally {
         disposeAll(temps);
@@ -7286,7 +7292,7 @@ export function createApi(shell: IfcOpenShell): Api {
     addFootprintRepresentation(file: IfcFile, context: Entity, curves: Entity[]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.geometry.addFootprintRepresentation(file.raw, context.raw, toRaw(curves, shell, temps));
+        const result = raw.geometry.addFootprintRepresentation(file.raw, context.raw, toRawSequence(curves, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -7541,13 +7547,14 @@ export function createApi(shell: IfcOpenShell): Api {
      *
      * @param file IFC file to modify.
      * @param options Source product, target product, and optional context identifier.
-     * @return Newly created IfcShapeRepresentation, or null handle on failure.
+     * @return Newly created IfcShapeRepresentation, or no value when the source
+     * has no representation for the requested context identifier.
      */
-    copyRepresentation(file: IfcFile, options: IfcOpenShellGeometryCopyRepresentationOptions): Entity {
+    copyRepresentation(file: IfcFile, options: IfcOpenShellGeometryCopyRepresentationOptions): Entity | null {
       const temps: Disposable[] = [];
       try {
         const result = raw.geometry.copyRepresentation(file.raw, encodeOptions(options, {"contextIdentifier": "context_identifier", "source": "source", "target": "target"}, shell, temps));
-        return wrapEntity(shell, result) as Entity;
+        return wrapEntity(shell, result) as Entity | null;
       } finally {
         disposeAll(temps);
       }
@@ -7815,8 +7822,9 @@ export function createApi(shell: IfcOpenShell): Api {
      *
      * When true_north is std::nullopt, any existing TrueNorth reference is removed
      * from every IfcGeometricRepresentationContext and the orphaned IfcDirection is
-     * deleted if unreferenced. When present, the vector must contain exactly two
-     * elements representing a unitised 2D direction (X, Y).
+     * deleted if unreferenced. When present, the first two elements of the vector
+     * are used as (X, Y) direction ratios; missing entries default to 0.0. The
+     * vector is not normalized.
      *
      * @param file File whose contexts to update.
      * @param options True north direction vector or std::nullopt to remove.
@@ -7885,7 +7893,7 @@ export function createApi(shell: IfcOpenShell): Api {
     createAxisCurve(file: IfcFile, p1: number[], p2: number[], grid_axis: Entity, is_si: boolean): void {
       const temps: Disposable[] = [];
       try {
-        raw.grid.createAxisCurve(file.raw, toRaw(p1, shell, temps), toRaw(p2, shell, temps), grid_axis.raw, is_si);
+        raw.grid.createAxisCurve(file.raw, toRawSequence(p1, shell, temps), toRawSequence(p2, shell, temps), grid_axis.raw, is_si);
       } finally {
         disposeAll(temps);
       }
@@ -8073,7 +8081,7 @@ export function createApi(shell: IfcOpenShell): Api {
     assignLayer(file: IfcFile, items: Entity[], layer: Entity): void {
       const temps: Disposable[] = [];
       try {
-        raw.layer.assignLayer(file.raw, toRaw(items, shell, temps), layer.raw);
+        raw.layer.assignLayer(file.raw, toRawSequence(items, shell, temps), layer.raw);
       } finally {
         disposeAll(temps);
       }
@@ -8106,7 +8114,7 @@ export function createApi(shell: IfcOpenShell): Api {
     unassignLayer(file: IfcFile, items: Entity[], layer: Entity): void {
       const temps: Disposable[] = [];
       try {
-        raw.layer.unassignLayer(file.raw, toRaw(items, shell, temps), layer.raw);
+        raw.layer.unassignLayer(file.raw, toRawSequence(items, shell, temps), layer.raw);
       } finally {
         disposeAll(temps);
       }
@@ -8275,7 +8283,7 @@ export function createApi(shell: IfcOpenShell): Api {
     assignMaterial(file: IfcFile, products: Entity[], options: IfcOpenShellMaterialAssignMaterialOptions): Entity[] {
       const temps: Disposable[] = [];
       try {
-        const result = raw.material.assignMaterial(file.raw, toRaw(products, shell, temps), encodeOptions(options, {"application": "application", "material": "material", "ownerHistory": "owner_history", "type": "type", "user": "user"}, shell, temps));
+        const result = raw.material.assignMaterial(file.raw, toRawSequence(products, shell, temps), encodeOptions(options, {"application": "application", "material": "material", "ownerHistory": "owner_history", "type": "type", "user": "user"}, shell, temps));
         return wrapEntities(shell, result as never) as Entity[];
       } finally {
         disposeAll(temps);
@@ -8423,7 +8431,7 @@ export function createApi(shell: IfcOpenShell): Api {
     unassignMaterial(file: IfcFile, products: Entity[], options: IfcOpenShellMaterialUnassignMaterialOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.material.unassignMaterial(file.raw, toRaw(products, shell, temps), encodeOptions(options, {"application": "application", "user": "user"}, shell, temps));
+        raw.material.unassignMaterial(file.raw, toRawSequence(products, shell, temps), encodeOptions(options, {"application": "application", "user": "user"}, shell, temps));
       } finally {
         disposeAll(temps);
       }
@@ -8899,7 +8907,7 @@ export function createApi(shell: IfcOpenShell): Api {
     matrixFromAxes(origin: number[], z_axis: number[], x_axis: number[]): number[] {
       const temps: Disposable[] = [];
       try {
-        const result = raw.placement.matrixFromAxes(toRaw(origin, shell, temps), toRaw(z_axis, shell, temps), toRaw(x_axis, shell, temps));
+        const result = raw.placement.matrixFromAxes(toRawSequence(origin, shell, temps), toRawSequence(z_axis, shell, temps), toRawSequence(x_axis, shell, temps));
         return wrap(shell, result) as number[];
       } finally {
         disposeAll(temps);
@@ -9001,10 +9009,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param profile IfcProfileDef entity to modify.
      * @param attributes Property container with attribute name-value pairs.
      */
-    editProfile(profile: Entity, attributes: ApiData): void {
+    editProfile(profile: Entity, attributes: PsetProperties | PsetInput): void {
       const temps: Disposable[] = [];
       try {
-        raw.profile.editProfile(profile.raw, attributes);
+        raw.profile.editProfile(profile.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -9207,7 +9215,7 @@ export function createApi(shell: IfcOpenShell): Api {
     templateCreateFromFiles(schema_identifier: string, template_files: IfcFile[]): PsetTemplate | null {
       const temps: Disposable[] = [];
       try {
-        const result = raw.pset.templateCreateFromFiles(schema_identifier, toRaw(template_files, shell, temps));
+        const result = raw.pset.templateCreateFromFiles(schema_identifier, toRawSequence(template_files, shell, temps));
         return result as PsetTemplate | null;
       } finally {
         disposeAll(temps);
@@ -9352,7 +9360,7 @@ export function createApi(shell: IfcOpenShell): Api {
     unassignPset(file: IfcFile, products: Entity[], pset: Entity): void {
       const temps: Disposable[] = [];
       try {
-        raw.pset.unassignPset(file.raw, toRaw(products, shell, temps), pset.raw);
+        raw.pset.unassignPset(file.raw, toRawSequence(products, shell, temps), pset.raw);
       } finally {
         disposeAll(temps);
       }
@@ -9515,10 +9523,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param resource_time IfcResourceTime entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editResourceTime(file: IfcFile, resource_time: Entity, attributes: ApiData): void {
+    editResourceTime(file: IfcFile, resource_time: Entity, attributes: PsetProperties | PsetInput): void {
       const temps: Disposable[] = [];
       try {
-        raw.resource.editResourceTime(file.raw, resource_time.raw, attributes);
+        raw.resource.editResourceTime(file.raw, resource_time.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -9623,7 +9631,7 @@ export function createApi(shell: IfcOpenShell): Api {
     filterElements(file: IfcFile, query: string, elements: Entity[]): ValueData | null {
       const temps: Disposable[] = [];
       try {
-        const result = raw.selector.filterElements(file.raw, query, toRaw(elements, shell, temps));
+        const result = raw.selector.filterElements(file.raw, query, toRawSequence(elements, shell, temps));
         return fromRawValue(shell, result as never) as ValueData | null;
       } finally {
         disposeAll(temps);
@@ -10067,10 +10075,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param lag_time IfcLagTime entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editLagTime(lag_time: Entity, attributes: ApiData): void {
+    editLagTime(lag_time: Entity, attributes: PsetProperties | PsetInput): void {
       const temps: Disposable[] = [];
       try {
-        raw.sequence.editLagTime(lag_time.raw, attributes);
+        raw.sequence.editLagTime(lag_time.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -10081,10 +10089,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param recurrence_pattern IfcRecurrencePattern entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editRecurrencePattern(recurrence_pattern: Entity, attributes: ApiData): void {
+    editRecurrencePattern(recurrence_pattern: Entity, attributes: PsetProperties | PsetInput): void {
       const temps: Disposable[] = [];
       try {
-        raw.sequence.editRecurrencePattern(recurrence_pattern.raw, attributes);
+        raw.sequence.editRecurrencePattern(recurrence_pattern.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -10095,10 +10103,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param rel_sequence IfcRelSequence entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editSequence(rel_sequence: Entity, attributes: ApiData): void {
+    editSequence(rel_sequence: Entity, attributes: PsetProperties | PsetInput): void {
       const temps: Disposable[] = [];
       try {
-        raw.sequence.editSequence(rel_sequence.raw, attributes);
+        raw.sequence.editSequence(rel_sequence.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -10109,10 +10117,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param task IfcTask entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editTask(task: Entity, attributes: ApiData): void {
+    editTask(task: Entity, attributes: PsetProperties | PsetInput): void {
       const temps: Disposable[] = [];
       try {
-        raw.sequence.editTask(task.raw, attributes);
+        raw.sequence.editTask(task.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -10130,10 +10138,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param task_time IfcTaskTime entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editTaskTime(file: IfcFile, task_time: Entity, attributes: ApiData): void {
+    editTaskTime(file: IfcFile, task_time: Entity, attributes: PsetProperties | PsetInput): void {
       const temps: Disposable[] = [];
       try {
-        raw.sequence.editTaskTime(file.raw, task_time.raw, attributes);
+        raw.sequence.editTaskTime(file.raw, task_time.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -10144,10 +10152,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param work_calendar IfcWorkCalendar entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editWorkCalendar(work_calendar: Entity, attributes: ApiData): void {
+    editWorkCalendar(work_calendar: Entity, attributes: PsetProperties | PsetInput): void {
       const temps: Disposable[] = [];
       try {
-        raw.sequence.editWorkCalendar(work_calendar.raw, attributes);
+        raw.sequence.editWorkCalendar(work_calendar.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -10158,10 +10166,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param work_plan IfcWorkPlan entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editWorkPlan(work_plan: Entity, attributes: ApiData): void {
+    editWorkPlan(work_plan: Entity, attributes: PsetProperties | PsetInput): void {
       const temps: Disposable[] = [];
       try {
-        raw.sequence.editWorkPlan(work_plan.raw, attributes);
+        raw.sequence.editWorkPlan(work_plan.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -10172,10 +10180,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param work_schedule IfcWorkSchedule entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editWorkSchedule(work_schedule: Entity, attributes: ApiData): void {
+    editWorkSchedule(work_schedule: Entity, attributes: PsetProperties | PsetInput): void {
       const temps: Disposable[] = [];
       try {
-        raw.sequence.editWorkSchedule(work_schedule.raw, attributes);
+        raw.sequence.editWorkSchedule(work_schedule.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -10189,10 +10197,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param work_time IfcWorkTime entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editWorkTime(work_time: Entity, attributes: ApiData): void {
+    editWorkTime(work_time: Entity, attributes: PsetProperties | PsetInput): void {
       const temps: Disposable[] = [];
       try {
-        raw.sequence.editWorkTime(work_time.raw, attributes);
+        raw.sequence.editWorkTime(work_time.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -10478,7 +10486,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderCircle(file: IfcFile, center: number[], radius: number): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderCircle(file.raw, toRaw(center, shell, temps), radius);
+        const result = raw.shape.builderCircle(file.raw, toRawSequence(center, shell, temps), radius);
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -10497,7 +10505,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderCurveBetweenTwoPoints(file: IfcFile, points: number[][]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderCurveBetweenTwoPoints(file.raw, toRaw(points, shell, temps));
+        const result = raw.shape.builderCurveBetweenTwoPoints(file.raw, toRawSequence(points, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -10532,7 +10540,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderEdge(file: IfcFile, start: number[], end: number[]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderEdge(file.raw, toRaw(start, shell, temps), toRaw(end, shell, temps));
+        const result = raw.shape.builderEdge(file.raw, toRawSequence(start, shell, temps), toRawSequence(end, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -10583,7 +10591,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderFace(file: IfcFile, points: number[][]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderFace(file.raw, toRaw(points, shell, temps));
+        const result = raw.shape.builderFace(file.raw, toRawSequence(points, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -10600,7 +10608,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderFacetedBrep(file: IfcFile, points: number[][], faces: number[][]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderFacetedBrep(file.raw, toRaw(points, shell, temps), toRaw(faces, shell, temps));
+        const result = raw.shape.builderFacetedBrep(file.raw, toRawSequence(points, shell, temps), toRawSequence(faces, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -10651,7 +10659,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderIndexedPolycurve2d(file: IfcFile, points: number[][], segments: number[][]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderIndexedPolycurve2d(file.raw, toRaw(points, shell, temps), toRaw(segments, shell, temps));
+        const result = raw.shape.builderIndexedPolycurve2d(file.raw, toRawSequence(points, shell, temps), toRawSequence(segments, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -10744,7 +10752,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderMesh(file: IfcFile, points: number[][], faces: number[][]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderMesh(file.raw, toRaw(points, shell, temps), toRaw(faces, shell, temps));
+        const result = raw.shape.builderMesh(file.raw, toRawSequence(points, shell, temps), toRawSequence(faces, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -10783,7 +10791,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderPlane(file: IfcFile, location: number[], normal: number[]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderPlane(file.raw, toRaw(location, shell, temps), toRaw(normal, shell, temps));
+        const result = raw.shape.builderPlane(file.raw, toRawSequence(location, shell, temps), toRawSequence(normal, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -10803,7 +10811,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderPolygonalFaceSet(file: IfcFile, points: number[][], faces: number[][][]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderPolygonalFaceSet(file.raw, toRaw(points, shell, temps), toRaw(faces, shell, temps));
+        const result = raw.shape.builderPolygonalFaceSet(file.raw, toRawSequence(points, shell, temps), toRawSequence(faces, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -10893,7 +10901,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderSetPolylineCoords(file: IfcFile, polyline: Entity, coords: number[][]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderSetPolylineCoords(file.raw, polyline.raw, toRaw(coords, shell, temps));
+        const result = raw.shape.builderSetPolylineCoords(file.raw, polyline.raw, toRawSequence(coords, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -10963,7 +10971,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderTriangulatedFaceSet(file: IfcFile, points: number[][], faces: number[][]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderTriangulatedFaceSet(file.raw, toRaw(points, shell, temps), toRaw(faces, shell, temps));
+        const result = raw.shape.builderTriangulatedFaceSet(file.raw, toRawSequence(points, shell, temps), toRawSequence(faces, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -10979,7 +10987,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderVertex(file: IfcFile, position: number[]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderVertex(file.raw, toRaw(position, shell, temps));
+        const result = raw.shape.builderVertex(file.raw, toRawSequence(position, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -11249,7 +11257,7 @@ export function createApi(shell: IfcOpenShell): Api {
     assignStructuralAnalysisModel(file: IfcFile, products: Entity[], structural_analysis_model: Entity, options: IfcOpenShellStructuralAssignStructuralAnalysisModelOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.structural.assignStructuralAnalysisModel(file.raw, toRaw(products, shell, temps), structural_analysis_model.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "user": "user"}, shell, temps));
+        const result = raw.structural.assignStructuralAnalysisModel(file.raw, toRawSequence(products, shell, temps), structural_analysis_model.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "user": "user"}, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -11287,10 +11295,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param condition IfcBoundaryCondition entity to edit.
      * @param attributes Property bag of typed attribute entries.
      */
-    editStructuralBoundaryCondition(file: IfcFile, condition: Entity, attributes: ApiData): void {
+    editStructuralBoundaryCondition(file: IfcFile, condition: Entity, attributes: PsetProperties | PsetInput): void {
       const temps: Disposable[] = [];
       try {
-        raw.structural.editStructuralBoundaryCondition(file.raw, condition.raw, attributes);
+        raw.structural.editStructuralBoundaryCondition(file.raw, condition.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -11310,7 +11318,7 @@ export function createApi(shell: IfcOpenShell): Api {
     editStructuralConnectionCs(file: IfcFile, structural_item: Entity, axis: number[], ref_direction: number[]): void {
       const temps: Disposable[] = [];
       try {
-        raw.structural.editStructuralConnectionCs(file.raw, structural_item.raw, toRaw(axis, shell, temps), toRaw(ref_direction, shell, temps));
+        raw.structural.editStructuralConnectionCs(file.raw, structural_item.raw, toRawSequence(axis, shell, temps), toRawSequence(ref_direction, shell, temps));
       } finally {
         disposeAll(temps);
       }
@@ -11329,7 +11337,7 @@ export function createApi(shell: IfcOpenShell): Api {
     editStructuralItemAxis(file: IfcFile, structural_item: Entity, axis: number[]): void {
       const temps: Disposable[] = [];
       try {
-        raw.structural.editStructuralItemAxis(file.raw, structural_item.raw, toRaw(axis, shell, temps));
+        raw.structural.editStructuralItemAxis(file.raw, structural_item.raw, toRawSequence(axis, shell, temps));
       } finally {
         disposeAll(temps);
       }
@@ -11446,7 +11454,7 @@ export function createApi(shell: IfcOpenShell): Api {
     unassignStructuralAnalysisModel(file: IfcFile, products: Entity[], structural_analysis_model: Entity, options: IfcOpenShellStructuralUnassignStructuralAnalysisModelOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.structural.unassignStructuralAnalysisModel(file.raw, toRaw(products, shell, temps), structural_analysis_model.raw, encodeOptions(options, {"application": "application", "user": "user"}, shell, temps));
+        raw.structural.unassignStructuralAnalysisModel(file.raw, toRawSequence(products, shell, temps), structural_analysis_model.raw, encodeOptions(options, {"application": "application", "user": "user"}, shell, temps));
       } finally {
         disposeAll(temps);
       }
@@ -11531,7 +11539,7 @@ export function createApi(shell: IfcOpenShell): Api {
     assignRepresentationStyles(file: IfcFile, shape_representation: Entity, styles: Entity[], should_use_presentation_style_assignment: boolean, replace_previous_same_type_style: boolean): Entity[] {
       const temps: Disposable[] = [];
       try {
-        const result = raw.style.assignRepresentationStyles(file.raw, shape_representation.raw, toRaw(styles, shell, temps), should_use_presentation_style_assignment, replace_previous_same_type_style);
+        const result = raw.style.assignRepresentationStyles(file.raw, shape_representation.raw, toRawSequence(styles, shell, temps), should_use_presentation_style_assignment, replace_previous_same_type_style);
         return wrapEntities(shell, result as never) as Entity[];
       } finally {
         disposeAll(temps);
@@ -11547,10 +11555,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param style IfcSurfaceStyle entity to modify.
      * @param attributes Property container with attribute name-value pairs.
      */
-    editSurfaceStyle(file: IfcFile, style: Entity, attributes: ApiData): void {
+    editSurfaceStyle(file: IfcFile, style: Entity, attributes: PsetProperties | PsetInput): void {
       const temps: Disposable[] = [];
       try {
-        raw.style.editSurfaceStyle(file.raw, style.raw, attributes);
+        raw.style.editSurfaceStyle(file.raw, style.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -11638,7 +11646,7 @@ export function createApi(shell: IfcOpenShell): Api {
     unassignRepresentationStyles(file: IfcFile, shape_representation: Entity, styles: Entity[], should_use_presentation_style_assignment: boolean): void {
       const temps: Disposable[] = [];
       try {
-        raw.style.unassignRepresentationStyles(file.raw, shape_representation.raw, toRaw(styles, shell, temps), should_use_presentation_style_assignment);
+        raw.style.unassignRepresentationStyles(file.raw, shape_representation.raw, toRawSequence(styles, shell, temps), should_use_presentation_style_assignment);
       } finally {
         disposeAll(temps);
       }
@@ -11871,7 +11879,7 @@ export function createApi(shell: IfcOpenShell): Api {
     addContextDependentUnit(file: IfcFile, unit_type: string, name: string, dimensions: bigint[]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.unit.addContextDependentUnit(file.raw, unit_type, name, toRaw(dimensions, shell, temps));
+        const result = raw.unit.addContextDependentUnit(file.raw, unit_type, name, toRawSequence(dimensions, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -11893,7 +11901,7 @@ export function createApi(shell: IfcOpenShell): Api {
     addDerivedUnit(file: IfcFile, unit_type: string, userdefinedtype: string, units: Entity[], exponents: bigint[]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.unit.addDerivedUnit(file.raw, unit_type, userdefinedtype, toRaw(units, shell, temps), toRaw(exponents, shell, temps));
+        const result = raw.unit.addDerivedUnit(file.raw, unit_type, userdefinedtype, toRawSequence(units, shell, temps), toRawSequence(exponents, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -12419,7 +12427,7 @@ export function createApi(shell: IfcOpenShell): Api {
     unassignUnit(file: IfcFile, units: Entity[]): void {
       const temps: Disposable[] = [];
       try {
-        raw.unit.unassignUnit(file.raw, toRaw(units, shell, temps));
+        raw.unit.unassignUnit(file.raw, toRawSequence(units, shell, temps));
       } finally {
         disposeAll(temps);
       }
@@ -12442,6 +12450,12 @@ function encodeOptions(
       .filter(([publicName]) => data[publicName] !== undefined)
       .map(([publicName, nativeName]) => [nativeName, encodeOptionValue(publicName, data[publicName] as ApiInput, shell, temps, psetFieldSet)]),
   ) as Record<string, RawValue>;
+}
+
+function toRawSequence(value: ApiInput, shell: IfcOpenShell, temps: Disposable[]): RawValue {
+  if (value === null) return null;
+  if (Array.isArray(value)) return value.map((item) => toRawSequence(item, shell, temps));
+  return toRaw(value, shell, temps);
 }
 
 function toRaw(value: ApiInput, shell: IfcOpenShell, temps: Disposable[]): RawValue {

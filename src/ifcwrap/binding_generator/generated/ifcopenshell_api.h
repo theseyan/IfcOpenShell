@@ -3045,7 +3045,8 @@ bool ifcopenshell_geometry_connect_wall(ifcopenshell_file_t* file, const ifcopen
  *
  * @param file IFC file to modify.
  * @param options Source product, target product, and optional context identifier.
- * @return Newly created IfcShapeRepresentation, or null handle on failure.
+ * @return Newly created IfcShapeRepresentation, or no value when the source
+ * has no representation for the requested context identifier.
  */
 bool ifcopenshell_geometry_copy_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_copy_representation_options_t* options, ifcopenshell_instance_t** out_result);
 /**

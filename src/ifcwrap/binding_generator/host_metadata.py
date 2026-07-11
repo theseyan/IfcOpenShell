@@ -55,6 +55,7 @@ class HostParamMetadata:
     type_kind: str
     nullable: bool = False
     has_default: bool = False
+    semantic: str | None = None
 
 
 @dataclass(frozen=True)
@@ -476,6 +477,7 @@ def _function_metadata(call: CallIR, ir: BindingIR) -> HostFunctionMetadata:
                 type_kind=param.type.kind,
                 nullable=param.type.nullable,
                 has_default=param.has_default,
+                semantic=param.type.semantic,
             )
         )
     if call.returns.kind != "void":

@@ -13,8 +13,8 @@ _REPO_ROOT = str(Path(__file__).resolve().parents[3])
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from src.ifcwrap.binding_generator.binding_ir import BindingIR
-from src.ifcwrap.binding_generator.binding_model import TypeSpec
+from src.ifcwrap.binding_generator.binding_ir import BindingIR, CallIR, DirectCallOp
+from src.ifcwrap.binding_generator.binding_model import ParamSpec, TypeSpec
 from src.ifcwrap.binding_generator.host_metadata import (
     HostBindingMetadata,
     HostFunctionMetadata,
@@ -23,6 +23,7 @@ from src.ifcwrap.binding_generator.host_metadata import (
     HostParamMetadata,
     HostStructField,
     HostStructMetadata,
+    _function_metadata,
 )
 from src.ifcwrap.binding_generator.targets import TargetGenerationRequest, discover_targets, get_target
 from src.ifcwrap.binding_generator.targets.wasm import WasmTargetBackend
@@ -129,6 +130,30 @@ def _make_metadata(
         functions=functions or {},
         error_functions=_DEFAULT_ERROR_FUNCTIONS,
     )
+
+
+class TestHostMetadata:
+    def test_function_metadata_preserves_param_semantics(self):
+        call = CallIR(
+            expose_as="demo.use",
+            c_name="ifcopenshell_demo_use",
+            receiver=None,
+            returns=TypeSpec(kind="void"),
+            params=(
+                ParamSpec(
+                    "properties",
+                    TypeSpec(kind="opaque_ptr", cpp_type="arbitrary_property_builder_t*", semantic="property_map"),
+                ),
+                ParamSpec("opaque", TypeSpec(kind="opaque_ptr", cpp_type="arbitrary_opaque_t*")),
+            ),
+            operation=DirectCallOp(cpp_name="demo_use"),
+        )
+
+        metadata = _function_metadata(call, _make_ir())
+        params = {param.name: param for param in metadata.params}
+
+        assert params["properties"].semantic == "property_map"
+        assert params["opaque"].semantic is None
 
 
 class TestWasmTypescript:
@@ -632,6 +657,7 @@ class TestWasmApiBridge:
         assert '"ownerHistory": "owner_history"' in code
         assert "type ApiInput = ApiData | PsetProperties | PsetInput;" in code
         assert "function toRaw(value: ApiInput, shell: IfcOpenShell, temps: Disposable[]): RawValue" in code
+        assert "function toRawSequence(value: ApiInput, shell: IfcOpenShell, temps: Disposable[]): RawValue" in code
         assert "disposeAll(temps);" in code
         assert "return wrapEntity(shell, result) as Entity;" in code
 
@@ -681,6 +707,104 @@ class TestWasmApiBridge:
         assert "if (value instanceof Entity) return value.raw;" in code
         assert "raw.root.createEntity(file.raw, encodeOptions(options" in code
 
+    def test_direct_api_facade_marshals_sequences_without_collapsing_instance_lists(self):
+        metadata = _make_metadata(
+            c_prefix="ifcopenshell",
+            handles={
+                "file": _make_handle("ifcopenshell_file_t"),
+                "instance": _make_handle("ifcopenshell_instance_t"),
+                "parse_instance_list": _make_handle("ifcopenshell_parse_instance_list_t"),
+            },
+            value_types={
+                "instance_list": HostStructMetadata(
+                    c_type="ifcopenshell_instance_list_t",
+                    kind="handle_sequence",
+                    fields=(
+                        HostStructField("items", "ifcopenshell_instance_t**"),
+                        HostStructField("size", "size_t"),
+                    ),
+                    destroy_function="ifcopenshell_instance_list_destroy",
+                    element_type="ifcopenshell_instance_t",
+                    sequence_depth=1,
+                ),
+                "double_list": HostStructMetadata(
+                    c_type="ifcopenshell_double_list_t",
+                    kind="sequence",
+                    fields=(HostStructField("items", "double*"), HostStructField("size", "size_t")),
+                    destroy_function="ifcopenshell_double_list_destroy",
+                    element_type="double",
+                    sequence_depth=1,
+                ),
+                "double_list_list": HostStructMetadata(
+                    c_type="ifcopenshell_double_list_list_t",
+                    kind="sequence",
+                    fields=(
+                        HostStructField("items", "ifcopenshell_double_list_t*"),
+                        HostStructField("size", "size_t"),
+                    ),
+                    destroy_function="ifcopenshell_double_list_list_destroy",
+                    element_type="ifcopenshell_double_list_t",
+                    sequence_depth=2,
+                ),
+            },
+            option_structs={
+                "CreateOptions": HostOptionStructMetadata(
+                    name="CreateOptions",
+                    c_type="ifcopenshell_demo_create_options_t",
+                    fields=(
+                        HostOptionFieldMetadata(
+                            "products",
+                            TypeSpec(kind="handle", handle="instance", sequence_depth=1),
+                            "ifcopenshell_instance_list_t",
+                        ),
+                    ),
+                )
+            },
+            functions={
+                "ifcopenshell_demo_assign": _make_function(
+                    c_name="ifcopenshell_demo_assign",
+                    params=(
+                        HostParamMetadata("file", "ifcopenshell_file_t*", "param", "handle"),
+                        HostParamMetadata("products", "const ifcopenshell_instance_list_t*", "param", "handle"),
+                    ),
+                ),
+                "ifcopenshell_demo_set_axis": _make_function(
+                    c_name="ifcopenshell_demo_set_axis",
+                    params=(HostParamMetadata("axis", "const ifcopenshell_double_list_list_t*", "param", "double"),),
+                ),
+                "ifcopenshell_demo_use_opaque": _make_function(
+                    c_name="ifcopenshell_demo_use_opaque",
+                    params=(HostParamMetadata("items", "ifcopenshell_parse_instance_list_t*", "param", "handle"),),
+                ),
+                "ifcopenshell_demo_create": _make_function(
+                    c_name="ifcopenshell_demo_create",
+                    params=(
+                        HostParamMetadata(
+                            "options",
+                            "const ifcopenshell_demo_create_options_t*",
+                            "param",
+                            "option",
+                        ),
+                    ),
+                ),
+            },
+        )
+
+        code = render_api_direct(metadata)
+
+        assert "assign(file: IfcFile, products: Entity[]): void;" in code
+        assert "setAxis(axis: number[][]): void;" in code
+        assert "create(options: IfcOpenShellDemoCreateOptions): void;" in code
+        assert "raw.demo.assign(file.raw, toRawSequence(products, shell, temps));" in code
+        assert "raw.demo.setAxis(toRawSequence(axis, shell, temps));" in code
+        assert "raw.demo.useOpaque(toRaw(items, shell, temps));" in code
+        assert "raw.demo.create(encodeOptions(options" in code
+        assert "function toRawSequence(value: ApiInput, shell: IfcOpenShell, temps: Disposable[]): RawValue" in code
+        assert "if (Array.isArray(value)) return value.map((item) => toRawSequence(item, shell, temps));" in code
+        assert "if (isEntityArray(value)) {" in code
+        assert "instanceListCreateFromHandles" in code
+        assert "raw.demo.assign(file.raw, toRaw(products, shell, temps))" not in code
+
     def test_direct_api_facade_maps_pset_properties(self):
         metadata = _make_metadata(
             c_prefix="ifcopenshell",
@@ -716,6 +840,8 @@ class TestWasmApiBridge:
                     c_name="ifcopenshell_pset_props_new",
                     returns=TypeSpec(kind="int32"),
                 ),
+                "ifcopenshell_pset_props_free": _make_function(c_name="ifcopenshell_pset_props_free"),
+                "ifcopenshell_pset_props_set_string": _make_function(c_name="ifcopenshell_pset_props_set_string"),
             },
         )
 
@@ -783,7 +909,7 @@ class TestWasmApiBridge:
         assert "templateGetByName(pqt: PsetTemplate, name: string): Entity | null;" in code
         assert "templateFree" not in code
         assert "free(pqt" not in code
-        assert "const result = raw.pset.templateCreateFromFiles(schema_identifier, toRaw(template_files, shell, temps));" in code
+        assert "const result = raw.pset.templateCreateFromFiles(schema_identifier, toRawSequence(template_files, shell, temps));" in code
         assert "return result as PsetTemplate | null;" in code
         assert "const result = raw.pset.templateGetByName(pqt, name);" in code
         assert "pqt.raw" not in code
@@ -854,6 +980,73 @@ class TestWasmApiBridge:
         assert "coordinateOperation?: number" not in code
         assert "projectedCrs?: number" not in code
         assert "return toRawPsetProperties(shell, value as PsetProperties | PsetInput, temps);" in code
+        assert "propsFree" not in code
+        assert "propsSetString" not in code
+
+    def test_direct_api_facade_maps_property_maps_by_semantic(self):
+        metadata = _make_metadata(
+            c_prefix="ifcopenshell",
+            handles={
+                "file": _make_handle("ifcopenshell_file_t"),
+                "instance": _make_handle("ifcopenshell_instance_t"),
+            },
+            functions={
+                "ifcopenshell_resource_edit_resource_time": _make_function(
+                    c_name="ifcopenshell_resource_edit_resource_time",
+                    params=(
+                        HostParamMetadata("file", "ifcopenshell_file_t*", "param", "handle"),
+                        HostParamMetadata("resource_time", "ifcopenshell_instance_t*", "param", "handle"),
+                        HostParamMetadata(
+                            "attributes",
+                            "arbitrary_property_builder_t*",
+                            "param",
+                            "opaque_ptr",
+                            semantic="property_map",
+                        ),
+                    ),
+                ),
+                "ifcopenshell_demo_use_opaque": _make_function(
+                    c_name="ifcopenshell_demo_use_opaque",
+                    params=(
+                        HostParamMetadata(
+                            "value",
+                            "arbitrary_property_builder_t*",
+                            "param",
+                            "opaque_ptr",
+                        ),
+                    ),
+                ),
+                "ifcopenshell_demo_use_dynamic": _make_function(
+                    c_name="ifcopenshell_demo_use_dynamic",
+                    params=(HostParamMetadata("value", "void*", "param", "opaque_ptr"),),
+                ),
+                "ifcopenshell_demo_use_nullable": _make_function(
+                    c_name="ifcopenshell_demo_use_nullable",
+                    params=(
+                        HostParamMetadata(
+                            "attributes",
+                            "arbitrary_property_builder_t*",
+                            "param",
+                            "opaque_ptr",
+                            nullable=True,
+                            semantic="property_map",
+                        ),
+                    ),
+                ),
+            },
+        )
+
+        code = render_api_direct(metadata)
+
+        assert "editResourceTime(file: IfcFile, resource_time: Entity, attributes: PsetProperties | PsetInput): void;" in code
+        assert "raw.resource.editResourceTime(file.raw, resource_time.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));" in code
+        assert "useOpaque(value: ApiData): void;" in code
+        assert "raw.demo.useOpaque(value);" in code
+        assert "useDynamic(value: ApiData): void;" in code
+        assert "raw.demo.useDynamic(value);" in code
+        assert "useNullable(attributes: PsetProperties | PsetInput | null): void;" in code
+        assert "raw.demo.useNullable(attributes == null ? null : toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));" in code
+        assert "raw.demo.useOpaque(toRawPsetProperties" not in code
 
     def test_direct_api_facade_hides_selector_internals(self):
         metadata = _make_metadata(

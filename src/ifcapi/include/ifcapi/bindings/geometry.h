@@ -704,9 +704,10 @@ IFCAPI_BINDING void geometry_remove_representation(
  *
  * @param file IFC file to modify.
  * @param options Source product, target product, and optional context identifier.
- * @return Newly created IfcShapeRepresentation, or null handle on failure.
+ * @return Newly created IfcShapeRepresentation, or no value when the source
+ *         has no representation for the requested context identifier.
  */
-IFCAPI_BINDING express::Base geometry_copy_representation(
+IFCAPI_BINDING std::optional<express::Base> geometry_copy_representation(
     ifcopenshell::file* file,
     const GeometryCopyRepresentationOptions& options);
 

@@ -3608,15 +3608,17 @@ void geometry_remove_representation(
     geometry_remove_representation(file, representation_value, options.should_keep_named_profiles.value_or(true));
 }
 
-express::Base geometry_copy_representation(
+std::optional<express::Base> geometry_copy_representation(
     ifcopenshell::file* file,
     const GeometryCopyRepresentationOptions& options)
 {
-    return geometry_copy_representation(
+    auto result = geometry_copy_representation(
         file,
         options.source,
         options.target,
         options.context_identifier ? options.context_identifier->c_str() : nullptr);
+    if (!result) return std::nullopt;
+    return result;
 }
 
 bool type_map_type_representations(ifcopenshell::file* file, express::Base* related_object, express::Base* relating_type) {

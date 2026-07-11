@@ -2096,9 +2096,11 @@ declare module 'ifcopenshell-api' {
     /**
      * Remove an IfcClassification and all its references.
      *
-     * Deletes every IfcClassificationReference in the classification hierarchy,
-     * then removes the classification entity itself. Any IfcRelAssociatesClassification
-     * or IfcExternalReferenceRelationship that becomes orphaned is also deleted.
+     * For IFC4+, recursively deletes every IfcClassificationReference in the
+     * classification hierarchy via HasReferences. For IFC2X3, deletes only
+     * references whose ReferencedSource is the classification itself; nested
+     * references are not traversed and may be orphaned. Any
+     * IfcRelAssociatesClassification that becomes orphaned is also deleted.
      */
     removeClassification(file: IfcOpenshellFile, classification: IfcOpenshellInstance): void;
     /**
@@ -3219,9 +3221,10 @@ declare module 'ifcopenshell-api' {
      *
      * @param file IFC file to modify.
      * @param options Source product, target product, and optional context identifier.
-     * @return Newly created IfcShapeRepresentation, or null handle on failure.
+     * @return Newly created IfcShapeRepresentation, or no value when the source
+     * has no representation for the requested context identifier.
      */
-    copyRepresentation(file: IfcOpenshellFile, options: IfcOpenshellGeometryCopyRepresentationOptions): IfcOpenshellInstance;
+    copyRepresentation(file: IfcOpenshellFile, options: IfcOpenshellGeometryCopyRepresentationOptions): IfcOpenshellInstance | null;
     /**
      * Create a wall from two XY endpoints with body representation and placement.
      *
@@ -3389,8 +3392,9 @@ declare module 'ifcopenshell-api' {
      *
      * When true_north is std::nullopt, any existing TrueNorth reference is removed
      * from every IfcGeometricRepresentationContext and the orphaned IfcDirection is
-     * deleted if unreferenced. When present, the vector must contain exactly two
-     * elements representing a unitised 2D direction (X, Y).
+     * deleted if unreferenced. When present, the first two elements of the vector
+     * are used as (X, Y) direction ratios; missing entries default to 0.0. The
+     * vector is not normalized.
      *
      * @param file File whose contexts to update.
      * @param options True north direction vector or std::nullopt to remove.
