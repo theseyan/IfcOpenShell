@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import shutil
+from pathlib import Path
 from textwrap import dedent
 
 import pytest
 
-from src.ifcwrap.binding_generator.authored_spec import load_authored_spec, load_merged_specs
+from src.ifcwrap.binding_generator.authored_spec import (
+    AmbiguousHandleMatchError,
+    _find_handle_for_cpp_type,
+    load_authored_spec,
+    load_merged_specs,
+)
 from src.ifcwrap.binding_generator.binding_model import HandleSpec
 from src.ifcwrap.binding_generator.c_backend import generate, generate_merged
 from src.ifcwrap.binding_generator.policy_ir import (
@@ -20,7 +25,6 @@ from src.ifcwrap.binding_generator.policy_ir import (
     DirectMethodPolicyOp,
     InlineAdapterPolicyOp,
     OptionalGetPolicyOp,
-    TaxonomyMakeFactoryPolicyOp,
     VariantGetPolicyOp,
 )
 
@@ -88,7 +92,9 @@ def test_load_merged_specs_resolves_cross_slice_handles(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    spec = load_merged_specs([core_spec, geom_spec], module="demo", c_prefix="ifcopenshell_demo")
+    spec = load_merged_specs(
+        [core_spec, geom_spec], module="demo", c_prefix="ifcopenshell_demo"
+    )
     calls = {call.c_name: call for call in spec.functions}
 
     assert set(spec.handles) == {"file", "serializer"}
@@ -96,17 +102,24 @@ def test_load_merged_specs_resolves_cross_slice_handles(tmp_path: Path) -> None:
 
     header_out = tmp_path / "demo_api.h"
     cpp_out = tmp_path / "demo_api.cpp"
-    generate_merged([core_spec, geom_spec], "demo", "ifcopenshell_demo", header_out, cpp_out)
+    generate_merged(
+        [core_spec, geom_spec], "demo", "ifcopenshell_demo", header_out, cpp_out
+    )
 
     header = header_out.read_text(encoding="utf-8")
-    assert "bool ifcopenshell_demo_create_file(ifcopenshell_demo_file_t** out_result);" in header
+    assert (
+        "bool ifcopenshell_demo_create_file(ifcopenshell_demo_file_t** out_result);"
+        in header
+    )
     assert (
         "bool ifcopenshell_demo_create_serializer(ifcopenshell_demo_file_t* file, "
         "ifcopenshell_demo_serializer_t** out_result);"
     ) in header
 
 
-def test_discovery_class_defaults_and_cpp_class_handle_resolution(tmp_path: Path) -> None:
+def test_discovery_class_defaults_and_cpp_class_handle_resolution(
+    tmp_path: Path,
+) -> None:
     spec_path = tmp_path / "demo.yml"
     spec_path.write_text(
         dedent(
@@ -146,10 +159,32 @@ def test_discovery_class_defaults_and_cpp_class_handle_resolution(tmp_path: Path
     assert spec.discovery is not None
     assert spec.discovery.classes[0].handle == "widget"
     assert spec.discovery.classes[0].translation_unit == "demo.cpp"
-    assert any(call.receiver == "widget" and call.expose_as == "value" for call in spec.methods)
+    assert any(
+        call.receiver == "widget" and call.expose_as == "value" for call in spec.methods
+    )
 
 
-def test_constructor_handle_args_require_and_follow_cpp_type_passing_policy(tmp_path: Path) -> None:
+def test_handle_inference_rejects_ambiguous_registered_types() -> None:
+    handles = {
+        name: HandleSpec(
+            name=name,
+            cpp_type="Demo::Thing",
+            c_type=f"ifcopenshell_demo_{name}_t",
+            destructor="delete",
+        )
+        for name in ("first", "second")
+    }
+
+    with pytest.raises(
+        AmbiguousHandleMatchError,
+        match="matches multiple registered handles: first, second",
+    ):
+        _find_handle_for_cpp_type("std::shared_ptr<Demo::Thing>", handles)
+
+
+def test_constructor_handle_args_require_and_follow_cpp_type_passing_policy(
+    tmp_path: Path,
+) -> None:
     spec_path = tmp_path / "constructors.yml"
     spec_path.write_text(
         dedent(
@@ -220,7 +255,9 @@ def test_constructor_handle_args_require_and_follow_cpp_type_passing_policy(tmp_
 
     header_out = tmp_path / "demo_api.h"
     cpp_out = tmp_path / "demo_api.cpp"
-    with pytest.raises(ValueError, match='Constructor handle parameter "file" requires cpp_type'):
+    with pytest.raises(
+        ValueError, match='Constructor handle parameter "file" requires cpp_type'
+    ):
         generate(spec_path, header_out, cpp_out)
 
     spec_path.write_text(
@@ -329,11 +366,16 @@ def test_constructor_rejects_nullable_reference_handle_params(tmp_path: Path) ->
         encoding="utf-8",
     )
 
-    with pytest.raises(ValueError, match='cannot be nullable with reference cpp_type "const Demo::File&"'):
+    with pytest.raises(
+        ValueError,
+        match='cannot be nullable with reference cpp_type "const Demo::File&"',
+    ):
         generate(spec_path, tmp_path / "demo_api.h", tmp_path / "demo_api.cpp")
 
 
-def test_guarded_constructor_discovery_uses_fallback_signature_when_unavailable(tmp_path: Path) -> None:
+def test_guarded_constructor_discovery_uses_fallback_signature_when_unavailable(
+    tmp_path: Path,
+) -> None:
     include_dir = tmp_path / "include"
     include_dir.mkdir()
     (include_dir / "optional.hpp").write_text(
@@ -394,7 +436,9 @@ def test_guarded_constructor_discovery_uses_fallback_signature_when_unavailable(
     )
     _discovery_include_dirs(tmp_path)
 
-    spec = load_authored_spec(spec_path, discovery_include_dirs=_discovery_include_dirs(tmp_path))
+    spec = load_authored_spec(
+        spec_path, discovery_include_dirs=_discovery_include_dirs(tmp_path)
+    )
     assert len(spec.functions) == 1
     call = spec.functions[0]
     assert call.c_name == "ifcopenshell_demo_create_optional_serializer"
@@ -403,11 +447,19 @@ def test_guarded_constructor_discovery_uses_fallback_signature_when_unavailable(
 
     header_out = tmp_path / "demo_api.h"
     cpp_out = tmp_path / "demo_api.cpp"
-    generate(spec_path, header_out, cpp_out, discovery_include_dirs=_discovery_include_dirs(tmp_path))
+    generate(
+        spec_path,
+        header_out,
+        cpp_out,
+        discovery_include_dirs=_discovery_include_dirs(tmp_path),
+    )
     cpp = cpp_out.read_text(encoding="utf-8")
     assert "#if defined(WITH_DEMO_OPTIONAL)" in cpp
     assert "new Demo::OptionalSerializer(filename_cpp, settings_cpp)" in cpp
-    assert 'throw std::runtime_error("ifcopenshell_demo_create_optional_serializer requires WITH_DEMO_OPTIONAL");' in cpp
+    assert (
+        'throw std::runtime_error("ifcopenshell_demo_create_optional_serializer requires WITH_DEMO_OPTIONAL");'
+        in cpp
+    )
 
 
 def test_handle_list_accessors_generate_count_and_at_methods(tmp_path: Path) -> None:
@@ -449,10 +501,18 @@ def test_handle_list_accessors_generate_count_and_at_methods(tmp_path: Path) -> 
 
     spec = load_authored_spec(spec_path)
     methods = {call.c_name: call for call in spec.methods}
-    assert set(methods) == {"ifcopenshell_demo_tree_result_count", "ifcopenshell_demo_tree_result_at"}
-    assert methods["ifcopenshell_demo_tree_result_count"].params[0].type.handle == "result_list"
+    assert set(methods) == {
+        "ifcopenshell_demo_tree_result_count",
+        "ifcopenshell_demo_tree_result_at",
+    }
+    assert (
+        methods["ifcopenshell_demo_tree_result_count"].params[0].type.handle
+        == "result_list"
+    )
     assert methods["ifcopenshell_demo_tree_result_at"].returns.handle == "result"
-    assert methods["ifcopenshell_demo_tree_result_at"].returns.cpp_type == "Demo::Result*"
+    assert (
+        methods["ifcopenshell_demo_tree_result_at"].returns.cpp_type == "Demo::Result*"
+    )
 
     header_out = tmp_path / "demo_api.h"
     cpp_out = tmp_path / "demo_api.cpp"
@@ -470,8 +530,14 @@ def test_handle_list_accessors_generate_count_and_at_methods(tmp_path: Path) -> 
     ) in header
     assert "*out_result = results_cpp->size();" in cpp
     assert 'throw std::out_of_range("Result index out of range");' in cpp
-    assert "auto result_value = std::unique_ptr<Demo::Result>(new Demo::Result((*results_cpp)[index]));" in cpp
-    assert "*out_result = new ifcopenshell_demo_result_t{result_value.release(), true};" in cpp
+    assert (
+        "auto result_value = std::unique_ptr<Demo::Result>(new Demo::Result((*results_cpp)[index]));"
+        in cpp
+    )
+    assert (
+        "*out_result = new ifcopenshell_demo_result_t{result_value.release(), true};"
+        in cpp
+    )
 
 
 def test_top_level_handle_list_accessors_for_cpp_spec_handles(tmp_path: Path) -> None:
@@ -502,15 +568,26 @@ def test_top_level_handle_list_accessors_for_cpp_spec_handles(tmp_path: Path) ->
     existing_handles = {
         "tree": HandleSpec("tree", "Demo::Tree", "ifcopenshell_demo_tree_t", "delete"),
         "result_list": HandleSpec(
-            "result_list", "std::vector<Demo::Result>", "ifcopenshell_demo_result_list_t", "delete"
+            "result_list",
+            "std::vector<Demo::Result>",
+            "ifcopenshell_demo_result_list_t",
+            "delete",
         ),
-        "result": HandleSpec("result", "Demo::Result", "ifcopenshell_demo_result_t", "delete"),
+        "result": HandleSpec(
+            "result", "Demo::Result", "ifcopenshell_demo_result_t", "delete"
+        ),
     }
     spec = load_authored_spec(spec_path, existing_handles=existing_handles)
 
     methods = {call.c_name: call for call in spec.methods}
-    assert set(methods) == {"ifcopenshell_demo_tree_result_count", "ifcopenshell_demo_tree_result_at"}
-    assert methods["ifcopenshell_demo_tree_result_count"].params[0].type.handle == "result_list"
+    assert set(methods) == {
+        "ifcopenshell_demo_tree_result_count",
+        "ifcopenshell_demo_tree_result_at",
+    }
+    assert (
+        methods["ifcopenshell_demo_tree_result_count"].params[0].type.handle
+        == "result_list"
+    )
     assert methods["ifcopenshell_demo_tree_result_at"].returns.handle == "result"
 
 
@@ -573,7 +650,9 @@ def test_method_at_accessors_generate_indexed_method_items(tmp_path: Path) -> No
     )
     _discovery_include_dirs(tmp_path)
 
-    spec = load_authored_spec(spec_path, discovery_include_dirs=_discovery_include_dirs(tmp_path))
+    spec = load_authored_spec(
+        spec_path, discovery_include_dirs=_discovery_include_dirs(tmp_path)
+    )
     assert len(spec.methods) == 1
     call = spec.methods[0]
     assert call.c_name == "ifcopenshell_demo_tree_style_at"
@@ -583,7 +662,12 @@ def test_method_at_accessors_generate_indexed_method_items(tmp_path: Path) -> No
 
     header_out = tmp_path / "demo_api.h"
     cpp_out = tmp_path / "demo_api.cpp"
-    generate(spec_path, header_out, cpp_out, discovery_include_dirs=_discovery_include_dirs(tmp_path))
+    generate(
+        spec_path,
+        header_out,
+        cpp_out,
+        discovery_include_dirs=_discovery_include_dirs(tmp_path),
+    )
     cpp = cpp_out.read_text(encoding="utf-8")
     assert "const auto& items = self_cpp->styles();" in cpp
     assert 'throw std::runtime_error("Style index out of range");' in cpp
@@ -736,16 +820,27 @@ def test_discovery_supports_implicit_default_constructors(tmp_path: Path) -> Non
     )
 
     spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
-    call = next(call for call in spec.functions if call.c_name == "ifcopenshell_demo_create_settings")
+    call = next(
+        call
+        for call in spec.functions
+        if call.c_name == "ifcopenshell_demo_create_settings"
+    )
     assert call.params == ()
 
     cpp_out = tmp_path / "demo_api.cpp"
-    generate(spec_path, tmp_path / "demo_api.h", cpp_out, discovery_include_dirs=discovery_dirs)
+    generate(
+        spec_path,
+        tmp_path / "demo_api.h",
+        cpp_out,
+        discovery_include_dirs=discovery_dirs,
+    )
     generated_cpp = cpp_out.read_text(encoding="utf-8")
     assert "new Demo::Settings()" in generated_cpp
 
 
-def test_constructor_discovery_requires_params_for_overloaded_constructors(tmp_path: Path) -> None:
+def test_constructor_discovery_requires_params_for_overloaded_constructors(
+    tmp_path: Path,
+) -> None:
     header = tmp_path / "constructors.h"
     source = tmp_path / "constructors.cpp"
     spec_path = tmp_path / "constructors.yml"
@@ -795,11 +890,15 @@ def test_constructor_discovery_requires_params_for_overloaded_constructors(tmp_p
         encoding="utf-8",
     )
 
-    with pytest.raises(ValueError, match="constructor params are required when overloads are present"):
+    with pytest.raises(
+        ValueError, match="constructor params are required when overloads are present"
+    ):
         load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
 
 
-def test_constructor_discovery_reports_missing_source_constructors(tmp_path: Path) -> None:
+def test_constructor_discovery_reports_missing_source_constructors(
+    tmp_path: Path,
+) -> None:
     header = tmp_path / "constructors.h"
     source = tmp_path / "constructors.cpp"
     spec_path = tmp_path / "constructors.yml"
@@ -851,7 +950,9 @@ def test_constructor_discovery_reports_missing_source_constructors(tmp_path: Pat
         load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
 
 
-def test_constructor_discovery_rejects_guarded_factories_without_fallback_params(tmp_path: Path) -> None:
+def test_constructor_discovery_rejects_guarded_factories_without_fallback_params(
+    tmp_path: Path,
+) -> None:
     spec_path = tmp_path / "constructors.yml"
     spec_path.write_text(
         dedent(
@@ -882,257 +983,9 @@ def test_constructor_discovery_rejects_guarded_factories_without_fallback_params
     )
 
     with pytest.raises(ValueError, match="compile_guard requires params"):
-        load_authored_spec(spec_path, discovery_include_dirs=_discovery_include_dirs(tmp_path))
-
-
-def test_discovery_supports_taxonomy_make_factories(tmp_path: Path) -> None:
-    header = tmp_path / "taxonomy.h"
-    source = tmp_path / "taxonomy.cpp"
-    spec_path = tmp_path / "taxonomy.yml"
-
-    header.write_text(
-        dedent(
-            """
-            #include <array>
-            #include <memory>
-            #include <utility>
-
-            namespace ifcopenshell::geometry::taxonomy {
-            template <typename T, typename... Args>
-            std::shared_ptr<T> make(Args&&... args) {
-                return std::make_shared<T>(std::forward<Args>(args)...);
-            }
-
-            struct item {};
-            struct direction3 {};
-            struct node {};
-            struct point3 {
-                point3(double x, double y, double z) {}
-            };
-            struct bspline_curve {
-                int degree;
-            };
-            struct bspline_surface {
-                std::array<int, 2> degree;
-            };
-            struct boolean_result {
-                enum operation_t { UNION, SUBTRACTION, INTERSECTION };
-                operation_t operation;
-            };
-            struct offset_curve {
-                std::shared_ptr<item> basis;
-                std::shared_ptr<direction3> reference;
-                double offset;
-            };
-            }
-            """
-        ).strip()
-        + "\n",
-        encoding="utf-8",
-    )
-    source.write_text('#include "taxonomy.h"\n', encoding="utf-8")
-    discovery_dirs = _discovery_include_dirs(tmp_path)
-    spec_path.write_text(
-        dedent(
-            """
-            schema_version: 1
-            module: demo
-            slice: demo
-            c_prefix: ifcopenshell_demo
-            public_headers:
-              - taxonomy.h
-            handles:
-              - name: taxonomy_node
-                cpp_type: ifcopenshell::geometry::taxonomy::node
-                c_type: ifcopenshell_demo_taxonomy_node_t
-                destructor: shared_ptr
-                ptr_type: shared_ptr
-              - name: taxonomy_item
-                cpp_type: ifcopenshell::geometry::taxonomy::item
-                c_type: ifcopenshell_demo_taxonomy_item_t
-                destructor: shared_ptr
-                ptr_type: shared_ptr
-              - name: taxonomy_direction3
-                cpp_type: ifcopenshell::geometry::taxonomy::direction3
-                c_type: ifcopenshell_demo_taxonomy_direction3_t
-                destructor: shared_ptr
-                ptr_type: shared_ptr
-              - name: taxonomy_point3
-                cpp_type: ifcopenshell::geometry::taxonomy::point3
-                c_type: ifcopenshell_demo_taxonomy_point3_t
-                destructor: shared_ptr
-                ptr_type: shared_ptr
-              - name: taxonomy_bspline_curve
-                cpp_type: ifcopenshell::geometry::taxonomy::bspline_curve
-                c_type: ifcopenshell_demo_taxonomy_bspline_curve_t
-                destructor: shared_ptr
-                ptr_type: shared_ptr
-              - name: taxonomy_bspline_surface
-                cpp_type: ifcopenshell::geometry::taxonomy::bspline_surface
-                c_type: ifcopenshell_demo_taxonomy_bspline_surface_t
-                destructor: shared_ptr
-                ptr_type: shared_ptr
-              - name: taxonomy_boolean_result
-                cpp_type: ifcopenshell::geometry::taxonomy::boolean_result
-                c_type: ifcopenshell_demo_taxonomy_boolean_result_t
-                destructor: shared_ptr
-                ptr_type: shared_ptr
-              - name: taxonomy_offset_curve
-                cpp_type: ifcopenshell::geometry::taxonomy::offset_curve
-                c_type: ifcopenshell_demo_taxonomy_offset_curve_t
-                destructor: shared_ptr
-                ptr_type: shared_ptr
-            discover:
-              include_dir: .
-              constructors:
-                - handle: taxonomy_node
-                  cpp_class: ifcopenshell::geometry::taxonomy::node
-                  translation_unit: taxonomy.cpp
-                  expose_as: taxonomy_create_node
-                  factory: taxonomy_make
-                - handle: taxonomy_point3
-                  cpp_class: ifcopenshell::geometry::taxonomy::point3
-                  translation_unit: taxonomy.cpp
-                  expose_as: taxonomy_create_point3
-                  factory: taxonomy_make
-                  params:
-                    - double
-                    - double
-                    - double
-                - handle: taxonomy_bspline_curve
-                  cpp_class: ifcopenshell::geometry::taxonomy::bspline_curve
-                  translation_unit: taxonomy.cpp
-                  expose_as: taxonomy_create_bspline_curve
-                  factory: taxonomy_make
-                  field_initializers:
-                    - field: degree
-                      min: 1
-                      error: B-spline curve degree must be >= 1
-                - handle: taxonomy_bspline_surface
-                  cpp_class: ifcopenshell::geometry::taxonomy::bspline_surface
-                  translation_unit: taxonomy.cpp
-                  expose_as: taxonomy_create_bspline_surface
-                  factory: taxonomy_make
-                  field_initializers:
-                    - field: degree
-                      params:
-                        - degree_u
-                        - degree_v
-                      min: 1
-                      error: B-spline surface degrees must be >= 1
-                - handle: taxonomy_boolean_result
-                  cpp_class: ifcopenshell::geometry::taxonomy::boolean_result
-                  translation_unit: taxonomy.cpp
-                  expose_as: taxonomy_create_boolean_result
-                  factory: taxonomy_make
-                  field_initializers:
-                    - field: operation
-                      min: 0
-                      max: 2
-                      error: Boolean operation must be 0 (UNION), 1 (SUBTRACTION), or 2 (INTERSECTION)
-                - handle: taxonomy_offset_curve
-                  cpp_class: ifcopenshell::geometry::taxonomy::offset_curve
-                  translation_unit: taxonomy.cpp
-                  expose_as: taxonomy_create_offset_curve
-                  factory: taxonomy_make
-                  field_initializers:
-                    - field: basis
-                    - field: reference
-                    - field: offset
-            """
-        ).strip()
-        + "\n",
-        encoding="utf-8",
-    )
-
-    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
-    call = next(call for call in spec.functions if call.c_name == "ifcopenshell_demo_taxonomy_create_node")
-    assert isinstance(call.policy_operation, TaxonomyMakeFactoryPolicyOp)
-    assert call.params == ()
-    point_call = next(call for call in spec.functions if call.c_name == "ifcopenshell_demo_taxonomy_create_point3")
-    assert isinstance(point_call.policy_operation, TaxonomyMakeFactoryPolicyOp)
-    assert [param.name for param in point_call.params] == ["x", "y", "z"]
-    curve_call = next(call for call in spec.functions if call.c_name == "ifcopenshell_demo_taxonomy_create_bspline_curve")
-    assert isinstance(curve_call.policy_operation, TaxonomyMakeFactoryPolicyOp)
-    assert [param.name for param in curve_call.params] == ["degree"]
-    surface_call = next(
-        call for call in spec.functions if call.c_name == "ifcopenshell_demo_taxonomy_create_bspline_surface"
-    )
-    assert isinstance(surface_call.policy_operation, TaxonomyMakeFactoryPolicyOp)
-    assert [param.name for param in surface_call.params] == ["degree_u", "degree_v"]
-    boolean_call = next(
-        call for call in spec.functions if call.c_name == "ifcopenshell_demo_taxonomy_create_boolean_result"
-    )
-    assert isinstance(boolean_call.policy_operation, TaxonomyMakeFactoryPolicyOp)
-    assert [param.name for param in boolean_call.params] == ["operation"]
-    offset_call = next(call for call in spec.functions if call.c_name == "ifcopenshell_demo_taxonomy_create_offset_curve")
-    assert isinstance(offset_call.policy_operation, TaxonomyMakeFactoryPolicyOp)
-    assert [param.name for param in offset_call.params] == ["basis", "reference", "offset"]
-
-    cpp_out = tmp_path / "demo_api.cpp"
-    generate(spec_path, tmp_path / "demo_api.h", cpp_out, discovery_include_dirs=discovery_dirs)
-    generated_cpp = cpp_out.read_text(encoding="utf-8")
-    assert (
-        "ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::node>()"
-        in generated_cpp
-    )
-    assert (
-        "ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::point3>(x_cpp, y_cpp, z_cpp)"
-        in generated_cpp
-    )
-    assert 'throw std::runtime_error("B-spline curve degree must be >= 1");' in generated_cpp
-    assert "result_value->degree = static_cast<int>(degree_cpp);" in generated_cpp
-    assert 'throw std::runtime_error("B-spline surface degrees must be >= 1");' in generated_cpp
-    assert "result_value->degree = { degree_u_cpp, degree_v_cpp };" in generated_cpp
-    assert 'throw std::runtime_error("Boolean operation must be 0 (UNION), 1 (SUBTRACTION), or 2 (INTERSECTION)");' in generated_cpp
-    assert (
-        "result_value->operation = "
-        "static_cast<ifcopenshell::geometry::taxonomy::boolean_result::operation_t>(operation_cpp);"
-        in generated_cpp
-    )
-    assert "result_value->basis = basis_cpp;" in generated_cpp
-    assert "result_value->reference = reference_cpp;" in generated_cpp
-    assert "result_value->offset = static_cast<double>(offset_cpp);" in generated_cpp
-
-
-def test_taxonomy_make_factories_require_shared_ptr_handles(tmp_path: Path) -> None:
-    header = tmp_path / "taxonomy.h"
-    source = tmp_path / "taxonomy.cpp"
-    spec_path = tmp_path / "taxonomy.yml"
-
-    header.write_text("namespace Demo { struct Node {}; }\n", encoding="utf-8")
-    source.write_text('#include "taxonomy.h"\n', encoding="utf-8")
-    discovery_dirs = _discovery_include_dirs(tmp_path)
-    spec_path.write_text(
-        dedent(
-            """
-            schema_version: 1
-            module: demo
-            slice: demo
-            c_prefix: ifcopenshell_demo
-            public_headers:
-              - taxonomy.h
-            handles:
-              - name: node
-                cpp_type: Demo::Node
-                c_type: ifcopenshell_demo_node_t
-                destructor: delete
-            discover:
-              include_dir: .
-              constructors:
-                - handle: node
-                  cpp_class: Demo::Node
-                  translation_unit: taxonomy.cpp
-                  expose_as: create_node
-                  factory: taxonomy_make
-            """
-        ).strip()
-        + "\n",
-        encoding="utf-8",
-    )
-
-    with pytest.raises(ValueError, match="taxonomy_make requires a shared_ptr handle"):
-        load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
+        load_authored_spec(
+            spec_path, discovery_include_dirs=_discovery_include_dirs(tmp_path)
+        )
 
 
 def test_discovery_rejects_stale_constructor_signature(tmp_path: Path) -> None:
@@ -1190,7 +1043,9 @@ def test_discovery_rejects_stale_constructor_signature(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    with pytest.raises(ValueError, match=r"unable to resolve constructor.*available: Demo::Tree"):
+    with pytest.raises(
+        ValueError, match=r"unable to resolve constructor.*available: Demo::Tree"
+    ):
         load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
 
 
@@ -1249,7 +1104,9 @@ def test_load_authored_spec_infers_simple_call_kinds(tmp_path: Path) -> None:
     assert isinstance(spec.methods[1].policy_operation, InlineAdapterPolicyOp)
 
 
-def test_load_authored_spec_rejects_free_function_implementations(tmp_path: Path) -> None:
+def test_load_authored_spec_rejects_free_function_implementations(
+    tmp_path: Path,
+) -> None:
     spec_path = tmp_path / "free_function_implementation.yml"
     spec_path.write_text(
         dedent(
@@ -1277,7 +1134,10 @@ def test_load_authored_spec_rejects_free_function_implementations(tmp_path: Path
         encoding="utf-8",
     )
 
-    with pytest.raises(ValueError, match=r"functions\[0\]\.implementation is only valid for adapter calls"):
+    with pytest.raises(
+        ValueError,
+        match=r"functions\[0\]\.implementation is only valid for adapter calls",
+    ):
         load_authored_spec(spec_path)
 
 
@@ -1385,7 +1245,9 @@ def test_load_authored_spec_rejects_unmarked_handle_family_type(tmp_path: Path) 
         load_authored_spec(spec_path)
 
 
-def test_handle_family_validation_ignores_macro_definition_signatures(tmp_path: Path) -> None:
+def test_handle_family_validation_ignores_macro_definition_signatures(
+    tmp_path: Path,
+) -> None:
     spec_path = tmp_path / "families.yml"
     (tmp_path / "demo.h").write_text(
         dedent(
@@ -1460,7 +1322,9 @@ def test_load_authored_spec_rejects_handle_family_collisions(tmp_path: Path) -> 
         encoding="utf-8",
     )
 
-    with pytest.raises(ValueError, match="handles\\[0\\]\\.name 'thing_item' is duplicated"):
+    with pytest.raises(
+        ValueError, match="handles\\[0\\]\\.name 'thing_item' is duplicated"
+    ):
         load_authored_spec(spec_path)
 
 
@@ -1494,7 +1358,10 @@ def test_load_authored_spec_rejects_removed_legacy_call_kinds(tmp_path: Path) ->
         encoding="utf-8",
     )
 
-    with pytest.raises(ValueError, match=r"methods\[0\]\.kind must be one of \['adapter_method', 'method'\]"):
+    with pytest.raises(
+        ValueError,
+        match=r"methods\[0\]\.kind must be one of \['adapter_method', 'method'\]",
+    ):
         load_authored_spec(spec_path)
 
 
@@ -1711,7 +1578,6 @@ def test_generate_synthetic_autodiscovery_features(tmp_path: Path) -> None:
                   discover_fields: true
                   include_inherited_fields: true
                   discover_has_fields: true
-                  discover_optional_fields: true
                   field_setters:
                     - axis
                   discover_children:
@@ -1796,10 +1662,21 @@ def test_generate_synthetic_autodiscovery_features(tmp_path: Path) -> None:
         "ifcopenshell_demo_settings_set_string_set",
     }
     assert expected_calls.issubset(calls)
-    assert isinstance(calls["ifcopenshell_demo_derived_inherited"].policy_operation, DirectFieldPolicyOp)
-    assert isinstance(calls["ifcopenshell_demo_derived_add_child"].policy_operation, ChildrenAddPolicyOp)
-    assert isinstance(calls["ifcopenshell_demo_derived_weight"].policy_operation, OptionalGetPolicyOp)
-    assert isinstance(calls["ifcopenshell_demo_settings_get_bool"].policy_operation, VariantGetPolicyOp)
+    assert isinstance(
+        calls["ifcopenshell_demo_derived_inherited"].policy_operation,
+        DirectFieldPolicyOp,
+    )
+    assert isinstance(
+        calls["ifcopenshell_demo_derived_add_child"].policy_operation,
+        ChildrenAddPolicyOp,
+    )
+    assert isinstance(
+        calls["ifcopenshell_demo_derived_weight"].policy_operation, OptionalGetPolicyOp
+    )
+    assert isinstance(
+        calls["ifcopenshell_demo_settings_get_bool"].policy_operation,
+        VariantGetPolicyOp,
+    )
     assert calls["ifcopenshell_demo_derived_uv_u"].returns.kind == "int32"
     assert calls["ifcopenshell_demo_derived_uv_v"].returns.kind == "int32"
 
@@ -1810,35 +1687,76 @@ def test_generate_synthetic_autodiscovery_features(tmp_path: Path) -> None:
     generated_header = header_out.read_text(encoding="utf-8")
     generated_cpp = cpp_out.read_text(encoding="utf-8")
 
-    assert "bool ifcopenshell_demo_create_derived(ifcopenshell_demo_derived_t** out_result);" in generated_header
-    assert "bool ifcopenshell_demo_derived_has_weight(ifcopenshell_demo_derived_t* self, bool* out_result);" in generated_header
-    assert "bool ifcopenshell_demo_derived_weight(ifcopenshell_demo_derived_t* self, double* out_result);" in generated_header
+    assert (
+        "bool ifcopenshell_demo_create_derived(ifcopenshell_demo_derived_t** out_result);"
+        in generated_header
+    )
+    assert (
+        "bool ifcopenshell_demo_derived_has_weight(ifcopenshell_demo_derived_t* self, bool* out_result);"
+        in generated_header
+    )
+    assert (
+        "bool ifcopenshell_demo_derived_weight(ifcopenshell_demo_derived_t* self, double* out_result);"
+        in generated_header
+    )
     assert "bool ifcopenshell_demo_derived_set_axis(" in generated_header
     assert "bool ifcopenshell_demo_derived_child_at(" in generated_header
     assert "bool ifcopenshell_demo_settings_get_string(" in generated_header
-    assert "bool ifcopenshell_demo_settings_get_int(ifcopenshell_demo_settings_t* self, const char* name, int64_t* out_result);" in generated_header
-    assert "bool ifcopenshell_demo_settings_set_int(ifcopenshell_demo_settings_t* self, const char* name, int64_t value);" in generated_header
-    assert "bool ifcopenshell_demo_settings_get_int_set(ifcopenshell_demo_settings_t* self, const char* name, ifcopenshell_int32_list_t* out_result);" in generated_header
-    assert "bool ifcopenshell_demo_settings_set_int_set(ifcopenshell_demo_settings_t* self, const char* name, const ifcopenshell_int32_list_t* value);" in generated_header
-    assert "bool ifcopenshell_demo_settings_get_int_list(ifcopenshell_demo_settings_t* self, const char* name, ifcopenshell_int32_list_t* out_result);" in generated_header
-    assert "bool ifcopenshell_demo_settings_set_string_list(ifcopenshell_demo_settings_t* self, const char* name, const ifcopenshell_string_list_t* value);" in generated_header
-    assert "bool ifcopenshell_demo_point3_get_data(ifcopenshell_demo_point3_t* self, ifcopenshell_double_list_t* out_result);" in generated_header
+    assert (
+        "bool ifcopenshell_demo_settings_get_int(ifcopenshell_demo_settings_t* self, const char* name, int64_t* out_result);"
+        in generated_header
+    )
+    assert (
+        "bool ifcopenshell_demo_settings_set_int(ifcopenshell_demo_settings_t* self, const char* name, int64_t value);"
+        in generated_header
+    )
+    assert (
+        "bool ifcopenshell_demo_settings_get_int_set(ifcopenshell_demo_settings_t* self, const char* name, ifcopenshell_int32_list_t* out_result);"
+        in generated_header
+    )
+    assert (
+        "bool ifcopenshell_demo_settings_set_int_set(ifcopenshell_demo_settings_t* self, const char* name, const ifcopenshell_int32_list_t* value);"
+        in generated_header
+    )
+    assert (
+        "bool ifcopenshell_demo_settings_get_int_list(ifcopenshell_demo_settings_t* self, const char* name, ifcopenshell_int32_list_t* out_result);"
+        in generated_header
+    )
+    assert (
+        "bool ifcopenshell_demo_settings_set_string_list(ifcopenshell_demo_settings_t* self, const char* name, const ifcopenshell_string_list_t* value);"
+        in generated_header
+    )
+    assert (
+        "bool ifcopenshell_demo_point3_get_data(ifcopenshell_demo_point3_t* self, ifcopenshell_double_list_t* out_result);"
+        in generated_header
+    )
 
     assert "self_cpp->axis = value_cpp;" in generated_cpp
     assert "self_cpp->children.push_back(item_cpp);" in generated_cpp
     assert "*out_result = static_cast<bool>(self_cpp->weight);" in generated_cpp
-    assert 'if (!self_cpp->weight) { throw std::runtime_error("weight is not set"); }' in generated_cpp
+    assert (
+        'if (!self_cpp->weight) { throw std::runtime_error("weight is not set"); }'
+        in generated_cpp
+    )
     assert "if (auto* p = std::get_if<bool>(&val))" in generated_cpp
     assert "if (auto* p = std::get_if<int64_t>(&val))" in generated_cpp
     assert "if (auto* p = std::get_if<Demo::Mode>(&val))" in generated_cpp
     assert "if (auto* p = std::get_if<std::set<int>>(&val))" in generated_cpp
     assert "if (auto* p = std::get_if<std::vector<int>>(&val))" in generated_cpp
     assert "if (auto* p = std::get_if<std::vector<std::string>>(&val))" in generated_cpp
-    assert "std::set<int> value_cpp(value_vec.begin(), value_vec.end());" in generated_cpp
+    assert (
+        "std::set<int> value_cpp(value_vec.begin(), value_vec.end());" in generated_cpp
+    )
     assert "auto value_cpp = to_cpp_int32_list(value);" in generated_cpp
     assert "auto value_cpp = to_cpp_string_list(value);" in generated_cpp
-    assert "self_cpp->set(name_cpp, Demo::Settings::value_variant_t(static_cast<int64_t>(value)));" in generated_cpp
-    assert "self_cpp->set(name_cpp, Demo::Settings::value_variant_t(value_cpp));" in generated_cpp
+    assert (
+        "self_cpp->set(name_cpp, Demo::Settings::value_variant_t(static_cast<int64_t>(value)));"
+        in generated_cpp
+    )
+    assert (
+        "self_cpp->set(name_cpp, Demo::Settings::value_variant_t(value_cpp));"
+        in generated_cpp
+    )
     assert "const auto& v = self_cpp->ccomponents();" in generated_cpp
 
 
@@ -1891,7 +1809,9 @@ def test_autodiscovery_lowers_bool_double_reference_out_params(tmp_path: Path) -
     )
 
     spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
-    call = {call.c_name: call for call in spec.methods}["ifcopenshell_demo_shape_calculate_volume"]
+    call = {call.c_name: call for call in spec.methods}[
+        "ifcopenshell_demo_shape_calculate_volume"
+    ]
     assert call.returns.kind == "double"
     assert call.params == ()
     assert isinstance(call.policy_operation, BoolOutParamPolicyOp)
@@ -1902,7 +1822,10 @@ def test_autodiscovery_lowers_bool_double_reference_out_params(tmp_path: Path) -
 
     generated_header = header_out.read_text(encoding="utf-8")
     generated_cpp = cpp_out.read_text(encoding="utf-8")
-    assert "bool ifcopenshell_demo_shape_calculate_volume(ifcopenshell_demo_shape_t* self, double* out_result);" in generated_header
+    assert (
+        "bool ifcopenshell_demo_shape_calculate_volume(ifcopenshell_demo_shape_t* self, double* out_result);"
+        in generated_header
+    )
     assert "double result_value{};" in generated_cpp
     assert "if (self_cpp->calculate_volume(result_value))" in generated_cpp
     assert "std::numeric_limits<double>::quiet_NaN()" in generated_cpp
@@ -1967,7 +1890,10 @@ def test_autodiscovery_supports_enum_methods(tmp_path: Path) -> None:
     assert calls["ifcopenshell_demo_widget_mode"].returns.kind == "int32"
     assert calls["ifcopenshell_demo_widget_mode"].returns.cpp_type == "Demo::Mode"
     assert calls["ifcopenshell_demo_widget_set_mode"].params[0].type.kind == "int32"
-    assert calls["ifcopenshell_demo_widget_set_mode"].params[0].type.cpp_type == "Demo::Mode"
+    assert (
+        calls["ifcopenshell_demo_widget_set_mode"].params[0].type.cpp_type
+        == "Demo::Mode"
+    )
 
     header_out = tmp_path / "enum_api.h"
     cpp_out = tmp_path / "enum_api.cpp"
@@ -2091,7 +2017,7 @@ def test_autodiscovery_supports_sets_and_opaque_coordinates(tmp_path: Path) -> N
                         tmp.get(2) ? tmp.get(2)->to_double() : 0.0
                     };
                 """
-            ).strip()
+        ).strip()
         + "\n",
         encoding="utf-8",
     )
@@ -2100,10 +2026,17 @@ def test_autodiscovery_supports_sets_and_opaque_coordinates(tmp_path: Path) -> N
     calls = {call.c_name: call for call in spec.methods}
 
     assert calls["ifcopenshell_demo_widget_set_names"].params[0].type.kind == "string"
-    assert calls["ifcopenshell_demo_widget_set_names"].params[0].type.sequence_depth == 1
+    assert (
+        calls["ifcopenshell_demo_widget_set_names"].params[0].type.sequence_depth == 1
+    )
     assert calls["ifcopenshell_demo_widget_set_types"].params[0].type.kind == "handle"
-    assert calls["ifcopenshell_demo_widget_set_types"].params[0].type.sequence_depth == 1
-    assert calls["ifcopenshell_demo_widget_set_types"].params[0].type.handle == "declaration"
+    assert (
+        calls["ifcopenshell_demo_widget_set_types"].params[0].type.sequence_depth == 1
+    )
+    assert (
+        calls["ifcopenshell_demo_widget_set_types"].params[0].type.handle
+        == "declaration"
+    )
     assert calls["ifcopenshell_demo_widget_names"].returns.kind == "string"
     assert calls["ifcopenshell_demo_widget_names"].returns.sequence_depth == 1
     assert calls["ifcopenshell_demo_widget_types"].returns.kind == "handle"
@@ -2117,8 +2050,14 @@ def test_autodiscovery_supports_sets_and_opaque_coordinates(tmp_path: Path) -> N
     generate(spec_path, header_out, cpp_out, discovery_include_dirs=discovery_dirs)
 
     generated_cpp = cpp_out.read_text(encoding="utf-8")
-    assert "std::set<std::string> names_cpp(names_vec.begin(), names_vec.end());" in generated_cpp
-    assert "std::set<const Demo::Declaration*> decls_cpp(decls_vec.begin(), decls_vec.end());" in generated_cpp
+    assert (
+        "std::set<std::string> names_cpp(names_vec.begin(), names_vec.end());"
+        in generated_cpp
+    )
+    assert (
+        "std::set<const Demo::Declaration*> decls_cpp(decls_vec.begin(), decls_vec.end());"
+        in generated_cpp
+    )
     assert "return std::vector(tmp.begin(), tmp.end());" in generated_cpp
     assert "tmp.get(0) ? tmp.get(0)->to_double() : 0.0" in generated_cpp
 
@@ -2184,15 +2123,23 @@ def test_autodiscovery_supports_nested_vectors(tmp_path: Path) -> None:
     calls = {call.c_name: call for call in spec.methods}
 
     assert calls["ifcopenshell_demo_widget_set_faces"].params[0].type.kind == "int32"
-    assert calls["ifcopenshell_demo_widget_set_faces"].params[0].type.sequence_depth == 2
+    assert (
+        calls["ifcopenshell_demo_widget_set_faces"].params[0].type.sequence_depth == 2
+    )
     assert calls["ifcopenshell_demo_widget_set_uvs"].params[0].type.kind == "double"
     assert calls["ifcopenshell_demo_widget_set_uvs"].params[0].type.sequence_depth == 2
     assert calls["ifcopenshell_demo_widget_faces"].returns.kind == "int32"
     assert calls["ifcopenshell_demo_widget_faces"].returns.sequence_depth == 2
     assert calls["ifcopenshell_demo_widget_uvs"].returns.kind == "double"
     assert calls["ifcopenshell_demo_widget_uvs"].returns.sequence_depth == 2
-    assert calls["ifcopenshell_demo_widget_faces"].returns.cpp_type == "std::vector<std::vector<int>>"
-    assert calls["ifcopenshell_demo_widget_uvs"].returns.cpp_type == "std::vector<std::vector<double>>"
+    assert (
+        calls["ifcopenshell_demo_widget_faces"].returns.cpp_type
+        == "std::vector<std::vector<int>>"
+    )
+    assert (
+        calls["ifcopenshell_demo_widget_uvs"].returns.cpp_type
+        == "std::vector<std::vector<double>>"
+    )
 
     header_out = tmp_path / "nested_vectors_api.h"
     cpp_out = tmp_path / "nested_vectors_api.cpp"
@@ -2272,9 +2219,15 @@ def test_autodiscovery_supports_nested_namespace_functions(tmp_path: Path) -> No
     spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.functions}
 
-    assert calls["ifcopenshell_demo_nested_count"].policy_operation.cpp_name == "ifcapi::bindings::nested_count"
+    assert (
+        calls["ifcopenshell_demo_nested_count"].policy_operation.cpp_name
+        == "ifcapi::bindings::nested_count"
+    )
     assert calls["ifcopenshell_demo_nested_count"].params[0].type.kind == "string"
-    assert calls["ifcopenshell_demo_qualified_scale"].policy_operation.cpp_name == "ifcapi::bindings::qualified_scale"
+    assert (
+        calls["ifcopenshell_demo_qualified_scale"].policy_operation.cpp_name
+        == "ifcapi::bindings::qualified_scale"
+    )
     assert calls["ifcopenshell_demo_qualified_scale"].returns.kind == "double"
 
     header_out = tmp_path / "bindings_api.h"
@@ -2338,7 +2291,10 @@ def test_authored_spec_discovery_uses_explicit_compilation(tmp_path: Path) -> No
     spec = load_authored_spec(spec_path, discovery_include_dirs=())
     calls = {call.c_name: call for call in spec.functions}
 
-    assert calls["ifcopenshell_demo_nested_count"].policy_operation.cpp_name == "ifcapi::bindings::nested_count"
+    assert (
+        calls["ifcopenshell_demo_nested_count"].policy_operation.cpp_name
+        == "ifcapi::bindings::nested_count"
+    )
     assert calls["ifcopenshell_demo_nested_count"].params[0].type.kind == "string"
 
     header_out = tmp_path / "bindings_api.h"
@@ -2356,7 +2312,9 @@ def test_authored_spec_discovery_accepts_global_include_dirs(tmp_path: Path) -> 
 
     dependency_dir = tmp_path / "dependency"
     dependency_dir.mkdir()
-    (dependency_dir / "dep.hpp").write_text("using external_int = int;\n", encoding="utf-8")
+    (dependency_dir / "dep.hpp").write_text(
+        "using external_int = int;\n", encoding="utf-8"
+    )
 
     header = tmp_path / "bindings.h"
     source = tmp_path / "bindings.cpp"
@@ -2418,7 +2376,9 @@ def test_authored_spec_discovery_accepts_global_include_dirs(tmp_path: Path) -> 
     assert "int32_t value" in header_out.read_text(encoding="utf-8")
 
 
-def test_value_handle_discovery_wraps_values_without_pointer_storage(tmp_path: Path) -> None:
+def test_value_handle_discovery_wraps_values_without_pointer_storage(
+    tmp_path: Path,
+) -> None:
     compiler = shutil.which("clang++")
     if compiler is None:
         pytest.skip("clang++ is not available")
@@ -2499,10 +2459,18 @@ def test_value_handle_discovery_wraps_values_without_pointer_storage(tmp_path: P
     generate(spec_path, header_out, cpp_out)
 
     generated_cpp = cpp_out.read_text(encoding="utf-8")
-    generated_internal = cpp_out.with_name("values_api_internal.hpp").read_text(encoding="utf-8")
-    assert "struct ifcopenshell_demo_value_t {\n    Demo::Value value;\n};" in generated_internal
+    generated_internal = cpp_out.with_name("values_api_internal.hpp").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        "struct ifcopenshell_demo_value_t {\n    Demo::Value value;\n};"
+        in generated_internal
+    )
     assert "if (!static_cast<bool>(result_value))" in generated_cpp
-    assert "*out_result = new ifcopenshell_demo_value_t{std::move(result_value)};" in generated_cpp
+    assert (
+        "*out_result = new ifcopenshell_demo_value_t{std::move(result_value)};"
+        in generated_cpp
+    )
     assert "const auto& value_cpp = value->value;" in generated_cpp
     assert "auto value_cpp = value->value;" in generated_cpp
     assert "new ifcopenshell_demo_value_t{Demo::Value(values[i])}" in generated_cpp
@@ -2532,11 +2500,15 @@ def test_value_handle_requires_none_destructor(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    with pytest.raises(ValueError, match="destructor must be 'none' for ptr_type: value"):
+    with pytest.raises(
+        ValueError, match="destructor must be 'none' for ptr_type: value"
+    ):
         load_authored_spec(spec_path)
 
 
-def test_discovery_type_overrides_can_target_canonical_overload_signature(tmp_path: Path) -> None:
+def test_discovery_type_overrides_can_target_canonical_overload_signature(
+    tmp_path: Path,
+) -> None:
     header = tmp_path / "overloaded.h"
     source = tmp_path / "overloaded.cpp"
     spec_path = tmp_path / "overloaded.yml"
@@ -2600,10 +2572,14 @@ def test_discovery_type_overrides_can_target_canonical_overload_signature(tmp_pa
     calls = {call.c_name: call for call in spec.methods}
 
     assert calls["ifcopenshell_demo_overloaded_value"].returns.kind == "double"
-    assert calls["ifcopenshell_demo_overloaded_value_with_amount"].returns.kind == "int32"
+    assert (
+        calls["ifcopenshell_demo_overloaded_value_with_amount"].returns.kind == "int32"
+    )
 
 
-def test_discovery_rejects_name_scoped_type_override_for_overloaded_member(tmp_path: Path) -> None:
+def test_discovery_rejects_name_scoped_type_override_for_overloaded_member(
+    tmp_path: Path,
+) -> None:
     header = tmp_path / "overloaded.h"
     source = tmp_path / "overloaded.cpp"
     spec_path = tmp_path / "overloaded.yml"
@@ -2667,7 +2643,9 @@ def test_discovery_rejects_name_scoped_type_override_for_overloaded_member(tmp_p
         load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
 
 
-def test_autodiscovery_uses_marked_contract_when_translation_unit_is_omitted(tmp_path: Path) -> None:
+def test_autodiscovery_uses_marked_contract_when_translation_unit_is_omitted(
+    tmp_path: Path,
+) -> None:
     header = tmp_path / "bindings.h"
     source = tmp_path / "reference.cpp"
     spec_path = tmp_path / "bindings.yml"
@@ -2882,7 +2860,9 @@ def test_contract_discovery_rejects_missing_public_header(tmp_path: Path) -> Non
         load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
 
 
-def test_namespace_function_discovery_rejects_stale_type_override(tmp_path: Path) -> None:
+def test_namespace_function_discovery_rejects_stale_type_override(
+    tmp_path: Path,
+) -> None:
     header = tmp_path / "bindings.h"
     source = tmp_path / "bindings.cpp"
     spec_path = tmp_path / "bindings.yml"
@@ -2931,7 +2911,9 @@ def test_namespace_function_discovery_rejects_stale_type_override(tmp_path: Path
         load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
 
 
-def test_autodiscovery_treats_char_pointer_params_as_nullable_strings(tmp_path: Path) -> None:
+def test_autodiscovery_treats_char_pointer_params_as_nullable_strings(
+    tmp_path: Path,
+) -> None:
     header = tmp_path / "nullable_strings.h"
     source = tmp_path / "nullable_strings.cpp"
     spec_path = tmp_path / "nullable_strings.yml"
@@ -2948,7 +2930,9 @@ def test_autodiscovery_treats_char_pointer_params_as_nullable_strings(tmp_path: 
         + "\n",
         encoding="utf-8",
     )
-    source.write_text('#include <string>\n#include "nullable_strings.h"\n', encoding="utf-8")
+    source.write_text(
+        '#include <string>\n#include "nullable_strings.h"\n', encoding="utf-8"
+    )
     discovery_dirs = _discovery_include_dirs(tmp_path)
 
     spec_path.write_text(
@@ -2991,7 +2975,9 @@ def test_autodiscovery_treats_char_pointer_params_as_nullable_strings(tmp_path: 
     assert "Demo::definitely_named(name_cpp)" in generated_cpp
 
 
-def test_namespace_function_discovery_infers_result_struct_returns(tmp_path: Path) -> None:
+def test_namespace_function_discovery_infers_result_struct_returns(
+    tmp_path: Path,
+) -> None:
     header = tmp_path / "result_structs.h"
     source = tmp_path / "result_structs.cpp"
     spec_path = tmp_path / "result_structs.yml"
@@ -3053,58 +3039,9 @@ def test_namespace_function_discovery_infers_result_struct_returns(tmp_path: Pat
     assert calls["ifcopenshell_demo_make_pair_result"].returns.struct == "pair_result"
 
 
-def test_namespace_function_discovery_infers_tribool_as_logical(tmp_path: Path) -> None:
-    header = tmp_path / "logical.h"
-    source = tmp_path / "logical.cpp"
-    spec_path = tmp_path / "logical.yml"
-
-    header.write_text(
-        dedent(
-            """
-            namespace boost::logic {
-            class tribool {};
-            }
-
-            namespace Demo {
-            bool set_flags(boost::logic::tribool enabled);
-            }
-            """
-        ).strip()
-        + "\n",
-        encoding="utf-8",
-    )
-    source.write_text('#include "logical.h"\n', encoding="utf-8")
-    discovery_dirs = _discovery_include_dirs(tmp_path)
-
-    spec_path.write_text(
-        dedent(
-            """
-            schema_version: 1
-            module: demo
-            slice: demo
-            c_prefix: ifcopenshell_demo
-            public_headers:
-              - logical.h
-            discover:
-              include_dir: .
-              functions:
-                - namespace: Demo
-                  translation_unit: logical.cpp
-                  include:
-                    - set_flags
-            """
-        ).strip()
-        + "\n",
-        encoding="utf-8",
-    )
-
-    spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
-    calls = {call.c_name: call for call in spec.functions}
-
-    assert calls["ifcopenshell_demo_set_flags"].params[0].type.kind == "logical"
-
-
-def test_namespace_function_discovery_infers_unknown_raw_pointers_as_opaque(tmp_path: Path) -> None:
+def test_namespace_function_discovery_infers_unknown_raw_pointers_as_opaque(
+    tmp_path: Path,
+) -> None:
     header = tmp_path / "opaque.h"
     source = tmp_path / "opaque.cpp"
     spec_path = tmp_path / "opaque.yml"
@@ -3237,13 +3174,23 @@ def test_autodiscovery_supports_shared_ptr_handle_vectors(tmp_path: Path) -> Non
     spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.methods}
 
-    assert calls["ifcopenshell_demo_widget_set_children"].params[0].type.kind == "handle"
-    assert calls["ifcopenshell_demo_widget_set_children"].params[0].type.sequence_depth == 1
-    assert calls["ifcopenshell_demo_widget_set_children"].params[0].type.handle == "child"
+    assert (
+        calls["ifcopenshell_demo_widget_set_children"].params[0].type.kind == "handle"
+    )
+    assert (
+        calls["ifcopenshell_demo_widget_set_children"].params[0].type.sequence_depth
+        == 1
+    )
+    assert (
+        calls["ifcopenshell_demo_widget_set_children"].params[0].type.handle == "child"
+    )
     assert calls["ifcopenshell_demo_widget_children"].returns.kind == "handle"
     assert calls["ifcopenshell_demo_widget_children"].returns.sequence_depth == 1
     assert calls["ifcopenshell_demo_widget_children"].returns.handle == "child"
-    assert calls["ifcopenshell_demo_widget_children"].returns.cpp_type == "std::vector<Demo::Child::ptr>"
+    assert (
+        calls["ifcopenshell_demo_widget_children"].returns.cpp_type
+        == "std::vector<Demo::Child::ptr>"
+    )
 
     header_out = tmp_path / "shared_ptr_vectors_api.h"
     cpp_out = tmp_path / "shared_ptr_vectors_api.cpp"
@@ -3324,8 +3271,13 @@ def test_autodiscovery_supports_boost_shared_ptr_handles(tmp_path: Path) -> None
     spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.methods}
 
-    assert calls["ifcopenshell_demo_widget_set_collection"].params[0].type.kind == "handle"
-    assert calls["ifcopenshell_demo_widget_set_collection"].params[0].type.handle == "collection"
+    assert (
+        calls["ifcopenshell_demo_widget_set_collection"].params[0].type.kind == "handle"
+    )
+    assert (
+        calls["ifcopenshell_demo_widget_set_collection"].params[0].type.handle
+        == "collection"
+    )
     assert calls["ifcopenshell_demo_widget_collection"].returns.kind == "handle"
     assert calls["ifcopenshell_demo_widget_collection"].returns.handle == "collection"
 
@@ -3404,12 +3356,23 @@ def test_autodiscovery_supports_unique_ptr_handles(tmp_path: Path) -> None:
     generate(spec_path, header_out, cpp_out, discovery_include_dirs=discovery_dirs)
     generated_cpp = cpp_out.read_text(encoding="utf-8")
 
-    assert "*out_result = new ifcopenshell_demo_child_t{self_cpp->take_child().release(), true};" in generated_cpp
-    assert "static ifcopenshell_demo_child_list_t make_demo_child_list(std::vector<std::unique_ptr<Demo::Child>> values)" in generated_cpp
-    assert "items[i] = new ifcopenshell_demo_child_t{values[i].release(), true};" in generated_cpp
+    assert (
+        "*out_result = new ifcopenshell_demo_child_t{self_cpp->take_child().release(), true};"
+        in generated_cpp
+    )
+    assert (
+        "static ifcopenshell_demo_child_list_t make_demo_child_list(std::vector<std::unique_ptr<Demo::Child>> values)"
+        in generated_cpp
+    )
+    assert (
+        "items[i] = new ifcopenshell_demo_child_t{values[i].release(), true};"
+        in generated_cpp
+    )
 
 
-def test_autodiscovery_matches_shared_ptr_handles_by_qualified_suffix(tmp_path: Path) -> None:
+def test_autodiscovery_matches_shared_ptr_handles_by_qualified_suffix(
+    tmp_path: Path,
+) -> None:
     header = tmp_path / "qualified_shared_ptr_suffix.h"
     source = tmp_path / "qualified_shared_ptr_suffix.cpp"
     spec_path = tmp_path / "qualified_shared_ptr_suffix.yml"
@@ -3474,9 +3437,14 @@ def test_autodiscovery_matches_shared_ptr_handles_by_qualified_suffix(tmp_path: 
     calls = {call.c_name: call for call in spec.methods}
 
     assert calls["ifcopenshell_demo_evaluator_evaluate"].returns.kind == "handle"
-    assert calls["ifcopenshell_demo_evaluator_evaluate"].returns.handle == "taxonomy_item"
+    assert (
+        calls["ifcopenshell_demo_evaluator_evaluate"].returns.handle == "taxonomy_item"
+    )
     assert calls["ifcopenshell_demo_evaluator_evaluate"].returns.ownership == "owned"
-    assert calls["ifcopenshell_demo_evaluator_evaluate"].returns.cpp_type == "taxonomy::item::ptr"
+    assert (
+        calls["ifcopenshell_demo_evaluator_evaluate"].returns.cpp_type
+        == "taxonomy::item::ptr"
+    )
 
 
 def test_autodiscovery_supports_opaque_coordinate_vectors(tmp_path: Path) -> None:
@@ -3606,7 +3574,7 @@ def test_autodiscovery_supports_opaque_coordinate_vectors(tmp_path: Path) -> Non
                     }
                     return rows_out;
                 """
-            ).strip()
+        ).strip()
         + "\n",
         encoding="utf-8",
     )
@@ -3615,7 +3583,9 @@ def test_autodiscovery_supports_opaque_coordinate_vectors(tmp_path: Path) -> Non
     calls = {call.c_name: call for call in spec.methods}
 
     assert calls["ifcopenshell_demo_widget_set_planes"].params[0].type.kind == "double"
-    assert calls["ifcopenshell_demo_widget_set_planes"].params[0].type.sequence_depth == 2
+    assert (
+        calls["ifcopenshell_demo_widget_set_planes"].params[0].type.sequence_depth == 2
+    )
     assert calls["ifcopenshell_demo_widget_planes"].returns.kind == "double"
     assert calls["ifcopenshell_demo_widget_planes"].returns.sequence_depth == 2
 
@@ -3626,7 +3596,10 @@ def test_autodiscovery_supports_opaque_coordinate_vectors(tmp_path: Path) -> Non
     generated_cpp = cpp_out.read_text(encoding="utf-8")
     assert "auto planes_cpp = to_cpp_double_list_list(planes);" in generated_cpp
     assert "opaque_planes.emplace_back(" in generated_cpp
-    assert 'throw std::runtime_error("double_list_list row has incorrect length for opaque coordinate")' in generated_cpp
+    assert (
+        'throw std::runtime_error("double_list_list row has incorrect length for opaque coordinate")'
+        in generated_cpp
+    )
     assert "rows_out.push_back(std::vector<double>{" in generated_cpp
     assert "coord.get(0) ? coord.get(0)->to_double() : 0.0" in generated_cpp
 
@@ -3689,10 +3662,15 @@ def test_autodiscovery_supports_uint8_vectors(tmp_path: Path) -> None:
     calls = {call.c_name: call for call in spec.methods}
 
     assert calls["ifcopenshell_demo_widget_set_bytes"].params[0].type.kind == "uint8"
-    assert calls["ifcopenshell_demo_widget_set_bytes"].params[0].type.sequence_depth == 1
+    assert (
+        calls["ifcopenshell_demo_widget_set_bytes"].params[0].type.sequence_depth == 1
+    )
     assert calls["ifcopenshell_demo_widget_bytes"].returns.kind == "uint8"
     assert calls["ifcopenshell_demo_widget_bytes"].returns.sequence_depth == 1
-    assert calls["ifcopenshell_demo_widget_bytes"].returns.cpp_type == "std::vector<uint8_t>"
+    assert (
+        calls["ifcopenshell_demo_widget_bytes"].returns.cpp_type
+        == "std::vector<uint8_t>"
+    )
 
     header_out = tmp_path / "uint8_vectors_api.h"
     cpp_out = tmp_path / "uint8_vectors_api.cpp"
@@ -3701,7 +3679,10 @@ def test_autodiscovery_supports_uint8_vectors(tmp_path: Path) -> None:
     generated_header = header_out.read_text(encoding="utf-8")
     generated_cpp = cpp_out.read_text(encoding="utf-8")
     assert "typedef struct ifcopenshell_uint8_list_t {" in generated_header
-    assert "void ifcopenshell_uint8_list_destroy(ifcopenshell_uint8_list_t* value);" in generated_header
+    assert (
+        "void ifcopenshell_uint8_list_destroy(ifcopenshell_uint8_list_t* value);"
+        in generated_header
+    )
     assert "auto bytes_cpp = to_cpp_uint8_list(bytes);" in generated_cpp
     assert "*out_result = make_uint8_list(self_cpp->bytes());" in generated_cpp
 
@@ -3770,7 +3751,10 @@ def test_autodiscovery_matches_handles_via_base_classes(tmp_path: Path) -> None:
 
     assert calls["ifcopenshell_demo_widget_product"].returns.kind == "handle"
     assert calls["ifcopenshell_demo_widget_product"].returns.handle == "base"
-    assert calls["ifcopenshell_demo_widget_product"].returns.cpp_type == "const Demo::Derived*"
+    assert (
+        calls["ifcopenshell_demo_widget_product"].returns.cpp_type
+        == "const Demo::Derived*"
+    )
 
 
 def test_autodiscovery_supports_handle_list_list(tmp_path: Path) -> None:
@@ -3844,11 +3828,18 @@ def test_autodiscovery_supports_handle_list_list(tmp_path: Path) -> None:
     generated_header = header_out.read_text(encoding="utf-8")
     generated_cpp = cpp_out.read_text(encoding="utf-8")
     assert "typedef struct ifcopenshell_demo_base_list_list_t {" in generated_header
-    assert "void ifcopenshell_demo_base_list_list_destroy(ifcopenshell_demo_base_list_list_t* value);" in generated_header
-    assert "*out_result = make_demo_base_list_list(self_cpp->groups());" in generated_cpp
+    assert (
+        "void ifcopenshell_demo_base_list_list_destroy(ifcopenshell_demo_base_list_list_t* value);"
+        in generated_header
+    )
+    assert (
+        "*out_result = make_demo_base_list_list(self_cpp->groups());" in generated_cpp
+    )
 
 
-def test_autodiscovery_supports_instance_aggregate_aggregate_ptr(tmp_path: Path) -> None:
+def test_autodiscovery_supports_instance_aggregate_aggregate_ptr(
+    tmp_path: Path,
+) -> None:
     header = tmp_path / "aggregate_ptr.h"
     source = tmp_path / "aggregate_ptr.cpp"
     spec_path = tmp_path / "aggregate_ptr.yml"
@@ -3917,16 +3908,24 @@ def test_autodiscovery_supports_instance_aggregate_aggregate_ptr(tmp_path: Path)
                             handle: instance
                             ownership: borrowed
                 """
-            ).strip()
+        ).strip()
         + "\n",
         encoding="utf-8",
     )
 
     spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.methods}
-    assert calls["ifcopenshell_demo_iterator_get_task_products"].returns.kind == "handle"
-    assert calls["ifcopenshell_demo_iterator_get_task_products"].returns.sequence_depth == 2
-    assert calls["ifcopenshell_demo_iterator_get_task_products"].returns.handle == "instance"
+    assert (
+        calls["ifcopenshell_demo_iterator_get_task_products"].returns.kind == "handle"
+    )
+    assert (
+        calls["ifcopenshell_demo_iterator_get_task_products"].returns.sequence_depth
+        == 2
+    )
+    assert (
+        calls["ifcopenshell_demo_iterator_get_task_products"].returns.handle
+        == "instance"
+    )
 
 
 def test_autodiscovery_supports_int32_list_list_list(tmp_path: Path) -> None:
@@ -3981,8 +3980,16 @@ def test_autodiscovery_supports_int32_list_list_list(tmp_path: Path) -> None:
 
     spec = load_authored_spec(spec_path, discovery_include_dirs=discovery_dirs)
     calls = {call.c_name: call for call in spec.methods}
-    assert calls["ifcopenshell_demo_mesh_polyhedral_faces_with_holes"].returns.kind == "int32"
-    assert calls["ifcopenshell_demo_mesh_polyhedral_faces_with_holes"].returns.sequence_depth == 3
+    assert (
+        calls["ifcopenshell_demo_mesh_polyhedral_faces_with_holes"].returns.kind
+        == "int32"
+    )
+    assert (
+        calls[
+            "ifcopenshell_demo_mesh_polyhedral_faces_with_holes"
+        ].returns.sequence_depth
+        == 3
+    )
 
     header_out = tmp_path / "triple_int_vectors_api.h"
     cpp_out = tmp_path / "triple_int_vectors_api.cpp"
@@ -3991,8 +3998,93 @@ def test_autodiscovery_supports_int32_list_list_list(tmp_path: Path) -> None:
     generated_header = header_out.read_text(encoding="utf-8")
     generated_cpp = cpp_out.read_text(encoding="utf-8")
     assert "typedef struct ifcopenshell_int32_list_list_list_t {" in generated_header
-    assert "void ifcopenshell_int32_list_list_list_destroy(ifcopenshell_int32_list_list_list_t* value);" in generated_header
-    assert "*out_result = make_int32_list_list_list(self_cpp->polyhedral_faces_with_holes());" in generated_cpp
+    assert (
+        "void ifcopenshell_int32_list_list_list_destroy(ifcopenshell_int32_list_list_list_t* value);"
+        in generated_header
+    )
+    assert (
+        "*out_result = make_int32_list_list_list(self_cpp->polyhedral_faces_with_holes());"
+        in generated_cpp
+    )
+
+
+def test_ccomponents_dimensions_infer_through_handle_access_path(
+    tmp_path: Path,
+) -> None:
+    header = tmp_path / "matrix.h"
+    source = tmp_path / "matrix.cpp"
+    spec_path = tmp_path / "matrix.yml"
+    header.write_text(
+        dedent(
+            """
+            #include <memory>
+
+            namespace Eigen {
+            template <typename Scalar, int Rows, int Cols>
+            struct Matrix {};
+            }
+
+            namespace Demo {
+            template <typename MatrixType>
+            struct eigen_base {};
+
+            struct Matrix4 : eigen_base<Eigen::Matrix<double, 4, 4>> {
+                using ptr = std::shared_ptr<Matrix4>;
+            };
+
+            struct Transformation {
+                std::shared_ptr<Matrix4> data() const { return {}; }
+            };
+            }
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    source.write_text('#include "matrix.h"\n', encoding="utf-8")
+    spec_path.write_text(
+        dedent(
+            """
+            schema_version: 1
+            module: demo
+            slice: demo
+            c_prefix: ifcopenshell_demo
+            public_headers:
+              - matrix.h
+            handles:
+              - name: transformation
+                cpp_type: Demo::Transformation
+                c_type: ifcopenshell_demo_transformation_t
+                destructor: delete
+              - name: matrix4
+                cpp_type: Demo::Matrix4
+                c_type: ifcopenshell_demo_matrix4_t
+                destructor: shared_ptr
+                ptr_type: shared_ptr
+            discover:
+              include_dir: .
+              classes:
+                - handle: transformation
+                  translation_unit: matrix.cpp
+                  include_all: false
+                  ccomponents_accessor:
+                    expose_as: matrix
+                    access_via: "data()->ccomponents"
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    spec = load_authored_spec(
+        spec_path, discovery_include_dirs=_discovery_include_dirs(tmp_path)
+    )
+    call = next(
+        call
+        for call in spec.methods
+        if call.c_name == "ifcopenshell_demo_transformation_matrix"
+    )
+    assert call.policy_operation.dimensions == 16
 
 
 def test_load_authored_spec_reports_discovery_diagnostics(tmp_path: Path) -> None:
@@ -4047,7 +4139,6 @@ def test_load_authored_spec_reports_discovery_diagnostics(tmp_path: Path) -> Non
                   translation_unit: diagnostics.cpp
                   include_all: true
                   discover_fields: true
-                  discover_optional_fields: true
             """
         ).strip()
         + "\n",
@@ -4062,10 +4153,35 @@ def test_load_authored_spec_reports_discovery_diagnostics(tmp_path: Path) -> Non
     assert "ifcopenshell_demo_diagnostics_unsupported_field" not in calls
     assert "ifcopenshell_demo_diagnostics_unsupported_optional" not in calls
 
-    diagnostics = {(item.owner, item.member, item.code): item for item in spec.discovery_diagnostics}
-    assert ("diagnostics", "overloaded", "overloaded_method_requires_policy") in diagnostics
-    assert ("diagnostics", "unsupported_method", "unsupported_method_signature") in diagnostics
+    diagnostics = {
+        (item.owner, item.member, item.code): item
+        for item in spec.discovery_diagnostics
+    }
+    assert (
+        "diagnostics",
+        "overloaded",
+        "overloaded_method_requires_policy",
+    ) in diagnostics
+    assert (
+        "diagnostics",
+        "unsupported_method",
+        "unsupported_method_signature",
+    ) in diagnostics
     assert ("diagnostics", "unsupported_field", "unsupported_field_type") in diagnostics
-    assert ("diagnostics", "unsupported_optional", "unsupported_optional_inner_type") in diagnostics
-    assert "std::map<int, int> unsupported_method()" in diagnostics[("diagnostics", "unsupported_method", "unsupported_method_signature")].message
-    assert "std::map<int, int>" in diagnostics[("diagnostics", "unsupported_field", "unsupported_field_type")].message
+    assert (
+        "diagnostics",
+        "unsupported_optional",
+        "unsupported_optional_inner_type",
+    ) in diagnostics
+    assert (
+        "std::map<int, int> unsupported_method()"
+        in diagnostics[
+            ("diagnostics", "unsupported_method", "unsupported_method_signature")
+        ].message
+    )
+    assert (
+        "std::map<int, int>"
+        in diagnostics[
+            ("diagnostics", "unsupported_field", "unsupported_field_type")
+        ].message
+    )

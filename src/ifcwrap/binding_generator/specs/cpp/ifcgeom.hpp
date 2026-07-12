@@ -175,6 +175,64 @@ inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::direction3::ptr taxonomy_c
     return ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::direction3>(direction);
 }
 
+inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::collection::ptr taxonomy_create_collection() {
+    return ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::collection>();
+}
+
+inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::loft::ptr taxonomy_create_loft() {
+    return ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::loft>();
+}
+
+inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::node::ptr taxonomy_create_node() {
+    return ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::node>();
+}
+
+inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::point3::ptr taxonomy_create_point3(double x, double y, double z) {
+    return ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::point3>(x, y, z);
+}
+
+inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::bspline_curve::ptr taxonomy_create_bspline_curve(int degree) {
+    if (degree < 1) {
+        throw std::runtime_error("B-spline curve degree must be >= 1");
+    }
+    auto value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::bspline_curve>();
+    value->degree = degree;
+    return value;
+}
+
+inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::bspline_surface::ptr taxonomy_create_bspline_surface(
+    int degree_u,
+    int degree_v
+) {
+    if (degree_u < 1 || degree_v < 1) {
+        throw std::runtime_error("B-spline surface degrees must be >= 1");
+    }
+    auto value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::bspline_surface>();
+    value->degree = {degree_u, degree_v};
+    return value;
+}
+
+inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::boolean_result::ptr taxonomy_create_boolean_result(int operation) {
+    if (operation < 0 || operation > 2) {
+        throw std::runtime_error("Boolean operation must be 0 (UNION), 1 (SUBTRACTION), or 2 (INTERSECTION)");
+    }
+    auto value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::boolean_result>();
+    value->operation = static_cast<ifcopenshell::geometry::taxonomy::boolean_result::operation_t>(operation);
+    return value;
+}
+
+inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::offset_curve::ptr taxonomy_create_offset_curve(
+    const ifcopenshell::geometry::taxonomy::item::ptr& basis,
+    const ifcopenshell::geometry::taxonomy::direction3::ptr& reference,
+    double offset
+) {
+    auto value = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::offset_curve>();
+    value->basis = basis;
+    value->reference = reference;
+    value->offset = offset;
+    return value;
+}
+
 inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::line::ptr taxonomy_create_line(
     double origin_x,
     double origin_y,
@@ -580,6 +638,46 @@ inline IFCAPI_OWNED IfcGeom::OpaqueNumber* create_epeck_from_double(double value
 
 inline IFCAPI_OWNED IfcGeom::OpaqueNumber* create_epeck_from_string(const std::string& value_cpp) {
     return new IfcGeom::NumberNativeDouble(std::stod(value_cpp));
+}
+
+inline IFCAPI_OWNED IfcGeom::OpaqueNumber* add(
+    IfcGeom::OpaqueNumber* self,
+    IfcGeom::OpaqueNumber* other
+) {
+    return (*self) + other;
+}
+
+inline IFCAPI_OWNED IfcGeom::OpaqueNumber* subtract(
+    IfcGeom::OpaqueNumber* self,
+    IfcGeom::OpaqueNumber* other
+) {
+    return (*self) - other;
+}
+
+inline IFCAPI_OWNED IfcGeom::OpaqueNumber* multiply(
+    IfcGeom::OpaqueNumber* self,
+    IfcGeom::OpaqueNumber* other
+) {
+    return (*self) * other;
+}
+
+inline IFCAPI_OWNED IfcGeom::OpaqueNumber* divide(
+    IfcGeom::OpaqueNumber* self,
+    IfcGeom::OpaqueNumber* other
+) {
+    return (*self) / other;
+}
+
+inline IFCAPI_OWNED IfcGeom::OpaqueNumber* negate(IfcGeom::OpaqueNumber* self) {
+    return -(*self);
+}
+
+inline bool equals(IfcGeom::OpaqueNumber* self, IfcGeom::OpaqueNumber* other) {
+    return (*self) == other;
+}
+
+inline bool less_than(IfcGeom::OpaqueNumber* self, IfcGeom::OpaqueNumber* other) {
+    return (*self) < other;
 }
 
 inline IFCAPI_OWNED IfcGeom::ConversionResultShape* nary_union(

@@ -33,6 +33,7 @@ from src.ifcwrap.binding_generator.cpp_spec_frontend import (
     discover_cpp_spec_option_structs,
     discover_cpp_spec_result_structs,
     lower_cpp_spec_functions_to_calls,
+    lower_cpp_spec_handles_to_specs,
     lower_cpp_spec_result_structs_to_specs,
 )
 from src.ifcwrap.binding_generator.host_metadata import build_host_metadata
@@ -157,7 +158,9 @@ def test_cpp_spec_frontend_rejects_mutable_void_pointer_params(tmp_path: Path) -
         "ifcopenshell::capi_spec",
     )
 
-    with pytest.raises(ValueError, match="Unsupported discovered parameter type 'void \\*'"):
+    with pytest.raises(
+        ValueError, match="Unsupported discovered parameter type 'void \\*'"
+    ):
         lower_cpp_spec_functions_to_calls(functions, {})
 
 
@@ -185,7 +188,10 @@ def test_contract_discovery_preserves_source_docs(tmp_path: Path) -> None:
 
     assert len(functions) == 1
     assert functions[0].name == "root_create_entity"
-    assert functions[0].doc == "Create an IFC entity.\n\nInitializes identity and ownership metadata."
+    assert (
+        functions[0].doc
+        == "Create an IFC entity.\n\nInitializes identity and ownership metadata."
+    )
 
 
 def test_contract_discovery_uses_only_adjacent_function_docs(tmp_path: Path) -> None:
@@ -270,7 +276,10 @@ def test_cpp_spec_frontend_discovers_option_structs(tmp_path: Path) -> None:
     fields = {field.name: field for field in options.fields}
     assert fields["ifc_class"].type.kind == "string"
     assert fields["ifc_class"].type.nullable is False
-    assert fields["ifc_class"].doc == "IFC class name.\n\nThis paragraph should survive field documentation lowering."
+    assert (
+        fields["ifc_class"].doc
+        == "IFC class name.\n\nThis paragraph should survive field documentation lowering."
+    )
     assert fields["predefined_type"].type.kind == "string"
     assert fields["predefined_type"].type.nullable is True
     assert fields["predefined_type"].doc == "Optional predefined type."
@@ -339,7 +348,9 @@ def test_c_header_renders_option_structs() -> None:
                     c_type="ifcopenshell_demo_create_entity_options_t",
                     fields=(
                         OptionStructFieldSpec("ifc_class", TypeSpec(kind="string")),
-                        OptionStructFieldSpec("name", TypeSpec(kind="string", nullable=True)),
+                        OptionStructFieldSpec(
+                            "name", TypeSpec(kind="string", nullable=True)
+                        ),
                     ),
                 )
             },
@@ -421,7 +432,11 @@ def test_c_backend_emits_sequence_helpers_used_only_by_option_structs() -> None:
                 c_name="ifcopenshell_demo_add_mesh",
                 receiver=None,
                 returns=TypeSpec(kind="void"),
-                params=(ParamSpec("options", TypeSpec(kind="option", struct="AddMeshOptions")),),
+                params=(
+                    ParamSpec(
+                        "options", TypeSpec(kind="option", struct="AddMeshOptions")
+                    ),
+                ),
                 operation=DirectCallOp(cpp_name="Demo::add_mesh"),
             ),
         ),
@@ -432,8 +447,12 @@ def test_c_backend_emits_sequence_helpers_used_only_by_option_structs() -> None:
                 cpp_type="Demo::AddMeshOptions",
                 c_type="ifcopenshell_demo_add_mesh_options_t",
                 fields=(
-                    OptionStructFieldSpec("vertices", TypeSpec(kind="double", sequence_depth=3)),
-                    OptionStructFieldSpec("faces", TypeSpec(kind="int32", sequence_depth=4)),
+                    OptionStructFieldSpec(
+                        "vertices", TypeSpec(kind="double", sequence_depth=3)
+                    ),
+                    OptionStructFieldSpec(
+                        "faces", TypeSpec(kind="int32", sequence_depth=4)
+                    ),
                 ),
             )
         },
@@ -444,8 +463,13 @@ def test_c_backend_emits_sequence_helpers_used_only_by_option_structs() -> None:
 
     assert "typedef struct ifcopenshell_int32_list_list_list_list_t {" in header
     assert "void ifcopenshell_int32_list_list_list_list_destroy" in header
-    assert "static std::vector<std::vector<std::vector<std::vector<int>>>> to_cpp_int32_list_list_list_list" in cpp
-    assert "options_cpp.faces = to_cpp_int32_list_list_list_list(options->faces);" in cpp
+    assert (
+        "static std::vector<std::vector<std::vector<std::vector<int>>>> to_cpp_int32_list_list_list_list"
+        in cpp
+    )
+    assert (
+        "options_cpp.faces = to_cpp_int32_list_list_list_list(options->faces);" in cpp
+    )
 
 
 def test_cpp_spec_generation_lowers_option_parameters(tmp_path: Path) -> None:
@@ -591,7 +615,10 @@ def test_cpp_spec_generation_lowers_standalone_optional_handle_and_string_params
         in header
     )
     assert "std::optional<DemoValue> value_cpp;" in generated_cpp
-    assert "if (value != nullptr && value->ptr != nullptr) { value_cpp = *value->ptr; }" in generated_cpp
+    assert (
+        "if (value != nullptr && value->ptr != nullptr) { value_cpp = *value->ptr; }"
+        in generated_cpp
+    )
     assert "std::optional<std::string> name_cpp;" in generated_cpp
     assert "if (name != nullptr) { name_cpp = std::string(name); }" in generated_cpp
     assert "demo::update(value_cpp, name_cpp)" in generated_cpp
@@ -620,7 +647,9 @@ def test_cpp_spec_generation_tracks_default_parameters(tmp_path: Path) -> None:
         spec_path,
         "demo",
     )
-    calls = lower_cpp_spec_functions_to_calls(functions, {}, c_prefix="ifcopenshell_demo")
+    calls = lower_cpp_spec_functions_to_calls(
+        functions, {}, c_prefix="ifcopenshell_demo"
+    )
     ir = BindingIR(
         module="demo",
         c_prefix="ifcopenshell_demo",
@@ -689,12 +718,65 @@ def test_cpp_spec_generation_lowers_optional_owned_handle_returns(
 
     header = header_out.read_text(encoding="utf-8")
     generated_cpp = cpp_out.read_text(encoding="utf-8")
-    assert "bool ifcopenshell_demo_find_value(bool found, ifcopenshell_demo_demo_value_t** out_result);" in header
+    assert (
+        "bool ifcopenshell_demo_find_value(bool found, ifcopenshell_demo_demo_value_t** out_result);"
+        in header
+    )
     assert "auto result_value = demo::find_value(found_cpp);" in generated_cpp
     assert "if (!result_value) {" in generated_cpp
     assert "*out_result = nullptr;" in generated_cpp
     assert "auto unwrapped_result = *result_value;" in generated_cpp
-    assert "*out_result = new ifcopenshell_demo_demo_value_t{unwrapped_result, true};" in generated_cpp
+    assert (
+        "*out_result = new ifcopenshell_demo_demo_value_t{unwrapped_result, true};"
+        in generated_cpp
+    )
+
+
+def test_cpp_spec_generation_lowers_nullable_owned_raw_handle_returns(
+    tmp_path: Path,
+) -> None:
+    spec_path = tmp_path / "demo_spec.cpp"
+    spec_path.write_text(
+        dedent(
+            """
+            struct DemoValue {};
+            #define IFCAPI_HANDLE(name, cpp_type, destructor)
+            #define IFCAPI_OWNED
+            IFCAPI_HANDLE(demo_value, DemoValue, delete)
+
+            namespace demo {
+            inline IFCAPI_OWNED DemoValue* find_value(bool found) {
+                return found ? new DemoValue() : nullptr;
+            }
+            }
+            """
+        ),
+        encoding="utf-8",
+    )
+    header_out = tmp_path / "demo_api.h"
+    cpp_out = tmp_path / "demo_api.cpp"
+
+    generate_cpp_specs(
+        [spec_path],
+        ["demo"],
+        "demo",
+        "ifcopenshell_demo",
+        header_out,
+        cpp_out,
+        discovery_include_dirs=(tmp_path,),
+    )
+
+    generated_cpp = cpp_out.read_text(encoding="utf-8")
+    assert (
+        "auto result_value = std::unique_ptr<DemoValue>(demo::find_value(found_cpp));"
+        in generated_cpp
+    )
+    assert "if (!result_value) {" in generated_cpp
+    assert "*out_result = nullptr;" in generated_cpp
+    assert (
+        "*out_result = new ifcopenshell_demo_demo_value_t{result_value.release(), true};"
+        in generated_cpp
+    )
 
 
 def test_cpp_spec_generation_lowers_optional_opaque_pointer_params(
@@ -734,7 +816,10 @@ def test_cpp_spec_generation_lowers_optional_opaque_pointer_params(
     generated_cpp = cpp_out.read_text(encoding="utf-8")
     assert "bool ifcopenshell_demo_count(void* value, int32_t* out_result);" in header
     assert "std::optional<DemoOpaque*> value_cpp;" in generated_cpp
-    assert "if (value != nullptr) { value_cpp = static_cast<DemoOpaque*>(value); }" in generated_cpp
+    assert (
+        "if (value != nullptr) { value_cpp = static_cast<DemoOpaque*>(value); }"
+        in generated_cpp
+    )
     assert "demo::count(value_cpp)" in generated_cpp
 
 
@@ -883,3 +968,50 @@ def test_cpp_spec_frontend_rejects_duplicate_handles(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="declared more than once"):
         discover_cpp_spec_handles(spec_path)
+
+
+def test_cpp_spec_frontend_discovers_receiver_operator_adapters(tmp_path: Path) -> None:
+    spec_path = tmp_path / "demo_spec.cpp"
+    spec_path.write_text(
+        dedent(
+            """
+            #define IFCAPI_HANDLE(name, cpp_type, destructor)
+            #define IFCAPI_OWNED
+
+            struct DemoValue {};
+            IFCAPI_HANDLE(demo_value, DemoValue, delete)
+            struct ifcopenshell_demo_value_t;
+
+            namespace demo {
+            inline IFCAPI_OWNED DemoValue* add(DemoValue* self, DemoValue* other) {
+                return nullptr;
+            }
+
+            inline bool equals(DemoValue* self, DemoValue* other) {
+                return self == other;
+            }
+            }
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    functions = discover_cpp_spec_functions(_environment(tmp_path), spec_path, "demo")
+    handles = lower_cpp_spec_handles_to_specs(discover_cpp_spec_handles(spec_path))
+    calls = {
+        call.c_name: call
+        for call in lower_cpp_spec_functions_to_calls(functions, handles)
+    }
+
+    add = calls["ifcopenshell_demo_value_add"]
+    assert add.receiver == "demo_value"
+    assert add.returns.ownership == "owned"
+    assert add.returns.nullable is True
+    assert [param.name for param in add.params] == ["other"]
+    assert add.params[0].type.ownership == "borrowed"
+    assert add.params[0].type.nullable is False
+
+    equals = calls["ifcopenshell_demo_value_equals"]
+    assert equals.receiver == "demo_value"
+    assert equals.returns.kind == "bool"
+    assert [param.name for param in equals.params] == ["other"]

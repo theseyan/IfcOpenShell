@@ -1505,14 +1505,14 @@ declare module 'ifcopenshell-api' {
   export class IfcOpenshellGeomOpaqueNumber {
     readonly ptr: number;
     destroy(): void;
-    add(other: IfcOpenshellGeomOpaqueNumber): IfcOpenshellGeomOpaqueNumber;
+    add(other: IfcOpenshellGeomOpaqueNumber): IfcOpenshellGeomOpaqueNumber | null;
     clone(): IfcOpenshellGeomOpaqueNumber | null;
-    divide(other: IfcOpenshellGeomOpaqueNumber): IfcOpenshellGeomOpaqueNumber;
+    divide(other: IfcOpenshellGeomOpaqueNumber): IfcOpenshellGeomOpaqueNumber | null;
     equals(other: IfcOpenshellGeomOpaqueNumber): boolean;
     lessThan(other: IfcOpenshellGeomOpaqueNumber): boolean;
-    multiply(other: IfcOpenshellGeomOpaqueNumber): IfcOpenshellGeomOpaqueNumber;
-    negate(): IfcOpenshellGeomOpaqueNumber;
-    subtract(other: IfcOpenshellGeomOpaqueNumber): IfcOpenshellGeomOpaqueNumber;
+    multiply(other: IfcOpenshellGeomOpaqueNumber): IfcOpenshellGeomOpaqueNumber | null;
+    negate(): IfcOpenshellGeomOpaqueNumber | null;
+    subtract(other: IfcOpenshellGeomOpaqueNumber): IfcOpenshellGeomOpaqueNumber | null;
     toDouble(): number;
     toString(): string;
   }

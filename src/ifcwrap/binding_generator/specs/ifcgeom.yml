@@ -148,70 +148,6 @@ discover:
       cpp_class: ifcopenshell::geometry::SerializerSettings
       translation_unit: GeometrySerializer.h
       expose_as: create_serializer_settings
-    - handle: taxonomy_collection
-      cpp_class: ifcopenshell::geometry::taxonomy::collection
-      translation_unit: Iterator.cpp
-      expose_as: taxonomy_create_collection
-      factory: taxonomy_make
-    - handle: taxonomy_loft
-      cpp_class: ifcopenshell::geometry::taxonomy::loft
-      translation_unit: Iterator.cpp
-      expose_as: taxonomy_create_loft
-      factory: taxonomy_make
-    - handle: taxonomy_node
-      cpp_class: ifcopenshell::geometry::taxonomy::node
-      translation_unit: Iterator.cpp
-      expose_as: taxonomy_create_node
-      factory: taxonomy_make
-    - handle: taxonomy_point3
-      cpp_class: ifcopenshell::geometry::taxonomy::point3
-      translation_unit: Iterator.cpp
-      expose_as: taxonomy_create_point3
-      factory: taxonomy_make
-      params:
-        - double
-        - double
-        - double
-    - handle: taxonomy_bspline_curve
-      cpp_class: ifcopenshell::geometry::taxonomy::bspline_curve
-      translation_unit: Iterator.cpp
-      expose_as: taxonomy_create_bspline_curve
-      factory: taxonomy_make
-      field_initializers:
-        - field: degree
-          min: 1
-          error: B-spline curve degree must be >= 1
-    - handle: taxonomy_bspline_surface
-      cpp_class: ifcopenshell::geometry::taxonomy::bspline_surface
-      translation_unit: Iterator.cpp
-      expose_as: taxonomy_create_bspline_surface
-      factory: taxonomy_make
-      field_initializers:
-        - field: degree
-          params:
-            - degree_u
-            - degree_v
-          min: 1
-          error: B-spline surface degrees must be >= 1
-    - handle: taxonomy_boolean_result
-      cpp_class: ifcopenshell::geometry::taxonomy::boolean_result
-      translation_unit: Iterator.cpp
-      expose_as: taxonomy_create_boolean_result
-      factory: taxonomy_make
-      field_initializers:
-        - field: operation
-          min: 0
-          max: 2
-          error: Boolean operation must be 0 (UNION), 1 (SUBTRACTION), or 2 (INTERSECTION)
-    - handle: taxonomy_offset_curve
-      cpp_class: ifcopenshell::geometry::taxonomy::offset_curve
-      translation_unit: Iterator.cpp
-      expose_as: taxonomy_create_offset_curve
-      factory: taxonomy_make
-      field_initializers:
-        - field: basis
-        - field: reference
-        - field: offset
   classes:
     - handle: triangulation
       translation_unit: IfcGeomRepresentation.cpp
@@ -451,7 +387,6 @@ discover:
       include_all: false
       discover_fields: true
       include_inherited_fields: true
-      discover_optional_fields: true
       exclude:
         - instance
         - orientation
@@ -461,7 +396,6 @@ discover:
       include_all: false
       discover_fields: true
       discover_as_item: true
-      discover_optional_fields: true
       exclude:
         - control_points
       discover_children:
@@ -492,7 +426,6 @@ discover:
       field_setters:
         - axis
       discover_children:
-        element_handle: taxonomy_item
         add_as: add_item
         add_cast_cpp_type: "ifcopenshell::geometry::taxonomy::geom_item"
 
@@ -513,7 +446,6 @@ discover:
     - handle: taxonomy_collection
       include_all: false
       discover_children:
-        element_handle: taxonomy_item
         add_as: add_item
         add_cast_cpp_type: "ifcopenshell::geometry::taxonomy::geom_item"
 
@@ -521,7 +453,6 @@ discover:
       include_all: false
       discover_fields: true
       discover_children:
-        element_handle: taxonomy_item
         add_as: add_item
         add_cast_cpp_type: "ifcopenshell::geometry::taxonomy::geom_item"
 
@@ -537,16 +468,6 @@ discover:
       translation_unit: ConversionResult.cpp
       exclude:
         - clone_
-      binary_operators:
-        add: "+"
-        subtract: "-"
-        multiply: "*"
-        divide: "/"
-      unary_operators:
-        negate: "-"
-      comparison_operators:
-        equals: "=="
-        less_than: "<"
 
     - handle: serializer
       translation_unit: GeometrySerializer.h
@@ -681,5 +602,4 @@ discover:
       include_all: false
       ccomponents_accessor:
         expose_as: matrix
-        dimensions: 16
         access_via: "data()->ccomponents"

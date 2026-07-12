@@ -452,15 +452,21 @@ static void test_group_remove_with_pset(void) {
     ASSERT(wall != NULL, "wall is non-NULL");
 
     ifcopenshell_instance_t* group = NULL;
-    ASSERT(ifcopenshell_group_add_group(file, "Group_CSmoke", NULL, NULL, NULL, NULL, &group),
+    ifcopenshell_group_add_group_options_t add_group_options = {0};
+    add_group_options.name = "Group_CSmoke";
+    ASSERT(ifcopenshell_group_add_group(file, &add_group_options, &group),
            "group_add_group succeeds");
     ASSERT(group != NULL, "group is non-NULL");
 
     ifcopenshell_instance_t* group_items[1] = {wall};
-    ifcopenshell_instance_list_t group_list = make_instance_list(group_items, 1);
+    ifcopenshell_parse_instance_list_t* group_list = make_parse_instance_list(group_items, 1);
     ifcopenshell_instance_t* group_rel = NULL;
-    ASSERT(ifcopenshell_group_assign_group(file, &group_list, group, NULL, NULL, NULL, &group_rel),
+    ifcopenshell_group_assign_group_options_t assign_group_options = {0};
+    assign_group_options.products = group_list;
+    assign_group_options.group = group;
+    ASSERT(ifcopenshell_group_assign_group(file, &assign_group_options, &group_rel),
            "group_assign_group succeeds");
+    ifcopenshell_parse_instance_list_destroy(group_list);
     ASSERT(group_rel != NULL, "group relation is non-NULL");
 
     ifcopenshell_instance_t* pset = NULL;
