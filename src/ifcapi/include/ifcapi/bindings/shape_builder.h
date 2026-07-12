@@ -436,7 +436,7 @@ IFCAPI_BINDING express::Base shape_builder_axis2_placement_2d(
  * Create an IfcCircle centred at the given position.
  *
  * @param file IFC file that receives the geometry.
- * @param centre XY coordinates of the circle centre.
+ * @param center XY coordinates of the circle centre.
  * @param radius Circle radius in model units.
  * @return IfcCircle entity.
  */

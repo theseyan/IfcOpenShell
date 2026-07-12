@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import re
+from dataclasses import dataclass, field
 
 try:
     from .binding_ir import BindingIR, CallIR
@@ -19,6 +19,7 @@ except ImportError:  # pragma: no cover - script execution fallback
 class HostStructField:
     name: str
     c_type: str
+    doc: str | None = None
 
 
 @dataclass(frozen=True)
@@ -38,6 +39,7 @@ class HostOptionFieldMetadata:
     type: TypeSpec
     c_type: str
     semantic: str | None = None
+    doc: str | None = None
 
 
 @dataclass(frozen=True)
@@ -388,7 +390,10 @@ def _host_value_structs(ir: BindingIR) -> dict[str, HostStructMetadata]:
         result[kind] = HostStructMetadata(
             c_type=_sequence_c_type(kind),
             kind="sequence",
-            fields=(HostStructField("items", f"{_sequence_items_c_type(kind)}*"), HostStructField("size", "size_t")),
+            fields=(
+                HostStructField("items", f"{_sequence_items_c_type(kind)}*"),
+                HostStructField("size", "size_t"),
+            ),
             destroy_function=_sequence_destroy_name(kind),
             element_type=_sequence_items_c_type(kind),
             sequence_depth=(_sequence_kind_parts(kind) or ("", 0))[1],
@@ -398,7 +403,10 @@ def _host_value_structs(ir: BindingIR) -> dict[str, HostStructMetadata]:
         result[_snake_name(list_type)] = HostStructMetadata(
             c_type=list_type,
             kind="handle_sequence",
-            fields=(HostStructField("items", f"{handle.c_type}**"), HostStructField("size", "size_t")),
+            fields=(
+                HostStructField("items", f"{handle.c_type}**"),
+                HostStructField("size", "size_t"),
+            ),
             destroy_function=_handle_list_destroy_name(handle),
             element_type=handle.c_type,
             sequence_depth=1,
@@ -407,7 +415,10 @@ def _host_value_structs(ir: BindingIR) -> dict[str, HostStructMetadata]:
         result[_snake_name(list_list_type)] = HostStructMetadata(
             c_type=list_list_type,
             kind="handle_sequence",
-            fields=(HostStructField("items", f"{list_type}*"), HostStructField("size", "size_t")),
+            fields=(
+                HostStructField("items", f"{list_type}*"),
+                HostStructField("size", "size_t"),
+            ),
             destroy_function=_handle_list_list_destroy_name(handle),
             element_type=list_type,
             sequence_depth=2,
@@ -417,8 +428,7 @@ def _host_value_structs(ir: BindingIR) -> dict[str, HostStructMetadata]:
             c_type=struct.c_type,
             kind="result_struct",
             fields=tuple(
-                HostStructField(field.name, _field_c_type(field.type, ir))
-                for field in struct.fields
+                HostStructField(field.name, _field_c_type(field.type, ir), field.doc) for field in struct.fields
             ),
             destroy_function=None,
             element_type=struct.cpp_type,
@@ -516,7 +526,13 @@ def build_host_metadata(ir: BindingIR) -> HostBindingMetadata:
                 name=option.name,
                 c_type=option.c_type,
                 fields=tuple(
-                    HostOptionFieldMetadata(field.name, field.type, _option_field_c_type(field.type, ir), field.type.semantic)
+                    HostOptionFieldMetadata(
+                        field.name,
+                        field.type,
+                        _option_field_c_type(field.type, ir),
+                        field.type.semantic,
+                        field.doc,
+                    )
                     for field in option.fields
                 ),
             )

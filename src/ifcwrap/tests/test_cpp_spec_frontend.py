@@ -2,27 +2,40 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 from textwrap import dedent
 
 import pytest
 
-from src.ifcwrap.binding_generator.c_backend import _render_cpp, generate_cpp_specs
-from src.ifcwrap.binding_generator.clang_discovery import CompilationConfig, DiscoveryEnvironment
 from src.ifcwrap.binding_generator.binding_ir import BindingIR, CallIR, DirectCallOp
-from src.ifcwrap.binding_generator.binding_model import HandleSpec, OptionStructFieldSpec, OptionStructSpec, ParamSpec, TypeSpec
+from src.ifcwrap.binding_generator.binding_model import (
+    HandleSpec,
+    OptionStructFieldSpec,
+    OptionStructSpec,
+    ParamSpec,
+    TypeSpec,
+)
+from src.ifcwrap.binding_generator.c_backend import _render_cpp, generate_cpp_specs
 from src.ifcwrap.binding_generator.c_header_rendering import _render_header
-from src.ifcwrap.binding_generator.host_metadata import build_host_metadata
+from src.ifcwrap.binding_generator.clang_discovery import (
+    CompilationConfig,
+    DiscoveryEnvironment,
+)
+from src.ifcwrap.binding_generator.contract_discovery import (
+    discover_marked_functions_in_headers,
+)
 from src.ifcwrap.binding_generator.cpp_spec_frontend import (
     discover_cpp_spec_functions,
     discover_cpp_spec_handles,
     discover_cpp_spec_option_structs,
+    discover_cpp_spec_result_structs,
     lower_cpp_spec_functions_to_calls,
+    lower_cpp_spec_result_structs_to_specs,
 )
-from src.ifcwrap.binding_generator.contract_discovery import discover_marked_functions_in_headers
+from src.ifcwrap.binding_generator.host_metadata import build_host_metadata
 
 
 def _environment(tmp_path: Path) -> DiscoveryEnvironment:
@@ -38,7 +51,9 @@ def _environment(tmp_path: Path) -> DiscoveryEnvironment:
     )
 
 
-def test_cpp_spec_generation_supports_per_spec_namespaces_and_prefixes(tmp_path: Path) -> None:
+def test_cpp_spec_generation_supports_per_spec_namespaces_and_prefixes(
+    tmp_path: Path,
+) -> None:
     spec_a = tmp_path / "spec_a.cpp"
     spec_a.write_text(
         dedent(
@@ -87,7 +102,9 @@ def test_cpp_spec_generation_supports_per_spec_namespaces_and_prefixes(tmp_path:
     assert "example::b::value()" in generated_cpp
 
 
-def test_cpp_spec_generation_rejects_mismatched_per_spec_namespaces(tmp_path: Path) -> None:
+def test_cpp_spec_generation_rejects_mismatched_per_spec_namespaces(
+    tmp_path: Path,
+) -> None:
     spec_a = tmp_path / "spec_a.cpp"
     spec_b = tmp_path / "spec_b.cpp"
     for spec_path in (spec_a, spec_b):
@@ -104,7 +121,10 @@ def test_cpp_spec_generation_rejects_mismatched_per_spec_namespaces(tmp_path: Pa
             encoding="utf-8",
         )
 
-    with pytest.raises(ValueError, match="cpp_spec_namespace must be provided once or exactly once per --cpp-spec"):
+    with pytest.raises(
+        ValueError,
+        match="cpp_spec_namespace must be provided once or exactly once per --cpp-spec",
+    ):
         generate_cpp_specs(
             [spec_a, spec_b],
             ["example", "example", "extra"],
@@ -211,7 +231,13 @@ def test_cpp_spec_frontend_discovers_option_structs(tmp_path: Path) -> None:
 
             namespace ifcopenshell::capi_spec {
             struct CreateEntityOptions {
+                /**
+                 * IFC class name.
+                 *
+                 * This paragraph should survive field documentation lowering.
+                 */
                 std::string ifc_class;
+                /// Optional predefined type.
                 std::optional<std::string> predefined_type;
                 std::optional<std::string> name;
             };
@@ -241,13 +267,59 @@ def test_cpp_spec_frontend_discovers_option_structs(tmp_path: Path) -> None:
     options = option_structs["CreateEntityOptions"]
     assert options.cpp_type == "ifcopenshell::capi_spec::CreateEntityOptions"
     assert options.c_type == "ifcopenshell_demo_create_entity_options_t"
-    fields = {field.name: field.type for field in options.fields}
-    assert fields["ifc_class"].kind == "string"
-    assert fields["ifc_class"].nullable is False
-    assert fields["predefined_type"].kind == "string"
-    assert fields["predefined_type"].nullable is True
-    assert fields["name"].kind == "string"
-    assert fields["name"].nullable is True
+    fields = {field.name: field for field in options.fields}
+    assert fields["ifc_class"].type.kind == "string"
+    assert fields["ifc_class"].type.nullable is False
+    assert fields["ifc_class"].doc == "IFC class name.\n\nThis paragraph should survive field documentation lowering."
+    assert fields["predefined_type"].type.kind == "string"
+    assert fields["predefined_type"].type.nullable is True
+    assert fields["predefined_type"].doc == "Optional predefined type."
+    assert fields["name"].type.kind == "string"
+    assert fields["name"].type.nullable is True
+    assert fields["name"].doc is None
+
+
+def test_cpp_spec_result_field_docs_come_from_semantic_type(tmp_path: Path) -> None:
+    spec_path = tmp_path / "demo_spec.cpp"
+    spec_path.write_text(
+        dedent(
+            """
+            #define IFCAPI_RESULT_STRUCT(...)
+
+            namespace demo {
+            struct SemanticResult {
+                /// Documentation for the first semantic field.
+                double first;
+                /// Documentation for the second semantic field.
+                double second;
+            };
+            }
+
+            IFCAPI_RESULT_STRUCT(demo::SemanticResult)
+            struct ifcopenshell_demo_result_t {
+                /// This mirror comment must not be used.
+                double second;
+                /// This mirror comment must not be used either.
+                double first;
+            };
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    environment = _environment(tmp_path)
+    structs = discover_cpp_spec_result_structs(spec_path, "demo")
+    result = lower_cpp_spec_result_structs_to_specs(
+        structs,
+        {},
+        environment=environment,
+        translation_unit=spec_path,
+    )["ifcopenshell_demo_result_t"]
+
+    assert [(field.name, field.doc) for field in result.fields] == [
+        ("second", "Documentation for the second semantic field."),
+        ("first", "Documentation for the first semantic field."),
+    ]
 
 
 def test_c_header_renders_option_structs() -> None:
@@ -286,7 +358,12 @@ def test_c_abi_variants_destroy_owned_alternatives() -> None:
         kind="variant",
         cpp_type="std::variant<Demo::Instance*, std::string>",
         variants=(
-            TypeSpec(kind="handle", handle="instance", cpp_type="Demo::Instance*", ownership="owned"),
+            TypeSpec(
+                kind="handle",
+                handle="instance",
+                cpp_type="Demo::Instance*",
+                ownership="owned",
+            ),
             TypeSpec(kind="string", cpp_type="std::string"),
         ),
     )
@@ -320,7 +397,10 @@ def test_c_abi_variants_destroy_owned_alternatives() -> None:
     cpp = _render_cpp(spec, "demo_api.h")
     metadata = build_host_metadata(spec)
 
-    assert "void ifcopenshell_demo_instance_string_variant_destroy(ifcopenshell_demo_instance_string_variant_t* value);" in header
+    assert (
+        "void ifcopenshell_demo_instance_string_variant_destroy(ifcopenshell_demo_instance_string_variant_t* value);"
+        in header
+    )
     assert "case 0:\n        ifcopenshell_demo_instance_destroy(value->value_0);" in cpp
     assert "case 1:\n        ifcopenshell_string_destroy(&value->value_1);" in cpp
     assert metadata.value_types["demo_instance_string_variant"].destroy_function == (
@@ -468,7 +548,9 @@ def test_cpp_spec_generation_lowers_std_optional_option_fields(tmp_path: Path) -
     assert "static_cast<std::optional<bool>>" not in generated_cpp
 
 
-def test_cpp_spec_generation_lowers_standalone_optional_handle_and_string_params(tmp_path: Path) -> None:
+def test_cpp_spec_generation_lowers_standalone_optional_handle_and_string_params(
+    tmp_path: Path,
+) -> None:
     spec_path = tmp_path / "demo_spec.cpp"
     spec_path.write_text(
         dedent(
@@ -504,7 +586,10 @@ def test_cpp_spec_generation_lowers_standalone_optional_handle_and_string_params
 
     header = header_out.read_text(encoding="utf-8")
     generated_cpp = cpp_out.read_text(encoding="utf-8")
-    assert "bool ifcopenshell_demo_update(ifcopenshell_demo_demo_value_t* value, const char* name, int32_t* out_result);" in header
+    assert (
+        "bool ifcopenshell_demo_update(ifcopenshell_demo_demo_value_t* value, const char* name, int32_t* out_result);"
+        in header
+    )
     assert "std::optional<DemoValue> value_cpp;" in generated_cpp
     assert "if (value != nullptr && value->ptr != nullptr) { value_cpp = *value->ptr; }" in generated_cpp
     assert "std::optional<std::string> name_cpp;" in generated_cpp
@@ -566,7 +651,9 @@ def test_cpp_spec_generation_tracks_default_parameters(tmp_path: Path) -> None:
     assert params["suffix"].has_default is True
 
 
-def test_cpp_spec_generation_lowers_optional_owned_handle_returns(tmp_path: Path) -> None:
+def test_cpp_spec_generation_lowers_optional_owned_handle_returns(
+    tmp_path: Path,
+) -> None:
     spec_path = tmp_path / "demo_spec.cpp"
     spec_path.write_text(
         dedent(
@@ -610,7 +697,9 @@ def test_cpp_spec_generation_lowers_optional_owned_handle_returns(tmp_path: Path
     assert "*out_result = new ifcopenshell_demo_demo_value_t{unwrapped_result, true};" in generated_cpp
 
 
-def test_cpp_spec_generation_lowers_optional_opaque_pointer_params(tmp_path: Path) -> None:
+def test_cpp_spec_generation_lowers_optional_opaque_pointer_params(
+    tmp_path: Path,
+) -> None:
     spec_path = tmp_path / "demo_spec.cpp"
     spec_path.write_text(
         dedent(

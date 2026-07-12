@@ -4822,7 +4822,7 @@ bool ifcopenshell_shape_builder_block(ifcopenshell_file_t* file, const ifcopensh
  * Create an IfcCircle centred at the given position.
  *
  * @param file IFC file that receives the geometry.
- * @param centre XY coordinates of the circle centre.
+ * @param center XY coordinates of the circle centre.
  * @param radius Circle radius in model units.
  * @return IfcCircle entity.
  */

@@ -3,9 +3,11 @@ import type { IfcOpenshellGeomSettings } from '@ifcopenshell-js/wasm/api';
 import { IfcOpenShellError, type IfcOpenShell } from '../init.js';
 import { HandleGuard } from '../resource.js';
 
+/** Value accepted by a geometry setting setter. */
 export type SettingInput = boolean | number | string | number[] | string[];
 type SettingType = 'bool' | 'double' | 'int' | 'string' | 'intSet' | 'doubleList' | 'stringSet';
 
+/** Owned wrapper for native geometry interpretation settings. */
 export class GeomSettings {
   private _raw: IfcOpenshellGeomSettings | null;
   private readonly guard: HandleGuard<IfcOpenshellGeomSettings>;
@@ -48,6 +50,7 @@ export class GeomSettings {
     this.raw.setStringSet(name, value);
   }
 
+  /** Set a named setting using the native setting type when available. */
   set(name: string, value: SettingInput): void {
     if (typeof value === 'boolean') this.setBool(name, value);
     else if (typeof value === 'string') this.setString(name, value);
@@ -97,6 +100,7 @@ export class GeomSettings {
     return this.raw.getType(name);
   }
 
+  /** Read a named setting using its native scalar or list representation. */
   value(name: string): SettingInput {
     const type = normalizeSettingType(this.getType(name));
     if (type === 'bool') return this.getBool(name);
@@ -108,6 +112,7 @@ export class GeomSettings {
     return this.getDouble(name);
   }
 
+  /** Return the names exposed by the native geometry settings object. */
   settingNames(): string[] {
     return this.raw.settingNames();
   }
@@ -116,6 +121,7 @@ export class GeomSettings {
     return this.settingNames();
   }
 
+  /** Release the native settings handle. */
   dispose(): void {
     if (this._raw == null) return;
     this.guard.destroy();

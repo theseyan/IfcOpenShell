@@ -1,12 +1,19 @@
 
+/**
+ * Core `@ifcopenshell-js/web` API.
+ *
+ * @module Core
+ */
+
 import './disposable.js';
 
 export { init, IfcOpenShellError } from './init.js';
 export type { IfcOpenShell } from './init.js';
-export type { Api } from './generated/ifcopenshell_api.js';
+export type * from './generated/ifcopenshell_api.js';
 export type { ApiData, ValueData, ValueInput } from './api.js';
 export { Value } from './api.js';
 export { IfcFile } from './file.js';
+export type { FileInfo, HeaderInfo, OpenOptions } from './file.js';
 export { Entity } from './entity.js';
 export type { AttributeInput, EntityInfo } from './entity.js';
 export { AttributeValue } from './attribute.js';
@@ -20,8 +27,11 @@ export type {
   Box3,
   CollectOptions,
   CollectResult,
+  IteratorFilter,
+  IteratorMetadata,
   IteratorOptions,
   Mesh,
+  OperationProgress,
   Point3,
   Ray,
   RayHit,
@@ -39,6 +49,8 @@ export type {
 } from './serializers/index.js';
 export type {
   EmscriptenFS,
+  EmscriptenOption,
+  EmscriptenOptions,
   EmscriptenModuleFactory,
   IfcOpenshellApiFactory,
   IfcOpenshellModule,

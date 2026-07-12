@@ -1,4 +1,10 @@
 
+/**
+ * Serializer APIs for exporting IFC geometry and data.
+ *
+ * @module Serializers
+ */
+
 import '../disposable.js';
 
 import type {
@@ -15,27 +21,37 @@ import type { GeomSettings } from '../geom/settings.js';
 import { IfcOpenShellError, type IfcOpenShell } from '../init.js';
 import { HandleGuard } from '../resource.js';
 
+/** Formats supported by {@link exportToBuffer}. */
 export type SerializerFormat = 'obj' | 'svg' | 'ttl';
 
+/** Text buffers returned by a serializer; OBJ uses `secondary` for MTL data. */
 export interface ExportResult {
+  /** Primary serialized content. */
   primary: string;
+  /** Secondary content, used for the OBJ material file. */
   secondary: string;
 }
 
+/** Geometry loading, serializer, cancellation, and progress options. */
 export interface ExportOptions {
+  /** Geometry kernel to load before export. Defaults to `passthrough`. */
   kernel?: string;
+  /** Number of native geometry iterator threads. */
   numThreads?: number;
   /**
    * Serializer configuration to pass to the native serializer. The caller
    * retains ownership and must dispose it after the export completes.
    */
   serializerSettings?: SerializerSettings;
+  /** Abort the export between geometry elements. */
   signal?: AbortSignal;
+  /** Receive plugin, write, and completion progress events. */
   onProgress?(progress: OperationProgress): void;
 }
 
 type SettingType = 'bool' | 'double' | 'int' | 'string' | 'intSet';
 
+/** Owned wrapper for native serializer configuration values. */
 export class SerializerSettings {
   private _raw: IfcOpenshellGeomSerializerSettings | null;
   private readonly guard: HandleGuard<IfcOpenshellGeomSerializerSettings>;
@@ -50,26 +66,32 @@ export class SerializerSettings {
     return this._raw;
   }
 
+  /** Set a native boolean serializer option. */
   setBool(name: string, value: boolean): void {
     this.raw.setBool(name, value);
   }
 
+  /** Set a native floating-point serializer option. */
   setDouble(name: string, value: number): void {
     this.raw.setDouble(name, value);
   }
 
+  /** Set a native integer serializer option. */
   setInt(name: string, value: number): void {
     this.raw.setInt(name, value);
   }
 
+  /** Set a native string serializer option. */
   setString(name: string, value: string): void {
     this.raw.setString(name, value);
   }
 
+  /** Set a native integer-set serializer option. */
   setIntSet(name: string, value: number[]): void {
     this.raw.setIntSet(name, value);
   }
 
+  /** Set an option by choosing the native setter from its value and type. */
   set(name: string, value: boolean | number | string | number[]): void {
     if (typeof value === 'boolean') this.setBool(name, value);
     else if (typeof value === 'string') this.setString(name, value);
@@ -78,30 +100,37 @@ export class SerializerSettings {
     else this.setDouble(name, value);
   }
 
+  /** Read a native boolean serializer option. */
   getBool(name: string): boolean {
     return this.raw.getBool(name);
   }
 
+  /** Read a native floating-point serializer option. */
   getDouble(name: string): number {
     return this.raw.getDouble(name);
   }
 
+  /** Read a native integer serializer option. */
   getInt(name: string): number {
     return this.raw.getInt(name);
   }
 
+  /** Read a native integer-set serializer option. */
   getIntSet(name: string): number[] {
     return this.raw.getIntSet(name);
   }
 
+  /** Read a native string serializer option. */
   getString(name: string): string {
     return this.raw.getString(name);
   }
 
+  /** Return the native type name for a serializer option. */
   getType(name: string): string {
     return this.raw.getType(name);
   }
 
+  /** Read an option using the native type returned by {@link getType}. */
   value(name: string): boolean | number | string | number[] {
     const type = normalizeSettingType(this.getType(name));
     if (type === 'bool') return this.getBool(name);
@@ -111,14 +140,17 @@ export class SerializerSettings {
     return this.getDouble(name);
   }
 
+  /** Return all serializer option names exposed by the native serializer. */
   settingNames(): string[] {
     return this.raw.settingNames();
   }
 
+  /** Alias for {@link settingNames}. */
   names(): string[] {
     return this.settingNames();
   }
 
+  /** Release the native serializer settings handle. */
   dispose(): void {
     if (this._raw == null) return;
     this.guard.destroy();
@@ -134,6 +166,13 @@ export class SerializerSettings {
   }
 }
 
+/**
+ * Load geometry and serialize the file into in-memory text buffers.
+ *
+ * OBJ returns its material data in `secondary`; SVG and TTL return an empty
+ * secondary buffer. The function returns `null` when the native iterator
+ * cannot initialize and throws when a serializer or geometry element fails.
+ */
 export async function exportToBuffer(
   shell: IfcOpenShell,
   file: IfcFile,

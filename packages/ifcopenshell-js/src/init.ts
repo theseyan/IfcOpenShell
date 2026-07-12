@@ -10,6 +10,7 @@ import type {
   WasmAssets,
 } from './types.js';
 
+/** Initialized IfcOpenShell runtime and its high-level API facade. */
 export interface IfcOpenShell {
   readonly raw: IfcOpenshellModule;
   readonly api: Api;
@@ -21,6 +22,7 @@ export interface IfcOpenShell {
   [Symbol.asyncDispose](): Promise<void>;
 }
 
+/** Error raised when WASM initialization or a high-level operation fails. */
 export class IfcOpenShellError extends Error {
   constructor(message: string, cause?: unknown) {
     super(message, cause !== undefined ? { cause } : undefined);
@@ -28,6 +30,15 @@ export class IfcOpenShellError extends Error {
   }
 }
 
+/**
+ * Initialize the packaged or explicitly configured WASM runtime.
+ *
+ * The returned object owns the native runtime and should be disposed when it
+ * is no longer needed. Plugins are loaded lazily through {@link IfcOpenShell.loadPlugin}.
+ *
+ * @param options Asset locations and optional plugin-loader overrides.
+ * @returns An initialized, frozen runtime facade.
+ */
 export async function init(options: InitOptions = {}): Promise<IfcOpenShell> {
   let assets: WasmAssets;
   if (options.wasmAssets) {

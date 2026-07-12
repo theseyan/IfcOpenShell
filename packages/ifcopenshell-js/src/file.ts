@@ -8,11 +8,15 @@ import { IfcOpenShellError, type IfcOpenShell } from './init.js';
 import { HandleGuard } from './resource.js';
 import { inspectEntity, type EntityInfo } from './util/inspect.js';
 
+/** Options controlling IFC byte-stream loading. */
 export interface OpenOptions {
+  /** Abort opening before native parsing begins. */
   signal?: AbortSignal;
+  /** Open the native file in read-only mode when supported. */
   readonly?: boolean;
 }
 
+/** Header values exposed from an IFC file's STEP header. */
 export interface HeaderInfo {
   description: string[];
   implementationLevel: string;
@@ -26,6 +30,7 @@ export interface HeaderInfo {
   schemas: string[];
 }
 
+/** Summary information for an opened IFC file. */
 export interface FileInfo {
   schema: string;
   ids: number[];
@@ -37,6 +42,7 @@ export interface FileInfo {
   header: HeaderInfo | null;
 }
 
+/** High-level wrapper for an IFC file and its entity graph. */
 export class IfcFile {
   private _raw: IfcOpenshellFile | null;
   private readonly guard: HandleGuard<IfcOpenshellFile>;
@@ -50,6 +56,7 @@ export class IfcFile {
     this.guard = new HandleGuard(this, raw, owned);
   }
 
+  /** Open IFC STEP bytes and retain ownership of the native file. */
   static async open(
     shell: IfcOpenShell,
     bytes: Uint8Array | ArrayBuffer,
@@ -64,10 +71,12 @@ export class IfcFile {
     return new IfcFile(shell, raw);
   }
 
+  /** Create a new empty IFC file for the requested schema. */
   static async createEmpty(shell: IfcOpenShell, schema: string): Promise<IfcFile> {
     return IfcFile.create(shell, schema);
   }
 
+  /** Create a new IFC file for the requested schema. */
   static async create(shell: IfcOpenShell, schema: string): Promise<IfcFile> {
     const raw = shell.raw.parse.newFile(schema, 0, '');
     if (!raw || raw.ptr === 0) throw new IfcOpenShellError(`Failed to create ${schema} file`);
@@ -115,14 +124,17 @@ export class IfcFile {
     return this.raw.good() !== 0;
   }
 
+  /** Return an entity by numeric STEP id, or `null` when it is absent. */
   get(id: number): Entity | null {
     return Entity.wrap(this._shell, catchNull(() => this.raw.byId(id)));
   }
 
+  /** Return an entity by GlobalId, or `null` when it is absent. */
   find(guid: string): Entity | null {
     return Entity.wrap(this._shell, catchNull(() => this.raw.byGuid(guid)));
   }
 
+  /** Return all entities of a type, optionally excluding its subtypes. */
   all(typeName: string, options: { includeSubtypes?: boolean } = {}): Entity[] {
     const list = options.includeSubtypes === false
       ? this.raw.byTypeExclSubtypes(typeName)
@@ -139,6 +151,7 @@ export class IfcFile {
     }
   }
 
+  /** Create an entity through the generated root API. */
   create(ifcClass: string, options: { predefinedType?: string | null; name?: string | null } = {}): Entity {
     return this._shell.api.root.createEntity(this, {
       ifcClass,
@@ -151,6 +164,7 @@ export class IfcFile {
     return this.raw.toString();
   }
 
+  /** Return schema, entity-id, validity, storage, and header summary data. */
   info(): FileInfo {
     const ids = this.ids;
     return {
@@ -165,6 +179,7 @@ export class IfcFile {
     };
   }
 
+  /** Read the STEP header, returning `null` when no header is available. */
   header(): HeaderInfo | null {
     const header = this.raw.header();
     if (!header || header.ptr === 0) return null;
@@ -246,11 +261,13 @@ export class IfcFile {
     }
   }
 
+  /** Create an asynchronous geometry iterator for this file. */
   meshes(settings?: GeomSettings, options?: IteratorOptions): GeomIterator {
     const ownedSettings = settings === undefined;
     return new GeomIterator(this._shell, this, settings ?? new GeomSettings(this._shell), options, ownedSettings);
   }
 
+  /** Build a spatial query tree from this file's geometry. */
   tree(settings?: GeomSettings): GeometryTree {
     return GeometryTree.fromFile(this._shell, this, settings);
   }
@@ -264,10 +281,12 @@ export class IfcFile {
     return iterator.bounds();
   }
 
+  /** Return a plain-object inspection snapshot for an entity id. */
   inspect(id: number): Promise<EntityInfo | null> {
     return inspectEntity(this, id);
   }
 
+  /** Release the native file handle. Safe to call more than once. */
   dispose(): void {
     if (this._raw == null) return;
     this.guard.destroy();

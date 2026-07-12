@@ -1,8 +1,7 @@
 # @ifcopenshell-js/web
 
-High-level TypeScript/JavaScript IFC library for browser and Node, built on [IfcOpenShell](https://ifcopenshell.org/) WASM.
-
-This is the production-facing API surface (comparable in intent to `ifcopenshell-python`), not a thin ABI wrapper. The package initializes the WASM runtime directly; applications that need off-thread execution can run the library inside their own worker.
+TypeScript and JavaScript APIs for reading, editing, inspecting, and generating
+IFC models in the browser or Node.js, powered by [IfcOpenShell](https://ifcopenshell.org/).
 
 ## Install
 
@@ -10,76 +9,45 @@ This is the production-facing API surface (comparable in intent to `ifcopenshell
 npm install @ifcopenshell-js/web
 ```
 
-`@ifcopenshell-js/wasm` is a runtime dependency of `@ifcopenshell-js/web`; installing
-the library also installs the packaged WASM binaries and generated API glue.
+## Quick start
 
-For local repository development, stage WASM artifacts into
-`packages/ifcopenshell-wasm` before running tests or the demo:
-
-```bash
-cd packages/ifcopenshell-wasm && npm run stage
-```
-
-## Browser quick start
+The same API works in both browser and Node.js applications. Load the IFC bytes
+with `fetch`, a file input, or your runtime's filesystem API:
 
 ```ts
-import { init, IfcFile } from '@ifcopenshell-js/web';
+import { IfcFile, init } from '@ifcopenshell-js/web';
 
-const api = await init();
-await api.loadPlugin('schema', 'ifc4');
+const response = await fetch('/model.ifc');
+const ifcBytes = new Uint8Array(await response.arrayBuffer());
+const shell = await init();
 
-await using file = await IfcFile.open(api, ifcBytes, 'model.ifc');
-const info = file.info();
+await shell.loadPlugin('schema', 'ifc4');
+
+const file = await IfcFile.open(shell, ifcBytes, 'model.ifc');
+console.log(file.schema, file.entityCount);
+
 const wall = file.get(315);
-const wallName = wall?.get('Name');
-const walls = file.all('IfcWall');
-const ids = file.ids;
-const elementInfo = await file.inspect(315);
+console.log(wall?.get('Name'));
+console.log(file.all('IfcWall'));
 ```
 
-Browser bundlers such as Vite discover the packaged WASM assets through static
-`new URL(..., import.meta.url)` references in `@ifcopenshell-js/wasm`, then copy
-and rewrite those URLs into the application build output. No app-specific
-`/wasm` copy plugin is required.
+## Working with IFC
 
-The generated asset manifest references all packaged plugins so applications
-can load additional plugins dynamically at runtime.
-
-## Browser Bundlers
-
-| Bundler | Default behavior |
-|---------|------------------|
-| Vite | Works without extra config. The build emits the main WASM and all plugin WASM files referenced by the asset manifest. |
-| webpack 5 | Not exercised by this package's browser test; configure asset modules to emit the main WASM and plugin WASM files. |
-| Rollup | Core Rollup plus `@rollup/plugin-node-resolve` resolves the package, but does not copy `new URL(..., import.meta.url)` package assets by itself. Use a copy/static-assets plugin, or serve the packaged `wasm/` directory yourself and pass `resolveUrls(baseUrl)`. |
-| esbuild | Core esbuild bundles the JS, but does not copy these package assets from `new URL(..., import.meta.url)`. Use an asset-copy plugin or serve the packaged `wasm/` directory yourself and pass `resolveUrls(baseUrl)`. |
-
-## Node quick start
+Read and edit entities through the high-level wrappers:
 
 ```ts
-import { init } from '@ifcopenshell-js/web';
+const wall = file.get(315);
+if (wall) {
+  const name = wall.get('Name');
+  wall.set('Description', 'Updated from TypeScript');
+  console.log({ id: wall.id, type: wall.type, name });
+}
 
-const api = await init();
-await api.loadPlugin('schema', 'ifc4');
+const inspection = await file.inspect(315);
+const walls = file.all('IfcWall');
 ```
 
-`init()` runs the WASM runtime directly in browser and Node. Owned wrapper
-objects release native handles automatically when they are garbage collected.
-Use `dispose()` / `await using` when you want deterministic cleanup at a known
-point, especially while iterating large models or geometry.
-
-The parse/geometry foundation is intentionally high-level:
-files expose header/status/inverse/traversal helpers plus property-style
-summary data (`schema`, `ids`, `types`, `entityCount`, `maxId`), entities expose
-attribute metadata plus `get()` / `set()` / `unset()` and plain `info()` objects,
-attribute and selector values provide typed conversions and decoded `value()`, geometry
-iteration supports include/exclude filters by type, GlobalId, or entity id, and
-`GeometryTree` provides spatial selection and raycasting without exposing native
-tree/vector handles.
-
-Generated high-level `api.*` modules use JS-friendly values at the public
-boundary. Native instance-list handles are represented as `Entity[]` in
-arguments and return values:
+Generated `api.*` modules are available from the initialized runtime:
 
 ```ts
 const project = file.create('IfcProject', { name: 'Project' });
@@ -90,34 +58,83 @@ shell.api.aggregate.assignObject(file, {
   products: [site],
 });
 
-const parts = shell.api.element.getParts(project); // Entity[]
+const parts = shell.api.element.getParts(project);
 ```
 
-Meshes returned from geometry iteration use typed-array buffers for vertices,
-faces, normals, transforms, edges, UVs, material IDs, item IDs, edge item IDs,
-and colors.
+## Geometry
 
-## Subpath exports
+Use the geometry subpath for settings, mesh iteration, and spatial queries:
+
+```ts
+import { GeomSettings } from '@ifcopenshell-js/web/geom';
+
+const settings = new GeomSettings(shell);
+const iterator = file.meshes(settings, { kernel: 'passthrough' });
+
+const result = await iterator.collect({ limit: 100, skipEmpty: true });
+for (const mesh of result.meshes) {
+  console.log(mesh.type, mesh.vertices, mesh.faces);
+}
+```
+
+Meshes expose typed-array buffers for vertices, faces, normals, transforms,
+edges, UVs, material IDs, item IDs, and colors. `GeometryTree` provides point,
+box, entity, and ray intersection queries.
+
+## Serializers and utilities
+
+The serializers subpath provides `exportToBuffer` and `SerializerSettings` for
+OBJ, SVG, and TTL output. The utilities subpath provides `inspectEntity`,
+`formatAttributeValue`, `hashColor`, and `meshColor`.
+
+```ts
+import { exportToBuffer } from '@ifcopenshell-js/web/serializers';
+
+const result = await exportToBuffer(shell, file, settings, 'obj');
+if (result) {
+  console.log(result.primary);   // OBJ data
+  console.log(result.secondary); // MTL data
+}
+```
+
+## Package exports
 
 | Import | Contents |
-|--------|----------|
-| `@ifcopenshell-js/web` | `init`, `IfcFile`, `Entity`, core types |
-| `@ifcopenshell-js/web/geom` | `GeomIterator`, `GeomSettings`, `Mesh` |
-| `@ifcopenshell-js/web/serializers` | `exportToBuffer`, `SerializerSettings` |
-| `@ifcopenshell-js/web/util` | `inspectEntity`, `meshColor`, helpers |
+| --- | --- |
+| `@ifcopenshell-js/web` | Runtime, files, entities, values, generated APIs, and core types |
+| `@ifcopenshell-js/web/geom` | Geometry settings, mesh iteration, spatial trees, and geometry types |
+| `@ifcopenshell-js/web/serializers` | Geometry serializers and serializer settings |
+| `@ifcopenshell-js/web/util` | Entity inspection and display-color helpers |
 
-## Development
+## API documentation
+
+From this package directory, generate the static API reference with:
 
 ```bash
-# Stage WASM assets (full profile recommended)
-python nix/wasm_native.py --profile full build
-cd ../ifcopenshell-wasm && npm run stage
+npm run docs
+```
 
+The output is written to `docs/api/`. Run `npm run docs:check` to validate the
+documentation without writing HTML. The reference is generated from public
+TypeScript exports and JSDoc; documentation for generated `api.*` modules comes
+from native binding comments.
+
+## Repository development
+
+When working from the IfcOpenShell repository, stage the WASM package before
+running the package tests or demo if the artifacts are not already available:
+
+```bash
+cd packages/ifcopenshell-wasm && npm run stage
 cd ../ifcopenshell-js
 npm install
 npm test
 ```
 
-## Demo
+The React and Three.js demo is in the `demo/` directory.
 
-See [`demo/`](demo/) for the React + Three.js browser app.
+## Bundler note
+
+Vite handles the packaged WASM assets without extra configuration. Rollup and
+esbuild need an asset-copy plugin or equivalent static-asset setup so the WASM
+files are available at runtime.

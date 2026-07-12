@@ -14,7 +14,12 @@ try:
         HostParamMetadata,
         HostStructMetadata,
     )
-    from .._shared import _INTERNAL_C_FUNCTIONS, _camel_name, _public_module_member, _public_params
+    from .._shared import (
+        _INTERNAL_C_FUNCTIONS,
+        _camel_name,
+        _public_module_member,
+        _public_params,
+    )
     from .typescript import _render_doc_comment, _ts_type
 except ImportError:  # pragma: no cover - script execution fallback
     from binding_model import TypeSpec
@@ -25,7 +30,12 @@ except ImportError:  # pragma: no cover - script execution fallback
         HostParamMetadata,
         HostStructMetadata,
     )
-    from targets._shared import _INTERNAL_C_FUNCTIONS, _camel_name, _public_module_member, _public_params
+    from targets._shared import (
+        _INTERNAL_C_FUNCTIONS,
+        _camel_name,
+        _public_module_member,
+        _public_params,
+    )
     from targets.wasm.typescript import _render_doc_comment, _ts_type
 
 
@@ -103,10 +113,16 @@ _HIDDEN_FUNCTIONS = {
 }
 
 
-def _api_functions(metadata: HostBindingMetadata) -> dict[str, list[tuple[str, HostFunctionMetadata]]]:
+def _api_functions(
+    metadata: HostBindingMetadata,
+) -> dict[str, list[tuple[str, HostFunctionMetadata]]]:
     modules: dict[str, list[tuple[str, HostFunctionMetadata]]] = {}
     for function in sorted(metadata.functions.values(), key=lambda item: item.c_name):
-        if function.receiver is not None or function.c_name in _INTERNAL_C_FUNCTIONS or function.c_name in _HIDDEN_FUNCTIONS:
+        if (
+            function.receiver is not None
+            or function.c_name in _INTERNAL_C_FUNCTIONS
+            or function.c_name in _HIDDEN_FUNCTIONS
+        ):
             continue
         member = _public_module_member(function, metadata.c_prefix)
         if member is None:
@@ -148,7 +164,10 @@ def _is_instance_list_handle(handle: str | None) -> bool:
 
 def _option_by_c_type(c_type: str, metadata: HostBindingMetadata) -> HostOptionStructMetadata | None:
     normalized = " ".join(c_type.replace(" *", "*").split()).removeprefix("const ").removesuffix("*").strip()
-    return next((option for option in metadata.option_structs.values() if option.c_type == normalized), None)
+    return next(
+        (option for option in metadata.option_structs.values() if option.c_type == normalized),
+        None,
+    )
 
 
 def _option_type_name(option: HostOptionStructMetadata) -> str:
@@ -205,7 +224,10 @@ def _direct_ts_type(type_spec: TypeSpec, metadata: HostBindingMetadata) -> str:
 def _sequence_ts_type(struct: HostStructMetadata, metadata: HostBindingMetadata) -> str:
     if struct.kind == "handle_sequence":
         elem = (struct.element_type or "").removeprefix("const ").removesuffix("*").strip()
-        handle = next((name for name, item in metadata.handles.items() if item.c_type == elem), None)
+        handle = next(
+            (name for name, item in metadata.handles.items() if item.c_type == elem),
+            None,
+        )
         item_type = _handle_name(handle) if handle is not None else "ApiData"
         for _ in range(struct.sequence_depth):
             item_type = f"{item_type}[]"
@@ -239,7 +261,10 @@ def _direct_ts_type_from_c_type(c_type: str, metadata: HostBindingMetadata) -> s
     option = _option_by_c_type(normalized, metadata)
     if option is not None:
         return _option_type_name(option)
-    value_type = next((item for item in metadata.value_types.values() if item.c_type == normalized), None)
+    value_type = next(
+        (item for item in metadata.value_types.values() if item.c_type == normalized),
+        None,
+    )
     if value_type is not None and value_type.kind == "result_struct":
         return _struct_type_name(value_type)
     if normalized == "ifcopenshell_string_t":
@@ -277,7 +302,11 @@ def _is_property_map_param(param: HostParamMetadata) -> bool:
     return param.semantic == "property_map"
 
 
-def _param_ts_type(param: HostParamMetadata, metadata: HostBindingMetadata, module_name: str | None = None) -> str:
+def _param_ts_type(
+    param: HostParamMetadata,
+    metadata: HostBindingMetadata,
+    module_name: str | None = None,
+) -> str:
     if _is_property_map_param(param):
         base = "PsetProperties | PsetInput"
         return f"{base} | null" if param.nullable else base
@@ -311,12 +340,21 @@ def _param_ts_type(param: HostParamMetadata, metadata: HostBindingMetadata, modu
     return "ApiData"
 
 
+def _render_interface_field(declaration: str, doc: str | None) -> str:
+    if not doc:
+        return f"  {declaration}"
+    return f"{_render_doc_comment(doc, '  ')}\n  {declaration}"
+
+
 def _render_option_interfaces(metadata: HostBindingMetadata) -> str:
     chunks = []
     for option in sorted(metadata.option_structs.values(), key=lambda item: item.c_type):
         fields = "\n".join(
-            f"  {_camel_name(field.name)}{'?' if field.type.nullable else ''}: "
-            f"{_option_field_type(field.name, field.type, metadata)};"
+            _render_interface_field(
+                f"{_camel_name(field.name)}{'?' if field.type.nullable else ''}: "
+                f"{_option_field_type(field.name, field.type, metadata)};",
+                field.doc,
+            )
             for field in option.fields
         )
         chunks.append(f"export interface {_option_type_name(option)} {{\n{fields}\n}}")
@@ -338,14 +376,21 @@ def _render_result_interfaces(metadata: HostBindingMetadata) -> str:
         if struct.kind != "result_struct":
             continue
         fields = "\n".join(
-            f"  {_camel_name(field.name)}: {_direct_ts_type_from_c_type(field.c_type, metadata)};"
+            _render_interface_field(
+                f"{_camel_name(field.name)}: {_direct_ts_type_from_c_type(field.c_type, metadata)};",
+                field.doc,
+            )
             for field in struct.fields
         )
         chunks.append(f"export interface {_struct_type_name(struct)} {{\n{fields}\n}}")
     return "\n\n".join(chunks)
 
 
-def _param_expr(param: HostParamMetadata, metadata: HostBindingMetadata, module_name: str | None = None) -> str:
+def _param_expr(
+    param: HostParamMetadata,
+    metadata: HostBindingMetadata,
+    module_name: str | None = None,
+) -> str:
     if _is_property_map_param(param):
         if param.nullable:
             return (
@@ -396,7 +441,8 @@ def _result_wrap_expr(value_expr: str, c_type: str, metadata: HostBindingMetadat
         (
             item
             for item in metadata.value_types.values()
-            if item.c_type == " ".join(c_type.replace(" *", "*").split()).removeprefix("const ").removesuffix("*").strip()
+            if item.c_type
+            == " ".join(c_type.replace(" *", "*").split()).removeprefix("const ").removesuffix("*").strip()
             and item.kind in {"sequence", "handle_sequence"}
         ),
         None,
@@ -439,11 +485,20 @@ def _result_expr(function: HostFunctionMetadata, return_type: str, module_name: 
     return "wrap(shell, result)"
 
 
-def _render_direct_method(module_name: str, name: str, function: HostFunctionMetadata, metadata: HostBindingMetadata) -> str:
+def _render_direct_method(
+    module_name: str,
+    name: str,
+    function: HostFunctionMetadata,
+    metadata: HostBindingMetadata,
+) -> str:
     params = _public_params(function)
     signature_params = ", ".join(f"{param.name}: {_param_ts_type(param, metadata, module_name)}" for param in params)
     args = ", ".join(_param_expr(param, metadata, module_name) for param in params)
-    return_type = "ValueData | null" if _handle_kind_from_type(function.returns) == "value" and module_name != "value" else _direct_ts_type(function.returns, metadata)
+    return_type = (
+        "ValueData | null"
+        if _handle_kind_from_type(function.returns) == "value" and module_name != "value"
+        else _direct_ts_type(function.returns, metadata)
+    )
     lines = []
     if function.doc:
         lines.append(_render_doc_comment(function.doc, "    "))
@@ -511,11 +566,21 @@ def _render_direct_method(module_name: str, name: str, function: HostFunctionMet
     return "\n".join(lines)
 
 
-def _render_direct_interface(module_name: str, functions: list[tuple[str, HostFunctionMetadata]], metadata: HostBindingMetadata) -> str:
+def _render_direct_interface(
+    module_name: str,
+    functions: list[tuple[str, HostFunctionMetadata]],
+    metadata: HostBindingMetadata,
+) -> str:
     methods = []
     for name, function in functions:
-        return_type = "ValueData | null" if _handle_kind_from_type(function.returns) == "value" and module_name != "value" else _direct_ts_type(function.returns, metadata)
-        params = ", ".join(f"{param.name}: {_param_ts_type(param, metadata, module_name)}" for param in _public_params(function))
+        return_type = (
+            "ValueData | null"
+            if _handle_kind_from_type(function.returns) == "value" and module_name != "value"
+            else _direct_ts_type(function.returns, metadata)
+        )
+        params = ", ".join(
+            f"{param.name}: {_param_ts_type(param, metadata, module_name)}" for param in _public_params(function)
+        )
         signature = f"    {_member_name(name)}({params}): {return_type};"
         if function.doc:
             signature = _render_doc_comment(function.doc, "    ") + "\n" + signature
@@ -523,7 +588,9 @@ def _render_direct_interface(module_name: str, functions: list[tuple[str, HostFu
     return f"export interface {_camel_name(module_name).capitalize()}Api {{\n" + "\n".join(methods) + "\n}"
 
 
-def _render_raw_api_type(modules: dict[str, list[tuple[str, HostFunctionMetadata]]]) -> str:
+def _render_raw_api_type(
+    modules: dict[str, list[tuple[str, HostFunctionMetadata]]],
+) -> str:
     module_types = []
     for module_name, functions in sorted(modules.items()):
         methods = "\n".join(f"    {_member_name(name)}: RawFn;" for name, _ in functions)
@@ -533,11 +600,15 @@ def _render_raw_api_type(modules: dict[str, list[tuple[str, HostFunctionMetadata
 
 def render_api_direct(metadata: HostBindingMetadata) -> str:
     modules = _api_functions(metadata)
-    module_interfaces = [_render_direct_interface(name, functions, metadata) for name, functions in sorted(modules.items())]
+    module_interfaces = [
+        _render_direct_interface(name, functions, metadata) for name, functions in sorted(modules.items())
+    ]
     api_members = "\n".join(f"  {name}: {_camel_name(name).capitalize()}Api;" for name in sorted(modules))
     module_values = []
     for module_name, functions in sorted(modules.items()):
-        methods = "\n".join(_render_direct_method(module_name, name, function, metadata) for name, function in functions)
+        methods = "\n".join(
+            _render_direct_method(module_name, name, function, metadata) for name, function in functions
+        )
         module_values.append(f"    {module_name}: Object.freeze({{\n{methods}\n    }}),")
     return "\n".join(
         [
@@ -580,6 +651,9 @@ def render_api_direct(metadata: HostBindingMetadata) -> str:
             api_members,
             "}",
             "",
+            "/**",
+            " * @internal",
+            " */",
             "export function createApi(shell: IfcOpenShell): Api {",
             "  const raw = shell.raw as object as RawApi;",
             "  return Object.freeze({",

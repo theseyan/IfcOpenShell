@@ -4,6 +4,7 @@ import { AttributeValue, type IfcValue } from './attribute.js';
 import { IfcOpenShellError, type IfcOpenShell } from './init.js';
 import { HandleGuard } from './resource.js';
 
+/** Values accepted by {@link Entity.set}. */
 export type AttributeInput =
   | null
   | boolean
@@ -14,12 +15,14 @@ export type AttributeInput =
   | number[]
   | string[];
 
+/** Plain-object snapshot returned by {@link Entity.info}. */
 export interface EntityInfo {
   id: number;
   type: string;
   attributes: Record<string, IfcValue>;
 }
 
+/** High-level wrapper for one IFC entity instance. */
 export class Entity {
   private _raw: IfcOpenshellInstance | null;
   private readonly guard: HandleGuard<IfcOpenshellInstance>;
@@ -65,6 +68,7 @@ export class Entity {
     return new AttributeValue(this.shell, raw);
   }
 
+  /** Read and decode an attribute by name or zero-based index. */
   get(nameOrIndex: string | number): IfcValue {
     using attribute = this.attribute(nameOrIndex);
     return attribute.value();
@@ -78,6 +82,7 @@ export class Entity {
     return this.attributes().map((name) => [name, this.get(name)]);
   }
 
+  /** Return the entity id, type, and decoded forward attributes. */
   info(): EntityInfo {
     return {
       id: this.id,
@@ -94,6 +99,7 @@ export class Entity {
     return this.raw.getInverseAttributeNames();
   }
 
+  /** Return entities referenced by the named inverse attribute. */
   inverse(name: string): Entity[] {
     const list = this.raw.getInverse(name);
     try {
@@ -125,11 +131,13 @@ export class Entity {
     return this.raw.getAttributeCategory(name);
   }
 
+  /** Set an attribute, inferring the native value kind from its IFC type. */
   set(nameOrIndex: string | number, value: AttributeInput, options: { type?: string } = {}): void {
     const index = typeof nameOrIndex === 'number' ? nameOrIndex : this.attributeIndex(nameOrIndex);
     setArgument(this.shell, this.raw, index, value, options.type ?? this.raw.getArgumentType(index));
   }
 
+  /** Clear an attribute by name or zero-based index. */
   unset(nameOrIndex: string | number): void {
     if (typeof nameOrIndex === 'string') {
       this.raw.unsetAttributeValue(nameOrIndex);
@@ -138,10 +146,12 @@ export class Entity {
     this.raw.unsetArgument(nameOrIndex);
   }
 
+  /** Serialize the entity as STEP text. */
   text(validSpf = false): string {
     return this.raw.toString(validSpf);
   }
 
+  /** Release the native entity handle. Safe to call more than once. */
   dispose(): void {
     if (this._raw == null) return;
     this.guard.destroy();

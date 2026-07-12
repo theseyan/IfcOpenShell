@@ -499,29 +499,47 @@ type RawApi = {
 };
 
 export interface IfcOpenShellSequenceDuplicateTaskResult {
+  /** Original tasks in depth-first order. */
   current: Entity[];
+  /** Corresponding duplicated tasks in the same order. */
   duplicate: Entity[];
 }
 
 export interface IfcOpenShellShapeBuilderMepBendShapeResult {
+  /** IfcShapeRepresentation containing the bend geometry. */
   representation: Entity;
+  /** Length of the start straight section in model units. */
   startLength: number;
+  /** Length of the end straight section in model units. */
   endLength: number;
+  /** Bend radius in model units. */
   radius: number;
+  /** Bend angle in degrees. */
   angle: number;
+  /** Index of the lateral axis (0 = X, 1 = Y). */
   lateralAxis: number;
+  /** Sign of the lateral direction (-1.0 or 1.0). */
   lateralSign: number;
+  /** Sign of the Z axis direction (-1 or 1). */
   zAxisSign: number;
+  /** Dimension of the main profile along the lateral axis. */
   mainProfileDimension: number;
 }
 
 export interface IfcOpenShellShapeBuilderMepTransitionShapeResult {
+  /** IfcShapeRepresentation containing the transition geometry. */
   representation: Entity;
+  /** Length of the start segment in model units. */
   startLength: number;
+  /** Length of the end segment in model units. */
   endLength: number;
+  /** Transition angle in degrees. */
   angle: number;
+  /** XY offset between the two profile centres. */
   profileOffset: number[];
+  /** Computed transition length in model units. */
   transitionLength: number;
+  /** Total length (start + transition + end) in model units. */
   fullTransitionLength: number;
 }
 
@@ -531,1067 +549,1760 @@ export interface PsetTemplate {
 }
 
 export interface IfcOpenShellAggregateAssignObjectOptions {
+  /** Products to assign as parts of the relating object. */
   products: Entity[];
+  /** The parent object that will own the aggregate (e.g. an IfcSite, IfcBuilding, or IfcElementAssembly). */
   relatingObject: Entity;
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellAggregateUnassignObjectOptions {
+  /** Products to remove from their current aggregate relationships. */
   products: Entity[];
+  /** Optional user for owner history updates on modified relationships. */
   user?: Entity;
+  /** Optional application for owner history updates on modified relationships. */
   application?: Entity;
 }
 
 export interface IfcOpenShellAttributeEditAttributesOptions {
+  /** Product whose attributes are being edited. */
   product: Entity;
+  /** Property bag of attribute name/value pairs to apply to the product. */
   attributes: PsetProperties | PsetInput;
+  /** When true, synchronize PredefinedType based on ElementType or ObjectType. */
   syncPredefinedType: boolean;
+  /** When true, update the product's OwnerHistory after modifying attributes. */
   updateOwnerHistory: boolean;
+  /** IfcPersonAndOrganization used for OwnerHistory updates. Omit to use the file default. */
   user?: Entity;
+  /** IfcApplication used for OwnerHistory updates. Omit to use the file default. */
   application?: Entity;
 }
 
 export interface IfcOpenShellBoundaryAssignConnectionGeometryOptions {
+  /** Closed outer polyline of the connection plane. */
   outerBoundary: number[][];
+  /** Origin of the connection plane relative to the bounded space. */
   location: number[];
+  /** Local axis direction of the connection plane. */
   axis: number[];
+  /** Local reference direction of the connection plane. */
   refDirection: number[];
+  /** Closed inner polylines representing openings in the connection plane. */
   innerBoundaries: number[][][];
+  /** Scale that converts model units to SI units. */
   unitScale: number;
 }
 
 export interface IfcOpenShellBoundaryEditAttributesOptions {
+  /** The space that the boundary relates to. */
   relatingSpace: Entity;
+  /** The building element that defines the boundary. */
   relatedBuildingElement: Entity;
+  /** Optional parent boundary for inner boundaries. */
   parentBoundary?: Entity;
+  /** Optional corresponding boundary on the other side of the element. */
   correspondingBoundary?: Entity;
+  /** Physical or virtual enum value. */
   physicalOrVirtual: string;
+  /** Internal or external enum value. */
   internalOrExternal: string;
 }
 
 export interface IfcOpenShellClassificationAddReferenceOptions {
+  /** Products to associate with the classification reference. */
   products: Entity[];
+  /** An existing classification reference from a library. If provided, identification/name are ignored. */
   reference?: Entity;
+  /** Optional identification code for a new reference (e.g. "Pr_12_23_34"). */
   identification?: string;
+  /** Optional human-readable name for a new reference. */
   name?: string;
+  /** Optional IfcClassification that the reference belongs to. */
   classification?: Entity;
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellClassificationRemoveReferenceOptions {
+  /** The classification reference to disassociate. */
   reference: Entity;
+  /** Products to disassociate from the reference. */
   products: Entity[];
+  /** Optional user for owner history updates on modified relationships. */
   user?: Entity;
+  /** Optional application for owner history updates on modified relationships. */
   application?: Entity;
 }
 
 export interface IfcOpenShellCogoAddSurveyPointOptions {
+  /** IfcPoint (IfcCartesianPoint or IfcPointOnCurve) representing the survey location. */
   surveyPoint: Entity;
+  /** IfcSite to contain the annotation. When omitted, the first IfcSite in the file is used. */
   site?: Entity;
+  /** Owner history applied to created root entities. When omitted, one is created from user/application. */
   ownerHistory?: Entity;
+  /** IfcPersonAndOrganization used to create an IfcOwnerHistory when owner_history is omitted. */
   user?: Entity;
+  /** IfcApplication used to create an IfcOwnerHistory when owner_history is omitted. */
   application?: Entity;
 }
 
 export interface IfcOpenShellConstraintAssignConstraintOptions {
+  /** Products to associate with the constraint. */
   products: Entity[];
+  /** The constraint to assign. */
   constraint: Entity;
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellConstraintUnassignConstraintOptions {
+  /** Products to disassociate from the constraint. */
   products: Entity[];
+  /** The constraint to unassign. */
   constraint: Entity;
+  /** Optional user for owner history updates on modified relationships. */
   user?: Entity;
+  /** Optional application for owner history updates on modified relationships. */
   application?: Entity;
 }
 
 export interface IfcOpenShellContextAddContextOptions {
+  /** Context type string (e.g. "Plan", "Model", or a custom label). */
   contextType: string;
+  /** Context identifier (e.g. "Model View", "Design Transfer View"). Used only for subcontexts. */
   contextIdentifier: string;
+  /** Target view for subcontexts (e.g. "MODEL_VIEW", "PLAN_VIEW", "SKETCH_VIEW"). */
   targetView: string;
+  /** Optional target scale for subcontexts. Omitted if not set. */
   targetScale?: number;
+  /**
+   * Optional parent context. If provided, creates an IfcGeometricRepresentationSubContext;
+   * if omitted, creates an IfcGeometricRepresentationContext attached to the IfcProject.
+   */
   parent?: Entity;
 }
 
 export interface IfcOpenShellControlAssignControlOptions {
+  /** The planning control (e.g. IfcTask, IfcCostItem) to assign. */
   relatingControl: Entity;
+  /** Objects to associate with the control. */
   relatedObjects: Entity[];
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellControlUnassignControlOptions {
+  /** The planning control to unassign from. */
   relatingControl: Entity;
+  /** Objects to disassociate from the control. */
   relatedObjects: Entity[];
+  /** Optional user for owner history updates on modified relationships. */
   user?: Entity;
+  /** Optional application for owner history updates on modified relationships. */
   application?: Entity;
 }
 
 export interface IfcOpenShellCostAddCostItemOptions {
+  /** IfcCostSchedule to which the new IfcCostItem is assigned via IfcRelAssignsToControl. Takes precedence over cost_item when both are provided. */
   costSchedule?: Entity;
+  /** Parent IfcCostItem to nest the new item under via IfcRelNests. Used only when cost_schedule is omitted. */
   costItem?: Entity;
+  /** Owner history applied to created entities. When omitted, one is created from user/application. */
   ownerHistory?: Entity;
+  /** IfcPersonAndOrganization used to create an IfcOwnerHistory when owner_history is omitted. */
   user?: Entity;
+  /** IfcApplication used to create an IfcOwnerHistory when owner_history is omitted. */
   application?: Entity;
 }
 
 export interface IfcOpenShellCostAssignCostItemQuantityOptions {
+  /** Owner history applied to the IfcRelAssignsToControl relationship. When omitted, one is created from user/application. */
   ownerHistory?: Entity;
+  /** IfcPersonAndOrganization used to create an IfcOwnerHistory when owner_history is omitted. */
   user?: Entity;
+  /** IfcApplication used to create an IfcOwnerHistory when owner_history is omitted. */
   application?: Entity;
 }
 
 export interface IfcOpenShellCostCopyCostScheduleOptions {
+  /** Owner history applied to the copied schedule and its items. When omitted, one is created from user/application. */
   ownerHistory?: Entity;
+  /** IfcPersonAndOrganization used to create an IfcOwnerHistory when owner_history is omitted. */
   user?: Entity;
+  /** IfcApplication used to create an IfcOwnerHistory when owner_history is omitted. */
   application?: Entity;
 }
 
 export interface IfcOpenShellCostEditCostValueOptions {
+  /** When true, the UnitBasis (IfcMeasureWithUnit) is replaced using value_component and unit_component. */
   editUnitBasis: boolean;
+  /** When true (with edit_unit_basis), the existing UnitBasis is removed rather than replaced. */
   clearUnitBasis: boolean;
+  /** Numeric value for the new UnitBasis measure. Used when edit_unit_basis is true and clear_unit_basis is false. */
   valueComponent: number;
+  /** IfcUnit for the new UnitBasis. Required when edit_unit_basis is true and clear_unit_basis is false. */
   unitComponent?: Entity;
 }
 
 export interface IfcOpenShellCostUnassignCostItemQuantityOptions {
+  /** IfcPersonAndOrganization used to update the relationship OwnerHistory. */
   user?: Entity;
+  /** IfcApplication used to update the relationship OwnerHistory. */
   application?: Entity;
 }
 
 export interface IfcOpenShellDocumentAddInformationOptions {
+  /**
+   * Optional parent entity. Can be an IfcProject, IfcContext, or IfcDocumentInformation.
+   * If omitted, defaults to the first IfcProject.
+   */
   parent?: Entity;
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellDocumentAssignDocumentOptions {
+  /** Products to associate with the document. */
   products: Entity[];
+  /** The IfcDocumentInformation or IfcDocumentReference to assign. */
   document: Entity;
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellDocumentUnassignDocumentOptions {
+  /** Products to disassociate from the document. */
   products: Entity[];
+  /** The IfcDocumentInformation or IfcDocumentReference to unassign. */
   document: Entity;
+  /** Optional user for owner history updates on modified relationships. */
   user?: Entity;
+  /** Optional application for owner history updates on modified relationships. */
   application?: Entity;
 }
 
 export interface IfcOpenShellDrawingAssignProductOptions {
+  /** Product to assign (e.g. IfcGridAxis, IfcProduct). */
   relatingProduct: Entity;
+  /** Annotation or object receiving the assignment. */
   relatedObject: Entity;
+  /** Optional existing IfcOwnerHistory; created from user/application if omitted. */
   ownerHistory?: Entity;
+  /** Optional IfcPersonAndOrganization for OwnerHistory creation. */
   user?: Entity;
+  /** Optional IfcApplication for OwnerHistory creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellDrawingUnassignProductOptions {
+  /** Product to unassign (e.g. IfcGridAxis, IfcProduct). */
   relatingProduct: Entity;
+  /** Annotation or object losing the assignment. */
   relatedObject: Entity;
+  /** Optional IfcPersonAndOrganization for OwnerHistory update. */
   user?: Entity;
+  /** Optional IfcApplication for OwnerHistory update. */
   application?: Entity;
 }
 
 export interface IfcOpenShellElementGetContainerOptions {
+  /** When true, only return a directly containing spatial element. When false (default), walk up the hierarchy. */
   directOnly?: boolean;
+  /** If set, only return a container that is of this IFC class (e.g. "IfcBuildingStorey"). */
   ifcClass?: string;
 }
 
 export interface IfcOpenShellElementGetDecompositionOptions {
+  /** When true (default), recursively traverse the spatial decomposition tree. When false, return only direct children. */
   isRecursive?: boolean;
 }
 
 export interface IfcOpenShellElementGetMaterialOptions {
+  /** When true, unwrap IfcMaterialLayerSetUsage and IfcMaterialProfileSetUsage to their underlying set. */
   shouldSkipUsage?: boolean;
+  /** When true (default), inherit the material from the element's type if the element has no direct material. */
   shouldInherit?: boolean;
 }
 
 export interface IfcOpenShellElementGetPsetIdsOptions {
+  /** When true, exclude element quantities and return only property sets. */
   psetsOnly?: boolean;
+  /** When true, exclude property sets and return only element quantities. */
   qtosOnly?: boolean;
+  /** When true (default), include property sets inherited from the element's type. */
   shouldInherit?: boolean;
 }
 
 export interface IfcOpenShellElementGetShapeAspectsOptions {
+  /** When true (default), include shape aspects inherited from the element's type. */
   shouldInherit?: boolean;
 }
 
 export interface IfcOpenShellEntityRemoveDeepOptions {
+  /** Additional entities to consider as part of the subgraph when checking inverse references. */
   alsoConsider: Entity[];
+  /** Entities that must not be deleted even if they are part of the subgraph. */
   doNotDelete: Entity[];
 }
 
 export interface IfcOpenShellFeatureAddFeatureOptions {
+  /** The feature element (IfcOpeningElement, IfcProjectionElement, IfcSurfaceFeature, etc.). */
   feature: Entity;
+  /** The host element that the feature is attached to. */
   element: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellFeatureRemoveFeatureOptions {
+  /** The feature element to remove. */
   feature: Entity;
+  /** Optional user for owner history updates on modified relationships. */
   user?: Entity;
+  /** Optional application for owner history updates on modified relationships. */
   application?: Entity;
 }
 
 export interface IfcOpenShellGeometryAddDoorRepresentationOptions {
+  /** IfcGeometricRepresentationContext for the representation. */
   context: Entity;
+  /** Overall door height in model units. */
   overallHeight: number;
+  /** Overall door width in model units. */
   overallWidth: number;
+  /** Door operation type (e.g. "SINGLE_SWING_LEFT", "DOUBLE_SWING"). */
   operationType: string;
+  /** Lining properties as a flat double array. */
   liningProperties: number[];
+  /** Panel properties as a flat double array. */
   panelProperties: number[];
+  /** Optional IfcProductDefinitionShape to attach a shape aspect to. */
   partOfProduct?: Entity;
+  /** Scale factor from model units to SI metres. Defaults to 1.0. */
   unitScale: number;
 }
 
 export interface IfcOpenShellGeometryAddMeshRepresentationOptions {
+  /** Vertices for each mesh item. Each point is an XYZ coordinate. */
   vertices: number[][][];
+  /** Faces for each mesh item. Each face may contain one outer loop and optional inner loops. */
   faces: number[][][][];
+  /** Force faceted BRep output instead of tessellated face sets. Defaults to false. */
   forceFacetedBrep?: boolean;
 }
 
 export interface IfcOpenShellGeometryAddRailingRepresentationOptions {
+  /** IfcGeometricRepresentationContext for the representation. */
   context: Entity;
+  /** Ordered XYZ points defining the railing path. */
   railingPath: number[][];
+  /** If true, use manually placed supports instead of auto-spacing. */
   useManualSupports: boolean;
+  /** Spacing between automatic supports in model units. Defaults to 1.0. */
   supportSpacing: number;
+  /** Railing tube diameter in model units. Defaults to 0.05. */
   railingDiameter: number;
+  /** Clear width between rail elements in model units. Defaults to 0.05. */
   clearWidth: number;
+  /** Terminal type string (e.g. "FLAT", "BLOB"). */
   terminalType: string;
+  /** Railing height in model units. Defaults to 1.0. */
   height: number;
+  /** If true, close the railing path into a loop. Defaults to false. */
   loopedPath: boolean;
+  /** Scale factor from model units to SI metres. Defaults to 1.0. */
   unitScale: number;
 }
 
 export interface IfcOpenShellGeometryAddShapeAspectOptions {
+  /** Shape aspect name. */
   name: string;
+  /** Items that belong to the aspect representation. */
   items: Entity[];
+  /** Representation containing the aspect items. */
   representation: Entity;
+  /** Product definition shape that owns the aspect. */
   partOfProduct: Entity;
+  /** Optional shape aspect description. */
   description?: string;
 }
 
 export interface IfcOpenShellGeometryAddSlabRepresentationOptions {
+  /** IfcGeometricRepresentationContext for the representation. */
   context: Entity;
+  /** Slab depth (thickness) in SI metres. */
   depth: number;
+  /** Extrusion direction sense: "POSITIVE" or "NEGATIVE". */
   directionSense: string;
+  /** Offset from the reference plane along the extrusion direction, in SI metres. */
   offset: number;
+  /** Angle of the extrusion direction from vertical, in radians. */
   xAngle: number;
+  /** Clipping plane types: 0 = plane, 1 = entity. */
   clippingKinds: number[];
+  /** Clipping plane locations in SI metres (one XYZ point per plane-kind clipping). */
   clippingLocations: number[][];
+  /** Clipping plane normals (one direction per plane-kind clipping). */
   clippingNormals: number[][];
+  /** Pre-existing boolean clipping entities (used for entity-kind clippings). */
   clippingEntities: Entity[];
+  /** Optional outer boundary polyline in SI metres. Defaults to a unit square when omitted. */
   polyline?: number[][];
 }
 
 export interface IfcOpenShellGeometryAddTopologyRepresentationOptions {
+  /** IfcGeometricRepresentationContext for the representation. */
   context: Entity;
+  /** Topology item (IfcVertex, IfcEdge, IfcFace, etc.). */
   item: Entity;
+  /** Optional representation identifier. Defaults to the context identifier when omitted. */
   representationIdentifier?: string;
+  /** Optional representation type (e.g. "Vertex", "Edge"). Auto-detected when omitted. */
   representationType?: string;
 }
 
 export interface IfcOpenShellGeometryAddWallRepresentationOptions {
+  /** IfcGeometricRepresentationContext for the representation. */
   context: Entity;
+  /** Wall length in SI metres. */
   length: number;
+  /** Wall height in SI metres. */
   height: number;
+  /** Extrusion direction sense: "POSITIVE" or "NEGATIVE". */
   directionSense: string;
+  /** Offset from the reference plane along the extrusion direction, in SI metres. */
   offset: number;
+  /** Wall thickness in SI metres. */
   thickness: number;
+  /** Angle of the extrusion direction from vertical, in radians. */
   xAngle: number;
+  /** Clipping plane types: 0 = plane, 1 = entity. */
   clippingKinds: number[];
+  /** Clipping plane locations in SI metres (one XYZ point per plane-kind clipping). */
   clippingLocations: number[][];
+  /** Clipping plane normals (one direction per plane-kind clipping). */
   clippingNormals: number[][];
+  /** Pre-existing boolean clipping entities (used for entity-kind clippings). */
   clippingEntities: Entity[];
+  /** Pre-existing boolean operand entities applied before clippings. */
   booleans: Entity[];
 }
 
 export interface IfcOpenShellGeometryAddWindowRepresentationOptions {
+  /** IfcGeometricRepresentationContext for the representation. */
   context: Entity;
+  /** Overall window height in model units. */
   overallHeight: number;
+  /** Overall window width in model units. */
   overallWidth: number;
+  /** Panel layout schema: each entry is {panel_index, operation_type}. */
   panelSchema: number[][];
+  /** Lining properties as a flat double array. */
   liningProperties: number[];
+  /** Per-panel properties as arrays of doubles. */
   panelProperties: number[][];
+  /** Optional IfcProductDefinitionShape to attach a shape aspect to. */
   partOfProduct?: Entity;
+  /** Glass thickness in model units. Defaults to 0.01. */
   glassThickness: number;
 }
 
 export interface IfcOpenShellGeometryClipSolidBoundedOptions {
+  /** Solid item to clip (first operand). */
   item: Entity;
+  /** XYZ point on the clipping plane, in model units. */
   location: number[];
+  /** Direction ratios of the clipping plane normal. */
   normal: number[];
+  /** XY points defining the polygonal boundary of the clipping region. */
   boundaryPoints: number[][];
+  /** XYZ position of the boundary polygon's local origin. */
   boundaryPosition: number[];
+  /** Optional owning element for BBIM_Boolean tracking. */
   element?: Entity;
+  /** Optional existing IfcOwnerHistory. */
   ownerHistory?: Entity;
+  /** Optional IfcPersonAndOrganization for OwnerHistory creation. */
   user?: Entity;
+  /** Optional IfcApplication for OwnerHistory creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellGeometryClipSolidOptions {
+  /** Solid item to clip (first operand). */
   item: Entity;
+  /** XYZ point on the clipping plane, in model units. */
   location: number[];
+  /** Direction ratios of the clipping plane normal. */
   normal: number[];
+  /** Optional owning element for BBIM_Boolean tracking. */
   element?: Entity;
+  /** Optional existing IfcOwnerHistory. */
   ownerHistory?: Entity;
+  /** Optional IfcPersonAndOrganization for OwnerHistory creation. */
   user?: Entity;
+  /** Optional IfcApplication for OwnerHistory creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellGeometryConnectElementOptions {
+  /** The element initiating the connection. */
   relatingElement: Entity;
+  /** The element being connected to. */
   relatedElement: Entity;
+  /** Optional description of the connection. */
   description?: string;
+  /** Optional existing IfcOwnerHistory for the relationship. */
   ownerHistory?: Entity;
+  /** Optional IfcPersonAndOrganization for OwnerHistory creation. */
   user?: Entity;
+  /** Optional IfcApplication for OwnerHistory creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellGeometryConnectPathOptions {
+  /** The element initiating the connection. */
   relatingElement: Entity;
+  /** The element being connected to. */
   relatedElement: Entity;
+  /** Connection type on the relating side: "ATSTART", "ATEND", or "ATPATH". */
   relatingConnection: string;
+  /** Connection type on the related side: "ATSTART", "ATEND", or "ATPATH". */
   relatedConnection: string;
+  /** Optional description of the connection. */
   description?: string;
+  /** Optional IfcConnectionGeometry for the relationship. */
   connectionGeometry?: Entity;
+  /** Optional existing IfcOwnerHistory for the relationship. */
   ownerHistory?: Entity;
+  /** Optional IfcPersonAndOrganization for OwnerHistory creation. */
   user?: Entity;
+  /** Optional IfcApplication for OwnerHistory creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellGeometryConnectWallOptions {
+  /** First wall in the connection. */
   firstWall: Entity;
+  /** Second wall in the connection. */
   secondWall: Entity;
+  /** If true, connect along the path (ATPATH) instead of at a terminal end. */
   isAtpath: boolean;
+  /** Optional existing IfcOwnerHistory for the relationship. */
   ownerHistory?: Entity;
+  /** Optional IfcPersonAndOrganization for OwnerHistory creation. */
   user?: Entity;
+  /** Optional IfcApplication for OwnerHistory creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellGeometryCopyRepresentationOptions {
+  /** Source product to copy the representation from. */
   source: Entity;
+  /** Target product to receive the copied representation. */
   target: Entity;
+  /** Representation identifier to copy (e.g. "Body"). Defaults to "Body" when omitted. */
   contextIdentifier?: string;
 }
 
 export interface IfcOpenShellGeometryCreate2PtWallOptions {
+  /** IfcWall (or similar) element to receive the geometry. */
   element: Entity;
+  /** IfcGeometricRepresentationContext for the body representation. */
   context: Entity;
+  /** XY start point of the wall baseline. */
   start: number[];
+  /** XY end point of the wall baseline. */
   end: number[];
+  /** Wall base elevation in SI metres (or model units when is_si is false). */
   elevation: number;
+  /** Wall height in SI metres (or model units when is_si is false). */
   height: number;
+  /** Wall thickness in SI metres (or model units when is_si is false). */
   thickness: number;
+  /** If true, start/end/elevation/height/thickness are in SI metres. Defaults to true. */
   isSi: boolean;
 }
 
 export interface IfcOpenShellGeometryDisconnectPathOptions {
+  /** Element whose connections to remove (used with connection_type). */
   element?: Entity;
+  /** Connection type to match (e.g. "ATSTART"). Used with element. */
   connectionType?: string;
+  /** Relating element of the specific connection to remove. */
   relatingElement?: Entity;
+  /** Related element of the specific connection to remove. */
   relatedElement?: Entity;
 }
 
 export interface IfcOpenShellGeometryEditObjectPlacementOptions {
+  /** Product whose ObjectPlacement to set. */
   product: Entity;
+  /** 16-element row-major 4x4 transformation matrix. */
   matrix: number[];
+  /** If true, translation components are in SI metres. Defaults to true. */
   isSi: boolean;
+  /** If true, child local placements are left unchanged so children move with the parent. If false (default), child world positions are preserved. */
   shouldTransformChildren: boolean;
 }
 
 export interface IfcOpenShellGeometryRegenerateWallRepresentationOptions {
+  /** IfcWall entity whose representations to regenerate. */
   wall: Entity;
+  /** Wall length in SI metres. */
   length: number;
+  /** Wall height in SI metres. */
   height: number;
+  /** Optional extrusion angle in radians. Defaults to 0 when omitted. */
   angle?: number;
 }
 
 export interface IfcOpenShellGeometryRemoveRepresentationOptions {
+  /** If true, IfcProfileDef entities with non-empty ProfileName are preserved. Defaults to true. */
   shouldKeepNamedProfiles?: boolean;
 }
 
 export interface IfcOpenShellGeometryValidateTypeOptions {
+  /** Preferred first operand for boolean consolidation. Auto-selected when omitted. */
   preferredItem?: Entity;
 }
 
 export interface IfcOpenShellGeoreferenceAddGeoreferencingOptions {
+  /** IFC class for the coordinate operation, e.g. "IfcMapConversion", "IfcMapConversionScaled", or "IfcRigidOperation". */
   ifcClass: string;
+  /** Name for the IfcProjectedCRS. */
   name: string;
+  /** Owner history applied to created entities. When omitted, one is created from user/application. */
   ownerHistory?: Entity;
+  /** IfcPersonAndOrganization used to create an IfcOwnerHistory when owner_history is omitted. */
   user?: Entity;
+  /** IfcApplication used to create an IfcOwnerHistory when owner_history is omitted. */
   application?: Entity;
 }
 
 export interface IfcOpenShellGeoreferenceEditGeoreferencingOptions {
+  /** Property bag for IfcCoordinateOperation attributes (e.g. Eastings, Northings). nullptr to skip. */
   coordinateOperation?: PsetProperties | PsetInput;
+  /** Property bag for IfcProjectedCRS attributes (e.g. Name, MapZone). nullptr to skip. */
   projectedCrs?: PsetProperties | PsetInput;
 }
 
 export interface IfcOpenShellGeoreferenceEditTrueNorthOptions {
+  /** 2-element direction vector (X, Y) for true north, or std::nullopt to remove. */
   trueNorth?: number[];
 }
 
 export interface IfcOpenShellGeoreferenceEditWcsOptions {
+  /** X offset in SI metres (or project units when is_si is false). Defaults to 0.0. */
   x?: number;
+  /** Y offset in SI metres (or project units when is_si is false). Defaults to 0.0. */
   y?: number;
+  /** Z offset in SI metres (or project units when is_si is false). Defaults to 0.0. */
   z?: number;
+  /** Rotation of the X axis in degrees. Defaults to 0.0. */
   rotation?: number;
+  /** When true (default), x/y/z are in SI metres and are scaled to project units. When false, values are used as-is. */
   isSi?: boolean;
 }
 
 export interface IfcOpenShellGroupAddGroupOptions {
+  /** Name for the group. */
   name: string;
+  /** Optional description. */
   description?: string;
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellGroupAssignGroupOptions {
+  /** Products to assign to the group. */
   products: Entity[];
+  /** The group to assign products to. */
   group: Entity;
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellGroupUnassignGroupOptions {
+  /** Products to remove from the group. */
   products: Entity[];
+  /** The group to remove products from. */
   group: Entity;
+  /** Optional user for owner history updates on modified relationships. */
   user?: Entity;
+  /** Optional application for owner history updates on modified relationships. */
   application?: Entity;
 }
 
 export interface IfcOpenShellGroupUpdateGroupProductsOptions {
+  /** The group whose product list is replaced. */
   group: Entity;
+  /**
+   * New product list. Replaces all existing products. Child IfcGroup entities
+   * from the existing relationship are preserved and merged.
+   */
   products: Entity[];
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellLayerAddLayerWithStyleOptions {
+  /** Whether the layer is visible. nullopt maps to IFC UNKNOWN. */
   on?: boolean;
+  /** Whether the layer is frozen. nullopt maps to IFC UNKNOWN. */
   frozen?: boolean;
+  /** Whether the layer is blocked. nullopt maps to IFC UNKNOWN. */
   blocked?: boolean;
+  /** Styles to assign to the layer. */
   styles: Entity[];
 }
 
 export interface IfcOpenShellLibraryAssignReferenceOptions {
+  /** Products to associate with the library reference. */
   products: Entity[];
+  /** The IfcLibraryReference to assign. */
   reference: Entity;
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellLibraryUnassignReferenceOptions {
+  /** The IfcLibraryReference to unassign. */
   reference: Entity;
+  /** Products to disassociate from the reference. */
   products: Entity[];
+  /** Optional user for owner history updates on modified relationships. */
   user?: Entity;
+  /** Optional application for owner history updates on modified relationships. */
   application?: Entity;
 }
 
 export interface IfcOpenShellMaterialAddConstituentOptions {
+  /** The IfcMaterial for this constituent. */
   material: Entity;
+  /** Optional name for the IfcMaterialConstituent. */
   name?: string;
 }
 
 export interface IfcOpenShellMaterialAddLayerOptions {
+  /** The IfcMaterial for this layer. */
   material: Entity;
+  /** Optional name for the IfcMaterialLayer (ignored in IFC2X3). */
   name?: string;
 }
 
 export interface IfcOpenShellMaterialAddMaterialOptions {
+  /** Optional material name. Defaults to "Unnamed" if omitted. */
   name?: string;
+  /** Optional category (e.g. "Concrete", "Steel"). */
   category?: string;
+  /** Optional description. */
   description?: string;
 }
 
 export interface IfcOpenShellMaterialAddMaterialSetOptions {
+  /** Optional name for the set. Defaults to "Unnamed" if omitted. */
   name?: string;
+  /**
+   * IFC class of the set to create. Defaults to "IfcMaterialConstituentSet".
+   * Valid values: "IfcMaterialConstituentSet", "IfcMaterialLayerSet",
+   * "IfcMaterialProfileSet", "IfcMaterialList".
+   */
   setType?: string;
 }
 
 export interface IfcOpenShellMaterialAddProfileOptions {
+  /** Optional IfcMaterial for this profile. Omitted if not set. */
   material?: Entity;
+  /** Optional IfcProfileDef for this profile. Omitted if not set. */
   profile?: Entity;
+  /** Optional name for the IfcMaterialProfile. */
   name?: string;
 }
 
 export interface IfcOpenShellMaterialAssignMaterialOptions {
+  /**
+   * Material type to assign. Defaults to "IfcMaterial". Valid values:
+   * "IfcMaterial", "IfcMaterialConstituentSet", "IfcMaterialLayerSet",
+   * "IfcMaterialProfileSet", "IfcMaterialLayerSetUsage",
+   * "IfcMaterialProfileSetUsage", "IfcMaterialList".
+   */
   type?: string;
+  /**
+   * Optional existing material or material set to use. For usage types,
+   * must be the corresponding set type (e.g. IfcMaterialLayerSet for
+   * IfcMaterialLayerSetUsage). If omitted, a new set is created.
+   */
   material?: Entity;
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellMaterialEditProfileUsageOptions {
+  /** Attribute key-value pairs to apply to the usage entity. */
   attributes: PsetProperties | PsetInput;
+  /**
+   * Profile width in model units, used for cardinal point placement.
+   * Required along with profile_height when changing CardinalPoint.
+   */
   profileWidth?: number;
+  /**
+   * Profile height in model units, used for cardinal point placement.
+   * Required along with profile_width when changing CardinalPoint.
+   */
   profileHeight?: number;
 }
 
 export interface IfcOpenShellMaterialRemoveItemOptions {
+  /** If true, the associated IfcMaterial is also deleted (deep removal). Defaults to false. */
   shouldRemoveMaterial?: boolean;
 }
 
 export interface IfcOpenShellMaterialRemoveListItemOptions {
+  /** Zero-based index of the item to remove. Defaults to 0. */
   materialIndex?: number;
 }
 
 export interface IfcOpenShellMaterialRemoveProfileOptions {
+  /** If true, the associated IfcProfileDef is also deleted. Defaults to false. */
   shouldRemoveProfileDef?: boolean;
+  /** If true, the associated IfcMaterial is also deleted. Defaults to false. */
   shouldRemoveMaterial?: boolean;
 }
 
 export interface IfcOpenShellMaterialReorderSetItemOptions {
+  /** Zero-based index of the item to move. Defaults to 0. */
   oldIndex?: number;
+  /** Zero-based index of the destination position. Defaults to 0. */
   newIndex?: number;
 }
 
 export interface IfcOpenShellMaterialUnassignMaterialOptions {
+  /** Optional user for owner history updates on modified relationships. */
   user?: Entity;
+  /** Optional application for owner history updates on modified relationships. */
   application?: Entity;
 }
 
 export interface IfcOpenShellNestAssignObjectOptions {
+  /** Objects to nest under the relating object. */
   products: Entity[];
+  /** The parent object that will own the nested children. */
   relatingObject: Entity;
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellNestUnassignObjectOptions {
+  /** Objects to remove from their current nesting relationships. */
   products: Entity[];
+  /** Optional user for owner history updates on modified relationships. */
   user?: Entity;
+  /** Optional application for owner history updates on modified relationships. */
   application?: Entity;
 }
 
 export interface IfcOpenShellOwnerAddActorOptions {
+  /** IfcPerson, IfcOrganization, or IfcPersonAndOrganization to act as the actor. */
   actor: Entity;
+  /** IFC class name for the actor entity, e.g. "IfcActor" or "IfcOccupant". Defaults to "IfcActor" when empty. */
   ifcClass: string;
+  /** Owner history applied to the created entity. When omitted, one is created from user/application. */
   ownerHistory?: Entity;
+  /** IfcPersonAndOrganization used to create an IfcOwnerHistory when owner_history is omitted. */
   user?: Entity;
+  /** IfcApplication used to create an IfcOwnerHistory when owner_history is omitted. */
   application?: Entity;
 }
 
 export interface IfcOpenShellOwnerAddApplicationOptions {
+  /** IfcOrganization for the ApplicationDeveloper attribute. When omitted, a default IfcOpenShell organisation is created. */
   applicationDeveloper?: Entity;
+  /** Version string for the application. */
   version: string;
+  /** Full human-readable name of the application. */
   applicationFullName: string;
+  /** Short identifier for the application. */
   applicationIdentifier: string;
+  /** Owner history used when creating the default application_developer organisation. */
   ownerHistory?: Entity;
+  /** IfcPersonAndOrganization used when creating the default application_developer organisation. */
   user?: Entity;
+  /** IfcApplication used when creating the default application_developer organisation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellOwnerAssignActorOptions {
+  /** IfcActor (or IfcOccupant) that performs the role. */
   relatingActor: Entity;
+  /** Object to which the actor is assigned. */
   relatedObject: Entity;
+  /** Owner history applied to the IfcRelAssignsToActor relationship. When omitted, one is created from user/application. */
   ownerHistory?: Entity;
+  /** IfcPersonAndOrganization used to create an IfcOwnerHistory when owner_history is omitted. */
   user?: Entity;
+  /** IfcApplication used to create an IfcOwnerHistory when owner_history is omitted. */
   application?: Entity;
 }
 
 export interface IfcOpenShellOwnerCreateOwnerHistoryOptions {
+  /** IfcPersonAndOrganization for the OwningUser attribute. Required. */
   user?: Entity;
+  /** IfcApplication for the OwningApplication attribute. Required. */
   application?: Entity;
 }
 
 export interface IfcOpenShellOwnerUnassignActorOptions {
+  /** IfcActor to unassign from the object. */
   relatingActor: Entity;
+  /** Object from which to unassign the actor. */
   relatedObject: Entity;
+  /** IfcPersonAndOrganization used to update the relationship OwnerHistory. */
   user?: Entity;
+  /** IfcApplication used to update the relationship OwnerHistory. */
   application?: Entity;
 }
 
 export interface IfcOpenShellOwnerUpdateOwnerHistoryOptions {
+  /** IfcRoot element whose OwnerHistory to update. When omitted, no action is taken. */
   element?: Entity;
+  /** IfcPersonAndOrganization used to set LastModifyingUser and for creating a new OwnerHistory if absent. */
   user?: Entity;
+  /** IfcApplication used to set LastModifyingApplication and for creating a new OwnerHistory if absent. */
   application?: Entity;
 }
 
 export interface IfcOpenShellProfileAddArbitraryProfileOptions {
+  /** Ordered XYZ or XY points defining the closed outer curve, in SI metres. */
   profile: number[][];
+  /** Optional profile name. Empty string if omitted. */
   name?: string;
 }
 
 export interface IfcOpenShellProfileAddArbitraryProfileWithVoidsOptions {
+  /** Ordered XYZ or XY points defining the outer curve, in SI metres. */
   outerProfile: number[][];
+  /** Inner void curves, each as ordered XY or XYZ points in SI metres. */
   innerProfiles: number[][][];
+  /** Optional profile name. Empty string if omitted. */
   name?: string;
 }
 
 export interface IfcOpenShellProjectAssignDeclarationOptions {
+  /** Objects to declare to the project or project library. */
   definitions: Entity[];
+  /** The IfcProject or IfcProjectLibrary context. */
   relatingContext: Entity;
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellProjectUnassignDeclarationOptions {
+  /** Objects to remove from the declaration. */
   definitions: Entity[];
+  /** The IfcProject or IfcProjectLibrary context. */
   relatingContext: Entity;
+  /** Optional user for owner history updates on modified relationships. */
   user?: Entity;
+  /** Optional application for owner history updates on modified relationships. */
   application?: Entity;
 }
 
 export interface IfcOpenShellPsetAddPsetOptions {
+  /**
+   * The object to attach the property set to (IfcObject, IfcContext,
+   * IfcTypeObject, IfcMaterial, IfcMaterialDefinition, or IfcProfileDef).
+   */
   product: Entity;
+  /** Name of the property set (e.g. "Pset_WallCommon"). */
   name: string;
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
+  /**
+   * Optional IFC2X3 subclass for material/profile property sets (e.g.
+   * "IfcExtendedMaterialProperties"). Defaults to "IfcExtendedMaterialProperties"
+   * for materials and "IfcGeneralProfileProperties" for profiles.
+   */
   ifc2x3Subclass?: string;
 }
 
 export interface IfcOpenShellPsetAddQtoOptions {
+  /** The object to attach the quantity set to (IfcObject, IfcContext, or IfcTypeObject). */
   product: Entity;
+  /** Name of the quantity set (e.g. "BaseQuantities"). */
   name: string;
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellPsetAssignPsetOptions {
+  /**
+   * Products to associate with the property set. IfcTypeProduct instances
+   * are added to HasPropertySets; others are linked via IfcRelDefinesByProperties.
+   */
   products: Entity[];
+  /** The property set to assign. */
   pset: Entity;
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellPsetEditPsetOptions {
+  /** The IfcPropertySet (or IfcMaterialProperties, IfcProfileProperties, etc.) to edit. */
   pset: Entity;
+  /** Optional new name for the property set. */
   name?: string;
+  /**
+   * Property key-value pairs to set. Keys are property names; values are
+   * set via the pset_props_* functions. Properties not mentioned are left
+   * unchanged. Use pset_props_set_null to set a property to null.
+   */
   properties: PsetProperties | PsetInput;
+  /**
+   * Optional IfcPropertySetTemplate to use for type inference. If omitted,
+   * the template is looked up by the property set's Name attribute.
+   */
   psetTemplate?: Entity;
+  /**
+   * If true (default), null-valued properties are removed from the set.
+   * If false, null-valued properties have their NominalValue set to blank.
+   */
   shouldPurge: boolean;
 }
 
 export interface IfcOpenShellPsetEditQtoOptions {
+  /** The IfcElementQuantity (or IfcPhysicalComplexQuantity) to edit. */
   qto: Entity;
+  /** Optional new name for the quantity set. */
   name?: string;
+  /**
+   * Quantity key-value pairs to set. Keys are quantity names. Scalar values
+   * are set as IfcPhysicalSimpleQuantity subtypes (inferred from name/value).
+   * DICT values with a "Discrimination" key create IfcPhysicalComplexQuantity.
+   */
   properties: PsetProperties | PsetInput;
+  /**
+   * Optional IfcPropertySetTemplate to use for quantity type inference.
+   * If omitted, the template is looked up by the quantity set's Name attribute.
+   */
   qtoTemplate?: Entity;
 }
 
 export interface IfcOpenShellPsetUnsharePsetOptions {
+  /**
+   * Products that should receive their own copy of the property set.
+   * Must be a subset of the products currently sharing the pset.
+   */
   products: Entity[];
+  /** The shared property set to unshare. */
   pset: Entity;
+  /** Optional owner history for the new IfcRelDefinesByProperties relationships. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellRepresentationGetProductRepresentationOptions {
+  /** Specific context entity to match against. When set, overrides context_type, subcontext, and target_view. */
   context?: Entity;
+  /** Context type filter (e.g. "Model", "Plan"). Ignored when context is set. */
   contextType?: string;
+  /** Subcontext identifier filter (e.g. "Body", "Axis"). Ignored when context is set. */
   subcontext?: string;
+  /** Target view filter (e.g. "MODEL_VIEW", "GRAPH_VIEW"). Ignored when context is set. */
   targetView?: string;
 }
 
 export interface IfcOpenShellRootCreateEntityOptions {
+  /** IFC entity class to instantiate, for example `IfcWall` or `IfcProject`. */
   ifcClass: string;
+  /** Optional predefined type. Unsupported enum values are stored as user-defined type labels when possible. */
   predefinedType?: string;
+  /** Optional entity name. */
   name?: string;
+  /** Optional owner history to assign when the target schema supports it. */
   ownerHistory?: Entity;
 }
 
 export interface IfcOpenShellRootRemoveProductOptions {
+  /** Optional user for owner history updates on modified relationships. */
   user?: Entity;
+  /** Optional application for owner history updates on modified relationships. */
   application?: Entity;
 }
 
 export interface IfcOpenShellSequenceAddTaskOptions {
+  /** IfcWorkSchedule to assign the task to via IfcRelAssignsToControl. Takes precedence over parent_task when both are provided. */
   workSchedule?: Entity;
+  /** Parent IfcTask to nest under via IfcRelNests. Used only when work_schedule is omitted. */
   parentTask?: Entity;
+  /** Task name. */
   name?: string;
+  /** Task description. */
   description?: string;
+  /** Task identification string. For nested tasks, auto-generated as "parent.N" when omitted. */
   identification?: string;
+  /** Predefined type enum value. Defaults to "NOTDEFINED". */
   predefinedType?: string;
+  /** Owner history applied to created entities. When omitted, one is created from user/application. */
   ownerHistory?: Entity;
+  /** IfcPersonAndOrganization used to create an IfcOwnerHistory when owner_history is omitted. */
   user?: Entity;
+  /** IfcApplication used to create an IfcOwnerHistory when owner_history is omitted. */
   application?: Entity;
 }
 
 export interface IfcOpenShellSequenceAddTaskTimeOptions {
+  /** When true, creates an IfcTaskTimeRecurring instead of IfcTaskTime. */
   isRecurring?: boolean;
 }
 
 export interface IfcOpenShellSequenceAddTimePeriodOptions {
+  /** ISO 8601 time string for the StartTime attribute (e.g. "08:00:00"). */
   startTime?: string;
+  /** ISO 8601 time string for the EndTime attribute (e.g. "17:00:00"). */
   endTime?: string;
 }
 
 export interface IfcOpenShellSequenceAddWorkCalendarOptions {
+  /** Calendar name. Defaults to "Unnamed". */
   name?: string;
+  /** Predefined type enum value. Defaults to "NOTDEFINED". */
   predefinedType?: string;
+  /** Owner history applied to created entities. When omitted, one is created from user/application. */
   ownerHistory?: Entity;
+  /** IfcPersonAndOrganization used to create an IfcOwnerHistory when owner_history is omitted. */
   user?: Entity;
+  /** IfcApplication used to create an IfcOwnerHistory when owner_history is omitted. */
   application?: Entity;
 }
 
 export interface IfcOpenShellSequenceAddWorkPlanOptions {
+  /** Work plan name. */
   name?: string;
+  /** Predefined type enum value. Defaults to "NOTDEFINED". */
   predefinedType?: string;
+  /** ISO 8601 date-time for CreationDate. Defaults to the current time. */
   creationDate?: string;
+  /** ISO 8601 date-time for StartTime. Defaults to creation_date. */
   startTime?: string;
+  /** IfcPerson to set as the creator. Appended to the Creators aggregate. */
   creatorPerson?: Entity;
+  /** Owner history applied to created entities. When omitted, one is created from user/application. */
   ownerHistory?: Entity;
+  /** IfcPersonAndOrganization used to create an IfcOwnerHistory when owner_history is omitted. */
   user?: Entity;
+  /** IfcApplication used to create an IfcOwnerHistory when owner_history is omitted. */
   application?: Entity;
 }
 
 export interface IfcOpenShellSequenceAddWorkScheduleOptions {
+  /** Schedule name. Defaults to "Unnamed". */
   name?: string;
+  /** Predefined type enum value. Defaults to "NOTDEFINED". */
   predefinedType?: string;
+  /** ObjectType string. */
   objectType?: string;
+  /** ISO 8601 date-time for CreationDate. Defaults to the current time. */
   creationDate?: string;
+  /** ISO 8601 date-time for StartTime. Defaults to creation_date. */
   startTime?: string;
+  /** IfcWorkPlan to nest the schedule under via IfcRelAggregates. */
   workPlan?: Entity;
+  /** IfcPerson to set as the creator. Appended to the Creators aggregate. */
   creatorPerson?: Entity;
+  /** Owner history applied to created entities. When omitted, one is created from user/application. */
   ownerHistory?: Entity;
+  /** IfcPersonAndOrganization used to create an IfcOwnerHistory when owner_history is omitted. */
   user?: Entity;
+  /** IfcApplication used to create an IfcOwnerHistory when owner_history is omitted. */
   application?: Entity;
 }
 
 export interface IfcOpenShellSequenceAssignLagTimeOptions {
+  /** Duration type enum value for the lag. Defaults to "WORKTIME". */
   durationType?: string;
 }
 
 export interface IfcOpenShellSequenceAssignProcessOptions {
+  /** Owner history applied to the IfcRelAssignsToProcess. When omitted, one is created from user/application. */
   ownerHistory?: Entity;
+  /** IfcPersonAndOrganization used to create an IfcOwnerHistory when owner_history is omitted. */
   user?: Entity;
+  /** IfcApplication used to create an IfcOwnerHistory when owner_history is omitted. */
   application?: Entity;
 }
 
 export interface IfcOpenShellSequenceAssignProductOptions {
+  /** Owner history applied to the IfcRelAssignsToProduct. When omitted, one is created from user/application. */
   ownerHistory?: Entity;
+  /** IfcPersonAndOrganization used to create an IfcOwnerHistory when owner_history is omitted. */
   user?: Entity;
+  /** IfcApplication used to create an IfcOwnerHistory when owner_history is omitted. */
   application?: Entity;
 }
 
 export interface IfcOpenShellSequenceAssignSequenceOptions {
+  /** Sequence type enum value. Defaults to "FINISH_START". */
   sequenceType?: string;
+  /** Owner history applied to the IfcRelSequence. When omitted, one is created from user/application. */
   ownerHistory?: Entity;
+  /** IfcPersonAndOrganization used to create an IfcOwnerHistory when owner_history is omitted. */
   user?: Entity;
+  /** IfcApplication used to create an IfcOwnerHistory when owner_history is omitted. */
   application?: Entity;
 }
 
 export interface IfcOpenShellSequenceAssignWorkPlanOptions {
+  /** Owner history applied to the aggregate relationship. When omitted, one is created from user/application. */
   ownerHistory?: Entity;
+  /** IfcPersonAndOrganization used to create an IfcOwnerHistory when owner_history is omitted. */
   user?: Entity;
+  /** IfcApplication used to create an IfcOwnerHistory when owner_history is omitted. */
   application?: Entity;
 }
 
 export interface IfcOpenShellSequenceCopyWorkScheduleOptions {
+  /** Owner history applied to copied entities. When omitted, one is created from user/application. */
   ownerHistory?: Entity;
+  /** IfcPersonAndOrganization used to create an IfcOwnerHistory when owner_history is omitted. */
   user?: Entity;
+  /** IfcApplication used to create an IfcOwnerHistory when owner_history is omitted. */
   application?: Entity;
 }
 
 export interface IfcOpenShellSequenceCreateBaselineOptions {
+  /** Name for the baseline schedule. When omitted, the baseline Name is left blank. */
   name?: string;
+  /** Owner history applied to baseline entities. When omitted, one is created from user/application. */
   ownerHistory?: Entity;
+  /** IfcPersonAndOrganization used to create an IfcOwnerHistory when owner_history is omitted. */
   user?: Entity;
+  /** IfcApplication used to create an IfcOwnerHistory when owner_history is omitted. */
   application?: Entity;
 }
 
 export interface IfcOpenShellSequenceDuplicateTaskOptions {
+  /** Owner history applied to duplicated entities. When omitted, one is created from user/application. */
   ownerHistory?: Entity;
+  /** IfcPersonAndOrganization used to create an IfcOwnerHistory when owner_history is omitted. */
   user?: Entity;
+  /** IfcApplication used to create an IfcOwnerHistory when owner_history is omitted. */
   application?: Entity;
 }
 
 export interface IfcOpenShellSequenceRemoveOptions {
+  /** IfcPersonAndOrganization used to update or remove relationships. */
   user?: Entity;
+  /** IfcApplication used to update or remove relationships. */
   application?: Entity;
 }
 
 export interface IfcOpenShellShapeBuilderAxis2Placement2dOptions {
+  /** XY coordinates of the placement origin. */
   position: number[];
+  /** Optional reference direction. Defaults to (1, 0) when omitted. */
   xDirection?: number[];
 }
 
 export interface IfcOpenShellShapeBuilderAxis2Placement3dOptions {
+  /** XYZ coordinates of the placement origin. */
   position: number[];
+  /** Direction ratios for the Z axis. */
   zAxis: number[];
+  /** Direction ratios for the X axis (Y is derived). */
   xAxis: number[];
 }
 
 export interface IfcOpenShellShapeBuilderBlockOptions {
+  /** XYZ position of the block's local origin (corner from which X/Y/Z lengths extend). */
   position: number[];
+  /** Block length along X in model units. Defaults to 1.0. */
   xLength: number;
+  /** Block length along Y in model units. Defaults to 1.0. */
   yLength: number;
+  /** Block length along Z in model units. Defaults to 1.0. */
   zLength: number;
 }
 
 export interface IfcOpenShellShapeBuilderEllipseCurveOptions {
+  /** First semi-axis radius (X direction). */
   xAxisRadius: number;
+  /** Second semi-axis radius (Y direction). */
   yAxisRadius: number;
+  /** XY centre of the ellipse. */
   position: number[];
+  /** Two trim points in XY. When non-empty, wraps the ellipse in an IfcTrimmedCurve. */
   trimPoints: number[][];
+  /** Optional reference X direction for the ellipse placement. */
   refXDirection?: number[];
+  /** Cardinal index mask (0=+X, 1=+Y, 2=-X, 3=-Y) for trim points, used when trim_points is empty. */
   trimPointsMask: number[];
 }
 
 export interface IfcOpenShellShapeBuilderExtrudeOptions {
+  /** IfcProfileDef or IfcCurve to extrude. Curves are wrapped in an IfcArbitraryClosedProfileDef. */
   profileOrCurve: Entity;
+  /** Extrusion depth in model units. Must be greater than zero. */
   magnitude: number;
+  /** XYZ position of the solid's local origin. */
   position: number[];
+  /** Direction ratios for the extrusion direction. */
   extrusionVector: number[];
+  /** Z axis direction ratios for the solid's placement. */
   positionZAxis: number[];
+  /** X axis direction ratios for the solid's placement. */
   positionXAxis: number[];
+  /** Optional Y axis; when provided, the Z axis is computed as cross(X, Y). */
   positionYAxis?: number[];
 }
 
 export interface IfcOpenShellShapeBuilderHalfSpaceSolidOptions {
+  /** IfcPlane defining the bounding surface. */
   plane: Entity;
+  /** If true, the half-space is on the side of the plane normal. */
   agreementFlag: boolean;
 }
 
 export interface IfcOpenShellShapeBuilderMepBendShapeOptions {
+  /** MEP segment entity (must have a single material profile). */
   segment: Entity;
+  /** Length of the start straight section in model units. */
   startLength: number;
+  /** Length of the end straight section in model units. */
   endLength: number;
+  /** Bend angle in radians. */
   angle: number;
+  /** Bend radius in model units. */
   radius: number;
+  /** XY direction vector indicating the bend plane. */
   bendVector: number[];
+  /** If true, flip the Z axis direction. Defaults to false. */
   flipZAxis: boolean;
 }
 
 export interface IfcOpenShellShapeBuilderMepTransitionCalculateOptions {
+  /** Half-dimensions of the start profile (X, Y). */
   startHalfDim: number[];
+  /** Half-dimensions of the end profile (X, Y). */
   endHalfDim: number[];
+  /** XY offset between the two profile centres. */
   offset: number[];
+  /** Optional override for the absolute XY difference of half-dimensions. */
   diff?: number[];
+  /** If true, swap X/Y axes for the end profile. Defaults to false. */
   endProfile: boolean;
+  /** Transition length in model units. Provide either length or angle, not both. */
   length?: number;
+  /** Transition angle in degrees. Provide either length or angle, not both. */
   angle?: number;
 }
 
 export interface IfcOpenShellShapeBuilderMepTransitionLengthOptions {
+  /** Half-dimensions of the start profile (X, Y). */
   startHalfDim: number[];
+  /** Half-dimensions of the end profile (X, Y). */
   endHalfDim: number[];
+  /** Transition angle in degrees. */
   angle: number;
+  /** XY offset between the two profile centres. */
   profileOffset: number[];
 }
 
 export interface IfcOpenShellShapeBuilderMepTransitionShapeOptions {
+  /** Start MEP segment (IfcFlowSegment with material profile). */
   startSegment: Entity;
+  /** End MEP segment (IfcFlowSegment with material profile). */
   endSegment: Entity;
+  /** Length of the start straight section in model units. */
   startLength: number;
+  /** Length of the end straight section in model units. */
   endLength: number;
+  /** Transition angle in degrees. */
   angle: number;
+  /** XY offset between the two profile centres. */
   profileOffset: number[];
 }
 
 export interface IfcOpenShellShapeBuilderMirrorOptions {
+  /** Geometry item to mirror (polyline, circle, ellipse, trimmed curve, or extruded solid). */
   item: Entity;
+  /** Mirror axes: non-zero values flip the corresponding axis (index 0 = X, index 1 = Y). */
   mirrorAxes: number[];
+  /** XY point through which the mirror plane passes. */
   mirrorPoint: number[];
+  /** If true, deep-copy the item before mirroring. Defaults to false. */
   createCopy: boolean;
+  /** Optional 3x3 or 4x4 placement matrix for local-space mirroring. */
   placementMatrix: number[];
 }
 
 export interface IfcOpenShellShapeBuilderPolylineOptions {
+  /** Ordered coordinate points (each XY or XYZ). */
   points: number[][];
+  /** Whether the polyline is closed. Defaults to false. */
   closed?: boolean;
+  /** Optional offset added to every point before storage. */
   positionOffset?: number[];
+  /** Zero-based indices of points where an arc segment begins (three consecutive points form an arc). */
   arcPoints: number[];
 }
 
 export interface IfcOpenShellShapeBuilderProfileOptions {
+  /** Outer boundary curve (IfcCurve entity). */
   outerCurve: Entity;
+  /** Optional profile name. */
   name?: string;
+  /** Inner void curves. If non-empty, creates IfcArbitraryProfileDefWithVoids. */
   innerCurves: Entity[];
+  /** Profile type string (e.g. "AREA"). Defaults to "AREA". */
   profileType?: string;
 }
 
 export interface IfcOpenShellShapeBuilderRepresentationOptions {
+  /** IfcGeometricRepresentationContext for the representation. */
   context: Entity;
+  /** Representation items (geometric or topological entities). */
   items: Entity[];
+  /** Representation type (e.g. "Tessellation", "Curve2D"). Auto-detected if omitted. */
   representationType?: string;
 }
 
 export interface IfcOpenShellShapeBuilderRotateOptions {
+  /** Geometry item to rotate (polyline, circle, or extruded solid). */
   item: Entity;
+  /** Rotation angle in degrees. */
   angle: number;
+  /** XY pivot point for the rotation. */
   pivotPoint: number[];
+  /** If true, rotate counter-clockwise; if false, clockwise. Defaults to false. */
   counterClockwise: boolean;
+  /** If true, deep-copy the item before rotating. Defaults to false. */
   createCopy: boolean;
 }
 
 export interface IfcOpenShellShapeBuilderSphereOptions {
+  /** Sphere radius in model units. Defaults to 1.0. */
   radius: number;
+  /** XYZ centre of the sphere. */
   center: number[];
 }
 
 export interface IfcOpenShellShapeBuilderTranslateOptions {
+  /** Geometry item to translate (polyline, circle, extruded solid, or shape representation). */
   item: Entity;
+  /** Translation vector (XY or XYZ). */
   translation: number[];
+  /** If true, deep-copy the item before translating. Defaults to false. */
   createCopy: boolean;
 }
 
 export interface IfcOpenShellSpatialAssignContainerOptions {
+  /** Products to contain in the spatial structure. */
   products: Entity[];
+  /** The IfcSpatialStructureElement (e.g. IfcBuildingStorey, IfcSpace) to contain the products. */
   relatingStructure: Entity;
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellSpatialDereferenceStructureOptions {
+  /** Products to remove from the spatial reference. */
   products: Entity[];
+  /** The IfcSpatialStructureElement to dereference from. */
   relatingStructure: Entity;
+  /** Optional user for owner history updates on modified relationships. */
   user?: Entity;
+  /** Optional application for owner history updates on modified relationships. */
   application?: Entity;
 }
 
 export interface IfcOpenShellSpatialReferenceStructureOptions {
+  /** Products to reference in the spatial structure. */
   products: Entity[];
+  /** The IfcSpatialStructureElement to reference the products from. */
   relatingStructure: Entity;
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellSpatialUnassignContainerOptions {
+  /** Products to remove from their spatial containment relationships. */
   products: Entity[];
+  /** Optional user for owner history updates on modified relationships. */
   user?: Entity;
+  /** Optional application for owner history updates on modified relationships. */
   application?: Entity;
 }
 
 export interface IfcOpenShellStructuralAddStructuralActivityOptions {
+  /** Owner history for the IfcStructuralActivity entity. When omitted, no OwnerHistory is set. */
   activityOwnerHistory?: Entity;
+  /** Owner history for the IfcRelConnectsStructuralActivity relationship. When omitted, no OwnerHistory is set. */
   relationshipOwnerHistory?: Entity;
 }
 
 export interface IfcOpenShellStructuralAddStructuralBoundaryConditionOptions {
+  /** Name for the boundary condition entity. */
   name?: string;
+  /** IfcRelConnectsStructuralMember or IfcStructuralConnection to which the condition is applied. When provided, the boundary class is inferred from the connection type. */
   connection?: Entity;
 }
 
 export interface IfcOpenShellStructuralAssignStructuralAnalysisModelOptions {
+  /** Owner history applied to the IfcRelAssignsToGroup relationship. When omitted, one is created from user/application. */
   ownerHistory?: Entity;
+  /** IfcPersonAndOrganization used to create an IfcOwnerHistory when owner_history is omitted. */
   user?: Entity;
+  /** IfcApplication used to create an IfcOwnerHistory when owner_history is omitted. */
   application?: Entity;
 }
 
 export interface IfcOpenShellStructuralRemoveStructuralBoundaryConditionOptions {
+  /** IfcStructuralConnection whose AppliedCondition to clear and delete. Takes precedence over boundary_condition. */
   connection?: Entity;
+  /** IfcBoundaryCondition entity to remove. Used when connection is omitted. */
   boundaryCondition?: Entity;
 }
 
 export interface IfcOpenShellStructuralUnassignStructuralAnalysisModelOptions {
+  /** IfcPersonAndOrganization used to update the relationship OwnerHistory. */
   user?: Entity;
+  /** IfcApplication used to update the relationship OwnerHistory. */
   application?: Entity;
 }
 
 export interface IfcOpenShellStyleAssignItemStyleOptions {
+  /** The representation item to assign the style to. */
   item: Entity;
+  /** Optional style to assign. Empty to remove/unassign. */
   style?: Entity;
+  /** Whether to use IfcPresentationStyleAssignment (for IFC2X3 compat). */
   shouldUsePresentationStyleAssignment: boolean;
 }
 
 export interface IfcOpenShellSystemAddPortOptions {
+  /**
+   * Optional element to assign the port to. If omitted, the port is created
+   * standalone and must be assigned later via system_assign_port.
+   */
   element?: Entity;
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellSystemAddSystemOptions {
+  /**
+   * IFC class for the system (e.g. "IfcDistributionSystem", "IfcZone",
+   * "IfcBuildingSystem"). In IFC2X3, "IfcDistributionSystem" is
+   * automatically mapped to "IfcSystem".
+   */
   ifcClass: string;
+  /** Optional owner history. */
   ownerHistory?: Entity;
 }
 
 export interface IfcOpenShellSystemAssignFlowControlOptions {
+  /** The flow element (e.g. IfcFlowSegment) that owns the control. */
   relatingFlowElement: Entity;
+  /** The flow control element (e.g. IfcFlowController) to assign. */
   relatedFlowControl: Entity;
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellSystemAssignPortOptions {
+  /** The element to assign the port to. */
   element: Entity;
+  /** The IfcDistributionPort to assign. */
   port: Entity;
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellSystemAssignSystemOptions {
+  /** Products to assign to the system. Must be compatible with the system type. */
   products: Entity[];
+  /** The system (IfcSystem subclass or IfcGroup) to assign products to. */
   system: Entity;
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellSystemConnectPortOptions {
+  /** The first port in the connection. */
   port1: Entity;
+  /** The second port in the connection. */
   port2: Entity;
+  /**
+   * Flow direction: "SOURCE" (port1 sources, port2 sinks), "SINK" (port1
+   * sinks, port2 sources), "SOURCEANDSINK", or "NOTDEFINED".
+   */
   direction: string;
+  /** Optional realizing element (e.g. a pipe or duct connecting the ports). */
   element?: Entity;
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellSystemUnassignFlowControlOptions {
+  /** The flow element that owns the control. */
   relatingFlowElement: Entity;
+  /** The flow control element to unassign. */
   relatedFlowControl: Entity;
+  /** Optional user for owner history updates on modified relationships. */
   user?: Entity;
+  /** Optional application for owner history updates on modified relationships. */
   application?: Entity;
 }
 
 export interface IfcOpenShellSystemUnassignPortOptions {
+  /** The element the port is assigned to. */
   element: Entity;
+  /** The IfcDistributionPort to unassign. */
   port: Entity;
+  /** Optional user for owner history updates on modified relationships. */
   user?: Entity;
+  /** Optional application for owner history updates on modified relationships. */
   application?: Entity;
 }
 
 export interface IfcOpenShellSystemUnassignSystemOptions {
+  /** Products to remove from the system. */
   products: Entity[];
+  /** The system to remove products from. */
   system: Entity;
+  /** Optional user for owner history updates on modified relationships. */
   user?: Entity;
+  /** Optional application for owner history updates on modified relationships. */
   application?: Entity;
 }
 
 export interface IfcOpenShellTypeAssignTypeOptions {
+  /** Element occurrences to assign the type to. */
   objects: Entity[];
+  /** The IfcTypeObject to assign. */
   relatingType: Entity;
+  /**
+   * If true (default), IfcRepresentationMaps from the type are propagated
+   * onto each occurrence, and PredefinedType/ObjectType are cleared on
+   * objects when the type already declares a non-NOTDEFINED PredefinedType.
+   */
   shouldMapRepresentations?: boolean;
+  /** Optional owner history. A new one is created from user/application if not provided. */
   ownerHistory?: Entity;
+  /** Optional user for owner history creation. */
   user?: Entity;
+  /** Optional application for owner history creation. */
   application?: Entity;
 }
 
 export interface IfcOpenShellTypeUnassignTypeOptions {
+  /** Element occurrences to remove type assignments from. */
   objects: Entity[];
+  /** Optional user for owner history updates on modified relationships. */
   user?: Entity;
+  /** Optional application for owner history updates on modified relationships. */
   application?: Entity;
 }
 
@@ -4398,7 +5109,7 @@ export interface ShapeApi {
      * Create an IfcCircle centred at the given position.
      *
      * @param file IFC file that receives the geometry.
-     * @param centre XY coordinates of the circle centre.
+     * @param center XY coordinates of the circle centre.
      * @param radius Circle radius in model units.
      * @return IfcCircle entity.
      */
@@ -5560,6 +6271,9 @@ export interface Api {
   unit: UnitApi;
 }
 
+/**
+ * @internal
+ */
 export function createApi(shell: IfcOpenShell): Api {
   const raw = shell.raw as object as RawApi;
   return Object.freeze({
@@ -10479,7 +11193,7 @@ export function createApi(shell: IfcOpenShell): Api {
      * Create an IfcCircle centred at the given position.
      *
      * @param file IFC file that receives the geometry.
-     * @param centre XY coordinates of the circle centre.
+     * @param center XY coordinates of the circle centre.
      * @param radius Circle radius in model units.
      * @return IfcCircle entity.
      */

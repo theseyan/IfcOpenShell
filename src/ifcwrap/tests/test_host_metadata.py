@@ -6,12 +6,19 @@ from pathlib import Path
 from textwrap import dedent
 
 from src.ifcwrap.binding_generator.authored_spec import load_authored_spec
-from src.ifcwrap.binding_generator.binding_ir import BindingIR, CallIR, DirectCallOp, lower_binding_spec
+from src.ifcwrap.binding_generator.binding_ir import (
+    BindingIR,
+    CallIR,
+    DirectCallOp,
+    lower_binding_spec,
+)
 from src.ifcwrap.binding_generator.binding_model import (
     HandleSpec,
     OptionStructFieldSpec,
     OptionStructSpec,
     ParamSpec,
+    ResultStructFieldSpec,
+    ResultStructSpec,
     TypeSpec,
 )
 from src.ifcwrap.binding_generator.host_metadata import build_host_metadata
@@ -105,12 +112,19 @@ def test_host_metadata_derives_layouts_and_signatures(tmp_path: Path) -> None:
 
     create = metadata.functions["ifcopenshell_demo_create_file"]
     assert create.restype == "bool"
-    assert [param.c_type for param in create.params] == ["const char*", "ifcopenshell_demo_file_t**"]
+    assert [param.c_type for param in create.params] == [
+        "const char*",
+        "ifcopenshell_demo_file_t**",
+    ]
     assert create.params[-1].role == "out_result"
     assert create.error_policy == "bool_return_last_error"
 
     by_type = metadata.functions["ifcopenshell_demo_file_by_type"]
-    assert [param.role for param in by_type.params] == ["receiver", "param", "out_result"]
+    assert [param.role for param in by_type.params] == [
+        "receiver",
+        "param",
+        "out_result",
+    ]
     assert [param.c_type for param in by_type.params] == [
         "ifcopenshell_demo_file_t*",
         "const char*",
@@ -178,3 +192,54 @@ def test_host_metadata_includes_sequences_used_only_by_option_structs() -> None:
     assert metadata.value_types["int32_list_list_list_list"].sequence_depth == 4
     assert "demo_item_list" in metadata.value_types
     assert "demo_item_list_list" in metadata.value_types
+
+
+def test_host_metadata_preserves_option_and_result_field_docs() -> None:
+    metadata = build_host_metadata(
+        BindingIR(
+            module="demo",
+            c_prefix="ifcopenshell_demo",
+            public_headers=(),
+            handles={},
+            result_structs={
+                "DemoResult": ResultStructSpec(
+                    name="DemoResult",
+                    cpp_type="Demo::Result",
+                    c_type="ifcopenshell_demo_result_t",
+                    fields=(
+                        ResultStructFieldSpec(
+                            "value",
+                            TypeSpec(kind="double"),
+                            doc="Result value in model units.",
+                        ),
+                        ResultStructFieldSpec("undocumented", TypeSpec(kind="bool")),
+                    ),
+                )
+            },
+            functions=(),
+            methods=(),
+            option_structs={
+                "DemoOptions": OptionStructSpec(
+                    name="DemoOptions",
+                    cpp_type="Demo::Options",
+                    c_type="ifcopenshell_demo_options_t",
+                    fields=(
+                        OptionStructFieldSpec(
+                            "enabled",
+                            TypeSpec(kind="bool", nullable=True),
+                            doc="Whether the feature is enabled.\n\nOptional in the input.",
+                        ),
+                        OptionStructFieldSpec("undocumented", TypeSpec(kind="string")),
+                    ),
+                )
+            },
+        )
+    )
+
+    option_fields = {field.name: field for field in metadata.option_structs["DemoOptions"].fields}
+    assert option_fields["enabled"].doc == "Whether the feature is enabled.\n\nOptional in the input."
+    assert option_fields["undocumented"].doc is None
+
+    result_fields = {field.name: field for field in metadata.value_types["DemoResult"].fields}
+    assert result_fields["value"].doc == "Result value in model units."
+    assert result_fields["undocumented"].doc is None

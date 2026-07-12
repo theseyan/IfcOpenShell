@@ -24,7 +24,6 @@ try:
     from .c_header_rendering import _render_header
     from .c_internal_header import _render_internal_header
     from .c_runtime_support import _render_cpp_support_runtime
-    from .c_variant_helpers import _render_variant_destroy_impls
     from .c_sequence_helpers import (
         _render_common_type_impls,
         _render_handle_list_destroy_impl,
@@ -36,6 +35,7 @@ try:
         _used_handle_list_handles,
         _used_scalar_sequence_kinds,
     )
+    from .c_variant_helpers import _render_variant_destroy_impls
     from .clang_discovery import CompilationConfig, DiscoveryEnvironment
     from .cpp_spec_frontend import (
         discover_cpp_spec_contract_headers,
@@ -65,7 +65,6 @@ except ImportError:  # pragma: no cover - script execution fallback
     from c_header_rendering import _render_header
     from c_internal_header import _render_internal_header
     from c_runtime_support import _render_cpp_support_runtime
-    from c_variant_helpers import _render_variant_destroy_impls
     from c_sequence_helpers import (
         _render_common_type_impls,
         _render_handle_list_destroy_impl,
@@ -77,6 +76,7 @@ except ImportError:  # pragma: no cover - script execution fallback
         _used_handle_list_handles,
         _used_scalar_sequence_kinds,
     )
+    from c_variant_helpers import _render_variant_destroy_impls
     from clang_discovery import CompilationConfig, DiscoveryEnvironment
     from cpp_spec_frontend import (
         discover_cpp_spec_contract_headers,
@@ -202,7 +202,9 @@ def _merge_cpp_specs(
         if public_header not in public_headers:
             public_headers.append(public_header)
 
-        for handle_name, handle in lower_cpp_spec_handles_to_specs(discover_cpp_spec_handles(config.path, c_prefix=config.handle_c_prefix)).items():
+        for handle_name, handle in lower_cpp_spec_handles_to_specs(
+            discover_cpp_spec_handles(config.path, c_prefix=config.handle_c_prefix)
+        ).items():
             if handle_name in handles and handles[handle_name] != handle:
                 msg = f"C++ spec handle '{handle_name}' is declared with conflicting metadata"
                 raise ValueError(msg)
@@ -210,6 +212,8 @@ def _merge_cpp_specs(
         for struct_name, struct in lower_cpp_spec_result_structs_to_specs(
             discover_cpp_spec_result_structs(config.path, config.namespace),
             handles,
+            environment=environment,
+            translation_unit=config.path,
         ).items():
             if struct_name in result_structs and result_structs[struct_name] != struct:
                 msg = f"C++ spec result struct '{struct_name}' is declared with conflicting metadata"
@@ -296,23 +300,21 @@ def _render_cpp(spec: BindingIR, header_name: str) -> str:
     total_calls = len(spec.functions) + len(spec.methods)
     for index, call in enumerate((*spec.functions, *spec.methods), start=1):
         if index == 1 or index % 100 == 0 or index == total_calls:
-            debug_log("c_backend.render_cpp.calls", f"{index}/{total_calls} current={call.c_name}")
+            debug_log(
+                "c_backend.render_cpp.calls",
+                f"{index}/{total_calls} current={call.c_name}",
+            )
         rendered_calls.append(_render_call_impl(call, spec))
     call_impls = "\n\n".join(rendered_calls)
     includes = "\n".join(
-        f'#include {header}' if header.startswith('<') else f'#include "{header}"'
-        for header in spec.public_headers
+        f"#include {header}" if header.startswith("<") else f'#include "{header}"' for header in spec.public_headers
     )
     handle_structs_block = "\n\n".join(handle_structs)
     destroy_impls_block = "\n\n".join(destroy_impls)
     handle_list_types = _used_handle_list_handles(spec)
     sequence_kinds = _used_scalar_sequence_kinds(spec)
-    handle_list_helpers = "\n\n".join(
-        _render_handle_list_helpers(handle) for handle in handle_list_types
-    )
-    handle_list_list_helpers = "\n\n".join(
-        _render_handle_list_list_helpers(handle) for handle in handle_list_types
-    )
+    handle_list_helpers = "\n\n".join(_render_handle_list_helpers(handle) for handle in handle_list_types)
+    handle_list_list_helpers = "\n\n".join(_render_handle_list_list_helpers(handle) for handle in handle_list_types)
     handle_list_destroy_impls = "\n\n".join(_render_handle_list_destroy_impl(handle) for handle in handle_list_types)
     handle_list_list_destroy_impls = "\n\n".join(
         _render_handle_list_list_destroy_impl(handle) for handle in handle_list_types
@@ -443,6 +445,8 @@ def build_binding_ir(
             for struct_name, struct in lower_cpp_spec_result_structs_to_specs(
                 discover_cpp_spec_result_structs(config.path, config.namespace),
                 handles,
+                environment=environment,
+                translation_unit=config.path,
             ).items():
                 if struct_name in result_structs and result_structs[struct_name] != struct:
                     msg = f"C++ spec result struct '{struct_name}' is declared with conflicting metadata"
@@ -483,7 +487,9 @@ def build_binding_ir(
             SimpleNamespace(
                 module=module,
                 c_prefix=c_prefix,
-                public_headers=tuple(_cpp_spec_public_header(config.path, discovery_include_dirs) for config in configs),
+                public_headers=tuple(
+                    _cpp_spec_public_header(config.path, discovery_include_dirs) for config in configs
+                ),
                 public_header_plugins={},
                 handles=handles,
                 result_structs=result_structs,
@@ -508,7 +514,12 @@ def build_binding_ir(
         )
 
     cpp_spec_configs = (
-        _cpp_spec_configs(cpp_spec_paths, cpp_spec_namespace, cpp_spec_c_prefix, cpp_spec_handle_c_prefix)
+        _cpp_spec_configs(
+            cpp_spec_paths,
+            cpp_spec_namespace,
+            cpp_spec_c_prefix,
+            cpp_spec_handle_c_prefix,
+        )
         if cpp_spec_paths
         else ()
     )
@@ -662,9 +673,16 @@ def generate_cpp_specs(
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Generate the first C backend skeleton from a handwritten binding spec.")
-    parser.add_argument("--spec", type=Path, action="append", default=[],
-                        help="Path to a binding spec YAML. Can be specified multiple times for merged output.")
+    parser = argparse.ArgumentParser(
+        description="Generate the first C backend skeleton from a handwritten binding spec."
+    )
+    parser.add_argument(
+        "--spec",
+        type=Path,
+        action="append",
+        default=[],
+        help="Path to a binding spec YAML. Can be specified multiple times for merged output.",
+    )
     parser.add_argument(
         "--cpp-spec",
         type=Path,
@@ -704,8 +722,18 @@ def _build_parser() -> argparse.ArgumentParser:
             "Provide once for all C++ specs or once per --cpp-spec."
         ),
     )
-    parser.add_argument("--header-out", type=Path, required=True, help="Output path for the generated C header.")
-    parser.add_argument("--cpp-out", type=Path, required=True, help="Output path for the generated C++ glue source.")
+    parser.add_argument(
+        "--header-out",
+        type=Path,
+        required=True,
+        help="Output path for the generated C header.",
+    )
+    parser.add_argument(
+        "--cpp-out",
+        type=Path,
+        required=True,
+        help="Output path for the generated C++ glue source.",
+    )
     parser.add_argument(
         "--internal-header-out",
         type=Path,

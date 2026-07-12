@@ -25,13 +25,21 @@ from src.ifcwrap.binding_generator.host_metadata import (
     HostStructMetadata,
     _function_metadata,
 )
-from src.ifcwrap.binding_generator.targets import TargetGenerationRequest, discover_targets, get_target
+from src.ifcwrap.binding_generator.targets import (
+    TargetGenerationRequest,
+    discover_targets,
+    get_target,
+)
 from src.ifcwrap.binding_generator.targets.wasm import WasmTargetBackend
-from src.ifcwrap.binding_generator.targets.wasm.backend import render_export_list, render_wasm_bindings
 from src.ifcwrap.binding_generator.targets.wasm.api_bridge import render_api_direct
+from src.ifcwrap.binding_generator.targets.wasm.backend import (
+    render_export_list,
+    render_wasm_bindings,
+)
 from src.ifcwrap.binding_generator.targets.wasm.js_glue import render_js_glue
-from src.ifcwrap.binding_generator.targets.wasm.typescript import render_typescript_declarations
-
+from src.ifcwrap.binding_generator.targets.wasm.typescript import (
+    render_typescript_declarations,
+)
 
 _DEFAULT_ERROR_FUNCTIONS = {
     "clear_error": "ifcopenshell_demo_clear_error",
@@ -57,7 +65,8 @@ def _make_handle(c_type: str, destroy_function: str | None = None) -> HostStruct
         c_type=c_type,
         kind="handle",
         fields=(HostStructField("ptr", "void*"), HostStructField("owned", "bool")),
-        destroy_function=destroy_function or f"ifcopenshell_{c_type.removeprefix('ifcopenshell_').removesuffix('_t')}_destroy",
+        destroy_function=destroy_function
+        or f"ifcopenshell_{c_type.removeprefix('ifcopenshell_').removesuffix('_t')}_destroy",
         layout="ptr_owned",
     )
 
@@ -142,9 +151,16 @@ class TestHostMetadata:
             params=(
                 ParamSpec(
                     "properties",
-                    TypeSpec(kind="opaque_ptr", cpp_type="arbitrary_property_builder_t*", semantic="property_map"),
+                    TypeSpec(
+                        kind="opaque_ptr",
+                        cpp_type="arbitrary_property_builder_t*",
+                        semantic="property_map",
+                    ),
                 ),
-                ParamSpec("opaque", TypeSpec(kind="opaque_ptr", cpp_type="arbitrary_opaque_t*")),
+                ParamSpec(
+                    "opaque",
+                    TypeSpec(kind="opaque_ptr", cpp_type="arbitrary_opaque_t*"),
+                ),
             ),
             operation=DirectCallOp(cpp_name="demo_use"),
         )
@@ -209,8 +225,7 @@ class TestWasmTypescript:
         assert "export interface IfcOpenshellParseModule" in code
         assert "open(path: string): void;" in code
         assert (
-            "openBytes(bytes: Uint8Array | ArrayBuffer | ArrayBufferView, "
-            "filename?: string, readonly?: boolean): void;"
+            "openBytes(bytes: Uint8Array | ArrayBuffer | ArrayBufferView, filename?: string, readonly?: boolean): void;"
         ) in code
         assert "export interface IfcOpenshellGeomModule" in code
         assert "createSettings(): IfcOpenshellGeomSettings;" in code
@@ -219,9 +234,10 @@ class TestWasmTypescript:
         assert "parse: IfcOpenshellParseModule;" in code
         assert "geom: IfcOpenshellGeomModule;" in code
         assert "unit: IfcOpenshellUnitModule;" in code
-        assert "    createSettings(): IfcOpenshellGeomSettings;" not in code.split(
-            "export interface IfcOpenshellModule"
-        )[1]
+        assert (
+            "    createSettings(): IfcOpenshellGeomSettings;"
+            not in code.split("export interface IfcOpenshellModule")[1]
+        )
 
     def test_renders_source_docs_as_jsdoc(self):
         metadata = _make_metadata(
@@ -250,7 +266,11 @@ class TestWasmTypescript:
                     c_type="ifcopenshell_demo_create_entity_options_t",
                     fields=(
                         HostOptionFieldMetadata("ifc_class", TypeSpec(kind="string"), "const char*"),
-                        HostOptionFieldMetadata("name", TypeSpec(kind="string", nullable=True), "const char*"),
+                        HostOptionFieldMetadata(
+                            "name",
+                            TypeSpec(kind="string", nullable=True),
+                            "const char*",
+                        ),
                     ),
                 )
             }
@@ -349,7 +369,12 @@ class TestWasmJsGlue:
             kind="variant",
             cpp_type="std::variant<Demo::Instance*, std::string>",
             variants=(
-                TypeSpec(kind="handle", handle="instance", cpp_type="Demo::Instance*", ownership="owned"),
+                TypeSpec(
+                    kind="handle",
+                    handle="instance",
+                    cpp_type="Demo::Instance*",
+                    ownership="owned",
+                ),
                 TypeSpec(kind="string", cpp_type="std::string"),
             ),
         )
@@ -411,8 +436,7 @@ class TestWasmJsGlue:
         assert "addSiUnit: (unit_type) => invoke_ifcopenshell_unit_add_si_unit(module, unit_type)" in code
         assert (
             "        createSettings: () => invoke_ifcopenshell_geom_create_settings(module),\n"
-            "        geom: Object.freeze({"
-            not in code
+            "        geom: Object.freeze({" not in code
         )
 
     def test_generates_instance_methods_for_receiver_functions(self):
@@ -446,7 +470,10 @@ class TestWasmJsGlue:
                 "int32_list": HostStructMetadata(
                     c_type="ifcopenshell_int32_list_t",
                     kind="sequence",
-                    fields=(HostStructField("items", "int32_t*"), HostStructField("size", "size_t")),
+                    fields=(
+                        HostStructField("items", "int32_t*"),
+                        HostStructField("size", "size_t"),
+                    ),
                     destroy_function="ifcopenshell_int32_list_destroy",
                     element_type="int32_t",
                     sequence_depth=1,
@@ -454,7 +481,10 @@ class TestWasmJsGlue:
                 "string_list": HostStructMetadata(
                     c_type="ifcopenshell_string_list_t",
                     kind="sequence",
-                    fields=(HostStructField("items", "ifcopenshell_string_t*"), HostStructField("size", "size_t")),
+                    fields=(
+                        HostStructField("items", "ifcopenshell_string_t*"),
+                        HostStructField("size", "size_t"),
+                    ),
                     destroy_function="ifcopenshell_string_list_destroy",
                     element_type="ifcopenshell_string_t",
                     sequence_depth=1,
@@ -467,7 +497,14 @@ class TestWasmJsGlue:
                 ),
                 "ifcopenshell_demo_sum_values": _make_function(
                     c_name="ifcopenshell_demo_sum_values",
-                    params=(HostParamMetadata("values", "const ifcopenshell_int32_list_t*", "param", "int32"),),
+                    params=(
+                        HostParamMetadata(
+                            "values",
+                            "const ifcopenshell_int32_list_t*",
+                            "param",
+                            "int32",
+                        ),
+                    ),
                     returns=TypeSpec(kind="int32"),
                 ),
                 "ifcopenshell_demo_names": _make_function(
@@ -482,7 +519,7 @@ class TestWasmJsGlue:
         assert "_allocInputSequence(module, values" in code
         assert "_freeInputSequence(module, _valuesPtr" in code
         assert "outResultPtr = module._malloc(8);" in code
-        assert "_readValueType(module, outResultPtr, _VALUE_TYPES[\"ifcopenshell_string_list_t\"])" in code
+        assert '_readValueType(module, outResultPtr, _VALUE_TYPES["ifcopenshell_string_list_t"])' in code
         assert "module._ifcopenshell_string_list_destroy(outResultPtr);" in code
 
     def test_marshals_handle_sequence_parameters(self):
@@ -539,7 +576,10 @@ class TestWasmJsGlue:
                 "double_list": HostStructMetadata(
                     c_type="ifcopenshell_double_list_t",
                     kind="sequence",
-                    fields=(HostStructField("items", "double*"), HostStructField("size", "size_t")),
+                    fields=(
+                        HostStructField("items", "double*"),
+                        HostStructField("size", "size_t"),
+                    ),
                     destroy_function="ifcopenshell_double_list_destroy",
                     element_type="double",
                     sequence_depth=1,
@@ -567,7 +607,11 @@ class TestWasmJsGlue:
                             TypeSpec(kind="double", sequence_depth=2),
                             "const ifcopenshell_double_list_list_t*",
                         ),
-                        HostOptionFieldMetadata("name", TypeSpec(kind="string", nullable=True), "const char*"),
+                        HostOptionFieldMetadata(
+                            "name",
+                            TypeSpec(kind="string", nullable=True),
+                            "const char*",
+                        ),
                     ),
                 )
             },
@@ -591,8 +635,13 @@ class TestWasmJsGlue:
         assert '"ifcopenshell_demo_create_entity_options_t": {' in code
         assert '"optionFields": [' in code
         assert '"name": "has_name"' in code
-        assert 'var _optionsPtr = _allocInputOption(module, options, "ifcopenshell_demo_create_entity_options_t");' in code
-        assert 'if (_optionsPtr) _freeInputOption(module, _optionsPtr, "ifcopenshell_demo_create_entity_options_t");' in code
+        assert (
+            'var _optionsPtr = _allocInputOption(module, options, "ifcopenshell_demo_create_entity_options_t");' in code
+        )
+        assert (
+            'if (_optionsPtr) _freeInputOption(module, _optionsPtr, "ifcopenshell_demo_create_entity_options_t");'
+            in code
+        )
         assert "function _allocInputOption(module, value, cType)" in code
         assert "function _zeroMemory(module, ptr, size)" in code
         assert "module.HEAPU32.fill(0, start, start + wordCount);" in code
@@ -618,7 +667,11 @@ class TestWasmApiBridge:
                     c_type="ifcopenshell_root_create_entity_options_t",
                     fields=(
                         HostOptionFieldMetadata("ifc_class", TypeSpec(kind="string"), "const char*"),
-                        HostOptionFieldMetadata("name", TypeSpec(kind="string", nullable=True), "const char*"),
+                        HostOptionFieldMetadata(
+                            "name",
+                            TypeSpec(kind="string", nullable=True),
+                            "const char*",
+                        ),
                         HostOptionFieldMetadata(
                             "owner_history",
                             TypeSpec(kind="handle", handle="instance", nullable=True),
@@ -650,7 +703,10 @@ class TestWasmApiBridge:
         assert "export interface IfcOpenShellRootCreateEntityOptions" in code
         assert "ownerHistory?: Entity;" in code
         assert "export interface RootApi" in code
+        assert "export interface Api" in code
         assert "createEntity(file: IfcFile, options: IfcOpenShellRootCreateEntityOptions): Entity;" in code
+        assert "/**\n * @internal\n */\nexport function createApi(shell: IfcOpenShell): Api {" in code
+        assert "/**\n * @internal\n */\nexport interface Api" not in code
         assert "raw.root.createEntity(file.raw, encodeOptions(options" in code
         assert '"ifcClass": "ifc_class"' in code
         assert '"name": "name"' in code
@@ -660,6 +716,49 @@ class TestWasmApiBridge:
         assert "function toRawSequence(value: ApiInput, shell: IfcOpenShell, temps: Disposable[]): RawValue" in code
         assert "disposeAll(temps);" in code
         assert "return wrapEntity(shell, result) as Entity;" in code
+
+    def test_direct_api_facade_renders_field_documentation(self):
+        metadata = _make_metadata(
+            c_prefix="ifcopenshell",
+            option_structs={
+                "DemoOptions": HostOptionStructMetadata(
+                    name="DemoOptions",
+                    c_type="ifcopenshell_demo_options_t",
+                    fields=(
+                        HostOptionFieldMetadata(
+                            "enabled",
+                            TypeSpec(kind="bool", nullable=True),
+                            "bool",
+                            doc="Whether the feature is enabled.",
+                        ),
+                        HostOptionFieldMetadata("label", TypeSpec(kind="string"), "const char*"),
+                    ),
+                )
+            },
+            value_types={
+                "DemoResult": HostStructMetadata(
+                    c_type="ifcopenshell_demo_result_t",
+                    kind="result_struct",
+                    fields=(
+                        HostStructField(
+                            "value",
+                            "double",
+                            "Computed result value.\n\nMeasured in model units.",
+                        ),
+                        HostStructField("undocumented", "bool"),
+                    ),
+                    destroy_function=None,
+                )
+            },
+        )
+
+        code = render_api_direct(metadata)
+
+        assert "/** Whether the feature is enabled. */\n  enabled?: boolean;" in code
+        assert "/**\n   * Computed result value.\n   *\n   * Measured in model units.\n   */\n  value: number;" in code
+        assert "  label: string;" in code
+        assert "  undocumented: boolean;" in code
+        assert "/** */" not in code
 
     def test_direct_api_facade_wraps_option_handles(self):
         metadata = _make_metadata(
@@ -707,7 +806,9 @@ class TestWasmApiBridge:
         assert "if (value instanceof Entity) return value.raw;" in code
         assert "raw.root.createEntity(file.raw, encodeOptions(options" in code
 
-    def test_direct_api_facade_marshals_sequences_without_collapsing_instance_lists(self):
+    def test_direct_api_facade_marshals_sequences_without_collapsing_instance_lists(
+        self,
+    ):
         metadata = _make_metadata(
             c_prefix="ifcopenshell",
             handles={
@@ -730,7 +831,10 @@ class TestWasmApiBridge:
                 "double_list": HostStructMetadata(
                     c_type="ifcopenshell_double_list_t",
                     kind="sequence",
-                    fields=(HostStructField("items", "double*"), HostStructField("size", "size_t")),
+                    fields=(
+                        HostStructField("items", "double*"),
+                        HostStructField("size", "size_t"),
+                    ),
                     destroy_function="ifcopenshell_double_list_destroy",
                     element_type="double",
                     sequence_depth=1,
@@ -765,16 +869,35 @@ class TestWasmApiBridge:
                     c_name="ifcopenshell_demo_assign",
                     params=(
                         HostParamMetadata("file", "ifcopenshell_file_t*", "param", "handle"),
-                        HostParamMetadata("products", "const ifcopenshell_instance_list_t*", "param", "handle"),
+                        HostParamMetadata(
+                            "products",
+                            "const ifcopenshell_instance_list_t*",
+                            "param",
+                            "handle",
+                        ),
                     ),
                 ),
                 "ifcopenshell_demo_set_axis": _make_function(
                     c_name="ifcopenshell_demo_set_axis",
-                    params=(HostParamMetadata("axis", "const ifcopenshell_double_list_list_t*", "param", "double"),),
+                    params=(
+                        HostParamMetadata(
+                            "axis",
+                            "const ifcopenshell_double_list_list_t*",
+                            "param",
+                            "double",
+                        ),
+                    ),
                 ),
                 "ifcopenshell_demo_use_opaque": _make_function(
                     c_name="ifcopenshell_demo_use_opaque",
-                    params=(HostParamMetadata("items", "ifcopenshell_parse_instance_list_t*", "param", "handle"),),
+                    params=(
+                        HostParamMetadata(
+                            "items",
+                            "ifcopenshell_parse_instance_list_t*",
+                            "param",
+                            "handle",
+                        ),
+                    ),
                 ),
                 "ifcopenshell_demo_create": _make_function(
                     c_name="ifcopenshell_demo_create",
@@ -817,8 +940,16 @@ class TestWasmApiBridge:
                     name="PsetEditPsetOptions",
                     c_type="ifcopenshell_pset_edit_pset_options_t",
                     fields=(
-                        HostOptionFieldMetadata("pset", TypeSpec(kind="handle", handle="instance"), "ifcopenshell_instance_t*"),
-                        HostOptionFieldMetadata("properties", TypeSpec(kind="opaque_ptr", semantic="property_map"), "void*"),
+                        HostOptionFieldMetadata(
+                            "pset",
+                            TypeSpec(kind="handle", handle="instance"),
+                            "ifcopenshell_instance_t*",
+                        ),
+                        HostOptionFieldMetadata(
+                            "properties",
+                            TypeSpec(kind="opaque_ptr", semantic="property_map"),
+                            "void*",
+                        ),
                     ),
                 )
             },
@@ -877,26 +1008,53 @@ class TestWasmApiBridge:
                     c_name="ifcopenshell_pset_template_create_from_files",
                     params=(
                         HostParamMetadata("schema_identifier", "const char*", "param", "string"),
-                        HostParamMetadata("template_files", "const ifcopenshell_file_list_t*", "param", "handle"),
+                        HostParamMetadata(
+                            "template_files",
+                            "const ifcopenshell_file_list_t*",
+                            "param",
+                            "handle",
+                        ),
                     ),
-                    returns=TypeSpec(kind="handle", handle="pset_template_handle", ownership="owned", nullable=True),
+                    returns=TypeSpec(
+                        kind="handle",
+                        handle="pset_template_handle",
+                        ownership="owned",
+                        nullable=True,
+                    ),
                 ),
                 "ifcopenshell_pset_template_get_template": _make_function(
                     c_name="ifcopenshell_pset_template_get_template",
                     params=(HostParamMetadata("schema_identifier", "const char*", "param", "string"),),
-                    returns=TypeSpec(kind="handle", handle="pset_template_handle", ownership="borrowed", nullable=True),
+                    returns=TypeSpec(
+                        kind="handle",
+                        handle="pset_template_handle",
+                        ownership="borrowed",
+                        nullable=True,
+                    ),
                 ),
                 "ifcopenshell_pset_template_get_by_name": _make_function(
                     c_name="ifcopenshell_pset_template_get_by_name",
                     params=(
-                        HostParamMetadata("pqt", "ifcopenshell_pset_template_handle_t*", "param", "handle"),
+                        HostParamMetadata(
+                            "pqt",
+                            "ifcopenshell_pset_template_handle_t*",
+                            "param",
+                            "handle",
+                        ),
                         HostParamMetadata("name", "const char*", "param", "string"),
                     ),
                     returns=TypeSpec(kind="handle", handle="instance", nullable=True),
                 ),
                 "ifcopenshell_pset_template_free": _make_function(
                     c_name="ifcopenshell_pset_template_free",
-                    params=(HostParamMetadata("pqt", "ifcopenshell_pset_template_handle_t*", "param", "handle"),),
+                    params=(
+                        HostParamMetadata(
+                            "pqt",
+                            "ifcopenshell_pset_template_handle_t*",
+                            "param",
+                            "handle",
+                        ),
+                    ),
                 ),
             },
         )
@@ -904,12 +1062,18 @@ class TestWasmApiBridge:
         code = render_api_direct(metadata)
 
         assert "export interface PsetTemplate" in code
-        assert "templateCreateFromFiles(schema_identifier: string, template_files: IfcFile[]): PsetTemplate | null;" in code
+        assert (
+            "templateCreateFromFiles(schema_identifier: string, template_files: IfcFile[]): PsetTemplate | null;"
+            in code
+        )
         assert "templateGetTemplate(schema_identifier: string): PsetTemplate | null;" in code
         assert "templateGetByName(pqt: PsetTemplate, name: string): Entity | null;" in code
         assert "templateFree" not in code
         assert "free(pqt" not in code
-        assert "const result = raw.pset.templateCreateFromFiles(schema_identifier, toRawSequence(template_files, shell, temps));" in code
+        assert (
+            "const result = raw.pset.templateCreateFromFiles(schema_identifier, toRawSequence(template_files, shell, temps));"
+            in code
+        )
         assert "return result as PsetTemplate | null;" in code
         assert "const result = raw.pset.templateGetByName(pqt, name);" in code
         assert "pqt.raw" not in code
@@ -928,16 +1092,40 @@ class TestWasmApiBridge:
                     name="AttributeEditAttributesOptions",
                     c_type="ifcopenshell_attribute_edit_attributes_options_t",
                     fields=(
-                        HostOptionFieldMetadata("product", TypeSpec(kind="handle", handle="instance"), "ifcopenshell_instance_t*"),
-                        HostOptionFieldMetadata("attributes", TypeSpec(kind="opaque_ptr", semantic="property_map"), "void*"),
+                        HostOptionFieldMetadata(
+                            "product",
+                            TypeSpec(kind="handle", handle="instance"),
+                            "ifcopenshell_instance_t*",
+                        ),
+                        HostOptionFieldMetadata(
+                            "attributes",
+                            TypeSpec(kind="opaque_ptr", semantic="property_map"),
+                            "void*",
+                        ),
                     ),
                 ),
                 "GeoreferenceEditGeoreferencingOptions": HostOptionStructMetadata(
                     name="GeoreferenceEditGeoreferencingOptions",
                     c_type="ifcopenshell_georeference_edit_georeferencing_options_t",
                     fields=(
-                        HostOptionFieldMetadata("coordinate_operation", TypeSpec(kind="opaque_ptr", nullable=True, semantic="property_map"), "void*"),
-                        HostOptionFieldMetadata("projected_crs", TypeSpec(kind="opaque_ptr", nullable=True, semantic="property_map"), "void*"),
+                        HostOptionFieldMetadata(
+                            "coordinate_operation",
+                            TypeSpec(
+                                kind="opaque_ptr",
+                                nullable=True,
+                                semantic="property_map",
+                            ),
+                            "void*",
+                        ),
+                        HostOptionFieldMetadata(
+                            "projected_crs",
+                            TypeSpec(
+                                kind="opaque_ptr",
+                                nullable=True,
+                                semantic="property_map",
+                            ),
+                            "void*",
+                        ),
                     ),
                 ),
             },
@@ -995,7 +1183,12 @@ class TestWasmApiBridge:
                     c_name="ifcopenshell_resource_edit_resource_time",
                     params=(
                         HostParamMetadata("file", "ifcopenshell_file_t*", "param", "handle"),
-                        HostParamMetadata("resource_time", "ifcopenshell_instance_t*", "param", "handle"),
+                        HostParamMetadata(
+                            "resource_time",
+                            "ifcopenshell_instance_t*",
+                            "param",
+                            "handle",
+                        ),
                         HostParamMetadata(
                             "attributes",
                             "arbitrary_property_builder_t*",
@@ -1038,14 +1231,23 @@ class TestWasmApiBridge:
 
         code = render_api_direct(metadata)
 
-        assert "editResourceTime(file: IfcFile, resource_time: Entity, attributes: PsetProperties | PsetInput): void;" in code
-        assert "raw.resource.editResourceTime(file.raw, resource_time.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));" in code
+        assert (
+            "editResourceTime(file: IfcFile, resource_time: Entity, attributes: PsetProperties | PsetInput): void;"
+            in code
+        )
+        assert (
+            "raw.resource.editResourceTime(file.raw, resource_time.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));"
+            in code
+        )
         assert "useOpaque(value: ApiData): void;" in code
         assert "raw.demo.useOpaque(value);" in code
         assert "useDynamic(value: ApiData): void;" in code
         assert "raw.demo.useDynamic(value);" in code
         assert "useNullable(attributes: PsetProperties | PsetInput | null): void;" in code
-        assert "raw.demo.useNullable(attributes == null ? null : toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));" in code
+        assert (
+            "raw.demo.useNullable(attributes == null ? null : toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));"
+            in code
+        )
         assert "raw.demo.useOpaque(toRawPsetProperties" not in code
 
     def test_direct_api_facade_hides_selector_internals(self):
@@ -1183,7 +1385,10 @@ class TestWasmApiBridge:
                     kind="optional_result_struct",
                     fields=(
                         HostStructField("has_value", "bool"),
-                        HostStructField("value", "ifcopenshell_shape_builder_mep_transition_shape_result_t"),
+                        HostStructField(
+                            "value",
+                            "ifcopenshell_shape_builder_mep_transition_shape_result_t",
+                        ),
                     ),
                     destroy_function=None,
                     element_type="mep_result",
@@ -1200,7 +1405,9 @@ class TestWasmApiBridge:
 
         code = render_api_direct(metadata)
 
-        assert "builderMepTransitionShape(file: IfcFile): IfcOpenShellShapeBuilderMepTransitionShapeResult | null;" in code
+        assert (
+            "builderMepTransitionShape(file: IfcFile): IfcOpenShellShapeBuilderMepTransitionShapeResult | null;" in code
+        )
         assert "if (result === null) return null;" in code
         assert "hasResult" not in code
 
@@ -1234,7 +1441,11 @@ class TestWasmApiBridge:
                     returns=TypeSpec(
                         kind="variant",
                         variants=(
-                            TypeSpec(kind="handle", handle="instance", cpp_type="express::Base"),
+                            TypeSpec(
+                                kind="handle",
+                                handle="instance",
+                                cpp_type="express::Base",
+                            ),
                             TypeSpec(kind="string", cpp_type="std::string"),
                         ),
                         cpp_type="std::variant<express::Base, std::string>",

@@ -12,23 +12,34 @@ import type { GeomIterator } from './iterator.js';
 import { loadGeometry } from './iterator.js';
 import type { GeomSettings } from './settings.js';
 
+/** Three-dimensional point or vector represented as `[x, y, z]`. */
 export type Point3 = [number, number, number];
 
+/** Axis-aligned box used for spatial selection. */
 export interface Box3 {
+  /** Minimum corner. */
   min: Point3;
+  /** Maximum corner. */
   max: Point3;
 }
 
+/** Ray used for spatial intersection queries. */
 export interface Ray {
+  /** Ray origin. */
   origin: Point3;
+  /** Ray direction. */
   direction: Point3;
+  /** Maximum ray length. */
   length: number;
 }
 
+/** Entity returned by a ray intersection query. */
 export interface RayHit {
+  /** Intersected IFC entity. */
   entity: Entity;
 }
 
+/** Asynchronous spatial query tree built from IFC geometry. */
 export class GeometryTree {
   private rawTree: IfcOpenshellGeomTree | null = null;
   private guard: HandleGuard<IfcOpenshellGeomTree> | null = null;
@@ -50,10 +61,12 @@ export class GeometryTree {
     });
   }
 
+  /** Build a tree directly from an IFC file. */
   static fromFile(shell: IfcOpenShell, file: IfcFile, settings?: GeomSettings): GeometryTree {
     return new GeometryTree(shell, createTreeFromFile(shell, file, settings));
   }
 
+  /** Build a tree from an initialized geometry iterator. */
   static fromIterator(shell: IfcOpenShell, iterator: GeomIterator): GeometryTree {
     return new GeometryTree(shell, createTreeFromIterator(shell, iterator));
   }
@@ -64,11 +77,13 @@ export class GeometryTree {
     return this.rawTree;
   }
 
+  /** Select entities intersecting a point, with an optional tolerance extension. */
   async selectPoint(point: Point3, options: { extend?: number } = {}): Promise<Entity[]> {
     const tree = await this.handle();
     return wrapList(this.shell, tree.selectPoint(point[0], point[1], point[2], options.extend ?? 0));
   }
 
+  /** Select entities intersecting or fully contained by an axis-aligned box. */
   async selectBox(box: Box3, options: { completelyWithin?: boolean } = {}): Promise<Entity[]> {
     const tree = await this.handle();
     return wrapList(this.shell, tree.selectBoxBounds(
@@ -82,6 +97,7 @@ export class GeometryTree {
     ));
   }
 
+  /** Select entities intersecting the bounds of another entity. */
   async selectEntity(entity: Entity, options: { completelyWithin?: boolean; extend?: number } = {}): Promise<Entity[]> {
     const tree = await this.handle();
     return wrapList(this.shell, tree.selectElement(
@@ -91,6 +107,7 @@ export class GeometryTree {
     ));
   }
 
+  /** Return entities intersected by a ray in distance order. */
   async raycast(ray: Ray): Promise<RayHit[]> {
     const tree = await this.handle();
     const hits = tree.selectRay(
@@ -105,6 +122,7 @@ export class GeometryTree {
     return rayHits(this.shell, tree, hits);
   }
 
+  /** Release the native spatial tree. */
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;

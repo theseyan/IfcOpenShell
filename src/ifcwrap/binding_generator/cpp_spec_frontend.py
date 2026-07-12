@@ -2,22 +2,12 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
-import re
 
 try:
     from .authored_spec import _infer_param_type, _infer_return_type
-    from .clang_discovery import DiscoveredFunction, DiscoveryEnvironment, discover_namespace_functions, discover_public_fields
-    from .contract_discovery import (
-        discover_marked_functions_in_headers,
-        _leading_annotations,
-        _clean_doc_comment,
-        _param_name,
-        _has_default,
-        _split_params,
-        _strip_comments,
-    )
     from .binding_model import (
         CallSpec,
         HandleSpec,
@@ -28,19 +18,24 @@ try:
         ResultStructSpec,
         TypeSpec,
     )
+    from .clang_discovery import (
+        DiscoveredFunction,
+        DiscoveryEnvironment,
+        discover_namespace_functions,
+        discover_public_fields,
+    )
+    from .contract_discovery import (
+        _clean_doc_comment,
+        _has_default,
+        _leading_annotations,
+        _param_name,
+        _split_params,
+        _strip_comments,
+        discover_marked_functions_in_headers,
+    )
     from .policy_ir import DirectFunctionPolicyOp, SpecMethodFunctionPolicyOp
 except ImportError:  # pragma: no cover - script execution fallback
     from authored_spec import _infer_param_type, _infer_return_type
-    from clang_discovery import DiscoveredFunction, DiscoveryEnvironment, discover_namespace_functions, discover_public_fields
-    from contract_discovery import (
-        discover_marked_functions_in_headers,
-        _leading_annotations,
-        _clean_doc_comment,
-        _param_name,
-        _has_default,
-        _split_params,
-        _strip_comments,
-    )
     from binding_model import (
         CallSpec,
         HandleSpec,
@@ -50,6 +45,21 @@ except ImportError:  # pragma: no cover - script execution fallback
         ResultStructFieldSpec,
         ResultStructSpec,
         TypeSpec,
+    )
+    from clang_discovery import (
+        DiscoveredFunction,
+        DiscoveryEnvironment,
+        discover_namespace_functions,
+        discover_public_fields,
+    )
+    from contract_discovery import (
+        _clean_doc_comment,
+        _has_default,
+        _leading_annotations,
+        _param_name,
+        _split_params,
+        _strip_comments,
+        discover_marked_functions_in_headers,
     )
     from policy_ir import DirectFunctionPolicyOp, SpecMethodFunctionPolicyOp
 
@@ -85,11 +95,7 @@ class CppSpecResultStruct:
 
 
 def _option_struct_name(cpp_type: object) -> tuple[str, str] | None:
-    spelling = (
-        getattr(cpp_type, "normalized_spelling", None)
-        or getattr(cpp_type, "spelling", None)
-        or str(cpp_type)
-    )
+    spelling = getattr(cpp_type, "normalized_spelling", None) or getattr(cpp_type, "spelling", None) or str(cpp_type)
     normalized = " ".join(spelling.replace(" &", "&").replace(" *", "*").split())
     while normalized.startswith("const "):
         normalized = normalized[len("const ") :].strip()
@@ -154,7 +160,7 @@ def _find_macro_invocations(text: str, marker: str) -> tuple[tuple[str, int], ..
     invocations: list[tuple[str, int]] = []
     for match in pattern.finditer(text):
         line_start = text.rfind("\n", 0, match.start()) + 1
-        if text[line_start:match.start()].lstrip().startswith("#"):
+        if text[line_start : match.start()].lstrip().startswith("#"):
             continue
         start = match.end()
         depth = 1
@@ -317,6 +323,7 @@ def _param_type_decl(param: str) -> str:
 
 _PRIVATE_NAMES = frozenset({"to_base_vector"})
 
+
 def _discover_spec_signatures(
     source: Path,
     selected_names: set[str],
@@ -329,9 +336,7 @@ def _discover_spec_signatures(
         signature_re = re.compile(
             r"(?P<doc>(?:(?:[ \t]*(?://[/!].*?)\n)|(?:[ \t]*/\*[*!].*?\*/\s*))*?)"
             r"(?P<annotations>(?:IFCAPI_\w+(?:\([^)]*\))?\s+)*)"
-            r"(?P<return_decl>[\w:<>~,\s*&()]+?)\s+"
-            + re.escape(name) +
-            r"\s*\("
+            r"(?P<return_decl>[\w:<>~,\s*&()]+?)\s+" + re.escape(name) + r"\s*\("
             r"(?P<params>[^;{}]*)\)\s*\{",
             re.DOTALL,
         )
@@ -353,9 +358,7 @@ def _discover_spec_signatures(
                 if _has_default(param):
                     param_defaults[_param_name(rest)] = True
             if first_param_name == "self":
-                if name in signatures and any(
-                    item[3] == first_param_type for item in signatures[name]
-                ):
+                if name in signatures and any(item[3] == first_param_type for item in signatures[name]):
                     msg = f"C++ spec export '{name}' is declared more than once; exported spec functions must be unique"
                     raise ValueError(msg)
             else:
@@ -384,7 +387,10 @@ def discover_cpp_spec_contract_headers(
     seen: set[Path] = set()
     for match in re.finditer(r'^\s*#\s*include\s+"(?P<header>[^"]+)"', text, re.MULTILINE):
         header = match.group("header")
-        candidates = (translation_unit.parent / header, *(include_dir / header for include_dir in include_dirs))
+        candidates = (
+            translation_unit.parent / header,
+            *(include_dir / header for include_dir in include_dirs),
+        )
         for candidate in candidates:
             if not candidate.exists():
                 continue
@@ -417,18 +423,19 @@ def discover_cpp_spec_functions(
     for function in discover_marked_functions_in_headers(contract_headers):
         if function.name in combined:
             msg = (
-                f"C++ spec export '{function.name}' is declared more than once; "
-                "exported spec functions must be unique"
+                f"C++ spec export '{function.name}' is declared more than once; exported spec functions must be unique"
             )
             raise ValueError(msg)
-        combined[function.name] = ((
-            function.return_annotations,
-            function.param_annotations,
-            function.param_defaults,
-            None,
-            None,
-            function.doc,
-        ),)
+        combined[function.name] = (
+            (
+                function.return_annotations,
+                function.param_annotations,
+                function.param_defaults,
+                None,
+                None,
+                function.doc,
+            ),
+        )
     if not combined:
         msg = f"No exported functions were found in C++ spec '{translation_unit}'"
         raise ValueError(msg)
@@ -439,7 +446,14 @@ def discover_cpp_spec_functions(
         if not overloads:
             msg = f"C++ spec export '{name}' was found in spec but not discovered by Clang"
             raise ValueError(msg)
-        for return_annotations, param_annotations, param_defaults, receiver, first_param_type, doc in combined[name]:
+        for (
+            return_annotations,
+            param_annotations,
+            param_defaults,
+            receiver,
+            first_param_type,
+            doc,
+        ) in combined[name]:
             selected_overloads = overloads
             if len(overloads) != 1 and first_param_type is not None:
                 selected_overloads = tuple(
@@ -466,7 +480,6 @@ def discover_cpp_spec_functions(
     return tuple(result)
 
 
-
 def _receiver_c_name(handle: HandleSpec, expose_as: str) -> str:
     receiver = handle.c_type.removeprefix("ifcopenshell_").removesuffix("_t")
     return f"ifcopenshell_{receiver}_{expose_as}"
@@ -481,9 +494,7 @@ def _prefixed_c_name(name: str, c_prefix: str | None) -> str:
 def _canonical_cpp_type(cpp_type: object) -> str:
     if not isinstance(cpp_type, str):
         cpp_type = (
-            getattr(cpp_type, "normalized_spelling", None)
-            or getattr(cpp_type, "spelling", None)
-            or str(cpp_type)
+            getattr(cpp_type, "normalized_spelling", None) or getattr(cpp_type, "spelling", None) or str(cpp_type)
         )
     normalized = " ".join(cpp_type.replace(" *", "*").replace(" &", "&").split())
     while normalized.startswith("const "):
@@ -553,13 +564,18 @@ def lower_cpp_spec_functions_to_calls(
         if "IFCAPI_DOUBLE_BUFFER" not in function.return_annotations:
             return_type_ref = discovered.return_type_ref
             is_const_ref = (
-                hasattr(return_type_ref, 'is_const') and return_type_ref.is_const
-                and hasattr(return_type_ref, 'is_lvalue_reference') and return_type_ref.is_lvalue_reference
+                hasattr(return_type_ref, "is_const")
+                and return_type_ref.is_const
+                and hasattr(return_type_ref, "is_lvalue_reference")
+                and return_type_ref.is_lvalue_reference
             )
             is_const_ptr = (
-                hasattr(return_type_ref, 'is_const') and return_type_ref.is_const
-                and hasattr(return_type_ref, 'is_lvalue_reference') and not return_type_ref.is_lvalue_reference
-                and hasattr(return_type_ref, 'pointer_depth') and return_type_ref.pointer_depth > 0
+                hasattr(return_type_ref, "is_const")
+                and return_type_ref.is_const
+                and hasattr(return_type_ref, "is_lvalue_reference")
+                and not return_type_ref.is_lvalue_reference
+                and hasattr(return_type_ref, "pointer_depth")
+                and return_type_ref.pointer_depth > 0
             )
             if returns.kind == "double" and returns.sequence_depth == 1 and is_const_ref:
                 returns = TypeSpec(
@@ -667,10 +683,7 @@ def lower_cpp_spec_functions_to_calls(
                     param_ann,
                     handles,
                 )
-            if (
-                param_type.kind == "handle"
-                and "IFCAPI_HANDLE_PARAM" not in param_ann
-            ):
+            if param_type.kind == "handle" and "IFCAPI_HANDLE_PARAM" not in param_ann:
                 cpp_type_raw = param.cpp_type_ref.normalized_spelling or param.cpp_type_ref.spelling
                 cpp_norm = " ".join(cpp_type_raw.replace(" *", "*").replace(" &", "&").split())
                 cpp_norm = re.sub(r"\bconst\b\s*", "", cpp_norm).strip()
@@ -719,7 +732,9 @@ def lower_cpp_spec_functions_to_calls(
     return tuple(calls)
 
 
-def lower_cpp_spec_handles_to_specs(handles: tuple[CppSpecHandle, ...]) -> dict[str, HandleSpec]:
+def lower_cpp_spec_handles_to_specs(
+    handles: tuple[CppSpecHandle, ...],
+) -> dict[str, HandleSpec]:
     return {
         handle.name: HandleSpec(
             name=handle.name,
@@ -736,14 +751,23 @@ def lower_cpp_spec_handles_to_specs(handles: tuple[CppSpecHandle, ...]) -> dict[
 def lower_cpp_spec_result_structs_to_specs(
     structs: tuple[CppSpecResultStruct, ...],
     handles: dict[str, HandleSpec],
+    *,
+    environment: DiscoveryEnvironment | None = None,
+    translation_unit: Path | None = None,
 ) -> dict[str, ResultStructSpec]:
     result: dict[str, ResultStructSpec] = {}
     for struct in structs:
+        semantic_fields = (
+            discover_public_fields(environment, translation_unit, struct.cpp_type)
+            if environment is not None and translation_unit is not None
+            else {}
+        )
         fields = tuple(
             ResultStructFieldSpec(
                 name=field_name,
                 type=_infer_return_type(field_cpp_type, handles),
                 cpp_field=field_name,
+                doc=(semantic_fields[field_name].doc if field_name in semantic_fields else None),
             )
             for field_cpp_type, field_name in struct.fields
         )
@@ -792,6 +816,7 @@ def discover_cpp_spec_option_structs(
                         name=field.cpp_name,
                         type=_infer_param_type(field.cpp_type_ref, handles),
                         cpp_field=field.cpp_name,
+                        doc=field.doc,
                     )
                 )
             option_structs[simple_name] = OptionStructSpec(

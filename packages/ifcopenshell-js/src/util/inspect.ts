@@ -16,6 +16,7 @@ export interface EntityInfo {
   attributes: AttributeEntry[];
 }
 
+/** Format one attribute as a compact human-readable string. */
 export async function formatAttributeValue(attr: AttributeValue): Promise<string> {
   try {
     if (attr.isNull) return '∅';
@@ -47,6 +48,7 @@ export async function formatAttributeValue(attr: AttributeValue): Promise<string
   }
 }
 
+/** Inspect an entity and return its id, type, GlobalId, and formatted attributes. */
 export async function inspectEntity(file: IfcFile, id: number): Promise<EntityInfo | null> {
   const entity = file.get(id);
   if (!entity) return null;

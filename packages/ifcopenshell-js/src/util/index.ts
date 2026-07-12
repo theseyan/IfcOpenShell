@@ -1,4 +1,10 @@
 
+/**
+ * Utility APIs for inspecting IFC entities and working with colors.
+ *
+ * @module Utilities
+ */
+
 export {
   hashColor,
   meshColor,

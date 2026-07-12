@@ -4,6 +4,7 @@ import { Entity } from './entity.js';
 import { IfcOpenShellError, type IfcOpenShell } from './init.js';
 import { HandleGuard } from './resource.js';
 
+/** Decoded scalar or aggregate value of an IFC entity attribute. */
 export type IfcValue =
   | null
   | boolean
@@ -14,6 +15,7 @@ export type IfcValue =
   | number[]
   | string[];
 
+/** Typed view over one native IFC attribute value. */
 export class AttributeValue {
   private _raw: IfcOpenshellParseAttributeValue | null;
   private readonly guard: HandleGuard<IfcOpenshellParseAttributeValue>;
@@ -90,6 +92,7 @@ export class AttributeValue {
     return this.raw.asEnumerationIndex();
   }
 
+  /** Decode the attribute according to its native IFC value type. */
   value(): IfcValue {
     if (this.raw.isNull()) return null;
     const type = this.type.toLowerCase().replace(/[\s_-]+/g, '');
@@ -114,6 +117,7 @@ export class AttributeValue {
     return this.raw.size();
   }
 
+  /** Release the native attribute value handle. */
   dispose(): void {
     if (this._raw == null) return;
     this.guard.destroy();

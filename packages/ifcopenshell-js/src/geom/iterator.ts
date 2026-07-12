@@ -14,32 +14,46 @@ import { HandleGuard } from '../resource.js';
 import { GeomSettings } from './settings.js';
 import type { Mesh } from './mesh.js';
 
+/** Include or exclude geometry by IFC type, GlobalId, or numeric id. */
 export type IteratorFilter =
   | { kind: 'types'; values: string[]; include?: boolean }
   | { kind: 'guids'; values: string[]; include?: boolean }
   | { kind: 'ids'; values: number[]; include?: boolean };
 
+/** Progress payload emitted while geometry is loaded or iterated. */
 export interface OperationProgress {
+  /** Current phase, such as `plugin`, `iterate`, `write`, or `done`. */
   phase: string;
+  /** Human-readable progress message. */
   message: string;
+  /** Normalized progress ratio when available. */
   ratio?: number;
+  /** Number of processed items when available. */
   current?: number;
 }
 
+/** Current native geometry iterator state and unit information. */
 export interface IteratorMetadata {
+  /** Whether native geometry initialization has completed. */
   initialized: boolean;
+  /** Native processing progress ratio. */
   progress: number;
+  /** Whether native element processing reported an error. */
   hadError: boolean;
+  /** Name of the file's length unit. */
   unitName: string;
+  /** Magnitude of the file's length unit in SI units. */
   unitMagnitude: number;
 }
 
+/** Options controlling geometry kernel, parallelism, and entity filtering. */
 export interface IteratorOptions {
   kernel?: string;
   numThreads?: number;
   filter?: IteratorFilter;
 }
 
+/** Options for collecting meshes from an asynchronous iterator. */
 export interface CollectOptions {
   limit?: number;
   progressInterval?: number;
@@ -48,12 +62,14 @@ export interface CollectOptions {
   onProgress?(progress: OperationProgress & { meshes: number }): void;
 }
 
+/** Meshes and completion metadata returned by {@link GeomIterator.collect}. */
 export interface CollectResult {
   meshes: Mesh[];
   truncated: boolean;
   metadata: IteratorMetadata;
 }
 
+/** Asynchronous geometry mesh iterator backed by a loaded IFC file. */
 export class GeomIterator implements AsyncIterable<Mesh> {
   private rawIter: IfcOpenshellGeomIterator | null = null;
   private guard: HandleGuard<IfcOpenshellGeomIterator> | null = null;
@@ -92,6 +108,7 @@ export class GeomIterator implements AsyncIterable<Mesh> {
     return this.rawIter;
   }
 
+  /** Return progress, initialization, error, and unit metadata. */
   async metadata(): Promise<IteratorMetadata> {
     const raw = await this.ready;
     if (this.disposed) throw new IfcOpenShellError('GeomIterator has been disposed');
@@ -104,6 +121,7 @@ export class GeomIterator implements AsyncIterable<Mesh> {
     };
   }
 
+  /** Initialize the native iterator and report whether initialization succeeded. */
   async initialize(): Promise<boolean> {
     if (this.disposed) throw new IfcOpenShellError('GeomIterator has been disposed');
     if (this.initialized) return true;
@@ -112,11 +130,13 @@ export class GeomIterator implements AsyncIterable<Mesh> {
     return ok;
   }
 
+  /** Compute geometry bounds, optionally forcing full geometry creation. */
   async computeBounds(withGeometry = true): Promise<void> {
     if (this.disposed) throw new IfcOpenShellError('GeomIterator has been disposed');
     (await this.ready).computeBounds(withGeometry);
   }
 
+  /** Return the computed minimum and maximum points. */
   async bounds(): Promise<{ min: [number, number, number] | null; max: [number, number, number] | null }> {
     const raw = await this.ready;
     if (this.disposed) throw new IfcOpenShellError('GeomIterator has been disposed');
@@ -131,6 +151,7 @@ export class GeomIterator implements AsyncIterable<Mesh> {
     return (await this.bounds()).max;
   }
 
+  /** Advance to the next mesh, returning `null` after exhaustion. */
   async nextMesh(): Promise<Mesh | null> {
     return this.nextWithOptions();
   }
@@ -139,6 +160,7 @@ export class GeomIterator implements AsyncIterable<Mesh> {
     return this.nextMesh();
   }
 
+  /** Consume meshes until exhaustion, a limit, or cancellation. */
   async collect(options: CollectOptions = {}): Promise<CollectResult> {
     const meshes: Mesh[] = [];
     const limit = options.limit ?? Number.POSITIVE_INFINITY;
@@ -183,6 +205,7 @@ export class GeomIterator implements AsyncIterable<Mesh> {
     }
   }
 
+  /** Stop iteration and release the native iterator and owned settings. */
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;

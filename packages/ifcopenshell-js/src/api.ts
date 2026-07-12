@@ -8,10 +8,12 @@ import { IfcFile } from './file.js';
 import type { IfcOpenShell } from './init.js';
 import { HandleGuard } from './resource.js';
 
+/** Minimal ownership contract used while converting API values. */
 export interface DisposableHandle {
   destroy(): void;
 }
 
+/** Values accepted by generated high-level API methods. */
 export type ApiData =
   | null
   | boolean
@@ -24,8 +26,10 @@ export type ApiData =
   | ApiData[]
   | { [key: string]: ApiData };
 
+/** JSON-like values returned by generated high-level API methods. */
 export type ValueData = null | boolean | number | bigint | string | Entity | ValueData[] | { [key: string]: ValueData };
 
+/** Input accepted by APIs that can receive either decoded or wrapped values. */
 export type ValueInput = ValueData | Value;
 
 const enum ValueKind {
@@ -97,6 +101,7 @@ export class InstanceList {
   }
 }
 
+/** Wrapper for a native selector value, including lists and dictionaries. */
 export class Value {
   private _raw: IfcOpenshellValue | null;
   private readonly guard: HandleGuard<IfcOpenshellValue>;
@@ -159,6 +164,7 @@ export class Value {
     return wrapValue(this.shell, this.shell.raw.value.dictValueAt(this.raw, index));
   }
 
+  /** Decode this value recursively into public JavaScript values. */
   value(): ValueData {
     switch (this.kind) {
       case ValueKind.None:
@@ -182,6 +188,7 @@ export class Value {
     }
   }
 
+  /** Decode a native list into an array of public values. */
   list(): ValueData[] {
     const out: ValueData[] = [];
     for (let i = 0; i < this.listSize(); i++) {
@@ -195,6 +202,7 @@ export class Value {
     return out;
   }
 
+  /** Decode a native dictionary into a plain object. */
   dict(): Record<string, ValueData> {
     const out: Record<string, ValueData> = {};
     for (let i = 0; i < this.dictSize(); i++) {
@@ -212,6 +220,7 @@ export class Value {
     return this.value();
   }
 
+  /** Release the native value handle. */
   dispose(): void {
     if (this._raw == null) return;
     this.guard.destroy();

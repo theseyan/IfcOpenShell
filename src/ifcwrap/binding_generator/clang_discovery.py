@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import json
-from collections import defaultdict
-from dataclasses import dataclass, field
-from pathlib import Path
 import re
 import subprocess
 import tempfile
 import threading
-from typing import Iterable
+from collections import defaultdict
+from collections.abc import Iterable
+from dataclasses import dataclass, field
+from pathlib import Path
 
 try:
     from .debug import debug_log, debug_path
@@ -108,7 +108,7 @@ def _selected_set(selected_names: Iterable[str] | None) -> set[str] | None:
 class DiscoveredParam:
     name: str
     cpp_type: str
-    cpp_type_ref: "DiscoveredCppType"
+    cpp_type_ref: DiscoveredCppType
 
 
 @dataclass(frozen=True)
@@ -122,7 +122,7 @@ class DiscoveredCppType:
     base_name: str
     base_record_names: tuple[str, ...]
     template_name: str | None
-    template_args: tuple["DiscoveredCppType", ...]
+    template_args: tuple[DiscoveredCppType, ...]
     is_enum: bool
     enum_qualified_name: str | None
     is_const: bool
@@ -154,6 +154,7 @@ class DiscoveredField:
     cpp_name: str
     cpp_type: str
     cpp_type_ref: DiscoveredCppType
+    doc: str | None = None
 
 
 @dataclass(frozen=True)
@@ -229,7 +230,10 @@ class TranslationUnitIndex:
         self.ensure_ast_filter_loaded(ast_filter)
 
     def _run_ast_dump(self, ast_filter: str) -> tuple[dict, ...]:
-        debug_log("clang.ast_dump.start", f"tu={debug_path(self.command.file)} filter={ast_filter}")
+        debug_log(
+            "clang.ast_dump.start",
+            f"tu={debug_path(self.command.file)} filter={ast_filter}",
+        )
         proc = subprocess.run(
             _build_ast_dump_command(self.command, ast_filter=ast_filter),
             cwd=self.command.directory,
@@ -242,7 +246,10 @@ class TranslationUnitIndex:
             raise RuntimeError(msg)
 
         objects = tuple(_decode_json_stream(proc.stdout))
-        debug_log("clang.ast_dump.done", f"tu={debug_path(self.command.file)} filter={ast_filter} nodes={len(objects)}")
+        debug_log(
+            "clang.ast_dump.done",
+            f"tu={debug_path(self.command.file)} filter={ast_filter} nodes={len(objects)}",
+        )
         return objects
 
     def ensure_ast_filter_loaded(self, ast_filter: str) -> None:
@@ -437,7 +444,10 @@ class TranslationUnitIndex:
                     if qualified_name not in self._enum_names_by_simple[name]:
                         self._enum_names_by_simple[name].append(qualified_name)
             elif kind == "TypedefDecl" and name:
-                enum_child = next((child for child in node.get("inner", []) if child.get("kind") == "EnumDecl"), None)
+                enum_child = next(
+                    (child for child in node.get("inner", []) if child.get("kind") == "EnumDecl"),
+                    None,
+                )
                 if enum_child is None:
                     enum_child = next(
                         (
@@ -468,7 +478,13 @@ class TranslationUnitIndex:
         for node in nodes:
             visit(node, "")
 
-    def _resolve_scoped_decl(self, name: str, current_scope: str, qualified: dict[str, object], simple: dict[str, list[str]]):
+    def _resolve_scoped_decl(
+        self,
+        name: str,
+        current_scope: str,
+        qualified: dict[str, object],
+        simple: dict[str, list[str]],
+    ):
         if name in qualified:
             return qualified[name]
         if "::" not in name and current_scope:
@@ -662,7 +678,17 @@ def _build_ast_dump_command(command: CompileCommand, *, ast_filter: str) -> list
             continue
         args.append(token)
 
-    args.extend(["-Xclang", "-ast-dump=json", "-Xclang", f"-ast-dump-filter={ast_filter}", "-fsyntax-only", source])
+    args.extend(
+        [
+            "-Xclang",
+            "-ast-dump=json",
+            "-Xclang",
+            f"-ast-dump-filter={ast_filter}",
+            "-fparse-all-comments",
+            "-fsyntax-only",
+            source,
+        ]
+    )
     return args
 
 
@@ -695,9 +721,13 @@ def _extract_public_methods(
             DiscoveredParam(
                 name=param.get("name") or f"arg_{param_index}",
                 cpp_type=param.get("type", {}).get("qualType", ""),
-                cpp_type_ref=_parse_discovered_cpp_type(param.get("type", {}), index=index, current_scope=current_scope),
+                cpp_type_ref=_parse_discovered_cpp_type(
+                    param.get("type", {}), index=index, current_scope=current_scope
+                ),
             )
-            for param_index, param in enumerate(item for item in child.get("inner", []) if item.get("kind") == "ParmVarDecl")
+            for param_index, param in enumerate(
+                item for item in child.get("inner", []) if item.get("kind") == "ParmVarDecl"
+            )
         )
         return_cpp_type = child.get("type", {}).get("qualType", "").rsplit("(", 1)[0].strip()
         methods[child["name"]].append(
@@ -719,13 +749,57 @@ def _is_copy_or_move_constructor(child: dict, record_name: str, current_scope: s
         return False
     param_type = params[0].get("type", {}).get("qualType", "")
     lookup_name = _normalize_record_lookup_name(param_type)
-    return lookup_name in {record_name, _qualified_name(_enclosing_scope(current_scope), record_name), current_scope}
+    return lookup_name in {
+        record_name,
+        _qualified_name(_enclosing_scope(current_scope), record_name),
+        current_scope,
+    }
 
 
 def _is_implicit_default_constructor(child: dict) -> bool:
     return bool(child.get("isImplicit")) and not any(
         item.get("kind") == "ParmVarDecl" for item in child.get("inner", [])
     )
+
+
+def _comment_node_parts(node: dict) -> list[str]:
+    kind = node.get("kind")
+    if kind == "TextComment":
+        return [node.get("text", "")]
+    if kind == "InlineCommandComment":
+        return [" ".join(argument.get("text", "") for argument in node.get("args", []) if argument.get("text"))]
+    if kind == "ParagraphComment":
+        return ["\n".join(part for child in node.get("inner", []) for part in _comment_node_parts(child))]
+    if kind == "FullComment":
+        return [part for child in node.get("inner", []) for part in _comment_node_parts(child)]
+
+    parts = [part for child in node.get("inner", []) for part in _comment_node_parts(child)]
+    if parts:
+        return ["\n".join(parts)]
+    text = node.get("text")
+    return [text] if isinstance(text, str) else []
+
+
+def _normalize_comment_parts(parts: Iterable[str]) -> str | None:
+    paragraphs: list[str] = []
+    for part in parts:
+        lines = [line.strip() for line in part.splitlines()]
+        while lines and not lines[0]:
+            lines.pop(0)
+        while lines and not lines[-1]:
+            lines.pop()
+        paragraph = "\n".join(lines)
+        if paragraph:
+            paragraphs.append(paragraph)
+    doc = "\n\n".join(paragraphs).strip()
+    return doc or None
+
+
+def _extract_documentation(node: dict) -> str | None:
+    for child in node.get("inner", []):
+        if child.get("kind") == "FullComment":
+            return _normalize_comment_parts(_comment_node_parts(child))
+    return None
 
 
 def _extract_public_constructors(
@@ -756,9 +830,13 @@ def _extract_public_constructors(
             DiscoveredParam(
                 name=param.get("name") or f"arg_{param_index}",
                 cpp_type=param.get("type", {}).get("qualType", ""),
-                cpp_type_ref=_parse_discovered_cpp_type(param.get("type", {}), index=index, current_scope=current_scope),
+                cpp_type_ref=_parse_discovered_cpp_type(
+                    param.get("type", {}), index=index, current_scope=current_scope
+                ),
             )
-            for param_index, param in enumerate(item for item in child.get("inner", []) if item.get("kind") == "ParmVarDecl")
+            for param_index, param in enumerate(
+                item for item in child.get("inner", []) if item.get("kind") == "ParmVarDecl"
+            )
         )
         constructors.append(
             DiscoveredConstructor(
@@ -791,6 +869,7 @@ def _extract_public_fields(record: dict, index: TranslationUnitIndex, current_sc
             cpp_name=name,
             cpp_type=child.get("type", {}).get("qualType", ""),
             cpp_type_ref=_parse_discovered_cpp_type(child.get("type", {}), index=index, current_scope=current_scope),
+            doc=_extract_documentation(child),
         )
     return fields
 
@@ -912,9 +991,13 @@ def _extract_namespace_functions(
             DiscoveredParam(
                 name=param.get("name") or f"arg_{param_index}",
                 cpp_type=param.get("type", {}).get("qualType", ""),
-                cpp_type_ref=_parse_discovered_cpp_type(param.get("type", {}), index=index, current_scope=current_namespace),
+                cpp_type_ref=_parse_discovered_cpp_type(
+                    param.get("type", {}), index=index, current_scope=current_namespace
+                ),
             )
-            for param_index, param in enumerate(item for item in node.get("inner", []) if item.get("kind") == "ParmVarDecl")
+            for param_index, param in enumerate(
+                item for item in node.get("inner", []) if item.get("kind") == "ParmVarDecl"
+            )
         )
         return_cpp_type = node.get("type", {}).get("qualType", "").rsplit("(", 1)[0].strip()
         functions[name].append(
@@ -922,7 +1005,9 @@ def _extract_namespace_functions(
                 namespace=current_namespace,
                 cpp_name=name,
                 return_cpp_type=return_cpp_type,
-                return_type_ref=_parse_discovered_cpp_type(return_cpp_type, index=index, current_scope=current_namespace),
+                return_type_ref=_parse_discovered_cpp_type(
+                    return_cpp_type, index=index, current_scope=current_namespace
+                ),
                 params=params,
             )
         )
@@ -942,7 +1027,9 @@ def _namespace_matches(current_namespace: str, target_namespace: str) -> bool:
     return "::" in target_namespace and current_namespace == _simple_name(target_namespace)
 
 
-def _dedupe_discovered_functions(functions: Iterable[DiscoveredFunction]) -> tuple[DiscoveredFunction, ...]:
+def _dedupe_discovered_functions(
+    functions: Iterable[DiscoveredFunction],
+) -> tuple[DiscoveredFunction, ...]:
     result: list[DiscoveredFunction] = []
     seen: set[tuple[str, str, tuple[str, ...]]] = set()
     for function in functions:
@@ -983,7 +1070,12 @@ def discover_public_methods(
             if base_record is None or base_record.qualified_name in visited:
                 continue
             visited.add(base_record.qualified_name)
-            base_methods = _extract_public_methods(base_record.node, index, base_record.qualified_name, selected_names=selected_set)
+            base_methods = _extract_public_methods(
+                base_record.node,
+                index,
+                base_record.qualified_name,
+                selected_names=selected_set,
+            )
             for method_name, overloads in base_methods.items():
                 if method_name not in methods:
                     methods[method_name] = overloads
@@ -1173,8 +1265,7 @@ def _parse_template_name_and_args(
     if not inner:
         return template_name, ()
     return template_name, tuple(
-        _parse_discovered_cpp_type(arg, index=index, current_scope=current_scope)
-        for arg in _split_template_args(inner)
+        _parse_discovered_cpp_type(arg, index=index, current_scope=current_scope) for arg in _split_template_args(inner)
     )
 
 
@@ -1182,10 +1273,7 @@ def _qualified_type_core(text: str, *, index: TranslationUnitIndex | None = None
     template_name, template_args = _parse_template_name_and_args(text, index=index, current_scope=current_scope)
     if template_name is not None:
         if template_args:
-            rendered_args = ", ".join(
-                arg.storage_spelling
-                for arg in template_args
-            )
+            rendered_args = ", ".join(arg.storage_spelling for arg in template_args)
             return f"{template_name}<{rendered_args}>"
         return f"{template_name}<>"
 

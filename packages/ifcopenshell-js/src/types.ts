@@ -59,6 +59,7 @@ export interface PluginManifest {
   tree?: Record<string, PluginEntry>;
 }
 
+/** Recursive value accepted by an Emscripten module factory. */
 export type EmscriptenOption =
   | null
   | boolean
@@ -68,6 +69,7 @@ export type EmscriptenOption =
   | { [key: string]: EmscriptenOption }
   | ((path: string, prefix: string) => string);
 
+/** Emscripten module factory option map. */
 export type EmscriptenOptions = Record<string, EmscriptenOption>;
 
 /** Emscripten module factory — the default export of `ifcopenshell_wasm.mjs`. */

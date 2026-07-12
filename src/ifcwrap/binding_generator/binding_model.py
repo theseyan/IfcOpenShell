@@ -10,7 +10,7 @@ class TypeSpec:
     kind: str
     handle: str | None = None
     struct: str | None = None
-    variants: tuple["TypeSpec", ...] = ()
+    variants: tuple[TypeSpec, ...] = ()
     ownership: str | None = None
     nullable: bool = False
     cpp_type: str | None = None
@@ -40,6 +40,7 @@ class ResultStructFieldSpec:
     name: str
     type: TypeSpec
     cpp_field: str | None = None
+    doc: str | None = None
 
 
 @dataclass(frozen=True)
@@ -55,6 +56,7 @@ class OptionStructFieldSpec:
     name: str
     type: TypeSpec
     cpp_field: str | None = None
+    doc: str | None = None
 
 
 @dataclass(frozen=True)

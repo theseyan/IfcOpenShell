@@ -2,20 +2,24 @@
 import { Entity } from './entity.js';
 import type { IfcOpenShell } from './init.js';
 
+/** Scalar values accepted in property-set dictionaries. */
 export type PsetScalar = null | boolean | number | bigint | string | Entity;
 
+/** A scalar property value with an explicit IFC type and optional unit. */
 export interface TypedPsetValue {
   value: Exclude<PsetScalar, null | Entity>;
   type: string;
   unit?: Entity;
 }
 
+/** Nested property-set value, including lists and dictionaries. */
 export type PsetValue =
   | PsetScalar
   | TypedPsetValue
   | PsetValue[]
   | { [key: string]: PsetValue };
 
+/** Property names and values passed to {@link PsetProperties}. */
 export type PsetInput = Record<string, PsetValue>;
 
 type RawPsetApi = {
@@ -39,6 +43,7 @@ type RawPsetApi = {
   propsSetUnitForLast(ptr: number, unit: object): void;
 };
 
+/** Owned native property-set value builder for generated API calls. */
 export class PsetProperties {
   readonly raw: number;
   readonly #shell: IfcOpenShell;
@@ -56,20 +61,24 @@ export class PsetProperties {
     }
   }
 
+  /** Reuse an existing builder or create one from a plain property object. */
   static from(shell: IfcOpenShell, value: PsetProperties | PsetInput): PsetProperties {
     return value instanceof PsetProperties ? value : new PsetProperties(shell, value);
   }
 
+  /** Add or replace all entries in a property object. */
   setMany(values: PsetInput): this {
     for (const [key, value] of Object.entries(values)) this.set(key, value);
     return this;
   }
 
+  /** Add or replace one property, preserving explicit typed values. */
   set(key: string, value: PsetValue): this {
     writeValue(this.#shell, this.raw, key, value);
     return this;
   }
 
+  /** Release the native property-set builder. */
   dispose(): void {
     if (this.#disposed) return;
     this.#disposed = true;
