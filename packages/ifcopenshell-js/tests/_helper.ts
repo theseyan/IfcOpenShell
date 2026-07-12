@@ -1,11 +1,10 @@
 
 import { readFileSync, existsSync } from 'node:fs';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { resolve, dirname } from 'node:path';
 import { describe } from 'vitest';
 import { init } from '../src/index.js';
 import type { IfcOpenShell, PluginManifest } from '../src/index.js';
-import type { EmscriptenModuleFactory, WasmAssets } from '../src/types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..', '..', '..');
@@ -51,11 +50,6 @@ function findWasmArtifacts(kinds: readonly WasmArtifactKind[]): string | null {
   return null;
 }
 
-/** Package tests inspect the staged wasm package layout. */
-export function resolvePackagedWasmDir(): string | null {
-  return findWasmArtifacts(['env', 'packaged']);
-}
-
 /** Generated API tests need a build output, not the staged package copy. */
 export function resolveGeneratedWasmDir(): string | null {
   return findWasmArtifacts(['env', 'generated']);
@@ -92,20 +86,6 @@ export function isFullProfile(manifest: PluginManifest): boolean {
 export const fullWasmAvailable = wasmAvailable && WASM_DIR !== null && isFullProfile(loadManifest(WASM_DIR));
 
 export const describeOrSkipFull = fullWasmAvailable ? describe : describe.skip;
-
-export async function resolveWasmAssetsFromDir(dir: string): Promise<WasmAssets> {
-  const manifest = loadManifest(dir);
-  const wasmModuleUrl = pathToFileURL(resolve(dir, 'ifcopenshell_wasm.node.mjs')).href;
-  const wasmModule = (await import(wasmModuleUrl)).default as EmscriptenModuleFactory;
-  const base = pathToFileURL(dir).href;
-  return {
-    initModule: wasmModule,
-    wasmUrl: resolve(dir, 'ifcopenshell_wasm.wasm'),
-    pluginBaseUrl: base.endsWith('/') ? base : `${base}/`,
-    manifest,
-    apiModuleUrl: pathToFileURL(resolve(dir, 'ifcopenshell_api.mjs')).href,
-  };
-}
 
 export async function createInstance(wasmDir: string = WASM_DIR!): Promise<IfcOpenShell> {
   return init({ wasmRoot: wasmDir });

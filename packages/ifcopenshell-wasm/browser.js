@@ -27,17 +27,12 @@ export function loadManifest() {
   nodeOnly('loadManifest()');
 }
 
-export function createNodePluginLoader() {
-  nodeOnly('createNodePluginLoader()');
-}
-
 export async function resolveWasmAssets() {
   return {
     initModule,
     wasmUrl,
     pluginBaseUrl,
     manifest,
-    apiModuleUrl: '',
     createIfcOpenshellModule,
   };
 }

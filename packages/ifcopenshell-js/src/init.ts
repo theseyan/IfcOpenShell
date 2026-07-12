@@ -7,7 +7,6 @@ import type {
   IfcOpenshellModule,
   InitOptions,
   PluginKind,
-  PluginLoader,
   WasmAssets,
 } from './types.js';
 
@@ -22,8 +21,6 @@ export interface IfcOpenShell {
   [Symbol.asyncDispose](): Promise<void>;
 }
 
-const DEFAULT_API_MODULE = '@ifcopenshell-js/wasm/api';
-
 export class IfcOpenShellError extends Error {
   constructor(message: string, cause?: unknown) {
     super(message, cause !== undefined ? { cause } : undefined);
@@ -32,9 +29,17 @@ export class IfcOpenShellError extends Error {
 }
 
 export async function init(options: InitOptions = {}): Promise<IfcOpenShell> {
-  const defaults = options.wasmAssets ? null : await resolveRuntime(options.wasmRoot);
-  const assets = options.wasmAssets ?? defaults?.wasmAssets;
-  const loader = options.pluginLoader ?? defaults?.pluginLoader;
+  let assets: WasmAssets;
+  if (options.wasmAssets) {
+    assets = options.wasmAssets;
+  } else {
+    try {
+      assets = await resolveRuntime(options.wasmRoot);
+    } catch (error) {
+      throw new IfcOpenShellError('Failed to resolve packaged WASM assets', error);
+    }
+  }
+  const loader = options.pluginLoader ?? assets.pluginLoader;
 
   validateAssets(assets);
 
@@ -82,31 +87,15 @@ export async function init(options: InitOptions = {}): Promise<IfcOpenShell> {
   return Object.freeze(shell);
 }
 
-async function resolveRuntime(wasmRoot?: string): Promise<{ wasmAssets: WasmAssets; pluginLoader?: PluginLoader }> {
-  let wasm: typeof import('@ifcopenshell-js/wasm');
-  try {
-    wasm = await import('@ifcopenshell-js/wasm');
-  } catch (error) {
-    throw new IfcOpenShellError(
-      'Default init() requires @ifcopenshell-js/wasm. Install it or pass explicit wasmAssets.',
-      error,
-    );
-  }
-
-  const wasmAssets = await wasm.resolveWasmAssets(wasmRoot) as WasmAssets;
-  let pluginLoader: PluginLoader | undefined;
-  try {
-    pluginLoader = wasm.createNodePluginLoader();
-  } catch {
-    pluginLoader = undefined;
-  }
-  return { wasmAssets, pluginLoader };
+async function resolveRuntime(wasmRoot?: string): Promise<WasmAssets> {
+  const wasm = await import('@ifcopenshell-js/wasm');
+  return await wasm.resolveWasmAssets(wasmRoot) as WasmAssets;
 }
 
 async function resolveApiFactory(assets: WasmAssets): Promise<IfcOpenshellApiFactory> {
-  if (assets.createIfcOpenshellModule) return assets.createIfcOpenshellModule;
+  if (typeof assets.createIfcOpenshellModule === 'function') return assets.createIfcOpenshellModule;
 
-  const specifier = assets.apiModuleUrl ?? DEFAULT_API_MODULE;
+  const specifier = assets.apiModuleUrl!;
   try {
     const mod = await import(/* @vite-ignore */ /* webpackIgnore: true */ specifier);
     if (typeof mod.createIfcOpenshellModule !== 'function') {
@@ -133,6 +122,14 @@ function validateAssets(assets: WasmAssets | undefined): asserts assets is WasmA
   }
   if (!assets.manifest || typeof assets.manifest !== 'object') {
     throw new IfcOpenShellError('wasmAssets.manifest must contain ifcopenshell_plugins.json');
+  }
+  if (
+    typeof assets.createIfcOpenshellModule !== 'function' &&
+    (typeof assets.apiModuleUrl !== 'string' || assets.apiModuleUrl.length === 0)
+  ) {
+    throw new IfcOpenShellError(
+      'wasmAssets must provide createIfcOpenshellModule or apiModuleUrl',
+    );
   }
 }
 

@@ -1,5 +1,6 @@
 
-import { readFileSync, existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -42,10 +43,10 @@ export function loadManifest(root = WASM_ROOT) {
  * Filesystem-backed plugin loader for Node.
  *
  * @param {string} url
- * @returns {Uint8Array}
+ * @returns {Promise<Uint8Array>}
  */
 export function createNodePluginLoader() {
-  return (url) => readFileSync(fileURLToPath(url));
+  return (url) => readFile(fileURLToPath(url));
 }
 
 /**
@@ -67,10 +68,14 @@ export async function resolveWasmAssets(root = WASM_ROOT) {
   const wasmModuleUrl = pathToFileURL(wasmModulePath).href;
   const moduleFactory = (await import(wasmModuleUrl)).default;
   const wasmPath = join(root, 'ifcopenshell_wasm.wasm');
-  const initModule = (options = {}) => moduleFactory({
-    ...options,
-    wasmBinary: readFileSync(wasmPath),
-  });
+  let wasmBinary;
+  const initModule = async (options = {}) => {
+    wasmBinary ??= readFile(wasmPath);
+    return moduleFactory({
+      ...options,
+      wasmBinary: await wasmBinary,
+    });
+  };
   const apiModuleUrl = pathToFileURL(join(root, 'ifcopenshell_api.mjs')).href;
   const apiModule = await import(apiModuleUrl);
 
@@ -84,6 +89,7 @@ export async function resolveWasmAssets(root = WASM_ROOT) {
     manifest,
     apiModuleUrl,
     createIfcOpenshellModule: apiModule.createIfcOpenshellModule,
+    pluginLoader: createNodePluginLoader(),
   };
 }
 

@@ -28,11 +28,11 @@ default. Browser bundlers copy and rewrite the packaged WASM assets
 from static `new URL(..., import.meta.url)` references generated into
 `asset-manifest.js`.
 
-Vite and webpack 5 handle these static asset references without app-specific
-copy config. Plain Rollup and esbuild resolve the package JS, but do not copy
-package assets from `new URL(..., import.meta.url)` by themselves; use a
-copy/static-assets plugin or serve the packaged `wasm/` directory and pass
-`resolveUrls(baseUrl)`.
+Vite handles these static asset references without app-specific copy config.
+Plain Rollup, esbuild, and webpack 5 are not exercised by this package's
+browser test; use a copy/static-assets plugin or serve the packaged `wasm/`
+directory and pass `resolveUrls(baseUrl)` when your bundler does not emit the
+referenced assets.
 
 ## Node usage
 

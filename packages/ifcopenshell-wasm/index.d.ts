@@ -15,13 +15,18 @@ export interface PluginManifest {
 
 export type EmscriptenModuleFactory = (options?: Record<string, unknown>) => Promise<unknown>;
 
+export type PluginLoader = (
+  url: string,
+  plugin: { kind: string; id: string; entry: PluginEntry },
+) => Promise<Uint8Array | ArrayBuffer | ArrayBufferView> | Uint8Array | ArrayBuffer | ArrayBufferView;
+
 export type IfcOpenshellApiFactory = (
   initModule: EmscriptenModuleFactory,
   wasmUrl?: string,
   opts?: {
     pluginBaseUrl?: string;
     pluginManifest?: Record<string, Record<string, PluginEntry>>;
-    pluginLoader?: (url: string, plugin: { kind: string; id: string; entry: PluginEntry }) => unknown;
+    pluginLoader?: PluginLoader;
   },
 ) => Promise<unknown>;
 
@@ -30,11 +35,12 @@ export interface ResolvedWasmAssets {
   wasmUrl: string;
   pluginBaseUrl: string;
   manifest: PluginManifest;
-  apiModuleUrl: string;
-  createIfcOpenshellModule: IfcOpenshellApiFactory;
+  apiModuleUrl?: string;
+  createIfcOpenshellModule?: IfcOpenshellApiFactory;
+  pluginLoader?: PluginLoader;
 }
 
-export type NodePluginLoader = (url: string) => Uint8Array;
+export type NodePluginLoader = (url: string) => Promise<Uint8Array>;
 
 export function getWasmRoot(): string;
 export function wasmArtifactsPresent(root?: string): boolean;

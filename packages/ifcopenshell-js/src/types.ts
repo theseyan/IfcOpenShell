@@ -88,7 +88,7 @@ export type IfcOpenshellApiFactory = (
  * Custom plugin loader function.
  *
  * Override this to change how plugin `.wasm` bytes are fetched.
- * The default loader uses `fetch()` (browser) or `fs.readFileSync` (Node).
+ * The default loader uses `fetch()` in the browser and is filesystem-backed in Node.
  */
 export type PluginLoader = (
   url: string,
@@ -105,9 +105,11 @@ export interface WasmAssets {
   pluginBaseUrl: string;
   /** Parsed content of `ifcopenshell_plugins.json`. */
   manifest: PluginManifest;
+  /** Environment-appropriate loader for plugin WASM files. */
+  pluginLoader?: PluginLoader;
   /**
    * URL or module specifier for the generated `ifcopenshell_api.mjs`.
-   * Defaults to the generated module exported by `@ifcopenshell-js/wasm/api`.
+   * Required when `createIfcOpenshellModule` is not provided.
    */
   apiModuleUrl?: string;
   /**
@@ -128,6 +130,6 @@ export interface InitOptions {
    * tests and local development where multiple build directories may exist.
    */
   wasmRoot?: string;
-  /** Custom plugin loader override (default: `fetch`-based). */
+  /** Custom plugin loader override. Defaults to the loader supplied by the asset descriptor. */
   pluginLoader?: PluginLoader;
 }

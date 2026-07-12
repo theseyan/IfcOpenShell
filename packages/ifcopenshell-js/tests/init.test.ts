@@ -1,9 +1,8 @@
 
 import { describe, expect, it } from 'vitest';
-import { describeOrSkip } from './_helper.js';
 import { init, IfcOpenShellError } from '../src/index.js';
 
-describeOrSkip('init', () => {
+describe('init', () => {
   it('boots the default direct runtime in Node', async () => {
     const shell = await init();
     try {
@@ -21,5 +20,13 @@ describeOrSkip('init', () => {
     } finally {
       await shell.dispose();
     }
+  });
+
+  it('wraps default asset-resolution failures with the public error type', async () => {
+    await expect(init({ wasmRoot: '/definitely-missing-ifcopenshell-wasm-root' })).rejects.toMatchObject({
+      name: 'IfcOpenShellError',
+      message: 'Failed to resolve packaged WASM assets',
+      cause: expect.any(Error),
+    });
   });
 });

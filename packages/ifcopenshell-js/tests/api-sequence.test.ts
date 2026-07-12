@@ -1,6 +1,6 @@
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createNodePluginLoader, resolveWasmAssets } from '@ifcopenshell-js/wasm';
+import { resolveWasmAssets } from '@ifcopenshell-js/wasm';
 import { init, type IfcOpenShell } from '../src/index.js';
 import { describeGeneratedOrSkip, GENERATED_WASM_DIR } from './_helper.js';
 
@@ -10,7 +10,6 @@ describeGeneratedOrSkip('generated sequence API', () => {
   beforeAll(async () => {
     shell = await init({
       wasmAssets: await resolveWasmAssets(GENERATED_WASM_DIR!),
-      pluginLoader: createNodePluginLoader(),
     });
     await shell.loadPlugin('schema', 'ifc4');
   });

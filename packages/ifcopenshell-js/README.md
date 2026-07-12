@@ -50,7 +50,7 @@ can load additional plugins dynamically at runtime.
 | Bundler | Default behavior |
 |---------|------------------|
 | Vite | Works without extra config. The build emits the main WASM and all plugin WASM files referenced by the asset manifest. |
-| webpack 5 | Works without extra config in a browser build. Asset modules emit the main WASM and all plugin WASM files. |
+| webpack 5 | Not exercised by this package's browser test; configure asset modules to emit the main WASM and plugin WASM files. |
 | Rollup | Core Rollup plus `@rollup/plugin-node-resolve` resolves the package, but does not copy `new URL(..., import.meta.url)` package assets by itself. Use a copy/static-assets plugin, or serve the packaged `wasm/` directory yourself and pass `resolveUrls(baseUrl)`. |
 | esbuild | Core esbuild bundles the JS, but does not copy these package assets from `new URL(..., import.meta.url)`. Use an asset-copy plugin or serve the packaged `wasm/` directory yourself and pass `resolveUrls(baseUrl)`. |
 
