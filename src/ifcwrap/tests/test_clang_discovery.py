@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 import pytest
 
 from src.ifcwrap.binding_generator.clang_discovery import (
-    CompileCommand,
     CompilationConfig,
+    CompileCommand,
     DiscoveryEnvironment,
     TranslationUnitIndex,
     _ast_filter_for_lookup,
@@ -51,7 +51,15 @@ void hop(const std::string& guid);
     )
     source.write_text('#include "sample.h"\n', encoding="utf-8")
 
-    methods = discover_public_methods(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Foo")
+    methods = discover_public_methods(
+        DiscoveryEnvironment(
+            compilation=CompilationConfig(
+                compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path
+            )
+        ),
+        source,
+        "Foo",
+    )
 
     assert set(methods) == {"bar", "baz", "qux"}
     assert len(methods["bar"]) == 1
@@ -68,12 +76,30 @@ void hop(const std::string& guid);
     assert methods["baz"][0].params[0].cpp_type_ref.base_name == "std::string"
     assert len(methods["qux"]) == 2
     assert [param.cpp_type for param in methods["qux"][0].params] == ["int"]
-    assert [param.cpp_type for param in methods["qux"][1].params] == ["const std::string &"]
+    assert [param.cpp_type for param in methods["qux"][1].params] == [
+        "const std::string &"
+    ]
 
-    qualified_methods = discover_public_methods(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Demo::Foo")
+    qualified_methods = discover_public_methods(
+        DiscoveryEnvironment(
+            compilation=CompilationConfig(
+                compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path
+            )
+        ),
+        source,
+        "Demo::Foo",
+    )
     assert set(qualified_methods) == {"bar", "baz", "qux"}
 
-    functions = discover_namespace_functions(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Demo")
+    functions = discover_namespace_functions(
+        DiscoveryEnvironment(
+            compilation=CompilationConfig(
+                compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path
+            )
+        ),
+        source,
+        "Demo",
+    )
     assert set(functions) == {"walk", "hop"}
     assert len(functions["walk"]) == 1
     assert functions["walk"][0].return_cpp_type == "int"
@@ -81,7 +107,9 @@ void hop(const std::string& guid);
     assert len(functions["hop"]) == 2
 
 
-def test_discover_namespace_functions_with_nested_qualified_namespace(tmp_path: Path) -> None:
+def test_discover_namespace_functions_with_nested_qualified_namespace(
+    tmp_path: Path,
+) -> None:
     compiler = shutil.which("clang++")
     if compiler is None:
         pytest.skip("clang++ is not available")
@@ -114,7 +142,15 @@ double qualified_scale(double value) { return value; }
         encoding="utf-8",
     )
 
-    functions = discover_namespace_functions(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "ifcapi::bindings")
+    functions = discover_namespace_functions(
+        DiscoveryEnvironment(
+            compilation=CompilationConfig(
+                compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path
+            )
+        ),
+        source,
+        "ifcapi::bindings",
+    )
 
     assert set(functions) == {"nested_count", "qualified_scale"}
     assert functions["nested_count"][0].return_cpp_type == "int"
@@ -122,7 +158,9 @@ double qualified_scale(double value) { return value; }
     assert functions["qualified_scale"][0].return_cpp_type == "double"
 
 
-def test_discover_namespace_functions_with_synthetic_contract_source(tmp_path: Path) -> None:
+def test_discover_namespace_functions_with_synthetic_contract_source(
+    tmp_path: Path,
+) -> None:
     compiler = shutil.which("clang++")
     if compiler is None:
         pytest.skip("clang++ is not available")
@@ -154,7 +192,11 @@ double contract_scale(double value);
     source.write_text("int reference() { return 0; }\n", encoding="utf-8")
 
     functions = discover_namespace_functions_with_synthetic_source(
-        DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)),
+        DiscoveryEnvironment(
+            compilation=CompilationConfig(
+                compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path
+            )
+        ),
         f'#include "{header_a.as_posix()}"\n#include "{header_b.as_posix()}"\n',
         "ifcapi::bindings",
         selected_names={"contract_count", "contract_scale"},
@@ -193,7 +235,9 @@ int walk(int steps);
     )
     source.write_text('#include "sample.h"\n', encoding="utf-8")
     environment = DiscoveryEnvironment(
-        compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)
+        compilation=CompilationConfig(
+            compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path
+        )
     )
 
     methods = discover_public_methods(environment, source, "Demo::Foo")
@@ -223,7 +267,9 @@ int contract_count(const std::string& name);
         encoding="utf-8",
     )
     environment = DiscoveryEnvironment(
-        compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)
+        compilation=CompilationConfig(
+            compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path
+        )
     )
 
     functions = discover_namespace_functions_with_synthetic_source(
@@ -240,7 +286,11 @@ int contract_count(const std::string& name);
 
 def test_namespace_discovery_uses_simple_fallback_lazily(tmp_path: Path) -> None:
     index = TranslationUnitIndex(
-        CompileCommand(directory=tmp_path, file=tmp_path / "bindings.cpp", arguments=("clang++", "-c", "bindings.cpp"))
+        CompileCommand(
+            directory=tmp_path,
+            file=tmp_path / "bindings.cpp",
+            arguments=("clang++", "-c", "bindings.cpp"),
+        )
     )
     ast_filters: list[str] = []
 
@@ -278,7 +328,11 @@ def test_namespace_discovery_uses_simple_fallback_lazily(tmp_path: Path) -> None
 
 def test_record_lookup_misses_are_cached(tmp_path: Path) -> None:
     index = TranslationUnitIndex(
-        CompileCommand(directory=tmp_path, file=tmp_path / "bindings.cpp", arguments=("clang++", "-c", "bindings.cpp"))
+        CompileCommand(
+            directory=tmp_path,
+            file=tmp_path / "bindings.cpp",
+            arguments=("clang++", "-c", "bindings.cpp"),
+        )
     )
     ast_filters: list[str] = []
 
@@ -295,7 +349,11 @@ def test_record_lookup_misses_are_cached(tmp_path: Path) -> None:
 
 def test_ast_objects_are_cached_per_filter(tmp_path: Path) -> None:
     index = TranslationUnitIndex(
-        CompileCommand(directory=tmp_path, file=tmp_path / "bindings.cpp", arguments=("clang++", "-c", "bindings.cpp"))
+        CompileCommand(
+            directory=tmp_path,
+            file=tmp_path / "bindings.cpp",
+            arguments=("clang++", "-c", "bindings.cpp"),
+        )
     )
     ast_filters: list[str] = []
 
@@ -314,7 +372,11 @@ def test_ast_objects_are_cached_per_filter(tmp_path: Path) -> None:
 
 def test_namespace_discovery_skips_unselected_signatures(tmp_path: Path) -> None:
     index = TranslationUnitIndex(
-        CompileCommand(directory=tmp_path, file=tmp_path / "bindings.cpp", arguments=("clang++", "-c", "bindings.cpp"))
+        CompileCommand(
+            directory=tmp_path,
+            file=tmp_path / "bindings.cpp",
+            arguments=("clang++", "-c", "bindings.cpp"),
+        )
     )
     ast_filters: list[str] = []
 
@@ -351,7 +413,11 @@ def test_namespace_discovery_skips_unselected_signatures(tmp_path: Path) -> None
 
 def test_qualified_record_lookup_uses_coarse_namespace_filter(tmp_path: Path) -> None:
     index = TranslationUnitIndex(
-        CompileCommand(directory=tmp_path, file=tmp_path / "bindings.cpp", arguments=("clang++", "-c", "bindings.cpp"))
+        CompileCommand(
+            directory=tmp_path,
+            file=tmp_path / "bindings.cpp",
+            arguments=("clang++", "-c", "bindings.cpp"),
+        )
     )
     ast_filters: list[str] = []
 
@@ -380,7 +446,11 @@ def test_qualified_record_lookup_uses_coarse_namespace_filter(tmp_path: Path) ->
 
 def test_scoped_lookup_prefers_longest_matching_suffix(tmp_path: Path) -> None:
     index = TranslationUnitIndex(
-        CompileCommand(directory=tmp_path, file=tmp_path / "bindings.cpp", arguments=("clang++", "-c", "bindings.cpp"))
+        CompileCommand(
+            directory=tmp_path,
+            file=tmp_path / "bindings.cpp",
+            arguments=("clang++", "-c", "bindings.cpp"),
+        )
     )
     ast_filters: list[str] = []
 
@@ -428,7 +498,11 @@ def test_scoped_lookup_prefers_longest_matching_suffix(tmp_path: Path) -> None:
 
 def test_scoped_lookup_rejects_true_ambiguity(tmp_path: Path) -> None:
     index = TranslationUnitIndex(
-        CompileCommand(directory=tmp_path, file=tmp_path / "bindings.cpp", arguments=("clang++", "-c", "bindings.cpp"))
+        CompileCommand(
+            directory=tmp_path,
+            file=tmp_path / "bindings.cpp",
+            arguments=("clang++", "-c", "bindings.cpp"),
+        )
     )
 
     def fake_ast_dump(ast_filter: str) -> tuple[dict, ...]:
@@ -479,21 +553,35 @@ def test_scoped_lookup_rejects_true_ambiguity(tmp_path: Path) -> None:
 def test_ast_filter_for_lookup_coarsens_known_qualified_names() -> None:
     assert _ast_filter_for_lookup("IfcGeom::Iterator") == "IfcGeom"
     assert _ast_filter_for_lookup("IfcParse::schema_definition") == "IfcParse"
-    assert _ast_filter_for_lookup("ifcopenshell::geometry::taxonomy::item") == "ifcopenshell::geometry::taxonomy"
-    assert _ast_filter_for_lookup("ifcopenshell::geometry::Settings") == "ifcopenshell::geometry"
+    assert (
+        _ast_filter_for_lookup("ifcopenshell::geometry::taxonomy::item")
+        == "ifcopenshell::geometry::taxonomy"
+    )
+    assert (
+        _ast_filter_for_lookup("ifcopenshell::geometry::Settings")
+        == "ifcopenshell::geometry"
+    )
     assert _ast_filter_for_lookup("BareType") == "BareType"
 
 
-def test_discovery_skips_known_namespace_roots_before_clang_lookup(tmp_path: Path) -> None:
+def test_discovery_skips_known_namespace_roots_before_clang_lookup(
+    tmp_path: Path,
+) -> None:
     index = TranslationUnitIndex(
-        CompileCommand(directory=tmp_path, file=tmp_path / "bindings.cpp", arguments=("clang++", "-c", "bindings.cpp"))
+        CompileCommand(
+            directory=tmp_path,
+            file=tmp_path / "bindings.cpp",
+            arguments=("clang++", "-c", "bindings.cpp"),
+        )
     )
     ast_filters: list[str] = []
 
     def fake_ast_dump(ast_filter: str) -> tuple[dict, ...]:
         ast_filters.append(ast_filter)
         if ast_filter.startswith("ifcopenshell"):
-            raise AssertionError("Known namespace roots should not trigger record/enum AST filters")
+            raise AssertionError(
+                "Known namespace roots should not trigger record/enum AST filters"
+            )
         return (
             {
                 "kind": "NamespaceDecl",
@@ -502,7 +590,9 @@ def test_discovery_skips_known_namespace_roots_before_clang_lookup(tmp_path: Pat
                     {
                         "kind": "FunctionDecl",
                         "name": "make_item",
-                        "type": {"qualType": "ifcopenshell::geometry::taxonomy::item *()"},
+                        "type": {
+                            "qualType": "ifcopenshell::geometry::taxonomy::item *()"
+                        },
                     },
                 ],
             },
@@ -512,7 +602,10 @@ def test_discovery_skips_known_namespace_roots_before_clang_lookup(tmp_path: Pat
 
     functions = index.discover_namespace_functions("Demo", selected_names={"make_item"})
 
-    assert functions["make_item"][0].return_type_ref.storage_spelling == "ifcopenshell::geometry::taxonomy::item*"
+    assert (
+        functions["make_item"][0].return_type_ref.storage_spelling
+        == "ifcopenshell::geometry::taxonomy::item*"
+    )
     assert ast_filters == ["Demo"]
 
 
@@ -558,20 +651,47 @@ public:
     )
     source.write_text('#include "fields.h"\n', encoding="utf-8")
 
-    own_fields = discover_public_fields(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Derived")
+    own_fields = discover_public_fields(
+        DiscoveryEnvironment(
+            compilation=CompilationConfig(
+                compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path
+            )
+        ),
+        source,
+        "Derived",
+    )
     assert set(own_fields) == {"axis"}
     assert own_fields["axis"].cpp_type == "Node::ptr"
-    assert own_fields["axis"].cpp_type_ref.desugared_spelling == "std::shared_ptr<Demo::Node>"
+    assert (
+        own_fields["axis"].cpp_type_ref.desugared_spelling
+        == "std::shared_ptr<Demo::Node>"
+    )
     assert own_fields["axis"].cpp_type_ref.base_name == "std::shared_ptr"
     assert own_fields["axis"].cpp_type_ref.template_args[0].base_name == "Demo::Node"
 
-    inherited_fields = discover_public_fields(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Derived", include_inherited=True
+    inherited_fields = discover_public_fields(
+        DiscoveryEnvironment(
+            compilation=CompilationConfig(
+                compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path
+            )
+        ),
+        source,
+        "Derived",
+        include_inherited=True,
     )
     assert set(inherited_fields) == {"axis", "inherited"}
     assert inherited_fields["inherited"].cpp_type == "int"
     assert inherited_fields["inherited"].cpp_type_ref.canonical_spelling == "int"
 
-    qualified_inherited_fields = discover_public_fields(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Demo::Derived", include_inherited=True
+    qualified_inherited_fields = discover_public_fields(
+        DiscoveryEnvironment(
+            compilation=CompilationConfig(
+                compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path
+            )
+        ),
+        source,
+        "Demo::Derived",
+        include_inherited=True,
     )
     assert set(qualified_inherited_fields) == {"axis", "inherited"}
 
@@ -600,7 +720,15 @@ struct Widget {
     )
     source.write_text('#include "enums.h"\n', encoding="utf-8")
 
-    methods = discover_public_methods(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Demo::Widget")
+    methods = discover_public_methods(
+        DiscoveryEnvironment(
+            compilation=CompilationConfig(
+                compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path
+            )
+        ),
+        source,
+        "Demo::Widget",
+    )
 
     assert methods["mode"][0].return_type_ref.is_enum
     assert methods["mode"][0].return_type_ref.base_name == "Mode"
@@ -633,13 +761,26 @@ struct SimpleType {
     )
     source.write_text('#include "typedef_enums.h"\n', encoding="utf-8")
 
-    methods = discover_public_methods(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Demo::SimpleType")
+    methods = discover_public_methods(
+        DiscoveryEnvironment(
+            compilation=CompilationConfig(
+                compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path
+            )
+        ),
+        source,
+        "Demo::SimpleType",
+    )
 
     assert methods["declared_type"][0].return_type_ref.is_enum
-    assert methods["declared_type"][0].return_type_ref.enum_qualified_name == "Demo::SimpleType::data_type"
+    assert (
+        methods["declared_type"][0].return_type_ref.enum_qualified_name
+        == "Demo::SimpleType::data_type"
+    )
 
 
-def test_discover_cpp_types_marks_enum_fields_under_skipped_root(tmp_path: Path) -> None:
+def test_discover_cpp_types_marks_enum_fields_under_skipped_root(
+    tmp_path: Path,
+) -> None:
     compiler = shutil.which("clang++")
     if compiler is None:
         pytest.skip("clang++ is not available")
@@ -663,13 +804,26 @@ struct Widget {
     )
     source.write_text('#include "enum_fields.h"\n', encoding="utf-8")
 
-    fields = discover_public_fields(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "ifcopenshell::demo::Widget")
+    fields = discover_public_fields(
+        DiscoveryEnvironment(
+            compilation=CompilationConfig(
+                compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path
+            )
+        ),
+        source,
+        "ifcopenshell::demo::Widget",
+    )
 
     assert fields["mode"].cpp_type_ref.is_enum
-    assert fields["mode"].cpp_type_ref.enum_qualified_name == "ifcopenshell::demo::Widget::Mode"
+    assert (
+        fields["mode"].cpp_type_ref.enum_qualified_name
+        == "ifcopenshell::demo::Widget::Mode"
+    )
 
 
-def test_discovery_avoids_unscoped_and_std_ast_filters(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_discovery_avoids_unscoped_and_std_ast_filters(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     compiler = shutil.which("clang++")
     if compiler is None:
         pytest.skip("clang++ is not available")
@@ -706,7 +860,15 @@ struct Container {
 
     monkeypatch.setattr(TranslationUnitIndex, "_run_ast_dump", _recording_run_ast_dump)
 
-    methods = discover_public_methods(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Demo::Container")
+    methods = discover_public_methods(
+        DiscoveryEnvironment(
+            compilation=CompilationConfig(
+                compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path
+            )
+        ),
+        source,
+        "Demo::Container",
+    )
 
     assert methods["inner"][0].return_type_ref.storage_spelling == "Outer::Inner"
     assert methods["name"][0].return_type_ref.storage_spelling == "const std::string&"
@@ -714,7 +876,9 @@ struct Container {
     assert "Inner" not in seen_filters
 
 
-def test_discovery_avoids_lowercase_bare_type_filters(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_discovery_avoids_lowercase_bare_type_filters(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     compiler = shutil.which("clang++")
     if compiler is None:
         pytest.skip("clang++ is not available")
@@ -746,13 +910,25 @@ struct schema_definition {
 
     monkeypatch.setattr(TranslationUnitIndex, "_run_ast_dump", _recording_run_ast_dump)
 
-    methods = discover_public_methods(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Demo::schema_definition")
+    methods = discover_public_methods(
+        DiscoveryEnvironment(
+            compilation=CompilationConfig(
+                compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path
+            )
+        ),
+        source,
+        "Demo::schema_definition",
+    )
 
-    assert methods["declared"][0].return_type_ref.storage_spelling == "Demo::declaration"
+    assert (
+        methods["declared"][0].return_type_ref.storage_spelling == "Demo::declaration"
+    )
     assert "declaration" not in seen_filters
 
 
-def test_discovery_avoids_bare_ptr_and_it_alias_filters(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_discovery_avoids_bare_ptr_and_it_alias_filters(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     compiler = shutil.which("clang++")
     if compiler is None:
         pytest.skip("clang++ is not available")
@@ -789,10 +965,29 @@ public:
 
     monkeypatch.setattr(TranslationUnitIndex, "_run_ast_dump", _recording_run_ast_dump)
 
-    fields = discover_public_fields(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Demo::Derived")
-    methods = discover_public_methods(DiscoveryEnvironment(compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)), source, "Demo::Derived")
+    fields = discover_public_fields(
+        DiscoveryEnvironment(
+            compilation=CompilationConfig(
+                compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path
+            )
+        ),
+        source,
+        "Demo::Derived",
+    )
+    methods = discover_public_methods(
+        DiscoveryEnvironment(
+            compilation=CompilationConfig(
+                compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path
+            )
+        ),
+        source,
+        "Demo::Derived",
+    )
 
-    assert fields["axis"].cpp_type_ref.desugared_spelling == "std::shared_ptr<Demo::Derived>"
+    assert (
+        fields["axis"].cpp_type_ref.desugared_spelling
+        == "std::shared_ptr<Demo::Derived>"
+    )
     assert methods["index"][0].return_cpp_type == "it"
     assert "ptr" not in seen_filters
     assert "it" not in seen_filters

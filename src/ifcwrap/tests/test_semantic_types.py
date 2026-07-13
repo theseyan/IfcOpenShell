@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 import pytest
 
@@ -51,7 +51,9 @@ def test_analyze_cpp_type_parses_optional_string() -> None:
     assert isinstance(semantic.element, StringSemanticType)
 
 
-def test_analyze_cpp_type_parses_shared_ptr_aliases_from_discovery(tmp_path: Path) -> None:
+def test_analyze_cpp_type_parses_shared_ptr_aliases_from_discovery(
+    tmp_path: Path,
+) -> None:
     compiler = shutil.which("clang++")
     if compiler is None:
         pytest.skip("clang++ is not available")
@@ -79,7 +81,9 @@ struct Holder {
     source.write_text('#include "shared_ptr_alias.h"\n', encoding="utf-8")
 
     environment = DiscoveryEnvironment(
-        compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)
+        compilation=CompilationConfig(
+            compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path
+        )
     )
     fields = discover_public_fields(environment, source, "Demo::Holder")
     semantic = analyze_cpp_type(fields["axis"].cpp_type_ref)

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 import pytest
 
@@ -15,7 +15,10 @@ from src.ifcwrap.binding_generator import (
     SourceNamespaceRequest,
     discover_source_inventory,
 )
-from src.ifcwrap.binding_generator.semantic_types import RecordSemanticType, ScalarSemanticType
+from src.ifcwrap.binding_generator.semantic_types import (
+    RecordSemanticType,
+    ScalarSemanticType,
+)
 
 
 def test_source_inventory_discovers_classes_and_namespaces(tmp_path: Path) -> None:
@@ -48,7 +51,9 @@ int make_count(int value);
     )
     source.write_text('#include "inventory.h"\n', encoding="utf-8")
     environment = DiscoveryEnvironment(
-        compilation=CompilationConfig(compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path)
+        compilation=CompilationConfig(
+            compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path
+        )
     )
 
     inventory = discover_source_inventory(
@@ -77,14 +82,20 @@ int make_count(int value);
     assert widget.constructors[0].class_name == "Demo::Widget"
     assert set(widget.fields) == {"field"}
     assert widget.bases[0].cpp_type_ref.base_name == "Demo::Base"
-    assert set(inventory.namespaces[("Demo", source.resolve())].functions) == {"make_count"}
-    assert isinstance(widget.method_semantics["value"][0].return_type.semantic, ScalarSemanticType)
+    assert set(inventory.namespaces[("Demo", source.resolve())].functions) == {
+        "make_count"
+    }
+    assert isinstance(
+        widget.method_semantics["value"][0].return_type.semantic, ScalarSemanticType
+    )
     assert widget.method_semantics["value"][0].return_type.semantic.family == "int32"
     assert widget.constructor_semantics[0].return_type is None
     assert isinstance(widget.field_semantics["field"].semantic, ScalarSemanticType)
     assert widget.field_semantics["field"].ownership_hint == "value"
     assert isinstance(widget.base_semantics[0].semantic, RecordSemanticType)
-    make_count = inventory.namespaces[("Demo", source.resolve())].function_semantics["make_count"][0]
+    make_count = inventory.namespaces[("Demo", source.resolve())].function_semantics[
+        "make_count"
+    ][0]
     assert isinstance(make_count.return_type.semantic, ScalarSemanticType)
     assert make_count.params[0].type.ownership_hint == "value"
 
@@ -106,7 +117,9 @@ def test_source_inventory_discovers_datamodel_v1_core_types() -> None:
         pytest.skip("clang++ is not available")
     boost_include = _boost_include_dir()
     if boost_include is None:
-        pytest.skip("Boost headers are required for datamodel-v1 source inventory smoke test")
+        pytest.skip(
+            "Boost headers are required for datamodel-v1 source inventory smoke test"
+        )
 
     repo_root = Path(__file__).resolve().parents[3]
     ifcparse = repo_root / "src" / "ifcparse"
@@ -161,29 +174,45 @@ def test_source_inventory_discovers_datamodel_v1_core_types() -> None:
         )
     )
 
-    file_methods = inventory.classes[("ifcopenshell::file", (ifcparse / "file.cpp").resolve())].methods
+    file_methods = inventory.classes[
+        ("ifcopenshell::file", (ifcparse / "file.cpp").resolve())
+    ].methods
     assert set(file_methods) >= {"schema", "header"}
-    assert set(inventory.classes[("ifcopenshell::schema_definition", (ifcparse / "schema.cpp").resolve())].methods) >= {
+    assert set(
+        inventory.classes[
+            ("ifcopenshell::schema_definition", (ifcparse / "schema.cpp").resolve())
+        ].methods
+    ) >= {
         "name",
         "declarations",
         "entities",
     }
-    assert set(inventory.classes[("ifcopenshell::instance_streamer<>", (ifcparse / "file.cpp").resolve())].methods) >= {
+    assert set(
+        inventory.classes[
+            ("ifcopenshell::instance_streamer<>", (ifcparse / "file.cpp").resolve())
+        ].methods
+    ) >= {
         "status",
         "schema",
         "header",
     }
-    assert set(inventory.classes[("express::Base", (ifcparse / "parse.cpp").resolve())].methods) >= {
+    assert set(
+        inventory.classes[("express::Base", (ifcparse / "parse.cpp").resolve())].methods
+    ) >= {
         "declaration",
         "identity",
         "file",
     }
-    assert set(inventory.namespaces[("ifcopenshell", (ifcparse / "schema.cpp").resolve())].functions) == {
+    assert set(
+        inventory.namespaces[
+            ("ifcopenshell", (ifcparse / "schema.cpp").resolve())
+        ].functions
+    ) == {
         "schema_by_name",
         "schema_names",
     }
-    schema_by_name = inventory.namespaces[("ifcopenshell", (ifcparse / "schema.cpp").resolve())].function_semantics[
-        "schema_by_name"
-    ][0]
+    schema_by_name = inventory.namespaces[
+        ("ifcopenshell", (ifcparse / "schema.cpp").resolve())
+    ].function_semantics["schema_by_name"][0]
     assert isinstance(schema_by_name.return_type.semantic, RecordSemanticType)
     assert schema_by_name.return_type.ownership_hint == "raw_pointer"

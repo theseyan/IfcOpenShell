@@ -4,32 +4,19 @@ from __future__ import annotations
 
 import re
 
-try:
-    from ...binding_model import TypeSpec
-    from ...host_metadata import HostBindingMetadata, HostFunctionMetadata, HostParamMetadata, HostStructMetadata
-    from .._shared import (
-        _INTERNAL_C_FUNCTIONS,
-        _camel_name,
-        _method_name,
-        _public_module_member,
-        _public_name,
-        _public_params,
-        _snake_name,
-        _type_name,
-    )
-except ImportError:  # pragma: no cover - script execution fallback
-    from binding_model import TypeSpec
-    from host_metadata import HostBindingMetadata, HostFunctionMetadata, HostParamMetadata, HostStructMetadata
-    from targets._shared import (
-        _INTERNAL_C_FUNCTIONS,
-        _camel_name,
-        _method_name,
-        _public_module_member,
-        _public_name,
-        _public_params,
-        _snake_name,
-        _type_name,
-    )
+from ...abi_ir import BindingABI, CFunctionIR, CParamIR, CTypeIR
+from ...binding_model import TypeSpec
+from .._shared import (
+    _INTERNAL_C_FUNCTIONS,
+    _camel_name,
+    _method_name,
+    _public_module_member,
+    _public_name,
+    _public_params,
+    _snake_name,
+    _type_name,
+)
+
 
 def _interface_name(name: str) -> str:
     base = name.removeprefix("ifcopenshell_").removesuffix("_t")
@@ -37,7 +24,7 @@ def _interface_name(name: str) -> str:
     return "IfcOpenshell" + "".join(part.capitalize() for part in parts if part)
 
 
-def _ts_type_from_c_type(c_type: str, metadata: HostBindingMetadata) -> str:
+def _ts_type_from_c_type(c_type: str, metadata: BindingABI) -> str:
     normalized = " ".join(c_type.replace(" *", "*").split())
     normalized_base = normalized.removeprefix("const ").removesuffix("*").strip()
     option = next(
@@ -50,7 +37,14 @@ def _ts_type_from_c_type(c_type: str, metadata: HostBindingMetadata) -> str:
     )
     if option is not None:
         return _interface_name(option.c_type)
-    handle_name = next((name for name, handle in metadata.handles.items() if f"{handle.c_type}*" == normalized), None)
+    handle_name = next(
+        (
+            name
+            for name, handle in metadata.handles.items()
+            if f"{handle.c_type}*" == normalized
+        ),
+        None,
+    )
     if handle_name is not None:
         return _type_name(metadata.handles[handle_name].c_type)
     if normalized in {"bool", "ifcopenshell_logical_t"}:
@@ -63,14 +57,22 @@ def _ts_type_from_c_type(c_type: str, metadata: HostBindingMetadata) -> str:
         return "string"
     if normalized.endswith("**"):
         pointee = normalized[:-2].strip()
-        handle_name = next((name for name, handle in metadata.handles.items() if handle.c_type == pointee), None)
+        handle_name = next(
+            (
+                name
+                for name, handle in metadata.handles.items()
+                if handle.c_type == pointee
+            ),
+            None,
+        )
         if handle_name is not None:
             return f"{_type_name(metadata.handles[handle_name].c_type)}[]"
     sequence = next(
         (
             item
             for item in metadata.value_types.values()
-            if item.c_type == normalized_base and item.kind in {"sequence", "handle_sequence"}
+            if item.c_type == normalized_base
+            and item.kind in {"sequence", "handle_sequence"}
         ),
         None,
     )
@@ -79,14 +81,15 @@ def _ts_type_from_c_type(c_type: str, metadata: HostBindingMetadata) -> str:
     return "IfcOpenshellRawValue"
 
 
-def _sequence_ts_type(struct: HostStructMetadata, metadata: HostBindingMetadata) -> str:
+def _sequence_ts_type(struct: CTypeIR, metadata: BindingABI) -> str:
     if struct.kind == "handle_sequence":
         item = next(
             (
                 _type_name(handle.c_type)
                 for handle in metadata.handles.values()
                 if struct.element_type is not None
-                and struct.element_type.removeprefix("const ").removesuffix("*").strip() == handle.c_type
+                and struct.element_type.removeprefix("const ").removesuffix("*").strip()
+                == handle.c_type
             ),
             "IfcOpenshellRawValue",
         )
@@ -105,13 +108,15 @@ def _sequence_ts_type(struct: HostStructMetadata, metadata: HostBindingMetadata)
     if scalar is not None:
         return f"{scalar}[]"
 
-    nested = next((item for item in metadata.value_types.values() if item.c_type == elem), None)
+    nested = next(
+        (item for item in metadata.value_types.values() if item.c_type == elem), None
+    )
     if nested is not None and nested.kind in {"sequence", "handle_sequence"}:
         return f"{_sequence_ts_type(nested, metadata)}[]"
     return "IfcOpenshellRawValue[]"
 
 
-def _ts_type(type_spec: TypeSpec, metadata: HostBindingMetadata) -> str:
+def _ts_type(type_spec: TypeSpec, metadata: BindingABI) -> str:
     if type_spec.sequence_depth > 0:
         inner = _ts_type(
             TypeSpec(
@@ -144,7 +149,10 @@ def _ts_type(type_spec: TypeSpec, metadata: HostBindingMetadata) -> str:
         option = metadata.option_structs[type_spec.struct]
         result = _interface_name(option.c_type)
     elif type_spec.kind == "variant":
-        result = " | ".join(_ts_type(alt, metadata).removesuffix(" | null") for alt in type_spec.variants)
+        result = " | ".join(
+            _ts_type(alt, metadata).removesuffix(" | null")
+            for alt in type_spec.variants
+        )
     else:
         result = "IfcOpenshellRawValue"
     if type_spec.nullable and result != "void":
@@ -152,32 +160,39 @@ def _ts_type(type_spec: TypeSpec, metadata: HostBindingMetadata) -> str:
     return result
 
 
-def _render_struct_interfaces(metadata: HostBindingMetadata) -> str:
+def _render_struct_interfaces(metadata: BindingABI) -> str:
     chunks: list[str] = []
     for name, struct in sorted(metadata.value_types.items()):
         if struct.kind != "result_struct":
             continue
         fields = "\n".join(
-            f"    {field.name}: {_ts_type_from_c_type(field.c_type, metadata)};" for field in struct.fields
+            f"    {field.name}: {_ts_type_from_c_type(field.c_type, metadata)};"
+            for field in struct.fields
         )
-        chunks.append(f"  export interface {_interface_name(struct.c_type)} {{\n{fields}\n  }}")
+        chunks.append(
+            f"  export interface {_interface_name(struct.c_type)} {{\n{fields}\n  }}"
+        )
     return "\n\n".join(chunks)
 
 
-def _render_option_struct_interfaces(metadata: HostBindingMetadata) -> str:
+def _render_option_struct_interfaces(metadata: BindingABI) -> str:
     chunks: list[str] = []
-    for option in sorted(metadata.option_structs.values(), key=lambda item: item.c_type):
+    for option in sorted(
+        metadata.option_structs.values(), key=lambda item: item.c_type
+    ):
         fields = "\n".join(
             f"    {field.name}{'?' if field.type.nullable else ''}: "
             f"{_ts_type(field.type, metadata).removesuffix(' | null')};"
             for field in option.fields
         )
-        chunks.append(f"  export interface {_interface_name(option.c_type)} {{\n{fields}\n  }}")
+        chunks.append(
+            f"  export interface {_interface_name(option.c_type)} {{\n{fields}\n  }}"
+        )
     return "\n\n".join(chunks)
 
 
-def _render_handle_classes(metadata: HostBindingMetadata) -> str:
-    receiver_groups: dict[str, list[HostFunctionMetadata]] = {}
+def _render_handle_classes(metadata: BindingABI) -> str:
+    receiver_groups: dict[str, list[CFunctionIR]] = {}
     for function in metadata.functions.values():
         if function.receiver is None:
             continue
@@ -186,18 +201,29 @@ def _render_handle_classes(metadata: HostBindingMetadata) -> str:
     chunks: list[str] = []
     for handle_name, handle in sorted(metadata.handles.items()):
         methods = ["    readonly ptr: number;", "    destroy(): void;"]
-        for function in sorted(receiver_groups.get(handle_name, []), key=lambda item: item.c_name):
+        for function in sorted(
+            receiver_groups.get(handle_name, []), key=lambda item: item.c_name
+        ):
             name = _public_name(function, metadata.c_prefix)
             methods.append(_render_function_signature(name, function, metadata))
         method_block = "\n".join(methods)
-        chunks.append(f"  export class {_type_name(handle.c_type)} {{\n{method_block}\n  }}")
+        chunks.append(
+            f"  export class {_type_name(handle.c_type)} {{\n{method_block}\n  }}"
+        )
     return "\n\n".join(chunks)
 
 
-def _render_function_signature(name: str, function: HostFunctionMetadata, metadata: HostBindingMetadata) -> str:
+def _render_function_signature(
+    name: str, function: CFunctionIR, metadata: BindingABI
+) -> str:
     params = ", ".join(
         f"{param.name}: {_ts_type_from_c_type(param.c_type, metadata)}"
-        + (" | null" if param.nullable and "null" not in _ts_type_from_c_type(param.c_type, metadata) else "")
+        + (
+            " | null"
+            if param.nullable
+            and "null" not in _ts_type_from_c_type(param.c_type, metadata)
+            else ""
+        )
         for param in _public_params(function)
     )
     signature = f"    {name}({params}): {_ts_type(function.returns, metadata)};"
@@ -216,10 +242,14 @@ def _render_doc_comment(doc: str, indent: str) -> str:
 
 
 def _module_interface_name(module_name: str) -> str:
-    return "IfcOpenshell" + "".join(part.capitalize() for part in module_name.split("_") if part) + "Module"
+    return (
+        "IfcOpenshell"
+        + "".join(part.capitalize() for part in module_name.split("_") if part)
+        + "Module"
+    )
 
 
-def _collect_module_members(metadata: HostBindingMetadata) -> dict[str, list[str]]:
+def _collect_module_members(metadata: BindingABI) -> dict[str, list[str]]:
     module_members: dict[str, list[str]] = {}
     for function in sorted(metadata.functions.values(), key=lambda item: item.c_name):
         if function.receiver is not None or function.c_name in _INTERNAL_C_FUNCTIONS:
@@ -228,7 +258,9 @@ def _collect_module_members(metadata: HostBindingMetadata) -> dict[str, list[str
         if module_member is None:
             continue
         module_name, member_name = module_member
-        module_members.setdefault(module_name, []).append(_render_function_signature(member_name, function, metadata))
+        module_members.setdefault(module_name, []).append(
+            _render_function_signature(member_name, function, metadata)
+        )
     parse_open = metadata.functions.get("ifcopenshell_parse_open")
     if parse_open is not None:
         returns = _ts_type(parse_open.returns, metadata)
@@ -239,14 +271,20 @@ def _collect_module_members(metadata: HostBindingMetadata) -> dict[str, list[str
     return module_members
 
 
-def _render_nested_module_interfaces(metadata: HostBindingMetadata) -> str:
+def _render_nested_module_interfaces(metadata: BindingABI) -> str:
     chunks: list[str] = []
     for module_name, members in sorted(_collect_module_members(metadata).items()):
-        chunks.append(f"  export interface {_module_interface_name(module_name)} {{\n" + "\n".join(members) + "\n  }")
+        chunks.append(
+            f"  export interface {_module_interface_name(module_name)} {{\n"
+            + "\n".join(members)
+            + "\n  }"
+        )
     return "\n\n".join(chunks)
 
 
-def _render_module_interface(metadata: HostBindingMetadata, module_members: dict[str, list[str]]) -> str:
+def _render_module_interface(
+    metadata: BindingABI, module_members: dict[str, list[str]]
+) -> str:
     members: list[str] = []
     for handle in sorted(metadata.handles.values(), key=lambda item: item.c_type):
         type_name = _type_name(handle.c_type)
@@ -271,7 +309,9 @@ def _render_module_interface(metadata: HostBindingMetadata, module_members: dict
     return "  export interface IfcOpenshellModule {\n" + "\n".join(members) + "\n  }"
 
 
-def render_typescript_declarations(metadata: HostBindingMetadata, handles: dict[str, HostStructMetadata] | None = None) -> str:
+def render_typescript_declarations(
+    metadata: BindingABI, handles: dict[str, CTypeIR] | None = None
+) -> str:
     del handles
     struct_interfaces = _render_struct_interfaces(metadata)
     option_struct_interfaces = _render_option_struct_interfaces(metadata)

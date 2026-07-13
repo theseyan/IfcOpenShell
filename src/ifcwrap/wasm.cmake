@@ -4,77 +4,9 @@ endif()
 
 # This file was generated with the assistance of an AI coding tool.
 
-set(IFCOPENSHELL_WASM_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/wasm")
 set(IFCOPENSHELL_WASM_PLUGINS_DIR "${IFCOPENSHELL_WASM_OUTPUT_DIR}/plugins")
-set(IFCOPENSHELL_WASM_API_JS "${IFCOPENSHELL_WASM_OUTPUT_DIR}/ifcopenshell_api.js")
-set(IFCOPENSHELL_WASM_API_MJS "${IFCOPENSHELL_WASM_OUTPUT_DIR}/ifcopenshell_api.mjs")
-set(IFCOPENSHELL_WASM_EXPORTS "${IFCOPENSHELL_WASM_OUTPUT_DIR}/ifcopenshell_exports.txt")
-set(IFCOPENSHELL_WASM_D_TS "${IFCOPENSHELL_WASM_OUTPUT_DIR}/ifcopenshell_api.d.ts")
-set(IFCOPENSHELL_WASM_DIRECT_API_TS "${IFCOPENSHELL_WASM_OUTPUT_DIR}/ifcopenshell_api.ts")
-set(IFCOPENSHELL_JS_GENERATED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../packages/ifcopenshell-js/src/generated")
-set(IFCOPENSHELL_JS_DIRECT_API_TS "${IFCOPENSHELL_JS_GENERATED_DIR}/ifcopenshell_api.ts")
-set(IFCOPENSHELL_JS_GENERATED_D_TS "${IFCOPENSHELL_JS_GENERATED_DIR}/ifcopenshell_api.d.ts")
 set(IFCOPENSHELL_WASM_PLUGINS_JSON "${IFCOPENSHELL_WASM_OUTPUT_DIR}/ifcopenshell_plugins.json")
 set(IFCOPENSHELL_WASM_MATH_IMPORTS_JS "${CMAKE_CURRENT_SOURCE_DIR}/wasm_math_imports.js")
-
-add_custom_command(
-    OUTPUT
-        "${IFCOPENSHELL_WASM_API_JS}"
-        "${IFCOPENSHELL_WASM_API_MJS}"
-        "${IFCOPENSHELL_WASM_EXPORTS}"
-        "${IFCOPENSHELL_WASM_D_TS}"
-        "${IFCOPENSHELL_WASM_DIRECT_API_TS}"
-        "${IFCOPENSHELL_JS_DIRECT_API_TS}"
-        "${IFCOPENSHELL_JS_GENERATED_D_TS}"
-    COMMAND
-        ${Python_EXECUTABLE} "${IFCPARSE_TARGET_GENERATOR}"
-        --target wasm
-        --spec-dir "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs"
-        --api-header "${UNIFIED_CAPI_HEADER}"
-        --output-dir "${IFCOPENSHELL_WASM_OUTPUT_DIR}"
-        ${IFCOPENSHELL_TARGET_GENERATOR_SPEC_ARGS}
-        ${IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS}
-        ${IFCPARSE_CAPI_DISCOVERY_DEFINE_ARGS}
-        --module ifcopenshell
-        --c-prefix ifcopenshell
-    COMMAND
-        ${CMAKE_COMMAND} -E copy_if_different
-        "${IFCOPENSHELL_WASM_API_JS}"
-        "${IFCOPENSHELL_WASM_API_MJS}"
-    COMMAND
-        ${CMAKE_COMMAND} -E make_directory
-        "${IFCOPENSHELL_JS_GENERATED_DIR}"
-    COMMAND
-        ${CMAKE_COMMAND} -E copy_if_different
-        "${IFCOPENSHELL_WASM_DIRECT_API_TS}"
-        "${IFCOPENSHELL_JS_DIRECT_API_TS}"
-    COMMAND
-        ${CMAKE_COMMAND} -E copy_if_different
-        "${IFCOPENSHELL_WASM_D_TS}"
-        "${IFCOPENSHELL_JS_GENERATED_D_TS}"
-    DEPENDS
-        "${UNIFIED_CAPI_HEADER}"
-        "${IFCPARSE_TARGET_GENERATOR}"
-        ${IFCOPENSHELL_TARGET_SPEC_DEPENDS}
-        "${IFCAPI_CAPI_CPP_SPEC_MACROS}"
-        "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/targets/wasm/backend.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/targets/wasm/api_bridge.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/targets/wasm/js_glue.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/targets/wasm/typescript.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/c_variant_helpers.py"
-    VERBATIM
-)
-add_custom_target(
-    ifcopenshell_wasm_bindings
-    DEPENDS
-        "${IFCOPENSHELL_WASM_API_JS}"
-        "${IFCOPENSHELL_WASM_API_MJS}"
-        "${IFCOPENSHELL_WASM_EXPORTS}"
-        "${IFCOPENSHELL_WASM_D_TS}"
-        "${IFCOPENSHELL_WASM_DIRECT_API_TS}"
-        "${IFCOPENSHELL_JS_DIRECT_API_TS}"
-        "${IFCOPENSHELL_JS_GENERATED_D_TS}"
-)
 
 set(IFCOPENSHELL_WASM_ENTRYPOINT "${CMAKE_CURRENT_BINARY_DIR}/ifcopenshell_wasm_entrypoint.cpp")
 file(WRITE "${IFCOPENSHELL_WASM_ENTRYPOINT}"
@@ -87,7 +19,7 @@ file(WRITE "${IFCOPENSHELL_WASM_ENTRYPOINT}"
 
 function(ifcopenshell_configure_wasm_main TARGET ENVIRONMENT OUTPUT_NAME)
     ifcopenshell_wasm_main_module_link(${TARGET})
-    add_dependencies(${TARGET} ifcopenshell_capi ifcopenshell_wasm_bindings)
+    add_dependencies(${TARGET} ifcopenshell_capi ifcopenshell_bindings_codegen)
     # Keep IfcParse symbols in the main module for SIDE_MODULE plugins that import from it.
     target_link_libraries(
         ${TARGET}

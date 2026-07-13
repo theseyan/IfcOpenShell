@@ -68,7 +68,9 @@ def _generated_slice(name: str) -> str:
         return "ifcgeom"
     if name.startswith("ifcopenshell_parse_"):
         return "ifcparse"
-    if name.startswith(("ifcopenshell_file_", "ifcopenshell_instance_", "ifcopenshell_schema_")):
+    if name.startswith(
+        ("ifcopenshell_file_", "ifcopenshell_instance_", "ifcopenshell_schema_")
+    ):
         return "ifcparse_handle"
     if name.startswith(
         (
@@ -89,9 +91,21 @@ def _generated_slice(name: str) -> str:
         )
     ):
         return "ifcapi"
-    if name in {"ifcopenshell_clear_error", "ifcopenshell_last_error_message", "ifcopenshell_last_error_kind"}:
+    if name in {
+        "ifcopenshell_clear_error",
+        "ifcopenshell_last_error_message",
+        "ifcopenshell_last_error_kind",
+    }:
         return "common_error"
-    if name.startswith(("ifcopenshell_string", "ifcopenshell_bool_list", "ifcopenshell_int", "ifcopenshell_uint", "ifcopenshell_double")):
+    if name.startswith(
+        (
+            "ifcopenshell_string",
+            "ifcopenshell_bool_list",
+            "ifcopenshell_int",
+            "ifcopenshell_uint",
+            "ifcopenshell_double",
+        )
+    ):
         return "common_value"
     return "common_or_other"
 
@@ -110,9 +124,19 @@ def _domain_key(name: str) -> str | None:
         return "file"
     if key.startswith(("instance_", "entity_")):
         return "entity"
-    if key.startswith(("schema_", "declaration_", "attribute_", "inverse_attribute_", "parameter_type_")):
+    if key.startswith(
+        (
+            "schema_",
+            "declaration_",
+            "attribute_",
+            "inverse_attribute_",
+            "parameter_type_",
+        )
+    ):
         return "schema"
-    if key.startswith(("guid_", "value_", "string_", "bool_list", "int", "uint", "double")):
+    if key.startswith(
+        ("guid_", "value_", "string_", "bool_list", "int", "uint", "double")
+    ):
         return "value"
     return None
 
@@ -136,15 +160,30 @@ def _collect_highlevel_headers(repo_root: Path) -> list[Path]:
 
 
 def build_inventory(repo_root: Path) -> dict[str, Any]:
-    generated_header = repo_root / "src" / "ifcwrap" / "binding_generator" / "generated" / "ifcopenshell_api.h"
-    generated = parse_c_functions(generated_header, repo_root) if generated_header.exists() else []
+    generated_header = (
+        repo_root
+        / "src"
+        / "ifcwrap"
+        / "binding_generator"
+        / "generated"
+        / "ifcopenshell_api.h"
+    )
+    generated = (
+        parse_c_functions(generated_header, repo_root)
+        if generated_header.exists()
+        else []
+    )
 
     highlevel: list[CFunction] = []
     for header in _collect_highlevel_headers(repo_root):
         highlevel.extend(parse_c_functions(header, repo_root))
 
     generated_names = {function.name for function in generated}
-    generated_highlevel_names = {function.name for function in generated if _generated_slice(function.name) == "ifcapi"}
+    generated_highlevel_names = {
+        function.name
+        for function in generated
+        if _generated_slice(function.name) == "ifcapi"
+    }
     highlevel_names = {function.name for function in highlevel}
     exported_names = generated_names | highlevel_names
 
@@ -179,8 +218,14 @@ def build_inventory(repo_root: Path) -> dict[str, Any]:
             "header": _repo_relative(generated_header, repo_root),
             "symbol_count": len(generated_names),
             "symbols_by_slice": {
-                slice_name: sorted(name for name in generated_names if _generated_slice(name) == slice_name)
-                for slice_name in sorted({_generated_slice(name) for name in generated_names})
+                slice_name: sorted(
+                    name
+                    for name in generated_names
+                    if _generated_slice(name) == slice_name
+                )
+                for slice_name in sorted(
+                    {_generated_slice(name) for name in generated_names}
+                )
             },
             "symbols": _function_map(generated),
         },
@@ -206,8 +251,12 @@ def build_inventory(repo_root: Path) -> dict[str, Any]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Inventory generated and handwritten IfcOpenShell binding surfaces.")
-    parser.add_argument("--repo-root", type=Path, default=Path(__file__).resolve().parents[3])
+    parser = argparse.ArgumentParser(
+        description="Inventory generated and handwritten IfcOpenShell binding surfaces."
+    )
+    parser.add_argument(
+        "--repo-root", type=Path, default=Path(__file__).resolve().parents[3]
+    )
     parser.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
 

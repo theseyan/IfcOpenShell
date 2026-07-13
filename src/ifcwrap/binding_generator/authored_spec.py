@@ -9,159 +9,75 @@ from typing import Any
 
 import yaml
 
-try:
-    from .binding_model import (
-        CallSpec,
-        DiscoveryDiagnostic,
-        HandleSpec,
-        ImplementationSpec,
-        OptionStructSpec,
-        ParamSpec,
-        ResultStructFieldSpec,
-        ResultStructSpec,
-        TypeSpec,
-    )
-except ImportError:  # pragma: no cover - script execution fallback
-    from binding_model import (
-        CallSpec,
-        DiscoveryDiagnostic,
-        HandleSpec,
-        ImplementationSpec,
-        OptionStructSpec,
-        ParamSpec,
-        ResultStructFieldSpec,
-        ResultStructSpec,
-        TypeSpec,
-    )
-
-try:
-    from .debug import debug_log, debug_path
-except ImportError:  # pragma: no cover - script execution fallback
-    from debug import debug_log, debug_path
-
-try:
-    from .policy_ir import (
-        ArrayElementFieldPolicyOp,
-        AsItemCastPolicyOp,
-        BoolOutParamPolicyOp,
-        CcomponentsAccessorPolicyOp,
-        ChildrenAddPolicyOp,
-        ChildrenAtPolicyOp,
-        ChildrenCountPolicyOp,
-        ConstructorPolicyOp,
-        DirectFieldPolicyOp,
-        DirectFunctionPolicyOp,
-        DirectMethodPolicyOp,
-        FieldSetterPolicyOp,
-        InlineAdapterPolicyOp,
-        ListAtPolicyOp,
-        ListCountPolicyOp,
-        MethodAtPolicyOp,
-        MethodSizePolicyOp,
-        OptionalGetPolicyOp,
-        OptionalHasPolicyOp,
-        PointerPresencePolicyOp,
-        PolicyCallSpec,
-        ValueHandleFieldPolicyOp,
-        VariantGetPolicyOp,
-        VariantSetPolicyOp,
-    )
-except ImportError:  # pragma: no cover - script execution fallback
-    from policy_ir import (
-        ArrayElementFieldPolicyOp,
-        AsItemCastPolicyOp,
-        BoolOutParamPolicyOp,
-        CcomponentsAccessorPolicyOp,
-        ChildrenAddPolicyOp,
-        ChildrenAtPolicyOp,
-        ChildrenCountPolicyOp,
-        ConstructorPolicyOp,
-        DirectFieldPolicyOp,
-        DirectFunctionPolicyOp,
-        DirectMethodPolicyOp,
-        FieldSetterPolicyOp,
-        InlineAdapterPolicyOp,
-        ListAtPolicyOp,
-        ListCountPolicyOp,
-        MethodAtPolicyOp,
-        MethodSizePolicyOp,
-        OptionalGetPolicyOp,
-        OptionalHasPolicyOp,
-        PointerPresencePolicyOp,
-        PolicyCallSpec,
-        ValueHandleFieldPolicyOp,
-        VariantGetPolicyOp,
-        VariantSetPolicyOp,
-    )
-
-try:
-    from .clang_discovery import (
-        CompilationConfig,
-        DiscoveredConstructor,
-        DiscoveredCppType,
-        DiscoveredField,
-        DiscoveredFunction,
-        DiscoveredMethod,
-        DiscoveryEnvironment,
-        discover_base_types,
-        discover_namespace_functions,
-        discover_namespace_functions_with_synthetic_source,
-        discover_public_constructors,
-        discover_public_fields,
-        discover_public_methods,
-    )
-    from .contract_discovery import MarkedFunction, discover_marked_functions_in_headers
-except ImportError:  # pragma: no cover - script execution fallback
-    from clang_discovery import (
-        CompilationConfig,
-        DiscoveredConstructor,
-        DiscoveredCppType,
-        DiscoveredField,
-        DiscoveredFunction,
-        DiscoveredMethod,
-        DiscoveryEnvironment,
-        discover_base_types,
-        discover_namespace_functions,
-        discover_namespace_functions_with_synthetic_source,
-        discover_public_constructors,
-        discover_public_fields,
-        discover_public_methods,
-    )
-    from contract_discovery import MarkedFunction, discover_marked_functions_in_headers
-
-try:
-    from .semantic_types import (
-        EnumSemanticType,
-        OptionalSemanticType,
-        RecordSemanticType,
-        ScalarSemanticType,
-        SequenceSemanticType,
-        StringSemanticType,
-        UnsupportedSemanticType,
-        VariantSemanticType,
-        VoidSemanticType,
-        analyze_cpp_type,
-        semantic_leaf_type,
-        semantic_record_match_names,
-        semantic_sequence_depth,
-    )
-except ImportError:  # pragma: no cover - script execution fallback
-    from semantic_types import (
-        EnumSemanticType,
-        OptionalSemanticType,
-        RecordSemanticType,
-        ScalarSemanticType,
-        SequenceSemanticType,
-        StringSemanticType,
-        UnsupportedSemanticType,
-        VariantSemanticType,
-        VoidSemanticType,
-        analyze_cpp_type,
-        semantic_leaf_type,
-        semantic_record_match_names,
-        semantic_sequence_depth,
-    )
-
+from .binding_model import (
+    CallSpec,
+    DiscoveryDiagnostic,
+    HandleSpec,
+    ImplementationSpec,
+    OptionStructSpec,
+    ParamSpec,
+    ResultStructFieldSpec,
+    ResultStructSpec,
+    TypeSpec,
+)
+from .clang_discovery import (
+    CompilationConfig,
+    DiscoveredConstructor,
+    DiscoveredCppType,
+    DiscoveredField,
+    DiscoveredFunction,
+    DiscoveredMethod,
+    DiscoveryEnvironment,
+    discover_base_types,
+    discover_namespace_functions,
+    discover_namespace_functions_with_synthetic_source,
+    discover_public_constructors,
+    discover_public_fields,
+    discover_public_methods,
+)
+from .contract_discovery import MarkedFunction, discover_marked_functions_in_headers
+from .debug import debug_log, debug_path
+from .policy_ir import (
+    ArrayElementFieldPolicyOp,
+    AsItemCastPolicyOp,
+    BoolOutParamPolicyOp,
+    CcomponentsAccessorPolicyOp,
+    ChildrenAddPolicyOp,
+    ChildrenAtPolicyOp,
+    ChildrenCountPolicyOp,
+    ConstructorPolicyOp,
+    DirectFieldPolicyOp,
+    DirectFunctionPolicyOp,
+    DirectMethodPolicyOp,
+    FieldSetterPolicyOp,
+    InlineAdapterPolicyOp,
+    ListAtPolicyOp,
+    ListCountPolicyOp,
+    MethodAtPolicyOp,
+    MethodSizePolicyOp,
+    OptionalGetPolicyOp,
+    OptionalHasPolicyOp,
+    PointerPresencePolicyOp,
+    PolicyCallSpec,
+    ValueHandleFieldPolicyOp,
+    VariantGetPolicyOp,
+    VariantSetPolicyOp,
+)
+from .semantic_types import (
+    EnumSemanticType,
+    OptionalSemanticType,
+    RecordSemanticType,
+    ScalarSemanticType,
+    SequenceSemanticType,
+    StringSemanticType,
+    UnsupportedSemanticType,
+    VariantSemanticType,
+    VoidSemanticType,
+    analyze_cpp_type,
+    semantic_leaf_type,
+    semantic_record_match_names,
+    semantic_sequence_depth,
+)
 
 _ALLOWED_TYPE_KINDS = {
     "void",

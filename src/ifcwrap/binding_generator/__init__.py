@@ -1,5 +1,4 @@
 from .authored_spec import DiscoveryDiagnostic, load_authored_spec, load_merged_specs
-from .c_backend import generate, generate_cpp_specs, generate_merged
 from .clang_discovery import (
     CompilationConfig,
     DiscoveryEnvironment,
@@ -19,14 +18,6 @@ from .cpp_spec_frontend import (
     lower_cpp_spec_functions_to_calls,
     lower_cpp_spec_handles_to_specs,
     lower_cpp_spec_result_structs_to_specs,
-)
-from .targets import (
-    GeneratedArtifact,
-    GeneratedTargetArtifacts,
-    TargetBackend,
-    TargetGenerationRequest,
-    discover_targets,
-    get_target,
 )
 from .source_inventory import (
     SourceCallableInventory,
@@ -48,13 +39,9 @@ __all__ = [
     "CppSpecResultStruct",
     "DiscoveryDiagnostic",
     "DiscoveryEnvironment",
-    "GeneratedArtifact",
-    "GeneratedTargetArtifacts",
     "SourceCallableInventory",
     "SourceClassInventory",
     "SourceClassRequest",
-    "TargetBackend",
-    "TargetGenerationRequest",
     "SourceInventory",
     "SourceInventoryRequest",
     "SourceNamespaceInventory",
@@ -67,14 +54,9 @@ __all__ = [
     "discover_cpp_spec_result_structs",
     "discover_namespace_functions",
     "discover_namespace_functions_with_synthetic_source",
-    "discover_targets",
     "discover_public_fields",
     "discover_public_methods",
     "discover_source_inventory",
-    "generate",
-    "generate_cpp_specs",
-    "generate_merged",
-    "get_target",
     "load_authored_spec",
     "load_merged_specs",
     "lower_cpp_spec_functions_to_calls",

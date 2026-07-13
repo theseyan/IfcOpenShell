@@ -2,14 +2,9 @@
 
 from __future__ import annotations
 
-try:
-    from .authored_spec import HandleSpec, TypeSpec
-    from .binding_ir import BindingIR
-    from .c_type_rendering import _normalize_cpp_type, _qualify_handle_cpp_fragment
-except ImportError:  # pragma: no cover - script execution fallback
-    from authored_spec import HandleSpec, TypeSpec
-    from binding_ir import BindingIR
-    from c_type_rendering import _normalize_cpp_type, _qualify_handle_cpp_fragment
+from .authored_spec import HandleSpec, TypeSpec
+from .binding_ir import BindingIR
+from .c_type_rendering import _normalize_cpp_type, _qualify_handle_cpp_fragment
 
 
 def _handle_storage_type(handle: HandleSpec) -> str:

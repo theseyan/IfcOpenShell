@@ -1,10 +1,11 @@
 # IfcWrap Binding Generator
 
-This directory contains the custom binding generator that is replacing the
-legacy SWIG-only binding flow for `IfcParse`.
+This directory contains the unified IfcOpenShell binding generator.
 
 ## Current State
 
+- One invocation discovers the full IfcParse, IfcAPI, and IfcGeom surface,
+  finalizes one ABI-aware `BindingIR`, and emits C, Python, and WASM/TypeScript.
 - The generator is source-driven for direct bindings.
   It reads real C++ declarations through Clang AST data using
   `--discovery-include-dir` flags for include path resolution.
@@ -40,17 +41,23 @@ typed C access.
   Clang AST discovery driven by `--discovery-include-dir` flags.
 - `authored_spec.py`
   Spec loading, validation, and normalization into generator calls.
+- `pipeline.py`
+  Full-project discovery, policy merge, and semantic lowering.
+- `binding_ir.py` and `abi_ir.py`
+  Finalized semantic and C ABI contract.
 - `c_backend.py`
-  C header and C++ glue generation.
+  Pure C header and C++ glue emission from finalized IR.
+- `generate.py`
+  The only production command and owner of atomic artifact writes.
 
 ## Build Integration
 
 - `BUILD_IFCCAPI=ON`
-  Builds the checked-in generated `IfcParse` C API.
+  Builds the checked-in full IfcOpenShell C API.
 - `IFCCAPI_REGENERATE_BINDINGS=ON`
   Developer-only regeneration mode.
-  This regenerates the checked-in C API from `specs/ifcparse.yml` using
-  `--discovery-include-dir` flags from the CMake build.
+  This exposes the single `ifcopenshell_bindings_codegen` target, which emits
+  every C, Python, WASM, and TypeScript binding artifact in one process.
 - `IFCWRAP_BINDGEN_JOBS=<N>`
   Optional generator-only concurrency for independent Clang discovery jobs.
   CMake's `--parallel` flag still only controls CMake build scheduling; it does
@@ -75,13 +82,3 @@ The generated `IfcParse` C API is covered by:
 - `tests/test_ifcparse_c_api_smoke_coverage.py`
   Guard that every generated C function is referenced by at least one C smoke
   source.
-
-## Intended Direction
-
-The next module slices should follow the same model:
-
-1. source-driven discovery from real C++ via Clang AST
-2. coarse binding policy in the spec
-3. generated checked-in C ABI and glue
-4. parity audit against legacy SWIG
-5. full generated-surface C smoke coverage

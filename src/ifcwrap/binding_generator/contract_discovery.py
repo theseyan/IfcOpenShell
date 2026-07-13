@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
-import re
 
 
 @dataclass(frozen=True)
@@ -18,11 +18,13 @@ class MarkedFunction:
 
 
 _COMMENT_RE = re.compile(r"//.*?$|/\*.*?\*/", re.MULTILINE | re.DOTALL)
-_ANNOTATIONS = frozenset({
-    "IFCAPI_OWNED",
-    "IFCAPI_COPY",
-    "IFCAPI_STATIC",
-})
+_ANNOTATIONS = frozenset(
+    {
+        "IFCAPI_OWNED",
+        "IFCAPI_COPY",
+        "IFCAPI_STATIC",
+    }
+)
 _ANNOTATION_CALLS: tuple[str, ...] = ()
 
 
@@ -65,7 +67,9 @@ def _leading_annotations(text: str) -> tuple[frozenset[str], str]:
         if match is None:
             break
         token = " ".join(match.group("token").split())
-        if token not in _ANNOTATIONS and not any(token.startswith(f"{name}(") for name in _ANNOTATION_CALLS):
+        if token not in _ANNOTATIONS and not any(
+            token.startswith(f"{name}(") for name in _ANNOTATION_CALLS
+        ):
             break
         annotations.append(token)
         rest = rest[match.end() :].strip()

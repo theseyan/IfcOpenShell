@@ -4,10 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-try:
-    from .binding_model import ImplementationSpec, ParamSpec, TypeSpec
-except ImportError:  # pragma: no cover - script execution fallback
-    from binding_model import ImplementationSpec, ParamSpec, TypeSpec
+from .binding_model import ImplementationSpec, ParamSpec, TypeSpec
 
 
 @dataclass(frozen=True)

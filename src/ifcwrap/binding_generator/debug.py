@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 import resource
 import sys
 import time
+from pathlib import Path
 
-
-_DEBUG_ENABLED = os.environ.get("IFCWRAP_BINDGEN_DEBUG", "").lower() not in {"", "0", "false", "no"}
+_DEBUG_ENABLED = os.environ.get("IFCWRAP_BINDGEN_DEBUG", "").lower() not in {
+    "",
+    "0",
+    "false",
+    "no",
+}
 _START_TIME = time.monotonic()
 
 
@@ -26,7 +30,9 @@ def debug_log(stage: str, message: str) -> None:
     if not _DEBUG_ENABLED:
         return
     elapsed = time.monotonic() - _START_TIME
-    sys.stderr.write(f"[bindgen {elapsed:8.2f}s rss={_rss_mb():8.1f}MB] {stage}: {message}\n")
+    sys.stderr.write(
+        f"[bindgen {elapsed:8.2f}s rss={_rss_mb():8.1f}MB] {stage}: {message}\n"
+    )
     sys.stderr.flush()
 
 

@@ -10,7 +10,13 @@ from textwrap import dedent
 
 import pytest
 
-from src.ifcwrap.binding_generator.binding_ir import BindingIR, CallIR, DirectCallOp
+from src.ifcwrap.binding_generator.abi_ir import finalize_abi
+from src.ifcwrap.binding_generator.binding_ir import (
+    BindingIR,
+    CallIR,
+    DirectCallOp,
+    finalize_binding_ir,
+)
 from src.ifcwrap.binding_generator.binding_model import (
     HandleSpec,
     OptionStructFieldSpec,
@@ -18,7 +24,7 @@ from src.ifcwrap.binding_generator.binding_model import (
     ParamSpec,
     TypeSpec,
 )
-from src.ifcwrap.binding_generator.c_backend import _render_cpp, generate_cpp_specs
+from src.ifcwrap.binding_generator.c_backend import _render_cpp
 from src.ifcwrap.binding_generator.c_header_rendering import _render_header
 from src.ifcwrap.binding_generator.clang_discovery import (
     CompilationConfig,
@@ -36,7 +42,7 @@ from src.ifcwrap.binding_generator.cpp_spec_frontend import (
     lower_cpp_spec_handles_to_specs,
     lower_cpp_spec_result_structs_to_specs,
 )
-from src.ifcwrap.binding_generator.host_metadata import build_host_metadata
+from src.ifcwrap.binding_generator.pipeline import generate_cpp_specs
 
 
 def _environment(tmp_path: Path) -> DiscoveryEnvironment:
@@ -124,7 +130,7 @@ def test_cpp_spec_generation_rejects_mismatched_per_spec_namespaces(
 
     with pytest.raises(
         ValueError,
-        match="cpp_spec_namespace must be provided once or exactly once per --cpp-spec",
+        match="cpp_spec_namespace must be provided once or exactly once per C\\+\\+ spec",
     ):
         generate_cpp_specs(
             [spec_a, spec_b],
@@ -333,27 +339,28 @@ def test_cpp_spec_result_field_docs_come_from_semantic_type(tmp_path: Path) -> N
 
 def test_c_header_renders_option_structs() -> None:
     code = _render_header(
-        BindingIR(
-            module="demo",
-            c_prefix="ifcopenshell_demo",
-            public_headers=(),
-            handles={},
-            result_structs={},
-            functions=(),
-            methods=(),
-            option_structs={
-                "CreateEntityOptions": OptionStructSpec(
-                    name="CreateEntityOptions",
-                    cpp_type="demo::CreateEntityOptions",
-                    c_type="ifcopenshell_demo_create_entity_options_t",
-                    fields=(
-                        OptionStructFieldSpec("ifc_class", TypeSpec(kind="string")),
-                        OptionStructFieldSpec(
-                            "name", TypeSpec(kind="string", nullable=True)
+        finalize_binding_ir(
+            BindingIR(
+                module="demo",
+                c_prefix="ifcopenshell_demo",
+                public_headers=(),
+                handles={},
+                result_structs={},
+                calls=(),
+                option_structs={
+                    "CreateEntityOptions": OptionStructSpec(
+                        name="CreateEntityOptions",
+                        cpp_type="demo::CreateEntityOptions",
+                        c_type="ifcopenshell_demo_create_entity_options_t",
+                        fields=(
+                            OptionStructFieldSpec("ifc_class", TypeSpec(kind="string")),
+                            OptionStructFieldSpec(
+                                "name", TypeSpec(kind="string", nullable=True)
+                            ),
                         ),
-                    ),
-                )
-            },
+                    )
+                },
+            )
         )
     )
 
@@ -378,35 +385,36 @@ def test_c_abi_variants_destroy_owned_alternatives() -> None:
             TypeSpec(kind="string", cpp_type="std::string"),
         ),
     )
-    spec = BindingIR(
-        module="demo",
-        c_prefix="ifcopenshell_demo",
-        public_headers=(),
-        handles={
-            "instance": HandleSpec(
-                name="instance",
-                cpp_type="Demo::Instance",
-                c_type="ifcopenshell_demo_instance_t",
-                destructor="delete",
-            )
-        },
-        result_structs={},
-        functions=(
-            CallIR(
-                expose_as="value",
-                c_name="ifcopenshell_demo_value",
-                receiver=None,
-                returns=variant,
-                params=(),
-                operation=DirectCallOp(cpp_name="Demo::value"),
+    spec = finalize_binding_ir(
+        BindingIR(
+            module="demo",
+            c_prefix="ifcopenshell_demo",
+            public_headers=(),
+            handles={
+                "instance": HandleSpec(
+                    name="instance",
+                    cpp_type="Demo::Instance",
+                    c_type="ifcopenshell_demo_instance_t",
+                    destructor="delete",
+                )
+            },
+            result_structs={},
+            calls=(
+                CallIR(
+                    expose_as="value",
+                    c_name="ifcopenshell_demo_value",
+                    receiver=None,
+                    returns=variant,
+                    params=(),
+                    operation=DirectCallOp(cpp_name="Demo::value"),
+                ),
             ),
-        ),
-        methods=(),
+        )
     )
 
     header = _render_header(spec)
     cpp = _render_cpp(spec, "demo_api.h")
-    metadata = build_host_metadata(spec)
+    metadata = finalize_abi(spec)
 
     assert (
         "void ifcopenshell_demo_instance_string_variant_destroy(ifcopenshell_demo_instance_string_variant_t* value);"
@@ -420,42 +428,43 @@ def test_c_abi_variants_destroy_owned_alternatives() -> None:
 
 
 def test_c_backend_emits_sequence_helpers_used_only_by_option_structs() -> None:
-    spec = BindingIR(
-        module="demo",
-        c_prefix="ifcopenshell_demo",
-        public_headers=(),
-        handles={},
-        result_structs={},
-        functions=(
-            CallIR(
-                expose_as="add_mesh",
-                c_name="ifcopenshell_demo_add_mesh",
-                receiver=None,
-                returns=TypeSpec(kind="void"),
-                params=(
-                    ParamSpec(
-                        "options", TypeSpec(kind="option", struct="AddMeshOptions")
+    spec = finalize_binding_ir(
+        BindingIR(
+            module="demo",
+            c_prefix="ifcopenshell_demo",
+            public_headers=(),
+            handles={},
+            result_structs={},
+            calls=(
+                CallIR(
+                    expose_as="add_mesh",
+                    c_name="ifcopenshell_demo_add_mesh",
+                    receiver=None,
+                    returns=TypeSpec(kind="void"),
+                    params=(
+                        ParamSpec(
+                            "options", TypeSpec(kind="option", struct="AddMeshOptions")
+                        ),
                     ),
+                    operation=DirectCallOp(cpp_name="Demo::add_mesh"),
                 ),
-                operation=DirectCallOp(cpp_name="Demo::add_mesh"),
             ),
-        ),
-        methods=(),
-        option_structs={
-            "AddMeshOptions": OptionStructSpec(
-                name="AddMeshOptions",
-                cpp_type="Demo::AddMeshOptions",
-                c_type="ifcopenshell_demo_add_mesh_options_t",
-                fields=(
-                    OptionStructFieldSpec(
-                        "vertices", TypeSpec(kind="double", sequence_depth=3)
+            option_structs={
+                "AddMeshOptions": OptionStructSpec(
+                    name="AddMeshOptions",
+                    cpp_type="Demo::AddMeshOptions",
+                    c_type="ifcopenshell_demo_add_mesh_options_t",
+                    fields=(
+                        OptionStructFieldSpec(
+                            "vertices", TypeSpec(kind="double", sequence_depth=3)
+                        ),
+                        OptionStructFieldSpec(
+                            "faces", TypeSpec(kind="int32", sequence_depth=4)
+                        ),
                     ),
-                    OptionStructFieldSpec(
-                        "faces", TypeSpec(kind="int32", sequence_depth=4)
-                    ),
-                ),
-            )
-        },
+                )
+            },
+        )
     )
 
     header = _render_header(spec)
@@ -656,7 +665,7 @@ def test_cpp_spec_generation_tracks_default_parameters(tmp_path: Path) -> None:
         public_headers=(),
         handles={},
         result_structs={},
-        functions=tuple(
+        calls=tuple(
             CallIR(
                 expose_as=call.expose_as,
                 c_name=call.c_name,
@@ -668,9 +677,8 @@ def test_cpp_spec_generation_tracks_default_parameters(tmp_path: Path) -> None:
             )
             for call in calls
         ),
-        methods=(),
     )
-    metadata = build_host_metadata(ir)
+    metadata = finalize_abi(ir)
     function = metadata.functions["ifcopenshell_demo_update"]
     params = {param.name: param for param in function.params}
 
@@ -821,69 +829,6 @@ def test_cpp_spec_generation_lowers_optional_opaque_pointer_params(
         in generated_cpp
     )
     assert "demo::count(value_cpp)" in generated_cpp
-
-
-def test_cpp_spec_frontend_cli_generates_fixture_header(tmp_path: Path) -> None:
-    spec_path = tmp_path / "demo_spec.cpp"
-    spec_path.write_text(
-        dedent(
-            """
-            #include <string>
-
-            #define IFCAPI_HANDLE(cpp_type, destructor)
-            #define IFCAPI_OWNED
-
-            namespace ifcopenshell::capi_spec {
-            struct DemoFile {};
-            IFCAPI_HANDLE(ifcopenshell::capi_spec::DemoFile, delete)
-            struct ifcopenshell_demo_file_t;
-
-            /**
-             * Return a display label for the file.
-             */
-            inline IFCAPI_OWNED std::string ifcopenshell_demo_label(const DemoFile* file) {
-                return file ? "ok" : "empty";
-            }
-            }
-            """
-        ),
-        encoding="utf-8",
-    )
-    header_out = tmp_path / "demo_api.h"
-    cpp_out = tmp_path / "demo_api.cpp"
-    backend = Path(__file__).resolve().parents[1] / "binding_generator" / "c_backend.py"
-
-    result = subprocess.run(
-        [
-            sys.executable,
-            str(backend),
-            "--cpp-spec",
-            str(spec_path),
-            "--cpp-spec-namespace",
-            "ifcopenshell::capi_spec",
-            "--header-out",
-            str(header_out),
-            "--cpp-out",
-            str(cpp_out),
-            "--discovery-include-dir",
-            str(tmp_path),
-            "--module",
-            "demo",
-            "--c-prefix",
-            "ifcopenshell_demo",
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode == 0, result.stderr
-    header = header_out.read_text(encoding="utf-8")
-    assert "typedef struct ifcopenshell_demo_file_t ifcopenshell_demo_file_t;" in header
-    assert (
-        "/** Return a display label for the file. */\n"
-        "bool ifcopenshell_demo_label(ifcopenshell_demo_file_t* file, "
-        "ifcopenshell_string_t* out_result);"
-    ) in header
 
 
 def test_cpp_spec_frontend_rejects_overloaded_exports(tmp_path: Path) -> None:

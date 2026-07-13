@@ -21,7 +21,9 @@ from src.ifcwrap.binding_generator.cpp_spec_frontend import (
     discover_cpp_spec_contract_headers,
 )
 
-_C_TYPEDEF_RE = re.compile(r"\btypedef\s+(?:struct|enum)\s+(ifcopenshell_[A-Za-z0-9_]+_t)\b")
+_C_TYPEDEF_RE = re.compile(
+    r"\btypedef\s+(?:struct|enum)\s+(ifcopenshell_[A-Za-z0-9_]+_t)\b"
+)
 _C_STRUCT_BLOCK_RE = re.compile(
     r"\btypedef\s+struct\s+(?P<name>ifcopenshell_[A-Za-z0-9_]+_t)\s*\{(?P<body>.*?)\}\s*(?P=name)\s*;",
     re.DOTALL,
@@ -30,7 +32,9 @@ _C_ENUM_BLOCK_RE = re.compile(
     r"\btypedef\s+enum\s+(?P<name>ifcopenshell_[A-Za-z0-9_]+_t)\s*\{(?P<body>.*?)\}\s*(?P=name)\s*;",
     re.DOTALL,
 )
-_INTERNAL_STRUCT_RE = re.compile(r"^\s*struct\s+(ifcopenshell_[A-Za-z0-9_]+_t)\s*\{", re.MULTILINE)
+_INTERNAL_STRUCT_RE = re.compile(
+    r"^\s*struct\s+(ifcopenshell_[A-Za-z0-9_]+_t)\s*\{", re.MULTILINE
+)
 _INTERNAL_STRUCT_BLOCK_RE = re.compile(
     r"^\s*struct\s+(?P<name>ifcopenshell_[A-Za-z0-9_]+_t)\s*\{(?P<body>.*?)^\s*\};",
     re.DOTALL | re.MULTILINE,
@@ -48,7 +52,10 @@ def _repo_root() -> Path:
 
 
 def _c_function_signatures(path: Path, repo_root: Path) -> dict[str, tuple[str, str]]:
-    return {function.name: (function.return_type, function.params) for function in parse_c_functions(path, repo_root)}
+    return {
+        function.name: (function.return_type, function.params)
+        for function in parse_c_functions(path, repo_root)
+    }
 
 
 def _c_type_names(path: Path) -> set[str]:
@@ -109,11 +116,19 @@ def _python_generated_types(path: Path) -> set[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     names: set[str] = set()
     for node in ast.walk(tree):
-        if isinstance(node, ast.ClassDef) and node.name.startswith("ifcopenshell_") and node.name.endswith("_t"):
+        if (
+            isinstance(node, ast.ClassDef)
+            and node.name.startswith("ifcopenshell_")
+            and node.name.endswith("_t")
+        ):
             names.add(node.name)
         elif isinstance(node, ast.Assign):
             for target in node.targets:
-                if isinstance(target, ast.Name) and target.id.startswith("ifcopenshell_") and target.id.endswith("_t"):
+                if (
+                    isinstance(target, ast.Name)
+                    and target.id.startswith("ifcopenshell_")
+                    and target.id.endswith("_t")
+                ):
                     names.add(target.id)
     return names
 
@@ -127,7 +142,10 @@ def _python_structure_fields(path: Path) -> dict[str, tuple[tuple[str, str], ...
         for statement in node.body:
             if not isinstance(statement, ast.Assign):
                 continue
-            if not any(isinstance(target, ast.Name) and target.id == "_fields_" for target in statement.targets):
+            if not any(
+                isinstance(target, ast.Name) and target.id == "_fields_"
+                for target in statement.targets
+            ):
                 continue
             if not isinstance(statement.value, ast.List):
                 continue
@@ -146,13 +164,18 @@ def _python_signature_map(path: Path) -> dict[str, str]:
     for node in tree.body:
         if not isinstance(node, ast.Assign):
             continue
-        if not any(isinstance(target, ast.Name) and target.id == "FUNCTION_SIGNATURES" for target in node.targets):
+        if not any(
+            isinstance(target, ast.Name) and target.id == "FUNCTION_SIGNATURES"
+            for target in node.targets
+        ):
             continue
         if not isinstance(node.value, ast.Dict):
             msg = "FUNCTION_SIGNATURES must be a dict literal"
             raise AssertionError(msg)
         signatures: dict[str, str] = {}
-        for key_node, value_node in zip(node.value.keys, node.value.values, strict=True):
+        for key_node, value_node in zip(
+            node.value.keys, node.value.values, strict=True
+        ):
             key = ast.literal_eval(key_node)
             signatures[key] = _node_source(value_node)
         return signatures
@@ -167,7 +190,9 @@ def _python_generated_constants(path: Path) -> dict[str, int]:
         if not isinstance(node, ast.Assign) or len(node.targets) != 1:
             continue
         target = node.targets[0]
-        if not isinstance(target, ast.Name) or not target.id.startswith("IFCOPENSHELL_"):
+        if not isinstance(target, ast.Name) or not target.id.startswith(
+            "IFCOPENSHELL_"
+        ):
             continue
         constants[target.id] = ast.literal_eval(node.value)
     return constants
@@ -206,7 +231,9 @@ def test_ifcapi_contract_discovery_uses_marked_public_headers() -> None:
         ),
     )
 
-    marked_names = {function.name for function in discover_marked_functions_in_headers(headers)}
+    marked_names = {
+        function.name for function in discover_marked_functions_in_headers(headers)
+    }
     assert "element_get_type" in marked_names
     assert "value_new_string" in marked_names
 
@@ -224,7 +251,9 @@ def test_ifcapi_contract_discovery_uses_marked_public_headers() -> None:
     assert "shape_is_x" not in marked_names
 
 
-def test_parse_c_functions_handles_exported_multiline_declarations(tmp_path: Path) -> None:
+def test_parse_c_functions_handles_exported_multiline_declarations(
+    tmp_path: Path,
+) -> None:
     header = tmp_path / "api.h"
     header.write_text(
         dedent(
@@ -243,14 +272,26 @@ def test_parse_c_functions_handles_exported_multiline_declarations(tmp_path: Pat
         encoding="utf-8",
     )
 
-    functions = {function.name: function for function in parse_c_functions(header, tmp_path)}
+    functions = {
+        function.name: function for function in parse_c_functions(header, tmp_path)
+    }
 
-    assert set(functions) == {"ifcopenshell_file_create_entity", "ifcopenshell_file_by_type"}
-    assert functions["ifcopenshell_file_create_entity"].return_type == "struct ifcopenshell_instance_t*"
-    assert "const char* type_name" in functions["ifcopenshell_file_create_entity"].params
+    assert set(functions) == {
+        "ifcopenshell_file_create_entity",
+        "ifcopenshell_file_by_type",
+    }
+    assert (
+        functions["ifcopenshell_file_create_entity"].return_type
+        == "struct ifcopenshell_instance_t*"
+    )
+    assert (
+        "const char* type_name" in functions["ifcopenshell_file_create_entity"].params
+    )
 
 
-def test_build_inventory_reports_generated_highlevel_and_duplicate_concepts(tmp_path: Path) -> None:
+def test_build_inventory_reports_generated_highlevel_and_duplicate_concepts(
+    tmp_path: Path,
+) -> None:
     generated_dir = tmp_path / "src" / "ifcwrap" / "binding_generator" / "generated"
     generated_dir.mkdir(parents=True)
     (generated_dir / "ifcopenshell_api.h").write_text(
@@ -296,7 +337,9 @@ def test_generated_highlevel_c_symbols_are_reported_separately() -> None:
     inventory = build_inventory(repo_root)
 
     generated_highlevel = inventory["generated_highlevel_c"]["symbols"]
-    assert inventory["generated_highlevel_c"]["symbol_count"] == len(generated_highlevel)
+    assert inventory["generated_highlevel_c"]["symbol_count"] == len(
+        generated_highlevel
+    )
     assert "ifcopenshell_unit_convert" in generated_highlevel
     assert "ifcopenshell_value_kind" in generated_highlevel
 
@@ -313,13 +356,17 @@ def test_scalar_param_specs_do_not_carry_ownership_policy() -> None:
                 params = node.get("params")
                 if isinstance(params, list):
                     for index, param in enumerate(params):
-                        param_type = param.get("type") if isinstance(param, dict) else None
+                        param_type = (
+                            param.get("type") if isinstance(param, dict) else None
+                        )
                         if (
                             isinstance(param_type, dict)
                             and param_type.get("kind") in _SCALAR_PARAM_KINDS
                             and "ownership" in param_type
                         ):
-                            offenders.append(f"{spec_path.name}:{'.'.join(path + ('params', str(index), 'type'))}")
+                            offenders.append(
+                                f"{spec_path.name}:{'.'.join(path + ('params', str(index), 'type'))}"
+                            )
                 for key, value in node.items():
                     visit(value, path + (str(key),))
             elif isinstance(node, list):

@@ -5,6 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from textwrap import dedent
 
+import pytest
+
+from src.ifcwrap.binding_generator.abi_ir import finalize_abi
 from src.ifcwrap.binding_generator.authored_spec import load_authored_spec
 from src.ifcwrap.binding_generator.binding_ir import (
     BindingIR,
@@ -21,10 +24,9 @@ from src.ifcwrap.binding_generator.binding_model import (
     ResultStructSpec,
     TypeSpec,
 )
-from src.ifcwrap.binding_generator.host_metadata import build_host_metadata
 
 
-def test_host_metadata_derives_layouts_and_signatures(tmp_path: Path) -> None:
+def test_finalized_abi_derives_layouts_and_signatures(tmp_path: Path) -> None:
     spec_path = tmp_path / "demo.yml"
     spec_path.write_text(
         dedent(
@@ -92,7 +94,7 @@ def test_host_metadata_derives_layouts_and_signatures(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    metadata = build_host_metadata(lower_binding_spec(load_authored_spec(spec_path)))
+    metadata = finalize_abi(lower_binding_spec(load_authored_spec(spec_path)))
 
     assert metadata.error_functions == {
         "clear_error": "ifcopenshell_demo_clear_error",
@@ -104,11 +106,20 @@ def test_host_metadata_derives_layouts_and_signatures(tmp_path: Path) -> None:
     assert metadata.handles["file"].destroy_function == "ifcopenshell_demo_file_destroy"
 
     assert metadata.value_types["string"].fields[0].name == "data"
-    assert metadata.value_types["string_list"].destroy_function == "ifcopenshell_string_list_destroy"
+    assert (
+        metadata.value_types["string_list"].destroy_function
+        == "ifcopenshell_string_list_destroy"
+    )
     assert metadata.value_types["double_list"].fields[0].c_type == "double*"
     assert metadata.value_types["int64_list"].fields[0].c_type == "int64_t*"
-    assert metadata.value_types["demo_item_list"].fields[0].c_type == "ifcopenshell_demo_item_t**"
-    assert metadata.value_types["demo_item_list_list"].fields[0].c_type == "ifcopenshell_demo_item_list_t*"
+    assert (
+        metadata.value_types["demo_item_list"].fields[0].c_type
+        == "ifcopenshell_demo_item_t**"
+    )
+    assert (
+        metadata.value_types["demo_item_list_list"].fields[0].c_type
+        == "ifcopenshell_demo_item_list_t*"
+    )
 
     create = metadata.functions["ifcopenshell_demo_create_file"]
     assert create.restype == "bool"
@@ -144,8 +155,8 @@ def test_host_metadata_derives_layouts_and_signatures(tmp_path: Path) -> None:
     ]
 
 
-def test_host_metadata_includes_sequences_used_only_by_option_structs() -> None:
-    metadata = build_host_metadata(
+def test_finalized_abi_includes_sequences_used_only_by_option_structs() -> None:
+    metadata = finalize_abi(
         BindingIR(
             module="demo",
             c_prefix="ifcopenshell_demo",
@@ -159,24 +170,29 @@ def test_host_metadata_includes_sequences_used_only_by_option_structs() -> None:
                 ),
             },
             result_structs={},
-            functions=(
+            calls=(
                 CallIR(
                     expose_as="add_mesh",
                     c_name="ifcopenshell_demo_add_mesh",
                     receiver=None,
                     returns=TypeSpec(kind="void"),
-                    params=(ParamSpec("options", TypeSpec(kind="option", struct="AddMeshOptions")),),
+                    params=(
+                        ParamSpec(
+                            "options", TypeSpec(kind="option", struct="AddMeshOptions")
+                        ),
+                    ),
                     operation=DirectCallOp(cpp_name="Demo::add_mesh"),
                 ),
             ),
-            methods=(),
             option_structs={
                 "AddMeshOptions": OptionStructSpec(
                     name="AddMeshOptions",
                     cpp_type="Demo::AddMeshOptions",
                     c_type="ifcopenshell_demo_add_mesh_options_t",
                     fields=(
-                        OptionStructFieldSpec("faces", TypeSpec(kind="int32", sequence_depth=4)),
+                        OptionStructFieldSpec(
+                            "faces", TypeSpec(kind="int32", sequence_depth=4)
+                        ),
                         OptionStructFieldSpec(
                             "grouped_items",
                             TypeSpec(kind="handle", handle="item", sequence_depth=2),
@@ -194,8 +210,8 @@ def test_host_metadata_includes_sequences_used_only_by_option_structs() -> None:
     assert "demo_item_list_list" in metadata.value_types
 
 
-def test_host_metadata_preserves_option_and_result_field_docs() -> None:
-    metadata = build_host_metadata(
+def test_finalized_abi_preserves_option_and_result_field_docs() -> None:
+    metadata = finalize_abi(
         BindingIR(
             module="demo",
             c_prefix="ifcopenshell_demo",
@@ -216,8 +232,7 @@ def test_host_metadata_preserves_option_and_result_field_docs() -> None:
                     ),
                 )
             },
-            functions=(),
-            methods=(),
+            calls=(),
             option_structs={
                 "DemoOptions": OptionStructSpec(
                     name="DemoOptions",
@@ -236,10 +251,93 @@ def test_host_metadata_preserves_option_and_result_field_docs() -> None:
         )
     )
 
-    option_fields = {field.name: field for field in metadata.option_structs["DemoOptions"].fields}
-    assert option_fields["enabled"].doc == "Whether the feature is enabled.\n\nOptional in the input."
+    option_fields = {
+        field.name: field for field in metadata.option_structs["DemoOptions"].fields
+    }
+    assert (
+        option_fields["enabled"].doc
+        == "Whether the feature is enabled.\n\nOptional in the input."
+    )
     assert option_fields["undocumented"].doc is None
 
-    result_fields = {field.name: field for field in metadata.value_types["DemoResult"].fields}
+    result_fields = {
+        field.name: field for field in metadata.value_types["DemoResult"].fields
+    }
     assert result_fields["value"].doc == "Result value in model units."
     assert result_fields["undocumented"].doc is None
+
+
+def test_finalization_rejects_unresolved_types_with_call_context() -> None:
+    ir = BindingIR(
+        module="demo",
+        c_prefix="ifcopenshell_demo",
+        public_headers=(),
+        handles={},
+        result_structs={},
+        calls=(
+            CallIR(
+                expose_as="inspect",
+                c_name="ifcopenshell_demo_inspect",
+                receiver=None,
+                returns=TypeSpec(kind="void"),
+                params=(ParamSpec("item", TypeSpec(kind="handle", handle="item")),),
+                operation=DirectCallOp(cpp_name="Demo::inspect"),
+            ),
+        ),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="call ifcopenshell_demo_inspect parameter 'item': unknown handle 'item'",
+    ):
+        finalize_abi(ir)
+
+
+def test_finalization_rejects_empty_variants_with_field_context() -> None:
+    ir = BindingIR(
+        module="demo",
+        c_prefix="ifcopenshell_demo",
+        public_headers=(),
+        handles={},
+        result_structs={
+            "DemoResult": ResultStructSpec(
+                name="DemoResult",
+                cpp_type="Demo::Result",
+                c_type="ifcopenshell_demo_result_t",
+                fields=(ResultStructFieldSpec("value", TypeSpec(kind="variant")),),
+            )
+        },
+        calls=(),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="result struct DemoResult field 'value': variant has no alternatives",
+    ):
+        finalize_abi(ir)
+
+
+def test_finalization_rejects_unsupported_types_with_call_context() -> None:
+    ir = BindingIR(
+        module="demo",
+        c_prefix="ifcopenshell_demo",
+        public_headers=(),
+        handles={},
+        result_structs={},
+        calls=(
+            CallIR(
+                expose_as="inspect",
+                c_name="ifcopenshell_demo_inspect",
+                receiver=None,
+                returns=TypeSpec(kind="void"),
+                params=(ParamSpec("item", TypeSpec(kind="mystery")),),
+                operation=DirectCallOp(cpp_name="Demo::inspect"),
+            ),
+        ),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="call ifcopenshell_demo_inspect: Unsupported parameter kind: mystery",
+    ):
+        finalize_abi(ir)

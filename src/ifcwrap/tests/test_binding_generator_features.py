@@ -14,8 +14,15 @@ from src.ifcwrap.binding_generator.authored_spec import (
     load_authored_spec,
     load_merged_specs,
 )
+from src.ifcwrap.binding_generator.binding_ir import BindingIR, finalize_binding_ir
 from src.ifcwrap.binding_generator.binding_model import HandleSpec
-from src.ifcwrap.binding_generator.c_backend import generate, generate_merged
+from src.ifcwrap.binding_generator.generate import (
+    GenerationConfig,
+    ProductionSourceSet,
+    generate_all,
+    write_if_different,
+)
+from src.ifcwrap.binding_generator.pipeline import generate, generate_merged
 from src.ifcwrap.binding_generator.policy_ir import (
     BoolOutParamPolicyOp,
     ChildrenAddPolicyOp,
@@ -31,6 +38,79 @@ from src.ifcwrap.binding_generator.policy_ir import (
 
 def _discovery_include_dirs(tmp_path: Path) -> tuple[Path, ...]:
     return (tmp_path,)
+
+
+def test_production_source_set_is_always_full_project() -> None:
+    spec_dir = Path(__file__).parents[1] / "binding_generator/specs"
+    sources = ProductionSourceSet.from_spec_dir(spec_dir)
+    assert [path.name for path in sources.policy_specs] == [
+        "ifcparse.yml",
+        "ifcgeom.yml",
+    ]
+    assert [path.name for path in sources.cpp_specs] == [
+        "ifcparse.hpp",
+        "ifcapi.hpp",
+        "ifcgeom.hpp",
+    ]
+    assert sources.macro_header.name == "spec_macros.h"
+    assert sources.binding_headers
+
+
+def test_atomic_write_if_different_preserves_identical_file(tmp_path: Path) -> None:
+    output = tmp_path / "nested/artifact.txt"
+    assert write_if_different(output, "first\r\n") is True
+    timestamp = output.stat().st_mtime_ns
+    assert output.read_bytes() == b"first\n"
+    assert write_if_different(output, "first\n") is False
+    assert output.stat().st_mtime_ns == timestamp
+    assert write_if_different(output, "second\n") is True
+    assert output.read_bytes() == b"second\n"
+
+
+def test_unified_orchestrator_emits_complete_artifact_set(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ir = finalize_binding_ir(
+        BindingIR(
+            module="ifcopenshell",
+            c_prefix="ifcopenshell",
+            public_headers=(),
+            handles={},
+            result_structs={},
+            calls=(),
+        )
+    )
+    monkeypatch.setattr(
+        "src.ifcwrap.binding_generator.generate.build_binding_ir",
+        lambda *args, **kwargs: ir,
+    )
+    spec_dir = Path(__file__).parents[1] / "binding_generator/specs"
+    config = GenerationConfig(
+        sources=ProductionSourceSet.from_spec_dir(spec_dir),
+        c_output_dir=tmp_path / "c",
+        python_output_dir=tmp_path / "python",
+        python_utils_out=tmp_path / "package/_capi_utils.py",
+        wasm_output_dir=tmp_path / "wasm",
+        js_generated_output_dir=tmp_path / "js",
+    )
+
+    artifacts = generate_all(config)
+
+    assert [artifact.name for artifact in artifacts] == [
+        "c-header",
+        "c-source",
+        "c-internal-header",
+        "python-source",
+        "python-utility",
+        "wasm-javascript",
+        "wasm-module",
+        "wasm-exports",
+        "wasm-declarations",
+        "wasm-api",
+        "package-declarations",
+        "package-api",
+    ]
+    assert all(artifact.path.is_file() for artifact in artifacts)
 
 
 def test_load_merged_specs_resolves_cross_slice_handles(tmp_path: Path) -> None:

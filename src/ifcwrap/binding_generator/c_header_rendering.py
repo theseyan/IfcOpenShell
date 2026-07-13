@@ -2,54 +2,31 @@
 
 from __future__ import annotations
 
-try:
-    from .authored_spec import HandleSpec
-    from .binding_ir import BindingIR
-    from .c_sequence_helpers import (
-        _handle_list_c_type,
-        _handle_list_list_c_type,
-        _render_common_type_decls,
-        _render_handle_list_destroy_decl,
-        _render_handle_list_list_destroy_decl,
-        _snake_name,
-        _used_handle_list_handles,
-        _used_scalar_sequence_kinds,
-    )
-    from .c_type_rendering import (
-        _render_call_decl,
-        _render_option_struct_decl,
-        _render_optional_result_struct_decl,
-        _render_result_struct_decl,
-        _render_variant_decl,
-    )
-    from .c_variant_helpers import _render_variant_destroy_decls
-    from .debug import debug_log
-except ImportError:  # pragma: no cover - script execution fallback
-    from authored_spec import HandleSpec
-    from binding_ir import BindingIR
-    from c_sequence_helpers import (
-        _handle_list_c_type,
-        _handle_list_list_c_type,
-        _render_common_type_decls,
-        _render_handle_list_destroy_decl,
-        _render_handle_list_list_destroy_decl,
-        _snake_name,
-        _used_handle_list_handles,
-        _used_scalar_sequence_kinds,
-    )
-    from c_type_rendering import (
-        _render_call_decl,
-        _render_option_struct_decl,
-        _render_optional_result_struct_decl,
-        _render_result_struct_decl,
-        _render_variant_decl,
-    )
-    from c_variant_helpers import _render_variant_destroy_decls
-    from debug import debug_log
+from .abi_ir import _handle_destroy_name
+from .authored_spec import HandleSpec
+from .binding_ir import BindingIR
+from .c_sequence_helpers import (
+    _handle_list_c_type,
+    _handle_list_list_c_type,
+    _render_common_type_decls,
+    _render_handle_list_destroy_decl,
+    _render_handle_list_list_destroy_decl,
+    _used_handle_list_handles,
+    _used_scalar_sequence_kinds,
+)
+from .c_type_rendering import (
+    _render_call_decl,
+    _render_option_struct_decl,
+    _render_optional_result_struct_decl,
+    _render_result_struct_decl,
+    _render_variant_decl,
+)
+from .c_variant_helpers import _render_variant_destroy_decls
+from .debug import debug_log
 
 
 def _render_handle_destroy_decl(handle: HandleSpec) -> str:
-    return f"void ifcopenshell_{_snake_name(handle.c_type)}_destroy({handle.c_type}* handle);"
+    return f"void {_handle_destroy_name(handle)}({handle.c_type}* handle);"
 
 
 def _render_header(spec: BindingIR) -> str:
@@ -58,7 +35,10 @@ def _render_header(spec: BindingIR) -> str:
         f"module={spec.module} handles={len(spec.handles)} functions={len(spec.functions)} methods={len(spec.methods)}",
     )
     guard = f"{spec.c_prefix.upper()}_API_H"
-    handle_forwards = "\n".join(f"typedef struct {handle.c_type} {handle.c_type};" for handle in spec.handles.values())
+    handle_forwards = "\n".join(
+        f"typedef struct {handle.c_type} {handle.c_type};"
+        for handle in spec.handles.values()
+    )
     handle_list_types = _used_handle_list_handles(spec)
     handle_list_forwards = "\n".join(
         f"typedef struct {_handle_list_c_type(handle)} {{\n"
@@ -75,28 +55,34 @@ def _render_header(spec: BindingIR) -> str:
         for handle in handle_list_types
     )
     result_struct_decls = "\n\n".join(
-        _render_result_struct_decl(struct, spec) for struct in spec.result_structs.values()
+        _render_result_struct_decl(struct, spec)
+        for struct in spec.result_structs.values()
     )
     optional_result_struct_decls = "\n\n".join(
         _render_optional_result_struct_decl(call.returns, spec)
-        for call in (*spec.functions, *spec.methods)
+        for call in spec.calls
         if call.returns.kind == "struct" and call.returns.nullable
     )
     variant_decls = "\n\n".join(
         _render_variant_decl(call.returns, spec)
-        for call in (*spec.functions, *spec.methods)
+        for call in spec.calls
         if call.returns.kind == "variant"
     )
     option_struct_decls = "\n\n".join(
-        _render_option_struct_decl(struct, spec) for struct in spec.option_structs.values()
+        _render_option_struct_decl(struct, spec)
+        for struct in spec.option_structs.values()
     )
-    destroy_decls = "\n".join(_render_handle_destroy_decl(handle) for handle in spec.handles.values())
-    handle_list_destroy_decls = "\n".join(_render_handle_list_destroy_decl(handle) for handle in handle_list_types)
+    destroy_decls = "\n".join(
+        _render_handle_destroy_decl(handle) for handle in spec.handles.values()
+    )
+    handle_list_destroy_decls = "\n".join(
+        _render_handle_list_destroy_decl(handle) for handle in handle_list_types
+    )
     handle_list_list_destroy_decls = "\n".join(
         _render_handle_list_list_destroy_decl(handle) for handle in handle_list_types
     )
     variant_destroy_decls = _render_variant_destroy_decls(spec)
-    call_decls = "\n".join(_render_call_decl(call, spec) for call in (*spec.functions, *spec.methods))
+    call_decls = "\n".join(_render_call_decl(call, spec) for call in spec.calls)
     sequence_kinds = _used_scalar_sequence_kinds(spec)
     common_type_decls = _render_common_type_decls(sequence_kinds)
 
@@ -158,5 +144,7 @@ int {spec.c_prefix}_last_error_kind(void);
 
 #endif
 """
-    debug_log("c_backend.render_header.done", f"module={spec.module} bytes={len(rendered)}")
+    debug_log(
+        "c_backend.render_header.done", f"module={spec.module} bytes={len(rendered)}"
+    )
     return rendered

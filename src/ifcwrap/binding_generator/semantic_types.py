@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
-try:
-    from .clang_discovery import DiscoveredCppType
-except ImportError:  # pragma: no cover - script execution fallback
-    from clang_discovery import DiscoveredCppType
+from .clang_discovery import DiscoveredCppType
 
 
 def _normalize_cpp_type(text: str) -> str:
-    return " ".join(text.replace(" &", "&").replace(" *", "*").replace("< ", "<").replace(" >", ">").split())
+    return " ".join(
+        text.replace(" &", "&")
+        .replace(" *", "*")
+        .replace("< ", "<")
+        .replace(" >", ">")
+        .split()
+    )
 
 
 def _strip_qualifiers(text: str) -> str:
@@ -86,7 +89,7 @@ class RecordSemanticType:
     cpp_type: str
     base_name: str
     base_record_names: tuple[str, ...]
-    pointee: "SemanticCppType | None" = None
+    pointee: SemanticCppType | None = None
     pointer_wrapper: str | None = None
 
 
@@ -94,19 +97,19 @@ class RecordSemanticType:
 class SequenceSemanticType:
     cpp_type: str
     container_kind: str
-    element: "SemanticCppType"
+    element: SemanticCppType
 
 
 @dataclass(frozen=True)
 class OptionalSemanticType:
     cpp_type: str
-    element: "SemanticCppType"
+    element: SemanticCppType
 
 
 @dataclass(frozen=True)
 class VariantSemanticType:
     cpp_type: str
-    alternatives: tuple["SemanticCppType", ...]
+    alternatives: tuple[SemanticCppType, ...]
 
 
 @dataclass(frozen=True)
@@ -151,13 +154,23 @@ def _scalar_family_from_base(base_name: str, *, normalized: str) -> str | None:
 
 
 def _from_discovered(cpp_type: DiscoveredCppType) -> SemanticCppType:
-    cpp_text = cpp_type.storage_spelling or cpp_type.canonical_spelling or cpp_type.normalized_spelling or cpp_type.spelling
+    cpp_text = (
+        cpp_type.storage_spelling
+        or cpp_type.canonical_spelling
+        or cpp_type.normalized_spelling
+        or cpp_type.spelling
+    )
     normalized = _normalize_cpp_type(cpp_text)
 
     if cpp_type.is_enum:
-        return EnumSemanticType(cpp_type=cpp_text, enum_qualified_name=cpp_type.enum_qualified_name)
+        return EnumSemanticType(
+            cpp_type=cpp_text, enum_qualified_name=cpp_type.enum_qualified_name
+        )
 
-    if cpp_type.template_name in {"std::vector", "std::set", "std::array"} and cpp_type.template_args:
+    if (
+        cpp_type.template_name in {"std::vector", "std::set", "std::array"}
+        and cpp_type.template_args
+    ):
         return SequenceSemanticType(
             cpp_type=cpp_text,
             container_kind=cpp_type.template_name,
@@ -176,20 +189,28 @@ def _from_discovered(cpp_type: DiscoveredCppType) -> SemanticCppType:
             alternatives=tuple(analyze_cpp_type(arg) for arg in cpp_type.template_args),
         )
 
-    if cpp_type.template_name in {"std::shared_ptr", "boost::shared_ptr", "std::unique_ptr"} and cpp_type.template_args:
+    if (
+        cpp_type.template_name
+        in {"std::shared_ptr", "boost::shared_ptr", "std::unique_ptr"}
+        and cpp_type.template_args
+    ):
         pointee = analyze_cpp_type(cpp_type.template_args[0])
         return RecordSemanticType(
             cpp_type=cpp_text,
             base_name=cpp_type.base_name,
             base_record_names=cpp_type.base_record_names,
             pointee=pointee,
-            pointer_wrapper="unique_ptr" if cpp_type.template_name == "std::unique_ptr" else "shared_ptr",
+            pointer_wrapper="unique_ptr"
+            if cpp_type.template_name == "std::unique_ptr"
+            else "shared_ptr",
         )
 
     family = _scalar_family_from_base(cpp_type.base_name, normalized=normalized)
     if family == "void":
         if normalized != "void":
-            return UnsupportedSemanticType(cpp_type=cpp_text, reason="opaque void pointer/reference")
+            return UnsupportedSemanticType(
+                cpp_type=cpp_text, reason="opaque void pointer/reference"
+            )
         return VoidSemanticType(cpp_type=cpp_text)
     if family == "string":
         return StringSemanticType(cpp_type=cpp_text)
@@ -248,7 +269,9 @@ def _from_string(cpp_type: str) -> SemanticCppType:
     family = _scalar_family_from_base(core, normalized=normalized)
     if family == "void":
         if normalized != "void":
-            return UnsupportedSemanticType(cpp_type=normalized, reason="opaque void pointer/reference")
+            return UnsupportedSemanticType(
+                cpp_type=normalized, reason="opaque void pointer/reference"
+            )
         return VoidSemanticType(cpp_type=normalized)
     if family == "string":
         return StringSemanticType(cpp_type=normalized)

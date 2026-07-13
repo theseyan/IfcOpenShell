@@ -5,21 +5,18 @@ from __future__ import annotations
 from pathlib import Path
 from textwrap import dedent
 
-from src.ifcwrap.binding_generator.binding_model import TypeSpec
-from src.ifcwrap.binding_generator.binding_ir import BindingIR
-from src.ifcwrap.binding_generator.host_metadata import (
-    HostBindingMetadata,
-    HostFunctionMetadata,
-    HostOptionFieldMetadata,
-    HostOptionStructMetadata,
-    HostParamMetadata,
-    HostStructField,
-    HostStructMetadata,
+from src.ifcwrap.binding_generator.abi_ir import (
+    BindingABI,
+    CFieldIR,
+    CFunctionIR,
+    COptionFieldIR,
+    COptionIR,
+    CParamIR,
+    CTypeIR,
 )
-from src.ifcwrap.binding_generator.targets import TargetGenerationRequest, discover_targets, get_target
-from src.ifcwrap.binding_generator.targets.python import PythonTargetBackend
+from src.ifcwrap.binding_generator.binding_ir import BindingIR
+from src.ifcwrap.binding_generator.binding_model import TypeSpec
 from src.ifcwrap.binding_generator.targets.python.backend import (
-    _discover_all_handle_types,
     _method_name,
     _py_type_name,
     _snake_name,
@@ -28,20 +25,21 @@ from src.ifcwrap.binding_generator.targets.python.backend import (
 )
 
 
-def _make_ir(module: str = "ifcopenshell_wrapper", c_prefix: str = "ifcopenshell_demo") -> BindingIR:
+def _make_ir(
+    module: str = "ifcopenshell_wrapper", c_prefix: str = "ifcopenshell_demo"
+) -> BindingIR:
     return BindingIR(
         module=module,
         c_prefix=c_prefix,
         public_headers=(),
         handles={},
         result_structs={},
-        functions=(),
-        methods=(),
+        calls=(),
     )
 
 
 # ---------------------------------------------------------------------------
-# Helper factory functions for building minimal HostBindingMetadata
+# Helper factory functions for building minimal BindingABI
 # ---------------------------------------------------------------------------
 
 _DEFAULT_ERROR_FUNCTIONS = {
@@ -51,14 +49,16 @@ _DEFAULT_ERROR_FUNCTIONS = {
 }
 
 
-def _make_handle(name: str, c_type: str, destroy_function: str | None = None) -> HostStructMetadata:
+def _make_handle(
+    name: str, c_type: str, destroy_function: str | None = None
+) -> CTypeIR:
     """Create a minimal ptr_owned handle struct (raw pointer)."""
     if destroy_function is None:
         destroy_function = f"ifcopenshell_{_snake_name(c_type)}_destroy"
-    return HostStructMetadata(
+    return CTypeIR(
         c_type=c_type,
         kind="handle",
-        fields=(HostStructField("ptr", "void*"), HostStructField("owned", "bool")),
+        fields=(CFieldIR("ptr", "void*"), CFieldIR("owned", "bool")),
         destroy_function=destroy_function,
         layout="ptr_owned",
     )
@@ -67,11 +67,11 @@ def _make_handle(name: str, c_type: str, destroy_function: str | None = None) ->
 def _make_function(
     *,
     c_name: str,
-    params: tuple[HostParamMetadata, ...] = (),
+    params: tuple[CParamIR, ...] = (),
     returns: TypeSpec | None = None,
     receiver: str | None = None,
     handle_c_type_map: dict[str, str] | None = None,
-) -> HostFunctionMetadata:
+) -> CFunctionIR:
     """Create a minimal function metadata object."""
     if returns is None:
         returns = TypeSpec(kind="void")
@@ -79,7 +79,7 @@ def _make_function(
     if receiver is not None:
         full_params.insert(
             0,
-            HostParamMetadata(
+            CParamIR(
                 name="self",
                 c_type=f"ifcopenshell_demo_{receiver}_t*",
                 role="receiver",
@@ -92,7 +92,7 @@ def _make_function(
         hmap = handle_c_type_map or {}
         out_c_type = _compute_out_c_type(returns, hmap)
         full_params.append(
-            HostParamMetadata(
+            CParamIR(
                 name="out_result",
                 c_type=out_c_type,
                 role="out_result",
@@ -100,7 +100,7 @@ def _make_function(
                 nullable=False,
             ),
         )
-    return HostFunctionMetadata(
+    return CFunctionIR(
         c_name=c_name,
         restype="bool",
         params=tuple(full_params),
@@ -126,7 +126,9 @@ def _compute_out_c_type(type_spec: TypeSpec, handle_c_type_map: dict[str, str]) 
     elif kind == "handle":
         if type_spec.handle is None:
             raise ValueError("handle type is missing handle name")
-        handle_c_type = handle_c_type_map.get(type_spec.handle, f"ifcopenshell_demo_{type_spec.handle}_t")
+        handle_c_type = handle_c_type_map.get(
+            type_spec.handle, f"ifcopenshell_demo_{type_spec.handle}_t"
+        )
         return f"{handle_c_type}**"
     elif kind == "void":
         return ""
@@ -137,13 +139,13 @@ def _make_metadata(
     *,
     module: str = "ifcopenshell_wrapper",
     c_prefix: str = "ifcopenshell_demo",
-    handles: dict[str, HostStructMetadata] | None = None,
-    value_types: dict[str, HostStructMetadata] | None = None,
-    option_structs: dict[str, HostOptionStructMetadata] | None = None,
-    functions: dict[str, HostFunctionMetadata] | None = None,
-) -> HostBindingMetadata:
-    """Create a minimal HostBindingMetadata."""
-    return HostBindingMetadata(
+    handles: dict[str, CTypeIR] | None = None,
+    value_types: dict[str, CTypeIR] | None = None,
+    option_structs: dict[str, COptionIR] | None = None,
+    functions: dict[str, CFunctionIR] | None = None,
+) -> BindingABI:
+    """Create a minimal BindingABI."""
+    return BindingABI(
         module=module,
         c_prefix=c_prefix,
         handles=handles or {},
@@ -157,6 +159,7 @@ def _make_metadata(
 # ---------------------------------------------------------------------------
 # Test: type object generation
 # ---------------------------------------------------------------------------
+
 
 class TestHandleTypeObject:
     """Verify that each handle type produces a structurally correct PyTypeObject."""
@@ -179,11 +182,18 @@ class TestHandleTypeObject:
         )
         code = render_python_extension(meta)
         assert '.tp_name = "IfcOpenshellDemoFile"' in code
-        assert 'typedef struct {\n    PyObject_HEAD\n    void *handle;\n    int owned;\n} IfcOpenshellDemoFileObject;' in code
+        assert (
+            "typedef struct {\n    PyObject_HEAD\n    void *handle;\n    int owned;\n} IfcOpenshellDemoFileObject;"
+            in code
+        )
 
     def test_dealloc_calls_destroy_and_nulls_handle(self):
         meta = _make_metadata(
-            handles={"item": _make_handle("item", "ifcopenshell_demo_item_t", "ifcopenshell_demo_item_destroy")},
+            handles={
+                "item": _make_handle(
+                    "item", "ifcopenshell_demo_item_t", "ifcopenshell_demo_item_destroy"
+                )
+            },
         )
         code = render_python_extension(meta)
         assert "ifcopenshell_demo_item_destroy" in code
@@ -227,12 +237,17 @@ class TestHandleTypeObject:
 # Test: destroy wrapper generation
 # ---------------------------------------------------------------------------
 
+
 class TestDestroyWrapper:
     """Verify destroy wrapper functions are generated correctly for each handle."""
 
     def test_generates_destroy_wrapper_for_single_handle(self):
         meta = _make_metadata(
-            handles={"file": _make_handle("file", "ifcopenshell_demo_file_t", "ifcopenshell_demo_file_destroy")},
+            handles={
+                "file": _make_handle(
+                    "file", "ifcopenshell_demo_file_t", "ifcopenshell_demo_file_destroy"
+                )
+            },
         )
         code = render_python_extension(meta)
         assert "py_demo_file_destroy" in code
@@ -279,6 +294,7 @@ class TestDestroyWrapper:
 # Test: handle wrap/unwrap
 # ---------------------------------------------------------------------------
 
+
 class TestHandleWrap:
     """Verify wrap_handle and extract_handle generated code."""
 
@@ -320,6 +336,7 @@ class TestHandleWrap:
 # Test: function wrapper parameter parsing
 # ---------------------------------------------------------------------------
 
+
 class TestFunctionWrapperParams:
     """Verify function wrappers parse parameters correctly."""
 
@@ -330,7 +347,7 @@ class TestFunctionWrapperParams:
                 "ifcopenshell_demo_set_flag": _make_function(
                     c_name="ifcopenshell_demo_set_flag",
                     params=(
-                        HostParamMetadata(
+                        CParamIR(
                             name="flag",
                             c_type="bool",
                             role="param",
@@ -354,7 +371,7 @@ class TestFunctionWrapperParams:
                 "ifcopenshell_demo_set_count": _make_function(
                     c_name="ifcopenshell_demo_set_count",
                     params=(
-                        HostParamMetadata(
+                        CParamIR(
                             name="count",
                             c_type="int32_t",
                             role="param",
@@ -375,7 +392,7 @@ class TestFunctionWrapperParams:
                 "ifcopenshell_demo_set_id": _make_function(
                     c_name="ifcopenshell_demo_set_id",
                     params=(
-                        HostParamMetadata(
+                        CParamIR(
                             name="id",
                             c_type="int64_t",
                             role="param",
@@ -396,7 +413,7 @@ class TestFunctionWrapperParams:
                 "ifcopenshell_demo_set_scale": _make_function(
                     c_name="ifcopenshell_demo_set_scale",
                     params=(
-                        HostParamMetadata(
+                        CParamIR(
                             name="scale",
                             c_type="double",
                             role="param",
@@ -417,7 +434,7 @@ class TestFunctionWrapperParams:
                 "ifcopenshell_demo_set_name": _make_function(
                     c_name="ifcopenshell_demo_set_name",
                     params=(
-                        HostParamMetadata(
+                        CParamIR(
                             name="name",
                             c_type="const char*",
                             role="param",
@@ -439,7 +456,7 @@ class TestFunctionWrapperParams:
                 "ifcopenshell_demo_set_name": _make_function(
                     c_name="ifcopenshell_demo_set_name",
                     params=(
-                        HostParamMetadata(
+                        CParamIR(
                             name="name",
                             c_type="const char*",
                             role="param",
@@ -452,7 +469,7 @@ class TestFunctionWrapperParams:
         )
         code = render_python_extension(meta)
         # Nullable string uses "z" format with optional marker
-        assert '"|z"' in code or 'const char*' in code
+        assert '"|z"' in code or "const char*" in code
 
     def test_multiple_params_generate_separate_declarations(self):
         meta = _make_metadata(
@@ -461,14 +478,14 @@ class TestFunctionWrapperParams:
                 "ifcopenshell_demo_configure": _make_function(
                     c_name="ifcopenshell_demo_configure",
                     params=(
-                        HostParamMetadata(
+                        CParamIR(
                             name="name",
                             c_type="const char*",
                             role="param",
                             type_kind="string",
                             nullable=False,
                         ),
-                        HostParamMetadata(
+                        CParamIR(
                             name="value",
                             c_type="int32_t",
                             role="param",
@@ -495,20 +512,23 @@ class TestFunctionWrapperParams:
                 ),
             },
             value_types={
-                "double_list": HostStructMetadata(
+                "double_list": CTypeIR(
                     c_type="ifcopenshell_double_list_t",
                     kind="sequence",
-                    fields=(HostStructField("items", "double*"), HostStructField("size", "size_t")),
+                    fields=(
+                        CFieldIR("items", "double*"),
+                        CFieldIR("size", "size_t"),
+                    ),
                     destroy_function="ifcopenshell_double_list_destroy",
                     element_type="double",
                     sequence_depth=1,
                 ),
-                "double_list_list": HostStructMetadata(
+                "double_list_list": CTypeIR(
                     c_type="ifcopenshell_double_list_list_t",
                     kind="sequence",
                     fields=(
-                        HostStructField("items", "ifcopenshell_double_list_t*"),
-                        HostStructField("size", "size_t"),
+                        CFieldIR("items", "ifcopenshell_double_list_t*"),
+                        CFieldIR("size", "size_t"),
                     ),
                     destroy_function="ifcopenshell_double_list_list_destroy",
                     element_type="ifcopenshell_double_list_t",
@@ -516,24 +536,32 @@ class TestFunctionWrapperParams:
                 ),
             },
             option_structs={
-                "CreateEntityOptions": HostOptionStructMetadata(
+                "CreateEntityOptions": COptionIR(
                     name="CreateEntityOptions",
                     c_type="ifcopenshell_root_create_entity_options_t",
                     fields=(
-                        HostOptionFieldMetadata("ifc_class", TypeSpec(kind="string"), "const char*"),
-                        HostOptionFieldMetadata(
+                        COptionFieldIR(
+                            "ifc_class", TypeSpec(kind="string"), "const char*"
+                        ),
+                        COptionFieldIR(
                             "axis",
                             TypeSpec(kind="double", sequence_depth=2),
                             "const ifcopenshell_double_list_list_t*",
                         ),
-                        HostOptionFieldMetadata("name", TypeSpec(kind="string", nullable=True), "const char*"),
-                        HostOptionFieldMetadata(
+                        COptionFieldIR(
+                            "name",
+                            TypeSpec(kind="string", nullable=True),
+                            "const char*",
+                        ),
+                        COptionFieldIR(
                             "owner_history",
                             TypeSpec(kind="handle", handle="instance", nullable=True),
                             "ifcopenshell_instance_t*",
                         ),
-                        HostOptionFieldMetadata("properties", TypeSpec(kind="opaque_ptr"), "void*"),
-                        HostOptionFieldMetadata(
+                        COptionFieldIR(
+                            "properties", TypeSpec(kind="opaque_ptr"), "void*"
+                        ),
+                        COptionFieldIR(
                             "products",
                             TypeSpec(kind="handle", handle="parse_instance_list"),
                             "ifcopenshell_parse_instance_list_t*",
@@ -545,8 +573,8 @@ class TestFunctionWrapperParams:
                 "ifcopenshell_root_create_entity": _make_function(
                     c_name="ifcopenshell_root_create_entity",
                     params=(
-                        HostParamMetadata("file", "ifcopenshell_file_t*", "param", "handle"),
-                        HostParamMetadata(
+                        CParamIR("file", "ifcopenshell_file_t*", "param", "handle"),
+                        CParamIR(
                             "options",
                             "const ifcopenshell_root_create_entity_options_t*",
                             "param",
@@ -566,22 +594,32 @@ class TestFunctionWrapperParams:
         assert 'get_option_field(obj, "name", 0)' in code
         assert 'get_option_field(obj, "axis", 1)' in code
         assert "make_input_double_list_list(field_1, sequence_1)" in code
-        assert "free_input_double_list_list((ifcopenshell_double_list_list_t *)value->axis);" in code
+        assert (
+            "free_input_double_list_list((ifcopenshell_double_list_list_t *)value->axis);"
+            in code
+        )
         assert "out->has_name = true;" in code
         assert "PyUnicode_AsUTF8(field_0)" in code
         assert "release_option_refs(arg_options_refs, 6);" in code
-        assert 'extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance"' in code
+        assert (
+            'extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance"'
+            in code
+        )
         assert "PyCapsule_IsValid(field_4, NULL)" in code
         assert "out->properties = PyCapsule_GetPointer(field_4, NULL);" in code
         assert 'get_option_field(obj, "products", 1)' in code
         assert "make_input_instance_list(field_5, &products_items_5)" in code
-        assert "ifcopenshell_parse_instance_list_create_from_handles(&products_items_5, &out->products)" in code
+        assert (
+            "ifcopenshell_parse_instance_list_create_from_handles(&products_items_5, &out->products)"
+            in code
+        )
         assert "ifcopenshell_parse_instance_list_destroy(value->products)" in code
 
 
 # ---------------------------------------------------------------------------
 # Test: function wrapper — handle receiver (methods)
 # ---------------------------------------------------------------------------
+
 
 class TestMethodReceiver:
     """Verify function wrappers for methods (with receiver handle)."""
@@ -632,6 +670,7 @@ class TestMethodReceiver:
 # ---------------------------------------------------------------------------
 # Test: function wrapper — output/result handling
 # ---------------------------------------------------------------------------
+
 
 class TestOutputHandling:
     """Verify generated wrappers handle return values correctly."""
@@ -725,6 +764,7 @@ class TestOutputHandling:
 # Test: error checking in wrappers
 # ---------------------------------------------------------------------------
 
+
 class TestErrorChecking:
     """Verify every function wrapper checks errors correctly."""
 
@@ -732,7 +772,9 @@ class TestErrorChecking:
         meta = _make_metadata(
             handles={"file": _make_handle("file", "ifcopenshell_demo_file_t")},
             functions={
-                "ifcopenshell_demo_ping": _make_function(c_name="ifcopenshell_demo_ping"),
+                "ifcopenshell_demo_ping": _make_function(
+                    c_name="ifcopenshell_demo_ping"
+                ),
             },
         )
         code = render_python_extension(meta)
@@ -742,7 +784,9 @@ class TestErrorChecking:
         meta = _make_metadata(
             handles={"file": _make_handle("file", "ifcopenshell_demo_file_t")},
             functions={
-                "ifcopenshell_demo_ping": _make_function(c_name="ifcopenshell_demo_ping"),
+                "ifcopenshell_demo_ping": _make_function(
+                    c_name="ifcopenshell_demo_ping"
+                ),
             },
         )
         code = render_python_extension(meta)
@@ -752,7 +796,9 @@ class TestErrorChecking:
         meta = _make_metadata(
             handles={"file": _make_handle("file", "ifcopenshell_demo_file_t")},
             functions={
-                "ifcopenshell_demo_ping": _make_function(c_name="ifcopenshell_demo_ping"),
+                "ifcopenshell_demo_ping": _make_function(
+                    c_name="ifcopenshell_demo_ping"
+                ),
             },
         )
         code = render_python_extension(meta)
@@ -785,6 +831,7 @@ class TestErrorChecking:
 # Test: _capi_utils.py generation
 # ---------------------------------------------------------------------------
 
+
 class TestCapiUtils:
     """Verify the _capi_utils.py template renders correctly."""
 
@@ -816,148 +863,10 @@ class TestCapiUtils:
         assert "def owner_context" in code
 
 
-class TestPythonTargetBackend:
-    def test_generate_writes_both_artifacts_to_output_dir(self, tmp_path: Path):
-        output_dir = tmp_path / "python-target"
-        metadata = _make_metadata(handles={"file": _make_handle("file", "ifcopenshell_demo_file_t")})
-
-        artifacts = PythonTargetBackend().generate(
-            TargetGenerationRequest(
-                ir=_make_ir(module=metadata.module, c_prefix=metadata.c_prefix),
-                metadata=metadata,
-                api_header_path=None,
-                options={},
-                output_dir=output_dir,
-            )
-        )
-
-        paths = {artifact.kind: artifact.path for artifact in artifacts.artifacts}
-        assert paths["source"] == (output_dir / "ifcopenshell_capi_py.cpp").resolve()
-        assert paths["utility"] == (output_dir / "_capi_utils.py").resolve()
-        assert paths["source"].read_text(encoding="utf-8").startswith("// This file was generated")
-        assert "def raise_last_error" in paths["utility"].read_text(encoding="utf-8")
-
-    def test_target_registry_returns_python_backend(self):
-        assert isinstance(get_target("python"), PythonTargetBackend)
-        assert any(isinstance(target, PythonTargetBackend) for target in discover_targets())
-
-    def test_generate_supports_explicit_utils_output_path(self, tmp_path: Path):
-        output_dir = tmp_path / "python-target"
-        utility_path = tmp_path / "package" / "_capi_utils.py"
-        metadata = _make_metadata(handles={"file": _make_handle("file", "ifcopenshell_demo_file_t")})
-
-        artifacts = PythonTargetBackend().generate(
-            TargetGenerationRequest(
-                ir=_make_ir(module=metadata.module, c_prefix=metadata.c_prefix),
-                metadata=metadata,
-                api_header_path=None,
-                options={"utils-out": str(utility_path)},
-                output_dir=output_dir,
-            )
-        )
-
-        paths = {artifact.kind: artifact.path for artifact in artifacts.artifacts}
-        assert paths["source"] == (output_dir / "ifcopenshell_capi_py.cpp").resolve()
-        assert paths["utility"] == utility_path.resolve()
-
-    def test_generate_wraps_only_functions_declared_in_api_header(self, tmp_path: Path):
-        output_dir = tmp_path / "python-target"
-        header_path = tmp_path / "ifcopenshell_api.h"
-        header_path.write_text(
-            dedent(
-                """
-                bool ifcopenshell_demo_exported(void);
-                """
-            ).strip()
-            + "\n",
-            encoding="utf-8",
-        )
-        metadata = _make_metadata(
-            functions={
-                "ifcopenshell_demo_exported": _make_function(c_name="ifcopenshell_demo_exported"),
-                "ifcopenshell_demo_internal": _make_function(c_name="ifcopenshell_demo_internal"),
-            },
-        )
-
-        artifacts = PythonTargetBackend().generate(
-            TargetGenerationRequest(
-                ir=_make_ir(module=metadata.module, c_prefix=metadata.c_prefix),
-                metadata=metadata,
-                api_header_path=header_path,
-                options={},
-                output_dir=output_dir,
-            )
-        )
-
-        code = next(artifact.path for artifact in artifacts.artifacts if artifact.kind == "source").read_text(
-            encoding="utf-8"
-        )
-        assert "py_ifcopenshell_demo_exported" in code
-        assert "py_ifcopenshell_demo_internal" not in code
-
-
-# ---------------------------------------------------------------------------
-# Test: header scanning for handle types
-# ---------------------------------------------------------------------------
-
-class TestHeaderScanning:
-    """Verify _discover_all_handle_types scans C headers correctly."""
-
-    def test_finds_handles_in_header(self, tmp_path: Path):
-        header = tmp_path / "demo_api.h"
-        header.write_text(
-            dedent(
-                """
-                typedef struct ifcopenshell_demo_file_t ifcopenshell_demo_file_t;
-                typedef struct ifcopenshell_demo_item_t ifcopenshell_demo_item_t;
-                """
-            ).strip()
-            + "\n",
-            encoding="utf-8",
-        )
-        handles = _discover_all_handle_types(header)
-        assert "demo_file" in handles
-        assert "demo_item" in handles
-
-    def test_discovered_handles_have_opaque_layout(self, tmp_path: Path):
-        header = tmp_path / "demo_api.h"
-        header.write_text(
-            dedent(
-                """
-                typedef struct ifcopenshell_demo_file_t ifcopenshell_demo_file_t;
-                """
-            ).strip()
-            + "\n",
-            encoding="utf-8",
-        )
-        handles = _discover_all_handle_types(header)
-        assert handles["demo_file"].layout == "opaque"
-        assert handles["demo_file"].kind == "handle"
-
-    def test_discovered_handles_have_correct_destroy_name(self, tmp_path: Path):
-        header = tmp_path / "demo_api.h"
-        header.write_text(
-            dedent(
-                """
-                typedef struct ifcopenshell_demo_file_t ifcopenshell_demo_file_t;
-                """
-            ).strip()
-            + "\n",
-            encoding="utf-8",
-        )
-        handles = _discover_all_handle_types(header)
-        assert handles["demo_file"].destroy_function == "ifcopenshell_demo_file_destroy"
-
-    def test_empty_header_returns_no_handles(self, tmp_path: Path):
-        header = tmp_path / "empty.h"
-        header.write_text("// empty header\n", encoding="utf-8")
-        handles = _discover_all_handle_types(header)
-        assert len(handles) == 0
-
-
 # ---------------------------------------------------------------------------
 # Test: module init
 # ---------------------------------------------------------------------------
+
 
 class TestModuleInit:
     """Verify the PyInit module function is correct."""
@@ -967,7 +876,7 @@ class TestModuleInit:
             handles={"file": _make_handle("file", "ifcopenshell_demo_file_t")},
         )
         code = render_python_extension(meta)
-        assert 'PyInit__ifcopenshell_capi' in code
+        assert "PyInit__ifcopenshell_capi" in code
         assert 'PyImport_ImportModule("types")' in code
         assert "SimpleNamespace" in code
 
@@ -1004,7 +913,9 @@ class TestModuleInit:
         meta = _make_metadata(
             handles={"file": _make_handle("file", "ifcopenshell_demo_file_t")},
             functions={
-                "ifcopenshell_demo_ping": _make_function(c_name="ifcopenshell_demo_ping"),
+                "ifcopenshell_demo_ping": _make_function(
+                    c_name="ifcopenshell_demo_ping"
+                ),
                 "ifcopenshell_demo_create_file": _make_function(
                     c_name="ifcopenshell_demo_create_file",
                     returns=TypeSpec(kind="handle", handle="file"),
@@ -1023,13 +934,14 @@ class TestModuleInit:
 # Test: full integration through YAML spec pipeline
 # ---------------------------------------------------------------------------
 
+
 class TestIntegrationWithPipeline:
     """Integration tests: YAML spec → BindingIR → HostMetadata → Python extension."""
 
     def test_render_from_yaml_spec(self, tmp_path: Path):
+        from src.ifcwrap.binding_generator.abi_ir import finalize_abi
         from src.ifcwrap.binding_generator.authored_spec import load_authored_spec
         from src.ifcwrap.binding_generator.binding_ir import lower_binding_spec
-        from src.ifcwrap.binding_generator.host_metadata import build_host_metadata
 
         spec_path = tmp_path / "demo.yml"
         spec_path.write_text(
@@ -1067,7 +979,7 @@ class TestIntegrationWithPipeline:
         )
 
         ir = lower_binding_spec(load_authored_spec(spec_path))
-        metadata = build_host_metadata(ir)
+        metadata = finalize_abi(ir)
         code = render_python_extension(metadata)
 
         # Type objects
@@ -1087,13 +999,13 @@ class TestIntegrationWithPipeline:
         assert "raise_last_error" in code
 
         # Module init
-        assert 'PyInit__ifcopenshell_capi' in code
+        assert "PyInit__ifcopenshell_capi" in code
 
     def test_generated_extension_is_compilable_c_structure(self, tmp_path: Path):
         """Verify that the generated code has matching braces, valid structure."""
+        from src.ifcwrap.binding_generator.abi_ir import finalize_abi
         from src.ifcwrap.binding_generator.authored_spec import load_authored_spec
         from src.ifcwrap.binding_generator.binding_ir import lower_binding_spec
-        from src.ifcwrap.binding_generator.host_metadata import build_host_metadata
 
         spec_path = tmp_path / "demo.yml"
         spec_path.write_text(
@@ -1126,7 +1038,7 @@ class TestIntegrationWithPipeline:
         )
 
         ir = lower_binding_spec(load_authored_spec(spec_path))
-        metadata = build_host_metadata(ir)
+        metadata = finalize_abi(ir)
         code = render_python_extension(metadata)
 
         # Verify the code starts with includes and ends with PyInit
@@ -1151,6 +1063,7 @@ class TestIntegrationWithPipeline:
 # Test: edge cases and helpers
 # ---------------------------------------------------------------------------
 
+
 class TestHelpers:
     """Test utility/helper functions used by the backend."""
 
@@ -1158,24 +1071,33 @@ class TestHelpers:
         assert _py_type_name("ifcopenshell_demo_file_t") == "IfcOpenshellDemoFile"
 
     def test_py_type_name_multi_word(self):
-        assert _py_type_name("ifcopenshell_demo_big_item_t") == "IfcOpenshellDemoBigItem"
+        assert (
+            _py_type_name("ifcopenshell_demo_big_item_t") == "IfcOpenshellDemoBigItem"
+        )
 
     def test_snake_name_strips_prefix_and_suffix(self):
         assert _snake_name("ifcopenshell_demo_file_t") == "demo_file"
 
     def test_method_name_strips_c_prefix(self):
-        assert _method_name("ifcopenshell_demo_create_file", "ifcopenshell_demo") == "create_file"
+        assert (
+            _method_name("ifcopenshell_demo_create_file", "ifcopenshell_demo")
+            == "create_file"
+        )
 
     def test_method_name_strips_parse_prefix(self):
         assert _method_name("ifcopenshell_parse_open", "ifcopenshell_wrapper") == "open"
 
     def test_method_name_strips_geom_prefix(self):
-        assert _method_name("ifcopenshell_geom_create_settings", "ifcopenshell_wrapper") == "create_settings"
+        assert (
+            _method_name("ifcopenshell_geom_create_settings", "ifcopenshell_wrapper")
+            == "create_settings"
+        )
 
 
 # ---------------------------------------------------------------------------
 # Test: handle list / value type converters
 # ---------------------------------------------------------------------------
+
 
 class TestValueConverters:
     """Verify the generated converters and input helpers for sequence types."""
@@ -1197,7 +1119,7 @@ class TestValueConverters:
                     c_name="ifcopenshell_demo_item_set_values",
                     receiver="item",
                     params=(
-                        HostParamMetadata(
+                        CParamIR(
                             name="values",
                             c_type="const ifcopenshell_double_list_t*",
                             role="param",
@@ -1236,7 +1158,7 @@ class TestValueConverters:
                 "ifcopenshell_demo_accept_instances": _make_function(
                     c_name="ifcopenshell_demo_accept_instances",
                     params=(
-                        HostParamMetadata(
+                        CParamIR(
                             name="instances",
                             c_type="ifcopenshell_parse_instance_list_t*",
                             role="param",
@@ -1248,7 +1170,9 @@ class TestValueConverters:
             },
         )
         code = render_python_extension(meta)
-        assert "make_input_instance_list(arg_instances_obj, &arg_instances_items)" in code
+        assert (
+            "make_input_instance_list(arg_instances_obj, &arg_instances_items)" in code
+        )
         assert "free_input_instance_list(&arg_instances_items)" in code
         assert "make_input_ifc_instance_list" not in code
         assert "free_input_ifc_instance_list" not in code
@@ -1257,6 +1181,7 @@ class TestValueConverters:
 # ---------------------------------------------------------------------------
 # Test: compiler/pragma markers
 # ---------------------------------------------------------------------------
+
 
 class TestGeneratedCodeMarkers:
     """Verify the generated code includes the expected markers."""
@@ -1279,11 +1204,19 @@ class TestGeneratedCodeMarkers:
     def test_generated_code_accepts_canonical_declaration_family_names(self):
         meta = _make_metadata(
             handles={
-                "declaration": _make_handle("declaration", "ifcopenshell_declaration_t"),
+                "declaration": _make_handle(
+                    "declaration", "ifcopenshell_declaration_t"
+                ),
                 "entity": _make_handle("entity", "ifcopenshell_entity_t"),
-                "enumeration": _make_handle("enumeration", "ifcopenshell_enumeration_t"),
-                "select_type": _make_handle("select_type", "ifcopenshell_select_type_t"),
-                "type_declaration": _make_handle("type_declaration", "ifcopenshell_type_declaration_t"),
+                "enumeration": _make_handle(
+                    "enumeration", "ifcopenshell_enumeration_t"
+                ),
+                "select_type": _make_handle(
+                    "select_type", "ifcopenshell_select_type_t"
+                ),
+                "type_declaration": _make_handle(
+                    "type_declaration", "ifcopenshell_type_declaration_t"
+                ),
             },
         )
         code = render_python_extension(meta)
@@ -1301,6 +1234,7 @@ class TestGeneratedCodeMarkers:
 # ---------------------------------------------------------------------------
 # Test: No-param (void) function rendering
 # ---------------------------------------------------------------------------
+
 
 class TestNoParamFunction:
     """Verify functions with no parameters render correctly."""

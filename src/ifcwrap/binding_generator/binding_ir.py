@@ -3,86 +3,50 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from typing import Union
+from dataclasses import dataclass, field, replace
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Union
 
-try:
-    from .authored_spec import AuthoredBindingSpec, MergedBindingSpec
-    from .binding_model import (
-        CallSpec,
-        HandleSpec,
-        ImplementationSpec,
-        OptionStructSpec,
-        ParamSpec,
-        ResultStructSpec,
-        TypeSpec,
-    )
-    from .debug import debug_log
-    from .policy_ir import (
-        ArrayElementFieldPolicyOp,
-        AsItemCastPolicyOp,
-        BoolOutParamPolicyOp,
-        CcomponentsAccessorPolicyOp,
-        ChildrenAddPolicyOp,
-        ChildrenAtPolicyOp,
-        ChildrenCountPolicyOp,
-        ConstructorPolicyOp,
-        DirectFieldPolicyOp,
-        DirectFunctionPolicyOp,
-        DirectMethodPolicyOp,
-        FieldSetterPolicyOp,
-        InlineAdapterPolicyOp,
-        ListAtPolicyOp,
-        ListCountPolicyOp,
-        MethodAtPolicyOp,
-        MethodSizePolicyOp,
-        OptionalGetPolicyOp,
-        OptionalHasPolicyOp,
-        PointerPresencePolicyOp,
-        SpecMethodFunctionPolicyOp,
-        ValueHandleFieldPolicyOp,
-        VariantGetPolicyOp,
-        VariantSetPolicyOp,
-    )
-except ImportError:  # pragma: no cover - script execution fallback
-    from authored_spec import AuthoredBindingSpec, MergedBindingSpec
-    from binding_model import (
-        CallSpec,
-        HandleSpec,
-        ImplementationSpec,
-        OptionStructSpec,
-        ParamSpec,
-        ResultStructSpec,
-        TypeSpec,
-    )
-    from debug import debug_log
-    from policy_ir import (
-        ArrayElementFieldPolicyOp,
-        AsItemCastPolicyOp,
-        BoolOutParamPolicyOp,
-        CcomponentsAccessorPolicyOp,
-        ChildrenAddPolicyOp,
-        ChildrenAtPolicyOp,
-        ChildrenCountPolicyOp,
-        ConstructorPolicyOp,
-        DirectFieldPolicyOp,
-        DirectFunctionPolicyOp,
-        DirectMethodPolicyOp,
-        FieldSetterPolicyOp,
-        InlineAdapterPolicyOp,
-        ListAtPolicyOp,
-        ListCountPolicyOp,
-        MethodAtPolicyOp,
-        MethodSizePolicyOp,
-        OptionalGetPolicyOp,
-        OptionalHasPolicyOp,
-        PointerPresencePolicyOp,
-        SpecMethodFunctionPolicyOp,
-        ValueHandleFieldPolicyOp,
-        VariantGetPolicyOp,
-        VariantSetPolicyOp,
-    )
+if TYPE_CHECKING:
+    from .abi_ir import BindingABI
 
+from .authored_spec import AuthoredBindingSpec, MergedBindingSpec
+from .binding_model import (
+    CallSpec,
+    HandleSpec,
+    ImplementationSpec,
+    OptionStructSpec,
+    ParamSpec,
+    ResultStructSpec,
+    TypeSpec,
+)
+from .debug import debug_log
+from .policy_ir import (
+    ArrayElementFieldPolicyOp,
+    AsItemCastPolicyOp,
+    BoolOutParamPolicyOp,
+    CcomponentsAccessorPolicyOp,
+    ChildrenAddPolicyOp,
+    ChildrenAtPolicyOp,
+    ChildrenCountPolicyOp,
+    ConstructorPolicyOp,
+    DirectFieldPolicyOp,
+    DirectFunctionPolicyOp,
+    DirectMethodPolicyOp,
+    FieldSetterPolicyOp,
+    InlineAdapterPolicyOp,
+    ListAtPolicyOp,
+    ListCountPolicyOp,
+    MethodAtPolicyOp,
+    MethodSizePolicyOp,
+    OptionalGetPolicyOp,
+    OptionalHasPolicyOp,
+    PointerPresencePolicyOp,
+    SpecMethodFunctionPolicyOp,
+    ValueHandleFieldPolicyOp,
+    VariantGetPolicyOp,
+    VariantSetPolicyOp,
+)
 
 SourceBindingSpec = Union[AuthoredBindingSpec, MergedBindingSpec]
 
@@ -264,10 +228,27 @@ class BindingIR:
     public_headers: tuple[str, ...]
     handles: dict[str, HandleSpec]
     result_structs: dict[str, ResultStructSpec]
-    functions: tuple[CallIR, ...]
-    methods: tuple[CallIR, ...]
+    calls: tuple[CallIR, ...]
     option_structs: dict[str, OptionStructSpec] = field(default_factory=dict)
     depends_on_common: str | None = None
+    abi: BindingABI | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "handles", MappingProxyType(dict(self.handles)))
+        object.__setattr__(
+            self, "result_structs", MappingProxyType(dict(self.result_structs))
+        )
+        object.__setattr__(
+            self, "option_structs", MappingProxyType(dict(self.option_structs))
+        )
+
+    @property
+    def functions(self) -> tuple[CallIR, ...]:
+        return tuple(call for call in self.calls if call.receiver is None)
+
+    @property
+    def methods(self) -> tuple[CallIR, ...]:
+        return tuple(call for call in self.calls if call.receiver is not None)
 
 
 def _array_element_cpp_type(cpp_type: str | None) -> str | None:
@@ -388,19 +369,28 @@ def lower_binding_spec(spec: SourceBindingSpec) -> BindingIR:
         "binding_ir.lower.start",
         f"module={spec.module} functions={len(spec.functions)} methods={len(spec.methods)} handles={len(spec.handles)}",
     )
-    result = BindingIR(
+    semantic_ir = BindingIR(
         module=spec.module,
         c_prefix=spec.c_prefix,
         public_headers=spec.public_headers,
         handles=spec.handles,
         result_structs=getattr(spec, "result_structs", {}),
         option_structs=getattr(spec, "option_structs", {}),
-        functions=tuple(lower_call(call) for call in spec.functions),
-        methods=tuple(lower_call(call) for call in spec.methods),
+        calls=tuple(lower_call(call) for call in (*spec.functions, *spec.methods)),
         depends_on_common=getattr(spec, "depends_on_common", None),
     )
+    result = finalize_binding_ir(semantic_ir)
     debug_log(
-        "binding_ir.lower.done",
+        "binding_ir.finalize.done",
         f"module={result.module} functions={len(result.functions)} methods={len(result.methods)} handles={len(result.handles)}",
     )
     return result
+
+
+def finalize_binding_ir(semantic_ir: BindingIR) -> BindingIR:
+    if semantic_ir.abi is not None:
+        return semantic_ir
+    from .abi_ir import finalize_abi
+
+    debug_log("binding_ir.finalize.start", f"module={semantic_ir.module}")
+    return replace(semantic_ir, abi=finalize_abi(semantic_ir))

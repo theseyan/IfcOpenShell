@@ -1,32 +1,27 @@
-# This file was generated with the assistance of an AI coding tool.
+"""Authoritative finalized C ABI contract embedded in BindingIR."""
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from types import MappingProxyType
 
-try:
-    from .binding_ir import BindingIR, CallIR
-    from .binding_model import HandleSpec, TypeSpec
-    from .c_variant_helpers import _variant_destroy_name
-except ImportError:  # pragma: no cover - script execution fallback
-    from binding_ir import BindingIR, CallIR
-    from binding_model import HandleSpec, TypeSpec
-    from c_variant_helpers import _variant_destroy_name
+from .binding_ir import BindingIR, CallIR
+from .binding_model import HandleSpec, TypeSpec
 
 
 @dataclass(frozen=True)
-class HostStructField:
+class CFieldIR:
     name: str
     c_type: str
     doc: str | None = None
 
 
 @dataclass(frozen=True)
-class HostStructMetadata:
+class CTypeIR:
     c_type: str
     kind: str
-    fields: tuple[HostStructField, ...]
+    fields: tuple[CFieldIR, ...]
     destroy_function: str | None
     element_type: str | None = None
     sequence_depth: int = 0
@@ -34,23 +29,24 @@ class HostStructMetadata:
 
 
 @dataclass(frozen=True)
-class HostOptionFieldMetadata:
+class COptionFieldIR:
     name: str
     type: TypeSpec
     c_type: str
     semantic: str | None = None
     doc: str | None = None
+    presence_field: str | None = None
 
 
 @dataclass(frozen=True)
-class HostOptionStructMetadata:
+class COptionIR:
     name: str
     c_type: str
-    fields: tuple[HostOptionFieldMetadata, ...]
+    fields: tuple[COptionFieldIR, ...]
 
 
 @dataclass(frozen=True)
-class HostParamMetadata:
+class CParamIR:
     name: str
     c_type: str
     role: str
@@ -61,10 +57,10 @@ class HostParamMetadata:
 
 
 @dataclass(frozen=True)
-class HostFunctionMetadata:
+class CFunctionIR:
     c_name: str
     restype: str
-    params: tuple[HostParamMetadata, ...]
+    params: tuple[CParamIR, ...]
     error_policy: str
     returns: TypeSpec
     receiver: str | None
@@ -72,14 +68,27 @@ class HostFunctionMetadata:
 
 
 @dataclass(frozen=True)
-class HostBindingMetadata:
+class BindingABI:
     module: str
     c_prefix: str
-    handles: dict[str, HostStructMetadata]
-    value_types: dict[str, HostStructMetadata]
-    functions: dict[str, HostFunctionMetadata]
+    handles: dict[str, CTypeIR]
+    value_types: dict[str, CTypeIR]
+    functions: dict[str, CFunctionIR]
     error_functions: dict[str, str]
-    option_structs: dict[str, HostOptionStructMetadata] = field(default_factory=dict)
+    option_structs: dict[str, COptionIR] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "handles", MappingProxyType(dict(self.handles)))
+        object.__setattr__(
+            self, "value_types", MappingProxyType(dict(self.value_types))
+        )
+        object.__setattr__(self, "functions", MappingProxyType(dict(self.functions)))
+        object.__setattr__(
+            self, "error_functions", MappingProxyType(dict(self.error_functions))
+        )
+        object.__setattr__(
+            self, "option_structs", MappingProxyType(dict(self.option_structs))
+        )
 
 
 _SCALAR_PARAM_TYPES = {
@@ -197,7 +206,7 @@ def _used_scalar_sequence_kinds(ir: BindingIR) -> tuple[str, ...]:
                 seen.add(current)
                 ordered.append(current)
 
-    for call in (*ir.functions, *ir.methods):
+    for call in ir.calls:
         add_type(call.returns)
         for param in call.params:
             add_type(param.type)
@@ -215,14 +224,18 @@ def _used_handle_list_handles(ir: BindingIR) -> tuple[HandleSpec, ...]:
     handles: list[HandleSpec] = []
 
     def add(type_spec: TypeSpec) -> None:
-        if type_spec.kind != "handle" or type_spec.sequence_depth == 0 or type_spec.handle is None:
+        if (
+            type_spec.kind != "handle"
+            or type_spec.sequence_depth == 0
+            or type_spec.handle is None
+        ):
             return
         if type_spec.handle in seen:
             return
         seen.add(type_spec.handle)
         handles.append(ir.handles[type_spec.handle])
 
-    for call in (*ir.functions, *ir.methods):
+    for call in ir.calls:
         add(call.returns)
         for param in call.params:
             add(param.type)
@@ -285,6 +298,10 @@ def _variant_alt_name(type_spec: TypeSpec, ir: BindingIR) -> str:
 def _variant_c_type(type_spec: TypeSpec, ir: BindingIR) -> str:
     parts = "_".join(_variant_alt_name(alt, ir) for alt in type_spec.variants)
     return f"{ir.c_prefix}_{parts}_variant_t"
+
+
+def _variant_destroy_name(type_spec: TypeSpec, ir: BindingIR) -> str:
+    return f"ifcopenshell_{_snake_name(_variant_c_type(type_spec, ir))}_destroy"
 
 
 def _optional_struct_c_type(type_spec: TypeSpec, ir: BindingIR) -> str:
@@ -350,19 +367,19 @@ def _field_c_type(type_spec: TypeSpec, ir: BindingIR) -> str:
     raise ValueError(f"Unsupported result struct field kind: {type_spec.kind}")
 
 
-def _host_structs_for_handles(ir: BindingIR) -> dict[str, HostStructMetadata]:
-    result: dict[str, HostStructMetadata] = {}
+def _finalize_handles(ir: BindingIR) -> dict[str, CTypeIR]:
+    result: dict[str, CTypeIR] = {}
     for name, handle in sorted(ir.handles.items()):
         if handle.ptr_type == "shared_ptr":
-            fields: tuple[HostStructField, ...] = ()
+            fields: tuple[CFieldIR, ...] = ()
             layout = "opaque"
         elif handle.ptr_type == "value":
             fields = ()
             layout = "opaque"
         else:
-            fields = (HostStructField("ptr", "void*"), HostStructField("owned", "bool"))
+            fields = (CFieldIR("ptr", "void*"), CFieldIR("owned", "bool"))
             layout = "ptr_owned"
-        result[name] = HostStructMetadata(
+        result[name] = CTypeIR(
             c_type=handle.c_type,
             kind="handle",
             fields=fields,
@@ -373,26 +390,26 @@ def _host_structs_for_handles(ir: BindingIR) -> dict[str, HostStructMetadata]:
     return result
 
 
-def _host_value_structs(ir: BindingIR) -> dict[str, HostStructMetadata]:
-    result: dict[str, HostStructMetadata] = {
-        "string": HostStructMetadata(
+def _finalize_value_types(ir: BindingIR) -> dict[str, CTypeIR]:
+    result: dict[str, CTypeIR] = {
+        "string": CTypeIR(
             c_type="ifcopenshell_string_t",
             kind="string",
             fields=(
-                HostStructField("data", "char*"),
-                HostStructField("size", "size_t"),
-                HostStructField("owned", "bool"),
+                CFieldIR("data", "char*"),
+                CFieldIR("size", "size_t"),
+                CFieldIR("owned", "bool"),
             ),
             destroy_function="ifcopenshell_string_destroy",
         )
     }
     for kind in _used_scalar_sequence_kinds(ir):
-        result[kind] = HostStructMetadata(
+        result[kind] = CTypeIR(
             c_type=_sequence_c_type(kind),
             kind="sequence",
             fields=(
-                HostStructField("items", f"{_sequence_items_c_type(kind)}*"),
-                HostStructField("size", "size_t"),
+                CFieldIR("items", f"{_sequence_items_c_type(kind)}*"),
+                CFieldIR("size", "size_t"),
             ),
             destroy_function=_sequence_destroy_name(kind),
             element_type=_sequence_items_c_type(kind),
@@ -400,62 +417,63 @@ def _host_value_structs(ir: BindingIR) -> dict[str, HostStructMetadata]:
         )
     for handle in _used_handle_list_handles(ir):
         list_type = _handle_list_c_type(handle)
-        result[_snake_name(list_type)] = HostStructMetadata(
+        result[_snake_name(list_type)] = CTypeIR(
             c_type=list_type,
             kind="handle_sequence",
             fields=(
-                HostStructField("items", f"{handle.c_type}**"),
-                HostStructField("size", "size_t"),
+                CFieldIR("items", f"{handle.c_type}**"),
+                CFieldIR("size", "size_t"),
             ),
             destroy_function=_handle_list_destroy_name(handle),
             element_type=handle.c_type,
             sequence_depth=1,
         )
         list_list_type = _handle_list_list_c_type(handle)
-        result[_snake_name(list_list_type)] = HostStructMetadata(
+        result[_snake_name(list_list_type)] = CTypeIR(
             c_type=list_list_type,
             kind="handle_sequence",
             fields=(
-                HostStructField("items", f"{list_type}*"),
-                HostStructField("size", "size_t"),
+                CFieldIR("items", f"{list_type}*"),
+                CFieldIR("size", "size_t"),
             ),
             destroy_function=_handle_list_list_destroy_name(handle),
             element_type=list_type,
             sequence_depth=2,
         )
     for struct in ir.result_structs.values():
-        result[struct.name] = HostStructMetadata(
+        result[struct.name] = CTypeIR(
             c_type=struct.c_type,
             kind="result_struct",
             fields=tuple(
-                HostStructField(field.name, _field_c_type(field.type, ir), field.doc) for field in struct.fields
+                CFieldIR(field.name, _field_c_type(field.type, ir), field.doc)
+                for field in struct.fields
             ),
             destroy_function=None,
             element_type=struct.cpp_type,
         )
-    for call in (*ir.functions, *ir.methods):
+    for call in ir.calls:
         returns = call.returns
         if returns.kind == "struct" and returns.nullable and returns.struct is not None:
             c_type = _optional_struct_c_type(returns, ir)
-            result[_snake_name(c_type)] = HostStructMetadata(
+            result[_snake_name(c_type)] = CTypeIR(
                 c_type=c_type,
                 kind="optional_result_struct",
                 fields=(
-                    HostStructField("has_value", "bool"),
-                    HostStructField("value", ir.result_structs[returns.struct].c_type),
+                    CFieldIR("has_value", "bool"),
+                    CFieldIR("value", ir.result_structs[returns.struct].c_type),
                 ),
                 destroy_function=None,
                 element_type=returns.struct,
             )
         if returns.kind == "variant":
             c_type = _variant_c_type(returns, ir)
-            result[_snake_name(c_type)] = HostStructMetadata(
+            result[_snake_name(c_type)] = CTypeIR(
                 c_type=c_type,
                 kind="variant",
                 fields=tuple(
-                    [HostStructField("kind", "int32_t")]
+                    [CFieldIR("kind", "int32_t")]
                     + [
-                        HostStructField(f"value_{index}", _field_c_type(alt, ir))
+                        CFieldIR(f"value_{index}", _field_c_type(alt, ir))
                         for index, alt in enumerate(returns.variants)
                     ]
                 ),
@@ -465,12 +483,12 @@ def _host_value_structs(ir: BindingIR) -> dict[str, HostStructMetadata]:
     return result
 
 
-def _function_metadata(call: CallIR, ir: BindingIR) -> HostFunctionMetadata:
-    params: list[HostParamMetadata] = []
+def _finalize_function(call: CallIR, ir: BindingIR) -> CFunctionIR:
+    params: list[CParamIR] = []
     if call.receiver is not None:
         receiver = ir.handles[call.receiver]
         params.append(
-            HostParamMetadata(
+            CParamIR(
                 name="self",
                 c_type=f"{receiver.c_type}*",
                 role="receiver",
@@ -480,7 +498,7 @@ def _function_metadata(call: CallIR, ir: BindingIR) -> HostFunctionMetadata:
         )
     for param in call.params:
         params.append(
-            HostParamMetadata(
+            CParamIR(
                 name=param.name,
                 c_type=_param_c_type(param.type, ir),
                 role="param",
@@ -492,7 +510,7 @@ def _function_metadata(call: CallIR, ir: BindingIR) -> HostFunctionMetadata:
         )
     if call.returns.kind != "void":
         params.append(
-            HostParamMetadata(
+            CParamIR(
                 name="out_result",
                 c_type=_out_c_type(call.returns, ir),
                 role="out_result",
@@ -500,7 +518,7 @@ def _function_metadata(call: CallIR, ir: BindingIR) -> HostFunctionMetadata:
                 nullable=False,
             )
         )
-    return HostFunctionMetadata(
+    return CFunctionIR(
         c_name=call.c_name,
         restype="bool",
         params=tuple(params),
@@ -511,27 +529,79 @@ def _function_metadata(call: CallIR, ir: BindingIR) -> HostFunctionMetadata:
     )
 
 
-def build_host_metadata(ir: BindingIR) -> HostBindingMetadata:
-    functions = {
-        call.c_name: _function_metadata(call, ir)
-        for call in sorted((*ir.functions, *ir.methods), key=lambda item: item.c_name)
-    }
-    return HostBindingMetadata(
+def _validate_type_reference(type_spec: TypeSpec, ir: BindingIR, context: str) -> None:
+    if type_spec.kind == "handle":
+        if type_spec.handle is None:
+            raise ValueError(f"{context}: handle type is missing its logical name")
+        if type_spec.handle not in ir.handles:
+            raise ValueError(f"{context}: unknown handle '{type_spec.handle}'")
+    elif type_spec.kind == "struct":
+        if type_spec.struct is None:
+            raise ValueError(f"{context}: result struct type is missing its name")
+        if type_spec.struct not in ir.result_structs:
+            raise ValueError(f"{context}: unknown result struct '{type_spec.struct}'")
+    elif type_spec.kind == "option":
+        if type_spec.struct is None:
+            raise ValueError(f"{context}: option type is missing its struct name")
+        if type_spec.struct not in ir.option_structs:
+            raise ValueError(f"{context}: unknown option struct '{type_spec.struct}'")
+    elif type_spec.kind == "variant":
+        if not type_spec.variants:
+            raise ValueError(f"{context}: variant has no alternatives")
+        for index, alternative in enumerate(type_spec.variants):
+            _validate_type_reference(
+                alternative, ir, f"{context} variant alternative {index}"
+            )
+
+
+def _validate_semantic_references(ir: BindingIR) -> None:
+    for call in ir.calls:
+        if call.receiver is not None and call.receiver not in ir.handles:
+            raise ValueError(
+                f"call {call.c_name}: unknown receiver handle '{call.receiver}'"
+            )
+        for param in call.params:
+            _validate_type_reference(
+                param.type, ir, f"call {call.c_name} parameter '{param.name}'"
+            )
+        _validate_type_reference(call.returns, ir, f"call {call.c_name} return")
+    for struct in ir.result_structs.values():
+        for field in struct.fields:
+            _validate_type_reference(
+                field.type, ir, f"result struct {struct.name} field '{field.name}'"
+            )
+    for option in ir.option_structs.values():
+        for field in option.fields:
+            _validate_type_reference(
+                field.type, ir, f"option struct {option.name} field '{field.name}'"
+            )
+
+
+def finalize_abi(ir: BindingIR) -> BindingABI:
+    _validate_semantic_references(ir)
+    functions: dict[str, CFunctionIR] = {}
+    for call in sorted(ir.calls, key=lambda item: item.c_name):
+        try:
+            functions[call.c_name] = _finalize_function(call, ir)
+        except ValueError as error:
+            raise ValueError(f"call {call.c_name}: {error}") from error
+    metadata = BindingABI(
         module=ir.module,
         c_prefix=ir.c_prefix,
-        handles=_host_structs_for_handles(ir),
-        value_types=_host_value_structs(ir),
+        handles=_finalize_handles(ir),
+        value_types=_finalize_value_types(ir),
         option_structs={
-            name: HostOptionStructMetadata(
+            name: COptionIR(
                 name=option.name,
                 c_type=option.c_type,
                 fields=tuple(
-                    HostOptionFieldMetadata(
+                    COptionFieldIR(
                         field.name,
                         field.type,
                         _option_field_c_type(field.type, ir),
                         field.type.semantic,
                         field.doc,
+                        f"has_{field.name}" if field.type.nullable else None,
                     )
                     for field in option.fields
                 ),
@@ -545,3 +615,47 @@ def build_host_metadata(ir: BindingIR) -> HostBindingMetadata:
             "last_error_kind": f"{ir.c_prefix}_last_error_kind",
         },
     )
+    _validate_finalized_contract(ir, metadata)
+    return metadata
+
+
+def _validate_finalized_contract(ir: BindingIR, metadata: BindingABI) -> None:
+    calls = ir.calls
+    symbols = [call.c_name for call in calls]
+    duplicates = sorted({symbol for symbol in symbols if symbols.count(symbol) > 1})
+    if duplicates:
+        raise ValueError(
+            f"Duplicate C symbols in finalized BindingIR: {', '.join(duplicates)}"
+        )
+    for call in calls:
+        if call.receiver is not None and call.receiver not in ir.handles:
+            raise ValueError(
+                f"Unknown receiver '{call.receiver}' in call {call.c_name}"
+            )
+        function = metadata.functions.get(call.c_name)
+        if function is None:
+            raise ValueError(f"Missing finalized ABI function for {call.c_name}")
+        out_params = [param for param in function.params if param.role == "out_result"]
+        expected = 0 if call.returns.kind == "void" else 1
+        if len(out_params) != expected:
+            raise ValueError(
+                f"Call {call.c_name} has {len(out_params)} out-result parameters; expected {expected}"
+            )
+    c_types = [value.c_type for value in metadata.value_types.values()]
+    duplicate_types = sorted(
+        {c_type for c_type in c_types if c_types.count(c_type) > 1}
+    )
+    if duplicate_types:
+        raise ValueError(
+            f"Duplicate generated C type definitions: {', '.join(duplicate_types)}"
+        )
+    missing_destroy = [
+        value.c_type
+        for value in (*metadata.handles.values(), *metadata.value_types.values())
+        if value.kind in {"handle", "string", "sequence", "handle_sequence", "variant"}
+        and not value.destroy_function
+    ]
+    if missing_destroy:
+        raise ValueError(
+            f"Missing destructor symbols for: {', '.join(missing_destroy)}"
+        )

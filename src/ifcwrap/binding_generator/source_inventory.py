@@ -2,40 +2,29 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
-try:
-    from .clang_discovery import (
-        DiscoveredBase,
-        DiscoveredConstructor,
-        DiscoveredField,
-        DiscoveredFunction,
-        DiscoveredMethod,
-        DiscoveryEnvironment,
-        discover_base_types,
-        discover_namespace_functions,
-        discover_public_constructors,
-        discover_public_fields,
-        discover_public_methods,
-    )
-    from .semantic_types import RecordSemanticType, SemanticCppType, VoidSemanticType, analyze_cpp_type
-except ImportError:  # pragma: no cover - script execution fallback
-    from clang_discovery import (
-        DiscoveredBase,
-        DiscoveredConstructor,
-        DiscoveredField,
-        DiscoveredFunction,
-        DiscoveredMethod,
-        DiscoveryEnvironment,
-        discover_base_types,
-        discover_namespace_functions,
-        discover_public_constructors,
-        discover_public_fields,
-        discover_public_methods,
-    )
-    from semantic_types import RecordSemanticType, SemanticCppType, VoidSemanticType, analyze_cpp_type
+from .clang_discovery import (
+    DiscoveredBase,
+    DiscoveredConstructor,
+    DiscoveredField,
+    DiscoveredFunction,
+    DiscoveredMethod,
+    DiscoveryEnvironment,
+    discover_base_types,
+    discover_namespace_functions,
+    discover_public_constructors,
+    discover_public_fields,
+    discover_public_methods,
+)
+from .semantic_types import (
+    RecordSemanticType,
+    SemanticCppType,
+    VoidSemanticType,
+    analyze_cpp_type,
+)
 
 
 @dataclass(frozen=True)
@@ -123,7 +112,10 @@ def _ownership_hint(cpp_type) -> str:
     semantic = analyze_cpp_type(cpp_type)
     if isinstance(semantic, VoidSemanticType):
         return "void"
-    if isinstance(semantic, RecordSemanticType) and semantic.pointer_wrapper is not None:
+    if (
+        isinstance(semantic, RecordSemanticType)
+        and semantic.pointer_wrapper is not None
+    ):
         return semantic.pointer_wrapper
     pointer_depth = getattr(cpp_type, "pointer_depth", 0)
     if pointer_depth:
@@ -138,14 +130,19 @@ def _ownership_hint(cpp_type) -> str:
 def _source_type(cpp_type) -> SourceTypeInventory:
     semantic = analyze_cpp_type(cpp_type)
     return SourceTypeInventory(
-        cpp_type=getattr(cpp_type, "storage_spelling", None) or getattr(cpp_type, "cpp_type", None) or str(cpp_type),
+        cpp_type=getattr(cpp_type, "storage_spelling", None)
+        or getattr(cpp_type, "cpp_type", None)
+        or str(cpp_type),
         semantic=semantic,
         ownership_hint=_ownership_hint(cpp_type),
     )
 
 
 def _params(params) -> tuple[SourceParamInventory, ...]:
-    return tuple(SourceParamInventory(name=param.name, type=_source_type(param.cpp_type_ref)) for param in params)
+    return tuple(
+        SourceParamInventory(name=param.name, type=_source_type(param.cpp_type_ref))
+        for param in params
+    )
 
 
 def _method_semantics(
@@ -164,7 +161,9 @@ def _method_semantics(
     }
 
 
-def _constructor_semantics(constructors: tuple[DiscoveredConstructor, ...]) -> tuple[SourceCallableInventory, ...]:
+def _constructor_semantics(
+    constructors: tuple[DiscoveredConstructor, ...],
+) -> tuple[SourceCallableInventory, ...]:
     return tuple(
         SourceCallableInventory(
             cpp_name=constructor.cpp_name,
@@ -175,11 +174,15 @@ def _constructor_semantics(constructors: tuple[DiscoveredConstructor, ...]) -> t
     )
 
 
-def _field_semantics(fields: dict[str, DiscoveredField]) -> dict[str, SourceTypeInventory]:
+def _field_semantics(
+    fields: dict[str, DiscoveredField],
+) -> dict[str, SourceTypeInventory]:
     return {name: _source_type(field.cpp_type_ref) for name, field in fields.items()}
 
 
-def _base_semantics(bases: tuple[DiscoveredBase, ...]) -> tuple[SourceTypeInventory, ...]:
+def _base_semantics(
+    bases: tuple[DiscoveredBase, ...],
+) -> tuple[SourceTypeInventory, ...]:
     return tuple(_source_type(base.cpp_type_ref) for base in bases)
 
 
@@ -218,7 +221,9 @@ def discover_source_inventory(request: SourceInventoryRequest) -> SourceInventor
             else {}
         )
         constructors = (
-            discover_public_constructors(request.environment, item.translation_unit, item.cpp_name)
+            discover_public_constructors(
+                request.environment, item.translation_unit, item.cpp_name
+            )
             if item.include_constructors
             else ()
         )
@@ -233,7 +238,9 @@ def discover_source_inventory(request: SourceInventoryRequest) -> SourceInventor
             else {}
         )
         bases = (
-            discover_base_types(request.environment, item.translation_unit, item.cpp_name)
+            discover_base_types(
+                request.environment, item.translation_unit, item.cpp_name
+            )
             if item.include_bases
             else ()
         )

@@ -2037,11 +2037,11 @@ declare module 'ifcopenshell-api' {
     /** Assign a planar connection geometry to a space boundary relationship. */
     assignConnectionGeometry(file: IfcOpenshellFile, rel_space_boundary: IfcOpenshellInstance, options: IfcOpenshellBoundaryAssignConnectionGeometryOptions): void;
     /**
-     * Shallow-copy a space boundary relationship, deep-copying its connection geometry.
+     * Create a copy of a space boundary relationship and its connection geometry.
      *
      * @param file File that receives the copied entities.
      * @param boundary IfcRelSpaceBoundary entity to copy.
-     * @return Newly created copy, or a null handle on failure.
+     * @return Newly created boundary relationship, or no result if the copy cannot be created.
      */
     copyBoundary(file: IfcOpenshellFile, boundary: IfcOpenshellInstance): IfcOpenshellInstance;
     /**
@@ -2049,7 +2049,7 @@ declare module 'ifcopenshell-api' {
      *
      * Updates the relating space, related building element, and boundary
      * classification. ParentBoundary and CorrespondingBoundary are set only when
-     * the schema supports them (IFC4+); nullopt clears those attributes.
+     * the schema supports them (IFC4+). When omitted, those attributes are cleared.
      *
      * @param entity IfcRelSpaceBoundary entity to modify.
      * @param options Attribute values to set.
@@ -2058,8 +2058,8 @@ declare module 'ifcopenshell-api' {
     /**
      * Remove a space boundary relationship and its connection geometry.
      *
-     * Removes the ConnectionGeometry attribute first (deep-removing its entities),
-     * then removes the boundary entity itself with history cleanup.
+     * Removes the connection geometry and then removes the boundary relationship.
+     * Unreferenced entities belonging to the connection geometry are removed.
      *
      * @param file IFC file containing the boundary.
      * @param boundary IfcRelSpaceBoundary entity to remove.
@@ -2078,7 +2078,7 @@ declare module 'ifcopenshell-api' {
     /**
      * Add a classification reference and associate it with products.
      *
-     * If an existing reference handle is provided, it is used directly.
+     * If an existing classification reference is provided, it is used directly.
      * Otherwise, a new IfcClassificationReference is created using the
      * optional identification, name, and classification fields.
      */
@@ -2124,14 +2124,14 @@ declare module 'ifcopenshell-api' {
      *
      * @param file File that receives the new entities.
      * @param options Survey point geometry and placement options.
-     * @return The newly created IfcAnnotation, or a null handle on error.
+     * @return The newly created IfcAnnotation, or no result if creation fails.
      */
     addSurveyPoint(file: IfcOpenshellFile, options: IfcOpenshellCogoAddSurveyPointOptions): IfcOpenshellInstance;
     /**
-     * Replace the survey point geometry inside an existing annotation.
+     * Replace the survey point geometry of an existing annotation.
      *
-     * Replaces the first item in the annotation's IfcShapeRepresentation with
-     * the given IfcPoint. The annotation must already have a shape representation.
+     * Replaces the annotation's existing survey point with the given IfcPoint.
+     * The annotation must already have a shape representation.
      *
      * @param annotation IfcAnnotation whose survey point to replace.
      * @param survey_point IfcPoint to assign as the new geometry.
@@ -2140,9 +2140,9 @@ declare module 'ifcopenshell-api' {
     /**
      * Update the coordinates of the survey point inside an existing annotation.
      *
-     * Reads the first item from the annotation's IfcShapeRepresentation and
-     * overwrites its Coordinates attribute. If the point currently has two
-     * coordinates, only x and y are written; otherwise all three are used.
+     * Updates the coordinates of the annotation's survey point. If the existing
+     * point is two-dimensional, only x and y are written; otherwise all three
+     * coordinates are used.
      *
      * @param annotation IfcAnnotation containing the survey point.
      * @param x Easting or X coordinate in model units.
@@ -2161,7 +2161,7 @@ declare module 'ifcopenshell-api' {
      *
      * @param instance The entity instance.
      * @param attribute_name The name of the derived attribute.
-     * @return The computed value, or empty on error. Free with value_free.
+     * @return The computed value, or no result if it cannot be computed. Release it with value_free.
      */
     derived(instance: IfcOpenshellInstance, attribute_name: string): IfcOpenshellValue | null;
   }
@@ -2240,10 +2240,10 @@ declare module 'ifcopenshell-api' {
     /**
      * Remove a geometric representation context and its subcontexts recursively.
      *
-     * For subcontexts, references from IfcCoordinateOperation entities are
-     * deep-removed; other referencing entities are redirected to the parent
-     * context. For top-level contexts, representations using the context are
-     * unassigned from their elements and removed.
+     * For subcontexts, IfcCoordinateOperation references are removed and other
+     * referencing entities are redirected to the parent context. For top-level
+     * contexts, representations using the context are unassigned from their
+     * elements and removed.
      */
     removeContext(file: IfcOpenshellFile, context: IfcOpenshellInstance): void;
   }
@@ -2301,10 +2301,10 @@ declare module 'ifcopenshell-api' {
      * on IFC4+.
      *
      * @param file File that receives the new entity.
-     * @param name Schedule name. May be null or empty for no name.
+     * @param name Schedule name. When omitted or empty, no name is assigned.
      * @param predefined_type IFC predefined type enum value (e.g. "BUDGET", "COSTPLAN").
      * @param update_date ISO 8601 date-time string for the UpdateDate attribute.
-     * @param owner_history Owner history for the new entity. May be std::nullopt.
+     * @param owner_history Owner history for the new entity. When omitted, no owner history is assigned.
      * @return Newly created IfcCostSchedule.
      */
     addCostSchedule(file: IfcOpenshellFile, name: string | null, predefined_type: string, update_date: string, owner_history: IfcOpenshellInstance | null): IfcOpenshellInstance;
@@ -2326,14 +2326,14 @@ declare module 'ifcopenshell-api' {
      * For each product, creates an IfcRelAssignsToControl linking the cost item
      * to the product. If prop_name is provided, matching quantities from the
      * products' IfcElementQuantity property sets are collected into the cost
-     * item's CostQuantities. If prop_name is null/empty and the cost item has a
+     * item's CostQuantities. If prop_name is omitted or empty and the cost item has a
      * single IfcQuantityCount, its value is updated to the count of assigned
      * non-resource objects. IfcSpatialElement products are skipped.
      *
      * @param file File containing the cost item and products.
      * @param cost_item IfcCostItem to assign quantities to.
      * @param products Products whose quantities to collect.
-     * @param prop_name Quantity property name to match. May be null.
+     * @param prop_name Quantity property name to match. When omitted, no named quantity is collected.
      * @param options Ownership options for the assignment relationship.
      */
     assignCostItemQuantity(file: IfcOpenshellFile, cost_item: IfcOpenshellInstance, products: IfcOpenshellInstance[], prop_name: string | null, options: IfcOpenshellCostAssignCostItemQuantityOptions): void;
@@ -2362,22 +2362,22 @@ declare module 'ifcopenshell-api' {
      */
     calculateCostItemResourceValue(file: IfcOpenshellFile, cost_item: IfcOpenshellInstance): void;
     /**
-     * Deep-copy an IfcCostItem and its nested children.
+     * Copy an IfcCostItem and its nested children.
      *
-     * Creates a deep copy of the cost item including nested child items,
-     * property sets, and IfcRelDefinesByProperties relationships. Returns
-     * the list of all newly created cost items (root first, then descendants).
+     * Creates independent copies of the cost item, nested child items, property
+     * sets, and IfcRelDefinesByProperties relationships. The returned list contains
+     * the new root item followed by its descendants.
      *
      * @param file File that receives the copied entities.
      * @param cost_item IfcCostItem to copy.
-     * @return Vector of newly created IfcCostItem entities (owned, caller must not free).
+     * @return List of newly created IfcCostItem entities, with the root first.
      */
     copyCostItem(file: IfcOpenshellFile, cost_item: IfcOpenshellInstance): IfcOpenshellParseInstanceList;
     /**
-     * Deep-copy cost values from one cost item to another.
+     * Copy the cost values from one cost item to another.
      *
-     * Removes existing CostValues from the destination, then deep-copies each
-     * IfcCostValue (and its component tree) from the source.
+     * Removes existing CostValues from the destination, then creates independent
+     * copies of the source values and their component trees.
      *
      * @param file File containing both cost items.
      * @param source IfcCostItem to copy values from.
@@ -2385,10 +2385,10 @@ declare module 'ifcopenshell-api' {
      */
     copyCostItemValues(file: IfcOpenshellFile, source: IfcOpenshellInstance, destination: IfcOpenshellInstance): void;
     /**
-     * Deep-copy an IfcCostSchedule and all its controlled cost items.
+     * Copy an IfcCostSchedule and all its controlled cost items.
      *
-     * Shallow-copies the schedule, then deep-copies each controlled IfcCostItem
-     * and assigns the copies to the new schedule via IfcRelAssignsToControl.
+     * Creates an independent schedule and independent copies of each controlled
+     * IfcCostItem, then assigns the copies to the new schedule.
      *
      * @param file File that receives the copied entities.
      * @param cost_schedule IfcCostSchedule to copy.
@@ -2570,11 +2570,11 @@ declare module 'ifcopenshell-api' {
      * already exists for the same axis tag. For non-grid products, if an
      * existing IfcRelAssignsToProduct already references the relating product,
      * the related object is appended to its RelatedObjects aggregate instead
-     * of creating a new relationship. Returns a null handle on exact duplicate.
+     * of creating a new relationship. Returns no result for an exact duplicate.
      *
      * @param file IFC file to modify.
      * @param options Assignment parameters.
-     * @return IfcRelAssignsToProduct relationship, or null handle on duplicate or failure.
+     * @return IfcRelAssignsToProduct relationship, or no result for a duplicate or failure.
      */
     assignProduct(file: IfcOpenshellFile, options: IfcOpenshellDrawingAssignProductOptions): IfcOpenshellInstance;
     /**
@@ -2595,18 +2595,17 @@ declare module 'ifcopenshell-api' {
     /**
      * Return the aggregate parent of an element.
      *
-     * Follows the Decomposes inverse to find the RelatingObject via
-     * IfcRelAggregates. In IFC2X3, returns empty if the relationship
-     * is IfcRelNests rather than IfcRelAggregates.
+     * Returns the RelatingObject of an IfcRelAggregates relationship. In IFC2X3,
+     * returns no result when the decomposition uses IfcRelNests instead.
      *
      * @param instance The element to query.
-     * @return The aggregate parent, or empty if not aggregated.
+     * @return The aggregate parent, or no result if the element is not aggregated.
      */
     getAggregate(instance: IfcOpenshellInstance): IfcOpenshellInstance | null;
     /**
      * Return elements directly contained in a spatial element.
      *
-     * Follows ContainsElements to find RelatedElements.
+     * Returns RelatedElements from the spatial element's containment relationships.
      *
      * @param element The spatial element (e.g. IfcBuildingStorey).
      * @return List of contained elements.
@@ -2615,20 +2614,20 @@ declare module 'ifcopenshell-api' {
     /**
      * Return the spatial container of an element.
      *
-     * By default walks up the spatial hierarchy to find an indirect container
-     * (e.g. a building storey for an element inside an aggregate). When
+     * By default considers indirect spatial containers (e.g. a building storey
+     * for an element inside an aggregate). When
      * direct_only is true, only a direct ContainedInStructure relationship
      * is considered.
      *
      * @param instance The element to query.
      * @param options Container lookup options.
-     * @return The spatial container, or empty if not contained.
+     * @return The spatial container, or no result if the element is not contained.
      */
     getContainer(instance: IfcOpenshellInstance, options: IfcOpenshellElementGetContainerOptions): IfcOpenshellInstance | null;
     /**
      * Return the controls assigned to an element.
      *
-     * Follows HasAssignments to find IfcRelAssignsToControl relationships.
+     * Returns controls from the element's IfcRelAssignsToControl relationships.
      *
      * @param element The element to query.
      * @return List of IfcControl entities.
@@ -2637,10 +2636,9 @@ declare module 'ifcopenshell-api' {
     /**
      * Return the full spatial decomposition of an element.
      *
-     * Collects all subelements by traversing ContainsElements,
-     * IsDecomposedBy, HasOpenings, HasFillings, and IsNestedBy
-     * relationships. When is_recursive is true (default), the traversal
-     * is breadth-first through the entire hierarchy.
+     * Returns subelements related through containment, aggregation, openings,
+     * fillings, and nesting. When is_recursive is true (default), the result
+     * includes the full hierarchy in breadth-first order.
      *
      * @param element The root element.
      * @param options Decomposition traversal options.
@@ -2650,8 +2648,8 @@ declare module 'ifcopenshell-api' {
     /**
      * Return elements assigned to a presentation layer.
      *
-     * Follows AssignedItems on the IfcPresentationLayerAssignment to find
-     * all elements whose geometry is on the layer.
+     * Returns elements whose geometry appears in AssignedItems of the
+     * IfcPresentationLayerAssignment.
      *
      * @param layer The IfcPresentationLayerAssignment entity.
      * @return List of elements on the layer.
@@ -2660,9 +2658,9 @@ declare module 'ifcopenshell-api' {
     /**
      * Return elements that use a material, directly or via a material set.
      *
-     * Traverses inverse relationships from the material to find all elements
-     * associated through IfcRelAssociatesMaterial, as well as elements using
-     * the material as part of a layer, profile, constituent, or material list.
+     * Returns elements associated through IfcRelAssociatesMaterial, including
+     * elements using the material as part of a layer, profile, constituent, or
+     * material list.
      *
      * @param material The IfcMaterial or material set entity.
      * @return List of elements using the material.
@@ -2671,8 +2669,8 @@ declare module 'ifcopenshell-api' {
     /**
      * Return elements that use a profile definition in their representation.
      *
-     * Traverses from the IfcProfileDef through representation items to find
-     * all elements whose geometry references the profile.
+     * Returns elements whose geometry references the profile through their
+     * representation items.
      *
      * @param profile The IfcProfileDef entity.
      * @return List of elements using the profile.
@@ -2681,8 +2679,8 @@ declare module 'ifcopenshell-api' {
     /**
      * Return elements that use a geometric representation.
      *
-     * Follows OfProductRepresentation and RepresentationMap to find all
-     * IfcProduct and IfcTypeProduct entities sharing the representation.
+     * Returns IfcProduct and IfcTypeProduct entities that reference the
+     * representation through their product representation or representation map.
      *
      * @param representation The IfcShapeRepresentation entity.
      * @return List of elements using the representation.
@@ -2691,8 +2689,8 @@ declare module 'ifcopenshell-api' {
     /**
      * Return elements whose geometric representation uses a style.
      *
-     * Traverses from IfcSurfaceStyle through IfcStyledItem and
-     * IfcShapeRepresentation to find all elements using the style.
+     * Returns elements whose shape representations contain the style through
+     * IfcStyledItem relationships.
      *
      * @param style The IfcPresentationStyle entity.
      * @return List of elements using the style.
@@ -2701,17 +2699,17 @@ declare module 'ifcopenshell-api' {
     /**
      * Return the opening element that an element fills.
      *
-     * Follows FillsVoids to find the RelatingOpeningElement.
-     * Typically applies to windows and doors.
+     * Returns the RelatingOpeningElement from the element's filling relationship.
+     * This typically applies to windows and doors.
      *
      * @param element The filling element (e.g. IfcWindow).
-     * @return The IfcOpeningElement being filled, or empty if none.
+     * @return The IfcOpeningElement being filled, or no result if none is associated.
      */
     getFilledVoid(element: IfcOpenshellInstance): IfcOpenshellInstance | null;
     /**
      * Return the groups that an element is assigned to.
      *
-     * Follows HasAssignments to find IfcRelAssignsToGroup relationships.
+     * Returns groups from the element's IfcRelAssignsToGroup relationships.
      *
      * @param element The element to query.
      * @return List of IfcGroup entities.
@@ -2720,8 +2718,8 @@ declare module 'ifcopenshell-api' {
     /**
      * Return the presentation layers that an element is part of.
      *
-     * Traverses the element's representation to find IfcPresentationLayerAssignment
-     * entities.
+     * Returns IfcPresentationLayerAssignment entities referenced by the
+     * element's representation.
      *
      * @param element The element to query.
      * @return List of IfcPresentationLayerAssignment entities.
@@ -2738,24 +2736,24 @@ declare module 'ifcopenshell-api' {
      *
      * @param instance The element to query.
      * @param options Material lookup options.
-     * @return The material entity, or empty if none is associated.
+     * @return The material entity, or no result if none is associated.
      */
     getMaterial(instance: IfcOpenshellInstance, options: IfcOpenshellElementGetMaterialOptions): IfcOpenshellInstance | null;
     /**
      * Return the nest parent of an element.
      *
-     * Follows the Nests inverse (IFC4+) or Decomposes/IfcRelNests (IFC2X3)
-     * to find the RelatingObject.
+     * Returns the RelatingObject of the applicable IfcRelNests relationship for
+     * the schema.
      *
      * @param instance The element to query.
-     * @return The nesting parent, or empty if not nested.
+     * @return The nesting parent, or no result if the element is not nested.
      */
     getNest(instance: IfcOpenshellInstance): IfcOpenshellInstance | null;
     /**
      * Return opening elements associated with an element.
      *
-     * Follows HasOpenings to find RelatedOpeningElement. Also traverses
-     * aggregate parents to collect inherited openings.
+     * Returns RelatedOpeningElement values from the element's opening
+     * relationships. Also includes openings inherited from aggregate parents.
      *
      * @param element The building element (e.g. IfcWall).
      * @return List of IfcOpeningElement entities.
@@ -2768,13 +2766,13 @@ declare module 'ifcopenshell-api' {
      * relationships in that order, returning the first parent found.
      *
      * @param instance The element to query.
-     * @return The parent element, or empty if at the top of the hierarchy.
+     * @return The parent element, or no result if the element is at the top of the hierarchy.
      */
     getParent(instance: IfcOpenshellInstance): IfcOpenshellInstance | null;
     /**
      * Return the direct aggregation parts of an element.
      *
-     * Follows IsDecomposedBy to find RelatedObjects via IfcRelAggregates.
+     * Returns RelatedObjects from the element's IfcRelAggregates relationships.
      *
      * @param element The element to query.
      * @return List of aggregated parts.
@@ -2783,9 +2781,9 @@ declare module 'ifcopenshell-api' {
     /**
      * Return property set and quantity identifiers of an element.
      *
-     * Collects IfcPropertySet, IfcElementQuantity, and related property
-     * definition entities. For IfcTypeObject, reads HasPropertySets.
-     * For other objects, reads IsDefinedBy/IfcRelDefinesByProperties.
+     * Returns IfcPropertySet, IfcElementQuantity, and related property definition
+     * entities. For IfcTypeObject, uses HasPropertySets; for other objects, uses
+     * the applicable property-definition relationship.
      * When should_inherit is true (default), also includes property sets
      * from the element's type.
      *
@@ -2797,9 +2795,9 @@ declare module 'ifcopenshell-api' {
     /**
      * Return elements that have an external reference assigned.
      *
-     * For IfcExternalReference subtypes, follows ExternalReferenceForResources.
-     * For classification/document/library references, follows the appropriate
-     * inverse attribute.
+     * For IfcExternalReference subtypes, returns resources from the applicable
+     * external-reference relationship. For classification, document, and library
+     * references, returns elements from the corresponding IFC relationship.
      *
      * @param reference The IfcExternalReference or IfcExternalInformation entity.
      * @return List of elements using the reference.
@@ -2808,8 +2806,9 @@ declare module 'ifcopenshell-api' {
     /**
      * Return spatial elements that reference an element.
      *
-     * Follows ReferencedInStructures to find RelatingStructure.
-     * Useful for multi-storey elements or elements spanning multiple spaces.
+     * Returns RelatingStructure values from the element's spatial reference
+     * relationships. This includes multi-storey elements and elements spanning
+     * multiple spaces.
      *
      * @param element The element to query.
      * @return List of referenced IfcSpatialElement entities.
@@ -2818,8 +2817,8 @@ declare module 'ifcopenshell-api' {
     /**
      * Return the shape aspects of an element.
      *
-     * For an IfcProduct, reads HasShapeAspects from the Representation.
-     * For an IfcTypeProduct, reads from RepresentationMaps. When
+     * For an IfcProduct, returns shape aspects from its representation. For an
+     * IfcTypeProduct, returns shape aspects from its representation maps. When
      * should_inherit is true (default), also includes shape aspects from
      * the element's type.
      *
@@ -2831,7 +2830,7 @@ declare module 'ifcopenshell-api' {
     /**
      * Return elements referenced by a spatial structure.
      *
-     * Follows ReferencesElements to find RelatedElements.
+     * Returns RelatedElements from the spatial element's reference relationships.
      *
      * @param structure The spatial element (e.g. IfcBuildingStorey).
      * @return List of referenced elements.
@@ -2851,17 +2850,17 @@ declare module 'ifcopenshell-api' {
      * Return the type element associated with an element occurrence.
      *
      * For an IfcTypeObject, returns the element itself. For an IfcObject,
-     * follows IsTypedBy (IFC4+) or IsDefinedBy/IfcRelDefinesByType (IFC2X3).
+     * returns the type assigned through the schema's type relationship.
      *
      * @param instance The element to query.
-     * @return The related type element, or empty if none.
+     * @return The related type element, or no result if none is assigned.
      */
     getType(instance: IfcOpenshellInstance): IfcOpenshellInstance | null;
     /**
      * Return all occurrences of a type element.
      *
-     * Follows Types (IFC4+) or ObjectTypeOf (IFC2X3) to find the
-     * RelatedObjects.
+     * Returns the RelatedObjects of the applicable type relationship for the
+     * schema.
      *
      * @param type_element The type element (e.g. IfcWallType).
      * @return List of element occurrences of that type.
@@ -2870,10 +2869,10 @@ declare module 'ifcopenshell-api' {
     /**
      * Return the building element voided by an opening.
      *
-     * Follows VoidsElements to find the RelatingBuildingElement.
+     * Returns the RelatingBuildingElement from the opening relationship.
      *
      * @param element The IfcOpeningElement.
-     * @return The building element being voided, or empty if none.
+     * @return The building element being voided, or no result if none is associated.
      */
     getVoidedElement(element: IfcOpenshellInstance): IfcOpenshellInstance | null;
     /**
@@ -2890,9 +2889,9 @@ declare module 'ifcopenshell-api' {
     /**
      * Recursively remove an element and its owned subgraph.
      *
-     * Traverses forward through the element's subgraph. Each subelement is
-     * deleted only if it has no inverses outside the subgraph. Protected
-     * elements and elements with external references are preserved.
+     * Removes the element and owned subelements that have no references outside
+     * the removal set. Protected elements and externally referenced elements are
+     * preserved.
      *
      * @param element The root element to remove.
      */
@@ -2900,8 +2899,8 @@ declare module 'ifcopenshell-api' {
     /**
      * Replace all references to an element with another element.
      *
-     * Traverses all inverse relationships of old_element and substitutes
-     * references to old_element with new_element.
+     * Replaces references to old_element in all inverse relationships with
+     * references to new_element.
      *
      * @param old_element The element to be replaced.
      * @param new_element The replacement element.
@@ -2911,22 +2910,20 @@ declare module 'ifcopenshell-api' {
 
   export interface IfcOpenshellEntityModule {
     /**
-     * Recursively remove an entity and its owned subgraph.
+     * Remove an entity and the unshared entities it owns, recursively.
      *
-     * Equivalent to entity_remove_deep_with_options with empty options.
+     * Equivalent to entity_remove_deep_with_options with the default options.
      * The start element must have no inverses outside the subgraph.
      *
      * @param instance The root entity to remove.
      */
     removeDeep(instance: IfcOpenshellInstance): void;
     /**
-     * Recursively remove an entity and its owned subgraph with fine-grained control.
+     * Remove an entity and its owned subgraph with fine-grained control.
      *
-     * Traverses forward through the entity's subgraph. Each subelement is
-     * deleted only if it has fewer than two inverse references, or all of
-     * its inverses are within the subgraph. The also_consider list extends
-     * the subgraph for inverse checking. The do_not_delete list protects
-     * specific entities from deletion.
+     * An owned entity is removed only when it has no references from outside the
+     * removal set. The also_consider list extends that set for this decision, and
+     * the do_not_delete list protects specific entities from deletion.
      *
      * @param instance The root entity to remove.
      * @param options Additional control over the removal process.
@@ -2962,10 +2959,10 @@ declare module 'ifcopenshell-api' {
      * For IfcFeatureElementAddition subclasses, removes the IfcRelProjectsElement.
      * For IfcSurfaceFeature in IFC4, unassigns from the aggregate parent. In
      * other schemas, no feature-specific relationship is removed before the
-     * element itself is removed via root_remove_product.
-     * IfcOpeningElement fillings are also removed. root_remove_product cleans
-     * up nested elements, property sets, representations, and other inverse
-     * relationships.
+     * element itself is removed.
+     * IfcOpeningElement fillings are also removed. Nested elements, property sets,
+     * representations, and other inverse relationships are cleaned up as part of
+     * removing the feature.
      */
     removeFeature(file: IfcOpenshellFile, options: IfcOpenshellFeatureRemoveFeatureOptions): void;
     /**
@@ -3041,22 +3038,21 @@ declare module 'ifcopenshell-api' {
      * @param file IFC file that receives the representation.
      * @param context IfcGeometricRepresentationContext.
      * @param axis Ordered XY or XYZ points defining the axis curve.
-     * @return IfcShapeRepresentation entity, or a null handle on failure.
+     * @return IfcShapeRepresentation entity, or no result if creation fails.
      */
     addAxisRepresentation(file: IfcOpenshellFile, context: IfcOpenshellInstance, axis: number[][]): IfcOpenshellInstance;
     /**
      * Add boolean operands to a solid representation item.
      *
-     * Creates IfcBooleanResult (or IfcBooleanClippingResult for DIFFERENCE with
-     * half-space solids) chaining each second_item to the first. The first item
-     * walks up any existing boolean chain to find the top-level operand. Returns
-     * the created boolean result entities in order.
+     * Creates IfcBooleanResult entities (or IfcBooleanClippingResult for
+     * DIFFERENCE with half-space solids) by combining the first item with each
+     * additional operand. The returned entities are listed in creation order.
      *
      * @param file IFC file that receives the boolean entities.
      * @param first_item Base solid operand.
      * @param second_items Additional operands to apply.
      * @param operator_type Boolean operator: "DIFFERENCE", "UNION", or "INTERSECTION".
-     * @return Created IfcBooleanResult entities, or empty on failure.
+     * @return Created boolean result entities, or an empty list if creation fails.
      */
     addBoolean(file: IfcOpenshellFile, first_item: IfcOpenshellInstance, second_items: IfcOpenshellInstance[], operator_type: string): IfcOpenshellParseInstanceList;
     /**
@@ -3064,7 +3060,7 @@ declare module 'ifcopenshell-api' {
      *
      * @param file IFC file that receives the representation.
      * @param options Door dimensions, operation type, and lining/panel properties.
-     * @return IfcShapeRepresentation entity, or a null handle on failure.
+     * @return IfcShapeRepresentation entity, or no result if creation fails.
      */
     addDoorRepresentation(file: IfcOpenshellFile, options: IfcOpenshellGeometryAddDoorRepresentationOptions): IfcOpenshellInstance;
     /**
@@ -3073,7 +3069,7 @@ declare module 'ifcopenshell-api' {
      * @param file IFC file that receives the representation.
      * @param context IfcGeometricRepresentationContext.
      * @param curves IfcCurve entities to include in the footprint.
-     * @return IfcShapeRepresentation entity, or a null handle on failure.
+     * @return IfcShapeRepresentation entity, or no result if creation fails.
      */
     addFootprintRepresentation(file: IfcOpenshellFile, context: IfcOpenshellInstance, curves: IfcOpenshellInstance[]): IfcOpenshellInstance;
     /**
@@ -3085,7 +3081,7 @@ declare module 'ifcopenshell-api' {
      * @param file IFC file that receives the representation.
      * @param context IfcGeometricRepresentationContext.
      * @param options Vertices, faces, and optional faceted BRep override.
-     * @return IfcShapeRepresentation entity, or a null handle on failure.
+     * @return IfcShapeRepresentation entity, or no result if creation fails.
      */
     addMeshRepresentation(file: IfcOpenshellFile, context: IfcOpenshellInstance, options: IfcOpenshellGeometryAddMeshRepresentationOptions): IfcOpenshellInstance;
     /**
@@ -3093,7 +3089,7 @@ declare module 'ifcopenshell-api' {
      *
      * @param file IFC file that receives the representation.
      * @param options Railing path, support spacing, dimensions, and terminal type.
-     * @return IfcShapeRepresentation entity, or a null handle on failure.
+     * @return IfcShapeRepresentation entity, or no result if creation fails.
      */
     addRailingRepresentation(file: IfcOpenshellFile, options: IfcOpenshellGeometryAddRailingRepresentationOptions): IfcOpenshellInstance;
     /**
@@ -3104,7 +3100,7 @@ declare module 'ifcopenshell-api' {
      *
      * @param file IFC file that receives the aspect.
      * @param options Aspect name, items, representation, and owning product.
-     * @return IfcShapeAspect entity, or a null handle on failure.
+     * @return IfcShapeAspect entity, or no result if creation fails.
      */
     addShapeAspect(file: IfcOpenshellFile, options: IfcOpenshellGeometryAddShapeAspectOptions): IfcOpenshellInstance;
     /**
@@ -3112,7 +3108,7 @@ declare module 'ifcopenshell-api' {
      *
      * @param file IFC file that receives the representation.
      * @param options Slab dimensions, direction, clippings, and boundary polyline.
-     * @return IfcShapeRepresentation entity, or a null handle on failure.
+     * @return IfcShapeRepresentation entity, or no result if creation fails.
      */
     addSlabRepresentation(file: IfcOpenshellFile, options: IfcOpenshellGeometryAddSlabRepresentationOptions): IfcOpenshellInstance;
     /**
@@ -3120,7 +3116,7 @@ declare module 'ifcopenshell-api' {
      *
      * @param file IFC file that receives the representation.
      * @param options Context, topology item, and optional identifier/type.
-     * @return IfcTopologyRepresentation entity, or a null handle on failure.
+     * @return IfcTopologyRepresentation entity, or no result if creation fails.
      */
     addTopologyRepresentation(file: IfcOpenshellFile, options: IfcOpenshellGeometryAddTopologyRepresentationOptions): IfcOpenshellInstance;
     /**
@@ -3128,7 +3124,7 @@ declare module 'ifcopenshell-api' {
      *
      * @param file IFC file that receives the representation.
      * @param options Wall dimensions, direction, clippings, and booleans.
-     * @return IfcShapeRepresentation entity, or a null handle on failure.
+     * @return IfcShapeRepresentation entity, or no result if creation fails.
      */
     addWallRepresentation(file: IfcOpenshellFile, options: IfcOpenshellGeometryAddWallRepresentationOptions): IfcOpenshellInstance;
     /**
@@ -3136,7 +3132,7 @@ declare module 'ifcopenshell-api' {
      *
      * @param file IFC file that receives the representation.
      * @param options Window dimensions, panel schema, lining/panel properties.
-     * @return IfcShapeRepresentation entity, or a null handle on failure.
+     * @return IfcShapeRepresentation entity, or no result if creation fails.
      */
     addWindowRepresentation(file: IfcOpenshellFile, options: IfcOpenshellGeometryAddWindowRepresentationOptions): IfcOpenshellInstance;
     /**
@@ -3151,7 +3147,7 @@ declare module 'ifcopenshell-api' {
      * @param file IFC file to modify.
      * @param product IfcProduct or IfcTypeProduct entity.
      * @param representation IfcShapeRepresentation entity.
-     * @return The product (possibly re-routed to its type), or null handle on failure.
+     * @return The product receiving the representation, or no result if assignment fails.
      */
     assignRepresentation(file: IfcOpenshellFile, product: IfcOpenshellInstance, representation: IfcOpenshellInstance): IfcOpenshellInstance;
     /**
@@ -3163,7 +3159,7 @@ declare module 'ifcopenshell-api' {
      *
      * @param file IFC file that receives the clipping.
      * @param options Solid, plane point, normal, and optional element/history.
-     * @return IfcBooleanClippingResult entity, or a null handle on failure.
+     * @return IfcBooleanClippingResult entity, or no result if creation fails.
      */
     clipSolid(file: IfcOpenshellFile, options: IfcOpenshellGeometryClipSolidOptions): IfcOpenshellInstance;
     /**
@@ -3174,7 +3170,7 @@ declare module 'ifcopenshell-api' {
      *
      * @param file IFC file that receives the clipping.
      * @param options Solid, plane, boundary polygon, and optional element/history.
-     * @return IfcBooleanClippingResult entity, or a null handle on failure.
+     * @return IfcBooleanClippingResult entity, or no result if creation fails.
      */
     clipSolidBounded(file: IfcOpenshellFile, options: IfcOpenshellGeometryClipSolidBoundedOptions): IfcOpenshellInstance;
     /**
@@ -3185,7 +3181,7 @@ declare module 'ifcopenshell-api' {
      *
      * @param file IFC file that receives the relationship.
      * @param options Relating element, related element, and optional description/history.
-     * @return IfcRelConnectsElements entity, or null handle on failure.
+     * @return IfcRelConnectsElements entity, or no result if creation fails.
      */
     connectElement(file: IfcOpenshellFile, options: IfcOpenshellGeometryConnectElementOptions): IfcOpenshellInstance;
     /**
@@ -3197,7 +3193,7 @@ declare module 'ifcopenshell-api' {
      *
      * @param file IFC file that receives the relationship.
      * @param options Elements, connection types, and optional description/geometry/history.
-     * @return IfcRelConnectsPathElements entity, or null handle on failure.
+     * @return IfcRelConnectsPathElements entity, or no result if creation fails.
      */
     connectPath(file: IfcOpenshellFile, options: IfcOpenshellGeometryConnectPathOptions): IfcOpenshellInstance;
     /**
@@ -3209,11 +3205,11 @@ declare module 'ifcopenshell-api' {
      *
      * @param file IFC file that receives the connection.
      * @param options Walls, connection mode, and optional owner history.
-     * @return IfcRelConnectsPathElements entity, or a null handle on failure.
+     * @return IfcRelConnectsPathElements entity, or no result if creation fails.
      */
     connectWall(file: IfcOpenshellFile, options: IfcOpenshellGeometryConnectWallOptions): IfcOpenshellInstance;
     /**
-     * Deep-copy a representation from one product to another.
+     * Copy a representation from one product to another.
      *
      * Copies the "Body" (or specified context) representation from the source
      * product, replaces any existing representation of the same context on the
@@ -3234,7 +3230,7 @@ declare module 'ifcopenshell-api' {
      *
      * @param file IFC file that receives the wall geometry.
      * @param options Element, context, endpoints, elevation, height, thickness, and unit flag.
-     * @return IfcShapeRepresentation entity, or a null handle on failure.
+     * @return IfcShapeRepresentation entity, or no result if creation fails.
      */
     create2ptWall(file: IfcOpenshellFile, options: IfcOpenshellGeometryCreate2PtWallOptions): IfcOpenshellInstance;
     /**
@@ -3270,7 +3266,7 @@ declare module 'ifcopenshell-api' {
      *
      * @param file IFC file to modify.
      * @param options Product, matrix, SI flag, and child transform flag.
-     * @return Newly created IfcLocalPlacement, or null handle on failure.
+     * @return Newly created IfcLocalPlacement, or no result if creation fails.
      */
     editObjectPlacement(file: IfcOpenshellFile, options: IfcOpenshellGeometryEditObjectPlacementOptions): IfcOpenshellInstance;
     /**
@@ -3289,39 +3285,39 @@ declare module 'ifcopenshell-api' {
      * Return the axis-aligned 2D bounding box extents of a profile.
      *
      * Computes the X and Y extents from the profile's parameterized attributes
-     * (e.g. OverallWidth/OverallDepth for I-shaped profiles). Falls back to
-     * geometry evaluation via OpenCASCADE when available. Returns an empty vector
-     * on failure.
+     * (e.g. OverallWidth/OverallDepth for I-shaped profiles). When those values
+     * are unavailable, geometry evaluation is used when available. Returns an
+     * empty list if the extents cannot be determined.
      *
      * @param file IFC file containing the profile.
      * @param profile IfcProfileDef entity.
-     * @return Two-element vector {x_extent, y_extent} in model units, or empty.
+     * @return Two-element list {x_extent, y_extent} in model units, or an empty list.
      */
     profileExtents(file: IfcOpenshellFile, profile: IfcOpenshellInstance): number[];
     /**
      * Regenerate a wall's body and axis representations from its material layers.
      *
-     * Walks connected walls to compute join geometry, rebuilds the profile from
-     * layer axes, and replaces the existing body and axis representations.
+     * Rebuilds the wall's body and axis representations using its material layers
+     * and connected-wall geometry.
      *
      * @param file IFC file containing the wall.
      * @param options Wall entity, length, height, and optional angle.
-     * @return New IfcShapeRepresentation for the body, or a null handle on failure.
+     * @return New IfcShapeRepresentation for the body, or no result if regeneration fails.
      */
     regenerateWallRepresentation(file: IfcOpenshellFile, options: IfcOpenshellGeometryRegenerateWallRepresentationOptions): IfcOpenshellInstance;
     /**
      * Remove boolean operands from a solid representation.
      *
-     * Walks the IfcBooleanResult chain for the given item, replaces references
-     * to the item with its FirstOperand in parent entities, and moves the
-     * SecondOperand into the owning representation's Items.
+     * Removes boolean operations involving the given item, restores the primary
+     * operand in its parent references, and exposes the other operands in the
+     * owning representation.
      *
      * @param file IFC file to modify.
      * @param item Solid operand whose boolean chain to remove.
      */
     removeBoolean(file: IfcOpenshellFile, item: IfcOpenshellInstance): void;
     /**
-     * Remove a representation and deep-delete its unreferenced sub-entities.
+     * Remove a representation and its unreferenced sub-entities.
      *
      * Cleans up styled items, presentation layer assignments, textures, and
      * colours. Geometric representation contexts are never deleted. Named
@@ -3336,7 +3332,7 @@ declare module 'ifcopenshell-api' {
      * Unassign a representation from a product or type product.
      *
      * For IfcProduct, removes the representation from the
-     * IfcProductDefinitionShape (and cleans up the shape if empty). For
+     * IfcProductDefinitionShape and removes an empty shape definition. For
      * IfcTypeProduct, removes the matching IfcRepresentationMap and unmaps
      * occurrences. Shape aspects referencing the representation are also removed.
      *
@@ -3390,14 +3386,13 @@ declare module 'ifcopenshell-api' {
     /**
      * Set or remove the true north direction on all geometric representation contexts.
      *
-     * When true_north is std::nullopt, any existing TrueNorth reference is removed
-     * from every IfcGeometricRepresentationContext and the orphaned IfcDirection is
-     * deleted if unreferenced. When present, the first two elements of the vector
-     * are used as (X, Y) direction ratios; missing entries default to 0.0. The
-     * vector is not normalized.
+     * When omitted, any existing TrueNorth reference is removed from every
+     * IfcGeometricRepresentationContext. When provided, the first two values are
+     * used as (X, Y) direction ratios; missing values default to 0.0. The
+     * direction is not normalized.
      *
      * @param file File whose contexts to update.
-     * @param options True north direction vector or std::nullopt to remove.
+     * @param options True north direction ratios, or omission to remove true north.
      */
     editTrueNorth(file: IfcOpenshellFile, options: IfcOpenshellGeoreferenceEditTrueNorthOptions): void;
     /**
@@ -3431,8 +3426,8 @@ declare module 'ifcopenshell-api' {
      *
      * Points are given in world coordinates; when is_si is true they are divided
      * by the file's LENGTHUNIT scale. The points are transformed into the grid's
-     * local coordinate system using the grid's ObjectPlacement. If the axis
-     * already has an AxisCurve, it is deep-removed after replacement.
+     * local coordinate system using the grid's ObjectPlacement. An existing
+     * AxisCurve is removed after replacement.
      *
      * @param file IFC file that receives the polyline.
      * @param p1 First endpoint (at least three coordinates; X and Y are used).
@@ -3449,14 +3444,13 @@ declare module 'ifcopenshell-api' {
      * @param axis_tag Label for the axis (e.g. "A", "1").
      * @param same_sense True if the axis direction agrees with the curve direction.
      * @param uvw_axes Name of the grid aggregate to append to: "UAxes", "VAxes", or "WAxes".
-     * @return Newly created IfcGridAxis, or a null handle on failure.
+     * @return Newly created IfcGridAxis, or no result if creation fails.
      */
     createGridAxis(file: IfcOpenshellFile, grid: IfcOpenshellInstance, axis_tag: string, same_sense: boolean, uvw_axes: string): IfcOpenshellInstance;
     /**
      * Remove an IfcGridAxis and its associated AxisCurve.
      *
-     * The axis entity is removed from the file and its AxisCurve (if any) is
-     * deep-removed.
+     * The axis entity and its associated AxisCurve are removed from the file.
      *
      * @param file IFC file to modify.
      * @param axis IfcGridAxis entity to remove.
@@ -3658,7 +3652,7 @@ declare module 'ifcopenshell-api' {
     /** Remove an item from an IfcMaterialList by index. */
     removeListItem(file: IfcOpenshellFile, material_list: IfcOpenshellInstance, options: IfcOpenshellMaterialRemoveListItemOptions): void;
     /**
-     * Remove an IfcMaterial and its container constituents/layers/profiles.
+     * Remove an IfcMaterial and its associated constituents, layers, and profiles.
      *
      * Deletes the material entity. Constituent, layer, or profile entities
      * that reference it are also removed. Associated IfcRelAssociatesMaterial,
@@ -3818,11 +3812,11 @@ declare module 'ifcopenshell-api' {
      *
      * Sets CreationDate and LastModifiedDate to the current time, State to
      * READWRITE, and ChangeAction to ADDED. Both user and application are
-     * required; if either is omitted, returns a null handle.
+     * required; if either is omitted, no owner history is created.
      *
      * @param file File that receives the new entity.
      * @param options User and application for the owner history.
-     * @return Newly created IfcOwnerHistory, or a null handle on error.
+     * @return Newly created IfcOwnerHistory, or no result if creation fails.
      */
     createOwnerHistory(file: IfcOpenshellFile, options: IfcOpenshellOwnerCreateOwnerHistoryOptions): IfcOpenshellInstance;
     /**
@@ -3915,7 +3909,7 @@ declare module 'ifcopenshell-api' {
      *
      * @param file File containing the element.
      * @param options Element, user, and application.
-     * @return The updated or newly created IfcOwnerHistory, or a null handle if the element is not an IfcRoot.
+     * @return The updated or newly created IfcOwnerHistory, or no result if the element is not an IfcRoot.
      */
     updateOwnerHistory(file: IfcOpenshellFile, options: IfcOpenshellOwnerUpdateOwnerHistoryOptions): IfcOpenshellInstance;
   }
@@ -3966,7 +3960,7 @@ declare module 'ifcopenshell-api' {
      * Extract a 4x4 row-major matrix from an IfcAxis2Placement entity.
      *
      * Supports IfcAxis2Placement2D, IfcAxis2Placement3D, and IfcAxis1Placement.
-     * Returns an identity matrix if the instance is null or unsupported.
+     * Returns an identity matrix if no instance is provided or the instance is unsupported.
      *
      * @param instance IfcAxis2Placement entity.
      * @return 16-element row-major 4x4 matrix.
@@ -3975,8 +3969,8 @@ declare module 'ifcopenshell-api' {
     /**
      * Extract a 4x4 row-major matrix from an IfcCartesianTransformationOperator3D.
      *
-     * Handles uniform and non-uniform scaling. Returns an identity matrix if the
-     * instance is null or not a cartesian transformation operator.
+     * Handles uniform and non-uniform scaling. Returns an identity matrix if no
+     * instance is provided or the instance is not a cartesian transformation operator.
      *
      * @param instance IfcCartesianTransformationOperator3D entity.
      * @return 16-element row-major 4x4 matrix.
@@ -3985,10 +3979,10 @@ declare module 'ifcopenshell-api' {
     /**
      * Compute the cumulative 4x4 row-major world matrix of an IfcLocalPlacement.
      *
-     * Walks the PlacementRelTo chain to compute the full transformation.
-     * Returns an identity matrix if the instance is nullopt.
+     * Combines the placement with its parent placements to compute the full
+     * transformation. Returns an identity matrix when the placement is omitted.
      *
-     * @param instance IfcLocalPlacement entity, or nullopt for identity.
+     * @param instance IfcLocalPlacement entity. When omitted, returns the identity matrix.
      * @return 16-element row-major 4x4 matrix.
      */
     getLocalPlacement(instance: IfcOpenshellInstance | null): number[];
@@ -3996,7 +3990,8 @@ declare module 'ifcopenshell-api' {
      * Compute the combined 4x4 row-major matrix for an IfcMappedItem.
      *
      * Multiplies the MappingTarget transformation by the MappingOrigin placement.
-     * Returns an identity matrix if the instance is null or not an IfcMappedItem.
+     * Returns an identity matrix if no instance is provided or the instance is
+     * not an IfcMappedItem.
      *
      * @param instance IfcMappedItem entity.
      * @return 16-element row-major 4x4 matrix.
@@ -4006,8 +4001,8 @@ declare module 'ifcopenshell-api' {
      * Return the elevation of a building storey in model units.
      *
      * Uses the Z-translation of the storey's ObjectPlacement when available,
-     * falling back to the Elevation attribute. Returns 0.0 if the instance is
-     * null or has no placement.
+     * falling back to the Elevation attribute. Returns 0.0 if no instance is
+     * provided or the instance has no placement.
      *
      * @param instance IfcBuildingStorey entity.
      * @return Elevation in model units.
@@ -4066,26 +4061,26 @@ declare module 'ifcopenshell-api' {
      */
     addParameterizedProfile(file: IfcOpenshellFile, ifc_class: string, profile_type: string): IfcOpenshellInstance;
     /**
-     * Deep-copy a profile and its associated IfcProfileProperties.
+     * Copy a profile and its associated IfcProfileProperties.
      *
      * @param file IFC file that receives the copied profile.
      * @param profile IfcProfileDef entity to copy.
-     * @return Newly created deep copy of the profile.
+     * @return Newly created independent copy of the profile.
      */
     copyProfile(file: IfcOpenshellFile, profile: IfcOpenshellInstance): IfcOpenshellInstance;
     /**
      * Edit attributes of an existing profile definition.
      *
      * @param profile IfcProfileDef entity to modify.
-     * @param attributes Property container with attribute name-value pairs.
+     * @param attributes Attribute name-to-value mapping.
      */
     editProfile(profile: IfcOpenshellInstance, attributes: number): void;
     /**
      * Remove a profile definition and its directly referenced sub-entities.
      *
      * Removes associated IfcProfileProperties first, then removes the profile
-     * entity and deep-removes all entities reachable through its direct
-     * attributes (e.g. curves, placement entities).
+     * entity and removes unreferenced entities belonging to its direct geometry,
+     * such as curves and placements.
      *
      * @param file IFC file to modify.
      * @param profile IfcProfileDef entity to remove.
@@ -4146,7 +4141,7 @@ declare module 'ifcopenshell-api' {
      *
      * Updates existing properties in-place (when not shared with other psets),
      * adds new properties for keys not yet present, and optionally removes
-     * null-valued properties. Uses the pset template for type inference when
+     * blank-valued properties. Uses the pset template for type inference when
      * available. Returns true on success, false on error.
      */
     editPset(file: IfcOpenshellFile, options: IfcOpenshellPsetEditPsetOptions): boolean;
@@ -4159,9 +4154,9 @@ declare module 'ifcopenshell-api' {
      * false on error.
      */
     editQto(file: IfcOpenshellFile, options: IfcOpenshellPsetEditQtoOptions): boolean;
-    /** Free a property builder allocated by pset_props_new. */
+    /** Release a property builder allocated by pset_props_new. */
     propsFree(props: number): void;
-    /** Allocate a new property builder. Free with pset_props_free when done. */
+    /** Allocate a new property builder. Release it with pset_props_free when done. */
     propsNew(): number | null;
     /** Set a boolean property value. */
     propsSetBool(props: number, key: string, value: boolean): void;
@@ -4170,8 +4165,9 @@ declare module 'ifcopenshell-api' {
     /** Set a date-time property value (IfcLocalTime / IfcDateTime). */
     propsSetDatetime(props: number, key: string, year: number, month: number, day: number, hour: number, minute: number, second: number, microsecond: number, has_timezone: boolean, timezone_offset_minutes: number): void;
     /**
-     * Set a nested dict property. Ownership of inner is transferred to outer;
-     * do not free inner separately. Used for IfcPhysicalComplexQuantity in qtos.
+     * Set a nested mapping property. Ownership of the nested property data is
+     * transferred to the outer data; do not release it separately. Used for
+     * IfcPhysicalComplexQuantity in quantity sets.
      */
     propsSetDict(outer: number, key: string, inner: number): void;
     /** Set a double property value. */
@@ -4181,8 +4177,8 @@ declare module 'ifcopenshell-api' {
     /** Set a duration property value (IfcDuration). */
     propsSetDuration(props: number, key: string, negative: boolean, years: number, months: number, days: number, hours: number, minutes: number, seconds: number, microseconds: number): void;
     /**
-     * Set a property to an existing entity instance (e.g. a typed value or
-     * an IfcProperty). Pass std::nullopt to clear.
+     * Set a property to an existing IFC entity (for example, a typed value or
+     * an IfcProperty). When omitted, the property is cleared.
      */
     propsSetInstance(props: number, key: string, value: IfcOpenshellInstance | null): void;
     /** Set a list-of-instances property value (creates IfcPropertyListValue). */
@@ -4192,7 +4188,7 @@ declare module 'ifcopenshell-api' {
     /** Set a list-of-integers property value (creates IfcPropertyListValue). */
     propsSetIntList(props: number, key: string, values: bigint[]): void;
     /**
-     * Set a property to null (blank). When editing, the property is removed if
+     * Set a property to a blank value. When editing, the property is removed if
      * should_purge is true; otherwise its NominalValue is set to blank.
      */
     propsSetNull(props: number, key: string): void;
@@ -4211,8 +4207,8 @@ declare module 'ifcopenshell-api' {
     /**
      * Attach a unit to the most recently added property entry.
      *
-     * Sets the Unit attribute on the resulting IfcPropertySingleValue. Pass
-     * std::nullopt to clear.
+     * Sets the Unit attribute on the resulting IfcPropertySingleValue. When
+     * omitted, the unit is cleared.
      */
     propsSetUnitForLast(props: number, unit: IfcOpenshellInstance | null): void;
     /**
@@ -4242,19 +4238,19 @@ declare module 'ifcopenshell-api' {
      */
     templateAddPsetTemplate(file: IfcOpenshellFile, name: string, template_type: string, applicable_entity: string): IfcOpenshellInstance;
     /**
-     * Create a template handle from custom IFC template files.
+     * Create a property template collection from custom IFC template files.
      *
      * Loads IfcPropertySetTemplate and IfcSimplePropertyTemplate entities from
-     * the provided files. The caller owns the returned handle and must free it
-     * with pset_template_free.
+     * the provided files. The returned collection remains valid until it is
+     * released with pset_template_free.
      */
     templateCreateFromFiles(schema_identifier: string, template_files: IfcOpenshellFile[]): IfcOpenshellPsetTemplateHandle | null;
     /**
      * Return property set templates applicable to an IFC class and predefined type.
      *
      * Filters by pset_only (PSET templates) or qto_only (QTO templates).
-     * If neither flag is set, returns both types. Pass nullptr for
-     * predefined_type or schema_name to use defaults.
+     * If neither flag is set, returns both types. When predefined_type or
+     * schema_name is omitted, the default is used.
      */
     templateGetApplicable(pqt: IfcOpenshellPsetTemplateHandle, ifc_class: string | null, predefined_type: string | null, pset_only: boolean, qto_only: boolean, schema_name: string | null): IfcOpenshellParseInstanceList;
     /**
@@ -4268,13 +4264,13 @@ declare module 'ifcopenshell-api' {
      * Look up a property set template by name.
      *
      * Returns the IfcPropertySetTemplate entity with the given name, or a
-     * null handle if not found.
+     * no result if the template is not found.
      */
     templateGetByName(pqt: IfcOpenshellPsetTemplateHandle, name: string): IfcOpenshellInstance;
     /**
-     * Return a cached template handle for the given schema (e.g. "IFC4", "IFC2X3").
+     * Return the cached property template collection for the given schema (e.g. "IFC4", "IFC2X3").
      *
-     * Loads and caches the built-in templates on first call. Returns nullptr
+     * Loads and caches the built-in templates on first call. Returns no result
      * if the schema is unknown or templates are not available.
      */
     templateGetTemplate(schema_identifier: string): IfcOpenshellPsetTemplateHandle | null;
@@ -4290,12 +4286,12 @@ declare module 'ifcopenshell-api' {
     /**
      * Remove a property template from its parent set template.
      *
-     * Removes the IfcSimplePropertyTemplate from its parent's
-     * HasPropertyTemplates aggregate, then deletes the template entity.
+     * Removes the IfcSimplePropertyTemplate from its parent and deletes the
+     * template entity.
      */
     templateRemovePropTemplate(file: IfcOpenshellFile, prop_template: IfcOpenshellInstance): void;
     /**
-     * Remove a property set template via deep removal.
+     * Remove a property set template and its child property templates.
      *
      * Deletes the IfcPropertySetTemplate and all its child
      * IfcSimplePropertyTemplate entities.
@@ -4320,25 +4316,24 @@ declare module 'ifcopenshell-api' {
     /**
      * Unshare a property set by creating independent copies for specified products.
      *
-     * When the selected products are the complete set of products the pset is
-     * assigned to, the first product keeps the original and the rest receive
-     * copies. When the selection is a subset, every selected product receives a
-     * copy and the original remains assigned to the unselected products.
-     * Returns the list of newly created pset copies.
+     * When all assigned products are selected, one product retains the original
+     * and the other products receive copies. When only some products are
+     * selected, each selected product receives a copy and the original remains
+     * assigned to the unselected products. Returns the newly created copies.
      */
     unsharePset(file: IfcOpenshellFile, options: IfcOpenshellPsetUnsharePsetOptions): IfcOpenshellParseInstanceList;
   }
 
   export interface IfcOpenshellRegisterModule {
     /**
-     * Register a scratch file for a given schema.
+     * Register an IFC file for schema-aware derived-value evaluation.
      *
-     * Registers a temporary IFC file for the specified schema name,
-     * used internally for schema-aware operations.
+     * The registered file is used when evaluating derived attributes for the
+     * specified schema.
      *
      * @param schema_name The IFC schema identifier (e.g. "IFC4").
      * @param file The IFC file to register.
-     * @return True if registration succeeded.
+     * @return True after the file is registered.
      */
     scratchFile(schema_name: string | null, file: IfcOpenshellFile): boolean;
   }
@@ -4355,7 +4350,7 @@ declare module 'ifcopenshell-api' {
      * @param context_type Context type filter (e.g. "Model", "Plan").
      * @param subcontext Context identifier filter (e.g. "Body", "Axis").
      * @param target_view Target view filter (e.g. "MODEL_VIEW", "GRAPH_VIEW").
-     * @return The first matching context, or empty if none found.
+     * @return The first matching context, or no result if none is found.
      */
     getContext(file: IfcOpenshellFile, context_type: string | null, subcontext: string | null, target_view: string | null): IfcOpenshellInstance;
     /**
@@ -4363,7 +4358,8 @@ declare module 'ifcopenshell-api' {
      *
      * Sorts by ContextType (Model > Plan > Annotation), then by
      * ContextIdentifier (Body > Body-FallBack > ...), then by
-     * TargetView (MODEL_VIEW > PLAN_VIEW > ...), then by TargetScale.
+     * TargetView (MODEL_VIEW > PLAN_VIEW > ...), then by TargetScale. Ties
+     * preserve the order of contexts in the IFC file.
      *
      * @param file The IFC file to search.
      * @return Ordered list of IfcGeometricRepresentationContext entities.
@@ -4378,27 +4374,27 @@ declare module 'ifcopenshell-api' {
      *
      * @param element The IfcProduct or IfcTypeProduct.
      * @param options Context filtering options.
-     * @return The matching IfcShapeRepresentation, or empty if none found.
+     * @return The matching IfcShapeRepresentation, or no result if none is found.
      */
     getProductRepresentation(element: IfcOpenshellInstance, options: IfcOpenshellRepresentationGetProductRepresentationOptions): IfcOpenshellInstance;
     /**
-     * Resolve a representation by unwrapping single mapped items.
+     * Resolve a representation through single mapped items.
      *
      * If a representation contains a single IfcMappedItem whose
      * MappingSource points to another representation, this function
-     * follows the chain and returns the innermost representation.
-     * This handles Tekla-style representation indirection.
+     * follows the chain and returns the innermost representation. A representation
+     * that does not meet this condition is returned unchanged.
      *
      * @param representation The IfcShapeRepresentation to resolve.
-     * @return The resolved representation, or the original if no unwrapping was needed.
+     * @return The resolved representation, or the original when no mapping is followed.
      */
     resolve(representation: IfcOpenshellInstance): IfcOpenshellInstance;
     /**
      * Return the base items of a representation, unwrapping mapped items and boolean operands.
      *
-     * Recursively follows IfcMappedItem sources and IfcBooleanResult
-     * operands to collect leaf-level representation items. Guards against
-     * infinite recursion (depth limit of 64, iteration limit of 100000).
+     * Returns leaf-level representation items in traversal order. Within each
+     * representation, later items are returned before earlier items; for boolean
+     * results, the second operand is returned before the first operand.
      *
      * @param representation The IfcShapeRepresentation to resolve.
      * @return List of leaf-level IfcRepresentationItem entities.
@@ -4431,7 +4427,7 @@ declare module 'ifcopenshell-api' {
      * predefined type.
      *
      * Sets GlobalId (for IfcRoot-derived entities). OwnerHistory is assigned only
-     * when the owner_history option contains a handle; it is not created
+     * when the owner_history option is provided; it is not created
      * automatically. Schema-specific defaults are applied for spatial elements,
      * element types, and door/window styles. If the predefined type is not a valid
      * enum value, it is stored as USERDEFINED with the value in ObjectType
@@ -4441,11 +4437,12 @@ declare module 'ifcopenshell-api' {
     /**
      * Remove a product and all its relationships.
      *
-     * Performs a deep removal that cleans up: representations, object placements,
+     * Removes the product and cleans up its related representations, object placements,
      * opening elements, property sets, material assignments, type definitions,
      * space boundaries, nesting relationships, aggregate relationships, spatial
      * containment, element connections, port connections, group memberships,
-     * and grid axes. The product entity itself is deleted last.
+     * and grid axes. Related entities are removed only when they are no longer
+     * needed by the remaining model.
      */
     removeProduct(file: IfcOpenshellFile, product: IfcOpenshellInstance, options: IfcOpenshellRootRemoveProductOptions): void;
   }
@@ -4461,10 +4458,10 @@ declare module 'ifcopenshell-api' {
      *
      * If the element is already of the requested class, returns it unchanged.
      *
-     * @param file The IFC file. If empty, uses the element's file.
+     * @param file IFC file to modify. When omitted, the element's file is used.
      * @param element The entity to reassign.
      * @param new_class The target IFC class name (e.g. "IfcWall").
-     * @return The new entity of the requested class, or empty on failure.
+     * @return The new entity of the requested class, or no result if the operation fails.
      */
     reassignClass(file: IfcOpenshellFile | null, element: IfcOpenshellInstance, new_class: string): IfcOpenshellInstance;
   }
@@ -4478,7 +4475,7 @@ declare module 'ifcopenshell-api' {
      *
      * @param file The IFC file to search.
      * @param query The filter query string.
-     * @return List value of matching elements, or empty on error. Free with value_free.
+     * @return List value of matching elements, or no result if the query cannot be evaluated. Release it with value_free.
      */
     filterAll(file: IfcOpenshellFile, query: string): IfcOpenshellValue | null;
     /**
@@ -4490,7 +4487,7 @@ declare module 'ifcopenshell-api' {
      * @param file The IFC file context.
      * @param query The filter query string.
      * @param elements The elements to filter.
-     * @return List value of matching elements, or empty on error. Free with value_free.
+     * @return List value of matching elements, or no result if the query cannot be evaluated. Release it with value_free.
      */
     filterElements(file: IfcOpenshellFile, query: string, elements: IfcOpenshellInstance[]): IfcOpenshellValue | null;
     /**
@@ -4502,7 +4499,7 @@ declare module 'ifcopenshell-api' {
      * @param file Optional IFC file context.
      * @param instance The element to format against.
      * @param query The format expression string.
-     * @return The formatted result, or empty on error.
+     * @return The formatted result, or no result if evaluation fails.
      */
     format(file: IfcOpenshellFile | null, instance: IfcOpenshellInstance | null, query: string): string | null;
     /**
@@ -4514,36 +4511,36 @@ declare module 'ifcopenshell-api' {
      * @param file Optional IFC file context.
      * @param element The element to query.
      * @param query The selector key path (e.g. "Name", "Pset_WallCommon.FireRating").
-     * @return The extracted value, or empty on error. Free with value_free.
+     * @return The extracted value, or no result if the query cannot be evaluated. Release it with value_free.
      */
     getElementValue(file: IfcOpenshellFile | null, element: IfcOpenshellInstance, query: string): IfcOpenshellValue | null;
     /**
      * Return the number of keys in a parsed key list.
      *
-     * @param keys Opaque key list handle from selector_parse_keys.
-     * @return Number of keys, or 0 if keys is null.
+     * @param keys Parsed key list from selector_parse_keys.
+     * @return Number of keys, or 0 when no key list is provided.
      */
     keysCount(keys: number | null): number;
     /**
-     * Free a parsed key list.
+     * Release a parsed key list.
      *
-     * @param keys Opaque key list handle from selector_parse_keys.
+     * @param keys Parsed key list from selector_parse_keys.
      */
     keysFree(keys: number | null): void;
     /**
      * Return the text of a key at the given index.
      *
-     * @param keys Opaque key list handle.
+     * @param keys Parsed key list.
      * @param index Zero-based key index.
-     * @return Key text, or empty string if out of range.
+     * @return Key text, or an empty string if no key list is provided or the index is out of range.
      */
     keysGet(keys: number | null, index: number): string;
     /**
      * Check whether a key at the given index is a regular expression.
      *
-     * @param keys Opaque key list handle.
+     * @param keys Parsed key list.
      * @param index Zero-based key index.
-     * @return True if the key is a regex pattern.
+     * @return True if the key is a regular expression pattern; otherwise false.
      */
     keysIsRegex(keys: number | null, index: number): boolean;
     /**
@@ -4551,71 +4548,74 @@ declare module 'ifcopenshell-api' {
      *
      * @param node The parent selector node.
      * @param index Zero-based child index.
-     * @return The child node, or null if out of range.
+     * @return The child node, or no result if no parent is provided or the index is out of range.
      */
     nodeChild(node: number | null, index: number): number | null;
     /**
      * Return the number of child nodes.
      *
      * @param node The selector node.
-     * @return Number of children, or 0 if node is null.
+     * @return Number of children, or 0 when no node is provided.
      */
     nodeChildCount(node: number | null): number;
     /**
-     * Free a selector AST and all its children.
+     * Release a selector syntax tree and all its descendants.
      *
-     * @param root Root node of the AST from selector_parse_filter,
-     * selector_parse_get_element, or selector_parse_format.
+     * @param root Root node from selector_parse_filter, selector_parse_get_element,
+     * or selector_parse_format.
      */
     nodeFree(root: number | null): void;
     /**
      * Return the kind of a selector node.
      *
-     * Values below IFCSEL_TOKEN_FIRST (100) are grammar rule nodes;
-     * values at or above IFCSEL_TOKEN_FIRST are token nodes.
+     * Values below 100 are grammar-rule nodes; values at or above 100 are token
+     * nodes. When no node is provided, the anonymous-token kind is returned.
      *
      * @param node The selector node.
-     * @return Node kind as an ifcsel_node_kind value, or 0 if node is null.
+     * @return Node-kind value, or the anonymous-token kind when no node is provided.
      */
     nodeKind(node: number | null): number;
     /**
      * Return the text content of a token node.
      *
-     * For token nodes (kind >= IFCSEL_TOKEN_FIRST), returns the matched
-     * text. For rule nodes, returns empty.
+     * For token nodes (kind at or above 100), returns the matched text. For
+     * grammar-rule nodes, returns an empty string.
      *
      * @param node The selector node.
-     * @return Node text, or empty string if not a token.
+     * @return Node text, or an empty string if no node is provided or the node is not a token.
      */
     nodeText(node: number | null): string;
     /**
-     * Parse a filter query into an AST.
+     * Parse a filter query into a selector syntax tree.
      *
      * Parses a filter expression (e.g. "IfcWall, Pset_WallCommon.FireRating=*2h*")
      * into a tree of selector nodes.
      *
      * @param query The filter query string.
-     * @return Root node of the AST. Free with selector_node_free.
+     * @return Root node of the syntax tree, or no result if the query is invalid.
+     * Release the tree with selector_node_free.
      */
     parseFilter(query: string): number | null;
     /**
-     * Parse a format query into an AST.
+     * Parse a format query into a selector syntax tree.
      *
      * Parses a format expression (e.g. "Name + ' - ' + GlobalId") into
      * a tree of selector nodes.
      *
      * @param query The format query string.
-     * @return Root node of the AST. Free with selector_node_free.
+     * @return Root node of the syntax tree, or no result if the query is invalid.
+     * Release the tree with selector_node_free.
      */
     parseFormat(query: string): number | null;
     /**
-     * Parse a get-element query into an AST.
+     * Parse a get-element query into a selector syntax tree.
      *
      * Parses a key path expression (e.g. "IfcWall/Name") into a tree of
      * selector nodes.
      *
      * @param query The get-element query string.
-     * @return Root node of the AST. Free with selector_node_free.
+     * @return Root node of the syntax tree, or no result if the query is invalid.
+     * Release the tree with selector_node_free.
      */
     parseGetElement(query: string): number | null;
     /**
@@ -4625,7 +4625,8 @@ declare module 'ifcopenshell-api' {
      * "IfcWall/Name" yields keys ["IfcWall", "Name"]).
      *
      * @param query The selector query string.
-     * @return Opaque key list handle. Free with selector_keys_free.
+     * @return Parsed key list, or no result if the query is invalid. Release it
+     * with selector_keys_free.
      */
     parseKeys(query: string): number | null;
     /**
@@ -4637,8 +4638,8 @@ declare module 'ifcopenshell-api' {
      * @param file The IFC file context.
      * @param element The element to modify.
      * @param query The selector key path identifying the target.
-     * @param value The value to set. If empty, unsets the target.
-     * @param concat If non-null and non-empty, concatenated with the value as a prefix.
+     * @param value The value to set. When omitted, the target is unset.
+     * @param concat When provided and non-empty, it is prepended to the value.
      */
     setElementValue(file: IfcOpenshellFile, element: IfcOpenshellInstance | null, query: string, value: IfcOpenshellValue | null, concat: string | null): void;
   }
@@ -4826,11 +4827,10 @@ declare module 'ifcopenshell-api' {
      */
     cascadeSchedule(file: IfcOpenshellFile, task: IfcOpenshellInstance): void;
     /**
-     * Deep-copy an IfcWorkSchedule and all its controlled tasks.
+     * Create an independent copy of an IfcWorkSchedule and its controlled tasks.
      *
-     * Shallow-copies the schedule, then deep-copies each controlled IfcTask
-     * (with its subtasks and relationships) and assigns the copies to the new
-     * schedule.
+     * Copies the schedule and each controlled IfcTask, including its subtasks and
+     * relationships, then assigns the copies to the new schedule.
      *
      * @param file File that receives the copied entities.
      * @param work_schedule IfcWorkSchedule to copy.
@@ -4852,16 +4852,17 @@ declare module 'ifcopenshell-api' {
      */
     createBaseline(file: IfcOpenshellFile, work_schedule: IfcOpenshellInstance, options: IfcOpenshellSequenceCreateBaselineOptions): void;
     /**
-     * Deep-copy a task and its subtasks, property sets, and sequence relationships.
+     * Create an independent copy of a task and its subtasks, property sets, and
+     * sequence relationships.
      *
-     * Creates duplicates of the task, its nested child tasks, property sets, and
-     * IfcRelSequence relationships between duplicated tasks. Returns parallel
-     * vectors of original and duplicated tasks in depth-first order.
+     * Creates copies of the task, its nested child tasks, property sets, and
+     * IfcRelSequence relationships between copied tasks. Returns parallel lists
+     * of original and copied tasks in depth-first order.
      *
      * @param file File that receives the duplicated entities.
      * @param task IfcTask to duplicate.
      * @param options Ownership options for duplicated entities.
-     * @return Parallel vectors of original and duplicated tasks.
+     * @return Parallel lists of original and copied tasks.
      */
     duplicateTask(file: IfcOpenshellFile, task: IfcOpenshellInstance, options: IfcOpenshellSequenceDuplicateTaskOptions): IfcOpenshellSequenceDuplicateTaskResult;
     /**
@@ -5032,7 +5033,7 @@ declare module 'ifcopenshell-api' {
      * @param relating_process IfcTask to unassign from.
      * @param related_object Object to unassign.
      * @param options Ownership options.
-     * @return The modified relationship, or a null handle if removed.
+     * @return The modified relationship, or no result when it is removed.
      */
     unassignProcess(file: IfcOpenshellFile, relating_process: IfcOpenshellInstance, related_object: IfcOpenshellInstance, options: IfcOpenshellSequenceRemoveOptions): IfcOpenshellInstance;
     /**
@@ -5046,7 +5047,7 @@ declare module 'ifcopenshell-api' {
      * @param relating_product IfcProduct to unassign from.
      * @param related_object Object to unassign.
      * @param options Ownership options.
-     * @return The modified relationship, or a null handle if removed.
+     * @return The modified relationship, or no result when it is removed.
      */
     unassignProduct(file: IfcOpenshellFile, relating_product: IfcOpenshellInstance, related_object: IfcOpenshellInstance, options: IfcOpenshellSequenceRemoveOptions): IfcOpenshellInstance;
     /**
@@ -5119,12 +5120,12 @@ declare module 'ifcopenshell-api' {
      */
     builderCurveBetweenTwoPoints(file: IfcOpenshellFile, points: number[][]): IfcOpenshellInstance;
     /**
-     * Deep-copy an IFC entity and all entities it references.
+     * Create an independent copy of an IFC entity and the entities it references.
      *
      * New GlobalId attributes are generated for the copied entities.
      *
      * @param file IFC file that receives the copy.
-     * @param element Entity to deep-copy.
+     * @param element Entity to copy.
      * @return Root entity of the copied subgraph.
      */
     builderDeepCopy(file: IfcOpenshellFile, element: IfcOpenshellInstance): IfcOpenshellInstance;
@@ -5177,7 +5178,7 @@ declare module 'ifcopenshell-api' {
      * Read the coordinate list from an IfcPolyline or IfcIndexedPolyCurve.
      *
      * @param polyline IfcPolyline or IfcIndexedPolyCurve entity.
-     * @return Ordered XY or XYZ coordinate vectors.
+     * @return Ordered XY or XYZ coordinate sequences.
      */
     builderGetPolylineCoords(polyline: IfcOpenshellInstance): number[][];
     /**
@@ -5208,7 +5209,7 @@ declare module 'ifcopenshell-api' {
      * extensions.
      *
      * @param file IFC file that receives the geometry.
-     * @param options Segment, lengths, angle, radius, bend vector, and Z flip.
+     * @param options Segment, lengths, angle, radius, bend direction, and Z flip.
      * @return Bend result with representation and computed parameters.
      */
     builderMepBendShape(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderMepBendShapeOptions): IfcOpenshellShapeBuilderMepBendShapeResult;
@@ -5233,12 +5234,12 @@ declare module 'ifcopenshell-api' {
      * Build MEP transition geometry between two duct segments.
      *
      * Generates start/end extrusions and a connecting transition mesh.
-     * Returns nullopt when the segments lack material profiles or the
+     * Returns no result when the segments lack material profiles or the
      * transition cannot be computed.
      *
      * @param file IFC file that receives the geometry.
      * @param options Start/end segments, lengths, angle, and profile offset.
-     * @return Transition result with representation and dimensions, or nullopt.
+     * @return Transition result with representation and dimensions, or no result.
      */
     builderMepTransitionShape(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderMepTransitionShapeOptions): IfcOpenshellShapeBuilderMepTransitionShapeResult | null;
     /**
@@ -5259,7 +5260,7 @@ declare module 'ifcopenshell-api' {
      *
      * @param file IFC file containing the item.
      * @param options Item, axes, point, copy flag, and optional placement matrix.
-     * @return The mirrored item (same entity or a deep copy).
+     * @return The mirrored item, either the supplied entity or an independent copy.
      */
     builderMirror(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderMirrorOptions): IfcOpenshellInstance;
     /**
@@ -5321,7 +5322,7 @@ declare module 'ifcopenshell-api' {
      *
      * @param file IFC file containing the item.
      * @param options Item, angle, pivot, direction, and copy flag.
-     * @return The rotated item (same entity or a deep copy).
+     * @return The rotated item, either the supplied entity or an independent copy.
      */
     builderRotate(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderRotateOptions): IfcOpenshellInstance;
     /**
@@ -5353,15 +5354,15 @@ declare module 'ifcopenshell-api' {
      */
     builderSweptDiskSolid(file: IfcOpenshellFile, path_curve: IfcOpenshellInstance, radius: number): IfcOpenshellInstance;
     /**
-     * Translate a geometry item by a vector.
+     * Translate a geometry item by a direction and distance.
      *
      * Supports IfcIndexedPolyCurve, IfcPolyline, IfcCircle, IfcEllipse,
      * IfcExtrudedAreaSolid, IfcTessellatedFaceSet, IfcShapeRepresentation,
      * and IfcTrimmedCurve.
      *
      * @param file IFC file containing the item.
-     * @param options Item, translation vector, and copy flag.
-     * @return The translated item (same entity or a deep copy).
+     * @param options Item, translation, and copy flag.
+     * @return The translated item, either the supplied entity or an independent copy.
      */
     builderTranslate(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderTranslateOptions): IfcOpenshellInstance;
     /**
@@ -5450,7 +5451,7 @@ declare module 'ifcopenshell-api' {
      * Create an IfcStructuralAnalysisModel with PredefinedType LOADING_3D.
      *
      * @param file File that receives the new entity.
-     * @param owner_history Owner history for the new entity. May be std::nullopt.
+     * @param owner_history Owner history for the new entity. When omitted, no owner history is assigned.
      * @return Newly created IfcStructuralAnalysisModel.
      */
     addStructuralAnalysisModel(file: IfcOpenshellFile, owner_history: IfcOpenshellInstance | null): IfcOpenshellInstance;
@@ -5488,7 +5489,7 @@ declare module 'ifcopenshell-api' {
      * @param name Name for the load case.
      * @param action_type ActionType enum value (e.g. "PERMANENT_G", "VARIABLE_Q").
      * @param action_source ActionSource enum value (e.g. "WIND", "IMPOSED").
-     * @param owner_history Owner history for the new entity. May be std::nullopt.
+     * @param owner_history Owner history for the new entity. When omitted, no owner history is assigned.
      * @return Newly created IfcStructuralLoadCase.
      */
     addStructuralLoadCase(file: IfcOpenshellFile, name: string, action_type: string, action_source: string, owner_history: IfcOpenshellInstance | null): IfcOpenshellInstance;
@@ -5502,7 +5503,7 @@ declare module 'ifcopenshell-api' {
      * @param name Name for the load group.
      * @param action_type ActionType enum value.
      * @param action_source ActionSource enum value.
-     * @param owner_history Owner history for the new entity. May be std::nullopt.
+     * @param owner_history Owner history for the new entity. When omitted, no owner history is assigned.
      * @return Newly created IfcStructuralLoadGroup.
      */
     addStructuralLoadGroup(file: IfcOpenshellFile, name: string, action_type: string, action_source: string, owner_history: IfcOpenshellInstance | null): IfcOpenshellInstance;
@@ -5515,7 +5516,7 @@ declare module 'ifcopenshell-api' {
      * @param file File containing both entities.
      * @param relating_structural_member IfcStructuralMember to connect.
      * @param related_structural_connection IfcStructuralConnection to connect to.
-     * @param owner_history Owner history for the new relationship. May be std::nullopt.
+     * @param owner_history Owner history for the new relationship. When omitted, no owner history is assigned.
      * @return The IfcRelConnectsStructuralMember relationship.
      */
     addStructuralMemberConnection(file: IfcOpenshellFile, relating_structural_member: IfcOpenshellInstance, related_structural_connection: IfcOpenshellInstance, owner_history: IfcOpenshellInstance | null): IfcOpenshellInstance;
@@ -5529,7 +5530,7 @@ declare module 'ifcopenshell-api' {
      * @param file File containing both entities.
      * @param relating_product IfcProduct that the structural item references.
      * @param related_object Structural item to assign.
-     * @param owner_history Owner history for new relationships. May be std::nullopt.
+     * @param owner_history Owner history for new relationships. When omitted, no owner history is assigned.
      * @return The IfcRelAssignsToProduct relationship.
      */
     assignProduct(file: IfcOpenshellFile, relating_product: IfcOpenshellInstance, related_object: IfcOpenshellInstance, owner_history: IfcOpenshellInstance | null): IfcOpenshellInstance;
@@ -5552,16 +5553,16 @@ declare module 'ifcopenshell-api' {
      * @param file File containing both entities.
      * @param structural_analysis_model IfcStructuralAnalysisModel to assign.
      * @param building IfcBuilding to assign to.
-     * @param owner_history Owner history for the new relationship. May be std::nullopt.
+     * @param owner_history Owner history for the new relationship. When omitted, no owner history is assigned.
      * @return The IfcRelServicesBuildings relationship.
      */
     assignToBuilding(file: IfcOpenshellFile, structural_analysis_model: IfcOpenshellInstance, building: IfcOpenshellInstance, owner_history: IfcOpenshellInstance | null): IfcOpenshellInstance;
     /**
      * Edit attributes of an IfcBoundaryCondition subclass.
      *
-     * Each entry in the attributes bag must be a dictionary with "type" and
+     * Each entry in the attributes mapping must contain "type" and
      * "value" sub-entries. The type specifies the IFC typed value class (e.g.
-     * "IfcBoolean", "IfcForceMeasure") or "string"/"null" for direct values.
+     * "IfcBoolean", "IfcForceMeasure") or "string"/"blank" for direct values.
      *
      * @param file File containing the boundary condition.
      * @param condition IfcBoundaryCondition entity to edit.
@@ -5577,8 +5578,8 @@ declare module 'ifcopenshell-api' {
      *
      * @param file File containing the structural item.
      * @param structural_item Structural item (e.g. IfcStructuralPointConnection).
-     * @param axis 3-element direction vector for the Axis attribute.
-     * @param ref_direction 3-element direction vector for the RefDirection attribute.
+     * @param axis 3-element direction ratios for the Axis attribute.
+     * @param ref_direction 3-element direction ratios for the RefDirection attribute.
      */
     editStructuralConnectionCs(file: IfcOpenshellFile, structural_item: IfcOpenshellInstance, axis: number[], ref_direction: number[]): void;
     /**
@@ -5590,7 +5591,7 @@ declare module 'ifcopenshell-api' {
      *
      * @param file File containing the structural item.
      * @param structural_item Structural item with an Axis attribute.
-     * @param axis 3-element direction vector.
+     * @param axis 3-element direction ratios.
      */
     editStructuralItemAxis(file: IfcOpenshellFile, structural_item: IfcOpenshellInstance, axis: number[]): void;
     /**
@@ -5670,7 +5671,7 @@ declare module 'ifcopenshell-api' {
      * For IfcSurfaceStyle, the Side attribute defaults to "BOTH".
      *
      * @param file IFC file that receives the style.
-     * @param name Style name (may be null for unnamed styles).
+     * @param name Style name. When omitted, the style is unnamed.
      * @param ifc_class IFC entity class (e.g. "IfcSurfaceStyle", "IfcFillAreaStyle").
      * @return Newly created style entity.
      */
@@ -5680,12 +5681,12 @@ declare module 'ifcopenshell-api' {
      *
      * Creates an IfcStyledItem (and optionally an IfcPresentationStyleAssignment
      * for IFC2X3) linking the item to the given style. If the item already has a
-     * styled item, the existing style is replaced. Passing an empty style removes
-     * the styled item from the representation item.
+     * styled item, the existing style is replaced. When style is omitted, the
+     * styled item is removed from the representation item.
      *
      * @param file IFC file to modify.
      * @param options Item, style, and IFC2X3 compat flag.
-     * @return The IfcStyledItem, or null handle if style was removed.
+     * @return The IfcStyledItem, or no result when the style is removed.
      */
     assignItemStyle(file: IfcOpenshellFile, options: IfcOpenshellStyleAssignItemStyleOptions): IfcOpenshellInstance;
     /**
@@ -5705,16 +5706,16 @@ declare module 'ifcopenshell-api' {
     /**
      * Assign styles to the geometric items within a shape representation.
      *
-     * Traverses the representation and assigns each style to sequential
-     * representation items. When replace_previous_same_type_style is true, styles
-     * of the same IFC class are replaced rather than appended.
+     * Assigns the styles to representation items in sequence. When
+     * replace_previous_same_type_style is true, an existing style of the same IFC
+     * class is replaced instead of appended.
      *
      * @param file IFC file to modify.
      * @param shape_representation IfcShapeRepresentation to assign styles to.
      * @param styles Presentation style entities to assign.
      * @param should_use_presentation_style_assignment Wrap styles in IfcPresentationStyleAssignment.
      * @param replace_previous_same_type_style Replace existing styles of the same type.
-     * @return Vector of newly created IfcStyledItem entities.
+     * @return List of newly created IfcStyledItem entities.
      */
     assignRepresentationStyles(file: IfcOpenshellFile, shape_representation: IfcOpenshellInstance, styles: IfcOpenshellInstance[], should_use_presentation_style_assignment: boolean, replace_previous_same_type_style: boolean): IfcOpenshellParseInstanceList;
     /**
@@ -5725,7 +5726,7 @@ declare module 'ifcopenshell-api' {
      *
      * @param file IFC file containing the style.
      * @param style IfcSurfaceStyle entity to modify.
-     * @param attributes Property container with attribute name-value pairs.
+     * @param attributes Attribute name-to-value mapping.
      */
     editSurfaceStyle(file: IfcOpenshellFile, style: IfcOpenshellInstance, attributes: number): void;
     /**
@@ -5749,8 +5750,8 @@ declare module 'ifcopenshell-api' {
     /**
      * Remove an IfcSurfaceStyleWithTextures or IfcSurfaceStyleRendering and its nested entities.
      *
-     * Deep-removes texture coordinates, textures, and colour entities owned by the
-     * surface style.
+     * Removes texture coordinates, textures, and colour entities belonging to the
+     * surface style when they are no longer referenced.
      *
      * @param file IFC file to modify.
      * @param style Surface style sub-entity to remove.
@@ -5759,8 +5760,8 @@ declare module 'ifcopenshell-api' {
     /**
      * Remove a style from a material's styled representation.
      *
-     * Cleans up empty IfcStyledItem, IfcStyledRepresentation, and
-     * IfcMaterialDefinitionRepresentation entities. Also propagates removal to
+     * Removes empty IfcStyledItem, IfcStyledRepresentation, and
+     * IfcMaterialDefinitionRepresentation entities, and propagates the removal to
      * matching shape aspects.
      *
      * @param file IFC file to modify.
@@ -5772,8 +5773,8 @@ declare module 'ifcopenshell-api' {
     /**
      * Remove styles from the geometric items within a shape representation.
      *
-     * Traverses the representation and removes matching styles from IfcStyledItem
-     * and IfcPresentationStyleAssignment entities.
+     * Removes matching styles from IfcStyledItem and
+     * IfcPresentationStyleAssignment entities in the representation.
      *
      * @param file IFC file to modify.
      * @param shape_representation IfcShapeRepresentation to unassign styles from.
@@ -5802,7 +5803,7 @@ declare module 'ifcopenshell-api' {
      * Assign a flow control element to a flow element via IfcRelFlowControlElements.
      *
      * If the flow control is already assigned to a different element, no change
-     * is made and an empty handle is returned.
+     * is made and no relationship is returned.
      */
     assignFlowControl(file: IfcOpenshellFile, options: IfcOpenshellSystemAssignFlowControlOptions): IfcOpenshellInstance;
     /**
@@ -5814,11 +5815,11 @@ declare module 'ifcopenshell-api' {
      */
     assignPort(file: IfcOpenshellFile, options: IfcOpenshellSystemAssignPortOptions): IfcOpenshellInstance;
     /**
-     * Assign products to a system via IfcRelAssignsToGroup (delegated to group_assign_group).
+     * Assign products to a system via IfcRelAssignsToGroup.
      *
      * Validates that each product is compatible with the system type (e.g.
-     * only IfcDistributionElement for IfcDistributionSystem). Throws if a
-     * product is not assignable.
+     * only IfcDistributionElement for IfcDistributionSystem). The operation fails
+     * if a product is not valid for the system type.
      */
     assignSystem(file: IfcOpenshellFile, options: IfcOpenshellSystemAssignSystemOptions): IfcOpenshellInstance;
     /**
@@ -5859,7 +5860,7 @@ declare module 'ifcopenshell-api' {
      * if it was the only nested object).
      */
     unassignPort(file: IfcOpenshellFile, options: IfcOpenshellSystemUnassignPortOptions): void;
-    /** Remove products from a system (delegated to group_unassign_group). */
+    /** Remove products from a system. */
     unassignSystem(file: IfcOpenshellFile, options: IfcOpenshellSystemUnassignSystemOptions): void;
   }
 
@@ -5901,7 +5902,7 @@ declare module 'ifcopenshell-api' {
      * @param file File that receives the new entity.
      * @param unit_type IFC unit type enum value (e.g. "LENGTHUNIT").
      * @param name Display name for the unit (e.g. "bag", "each").
-     * @param dimensions 7-element vector of dimensional exponents.
+     * @param dimensions 7-element sequence of dimensional exponents.
      * @return Newly created IfcContextDependentUnit.
      */
     addContextDependentUnit(file: IfcOpenshellFile, unit_type: string, name: string, dimensions: bigint[]): IfcOpenshellInstance;
@@ -5913,7 +5914,7 @@ declare module 'ifcopenshell-api' {
      *
      * @param file File that receives the new entity.
      * @param unit_type IFC unit type enum value (e.g. "VELOCITYUNIT").
-     * @param userdefinedtype UserDefinedType string, or null to leave blank.
+     * @param userdefinedtype UserDefinedType string. When omitted, it is left blank.
      * @param units Component IfcUnit entities.
      * @param exponents Exponent for each component unit (must match units in length).
      * @return Newly created IfcDerivedUnit.
@@ -5931,11 +5932,11 @@ declare module 'ifcopenshell-api' {
      * Create an IfcSIUnit entity.
      *
      * Sets the UnitType, Name (derived from the unit type), and optional
-     * Prefix. The Prefix attribute is left blank when prefix is null.
+     * Prefix. When prefix is omitted, the Prefix attribute is left blank.
      *
      * @param file File that receives the new entity.
      * @param unit_type IFC unit type enum value (e.g. "LENGTHUNIT").
-     * @param prefix SI prefix (e.g. "KILO", "MILLI") or null for base unit.
+     * @param prefix SI prefix (e.g. "KILO", "MILLI"). When omitted, the base unit is used.
      * @return Newly created IfcSIUnit.
      */
     addSiUnit(file: IfcOpenshellFile, unit_type: string, prefix: string | null): IfcOpenshellInstance;
@@ -6032,7 +6033,7 @@ declare module 'ifcopenshell-api' {
      * instead of falling back.
      *
      * @param name Unit type name.
-     * @return 7-element vector of dimensional exponents.
+     * @return 7-element sequence of dimensional exponents.
      */
     getNamedDimensions(name: string): number[];
     /**
@@ -6063,20 +6064,20 @@ declare module 'ifcopenshell-api' {
      *
      * @param file File to query.
      * @param unit_type IFC unit type enum value (e.g. "LENGTHUNIT").
-     * @return The matching unit entity, or a null handle if not found.
+     * @return The matching unit entity, or no result if it is not found.
      */
     getProjectUnit(file: IfcOpenshellFile, unit_type: string): IfcOpenshellInstance;
     /**
      * Return the SI dimensional exponents for a given unit type name.
      *
-     * Returns a 7-element vector of integers corresponding to the
+     * Returns a 7-element sequence of integers corresponding to the
      * IfcDimensionalExponents attributes: Length, Mass, Time,
      * ElectricCurrent, ThermodynamicTemperature, AmountOfSubstance,
      * LuminousIntensity. Falls back to the "OTHERWISE" entry for
      * unknown types.
      *
      * @param name Unit type name (e.g. "LENGTHUNIT", "MASSUNIT").
-     * @return 7-element vector of dimensional exponents.
+     * @return 7-element sequence of dimensional exponents.
      */
     getSiDimensions(name: string): number[];
     /**
@@ -6103,7 +6104,7 @@ declare module 'ifcopenshell-api' {
      * Return the IfcUnitAssignment entity for the project.
      *
      * @param file File to query.
-     * @return The IfcUnitAssignment entity, or a null handle if not found.
+     * @return The IfcUnitAssignment entity, or no result if it is not found.
      */
     getUnitAssignment(file: IfcOpenshellFile): IfcOpenshellInstance;
     /**
@@ -6173,11 +6174,11 @@ declare module 'ifcopenshell-api' {
     /**
      * Resolve the defined unit of an IfcPropertyTableValue.
      *
-     * Returns the DefinedUnit attribute, or a null handle if the unit
-     * must be inferred from the DefinedValues measure class.
+     * Returns the DefinedUnit attribute, or no result if the unit must be
+     * inferred from the DefinedValues measure class.
      *
      * @param prop IfcPropertyTableValue entity.
-     * @return The DefinedUnit entity, or a null handle.
+     * @return The DefinedUnit entity, or no result.
      */
     resolvePropertyTableDefinedUnit(prop: IfcOpenshellInstance): IfcOpenshellInstance;
     /**
@@ -6193,22 +6194,22 @@ declare module 'ifcopenshell-api' {
     /**
      * Resolve the defining unit of an IfcPropertyTableValue.
      *
-     * Returns the DefiningUnit attribute, or a null handle if the unit
-     * must be inferred from the DefiningValues measure class.
+     * Returns the DefiningUnit attribute, or no result if the unit must be
+     * inferred from the DefiningValues measure class.
      *
      * @param prop IfcPropertyTableValue entity.
-     * @return The DefiningUnit entity, or a null handle.
+     * @return The DefiningUnit entity, or no result.
      */
     resolvePropertyTableDefiningUnit(prop: IfcOpenshellInstance): IfcOpenshellInstance;
     /**
      * Resolve the unit entity attached to a property or quantity.
      *
      * Returns the Unit attribute directly attached to the property (for
-     * IfcPropertySingleValue, IfcPhysicalSimpleQuantity, etc.), or a null
-     * handle if the unit must be inferred from the measure class.
+     * IfcPropertySingleValue, IfcPhysicalSimpleQuantity, etc.). Returns no result
+     * if the unit must be inferred from the measure class.
      *
      * @param prop IfcProperty or IfcPhysicalQuantity entity.
-     * @return The attached IfcUnit, or a null handle if none.
+     * @return The attached IfcUnit, or no result if none is attached.
      */
     resolvePropertyUnit(prop: IfcOpenshellInstance): IfcOpenshellInstance;
     /**
@@ -6228,153 +6229,153 @@ declare module 'ifcopenshell-api' {
     /**
      * Extract a boolean from a selector value.
      *
-     * @param value The value handle.
-     * @return The boolean value, or false if null or not a boolean.
+     * @param value The selector value.
+     * @return The boolean value, or false when no value is provided or the value is not boolean.
      */
     asBool(value: IfcOpenshellValue): boolean;
     /**
      * Extract a double from a selector value.
      *
-     * @param value The value handle.
-     * @return The double value, or 0.0 if null or not a double.
+     * @param value The selector value.
+     * @return The double value, or 0.0 when no value is provided or the value is not a double.
      */
     asDouble(value: IfcOpenshellValue): number;
     /**
      * Extract an entity instance from a selector value.
      *
-     * @param value The value handle.
-     * @return The entity instance, or empty if null or not an instance.
+     * @param value The selector value.
+     * @return The IFC entity, or no result when no value is provided or the value is not an entity.
      */
     asInstance(value: IfcOpenshellValue): IfcOpenshellInstance;
     /**
      * Extract a 64-bit integer from a selector value.
      *
-     * @param value The value handle.
-     * @return The integer value, or 0 if null or not an integer.
+     * @param value The selector value.
+     * @return The integer value, or 0 when no value is provided or the value is not an integer.
      */
     asInt64(value: IfcOpenshellValue): bigint;
     /**
      * Extract a string from a selector value.
      *
-     * @param value The value handle.
-     * @return The string value, or empty string if null or not a string.
+     * @param value The selector value.
+     * @return The string value, or an empty string when no value is provided or the value is not a string.
      */
     asString(value: IfcOpenshellValue): string;
     /**
-     * Return the key at the given index in a dictionary value.
+     * Return the key at the given index in a mapping value.
      *
-     * @param value The dict value handle.
+     * @param value The mapping value.
      * @param index Zero-based entry index.
-     * @return The key string, or empty if out of range or not a dict.
+     * @return The key string, or an empty string if the index is out of range or the value is not a mapping.
      */
     dictKeyAt(value: IfcOpenshellValue, index: number): string;
     /**
-     * Set a key-value pair in a dictionary value.
+     * Set a key-value pair in a mapping value.
      *
-     * @param dict The dict value handle.
+     * @param dict The mapping value.
      * @param key The string key.
-     * @param value The value to associate with the key. If empty, sets a None value.
+     * @param value The value to associate with the key. When omitted, assigns a no-value entry.
      * @return True if the key-value pair was set.
      */
     dictSet(dict: IfcOpenshellValue, key: string, value: IfcOpenshellValue | null): boolean;
     /**
-     * Return the number of entries in a dictionary value.
+     * Return the number of entries in a mapping value.
      *
-     * @param value The value handle.
-     * @return Number of entries, or 0 if null or not a dict.
+     * @param value The selector value.
+     * @return Number of entries, or 0 when no value is provided or the value is not a mapping.
      */
     dictSize(value: IfcOpenshellValue): number;
     /**
-     * Return the value at the given index in a dictionary value.
+     * Return the value at the given index in a mapping value.
      *
-     * @param value The dict value handle.
+     * @param value The mapping value.
      * @param index Zero-based entry index.
-     * @return The value at the index, or null if out of range or not a dict.
+     * @return The value at the index, or no result if the index is out of range or the value is not a mapping.
      */
     dictValueAt(value: IfcOpenshellValue, index: number): IfcOpenshellValue | null;
     /**
      * Return the kind of a selector value.
      *
-     * @param value The value handle.
-     * @return One of the ifcopenshell_selector_value_kind_t values, or IFCSEL_VALUE_NONE if null.
+     * @param value The selector value.
+     * @return The value kind, or the no-value kind when no value is provided.
      */
     kind(value: IfcOpenshellValue): number;
     /**
      * Append an item to a list value.
      *
-     * @param list The list value handle.
-     * @param item The item to append. If empty, appends a None value.
+     * @param list The list selector value.
+     * @param item The item to append. When omitted, appends a no-value entry.
      * @return True if the item was appended.
      */
     listAppend(list: IfcOpenshellValue, item: IfcOpenshellValue | null): boolean;
     /**
      * Return an item from a list value at the given index.
      *
-     * @param value The list value handle.
+     * @param value The list value.
      * @param index Zero-based item index.
-     * @return The item at the index, or null if out of range or not a list.
+     * @return The item at the index, or no result if the index is out of range or the value is not a list.
      */
     listAt(value: IfcOpenshellValue, index: number): IfcOpenshellValue | null;
     /**
      * Return the number of items in a list value.
      *
-     * @param value The value handle.
-     * @return Number of items, or 0 if null or not a list.
+     * @param value The selector value.
+     * @return Number of items, or 0 when no value is provided or the value is not a list.
      */
     listSize(value: IfcOpenshellValue): number;
     /**
      * Create a boolean value.
      *
      * @param value The boolean value.
-     * @return New boolean value handle. Free with value_free.
+     * @return New boolean selector value. Release it with value_free.
      */
     newBool(value: boolean): IfcOpenshellValue | null;
     /**
-     * Create an empty dictionary value.
+     * Create an empty mapping value.
      *
-     * @return New dict value handle. Free with value_free.
+     * @return New mapping selector value. Release it with value_free.
      */
     newDict(): IfcOpenshellValue | null;
     /**
      * Create a double-precision floating-point value.
      *
      * @param value The double value.
-     * @return New double value handle. Free with value_free.
+     * @return New double selector value. Release it with value_free.
      */
     newDouble(value: number): IfcOpenshellValue | null;
     /**
      * Create an instance (entity reference) value.
      *
-     * If value is empty, creates a None value.
+     * When value is omitted, creates a value representing no value.
      *
      * @param value The IFC entity instance.
-     * @return New instance value handle. Free with value_free.
+     * @return New entity-reference selector value. Release it with value_free.
      */
     newInstance(value: IfcOpenshellInstance | null): IfcOpenshellValue | null;
     /**
      * Create a 64-bit integer value.
      *
      * @param value The integer value.
-     * @return New integer value handle. Free with value_free.
+     * @return New integer selector value. Release it with value_free.
      */
     newInt(value: bigint): IfcOpenshellValue | null;
     /**
      * Create an empty list value.
      *
-     * @return New list value handle. Free with value_free.
+     * @return New list selector value. Release it with value_free.
      */
     newList(): IfcOpenshellValue | null;
     /**
-     * Create a None value.
+     * Create a value representing no value.
      *
-     * @return New None value handle. Free with value_free.
+     * @return New selector value representing no value. Release it with value_free.
      */
     newNone(): IfcOpenshellValue | null;
     /**
      * Create a string value.
      *
      * @param value The string value.
-     * @return New string value handle. Free with value_free.
+     * @return New string selector value. Release it with value_free.
      */
     newString(value: string): IfcOpenshellValue | null;
   }

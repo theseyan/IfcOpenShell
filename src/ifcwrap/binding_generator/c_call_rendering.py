@@ -4,102 +4,49 @@ from __future__ import annotations
 
 import json
 
-try:
-    from .authored_spec import ParamSpec, TypeSpec, _extract_optional_inner_type
-    from .binding_ir import (
-        ArrayElementFieldOp,
-        BindingIR,
-        BoolOutParamCallOp,
-        CallIR,
-        CcomponentsAccessorOp,
-        ChildrenAddOp,
-        ChildrenAtOp,
-        ChildrenCountOp,
-        ConstructorOp,
-        DirectCallOp,
-        FieldGetOp,
-        FieldSetterOp,
-        InlineImplementationOp,
-        ListAtOp,
-        ListCountOp,
-        MethodAtOp,
-        MethodSizeOp,
-        OptionalGetOp,
-        OptionalPresenceCheckOp,
-        PointerPresenceCheckOp,
-        SpecMethodFunctionCallOp,
-        StaticCastOp,
-        ValueHandleFieldGetOp,
-        VariantGetOp,
-        VariantSetOp,
-    )
-    from .c_handle_rendering import _wrap_handle_expr
-    from .c_sequence_helpers import (
-        _handle_list_c_type,
-        _handle_list_helper_name,
-        _handle_list_list_c_type,
-        _handle_list_list_helper_name,
-        _sequence_make_helper,
-        _sequence_to_cpp_helper,
-        _snake_name,
-        _type_spec_sequence_kind,
-    )
-    from .c_type_rendering import (
-        _BUFFER_TYPE_MAP,
-        _SCALAR_TYPE_MAP,
-        _cpp_param_type,
-        _normalize_cpp_type,
-        _out_param_type,
-        _qualify_handle_cpp_fragment,
-    )
-except ImportError:  # pragma: no cover - script execution fallback
-    from authored_spec import ParamSpec, TypeSpec, _extract_optional_inner_type
-    from binding_ir import (
-        ArrayElementFieldOp,
-        BindingIR,
-        BoolOutParamCallOp,
-        CallIR,
-        CcomponentsAccessorOp,
-        ChildrenAddOp,
-        ChildrenAtOp,
-        ChildrenCountOp,
-        ConstructorOp,
-        DirectCallOp,
-        FieldGetOp,
-        FieldSetterOp,
-        InlineImplementationOp,
-        ListAtOp,
-        ListCountOp,
-        MethodAtOp,
-        MethodSizeOp,
-        OptionalGetOp,
-        OptionalPresenceCheckOp,
-        PointerPresenceCheckOp,
-        SpecMethodFunctionCallOp,
-        StaticCastOp,
-        ValueHandleFieldGetOp,
-        VariantGetOp,
-        VariantSetOp,
-    )
-    from c_handle_rendering import _wrap_handle_expr
-    from c_sequence_helpers import (
-        _handle_list_c_type,
-        _handle_list_helper_name,
-        _handle_list_list_c_type,
-        _handle_list_list_helper_name,
-        _sequence_make_helper,
-        _sequence_to_cpp_helper,
-        _snake_name,
-        _type_spec_sequence_kind,
-    )
-    from c_type_rendering import (
-        _BUFFER_TYPE_MAP,
-        _SCALAR_TYPE_MAP,
-        _cpp_param_type,
-        _normalize_cpp_type,
-        _out_param_type,
-        _qualify_handle_cpp_fragment,
-    )
+from .abi_ir import _BUFFER_TYPES, _SCALAR_PARAM_TYPES, _snake_name, _variant_c_type
+from .authored_spec import ParamSpec, TypeSpec, _extract_optional_inner_type
+from .binding_ir import (
+    ArrayElementFieldOp,
+    BindingIR,
+    BoolOutParamCallOp,
+    CallIR,
+    CcomponentsAccessorOp,
+    ChildrenAddOp,
+    ChildrenAtOp,
+    ChildrenCountOp,
+    ConstructorOp,
+    DirectCallOp,
+    FieldGetOp,
+    FieldSetterOp,
+    InlineImplementationOp,
+    ListAtOp,
+    ListCountOp,
+    MethodAtOp,
+    MethodSizeOp,
+    OptionalGetOp,
+    OptionalPresenceCheckOp,
+    PointerPresenceCheckOp,
+    SpecMethodFunctionCallOp,
+    StaticCastOp,
+    ValueHandleFieldGetOp,
+    VariantGetOp,
+    VariantSetOp,
+)
+from .c_handle_rendering import _wrap_handle_expr
+from .c_sequence_helpers import (
+    _handle_list_c_type,
+    _handle_list_helper_name,
+    _handle_list_list_c_type,
+    _handle_list_list_helper_name,
+    _sequence_make_helper,
+    _sequence_to_cpp_helper,
+    _type_spec_sequence_kind,
+)
+from .c_type_rendering import (
+    _normalize_cpp_type,
+    _qualify_handle_cpp_fragment,
+)
 
 
 def _set_element_cpp_type(cpp_type: str | None) -> str | None:
@@ -114,6 +61,37 @@ def _set_element_cpp_type(cpp_type: str | None) -> str | None:
 
 def _cpp_string_literal(value: str) -> str:
     return json.dumps(value)
+
+
+def _scalar_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
+    if spec.abi is None:
+        raise ValueError("C emission requires a finalized BindingIR")
+    if call.returns.kind == "bool":
+        return f"*out_result = {expr};"
+    function = spec.abi.functions[call.c_name]
+    out_result = next(param for param in function.params if param.role == "out_result")
+    c_type = out_result.c_type.removesuffix("*").strip()
+    return f"*out_result = static_cast<{c_type}>({expr});"
+
+
+def _finalized_result_field_c_type(
+    spec: BindingIR, struct_name: str, field_name: str
+) -> str:
+    if spec.abi is None:
+        raise ValueError("C emission requires a finalized BindingIR")
+    struct = spec.abi.value_types[struct_name]
+    return next(field.c_type for field in struct.fields if field.name == field_name)
+
+
+def _finalized_variant_field_c_type(
+    spec: BindingIR, type_spec: TypeSpec, index: int
+) -> str:
+    if spec.abi is None:
+        raise ValueError("C emission requires a finalized BindingIR")
+    variant = spec.abi.value_types[_snake_name(_variant_c_type(type_spec, spec))]
+    return next(
+        field.c_type for field in variant.fields if field.name == f"value_{index}"
+    )
 
 
 def _value_handle_empty_expr(handle: object, value_expr: str) -> str:
@@ -167,8 +145,8 @@ def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
                 f"return std::vector(tmp.begin(), tmp.end()); }})());"
             )
         return f"*out_result = {_sequence_make_helper(sequence_kind)}({expr});"
-    if kind in _SCALAR_TYPE_MAP:
-        return _SCALAR_TYPE_MAP[kind][2].format(expr=expr)
+    if kind in _SCALAR_PARAM_TYPES:
+        return _scalar_result_assignment(call, spec, expr)
     if kind == "string":
         helper = (
             "make_static_string" if type_spec.ownership == "static" else "make_string"
@@ -184,7 +162,7 @@ def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
                 f"        }}"
             )
         return f"*out_result = {helper}({expr});"
-    if kind in _BUFFER_TYPE_MAP:
+    if kind in _BUFFER_TYPES:
         normalized_cpp_type = _normalize_cpp_type(type_spec.cpp_type)
         if normalized_cpp_type.endswith("*"):
             return f"*out_result = {expr};"
@@ -305,10 +283,9 @@ def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
                 assignment = (
                     f"{_sequence_make_helper(field_sequence_kind)}({field_expr})"
                 )
-            elif field_type.kind in _SCALAR_TYPE_MAP:
-                assignment = (
-                    f"static_cast<{_SCALAR_TYPE_MAP[field_type.kind][0]}>({field_expr})"
-                )
+            elif field_type.kind in _SCALAR_PARAM_TYPES:
+                c_type = _finalized_result_field_c_type(spec, struct.name, field.name)
+                assignment = f"static_cast<{c_type}>({field_expr})"
             elif field_type.kind == "string":
                 helper = (
                     "make_static_string"
@@ -347,8 +324,9 @@ def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
             alt_sequence_kind = _type_spec_sequence_kind(alt)
             if alt_sequence_kind is not None:
                 assignment = f"{_sequence_make_helper(alt_sequence_kind)}({alt_expr})"
-            elif alt.kind in _SCALAR_TYPE_MAP:
-                assignment = f"static_cast<{_SCALAR_TYPE_MAP[alt.kind][0]}>({alt_expr})"
+            elif alt.kind in _SCALAR_PARAM_TYPES:
+                c_type = _finalized_variant_field_c_type(spec, type_spec, index)
+                assignment = f"static_cast<{c_type}>({alt_expr})"
             elif alt.kind == "string":
                 helper = (
                     "make_static_string" if alt.ownership == "static" else "make_string"
@@ -408,7 +386,7 @@ def _render_param_prelude(param: ParamSpec, spec: BindingIR) -> str:
             f"{_null_check(param.name, 'Parameter')}\n"
             f"    auto {param.name}_cpp = {to_cpp}({param.name});"
         )
-    if kind in _SCALAR_TYPE_MAP and type_spec.cpp_type is not None:
+    if kind in _SCALAR_PARAM_TYPES and type_spec.cpp_type is not None:
         if type_spec.nullable and _is_optional_cpp_type(type_spec):
             raise ValueError(
                 f'Standalone optional scalar parameter "{param.name}" needs an options struct to preserve presence'
@@ -626,7 +604,7 @@ def _option_field_cpp_expr(type_spec: TypeSpec, source: str, spec: BindingIR) ->
         return f"{_sequence_to_cpp_helper(sequence_kind)}({source})"
     if type_spec.kind == "string":
         return f"std::string({source})"
-    if type_spec.kind in _SCALAR_TYPE_MAP:
+    if type_spec.kind in _SCALAR_PARAM_TYPES:
         if type_spec.cpp_type is not None and not _is_optional_cpp_type(type_spec):
             return f"static_cast<{type_spec.cpp_type}>({source})"
         return source
@@ -658,7 +636,7 @@ def _uses_cpp_arg_name(type_spec: TypeSpec) -> bool:
     sequence_kind = _type_spec_sequence_kind(type_spec)
     if sequence_kind is not None:
         return True
-    if type_spec.kind in _SCALAR_TYPE_MAP:
+    if type_spec.kind in _SCALAR_PARAM_TYPES:
         return type_spec.cpp_type is not None
     if type_spec.kind == "string":
         return not type_spec.nullable or _is_optional_cpp_type(type_spec)
@@ -719,8 +697,10 @@ def _call_expr_args(call: CallIR) -> str:
     )
 
 
-def _render_bool_out_param_assignment(call: CallIR, op: BoolOutParamCallOp) -> str:
-    if call.returns.kind not in _SCALAR_TYPE_MAP:
+def _render_bool_out_param_assignment(
+    call: CallIR, op: BoolOutParamCallOp, spec: BindingIR
+) -> str:
+    if call.returns.kind not in _SCALAR_PARAM_TYPES:
         raise ValueError(
             f"{call.c_name} bool out-param lowering only supports scalar return types"
         )
@@ -735,7 +715,7 @@ def _render_bool_out_param_assignment(call: CallIR, op: BoolOutParamCallOp) -> s
         if call.receiver is not None
         else f"{op.cpp_name}({', '.join(args)})"
     )
-    assign = _SCALAR_TYPE_MAP[call.returns.kind][2].format(expr=out_name)
+    assign = _scalar_result_assignment(call, spec, out_name)
     lines = [
         f"{cpp_type} {out_name}{{}};",
         f"if ({call_expr}) {{",
@@ -766,10 +746,13 @@ def _receiver_arg_expr(receiver_cpp_type: str, receiver_handle: object) -> str:
 
 
 def _render_call_impl(call: CallIR, spec: BindingIR) -> str:
-    params = [f"{_cpp_param_type(param, spec)} {param.name}" for param in call.params]
-    if call.returns.kind != "void":
-        params.append(f"{_out_param_type(call.returns, spec)} out_result")
-    signature = f"bool {call.c_name}({', '.join(params) if params else 'void'})"
+    if spec.abi is None:
+        raise ValueError("C emission requires a finalized BindingIR")
+    abi = spec.abi.functions[call.c_name]
+    params = [f"{param.c_type} {param.name}" for param in abi.params]
+    signature = (
+        f"{abi.restype} {call.c_name}({', '.join(params) if params else 'void'})"
+    )
 
     prelude_lines = []
     if call.returns.kind != "void":
@@ -777,7 +760,6 @@ def _render_call_impl(call: CallIR, spec: BindingIR) -> str:
             '    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }'
         )
     if call.receiver is not None:
-        receiver_c_type = spec.handles[call.receiver].c_type
         receiver_name = "self"
         receiver_handle = spec.handles[call.receiver]
         if receiver_handle.name == "instance_list":
@@ -827,13 +809,6 @@ def _render_call_impl(call: CallIR, spec: BindingIR) -> str:
                 f'    if ({receiver_name} == nullptr || {receiver_name}->ptr == nullptr) {{ throw std::runtime_error("Receiver handle is invalid"); }}'
             )
             prelude_lines.append(f"    auto* self_cpp = {receiver_name}->ptr;")
-        params = [f"{receiver_c_type}* self"] + [
-            f"{_cpp_param_type(param, spec)} {param.name}" for param in call.params
-        ]
-        if call.returns.kind != "void":
-            params.append(f"{_out_param_type(call.returns, spec)} out_result")
-        signature = f"bool {call.c_name}({', '.join(params)})"
-
     for param in call.params:
         block = _render_param_prelude(param, spec)
         if block:
@@ -858,7 +833,7 @@ def _render_call_impl(call: CallIR, spec: BindingIR) -> str:
         expr = f"{op.cpp_name}({', '.join(args)})"
         body_line = _render_result_assignment(call, spec, expr)
     elif isinstance(op, BoolOutParamCallOp):
-        body_line = _render_bool_out_param_assignment(call, op)
+        body_line = _render_bool_out_param_assignment(call, op, spec)
     elif isinstance(op, FieldGetOp):
         expr = f"self_cpp->{op.field_name}"
         if op.array_element_cpp_type is not None:

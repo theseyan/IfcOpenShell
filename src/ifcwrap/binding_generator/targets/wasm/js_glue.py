@@ -4,44 +4,18 @@ from __future__ import annotations
 
 import json
 
-try:
-    from ...binding_model import TypeSpec
-    from ...host_metadata import (
-        HostBindingMetadata,
-        HostFunctionMetadata,
-        HostOptionStructMetadata,
-        HostParamMetadata,
-        HostStructMetadata,
-    )
-    from .._shared import (
-        _INTERNAL_C_FUNCTIONS,
-        _camel_name,
-        _method_name,
-        _public_module_member,
-        _public_name,
-        _public_params,
-        _snake_name,
-        _type_name,
-    )
-except ImportError:  # pragma: no cover - script execution fallback
-    from binding_model import TypeSpec
-    from host_metadata import (
-        HostBindingMetadata,
-        HostFunctionMetadata,
-        HostOptionStructMetadata,
-        HostParamMetadata,
-        HostStructMetadata,
-    )
-    from targets._shared import (
-        _INTERNAL_C_FUNCTIONS,
-        _camel_name,
-        _method_name,
-        _public_module_member,
-        _public_name,
-        _public_params,
-        _snake_name,
-        _type_name,
-    )
+from ...abi_ir import BindingABI, CFunctionIR, COptionIR, CParamIR, CTypeIR
+from ...binding_model import TypeSpec
+from .._shared import (
+    _INTERNAL_C_FUNCTIONS,
+    _camel_name,
+    _method_name,
+    _public_module_member,
+    _public_name,
+    _public_params,
+    _snake_name,
+    _type_name,
+)
 
 _POINTER_SIZE = 4
 
@@ -60,7 +34,7 @@ def _normalize_c_type(c_type: str) -> str:
     return " ".join(c_type.replace(" *", "*").split())
 
 
-def _handle_for_c_type(c_type: str, metadata: HostBindingMetadata) -> HostStructMetadata | None:
+def _handle_for_c_type(c_type: str, metadata: BindingABI) -> CTypeIR | None:
     normalized = _normalize_c_type(c_type)
     for handle in metadata.handles.values():
         if normalized in {f"{handle.c_type}*", f"const {handle.c_type}*"}:
@@ -68,17 +42,35 @@ def _handle_for_c_type(c_type: str, metadata: HostBindingMetadata) -> HostStruct
     return None
 
 
-def _value_type_by_c_type(c_type: str, metadata: HostBindingMetadata) -> HostStructMetadata | None:
-    normalized = _normalize_c_type(c_type).removeprefix("const ").removesuffix("*").strip()
-    return next((value for value in metadata.value_types.values() if value.c_type == normalized), None)
+def _value_type_by_c_type(c_type: str, metadata: BindingABI) -> CTypeIR | None:
+    normalized = (
+        _normalize_c_type(c_type).removeprefix("const ").removesuffix("*").strip()
+    )
+    return next(
+        (
+            value
+            for value in metadata.value_types.values()
+            if value.c_type == normalized
+        ),
+        None,
+    )
 
 
-def _option_type_by_c_type(c_type: str, metadata: HostBindingMetadata) -> HostOptionStructMetadata | None:
-    normalized = _normalize_c_type(c_type).removeprefix("const ").removesuffix("*").strip()
-    return next((option for option in metadata.option_structs.values() if option.c_type == normalized), None)
+def _option_type_by_c_type(c_type: str, metadata: BindingABI) -> COptionIR | None:
+    normalized = (
+        _normalize_c_type(c_type).removeprefix("const ").removesuffix("*").strip()
+    )
+    return next(
+        (
+            option
+            for option in metadata.option_structs.values()
+            if option.c_type == normalized
+        ),
+        None,
+    )
 
 
-def _type_layout(c_type: str, metadata: HostBindingMetadata) -> tuple[int, int]:
+def _type_layout(c_type: str, metadata: BindingABI) -> tuple[int, int]:
     normalized = _normalize_c_type(c_type)
     if normalized.endswith("*"):
         return _POINTER_SIZE, _POINTER_SIZE
@@ -102,7 +94,7 @@ def _align_to(offset: int, alignment: int) -> int:
     return offset if remainder == 0 else offset + alignment - remainder
 
 
-def _struct_layout(struct: HostStructMetadata, metadata: HostBindingMetadata) -> tuple[int, int]:
+def _struct_layout(struct: CTypeIR, metadata: BindingABI) -> tuple[int, int]:
     offset = 0
     max_alignment = 1
     for field in struct.fields:
@@ -117,7 +109,7 @@ def _sequence_kind(type_spec: TypeSpec) -> str:
     return f"{type_spec.kind}{'_list' * type_spec.sequence_depth}"
 
 
-def _sequence_value_type(type_spec: TypeSpec, metadata: HostBindingMetadata) -> HostStructMetadata:
+def _sequence_value_type(type_spec: TypeSpec, metadata: BindingABI) -> CTypeIR:
     if type_spec.kind == "handle" and type_spec.handle is not None:
         handle = metadata.handles[type_spec.handle]
         suffix = "_list" * type_spec.sequence_depth
@@ -126,7 +118,7 @@ def _sequence_value_type(type_spec: TypeSpec, metadata: HostBindingMetadata) -> 
     return metadata.value_types[_sequence_kind(type_spec)]
 
 
-def _out_allocation(function: HostFunctionMetadata, metadata: HostBindingMetadata) -> str | None:
+def _out_allocation(function: CFunctionIR, metadata: BindingABI) -> str | None:
     returns = function.returns
     if returns.kind == "void":
         return None
@@ -143,7 +135,8 @@ def _out_allocation(function: HostFunctionMetadata, metadata: HostBindingMetadat
             struct = next(
                 item
                 for item in metadata.value_types.values()
-                if item.kind == "optional_result_struct" and item.element_type == returns.struct
+                if item.kind == "optional_result_struct"
+                and item.element_type == returns.struct
             )
         else:
             struct = metadata.value_types[returns.struct]
@@ -158,18 +151,23 @@ def _out_allocation(function: HostFunctionMetadata, metadata: HostBindingMetadat
     return "POINTER_SIZE"
 
 
-def _read_value_type_expr(type_spec: TypeSpec, metadata: HostBindingMetadata, ptr_expr: str) -> str:
+def _read_value_type_expr(
+    type_spec: TypeSpec, metadata: BindingABI, ptr_expr: str
+) -> str:
     if type_spec.sequence_depth > 0:
         sequence = _sequence_value_type(type_spec, metadata)
         return f"_readValueType(module, {ptr_expr}, _VALUE_TYPES[{json.dumps(sequence.c_type)}])"
     if type_spec.kind == "string":
-        return f"_readValueType(module, {ptr_expr}, _VALUE_TYPES['ifcopenshell_string_t'])"
+        return (
+            f"_readValueType(module, {ptr_expr}, _VALUE_TYPES['ifcopenshell_string_t'])"
+        )
     if type_spec.kind == "struct" and type_spec.struct is not None:
         if type_spec.nullable:
             struct = next(
                 item
                 for item in metadata.value_types.values()
-                if item.kind == "optional_result_struct" and item.element_type == type_spec.struct
+                if item.kind == "optional_result_struct"
+                and item.element_type == type_spec.struct
             )
         else:
             struct = metadata.value_types[type_spec.struct]
@@ -184,7 +182,7 @@ def _read_value_type_expr(type_spec: TypeSpec, metadata: HostBindingMetadata, pt
     return "module.getValue(outResultPtr, '*')"
 
 
-def _return_expr(function: HostFunctionMetadata, metadata: HostBindingMetadata) -> str:
+def _return_expr(function: CFunctionIR, metadata: BindingABI) -> str:
     returns = function.returns
     if returns.kind == "void":
         return "undefined"
@@ -205,7 +203,7 @@ def _return_expr(function: HostFunctionMetadata, metadata: HostBindingMetadata) 
     return "module.getValue(outResultPtr, '*')"
 
 
-def _destroy_out_result(function: HostFunctionMetadata, metadata: HostBindingMetadata) -> str | None:
+def _destroy_out_result(function: CFunctionIR, metadata: BindingABI) -> str | None:
     returns = function.returns
     if returns.sequence_depth > 0:
         destroy = _sequence_value_type(returns, metadata).destroy_function
@@ -224,7 +222,9 @@ def _destroy_out_result(function: HostFunctionMetadata, metadata: HostBindingMet
     return f"    if (outResultPtr) module._{destroy}(outResultPtr);"
 
 
-def _js_arg_expr(param: HostParamMetadata, metadata: HostBindingMetadata) -> tuple[str, str | None, str | None]:
+def _js_arg_expr(
+    param: CParamIR, metadata: BindingABI
+) -> tuple[str, str | None, str | None]:
     name = param.name
     option = _option_type_by_c_type(param.c_type, metadata)
     if option is not None:
@@ -238,7 +238,11 @@ def _js_arg_expr(param: HostParamMetadata, metadata: HostBindingMetadata) -> tup
     if handle is not None:
         return f"{name} == null ? 0 : {name}.ptr", None, None
     sequence = _value_type_by_c_type(param.c_type, metadata)
-    if sequence is not None and sequence.kind in {"sequence", "handle_sequence"} and sequence.sequence_depth == 1:
+    if (
+        sequence is not None
+        and sequence.kind in {"sequence", "handle_sequence"}
+        and sequence.sequence_depth == 1
+    ):
         ptr_name = f"_{name}Ptr"
         if sequence.element_type == "ifcopenshell_string_t":
             alloc = (
@@ -276,8 +280,8 @@ def _js_arg_expr(param: HostParamMetadata, metadata: HostBindingMetadata) -> tup
     return name, None, None
 
 
-def _render_handle_classes(metadata: HostBindingMetadata) -> str:
-    receiver_groups: dict[str, list[HostFunctionMetadata]] = {}
+def _render_handle_classes(metadata: BindingABI) -> str:
+    receiver_groups: dict[str, list[CFunctionIR]] = {}
     for function in metadata.functions.values():
         if function.receiver is not None:
             receiver_groups.setdefault(function.receiver, []).append(function)
@@ -286,7 +290,9 @@ def _render_handle_classes(metadata: HostBindingMetadata) -> str:
     for handle_name, handle in sorted(metadata.handles.items()):
         type_name = _type_name(handle.c_type)
         methods = []
-        for function in sorted(receiver_groups.get(handle_name, []), key=lambda item: item.c_name):
+        for function in sorted(
+            receiver_groups.get(handle_name, []), key=lambda item: item.c_name
+        ):
             if function.c_name == handle.destroy_function:
                 continue
             method = _public_name(function, metadata.c_prefix)
@@ -297,7 +303,10 @@ def _render_handle_classes(metadata: HostBindingMetadata) -> str:
                 "    }"
             )
         method_block = "\n\n".join(methods)
-        destroy = handle.destroy_function or f"ifcopenshell_{_snake_name(handle.c_type)}_destroy"
+        destroy = (
+            handle.destroy_function
+            or f"ifcopenshell_{_snake_name(handle.c_type)}_destroy"
+        )
         chunks.append(
             f"export class {type_name} {{\n"
             "    #ptr;\n"
@@ -317,9 +326,7 @@ def _render_handle_classes(metadata: HostBindingMetadata) -> str:
             "            this.#ptr = 0;\n"
             "            this.#owned = false;\n"
             "        }\n"
-            "    }"
-            + ("\n\n" + method_block if method_block else "")
-            + "\n}\n\n"
+            "    }" + ("\n\n" + method_block if method_block else "") + "\n}\n\n"
             f"function _wrap{type_name}(ptr, owned, module) {{\n"
             f"    return ptr ? new {type_name}(ptr, owned, module) : null;\n"
             "}"
@@ -327,11 +334,13 @@ def _render_handle_classes(metadata: HostBindingMetadata) -> str:
     return "\n\n".join(chunks)
 
 
-def _render_handle_wrapper_switch(metadata: HostBindingMetadata) -> str:
+def _render_handle_wrapper_switch(metadata: BindingABI) -> str:
     cases = []
     for handle in sorted(metadata.handles.values(), key=lambda item: item.c_type):
         type_name = _type_name(handle.c_type)
-        cases.append(f"        case {json.dumps(handle.c_type)}: return _wrap{type_name}(ptr, owned, module);")
+        cases.append(
+            f"        case {json.dumps(handle.c_type)}: return _wrap{type_name}(ptr, owned, module);"
+        )
     body = "\n".join(cases) or "        default: return ptr || null;"
     if cases:
         body += "\n        default: return ptr || null;"
@@ -344,7 +353,7 @@ def _render_handle_wrapper_switch(metadata: HostBindingMetadata) -> str:
     )
 
 
-def _render_wrapper(function: HostFunctionMetadata, metadata: HostBindingMetadata) -> str:
+def _render_wrapper(function: CFunctionIR, metadata: BindingABI) -> str:
     public_params = _public_params(function)
     signature_names = ["module"]
     if function.receiver is not None:
@@ -383,7 +392,9 @@ def _render_wrapper(function: HostFunctionMetadata, metadata: HostBindingMetadat
     destroy_line = _destroy_out_result(function, metadata)
     return_body = []
     if function.returns.kind != "void":
-        return_body.append("    const result = " + _return_expr(function, metadata) + ";")
+        return_body.append(
+            "    const result = " + _return_expr(function, metadata) + ";"
+        )
         if destroy_line:
             return_body.append(destroy_line)
         return_body.append("    return result;")
@@ -419,7 +430,7 @@ def _render_wrapper(function: HostFunctionMetadata, metadata: HostBindingMetadat
     )
 
 
-def _render_module_factory(metadata: HostBindingMetadata) -> str:
+def _render_module_factory(metadata: BindingABI) -> str:
     members: list[str] = []
     module_members: dict[str, list[str]] = {}
     for handle in sorted(metadata.handles.values(), key=lambda item: item.c_type):
@@ -436,7 +447,9 @@ def _render_module_factory(metadata: HostBindingMetadata) -> str:
         module_member = _public_module_member(function, metadata.c_prefix)
         if module_member is not None:
             module_name, member_name = module_member
-            module_members.setdefault(module_name, []).append(f"            {member_name}: {call},")
+            module_members.setdefault(module_name, []).append(
+                f"            {member_name}: {call},"
+            )
         else:
             members.append(f"        {name}: {call},")
     if "ifcopenshell_parse_open" in metadata.functions:
@@ -580,9 +593,7 @@ def _render_module_factory(metadata: HostBindingMetadata) -> str:
         "        }\n"
         "    }\n"
         "\n"
-        "    return Object.freeze({\n"
-        + joined
-        + "\n"
+        "    return Object.freeze({\n" + joined + "\n"
         "        loadPlugin,\n"
         "        loadedPlugins: () => Array.from(loadedPlugins),\n"
         "    });\n"
@@ -590,7 +601,7 @@ def _render_module_factory(metadata: HostBindingMetadata) -> str:
     )
 
 
-def _render_value_type_metadata(metadata: HostBindingMetadata) -> str:
+def _render_value_type_metadata(metadata: BindingABI) -> str:
     payload = {
         value.c_type: {
             "cType": value.c_type,
@@ -598,16 +609,20 @@ def _render_value_type_metadata(metadata: HostBindingMetadata) -> str:
             "destroyFunction": value.destroy_function,
             "elementType": value.element_type,
             "sequenceDepth": value.sequence_depth,
-            "fields": [{"name": field.name, "cType": field.c_type} for field in value.fields],
+            "fields": [
+                {"name": field.name, "cType": field.c_type} for field in value.fields
+            ],
         }
         for value in sorted(metadata.value_types.values(), key=lambda item: item.c_type)
     }
     return json.dumps(payload, indent=4, sort_keys=True)
 
 
-def _render_option_type_metadata(metadata: HostBindingMetadata) -> str:
+def _render_option_type_metadata(metadata: BindingABI) -> str:
     payload = {}
-    for option in sorted(metadata.option_structs.values(), key=lambda item: item.c_type):
+    for option in sorted(
+        metadata.option_structs.values(), key=lambda item: item.c_type
+    ):
         fields = []
         option_fields = []
         for field in option.fields:
@@ -632,10 +647,15 @@ def _render_option_type_metadata(metadata: HostBindingMetadata) -> str:
     return json.dumps(payload, indent=4, sort_keys=True)
 
 
-def render_js_glue(metadata: HostBindingMetadata, handles: dict[str, HostStructMetadata] | None = None) -> str:
+def render_js_glue(
+    metadata: BindingABI, handles: dict[str, CTypeIR] | None = None
+) -> str:
     del handles
     wrappers = "\n\n".join(
-        _render_wrapper(function, metadata) for function in sorted(metadata.functions.values(), key=lambda item: item.c_name)
+        _render_wrapper(function, metadata)
+        for function in sorted(
+            metadata.functions.values(), key=lambda item: item.c_name
+        )
     )
     classes = _render_handle_classes(metadata)
     handle_switch = _render_handle_wrapper_switch(metadata)

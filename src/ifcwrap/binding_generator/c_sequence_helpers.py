@@ -2,15 +2,22 @@
 
 from __future__ import annotations
 
-import re
-
-try:
-    from .authored_spec import HandleSpec, TypeSpec
-    from .binding_ir import BindingIR
-except ImportError:  # pragma: no cover - script execution fallback
-    from authored_spec import HandleSpec, TypeSpec
-    from binding_ir import BindingIR
-
+from .abi_ir import (
+    _SEQUENCE_LEAF_C_TYPE,
+    _handle_destroy_name,
+    _handle_list_c_type,
+    _handle_list_destroy_name,
+    _handle_list_list_c_type,
+    _handle_list_list_destroy_name,
+    _sequence_c_type,
+    _sequence_destroy_name,
+    _sequence_kind_parts,
+    _sequence_prev_kind,
+    _snake_name,
+    _type_spec_sequence_kind,
+)
+from .authored_spec import HandleSpec, TypeSpec
+from .binding_ir import BindingIR
 
 _SEQUENCE_LEAF_CPP_TYPE: dict[str, str] = {
     "string": "std::string",
@@ -22,38 +29,9 @@ _SEQUENCE_LEAF_CPP_TYPE: dict[str, str] = {
     "double": "double",
 }
 
-_SEQUENCE_LEAF_C_TYPE: dict[str, str] = {
-    "string": "ifcopenshell_string_t",
-    "bool": "bool",
-    "int32": "int32_t",
-    "int64": "int64_t",
-    "uint8": "uint8_t",
-    "uint32": "uint32_t",
-    "double": "double",
-}
-
-
-def _sequence_kind_parts(kind: str) -> tuple[str, int] | None:
-    match = re.fullmatch(r"([a-z0-9]+)((?:_list)+)", kind)
-    if match is None:
-        return None
-    leaf = match.group(1)
-    depth = match.group(2).count("_list")
-    if leaf not in _SEQUENCE_LEAF_CPP_TYPE:
-        return None
-    return leaf, depth
-
 
 def _is_sequence_kind(kind: str) -> bool:
     return _sequence_kind_parts(kind) is not None
-
-
-def _sequence_c_type(kind: str) -> str:
-    return f"ifcopenshell_{kind}_t"
-
-
-def _sequence_destroy_name(kind: str) -> str:
-    return f"ifcopenshell_{kind}_destroy"
 
 
 def _sequence_make_name(kind: str) -> str:
@@ -62,13 +40,6 @@ def _sequence_make_name(kind: str) -> str:
 
 def _sequence_to_cpp_name(kind: str) -> str:
     return f"to_cpp_{kind}"
-
-
-def _sequence_prev_kind(kind: str) -> str:
-    leaf, depth = _sequence_kind_parts(kind) or ("", 0)
-    if depth <= 1:
-        raise ValueError(f"{kind} has no previous sequence kind")
-    return f"{leaf}{'_list' * (depth - 1)}"
 
 
 def _sequence_cpp_type(kind: str) -> str:
@@ -107,7 +78,10 @@ def _render_common_type_decls(sequence_kinds: tuple[str, ...]) -> str:
 }} {_sequence_c_type(kind)};"""
         )
     decls = ["void ifcopenshell_string_destroy(ifcopenshell_string_t* value);"]
-    decls.extend(f"void {_sequence_destroy_name(kind)}({_sequence_c_type(kind)}* value);" for kind in sequence_kinds)
+    decls.extend(
+        f"void {_sequence_destroy_name(kind)}({_sequence_c_type(kind)}* value);"
+        for kind in sequence_kinds
+    )
     return "\n\n".join((*typedefs, *decls))
 
 
@@ -213,7 +187,7 @@ def _render_sequence_to_cpp_impl(kind: str) -> str:
                 "    result.reserve(value->size);\n"
                 "    for (size_t i = 0; i < value->size; ++i) {\n"
                 "        const auto& item = value->items[i];\n"
-                '        if (item.data == nullptr && item.size > 0) {\n'
+                "        if (item.data == nullptr && item.size > 0) {\n"
                 '            throw std::runtime_error("string_list contains a null string buffer");\n'
                 "        }\n"
                 '        result.emplace_back(item.data == nullptr ? "" : item.data, item.size);\n'
@@ -258,18 +232,6 @@ def _render_sequence_helpers(sequence_kinds: tuple[str, ...]) -> str:
         blocks.append(_render_sequence_make_impl(kind))
         blocks.append(_render_sequence_to_cpp_impl(kind))
     return "\n\n".join(blocks)
-
-
-def _snake_name(c_type: str) -> str:
-    return c_type.removeprefix("ifcopenshell_").removesuffix("_t")
-
-
-def _handle_list_c_type(handle: HandleSpec) -> str:
-    return f"{handle.c_type.removesuffix('_t')}_list_t"
-
-
-def _handle_list_list_c_type(handle: HandleSpec) -> str:
-    return f"{handle.c_type.removesuffix('_t')}_list_list_t"
 
 
 def _handle_list_helper_name(handle: HandleSpec) -> str:
@@ -482,23 +444,23 @@ static std::vector<std::vector<const {handle.cpp_type}*>> to_cpp_{snake}(const {
 
 def _render_handle_list_destroy_decl(handle: HandleSpec) -> str:
     list_c_type = _handle_list_c_type(handle)
-    return f"void ifcopenshell_{_snake_name(list_c_type)}_destroy({list_c_type}* value);"
+    return f"void {_handle_list_destroy_name(handle)}({list_c_type}* value);"
 
 
 def _render_handle_list_list_destroy_decl(handle: HandleSpec) -> str:
     list_list_c_type = _handle_list_list_c_type(handle)
-    return f"void ifcopenshell_{_snake_name(list_list_c_type)}_destroy({list_list_c_type}* value);"
+    return f"void {_handle_list_list_destroy_name(handle)}({list_list_c_type}* value);"
 
 
 def _render_handle_list_destroy_impl(handle: HandleSpec) -> str:
     list_c_type = _handle_list_c_type(handle)
-    return f"""void ifcopenshell_{_snake_name(list_c_type)}_destroy({list_c_type}* value) {{
+    return f"""void {_handle_list_destroy_name(handle)}({list_c_type}* value) {{
     if (value == nullptr || value->items == nullptr) {{
         return;
     }}
     for (size_t i = 0; i < value->size; ++i) {{
         if (value->items[i] != nullptr) {{
-            ifcopenshell_{_snake_name(handle.c_type)}_destroy(value->items[i]);
+            {_handle_destroy_name(handle)}(value->items[i]);
         }}
     }}
     delete[] value->items;
@@ -509,12 +471,12 @@ def _render_handle_list_destroy_impl(handle: HandleSpec) -> str:
 
 def _render_handle_list_list_destroy_impl(handle: HandleSpec) -> str:
     list_list_c_type = _handle_list_list_c_type(handle)
-    return f"""void ifcopenshell_{_snake_name(list_list_c_type)}_destroy({list_list_c_type}* value) {{
+    return f"""void {_handle_list_list_destroy_name(handle)}({list_list_c_type}* value) {{
     if (value == nullptr || value->items == nullptr) {{
         return;
     }}
     for (size_t i = 0; i < value->size; ++i) {{
-        ifcopenshell_{_snake_name(_handle_list_c_type(handle))}_destroy(&value->items[i]);
+        {_handle_list_destroy_name(handle)}(&value->items[i]);
     }}
     delete[] value->items;
     value->items = nullptr;
@@ -523,71 +485,24 @@ def _render_handle_list_list_destroy_impl(handle: HandleSpec) -> str:
 
 
 def _used_handle_list_handles(spec: BindingIR) -> tuple[HandleSpec, ...]:
-    opaque_handle_c_types = {handle.c_type for handle in spec.handles.values()}
-    seen: set[str] = set()
-    handles: list[HandleSpec] = []
-
-    def add_type(type_spec: TypeSpec) -> None:
-        if type_spec.kind != "handle" or type_spec.sequence_depth == 0:
-            return
-        handle_name = type_spec.handle
-        if _handle_list_c_type(spec.handles[handle_name]) in opaque_handle_c_types:
-            return
-        if handle_name in seen:
-            return
-        seen.add(handle_name)
-        handles.append(spec.handles[handle_name])
-
-    for call in (*spec.functions, *spec.methods):
-        add_type(call.returns)
-        for param in call.params:
-            add_type(param.type)
-    for struct in spec.result_structs.values():
-        for field in struct.fields:
-            add_type(field.type)
-    for struct in spec.option_structs.values():
-        for field in struct.fields:
-            add_type(field.type)
-    return tuple(handles)
-
-
-def _type_spec_sequence_kind(type_spec: TypeSpec) -> str | None:
-    if type_spec.sequence_depth <= 0:
-        return None
-    if type_spec.kind == "handle":
-        return None
-    return f"{type_spec.kind}{'_list' * type_spec.sequence_depth}"
+    if spec.abi is None:
+        raise ValueError("C emission requires a finalized BindingIR")
+    handles_by_c_type = {handle.c_type: handle for handle in spec.handles.values()}
+    return tuple(
+        handles_by_c_type[value.element_type]
+        for value in spec.abi.value_types.values()
+        if value.kind == "handle_sequence"
+        and value.sequence_depth == 1
+        and value.element_type in handles_by_c_type
+    )
 
 
 def _used_scalar_sequence_kinds(spec: BindingIR) -> tuple[str, ...]:
-    seen: set[str] = set()
-    ordered: list[str] = []
-
-    def add_type(type_spec: TypeSpec) -> None:
-        kind = _type_spec_sequence_kind(type_spec)
-        if kind is None:
-            return
-        parts = _sequence_kind_parts(kind)
-        if parts is None:
-            return
-        leaf, depth = parts
-        for current_depth in range(1, depth + 1):
-            current_kind = f"{leaf}{'_list' * current_depth}"
-            if current_kind not in seen:
-                seen.add(current_kind)
-                ordered.append(current_kind)
-
-    for call in (*spec.functions, *spec.methods):
-        add_type(call.returns)
-        for param in call.params:
-            add_type(param.type)
-    for struct in spec.result_structs.values():
-        for field in struct.fields:
-            add_type(field.type)
-    for struct in spec.option_structs.values():
-        for field in struct.fields:
-            add_type(field.type)
-    return tuple(ordered)
+    if spec.abi is None:
+        raise ValueError("C emission requires a finalized BindingIR")
+    return tuple(
+        name for name, value in spec.abi.value_types.items() if value.kind == "sequence"
+    )
 
 
 def _sequence_param_type(kind: str) -> str:

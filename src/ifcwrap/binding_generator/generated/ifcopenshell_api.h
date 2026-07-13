@@ -1947,11 +1947,11 @@ bool ifcopenshell_attribute_edit_attributes(ifcopenshell_file_t* file, const ifc
 /** Assign a planar connection geometry to a space boundary relationship. */
 bool ifcopenshell_boundary_assign_connection_geometry(ifcopenshell_file_t* file, ifcopenshell_instance_t* rel_space_boundary, const ifcopenshell_boundary_assign_connection_geometry_options_t* options);
 /**
- * Shallow-copy a space boundary relationship, deep-copying its connection geometry.
+ * Create a copy of a space boundary relationship and its connection geometry.
  *
  * @param file File that receives the copied entities.
  * @param boundary IfcRelSpaceBoundary entity to copy.
- * @return Newly created copy, or a null handle on failure.
+ * @return Newly created boundary relationship, or no result if the copy cannot be created.
  */
 bool ifcopenshell_boundary_copy_boundary(ifcopenshell_file_t* file, ifcopenshell_instance_t* boundary, ifcopenshell_instance_t** out_result);
 /**
@@ -1959,7 +1959,7 @@ bool ifcopenshell_boundary_copy_boundary(ifcopenshell_file_t* file, ifcopenshell
  *
  * Updates the relating space, related building element, and boundary
  * classification. ParentBoundary and CorrespondingBoundary are set only when
- * the schema supports them (IFC4+); nullopt clears those attributes.
+ * the schema supports them (IFC4+). When omitted, those attributes are cleared.
  *
  * @param entity IfcRelSpaceBoundary entity to modify.
  * @param options Attribute values to set.
@@ -1968,8 +1968,8 @@ bool ifcopenshell_boundary_edit_attributes(ifcopenshell_instance_t* entity, cons
 /**
  * Remove a space boundary relationship and its connection geometry.
  *
- * Removes the ConnectionGeometry attribute first (deep-removing its entities),
- * then removes the boundary entity itself with history cleanup.
+ * Removes the connection geometry and then removes the boundary relationship.
+ * Unreferenced entities belonging to the connection geometry are removed.
  *
  * @param file IFC file containing the boundary.
  * @param boundary IfcRelSpaceBoundary entity to remove.
@@ -1985,7 +1985,7 @@ bool ifcopenshell_classification_add_classification(ifcopenshell_file_t* file, c
 /**
  * Add a classification reference and associate it with products.
  *
- * If an existing reference handle is provided, it is used directly.
+ * If an existing classification reference is provided, it is used directly.
  * Otherwise, a new IfcClassificationReference is created using the
  * optional identification, name, and classification fields.
  */
@@ -2028,14 +2028,14 @@ bool ifcopenshell_classification_remove_reference(ifcopenshell_file_t* file, con
  *
  * @param file File that receives the new entities.
  * @param options Survey point geometry and placement options.
- * @return The newly created IfcAnnotation, or a null handle on error.
+ * @return The newly created IfcAnnotation, or no result if creation fails.
  */
 bool ifcopenshell_cogo_add_survey_point(ifcopenshell_file_t* file, const ifcopenshell_cogo_add_survey_point_options_t* options, ifcopenshell_instance_t** out_result);
 /**
- * Replace the survey point geometry inside an existing annotation.
+ * Replace the survey point geometry of an existing annotation.
  *
- * Replaces the first item in the annotation's IfcShapeRepresentation with
- * the given IfcPoint. The annotation must already have a shape representation.
+ * Replaces the annotation's existing survey point with the given IfcPoint.
+ * The annotation must already have a shape representation.
  *
  * @param annotation IfcAnnotation whose survey point to replace.
  * @param survey_point IfcPoint to assign as the new geometry.
@@ -2044,9 +2044,9 @@ bool ifcopenshell_cogo_assign_survey_point(ifcopenshell_instance_t* annotation, 
 /**
  * Update the coordinates of the survey point inside an existing annotation.
  *
- * Reads the first item from the annotation's IfcShapeRepresentation and
- * overwrites its Coordinates attribute. If the point currently has two
- * coordinates, only x and y are written; otherwise all three are used.
+ * Updates the coordinates of the annotation's survey point. If the existing
+ * point is two-dimensional, only x and y are written; otherwise all three
+ * coordinates are used.
  *
  * @param annotation IfcAnnotation containing the survey point.
  * @param x Easting or X coordinate in model units.
@@ -2062,7 +2062,7 @@ bool ifcopenshell_cogo_edit_survey_point(ifcopenshell_instance_t* annotation, do
  *
  * @param instance The entity instance.
  * @param attribute_name The name of the derived attribute.
- * @return The computed value, or empty on error. Free with value_free.
+ * @return The computed value, or no result if it cannot be computed. Release it with value_free.
  */
 bool ifcopenshell_compute_derived(ifcopenshell_instance_t* instance, const char* attribute_name, ifcopenshell_value_t** out_result);
 /**
@@ -2135,10 +2135,10 @@ bool ifcopenshell_context_edit_context(ifcopenshell_file_t* file, ifcopenshell_i
 /**
  * Remove a geometric representation context and its subcontexts recursively.
  *
- * For subcontexts, references from IfcCoordinateOperation entities are
- * deep-removed; other referencing entities are redirected to the parent
- * context. For top-level contexts, representations using the context are
- * unassigned from their elements and removed.
+ * For subcontexts, IfcCoordinateOperation references are removed and other
+ * referencing entities are redirected to the parent context. For top-level
+ * contexts, representations using the context are unassigned from their
+ * elements and removed.
  */
 bool ifcopenshell_context_remove_context(ifcopenshell_file_t* file, ifcopenshell_instance_t* context);
 /**
@@ -2190,10 +2190,10 @@ bool ifcopenshell_cost_add_cost_item_quantity(ifcopenshell_file_t* file, ifcopen
  * on IFC4+.
  *
  * @param file File that receives the new entity.
- * @param name Schedule name. May be null or empty for no name.
+ * @param name Schedule name. When omitted or empty, no name is assigned.
  * @param predefined_type IFC predefined type enum value (e.g. "BUDGET", "COSTPLAN").
  * @param update_date ISO 8601 date-time string for the UpdateDate attribute.
- * @param owner_history Owner history for the new entity. May be std::nullopt.
+ * @param owner_history Owner history for the new entity. When omitted, no owner history is assigned.
  * @return Newly created IfcCostSchedule.
  */
 bool ifcopenshell_cost_add_cost_schedule(ifcopenshell_file_t* file, const char* name, const char* predefined_type, const char* update_date, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t** out_result);
@@ -2215,14 +2215,14 @@ bool ifcopenshell_cost_add_cost_value(ifcopenshell_file_t* file, ifcopenshell_in
  * For each product, creates an IfcRelAssignsToControl linking the cost item
  * to the product. If prop_name is provided, matching quantities from the
  * products' IfcElementQuantity property sets are collected into the cost
- * item's CostQuantities. If prop_name is null/empty and the cost item has a
+ * item's CostQuantities. If prop_name is omitted or empty and the cost item has a
  * single IfcQuantityCount, its value is updated to the count of assigned
  * non-resource objects. IfcSpatialElement products are skipped.
  *
  * @param file File containing the cost item and products.
  * @param cost_item IfcCostItem to assign quantities to.
  * @param products Products whose quantities to collect.
- * @param prop_name Quantity property name to match. May be null.
+ * @param prop_name Quantity property name to match. When omitted, no named quantity is collected.
  * @param options Ownership options for the assignment relationship.
  */
 bool ifcopenshell_cost_assign_cost_item_quantity(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_item, const ifcopenshell_instance_list_t* products, const char* prop_name, const ifcopenshell_cost_assign_cost_item_quantity_options_t* options);
@@ -2251,22 +2251,22 @@ bool ifcopenshell_cost_assign_cost_value(ifcopenshell_file_t* file, ifcopenshell
  */
 bool ifcopenshell_cost_calculate_cost_item_resource_value(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_item);
 /**
- * Deep-copy an IfcCostItem and its nested children.
+ * Copy an IfcCostItem and its nested children.
  *
- * Creates a deep copy of the cost item including nested child items,
- * property sets, and IfcRelDefinesByProperties relationships. Returns
- * the list of all newly created cost items (root first, then descendants).
+ * Creates independent copies of the cost item, nested child items, property
+ * sets, and IfcRelDefinesByProperties relationships. The returned list contains
+ * the new root item followed by its descendants.
  *
  * @param file File that receives the copied entities.
  * @param cost_item IfcCostItem to copy.
- * @return Vector of newly created IfcCostItem entities (owned, caller must not free).
+ * @return List of newly created IfcCostItem entities, with the root first.
  */
 bool ifcopenshell_cost_copy_cost_item(ifcopenshell_file_t* file, ifcopenshell_instance_t* cost_item, ifcopenshell_parse_instance_list_t** out_result);
 /**
- * Deep-copy cost values from one cost item to another.
+ * Copy the cost values from one cost item to another.
  *
- * Removes existing CostValues from the destination, then deep-copies each
- * IfcCostValue (and its component tree) from the source.
+ * Removes existing CostValues from the destination, then creates independent
+ * copies of the source values and their component trees.
  *
  * @param file File containing both cost items.
  * @param source IfcCostItem to copy values from.
@@ -2274,10 +2274,10 @@ bool ifcopenshell_cost_copy_cost_item(ifcopenshell_file_t* file, ifcopenshell_in
  */
 bool ifcopenshell_cost_copy_cost_item_values(ifcopenshell_file_t* file, ifcopenshell_instance_t* source, ifcopenshell_instance_t* destination);
 /**
- * Deep-copy an IfcCostSchedule and all its controlled cost items.
+ * Copy an IfcCostSchedule and all its controlled cost items.
  *
- * Shallow-copies the schedule, then deep-copies each controlled IfcCostItem
- * and assigns the copies to the new schedule via IfcRelAssignsToControl.
+ * Creates an independent schedule and independent copies of each controlled
+ * IfcCostItem, then assigns the copies to the new schedule.
  *
  * @param file File that receives the copied entities.
  * @param cost_schedule IfcCostSchedule to copy.
@@ -2453,11 +2453,11 @@ bool ifcopenshell_document_unassign_document(ifcopenshell_file_t* file, const if
  * already exists for the same axis tag. For non-grid products, if an
  * existing IfcRelAssignsToProduct already references the relating product,
  * the related object is appended to its RelatedObjects aggregate instead
- * of creating a new relationship. Returns a null handle on exact duplicate.
+ * of creating a new relationship. Returns no result for an exact duplicate.
  *
  * @param file IFC file to modify.
  * @param options Assignment parameters.
- * @return IfcRelAssignsToProduct relationship, or null handle on duplicate or failure.
+ * @return IfcRelAssignsToProduct relationship, or no result for a duplicate or failure.
  */
 bool ifcopenshell_drawing_assign_product(ifcopenshell_file_t* file, const ifcopenshell_drawing_assign_product_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -2475,18 +2475,17 @@ bool ifcopenshell_drawing_unassign_product(ifcopenshell_file_t* file, const ifco
 /**
  * Return the aggregate parent of an element.
  *
- * Follows the Decomposes inverse to find the RelatingObject via
- * IfcRelAggregates. In IFC2X3, returns empty if the relationship
- * is IfcRelNests rather than IfcRelAggregates.
+ * Returns the RelatingObject of an IfcRelAggregates relationship. In IFC2X3,
+ * returns no result when the decomposition uses IfcRelNests instead.
  *
  * @param instance The element to query.
- * @return The aggregate parent, or empty if not aggregated.
+ * @return The aggregate parent, or no result if the element is not aggregated.
  */
 bool ifcopenshell_element_get_aggregate(ifcopenshell_instance_t* instance, ifcopenshell_instance_t** out_result);
 /**
  * Return elements directly contained in a spatial element.
  *
- * Follows ContainsElements to find RelatedElements.
+ * Returns RelatedElements from the spatial element's containment relationships.
  *
  * @param element The spatial element (e.g. IfcBuildingStorey).
  * @return List of contained elements.
@@ -2495,20 +2494,20 @@ bool ifcopenshell_element_get_contained(ifcopenshell_instance_t* element, ifcope
 /**
  * Return the spatial container of an element.
  *
- * By default walks up the spatial hierarchy to find an indirect container
- * (e.g. a building storey for an element inside an aggregate). When
+ * By default considers indirect spatial containers (e.g. a building storey
+ * for an element inside an aggregate). When
  * direct_only is true, only a direct ContainedInStructure relationship
  * is considered.
  *
  * @param instance The element to query.
  * @param options Container lookup options.
- * @return The spatial container, or empty if not contained.
+ * @return The spatial container, or no result if the element is not contained.
  */
 bool ifcopenshell_element_get_container(ifcopenshell_instance_t* instance, const ifcopenshell_element_get_container_options_t* options, ifcopenshell_instance_t** out_result);
 /**
  * Return the controls assigned to an element.
  *
- * Follows HasAssignments to find IfcRelAssignsToControl relationships.
+ * Returns controls from the element's IfcRelAssignsToControl relationships.
  *
  * @param element The element to query.
  * @return List of IfcControl entities.
@@ -2517,10 +2516,9 @@ bool ifcopenshell_element_get_controls(ifcopenshell_instance_t* element, ifcopen
 /**
  * Return the full spatial decomposition of an element.
  *
- * Collects all subelements by traversing ContainsElements,
- * IsDecomposedBy, HasOpenings, HasFillings, and IsNestedBy
- * relationships. When is_recursive is true (default), the traversal
- * is breadth-first through the entire hierarchy.
+ * Returns subelements related through containment, aggregation, openings,
+ * fillings, and nesting. When is_recursive is true (default), the result
+ * includes the full hierarchy in breadth-first order.
  *
  * @param element The root element.
  * @param options Decomposition traversal options.
@@ -2530,8 +2528,8 @@ bool ifcopenshell_element_get_decomposition(ifcopenshell_instance_t* element, co
 /**
  * Return elements assigned to a presentation layer.
  *
- * Follows AssignedItems on the IfcPresentationLayerAssignment to find
- * all elements whose geometry is on the layer.
+ * Returns elements whose geometry appears in AssignedItems of the
+ * IfcPresentationLayerAssignment.
  *
  * @param layer The IfcPresentationLayerAssignment entity.
  * @return List of elements on the layer.
@@ -2540,9 +2538,9 @@ bool ifcopenshell_element_get_elements_by_layer(ifcopenshell_instance_t* layer, 
 /**
  * Return elements that use a material, directly or via a material set.
  *
- * Traverses inverse relationships from the material to find all elements
- * associated through IfcRelAssociatesMaterial, as well as elements using
- * the material as part of a layer, profile, constituent, or material list.
+ * Returns elements associated through IfcRelAssociatesMaterial, including
+ * elements using the material as part of a layer, profile, constituent, or
+ * material list.
  *
  * @param material The IfcMaterial or material set entity.
  * @return List of elements using the material.
@@ -2551,8 +2549,8 @@ bool ifcopenshell_element_get_elements_by_material(ifcopenshell_instance_t* mate
 /**
  * Return elements that use a profile definition in their representation.
  *
- * Traverses from the IfcProfileDef through representation items to find
- * all elements whose geometry references the profile.
+ * Returns elements whose geometry references the profile through their
+ * representation items.
  *
  * @param profile The IfcProfileDef entity.
  * @return List of elements using the profile.
@@ -2561,8 +2559,8 @@ bool ifcopenshell_element_get_elements_by_profile(ifcopenshell_instance_t* profi
 /**
  * Return elements that use a geometric representation.
  *
- * Follows OfProductRepresentation and RepresentationMap to find all
- * IfcProduct and IfcTypeProduct entities sharing the representation.
+ * Returns IfcProduct and IfcTypeProduct entities that reference the
+ * representation through their product representation or representation map.
  *
  * @param representation The IfcShapeRepresentation entity.
  * @return List of elements using the representation.
@@ -2571,8 +2569,8 @@ bool ifcopenshell_element_get_elements_by_representation(ifcopenshell_instance_t
 /**
  * Return elements whose geometric representation uses a style.
  *
- * Traverses from IfcSurfaceStyle through IfcStyledItem and
- * IfcShapeRepresentation to find all elements using the style.
+ * Returns elements whose shape representations contain the style through
+ * IfcStyledItem relationships.
  *
  * @param style The IfcPresentationStyle entity.
  * @return List of elements using the style.
@@ -2581,17 +2579,17 @@ bool ifcopenshell_element_get_elements_by_style(ifcopenshell_instance_t* style, 
 /**
  * Return the opening element that an element fills.
  *
- * Follows FillsVoids to find the RelatingOpeningElement.
- * Typically applies to windows and doors.
+ * Returns the RelatingOpeningElement from the element's filling relationship.
+ * This typically applies to windows and doors.
  *
  * @param element The filling element (e.g. IfcWindow).
- * @return The IfcOpeningElement being filled, or empty if none.
+ * @return The IfcOpeningElement being filled, or no result if none is associated.
  */
 bool ifcopenshell_element_get_filled_void(ifcopenshell_instance_t* element, ifcopenshell_instance_t** out_result);
 /**
  * Return the groups that an element is assigned to.
  *
- * Follows HasAssignments to find IfcRelAssignsToGroup relationships.
+ * Returns groups from the element's IfcRelAssignsToGroup relationships.
  *
  * @param element The element to query.
  * @return List of IfcGroup entities.
@@ -2600,8 +2598,8 @@ bool ifcopenshell_element_get_groups(ifcopenshell_instance_t* element, ifcopensh
 /**
  * Return the presentation layers that an element is part of.
  *
- * Traverses the element's representation to find IfcPresentationLayerAssignment
- * entities.
+ * Returns IfcPresentationLayerAssignment entities referenced by the
+ * element's representation.
  *
  * @param element The element to query.
  * @return List of IfcPresentationLayerAssignment entities.
@@ -2618,24 +2616,24 @@ bool ifcopenshell_element_get_layers(ifcopenshell_instance_t* element, ifcopensh
  *
  * @param instance The element to query.
  * @param options Material lookup options.
- * @return The material entity, or empty if none is associated.
+ * @return The material entity, or no result if none is associated.
  */
 bool ifcopenshell_element_get_material(ifcopenshell_instance_t* instance, const ifcopenshell_element_get_material_options_t* options, ifcopenshell_instance_t** out_result);
 /**
  * Return the nest parent of an element.
  *
- * Follows the Nests inverse (IFC4+) or Decomposes/IfcRelNests (IFC2X3)
- * to find the RelatingObject.
+ * Returns the RelatingObject of the applicable IfcRelNests relationship for
+ * the schema.
  *
  * @param instance The element to query.
- * @return The nesting parent, or empty if not nested.
+ * @return The nesting parent, or no result if the element is not nested.
  */
 bool ifcopenshell_element_get_nest(ifcopenshell_instance_t* instance, ifcopenshell_instance_t** out_result);
 /**
  * Return opening elements associated with an element.
  *
- * Follows HasOpenings to find RelatedOpeningElement. Also traverses
- * aggregate parents to collect inherited openings.
+ * Returns RelatedOpeningElement values from the element's opening
+ * relationships. Also includes openings inherited from aggregate parents.
  *
  * @param element The building element (e.g. IfcWall).
  * @return List of IfcOpeningElement entities.
@@ -2648,13 +2646,13 @@ bool ifcopenshell_element_get_openings(ifcopenshell_instance_t* element, ifcopen
  * relationships in that order, returning the first parent found.
  *
  * @param instance The element to query.
- * @return The parent element, or empty if at the top of the hierarchy.
+ * @return The parent element, or no result if the element is at the top of the hierarchy.
  */
 bool ifcopenshell_element_get_parent(ifcopenshell_instance_t* instance, ifcopenshell_instance_t** out_result);
 /**
  * Return the direct aggregation parts of an element.
  *
- * Follows IsDecomposedBy to find RelatedObjects via IfcRelAggregates.
+ * Returns RelatedObjects from the element's IfcRelAggregates relationships.
  *
  * @param element The element to query.
  * @return List of aggregated parts.
@@ -2663,9 +2661,9 @@ bool ifcopenshell_element_get_parts(ifcopenshell_instance_t* element, ifcopenshe
 /**
  * Return property set and quantity identifiers of an element.
  *
- * Collects IfcPropertySet, IfcElementQuantity, and related property
- * definition entities. For IfcTypeObject, reads HasPropertySets.
- * For other objects, reads IsDefinedBy/IfcRelDefinesByProperties.
+ * Returns IfcPropertySet, IfcElementQuantity, and related property definition
+ * entities. For IfcTypeObject, uses HasPropertySets; for other objects, uses
+ * the applicable property-definition relationship.
  * When should_inherit is true (default), also includes property sets
  * from the element's type.
  *
@@ -2677,9 +2675,9 @@ bool ifcopenshell_element_get_pset_ids(ifcopenshell_instance_t* element, const i
 /**
  * Return elements that have an external reference assigned.
  *
- * For IfcExternalReference subtypes, follows ExternalReferenceForResources.
- * For classification/document/library references, follows the appropriate
- * inverse attribute.
+ * For IfcExternalReference subtypes, returns resources from the applicable
+ * external-reference relationship. For classification, document, and library
+ * references, returns elements from the corresponding IFC relationship.
  *
  * @param reference The IfcExternalReference or IfcExternalInformation entity.
  * @return List of elements using the reference.
@@ -2688,8 +2686,9 @@ bool ifcopenshell_element_get_referenced_elements(ifcopenshell_instance_t* refer
 /**
  * Return spatial elements that reference an element.
  *
- * Follows ReferencedInStructures to find RelatingStructure.
- * Useful for multi-storey elements or elements spanning multiple spaces.
+ * Returns RelatingStructure values from the element's spatial reference
+ * relationships. This includes multi-storey elements and elements spanning
+ * multiple spaces.
  *
  * @param element The element to query.
  * @return List of referenced IfcSpatialElement entities.
@@ -2698,8 +2697,8 @@ bool ifcopenshell_element_get_referenced_structures(ifcopenshell_instance_t* ele
 /**
  * Return the shape aspects of an element.
  *
- * For an IfcProduct, reads HasShapeAspects from the Representation.
- * For an IfcTypeProduct, reads from RepresentationMaps. When
+ * For an IfcProduct, returns shape aspects from its representation. For an
+ * IfcTypeProduct, returns shape aspects from its representation maps. When
  * should_inherit is true (default), also includes shape aspects from
  * the element's type.
  *
@@ -2711,7 +2710,7 @@ bool ifcopenshell_element_get_shape_aspects(ifcopenshell_instance_t* element, co
 /**
  * Return elements referenced by a spatial structure.
  *
- * Follows ReferencesElements to find RelatedElements.
+ * Returns RelatedElements from the spatial element's reference relationships.
  *
  * @param structure The spatial element (e.g. IfcBuildingStorey).
  * @return List of referenced elements.
@@ -2731,17 +2730,17 @@ bool ifcopenshell_element_get_styles(ifcopenshell_instance_t* element, ifcopensh
  * Return the type element associated with an element occurrence.
  *
  * For an IfcTypeObject, returns the element itself. For an IfcObject,
- * follows IsTypedBy (IFC4+) or IsDefinedBy/IfcRelDefinesByType (IFC2X3).
+ * returns the type assigned through the schema's type relationship.
  *
  * @param instance The element to query.
- * @return The related type element, or empty if none.
+ * @return The related type element, or no result if none is assigned.
  */
 bool ifcopenshell_element_get_type(ifcopenshell_instance_t* instance, ifcopenshell_instance_t** out_result);
 /**
  * Return all occurrences of a type element.
  *
- * Follows Types (IFC4+) or ObjectTypeOf (IFC2X3) to find the
- * RelatedObjects.
+ * Returns the RelatedObjects of the applicable type relationship for the
+ * schema.
  *
  * @param type_element The type element (e.g. IfcWallType).
  * @return List of element occurrences of that type.
@@ -2750,10 +2749,10 @@ bool ifcopenshell_element_get_types(ifcopenshell_instance_t* type_element, ifcop
 /**
  * Return the building element voided by an opening.
  *
- * Follows VoidsElements to find the RelatingBuildingElement.
+ * Returns the RelatingBuildingElement from the opening relationship.
  *
  * @param element The IfcOpeningElement.
- * @return The building element being voided, or empty if none.
+ * @return The building element being voided, or no result if none is associated.
  */
 bool ifcopenshell_element_get_voided_element(ifcopenshell_instance_t* element, ifcopenshell_instance_t** out_result);
 /**
@@ -2770,9 +2769,9 @@ bool ifcopenshell_element_is_userdefined_type(ifcopenshell_instance_t* element, 
 /**
  * Recursively remove an element and its owned subgraph.
  *
- * Traverses forward through the element's subgraph. Each subelement is
- * deleted only if it has no inverses outside the subgraph. Protected
- * elements and elements with external references are preserved.
+ * Removes the element and owned subelements that have no references outside
+ * the removal set. Protected elements and externally referenced elements are
+ * preserved.
  *
  * @param element The root element to remove.
  */
@@ -2780,30 +2779,28 @@ bool ifcopenshell_element_remove_deep(ifcopenshell_instance_t* element);
 /**
  * Replace all references to an element with another element.
  *
- * Traverses all inverse relationships of old_element and substitutes
- * references to old_element with new_element.
+ * Replaces references to old_element in all inverse relationships with
+ * references to new_element.
  *
  * @param old_element The element to be replaced.
  * @param new_element The replacement element.
  */
 bool ifcopenshell_element_replace_element(ifcopenshell_instance_t* old_element, ifcopenshell_instance_t* new_element);
 /**
- * Recursively remove an entity and its owned subgraph.
+ * Remove an entity and the unshared entities it owns, recursively.
  *
- * Equivalent to entity_remove_deep_with_options with empty options.
+ * Equivalent to entity_remove_deep_with_options with the default options.
  * The start element must have no inverses outside the subgraph.
  *
  * @param instance The root entity to remove.
  */
 bool ifcopenshell_entity_remove_deep(ifcopenshell_instance_t* instance);
 /**
- * Recursively remove an entity and its owned subgraph with fine-grained control.
+ * Remove an entity and its owned subgraph with fine-grained control.
  *
- * Traverses forward through the entity's subgraph. Each subelement is
- * deleted only if it has fewer than two inverse references, or all of
- * its inverses are within the subgraph. The also_consider list extends
- * the subgraph for inverse checking. The do_not_delete list protects
- * specific entities from deletion.
+ * An owned entity is removed only when it has no references from outside the
+ * removal set. The also_consider list extends that set for this decision, and
+ * the do_not_delete list protects specific entities from deletion.
  *
  * @param instance The root entity to remove.
  * @param options Additional control over the removal process.
@@ -2836,10 +2833,10 @@ bool ifcopenshell_feature_add_filling(ifcopenshell_file_t* file, ifcopenshell_in
  * For IfcFeatureElementAddition subclasses, removes the IfcRelProjectsElement.
  * For IfcSurfaceFeature in IFC4, unassigns from the aggregate parent. In
  * other schemas, no feature-specific relationship is removed before the
- * element itself is removed via root_remove_product.
- * IfcOpeningElement fillings are also removed. root_remove_product cleans
- * up nested elements, property sets, representations, and other inverse
- * relationships.
+ * element itself is removed.
+ * IfcOpeningElement fillings are also removed. Nested elements, property sets,
+ * representations, and other inverse relationships are cleaned up as part of
+ * removing the feature.
  */
 bool ifcopenshell_feature_remove_feature(ifcopenshell_file_t* file, const ifcopenshell_feature_remove_feature_options_t* options);
 /**
@@ -2857,22 +2854,21 @@ bool ifcopenshell_feature_remove_filling(ifcopenshell_file_t* file, ifcopenshell
  * @param file IFC file that receives the representation.
  * @param context IfcGeometricRepresentationContext.
  * @param axis Ordered XY or XYZ points defining the axis curve.
- * @return IfcShapeRepresentation entity, or a null handle on failure.
+ * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 bool ifcopenshell_geometry_add_axis_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, const ifcopenshell_double_list_list_t* axis, ifcopenshell_instance_t** out_result);
 /**
  * Add boolean operands to a solid representation item.
  *
- * Creates IfcBooleanResult (or IfcBooleanClippingResult for DIFFERENCE with
- * half-space solids) chaining each second_item to the first. The first item
- * walks up any existing boolean chain to find the top-level operand. Returns
- * the created boolean result entities in order.
+ * Creates IfcBooleanResult entities (or IfcBooleanClippingResult for
+ * DIFFERENCE with half-space solids) by combining the first item with each
+ * additional operand. The returned entities are listed in creation order.
  *
  * @param file IFC file that receives the boolean entities.
  * @param first_item Base solid operand.
  * @param second_items Additional operands to apply.
  * @param operator_type Boolean operator: "DIFFERENCE", "UNION", or "INTERSECTION".
- * @return Created IfcBooleanResult entities, or empty on failure.
+ * @return Created boolean result entities, or an empty list if creation fails.
  */
 bool ifcopenshell_geometry_add_boolean(ifcopenshell_file_t* file, ifcopenshell_instance_t* first_item, const ifcopenshell_instance_list_t* second_items, const char* operator_type, ifcopenshell_parse_instance_list_t** out_result);
 /**
@@ -2880,7 +2876,7 @@ bool ifcopenshell_geometry_add_boolean(ifcopenshell_file_t* file, ifcopenshell_i
  *
  * @param file IFC file that receives the representation.
  * @param options Door dimensions, operation type, and lining/panel properties.
- * @return IfcShapeRepresentation entity, or a null handle on failure.
+ * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 bool ifcopenshell_geometry_add_door_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_door_representation_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -2889,7 +2885,7 @@ bool ifcopenshell_geometry_add_door_representation(ifcopenshell_file_t* file, co
  * @param file IFC file that receives the representation.
  * @param context IfcGeometricRepresentationContext.
  * @param curves IfcCurve entities to include in the footprint.
- * @return IfcShapeRepresentation entity, or a null handle on failure.
+ * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 bool ifcopenshell_geometry_add_footprint_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, const ifcopenshell_instance_list_t* curves, ifcopenshell_instance_t** out_result);
 /**
@@ -2901,7 +2897,7 @@ bool ifcopenshell_geometry_add_footprint_representation(ifcopenshell_file_t* fil
  * @param file IFC file that receives the representation.
  * @param context IfcGeometricRepresentationContext.
  * @param options Vertices, faces, and optional faceted BRep override.
- * @return IfcShapeRepresentation entity, or a null handle on failure.
+ * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 bool ifcopenshell_geometry_add_mesh_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, const ifcopenshell_geometry_add_mesh_representation_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -2909,7 +2905,7 @@ bool ifcopenshell_geometry_add_mesh_representation(ifcopenshell_file_t* file, if
  *
  * @param file IFC file that receives the representation.
  * @param options Railing path, support spacing, dimensions, and terminal type.
- * @return IfcShapeRepresentation entity, or a null handle on failure.
+ * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 bool ifcopenshell_geometry_add_railing_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_railing_representation_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -2920,7 +2916,7 @@ bool ifcopenshell_geometry_add_railing_representation(ifcopenshell_file_t* file,
  *
  * @param file IFC file that receives the aspect.
  * @param options Aspect name, items, representation, and owning product.
- * @return IfcShapeAspect entity, or a null handle on failure.
+ * @return IfcShapeAspect entity, or no result if creation fails.
  */
 bool ifcopenshell_geometry_add_shape_aspect(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_shape_aspect_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -2928,7 +2924,7 @@ bool ifcopenshell_geometry_add_shape_aspect(ifcopenshell_file_t* file, const ifc
  *
  * @param file IFC file that receives the representation.
  * @param options Slab dimensions, direction, clippings, and boundary polyline.
- * @return IfcShapeRepresentation entity, or a null handle on failure.
+ * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 bool ifcopenshell_geometry_add_slab_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_slab_representation_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -2936,7 +2932,7 @@ bool ifcopenshell_geometry_add_slab_representation(ifcopenshell_file_t* file, co
  *
  * @param file IFC file that receives the representation.
  * @param options Context, topology item, and optional identifier/type.
- * @return IfcTopologyRepresentation entity, or a null handle on failure.
+ * @return IfcTopologyRepresentation entity, or no result if creation fails.
  */
 bool ifcopenshell_geometry_add_topology_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_topology_representation_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -2944,7 +2940,7 @@ bool ifcopenshell_geometry_add_topology_representation(ifcopenshell_file_t* file
  *
  * @param file IFC file that receives the representation.
  * @param options Wall dimensions, direction, clippings, and booleans.
- * @return IfcShapeRepresentation entity, or a null handle on failure.
+ * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 bool ifcopenshell_geometry_add_wall_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_wall_representation_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -2952,7 +2948,7 @@ bool ifcopenshell_geometry_add_wall_representation(ifcopenshell_file_t* file, co
  *
  * @param file IFC file that receives the representation.
  * @param options Window dimensions, panel schema, lining/panel properties.
- * @return IfcShapeRepresentation entity, or a null handle on failure.
+ * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 bool ifcopenshell_geometry_add_window_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_window_representation_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -2967,7 +2963,7 @@ bool ifcopenshell_geometry_add_window_representation(ifcopenshell_file_t* file, 
  * @param file IFC file to modify.
  * @param product IfcProduct or IfcTypeProduct entity.
  * @param representation IfcShapeRepresentation entity.
- * @return The product (possibly re-routed to its type), or null handle on failure.
+ * @return The product receiving the representation, or no result if assignment fails.
  */
 bool ifcopenshell_geometry_assign_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* product, ifcopenshell_instance_t* representation, ifcopenshell_instance_t** out_result);
 /**
@@ -2979,7 +2975,7 @@ bool ifcopenshell_geometry_assign_representation(ifcopenshell_file_t* file, ifco
  *
  * @param file IFC file that receives the clipping.
  * @param options Solid, plane point, normal, and optional element/history.
- * @return IfcBooleanClippingResult entity, or a null handle on failure.
+ * @return IfcBooleanClippingResult entity, or no result if creation fails.
  */
 bool ifcopenshell_geometry_clip_solid(ifcopenshell_file_t* file, const ifcopenshell_geometry_clip_solid_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -2990,7 +2986,7 @@ bool ifcopenshell_geometry_clip_solid(ifcopenshell_file_t* file, const ifcopensh
  *
  * @param file IFC file that receives the clipping.
  * @param options Solid, plane, boundary polygon, and optional element/history.
- * @return IfcBooleanClippingResult entity, or a null handle on failure.
+ * @return IfcBooleanClippingResult entity, or no result if creation fails.
  */
 bool ifcopenshell_geometry_clip_solid_bounded(ifcopenshell_file_t* file, const ifcopenshell_geometry_clip_solid_bounded_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -3001,7 +2997,7 @@ bool ifcopenshell_geometry_clip_solid_bounded(ifcopenshell_file_t* file, const i
  *
  * @param file IFC file that receives the relationship.
  * @param options Relating element, related element, and optional description/history.
- * @return IfcRelConnectsElements entity, or null handle on failure.
+ * @return IfcRelConnectsElements entity, or no result if creation fails.
  */
 bool ifcopenshell_geometry_connect_element(ifcopenshell_file_t* file, const ifcopenshell_geometry_connect_element_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -3013,7 +3009,7 @@ bool ifcopenshell_geometry_connect_element(ifcopenshell_file_t* file, const ifco
  *
  * @param file IFC file that receives the relationship.
  * @param options Elements, connection types, and optional description/geometry/history.
- * @return IfcRelConnectsPathElements entity, or null handle on failure.
+ * @return IfcRelConnectsPathElements entity, or no result if creation fails.
  */
 bool ifcopenshell_geometry_connect_path(ifcopenshell_file_t* file, const ifcopenshell_geometry_connect_path_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -3025,11 +3021,11 @@ bool ifcopenshell_geometry_connect_path(ifcopenshell_file_t* file, const ifcopen
  *
  * @param file IFC file that receives the connection.
  * @param options Walls, connection mode, and optional owner history.
- * @return IfcRelConnectsPathElements entity, or a null handle on failure.
+ * @return IfcRelConnectsPathElements entity, or no result if creation fails.
  */
 bool ifcopenshell_geometry_connect_wall(ifcopenshell_file_t* file, const ifcopenshell_geometry_connect_wall_options_t* options, ifcopenshell_instance_t** out_result);
 /**
- * Deep-copy a representation from one product to another.
+ * Copy a representation from one product to another.
  *
  * Copies the "Body" (or specified context) representation from the source
  * product, replaces any existing representation of the same context on the
@@ -3050,7 +3046,7 @@ bool ifcopenshell_geometry_copy_representation(ifcopenshell_file_t* file, const 
  *
  * @param file IFC file that receives the wall geometry.
  * @param options Element, context, endpoints, elevation, height, thickness, and unit flag.
- * @return IfcShapeRepresentation entity, or a null handle on failure.
+ * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 bool ifcopenshell_geometry_create_2pt_wall(ifcopenshell_file_t* file, const ifcopenshell_geometry_create2_pt_wall_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -3086,7 +3082,7 @@ bool ifcopenshell_geometry_disconnect_path(ifcopenshell_file_t* file, const ifco
  *
  * @param file IFC file to modify.
  * @param options Product, matrix, SI flag, and child transform flag.
- * @return Newly created IfcLocalPlacement, or null handle on failure.
+ * @return Newly created IfcLocalPlacement, or no result if creation fails.
  */
 bool ifcopenshell_geometry_edit_object_placement(ifcopenshell_file_t* file, const ifcopenshell_geometry_edit_object_placement_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -3105,39 +3101,39 @@ bool ifcopenshell_geometry_map_representation(ifcopenshell_file_t* file, ifcopen
  * Return the axis-aligned 2D bounding box extents of a profile.
  *
  * Computes the X and Y extents from the profile's parameterized attributes
- * (e.g. OverallWidth/OverallDepth for I-shaped profiles). Falls back to
- * geometry evaluation via OpenCASCADE when available. Returns an empty vector
- * on failure.
+ * (e.g. OverallWidth/OverallDepth for I-shaped profiles). When those values
+ * are unavailable, geometry evaluation is used when available. Returns an
+ * empty list if the extents cannot be determined.
  *
  * @param file IFC file containing the profile.
  * @param profile IfcProfileDef entity.
- * @return Two-element vector {x_extent, y_extent} in model units, or empty.
+ * @return Two-element list {x_extent, y_extent} in model units, or an empty list.
  */
 bool ifcopenshell_geometry_profile_extents(ifcopenshell_file_t* file, ifcopenshell_instance_t* profile, ifcopenshell_double_list_t* out_result);
 /**
  * Regenerate a wall's body and axis representations from its material layers.
  *
- * Walks connected walls to compute join geometry, rebuilds the profile from
- * layer axes, and replaces the existing body and axis representations.
+ * Rebuilds the wall's body and axis representations using its material layers
+ * and connected-wall geometry.
  *
  * @param file IFC file containing the wall.
  * @param options Wall entity, length, height, and optional angle.
- * @return New IfcShapeRepresentation for the body, or a null handle on failure.
+ * @return New IfcShapeRepresentation for the body, or no result if regeneration fails.
  */
 bool ifcopenshell_geometry_regenerate_wall_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_regenerate_wall_representation_options_t* options, ifcopenshell_instance_t** out_result);
 /**
  * Remove boolean operands from a solid representation.
  *
- * Walks the IfcBooleanResult chain for the given item, replaces references
- * to the item with its FirstOperand in parent entities, and moves the
- * SecondOperand into the owning representation's Items.
+ * Removes boolean operations involving the given item, restores the primary
+ * operand in its parent references, and exposes the other operands in the
+ * owning representation.
  *
  * @param file IFC file to modify.
  * @param item Solid operand whose boolean chain to remove.
  */
 bool ifcopenshell_geometry_remove_boolean(ifcopenshell_file_t* file, ifcopenshell_instance_t* item);
 /**
- * Remove a representation and deep-delete its unreferenced sub-entities.
+ * Remove a representation and its unreferenced sub-entities.
  *
  * Cleans up styled items, presentation layer assignments, textures, and
  * colours. Geometric representation contexts are never deleted. Named
@@ -3152,7 +3148,7 @@ bool ifcopenshell_geometry_remove_representation(ifcopenshell_file_t* file, ifco
  * Unassign a representation from a product or type product.
  *
  * For IfcProduct, removes the representation from the
- * IfcProductDefinitionShape (and cleans up the shape if empty). For
+ * IfcProductDefinitionShape and removes an empty shape definition. For
  * IfcTypeProduct, removes the matching IfcRepresentationMap and unmaps
  * occurrences. Shape aspects referencing the representation are also removed.
  *
@@ -3203,14 +3199,13 @@ bool ifcopenshell_georeference_edit_georeferencing(ifcopenshell_file_t* file, co
 /**
  * Set or remove the true north direction on all geometric representation contexts.
  *
- * When true_north is std::nullopt, any existing TrueNorth reference is removed
- * from every IfcGeometricRepresentationContext and the orphaned IfcDirection is
- * deleted if unreferenced. When present, the first two elements of the vector
- * are used as (X, Y) direction ratios; missing entries default to 0.0. The
- * vector is not normalized.
+ * When omitted, any existing TrueNorth reference is removed from every
+ * IfcGeometricRepresentationContext. When provided, the first two values are
+ * used as (X, Y) direction ratios; missing values default to 0.0. The
+ * direction is not normalized.
  *
  * @param file File whose contexts to update.
- * @param options True north direction vector or std::nullopt to remove.
+ * @param options True north direction ratios, or omission to remove true north.
  */
 bool ifcopenshell_georeference_edit_true_north(ifcopenshell_file_t* file, const ifcopenshell_georeference_edit_true_north_options_t* options);
 /**
@@ -3241,8 +3236,8 @@ bool ifcopenshell_georeference_remove_georeferencing(ifcopenshell_file_t* file);
  *
  * Points are given in world coordinates; when is_si is true they are divided
  * by the file's LENGTHUNIT scale. The points are transformed into the grid's
- * local coordinate system using the grid's ObjectPlacement. If the axis
- * already has an AxisCurve, it is deep-removed after replacement.
+ * local coordinate system using the grid's ObjectPlacement. An existing
+ * AxisCurve is removed after replacement.
  *
  * @param file IFC file that receives the polyline.
  * @param p1 First endpoint (at least three coordinates; X and Y are used).
@@ -3259,14 +3254,13 @@ bool ifcopenshell_grid_create_axis_curve(ifcopenshell_file_t* file, const ifcope
  * @param axis_tag Label for the axis (e.g. "A", "1").
  * @param same_sense True if the axis direction agrees with the curve direction.
  * @param uvw_axes Name of the grid aggregate to append to: "UAxes", "VAxes", or "WAxes".
- * @return Newly created IfcGridAxis, or a null handle on failure.
+ * @return Newly created IfcGridAxis, or no result if creation fails.
  */
 bool ifcopenshell_grid_create_grid_axis(ifcopenshell_file_t* file, ifcopenshell_instance_t* grid, const char* axis_tag, bool same_sense, const char* uvw_axes, ifcopenshell_instance_t** out_result);
 /**
  * Remove an IfcGridAxis and its associated AxisCurve.
  *
- * The axis entity is removed from the file and its AxisCurve (if any) is
- * deep-removed.
+ * The axis entity and its associated AxisCurve are removed from the file.
  *
  * @param file IFC file to modify.
  * @param axis IfcGridAxis entity to remove.
@@ -3453,7 +3447,7 @@ bool ifcopenshell_material_remove_layer(ifcopenshell_file_t* file, ifcopenshell_
 /** Remove an item from an IfcMaterialList by index. */
 bool ifcopenshell_material_remove_list_item(ifcopenshell_file_t* file, ifcopenshell_instance_t* material_list, const ifcopenshell_material_remove_list_item_options_t* options);
 /**
- * Remove an IfcMaterial and its container constituents/layers/profiles.
+ * Remove an IfcMaterial and its associated constituents, layers, and profiles.
  *
  * Deletes the material entity. Constituent, layer, or profile entities
  * that reference it are also removed. Associated IfcRelAssociatesMaterial,
@@ -3607,11 +3601,11 @@ bool ifcopenshell_owner_assign_actor(ifcopenshell_file_t* file, const ifcopenshe
  *
  * Sets CreationDate and LastModifiedDate to the current time, State to
  * READWRITE, and ChangeAction to ADDED. Both user and application are
- * required; if either is omitted, returns a null handle.
+ * required; if either is omitted, no owner history is created.
  *
  * @param file File that receives the new entity.
  * @param options User and application for the owner history.
- * @return Newly created IfcOwnerHistory, or a null handle on error.
+ * @return Newly created IfcOwnerHistory, or no result if creation fails.
  */
 bool ifcopenshell_owner_create_owner_history(ifcopenshell_file_t* file, const ifcopenshell_owner_create_owner_history_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -3704,14 +3698,14 @@ bool ifcopenshell_owner_unassign_actor(ifcopenshell_file_t* file, const ifcopens
  *
  * @param file File containing the element.
  * @param options Element, user, and application.
- * @return The updated or newly created IfcOwnerHistory, or a null handle if the element is not an IfcRoot.
+ * @return The updated or newly created IfcOwnerHistory, or no result if the element is not an IfcRoot.
  */
 bool ifcopenshell_owner_update_owner_history(ifcopenshell_file_t* file, const ifcopenshell_owner_update_owner_history_options_t* options, ifcopenshell_instance_t** out_result);
 /**
  * Extract a 4x4 row-major matrix from an IfcAxis2Placement entity.
  *
  * Supports IfcAxis2Placement2D, IfcAxis2Placement3D, and IfcAxis1Placement.
- * Returns an identity matrix if the instance is null or unsupported.
+ * Returns an identity matrix if no instance is provided or the instance is unsupported.
  *
  * @param instance IfcAxis2Placement entity.
  * @return 16-element row-major 4x4 matrix.
@@ -3720,8 +3714,8 @@ bool ifcopenshell_placement_get_axis2_placement(ifcopenshell_instance_t* instanc
 /**
  * Extract a 4x4 row-major matrix from an IfcCartesianTransformationOperator3D.
  *
- * Handles uniform and non-uniform scaling. Returns an identity matrix if the
- * instance is null or not a cartesian transformation operator.
+ * Handles uniform and non-uniform scaling. Returns an identity matrix if no
+ * instance is provided or the instance is not a cartesian transformation operator.
  *
  * @param instance IfcCartesianTransformationOperator3D entity.
  * @return 16-element row-major 4x4 matrix.
@@ -3730,10 +3724,10 @@ bool ifcopenshell_placement_get_cartesian_xform_3d(ifcopenshell_instance_t* inst
 /**
  * Compute the cumulative 4x4 row-major world matrix of an IfcLocalPlacement.
  *
- * Walks the PlacementRelTo chain to compute the full transformation.
- * Returns an identity matrix if the instance is nullopt.
+ * Combines the placement with its parent placements to compute the full
+ * transformation. Returns an identity matrix when the placement is omitted.
  *
- * @param instance IfcLocalPlacement entity, or nullopt for identity.
+ * @param instance IfcLocalPlacement entity. When omitted, returns the identity matrix.
  * @return 16-element row-major 4x4 matrix.
  */
 bool ifcopenshell_placement_get_local_placement(ifcopenshell_instance_t* instance, ifcopenshell_double_list_t* out_result);
@@ -3741,7 +3735,8 @@ bool ifcopenshell_placement_get_local_placement(ifcopenshell_instance_t* instanc
  * Compute the combined 4x4 row-major matrix for an IfcMappedItem.
  *
  * Multiplies the MappingTarget transformation by the MappingOrigin placement.
- * Returns an identity matrix if the instance is null or not an IfcMappedItem.
+ * Returns an identity matrix if no instance is provided or the instance is
+ * not an IfcMappedItem.
  *
  * @param instance IfcMappedItem entity.
  * @return 16-element row-major 4x4 matrix.
@@ -3751,8 +3746,8 @@ bool ifcopenshell_placement_get_mappeditem_xform(ifcopenshell_instance_t* instan
  * Return the elevation of a building storey in model units.
  *
  * Uses the Z-translation of the storey's ObjectPlacement when available,
- * falling back to the Elevation attribute. Returns 0.0 if the instance is
- * null or has no placement.
+ * falling back to the Elevation attribute. Returns 0.0 if no instance is
+ * provided or the instance has no placement.
  *
  * @param instance IfcBuildingStorey entity.
  * @return Elevation in model units.
@@ -3808,26 +3803,26 @@ bool ifcopenshell_profile_add_arbitrary_profile_with_voids(ifcopenshell_file_t* 
  */
 bool ifcopenshell_profile_add_parameterized_profile(ifcopenshell_file_t* file, const char* ifc_class, const char* profile_type, ifcopenshell_instance_t** out_result);
 /**
- * Deep-copy a profile and its associated IfcProfileProperties.
+ * Copy a profile and its associated IfcProfileProperties.
  *
  * @param file IFC file that receives the copied profile.
  * @param profile IfcProfileDef entity to copy.
- * @return Newly created deep copy of the profile.
+ * @return Newly created independent copy of the profile.
  */
 bool ifcopenshell_profile_copy_profile(ifcopenshell_file_t* file, ifcopenshell_instance_t* profile, ifcopenshell_instance_t** out_result);
 /**
  * Edit attributes of an existing profile definition.
  *
  * @param profile IfcProfileDef entity to modify.
- * @param attributes Property container with attribute name-value pairs.
+ * @param attributes Attribute name-to-value mapping.
  */
 bool ifcopenshell_profile_edit_profile(ifcopenshell_instance_t* profile, void* attributes);
 /**
  * Remove a profile definition and its directly referenced sub-entities.
  *
  * Removes associated IfcProfileProperties first, then removes the profile
- * entity and deep-removes all entities reachable through its direct
- * attributes (e.g. curves, placement entities).
+ * entity and removes unreferenced entities belonging to its direct geometry,
+ * such as curves and placements.
  *
  * @param file IFC file to modify.
  * @param profile IfcProfileDef entity to remove.
@@ -3882,7 +3877,7 @@ bool ifcopenshell_pset_assign_pset(ifcopenshell_file_t* file, const ifcopenshell
  *
  * Updates existing properties in-place (when not shared with other psets),
  * adds new properties for keys not yet present, and optionally removes
- * null-valued properties. Uses the pset template for type inference when
+ * blank-valued properties. Uses the pset template for type inference when
  * available. Returns true on success, false on error.
  */
 bool ifcopenshell_pset_edit_pset(ifcopenshell_file_t* file, const ifcopenshell_pset_edit_pset_options_t* options, bool* out_result);
@@ -3895,9 +3890,9 @@ bool ifcopenshell_pset_edit_pset(ifcopenshell_file_t* file, const ifcopenshell_p
  * false on error.
  */
 bool ifcopenshell_pset_edit_qto(ifcopenshell_file_t* file, const ifcopenshell_pset_edit_qto_options_t* options, bool* out_result);
-/** Free a property builder allocated by pset_props_new. */
+/** Release a property builder allocated by pset_props_new. */
 bool ifcopenshell_pset_props_free(void* props);
-/** Allocate a new property builder. Free with pset_props_free when done. */
+/** Allocate a new property builder. Release it with pset_props_free when done. */
 bool ifcopenshell_pset_props_new(void** out_result);
 /** Set a boolean property value. */
 bool ifcopenshell_pset_props_set_bool(void* props, const char* key, bool value);
@@ -3906,8 +3901,9 @@ bool ifcopenshell_pset_props_set_date(void* props, const char* key, int32_t year
 /** Set a date-time property value (IfcLocalTime / IfcDateTime). */
 bool ifcopenshell_pset_props_set_datetime(void* props, const char* key, int32_t year, int32_t month, int32_t day, int32_t hour, int32_t minute, int32_t second, int32_t microsecond, bool has_timezone, int32_t timezone_offset_minutes);
 /**
- * Set a nested dict property. Ownership of inner is transferred to outer;
- * do not free inner separately. Used for IfcPhysicalComplexQuantity in qtos.
+ * Set a nested mapping property. Ownership of the nested property data is
+ * transferred to the outer data; do not release it separately. Used for
+ * IfcPhysicalComplexQuantity in quantity sets.
  */
 bool ifcopenshell_pset_props_set_dict(void* outer, const char* key, void* inner);
 /** Set a double property value. */
@@ -3917,8 +3913,8 @@ bool ifcopenshell_pset_props_set_double_list(void* props, const char* key, const
 /** Set a duration property value (IfcDuration). */
 bool ifcopenshell_pset_props_set_duration(void* props, const char* key, bool negative, int32_t years, int32_t months, int32_t days, int32_t hours, int32_t minutes, int32_t seconds, int32_t microseconds);
 /**
- * Set a property to an existing entity instance (e.g. a typed value or
- * an IfcProperty). Pass std::nullopt to clear.
+ * Set a property to an existing IFC entity (for example, a typed value or
+ * an IfcProperty). When omitted, the property is cleared.
  */
 bool ifcopenshell_pset_props_set_instance(void* props, const char* key, ifcopenshell_instance_t* value);
 /** Set a list-of-instances property value (creates IfcPropertyListValue). */
@@ -3928,7 +3924,7 @@ bool ifcopenshell_pset_props_set_int(void* props, const char* key, int64_t value
 /** Set a list-of-integers property value (creates IfcPropertyListValue). */
 bool ifcopenshell_pset_props_set_int_list(void* props, const char* key, const ifcopenshell_int64_list_t* values);
 /**
- * Set a property to null (blank). When editing, the property is removed if
+ * Set a property to a blank value. When editing, the property is removed if
  * should_purge is true; otherwise its NominalValue is set to blank.
  */
 bool ifcopenshell_pset_props_set_null(void* props, const char* key);
@@ -3947,8 +3943,8 @@ bool ifcopenshell_pset_props_set_typed_string(void* props, const char* key, cons
 /**
  * Attach a unit to the most recently added property entry.
  *
- * Sets the Unit attribute on the resulting IfcPropertySingleValue. Pass
- * std::nullopt to clear.
+ * Sets the Unit attribute on the resulting IfcPropertySingleValue. When
+ * omitted, the unit is cleared.
  */
 bool ifcopenshell_pset_props_set_unit_for_last(void* props, ifcopenshell_instance_t* unit);
 /**
@@ -3978,19 +3974,19 @@ bool ifcopenshell_pset_template_add_prop_template(ifcopenshell_file_t* file, ifc
  */
 bool ifcopenshell_pset_template_add_pset_template(ifcopenshell_file_t* file, const char* name, const char* template_type, const char* applicable_entity, ifcopenshell_instance_t** out_result);
 /**
- * Create a template handle from custom IFC template files.
+ * Create a property template collection from custom IFC template files.
  *
  * Loads IfcPropertySetTemplate and IfcSimplePropertyTemplate entities from
- * the provided files. The caller owns the returned handle and must free it
- * with pset_template_free.
+ * the provided files. The returned collection remains valid until it is
+ * released with pset_template_free.
  */
 bool ifcopenshell_pset_template_create_from_files(const char* schema_identifier, const ifcopenshell_file_list_t* template_files, ifcopenshell_pset_template_handle_t** out_result);
 /**
  * Return property set templates applicable to an IFC class and predefined type.
  *
  * Filters by pset_only (PSET templates) or qto_only (QTO templates).
- * If neither flag is set, returns both types. Pass nullptr for
- * predefined_type or schema_name to use defaults.
+ * If neither flag is set, returns both types. When predefined_type or
+ * schema_name is omitted, the default is used.
  */
 bool ifcopenshell_pset_template_get_applicable(ifcopenshell_pset_template_handle_t* pqt, const char* ifc_class, const char* predefined_type, bool pset_only, bool qto_only, const char* schema_name, ifcopenshell_parse_instance_list_t** out_result);
 /**
@@ -4004,13 +4000,13 @@ bool ifcopenshell_pset_template_get_applicable_names(ifcopenshell_pset_template_
  * Look up a property set template by name.
  *
  * Returns the IfcPropertySetTemplate entity with the given name, or a
- * null handle if not found.
+ * no result if the template is not found.
  */
 bool ifcopenshell_pset_template_get_by_name(ifcopenshell_pset_template_handle_t* pqt, const char* name, ifcopenshell_instance_t** out_result);
 /**
- * Return a cached template handle for the given schema (e.g. "IFC4", "IFC2X3").
+ * Return the cached property template collection for the given schema (e.g. "IFC4", "IFC2X3").
  *
- * Loads and caches the built-in templates on first call. Returns nullptr
+ * Loads and caches the built-in templates on first call. Returns no result
  * if the schema is unknown or templates are not available.
  */
 bool ifcopenshell_pset_template_get_template(const char* schema_identifier, ifcopenshell_pset_template_handle_t** out_result);
@@ -4026,12 +4022,12 @@ bool ifcopenshell_pset_template_pset_type(ifcopenshell_instance_t* pset_template
 /**
  * Remove a property template from its parent set template.
  *
- * Removes the IfcSimplePropertyTemplate from its parent's
- * HasPropertyTemplates aggregate, then deletes the template entity.
+ * Removes the IfcSimplePropertyTemplate from its parent and deletes the
+ * template entity.
  */
 bool ifcopenshell_pset_template_remove_prop_template(ifcopenshell_file_t* file, ifcopenshell_instance_t* prop_template);
 /**
- * Remove a property set template via deep removal.
+ * Remove a property set template and its child property templates.
  *
  * Deletes the IfcPropertySetTemplate and all its child
  * IfcSimplePropertyTemplate entities.
@@ -4056,22 +4052,21 @@ bool ifcopenshell_pset_unassign_pset(ifcopenshell_file_t* file, const ifcopenshe
 /**
  * Unshare a property set by creating independent copies for specified products.
  *
- * When the selected products are the complete set of products the pset is
- * assigned to, the first product keeps the original and the rest receive
- * copies. When the selection is a subset, every selected product receives a
- * copy and the original remains assigned to the unselected products.
- * Returns the list of newly created pset copies.
+ * When all assigned products are selected, one product retains the original
+ * and the other products receive copies. When only some products are
+ * selected, each selected product receives a copy and the original remains
+ * assigned to the unselected products. Returns the newly created copies.
  */
 bool ifcopenshell_pset_unshare_pset(ifcopenshell_file_t* file, const ifcopenshell_pset_unshare_pset_options_t* options, ifcopenshell_parse_instance_list_t** out_result);
 /**
- * Register a scratch file for a given schema.
+ * Register an IFC file for schema-aware derived-value evaluation.
  *
- * Registers a temporary IFC file for the specified schema name,
- * used internally for schema-aware operations.
+ * The registered file is used when evaluating derived attributes for the
+ * specified schema.
  *
  * @param schema_name The IFC schema identifier (e.g. "IFC4").
  * @param file The IFC file to register.
- * @return True if registration succeeded.
+ * @return True after the file is registered.
  */
 bool ifcopenshell_register_scratch_file(const char* schema_name, ifcopenshell_file_t* file, bool* out_result);
 /**
@@ -4085,7 +4080,7 @@ bool ifcopenshell_register_scratch_file(const char* schema_name, ifcopenshell_fi
  * @param context_type Context type filter (e.g. "Model", "Plan").
  * @param subcontext Context identifier filter (e.g. "Body", "Axis").
  * @param target_view Target view filter (e.g. "MODEL_VIEW", "GRAPH_VIEW").
- * @return The first matching context, or empty if none found.
+ * @return The first matching context, or no result if none is found.
  */
 bool ifcopenshell_representation_get_context(ifcopenshell_file_t* file, const char* context_type, const char* subcontext, const char* target_view, ifcopenshell_instance_t** out_result);
 /**
@@ -4093,7 +4088,8 @@ bool ifcopenshell_representation_get_context(ifcopenshell_file_t* file, const ch
  *
  * Sorts by ContextType (Model > Plan > Annotation), then by
  * ContextIdentifier (Body > Body-FallBack > ...), then by
- * TargetView (MODEL_VIEW > PLAN_VIEW > ...), then by TargetScale.
+ * TargetView (MODEL_VIEW > PLAN_VIEW > ...), then by TargetScale. Ties
+ * preserve the order of contexts in the IFC file.
  *
  * @param file The IFC file to search.
  * @return Ordered list of IfcGeometricRepresentationContext entities.
@@ -4108,27 +4104,27 @@ bool ifcopenshell_representation_get_prioritised_contexts(ifcopenshell_file_t* f
  *
  * @param element The IfcProduct or IfcTypeProduct.
  * @param options Context filtering options.
- * @return The matching IfcShapeRepresentation, or empty if none found.
+ * @return The matching IfcShapeRepresentation, or no result if none is found.
  */
 bool ifcopenshell_representation_get_product_representation(ifcopenshell_instance_t* element, const ifcopenshell_representation_get_product_representation_options_t* options, ifcopenshell_instance_t** out_result);
 /**
- * Resolve a representation by unwrapping single mapped items.
+ * Resolve a representation through single mapped items.
  *
  * If a representation contains a single IfcMappedItem whose
  * MappingSource points to another representation, this function
- * follows the chain and returns the innermost representation.
- * This handles Tekla-style representation indirection.
+ * follows the chain and returns the innermost representation. A representation
+ * that does not meet this condition is returned unchanged.
  *
  * @param representation The IfcShapeRepresentation to resolve.
- * @return The resolved representation, or the original if no unwrapping was needed.
+ * @return The resolved representation, or the original when no mapping is followed.
  */
 bool ifcopenshell_representation_resolve(ifcopenshell_instance_t* representation, ifcopenshell_instance_t** out_result);
 /**
  * Return the base items of a representation, unwrapping mapped items and boolean operands.
  *
- * Recursively follows IfcMappedItem sources and IfcBooleanResult
- * operands to collect leaf-level representation items. Guards against
- * infinite recursion (depth limit of 64, iteration limit of 100000).
+ * Returns leaf-level representation items in traversal order. Within each
+ * representation, later items are returned before earlier items; for boolean
+ * results, the second operand is returned before the first operand.
  *
  * @param representation The IfcShapeRepresentation to resolve.
  * @return List of leaf-level IfcRepresentationItem entities.
@@ -4155,7 +4151,7 @@ bool ifcopenshell_resource_edit_resource_time(ifcopenshell_file_t* file, ifcopen
  * predefined type.
  *
  * Sets GlobalId (for IfcRoot-derived entities). OwnerHistory is assigned only
- * when the owner_history option contains a handle; it is not created
+ * when the owner_history option is provided; it is not created
  * automatically. Schema-specific defaults are applied for spatial elements,
  * element types, and door/window styles. If the predefined type is not a valid
  * enum value, it is stored as USERDEFINED with the value in ObjectType
@@ -4165,11 +4161,12 @@ bool ifcopenshell_root_create_entity(ifcopenshell_file_t* file, const ifcopenshe
 /**
  * Remove a product and all its relationships.
  *
- * Performs a deep removal that cleans up: representations, object placements,
+ * Removes the product and cleans up its related representations, object placements,
  * opening elements, property sets, material assignments, type definitions,
  * space boundaries, nesting relationships, aggregate relationships, spatial
  * containment, element connections, port connections, group memberships,
- * and grid axes. The product entity itself is deleted last.
+ * and grid axes. Related entities are removed only when they are no longer
+ * needed by the remaining model.
  */
 bool ifcopenshell_root_remove_product(ifcopenshell_file_t* file, ifcopenshell_instance_t* product, const ifcopenshell_root_remove_product_options_t* options);
 /**
@@ -4182,10 +4179,10 @@ bool ifcopenshell_root_remove_product(ifcopenshell_file_t* file, ifcopenshell_in
  *
  * If the element is already of the requested class, returns it unchanged.
  *
- * @param file The IFC file. If empty, uses the element's file.
+ * @param file IFC file to modify. When omitted, the element's file is used.
  * @param element The entity to reassign.
  * @param new_class The target IFC class name (e.g. "IfcWall").
- * @return The new entity of the requested class, or empty on failure.
+ * @return The new entity of the requested class, or no result if the operation fails.
  */
 bool ifcopenshell_schema_reassign_class(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, const char* new_class, ifcopenshell_instance_t** out_result);
 /**
@@ -4196,7 +4193,7 @@ bool ifcopenshell_schema_reassign_class(ifcopenshell_file_t* file, ifcopenshell_
  *
  * @param file The IFC file to search.
  * @param query The filter query string.
- * @return List value of matching elements, or empty on error. Free with value_free.
+ * @return List value of matching elements, or no result if the query cannot be evaluated. Release it with value_free.
  */
 bool ifcopenshell_selector_filter_all(ifcopenshell_file_t* file, const char* query, ifcopenshell_value_t** out_result);
 /**
@@ -4208,7 +4205,7 @@ bool ifcopenshell_selector_filter_all(ifcopenshell_file_t* file, const char* que
  * @param file The IFC file context.
  * @param query The filter query string.
  * @param elements The elements to filter.
- * @return List value of matching elements, or empty on error. Free with value_free.
+ * @return List value of matching elements, or no result if the query cannot be evaluated. Release it with value_free.
  */
 bool ifcopenshell_selector_filter_elements(ifcopenshell_file_t* file, const char* query, const ifcopenshell_instance_list_t* elements, ifcopenshell_value_t** out_result);
 /**
@@ -4220,7 +4217,7 @@ bool ifcopenshell_selector_filter_elements(ifcopenshell_file_t* file, const char
  * @param file Optional IFC file context.
  * @param instance The element to format against.
  * @param query The format expression string.
- * @return The formatted result, or empty on error.
+ * @return The formatted result, or no result if evaluation fails.
  */
 bool ifcopenshell_selector_format(ifcopenshell_file_t* file, ifcopenshell_instance_t* instance, const char* query, ifcopenshell_string_t* out_result);
 /**
@@ -4232,36 +4229,36 @@ bool ifcopenshell_selector_format(ifcopenshell_file_t* file, ifcopenshell_instan
  * @param file Optional IFC file context.
  * @param element The element to query.
  * @param query The selector key path (e.g. "Name", "Pset_WallCommon.FireRating").
- * @return The extracted value, or empty on error. Free with value_free.
+ * @return The extracted value, or no result if the query cannot be evaluated. Release it with value_free.
  */
 bool ifcopenshell_selector_get_element_value(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, const char* query, ifcopenshell_value_t** out_result);
 /**
  * Return the number of keys in a parsed key list.
  *
- * @param keys Opaque key list handle from selector_parse_keys.
- * @return Number of keys, or 0 if keys is null.
+ * @param keys Parsed key list from selector_parse_keys.
+ * @return Number of keys, or 0 when no key list is provided.
  */
 bool ifcopenshell_selector_keys_count(void* keys, size_t* out_result);
 /**
- * Free a parsed key list.
+ * Release a parsed key list.
  *
- * @param keys Opaque key list handle from selector_parse_keys.
+ * @param keys Parsed key list from selector_parse_keys.
  */
 bool ifcopenshell_selector_keys_free(void* keys);
 /**
  * Return the text of a key at the given index.
  *
- * @param keys Opaque key list handle.
+ * @param keys Parsed key list.
  * @param index Zero-based key index.
- * @return Key text, or empty string if out of range.
+ * @return Key text, or an empty string if no key list is provided or the index is out of range.
  */
 bool ifcopenshell_selector_keys_get(void* keys, size_t index, ifcopenshell_string_t* out_result);
 /**
  * Check whether a key at the given index is a regular expression.
  *
- * @param keys Opaque key list handle.
+ * @param keys Parsed key list.
  * @param index Zero-based key index.
- * @return True if the key is a regex pattern.
+ * @return True if the key is a regular expression pattern; otherwise false.
  */
 bool ifcopenshell_selector_keys_is_regex(void* keys, size_t index, bool* out_result);
 /**
@@ -4269,71 +4266,74 @@ bool ifcopenshell_selector_keys_is_regex(void* keys, size_t index, bool* out_res
  *
  * @param node The parent selector node.
  * @param index Zero-based child index.
- * @return The child node, or null if out of range.
+ * @return The child node, or no result if no parent is provided or the index is out of range.
  */
 bool ifcopenshell_selector_node_child(void* node, size_t index, void** out_result);
 /**
  * Return the number of child nodes.
  *
  * @param node The selector node.
- * @return Number of children, or 0 if node is null.
+ * @return Number of children, or 0 when no node is provided.
  */
 bool ifcopenshell_selector_node_child_count(void* node, size_t* out_result);
 /**
- * Free a selector AST and all its children.
+ * Release a selector syntax tree and all its descendants.
  *
- * @param root Root node of the AST from selector_parse_filter,
- * selector_parse_get_element, or selector_parse_format.
+ * @param root Root node from selector_parse_filter, selector_parse_get_element,
+ * or selector_parse_format.
  */
 bool ifcopenshell_selector_node_free(void* root);
 /**
  * Return the kind of a selector node.
  *
- * Values below IFCSEL_TOKEN_FIRST (100) are grammar rule nodes;
- * values at or above IFCSEL_TOKEN_FIRST are token nodes.
+ * Values below 100 are grammar-rule nodes; values at or above 100 are token
+ * nodes. When no node is provided, the anonymous-token kind is returned.
  *
  * @param node The selector node.
- * @return Node kind as an ifcsel_node_kind value, or 0 if node is null.
+ * @return Node-kind value, or the anonymous-token kind when no node is provided.
  */
 bool ifcopenshell_selector_node_kind(void* node, int32_t* out_result);
 /**
  * Return the text content of a token node.
  *
- * For token nodes (kind >= IFCSEL_TOKEN_FIRST), returns the matched
- * text. For rule nodes, returns empty.
+ * For token nodes (kind at or above 100), returns the matched text. For
+ * grammar-rule nodes, returns an empty string.
  *
  * @param node The selector node.
- * @return Node text, or empty string if not a token.
+ * @return Node text, or an empty string if no node is provided or the node is not a token.
  */
 bool ifcopenshell_selector_node_text(void* node, ifcopenshell_string_t* out_result);
 /**
- * Parse a filter query into an AST.
+ * Parse a filter query into a selector syntax tree.
  *
  * Parses a filter expression (e.g. "IfcWall, Pset_WallCommon.FireRating=*2h*")
  * into a tree of selector nodes.
  *
  * @param query The filter query string.
- * @return Root node of the AST. Free with selector_node_free.
+ * @return Root node of the syntax tree, or no result if the query is invalid.
+ * Release the tree with selector_node_free.
  */
 bool ifcopenshell_selector_parse_filter(const char* query, void** out_result);
 /**
- * Parse a format query into an AST.
+ * Parse a format query into a selector syntax tree.
  *
  * Parses a format expression (e.g. "Name + ' - ' + GlobalId") into
  * a tree of selector nodes.
  *
  * @param query The format query string.
- * @return Root node of the AST. Free with selector_node_free.
+ * @return Root node of the syntax tree, or no result if the query is invalid.
+ * Release the tree with selector_node_free.
  */
 bool ifcopenshell_selector_parse_format(const char* query, void** out_result);
 /**
- * Parse a get-element query into an AST.
+ * Parse a get-element query into a selector syntax tree.
  *
  * Parses a key path expression (e.g. "IfcWall/Name") into a tree of
  * selector nodes.
  *
  * @param query The get-element query string.
- * @return Root node of the AST. Free with selector_node_free.
+ * @return Root node of the syntax tree, or no result if the query is invalid.
+ * Release the tree with selector_node_free.
  */
 bool ifcopenshell_selector_parse_get_element(const char* query, void** out_result);
 /**
@@ -4343,7 +4343,8 @@ bool ifcopenshell_selector_parse_get_element(const char* query, void** out_resul
  * "IfcWall/Name" yields keys ["IfcWall", "Name"]).
  *
  * @param query The selector query string.
- * @return Opaque key list handle. Free with selector_keys_free.
+ * @return Parsed key list, or no result if the query is invalid. Release it
+ * with selector_keys_free.
  */
 bool ifcopenshell_selector_parse_keys(const char* query, void** out_result);
 /**
@@ -4355,8 +4356,8 @@ bool ifcopenshell_selector_parse_keys(const char* query, void** out_result);
  * @param file The IFC file context.
  * @param element The element to modify.
  * @param query The selector key path identifying the target.
- * @param value The value to set. If empty, unsets the target.
- * @param concat If non-null and non-empty, concatenated with the value as a prefix.
+ * @param value The value to set. When omitted, the target is unset.
+ * @param concat When provided and non-empty, it is prepended to the value.
  */
 bool ifcopenshell_selector_set_element_value(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, const char* query, ifcopenshell_value_t* value, const char* concat);
 /**
@@ -4541,11 +4542,10 @@ bool ifcopenshell_sequence_calculate_task_duration(ifcopenshell_file_t* file, if
  */
 bool ifcopenshell_sequence_cascade_schedule(ifcopenshell_file_t* file, ifcopenshell_instance_t* task);
 /**
- * Deep-copy an IfcWorkSchedule and all its controlled tasks.
+ * Create an independent copy of an IfcWorkSchedule and its controlled tasks.
  *
- * Shallow-copies the schedule, then deep-copies each controlled IfcTask
- * (with its subtasks and relationships) and assigns the copies to the new
- * schedule.
+ * Copies the schedule and each controlled IfcTask, including its subtasks and
+ * relationships, then assigns the copies to the new schedule.
  *
  * @param file File that receives the copied entities.
  * @param work_schedule IfcWorkSchedule to copy.
@@ -4567,16 +4567,17 @@ bool ifcopenshell_sequence_copy_work_schedule(ifcopenshell_file_t* file, ifcopen
  */
 bool ifcopenshell_sequence_create_baseline(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_schedule, const ifcopenshell_sequence_create_baseline_options_t* options);
 /**
- * Deep-copy a task and its subtasks, property sets, and sequence relationships.
+ * Create an independent copy of a task and its subtasks, property sets, and
+ * sequence relationships.
  *
- * Creates duplicates of the task, its nested child tasks, property sets, and
- * IfcRelSequence relationships between duplicated tasks. Returns parallel
- * vectors of original and duplicated tasks in depth-first order.
+ * Creates copies of the task, its nested child tasks, property sets, and
+ * IfcRelSequence relationships between copied tasks. Returns parallel lists
+ * of original and copied tasks in depth-first order.
  *
  * @param file File that receives the duplicated entities.
  * @param task IfcTask to duplicate.
  * @param options Ownership options for duplicated entities.
- * @return Parallel vectors of original and duplicated tasks.
+ * @return Parallel lists of original and copied tasks.
  */
 bool ifcopenshell_sequence_duplicate_task(ifcopenshell_file_t* file, ifcopenshell_instance_t* task, const ifcopenshell_sequence_duplicate_task_options_t* options, ifcopenshell_sequence_duplicate_task_result_t* out_result);
 /**
@@ -4747,7 +4748,7 @@ bool ifcopenshell_sequence_unassign_lag_time(ifcopenshell_file_t* file, ifcopens
  * @param relating_process IfcTask to unassign from.
  * @param related_object Object to unassign.
  * @param options Ownership options.
- * @return The modified relationship, or a null handle if removed.
+ * @return The modified relationship, or no result when it is removed.
  */
 bool ifcopenshell_sequence_unassign_process(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_process, ifcopenshell_instance_t* related_object, const ifcopenshell_sequence_remove_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -4761,7 +4762,7 @@ bool ifcopenshell_sequence_unassign_process(ifcopenshell_file_t* file, ifcopensh
  * @param relating_product IfcProduct to unassign from.
  * @param related_object Object to unassign.
  * @param options Ownership options.
- * @return The modified relationship, or a null handle if removed.
+ * @return The modified relationship, or no result when it is removed.
  */
 bool ifcopenshell_sequence_unassign_product(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_product, ifcopenshell_instance_t* related_object, const ifcopenshell_sequence_remove_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -4831,12 +4832,12 @@ bool ifcopenshell_shape_builder_circle(ifcopenshell_file_t* file, const ifcopens
  */
 bool ifcopenshell_shape_builder_curve_between_two_points(ifcopenshell_file_t* file, const ifcopenshell_double_list_list_t* points, ifcopenshell_instance_t** out_result);
 /**
- * Deep-copy an IFC entity and all entities it references.
+ * Create an independent copy of an IFC entity and the entities it references.
  *
  * New GlobalId attributes are generated for the copied entities.
  *
  * @param file IFC file that receives the copy.
- * @param element Entity to deep-copy.
+ * @param element Entity to copy.
  * @return Root entity of the copied subgraph.
  */
 bool ifcopenshell_shape_builder_deep_copy(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, ifcopenshell_instance_t** out_result);
@@ -4889,7 +4890,7 @@ bool ifcopenshell_shape_builder_faceted_brep(ifcopenshell_file_t* file, const if
  * Read the coordinate list from an IfcPolyline or IfcIndexedPolyCurve.
  *
  * @param polyline IfcPolyline or IfcIndexedPolyCurve entity.
- * @return Ordered XY or XYZ coordinate vectors.
+ * @return Ordered XY or XYZ coordinate sequences.
  */
 bool ifcopenshell_shape_builder_get_polyline_coords(ifcopenshell_instance_t* polyline, ifcopenshell_double_list_list_t* out_result);
 /**
@@ -4920,7 +4921,7 @@ bool ifcopenshell_shape_builder_indexed_polycurve_2d(ifcopenshell_file_t* file, 
  * extensions.
  *
  * @param file IFC file that receives the geometry.
- * @param options Segment, lengths, angle, radius, bend vector, and Z flip.
+ * @param options Segment, lengths, angle, radius, bend direction, and Z flip.
  * @return Bend result with representation and computed parameters.
  */
 bool ifcopenshell_shape_builder_mep_bend_shape(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_mep_bend_shape_options_t* options, ifcopenshell_shape_builder_mep_bend_shape_result_t* out_result);
@@ -4945,12 +4946,12 @@ bool ifcopenshell_shape_builder_mep_transition_length(const ifcopenshell_shape_b
  * Build MEP transition geometry between two duct segments.
  *
  * Generates start/end extrusions and a connecting transition mesh.
- * Returns nullopt when the segments lack material profiles or the
+ * Returns no result when the segments lack material profiles or the
  * transition cannot be computed.
  *
  * @param file IFC file that receives the geometry.
  * @param options Start/end segments, lengths, angle, and profile offset.
- * @return Transition result with representation and dimensions, or nullopt.
+ * @return Transition result with representation and dimensions, or no result.
  */
 bool ifcopenshell_shape_builder_mep_transition_shape(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_mep_transition_shape_options_t* options, ifcopenshell_optional_shape_builder_mep_transition_shape_result_t* out_result);
 /**
@@ -4971,7 +4972,7 @@ bool ifcopenshell_shape_builder_mesh(ifcopenshell_file_t* file, const ifcopenshe
  *
  * @param file IFC file containing the item.
  * @param options Item, axes, point, copy flag, and optional placement matrix.
- * @return The mirrored item (same entity or a deep copy).
+ * @return The mirrored item, either the supplied entity or an independent copy.
  */
 bool ifcopenshell_shape_builder_mirror(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_mirror_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -5033,7 +5034,7 @@ bool ifcopenshell_shape_builder_representation(ifcopenshell_file_t* file, const 
  *
  * @param file IFC file containing the item.
  * @param options Item, angle, pivot, direction, and copy flag.
- * @return The rotated item (same entity or a deep copy).
+ * @return The rotated item, either the supplied entity or an independent copy.
  */
 bool ifcopenshell_shape_builder_rotate(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_rotate_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -5065,15 +5066,15 @@ bool ifcopenshell_shape_builder_sphere(ifcopenshell_file_t* file, const ifcopens
  */
 bool ifcopenshell_shape_builder_swept_disk_solid(ifcopenshell_file_t* file, ifcopenshell_instance_t* path_curve, double radius, ifcopenshell_instance_t** out_result);
 /**
- * Translate a geometry item by a vector.
+ * Translate a geometry item by a direction and distance.
  *
  * Supports IfcIndexedPolyCurve, IfcPolyline, IfcCircle, IfcEllipse,
  * IfcExtrudedAreaSolid, IfcTessellatedFaceSet, IfcShapeRepresentation,
  * and IfcTrimmedCurve.
  *
  * @param file IFC file containing the item.
- * @param options Item, translation vector, and copy flag.
- * @return The translated item (same entity or a deep copy).
+ * @param options Item, translation, and copy flag.
+ * @return The translated item, either the supplied entity or an independent copy.
  */
 bool ifcopenshell_shape_builder_translate(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_translate_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -5156,7 +5157,7 @@ bool ifcopenshell_structural_add_structural_activity(ifcopenshell_file_t* file, 
  * Create an IfcStructuralAnalysisModel with PredefinedType LOADING_3D.
  *
  * @param file File that receives the new entity.
- * @param owner_history Owner history for the new entity. May be std::nullopt.
+ * @param owner_history Owner history for the new entity. When omitted, no owner history is assigned.
  * @return Newly created IfcStructuralAnalysisModel.
  */
 bool ifcopenshell_structural_add_structural_analysis_model(ifcopenshell_file_t* file, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t** out_result);
@@ -5194,7 +5195,7 @@ bool ifcopenshell_structural_add_structural_load(ifcopenshell_file_t* file, cons
  * @param name Name for the load case.
  * @param action_type ActionType enum value (e.g. "PERMANENT_G", "VARIABLE_Q").
  * @param action_source ActionSource enum value (e.g. "WIND", "IMPOSED").
- * @param owner_history Owner history for the new entity. May be std::nullopt.
+ * @param owner_history Owner history for the new entity. When omitted, no owner history is assigned.
  * @return Newly created IfcStructuralLoadCase.
  */
 bool ifcopenshell_structural_add_structural_load_case(ifcopenshell_file_t* file, const char* name, const char* action_type, const char* action_source, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t** out_result);
@@ -5208,7 +5209,7 @@ bool ifcopenshell_structural_add_structural_load_case(ifcopenshell_file_t* file,
  * @param name Name for the load group.
  * @param action_type ActionType enum value.
  * @param action_source ActionSource enum value.
- * @param owner_history Owner history for the new entity. May be std::nullopt.
+ * @param owner_history Owner history for the new entity. When omitted, no owner history is assigned.
  * @return Newly created IfcStructuralLoadGroup.
  */
 bool ifcopenshell_structural_add_structural_load_group(ifcopenshell_file_t* file, const char* name, const char* action_type, const char* action_source, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t** out_result);
@@ -5221,7 +5222,7 @@ bool ifcopenshell_structural_add_structural_load_group(ifcopenshell_file_t* file
  * @param file File containing both entities.
  * @param relating_structural_member IfcStructuralMember to connect.
  * @param related_structural_connection IfcStructuralConnection to connect to.
- * @param owner_history Owner history for the new relationship. May be std::nullopt.
+ * @param owner_history Owner history for the new relationship. When omitted, no owner history is assigned.
  * @return The IfcRelConnectsStructuralMember relationship.
  */
 bool ifcopenshell_structural_add_structural_member_connection(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_structural_member, ifcopenshell_instance_t* related_structural_connection, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t** out_result);
@@ -5235,7 +5236,7 @@ bool ifcopenshell_structural_add_structural_member_connection(ifcopenshell_file_
  * @param file File containing both entities.
  * @param relating_product IfcProduct that the structural item references.
  * @param related_object Structural item to assign.
- * @param owner_history Owner history for new relationships. May be std::nullopt.
+ * @param owner_history Owner history for new relationships. When omitted, no owner history is assigned.
  * @return The IfcRelAssignsToProduct relationship.
  */
 bool ifcopenshell_structural_assign_product(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_product, ifcopenshell_instance_t* related_object, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t** out_result);
@@ -5258,16 +5259,16 @@ bool ifcopenshell_structural_assign_structural_analysis_model(ifcopenshell_file_
  * @param file File containing both entities.
  * @param structural_analysis_model IfcStructuralAnalysisModel to assign.
  * @param building IfcBuilding to assign to.
- * @param owner_history Owner history for the new relationship. May be std::nullopt.
+ * @param owner_history Owner history for the new relationship. When omitted, no owner history is assigned.
  * @return The IfcRelServicesBuildings relationship.
  */
 bool ifcopenshell_structural_assign_to_building(ifcopenshell_file_t* file, ifcopenshell_instance_t* structural_analysis_model, ifcopenshell_instance_t* building, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t** out_result);
 /**
  * Edit attributes of an IfcBoundaryCondition subclass.
  *
- * Each entry in the attributes bag must be a dictionary with "type" and
+ * Each entry in the attributes mapping must contain "type" and
  * "value" sub-entries. The type specifies the IFC typed value class (e.g.
- * "IfcBoolean", "IfcForceMeasure") or "string"/"null" for direct values.
+ * "IfcBoolean", "IfcForceMeasure") or "string"/"blank" for direct values.
  *
  * @param file File containing the boundary condition.
  * @param condition IfcBoundaryCondition entity to edit.
@@ -5283,8 +5284,8 @@ bool ifcopenshell_structural_edit_structural_boundary_condition(ifcopenshell_fil
  *
  * @param file File containing the structural item.
  * @param structural_item Structural item (e.g. IfcStructuralPointConnection).
- * @param axis 3-element direction vector for the Axis attribute.
- * @param ref_direction 3-element direction vector for the RefDirection attribute.
+ * @param axis 3-element direction ratios for the Axis attribute.
+ * @param ref_direction 3-element direction ratios for the RefDirection attribute.
  */
 bool ifcopenshell_structural_edit_structural_connection_cs(ifcopenshell_file_t* file, ifcopenshell_instance_t* structural_item, const ifcopenshell_double_list_t* axis, const ifcopenshell_double_list_t* ref_direction);
 /**
@@ -5296,7 +5297,7 @@ bool ifcopenshell_structural_edit_structural_connection_cs(ifcopenshell_file_t* 
  *
  * @param file File containing the structural item.
  * @param structural_item Structural item with an Axis attribute.
- * @param axis 3-element direction vector.
+ * @param axis 3-element direction ratios.
  */
 bool ifcopenshell_structural_edit_structural_item_axis(ifcopenshell_file_t* file, ifcopenshell_instance_t* structural_item, const ifcopenshell_double_list_t* axis);
 /**
@@ -5373,7 +5374,7 @@ bool ifcopenshell_structural_unassign_structural_analysis_model(ifcopenshell_fil
  * For IfcSurfaceStyle, the Side attribute defaults to "BOTH".
  *
  * @param file IFC file that receives the style.
- * @param name Style name (may be null for unnamed styles).
+ * @param name Style name. When omitted, the style is unnamed.
  * @param ifc_class IFC entity class (e.g. "IfcSurfaceStyle", "IfcFillAreaStyle").
  * @return Newly created style entity.
  */
@@ -5383,12 +5384,12 @@ bool ifcopenshell_style_add_style(ifcopenshell_file_t* file, const char* name, c
  *
  * Creates an IfcStyledItem (and optionally an IfcPresentationStyleAssignment
  * for IFC2X3) linking the item to the given style. If the item already has a
- * styled item, the existing style is replaced. Passing an empty style removes
- * the styled item from the representation item.
+ * styled item, the existing style is replaced. When style is omitted, the
+ * styled item is removed from the representation item.
  *
  * @param file IFC file to modify.
  * @param options Item, style, and IFC2X3 compat flag.
- * @return The IfcStyledItem, or null handle if style was removed.
+ * @return The IfcStyledItem, or no result when the style is removed.
  */
 bool ifcopenshell_style_assign_item_style(ifcopenshell_file_t* file, const ifcopenshell_style_assign_item_style_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -5408,16 +5409,16 @@ bool ifcopenshell_style_assign_material_style(ifcopenshell_file_t* file, ifcopen
 /**
  * Assign styles to the geometric items within a shape representation.
  *
- * Traverses the representation and assigns each style to sequential
- * representation items. When replace_previous_same_type_style is true, styles
- * of the same IFC class are replaced rather than appended.
+ * Assigns the styles to representation items in sequence. When
+ * replace_previous_same_type_style is true, an existing style of the same IFC
+ * class is replaced instead of appended.
  *
  * @param file IFC file to modify.
  * @param shape_representation IfcShapeRepresentation to assign styles to.
  * @param styles Presentation style entities to assign.
  * @param should_use_presentation_style_assignment Wrap styles in IfcPresentationStyleAssignment.
  * @param replace_previous_same_type_style Replace existing styles of the same type.
- * @return Vector of newly created IfcStyledItem entities.
+ * @return List of newly created IfcStyledItem entities.
  */
 bool ifcopenshell_style_assign_representation_styles(ifcopenshell_file_t* file, ifcopenshell_instance_t* shape_representation, const ifcopenshell_instance_list_t* styles, bool should_use_presentation_style_assignment, bool replace_previous_same_type_style, ifcopenshell_parse_instance_list_t** out_result);
 /**
@@ -5428,7 +5429,7 @@ bool ifcopenshell_style_assign_representation_styles(ifcopenshell_file_t* file, 
  *
  * @param file IFC file containing the style.
  * @param style IfcSurfaceStyle entity to modify.
- * @param attributes Property container with attribute name-value pairs.
+ * @param attributes Attribute name-to-value mapping.
  */
 bool ifcopenshell_style_edit_surface_style(ifcopenshell_file_t* file, ifcopenshell_instance_t* style, void* attributes);
 /**
@@ -5452,8 +5453,8 @@ bool ifcopenshell_style_remove_styled_representation(ifcopenshell_file_t* file, 
 /**
  * Remove an IfcSurfaceStyleWithTextures or IfcSurfaceStyleRendering and its nested entities.
  *
- * Deep-removes texture coordinates, textures, and colour entities owned by the
- * surface style.
+ * Removes texture coordinates, textures, and colour entities belonging to the
+ * surface style when they are no longer referenced.
  *
  * @param file IFC file to modify.
  * @param style Surface style sub-entity to remove.
@@ -5462,8 +5463,8 @@ bool ifcopenshell_style_remove_surface_style(ifcopenshell_file_t* file, ifcopens
 /**
  * Remove a style from a material's styled representation.
  *
- * Cleans up empty IfcStyledItem, IfcStyledRepresentation, and
- * IfcMaterialDefinitionRepresentation entities. Also propagates removal to
+ * Removes empty IfcStyledItem, IfcStyledRepresentation, and
+ * IfcMaterialDefinitionRepresentation entities, and propagates the removal to
  * matching shape aspects.
  *
  * @param file IFC file to modify.
@@ -5475,8 +5476,8 @@ bool ifcopenshell_style_unassign_material_style(ifcopenshell_file_t* file, ifcop
 /**
  * Remove styles from the geometric items within a shape representation.
  *
- * Traverses the representation and removes matching styles from IfcStyledItem
- * and IfcPresentationStyleAssignment entities.
+ * Removes matching styles from IfcStyledItem and
+ * IfcPresentationStyleAssignment entities in the representation.
  *
  * @param file IFC file to modify.
  * @param shape_representation IfcShapeRepresentation to unassign styles from.
@@ -5502,7 +5503,7 @@ bool ifcopenshell_system_add_system(ifcopenshell_file_t* file, const ifcopenshel
  * Assign a flow control element to a flow element via IfcRelFlowControlElements.
  *
  * If the flow control is already assigned to a different element, no change
- * is made and an empty handle is returned.
+ * is made and no relationship is returned.
  */
 bool ifcopenshell_system_assign_flow_control(ifcopenshell_file_t* file, const ifcopenshell_system_assign_flow_control_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -5514,11 +5515,11 @@ bool ifcopenshell_system_assign_flow_control(ifcopenshell_file_t* file, const if
  */
 bool ifcopenshell_system_assign_port(ifcopenshell_file_t* file, const ifcopenshell_system_assign_port_options_t* options, ifcopenshell_instance_t** out_result);
 /**
- * Assign products to a system via IfcRelAssignsToGroup (delegated to group_assign_group).
+ * Assign products to a system via IfcRelAssignsToGroup.
  *
  * Validates that each product is compatible with the system type (e.g.
- * only IfcDistributionElement for IfcDistributionSystem). Throws if a
- * product is not assignable.
+ * only IfcDistributionElement for IfcDistributionSystem). The operation fails
+ * if a product is not valid for the system type.
  */
 bool ifcopenshell_system_assign_system(ifcopenshell_file_t* file, const ifcopenshell_system_assign_system_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -5559,7 +5560,7 @@ bool ifcopenshell_system_unassign_flow_control(ifcopenshell_file_t* file, const 
  * if it was the only nested object).
  */
 bool ifcopenshell_system_unassign_port(ifcopenshell_file_t* file, const ifcopenshell_system_unassign_port_options_t* options);
-/** Remove products from a system (delegated to group_unassign_group). */
+/** Remove products from a system. */
 bool ifcopenshell_system_unassign_system(ifcopenshell_file_t* file, const ifcopenshell_system_unassign_system_options_t* options);
 /**
  * Assign a type to element occurrences via IfcRelDefinesByType.
@@ -5595,7 +5596,7 @@ bool ifcopenshell_type_unassign_type(ifcopenshell_file_t* file, const ifcopenshe
  * @param file File that receives the new entity.
  * @param unit_type IFC unit type enum value (e.g. "LENGTHUNIT").
  * @param name Display name for the unit (e.g. "bag", "each").
- * @param dimensions 7-element vector of dimensional exponents.
+ * @param dimensions 7-element sequence of dimensional exponents.
  * @return Newly created IfcContextDependentUnit.
  */
 bool ifcopenshell_unit_add_context_dependent_unit(ifcopenshell_file_t* file, const char* unit_type, const char* name, const ifcopenshell_int64_list_t* dimensions, ifcopenshell_instance_t** out_result);
@@ -5607,7 +5608,7 @@ bool ifcopenshell_unit_add_context_dependent_unit(ifcopenshell_file_t* file, con
  *
  * @param file File that receives the new entity.
  * @param unit_type IFC unit type enum value (e.g. "VELOCITYUNIT").
- * @param userdefinedtype UserDefinedType string, or null to leave blank.
+ * @param userdefinedtype UserDefinedType string. When omitted, it is left blank.
  * @param units Component IfcUnit entities.
  * @param exponents Exponent for each component unit (must match units in length).
  * @return Newly created IfcDerivedUnit.
@@ -5625,11 +5626,11 @@ bool ifcopenshell_unit_add_monetary_unit(ifcopenshell_file_t* file, const char* 
  * Create an IfcSIUnit entity.
  *
  * Sets the UnitType, Name (derived from the unit type), and optional
- * Prefix. The Prefix attribute is left blank when prefix is null.
+ * Prefix. When prefix is omitted, the Prefix attribute is left blank.
  *
  * @param file File that receives the new entity.
  * @param unit_type IFC unit type enum value (e.g. "LENGTHUNIT").
- * @param prefix SI prefix (e.g. "KILO", "MILLI") or null for base unit.
+ * @param prefix SI prefix (e.g. "KILO", "MILLI"). When omitted, the base unit is used.
  * @return Newly created IfcSIUnit.
  */
 bool ifcopenshell_unit_add_si_unit(ifcopenshell_file_t* file, const char* unit_type, const char* prefix, ifcopenshell_instance_t** out_result);
@@ -5726,7 +5727,7 @@ bool ifcopenshell_unit_get_measure_unit_type(const char* measure_class, ifcopens
  * instead of falling back.
  *
  * @param name Unit type name.
- * @return 7-element vector of dimensional exponents.
+ * @return 7-element sequence of dimensional exponents.
  */
 bool ifcopenshell_unit_get_named_dimensions(const char* name, ifcopenshell_int32_list_t* out_result);
 /**
@@ -5757,20 +5758,20 @@ bool ifcopenshell_unit_get_prefix_multiplier(const char* text, double* out_resul
  *
  * @param file File to query.
  * @param unit_type IFC unit type enum value (e.g. "LENGTHUNIT").
- * @return The matching unit entity, or a null handle if not found.
+ * @return The matching unit entity, or no result if it is not found.
  */
 bool ifcopenshell_unit_get_project_unit(ifcopenshell_file_t* file, const char* unit_type, ifcopenshell_instance_t** out_result);
 /**
  * Return the SI dimensional exponents for a given unit type name.
  *
- * Returns a 7-element vector of integers corresponding to the
+ * Returns a 7-element sequence of integers corresponding to the
  * IfcDimensionalExponents attributes: Length, Mass, Time,
  * ElectricCurrent, ThermodynamicTemperature, AmountOfSubstance,
  * LuminousIntensity. Falls back to the "OTHERWISE" entry for
  * unknown types.
  *
  * @param name Unit type name (e.g. "LENGTHUNIT", "MASSUNIT").
- * @return 7-element vector of dimensional exponents.
+ * @return 7-element sequence of dimensional exponents.
  */
 bool ifcopenshell_unit_get_si_dimensions(const char* name, ifcopenshell_int32_list_t* out_result);
 /**
@@ -5797,7 +5798,7 @@ bool ifcopenshell_unit_get_symbol_quantity_class(const char* symbol, ifcopenshel
  * Return the IfcUnitAssignment entity for the project.
  *
  * @param file File to query.
- * @return The IfcUnitAssignment entity, or a null handle if not found.
+ * @return The IfcUnitAssignment entity, or no result if it is not found.
  */
 bool ifcopenshell_unit_get_unit_assignment(ifcopenshell_file_t* file, ifcopenshell_instance_t** out_result);
 /**
@@ -5867,11 +5868,11 @@ bool ifcopenshell_unit_resolve_property_table_defined_measure_class(ifcopenshell
 /**
  * Resolve the defined unit of an IfcPropertyTableValue.
  *
- * Returns the DefinedUnit attribute, or a null handle if the unit
- * must be inferred from the DefinedValues measure class.
+ * Returns the DefinedUnit attribute, or no result if the unit must be
+ * inferred from the DefinedValues measure class.
  *
  * @param prop IfcPropertyTableValue entity.
- * @return The DefinedUnit entity, or a null handle.
+ * @return The DefinedUnit entity, or no result.
  */
 bool ifcopenshell_unit_resolve_property_table_defined_unit(ifcopenshell_instance_t* prop, ifcopenshell_instance_t** out_result);
 /**
@@ -5887,22 +5888,22 @@ bool ifcopenshell_unit_resolve_property_table_defining_measure_class(ifcopenshel
 /**
  * Resolve the defining unit of an IfcPropertyTableValue.
  *
- * Returns the DefiningUnit attribute, or a null handle if the unit
- * must be inferred from the DefiningValues measure class.
+ * Returns the DefiningUnit attribute, or no result if the unit must be
+ * inferred from the DefiningValues measure class.
  *
  * @param prop IfcPropertyTableValue entity.
- * @return The DefiningUnit entity, or a null handle.
+ * @return The DefiningUnit entity, or no result.
  */
 bool ifcopenshell_unit_resolve_property_table_defining_unit(ifcopenshell_instance_t* prop, ifcopenshell_instance_t** out_result);
 /**
  * Resolve the unit entity attached to a property or quantity.
  *
  * Returns the Unit attribute directly attached to the property (for
- * IfcPropertySingleValue, IfcPhysicalSimpleQuantity, etc.), or a null
- * handle if the unit must be inferred from the measure class.
+ * IfcPropertySingleValue, IfcPhysicalSimpleQuantity, etc.). Returns no result
+ * if the unit must be inferred from the measure class.
  *
  * @param prop IfcProperty or IfcPhysicalQuantity entity.
- * @return The attached IfcUnit, or a null handle if none.
+ * @return The attached IfcUnit, or no result if none is attached.
  */
 bool ifcopenshell_unit_resolve_property_unit(ifcopenshell_instance_t* prop, ifcopenshell_instance_t** out_result);
 /**
@@ -5919,153 +5920,153 @@ bool ifcopenshell_unit_unassign_unit(ifcopenshell_file_t* file, const ifcopenshe
 /**
  * Extract a boolean from a selector value.
  *
- * @param value The value handle.
- * @return The boolean value, or false if null or not a boolean.
+ * @param value The selector value.
+ * @return The boolean value, or false when no value is provided or the value is not boolean.
  */
 bool ifcopenshell_value_as_bool(ifcopenshell_value_t* value, bool* out_result);
 /**
  * Extract a double from a selector value.
  *
- * @param value The value handle.
- * @return The double value, or 0.0 if null or not a double.
+ * @param value The selector value.
+ * @return The double value, or 0.0 when no value is provided or the value is not a double.
  */
 bool ifcopenshell_value_as_double(ifcopenshell_value_t* value, double* out_result);
 /**
  * Extract an entity instance from a selector value.
  *
- * @param value The value handle.
- * @return The entity instance, or empty if null or not an instance.
+ * @param value The selector value.
+ * @return The IFC entity, or no result when no value is provided or the value is not an entity.
  */
 bool ifcopenshell_value_as_instance(ifcopenshell_value_t* value, ifcopenshell_instance_t** out_result);
 /**
  * Extract a 64-bit integer from a selector value.
  *
- * @param value The value handle.
- * @return The integer value, or 0 if null or not an integer.
+ * @param value The selector value.
+ * @return The integer value, or 0 when no value is provided or the value is not an integer.
  */
 bool ifcopenshell_value_as_int64(ifcopenshell_value_t* value, int64_t* out_result);
 /**
  * Extract a string from a selector value.
  *
- * @param value The value handle.
- * @return The string value, or empty string if null or not a string.
+ * @param value The selector value.
+ * @return The string value, or an empty string when no value is provided or the value is not a string.
  */
 bool ifcopenshell_value_as_string(ifcopenshell_value_t* value, ifcopenshell_string_t* out_result);
 /**
- * Return the key at the given index in a dictionary value.
+ * Return the key at the given index in a mapping value.
  *
- * @param value The dict value handle.
+ * @param value The mapping value.
  * @param index Zero-based entry index.
- * @return The key string, or empty if out of range or not a dict.
+ * @return The key string, or an empty string if the index is out of range or the value is not a mapping.
  */
 bool ifcopenshell_value_dict_key_at(ifcopenshell_value_t* value, size_t index, ifcopenshell_string_t* out_result);
 /**
- * Set a key-value pair in a dictionary value.
+ * Set a key-value pair in a mapping value.
  *
- * @param dict The dict value handle.
+ * @param dict The mapping value.
  * @param key The string key.
- * @param value The value to associate with the key. If empty, sets a None value.
+ * @param value The value to associate with the key. When omitted, assigns a no-value entry.
  * @return True if the key-value pair was set.
  */
 bool ifcopenshell_value_dict_set(ifcopenshell_value_t* dict, const char* key, ifcopenshell_value_t* value, bool* out_result);
 /**
- * Return the number of entries in a dictionary value.
+ * Return the number of entries in a mapping value.
  *
- * @param value The value handle.
- * @return Number of entries, or 0 if null or not a dict.
+ * @param value The selector value.
+ * @return Number of entries, or 0 when no value is provided or the value is not a mapping.
  */
 bool ifcopenshell_value_dict_size(ifcopenshell_value_t* value, size_t* out_result);
 /**
- * Return the value at the given index in a dictionary value.
+ * Return the value at the given index in a mapping value.
  *
- * @param value The dict value handle.
+ * @param value The mapping value.
  * @param index Zero-based entry index.
- * @return The value at the index, or null if out of range or not a dict.
+ * @return The value at the index, or no result if the index is out of range or the value is not a mapping.
  */
 bool ifcopenshell_value_dict_value_at(ifcopenshell_value_t* value, size_t index, ifcopenshell_value_t** out_result);
 /**
  * Return the kind of a selector value.
  *
- * @param value The value handle.
- * @return One of the ifcopenshell_selector_value_kind_t values, or IFCSEL_VALUE_NONE if null.
+ * @param value The selector value.
+ * @return The value kind, or the no-value kind when no value is provided.
  */
 bool ifcopenshell_value_kind(ifcopenshell_value_t* value, int32_t* out_result);
 /**
  * Append an item to a list value.
  *
- * @param list The list value handle.
- * @param item The item to append. If empty, appends a None value.
+ * @param list The list selector value.
+ * @param item The item to append. When omitted, appends a no-value entry.
  * @return True if the item was appended.
  */
 bool ifcopenshell_value_list_append(ifcopenshell_value_t* list, ifcopenshell_value_t* item, bool* out_result);
 /**
  * Return an item from a list value at the given index.
  *
- * @param value The list value handle.
+ * @param value The list value.
  * @param index Zero-based item index.
- * @return The item at the index, or null if out of range or not a list.
+ * @return The item at the index, or no result if the index is out of range or the value is not a list.
  */
 bool ifcopenshell_value_list_at(ifcopenshell_value_t* value, size_t index, ifcopenshell_value_t** out_result);
 /**
  * Return the number of items in a list value.
  *
- * @param value The value handle.
- * @return Number of items, or 0 if null or not a list.
+ * @param value The selector value.
+ * @return Number of items, or 0 when no value is provided or the value is not a list.
  */
 bool ifcopenshell_value_list_size(ifcopenshell_value_t* value, size_t* out_result);
 /**
  * Create a boolean value.
  *
  * @param value The boolean value.
- * @return New boolean value handle. Free with value_free.
+ * @return New boolean selector value. Release it with value_free.
  */
 bool ifcopenshell_value_new_bool(bool value, ifcopenshell_value_t** out_result);
 /**
- * Create an empty dictionary value.
+ * Create an empty mapping value.
  *
- * @return New dict value handle. Free with value_free.
+ * @return New mapping selector value. Release it with value_free.
  */
 bool ifcopenshell_value_new_dict(ifcopenshell_value_t** out_result);
 /**
  * Create a double-precision floating-point value.
  *
  * @param value The double value.
- * @return New double value handle. Free with value_free.
+ * @return New double selector value. Release it with value_free.
  */
 bool ifcopenshell_value_new_double(double value, ifcopenshell_value_t** out_result);
 /**
  * Create an instance (entity reference) value.
  *
- * If value is empty, creates a None value.
+ * When value is omitted, creates a value representing no value.
  *
  * @param value The IFC entity instance.
- * @return New instance value handle. Free with value_free.
+ * @return New entity-reference selector value. Release it with value_free.
  */
 bool ifcopenshell_value_new_instance(ifcopenshell_instance_t* value, ifcopenshell_value_t** out_result);
 /**
  * Create a 64-bit integer value.
  *
  * @param value The integer value.
- * @return New integer value handle. Free with value_free.
+ * @return New integer selector value. Release it with value_free.
  */
 bool ifcopenshell_value_new_int(int64_t value, ifcopenshell_value_t** out_result);
 /**
  * Create an empty list value.
  *
- * @return New list value handle. Free with value_free.
+ * @return New list selector value. Release it with value_free.
  */
 bool ifcopenshell_value_new_list(ifcopenshell_value_t** out_result);
 /**
- * Create a None value.
+ * Create a value representing no value.
  *
- * @return New None value handle. Free with value_free.
+ * @return New selector value representing no value. Release it with value_free.
  */
 bool ifcopenshell_value_new_none(ifcopenshell_value_t** out_result);
 /**
  * Create a string value.
  *
  * @param value The string value.
- * @return New string value handle. Free with value_free.
+ * @return New string selector value. Release it with value_free.
  */
 bool ifcopenshell_value_new_string(const char* value, ifcopenshell_value_t** out_result);
 bool ifcopenshell_geom_arrange_polygons(const ifcopenshell_geom_svgfill_polygon_list_t* polygons_cpp, ifcopenshell_geom_svgfill_polygon_list_t* out_result);
