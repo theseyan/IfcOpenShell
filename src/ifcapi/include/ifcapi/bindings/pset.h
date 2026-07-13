@@ -63,15 +63,14 @@ struct PsetEditPsetOptions {
     express::Base pset;
     /// Optional new name for the property set.
     std::optional<std::string> name;
-    /// Property key-value pairs to set. Keys are property names; values are
-    /// set via the pset_props_* functions. Properties not mentioned are left
-    /// unchanged. Use pset_props_set_null to set a property to null.
+    /// Property name-to-value entries to set. Properties not mentioned remain
+    /// unchanged. Use pset_props_set_null to assign a blank property value.
     ifcopenshell_pset_props_t* properties = nullptr;
     /// Optional IfcPropertySetTemplate to use for type inference. If omitted,
     /// the template is looked up by the property set's Name attribute.
     std::optional<express::Base> pset_template;
-    /// If true (default), null-valued properties are removed from the set.
-    /// If false, null-valued properties have their NominalValue set to blank.
+    /// If true (default), blank-valued properties are removed from the set.
+    /// If false, blank-valued properties retain a blank NominalValue.
     bool should_purge = true;
 };
 
@@ -85,7 +84,7 @@ struct PsetEditQtoOptions {
     std::optional<std::string> name;
     /// Quantity key-value pairs to set. Keys are quantity names. Scalar values
     /// are set as IfcPhysicalSimpleQuantity subtypes (inferred from name/value).
-    /// DICT values with a "Discrimination" key create IfcPhysicalComplexQuantity.
+    /// Mapping values with a "Discrimination" key create IfcPhysicalComplexQuantity.
     ifcopenshell_pset_props_t* properties = nullptr;
     /// Optional IfcPropertySetTemplate to use for quantity type inference.
     /// If omitted, the template is looked up by the quantity set's Name attribute.
@@ -127,17 +126,17 @@ struct PsetUnsharePsetOptions {
 };
 
 /**
- * Allocate a new property builder. Free with pset_props_free when done.
+ * Allocate a new property builder. Release it with pset_props_free when done.
  */
 IFCAPI_BINDING ifcopenshell_pset_props_t* pset_props_new();
 
 /**
- * Free a property builder allocated by pset_props_new.
+ * Release a property builder allocated by pset_props_new.
  */
 IFCAPI_BINDING void pset_props_free(ifcopenshell_pset_props_t* props);
 
 /**
- * Set a property to null (blank). When editing, the property is removed if
+ * Set a property to a blank value. When editing, the property is removed if
  * should_purge is true; otherwise its NominalValue is set to blank.
  */
 IFCAPI_BINDING void pset_props_set_null(ifcopenshell_pset_props_t* props, const std::string& key);
@@ -164,8 +163,8 @@ IFCAPI_BINDING void pset_props_set_string(
     ifcopenshell_pset_props_t* props, const std::string& key, const std::string& value);
 
 /**
- * Set a property to an existing entity instance (e.g. a typed value or
- * an IfcProperty). Pass std::nullopt to clear.
+ * Set a property to an existing IFC entity (for example, a typed value or
+ * an IfcProperty). When omitted, the property is cleared.
  */
 IFCAPI_BINDING void pset_props_set_instance(
     ifcopenshell_pset_props_t* props, const std::string& key, std::optional<express::Base> value);
@@ -239,8 +238,9 @@ IFCAPI_BINDING void pset_props_set_duration(
     int minutes, int seconds, int microseconds);
 
 /**
- * Set a nested dict property. Ownership of inner is transferred to outer;
- * do not free inner separately. Used for IfcPhysicalComplexQuantity in qtos.
+ * Set a nested mapping property. Ownership of the nested property data is
+ * transferred to the outer data; do not release it separately. Used for
+ * IfcPhysicalComplexQuantity in quantity sets.
  */
 IFCAPI_BINDING void pset_props_set_dict(
     ifcopenshell_pset_props_t* outer, const std::string& key, ifcopenshell_pset_props_t* inner);
@@ -248,8 +248,8 @@ IFCAPI_BINDING void pset_props_set_dict(
 /**
  * Attach a unit to the most recently added property entry.
  *
- * Sets the Unit attribute on the resulting IfcPropertySingleValue. Pass
- * std::nullopt to clear.
+ * Sets the Unit attribute on the resulting IfcPropertySingleValue. When
+ * omitted, the unit is cleared.
  */
 IFCAPI_BINDING void pset_props_set_unit_for_last(
     ifcopenshell_pset_props_t* props, std::optional<express::Base> unit);
@@ -286,7 +286,7 @@ IFCAPI_BINDING express::Base pset_add_qto(
  *
  * Updates existing properties in-place (when not shared with other psets),
  * adds new properties for keys not yet present, and optionally removes
- * null-valued properties. Uses the pset template for type inference when
+ * blank-valued properties. Uses the pset template for type inference when
  * available. Returns true on success, false on error.
  */
 IFCAPI_BINDING bool pset_edit_pset(
@@ -344,11 +344,10 @@ IFCAPI_BINDING void pset_remove_pset(
 /**
  * Unshare a property set by creating independent copies for specified products.
  *
- * When the selected products are the complete set of products the pset is
- * assigned to, the first product keeps the original and the rest receive
- * copies. When the selection is a subset, every selected product receives a
- * copy and the original remains assigned to the unselected products.
- * Returns the list of newly created pset copies.
+ * When all assigned products are selected, one product retains the original
+ * and the other products receive copies. When only some products are
+ * selected, each selected product receives a copy and the original remains
+ * assigned to the unselected products. Returns the newly created copies.
  */
 IFCAPI_BINDING std::vector<express::Base> pset_unshare_pset(
     ifcopenshell::file* file,

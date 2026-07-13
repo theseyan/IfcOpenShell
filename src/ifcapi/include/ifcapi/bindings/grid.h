@@ -22,7 +22,7 @@ namespace bindings {
  * @param axis_tag Label for the axis (e.g. "A", "1").
  * @param same_sense True if the axis direction agrees with the curve direction.
  * @param uvw_axes Name of the grid aggregate to append to: "UAxes", "VAxes", or "WAxes".
- * @return Newly created IfcGridAxis, or a null handle on failure.
+ * @return Newly created IfcGridAxis, or no result if creation fails.
  */
 IFCAPI_BINDING express::Base grid_create_grid_axis(
     ifcopenshell::file* file,
@@ -34,8 +34,7 @@ IFCAPI_BINDING express::Base grid_create_grid_axis(
 /**
  * Remove an IfcGridAxis and its associated AxisCurve.
  *
- * The axis entity is removed from the file and its AxisCurve (if any) is
- * deep-removed.
+ * The axis entity and its associated AxisCurve are removed from the file.
  *
  * @param file IFC file to modify.
  * @param axis IfcGridAxis entity to remove.
@@ -49,8 +48,8 @@ IFCAPI_BINDING void grid_remove_grid_axis(
  *
  * Points are given in world coordinates; when is_si is true they are divided
  * by the file's LENGTHUNIT scale. The points are transformed into the grid's
- * local coordinate system using the grid's ObjectPlacement. If the axis
- * already has an AxisCurve, it is deep-removed after replacement.
+ * local coordinate system using the grid's ObjectPlacement. An existing
+ * AxisCurve is removed after replacement.
  *
  * @param file IFC file that receives the polyline.
  * @param p1 First endpoint (at least three coordinates; X and Y are used).

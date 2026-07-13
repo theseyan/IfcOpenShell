@@ -383,16 +383,15 @@ struct GeometryValidateTypeOptions {
 /**
  * Add boolean operands to a solid representation item.
  *
- * Creates IfcBooleanResult (or IfcBooleanClippingResult for DIFFERENCE with
- * half-space solids) chaining each second_item to the first. The first item
- * walks up any existing boolean chain to find the top-level operand. Returns
- * the created boolean result entities in order.
+ * Creates IfcBooleanResult entities (or IfcBooleanClippingResult for
+ * DIFFERENCE with half-space solids) by combining the first item with each
+ * additional operand. The returned entities are listed in creation order.
  *
  * @param file IFC file that receives the boolean entities.
  * @param first_item Base solid operand.
  * @param second_items Additional operands to apply.
  * @param operator_type Boolean operator: "DIFFERENCE", "UNION", or "INTERSECTION".
- * @return Created IfcBooleanResult entities, or empty on failure.
+ * @return Created boolean result entities, or an empty list if creation fails.
  */
 IFCAPI_BINDING IFCAPI_OWNED std::vector<express::Base> geometry_add_boolean(
     ifcopenshell::file* file,
@@ -408,7 +407,7 @@ IFCAPI_BINDING IFCAPI_OWNED std::vector<express::Base> geometry_add_boolean(
  * @param file IFC file that receives the representation.
  * @param context IfcGeometricRepresentationContext.
  * @param axis Ordered XY or XYZ points defining the axis curve.
- * @return IfcShapeRepresentation entity, or a null handle on failure.
+ * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 IFCAPI_BINDING express::Base geometry_add_axis_representation(
     ifcopenshell::file* file,
@@ -421,7 +420,7 @@ IFCAPI_BINDING express::Base geometry_add_axis_representation(
  * @param file IFC file that receives the representation.
  * @param context IfcGeometricRepresentationContext.
  * @param curves IfcCurve entities to include in the footprint.
- * @return IfcShapeRepresentation entity, or a null handle on failure.
+ * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 IFCAPI_BINDING express::Base geometry_add_footprint_representation(
     ifcopenshell::file* file,
@@ -437,7 +436,7 @@ IFCAPI_BINDING express::Base geometry_add_footprint_representation(
  * @param file IFC file that receives the representation.
  * @param context IfcGeometricRepresentationContext.
  * @param options Vertices, faces, and optional faceted BRep override.
- * @return IfcShapeRepresentation entity, or a null handle on failure.
+ * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 IFCAPI_BINDING express::Base geometry_add_mesh_representation(
     ifcopenshell::file* file,
@@ -452,7 +451,7 @@ IFCAPI_BINDING express::Base geometry_add_mesh_representation(
  *
  * @param file IFC file that receives the aspect.
  * @param options Aspect name, items, representation, and owning product.
- * @return IfcShapeAspect entity, or a null handle on failure.
+ * @return IfcShapeAspect entity, or no result if creation fails.
  */
 IFCAPI_BINDING express::Base geometry_add_shape_aspect(
     ifcopenshell::file* file,
@@ -463,7 +462,7 @@ IFCAPI_BINDING express::Base geometry_add_shape_aspect(
  *
  * @param file IFC file that receives the representation.
  * @param options Context, topology item, and optional identifier/type.
- * @return IfcTopologyRepresentation entity, or a null handle on failure.
+ * @return IfcTopologyRepresentation entity, or no result if creation fails.
  */
 IFCAPI_BINDING express::Base geometry_add_topology_representation(
     ifcopenshell::file* file,
@@ -474,7 +473,7 @@ IFCAPI_BINDING express::Base geometry_add_topology_representation(
  *
  * @param file IFC file that receives the representation.
  * @param options Wall dimensions, direction, clippings, and booleans.
- * @return IfcShapeRepresentation entity, or a null handle on failure.
+ * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 IFCAPI_BINDING express::Base geometry_add_wall_representation(
     ifcopenshell::file* file,
@@ -485,7 +484,7 @@ IFCAPI_BINDING express::Base geometry_add_wall_representation(
  *
  * @param file IFC file that receives the representation.
  * @param options Slab dimensions, direction, clippings, and boundary polyline.
- * @return IfcShapeRepresentation entity, or a null handle on failure.
+ * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 IFCAPI_BINDING express::Base geometry_add_slab_representation(
     ifcopenshell::file* file,
@@ -500,7 +499,7 @@ IFCAPI_BINDING express::Base geometry_add_slab_representation(
  *
  * @param file IFC file that receives the wall geometry.
  * @param options Element, context, endpoints, elevation, height, thickness, and unit flag.
- * @return IfcShapeRepresentation entity, or a null handle on failure.
+ * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 IFCAPI_BINDING express::Base geometry_create_2pt_wall(
     ifcopenshell::file* file,
@@ -515,7 +514,7 @@ IFCAPI_BINDING express::Base geometry_create_2pt_wall(
  *
  * @param file IFC file that receives the connection.
  * @param options Walls, connection mode, and optional owner history.
- * @return IfcRelConnectsPathElements entity, or a null handle on failure.
+ * @return IfcRelConnectsPathElements entity, or no result if creation fails.
  */
 IFCAPI_BINDING express::Base geometry_connect_wall(
     ifcopenshell::file* file,
@@ -524,12 +523,12 @@ IFCAPI_BINDING express::Base geometry_connect_wall(
 /**
  * Regenerate a wall's body and axis representations from its material layers.
  *
- * Walks connected walls to compute join geometry, rebuilds the profile from
- * layer axes, and replaces the existing body and axis representations.
+ * Rebuilds the wall's body and axis representations using its material layers
+ * and connected-wall geometry.
  *
  * @param file IFC file containing the wall.
  * @param options Wall entity, length, height, and optional angle.
- * @return New IfcShapeRepresentation for the body, or a null handle on failure.
+ * @return New IfcShapeRepresentation for the body, or no result if regeneration fails.
  */
 IFCAPI_BINDING express::Base geometry_regenerate_wall_representation(
     ifcopenshell::file* file,
@@ -540,7 +539,7 @@ IFCAPI_BINDING express::Base geometry_regenerate_wall_representation(
  *
  * @param file IFC file that receives the representation.
  * @param options Window dimensions, panel schema, lining/panel properties.
- * @return IfcShapeRepresentation entity, or a null handle on failure.
+ * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 IFCAPI_BINDING express::Base geometry_add_window_representation(
     ifcopenshell::file* file,
@@ -551,7 +550,7 @@ IFCAPI_BINDING express::Base geometry_add_window_representation(
  *
  * @param file IFC file that receives the representation.
  * @param options Door dimensions, operation type, and lining/panel properties.
- * @return IfcShapeRepresentation entity, or a null handle on failure.
+ * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 IFCAPI_BINDING express::Base geometry_add_door_representation(
     ifcopenshell::file* file,
@@ -562,7 +561,7 @@ IFCAPI_BINDING express::Base geometry_add_door_representation(
  *
  * @param file IFC file that receives the representation.
  * @param options Railing path, support spacing, dimensions, and terminal type.
- * @return IfcShapeRepresentation entity, or a null handle on failure.
+ * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 IFCAPI_BINDING express::Base geometry_add_railing_representation(
     ifcopenshell::file* file,
@@ -577,7 +576,7 @@ IFCAPI_BINDING express::Base geometry_add_railing_representation(
  *
  * @param file IFC file that receives the clipping.
  * @param options Solid, plane point, normal, and optional element/history.
- * @return IfcBooleanClippingResult entity, or a null handle on failure.
+ * @return IfcBooleanClippingResult entity, or no result if creation fails.
  */
 IFCAPI_BINDING express::Base geometry_clip_solid(
     ifcopenshell::file* file,
@@ -591,7 +590,7 @@ IFCAPI_BINDING express::Base geometry_clip_solid(
  *
  * @param file IFC file that receives the clipping.
  * @param options Solid, plane, boundary polygon, and optional element/history.
- * @return IfcBooleanClippingResult entity, or a null handle on failure.
+ * @return IfcBooleanClippingResult entity, or no result if creation fails.
  */
 IFCAPI_BINDING express::Base geometry_clip_solid_bounded(
     ifcopenshell::file* file,
@@ -617,9 +616,9 @@ IFCAPI_BINDING bool geometry_validate_type(
 /**
  * Remove boolean operands from a solid representation.
  *
- * Walks the IfcBooleanResult chain for the given item, replaces references
- * to the item with its FirstOperand in parent entities, and moves the
- * SecondOperand into the owning representation's Items.
+ * Removes boolean operations involving the given item, restores the primary
+ * operand in its parent references, and exposes the other operands in the
+ * owning representation.
  *
  * @param file IFC file to modify.
  * @param item Solid operand whose boolean chain to remove.
@@ -640,7 +639,7 @@ IFCAPI_BINDING void geometry_remove_boolean(
  * @param file IFC file to modify.
  * @param product IfcProduct or IfcTypeProduct entity.
  * @param representation IfcShapeRepresentation entity.
- * @return The product (possibly re-routed to its type), or null handle on failure.
+ * @return The product receiving the representation, or no result if assignment fails.
  */
 IFCAPI_BINDING express::Base geometry_assign_representation(
     ifcopenshell::file* file,
@@ -666,7 +665,7 @@ IFCAPI_BINDING express::Base geometry_map_representation(
  * Unassign a representation from a product or type product.
  *
  * For IfcProduct, removes the representation from the
- * IfcProductDefinitionShape (and cleans up the shape if empty). For
+ * IfcProductDefinitionShape and removes an empty shape definition. For
  * IfcTypeProduct, removes the matching IfcRepresentationMap and unmaps
  * occurrences. Shape aspects referencing the representation are also removed.
  *
@@ -680,7 +679,7 @@ IFCAPI_BINDING void geometry_unassign_representation(
     express::Base* representation);
 
 /**
- * Remove a representation and deep-delete its unreferenced sub-entities.
+ * Remove a representation and its unreferenced sub-entities.
  *
  * Cleans up styled items, presentation layer assignments, textures, and
  * colours. Geometric representation contexts are never deleted. Named
@@ -696,7 +695,7 @@ IFCAPI_BINDING void geometry_remove_representation(
     const GeometryRemoveRepresentationOptions& options);
 
 /**
- * Deep-copy a representation from one product to another.
+ * Copy a representation from one product to another.
  *
  * Copies the "Body" (or specified context) representation from the source
  * product, replaces any existing representation of the same context on the
@@ -715,13 +714,13 @@ IFCAPI_BINDING std::optional<express::Base> geometry_copy_representation(
  * Return the axis-aligned 2D bounding box extents of a profile.
  *
  * Computes the X and Y extents from the profile's parameterized attributes
- * (e.g. OverallWidth/OverallDepth for I-shaped profiles). Falls back to
- * geometry evaluation via OpenCASCADE when available. Returns an empty vector
- * on failure.
+ * (e.g. OverallWidth/OverallDepth for I-shaped profiles). When those values
+ * are unavailable, geometry evaluation is used when available. Returns an
+ * empty list if the extents cannot be determined.
  *
  * @param file IFC file containing the profile.
  * @param profile IfcProfileDef entity.
- * @return Two-element vector {x_extent, y_extent} in model units, or empty.
+ * @return Two-element list {x_extent, y_extent} in model units, or an empty list.
  */
 IFCAPI_BINDING std::vector<double> geometry_profile_extents(
     ifcopenshell::file* file,
@@ -738,7 +737,7 @@ IFCAPI_BINDING std::vector<double> geometry_profile_extents(
  *
  * @param file IFC file to modify.
  * @param options Product, matrix, SI flag, and child transform flag.
- * @return Newly created IfcLocalPlacement, or null handle on failure.
+ * @return Newly created IfcLocalPlacement, or no result if creation fails.
  */
 IFCAPI_BINDING express::Base geometry_edit_object_placement(
     ifcopenshell::file* file,
@@ -752,7 +751,7 @@ IFCAPI_BINDING express::Base geometry_edit_object_placement(
  *
  * @param file IFC file that receives the relationship.
  * @param options Relating element, related element, and optional description/history.
- * @return IfcRelConnectsElements entity, or null handle on failure.
+ * @return IfcRelConnectsElements entity, or no result if creation fails.
  */
 IFCAPI_BINDING express::Base geometry_connect_element(
     ifcopenshell::file* file,
@@ -782,7 +781,7 @@ IFCAPI_BINDING void geometry_disconnect_element(
  *
  * @param file IFC file that receives the relationship.
  * @param options Elements, connection types, and optional description/geometry/history.
- * @return IfcRelConnectsPathElements entity, or null handle on failure.
+ * @return IfcRelConnectsPathElements entity, or no result if creation fails.
  */
 IFCAPI_BINDING express::Base geometry_connect_path(
     ifcopenshell::file* file,

@@ -78,7 +78,7 @@ struct ClassificationRemoveReferenceOptions {
 /**
  * Add a classification reference and associate it with products.
  *
- * If an existing reference handle is provided, it is used directly.
+ * If an existing classification reference is provided, it is used directly.
  * Otherwise, a new IfcClassificationReference is created using the
  * optional identification, name, and classification fields.
  */

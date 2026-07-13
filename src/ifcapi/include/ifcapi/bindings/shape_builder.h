@@ -69,7 +69,7 @@ struct ShapeBuilderPolylineOptions {
     std::optional<bool> closed;
     /// Optional offset added to every point before storage.
     std::optional<std::vector<double>> position_offset;
-    /// Zero-based indices of points where an arc segment begins (three consecutive points form an arc).
+    /// Zero-based indices of arc middle points. Each selected point and its adjacent points form an arc segment.
     std::vector<int> arc_points;
 };
 
@@ -165,9 +165,9 @@ struct ShapeBuilderEllipseCurveOptions {
 struct ShapeBuilderTranslateOptions {
     /// Geometry item to translate (polyline, circle, extruded solid, or shape representation).
     express::Base item;
-    /// Translation vector (XY or XYZ).
+    /// Translation (XY or XYZ).
     std::vector<double> translation;
-    /// If true, deep-copy the item before translating. Defaults to false.
+    /// If true, translate an independent copy instead of the supplied item. Defaults to false.
     bool create_copy = false;
 };
 
@@ -183,7 +183,7 @@ struct ShapeBuilderRotateOptions {
     std::vector<double> pivot_point;
     /// If true, rotate counter-clockwise; if false, clockwise. Defaults to false.
     bool counter_clockwise = false;
-    /// If true, deep-copy the item before rotating. Defaults to false.
+    /// If true, rotate an independent copy instead of the supplied item. Defaults to false.
     bool create_copy = false;
 };
 
@@ -197,7 +197,7 @@ struct ShapeBuilderMirrorOptions {
     std::vector<double> mirror_axes;
     /// XY point through which the mirror plane passes.
     std::vector<double> mirror_point;
-    /// If true, deep-copy the item before mirroring. Defaults to false.
+    /// If true, mirror an independent copy instead of the supplied item. Defaults to false.
     bool create_copy = false;
     /// Optional 3x3 or 4x4 placement matrix for local-space mirroring.
     std::vector<double> placement_matrix;
@@ -303,7 +303,7 @@ struct ShapeBuilderMepBendShapeOptions {
     double angle = 0.0;
     /// Bend radius in model units.
     double radius = 0.0;
-    /// XY direction vector indicating the bend plane.
+    /// XY direction indicating the bend plane.
     std::vector<double> bend_vector;
     /// If true, flip the Z axis direction. Defaults to false.
     bool flip_z_axis = false;
@@ -547,12 +547,12 @@ IFCAPI_BINDING express::Base shape_builder_representation(
     const ShapeBuilderRepresentationOptions& options);
 
 /**
- * Deep-copy an IFC entity and all entities it references.
+ * Create an independent copy of an IFC entity and the entities it references.
  *
  * New GlobalId attributes are generated for the copied entities.
  *
  * @param file IFC file that receives the copy.
- * @param element Entity to deep-copy.
+ * @param element Entity to copy.
  * @return Root entity of the copied subgraph.
  */
 IFCAPI_BINDING express::Base shape_builder_deep_copy(
@@ -601,15 +601,15 @@ IFCAPI_BINDING express::Base shape_builder_indexed_polycurve_2d(
     const std::vector<std::vector<int>>& segments);
 
 /**
- * Translate a geometry item by a vector.
+ * Translate a geometry item by a direction and distance.
  *
  * Supports IfcIndexedPolyCurve, IfcPolyline, IfcCircle, IfcEllipse,
  * IfcExtrudedAreaSolid, IfcTessellatedFaceSet, IfcShapeRepresentation,
  * and IfcTrimmedCurve.
  *
  * @param file IFC file containing the item.
- * @param options Item, translation vector, and copy flag.
- * @return The translated item (same entity or a deep copy).
+ * @param options Item, translation, and copy flag.
+ * @return The translated item, either the supplied entity or an independent copy.
  */
 IFCAPI_BINDING express::Base shape_builder_translate(
     ifcopenshell::file* file,
@@ -623,7 +623,7 @@ IFCAPI_BINDING express::Base shape_builder_translate(
  *
  * @param file IFC file containing the item.
  * @param options Item, angle, pivot, direction, and copy flag.
- * @return The rotated item (same entity or a deep copy).
+ * @return The rotated item, either the supplied entity or an independent copy.
  */
 IFCAPI_BINDING express::Base shape_builder_rotate(
     ifcopenshell::file* file,
@@ -638,7 +638,7 @@ IFCAPI_BINDING express::Base shape_builder_rotate(
  *
  * @param file IFC file containing the item.
  * @param options Item, axes, point, copy flag, and optional placement matrix.
- * @return The mirrored item (same entity or a deep copy).
+ * @return The mirrored item, either the supplied entity or an independent copy.
  */
 IFCAPI_BINDING express::Base shape_builder_mirror(
     ifcopenshell::file* file,
@@ -648,7 +648,7 @@ IFCAPI_BINDING express::Base shape_builder_mirror(
  * Read the coordinate list from an IfcPolyline or IfcIndexedPolyCurve.
  *
  * @param polyline IfcPolyline or IfcIndexedPolyCurve entity.
- * @return Ordered XY or XYZ coordinate vectors.
+ * @return Ordered XY or XYZ coordinate sequences.
  */
 IFCAPI_BINDING std::vector<std::vector<double>> shape_builder_get_polyline_coords(
     express::Base* polyline);
@@ -693,12 +693,12 @@ IFCAPI_BINDING double shape_builder_mep_transition_length(
  * Build MEP transition geometry between two duct segments.
  *
  * Generates start/end extrusions and a connecting transition mesh.
- * Returns nullopt when the segments lack material profiles or the
+ * Returns no result when the segments lack material profiles or the
  * transition cannot be computed.
  *
  * @param file IFC file that receives the geometry.
  * @param options Start/end segments, lengths, angle, and profile offset.
- * @return Transition result with representation and dimensions, or nullopt.
+ * @return Transition result with representation and dimensions, or no result.
  */
 IFCAPI_BINDING std::optional<ShapeBuilderMepTransitionShapeResult> shape_builder_mep_transition_shape(
     ifcopenshell::file* file,
@@ -712,7 +712,7 @@ IFCAPI_BINDING std::optional<ShapeBuilderMepTransitionShapeResult> shape_builder
  * extensions.
  *
  * @param file IFC file that receives the geometry.
- * @param options Segment, lengths, angle, radius, bend vector, and Z flip.
+ * @param options Segment, lengths, angle, radius, bend direction, and Z flip.
  * @return Bend result with representation and computed parameters.
  */
 IFCAPI_BINDING ShapeBuilderMepBendShapeResult shape_builder_mep_bend_shape(

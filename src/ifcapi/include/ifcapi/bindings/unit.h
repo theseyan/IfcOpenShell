@@ -100,14 +100,14 @@ IFCAPI_BINDING std::string unit_get_symbol_quantity_class(const std::string& sym
 /**
  * Return the SI dimensional exponents for a given unit type name.
  *
- * Returns a 7-element vector of integers corresponding to the
+ * Returns a 7-element sequence of integers corresponding to the
  * IfcDimensionalExponents attributes: Length, Mass, Time,
  * ElectricCurrent, ThermodynamicTemperature, AmountOfSubstance,
  * LuminousIntensity. Falls back to the "OTHERWISE" entry for
  * unknown types.
  *
  * @param name Unit type name (e.g. "LENGTHUNIT", "MASSUNIT").
- * @return 7-element vector of dimensional exponents.
+ * @return 7-element sequence of dimensional exponents.
  */
 IFCAPI_BINDING std::vector<int> unit_get_si_dimensions(const std::string& name);
 /**
@@ -117,7 +117,7 @@ IFCAPI_BINDING std::vector<int> unit_get_si_dimensions(const std::string& name);
  * instead of falling back.
  *
  * @param name Unit type name.
- * @return 7-element vector of dimensional exponents.
+ * @return 7-element sequence of dimensional exponents.
  */
 IFCAPI_BINDING std::vector<int> unit_get_named_dimensions(const std::string& name);
 /**
@@ -167,7 +167,7 @@ IFCAPI_BINDING std::string unit_format_length(
  * Return the IfcUnitAssignment entity for the project.
  *
  * @param file File to query.
- * @return The IfcUnitAssignment entity, or a null handle if not found.
+ * @return The IfcUnitAssignment entity, or no result if it is not found.
  */
 IFCAPI_BINDING express::Base unit_get_unit_assignment(ifcopenshell::file* file);
 /**
@@ -178,7 +178,7 @@ IFCAPI_BINDING express::Base unit_get_unit_assignment(ifcopenshell::file* file);
  *
  * @param file File to query.
  * @param unit_type IFC unit type enum value (e.g. "LENGTHUNIT").
- * @return The matching unit entity, or a null handle if not found.
+ * @return The matching unit entity, or no result if it is not found.
  */
 IFCAPI_BINDING express::Base unit_get_project_unit(ifcopenshell::file* file, const std::string& unit_type);
 /**
@@ -221,11 +221,11 @@ IFCAPI_BINDING double unit_convert_unit(
  * Resolve the unit entity attached to a property or quantity.
  *
  * Returns the Unit attribute directly attached to the property (for
- * IfcPropertySingleValue, IfcPhysicalSimpleQuantity, etc.), or a null
- * handle if the unit must be inferred from the measure class.
+ * IfcPropertySingleValue, IfcPhysicalSimpleQuantity, etc.). Returns no result
+ * if the unit must be inferred from the measure class.
  *
  * @param prop IfcProperty or IfcPhysicalQuantity entity.
- * @return The attached IfcUnit, or a null handle if none.
+ * @return The attached IfcUnit, or no result if none is attached.
  */
 IFCAPI_BINDING express::Base unit_resolve_property_unit(express::Base* prop);
 /**
@@ -243,11 +243,11 @@ IFCAPI_BINDING std::string unit_resolve_property_measure_class(express::Base* pr
 /**
  * Resolve the defining unit of an IfcPropertyTableValue.
  *
- * Returns the DefiningUnit attribute, or a null handle if the unit
- * must be inferred from the DefiningValues measure class.
+ * Returns the DefiningUnit attribute, or no result if the unit must be
+ * inferred from the DefiningValues measure class.
  *
  * @param prop IfcPropertyTableValue entity.
- * @return The DefiningUnit entity, or a null handle.
+ * @return The DefiningUnit entity, or no result.
  */
 IFCAPI_BINDING express::Base unit_resolve_property_table_defining_unit(express::Base* prop);
 /**
@@ -263,11 +263,11 @@ IFCAPI_BINDING std::string unit_resolve_property_table_defining_measure_class(ex
 /**
  * Resolve the defined unit of an IfcPropertyTableValue.
  *
- * Returns the DefinedUnit attribute, or a null handle if the unit
- * must be inferred from the DefinedValues measure class.
+ * Returns the DefinedUnit attribute, or no result if the unit must be
+ * inferred from the DefinedValues measure class.
  *
  * @param prop IfcPropertyTableValue entity.
- * @return The DefinedUnit entity, or a null handle.
+ * @return The DefinedUnit entity, or no result.
  */
 IFCAPI_BINDING express::Base unit_resolve_property_table_defined_unit(express::Base* prop);
 /**
@@ -296,11 +296,11 @@ IFCAPI_BINDING double unit_calculate_unit_scale(ifcopenshell::file* file, const 
  * Create an IfcSIUnit entity.
  *
  * Sets the UnitType, Name (derived from the unit type), and optional
- * Prefix. The Prefix attribute is left blank when prefix is null.
+ * Prefix. When prefix is omitted, the Prefix attribute is left blank.
  *
  * @param file File that receives the new entity.
  * @param unit_type IFC unit type enum value (e.g. "LENGTHUNIT").
- * @param prefix SI prefix (e.g. "KILO", "MILLI") or null for base unit.
+ * @param prefix SI prefix (e.g. "KILO", "MILLI"). When omitted, the base unit is used.
  * @return Newly created IfcSIUnit.
  */
 IFCAPI_BINDING express::Base unit_add_si_unit(
@@ -325,7 +325,7 @@ IFCAPI_BINDING express::Base unit_add_monetary_unit(
  * @param file File that receives the new entity.
  * @param unit_type IFC unit type enum value (e.g. "LENGTHUNIT").
  * @param name Display name for the unit (e.g. "bag", "each").
- * @param dimensions 7-element vector of dimensional exponents.
+ * @param dimensions 7-element sequence of dimensional exponents.
  * @return Newly created IfcContextDependentUnit.
  */
 IFCAPI_BINDING express::Base unit_add_context_dependent_unit(
@@ -341,7 +341,7 @@ IFCAPI_BINDING express::Base unit_add_context_dependent_unit(
  *
  * @param file File that receives the new entity.
  * @param unit_type IFC unit type enum value (e.g. "VELOCITYUNIT").
- * @param userdefinedtype UserDefinedType string, or null to leave blank.
+ * @param userdefinedtype UserDefinedType string. When omitted, it is left blank.
  * @param units Component IfcUnit entities.
  * @param exponents Exponent for each component unit (must match units in length).
  * @return Newly created IfcDerivedUnit.

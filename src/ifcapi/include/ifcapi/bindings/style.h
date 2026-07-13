@@ -23,7 +23,7 @@ namespace bindings {
  * For IfcSurfaceStyle, the Side attribute defaults to "BOTH".
  *
  * @param file IFC file that receives the style.
- * @param name Style name (may be null for unnamed styles).
+ * @param name Style name. When omitted, the style is unnamed.
  * @param ifc_class IFC entity class (e.g. "IfcSurfaceStyle", "IfcFillAreaStyle").
  * @return Newly created style entity.
  */
@@ -38,7 +38,7 @@ IFCAPI_BINDING express::Base style_add_style(
 struct StyleAssignItemStyleOptions {
     /// The representation item to assign the style to.
     express::Base item;
-    /// Optional style to assign. Empty to remove/unassign.
+    /// Optional style to assign. When omitted, the existing style is removed.
     std::optional<express::Base> style;
     /// Whether to use IfcPresentationStyleAssignment (for IFC2X3 compat).
     bool should_use_presentation_style_assignment;
@@ -49,12 +49,12 @@ struct StyleAssignItemStyleOptions {
  *
  * Creates an IfcStyledItem (and optionally an IfcPresentationStyleAssignment
  * for IFC2X3) linking the item to the given style. If the item already has a
- * styled item, the existing style is replaced. Passing an empty style removes
- * the styled item from the representation item.
+ * styled item, the existing style is replaced. When style is omitted, the
+ * styled item is removed from the representation item.
  *
  * @param file IFC file to modify.
  * @param options Item, style, and IFC2X3 compat flag.
- * @return The IfcStyledItem, or null handle if style was removed.
+ * @return The IfcStyledItem, or no result when the style is removed.
  */
 IFCAPI_BINDING express::Base style_assign_item_style(
     ifcopenshell::file* file,
@@ -63,16 +63,16 @@ IFCAPI_BINDING express::Base style_assign_item_style(
 /**
  * Assign styles to the geometric items within a shape representation.
  *
- * Traverses the representation and assigns each style to sequential
- * representation items. When replace_previous_same_type_style is true, styles
- * of the same IFC class are replaced rather than appended.
+ * Assigns the styles to representation items in sequence. When
+ * replace_previous_same_type_style is true, an existing style of the same IFC
+ * class is replaced instead of appended.
  *
  * @param file IFC file to modify.
  * @param shape_representation IfcShapeRepresentation to assign styles to.
  * @param styles Presentation style entities to assign.
  * @param should_use_presentation_style_assignment Wrap styles in IfcPresentationStyleAssignment.
  * @param replace_previous_same_type_style Replace existing styles of the same type.
- * @return Vector of newly created IfcStyledItem entities.
+ * @return List of newly created IfcStyledItem entities.
  */
 IFCAPI_BINDING std::vector<express::Base> style_assign_representation_styles(
     ifcopenshell::file* file,
@@ -109,7 +109,7 @@ IFCAPI_BINDING void style_assign_material_style(
  *
  * @param file IFC file containing the style.
  * @param style IfcSurfaceStyle entity to modify.
- * @param attributes Property container with attribute name-value pairs.
+ * @param attributes Attribute name-to-value mapping.
  */
 IFCAPI_BINDING void style_edit_surface_style(
     ifcopenshell::file* file,
@@ -141,8 +141,8 @@ IFCAPI_BINDING void style_remove_styled_representation(
 /**
  * Remove an IfcSurfaceStyleWithTextures or IfcSurfaceStyleRendering and its nested entities.
  *
- * Deep-removes texture coordinates, textures, and colour entities owned by the
- * surface style.
+ * Removes texture coordinates, textures, and colour entities belonging to the
+ * surface style when they are no longer referenced.
  *
  * @param file IFC file to modify.
  * @param style Surface style sub-entity to remove.
@@ -152,8 +152,8 @@ IFCAPI_BINDING void style_remove_surface_style(ifcopenshell::file* file, express
 /**
  * Remove styles from the geometric items within a shape representation.
  *
- * Traverses the representation and removes matching styles from IfcStyledItem
- * and IfcPresentationStyleAssignment entities.
+ * Removes matching styles from IfcStyledItem and
+ * IfcPresentationStyleAssignment entities in the representation.
  *
  * @param file IFC file to modify.
  * @param shape_representation IfcShapeRepresentation to unassign styles from.
@@ -169,8 +169,8 @@ IFCAPI_BINDING void style_unassign_representation_styles(
 /**
  * Remove a style from a material's styled representation.
  *
- * Cleans up empty IfcStyledItem, IfcStyledRepresentation, and
- * IfcMaterialDefinitionRepresentation entities. Also propagates removal to
+ * Removes empty IfcStyledItem, IfcStyledRepresentation, and
+ * IfcMaterialDefinitionRepresentation entities, and propagates the removal to
  * matching shape aspects.
  *
  * @param file IFC file to modify.

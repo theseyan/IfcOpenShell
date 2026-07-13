@@ -16,11 +16,11 @@ namespace ifcapi {
 namespace bindings {
 
 /**
- * Shallow-copy a space boundary relationship, deep-copying its connection geometry.
+ * Create a copy of a space boundary relationship and its connection geometry.
  *
  * @param file File that receives the copied entities.
  * @param boundary IfcRelSpaceBoundary entity to copy.
- * @return Newly created copy, or a null handle on failure.
+ * @return Newly created boundary relationship, or no result if the copy cannot be created.
  */
 IFCAPI_BINDING express::Base boundary_copy_boundary(
     ifcopenshell::file* file,
@@ -30,15 +30,15 @@ IFCAPI_BINDING express::Base boundary_copy_boundary(
  * Options for assigning connection geometry to a space boundary.
  */
 struct BoundaryAssignConnectionGeometryOptions {
-    /// Closed outer polyline of the connection plane.
+    /// Outer boundary of the connection plane, in SI metres and converted to project units using unit_scale.
     std::vector<std::vector<double>> outer_boundary;
-    /// Origin of the connection plane relative to the bounded space.
+    /// Origin of the connection plane relative to the bounded space, in SI metres and converted to project units using unit_scale.
     std::vector<double> location;
     /// Local axis direction of the connection plane.
     std::vector<double> axis;
     /// Local reference direction of the connection plane.
     std::vector<double> ref_direction;
-    /// Closed inner polylines representing openings in the connection plane.
+    /// Inner boundaries representing openings in the connection plane, in SI metres and converted to project units using unit_scale.
     std::vector<std::vector<std::vector<double>>> inner_boundaries;
     /// Scale that converts model units to SI units.
     double unit_scale = 1.0;
@@ -54,8 +54,8 @@ IFCAPI_BINDING void boundary_assign_connection_geometry(
 /**
  * Remove a space boundary relationship and its connection geometry.
  *
- * Removes the ConnectionGeometry attribute first (deep-removing its entities),
- * then removes the boundary entity itself with history cleanup.
+ * Removes the connection geometry and then removes the boundary relationship.
+ * Unreferenced entities belonging to the connection geometry are removed.
  *
  * @param file IFC file containing the boundary.
  * @param boundary IfcRelSpaceBoundary entity to remove.
@@ -87,7 +87,7 @@ struct BoundaryEditAttributesOptions {
  *
  * Updates the relating space, related building element, and boundary
  * classification. ParentBoundary and CorrespondingBoundary are set only when
- * the schema supports them (IFC4+); nullopt clears those attributes.
+ * the schema supports them (IFC4+). When omitted, those attributes are cleared.
  *
  * @param entity IfcRelSpaceBoundary entity to modify.
  * @param options Attribute values to set.

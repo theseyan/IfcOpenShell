@@ -29,6 +29,7 @@ struct SequenceDuplicateTaskResult {
     std::vector<express::Base> duplicate;
 };
 
+/// Ownership options for duplicating a task tree.
 struct SequenceDuplicateTaskOptions {
     /// Owner history applied to duplicated entities. When omitted, one is created from user/application.
     std::optional<express::Base> owner_history;
@@ -38,6 +39,7 @@ struct SequenceDuplicateTaskOptions {
     std::optional<express::Base> application;
 };
 
+/// Ownership options for copying a work schedule.
 struct SequenceCopyWorkScheduleOptions {
     /// Owner history applied to copied entities. When omitted, one is created from user/application.
     std::optional<express::Base> owner_history;
@@ -47,6 +49,7 @@ struct SequenceCopyWorkScheduleOptions {
     std::optional<express::Base> application;
 };
 
+/// Options for creating a work schedule baseline.
 struct SequenceCreateBaselineOptions {
     /// Name for the baseline schedule. When omitted, the baseline Name is left blank.
     std::optional<std::string> name;
@@ -58,11 +61,13 @@ struct SequenceCreateBaselineOptions {
     std::optional<express::Base> application;
 };
 
+/// Options for creating a task time entity.
 struct SequenceAddTaskTimeOptions {
     /// When true, creates an IfcTaskTimeRecurring instead of IfcTaskTime.
     std::optional<bool> is_recurring;
 };
 
+/// Options for creating an IfcTask.
 struct SequenceAddTaskOptions {
     /// IfcWorkSchedule to assign the task to via IfcRelAssignsToControl. Takes precedence over parent_task when both are provided.
     std::optional<express::Base> work_schedule;
@@ -84,6 +89,7 @@ struct SequenceAddTaskOptions {
     std::optional<express::Base> application;
 };
 
+/// Options for creating an IfcWorkCalendar.
 struct SequenceAddWorkCalendarOptions {
     /// Calendar name. Defaults to "Unnamed".
     std::optional<std::string> name;
@@ -97,6 +103,7 @@ struct SequenceAddWorkCalendarOptions {
     std::optional<express::Base> application;
 };
 
+/// Options for creating an IfcWorkPlan.
 struct SequenceAddWorkPlanOptions {
     /// Work plan name.
     std::optional<std::string> name;
@@ -116,6 +123,7 @@ struct SequenceAddWorkPlanOptions {
     std::optional<express::Base> application;
 };
 
+/// Options for creating an IfcWorkSchedule.
 struct SequenceAddWorkScheduleOptions {
     /// Schedule name. Defaults to "Unnamed".
     std::optional<std::string> name;
@@ -139,6 +147,7 @@ struct SequenceAddWorkScheduleOptions {
     std::optional<express::Base> application;
 };
 
+/// Options for creating an IfcTimePeriod.
 struct SequenceAddTimePeriodOptions {
     /// ISO 8601 time string for the StartTime attribute (e.g. "08:00:00").
     std::optional<std::string> start_time;
@@ -146,6 +155,7 @@ struct SequenceAddTimePeriodOptions {
     std::optional<std::string> end_time;
 };
 
+/// Options for creating an IfcRelSequence.
 struct SequenceAssignSequenceOptions {
     /// Sequence type enum value. Defaults to "FINISH_START".
     std::optional<std::string> sequence_type;
@@ -157,11 +167,13 @@ struct SequenceAssignSequenceOptions {
     std::optional<express::Base> application;
 };
 
+/// Options for creating an IfcLagTime.
 struct SequenceAssignLagTimeOptions {
     /// Duration type enum value for the lag. Defaults to "WORKTIME".
     std::optional<std::string> duration_type;
 };
 
+/// Ownership options for assigning a process.
 struct SequenceAssignProcessOptions {
     /// Owner history applied to the IfcRelAssignsToProcess. When omitted, one is created from user/application.
     std::optional<express::Base> owner_history;
@@ -171,6 +183,7 @@ struct SequenceAssignProcessOptions {
     std::optional<express::Base> application;
 };
 
+/// Ownership options for assigning a product.
 struct SequenceAssignProductOptions {
     /// Owner history applied to the IfcRelAssignsToProduct. When omitted, one is created from user/application.
     std::optional<express::Base> owner_history;
@@ -180,6 +193,7 @@ struct SequenceAssignProductOptions {
     std::optional<express::Base> application;
 };
 
+/// Ownership options for assigning a work schedule to a work plan.
 struct SequenceAssignWorkPlanOptions {
     /// Owner history applied to the aggregate relationship. When omitted, one is created from user/application.
     std::optional<express::Base> owner_history;
@@ -189,6 +203,7 @@ struct SequenceAssignWorkPlanOptions {
     std::optional<express::Base> application;
 };
 
+/// Ownership options for removing sequence relationships.
 struct SequenceRemoveOptions {
     /// IfcPersonAndOrganization used to update or remove relationships.
     std::optional<express::Base> user;
@@ -244,16 +259,17 @@ IFCAPI_BINDING void sequence_edit_task_time(
     ifcopenshell_pset_props_t* attributes);
 
 /**
- * Deep-copy a task and its subtasks, property sets, and sequence relationships.
+ * Create an independent copy of a task and its subtasks, property sets, and
+ * sequence relationships.
  *
- * Creates duplicates of the task, its nested child tasks, property sets, and
- * IfcRelSequence relationships between duplicated tasks. Returns parallel
- * vectors of original and duplicated tasks in depth-first order.
+ * Creates copies of the task, its nested child tasks, property sets, and
+ * IfcRelSequence relationships between copied tasks. Returns parallel lists
+ * of original and copied tasks in depth-first order.
  *
  * @param file File that receives the duplicated entities.
  * @param task IfcTask to duplicate.
  * @param options Ownership options for duplicated entities.
- * @return Parallel vectors of original and duplicated tasks.
+ * @return Parallel lists of original and copied tasks.
  */
 IFCAPI_BINDING SequenceDuplicateTaskResult sequence_duplicate_task(
     ifcopenshell::file* file,
@@ -261,11 +277,10 @@ IFCAPI_BINDING SequenceDuplicateTaskResult sequence_duplicate_task(
     const SequenceDuplicateTaskOptions& options);
 
 /**
- * Deep-copy an IfcWorkSchedule and all its controlled tasks.
+ * Create an independent copy of an IfcWorkSchedule and its controlled tasks.
  *
- * Shallow-copies the schedule, then deep-copies each controlled IfcTask
- * (with its subtasks and relationships) and assigns the copies to the new
- * schedule.
+ * Copies the schedule and each controlled IfcTask, including its subtasks and
+ * relationships, then assigns the copies to the new schedule.
  *
  * @param file File that receives the copied entities.
  * @param work_schedule IfcWorkSchedule to copy.
@@ -645,7 +660,7 @@ IFCAPI_BINDING void sequence_unassign_sequence(
  * @param relating_process IfcTask to unassign from.
  * @param related_object Object to unassign.
  * @param options Ownership options.
- * @return The modified relationship, or a null handle if removed.
+ * @return The modified relationship, or no result when it is removed.
  */
 IFCAPI_BINDING express::Base sequence_unassign_process(
     ifcopenshell::file* file,
@@ -664,7 +679,7 @@ IFCAPI_BINDING express::Base sequence_unassign_process(
  * @param relating_product IfcProduct to unassign from.
  * @param related_object Object to unassign.
  * @param options Ownership options.
- * @return The modified relationship, or a null handle if removed.
+ * @return The modified relationship, or no result when it is removed.
  */
 IFCAPI_BINDING express::Base sequence_unassign_product(
     ifcopenshell::file* file,

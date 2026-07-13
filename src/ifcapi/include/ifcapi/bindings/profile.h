@@ -24,7 +24,7 @@ namespace bindings {
 struct ProfileAddArbitraryProfileOptions {
     /// Ordered XYZ or XY points defining the closed outer curve, in SI metres.
     std::vector<std::vector<double>> profile;
-    /// Optional profile name. Empty string if omitted.
+    /// Optional profile name. When omitted, the profile name is empty.
     std::optional<std::string> name;
 };
 
@@ -36,7 +36,7 @@ struct ProfileAddArbitraryProfileWithVoidsOptions {
     std::vector<std::vector<double>> outer_profile;
     /// Inner void curves, each as ordered XY or XYZ points in SI metres.
     std::vector<std::vector<std::vector<double>>> inner_profiles;
-    /// Optional profile name. Empty string if omitted.
+    /// Optional profile name. When omitted, the profile name is empty.
     std::optional<std::string> name;
 };
 
@@ -83,11 +83,11 @@ IFCAPI_BINDING express::Base profile_add_arbitrary_profile_with_voids(
     const ProfileAddArbitraryProfileWithVoidsOptions& options);
 
 /**
- * Deep-copy a profile and its associated IfcProfileProperties.
+ * Copy a profile and its associated IfcProfileProperties.
  *
  * @param file IFC file that receives the copied profile.
  * @param profile IfcProfileDef entity to copy.
- * @return Newly created deep copy of the profile.
+ * @return Newly created independent copy of the profile.
  */
 IFCAPI_BINDING express::Base profile_copy_profile(
     ifcopenshell::file* file,
@@ -97,7 +97,7 @@ IFCAPI_BINDING express::Base profile_copy_profile(
  * Edit attributes of an existing profile definition.
  *
  * @param profile IfcProfileDef entity to modify.
- * @param attributes Property container with attribute name-value pairs.
+ * @param attributes Attribute name-to-value mapping.
  */
 IFCAPI_BINDING void profile_edit_profile(
     express::Base* profile,
@@ -107,8 +107,8 @@ IFCAPI_BINDING void profile_edit_profile(
  * Remove a profile definition and its directly referenced sub-entities.
  *
  * Removes associated IfcProfileProperties first, then removes the profile
- * entity and deep-removes all entities reachable through its direct
- * attributes (e.g. curves, placement entities).
+ * entity and removes unreferenced entities belonging to its direct geometry,
+ * such as curves and placements.
  *
  * @param file IFC file to modify.
  * @param profile IfcProfileDef entity to remove.

@@ -51,10 +51,10 @@ IFCAPI_BINDING express::Base context_add_context(
 /**
  * Remove a geometric representation context and its subcontexts recursively.
  *
- * For subcontexts, references from IfcCoordinateOperation entities are
- * deep-removed; other referencing entities are redirected to the parent
- * context. For top-level contexts, representations using the context are
- * unassigned from their elements and removed.
+ * For subcontexts, IfcCoordinateOperation references are removed and other
+ * referencing entities are redirected to the parent context. For top-level
+ * contexts, representations using the context are unassigned from their
+ * elements and removed.
  */
 IFCAPI_BINDING void context_remove_context(ifcopenshell::file* file, express::Base* context);
 

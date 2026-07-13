@@ -53,11 +53,11 @@ struct DrawingUnassignProductOptions {
  * already exists for the same axis tag. For non-grid products, if an
  * existing IfcRelAssignsToProduct already references the relating product,
  * the related object is appended to its RelatedObjects aggregate instead
- * of creating a new relationship. Returns a null handle on exact duplicate.
+ * of creating a new relationship. Returns no result for an exact duplicate.
  *
  * @param file IFC file to modify.
  * @param options Assignment parameters.
- * @return IfcRelAssignsToProduct relationship, or null handle on duplicate or failure.
+ * @return IfcRelAssignsToProduct relationship, or no result for a duplicate or failure.
  */
 IFCAPI_BINDING express::Base drawing_assign_product(
     ifcopenshell::file* file,

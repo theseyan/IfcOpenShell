@@ -19,13 +19,13 @@ namespace ifcapi {
 namespace bindings {
 
 /**
- * Return the primitive type name of a schema attribute.
+ * Return the primitive type category of a schema attribute.
  *
  * Possible values include "string", "float", "integer", "boolean",
  * "enum", "entity", "select", "aggregate", "binary", and "unknown".
  *
  * @param attribute Schema attribute declaration.
- * @return A static string describing the primitive type.
+ * @return A string describing the primitive type category.
  */
 const char* attribute_get_primitive_type(const ifcopenshell::attribute* attribute);
 
@@ -35,7 +35,7 @@ const char* attribute_get_primitive_type(const ifcopenshell::attribute* attribut
  * If the attribute is not an enumeration type, returns an empty list.
  *
  * @param attribute Schema attribute declaration.
- * @return Ordered list of enumeration value names.
+ * @return Enumeration value names in declaration order.
  */
 std::vector<std::string> attribute_get_enum_items(const ifcopenshell::attribute* attribute);
 

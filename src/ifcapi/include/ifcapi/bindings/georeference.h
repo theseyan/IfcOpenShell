@@ -53,27 +53,27 @@ IFCAPI_BINDING void georeference_add_georeferencing(
 /**
  * Options for editing the true north direction.
  *
- * When true_north is std::nullopt, existing true north is removed from all
- * geometric contexts. When present, the first two elements are read as
- * (X, Y); missing elements default to 0.0. The vector is not normalized.
+ * When omitted, existing true north is removed from all geometric contexts.
+ * When provided, the first two values are used as (X, Y); missing values
+ * default to 0.0. The direction is not normalized.
  */
 struct GeoreferenceEditTrueNorthOptions {
-    /// 2-element direction vector (X, Y) for true north, or std::nullopt to remove.
+    /// Direction ratios (X, Y) for true north. When omitted, true north is removed.
     std::optional<std::vector<double>> true_north;
 };
 
 /**
  * Options for editing map conversion and projected CRS attributes.
  *
- * coordinate_operation and projected_crs are optional property bags.
- * When nullptr, the corresponding entity is left unchanged. When present,
+ * coordinate_operation and projected_crs are optional property bags. When
+ * omitted, the corresponding entity is left unchanged. When provided,
  * the attributes are applied to the existing IfcCoordinateOperation or
  * IfcProjectedCRS (or the IFC2X3 equivalent property sets).
  */
 struct GeoreferenceEditGeoreferencingOptions {
-    /// Property bag for IfcCoordinateOperation attributes (e.g. Eastings, Northings). nullptr to skip.
+    /// Property bag for IfcCoordinateOperation attributes (e.g. Eastings, Northings). Omit to leave it unchanged.
     std::optional<ifcopenshell_pset_props_t*> coordinate_operation;
-    /// Property bag for IfcProjectedCRS attributes (e.g. Name, MapZone). nullptr to skip.
+    /// Property bag for IfcProjectedCRS attributes (e.g. Name, MapZone). Omit to leave it unchanged.
     std::optional<ifcopenshell_pset_props_t*> projected_crs;
 };
 
@@ -100,14 +100,13 @@ struct GeoreferenceEditWcsOptions {
 /**
  * Set or remove the true north direction on all geometric representation contexts.
  *
- * When true_north is std::nullopt, any existing TrueNorth reference is removed
- * from every IfcGeometricRepresentationContext and the orphaned IfcDirection is
- * deleted if unreferenced. When present, the first two elements of the vector
- * are used as (X, Y) direction ratios; missing entries default to 0.0. The
- * vector is not normalized.
+ * When omitted, any existing TrueNorth reference is removed from every
+ * IfcGeometricRepresentationContext. When provided, the first two values are
+ * used as (X, Y) direction ratios; missing values default to 0.0. The
+ * direction is not normalized.
  *
  * @param file File whose contexts to update.
- * @param options True north direction vector or std::nullopt to remove.
+ * @param options True north direction ratios, or omission to remove true north.
  */
 IFCAPI_BINDING void georeference_edit_true_north(
     ifcopenshell::file* file,

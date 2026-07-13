@@ -108,7 +108,7 @@ struct MaterialUnassignMaterialOptions {
  * Options for removing a constituent or layer item.
  */
 struct MaterialRemoveItemOptions {
-    /// If true, the associated IfcMaterial is also deleted (deep removal). Defaults to false.
+    /// If true, the associated IfcMaterial is also deleted. Defaults to false.
     std::optional<bool> should_remove_material;
 };
 
@@ -262,7 +262,7 @@ IFCAPI_BINDING void material_remove_list_item(
     const MaterialRemoveListItemOptions& options);
 
 /**
- * Remove an IfcMaterial and its container constituents/layers/profiles.
+ * Remove an IfcMaterial and its associated constituents, layers, and profiles.
  *
  * Deletes the material entity. Constituent, layer, or profile entities
  * that reference it are also removed. Associated IfcRelAssociatesMaterial,

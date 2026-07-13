@@ -4,9 +4,9 @@
 #define IFCAPI_BINDINGS_CONTRACT_H
 
 /*
- * Marker for C++ declarations that form the public high-level binding
- * contract. It compiles away in normal builds, while giving the generator a
- * stable facade to target instead of scraping implementation internals.
+ * Markers for declarations that form the public high-level IFCAPI contract.
+ * They give the binding generator a stable public facade instead of exposing
+ * implementation details.
  *
  * IFCAPI_OWNED and IFCAPI_COPY are source-contract annotations consumed by the
  * binding generator. Place them immediately after IFCAPI_BINDING for return

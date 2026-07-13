@@ -24,10 +24,10 @@ namespace bindings {
  *
  * If the element is already of the requested class, returns it unchanged.
  *
- * @param file The IFC file. If empty, uses the element's file.
+ * @param file IFC file to modify. When omitted, the element's file is used.
  * @param element The entity to reassign.
  * @param new_class The target IFC class name (e.g. "IfcWall").
- * @return The new entity of the requested class, or empty on failure.
+ * @return The new entity of the requested class, or no result if the operation fails.
  */
 IFCAPI_BINDING express::Base schema_reassign_class(
     std::optional<ifcopenshell::file*> file,

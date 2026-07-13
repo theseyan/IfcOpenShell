@@ -43,7 +43,7 @@ struct RootRemoveProductOptions {
  * predefined type.
  *
  * Sets GlobalId (for IfcRoot-derived entities). OwnerHistory is assigned only
- * when the owner_history option contains a handle; it is not created
+ * when the owner_history option is provided; it is not created
  * automatically. Schema-specific defaults are applied for spatial elements,
  * element types, and door/window styles. If the predefined type is not a valid
  * enum value, it is stored as USERDEFINED with the value in ObjectType
@@ -56,11 +56,12 @@ IFCAPI_BINDING express::Base root_create_entity(
 /**
  * Remove a product and all its relationships.
  *
- * Performs a deep removal that cleans up: representations, object placements,
+ * Removes the product and cleans up its related representations, object placements,
  * opening elements, property sets, material assignments, type definitions,
  * space boundaries, nesting relationships, aggregate relationships, spatial
  * containment, element connections, port connections, group memberships,
- * and grid axes. The product entity itself is deleted last.
+ * and grid axes. Related entities are removed only when they are no longer
+ * needed by the remaining model.
  */
 IFCAPI_BINDING void root_remove_product(
     ifcopenshell::file* file,

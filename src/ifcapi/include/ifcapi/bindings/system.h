@@ -177,7 +177,7 @@ IFCAPI_BINDING express::Base system_add_system(
  * Assign a flow control element to a flow element via IfcRelFlowControlElements.
  *
  * If the flow control is already assigned to a different element, no change
- * is made and an empty handle is returned.
+ * is made and no relationship is returned.
  */
 IFCAPI_BINDING express::Base system_assign_flow_control(
     ifcopenshell::file* file,
@@ -195,11 +195,11 @@ IFCAPI_BINDING express::Base system_assign_port(
     const SystemAssignPortOptions& options);
 
 /**
- * Assign products to a system via IfcRelAssignsToGroup (delegated to group_assign_group).
+ * Assign products to a system via IfcRelAssignsToGroup.
  *
  * Validates that each product is compatible with the system type (e.g.
- * only IfcDistributionElement for IfcDistributionSystem). Throws if a
- * product is not assignable.
+ * only IfcDistributionElement for IfcDistributionSystem). The operation fails
+ * if a product is not valid for the system type.
  */
 IFCAPI_BINDING express::Base system_assign_system(
     ifcopenshell::file* file,
@@ -255,7 +255,7 @@ IFCAPI_BINDING void system_unassign_port(
     const SystemUnassignPortOptions& options);
 
 /**
- * Remove products from a system (delegated to group_unassign_group).
+ * Remove products from a system.
  */
 IFCAPI_BINDING void system_unassign_system(
     ifcopenshell::file* file,

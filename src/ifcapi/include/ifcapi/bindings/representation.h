@@ -25,7 +25,7 @@ namespace bindings {
  * @param context_type Context type filter (e.g. "Model", "Plan").
  * @param subcontext Context identifier filter (e.g. "Body", "Axis").
  * @param target_view Target view filter (e.g. "MODEL_VIEW", "GRAPH_VIEW").
- * @return The first matching context, or empty if none found.
+ * @return The first matching context, or no result if none is found.
  */
 IFCAPI_BINDING express::Base representation_get_context(
     ifcopenshell::file* file,
@@ -34,15 +34,15 @@ IFCAPI_BINDING express::Base representation_get_context(
     const char* target_view);
 
 /**
- * Resolve a representation by unwrapping single mapped items.
+ * Resolve a representation through single mapped items.
  *
  * If a representation contains a single IfcMappedItem whose
  * MappingSource points to another representation, this function
- * follows the chain and returns the innermost representation.
- * This handles Tekla-style representation indirection.
+ * follows the chain and returns the innermost representation. A representation
+ * that does not meet this condition is returned unchanged.
  *
  * @param representation The IfcShapeRepresentation to resolve.
- * @return The resolved representation, or the original if no unwrapping was needed.
+ * @return The resolved representation, or the original when no mapping is followed.
  */
 IFCAPI_BINDING express::Base representation_resolve(express::Base* representation);
 
@@ -69,7 +69,7 @@ struct RepresentationGetProductRepresentationOptions {
  *
  * @param element The IfcProduct or IfcTypeProduct.
  * @param options Context filtering options.
- * @return The matching IfcShapeRepresentation, or empty if none found.
+ * @return The matching IfcShapeRepresentation, or no result if none is found.
  */
 IFCAPI_BINDING express::Base representation_get_product_representation(
     express::Base* element,
@@ -78,9 +78,9 @@ IFCAPI_BINDING express::Base representation_get_product_representation(
 /**
  * Return the base items of a representation, unwrapping mapped items and boolean operands.
  *
- * Recursively follows IfcMappedItem sources and IfcBooleanResult
- * operands to collect leaf-level representation items. Guards against
- * infinite recursion (depth limit of 64, iteration limit of 100000).
+ * Returns leaf-level representation items in traversal order. Within each
+ * representation, later items are returned before earlier items; for boolean
+ * results, the second operand is returned before the first operand.
  *
  * @param representation The IfcShapeRepresentation to resolve.
  * @return List of leaf-level IfcRepresentationItem entities.
@@ -92,7 +92,8 @@ IFCAPI_BINDING std::vector<express::Base> representation_resolve_base_items(expr
  *
  * Sorts by ContextType (Model > Plan > Annotation), then by
  * ContextIdentifier (Body > Body-FallBack > ...), then by
- * TargetView (MODEL_VIEW > PLAN_VIEW > ...), then by TargetScale.
+ * TargetView (MODEL_VIEW > PLAN_VIEW > ...), then by TargetScale. Ties
+ * preserve the order of contexts in the IFC file.
  *
  * @param file The IFC file to search.
  * @return Ordered list of IfcGeometricRepresentationContext entities.

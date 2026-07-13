@@ -31,10 +31,11 @@ struct CostEditCostValueOptions {
     std::optional<express::Base> unit_component;
 };
 
+/// Options for creating an IfcCostItem.
 struct CostAddCostItemOptions {
-    /// IfcCostSchedule to which the new IfcCostItem is assigned via IfcRelAssignsToControl. Takes precedence over cost_item when both are provided.
+    /// IfcCostSchedule to receive the new IfcCostItem. Takes precedence over cost_item when both are provided.
     std::optional<express::Base> cost_schedule;
-    /// Parent IfcCostItem to nest the new item under via IfcRelNests. Used only when cost_schedule is omitted.
+    /// Parent IfcCostItem under which to nest the new item. Used only when cost_schedule is omitted.
     std::optional<express::Base> cost_item;
     /// Owner history applied to created entities. When omitted, one is created from user/application.
     std::optional<express::Base> owner_history;
@@ -44,6 +45,7 @@ struct CostAddCostItemOptions {
     std::optional<express::Base> application;
 };
 
+/// Ownership options for assigning quantities to an IfcCostItem.
 struct CostAssignCostItemQuantityOptions {
     /// Owner history applied to the IfcRelAssignsToControl relationship. When omitted, one is created from user/application.
     std::optional<express::Base> owner_history;
@@ -53,6 +55,7 @@ struct CostAssignCostItemQuantityOptions {
     std::optional<express::Base> application;
 };
 
+/// Ownership options for removing quantities from an IfcCostItem.
 struct CostUnassignCostItemQuantityOptions {
     /// IfcPersonAndOrganization used to update the relationship OwnerHistory.
     std::optional<express::Base> user;
@@ -60,6 +63,7 @@ struct CostUnassignCostItemQuantityOptions {
     std::optional<express::Base> application;
 };
 
+/// Ownership options for copying an IfcCostSchedule.
 struct CostCopyCostScheduleOptions {
     /// Owner history applied to the copied schedule and its items. When omitted, one is created from user/application.
     std::optional<express::Base> owner_history;
@@ -111,10 +115,10 @@ IFCAPI_BINDING void cost_edit_cost_value_formula(
  * on IFC4+.
  *
  * @param file File that receives the new entity.
- * @param name Schedule name. May be null or empty for no name.
+ * @param name Schedule name. When omitted or empty, no name is assigned.
  * @param predefined_type IFC predefined type enum value (e.g. "BUDGET", "COSTPLAN").
  * @param update_date ISO 8601 date-time string for the UpdateDate attribute.
- * @param owner_history Owner history for the new entity. May be std::nullopt.
+ * @param owner_history Owner history for the new entity. When omitted, no owner history is assigned.
  * @return Newly created IfcCostSchedule.
  */
 IFCAPI_BINDING express::Base cost_add_cost_schedule(
@@ -179,14 +183,14 @@ IFCAPI_BINDING express::Base cost_add_cost_item_quantity(
  * For each product, creates an IfcRelAssignsToControl linking the cost item
  * to the product. If prop_name is provided, matching quantities from the
  * products' IfcElementQuantity property sets are collected into the cost
- * item's CostQuantities. If prop_name is null/empty and the cost item has a
+ * item's CostQuantities. If prop_name is omitted or empty and the cost item has a
  * single IfcQuantityCount, its value is updated to the count of assigned
  * non-resource objects. IfcSpatialElement products are skipped.
  *
  * @param file File containing the cost item and products.
  * @param cost_item IfcCostItem to assign quantities to.
  * @param products Products whose quantities to collect.
- * @param prop_name Quantity property name to match. May be null.
+ * @param prop_name Quantity property name to match. When omitted, no named quantity is collected.
  * @param options Ownership options for the assignment relationship.
  */
 IFCAPI_BINDING void cost_assign_cost_item_quantity(
@@ -290,10 +294,10 @@ IFCAPI_BINDING void cost_remove_cost_value(
     express::Base* cost_value);
 
 /**
- * Deep-copy cost values from one cost item to another.
+ * Copy the cost values from one cost item to another.
  *
- * Removes existing CostValues from the destination, then deep-copies each
- * IfcCostValue (and its component tree) from the source.
+ * Removes existing CostValues from the destination, then creates independent
+ * copies of the source values and their component trees.
  *
  * @param file File containing both cost items.
  * @param source IfcCostItem to copy values from.
@@ -320,25 +324,25 @@ IFCAPI_BINDING void cost_assign_cost_value(
     express::Base* cost_rate);
 
 /**
- * Deep-copy an IfcCostItem and its nested children.
+ * Copy an IfcCostItem and its nested children.
  *
- * Creates a deep copy of the cost item including nested child items,
- * property sets, and IfcRelDefinesByProperties relationships. Returns
- * the list of all newly created cost items (root first, then descendants).
+ * Creates independent copies of the cost item, nested child items, property
+ * sets, and IfcRelDefinesByProperties relationships. The returned list contains
+ * the new root item followed by its descendants.
  *
  * @param file File that receives the copied entities.
  * @param cost_item IfcCostItem to copy.
- * @return Vector of newly created IfcCostItem entities (owned, caller must not free).
+ * @return List of newly created IfcCostItem entities, with the root first.
  */
 IFCAPI_BINDING IFCAPI_OWNED std::vector<express::Base> cost_copy_cost_item(
     ifcopenshell::file* file,
     express::Base* cost_item);
 
 /**
- * Deep-copy an IfcCostSchedule and all its controlled cost items.
+ * Copy an IfcCostSchedule and all its controlled cost items.
  *
- * Shallow-copies the schedule, then deep-copies each controlled IfcCostItem
- * and assigns the copies to the new schedule via IfcRelAssignsToControl.
+ * Creates an independent schedule and independent copies of each controlled
+ * IfcCostItem, then assigns the copies to the new schedule.
  *
  * @param file File that receives the copied entities.
  * @param cost_schedule IfcCostSchedule to copy.

@@ -39,17 +39,17 @@ struct CogoAddSurveyPointOptions {
  *
  * @param file File that receives the new entities.
  * @param options Survey point geometry and placement options.
- * @return The newly created IfcAnnotation, or a null handle on error.
+ * @return The newly created IfcAnnotation, or no result if creation fails.
  */
 IFCAPI_BINDING express::Base cogo_add_survey_point(
     ifcopenshell::file* file,
     const CogoAddSurveyPointOptions& options);
 
 /**
- * Replace the survey point geometry inside an existing annotation.
+ * Replace the survey point geometry of an existing annotation.
  *
- * Replaces the first item in the annotation's IfcShapeRepresentation with
- * the given IfcPoint. The annotation must already have a shape representation.
+ * Replaces the annotation's existing survey point with the given IfcPoint.
+ * The annotation must already have a shape representation.
  *
  * @param annotation IfcAnnotation whose survey point to replace.
  * @param survey_point IfcPoint to assign as the new geometry.
@@ -61,9 +61,9 @@ IFCAPI_BINDING void cogo_assign_survey_point(
 /**
  * Update the coordinates of the survey point inside an existing annotation.
  *
- * Reads the first item from the annotation's IfcShapeRepresentation and
- * overwrites its Coordinates attribute. If the point currently has two
- * coordinates, only x and y are written; otherwise all three are used.
+ * Updates the coordinates of the annotation's survey point. If the existing
+ * point is two-dimensional, only x and y are written; otherwise all three
+ * coordinates are used.
  *
  * @param annotation IfcAnnotation containing the survey point.
  * @param x Easting or X coordinate in model units.

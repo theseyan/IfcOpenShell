@@ -16,6 +16,7 @@ struct ifcopenshell_pset_props_t;
 namespace ifcapi {
 namespace bindings {
 
+/// Options for assigning products to a structural analysis model.
 struct StructuralAssignStructuralAnalysisModelOptions {
     /// Owner history applied to the IfcRelAssignsToGroup relationship. When omitted, one is created from user/application.
     std::optional<express::Base> owner_history;
@@ -25,6 +26,7 @@ struct StructuralAssignStructuralAnalysisModelOptions {
     std::optional<express::Base> application;
 };
 
+/// Options for removing products from a structural analysis model.
 struct StructuralUnassignStructuralAnalysisModelOptions {
     /// IfcPersonAndOrganization used to update the relationship OwnerHistory.
     std::optional<express::Base> user;
@@ -32,6 +34,7 @@ struct StructuralUnassignStructuralAnalysisModelOptions {
     std::optional<express::Base> application;
 };
 
+/// Ownership options for creating a structural activity and its relationship.
 struct StructuralAddStructuralActivityOptions {
     /// Owner history for the IfcStructuralActivity entity. When omitted, no OwnerHistory is set.
     std::optional<express::Base> activity_owner_history;
@@ -39,6 +42,7 @@ struct StructuralAddStructuralActivityOptions {
     std::optional<express::Base> relationship_owner_history;
 };
 
+/// Options for creating and applying a structural boundary condition.
 struct StructuralAddStructuralBoundaryConditionOptions {
     /// Name for the boundary condition entity.
     std::optional<std::string> name;
@@ -46,6 +50,7 @@ struct StructuralAddStructuralBoundaryConditionOptions {
     std::optional<express::Base> connection;
 };
 
+/// Options for removing a structural boundary condition.
 struct StructuralRemoveStructuralBoundaryConditionOptions {
     /// IfcStructuralConnection whose AppliedCondition to clear and delete. Takes precedence over boundary_condition.
     std::optional<express::Base> connection;
@@ -57,7 +62,7 @@ struct StructuralRemoveStructuralBoundaryConditionOptions {
  * Create an IfcStructuralAnalysisModel with PredefinedType LOADING_3D.
  *
  * @param file File that receives the new entity.
- * @param owner_history Owner history for the new entity. May be std::nullopt.
+ * @param owner_history Owner history for the new entity. When omitted, no owner history is assigned.
  * @return Newly created IfcStructuralAnalysisModel.
  */
 IFCAPI_BINDING express::Base structural_add_structural_analysis_model(
@@ -100,7 +105,7 @@ IFCAPI_BINDING void structural_unassign_structural_analysis_model(
  * @param file File containing both entities.
  * @param relating_product IfcProduct that the structural item references.
  * @param related_object Structural item to assign.
- * @param owner_history Owner history for new relationships. May be std::nullopt.
+ * @param owner_history Owner history for new relationships. When omitted, no owner history is assigned.
  * @return The IfcRelAssignsToProduct relationship.
  */
 IFCAPI_BINDING express::Base structural_assign_product(
@@ -155,7 +160,7 @@ IFCAPI_BINDING express::Base structural_add_structural_load(
  * @param name Name for the load case.
  * @param action_type ActionType enum value (e.g. "PERMANENT_G", "VARIABLE_Q").
  * @param action_source ActionSource enum value (e.g. "WIND", "IMPOSED").
- * @param owner_history Owner history for the new entity. May be std::nullopt.
+ * @param owner_history Owner history for the new entity. When omitted, no owner history is assigned.
  * @return Newly created IfcStructuralLoadCase.
  */
 IFCAPI_BINDING express::Base structural_add_structural_load_case(
@@ -174,7 +179,7 @@ IFCAPI_BINDING express::Base structural_add_structural_load_case(
  * @param name Name for the load group.
  * @param action_type ActionType enum value.
  * @param action_source ActionSource enum value.
- * @param owner_history Owner history for the new entity. May be std::nullopt.
+ * @param owner_history Owner history for the new entity. When omitted, no owner history is assigned.
  * @return Newly created IfcStructuralLoadGroup.
  */
 IFCAPI_BINDING express::Base structural_add_structural_load_group(
@@ -192,7 +197,7 @@ IFCAPI_BINDING express::Base structural_add_structural_load_group(
  * @param file File containing both entities.
  * @param relating_structural_member IfcStructuralMember to connect.
  * @param related_structural_connection IfcStructuralConnection to connect to.
- * @param owner_history Owner history for the new relationship. May be std::nullopt.
+ * @param owner_history Owner history for the new relationship. When omitted, no owner history is assigned.
  * @return The IfcRelConnectsStructuralMember relationship.
  */
 IFCAPI_BINDING express::Base structural_add_structural_member_connection(
@@ -227,8 +232,8 @@ IFCAPI_BINDING express::Base structural_add_structural_boundary_condition(
  *
  * @param file File containing the structural item.
  * @param structural_item Structural item (e.g. IfcStructuralPointConnection).
- * @param axis 3-element direction vector for the Axis attribute.
- * @param ref_direction 3-element direction vector for the RefDirection attribute.
+ * @param axis 3-element direction ratios for the Axis attribute.
+ * @param ref_direction 3-element direction ratios for the RefDirection attribute.
  */
 IFCAPI_BINDING void structural_edit_structural_connection_cs(
     ifcopenshell::file* file,
@@ -244,7 +249,7 @@ IFCAPI_BINDING void structural_edit_structural_connection_cs(
  *
  * @param file File containing the structural item.
  * @param structural_item Structural item with an Axis attribute.
- * @param axis 3-element direction vector.
+ * @param axis 3-element direction ratios.
  */
 IFCAPI_BINDING void structural_edit_structural_item_axis(
     ifcopenshell::file* file,
@@ -253,9 +258,9 @@ IFCAPI_BINDING void structural_edit_structural_item_axis(
 /**
  * Edit attributes of an IfcBoundaryCondition subclass.
  *
- * Each entry in the attributes bag must be a dictionary with "type" and
+ * Each entry in the attributes mapping must contain "type" and
  * "value" sub-entries. The type specifies the IFC typed value class (e.g.
- * "IfcBoolean", "IfcForceMeasure") or "string"/"null" for direct values.
+ * "IfcBoolean", "IfcForceMeasure") or "string"/"blank" for direct values.
  *
  * @param file File containing the boundary condition.
  * @param condition IfcBoundaryCondition entity to edit.
@@ -274,7 +279,7 @@ IFCAPI_BINDING void structural_edit_structural_boundary_condition(
  * @param file File containing both entities.
  * @param structural_analysis_model IfcStructuralAnalysisModel to assign.
  * @param building IfcBuilding to assign to.
- * @param owner_history Owner history for the new relationship. May be std::nullopt.
+ * @param owner_history Owner history for the new relationship. When omitted, no owner history is assigned.
  * @return The IfcRelServicesBuildings relationship.
  */
 IFCAPI_BINDING express::Base structural_assign_to_building(

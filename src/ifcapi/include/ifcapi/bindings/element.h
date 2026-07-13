@@ -15,7 +15,7 @@ namespace bindings {
 
 /// Options for retrieving the spatial container of an element.
 struct ElementGetContainerOptions {
-    /// When true, only return a directly containing spatial element. When false (default), walk up the hierarchy.
+    /// When true, return only a directly containing spatial element. When false (default), include indirect containers.
     std::optional<bool> direct_only;
     /// If set, only return a container that is of this IFC class (e.g. "IfcBuildingStorey").
     std::optional<std::string> ifc_class;
@@ -55,47 +55,46 @@ struct ElementGetPsetIdsOptions {
  * Return the type element associated with an element occurrence.
  *
  * For an IfcTypeObject, returns the element itself. For an IfcObject,
- * follows IsTypedBy (IFC4+) or IsDefinedBy/IfcRelDefinesByType (IFC2X3).
+ * returns the type assigned through the schema's type relationship.
  *
  * @param instance The element to query.
- * @return The related type element, or empty if none.
+ * @return The related type element, or no result if none is assigned.
  */
 IFCAPI_BINDING std::optional<express::Base> element_get_type(express::Base* instance);
 
 /**
  * Return the aggregate parent of an element.
  *
- * Follows the Decomposes inverse to find the RelatingObject via
- * IfcRelAggregates. In IFC2X3, returns empty if the relationship
- * is IfcRelNests rather than IfcRelAggregates.
+ * Returns the RelatingObject of an IfcRelAggregates relationship. In IFC2X3,
+ * returns no result when the decomposition uses IfcRelNests instead.
  *
  * @param instance The element to query.
- * @return The aggregate parent, or empty if not aggregated.
+ * @return The aggregate parent, or no result if the element is not aggregated.
  */
 IFCAPI_BINDING std::optional<express::Base> element_get_aggregate(express::Base* instance);
 
 /**
  * Return the nest parent of an element.
  *
- * Follows the Nests inverse (IFC4+) or Decomposes/IfcRelNests (IFC2X3)
- * to find the RelatingObject.
+ * Returns the RelatingObject of the applicable IfcRelNests relationship for
+ * the schema.
  *
  * @param instance The element to query.
- * @return The nesting parent, or empty if not nested.
+ * @return The nesting parent, or no result if the element is not nested.
  */
 IFCAPI_BINDING std::optional<express::Base> element_get_nest(express::Base* instance);
 
 /**
  * Return the spatial container of an element.
  *
- * By default walks up the spatial hierarchy to find an indirect container
- * (e.g. a building storey for an element inside an aggregate). When
+ * By default considers indirect spatial containers (e.g. a building storey
+ * for an element inside an aggregate). When
  * direct_only is true, only a direct ContainedInStructure relationship
  * is considered.
  *
  * @param instance The element to query.
  * @param options Container lookup options.
- * @return The spatial container, or empty if not contained.
+ * @return The spatial container, or no result if the element is not contained.
  */
 IFCAPI_BINDING std::optional<express::Base> element_get_container(
     express::Base* instance,
@@ -108,7 +107,7 @@ IFCAPI_BINDING std::optional<express::Base> element_get_container(
  * relationships in that order, returning the first parent found.
  *
  * @param instance The element to query.
- * @return The parent element, or empty if at the top of the hierarchy.
+ * @return The parent element, or no result if the element is at the top of the hierarchy.
  */
 IFCAPI_BINDING std::optional<express::Base> element_get_parent(express::Base* instance);
 
@@ -123,7 +122,7 @@ IFCAPI_BINDING std::optional<express::Base> element_get_parent(express::Base* in
  *
  * @param instance The element to query.
  * @param options Material lookup options.
- * @return The material entity, or empty if none is associated.
+ * @return The material entity, or no result if none is associated.
  */
 IFCAPI_BINDING std::optional<express::Base> element_get_material(
     express::Base* instance,
@@ -132,8 +131,8 @@ IFCAPI_BINDING std::optional<express::Base> element_get_material(
 /**
  * Return all occurrences of a type element.
  *
- * Follows Types (IFC4+) or ObjectTypeOf (IFC2X3) to find the
- * RelatedObjects.
+ * Returns the RelatedObjects of the applicable type relationship for the
+ * schema.
  *
  * @param type_element The type element (e.g. IfcWallType).
  * @return List of element occurrences of that type.
@@ -143,8 +142,8 @@ IFCAPI_BINDING std::vector<express::Base> element_get_types(express::Base* type_
 /**
  * Return the shape aspects of an element.
  *
- * For an IfcProduct, reads HasShapeAspects from the Representation.
- * For an IfcTypeProduct, reads from RepresentationMaps. When
+ * For an IfcProduct, returns shape aspects from its representation. For an
+ * IfcTypeProduct, returns shape aspects from its representation maps. When
  * should_inherit is true (default), also includes shape aspects from
  * the element's type.
  *
@@ -159,7 +158,7 @@ IFCAPI_BINDING std::vector<express::Base> element_get_shape_aspects(
 /**
  * Return the groups that an element is assigned to.
  *
- * Follows HasAssignments to find IfcRelAssignsToGroup relationships.
+ * Returns groups from the element's IfcRelAssignsToGroup relationships.
  *
  * @param element The element to query.
  * @return List of IfcGroup entities.
@@ -169,7 +168,7 @@ IFCAPI_BINDING std::vector<express::Base> element_get_groups(express::Base* elem
 /**
  * Return the controls assigned to an element.
  *
- * Follows HasAssignments to find IfcRelAssignsToControl relationships.
+ * Returns controls from the element's IfcRelAssignsToControl relationships.
  *
  * @param element The element to query.
  * @return List of IfcControl entities.
@@ -179,7 +178,7 @@ IFCAPI_BINDING std::vector<express::Base> element_get_controls(express::Base* el
 /**
  * Return the direct aggregation parts of an element.
  *
- * Follows IsDecomposedBy to find RelatedObjects via IfcRelAggregates.
+ * Returns RelatedObjects from the element's IfcRelAggregates relationships.
  *
  * @param element The element to query.
  * @return List of aggregated parts.
@@ -189,7 +188,7 @@ IFCAPI_BINDING std::vector<express::Base> element_get_parts(express::Base* eleme
 /**
  * Return elements directly contained in a spatial element.
  *
- * Follows ContainsElements to find RelatedElements.
+ * Returns RelatedElements from the spatial element's containment relationships.
  *
  * @param element The spatial element (e.g. IfcBuildingStorey).
  * @return List of contained elements.
@@ -199,8 +198,9 @@ IFCAPI_BINDING std::vector<express::Base> element_get_contained(express::Base* e
 /**
  * Return spatial elements that reference an element.
  *
- * Follows ReferencedInStructures to find RelatingStructure.
- * Useful for multi-storey elements or elements spanning multiple spaces.
+ * Returns RelatingStructure values from the element's spatial reference
+ * relationships. This includes multi-storey elements and elements spanning
+ * multiple spaces.
  *
  * @param element The element to query.
  * @return List of referenced IfcSpatialElement entities.
@@ -210,7 +210,7 @@ IFCAPI_BINDING std::vector<express::Base> element_get_referenced_structures(expr
 /**
  * Return elements referenced by a spatial structure.
  *
- * Follows ReferencesElements to find RelatedElements.
+ * Returns RelatedElements from the spatial element's reference relationships.
  *
  * @param structure The spatial element (e.g. IfcBuildingStorey).
  * @return List of referenced elements.
@@ -220,8 +220,8 @@ IFCAPI_BINDING std::vector<express::Base> element_get_structure_referenced_eleme
 /**
  * Return opening elements associated with an element.
  *
- * Follows HasOpenings to find RelatedOpeningElement. Also traverses
- * aggregate parents to collect inherited openings.
+ * Returns RelatedOpeningElement values from the element's opening
+ * relationships. Also includes openings inherited from aggregate parents.
  *
  * @param element The building element (e.g. IfcWall).
  * @return List of IfcOpeningElement entities.
@@ -231,21 +231,21 @@ IFCAPI_BINDING std::vector<express::Base> element_get_openings(express::Base* el
 /**
  * Return the opening element that an element fills.
  *
- * Follows FillsVoids to find the RelatingOpeningElement.
- * Typically applies to windows and doors.
+ * Returns the RelatingOpeningElement from the element's filling relationship.
+ * This typically applies to windows and doors.
  *
  * @param element The filling element (e.g. IfcWindow).
- * @return The IfcOpeningElement being filled, or empty if none.
+ * @return The IfcOpeningElement being filled, or no result if none is associated.
  */
 IFCAPI_BINDING std::optional<express::Base> element_get_filled_void(express::Base* element);
 
 /**
  * Return the building element voided by an opening.
  *
- * Follows VoidsElements to find the RelatingBuildingElement.
+ * Returns the RelatingBuildingElement from the opening relationship.
  *
  * @param element The IfcOpeningElement.
- * @return The building element being voided, or empty if none.
+ * @return The building element being voided, or no result if none is associated.
  */
 IFCAPI_BINDING std::optional<express::Base> element_get_voided_element(express::Base* element);
 
@@ -264,9 +264,9 @@ IFCAPI_BINDING bool element_is_userdefined_type(express::Base* element);
 /**
  * Return elements that have an external reference assigned.
  *
- * For IfcExternalReference subtypes, follows ExternalReferenceForResources.
- * For classification/document/library references, follows the appropriate
- * inverse attribute.
+ * For IfcExternalReference subtypes, returns resources from the applicable
+ * external-reference relationship. For classification, document, and library
+ * references, returns elements from the corresponding IFC relationship.
  *
  * @param reference The IfcExternalReference or IfcExternalInformation entity.
  * @return List of elements using the reference.
@@ -276,9 +276,9 @@ IFCAPI_BINDING std::vector<express::Base> element_get_referenced_elements(expres
 /**
  * Return elements that use a material, directly or via a material set.
  *
- * Traverses inverse relationships from the material to find all elements
- * associated through IfcRelAssociatesMaterial, as well as elements using
- * the material as part of a layer, profile, constituent, or material list.
+ * Returns elements associated through IfcRelAssociatesMaterial, including
+ * elements using the material as part of a layer, profile, constituent, or
+ * material list.
  *
  * @param material The IfcMaterial or material set entity.
  * @return List of elements using the material.
@@ -288,8 +288,8 @@ IFCAPI_BINDING std::vector<express::Base> element_get_elements_by_material(expre
 /**
  * Return elements whose geometric representation uses a style.
  *
- * Traverses from IfcSurfaceStyle through IfcStyledItem and
- * IfcShapeRepresentation to find all elements using the style.
+ * Returns elements whose shape representations contain the style through
+ * IfcStyledItem relationships.
  *
  * @param style The IfcPresentationStyle entity.
  * @return List of elements using the style.
@@ -299,8 +299,8 @@ IFCAPI_BINDING std::vector<express::Base> element_get_elements_by_style(express:
 /**
  * Return elements that use a geometric representation.
  *
- * Follows OfProductRepresentation and RepresentationMap to find all
- * IfcProduct and IfcTypeProduct entities sharing the representation.
+ * Returns IfcProduct and IfcTypeProduct entities that reference the
+ * representation through their product representation or representation map.
  *
  * @param representation The IfcShapeRepresentation entity.
  * @return List of elements using the representation.
@@ -310,8 +310,8 @@ IFCAPI_BINDING std::vector<express::Base> element_get_elements_by_representation
 /**
  * Return elements that use a profile definition in their representation.
  *
- * Traverses from the IfcProfileDef through representation items to find
- * all elements whose geometry references the profile.
+ * Returns elements whose geometry references the profile through their
+ * representation items.
  *
  * @param profile The IfcProfileDef entity.
  * @return List of elements using the profile.
@@ -321,8 +321,8 @@ IFCAPI_BINDING std::vector<express::Base> element_get_elements_by_profile(expres
 /**
  * Return elements assigned to a presentation layer.
  *
- * Follows AssignedItems on the IfcPresentationLayerAssignment to find
- * all elements whose geometry is on the layer.
+ * Returns elements whose geometry appears in AssignedItems of the
+ * IfcPresentationLayerAssignment.
  *
  * @param layer The IfcPresentationLayerAssignment entity.
  * @return List of elements on the layer.
@@ -332,8 +332,8 @@ IFCAPI_BINDING std::vector<express::Base> element_get_elements_by_layer(express:
 /**
  * Return the presentation layers that an element is part of.
  *
- * Traverses the element's representation to find IfcPresentationLayerAssignment
- * entities.
+ * Returns IfcPresentationLayerAssignment entities referenced by the
+ * element's representation.
  *
  * @param element The element to query.
  * @return List of IfcPresentationLayerAssignment entities.
@@ -354,8 +354,8 @@ IFCAPI_BINDING std::vector<express::Base> element_get_styles(express::Base* elem
 /**
  * Replace all references to an element with another element.
  *
- * Traverses all inverse relationships of old_element and substitutes
- * references to old_element with new_element.
+ * Replaces references to old_element in all inverse relationships with
+ * references to new_element.
  *
  * @param old_element The element to be replaced.
  * @param new_element The replacement element.
@@ -367,9 +367,9 @@ IFCAPI_BINDING void element_replace_element(
 /**
  * Recursively remove an element and its owned subgraph.
  *
- * Traverses forward through the element's subgraph. Each subelement is
- * deleted only if it has no inverses outside the subgraph. Protected
- * elements and elements with external references are preserved.
+ * Removes the element and owned subelements that have no references outside
+ * the removal set. Protected elements and externally referenced elements are
+ * preserved.
  *
  * @param element The root element to remove.
  */
@@ -378,10 +378,9 @@ IFCAPI_BINDING void element_remove_deep(express::Base* element);
 /**
  * Return the full spatial decomposition of an element.
  *
- * Collects all subelements by traversing ContainsElements,
- * IsDecomposedBy, HasOpenings, HasFillings, and IsNestedBy
- * relationships. When is_recursive is true (default), the traversal
- * is breadth-first through the entire hierarchy.
+ * Returns subelements related through containment, aggregation, openings,
+ * fillings, and nesting. When is_recursive is true (default), the result
+ * includes the full hierarchy in breadth-first order.
  *
  * @param element The root element.
  * @param options Decomposition traversal options.
@@ -394,9 +393,9 @@ IFCAPI_BINDING std::vector<express::Base> element_get_decomposition(
 /**
  * Return property set and quantity identifiers of an element.
  *
- * Collects IfcPropertySet, IfcElementQuantity, and related property
- * definition entities. For IfcTypeObject, reads HasPropertySets.
- * For other objects, reads IsDefinedBy/IfcRelDefinesByProperties.
+ * Returns IfcPropertySet, IfcElementQuantity, and related property definition
+ * entities. For IfcTypeObject, uses HasPropertySets; for other objects, uses
+ * the applicable property-definition relationship.
  * When should_inherit is true (default), also includes property sets
  * from the element's type.
  *

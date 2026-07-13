@@ -25,26 +25,26 @@ namespace bindings {
 IFCAPI_BINDING void pset_template_set_template_dir(const std::string& dir);
 
 /**
- * Return a cached template handle for the given schema (e.g. "IFC4", "IFC2X3").
+ * Return the cached property template collection for the given schema (e.g. "IFC4", "IFC2X3").
  *
- * Loads and caches the built-in templates on first call. Returns nullptr
+ * Loads and caches the built-in templates on first call. Returns no result
  * if the schema is unknown or templates are not available.
  */
 IFCAPI_BINDING ifcopenshell_pset_template_t* pset_template_get_template(const std::string& schema_identifier);
 
 /**
- * Create a template handle from custom IFC template files.
+ * Create a property template collection from custom IFC template files.
  *
  * Loads IfcPropertySetTemplate and IfcSimplePropertyTemplate entities from
- * the provided files. The caller owns the returned handle and must free it
- * with pset_template_free.
+ * the provided files. The returned collection remains valid until it is
+ * released with pset_template_free.
  */
 IFCAPI_BINDING IFCAPI_OWNED ifcopenshell_pset_template_t* pset_template_create_from_files(
     const std::string& schema_identifier,
     const std::vector<const ifcopenshell::file*>& template_files);
 
 /**
- * Free a template handle created by pset_template_create_from_files.
+ * Release a template collection created by pset_template_create_from_files.
  */
 void pset_template_free(ifcopenshell_pset_template_t* pqt);
 
@@ -52,7 +52,7 @@ void pset_template_free(ifcopenshell_pset_template_t* pqt);
  * Look up a property set template by name.
  *
  * Returns the IfcPropertySetTemplate entity with the given name, or a
- * null handle if not found.
+ * no result if the template is not found.
  */
 IFCAPI_BINDING express::Base pset_template_get_by_name(
     ifcopenshell_pset_template_t* pqt,
@@ -67,8 +67,8 @@ IFCAPI_BINDING bool pset_template_is_templated(ifcopenshell_pset_template_t* pqt
  * Return property set templates applicable to an IFC class and predefined type.
  *
  * Filters by pset_only (PSET templates) or qto_only (QTO templates).
- * If neither flag is set, returns both types. Pass nullptr for
- * predefined_type or schema_name to use defaults.
+ * If neither flag is set, returns both types. When predefined_type or
+ * schema_name is omitted, the default is used.
  */
 IFCAPI_BINDING IFCAPI_COPY std::vector<express::Base> pset_template_get_applicable(
     ifcopenshell_pset_template_t* pqt,
@@ -131,7 +131,7 @@ IFCAPI_BINDING express::Base pset_template_add_prop_template(
     const char* primary_measure_type);
 
 /**
- * Remove a property set template via deep removal.
+ * Remove a property set template and its child property templates.
  *
  * Deletes the IfcPropertySetTemplate and all its child
  * IfcSimplePropertyTemplate entities.
@@ -142,8 +142,8 @@ IFCAPI_BINDING void pset_template_remove_pset_template(
 /**
  * Remove a property template from its parent set template.
  *
- * Removes the IfcSimplePropertyTemplate from its parent's
- * HasPropertyTemplates aggregate, then deletes the template entity.
+ * Removes the IfcSimplePropertyTemplate from its parent and deletes the
+ * template entity.
  */
 IFCAPI_BINDING void pset_template_remove_prop_template(
     ifcopenshell::file* file,

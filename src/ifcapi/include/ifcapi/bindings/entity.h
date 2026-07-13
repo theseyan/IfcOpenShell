@@ -12,18 +12,18 @@
 namespace ifcapi {
 namespace bindings {
 
-/// Options for deep removal of an entity.
+/// Options for removing an entity and its owned subgraph.
 struct EntityRemoveDeepOptions {
-    /// Additional entities to consider as part of the subgraph when checking inverse references.
+    /// Additional entities to include when determining whether references are external to the subgraph.
     std::vector<express::Base> also_consider;
-    /// Entities that must not be deleted even if they are part of the subgraph.
+    /// Entities to preserve even when they belong to the subgraph.
     std::vector<express::Base> do_not_delete;
 };
 
 /**
- * Recursively remove an entity and its owned subgraph.
+ * Remove an entity and the unshared entities it owns, recursively.
  *
- * Equivalent to entity_remove_deep_with_options with empty options.
+ * Equivalent to entity_remove_deep_with_options with the default options.
  * The start element must have no inverses outside the subgraph.
  *
  * @param instance The root entity to remove.
@@ -31,13 +31,11 @@ struct EntityRemoveDeepOptions {
 IFCAPI_BINDING void entity_remove_deep(express::Base* instance);
 
 /**
- * Recursively remove an entity and its owned subgraph with fine-grained control.
+ * Remove an entity and its owned subgraph with fine-grained control.
  *
- * Traverses forward through the entity's subgraph. Each subelement is
- * deleted only if it has fewer than two inverse references, or all of
- * its inverses are within the subgraph. The also_consider list extends
- * the subgraph for inverse checking. The do_not_delete list protects
- * specific entities from deletion.
+ * An owned entity is removed only when it has no references from outside the
+ * removal set. The also_consider list extends that set for this decision, and
+ * the do_not_delete list protects specific entities from deletion.
  *
  * @param instance The root entity to remove.
  * @param options Additional control over the removal process.

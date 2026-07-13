@@ -29,7 +29,7 @@ namespace bindings {
  * @param file Optional IFC file context.
  * @param instance The element to format against.
  * @param query The format expression string.
- * @return The formatted result, or empty on error.
+ * @return The formatted result, or no result if evaluation fails.
  */
 IFCAPI_BINDING std::optional<std::string> selector_format(
     std::optional<ifcopenshell::file*> file,
@@ -43,84 +43,88 @@ IFCAPI_BINDING std::optional<std::string> selector_format(
  * "IfcWall/Name" yields keys ["IfcWall", "Name"]).
  *
  * @param query The selector query string.
- * @return Opaque key list handle. Free with selector_keys_free.
+ * @return Parsed key list, or no result if the query is invalid. Release it
+ * with selector_keys_free.
  */
 IFCAPI_BINDING ifcopenshell_selector_keys_t* selector_parse_keys(const std::string& query);
 
 /**
  * Return the number of keys in a parsed key list.
  *
- * @param keys Opaque key list handle from selector_parse_keys.
- * @return Number of keys, or 0 if keys is null.
+ * @param keys Parsed key list from selector_parse_keys.
+ * @return Number of keys, or 0 when no key list is provided.
  */
 IFCAPI_BINDING size_t selector_keys_count(std::optional<ifcopenshell_selector_keys_t*> keys);
 
 /**
  * Return the text of a key at the given index.
  *
- * @param keys Opaque key list handle.
+ * @param keys Parsed key list.
  * @param index Zero-based key index.
- * @return Key text, or empty string if out of range.
+ * @return Key text, or an empty string if no key list is provided or the index is out of range.
  */
 IFCAPI_BINDING std::string selector_keys_get(std::optional<ifcopenshell_selector_keys_t*> keys, size_t index);
 
 /**
  * Check whether a key at the given index is a regular expression.
  *
- * @param keys Opaque key list handle.
+ * @param keys Parsed key list.
  * @param index Zero-based key index.
- * @return True if the key is a regex pattern.
+ * @return True if the key is a regular expression pattern; otherwise false.
  */
 IFCAPI_BINDING bool selector_keys_is_regex(std::optional<ifcopenshell_selector_keys_t*> keys, size_t index);
 
 /**
- * Free a parsed key list.
+ * Release a parsed key list.
  *
- * @param keys Opaque key list handle from selector_parse_keys.
+ * @param keys Parsed key list from selector_parse_keys.
  */
 IFCAPI_BINDING void selector_keys_free(std::optional<ifcopenshell_selector_keys_t*> keys);
 
 /**
- * Parse a filter query into an AST.
+ * Parse a filter query into a selector syntax tree.
  *
  * Parses a filter expression (e.g. "IfcWall, Pset_WallCommon.FireRating=*2h*")
  * into a tree of selector nodes.
  *
  * @param query The filter query string.
- * @return Root node of the AST. Free with selector_node_free.
+ * @return Root node of the syntax tree, or no result if the query is invalid.
+ * Release the tree with selector_node_free.
  */
 IFCAPI_BINDING ifcopenshell_selector_node_t* selector_parse_filter(const std::string& query);
 
 /**
- * Parse a get-element query into an AST.
+ * Parse a get-element query into a selector syntax tree.
  *
  * Parses a key path expression (e.g. "IfcWall/Name") into a tree of
  * selector nodes.
  *
  * @param query The get-element query string.
- * @return Root node of the AST. Free with selector_node_free.
+ * @return Root node of the syntax tree, or no result if the query is invalid.
+ * Release the tree with selector_node_free.
  */
 IFCAPI_BINDING ifcopenshell_selector_node_t* selector_parse_get_element(const std::string& query);
 
 /**
- * Parse a format query into an AST.
+ * Parse a format query into a selector syntax tree.
  *
  * Parses a format expression (e.g. "Name + ' - ' + GlobalId") into
  * a tree of selector nodes.
  *
  * @param query The format query string.
- * @return Root node of the AST. Free with selector_node_free.
+ * @return Root node of the syntax tree, or no result if the query is invalid.
+ * Release the tree with selector_node_free.
  */
 IFCAPI_BINDING ifcopenshell_selector_node_t* selector_parse_format(const std::string& query);
 
 /**
  * Return the kind of a selector node.
  *
- * Values below IFCSEL_TOKEN_FIRST (100) are grammar rule nodes;
- * values at or above IFCSEL_TOKEN_FIRST are token nodes.
+ * Values below 100 are grammar-rule nodes; values at or above 100 are token
+ * nodes. When no node is provided, the anonymous-token kind is returned.
  *
  * @param node The selector node.
- * @return Node kind as an ifcsel_node_kind value, or 0 if node is null.
+ * @return Node-kind value, or the anonymous-token kind when no node is provided.
  */
 IFCAPI_BINDING int32_t selector_node_kind(std::optional<const ifcopenshell_selector_node_t*> node);
 
@@ -128,7 +132,7 @@ IFCAPI_BINDING int32_t selector_node_kind(std::optional<const ifcopenshell_selec
  * Return the number of child nodes.
  *
  * @param node The selector node.
- * @return Number of children, or 0 if node is null.
+ * @return Number of children, or 0 when no node is provided.
  */
 IFCAPI_BINDING size_t selector_node_child_count(std::optional<const ifcopenshell_selector_node_t*> node);
 
@@ -137,7 +141,7 @@ IFCAPI_BINDING size_t selector_node_child_count(std::optional<const ifcopenshell
  *
  * @param node The parent selector node.
  * @param index Zero-based child index.
- * @return The child node, or null if out of range.
+ * @return The child node, or no result if no parent is provided or the index is out of range.
  */
 IFCAPI_BINDING ifcopenshell_selector_node_t* selector_node_child(
     std::optional<const ifcopenshell_selector_node_t*> node,
@@ -146,19 +150,19 @@ IFCAPI_BINDING ifcopenshell_selector_node_t* selector_node_child(
 /**
  * Return the text content of a token node.
  *
- * For token nodes (kind >= IFCSEL_TOKEN_FIRST), returns the matched
- * text. For rule nodes, returns empty.
+ * For token nodes (kind at or above 100), returns the matched text. For
+ * grammar-rule nodes, returns an empty string.
  *
  * @param node The selector node.
- * @return Node text, or empty string if not a token.
+ * @return Node text, or an empty string if no node is provided or the node is not a token.
  */
 IFCAPI_BINDING std::string selector_node_text(std::optional<const ifcopenshell_selector_node_t*> node);
 
 /**
- * Free a selector AST and all its children.
+ * Release a selector syntax tree and all its descendants.
  *
- * @param root Root node of the AST from selector_parse_filter,
- *             selector_parse_get_element, or selector_parse_format.
+ * @param root Root node from selector_parse_filter, selector_parse_get_element,
+ *             or selector_parse_format.
  */
 IFCAPI_BINDING void selector_node_free(std::optional<ifcopenshell_selector_node_t*> root);
 

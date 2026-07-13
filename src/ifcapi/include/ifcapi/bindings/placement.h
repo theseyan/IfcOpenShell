@@ -31,7 +31,7 @@ IFCAPI_BINDING std::vector<double> placement_matrix_from_axes(
  * Extract a 4x4 row-major matrix from an IfcAxis2Placement entity.
  *
  * Supports IfcAxis2Placement2D, IfcAxis2Placement3D, and IfcAxis1Placement.
- * Returns an identity matrix if the instance is null or unsupported.
+ * Returns an identity matrix if no instance is provided or the instance is unsupported.
  *
  * @param instance IfcAxis2Placement entity.
  * @return 16-element row-major 4x4 matrix.
@@ -41,10 +41,10 @@ IFCAPI_BINDING std::vector<double> placement_get_axis2_placement(express::Base* 
 /**
  * Compute the cumulative 4x4 row-major world matrix of an IfcLocalPlacement.
  *
- * Walks the PlacementRelTo chain to compute the full transformation.
- * Returns an identity matrix if the instance is nullopt.
+ * Combines the placement with its parent placements to compute the full
+ * transformation. Returns an identity matrix when the placement is omitted.
  *
- * @param instance IfcLocalPlacement entity, or nullopt for identity.
+ * @param instance IfcLocalPlacement entity. When omitted, returns the identity matrix.
  * @return 16-element row-major 4x4 matrix.
  */
 IFCAPI_BINDING std::vector<double> placement_get_local_placement(
@@ -53,8 +53,8 @@ IFCAPI_BINDING std::vector<double> placement_get_local_placement(
 /**
  * Extract a 4x4 row-major matrix from an IfcCartesianTransformationOperator3D.
  *
- * Handles uniform and non-uniform scaling. Returns an identity matrix if the
- * instance is null or not a cartesian transformation operator.
+ * Handles uniform and non-uniform scaling. Returns an identity matrix if no
+ * instance is provided or the instance is not a cartesian transformation operator.
  *
  * @param instance IfcCartesianTransformationOperator3D entity.
  * @return 16-element row-major 4x4 matrix.
@@ -65,7 +65,8 @@ IFCAPI_BINDING std::vector<double> placement_get_cartesian_xform_3d(express::Bas
  * Compute the combined 4x4 row-major matrix for an IfcMappedItem.
  *
  * Multiplies the MappingTarget transformation by the MappingOrigin placement.
- * Returns an identity matrix if the instance is null or not an IfcMappedItem.
+ * Returns an identity matrix if no instance is provided or the instance is
+ * not an IfcMappedItem.
  *
  * @param instance IfcMappedItem entity.
  * @return 16-element row-major 4x4 matrix.
@@ -76,8 +77,8 @@ IFCAPI_BINDING std::vector<double> placement_get_mappeditem_xform(express::Base*
  * Return the elevation of a building storey in model units.
  *
  * Uses the Z-translation of the storey's ObjectPlacement when available,
- * falling back to the Elevation attribute. Returns 0.0 if the instance is
- * null or has no placement.
+ * falling back to the Elevation attribute. Returns 0.0 if no instance is
+ * provided or the instance has no placement.
  *
  * @param instance IfcBuildingStorey entity.
  * @return Elevation in model units.

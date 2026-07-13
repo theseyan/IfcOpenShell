@@ -20,11 +20,11 @@ namespace bindings {
  * Options for adding a presentation layer with style.
  */
 struct LayerAddLayerWithStyleOptions {
-    /// Whether the layer is visible. nullopt maps to IFC UNKNOWN.
+    /// Whether the layer is visible. When omitted, the IFC logical value is UNKNOWN.
     std::optional<bool> on;
-    /// Whether the layer is frozen. nullopt maps to IFC UNKNOWN.
+    /// Whether the layer is frozen. When omitted, the IFC logical value is UNKNOWN.
     std::optional<bool> frozen;
-    /// Whether the layer is blocked. nullopt maps to IFC UNKNOWN.
+    /// Whether the layer is blocked. When omitted, the IFC logical value is UNKNOWN.
     std::optional<bool> blocked;
     /// Styles to assign to the layer.
     std::vector<express::Base> styles;

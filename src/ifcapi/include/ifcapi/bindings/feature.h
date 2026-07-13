@@ -73,10 +73,10 @@ IFCAPI_BINDING express::Base feature_add_filling(
  * For IfcFeatureElementAddition subclasses, removes the IfcRelProjectsElement.
  * For IfcSurfaceFeature in IFC4, unassigns from the aggregate parent. In
  * other schemas, no feature-specific relationship is removed before the
- * element itself is removed via root_remove_product.
- * IfcOpeningElement fillings are also removed. root_remove_product cleans
- * up nested elements, property sets, representations, and other inverse
- * relationships.
+ * element itself is removed.
+ * IfcOpeningElement fillings are also removed. Nested elements, property sets,
+ * representations, and other inverse relationships are cleaned up as part of
+ * removing the feature.
  */
 IFCAPI_BINDING void feature_remove_feature(
     ifcopenshell::file* file,

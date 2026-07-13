@@ -219,11 +219,11 @@ IFCAPI_BINDING express::Base owner_assign_actor(
  *
  * Sets CreationDate and LastModifiedDate to the current time, State to
  * READWRITE, and ChangeAction to ADDED. Both user and application are
- * required; if either is omitted, returns a null handle.
+ * required; if either is omitted, no owner history is created.
  *
  * @param file File that receives the new entity.
  * @param options User and application for the owner history.
- * @return Newly created IfcOwnerHistory, or a null handle on error.
+ * @return Newly created IfcOwnerHistory, or no result if creation fails.
  */
 IFCAPI_BINDING express::Base owner_create_owner_history(
     ifcopenshell::file* file,
@@ -322,7 +322,7 @@ IFCAPI_BINDING void owner_unassign_actor(
  *
  * @param file File containing the element.
  * @param options Element, user, and application.
- * @return The updated or newly created IfcOwnerHistory, or a null handle if the element is not an IfcRoot.
+ * @return The updated or newly created IfcOwnerHistory, or no result if the element is not an IfcRoot.
  */
 IFCAPI_BINDING express::Base owner_update_owner_history(
     ifcopenshell::file* file,
