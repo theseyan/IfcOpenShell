@@ -188,6 +188,12 @@ class CompilationConfig:
 @dataclass(frozen=True)
 class DiscoveryEnvironment:
     compilation: CompilationConfig = field(default_factory=CompilationConfig)
+    _translation_unit_indexes: dict[Path, TranslationUnitIndex] = field(
+        default_factory=dict, init=False, repr=False, compare=False
+    )
+    _cache_lock: threading.RLock = field(
+        default_factory=threading.RLock, init=False, repr=False, compare=False
+    )
 
 
 @dataclass(frozen=True)
@@ -580,10 +586,6 @@ class TranslationUnitIndex:
         return False
 
 
-_TRANSLATION_UNIT_INDEX_CACHE: dict[tuple[object, Path], TranslationUnitIndex] = {}
-_CACHE_LOCK = threading.RLock()
-
-
 def _resolve_path(path: Path, base_dir: Path) -> Path:
     if path.is_absolute():
         return path.resolve()
@@ -607,28 +609,13 @@ def _compile_command_from_config(
     )
 
 
-def _environment_cache_key(environment: DiscoveryEnvironment) -> object:
-    compilation = environment.compilation
-    return (
-        compilation.compiler,
-        compilation.clang_args,
-        tuple(path.resolve() for path in compilation.include_dirs),
-        compilation.defines,
-        compilation.working_directory.resolve()
-        if compilation.working_directory is not None
-        else None,
-    )
-
-
 def _translation_unit_index(
     environment: DiscoveryEnvironment, translation_unit: Path
 ) -> TranslationUnitIndex:
     tu_resolved = translation_unit.resolve()
-    environment_key = _environment_cache_key(environment)
-    cache_key = (environment_key, tu_resolved)
 
-    with _CACHE_LOCK:
-        cached = _TRANSLATION_UNIT_INDEX_CACHE.get(cache_key)
+    with environment._cache_lock:  # noqa: SLF001
+        cached = environment._translation_unit_indexes.get(tu_resolved)  # noqa: SLF001
         if cached is not None:
             return cached
 
@@ -636,7 +623,7 @@ def _translation_unit_index(
         debug_context = "compilation_config"
 
         index = TranslationUnitIndex(command=command)
-        _TRANSLATION_UNIT_INDEX_CACHE[cache_key] = index
+        environment._translation_unit_indexes[tu_resolved] = index  # noqa: SLF001
         debug_log(
             "clang.tu_index.create", f"{debug_context} tu={debug_path(tu_resolved)}"
         )
@@ -724,6 +711,8 @@ def _build_ast_dump_command(command: CompileCommand, *, ast_filter: str) -> list
 
     args.extend(
         [
+            "-Xclang",
+            "-skip-function-bodies",
             "-Xclang",
             "-ast-dump=json",
             "-Xclang",
@@ -1559,7 +1548,7 @@ def _parse_discovered_cpp_type(
         )
     resolved_enum = (
         None
-        if resolved_record is not None
+        if resolved_record is not None or template_name is not None
         else _resolved_enum(index, base_name, current_scope)
     )
     is_enum = resolved_enum is not None

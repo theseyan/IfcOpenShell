@@ -11,11 +11,50 @@ from src.ifcwrap.binding_generator.clang_discovery import (
     DiscoveryEnvironment,
     TranslationUnitIndex,
     _ast_filter_for_lookup,
+    _build_ast_dump_command,
+    _parse_discovered_cpp_type,
     discover_namespace_functions,
     discover_namespace_functions_with_synthetic_source,
     discover_public_fields,
     discover_public_methods,
 )
+
+
+def test_ast_dump_skips_function_bodies(tmp_path: Path) -> None:
+    source = tmp_path / "bindings.cpp"
+    command = CompileCommand(
+        directory=tmp_path,
+        file=source,
+        arguments=("clang++", "-std=c++17", "-c", str(source)),
+    )
+
+    ast_command = _build_ast_dump_command(command, ast_filter="Demo")
+
+    assert ast_command.count("-Xclang") == 3
+    assert "-skip-function-bodies" in ast_command
+
+
+def test_template_base_is_not_resolved_as_enum(tmp_path: Path) -> None:
+    index = TranslationUnitIndex(
+        CompileCommand(
+            directory=tmp_path,
+            file=tmp_path / "bindings.cpp",
+            arguments=("clang++", "-c", "bindings.cpp"),
+        )
+    )
+    ast_filters: list[str] = []
+
+    def fake_ast_dump(ast_filter: str) -> tuple[dict, ...]:
+        ast_filters.append(ast_filter)
+        return ()
+
+    index._run_ast_dump = fake_ast_dump  # type: ignore[method-assign]
+
+    cpp_type = _parse_discovered_cpp_type("vector<int>", index=index)
+
+    assert cpp_type.template_name == "vector"
+    assert cpp_type.is_enum is False
+    assert ast_filters == []
 
 
 def test_discover_public_methods_with_discovery_environment(tmp_path: Path) -> None:

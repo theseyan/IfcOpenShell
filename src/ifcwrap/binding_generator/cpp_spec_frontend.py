@@ -315,53 +315,57 @@ def _discover_spec_signatures(
 ) -> dict[str, tuple[CppSpecSignature, ...]]:
     text = source.read_text(encoding="utf-8")
     signatures: dict[str, list[CppSpecSignature]] = {}
-    for name in selected_names:
-        if name in _PRIVATE_NAMES:
+    selected_names = selected_names - _PRIVATE_NAMES
+    if not selected_names:
+        return {}
+    signature_re = re.compile(
+        r"(?P<doc>(?:(?:[ \t]*(?://[/!].*?)\n)|(?:[ \t]*/\*[*!].*?\*/\s*))*?)"
+        r"(?P<annotations>(?:IFCAPI_\w+(?:\([^)]*\))?\s+)*)"
+        r"(?P<return_decl>[\w:<>~,\s*&()]+?)\s+"
+        r"(?P<name>[A-Za-z_]\w*)\s*\("
+        r"(?P<params>[^;{}]*)\)\s*\{",
+        re.DOTALL,
+    )
+    for match in signature_re.finditer(text):
+        name = match.group("name")
+        if name not in selected_names:
             continue
-        signature_re = re.compile(
-            r"(?P<doc>(?:(?:[ \t]*(?://[/!].*?)\n)|(?:[ \t]*/\*[*!].*?\*/\s*))*?)"
-            r"(?P<annotations>(?:IFCAPI_\w+(?:\([^)]*\))?\s+)*)"
-            r"(?P<return_decl>[\w:<>~,\s*&()]+?)\s+" + re.escape(name) + r"\s*\("
-            r"(?P<params>[^;{}]*)\)\s*\{",
-            re.DOTALL,
-        )
-        for match in signature_re.finditer(text):
-            return_decl = f"{match.group('annotations')}{match.group('return_decl')}"
-            return_decl = re.sub(r"^\s*inline\s+", "", return_decl.strip())
-            return_annotations, _ = _leading_annotations(return_decl)
-            param_annotations: dict[str, frozenset[str]] = {}
-            param_defaults: dict[str, bool] = {}
-            first_param_type = None
-            first_param_name = None
-            for param in _split_params(match.group("params")):
-                annotations, rest = _leading_annotations(param)
-                if first_param_type is None:
-                    first_param_type = _param_type_decl(rest)
-                    first_param_name = _param_name(rest)
-                if annotations:
-                    param_annotations[_param_name(rest)] = annotations
-                if _has_default(param):
-                    param_defaults[_param_name(rest)] = True
-            if first_param_name == "self":
-                if name in signatures and any(
-                    item[3] == first_param_type for item in signatures[name]
-                ):
-                    msg = f"C++ spec export '{name}' is declared more than once; exported spec functions must be unique"
-                    raise ValueError(msg)
-            else:
-                if name in signatures:
-                    msg = f"C++ spec export '{name}' is declared more than once; exported spec functions must be unique"
-                    raise ValueError(msg)
-            signatures.setdefault(name, []).append(
-                (
-                    return_annotations,
-                    param_annotations,
-                    param_defaults,
-                    None,
-                    first_param_type,
-                    _clean_doc_comment(match.group("doc")),
-                )
+        return_decl = f"{match.group('annotations')}{match.group('return_decl')}"
+        return_decl = re.sub(r"^\s*inline\s+", "", return_decl.strip())
+        return_annotations, _ = _leading_annotations(return_decl)
+        param_annotations: dict[str, frozenset[str]] = {}
+        param_defaults: dict[str, bool] = {}
+        first_param_type = None
+        first_param_name = None
+        for param in _split_params(match.group("params")):
+            annotations, rest = _leading_annotations(param)
+            if first_param_type is None:
+                first_param_type = _param_type_decl(rest)
+                first_param_name = _param_name(rest)
+            if annotations:
+                param_annotations[_param_name(rest)] = annotations
+            if _has_default(param):
+                param_defaults[_param_name(rest)] = True
+        if first_param_name == "self":
+            if name in signatures and any(
+                item[3] == first_param_type for item in signatures[name]
+            ):
+                msg = f"C++ spec export '{name}' is declared more than once; exported spec functions must be unique"
+                raise ValueError(msg)
+        else:
+            if name in signatures:
+                msg = f"C++ spec export '{name}' is declared more than once; exported spec functions must be unique"
+                raise ValueError(msg)
+        signatures.setdefault(name, []).append(
+            (
+                return_annotations,
+                param_annotations,
+                param_defaults,
+                None,
+                first_param_type,
+                _clean_doc_comment(match.group("doc")),
             )
+        )
     return {name: tuple(entries) for name, entries in signatures.items()}
 
 
