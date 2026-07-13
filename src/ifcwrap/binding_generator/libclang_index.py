@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import ctypes.util
 import re
 import shutil
 import subprocess
@@ -52,11 +51,17 @@ def _matching_libclang(compiler: str) -> Path | None:
             candidate = directory / name
             if candidate.exists():
                 return candidate.resolve()
-        versioned = sorted(directory.glob("libclang.so.*"), reverse=True)
+        versioned = sorted(
+            directory.glob("libclang.so.*"),
+            key=lambda path: tuple(
+                int(part)
+                for part in re.findall(r"\d+", path.name.removeprefix("libclang.so."))
+            ),
+            reverse=True,
+        )
         if versioned:
             return versioned[0].resolve()
-    discovered = ctypes.util.find_library("clang")
-    return Path(discovered) if discovered else None
+    return None
 
 
 def _configure_libclang(compiler: str):

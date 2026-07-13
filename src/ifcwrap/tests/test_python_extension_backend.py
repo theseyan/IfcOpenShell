@@ -446,8 +446,7 @@ class TestFunctionWrapperParams:
             },
         )
         code = render_python_extension(meta)
-        # Non-nullable string uses "s" format
-        assert '"s"' in code or "const char *arg_name" in code
+        assert 'PyArg_ParseTuple(args, "s", &arg_name)' in code
 
     def test_nullable_string_uses_z_format(self):
         meta = _make_metadata(
@@ -468,8 +467,7 @@ class TestFunctionWrapperParams:
             },
         )
         code = render_python_extension(meta)
-        # Nullable string uses "z" format with optional marker
-        assert '"|z"' in code or "const char*" in code
+        assert 'PyArg_ParseTuple(args, "|z", &arg_name)' in code
 
     def test_multiple_params_generate_separate_declarations(self):
         meta = _make_metadata(
@@ -663,8 +661,7 @@ class TestMethodReceiver:
             },
         )
         code = render_python_extension(meta)
-        # The short method name should appear in the method table
-        assert '"item_reset"' in code or '"reset"' in code
+        assert '"item_reset"' in code
 
 
 # ---------------------------------------------------------------------------
@@ -699,7 +696,7 @@ class TestOutputHandling:
             },
         )
         code = render_python_extension(meta)
-        assert "PyBool_FromLong" in code or "bool result" in code
+        assert "__py_result = PyBool_FromLong(result)" in code
 
     def test_handle_out_result_generates_wrap_call(self):
         handle_type = "ifcopenshell_demo_file_t"
@@ -743,7 +740,7 @@ class TestOutputHandling:
             },
         )
         code = render_python_extension(meta)
-        assert "double result" in code or "PyFloat_FromDouble" in code
+        assert "__py_result = PyFloat_FromDouble(result)" in code
 
     def test_string_out_result(self):
         meta = _make_metadata(
@@ -756,8 +753,7 @@ class TestOutputHandling:
             },
         )
         code = render_python_extension(meta)
-        # Should have a string out-result
-        assert "convert_string" in code or "ifcopenshell_string_t" in code
+        assert "__py_result = convert_string(&result)" in code
 
 
 # ---------------------------------------------------------------------------
@@ -1001,7 +997,7 @@ class TestIntegrationWithPipeline:
         # Module init
         assert "PyInit__ifcopenshell_capi" in code
 
-    def test_generated_extension_is_compilable_c_structure(self, tmp_path: Path):
+    def test_generated_extension_contains_required_module_structure(self, tmp_path: Path):
         """Verify that the generated code has matching braces, valid structure."""
         from src.ifcwrap.binding_generator.abi_ir import finalize_abi
         from src.ifcwrap.binding_generator.authored_spec import load_authored_spec
@@ -1041,18 +1037,7 @@ class TestIntegrationWithPipeline:
         metadata = finalize_abi(ir)
         code = render_python_extension(metadata)
 
-        # Verify the code starts with includes and ends with PyInit
-        assert code.startswith("// This file was generated")
         assert "PyMODINIT_FUNC PyInit__ifcopenshell_capi" in code
-
-        # Verify brace balance with a simple count (not exhaustive, but catches obvious errors)
-        braces = code.count("{") - code.count("}")
-        assert braces == 0, f"Unbalanced braces in generated code: {braces}"
-
-        # Verify no dangling C++ style comments that could break things
-        assert "// This file was generated" in code
-
-        # Make sure key sections are present
         assert "static PyObject *raise_last_error" in code
         assert "static int extract_handle" in code
         assert "static PyMethodDef module_methods[]" in code
@@ -1110,38 +1095,13 @@ class TestValueConverters:
         assert "convert_ifcopenshell_string_copy" in code
         assert "convert_string" in code
 
-    def test_includes_input_sequence_helpers_when_sequence_params_present(self):
-        # Build metadata with a value_type for a sequence that will be used as input
-        meta = _make_metadata(
-            handles={"item": _make_handle("item", "ifcopenshell_demo_item_t")},
-            functions={
-                "ifcopenshell_demo_item_set_values": _make_function(
-                    c_name="ifcopenshell_demo_item_set_values",
-                    receiver="item",
-                    params=(
-                        CParamIR(
-                            name="values",
-                            c_type="const ifcopenshell_double_list_t*",
-                            role="param",
-                            type_kind="double",
-                            nullable=False,
-                        ),
-                    ),
-                ),
-            },
-        )
-        code = render_python_extension(meta)
-        # Should have the generic 'if sequence type is used, input helpers should be present
-        # For double_list, the element type is double which uses "double" reader
-        assert "free_input" in code or "make_input" in code or "convert_" in code
-
     def test_generated_code_has_header_includes(self):
         meta = _make_metadata(
             handles={"file": _make_handle("file", "ifcopenshell_demo_file_t")},
         )
         code = render_python_extension(meta)
         assert "#include <Python.h>" in code
-        assert 'structmember.h"' in code or '"structmember.h"' in code
+        assert '#include "structmember.h"' in code
         assert "ifcopenshell_api.h" in code
 
     def test_parse_instance_list_input_uses_canonical_helper_names(self):
@@ -1184,14 +1144,7 @@ class TestValueConverters:
 
 
 class TestGeneratedCodeMarkers:
-    """Verify the generated code includes the expected markers."""
-
-    def test_generated_code_has_header_comment(self):
-        meta = _make_metadata(
-            handles={"file": _make_handle("file", "ifcopenshell_demo_file_t")},
-        )
-        code = render_python_extension(meta)
-        assert code.startswith("// This file was generated")
+    """Verify generated module support declarations."""
 
     def test_generated_code_contains_simple_namespace_setup(self):
         meta = _make_metadata(

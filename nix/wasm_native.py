@@ -48,7 +48,9 @@ from nix import core, deps  # noqa: E402
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent
-BUILD_ROOT = Path(os.environ.get("WASM_NATIVE_BUILD_ROOT", REPO_ROOT / "build" / "wasm-native"))
+BUILD_ROOT = Path(
+    os.environ.get("WASM_NATIVE_BUILD_ROOT", REPO_ROOT / "build" / "wasm-native")
+)
 CMAKE_DIR = REPO_ROOT / "cmake"
 
 logger = logging.getLogger("wasm-native")
@@ -131,8 +133,23 @@ PROFILES: Dict[str, Dict[str, Any]] = {
     },
     "full": {
         "description": "All three geometry kernels",
-        "enabled_kernels": ["passthrough", "opencascade", "cgal", "cgalsimple", "manifold"],
-        "dependencies": ["boost", "eigen", "nlohmann_json", "occt", "gmp", "mpfr", "cgal", "manifold"],
+        "enabled_kernels": [
+            "passthrough",
+            "opencascade",
+            "cgal",
+            "cgalsimple",
+            "manifold",
+        ],
+        "dependencies": [
+            "boost",
+            "eigen",
+            "nlohmann_json",
+            "occt",
+            "gmp",
+            "mpfr",
+            "cgal",
+            "manifold",
+        ],
         "cmake_flags": {
             "WITH_OPENCASCADE": "ON",
             "WITH_CGAL": "ON",
@@ -141,7 +158,13 @@ PROFILES: Dict[str, Dict[str, Any]] = {
         },
         "test_expectations": {
             "schema_plugins": ["ifc2x3", "ifc4", "ifc4x3_add2"],
-            "kernel_plugins": ["passthrough", "opencascade", "cgal", "cgalsimple", "manifold"],
+            "kernel_plugins": [
+                "passthrough",
+                "opencascade",
+                "cgal",
+                "cgalsimple",
+                "manifold",
+            ],
             "tree_plugins": ["opencascade.brep", "opencascade.trianglebvh"],
             "mapping_plugins": ["ifc2x3", "ifc4", "ifc4x3_add2"],
             "geometry_serializer_plugins": ["obj"],
@@ -248,7 +271,11 @@ def cmd_doctor(args: argparse.Namespace) -> int:
                 text=True,
                 timeout=10,
             )
-            version = result.stdout.strip().split("\n")[0] if result.returncode == 0 else "FAILED"
+            version = (
+                result.stdout.strip().split("\n")[0]
+                if result.returncode == 0
+                else "FAILED"
+            )
             results[name] = (result.returncode == 0, version)
             if result.returncode != 0:
                 all_ok = False
@@ -321,8 +348,7 @@ def cmd_build_deps(args: argparse.Namespace) -> int:
 
     for dep_name in dep_list:
         if dep_name not in lock:
-            logger.warning("Dependency '%s' not in lockfile, skipping.", dep_name)
-            continue
+            raise KeyError(f"Dependency '{dep_name}' is missing from the lockfile")
 
         entry = lock[dep_name]
         logger.info("Building %s %s...", dep_name, entry["version"])
@@ -348,14 +374,20 @@ def cmd_build_deps(args: argparse.Namespace) -> int:
             gmp_prefix = profile_prefix / "gmp"
             mpfr_prefix = profile_prefix / "mpfr"
             boost_prefix = profile_prefix / "boost"
-            deps.build_cgal(src, profile_prefix / "cgal", gmp_prefix, mpfr_prefix, env,
-                            boost_prefix=boost_prefix)
+            deps.build_cgal(
+                src,
+                profile_prefix / "cgal",
+                gmp_prefix,
+                mpfr_prefix,
+                env,
+                boost_prefix=boost_prefix,
+            )
         elif dep_name == "occt":
             deps.build_occt(src, profile_prefix / "occt", env)
         elif dep_name == "manifold":
             deps.build_manifold(src, profile_prefix / "manifold", env)
         else:
-            logger.warning("No build recipe for %s, skipping.", dep_name)
+            raise ValueError(f"No build recipe for dependency '{dep_name}'")
 
     logger.info("All dependencies built for profile '%s'.", args.profile)
     return 0
@@ -369,7 +401,6 @@ def generate_cmake_flags(profile: str) -> List[str]:
     # Base flags
     flags = [
         "-DWASM_BUILD=ON",
-        "-DBUILD_IFCCAPI=ON",
         "-DBUILD_IFCAPI=ON",
         "-DBUILD_IFCGEOM=ON",
         "-DBUILD_IFCPYTHON=OFF",
@@ -397,7 +428,10 @@ def generate_cmake_flags(profile: str) -> List[str]:
     if prefix_paths:
         root_path = ";".join(prefix_paths)
         flags.append(f"-DCMAKE_FIND_ROOT_PATH={root_path}")
-        flags.append("-DCMAKE_PREFIX_PATH=//")
+        flags.append("-DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY")
+        flags.append("-DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY")
+        flags.append("-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY")
+        flags.append("-DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER")
 
     # OCCT WASM dir
     occt_prefix = pf / "occt"
@@ -444,7 +478,7 @@ def cmd_build(args: argparse.Namespace) -> int:
         logger.error("%s", e)
         return 1
 
-    nproc = os.cpu_count() or 1
+    nproc = core.build_jobs()
     logger.info("Building IfcOpenShell WASM (profile=%s, jobs=%d)...", profile, nproc)
     core.run(
         ["cmake", "--build", str(build_dir), "--parallel", str(nproc)],
@@ -552,12 +586,6 @@ def cmd_package(args: argparse.Namespace) -> int:
     build_dir = ifcopenshell_build_dir(profile)
     wasm_dir = build_dir / "ifcwrap" / "wasm"
     out = dist_dir()
-
-    if out.exists():
-        shutil.rmtree(out)
-    out.mkdir(parents=True, exist_ok=True)
-
-    # Copy artifacts
     artifacts = [
         "ifcopenshell_wasm.wasm",
         "ifcopenshell_wasm.mjs",
@@ -566,20 +594,27 @@ def cmd_package(args: argparse.Namespace) -> int:
         "ifcopenshell_plugins.json",
     ]
 
+    missing = [name for name in artifacts if not (wasm_dir / name).is_file()]
+    plugins_dir = wasm_dir / "plugins"
+    if not plugins_dir.is_dir() or not any(plugins_dir.glob("*.wasm")):
+        missing.append("plugins/*.wasm")
+    if missing:
+        raise FileNotFoundError(
+            f"Cannot package incomplete WASM build; missing: {', '.join(missing)}"
+        )
+
+    if out.exists():
+        shutil.rmtree(out)
+    out.mkdir(parents=True, exist_ok=True)
+
     for name in artifacts:
         src = wasm_dir / name
-        if src.exists():
-            shutil.copy2(src, out / name)
-            logger.info("Copied: %s", name)
-        else:
-            logger.warning("Artifact not found: %s", src)
+        shutil.copy2(src, out / name)
+        logger.info("Copied: %s", name)
 
-    # Copy plugins directory
-    plugins_dir = wasm_dir / "plugins"
-    if plugins_dir.exists():
-        dest_plugins = out / "plugins"
-        shutil.copytree(plugins_dir, dest_plugins)
-        logger.info("Copied: plugins/")
+    dest_plugins = out / "plugins"
+    shutil.copytree(plugins_dir, dest_plugins)
+    logger.info("Copied: plugins/")
 
     logger.info("Package written to %s", out)
     return 0
@@ -633,17 +668,20 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "--profile", "-p",
+        "--profile",
+        "-p",
         default="minimal",
         help="Build profile name (default: minimal)",
     )
     parser.add_argument(
-        "--force", "-f",
+        "--force",
+        "-f",
         action="store_true",
         help="Force reinstall/overwrite",
     )
     parser.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Enable verbose logging",
     )

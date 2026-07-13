@@ -39,8 +39,13 @@ LOCK_FILE = SCRIPT_DIR / "sources.lock.json"
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def run(cmd: List[str], cwd: Optional[Path] = None, env: Optional[Dict[str, str]] = None,
-        check: bool = True, capture: bool = False) -> subprocess.CompletedProcess:
+def run(
+    cmd: List[str],
+    cwd: Optional[Path] = None,
+    env: Optional[Dict[str, str]] = None,
+    check: bool = True,
+    capture: bool = False,
+) -> subprocess.CompletedProcess:
     """Run a subprocess command with logging.
 
     Merges `env` into the current environment. When `check` is True, a non-zero
@@ -124,14 +129,38 @@ def extract_archive(archive_path: Path, dest_dir: Path, archive_type: str) -> Pa
 
 
 def apply_patch(patch_file: Path, target_dir: Path) -> None:
-    """Apply `patch_file` in `target_dir` using the system `patch` command.
-
-    Uses `patch -p1 --forward` so already-applied patches do not fail the
-    build. The command is invoked with `check=False` because a nonzero exit
-    from `--forward` typically means the patch was already applied.
-    """
+    """Apply a patch, accepting only a clean application or an already-applied patch."""
     logger.info("Applying patch %s in %s", patch_file, target_dir)
-    run(["patch", "-p1", "--forward", "-i", str(patch_file)], cwd=target_dir, check=False)
+    command = ["patch", "-p1", "--forward", "-i", str(patch_file)]
+    forward = run([*command, "--dry-run"], cwd=target_dir, check=False, capture=True)
+    if forward.returncode == 0:
+        run(command, cwd=target_dir)
+        return
+    reverse = run(
+        ["patch", "-p1", "--reverse", "--dry-run", "-i", str(patch_file)],
+        cwd=target_dir,
+        check=False,
+        capture=True,
+    )
+    if reverse.returncode == 0:
+        logger.info("Patch already applied: %s", patch_file)
+        return
+    raise RuntimeError(
+        f"Patch does not apply cleanly: {patch_file}\n{forward.stderr.strip()}"
+    )
+
+
+def build_jobs() -> int:
+    raw = os.environ.get("WASM_NATIVE_JOBS")
+    if raw is not None:
+        try:
+            jobs = int(raw)
+        except ValueError as exc:
+            raise ValueError("WASM_NATIVE_JOBS must be a positive integer") from exc
+        if jobs < 1:
+            raise ValueError("WASM_NATIVE_JOBS must be a positive integer")
+        return jobs
+    return min(8, max(1, os.cpu_count() or 1))
 
 
 def which_or_error(name: str) -> str:
@@ -153,21 +182,20 @@ def load_lockfile() -> Dict[str, Any]:
         return json.load(f)
 
 
-def fetch_sources(lock: Dict[str, Any], deps: List[str], downloads_dir: Path) -> Dict[str, str]:
+def fetch_sources(
+    lock: Dict[str, Any], deps: List[str], downloads_dir: Path
+) -> Dict[str, str]:
     """Download + hash-verify all archives for the given dep list.
 
     Git-based deps are skipped (they are cloned on demand by `extract_source`).
-    Returns a mapping of dep name -> status string ("ok", "skipped (git)",
-    "FAILED (hash mismatch)", or "missing in lockfile").
+    Returns a mapping of dependency name to "ok" or "skipped (git)".
     """
     downloads_dir.mkdir(parents=True, exist_ok=True)
     results: Dict[str, str] = {}
 
     for dep_name in deps:
         if dep_name not in lock:
-            logger.warning("Dependency '%s' not in lockfile, skipping.", dep_name)
-            results[dep_name] = "missing in lockfile"
-            continue
+            raise KeyError(f"Dependency '{dep_name}' is missing from the lockfile")
 
         entry = lock[dep_name]
         url = entry["url"]
@@ -193,23 +221,22 @@ def fetch_sources(lock: Dict[str, Any], deps: List[str], downloads_dir: Path) ->
         if expected_sha256:
             actual_sha256 = sha256_file(dest)
             if actual_sha256 != expected_sha256:
-                logger.error(
-                    "SHA256 mismatch for %s:\n  expected: %s\n  actual:   %s",
-                    dep_name, expected_sha256, actual_sha256,
+                raise RuntimeError(
+                    f"SHA256 mismatch for {dep_name}: expected {expected_sha256}, "
+                    f"got {actual_sha256}"
                 )
-                results[dep_name] = "FAILED (hash mismatch)"
-                continue
             logger.info("SHA256 verified: %s", dep_name)
         else:
-            logger.warning("No SHA256 for %s, skipping verification.", dep_name)
+            raise ValueError(f"Archive dependency '{dep_name}' has no SHA256")
 
         results[dep_name] = "ok"
 
     return results
 
 
-def extract_source(dep_name: str, lock: Dict[str, Any], src_dir: Path,
-                   downloads_dir: Path) -> Path:
+def extract_source(
+    dep_name: str, lock: Dict[str, Any], src_dir: Path, downloads_dir: Path
+) -> Path:
     """Extract (or clone) the source for `dep_name` and return its path.
 
     For archive-based deps, the archive must already be in `downloads_dir`
@@ -254,8 +281,9 @@ def _clone_git_source(dep_name: str, entry: Dict[str, Any], src_dir: Path) -> Pa
     return target
 
 
-def apply_patches_from_lock(dep_name: str, lock: Dict[str, Any], src_dir: Path,
-                            patches_dir: Path) -> None:
+def apply_patches_from_lock(
+    dep_name: str, lock: Dict[str, Any], src_dir: Path, patches_dir: Path
+) -> None:
     """Apply all patches listed in the lockfile entry for `dep_name`.
 
     Patches are resolved relative to `patches_dir` (e.g. "occt/no_em_js.patch"
@@ -268,7 +296,7 @@ def apply_patches_from_lock(dep_name: str, lock: Dict[str, Any], src_dir: Path,
         if patch_file.exists():
             apply_patch(patch_file, src_dir)
         else:
-            logger.warning("Patch not found: %s", patch_file)
+            raise FileNotFoundError(f"Patch not found: {patch_file}")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -296,7 +324,17 @@ def bootstrap_emsdk(lock: Dict[str, Any], target_dir: Path, force: bool = False)
     target_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info("Cloning emsdk %s...", version)
-    run(["git", "clone", "--depth=1", "--branch", version, emsdk_entry["url"], str(target_dir)])
+    run(
+        [
+            "git",
+            "clone",
+            "--depth=1",
+            "--branch",
+            version,
+            emsdk_entry["url"],
+            str(target_dir),
+        ]
+    )
 
     logger.info("Installing emsdk %s...", version)
     run([str(target_dir / "emsdk"), "install", version], cwd=target_dir)

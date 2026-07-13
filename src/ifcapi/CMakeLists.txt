@@ -4,30 +4,16 @@
 # helpers, geometry placement, etc., ported from the Python ifcopenshell.api
 # and ifcopenshell.util packages).
 #
-# This subdirectory does NOT build its own library. Instead, when the unified
-# `ifcopenshell_capi` SHARED library exists (built by src/ifcwrap), it appends
+# This subdirectory does NOT build its own library. The unified
+# `ifcopenshell_capi` library is created by src/ifcwrap before this directory
+# is added; this directory appends
 # its sources onto that target so that consumers receive a single distribution
 # exposing both the autogen low-level `ifcopenshell_*` C API and the
 # handwritten high-level `ifcopenshell_*` C API, sharing the same opaque
 # handle types declared in `ifcopenshell_api.h`.
 #
-# When the autogen unified library is unavailable (BUILD_IFCCAPI=OFF), this
-# subdirectory is a no-op.
-
-option(IFCOPENSHELL_BUILD_HIGHLEVEL_API
-    "Bundle the handwritten high-level C API (src/ifcapi) into ifcopenshell_capi."
-    ON)
-
-if(NOT IFCOPENSHELL_BUILD_HIGHLEVEL_API)
-    message(STATUS "ifcapi: high-level layer disabled (IFCOPENSHELL_BUILD_HIGHLEVEL_API=OFF).")
-    return()
-endif()
-
 if(NOT TARGET ifcopenshell_capi)
-    message(WARNING
-        "ifcapi: ifcopenshell_capi target not present; high-level layer will not be built. "
-        "Enable BUILD_IFCCAPI to produce the unified library.")
-    return()
+    message(FATAL_ERROR "BUILD_IFCAPI requires the unified ifcopenshell_capi target")
 endif()
 
 set(IFCAPI_SOURCES

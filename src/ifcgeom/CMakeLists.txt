@@ -52,7 +52,7 @@ if(WASM_BUILD)
     ifcopenshell_wasm_define_main_import_target(IfcGeom INTERFACE_LINK_LIBRARIES "Eigen3::Eigen")
 endif()
 
-if((BUILD_CONVERT OR BUILD_IFCPYTHON OR BUILD_IFCCAPI) AND WITH_OPENCASCADE)
+if((BUILD_CONVERT OR BUILD_IFCPYTHON OR BUILD_IFCAPI) AND WITH_OPENCASCADE)
     add_subdirectory(Serialization)
     set(IFCOPENSHELL_LIBRARIES ${IFCOPENSHELL_LIBRARIES} PARENT_SCOPE)
     set(geometry_serializer_libraries ${geometry_serializer_libraries} PARENT_SCOPE)

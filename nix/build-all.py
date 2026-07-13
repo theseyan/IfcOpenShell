@@ -1464,10 +1464,13 @@ def get_cmake_args_prefix_path(additional_paths: "Sequence[str]" = ()) -> "list[
     args_prefix_path.extend(additional_paths)
     prefix_path = ";".join(args_prefix_path)
     if WASM:
-        # `emcmake` is disabling search in PATH, so we provide root paths instead.
-        # Provide '/' to PATH, so it will be combined with provided root paths,
-        # otherwise, depending on environment, it might not search the root path itself.
-        return [f"-DCMAKE_FIND_ROOT_PATH={prefix_path}", "-DCMAKE_PREFIX_PATH=//"]
+        return [
+            f"-DCMAKE_FIND_ROOT_PATH={prefix_path}",
+            "-DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY",
+            "-DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY",
+            "-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY",
+            "-DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER",
+        ]
     else:
         return [f"-DCMAKE_PREFIX_PATH={prefix_path}"]
 

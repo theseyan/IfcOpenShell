@@ -17,6 +17,22 @@ from src.ifcwrap.binding_generator.clang_discovery import (
 )
 
 
+def test_matching_libclang_uses_numeric_version_order(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    resource_dir = tmp_path / "llvm" / "lib" / "clang" / "18"
+    resource_dir.mkdir(parents=True)
+    older = resource_dir.parents[1] / "libclang.so.9"
+    newer = resource_dir.parents[1] / "libclang.so.18"
+    older.touch()
+    newer.touch()
+    monkeypatch.setattr(
+        libclang_index, "_compiler_output", lambda compiler, *args: str(resource_dir)
+    )
+
+    assert libclang_index._matching_libclang("clang++") == newer.resolve()
+
+
 def test_template_base_is_not_resolved_as_enum() -> None:
     cpp_type = _parse_discovered_cpp_type("vector<int>")
 

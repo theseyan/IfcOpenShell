@@ -375,9 +375,8 @@ class entity_instance:
         """Return the sole payload of a native type-declaration instance."""
         if not self._handle:
             return _MISSING
-        # Broad except mirrors bindgen-v2 behaviour: declaration(), as_type_declaration(),
-        # and get_primitive_type() can all raise for schema-specific edge cases (unknown
-        # types, header entities, etc.).  _MISSING is the correct fallback.
+        # These introspection calls can all raise for schema-specific edge cases such as
+        # unknown types and header entities. _MISSING is the correct fallback.
         try:
             decl = self.declaration()
             if hasattr(decl, "enumeration_items"):

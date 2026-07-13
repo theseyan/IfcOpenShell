@@ -26,19 +26,18 @@ endif()
 
 include(GNUInstallDirs)
 
-if(BUILD_IFCCAPI)
-    if(WASM_BUILD AND NOT IFCCAPI_REGENERATE_BINDINGS)
-        set(IFCCAPI_REGENERATE_BINDINGS ON CACHE BOOL "Regenerate the full IfcOpenShell binding surface during the build." FORCE)
+if(BUILD_IFCAPI)
+    if(WASM_BUILD AND NOT IFCAPI_REGENERATE_BINDINGS)
+        set(IFCAPI_REGENERATE_BINDINGS ON CACHE BOOL "Regenerate the full IfcOpenShell binding surface during the build." FORCE)
     endif()
 
-    set(IFCPARSE_CAPI_GENERATED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/generated")
+    set(IFCOPENSHELL_BINDINGS_GENERATED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/generated")
     set(IFCOPENSHELL_BINDING_SPEC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/specs")
-    set(IFCOPENSHELL_BINDING_GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/binding_generator/generate.py")
-    set(IFCAPI_CAPI_CPP_SPEC_MACROS "${IFCOPENSHELL_BINDING_SPEC_DIR}/cpp/spec_macros.h")
-    set(UNIFIED_CAPI_HEADER "${IFCPARSE_CAPI_GENERATED_DIR}/ifcopenshell_api.h")
-    set(UNIFIED_CAPI_CPP "${IFCPARSE_CAPI_GENERATED_DIR}/ifcopenshell_api.cpp")
-    set(UNIFIED_CAPI_INTERNAL_HEADER "${IFCPARSE_CAPI_GENERATED_DIR}/ifcopenshell_api_internal.hpp")
-    set(UNIFIED_CAPI_PYTHON_OUTPUT_DIR "${IFCPARSE_CAPI_GENERATED_DIR}")
+    set(IFCOPENSHELL_BINDING_SPEC_MACROS "${IFCOPENSHELL_BINDING_SPEC_DIR}/cpp/spec_macros.h")
+    set(UNIFIED_CAPI_HEADER "${IFCOPENSHELL_BINDINGS_GENERATED_DIR}/ifcopenshell_api.h")
+    set(UNIFIED_CAPI_CPP "${IFCOPENSHELL_BINDINGS_GENERATED_DIR}/ifcopenshell_api.cpp")
+    set(UNIFIED_CAPI_INTERNAL_HEADER "${IFCOPENSHELL_BINDINGS_GENERATED_DIR}/ifcopenshell_api_internal.hpp")
+    set(UNIFIED_CAPI_PYTHON_OUTPUT_DIR "${IFCOPENSHELL_BINDINGS_GENERATED_DIR}")
     set(UNIFIED_CAPI_PYTHON_EXTENSION "${UNIFIED_CAPI_PYTHON_OUTPUT_DIR}/ifcopenshell_capi_py.cpp")
     set(UNIFIED_CAPI_PYTHON_UTILS "${CMAKE_CURRENT_SOURCE_DIR}/../ifcapi/python/ifcopenshell/_capi_utils.py")
 
@@ -58,7 +57,7 @@ if(BUILD_IFCCAPI)
         "${IFCOPENSHELL_BINDING_SPEC_DIR}/cpp/ifcparse.hpp"
         "${IFCOPENSHELL_BINDING_SPEC_DIR}/cpp/ifcapi.hpp"
         "${IFCOPENSHELL_BINDING_SPEC_DIR}/cpp/ifcgeom.hpp"
-        "${IFCAPI_CAPI_CPP_SPEC_MACROS}"
+        "${IFCOPENSHELL_BINDING_SPEC_MACROS}"
     )
 
     file(
@@ -68,12 +67,24 @@ if(BUILD_IFCCAPI)
     )
     list(APPEND IFCOPENSHELL_BINDING_SPEC_DEPENDS ${IFCAPI_CAPI_BINDING_HEADERS})
 
-    if(IFCCAPI_REGENERATE_BINDINGS)
-        if(NOT ${PYTHON_EXECUTABLE} STREQUAL "")
+    if(IFCAPI_REGENERATE_BINDINGS)
+        if(DEFINED PYTHON_EXECUTABLE AND NOT "${PYTHON_EXECUTABLE}" STREQUAL "")
             set(Python_EXECUTABLE "${PYTHON_EXECUTABLE}")
-            message(STATUS "Looking for Python interpreter in: ${PYTHON_EXECUTABLE}")
         endif()
         find_package(Python COMPONENTS Interpreter REQUIRED)
+        execute_process(
+            COMMAND ${Python_EXECUTABLE} -c "import sysconfig; print(sysconfig.get_path('include'), end='')"
+            RESULT_VARIABLE IFCOPENSHELL_PYTHON_INCLUDE_STATUS
+            OUTPUT_VARIABLE Python_INCLUDE_DIR
+            ERROR_VARIABLE IFCOPENSHELL_PYTHON_INCLUDE_ERROR
+        )
+        if(NOT IFCOPENSHELL_PYTHON_INCLUDE_STATUS EQUAL 0 OR NOT EXISTS "${Python_INCLUDE_DIR}/Python.h")
+            message(FATAL_ERROR
+                "Unable to find development headers for ${Python_EXECUTABLE}: "
+                "${IFCOPENSHELL_PYTHON_INCLUDE_ERROR}")
+        endif()
+        find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
+        message(STATUS "Using Python interpreter for binding generation: ${Python_EXECUTABLE}")
 
         execute_process(
             COMMAND ${Python_EXECUTABLE} -c "import clang.cindex; import yaml"
@@ -84,13 +95,13 @@ if(BUILD_IFCCAPI)
         if(NOT IFCOPENSHELL_BINDGEN_PYTHON_DEPS_STATUS EQUAL 0)
             message(
                 FATAL_ERROR
-                "IFCCAPI_REGENERATE_BINDINGS enabled, but the selected Python interpreter does not provide "
+                "IFCAPI_REGENERATE_BINDINGS enabled, but the selected Python interpreter does not provide "
                 "the Clang Python bindings and PyYAML. Install the generator dependencies or disable "
-                "IFCCAPI_REGENERATE_BINDINGS."
+                "IFCAPI_REGENERATE_BINDINGS."
             )
         endif()
 
-        set(IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS)
+        set(IFCOPENSHELL_BINDINGS_DISCOVERY_INCLUDE_ARGS)
         foreach(include_dir IN ITEMS
             "${CMAKE_CURRENT_SOURCE_DIR}/.."
             "${CMAKE_CURRENT_SOURCE_DIR}/../plugin"
@@ -102,24 +113,24 @@ if(BUILD_IFCCAPI)
             "${CMAKE_CURRENT_SOURCE_DIR}/../svgfill/src"
             "${CMAKE_CURRENT_SOURCE_DIR}/../ifcapi/include"
         )
-            list(APPEND IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS --discovery-include-dir "${include_dir}")
+            list(APPEND IFCOPENSHELL_BINDINGS_DISCOVERY_INCLUDE_ARGS --discovery-include-dir "${include_dir}")
         endforeach()
         if(WITH_OPENCASCADE)
-            list(APPEND IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS
+            list(APPEND IFCOPENSHELL_BINDINGS_DISCOVERY_INCLUDE_ARGS
                 --discovery-include-dir "${CMAKE_CURRENT_SOURCE_DIR}/../ifcgeom/kernels/opencascade"
             )
         endif()
         if(WITH_CGAL)
-            list(APPEND IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS
+            list(APPEND IFCOPENSHELL_BINDINGS_DISCOVERY_INCLUDE_ARGS
                 --discovery-include-dir "${CMAKE_CURRENT_SOURCE_DIR}/../ifcgeom/kernels/cgal"
             )
         endif()
         if(WITH_MANIFOLD)
-            list(APPEND IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS
+            list(APPEND IFCOPENSHELL_BINDINGS_DISCOVERY_INCLUDE_ARGS
                 --discovery-include-dir "${CMAKE_CURRENT_SOURCE_DIR}/../ifcgeom/kernels/manifold"
             )
         endif()
-        list(APPEND IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS
+        list(APPEND IFCOPENSHELL_BINDINGS_DISCOVERY_INCLUDE_ARGS
             --discovery-include-dir "${CMAKE_CURRENT_SOURCE_DIR}/../ifcgeom/kernels/passthrough"
         )
         foreach(include_dir IN LISTS
@@ -135,44 +146,44 @@ if(BUILD_IFCCAPI)
             Eigen3_INCLUDE_DIRS
         )
             if(NOT "${include_dir}" STREQUAL "")
-                list(APPEND IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS --discovery-include-dir "${include_dir}")
+                list(APPEND IFCOPENSHELL_BINDINGS_DISCOVERY_INCLUDE_ARGS --discovery-include-dir "${include_dir}")
             endif()
         endforeach()
         if(OpenCASCADE_DIR)
-            get_filename_component(IFCPARSE_CAPI_OPENCASCADE_PREFIX "${OpenCASCADE_DIR}/../../.." ABSOLUTE)
-            if(EXISTS "${IFCPARSE_CAPI_OPENCASCADE_PREFIX}/include/opencascade")
-                list(APPEND IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS
-                    --discovery-include-dir "${IFCPARSE_CAPI_OPENCASCADE_PREFIX}/include/opencascade"
+            get_filename_component(IFCOPENSHELL_BINDINGS_OPENCASCADE_PREFIX "${OpenCASCADE_DIR}/../../.." ABSOLUTE)
+            if(EXISTS "${IFCOPENSHELL_BINDINGS_OPENCASCADE_PREFIX}/include/opencascade")
+                list(APPEND IFCOPENSHELL_BINDINGS_DISCOVERY_INCLUDE_ARGS
+                    --discovery-include-dir "${IFCOPENSHELL_BINDINGS_OPENCASCADE_PREFIX}/include/opencascade"
                 )
             endif()
         endif()
         if(Eigen3_DIR)
-            get_filename_component(IFCPARSE_CAPI_EIGEN_PREFIX "${Eigen3_DIR}/../../.." ABSOLUTE)
-            if(EXISTS "${IFCPARSE_CAPI_EIGEN_PREFIX}/include/eigen3")
-                list(APPEND IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS
-                    --discovery-include-dir "${IFCPARSE_CAPI_EIGEN_PREFIX}/include/eigen3"
+            get_filename_component(IFCOPENSHELL_BINDINGS_EIGEN_PREFIX "${Eigen3_DIR}/../../.." ABSOLUTE)
+            if(EXISTS "${IFCOPENSHELL_BINDINGS_EIGEN_PREFIX}/include/eigen3")
+                list(APPEND IFCOPENSHELL_BINDINGS_DISCOVERY_INCLUDE_ARGS
+                    --discovery-include-dir "${IFCOPENSHELL_BINDINGS_EIGEN_PREFIX}/include/eigen3"
                 )
             endif()
         endif()
 
-        set(IFCPARSE_CAPI_DISCOVERY_DEFINE_ARGS)
+        set(IFCOPENSHELL_BINDINGS_DISCOVERY_DEFINE_ARGS)
         foreach(define IN LISTS SCHEMA_DEFINITIONS)
-            list(APPEND IFCPARSE_CAPI_DISCOVERY_DEFINE_ARGS --discovery-define "${define}")
+            list(APPEND IFCOPENSHELL_BINDINGS_DISCOVERY_DEFINE_ARGS --discovery-define "${define}")
         endforeach()
         if(USE_MMAP)
-            list(APPEND IFCPARSE_CAPI_DISCOVERY_DEFINE_ARGS --discovery-define USE_MMAP)
+            list(APPEND IFCOPENSHELL_BINDINGS_DISCOVERY_DEFINE_ARGS --discovery-define USE_MMAP)
         endif()
         if(WITH_CGAL)
-            list(APPEND IFCPARSE_CAPI_DISCOVERY_DEFINE_ARGS --discovery-define IFOPSH_WITH_CGAL)
+            list(APPEND IFCOPENSHELL_BINDINGS_DISCOVERY_DEFINE_ARGS --discovery-define IFOPSH_WITH_CGAL)
         endif()
         if(WITH_OPENCASCADE)
-            list(APPEND IFCPARSE_CAPI_DISCOVERY_DEFINE_ARGS --discovery-define IFOPSH_WITH_OPENCASCADE)
+            list(APPEND IFCOPENSHELL_BINDINGS_DISCOVERY_DEFINE_ARGS --discovery-define IFOPSH_WITH_OPENCASCADE)
         endif()
         if(WITH_MANIFOLD)
-            list(APPEND IFCPARSE_CAPI_DISCOVERY_DEFINE_ARGS --discovery-define IFOPSH_WITH_MANIFOLD)
+            list(APPEND IFCOPENSHELL_BINDINGS_DISCOVERY_DEFINE_ARGS --discovery-define IFOPSH_WITH_MANIFOLD)
         endif()
         if(WITH_ROCKSDB)
-            list(APPEND IFCPARSE_CAPI_DISCOVERY_DEFINE_ARGS --discovery-define IFOPSH_WITH_ROCKSDB)
+            list(APPEND IFCOPENSHELL_BINDINGS_DISCOVERY_DEFINE_ARGS --discovery-define IFOPSH_WITH_ROCKSDB)
         endif()
 
         file(
@@ -202,13 +213,13 @@ if(BUILD_IFCCAPI)
             COMMAND
                 ${Python_EXECUTABLE} -m src.ifcwrap.binding_generator.generate
                 --spec-dir "${IFCOPENSHELL_BINDING_SPEC_DIR}"
-                --c-output-dir "${IFCPARSE_CAPI_GENERATED_DIR}"
+                --c-output-dir "${IFCOPENSHELL_BINDINGS_GENERATED_DIR}"
                 --python-output-dir "${UNIFIED_CAPI_PYTHON_OUTPUT_DIR}"
                 --python-utils-out "${UNIFIED_CAPI_PYTHON_UTILS}"
                 --wasm-output-dir "${IFCOPENSHELL_WASM_OUTPUT_DIR}"
                 --js-generated-output-dir "${IFCOPENSHELL_JS_GENERATED_DIR}"
-                ${IFCPARSE_CAPI_DISCOVERY_INCLUDE_ARGS}
-                ${IFCPARSE_CAPI_DISCOVERY_DEFINE_ARGS}
+                ${IFCOPENSHELL_BINDINGS_DISCOVERY_INCLUDE_ARGS}
+                ${IFCOPENSHELL_BINDINGS_DISCOVERY_DEFINE_ARGS}
             COMMAND ${CMAKE_COMMAND} -E touch "${IFCOPENSHELL_BINDINGS_CODEGEN_STAMP}"
             DEPENDS
                 ${IFCOPENSHELL_BINDING_SPEC_DEPENDS}
@@ -222,16 +233,13 @@ if(BUILD_IFCCAPI)
         )
     endif()
 
-    # Unified C API library (includes both ifcparse and ifcgeom; optionally
-    # bundles the high-level handwritten layer from src/ifcapi as well).
-    if((EXISTS "${UNIFIED_CAPI_HEADER}" AND EXISTS "${UNIFIED_CAPI_CPP}") OR IFCCAPI_REGENERATE_BINDINGS)
+    # Unified C API library. The high-level implementations from src/ifcapi
+    # are appended to this target by that subdirectory.
+    if((EXISTS "${UNIFIED_CAPI_HEADER}" AND EXISTS "${UNIFIED_CAPI_CPP}") OR IFCAPI_REGENERATE_BINDINGS)
         # Build the unified C API as a SHARED library so that consumers (any
         # language: C, Zig, Rust, Python) get a single distribution
-        # exposing both the autogen low-level surface and the optional
-        # handwritten high-level surface, sharing the same opaque handle types.
-        # A separate static archive is also produced (BUILD_IFCCAPI_STATIC)
-        # for users who want to embed the autogen-only core into their own
-        # executables.
+        # exposing both the generated and handwritten high-level surfaces with
+        # the same opaque handle types.
         if(WASM_BUILD)
             add_library(ifcopenshell_capi STATIC "${UNIFIED_CAPI_HEADER}" "${UNIFIED_CAPI_CPP}")
         else()
@@ -278,7 +286,7 @@ if(BUILD_IFCCAPI)
         endif()
         target_include_directories(
             ifcopenshell_capi
-            PUBLIC "${IFCPARSE_CAPI_GENERATED_DIR}"
+            PUBLIC "${IFCOPENSHELL_BINDINGS_GENERATED_DIR}"
             PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../ifcparse"
             PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../plugin"
             PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../serializers"
@@ -298,7 +306,7 @@ if(BUILD_IFCCAPI)
             if(TARGET geometry_serializer)
                 target_link_libraries(ifcopenshell_capi_smoke PRIVATE geometry_serializer)
             endif()
-            target_include_directories(ifcopenshell_capi_smoke PRIVATE "${IFCPARSE_CAPI_GENERATED_DIR}")
+            target_include_directories(ifcopenshell_capi_smoke PRIVATE "${IFCOPENSHELL_BINDINGS_GENERATED_DIR}")
             if(tree_libraries)
                 add_dependencies(ifcopenshell_capi_smoke ${tree_libraries})
             endif()
@@ -310,26 +318,24 @@ if(BUILD_IFCCAPI)
             if(TARGET geometry_serializer)
                 target_link_libraries(ifcparse_capi_smoke PRIVATE geometry_serializer)
             endif()
-            target_include_directories(ifcparse_capi_smoke PRIVATE "${IFCPARSE_CAPI_GENERATED_DIR}")
+            target_include_directories(ifcparse_capi_smoke PRIVATE "${IFCOPENSHELL_BINDINGS_GENERATED_DIR}")
             target_compile_definitions(ifcparse_capi_smoke PRIVATE $<$<BOOL:${WITH_ROCKSDB}>:IFOPSH_WITH_ROCKSDB>)
         endif()
 
         # CPython C extension module (_ifcopenshell_capi)
-        if(IFCCAPI_REGENERATE_BINDINGS OR EXISTS "${UNIFIED_CAPI_PYTHON_EXTENSION}")
-            find_package(Python COMPONENTS Development.Module QUIET)
-            if(Python_Development.Module_FOUND)
-                Python_add_library(_ifcopenshell_capi MODULE "${UNIFIED_CAPI_PYTHON_EXTENSION}" WITH_SOABI)
-                target_link_libraries(_ifcopenshell_capi PRIVATE ifcopenshell_capi)
-                target_include_directories(_ifcopenshell_capi PRIVATE "${IFCPARSE_CAPI_GENERATED_DIR}")
-                set_target_properties(_ifcopenshell_capi PROPERTIES
-                    OUTPUT_NAME "_ifcopenshell_capi"
-                    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../ifcapi/python/ifcopenshell"
-                )
-                if(TARGET ifcopenshell_bindings_codegen)
-                    add_dependencies(_ifcopenshell_capi ifcopenshell_bindings_codegen)
-                endif()
-            else()
-                message(STATUS "Python Development.Module not found - skipping _ifcopenshell_capi extension build")
+        if(IFCAPI_REGENERATE_BINDINGS OR EXISTS "${UNIFIED_CAPI_PYTHON_EXTENSION}")
+            if(NOT Python_Development.Module_FOUND)
+                find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
+            endif()
+            Python_add_library(_ifcopenshell_capi MODULE "${UNIFIED_CAPI_PYTHON_EXTENSION}" WITH_SOABI)
+            target_link_libraries(_ifcopenshell_capi PRIVATE ifcopenshell_capi)
+            target_include_directories(_ifcopenshell_capi PRIVATE "${IFCOPENSHELL_BINDINGS_GENERATED_DIR}")
+            set_target_properties(_ifcopenshell_capi PROPERTIES
+                OUTPUT_NAME "_ifcopenshell_capi"
+                LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../ifcapi/python/ifcopenshell"
+            )
+            if(TARGET ifcopenshell_bindings_codegen)
+                add_dependencies(_ifcopenshell_capi ifcopenshell_bindings_codegen)
             endif()
         endif()
 
@@ -337,7 +343,9 @@ if(BUILD_IFCCAPI)
             include(wasm.cmake)
         endif()
     else()
-        message(STATUS "Unified C API not built - generated files not found at ${UNIFIED_CAPI_HEADER}")
+        message(FATAL_ERROR
+            "BUILD_IFCAPI requires generated bindings at ${UNIFIED_CAPI_HEADER}; "
+            "enable IFCAPI_REGENERATE_BINDINGS or generate the committed outputs first")
     endif()
 
     if(BUILD_TESTING)

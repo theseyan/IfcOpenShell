@@ -32,8 +32,12 @@ from nix import core  # noqa: E402
 
 # Build root for intermediate build directories. Callers may override
 # (e.g. `build-all.py` sets this to its own `DEPS_DIR / "wasm-build"`).
-BUILD_ROOT: Path = Path(os.environ.get("WASM_NATIVE_BUILD_ROOT",
-                                       str(Path(__file__).resolve().parent.parent / "build" / "wasm-native")))
+BUILD_ROOT: Path = Path(
+    os.environ.get(
+        "WASM_NATIVE_BUILD_ROOT",
+        str(Path(__file__).resolve().parent.parent / "build" / "wasm-native"),
+    )
+)
 
 
 def set_build_root(path: Path) -> None:
@@ -48,7 +52,7 @@ def _dep_build_dir(name: str) -> Path:
 
 
 def _nproc() -> int:
-    return os.cpu_count() or 1
+    return core.build_jobs()
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -120,9 +124,13 @@ def build_eigen(src: Path, prefix: Path, env) -> None:
     build_dir.mkdir(parents=True, exist_ok=True)
 
     core.run(
-        ["emcmake", "cmake", str(src),
-         f"-DCMAKE_INSTALL_PREFIX={prefix}",
-         "-DBUILD_TESTING=OFF"],
+        [
+            "emcmake",
+            "cmake",
+            str(src),
+            f"-DCMAKE_INSTALL_PREFIX={prefix}",
+            "-DBUILD_TESTING=OFF",
+        ],
         cwd=build_dir,
         env=env,
     )
@@ -139,16 +147,22 @@ def build_json(src: Path, prefix: Path, env) -> None:
     build_dir.mkdir(parents=True, exist_ok=True)
 
     core.run(
-        ["emcmake", "cmake", str(src),
-         f"-DCMAKE_INSTALL_PREFIX={prefix}",
-         "-DJSON_BuildTests=OFF"],
+        [
+            "emcmake",
+            "cmake",
+            str(src),
+            f"-DCMAKE_INSTALL_PREFIX={prefix}",
+            "-DJSON_BuildTests=OFF",
+        ],
         cwd=build_dir,
         env=env,
     )
     core.run(["cmake", "--build", str(build_dir), "--target", "install"], env=env)
 
 
-def build_occt(src: Path, prefix: Path, env, *, build_type: str = "RelWithDebInfo") -> None:
+def build_occt(
+    src: Path, prefix: Path, env, *, build_type: str = "RelWithDebInfo"
+) -> None:
     """Build OpenCASCADE for WASM with -fwasm-exceptions.
 
     Uses RelWithDebInfo so that the installed CMake config files contain
@@ -168,7 +182,9 @@ def build_occt(src: Path, prefix: Path, env, *, build_type: str = "RelWithDebInf
 
     core.run(
         [
-            "emcmake", "cmake", str(src),
+            "emcmake",
+            "cmake",
+            str(src),
             f"-DINSTALL_DIR={prefix}",
             f"-DCMAKE_BUILD_TYPE={build_type}",
             "-DBUILD_LIBRARY_TYPE=Static",
@@ -190,7 +206,9 @@ def build_occt(src: Path, prefix: Path, env, *, build_type: str = "RelWithDebInf
     core.run(["cmake", "--install", str(build_dir), "--config", build_type], env=env)
 
 
-def build_manifold(src: Path, prefix: Path, env, *, build_type: str = "MinSizeRel") -> None:
+def build_manifold(
+    src: Path, prefix: Path, env, *, build_type: str = "MinSizeRel"
+) -> None:
     """Build Manifold for WASM."""
     if (prefix / "lib" / "cmake" / "manifold").exists():
         core.logger.info("Manifold already built at %s", prefix)
@@ -204,7 +222,9 @@ def build_manifold(src: Path, prefix: Path, env, *, build_type: str = "MinSizeRe
 
     core.run(
         [
-            "emcmake", "cmake", str(src),
+            "emcmake",
+            "cmake",
+            str(src),
             f"-DCMAKE_INSTALL_PREFIX={prefix}",
             f"-DCMAKE_BUILD_TYPE={build_type}",
             "-DMANIFOLD_PAR=OFF",
@@ -264,7 +284,8 @@ def build_gmp(src: Path, prefix: Path, env, *, host_cc_override: bool = False) -
 
     core.run(
         [
-            "emconfigure", str(src / "configure"),
+            "emconfigure",
+            str(src / "configure"),
             "--host=wasm32",
             "--disable-assembly",
             "--enable-cxx",
@@ -298,7 +319,8 @@ def build_mpfr(src: Path, prefix: Path, gmp_prefix: Path, env) -> None:
 
     core.run(
         [
-            "emconfigure", str(src / "configure"),
+            "emconfigure",
+            str(src / "configure"),
             "--host=none",
             "--enable-static",
             "--disable-shared",
@@ -314,8 +336,14 @@ def build_mpfr(src: Path, prefix: Path, gmp_prefix: Path, env) -> None:
     core.run(["make", "install"], cwd=build_dir, env=env)
 
 
-def build_cgal(src: Path, prefix: Path, gmp_prefix: Path, mpfr_prefix: Path, env,
-              boost_prefix: Optional[Path] = None) -> None:
+def build_cgal(
+    src: Path,
+    prefix: Path,
+    gmp_prefix: Path,
+    mpfr_prefix: Path,
+    env,
+    boost_prefix: Optional[Path] = None,
+) -> None:
     """Build CGAL for WASM (header-only with GMP/MPFR)."""
     if (prefix / "lib" / "cmake" / "CGAL").exists():
         core.logger.info("CGAL already built at %s", prefix)
@@ -326,7 +354,9 @@ def build_cgal(src: Path, prefix: Path, gmp_prefix: Path, mpfr_prefix: Path, env
 
     lib_ext = "a"
     cmake_cmd = [
-        "emcmake", "cmake", str(src),
+        "emcmake",
+        "cmake",
+        str(src),
         f"-DCMAKE_INSTALL_PREFIX={prefix}",
         "-DCGAL_HEADER_ONLY=On",
         "-DBUILD_SHARED_LIBS=Off",
@@ -342,10 +372,13 @@ def build_cgal(src: Path, prefix: Path, gmp_prefix: Path, mpfr_prefix: Path, env
     core.run(["cmake", "--build", str(build_dir), "--target", "install"], env=env)
 
 
-def build_libxml2(src: Path, prefix: Path, env, *, static: bool = True,
-                  without_threads: bool = False) -> None:
+def build_libxml2(
+    src: Path, prefix: Path, env, *, static: bool = True, without_threads: bool = False
+) -> None:
     """Build libxml2 for WASM via emconfigure autoconf."""
-    if (prefix / "lib" / "libxml2.a").exists() or (prefix / "include" / "libxml2").exists():
+    if (prefix / "lib" / "libxml2.a").exists() or (
+        prefix / "include" / "libxml2"
+    ).exists():
         core.logger.info("libxml2 already built at %s", prefix)
         return
 
@@ -372,7 +405,9 @@ def build_libxml2(src: Path, prefix: Path, env, *, static: bool = True,
 
     core.run(
         [
-            "emconfigure", "/bin/sh", str(src / "configure"),
+            "emconfigure",
+            "/bin/sh",
+            str(src / "configure"),
             "--host=wasm32",
             *args,
             f"--prefix={prefix}",
@@ -392,7 +427,9 @@ def build_libxml2(src: Path, prefix: Path, env, *, static: bool = True,
 
 def build_zstd(src: Path, prefix: Path, env) -> None:
     """Build zstd for WASM (cmake in build/cmake subdir)."""
-    if (prefix / "lib" / "libzstd.a").exists() or (prefix / "include" / "zstd.h").exists():
+    if (prefix / "lib" / "libzstd.a").exists() or (
+        prefix / "include" / "zstd.h"
+    ).exists():
         core.logger.info("zstd already built at %s", prefix)
         return
 
@@ -404,7 +441,9 @@ def build_zstd(src: Path, prefix: Path, env) -> None:
 
     core.run(
         [
-            "emcmake", "cmake", str(src / "build" / "cmake"),
+            "emcmake",
+            "cmake",
+            str(src / "build" / "cmake"),
             f"-DCMAKE_INSTALL_PREFIX={prefix}",
             "-DZSTD_BUILD_STATIC=ON",
             "-DZSTD_BUILD_SHARED=OFF",
@@ -432,7 +471,9 @@ def build_rocksdb(src: Path, prefix: Path, env, zstd_prefix: Path) -> None:
 
     core.run(
         [
-            "emcmake", "cmake", str(src),
+            "emcmake",
+            "cmake",
+            str(src),
             f"-DCMAKE_INSTALL_PREFIX={prefix}",
             "-DFAIL_ON_WARNINGS=Off",
             "-DWITH_TESTS=OFF",
@@ -473,7 +514,9 @@ def build_pcre(src: Path, prefix: Path, env) -> None:
 
     core.run(
         [
-            "emconfigure", "/bin/sh", str(src / "configure"),
+            "emconfigure",
+            "/bin/sh",
+            str(src / "configure"),
             "--host=wasm32",
             "--enable-static",
             "--disable-shared",
@@ -487,10 +530,13 @@ def build_pcre(src: Path, prefix: Path, env) -> None:
     core.run(["make", "install"], cwd=build_dir, env=env)
 
 
-def build_opencollada(src: Path, prefix: Path, env, libxml2_prefix: Path,
-                      pcre_prefix: Path) -> None:
+def build_opencollada(
+    src: Path, prefix: Path, env, libxml2_prefix: Path, pcre_prefix: Path
+) -> None:
     """Build OpenCOLLADA for WASM via emcmake cmake."""
-    if (prefix / "lib" / "libOpenCOLLADAFramework.a").exists() or (prefix / "include" / "COLLADABaseUtils").exists():
+    if (prefix / "lib" / "libOpenCOLLADAFramework.a").exists() or (
+        prefix / "include" / "COLLADABaseUtils"
+    ).exists():
         core.logger.info("OpenCOLLADA already built at %s", prefix)
         return
 
@@ -502,7 +548,9 @@ def build_opencollada(src: Path, prefix: Path, env, libxml2_prefix: Path,
 
     core.run(
         [
-            "emcmake", "cmake", str(src),
+            "emcmake",
+            "cmake",
+            str(src),
             f"-DLIBXML2_INCLUDE_DIR={libxml2_prefix}/include/libxml2",
             f"-DLIBXML2_LIBRARIES={libxml2_prefix}/lib/libxml2.a",
             f"-DPCRE_INCLUDE_DIR={pcre_prefix}/include",
@@ -533,7 +581,9 @@ def build_swig(src: Path, prefix: Path, env) -> None:
 
     core.run(
         [
-            "emcmake", "cmake", str(src),
+            "emcmake",
+            "cmake",
+            str(src),
             "-DWITH_PCRE=OFF",
             f"-DCMAKE_INSTALL_PREFIX={prefix}",
         ],
