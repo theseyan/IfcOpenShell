@@ -5,13 +5,10 @@ from pathlib import Path
 
 import pytest
 
+from src.ifcwrap.binding_generator import libclang_index
 from src.ifcwrap.binding_generator.clang_discovery import (
     CompilationConfig,
-    CompileCommand,
     DiscoveryEnvironment,
-    TranslationUnitIndex,
-    _ast_filter_for_lookup,
-    _build_ast_dump_command,
     _parse_discovered_cpp_type,
     discover_namespace_functions,
     discover_namespace_functions_with_synthetic_source,
@@ -20,41 +17,11 @@ from src.ifcwrap.binding_generator.clang_discovery import (
 )
 
 
-def test_ast_dump_skips_function_bodies(tmp_path: Path) -> None:
-    source = tmp_path / "bindings.cpp"
-    command = CompileCommand(
-        directory=tmp_path,
-        file=source,
-        arguments=("clang++", "-std=c++17", "-c", str(source)),
-    )
-
-    ast_command = _build_ast_dump_command(command, ast_filter="Demo")
-
-    assert ast_command.count("-Xclang") == 3
-    assert "-skip-function-bodies" in ast_command
-
-
-def test_template_base_is_not_resolved_as_enum(tmp_path: Path) -> None:
-    index = TranslationUnitIndex(
-        CompileCommand(
-            directory=tmp_path,
-            file=tmp_path / "bindings.cpp",
-            arguments=("clang++", "-c", "bindings.cpp"),
-        )
-    )
-    ast_filters: list[str] = []
-
-    def fake_ast_dump(ast_filter: str) -> tuple[dict, ...]:
-        ast_filters.append(ast_filter)
-        return ()
-
-    index._run_ast_dump = fake_ast_dump  # type: ignore[method-assign]
-
-    cpp_type = _parse_discovered_cpp_type("vector<int>", index=index)
+def test_template_base_is_not_resolved_as_enum() -> None:
+    cpp_type = _parse_discovered_cpp_type("vector<int>")
 
     assert cpp_type.template_name == "vector"
     assert cpp_type.is_enum is False
-    assert ast_filters == []
 
 
 def test_discover_public_methods_with_discovery_environment(tmp_path: Path) -> None:
@@ -144,6 +111,40 @@ void hop(const std::string& guid);
     assert functions["walk"][0].return_cpp_type == "int"
     assert functions["walk"][0].params[0].cpp_type == "int"
     assert len(functions["hop"]) == 2
+
+
+def test_translation_unit_is_parsed_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    compiler = shutil.which("clang++")
+    if compiler is None:
+        pytest.skip("clang++ is not available")
+
+    source = tmp_path / "bindings.cpp"
+    source.write_text(
+        "namespace Demo { struct Item { int value() const; }; int count(); }\n",
+        encoding="utf-8",
+    )
+    parse_count = 0
+    original_parse = libclang_index.parse_translation_unit
+
+    def counting_parse(command):
+        nonlocal parse_count
+        parse_count += 1
+        return original_parse(command)
+
+    monkeypatch.setattr(libclang_index, "parse_translation_unit", counting_parse)
+    environment = DiscoveryEnvironment(
+        compilation=CompilationConfig(
+            compiler=compiler, include_dirs=(tmp_path,), working_directory=tmp_path
+        )
+    )
+
+    discover_public_methods(environment, source, "Demo::Item")
+    discover_public_methods(environment, source, "Demo::Item")
+    discover_namespace_functions(environment, source, "Demo")
+
+    assert parse_count == 1
 
 
 def test_discover_namespace_functions_with_nested_qualified_namespace(
@@ -321,331 +322,6 @@ int contract_count(const std::string& name);
 
     assert set(functions) == {"contract_count"}
     assert functions["contract_count"][0].params[0].cpp_type == "const std::string &"
-
-
-def test_namespace_discovery_uses_simple_fallback_lazily(tmp_path: Path) -> None:
-    index = TranslationUnitIndex(
-        CompileCommand(
-            directory=tmp_path,
-            file=tmp_path / "bindings.cpp",
-            arguments=("clang++", "-c", "bindings.cpp"),
-        )
-    )
-    ast_filters: list[str] = []
-
-    def fake_ast_dump(ast_filter: str) -> tuple[dict, ...]:
-        ast_filters.append(ast_filter)
-        if ast_filter == "ifcapi::bindings":
-            return (
-                {
-                    "kind": "NamespaceDecl",
-                    "name": "ifcapi",
-                    "inner": [
-                        {
-                            "kind": "NamespaceDecl",
-                            "name": "bindings",
-                            "inner": [
-                                {
-                                    "kind": "FunctionDecl",
-                                    "name": "count",
-                                    "type": {"qualType": "int ()"},
-                                }
-                            ],
-                        }
-                    ],
-                },
-            )
-        raise AssertionError(f"Unexpected fallback AST filter: {ast_filter}")
-
-    index._run_ast_dump = fake_ast_dump  # type: ignore[method-assign]
-
-    functions = index.discover_namespace_functions("ifcapi::bindings")
-
-    assert set(functions) == {"count"}
-    assert ast_filters == ["ifcapi::bindings"]
-
-
-def test_record_lookup_misses_are_cached(tmp_path: Path) -> None:
-    index = TranslationUnitIndex(
-        CompileCommand(
-            directory=tmp_path,
-            file=tmp_path / "bindings.cpp",
-            arguments=("clang++", "-c", "bindings.cpp"),
-        )
-    )
-    ast_filters: list[str] = []
-
-    def fake_ast_dump(ast_filter: str) -> tuple[dict, ...]:
-        ast_filters.append(ast_filter)
-        return ()
-
-    index._run_ast_dump = fake_ast_dump  # type: ignore[method-assign]
-
-    assert index.resolve_record("MissingType") is None
-    assert index.resolve_record("MissingType") is None
-    assert ast_filters == ["MissingType"]
-
-
-def test_ast_objects_are_cached_per_filter(tmp_path: Path) -> None:
-    index = TranslationUnitIndex(
-        CompileCommand(
-            directory=tmp_path,
-            file=tmp_path / "bindings.cpp",
-            arguments=("clang++", "-c", "bindings.cpp"),
-        )
-    )
-    ast_filters: list[str] = []
-
-    def fake_ast_dump(ast_filter: str) -> tuple[dict, ...]:
-        ast_filters.append(ast_filter)
-        return ()
-
-    index._run_ast_dump = fake_ast_dump  # type: ignore[method-assign]
-
-    assert index.ast_objects("Demo") == ()
-    assert index.ast_objects("Demo") == ()
-    index.ensure_ast_filter_loaded("Demo")
-
-    assert ast_filters == ["Demo"]
-
-
-def test_namespace_discovery_skips_unselected_signatures(tmp_path: Path) -> None:
-    index = TranslationUnitIndex(
-        CompileCommand(
-            directory=tmp_path,
-            file=tmp_path / "bindings.cpp",
-            arguments=("clang++", "-c", "bindings.cpp"),
-        )
-    )
-    ast_filters: list[str] = []
-
-    def fake_ast_dump(ast_filter: str) -> tuple[dict, ...]:
-        ast_filters.append(ast_filter)
-        if ast_filter == "MissingType":
-            raise AssertionError("Unselected function signature should not be resolved")
-        return (
-            {
-                "kind": "NamespaceDecl",
-                "name": "Demo",
-                "inner": [
-                    {
-                        "kind": "FunctionDecl",
-                        "name": "wanted",
-                        "type": {"qualType": "int ()"},
-                    },
-                    {
-                        "kind": "FunctionDecl",
-                        "name": "skipped",
-                        "type": {"qualType": "MissingType ()"},
-                    },
-                ],
-            },
-        )
-
-    index._run_ast_dump = fake_ast_dump  # type: ignore[method-assign]
-
-    functions = index.discover_namespace_functions("Demo", selected_names={"wanted"})
-
-    assert set(functions) == {"wanted"}
-    assert ast_filters == ["Demo"]
-
-
-def test_qualified_record_lookup_uses_coarse_namespace_filter(tmp_path: Path) -> None:
-    index = TranslationUnitIndex(
-        CompileCommand(
-            directory=tmp_path,
-            file=tmp_path / "bindings.cpp",
-            arguments=("clang++", "-c", "bindings.cpp"),
-        )
-    )
-    ast_filters: list[str] = []
-
-    def fake_ast_dump(ast_filter: str) -> tuple[dict, ...]:
-        ast_filters.append(ast_filter)
-        assert ast_filter == "Demo"
-        return (
-            {
-                "kind": "NamespaceDecl",
-                "name": "Demo",
-                "inner": [
-                    {
-                        "kind": "CXXRecordDecl",
-                        "name": "Widget",
-                        "completeDefinition": True,
-                    }
-                ],
-            },
-        )
-
-    index._run_ast_dump = fake_ast_dump  # type: ignore[method-assign]
-
-    assert index.resolve_record("Demo::Widget").qualified_name == "Demo::Widget"
-    assert ast_filters == ["Demo"]
-
-
-def test_scoped_lookup_prefers_longest_matching_suffix(tmp_path: Path) -> None:
-    index = TranslationUnitIndex(
-        CompileCommand(
-            directory=tmp_path,
-            file=tmp_path / "bindings.cpp",
-            arguments=("clang++", "-c", "bindings.cpp"),
-        )
-    )
-    ast_filters: list[str] = []
-
-    def fake_ast_dump(ast_filter: str) -> tuple[dict, ...]:
-        ast_filters.append(ast_filter)
-        assert ast_filter == "ifcopenshell::geometry::taxonomy"
-        return (
-            {
-                "kind": "NamespaceDecl",
-                "name": "geometry",
-                "inner": [
-                    {
-                        "kind": "NamespaceDecl",
-                        "name": "taxonomy",
-                        "inner": [
-                            {
-                                "kind": "CXXRecordDecl",
-                                "name": "item",
-                                "completeDefinition": True,
-                            }
-                        ],
-                    },
-                ],
-            },
-            {
-                "kind": "NamespaceDecl",
-                "name": "taxonomy",
-                "inner": [
-                    {
-                        "kind": "CXXRecordDecl",
-                        "name": "item",
-                        "completeDefinition": True,
-                    }
-                ],
-            },
-        )
-
-    index._run_ast_dump = fake_ast_dump  # type: ignore[method-assign]
-
-    record = index.resolve_record("ifcopenshell::geometry::taxonomy::item")
-
-    assert record.qualified_name == "geometry::taxonomy::item"
-    assert ast_filters == ["ifcopenshell::geometry::taxonomy"]
-
-
-def test_scoped_lookup_rejects_true_ambiguity(tmp_path: Path) -> None:
-    index = TranslationUnitIndex(
-        CompileCommand(
-            directory=tmp_path,
-            file=tmp_path / "bindings.cpp",
-            arguments=("clang++", "-c", "bindings.cpp"),
-        )
-    )
-
-    def fake_ast_dump(ast_filter: str) -> tuple[dict, ...]:
-        assert ast_filter == "Demo"
-        return (
-            {
-                "kind": "NamespaceDecl",
-                "name": "Alpha",
-                "inner": [
-                    {
-                        "kind": "NamespaceDecl",
-                        "name": "Demo",
-                        "inner": [
-                            {
-                                "kind": "CXXRecordDecl",
-                                "name": "Widget",
-                                "completeDefinition": True,
-                            }
-                        ],
-                    },
-                ],
-            },
-            {
-                "kind": "NamespaceDecl",
-                "name": "Beta",
-                "inner": [
-                    {
-                        "kind": "NamespaceDecl",
-                        "name": "Demo",
-                        "inner": [
-                            {
-                                "kind": "CXXRecordDecl",
-                                "name": "Widget",
-                                "completeDefinition": True,
-                            }
-                        ],
-                    },
-                ],
-            },
-        )
-
-    index._run_ast_dump = fake_ast_dump  # type: ignore[method-assign]
-
-    with pytest.raises(ValueError, match="Ambiguous declaration lookup"):
-        index.resolve_record("Demo::Widget")
-
-
-def test_ast_filter_for_lookup_coarsens_known_qualified_names() -> None:
-    assert _ast_filter_for_lookup("IfcGeom::Iterator") == "IfcGeom"
-    assert _ast_filter_for_lookup("IfcParse::schema_definition") == "IfcParse"
-    assert (
-        _ast_filter_for_lookup("ifcopenshell::geometry::taxonomy::item")
-        == "ifcopenshell::geometry::taxonomy"
-    )
-    assert (
-        _ast_filter_for_lookup("ifcopenshell::geometry::Settings")
-        == "ifcopenshell::geometry"
-    )
-    assert _ast_filter_for_lookup("BareType") == "BareType"
-
-
-def test_discovery_skips_known_namespace_roots_before_clang_lookup(
-    tmp_path: Path,
-) -> None:
-    index = TranslationUnitIndex(
-        CompileCommand(
-            directory=tmp_path,
-            file=tmp_path / "bindings.cpp",
-            arguments=("clang++", "-c", "bindings.cpp"),
-        )
-    )
-    ast_filters: list[str] = []
-
-    def fake_ast_dump(ast_filter: str) -> tuple[dict, ...]:
-        ast_filters.append(ast_filter)
-        if ast_filter.startswith("ifcopenshell"):
-            raise AssertionError(
-                "Known namespace roots should not trigger record/enum AST filters"
-            )
-        return (
-            {
-                "kind": "NamespaceDecl",
-                "name": "Demo",
-                "inner": [
-                    {
-                        "kind": "FunctionDecl",
-                        "name": "make_item",
-                        "type": {
-                            "qualType": "ifcopenshell::geometry::taxonomy::item *()"
-                        },
-                    },
-                ],
-            },
-        )
-
-    index._run_ast_dump = fake_ast_dump  # type: ignore[method-assign]
-
-    functions = index.discover_namespace_functions("Demo", selected_names={"make_item"})
-
-    assert (
-        functions["make_item"][0].return_type_ref.storage_spelling
-        == "ifcopenshell::geometry::taxonomy::item*"
-    )
-    assert ast_filters == ["Demo"]
 
 
 def test_discover_public_fields_with_inheritance(tmp_path: Path) -> None:
@@ -860,9 +536,7 @@ struct Widget {
     )
 
 
-def test_discovery_avoids_unscoped_and_std_ast_filters(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_discovery_resolves_scoped_and_standard_types(tmp_path: Path) -> None:
     compiler = shutil.which("clang++")
     if compiler is None:
         pytest.skip("clang++ is not available")
@@ -890,15 +564,6 @@ struct Container {
     )
     source.write_text('#include "scoped.h"\n', encoding="utf-8")
 
-    seen_filters: list[str] = []
-    original = TranslationUnitIndex._run_ast_dump
-
-    def _recording_run_ast_dump(self: TranslationUnitIndex, ast_filter: str):
-        seen_filters.append(ast_filter)
-        return original(self, ast_filter)
-
-    monkeypatch.setattr(TranslationUnitIndex, "_run_ast_dump", _recording_run_ast_dump)
-
     methods = discover_public_methods(
         DiscoveryEnvironment(
             compilation=CompilationConfig(
@@ -911,13 +576,9 @@ struct Container {
 
     assert methods["inner"][0].return_type_ref.storage_spelling == "Outer::Inner"
     assert methods["name"][0].return_type_ref.storage_spelling == "const std::string&"
-    assert "std" not in seen_filters
-    assert "Inner" not in seen_filters
 
 
-def test_discovery_avoids_lowercase_bare_type_filters(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_discovery_resolves_lowercase_bare_type(tmp_path: Path) -> None:
     compiler = shutil.which("clang++")
     if compiler is None:
         pytest.skip("clang++ is not available")
@@ -940,15 +601,6 @@ struct schema_definition {
     )
     source.write_text('#include "lowercase.h"\n', encoding="utf-8")
 
-    seen_filters: list[str] = []
-    original = TranslationUnitIndex._run_ast_dump
-
-    def _recording_run_ast_dump(self: TranslationUnitIndex, ast_filter: str):
-        seen_filters.append(ast_filter)
-        return original(self, ast_filter)
-
-    monkeypatch.setattr(TranslationUnitIndex, "_run_ast_dump", _recording_run_ast_dump)
-
     methods = discover_public_methods(
         DiscoveryEnvironment(
             compilation=CompilationConfig(
@@ -962,12 +614,9 @@ struct schema_definition {
     assert (
         methods["declared"][0].return_type_ref.storage_spelling == "Demo::declaration"
     )
-    assert "declaration" not in seen_filters
 
 
-def test_discovery_avoids_bare_ptr_and_it_alias_filters(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_discovery_resolves_bare_ptr_and_iterator_aliases(tmp_path: Path) -> None:
     compiler = shutil.which("clang++")
     if compiler is None:
         pytest.skip("clang++ is not available")
@@ -995,15 +644,6 @@ public:
     )
     source.write_text('#include "aliases.h"\n', encoding="utf-8")
 
-    seen_filters: list[str] = []
-    original = TranslationUnitIndex._run_ast_dump
-
-    def _recording_run_ast_dump(self: TranslationUnitIndex, ast_filter: str):
-        seen_filters.append(ast_filter)
-        return original(self, ast_filter)
-
-    monkeypatch.setattr(TranslationUnitIndex, "_run_ast_dump", _recording_run_ast_dump)
-
     fields = discover_public_fields(
         DiscoveryEnvironment(
             compilation=CompilationConfig(
@@ -1028,5 +668,3 @@ public:
         == "std::shared_ptr<Demo::Derived>"
     )
     assert methods["index"][0].return_cpp_type == "it"
-    assert "ptr" not in seen_filters
-    assert "it" not in seen_filters

@@ -76,16 +76,17 @@ if(BUILD_IFCCAPI)
         find_package(Python COMPONENTS Interpreter REQUIRED)
 
         execute_process(
-            COMMAND ${Python_EXECUTABLE} -c "import yaml"
-            RESULT_VARIABLE IFCPARSE_CAPI_PYYAML_STATUS
+            COMMAND ${Python_EXECUTABLE} -c "import clang.cindex; import yaml"
+            RESULT_VARIABLE IFCOPENSHELL_BINDGEN_PYTHON_DEPS_STATUS
             OUTPUT_QUIET
             ERROR_QUIET
         )
-        if(NOT IFCPARSE_CAPI_PYYAML_STATUS EQUAL 0)
+        if(NOT IFCOPENSHELL_BINDGEN_PYTHON_DEPS_STATUS EQUAL 0)
             message(
                 FATAL_ERROR
-                "IFCCAPI_REGENERATE_BINDINGS enabled, but the selected Python interpreter does not provide PyYAML. "
-                "Install the generator dependencies or disable IFCCAPI_REGENERATE_BINDINGS."
+                "IFCCAPI_REGENERATE_BINDINGS enabled, but the selected Python interpreter does not provide "
+                "the Clang Python bindings and PyYAML. Install the generator dependencies or disable "
+                "IFCCAPI_REGENERATE_BINDINGS."
             )
         endif()
 

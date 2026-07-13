@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import json
 import re
-import subprocess
 import tempfile
 import threading
 from collections import defaultdict
@@ -51,15 +49,6 @@ _BUILTIN_TYPE_NAMES = {
 }
 
 
-def _is_low_signal_unqualified_lookup(text: str) -> bool:
-    normalized = text.strip()
-    if not normalized or "::" in normalized:
-        return False
-    if not re.fullmatch(r"[A-Za-z_]\w*", normalized):
-        return False
-    return normalized.islower() and len(normalized) <= 3
-
-
 def _is_external_qualified_type(text: str) -> bool:
     normalized = text.strip()
     return normalized.startswith(_EXTERNAL_NAMESPACE_PREFIXES)
@@ -76,20 +65,10 @@ def _has_skipped_qualified_root(text: str) -> bool:
     return text.split("::", 1)[0] in _SKIP_QUALIFIED_ROOTS
 
 
-def _ast_filter_for_lookup(text: str) -> str:
-    if "::" not in text:
-        return text
-    # Avoid a very broad "ifcopenshell" filter while still batching the
-    # heavily-used geometry and taxonomy namespaces.
-    if text.startswith("ifcopenshell::geometry::taxonomy::"):
-        return "ifcopenshell::geometry::taxonomy"
-    if text.startswith("ifcopenshell::geometry::"):
-        return "ifcopenshell::geometry"
-    return text.split("::", 1)[0]
-
-
-def _ast_filter_covers_lookup(ast_filter: str, text: str) -> bool:
-    return text == ast_filter or text.startswith(f"{ast_filter}::")
+def _should_skip_qualified_resolution(
+    index: TranslationUnitIndex | None, text: str
+) -> bool:
+    return index is None and _has_skipped_qualified_root(text)
 
 
 def _selected_key(selected_names: Iterable[str] | None) -> tuple[str, ...] | None:
@@ -174,6 +153,7 @@ class CompileCommand:
     directory: Path
     file: Path
     arguments: tuple[str, ...]
+    project_root: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -213,8 +193,7 @@ class IndexedEnum:
 @dataclass
 class TranslationUnitIndex:
     command: CompileCommand
-    _loaded_ast_filters: set[str] = field(default_factory=set)
-    _ast_objects_by_filter: dict[str, tuple[dict, ...]] = field(default_factory=dict)
+    _parsed: bool = False
     _records_by_qualified: dict[str, IndexedRecord] = field(default_factory=dict)
     _record_names_by_simple: dict[str, list[str]] = field(
         default_factory=lambda: defaultdict(list)
@@ -227,59 +206,23 @@ class TranslationUnitIndex:
         tuple[str, tuple[str, ...] | None],
         dict[str, tuple[DiscoveredFunction, ...]],
     ] = field(default_factory=dict)
-    _record_miss_filters: set[str] = field(default_factory=set)
-    _enum_miss_filters: set[str] = field(default_factory=set)
+    _functions_by_namespace: dict[str, tuple[dict, ...]] = field(default_factory=dict)
     _lock: threading.RLock = field(default_factory=threading.RLock)
 
-    def _ensure_lookup_filter_loaded(self, lookup_name: str) -> None:
-        ast_filter = _ast_filter_for_lookup(lookup_name)
-        self.ensure_ast_filter_loaded(ast_filter)
-
-    def _run_ast_dump(self, ast_filter: str) -> tuple[dict, ...]:
-        debug_log(
-            "clang.ast_dump.start",
-            f"tu={debug_path(self.command.file)} filter={ast_filter}",
-        )
-        proc = subprocess.run(
-            _build_ast_dump_command(self.command, ast_filter=ast_filter),
-            cwd=self.command.directory,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if proc.returncode != 0:
-            msg = (
-                proc.stderr.strip()
-                or f"clang AST dump failed for '{self.command.file}'"
-            )
-            raise RuntimeError(msg)
-
-        objects = tuple(_decode_json_stream(proc.stdout))
-        debug_log(
-            "clang.ast_dump.done",
-            f"tu={debug_path(self.command.file)} filter={ast_filter} nodes={len(objects)}",
-        )
-        return objects
-
-    def ensure_ast_filter_loaded(self, ast_filter: str) -> None:
-        if ast_filter in self._loaded_ast_filters:
+    def _ensure_compact_index(self) -> None:
+        if self._parsed:
             return
-        objects = self._load_ast_objects(ast_filter)
-        self._loaded_ast_filters.add(ast_filter)
-        self._index_records(objects)
+        from .libclang_index import parse_translation_unit
 
-    def ast_objects(self, ast_filter: str) -> tuple[dict, ...]:
-        objects = self._load_ast_objects(ast_filter)
-        self._index_records(objects)
-        return objects
-
-    def _load_ast_objects(self, ast_filter: str) -> tuple[dict, ...]:
-        cached = self._ast_objects_by_filter.get(ast_filter)
-        if cached is not None:
-            return cached
-        objects = self._run_ast_dump(ast_filter)
-        self._ast_objects_by_filter[ast_filter] = objects
-        return objects
+        debug_log("clang.tu_parse.start", f"tu={debug_path(self.command.file)}")
+        parsed = parse_translation_unit(self.command)
+        self._index_records((*parsed.records, *parsed.enums))
+        self._functions_by_namespace = parsed.functions
+        self._parsed = True
+        debug_log(
+            "clang.tu_parse.done",
+            f"tu={debug_path(self.command.file)} records={len(parsed.records)} enums={len(parsed.enums)} functions={sum(len(items) for items in parsed.functions.values())}",
+        )
 
     def resolve_record(
         self, class_name: str, current_scope: str = ""
@@ -287,6 +230,7 @@ class TranslationUnitIndex:
         lookup_name = _normalize_record_lookup_name(class_name)
         if not lookup_name:
             return None
+        self._ensure_compact_index()
 
         for candidate in _scoped_lookup_candidates(lookup_name, current_scope):
             record = self._records_by_qualified.get(candidate)
@@ -302,25 +246,28 @@ class TranslationUnitIndex:
                 )
             ):
                 continue
-            if "::" not in candidate and _is_low_signal_unqualified_lookup(candidate):
-                continue
-            if candidate in self._record_miss_filters:
-                continue
-            self._ensure_lookup_filter_loaded(candidate)
-
-            record = self._records_by_qualified.get(candidate)
-            if record is not None:
-                return record
             if "::" not in candidate:
                 continue
             simple = _simple_name(candidate)
             simple_candidates = self._record_names_by_simple.get(simple, [])
+            if "::" in candidate:
+                simple_candidates = [
+                    name
+                    for name in simple_candidates
+                    if name == candidate
+                    or name.endswith(f"::{candidate}")
+                    or candidate.endswith(f"::{name}")
+                ]
             if simple_candidates:
-                resolved = self._resolve_best_scoped_decl(
-                    candidate,
-                    current_scope=current_scope,
-                    qualified=self._records_by_qualified,
-                    simple=self._record_names_by_simple,
+                resolved = (
+                    self._records_by_qualified[simple_candidates[0]]
+                    if len(simple_candidates) == 1
+                    else self._resolve_best_scoped_decl(
+                        candidate,
+                        current_scope=current_scope,
+                        qualified=self._records_by_qualified,
+                        simple=self._record_names_by_simple,
+                    )
                 )
                 if "::" not in resolved.qualified_name:
                     return IndexedRecord(
@@ -328,8 +275,14 @@ class TranslationUnitIndex:
                         simple_name=resolved.simple_name,
                         node=resolved.node,
                     )
-            self._record_miss_filters.add(candidate)
 
+        if "::" in lookup_name and not any(
+            name == lookup_name
+            or name.endswith(f"::{lookup_name}")
+            or lookup_name.endswith(f"::{name}")
+            for name in self._record_names_by_simple.get(_simple_name(lookup_name), [])
+        ):
+            return None
         return self._resolve_scoped_decl(
             lookup_name,
             current_scope=current_scope,
@@ -343,6 +296,7 @@ class TranslationUnitIndex:
         lookup_name = _normalize_record_lookup_name(enum_name)
         if not lookup_name:
             return None
+        self._ensure_compact_index()
 
         for candidate in _scoped_lookup_candidates(lookup_name, current_scope):
             enum = self._enums_by_qualified.get(candidate)
@@ -358,23 +312,27 @@ class TranslationUnitIndex:
                 )
             ):
                 continue
-            if "::" not in candidate and _is_low_signal_unqualified_lookup(candidate):
-                continue
-            if candidate in self._enum_miss_filters:
-                continue
-            self._ensure_lookup_filter_loaded(candidate)
-            enum = self._enums_by_qualified.get(candidate)
-            if enum is not None:
-                return enum
             if "::" in candidate:
                 simple = _simple_name(candidate)
                 simple_candidates = self._enum_names_by_simple.get(simple, [])
+                if "::" in candidate:
+                    simple_candidates = [
+                        name
+                        for name in simple_candidates
+                        if name == candidate
+                        or name.endswith(f"::{candidate}")
+                        or candidate.endswith(f"::{name}")
+                    ]
                 if simple_candidates:
-                    resolved = self._resolve_best_scoped_decl(
-                        candidate,
-                        current_scope=current_scope,
-                        qualified=self._enums_by_qualified,
-                        simple=self._enum_names_by_simple,
+                    resolved = (
+                        self._enums_by_qualified[simple_candidates[0]]
+                        if len(simple_candidates) == 1
+                        else self._resolve_best_scoped_decl(
+                            candidate,
+                            current_scope=current_scope,
+                            qualified=self._enums_by_qualified,
+                            simple=self._enum_names_by_simple,
+                        )
                     )
                     if "::" not in resolved.qualified_name:
                         return IndexedEnum(
@@ -382,7 +340,13 @@ class TranslationUnitIndex:
                             simple_name=resolved.simple_name,
                             node=resolved.node,
                         )
-            self._enum_miss_filters.add(candidate)
+        if "::" in lookup_name and not any(
+            name == lookup_name
+            or name.endswith(f"::{lookup_name}")
+            or lookup_name.endswith(f"::{name}")
+            for name in self._enum_names_by_simple.get(_simple_name(lookup_name), [])
+        ):
+            return None
         return self._resolve_scoped_decl(
             lookup_name,
             current_scope=current_scope,
@@ -411,19 +375,18 @@ class TranslationUnitIndex:
         if cached is not None:
             return cached
 
+        self._ensure_compact_index()
         functions: dict[str, list[DiscoveredFunction]] = defaultdict(list)
-        ast_filters = [namespace_name]
-        if "::" in namespace_name:
-            ast_filters.append(_simple_name(namespace_name))
-        for ast_filter in ast_filters:
-            objects = self.ast_objects(ast_filter)
-            for obj in objects:
-                for func_name, overloads in _extract_namespace_functions(
-                    obj, namespace_name, self, selected_names=selected_set
-                ).items():
-                    functions[func_name].extend(overloads)
-            if functions:
-                break
+        namespace_nodes = self._functions_by_namespace.get(namespace_name, ())
+        if not namespace_nodes and "::" in namespace_name:
+            namespace_nodes = self._functions_by_namespace.get(
+                _simple_name(namespace_name), ()
+            )
+        for node in namespace_nodes:
+            for func_name, overloads in _extract_namespace_functions(
+                node, namespace_name, self, selected_names=selected_set
+            ).items():
+                functions[func_name].extend(overloads)
 
         if not functions:
             msg = f"Namespace '{namespace_name}' not found in AST for '{self.command.file}'"
@@ -445,7 +408,9 @@ class TranslationUnitIndex:
             if kind == "NamespaceDecl":
                 next_scope = _qualified_name(current_scope, name)
             elif kind in _RECORD_KINDS and name and node.get("completeDefinition"):
-                qualified_name = _qualified_name(current_scope, name)
+                qualified_name = node.get("qualifiedName") or _qualified_name(
+                    current_scope, name
+                )
                 if qualified_name not in self._records_by_qualified:
                     self._records_by_qualified[qualified_name] = IndexedRecord(
                         qualified_name=qualified_name,
@@ -456,7 +421,9 @@ class TranslationUnitIndex:
                         self._record_names_by_simple[name].append(qualified_name)
                 next_scope = qualified_name
             elif kind == "EnumDecl" and name:
-                qualified_name = _qualified_name(current_scope, name)
+                qualified_name = node.get("qualifiedName") or _qualified_name(
+                    current_scope, name
+                )
                 if qualified_name not in self._enums_by_qualified:
                     self._enums_by_qualified[qualified_name] = IndexedEnum(
                         qualified_name=qualified_name,
@@ -574,9 +541,7 @@ class TranslationUnitIndex:
         if record is None:
             return False
         for child in record.node.get("inner", []):
-            if child.get("kind") not in kinds:
-                continue
-            if child.get("name") != nested_name:
+            if child.get("kind") not in kinds or child.get("name") != nested_name:
                 continue
             if child.get("kind") in _RECORD_KINDS and not child.get(
                 "completeDefinition"
@@ -677,52 +642,6 @@ def _synthetic_compile_arguments(
     if not replaced:
         arguments.extend(["-c", synthetic])
     return tuple(arguments)
-
-
-def _decode_json_stream(text: str) -> list[dict]:
-    decoder = json.JSONDecoder()
-    objects: list[dict] = []
-    index = 0
-    while index < len(text):
-        while index < len(text) and text[index].isspace():
-            index += 1
-        if index >= len(text):
-            break
-        obj, end = decoder.raw_decode(text, index)
-        objects.append(obj)
-        index = end
-    return objects
-
-
-def _build_ast_dump_command(command: CompileCommand, *, ast_filter: str) -> list[str]:
-    args: list[str] = []
-    skip_next = False
-    source = str(command.file)
-    for token in command.arguments:
-        if skip_next:
-            skip_next = False
-            continue
-        if token == "-o":
-            skip_next = True
-            continue
-        if token == "-c" or token == source:
-            continue
-        args.append(token)
-
-    args.extend(
-        [
-            "-Xclang",
-            "-skip-function-bodies",
-            "-Xclang",
-            "-ast-dump=json",
-            "-Xclang",
-            f"-ast-dump-filter={ast_filter}",
-            "-fparse-all-comments",
-            "-fsyntax-only",
-            source,
-        ]
-    )
-    return args
 
 
 def _default_access(record: dict) -> str:
@@ -857,6 +776,8 @@ def _normalize_comment_parts(parts: Iterable[str]) -> str | None:
 
 
 def _extract_documentation(node: dict) -> str | None:
+    if node.get("doc"):
+        return node["doc"]
     for child in node.get("inner", []):
         if child.get("kind") == "FullComment":
             return _normalize_comment_parts(_comment_node_parts(child))
@@ -1053,13 +974,14 @@ def _extract_namespace_functions(
 
     kind = node.get("kind")
     name = node.get("name", "")
-    next_namespace = current_namespace
+    declaration_namespace = node.get("namespace", current_namespace)
+    next_namespace = declaration_namespace
     if kind == "NamespaceDecl":
         next_namespace = _qualified_name(current_namespace, name)
 
     if (
         kind == "FunctionDecl"
-        and _namespace_matches(current_namespace, namespace_name)
+        and _namespace_matches(declaration_namespace, namespace_name)
         and (selected_names is None or name in selected_names)
     ):
         params = tuple(
@@ -1067,7 +989,9 @@ def _extract_namespace_functions(
                 name=param.get("name") or f"arg_{param_index}",
                 cpp_type=param.get("type", {}).get("qualType", ""),
                 cpp_type_ref=_parse_discovered_cpp_type(
-                    param.get("type", {}), index=index, current_scope=current_namespace
+                    param.get("type", {}),
+                    index=index,
+                    current_scope=declaration_namespace,
                 ),
             )
             for param_index, param in enumerate(
@@ -1081,11 +1005,13 @@ def _extract_namespace_functions(
         )
         functions[name].append(
             DiscoveredFunction(
-                namespace=current_namespace,
+                namespace=declaration_namespace,
                 cpp_name=name,
                 return_cpp_type=return_cpp_type,
                 return_type_ref=_parse_discovered_cpp_type(
-                    return_cpp_type, index=index, current_scope=current_namespace
+                    return_cpp_type,
+                    index=index,
+                    current_scope=declaration_namespace,
                 ),
                 params=params,
             )
@@ -1257,6 +1183,9 @@ def discover_namespace_functions_with_synthetic_source(
             directory=reference_command.directory,
             file=synthetic_source,
             arguments=_synthetic_compile_arguments(reference_command, synthetic_source),
+            project_root=reference_source_root.resolve()
+            if reference_source_root is not None
+            else None,
         )
         debug_log(
             "clang.synthetic_tu_index.create",
@@ -1379,21 +1308,16 @@ def _qualified_type_core(
     if _should_skip_clang_type_resolution(text):
         return text
 
-    if _has_skipped_qualified_root(text):
+    if _should_skip_qualified_resolution(index, text):
         return text
 
     if index is not None:
         if _looks_like_named_type(text):
             record = index.resolve_record(text, current_scope=current_scope)
-            if record is None:
-                record = index._resolve_scoped_decl(  # noqa: SLF001
-                    text,
-                    current_scope=current_scope,
-                    qualified=index._records_by_qualified,  # noqa: SLF001
-                    simple=index._record_names_by_simple,  # noqa: SLF001
-                )
             if record is not None:
                 if "::" in text and "::" not in record.qualified_name:
+                    return text
+                if "::" in text and record.qualified_name.endswith(f"::{text}"):
                     return text
                 if "::" not in record.qualified_name and "::" not in text:
                     enclosing_scope = _enclosing_scope(current_scope)
@@ -1401,14 +1325,7 @@ def _qualified_type_core(
                         return f"{enclosing_scope}::{text}"
                 return record.qualified_name
 
-            enum = index._resolve_scoped_decl(  # noqa: SLF001
-                text,
-                current_scope=current_scope,
-                qualified=index._enums_by_qualified,  # noqa: SLF001
-                simple=index._enum_names_by_simple,  # noqa: SLF001
-            )
-            if enum is None:
-                enum = index.resolve_enum(text, current_scope)
+            enum = index.resolve_enum(text, current_scope)
             if enum is not None:
                 if "::" in text and "::" not in enum.qualified_name:
                     return text
@@ -1421,13 +1338,6 @@ def _qualified_type_core(
             if "::" in text:
                 root, suffix = text.split("::", 1)
                 root_record = index.resolve_record(root, current_scope=current_scope)
-                if root_record is None:
-                    root_record = index._resolve_scoped_decl(  # noqa: SLF001
-                        root,
-                        current_scope=current_scope,
-                        qualified=index._records_by_qualified,  # noqa: SLF001
-                        simple=index._record_names_by_simple,  # noqa: SLF001
-                    )
                 if root_record is not None and "::" not in root:
                     qualified_root = root_record.qualified_name
                     if "::" not in qualified_root:
@@ -1489,7 +1399,7 @@ def _resolved_enum(
     )
     if enum is not None:
         return _with_requested_enum_name(enum, text, current_scope)
-    if _has_skipped_qualified_root(text):
+    if _should_skip_qualified_resolution(index, text):
         return None
     return index.resolve_enum(text, current_scope)
 
@@ -1537,15 +1447,26 @@ def _parse_discovered_cpp_type(
     resolved_record = None
     if (
         index is not None
+        and template_name is None
         and _looks_like_named_type(base_name)
         and not _is_external_qualified_type(base_name)
+        and not _should_skip_qualified_resolution(index, base_name)
     ):
-        resolved_record = index._resolve_scoped_decl(  # noqa: SLF001
-            base_name,
-            current_scope=current_scope,
-            qualified=index._records_by_qualified,  # noqa: SLF001
-            simple=index._record_names_by_simple,  # noqa: SLF001
+        candidates = index._record_names_by_simple.get(  # noqa: SLF001
+            _simple_name(base_name), []
         )
+        if "::" not in base_name or any(
+            name == base_name
+            or name.endswith(f"::{base_name}")
+            or base_name.endswith(f"::{name}")
+            for name in candidates
+        ):
+            resolved_record = index._resolve_scoped_decl(  # noqa: SLF001
+                base_name,
+                current_scope=current_scope,
+                qualified=index._records_by_qualified,  # noqa: SLF001
+                simple=index._record_names_by_simple,  # noqa: SLF001
+            )
     resolved_enum = (
         None
         if resolved_record is not None or template_name is not None

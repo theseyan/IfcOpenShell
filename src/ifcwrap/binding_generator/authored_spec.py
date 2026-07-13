@@ -2645,7 +2645,14 @@ def _select_overload(
         )
         if overload.cpp_name == spec.cpp_name and overload_params == target_params:
             return overload
+    candidates = ", ".join(
+        f"{overload.cpp_name}({', '.join(param.cpp_type for param in overload.params)})"
+        for overload in overloads
+        if overload.cpp_name == spec.cpp_name
+    )
     msg = f"Unable to resolve overload '{spec.cpp_name}({', '.join(spec.params)})'"
+    if candidates:
+        msg += f"; discovered: {candidates}"
     raise ValueError(msg)
 
 
@@ -2843,7 +2850,11 @@ def _infer_children_element_handle(
         _simple_cpp_name(type_ref.template_name or "") != "vector"
         or len(type_ref.template_args) != 1
     ):
-        msg = f"discover_children field '{dc.cpp_field}' must be a vector-like child field, got '{field.cpp_type}'"
+        msg = (
+            f"discover_children field '{dc.cpp_field}' must be a vector-like child field, "
+            f"got '{field.cpp_type}' (desugared '{type_ref.desugared_spelling}', "
+            f"template arguments {len(type_ref.template_args)})"
+        )
         raise ValueError(msg)
     element_type = type_ref.template_args[0]
     if _simple_cpp_name(element_type.template_name or "") == "vector":
