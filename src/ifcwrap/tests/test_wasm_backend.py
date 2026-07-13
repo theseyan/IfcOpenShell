@@ -282,6 +282,44 @@ class TestWasmTypescript:
         assert "ifc_class: string;" in code
         assert "name?: string;" in code
 
+    def test_preserves_native_option_field_casing(self):
+        metadata = _make_metadata(
+            handles={"instance": _make_handle("ifcopenshell_demo_instance_t")},
+            option_structs={
+                "AssignObjectOptions": HostOptionStructMetadata(
+                    name="AssignObjectOptions",
+                    c_type="ifcopenshell_demo_assign_object_options_t",
+                    fields=(
+                        HostOptionFieldMetadata(
+                            "owner_history",
+                            TypeSpec(kind="handle", handle="instance", nullable=True),
+                            "ifcopenshell_demo_instance_t*",
+                        ),
+                        HostOptionFieldMetadata(
+                            "relating_object",
+                            TypeSpec(kind="handle", handle="instance"),
+                            "ifcopenshell_demo_instance_t*",
+                        ),
+                        HostOptionFieldMetadata(
+                            "sync_predefined_type",
+                            TypeSpec(kind="bool"),
+                            "bool",
+                        ),
+                    ),
+                )
+            },
+        )
+
+        code = render_typescript_declarations(metadata)
+
+        assert "export interface IfcOpenshellDemoAssignObjectOptions" in code
+        assert "owner_history?: IfcOpenshellDemoInstance;" in code
+        assert "relating_object: IfcOpenshellDemoInstance;" in code
+        assert "sync_predefined_type: boolean;" in code
+        assert "ownerHistory" not in code
+        assert "relatingObject" not in code
+        assert "syncPredefinedType" not in code
+
     def test_renders_option_struct_parameters(self):
         metadata = _make_metadata(
             option_structs={
@@ -716,6 +754,98 @@ class TestWasmApiBridge:
         assert "function toRawSequence(value: ApiInput, shell: IfcOpenShell, temps: Disposable[]): RawValue" in code
         assert "disposeAll(temps);" in code
         assert "return wrapEntity(shell, result) as Entity;" in code
+
+    def test_generates_exact_raw_api_members_and_signatures(self):
+        metadata = _make_metadata(
+            c_prefix="ifcopenshell",
+            handles={
+                "file": _make_handle("ifcopenshell_file_t"),
+                "instance": _make_handle("ifcopenshell_instance_t"),
+            },
+            option_structs={
+                "AssignObjectOptions": HostOptionStructMetadata(
+                    name="AssignObjectOptions",
+                    c_type="ifcopenshell_aggregate_assign_object_options_t",
+                    fields=(
+                        HostOptionFieldMetadata(
+                            "owner_history",
+                            TypeSpec(kind="handle", handle="instance", nullable=True),
+                            "ifcopenshell_instance_t*",
+                        ),
+                        HostOptionFieldMetadata(
+                            "relating_object",
+                            TypeSpec(kind="handle", handle="instance"),
+                            "ifcopenshell_instance_t*",
+                        ),
+                        HostOptionFieldMetadata(
+                            "sync_predefined_type",
+                            TypeSpec(kind="bool"),
+                            "bool",
+                        ),
+                    ),
+                )
+            },
+            functions={
+                "ifcopenshell_aggregate_assign_object": _make_function(
+                    c_name="ifcopenshell_aggregate_assign_object",
+                    params=(
+                        HostParamMetadata("file", "ifcopenshell_file_t*", "param", "handle"),
+                        HostParamMetadata(
+                            "options",
+                            "const ifcopenshell_aggregate_assign_object_options_t*",
+                            "param",
+                            "option",
+                        ),
+                    ),
+                    returns=TypeSpec(kind="handle", handle="instance"),
+                ),
+                "ifcopenshell_alpha_lookup": _make_function(
+                    c_name="ifcopenshell_alpha_lookup",
+                    params=(HostParamMetadata("value", "const char*", "param", "string"),),
+                ),
+                "ifcopenshell_beta_lookup": _make_function(
+                    c_name="ifcopenshell_beta_lookup",
+                    params=(HostParamMetadata("value", "const char*", "param", "string"),),
+                ),
+                "ifcopenshell_demo_use": _make_function(
+                    c_name="ifcopenshell_demo_use",
+                    params=(HostParamMetadata("value", "const char*", "param", "string"),),
+                ),
+                "ifcopenshell_guid_generate": _make_function(
+                    c_name="ifcopenshell_guid_generate",
+                    returns=TypeSpec(kind="string"),
+                ),
+            },
+        )
+
+        code = render_api_direct(metadata)
+        raw_start = code.index("type RawApi = {")
+        raw_end = code.index("export interface", raw_start)
+        raw_api = code[raw_start:raw_end]
+
+        assert "type RawFn" not in code
+        assert "generate: () => string;" in raw_api
+        assert "use: (value: string) => void;" in raw_api
+        assert "assignObject: (file: RawValue, options: RawValue) => RawValue;" in raw_api
+        assert "  alpha: {\n    lookup: (value: string) => void;\n  };" in raw_api
+        assert "  beta: {\n    lookup: (value: string) => void;\n  };" in raw_api
+        assert "[key: string]" not in raw_api
+        assert "...args" not in raw_api
+        assert "raw.guid.generate();" in code
+        assert "raw.demo.use(value);" in code
+        assert "raw.aggregate.assignObject(file.raw, encodeOptions(options" in code
+        assert "raw.alpha.lookup(value);" in code
+        assert "raw.beta.lookup(value);" in code
+        low_level = render_typescript_declarations(metadata)
+        assert "owner_history?: IfcOpenshellInstance;" in low_level
+        assert "relating_object: IfcOpenshellInstance;" in low_level
+        assert "sync_predefined_type: boolean;" in low_level
+        assert "ownerHistory?: Entity;" in code
+        assert "relatingObject: Entity;" in code
+        assert "syncPredefinedType: boolean;" in code
+        assert '"ownerHistory": "owner_history"' in code
+        assert '"relatingObject": "relating_object"' in code
+        assert '"syncPredefinedType": "sync_predefined_type"' in code
 
     def test_direct_api_facade_renders_field_documentation(self):
         metadata = _make_metadata(

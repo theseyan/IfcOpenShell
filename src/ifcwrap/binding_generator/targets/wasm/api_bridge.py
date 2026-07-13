@@ -69,6 +69,29 @@ _GENERATED_HANDLE_TS = {
     "pset_template_handle": "PsetTemplate",
 }
 
+_RAW_PARAM_SCALAR_TS = {
+    "bool": "boolean",
+    "double": "number",
+    "int32_t": "number",
+    "int64_t": "bigint",
+    "size_t": "number",
+    "uint32_t": "number",
+    "uint8_t": "number",
+    "const char*": "string",
+    "ifcopenshell_string_t": "string",
+}
+
+_RAW_RETURN_SCALAR_TS = {
+    "bool": "boolean",
+    "double": "number",
+    "int32": "number",
+    "int64": "bigint",
+    "size": "number",
+    "string": "string",
+    "uint32": "number",
+    "uint8": "number",
+}
+
 
 def _is_public_api_module(module_name: str) -> bool:
     return module_name not in _INTERNAL_MODULES
@@ -340,6 +363,31 @@ def _param_ts_type(
     return "ApiData"
 
 
+def _raw_param_type(param: HostParamMetadata) -> str:
+    normalized = " ".join(param.c_type.replace(" *", "*").split())
+    result = _RAW_PARAM_SCALAR_TS.get(normalized)
+    if result is None:
+        return "RawValue"
+    return f"{result} | null" if param.nullable else result
+
+
+def _raw_return_type(function: HostFunctionMetadata) -> str:
+    returns = function.returns
+    if returns.kind == "void":
+        return "void"
+    if returns.sequence_depth > 0:
+        return "RawValue"
+    result = _RAW_RETURN_SCALAR_TS.get(returns.kind)
+    if result is None:
+        return "RawValue"
+    return f"{result} | null" if returns.nullable else result
+
+
+def _render_raw_method_signature(name: str, function: HostFunctionMetadata) -> str:
+    params = ", ".join(f"{param.name}: {_raw_param_type(param)}" for param in _public_params(function))
+    return f"    {_member_name(name)}: ({params}) => {_raw_return_type(function)};"
+
+
 def _render_interface_field(declaration: str, doc: str | None) -> str:
     if not doc:
         return f"  {declaration}"
@@ -593,7 +641,7 @@ def _render_raw_api_type(
 ) -> str:
     module_types = []
     for module_name, functions in sorted(modules.items()):
-        methods = "\n".join(f"    {_member_name(name)}: RawFn;" for name, _ in functions)
+        methods = "\n".join(_render_raw_method_signature(name, function) for name, function in functions)
         module_types.append(f"  {_member_name(module_name)}: {{\n{methods}\n  }};")
     return "type RawApi = {\n" + "\n".join(module_types) + "\n};"
 
@@ -635,7 +683,6 @@ def render_api_direct(metadata: HostBindingMetadata) -> str:
             "",
             "type RawValue = ApiData | object | RawValue[];",
             "type ApiInput = ApiData | PsetProperties | PsetInput;",
-            "type RawFn = (...args: RawValue[]) => RawValue;",
             "type Disposable = { destroy(): void };",
             _render_raw_api_type(modules),
             "",
